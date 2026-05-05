@@ -23,6 +23,7 @@ import { KpiTilesRow } from '../kpi/KpiTilesRow'
 import { StackBreakdownCards } from '../StackBreakdownCards'
 import { EmptyObservatoryState } from '../EmptyObservatoryState'
 import { uiToApiFilters, uiToDashboardRange } from './filterAdapter'
+import { SectionLabel } from '../shared'
 
 type GroupedBreakdowns = {
   provider: BreakdownsResponse | null
@@ -165,7 +166,7 @@ export function OverviewClient({
             </section>
 
             {/* ── Zone 2: Stack breakdown cards ── */}
-            <section>
+            <section data-testid="observatory-overview-provider-breakdown">
               <SectionLabel>By provider stack</SectionLabel>
               <StackBreakdownCards
                 data={breakdowns.provider}
@@ -193,7 +194,7 @@ export function OverviewClient({
             </section>
 
             {/* ── Zone 4: Stage breakdown ── */}
-            <section>
+            <section data-testid="observatory-overview-stage-breakdown">
               <SectionLabel>By pipeline stage</SectionLabel>
               <div className="rounded-xl border border-[rgba(212,175,55,0.10)] bg-[oklch(0.11_0.010_70)] p-4">
                 <CostByModelChart
@@ -225,14 +226,6 @@ export function OverviewClient({
 }
 
 // ── Sub-components ──────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]">
-      {children}
-    </p>
-  )
-}
 
 const DATE_PRESETS: Array<{ value: DateRangePresetId; label: string }> = [
   { value: 'today', label: 'Today' },

@@ -1,5 +1,6 @@
 export { EventTable } from './EventTable'
 export { EventSidePanel } from './EventSidePanel'
+export { QueryGroupCard, type GroupedRow } from './QueryGroupCard'
 export { StatusBadge } from './StatusBadge'
 export { VirtualList } from './VirtualList'
 export {

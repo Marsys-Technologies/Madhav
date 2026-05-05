@@ -65,23 +65,24 @@ function makeEval(
 }
 
 describe('BudgetStatusChip', () => {
-  it("1. status='ok' → green chip with 'OK'", () => {
+  it("1. status='ok' → emerald chip with 'OK'", () => {
     render(<BudgetStatusChip status="ok" pct_used={45} />)
     const chip = screen.getByTestId('budget-status-chip-ok')
     expect(chip).toHaveAttribute('data-status', 'ok')
     expect(chip.textContent).toMatch(/OK/)
     expect(chip.textContent).toMatch(/45%/)
-    expect(chip.querySelector('.bg-green-500')).not.toBeNull()
+    // New design: pill chip with border, no dot element.
+    expect(chip.className).toMatch(/emerald/)
   })
 
-  it("2. status='exceeded' → red+bold chip with 'Exceeded'", () => {
+  it("2. status='exceeded' → red chip with 'Exceeded'", () => {
     render(<BudgetStatusChip status="exceeded" pct_used={120} />)
     const chip = screen.getByTestId('budget-status-chip-exceeded')
     expect(chip).toHaveAttribute('data-status', 'exceeded')
     expect(chip.textContent).toMatch(/Exceeded/)
     expect(chip.textContent).toMatch(/120%/)
-    expect(chip.querySelector('.bg-red-600')).not.toBeNull()
-    expect(chip.querySelector('.font-bold')).not.toBeNull()
+    // New design: pill chip styled with red-600 tokens.
+    expect(chip.className).toMatch(/red/)
   })
 })
 
@@ -117,7 +118,9 @@ describe('BudgetRuleCard', () => {
     expect(progress).toBeInTheDocument()
     expect(progress).toHaveAttribute('aria-valuenow', '88')
     const spend = screen.getByTestId('budget-rule-spend-rule-test-1')
-    expect(spend.textContent).toMatch(/\$175\.00 of \$200\.00/)
+    // New design: spend and limit shown in two spans; combined textContent is "$175.00 spentof $200.00".
+    expect(spend.textContent).toMatch(/\$175\.00/)
+    expect(spend.textContent).toMatch(/\$200\.00/)
     // Status chip shows the evaluation status.
     expect(screen.getByTestId('budget-status-chip-warning')).toBeInTheDocument()
   })

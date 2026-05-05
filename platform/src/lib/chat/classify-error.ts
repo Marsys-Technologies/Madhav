@@ -1,5 +1,6 @@
 export type ChatErrorKind =
   | 'network'
+  | 'timeout'
   | 'rate_limit'
   | 'auth'
   | 'model_overload'
@@ -62,12 +63,19 @@ export function classifyChatError(err: Error | null | undefined): ClassifiedChat
       detail: err.message,
     }
   }
+  if (msg.includes('timeout') || msg.includes('aborted due to timeout')) {
+    return {
+      kind: 'timeout',
+      title: 'Model response timed out',
+      hint: 'The NIM model queue was too busy to respond in time. Try again, or switch to a different stack (Anthropic, Gemini, or GPT).',
+      detail: err.message,
+    }
+  }
   if (
     msg.includes('failed to fetch') ||
     msg.includes('network') ||
     msg.includes('econnreset') ||
-    msg.includes('enotfound') ||
-    msg.includes('timeout')
+    msg.includes('enotfound')
   ) {
     return {
       kind: 'network',

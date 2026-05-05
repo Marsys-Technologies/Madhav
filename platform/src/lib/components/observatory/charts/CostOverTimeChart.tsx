@@ -111,7 +111,7 @@ function CostTooltip({ active, payload, label, granularity }: CostTooltipProps) 
   return (
     <div
       data-testid="cost-over-time-tooltip"
-      className="rounded border bg-background p-2 text-xs shadow"
+      className="rounded-lg border border-[rgba(212,175,55,0.12)] bg-[oklch(0.13_0.008_70)] p-2 text-xs shadow-lg"
     >
       <div className="mb-1 font-medium">
         {label ? formatBucketTime(label, granularity) : ''}
@@ -193,7 +193,6 @@ export function CostOverTimeChart({
   }
 
   const { chartRows, seriesValues } = flattenTimeseries(data)
-  const isStagePrimary = dimension === 'pipeline_stage'
 
   const handleChartClick = (state: AreaChartClickState | null | undefined) => {
     if (!onDrillDown || !state) return
@@ -219,24 +218,28 @@ export function CostOverTimeChart({
       data-testid="cost-over-time-chart"
       data-dimension={dimension}
       data-series-count={seriesValues.length}
-      className={
-        isStagePrimary
-          ? 'h-96 w-full rounded border-2 border-primary/40 p-3'
-          : 'h-72 w-full rounded border p-3'
-      }
+      className="h-72 w-full"
     >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={chartRows}
           onClick={handleChartClick as never}
+          style={{ background: 'transparent' }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.08)" />
           <XAxis
             dataKey="time"
             tickFormatter={(v: string) => formatBucketTime(v, granularity)}
             minTickGap={24}
+            stroke="rgba(212,175,55,0.15)"
+            tick={{ fill: 'rgba(212,175,55,0.40)', fontSize: 11 }}
           />
-          <YAxis tickFormatter={(v: number) => formatCostUSD(v)} width={84} />
+          <YAxis
+            tickFormatter={(v: number) => formatCostUSD(v)}
+            width={84}
+            stroke="rgba(212,175,55,0.15)"
+            tick={{ fill: 'rgba(212,175,55,0.40)', fontSize: 11 }}
+          />
           <Tooltip
             content={(props) => {
               const tooltipProps = props as unknown as Omit<
@@ -246,7 +249,7 @@ export function CostOverTimeChart({
               return <CostTooltip {...tooltipProps} granularity={granularity} />
             }}
           />
-          <Legend />
+          <Legend wrapperStyle={{ color: 'rgba(212,175,55,0.60)', fontSize: '11px' }} />
           {seriesValues.map((value) => (
             <Area
               key={value}
@@ -256,7 +259,7 @@ export function CostOverTimeChart({
               stackId="cost"
               stroke={colorForDimension(dimension, value)}
               fill={colorForDimension(dimension, value)}
-              fillOpacity={isStagePrimary ? 0.7 : 0.5}
+              fillOpacity={0.5}
             />
           ))}
         </AreaChart>

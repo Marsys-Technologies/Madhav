@@ -44,6 +44,9 @@ const DEFAULT_THRESHOLDS: ThresholdRow[] = [
   { pct: 95, channel: 'email', channel_target: '' },
 ]
 
+const INPUT_CLASS =
+  'rounded-lg border border-[rgba(212,175,55,0.15)] bg-[oklch(0.13_0.008_70)] px-3 py-2 text-sm text-[rgba(212,175,55,0.85)] placeholder:text-[rgba(212,175,55,0.25)] focus:border-[rgba(212,175,55,0.40)] focus:outline-none'
+
 export interface CreateBudgetRuleFormProps {
   onCreated: () => void
 }
@@ -114,206 +117,248 @@ export function CreateBudgetRuleForm({ onCreated }: CreateBudgetRuleFormProps) {
   }
 
   return (
-    <form
-      data-testid="create-budget-rule-form"
-      onSubmit={handleSubmit}
-      className="space-y-3 rounded border bg-background p-4"
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block text-xs">
-          Name
-          <input
-            data-testid="create-budget-rule-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Monthly Anthropic cap"
-            className="mt-1 block w-full rounded border px-2 py-1 text-sm"
-          />
-        </label>
-
-        <label className="block text-xs">
-          Scope
-          <select
-            data-testid="create-budget-rule-scope"
-            value={scope}
-            onChange={(e) => {
-              setScope(e.target.value as BudgetScope)
-              setScopeValue('')
-            }}
-            className="mt-1 block w-full rounded border px-2 py-1 text-sm"
-          >
-            {SCOPES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {scope !== 'total' ? (
-          <label className="block text-xs">
-            Scope value
-            {scope === 'provider' ? (
-              <select
-                data-testid="create-budget-rule-scope-value"
-                data-scope-value-type="provider"
-                value={scopeValue}
-                onChange={(e) => setScopeValue(e.target.value)}
-                className="mt-1 block w-full rounded border px-2 py-1 text-sm"
-              >
-                <option value="">Select provider…</option>
-                {PROVIDER_OPTIONS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            ) : scope === 'pipeline_stage' ? (
-              <select
-                data-testid="create-budget-rule-scope-value"
-                data-scope-value-type="pipeline_stage"
-                value={scopeValue}
-                onChange={(e) => setScopeValue(e.target.value)}
-                className="mt-1 block w-full rounded border px-2 py-1 text-sm"
-              >
-                <option value="">Select stage…</option>
-                {PIPELINE_STAGE_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                data-testid="create-budget-rule-scope-value"
-                data-scope-value-type="text"
-                type="text"
-                value={scopeValue}
-                onChange={(e) => setScopeValue(e.target.value)}
-                placeholder={scope === 'model' ? 'e.g. claude-sonnet-4-6' : ''}
-                className="mt-1 block w-full rounded border px-2 py-1 text-sm"
-              />
-            )}
-          </label>
-        ) : null}
-
-        <label className="block text-xs">
-          Period
-          <select
-            data-testid="create-budget-rule-period"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as BudgetPeriod)}
-            className="mt-1 block w-full rounded border px-2 py-1 text-sm"
-          >
-            {PERIODS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-xs">
-          Threshold (USD)
-          <input
-            data-testid="create-budget-rule-amount"
-            type="number"
-            min={0.01}
-            step={0.01}
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            className="mt-1 block w-full rounded border px-2 py-1 text-sm tabular-nums"
-          />
-        </label>
+    <section className="rounded-xl border border-[rgba(212,175,55,0.12)] bg-[oklch(0.11_0.010_70)] p-6">
+      <div className="mb-5">
+        <h2 className="text-sm font-semibold text-[#fce29a]">Create budget rule</h2>
+        <p className="mt-0.5 text-xs text-[rgba(212,175,55,0.40)]">
+          Set a spend limit and alert thresholds for a scope and period.
+        </p>
       </div>
 
-      <div className="space-y-2">
-        <div className="text-xs font-medium">Alert at</div>
-        {thresholds.map((row, idx) => (
-          <div
-            key={idx}
-            data-testid={`create-budget-rule-threshold-${idx}`}
-            className="flex flex-wrap items-center gap-2"
-          >
-            <input
-              data-testid={`create-budget-rule-threshold-pct-${idx}`}
-              type="number"
-              min={0}
-              max={200}
-              step={1}
-              value={row.pct}
-              onChange={(e) =>
-                updateThreshold(idx, { pct: Number(e.target.value) })
-              }
-              className="w-20 rounded border px-2 py-1 text-sm tabular-nums"
-            />
-            <span className="text-xs">%</span>
-            <select
-              data-testid={`create-budget-rule-threshold-channel-${idx}`}
-              value={row.channel}
-              onChange={(e) =>
-                updateThreshold(idx, { channel: e.target.value as Channel })
-              }
-              className="rounded border px-2 py-1 text-sm"
+      <form
+        data-testid="create-budget-rule-form"
+        onSubmit={handleSubmit}
+        className="space-y-5"
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="budget-rule-name"
+              className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]"
             >
-              {CHANNELS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              Name
+            </label>
+            <input
+              id="budget-rule-name"
+              data-testid="create-budget-rule-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Monthly Anthropic cap"
+              className={INPUT_CLASS}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="budget-rule-scope"
+              className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]"
+            >
+              Scope
+            </label>
+            <select
+              id="budget-rule-scope"
+              data-testid="create-budget-rule-scope"
+              value={scope}
+              onChange={(e) => {
+                setScope(e.target.value as BudgetScope)
+                setScopeValue('')
+              }}
+              className={INPUT_CLASS}
+            >
+              {SCOPES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
                 </option>
               ))}
             </select>
-            {row.channel === 'webhook' ? (
-              <input
-                data-testid={`create-budget-rule-threshold-url-${idx}`}
-                type="url"
-                value={row.channel_target}
-                onChange={(e) =>
-                  updateThreshold(idx, { channel_target: e.target.value })
-                }
-                placeholder="https://example.com/hook"
-                className="min-w-[14rem] flex-1 rounded border px-2 py-1 text-sm"
-              />
-            ) : null}
-            {thresholds.length > 1 ? (
-              <button
-                type="button"
-                onClick={() => removeThreshold(idx)}
-                className="rounded border px-2 py-1 text-xs hover:bg-muted"
-              >
-                Remove
-              </button>
-            ) : null}
           </div>
-        ))}
-        {thresholds.length < 3 ? (
+
+          {scope !== 'total' && (
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="budget-rule-scope-value"
+                className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]"
+              >
+                Scope value
+              </label>
+              {scope === 'provider' ? (
+                <select
+                  id="budget-rule-scope-value"
+                  data-testid="create-budget-rule-scope-value"
+                  data-scope-value-type="provider"
+                  value={scopeValue}
+                  onChange={(e) => setScopeValue(e.target.value)}
+                  className={INPUT_CLASS}
+                >
+                  <option value="">Select provider…</option>
+                  {PROVIDER_OPTIONS.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              ) : scope === 'pipeline_stage' ? (
+                <select
+                  id="budget-rule-scope-value"
+                  data-testid="create-budget-rule-scope-value"
+                  data-scope-value-type="pipeline_stage"
+                  value={scopeValue}
+                  onChange={(e) => setScopeValue(e.target.value)}
+                  className={INPUT_CLASS}
+                >
+                  <option value="">Select stage…</option>
+                  {PIPELINE_STAGE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="budget-rule-scope-value"
+                  data-testid="create-budget-rule-scope-value"
+                  data-scope-value-type="text"
+                  type="text"
+                  value={scopeValue}
+                  onChange={(e) => setScopeValue(e.target.value)}
+                  placeholder={scope === 'model' ? 'e.g. claude-sonnet-4-6' : ''}
+                  className={INPUT_CLASS}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="budget-rule-period"
+              className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]"
+            >
+              Period
+            </label>
+            <select
+              id="budget-rule-period"
+              data-testid="create-budget-rule-period"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as BudgetPeriod)}
+              className={INPUT_CLASS}
+            >
+              {PERIODS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="budget-rule-amount"
+              className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]"
+            >
+              Threshold (USD)
+            </label>
+            <input
+              id="budget-rule-amount"
+              data-testid="create-budget-rule-amount"
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              className={`${INPUT_CLASS} tabular-nums`}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]">
+            Alert thresholds
+          </p>
+          {thresholds.map((row, idx) => (
+            <div
+              key={idx}
+              data-testid={`create-budget-rule-threshold-${idx}`}
+              className="flex flex-wrap items-center gap-2"
+            >
+              <input
+                data-testid={`create-budget-rule-threshold-pct-${idx}`}
+                type="number"
+                min={0}
+                max={200}
+                step={1}
+                value={row.pct}
+                onChange={(e) =>
+                  updateThreshold(idx, { pct: Number(e.target.value) })
+                }
+                className={`${INPUT_CLASS} w-20 tabular-nums`}
+              />
+              <span className="text-xs text-[rgba(212,175,55,0.40)]">%</span>
+              <select
+                data-testid={`create-budget-rule-threshold-channel-${idx}`}
+                value={row.channel}
+                onChange={(e) =>
+                  updateThreshold(idx, { channel: e.target.value as Channel })
+                }
+                className={INPUT_CLASS}
+              >
+                {CHANNELS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              {row.channel === 'webhook' && (
+                <input
+                  data-testid={`create-budget-rule-threshold-url-${idx}`}
+                  type="url"
+                  value={row.channel_target}
+                  onChange={(e) =>
+                    updateThreshold(idx, { channel_target: e.target.value })
+                  }
+                  placeholder="https://example.com/hook"
+                  className={`${INPUT_CLASS} min-w-[14rem] flex-1`}
+                />
+              )}
+              {thresholds.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeThreshold(idx)}
+                  className="rounded-lg border border-[rgba(212,175,55,0.12)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.40)] transition-colors hover:border-red-500/30 hover:text-red-400"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
           <button
             type="button"
             data-testid="create-budget-rule-add-threshold"
             onClick={addThreshold}
-            className="rounded border px-2 py-1 text-xs hover:bg-muted"
+            disabled={thresholds.length >= 3}
+            className="rounded-lg border border-dashed border-[rgba(212,175,55,0.20)] px-3 py-1.5 text-xs text-[rgba(212,175,55,0.40)] transition-colors hover:border-[rgba(212,175,55,0.35)] hover:text-[rgba(212,175,55,0.70)] disabled:opacity-40"
           >
-            + Add threshold
+            + Add alert threshold
           </button>
-        ) : null}
-      </div>
-
-      {error ? (
-        <div role="alert" className="text-xs text-red-600">
-          {error}
         </div>
-      ) : null}
 
-      <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          data-testid="create-budget-rule-submit"
-          disabled={submitting}
-          className="rounded border bg-foreground px-3 py-1 text-xs text-background hover:opacity-90 disabled:opacity-50"
-        >
-          {submitting ? 'Creating…' : 'Create budget rule'}
-        </button>
-      </div>
-    </form>
+        {error && (
+          <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <button
+            type="submit"
+            data-testid="create-budget-rule-submit"
+            disabled={submitting}
+            className="rounded-lg bg-gradient-to-r from-[#d4af37] to-[#fce29a] px-5 py-2 text-xs font-semibold text-[oklch(0.10_0.012_70)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {submitting ? 'Creating…' : 'Create rule'}
+          </button>
+        </div>
+      </form>
+    </section>
   )
 }

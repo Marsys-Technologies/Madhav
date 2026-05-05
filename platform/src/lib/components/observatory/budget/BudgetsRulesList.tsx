@@ -34,9 +34,11 @@ export function BudgetsRulesList({ rules, evaluations }: BudgetsRulesListProps) 
     return (
       <div
         data-testid="budgets-empty"
-        className="rounded border border-dashed p-4 text-sm text-muted-foreground"
+        className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[rgba(212,175,55,0.15)] py-12 text-center"
       >
-        No active budget rules. Create one below.
+        <span className="text-3xl opacity-20">◎</span>
+        <p className="text-sm font-medium text-[rgba(212,175,55,0.45)]">No active budget rules</p>
+        <p className="text-xs text-[rgba(212,175,55,0.30)]">Create a rule below to start tracking spend</p>
       </div>
     )
   }

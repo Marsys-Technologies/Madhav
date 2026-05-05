@@ -156,16 +156,17 @@ const NVIDIA_NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1'
 /**
  * Abort if NIM doesn't send HTTP headers within this window.
  *
- * Why 90s: NIM free-tier is queue-based. Under load the endpoint can take
+ * Why 110s: NIM free-tier is queue-based. Under load the endpoint can take
  * 30–60s before sending *any* HTTP headers (the request sits in queue before
  * a GPU slot opens). The original 30s limit caused AbortError → AI SDK retry
  * → the queued-then-aborted request returned 500 on retry → PlannerError.
- * 90s gives generous headroom for cold-start queue waits observed in testing
- * (worst measured: ~46s end-to-end under load). Once headers arrive, the
- * response body streams at full GPU throughput and is not affected by this
- * deadline.
+ * 90s was raised to 110s after the 120B Nemotron synthesis model exceeded 90s
+ * on a busy queue. 110s stays within the 120s route maxDuration with ~10s
+ * buffer for pre-synthesis overhead (planner + classify + retrieve).
+ * Once headers arrive, the response body streams at full GPU throughput and
+ * is not affected by this deadline.
  */
-const NIM_HEADERS_TIMEOUT_MS = 90_000
+const NIM_HEADERS_TIMEOUT_MS = 110_000
 
 /**
  * Wrap the platform fetch so every NIM request races against a hard deadline.

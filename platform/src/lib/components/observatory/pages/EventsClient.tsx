@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { EventTable } from '../events/EventTable'
 import { EventSidePanel } from '../events/EventSidePanel'
+import { QueryGroupCard, type GroupedRow } from '../events/QueryGroupCard'
 import type { EventRow } from '../events/types'
 import { FiltersBar } from '../filters/FiltersBar'
 import { useObservatoryFilters } from '../filters/useObservatoryFilters'
@@ -12,19 +13,9 @@ import {
 } from './filterAdapter'
 import type { EventsParams } from '@/lib/api-clients/observatory'
 import { cn } from '@/lib/utils'
+import { ObsPageShell, SectionLabel } from '../shared'
 
 const PAGE_LIMIT = 50
-
-type GroupedRow = {
-  conversation_id: string | null
-  call_count: string
-  total_cost_usd: string | null
-  total_input_tokens: string | null
-  total_output_tokens: string | null
-  started_at: string | null
-  finished_at: string | null
-  stages: string[]
-}
 
 export function EventsClient(): React.ReactElement {
   const { filters, setFilters } = useObservatoryFilters()
@@ -82,87 +73,74 @@ export function EventsClient(): React.ReactElement {
   }, [])
 
   return (
-    <div data-testid="observatory-events" className="flex flex-col gap-4">
-      <FiltersBar
-        filters={filters}
-        modelOptions={[]}
-        onFiltersChange={setFilters}
-      />
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.45)]">
-          LLM Call Events
-        </h2>
+    <ObsPageShell
+      title="LLM Events"
+      subtitle="Per-call telemetry across all provider stacks"
+      testId="observatory-events"
+      headerRight={
         <button
           type="button"
           onClick={() => setGroupByQuery(g => !g)}
           className={cn(
-            'rounded border px-3 py-1 text-xs font-medium transition-colors',
+            'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
             groupByQuery
               ? 'border-[rgba(212,175,55,0.4)] bg-[rgba(212,175,55,0.12)] text-[#d4af37]'
-              : 'border-border bg-card text-muted-foreground hover:text-foreground',
+              : 'border-[rgba(212,175,55,0.12)] text-[rgba(212,175,55,0.45)] hover:text-[#d4af37]',
           )}
         >
-          {groupByQuery ? 'Grouped by query' : 'Group by query'}
+          {groupByQuery ? '⊞ Grouped view' : '⊞ Group by query'}
         </button>
-      </div>
-      {groupByQuery ? (
-        groupedLoading ? (
-          <p className="text-xs text-muted-foreground">Loading grouped data…</p>
-        ) : (
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="pb-2 pr-4 font-medium">Query ID</th>
-                <th className="pb-2 pr-4 font-medium">Calls</th>
-                <th className="pb-2 pr-4 font-medium">Total Cost</th>
-                <th className="pb-2 pr-4 font-medium">Tokens (in / out)</th>
-                <th className="pb-2 font-medium">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupedRows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                    No grouped data in range
-                  </td>
-                </tr>
-              ) : (
-                groupedRows.map((row, i) => (
-                  <tr key={row.conversation_id ?? i} className="border-b border-border/40">
-                    <td className="py-1.5 pr-4 font-mono text-[10px] text-muted-foreground">
-                      {row.conversation_id ?? '—'}
-                    </td>
-                    <td className="py-1.5 pr-4">{row.call_count}</td>
-                    <td className="py-1.5 pr-4">
-                      {row.total_cost_usd != null
-                        ? `$${Number(row.total_cost_usd).toFixed(6)}`
-                        : '—'}
-                    </td>
-                    <td className="py-1.5 pr-4">
-                      {row.total_input_tokens ?? '—'} / {row.total_output_tokens ?? '—'}
-                    </td>
-                    <td className="py-1.5">
-                      {row.started_at ? new Date(row.started_at).toLocaleString() : '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )
-      ) : (
-        <EventTable
-          key={tableKey}
-          fetchParams={fetchParams}
-          onRowClick={handleRowClick}
-        />
-      )}
+      }
+    >
+      {/* Advanced filters collapsible */}
+      <details className="group">
+        <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-[rgba(212,175,55,0.35)] hover:text-[rgba(212,175,55,0.65)] list-none select-none">
+          <span aria-hidden="true" className="transition-transform group-open:rotate-90">▶</span>
+          Advanced filters
+        </summary>
+        <div className="mt-3">
+          <FiltersBar filters={filters} modelOptions={[]} onFiltersChange={setFilters} />
+        </div>
+      </details>
+
+      {/* Content */}
+      <section>
+        <SectionLabel>{groupByQuery ? 'Queries' : 'Events'}</SectionLabel>
+        <div className="rounded-xl border border-[rgba(212,175,55,0.10)] bg-[oklch(0.11_0.010_70)]">
+          {groupByQuery ? (
+            groupedLoading ? (
+              <p className="p-4 text-xs text-[rgba(212,175,55,0.45)]">Loading grouped data…</p>
+            ) : groupedRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <span className="text-3xl opacity-30">◎</span>
+                <p className="text-sm font-medium text-[rgba(212,175,55,0.50)]">
+                  No grouped data in range
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 p-3">
+                {groupedRows.map((row, i) => (
+                  <QueryGroupCard key={row.conversation_id ?? i} row={row} />
+                ))}
+              </div>
+            )
+          ) : (
+            <EventTable
+              key={tableKey}
+              fetchParams={fetchParams}
+              onRowClick={handleRowClick}
+              selectedEventId={selectedEventId}
+            />
+          )}
+        </div>
+      </section>
+
       <EventSidePanel
         eventId={selectedEventId}
         dateRange={{ from: fetchParams.from, to: fetchParams.to }}
         onClose={() => setSelectedEventId(null)}
         onSelectEvent={(id) => setSelectedEventId(id)}
       />
-    </div>
+    </ObsPageShell>
   )
 }

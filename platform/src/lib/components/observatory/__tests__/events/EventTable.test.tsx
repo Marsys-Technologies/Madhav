@@ -157,7 +157,7 @@ describe('EventTable — status badges', () => {
     const error = screen.getByTestId('status-badge-error')
     const timeout = screen.getByTestId('status-badge-timeout')
 
-    expect(success.className).toMatch(/green/)
+    expect(success.className).toMatch(/emerald/)
     expect(error.className).toMatch(/red/)
     expect(timeout.className).toMatch(/amber/)
   })

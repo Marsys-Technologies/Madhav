@@ -9,6 +9,8 @@ import {
 import type { EventDetail, EventRow } from './types'
 import { StatusBadge } from './StatusBadge'
 import { formatCostUsd, formatTimestamp } from './format'
+import { colorForStage } from '../charts/utils'
+import { cn } from '@/lib/utils'
 
 type TabId = 'prompt' | 'response' | 'meta'
 
@@ -19,15 +21,10 @@ const TABS: { id: TabId; label: string }[] = [
 ]
 
 interface EventSidePanelProps {
-  // Identifies which event to load. Changing this prop refetches.
   eventId: string | null
-  // Date window forwarded to the conversation-thread fetch (the events API
-  // requires from/to + the conversation_id). Provided by the page shell.
   dateRange: { from: string; to: string }
   onClose: () => void
-  // Switching to a sibling event in the conversation thread re-targets the panel.
   onSelectEvent?: (id: string) => void
-  // Test seams.
   fetchEvent?: typeof getEvent
   fetchEvents?: typeof getEvents
 }
@@ -97,12 +94,18 @@ export function EventSidePanel({
       data-testid="event-side-panel"
       role="dialog"
       aria-label="Event details"
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-2xl flex-col border-l bg-background shadow-2xl"
+      className="fixed inset-y-0 right-0 z-40 flex w-[480px] max-w-full flex-col border-l border-[rgba(212,175,55,0.12)] bg-[oklch(0.10_0.012_70)] shadow-2xl"
     >
-      <header className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex flex-col">
-          <span className="text-xs uppercase text-muted-foreground">Event</span>
-          <span data-testid="event-side-panel-id" className="font-mono text-sm">
+      {/* Header */}
+      <header className="flex items-center justify-between border-b border-[rgba(212,175,55,0.10)] px-6 py-4">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)]">
+            Event
+          </span>
+          <span
+            data-testid="event-side-panel-id"
+            className="font-mono text-sm text-[#fce29a]"
+          >
             {eventId}
           </span>
         </div>
@@ -110,17 +113,18 @@ export function EventSidePanel({
           type="button"
           data-testid="event-side-panel-close"
           onClick={onClose}
-          aria-label="Close"
-          className="rounded border px-2 py-1 text-sm"
+          aria-label="Close panel"
+          className="rounded p-1 text-[rgba(212,175,55,0.40)] transition-colors hover:bg-[rgba(212,175,55,0.08)] hover:text-[#d4af37]"
         >
-          ×
+          ✕
         </button>
       </header>
 
+      {/* Tabs */}
       <nav
         data-testid="event-side-panel-tabs"
         role="tablist"
-        className="flex border-b text-sm"
+        className="flex border-b border-[rgba(212,175,55,0.10)] text-sm"
       >
         {TABS.map((t) => (
           <button
@@ -130,35 +134,47 @@ export function EventSidePanel({
             aria-selected={tab === t.id}
             data-testid={`event-side-panel-tab-${t.id}`}
             onClick={() => setTab(t.id)}
-            className={
-              'flex-1 px-4 py-2 ' +
-              (tab === t.id
-                ? 'border-b-2 border-primary font-medium'
-                : 'text-muted-foreground')
-            }
+            className={cn(
+              'flex-1 px-4 py-2.5 text-xs font-medium transition-colors',
+              tab === t.id
+                ? 'border-b-2 border-[#d4af37] text-[#fce29a]'
+                : 'text-[rgba(212,175,55,0.40)] hover:text-[rgba(212,175,55,0.70)]',
+            )}
           >
             {t.label}
           </button>
         ))}
       </nav>
 
+      {/* Body */}
       <div
         data-testid="event-side-panel-body"
-        className="flex-1 overflow-y-auto px-4 py-3 text-sm"
+        className="flex-1 overflow-y-auto px-6 py-4 text-sm"
       >
         {loading ? (
-          <div data-testid="event-side-panel-loading">Loading…</div>
+          <div
+            data-testid="event-side-panel-loading"
+            className="flex flex-col gap-2 pt-4"
+          >
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-8 animate-pulse rounded bg-[rgba(212,175,55,0.04)]"
+              />
+            ))}
+          </div>
         ) : error ? (
-          <div data-testid="event-side-panel-error" className="text-red-600">
-            {error}
+          <div
+            data-testid="event-side-panel-error"
+            className="flex flex-col items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 py-8 text-center"
+          >
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         ) : !event ? null : tab === 'prompt' ? (
           <PromptTab
             event={event}
             collapsed={collapsed}
-            onToggle={(k) =>
-              setCollapsed((c) => ({ ...c, [k]: !c[k] }))
-            }
+            onToggle={(k) => setCollapsed((c) => ({ ...c, [k]: !c[k] }))}
           />
         ) : tab === 'response' ? (
           <ResponseTab event={event} />
@@ -186,14 +202,14 @@ function PromptTab({
   onToggle: (k: 'system_prompt' | 'parameters') => void
 }): React.ReactElement {
   return (
-    <div className="flex flex-col gap-3" data-testid="event-side-panel-prompt">
+    <div className="flex flex-col gap-4" data-testid="event-side-panel-prompt">
       <section>
-        <div className="mb-1 text-xs uppercase text-muted-foreground">
+        <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)]">
           Prompt text
         </div>
         <pre
           data-testid="event-prompt-text"
-          className="overflow-x-auto rounded border bg-muted/50 p-2 text-xs"
+          className="overflow-x-auto rounded-lg border border-[rgba(212,175,55,0.10)] bg-[rgba(212,175,55,0.04)] p-3 text-xs text-[rgba(212,175,55,0.75)]"
         >
           {event.prompt_text ?? '(no prompt text captured)'}
         </pre>
@@ -205,7 +221,7 @@ function PromptTab({
         collapsed={collapsed.system_prompt}
         onToggle={() => onToggle('system_prompt')}
       >
-        <pre className="overflow-x-auto rounded border bg-muted/50 p-2 text-xs">
+        <pre className="overflow-x-auto rounded-lg border border-[rgba(212,175,55,0.10)] bg-[rgba(212,175,55,0.04)] p-3 text-xs text-[rgba(212,175,55,0.75)]">
           {event.system_prompt ?? '(none)'}
         </pre>
       </Collapsible>
@@ -216,7 +232,7 @@ function PromptTab({
         collapsed={collapsed.parameters}
         onToggle={() => onToggle('parameters')}
       >
-        <pre className="overflow-x-auto rounded border bg-muted/50 p-2 text-xs">
+        <pre className="overflow-x-auto rounded-lg border border-[rgba(212,175,55,0.10)] bg-[rgba(212,175,55,0.04)] p-3 text-xs text-[rgba(212,175,55,0.75)]">
           {formatJson(event.parameters)}
         </pre>
       </Collapsible>
@@ -226,22 +242,25 @@ function PromptTab({
 
 function ResponseTab({ event }: { event: EventDetail }): React.ReactElement {
   return (
-    <div className="flex flex-col gap-3" data-testid="event-side-panel-response">
+    <div className="flex flex-col gap-4" data-testid="event-side-panel-response">
       <div className="flex items-center gap-2">
         <StatusBadge status={event.status} />
         {event.error_code ? (
-          <span data-testid="event-error-code" className="text-xs text-red-600">
+          <span
+            data-testid="event-error-code"
+            className="text-xs text-red-400"
+          >
             {event.error_code}
           </span>
         ) : null}
       </div>
       <section>
-        <div className="mb-1 text-xs uppercase text-muted-foreground">
+        <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)]">
           Response text
         </div>
         <pre
           data-testid="event-response-text"
-          className="overflow-x-auto rounded border bg-muted/50 p-2 text-xs"
+          className="overflow-x-auto rounded-lg border border-[rgba(212,175,55,0.10)] bg-[rgba(212,175,55,0.04)] p-3 text-xs text-[rgba(212,175,55,0.75)]"
         >
           {event.response_text ?? '(no response text captured)'}
         </pre>
@@ -252,32 +271,46 @@ function ResponseTab({ event }: { event: EventDetail }): React.ReactElement {
 
 function MetaTab({ event }: { event: EventDetail }): React.ReactElement {
   return (
-    <div className="flex flex-col gap-3 text-xs" data-testid="event-side-panel-meta">
+    <dl className="flex flex-col text-xs" data-testid="event-side-panel-meta">
+      <KV label="provider" value={event.provider} />
+      <KV label="model" value={event.model} />
+      <KV label="pipeline_stage">
+        <span
+          className="rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide"
+          style={{
+            backgroundColor: `${colorForStage(event.pipeline_stage)}22`,
+            color: colorForStage(event.pipeline_stage),
+            border: `1px solid ${colorForStage(event.pipeline_stage)}44`,
+          }}
+        >
+          {event.pipeline_stage}
+        </span>
+      </KV>
       <KV label="provider_request_id" value={event.provider_request_id ?? '—'} />
       <KV label="started_at" value={formatTimestamp(event.started_at)} />
       <KV label="finished_at" value={formatTimestamp(event.finished_at)} />
       <KV label="latency_ms" value={String(event.latency_ms ?? '—')} />
       <KV label="cost_usd" value={formatCostUsd(event.computed_cost_usd)} />
       <KV label="pricing_version_id" value={event.pricing_version_id ?? '—'} />
-      <section>
-        <div className="mb-1 uppercase text-muted-foreground">
+      <section className="py-2">
+        <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)]">
           feature_flag_state
         </div>
         <pre
           data-testid="event-feature-flag-state"
-          className="overflow-x-auto rounded border bg-muted/50 p-2"
+          className="overflow-x-auto rounded-lg border border-[rgba(212,175,55,0.10)] bg-[rgba(212,175,55,0.04)] p-3 text-xs text-[rgba(212,175,55,0.75)]"
         >
           {formatJson(event.feature_flag_state)}
         </pre>
       </section>
       <p
         data-testid="event-raw-payload-note"
-        className="rounded border border-dashed p-2 text-muted-foreground"
+        className="rounded-lg border border-dashed border-[rgba(212,175,55,0.15)] p-2 text-[rgba(212,175,55,0.35)]"
       >
         Raw provider payload not captured for this event (super-admin note: capture
         can be enabled in a future release).
       </p>
-    </div>
+    </dl>
   )
 }
 
@@ -293,9 +326,9 @@ function ConversationThread({
   return (
     <footer
       data-testid="event-side-panel-thread"
-      className="border-t bg-muted/30 px-4 py-2 text-xs"
+      className="border-t border-[rgba(212,175,55,0.10)] bg-[rgba(212,175,55,0.03)] px-6 py-3"
     >
-      <div className="mb-1 font-medium uppercase text-muted-foreground">
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)]">
         Conversation thread ({siblings.length})
       </div>
       <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
@@ -309,15 +342,17 @@ function ConversationThread({
                 aria-current={active ? 'true' : undefined}
                 disabled={!onSelect || active}
                 onClick={() => onSelect?.(s.event_id)}
-                className={
-                  'flex w-full items-center justify-between gap-2 rounded border px-2 py-1 text-left ' +
-                  (active ? 'bg-primary/10 font-medium' : 'hover:bg-muted/60')
-                }
+                className={cn(
+                  'flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-left text-xs transition-colors',
+                  active
+                    ? 'border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.08)] font-medium text-[#d4af37]'
+                    : 'border-[rgba(212,175,55,0.10)] text-[rgba(212,175,55,0.55)] hover:border-[rgba(212,175,55,0.25)] hover:text-[#d4af37]',
+                )}
               >
                 <span className="truncate font-mono">
                   {s.provider}/{s.model}
                 </span>
-                <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
+                <span className="flex shrink-0 items-center gap-2 tabular-nums text-[rgba(212,175,55,0.40)]">
                   <span>{formatCostUsd(s.computed_cost_usd)}</span>
                   <span>{s.latency_ms ?? '—'}ms</span>
                 </span>
@@ -349,13 +384,15 @@ function Collapsible({
         type="button"
         data-testid={`${testIdPrefix}-toggle`}
         onClick={onToggle}
-        className="flex items-center gap-1 text-xs uppercase text-muted-foreground hover:underline"
+        className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)] hover:text-[rgba(212,175,55,0.65)]"
       >
-        <span aria-hidden>{collapsed ? '▶' : '▼'}</span>
+        <span aria-hidden className="transition-transform" style={{ display: 'inline-block', transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)' }}>
+          ▶
+        </span>
         <span>{title}</span>
       </button>
       {collapsed ? null : (
-        <div data-testid={`${testIdPrefix}-body`} className="mt-1">
+        <div data-testid={`${testIdPrefix}-body`} className="mt-2">
           {children}
         </div>
       )}
@@ -366,16 +403,20 @@ function Collapsible({
 function KV({
   label,
   value,
+  children,
 }: {
   label: string
-  value: string
+  value?: string
+  children?: React.ReactNode
 }): React.ReactElement {
   return (
-    <div className="flex items-baseline gap-2">
-      <span className="w-40 shrink-0 uppercase text-muted-foreground">
+    <div className="flex items-baseline justify-between border-b border-[rgba(212,175,55,0.06)] py-2">
+      <dt className="text-[10px] font-medium uppercase tracking-widest text-[rgba(212,175,55,0.35)]">
         {label}
-      </span>
-      <span className="font-mono">{value}</span>
+      </dt>
+      <dd className="ml-4 tabular-nums text-xs text-[rgba(212,175,55,0.80)]">
+        {children ?? value}
+      </dd>
     </div>
   )
 }

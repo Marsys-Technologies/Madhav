@@ -30,10 +30,14 @@ export default async function ObservatoryReconciliationPage({
   })
 
   return (
-    <ReconciliationHistoryView
-      selectedProvider={provider}
-      rows={rows}
-      total={total}
-    />
+    <div className="min-h-full bg-[var(--brand-charcoal,oklch(0.10_0.012_70))]">
+      <div className="p-6">
+        <ReconciliationHistoryView
+          selectedProvider={provider}
+          rows={rows}
+          total={total}
+        />
+      </div>
+    </div>
   )
 }

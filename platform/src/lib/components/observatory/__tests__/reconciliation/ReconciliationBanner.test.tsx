@@ -1,8 +1,7 @@
 // USTAD_S2_6 — ReconciliationBanner UI tests.
-//
-// Pure-presentation tests against ReconciliationBannerView (the View accepts
-// rows as a prop so the DB loader doesn't need stubbing). Covers the four
-// banner cases listed in the session brief.
+// Updated OBS-UX-S4: ReconciliationBannerView now renders ProviderStatusCard
+// cards (data-testid="reconciliation-card-{provider}") instead of StatusChip
+// chips. Tests updated to match new card-grid structure.
 
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -37,36 +36,33 @@ describe('ReconciliationBannerView', () => {
     expect(screen.queryByTestId('reconciliation-banner')).not.toBeInTheDocument()
   })
 
-  it("renders 'matched' chip (green) for a reconciled provider (test 5)", () => {
+  it("renders 'matched' card for a reconciled provider (test 5)", () => {
     render(
       <ReconciliationBannerView
         rows={[row({ provider: 'anthropic', status: 'matched', variance_pct: 0.1 })]}
       />,
     )
-    const chip = screen.getByTestId('reconciliation-chip-anthropic')
-    expect(chip).toBeInTheDocument()
-    expect(chip).toHaveAttribute('data-status', 'matched')
-    expect(chip.textContent).toMatch(/Anthropic/)
-    expect(chip.textContent).toMatch(/Reconciled/)
-    // Green dot present.
-    expect(chip.querySelector('.bg-green-500')).not.toBeNull()
+    const card = screen.getByTestId('reconciliation-card-anthropic')
+    expect(card).toBeInTheDocument()
+    expect(card).toHaveAttribute('data-status', 'matched')
+    expect(card.textContent).toMatch(/Anthropic/)
+    expect(card.textContent).toMatch(/Reconciled/)
   })
 
-  it("renders 'variance_alert' chip (red) for an alerting provider (test 6)", () => {
+  it("renders 'variance_alert' card (red) for an alerting provider (test 6)", () => {
     render(
       <ReconciliationBannerView
         rows={[row({ provider: 'openai', status: 'variance_alert', variance_pct: 7.5 })]}
       />,
     )
-    const chip = screen.getByTestId('reconciliation-chip-openai')
-    expect(chip).toHaveAttribute('data-status', 'variance_alert')
-    expect(chip.textContent).toMatch(/OpenAI/)
-    expect(chip.textContent).toMatch(/Alert/)
-    expect(chip.textContent).toMatch(/7\.5%/)
-    expect(chip.querySelector('.bg-red-500')).not.toBeNull()
+    const card = screen.getByTestId('reconciliation-card-openai')
+    expect(card).toHaveAttribute('data-status', 'variance_alert')
+    expect(card.textContent).toMatch(/OpenAI/)
+    expect(card.textContent).toMatch(/Alert/)
+    expect(card.textContent).toMatch(/7\.5/)
   })
 
-  it("renders 'missing_authoritative' chip (grey) for a no-data provider (test 7)", () => {
+  it("renders 'missing_authoritative' card for a no-data provider (test 7)", () => {
     render(
       <ReconciliationBannerView
         rows={[
@@ -78,11 +74,10 @@ describe('ReconciliationBannerView', () => {
         ]}
       />,
     )
-    const chip = screen.getByTestId('reconciliation-chip-deepseek')
-    expect(chip).toHaveAttribute('data-status', 'missing_authoritative')
-    expect(chip.textContent).toMatch(/DeepSeek/)
-    expect(chip.textContent).toMatch(/No data/)
-    expect(chip.querySelector('.bg-gray-400')).not.toBeNull()
+    const card = screen.getByTestId('reconciliation-card-deepseek')
+    expect(card).toHaveAttribute('data-status', 'missing_authoritative')
+    expect(card.textContent).toMatch(/DeepSeek/)
+    expect(card.textContent).toMatch(/No data/)
   })
 
   it('deduplicates by provider (defensive — loader is the primary dedupe)', () => {
@@ -98,9 +93,8 @@ describe('ReconciliationBannerView', () => {
         ]}
       />,
     )
-    const chips = screen.getAllByTestId('reconciliation-chip-gemini')
-    expect(chips).toHaveLength(1)
-    // First occurrence (matched) wins.
-    expect(chips[0]).toHaveAttribute('data-status', 'matched')
+    const cards = screen.getAllByTestId('reconciliation-card-gemini')
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toHaveAttribute('data-status', 'matched')
   })
 })

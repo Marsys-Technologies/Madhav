@@ -24,6 +24,10 @@ export const STAGE_COLORS: Record<LlmPipelineStage, string> = {
   synthesize: '#10b981',
   audit: '#ef4444',
   other: '#94a3b8',
+  // Added by migration 041
+  planner: '#a78bfa',
+  title: '#f472b6',
+  history_summary: '#34d399',
 }
 
 const FALLBACK_COLOR = '#64748b'

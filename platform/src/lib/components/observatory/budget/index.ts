@@ -1,5 +1,6 @@
 // Barrel for observatory budget UI components (O.3).
 
+export { BudgetHeroSummary, type BudgetHeroSummaryProps } from './BudgetHeroSummary'
 export { BudgetStatusChip, type BudgetStatusChipProps } from './BudgetStatusChip'
 export { BudgetRuleCard, type BudgetRuleCardProps } from './BudgetRuleCard'
 export {

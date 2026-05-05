@@ -19,6 +19,9 @@ export type LlmPipelineStage =
   | 'synthesize'
   | 'audit'
   | 'other'
+  | 'planner'
+  | 'title'
+  | 'history_summary'
 
 export type LlmCallStatus = 'success' | 'error' | 'timeout'
 

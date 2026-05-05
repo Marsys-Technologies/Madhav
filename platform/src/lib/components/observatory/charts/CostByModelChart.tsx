@@ -73,7 +73,7 @@ function ModelTooltip({
   return (
     <div
       data-testid="cost-by-model-tooltip"
-      className="rounded border bg-background p-2 text-xs shadow"
+      className="rounded-lg border border-[rgba(212,175,55,0.12)] bg-[oklch(0.13_0.008_70)] p-2 text-xs shadow-lg"
     >
       <div className="mb-1 font-medium">{row.label}</div>
       <div className="flex justify-between gap-4">
@@ -149,17 +149,20 @@ export function CostByModelChart({
       style={{ height }}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ left: 24, right: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" />
+        <BarChart data={rows} layout="vertical" margin={{ left: 24, right: 24 }} style={{ background: 'transparent' }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(212,175,55,0.08)" />
           <XAxis
             type="number"
             tickFormatter={(v: number) => formatCostUSD(v)}
+            stroke="rgba(212,175,55,0.15)"
+            tick={{ fill: 'rgba(212,175,55,0.40)', fontSize: 11 }}
           />
           <YAxis
             type="category"
             dataKey="label"
             width={180}
-            tick={{ fontSize: 12 }}
+            stroke="rgba(212,175,55,0.15)"
+            tick={{ fill: 'rgba(212,175,55,0.40)', fontSize: 11 }}
           />
           <Tooltip content={<ModelTooltip />} />
           <Bar dataKey="cost_usd">
