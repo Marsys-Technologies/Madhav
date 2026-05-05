@@ -60,6 +60,13 @@ export interface QueryPlan {
   eclipse_query?: boolean
   retrograde_query?: boolean
   retrograde_planet?: string
+  // Tool-param sidecar objects (mirrors schema properties; prevents additionalProperties failures)
+  kp_query?: { cusp?: number; planet?: string }
+  saham_query?: { saham_name?: string }
+  divisional_query?: { varga?: string; planet?: string }
+  domain_report_query?: { domains?: string[]; keyword?: string }
+  remedial_codex_query?: { planet?: string; practice_type?: string }
+  timeline_query?: { dasha_name?: string }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

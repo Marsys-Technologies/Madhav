@@ -548,3 +548,85 @@ describe('Router classify() — vector_search_filter emission per query class', 
     )
   })
 })
+
+describe('Router classify() — chart_facts_query and temporal extension fields (GQ-002 regression)', () => {
+  it('GQ-002: factual 7th-house query with chart_facts_query passes schema validation', async () => {
+    // Regression: query_plan.schema.json was missing chart_facts_query (and 11 other fields
+    // present in the QueryPlan TS interface). The haiku router correctly includes
+    // chart_facts_query for placement queries, but the schema rejected it with
+    // additionalProperties:false → PipelineError → HTTP 500. Fixed by adding all missing
+    // fields to the schema.
+    mockLLMResponse(makeResponse({
+      query_class: 'factual',
+      domains: [],
+      tools_authorized: ['msr_sql', 'chart_facts_query', 'vector_search', 'cgm_graph_walk'],
+      expected_output_shape: 'single_answer',
+      houses: [7],
+      graph_seed_hints: ['HSE.7'],
+      vector_search_filter: { layer: 'L1', doc_type: ['l1_fact'] },
+      chart_facts_query: { category: 'house', house: 7, limit: 10 },
+    }))
+
+    const plan = await classify(
+      'Which planets are in the 7th house in my birth chart, and what are their degrees?',
+      BASE_CONTEXT,
+    )
+
+    expect(plan.query_class).toBe('factual')
+    expect(plan.expected_output_shape).toBe('single_answer')
+    expect(plan.houses).toEqual([7])
+    expect(plan.chart_facts_query).toEqual({ category: 'house', house: 7, limit: 10 })
+    expect(plan.tools_authorized).toContain('chart_facts_query')
+  })
+
+  it('chart_facts_query with category as array passes schema validation', async () => {
+    mockLLMResponse(makeResponse({
+      query_class: 'factual',
+      domains: [],
+      tools_authorized: ['msr_sql', 'chart_facts_query'],
+      expected_output_shape: 'single_answer',
+      chart_facts_query: { category: ['house', 'planet'], limit: 20 },
+    }))
+
+    const plan = await classify('What is placed in the 7th house?', BASE_CONTEXT)
+
+    expect(plan.chart_facts_query).toEqual({ category: ['house', 'planet'], limit: 20 })
+  })
+
+  it('temporal extension fields pass schema validation', async () => {
+    mockLLMResponse(makeResponse({
+      query_class: 'predictive',
+      domains: [],
+      forward_looking: true,
+      tools_authorized: ['msr_sql', 'temporal'],
+      expected_output_shape: 'time_indexed_prediction',
+      dasha_context_required: true,
+      time_window: { start: '2026-01-01', end: '2026-12-31' },
+      retrograde_query: true,
+      retrograde_planet: 'Saturn',
+    }))
+
+    const plan = await classify('When is Saturn retrograde next year?', BASE_CONTEXT)
+
+    expect(plan.time_window).toEqual({ start: '2026-01-01', end: '2026-12-31' })
+    expect(plan.retrograde_query).toBe(true)
+    expect(plan.retrograde_planet).toBe('Saturn')
+  })
+
+  it('sade_sati_query and eclipse_query fields pass schema validation', async () => {
+    mockLLMResponse(makeResponse({
+      query_class: 'predictive',
+      domains: [],
+      forward_looking: true,
+      tools_authorized: ['msr_sql', 'temporal'],
+      expected_output_shape: 'time_indexed_prediction',
+      sade_sati_query: true,
+      eclipse_query: false,
+    }))
+
+    const plan = await classify('Am I in Sade Sati right now?', BASE_CONTEXT)
+
+    expect(plan.sade_sati_query).toBe(true)
+    expect(plan.eclipse_query).toBe(false)
+  })
+})
