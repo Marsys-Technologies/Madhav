@@ -107,29 +107,57 @@ def call_consume(
 
 def extract_response_text(raw_stream: str) -> str:
     """
-    The AI SDK UIMessage stream is a series of newline-delimited prefixed JSON
-    fragments (e.g. `0:"text chunk"`). Concatenate the textual fragments into
-    a best-effort response_text. If the stream is JSON (error path), return
-    the raw body so scoring can still record an error excerpt.
+    Handles two stream formats emitted by /api/chat/consume:
+
+    1. SSE (Vercel AI UI message stream): lines prefixed `data: {...}`
+       with `{"type":"text-delta","delta":"..."}` payload objects.
+    2. AI SDK data stream: lines prefixed `0:"..."` or `0:{...}`.
+
+    Tries SSE first (it's what production emits); falls back to the
+    data-stream format. Returns raw body if neither yields text.
     """
     pieces: list[str] = []
+
+    # ── 1. SSE format: data: {"type":"text-delta","delta":"..."} ──────────────
+    for line in raw_stream.splitlines():
+        line = line.strip()
+        if not line.startswith("data: "):
+            continue
+        payload = line[6:]
+        if payload == "[DONE]":
+            continue
+        try:
+            obj = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            if obj.get("type") == "text-delta" and isinstance(obj.get("delta"), str):
+                pieces.append(obj["delta"])
+            elif isinstance(obj.get("text"), str):
+                pieces.append(obj["text"])
+            elif isinstance(obj.get("content"), str):
+                pieces.append(obj["content"])
+        elif isinstance(obj, str):
+            pieces.append(obj)
+
+    if pieces:
+        return "".join(pieces).strip()
+
+    # ── 2. AI SDK data stream: 0:"..." or 0:{...} ────────────────────────────
     for line in raw_stream.splitlines():
         line = line.strip()
         if not line:
             continue
-        # AI SDK prefix: `0:"..."` | `0:{...}`
         if len(line) > 2 and line[0].isdigit() and line[1] == ":":
-            payload = line[2:]
             try:
-                value = json.loads(payload)
+                value = json.loads(line[2:])
             except json.JSONDecodeError:
                 continue
             if isinstance(value, str):
                 pieces.append(value)
-            elif isinstance(value, dict) and "text" in value:
-                t = value.get("text")
-                if isinstance(t, str):
-                    pieces.append(t)
+            elif isinstance(value, dict) and isinstance(value.get("text"), str):
+                pieces.append(value["text"])
+
     text = "".join(pieces).strip()
     return text if text else raw_stream
 
@@ -212,7 +240,12 @@ def run_one(
         record["scores"] = score_fixture(fixture, response_text, judge_enabled)
     except urlerror.HTTPError as err:
         record["status"] = "error"
+        try:
+            body = err.read().decode("utf-8", errors="replace")[:400]
+        except Exception:
+            body = ""
         record["error"] = f"HTTP {err.code}: {err.reason}"
+        record["response_excerpt"] = body
     except urlerror.URLError as err:
         record["status"] = "error"
         record["error"] = f"URLError: {err.reason}"
@@ -300,7 +333,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    fixtures = load_fixtures(Path(args.fixtures), args.fixture_ids.split(","))
+    ids_filter = [x.strip() for x in args.fixture_ids.split(",") if x.strip()] or None
+    fixtures = load_fixtures(Path(args.fixtures), ids_filter)
     if not fixtures:
         print("ERROR: no fixtures matched filter", file=sys.stderr)
         return 2
