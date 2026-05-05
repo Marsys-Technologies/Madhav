@@ -47,6 +47,33 @@ export interface RouterContext {
 }
 
 // ---------------------------------------------------------------------------
+// Known root-level properties in query_plan.schema.json.
+// Used to strip LLM-invented extra fields before schema validation so that
+// complex queries (nakshatra, yoga, Sade Sati, eclipse, remedial) that cause
+// the model to add tool-parameter keys at root level don't trip additionalProperties:false.
+// Update this set whenever query_plan.schema.json gains a new root property.
+// ---------------------------------------------------------------------------
+const QUERY_PLAN_KNOWN_PROPS = new Set([
+  'query_plan_id', 'query_text', 'query_class', 'domains', 'forward_looking',
+  'audience_tier', 'tools_authorized', 'history_mode', 'panel_mode',
+  'expected_output_shape', 'manifest_fingerprint', 'schema_version',
+  'planets', 'houses', 'dasha_context_required', 'graph_seed_hints',
+  'edge_type_filter', 'vector_search_filter', 'bundle_directives',
+  'adjudicator_model_id', 'router_confidence', 'router_model_id',
+  'chart_facts_query', 'time_window', 'sade_sati_query', 'eclipse_query',
+  'retrograde_query', 'retrograde_planet',
+])
+
+function stripUnknownRootProps(obj: unknown): unknown {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return obj
+  const stripped: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (QUERY_PLAN_KNOWN_PROPS.has(k)) stripped[k] = v
+  }
+  return stripped
+}
+
+// ---------------------------------------------------------------------------
 // JSON extraction helper — strips any accidental markdown fences
 // ---------------------------------------------------------------------------
 function extractJson(raw: string): string {
@@ -134,7 +161,7 @@ export async function classify(
   }
 
   if (parsed1 !== undefined) {
-    const result = applyCallerFields(parsed1, query, context, modelId)
+    const result = applyCallerFields(stripUnknownRootProps(parsed1), query, context, modelId)
     const validation = validate<QueryPlan>('query_plan', result)
     if (validation.valid && validation.data) {
       return { ...validation.data, router_confidence: 1.0, router_model_id: modelId }
@@ -195,7 +222,7 @@ export async function classify(
     })
   }
 
-  const result2 = applyCallerFields(parsed2, query, context, modelId)
+  const result2 = applyCallerFields(stripUnknownRootProps(parsed2), query, context, modelId)
   const validation2 = validate<QueryPlan>('query_plan', result2)
   if (validation2.valid && validation2.data) {
     return { ...validation2.data, router_confidence: 1.0, router_model_id: modelId }
