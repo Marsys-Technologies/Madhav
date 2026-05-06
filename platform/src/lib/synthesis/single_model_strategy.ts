@@ -384,8 +384,26 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       client:  3500,
       acharya: 8000,
     }
+    // P5 D.5.2 — per-query-class output cap. Never raises a cap; only lowers
+    // when the class shape is naturally compact (factual lookups, remedial
+    // prescriptions). Holistic + discovery stay at 8000.
+    const CLASS_TOKEN_CAP: Record<string, number> = {
+      factual:       1500,
+      signal_recall: 2000,
+      temporal:      2500,
+      remedial:      3000,
+      cross_domain:  4000,
+      holistic:      8000,
+      discovery:     8000,
+      predictive:    4000,
+    }
     const styleCap = STYLE_OUTPUT_CAP[style ?? 'acharya'] ?? 8000
-    const effectiveMaxTokens = Math.min(styleCap, modelMeta?.maxOutputTokens ?? styleCap)
+    const classCap = CLASS_TOKEN_CAP[query_plan.query_class] ?? 8000
+    const effectiveMaxTokens = Math.min(
+      styleCap,
+      classCap,
+      modelMeta?.maxOutputTokens ?? styleCap,
+    )
 
     // UQE-2 (W2-BUGS B2W-5) — temperature gate: deterministic for single-truth
     // queries (factual lookups, prescriptive remedies, time-indexed predictions),

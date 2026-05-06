@@ -41,7 +41,11 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
-import { contextAssembler } from '@/lib/synthesis/context_assembler'
+import {
+  contextAssembler,
+  CONTEXT_ASSEMBLY_TOKEN_THRESHOLD,
+  estimateBundleTokens,
+} from '@/lib/synthesis/context_assembler'
 import type { ContextBundle } from '@/lib/synthesis/types'
 import { validateCitations } from '@/lib/synthesis/citation_check'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
@@ -543,7 +547,10 @@ export async function POST(request: Request) {
 
     let assembledBundle: ContextBundle | null = null
     let synthesisToolResults: ToolBundle[] = validToolResults
-    if (effectiveContextAssembly) {
+    // P5 D.5.1 — short-circuit when tool-result bundle is already small.
+    const totalToolTokens = estimateBundleTokens(validToolResults)
+    const belowThreshold = totalToolTokens < CONTEXT_ASSEMBLY_TOKEN_THRESHOLD
+    if (effectiveContextAssembly && !belowThreshold) {
       const ctxLlmSeq = nextSeq()
       const assemblerModelId = STACK_ROUTING[selectedStack].context_assembly.primary
       assembledBundle = await contextAssembler(
@@ -557,6 +564,33 @@ export async function POST(request: Request) {
         },
       )
       synthesisToolResults = assembledBundle.tool_bundles
+    } else if (effectiveContextAssembly && belowThreshold) {
+      // Emit a trace event so the lifecycle view can show "skipped — token
+      // threshold met". synthesisToolResults stays as validToolResults; the
+      // downstream synthesis path already handles a null assembledBundle.
+      const ctxLlmSeq = nextSeq()
+      traceEmitter.emitStep({
+        event: 'step_done',
+        query_id: queryId,
+        step: {
+          query_id: queryId,
+          conversation_id: finalConversationId,
+          step_seq: ctxLlmSeq,
+          step_name: 'context_assembly',
+          step_type: 'llm',
+          status: 'done',
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          latency_ms: 0,
+          data_summary: {
+            short_circuited: true,
+            reason: 'token_threshold',
+            total_token_estimate: totalToolTokens,
+            threshold: CONTEXT_ASSEMBLY_TOKEN_THRESHOLD,
+          },
+          payload: {},
+        },
+      })
     }
 
     // UQE-9: pre-allocate context_assembly seq first (single_model_strategy

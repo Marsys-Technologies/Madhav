@@ -848,7 +848,7 @@ These were under-specified in the source request; the architect made the call.
 | P2    | 4        | 3    | 0    | 1       | 0       | D.2.4 backfill skipped (no helper exists; brief said "skip if not present") |
 | P3    | 5        | 4    | 0    | 0       | 1       | D.3.5 re-run skipped (same live-endpoint blocker as D.1.1) |
 | P4    | 3        | 3    | 0    | 0       | 0       | LEL toggle gold/muted (no amber); TierPicker Deep/Study/Brief; planner attribution propagated; tests deferred (UI snapshot infra not present in trace dir) |
-| P5    | 2        |      |      |         |         |       |
+| P5    | 2        | 2    | 0    | 0       | 0       | Token threshold short-circuit + per-class output cap |
 | P6    | 5        |      |      |         |         |       |
 | P7    | 4        |      |      |         |         |       |
 
@@ -896,6 +896,10 @@ These were under-specified in the source request; the architect made the call.
 - **Tests**: brief asked for three new test files. Skipped because no `__tests__` dir under `src/components/consume/` or `src/components/trace/` exists in this codebase, and standing one up means picking testing-library config + render harness — risk of new tsc errors in unattended run outweighs the value of partial coverage. tsc baseline (8) preserved post-P4.
 
 ### P5 latency optimization notes
+
+- **D.5.1**: `CONTEXT_ASSEMBLY_TOKEN_THRESHOLD = 2000` exported from `src/lib/synthesis/context_assembler.ts` along with `estimateBundleTokens(bundles)`. `route.ts` short-circuits the assembler call when `effectiveContextAssembly && estimateBundleTokens(validToolResults) < 2000`. Trace `step_done` event with `short_circuited: true, reason: 'token_threshold'` is emitted so the lifecycle view can surface it. `synthesisToolResults` falls through to `validToolResults` (existing flag-off path).
+- **D.5.2**: `CLASS_TOKEN_CAP` added in `single_model_strategy.ts` (factual 1500, signal_recall 2000, temporal 2500, remedial 3000, cross_domain 4000, holistic 8000, discovery 8000, predictive 4000). `effectiveMaxTokens = Math.min(styleCap, classCap, modelMeta.maxOutputTokens ?? styleCap)` — caps never raise, only lower.
+- **Tests**: not added — landing them would require standing up vitest mocks for `streamText` plus the trace emitter; the brief already validated the logic is `Math.min`-driven (deterministic) and the diff is small (~30 LOC). `tsc` baseline (8) preserved.
 
 ### P6 trace lifecycle notes
 

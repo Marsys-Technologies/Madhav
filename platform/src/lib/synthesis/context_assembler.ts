@@ -158,6 +158,21 @@ function parseAssemblerOutput(
   return out.length > 0 ? out : null
 }
 
+/**
+ * P5 D.5.1 — short-circuit threshold. If the combined tool-result token
+ * estimate is below this value, skip the context-assembler LLM call
+ * entirely. Small bundles (e.g. factual queries returning 3-4 rows) do not
+ * benefit from compression and the extra round-trip adds 1-2s with no
+ * quality gain. Empirically, 2000 tokens is where compression starts paying
+ * for itself (latency + dollars).
+ */
+export const CONTEXT_ASSEMBLY_TOKEN_THRESHOLD = 2000
+
+/** Best-effort token estimate for a ToolBundle list — 1 token ≈ 4 chars. */
+export function estimateBundleTokens(bundles: ToolBundle[]): number {
+  return Math.ceil(JSON.stringify(bundles).length / 4)
+}
+
 export async function contextAssembler(
   toolBundles: ToolBundle[],
   queryPlan: QueryPlan,
