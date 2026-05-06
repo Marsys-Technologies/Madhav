@@ -24,20 +24,20 @@ interface Props {
 // ── Query class colour map (warm tonal palette, per §5.1 design system) ──────
 
 const QUERY_CLASS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  factual:       { bg: 'bg-[rgba(60,130,180,0.12)]',   text: 'text-[rgba(140,190,240,0.9)]', border: 'border-[rgba(80,150,200,0.3)]', label: 'FACTUAL' },
-  interpretive:  { bg: 'bg-[rgba(212,175,55,0.12)]',   text: 'text-[rgba(244,209,96,0.9)]',  border: 'border-[rgba(212,175,55,0.35)]', label: 'INTERPRETIVE' },
-  predictive:    { bg: 'bg-[rgba(220,140,60,0.12)]',   text: 'text-[rgba(240,170,100,0.9)]', border: 'border-[rgba(230,150,80,0.3)]', label: 'PREDICTIVE' },
-  cross_domain:  { bg: 'bg-[rgba(160,110,220,0.12)]',  text: 'text-[rgba(190,150,240,0.9)]', border: 'border-[rgba(170,120,225,0.3)]', label: 'CROSS-DOMAIN' },
-  discovery:     { bg: 'bg-[rgba(100,180,140,0.12)]',  text: 'text-[rgba(140,210,170,0.9)]', border: 'border-[rgba(120,190,150,0.3)]', label: 'DISCOVERY' },
-  holistic:      { bg: 'bg-[rgba(212,175,55,0.16)]',   text: 'text-[rgba(252,226,154,0.95)]', border: 'border-[rgba(212,175,55,0.45)]', label: 'HOLISTIC' },
-  remedial:      { bg: 'bg-[rgba(220,90,60,0.12)]',    text: 'text-[rgba(240,150,120,0.9)]', border: 'border-[rgba(230,110,80,0.3)]', label: 'REMEDIAL' },
-  cross_native:  { bg: 'bg-[rgba(80,180,200,0.12)]',   text: 'text-[rgba(130,210,230,0.9)]', border: 'border-[rgba(100,200,220,0.3)]', label: 'CROSS-NATIVE' },
+  factual:       { bg: 'bg-[color-mix(in_oklch,var(--trace-blue)_12%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-blue)_90%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-blue)_30%,transparent)]',   label: 'FACTUAL' },
+  interpretive:  { bg: 'bg-[color-mix(in_oklch,var(--trace-gold)_12%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-gold)_90%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-gold)_35%,transparent)]',   label: 'INTERPRETIVE' },
+  predictive:    { bg: 'bg-[color-mix(in_oklch,var(--trace-red)_12%,transparent)]',    text: 'text-[color-mix(in_oklch,var(--trace-red)_90%,transparent)]',    border: 'border-[color-mix(in_oklch,var(--trace-red)_30%,transparent)]',    label: 'PREDICTIVE' },
+  cross_domain:  { bg: 'bg-[color-mix(in_oklch,var(--trace-violet)_12%,transparent)]', text: 'text-[color-mix(in_oklch,var(--trace-violet)_90%,transparent)]', border: 'border-[color-mix(in_oklch,var(--trace-violet)_30%,transparent)]', label: 'CROSS-DOMAIN' },
+  discovery:     { bg: 'bg-[color-mix(in_oklch,var(--trace-green)_12%,transparent)]',  text: 'text-[color-mix(in_oklch,var(--trace-green)_90%,transparent)]',  border: 'border-[color-mix(in_oklch,var(--trace-green)_30%,transparent)]',  label: 'DISCOVERY' },
+  holistic:      { bg: 'bg-[color-mix(in_oklch,var(--trace-gold)_16%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-gold)_95%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-gold)_45%,transparent)]',   label: 'HOLISTIC' },
+  remedial:      { bg: 'bg-[color-mix(in_oklch,var(--trace-red)_12%,transparent)]',    text: 'text-[color-mix(in_oklch,var(--trace-red)_85%,transparent)]',    border: 'border-[color-mix(in_oklch,var(--trace-red)_30%,transparent)]',    label: 'REMEDIAL' },
+  cross_native:  { bg: 'bg-[color-mix(in_oklch,var(--trace-blue)_12%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-blue)_85%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-blue)_30%,transparent)]',   label: 'CROSS-NATIVE' },
 }
 
 const UNKNOWN_CLASS_STYLE = {
-  bg: 'bg-[rgba(212,175,55,0.06)]',
-  text: 'text-[rgba(212,175,55,0.6)]',
-  border: 'border-[rgba(212,175,55,0.2)]',
+  bg: 'bg-[color-mix(in_oklch,var(--trace-gold)_6%,transparent)]',
+  text: 'text-[color-mix(in_oklch,var(--trace-gold)_60%,transparent)]',
+  border: 'border-[color-mix(in_oklch,var(--trace-gold)_20%,transparent)]',
   label: 'UNCLASSIFIED',
 }
 

@@ -36,53 +36,62 @@ interface Props {
   onClose: () => void
 }
 
-// TODO(J.1): TracePanel and QueryDNAPanel use hardcoded rgba() colour values.
-// Once the R7 portal design system publishes CSS variables (e.g. --color-gold,
-// --color-violet, --color-error) or Tailwind tokens, replace the inline rgba()
-// strings below with those tokens. Track missing tokens as design-system-owner
-// requests. Current palette reference: §5.1 warm-gold scheme (BHISMA-B3).
 // TODO(J.2): TracePanel has no React context dependencies beyond useTraceStream
 // (which is self-contained). No missing providers identified for R7 shell
 // integration. If a ThemeProvider or AuthContext is added to the R7 shell,
 // verify TracePanel doesn't duplicate its own provider.
 
 // ── Step type display config (warm tonal palette per BHISMA §5.1) ─────────────
+// Colour-map constants below consume the --trace-* CSS custom properties from
+// globals.css via Tailwind arbitrary-value color-mix() (closes TODO(J.1)).
 
 const STEP_TYPE_CONFIG = {
   deterministic: {
     label: 'DET',
-    color: 'bg-[rgba(180,140,20,0.15)] text-[rgba(212,175,55,0.75)] border-[rgba(212,175,55,0.25)]',
+    color: 'bg-[color-mix(in_oklch,var(--trace-gold)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-gold)_75%,transparent)] border-[color-mix(in_oklch,var(--trace-gold)_25%,transparent)]',
   },
   llm: {
     label: 'LLM',
-    color: 'bg-[rgba(140,90,200,0.15)] text-[rgba(180,140,240,0.85)] border-[rgba(160,110,220,0.25)]',
+    color: 'bg-[color-mix(in_oklch,var(--trace-violet)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-violet)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-violet)_25%,transparent)]',
   },
   sql: {
     label: 'SQL',
-    color: 'bg-[rgba(20,100,180,0.15)] text-[rgba(100,160,240,0.85)] border-[rgba(60,130,210,0.25)]',
+    color: 'bg-[color-mix(in_oklch,var(--trace-blue)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-blue)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-blue)_25%,transparent)]',
   },
   vector: {
     label: 'VEC',
-    color: 'bg-[rgba(20,160,100,0.15)] text-[rgba(80,200,140,0.85)] border-[rgba(40,180,120,0.25)]',
+    color: 'bg-[color-mix(in_oklch,var(--trace-green)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-green)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-green)_25%,transparent)]',
   },
   gcs: {
     label: 'GCS',
-    color: 'bg-[rgba(200,80,40,0.15)] text-[rgba(240,130,100,0.85)] border-[rgba(220,100,60,0.25)]',
+    color: 'bg-[color-mix(in_oklch,var(--trace-red)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-red)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-red)_25%,transparent)]',
   },
 } as const
 
 const TIMELINE_BAR_COLOR = {
-  deterministic: 'bg-[rgba(212,175,55,0.6)]',
-  llm:           'bg-[rgba(160,110,220,0.7)]',
-  sql:           'bg-[rgba(60,130,210,0.7)]',
-  vector:        'bg-[rgba(40,180,120,0.7)]',
-  gcs:           'bg-[rgba(220,100,60,0.7)]',
+  deterministic: 'bg-[color-mix(in_oklch,var(--trace-gold)_60%,transparent)]',
+  llm:           'bg-[color-mix(in_oklch,var(--trace-violet)_70%,transparent)]',
+  sql:           'bg-[color-mix(in_oklch,var(--trace-blue)_70%,transparent)]',
+  vector:        'bg-[color-mix(in_oklch,var(--trace-green)_70%,transparent)]',
+  gcs:           'bg-[color-mix(in_oklch,var(--trace-red)_70%,transparent)]',
 } as const
 
 const LAYER_COLOR = {
-  L1:      { dot: 'bg-[rgba(244,209,96,0.85)]', bar: 'bg-[rgba(244,209,96,0.85)]', text: 'text-[rgba(244,209,96,0.9)]' },
-  'L2.5':  { dot: 'bg-[rgba(190,150,240,0.85)]', bar: 'bg-[rgba(190,150,240,0.85)]', text: 'text-[rgba(190,150,240,0.9)]' },
-  system:  { dot: 'bg-[rgba(212,175,55,0.4)]', bar: 'bg-[rgba(212,175,55,0.4)]', text: 'text-[rgba(212,175,55,0.6)]' },
+  L1:      {
+    dot: 'bg-[color-mix(in_oklch,var(--trace-gold)_85%,transparent)]',
+    bar: 'bg-[color-mix(in_oklch,var(--trace-gold)_85%,transparent)]',
+    text: 'text-[color-mix(in_oklch,var(--trace-gold)_90%,transparent)]',
+  },
+  'L2.5':  {
+    dot: 'bg-[color-mix(in_oklch,var(--trace-violet)_85%,transparent)]',
+    bar: 'bg-[color-mix(in_oklch,var(--trace-violet)_85%,transparent)]',
+    text: 'text-[color-mix(in_oklch,var(--trace-violet)_90%,transparent)]',
+  },
+  system:  {
+    dot: 'bg-[color-mix(in_oklch,var(--trace-gold)_40%,transparent)]',
+    bar: 'bg-[color-mix(in_oklch,var(--trace-gold)_40%,transparent)]',
+    text: 'text-[color-mix(in_oklch,var(--trace-gold)_60%,transparent)]',
+  },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
