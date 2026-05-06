@@ -57,6 +57,17 @@ import type {
 
 // Token-budget constants for pre-fetched content injection (FUB-2 + FUB-3)
 const MAX_CHART_CONTEXT_TOKENS = 6000
+
+export {
+  STYLE_OUTPUT_CAP,
+  CLASS_TOKEN_CAP,
+  computeEffectiveMaxTokens,
+} from './token_caps'
+import {
+  STYLE_OUTPUT_CAP,
+  CLASS_TOKEN_CAP,
+  computeEffectiveMaxTokens,
+} from './token_caps'
 const MAX_TOOL_RESULTS_TOKENS = 3000
 // Rough chars-per-token estimate for truncation (conservative)
 const CHARS_PER_TOKEN = 4
@@ -379,30 +390,12 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     //   acharya → 8000 tokens  (~6000 words) — full acharya-grade depth
     //
     // These caps apply to the synthesis output only, not to tool-use steps.
-    const STYLE_OUTPUT_CAP: Record<string, number> = {
-      brief:   1200,
-      client:  3500,
-      acharya: 8000,
-    }
-    // P5 D.5.2 — per-query-class output cap. Never raises a cap; only lowers
-    // when the class shape is naturally compact (factual lookups, remedial
-    // prescriptions). Holistic + discovery stay at 8000.
-    const CLASS_TOKEN_CAP: Record<string, number> = {
-      factual:       1500,
-      signal_recall: 2000,
-      temporal:      2500,
-      remedial:      3000,
-      cross_domain:  4000,
-      holistic:      8000,
-      discovery:     8000,
-      predictive:    4000,
-    }
     const styleCap = STYLE_OUTPUT_CAP[style ?? 'acharya'] ?? 8000
     const classCap = CLASS_TOKEN_CAP[query_plan.query_class] ?? 8000
-    const effectiveMaxTokens = Math.min(
+    const effectiveMaxTokens = computeEffectiveMaxTokens(
       styleCap,
       classCap,
-      modelMeta?.maxOutputTokens ?? styleCap,
+      modelMeta?.maxOutputTokens,
     )
 
     // UQE-2 (W2-BUGS B2W-5) — temperature gate: deterministic for single-truth
