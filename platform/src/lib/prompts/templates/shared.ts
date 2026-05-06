@@ -52,6 +52,9 @@ export const CALIBRATION_LANGUAGE_GATE = `CALIBRATION GATE (mandatory for all in
 Use probabilistic, hedged language throughout your response. Preferred markers: "suggests", "indicates", "may", "likely", "tends to", "pattern of", "inclines toward", "points to", "could", "potentially".
 Avoid oracular language: do not write "will happen", "definitely", "certainly", "guaranteed", or "without doubt". Jyotish identifies tendencies and timing windows, not deterministic fate — calibrated framing is an explicit quality requirement.`
 
+export const QUERY_INDEPENDENCE_GATE = `QUERY INDEPENDENCE GATE (mandatory for all query classes):
+Each query is answered independently from the retrieved corpus assembled in this system message. Prior conversation turns are provided as linguistic context only — do not weight prior assistant conclusions, tonal framings, domain emphases, or interpretive directions when constructing this response. Ground every claim in the retrieved artifacts (CHART_CONTEXT_BLOCK, PRE_FETCHED_TOOL_RESULTS, tool call results) and in the current query alone. If a prior turn discussed Venus transits and the current query is about Saturn's dasha, the prior Venus discussion has zero weight on this response. Treat the retrieved corpus as ground truth; treat conversation history as background noise.`
+
 export const B11_EXPLICIT_LAYER_GATE = `B.11 WHOLE-CHART-READ PROTOCOL (mandatory):
 Before answering, draw on all five L2.5 synthesis artifacts:
   • MSR (Master Signal Register) — signal pattern density and confidence
@@ -99,6 +102,8 @@ ${CITATION_DISCIPLINE}
 ${NO_FABRICATION}
 
 ${CONTRADICTION_FRAMING}
+
+${QUERY_INDEPENDENCE_GATE}
 
 ${METHODOLOGY_INSTRUCTION}`
 }

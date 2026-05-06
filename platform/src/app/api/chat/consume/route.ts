@@ -233,9 +233,14 @@ export async function POST(request: Request) {
     // (provider error, schema invalid), we fall back silently to the existing
     // classify() + compose_bundle() path. The flag stays false in DEFAULT_FLAGS
     // — the native controls activation.
+    // CTX-GAP-S1: Explicitly pass last 2 turns (= the effective window that
+    // planner_context_builder will actually use after its internal slice(-MAX_TURNS=2)).
+    // Previous slice(-4) created a silent mismatch — caller believed planner saw 4
+    // turns, but planner_context_builder re-sliced to 2 internally.
+    // Also used by classify() — both stages now see the same explicit 2-turn window.
     const plannerHistory = messages
       .filter(m => m.role === 'user' || m.role === 'assistant')
-      .slice(-4)
+      .slice(-2)
       .map(m => ({
         role: m.role as 'user' | 'assistant',
         content: extractText(m.parts ?? []),
@@ -586,9 +591,15 @@ export async function POST(request: Request) {
       query_plan: queryPlan,
       bundle,
       tool_results: synthesisToolResults,
+      // CTX-GAP-S1: Cap synthesis history to the last 4 messages (= 2 prior user+assistant
+      // exchange pairs) to prevent prior conversation narrative from contaminating the
+      // corpus-grounded synthesis response. Aligns with planner_context_builder's
+      // effective 2-turn window. Unbounded history (.slice(0,-1)) was the primary
+      // vector for context contamination, especially on Gemini stack.
       conversation_history: messages
         .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(0, -1)  // exclude current user message; synthesize() appends it via `query`
+        .slice(-5)       // last 5 = 2 prior pairs + current user message
+        .slice(0, -1)    // drop current user message (appended via `query`)
         .map(m => ({
           role: m.role as 'user' | 'assistant',
           content: extractText(m.parts ?? []),

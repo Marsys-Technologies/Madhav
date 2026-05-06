@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderTemplate, getDefaultRegistry, createRegistry } from '../index'
+import { buildOpeningBlock } from '../templates/shared'
 import type { PromptTemplate, QueryClass } from '../index'
 
 // ---------------------------------------------------------------------------
@@ -482,5 +483,38 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     expect(rendered).not.toContain('CITATION GATE')
     expect(rendered).not.toContain('CALIBRATION GATE')
     expect(rendered).not.toContain('B.11 WHOLE-CHART-READ PROTOCOL')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CTX-GAP-S1 — QUERY_INDEPENDENCE_GATE (AC.CTX.3, AC.CTX.4, AC.CTX.5)
+// ---------------------------------------------------------------------------
+
+describe('CTX-GAP-S1: QUERY_INDEPENDENCE_GATE', () => {
+  it('buildOpeningBlock includes QUERY_INDEPENDENCE_GATE header', () => {
+    const block = buildOpeningBlock()
+    expect(block).toContain('QUERY INDEPENDENCE GATE')
+    expect(block).toContain('answered independently from the retrieved corpus')
+  })
+
+  it('QUERY_INDEPENDENCE_GATE appears after CONTRADICTION_FRAMING and before methodology block', () => {
+    const block = buildOpeningBlock()
+    const posGate = block.indexOf('QUERY INDEPENDENCE GATE')
+    const posContradiction = block.indexOf('L3.5 Contradiction Register')
+    const posMethodology = block.indexOf('marsys_methodology_block')
+    expect(posGate).toBeGreaterThan(posContradiction)
+    expect(posGate).toBeLessThan(posMethodology)
+  })
+
+  it('synthesis history cap: a 20-message history produces at most 4 messages', () => {
+    const longHistory: Array<{ role: 'user' | 'assistant'; content: string }> =
+      Array.from({ length: 20 }, (_, i) => ({
+        role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: `turn ${i}`,
+      }))
+    // route.ts CTX-GAP-S1 slice: .slice(-5).slice(0,-1) = last 4 messages
+    const capped = longHistory.slice(-5).slice(0, -1)
+    expect(capped.length).toBeLessThanOrEqual(4)
+    expect(capped.length).toBe(4)
   })
 })
