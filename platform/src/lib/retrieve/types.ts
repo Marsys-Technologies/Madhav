@@ -84,6 +84,12 @@ export interface MsrSqlInput {
   valence?: string[]
   /** Filter to signals whose entities_involved array contains any of these entity IDs. */
   entities_involved_any?: string[]
+  /**
+   * Filter to signals activated by the given dasha lord(s).
+   * Values are dasha lord names (e.g. ["Ketu", "Mercury"]); the retriever
+   * prepends "DSH.MD." to convert to entity IDs and merges with entities_involved_any.
+   */
+  dasha_activation?: string[]
 }
 
 export interface RetrievalTool {

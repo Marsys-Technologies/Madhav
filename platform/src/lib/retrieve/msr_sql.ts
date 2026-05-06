@@ -96,10 +96,14 @@ async function retrieveImpl(
       : null
   const valenceFilter: string[] | null =
     msrInput?.valence && msrInput.valence.length > 0 ? msrInput.valence : null
-  const entitiesFilter: string[] | null =
-    msrInput?.entities_involved_any && msrInput.entities_involved_any.length > 0
-      ? msrInput.entities_involved_any
-      : null
+  const dashaEntities: string[] = (msrInput?.dasha_activation ?? []).map(
+    lord => `DSH.MD.${lord.toUpperCase()}`
+  )
+  const rawEntities = [
+    ...(msrInput?.entities_involved_any ?? []),
+    ...dashaEntities,
+  ]
+  const entitiesFilter: string[] | null = rawEntities.length > 0 ? rawEntities : null
 
   let { rows } = await getStorageClient().query<MsrSignal>(SQL, [
     nativeId,
