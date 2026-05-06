@@ -24,6 +24,7 @@ vi.mock('ai', () => ({
 // Mock the registry/supports for models
 vi.mock('@/lib/models/registry', () => ({
   supports: vi.fn(),
+  MODELS: [],
   getModelMeta: vi.fn((id: string) => ({
     id,
     label: 'Test Model',
