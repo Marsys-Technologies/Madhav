@@ -3,41 +3,47 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TierPicker } from '@/components/consume/TierPicker'
 
+// Updated 2026-05-06 (GANGA-OVERNIGHT-S1 P4 D.4.2): TierPicker tier labels
+// renamed Internal/Peer/Reading → Deep/Study/Brief; active state changed
+// from solid gold background to charcoal-with-gold-ring.
+
 describe('TierPicker', () => {
-  it('renders three buttons with labels Internal / Peer / Reading in that order', () => {
+  it('renders three buttons with labels Deep / Study / Brief in that order', () => {
     render(<TierPicker tier="client" onChange={() => {}} />)
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(3)
-    expect(buttons[0].textContent).toBe('Internal')
-    expect(buttons[1].textContent).toBe('Peer')
-    expect(buttons[2].textContent).toBe('Reading')
+    // Each button now contains an icon + label, so check textContent contains the label.
+    expect(buttons[0].textContent).toContain('Deep')
+    expect(buttons[1].textContent).toContain('Study')
+    expect(buttons[2].textContent).toContain('Brief')
   })
 
-  it("calls onChange with 'super_admin' when Internal is clicked", async () => {
+  it("calls onChange with 'super_admin' when Deep is clicked", async () => {
     const onChange = vi.fn()
     render(<TierPicker tier="client" onChange={onChange} />)
-    await userEvent.click(screen.getByText('Internal'))
+    await userEvent.click(screen.getByText('Deep'))
     expect(onChange).toHaveBeenCalledWith('super_admin')
   })
 
-  it("calls onChange with 'acharya_reviewer' when Peer is clicked", async () => {
+  it("calls onChange with 'acharya_reviewer' when Study is clicked", async () => {
     const onChange = vi.fn()
     render(<TierPicker tier="client" onChange={onChange} />)
-    await userEvent.click(screen.getByText('Peer'))
+    await userEvent.click(screen.getByText('Study'))
     expect(onChange).toHaveBeenCalledWith('acharya_reviewer')
   })
 
-  it("calls onChange with 'client' when Reading is clicked", async () => {
+  it("calls onChange with 'client' when Brief is clicked", async () => {
     const onChange = vi.fn()
     render(<TierPicker tier="super_admin" onChange={onChange} />)
-    await userEvent.click(screen.getByText('Reading'))
+    await userEvent.click(screen.getByText('Brief'))
     expect(onChange).toHaveBeenCalledWith('client')
   })
 
-  it("highlights the active tier — when tier='client', Reading has the gold background", () => {
+  it("active tier carries gold accent — when tier='client', Brief has aria-pressed=true and gold ring class", () => {
     render(<TierPicker tier="client" onChange={() => {}} />)
-    const reading = screen.getByText('Reading')
-    expect(reading.className).toContain('brand-gold')
+    const briefBtn = screen.getByText('Brief').closest('button')!
+    expect(briefBtn.getAttribute('aria-pressed')).toBe('true')
+    expect(briefBtn.className).toContain('brand-gold')
   })
 
   it('has accessible group label', () => {

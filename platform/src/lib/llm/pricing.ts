@@ -17,10 +17,17 @@ export interface ModelPricing {
   cache_write_per_1m_usd?: number | null
 }
 
-const REGISTRY_BY_ID: Map<string, ModelMeta> = new Map(MODELS.map((m) => [m.id, m]))
+// Lazy-built registry index. Building it at module-load time forces every
+// importer of this module to satisfy MODELS at import time, which breaks
+// tests that partially mock @/lib/models/registry without re-exporting MODELS.
+let _registryById: Map<string, ModelMeta> | null = null
+function getRegistry(): Map<string, ModelMeta> {
+  if (!_registryById) _registryById = new Map(MODELS.map((m) => [m.id, m]))
+  return _registryById
+}
 
 export function getModelPricingSync(model_id: string): ModelPricing | null {
-  const meta = REGISTRY_BY_ID.get(model_id)
+  const meta = getRegistry().get(model_id)
   if (!meta) return null
   return {
     model_id: meta.id,
