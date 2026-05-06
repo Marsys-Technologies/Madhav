@@ -640,10 +640,35 @@ export async function POST(request: Request) {
       generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
       messageMetadata: ({ part }: { part: { type: string } }) => {
         if (part.type === 'start' && isFirstTurn) {
-          return { conversationId: finalConversationId, model: modelId, stack: selectedStack, style, disclosure_tier: audienceTier, pipeline: 'v2', queryId }
+          return {
+            conversationId: finalConversationId,
+            model: modelId,
+            stack: selectedStack,
+            style,
+            disclosure_tier: audienceTier,
+            pipeline: 'v2',
+            queryId,
+            // P4 D.4.3: planner attribution propagation. context_assembler not
+            // currently surfaced as a separate model in this route — left null.
+            planning_model_id: plannerModelIdUsed ?? null,
+            planning_latency_ms: plannerLatencyMs ?? null,
+            context_assembler_model_id: null,
+            context_assembler_latency_ms: null,
+          }
         }
         if (part.type === 'start') {
-          return { model: modelId, stack: selectedStack, style, disclosure_tier: audienceTier, pipeline: 'v2', queryId }
+          return {
+            model: modelId,
+            stack: selectedStack,
+            style,
+            disclosure_tier: audienceTier,
+            pipeline: 'v2',
+            queryId,
+            planning_model_id: plannerModelIdUsed ?? null,
+            planning_latency_ms: plannerLatencyMs ?? null,
+            context_assembler_model_id: null,
+            context_assembler_latency_ms: null,
+          }
         }
         if (part.type === 'finish') {
           return { methodology_block: methodologyBlockHolder?.value ?? null }

@@ -11,7 +11,9 @@ import {
   Database,
   Zap,
   FileQuestion,
+  BookOpen,
   BookOpenText,
+  Info,
   User,
   Columns3,
   LayoutGrid,
@@ -331,12 +333,18 @@ export function ConsumeChat({
   const lastAssistantMeta = useMemo(() => {
     const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')
     const meta = msg?.metadata as Record<string, unknown> | undefined
-    const modelId = meta?.model as string | undefined
-    const stackLabel = meta?.stack as string | undefined
+    if (!meta) return null
+    const modelId = meta.model as string | undefined
+    const stackLabel = meta.stack as string | undefined
     if (!modelId) return stackLabel ?? null
-    const m = getModelMeta(modelId)
-    if (!m) return stackLabel ?? null
-    return `${m.label} · ${PROVIDER_LABEL[m.provider]}`
+    const synthesisM = getModelMeta(modelId)
+    if (!synthesisM) return stackLabel ?? null
+    const plannerId = (meta.planning_model_id as string | null | undefined) ?? null
+    const plannerLatencyMs = (meta.planning_latency_ms as number | null | undefined) ?? null
+    const plannerM = plannerId ? getModelMeta(plannerId) : null
+    return `${synthesisM.label} · ${PROVIDER_LABEL[synthesisM.provider]}${
+      plannerM ? `  •  Planner: ${plannerM.label}${plannerLatencyMs ? ` (${(plannerLatencyMs / 1000).toFixed(1)}s)` : ''}` : ''
+    }`
   }, [displayMessages])
 
   const lastMessage = displayMessages[displayMessages.length - 1]
@@ -544,22 +552,23 @@ export function ConsumeChat({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setLelContextEnabled(v => !v)}
+                aria-pressed={lelContextEnabled}
                 title={
                   lelContextEnabled
-                    ? 'Informed mode: life events included. Click for Blind mode.'
-                    : 'Blind mode: life events excluded. Click for Informed mode.'
+                    ? 'Life events included in this query. Click to exclude them.'
+                    : 'Life events excluded from this query. Click to include them.'
                 }
                 className={[
                   'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
                   lelContextEnabled
-                    ? 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    : 'bg-amber-100 text-amber-800 ring-1 ring-amber-300 hover:bg-amber-200',
+                    ? 'bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] ring-1 ring-[var(--brand-gold)]/40 hover:bg-[var(--brand-gold)]/20'
+                    : 'bg-muted/40 text-muted-foreground ring-1 ring-border hover:bg-muted/60',
                 ].join(' ')}
               >
                 {lelContextEnabled ? (
-                  <><BookOpenText className="h-3.5 w-3.5" /><span>Informed</span></>
+                  <><BookOpenText className="h-3.5 w-3.5" /><span>Life Events: On</span></>
                 ) : (
-                  <><Zap className="h-3.5 w-3.5" /><span>Blind</span></>
+                  <><BookOpen className="h-3.5 w-3.5" /><span>Life Events: Off</span></>
                 )}
               </button>
               {(panelModeEnabled || initialAudienceTier === 'super_admin') && pipelineEnabled && (
@@ -614,9 +623,9 @@ export function ConsumeChat({
             </div>
           </div>
           {!lelContextEnabled && (
-            <div className="mx-4 mb-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
-              <strong>Blind mode active.</strong> Life events are excluded from
-              this query. Divergences from the historical record are the point.
+            <div className="mx-4 mb-2 flex items-center gap-2 rounded-md bg-[oklch(0.11_0.010_70)] px-3 py-2 text-xs text-[#fce29a]/85 ring-1 ring-[var(--brand-gold)]/15">
+              <Info className="h-3.5 w-3.5 text-[var(--brand-gold)]/70" />
+              <span>Life events excluded from this query.</span>
             </div>
           )}
           <Composer
