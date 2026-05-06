@@ -25,6 +25,8 @@ import { QueryDNAPanel } from './QueryDNAPanel'
 import { CostPerformanceBar } from './CostPerformanceBar'
 import { RetrievalScorecard, RetrievalEfficiency } from './RetrievalScorecard'
 import { AnalyticsTab } from './AnalyticsTab'
+import { PipelineLifecycleView } from './PipelineLifecycleView'
+import { ToolCoverageMatrix } from './ToolCoverageMatrix'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -901,7 +903,7 @@ export function TracePanelContent({
   planningModel: planningModelProp,
 }: ContentProps) {
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live')
-  const [viewTab, setViewTab] = useState<'steps' | 'pipeline'>('pipeline')
+  const [viewTab, setViewTab] = useState<'steps' | 'pipeline' | 'lifecycle'>('lifecycle')
   const [historySubTab, setHistorySubTab] = useState<HistorySubTab>('list')
   const [historyQueryId, setHistoryQueryId] = useState<string | null>(null)
   const [historyList, setHistoryList] = useState<TraceHistoryRow[]>([])
@@ -1081,6 +1083,17 @@ export function TracePanelContent({
             <div className="flex gap-px bg-[rgba(5,3,1,0.6)] rounded p-0.5">
               <button
                 type="button"
+                onClick={() => setViewTab('lifecycle')}
+                className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                  viewTab === 'lifecycle'
+                    ? 'bg-[rgba(212,175,55,0.12)] text-[rgba(252,226,154,0.95)]'
+                    : 'text-[rgba(212,175,55,0.45)] hover:text-[rgba(252,226,154,0.85)]'
+                }`}
+              >
+                Lifecycle
+              </button>
+              <button
+                type="button"
                 onClick={() => setViewTab('pipeline')}
                 className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
                   viewTab === 'pipeline'
@@ -1103,7 +1116,35 @@ export function TracePanelContent({
               </button>
             </div>
           </div>
-          {viewTab === 'steps' ? (
+          {viewTab === 'lifecycle' ? (
+            <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-3">
+              <PipelineLifecycleView steps={steps} manifestTools={ALL_RETRIEVAL_TOOLS as unknown as string[]} />
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                  Tool coverage
+                </div>
+                <ToolCoverageMatrix
+                  manifestTools={ALL_RETRIEVAL_TOOLS as unknown as string[]}
+                  planned={
+                    (steps.find(s => s.step_name === 'plan')?.payload as { query_plan?: { tools_authorized?: string[] } } | undefined)
+                      ?.query_plan?.tools_authorized ?? []
+                  }
+                  executed={steps
+                    .filter(s => (s.step_type === 'sql' || s.step_type === 'vector' || s.step_type === 'gcs') && s.status === 'done')
+                    .map(s => s.step_name)}
+                  results={Object.fromEntries(
+                    steps
+                      .filter(s => s.step_type === 'sql' || s.step_type === 'vector' || s.step_type === 'gcs')
+                      .map(s => {
+                        const ds = s.data_summary as { rows_returned?: number; chunks_returned?: number }
+                        const rows = ds?.rows_returned ?? ds?.chunks_returned ?? 0
+                        return [s.step_name, { rows, empty: rows === 0 }]
+                      }),
+                  )}
+                />
+              </div>
+            </div>
+          ) : viewTab === 'steps' ? (
             <div className="flex-1 flex overflow-hidden min-h-0">
               <div className="w-[300px] flex-shrink-0 overflow-hidden flex flex-col">
                 <TraceTimeline

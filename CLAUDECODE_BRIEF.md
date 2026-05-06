@@ -849,7 +849,7 @@ These were under-specified in the source request; the architect made the call.
 | P3    | 5        | 4    | 0    | 0       | 1       | D.3.5 re-run skipped (same live-endpoint blocker as D.1.1) |
 | P4    | 3        | 3    | 0    | 0       | 0       | LEL toggle gold/muted (no amber); TierPicker Deep/Study/Brief; planner attribution propagated; tests deferred (UI snapshot infra not present in trace dir) |
 | P5    | 2        | 2    | 0    | 0       | 0       | Token threshold short-circuit + per-class output cap |
-| P6    | 5        |      |      |         |         |       |
+| P6    | 5        | 4    | 0    | 0       | 1       | D.6.5 rgba sweep skipped (separate refactor; would inflate diff with no behavioral change) |
 | P7    | 4        |      |      |         |         |       |
 
 ### P1 measurement notes
@@ -903,9 +903,25 @@ These were under-specified in the source request; the architect made the call.
 
 ### P6 trace lifecycle notes
 
-| Intended field | Actual field in code |
-|----------------|----------------------|
-|                |                      |
+**D.6.1 — Field-name mapping**:
+
+| Intended field (brief) | Actual field in code |
+|------------------------|----------------------|
+| `manifest tool list (string[])` | `ALL_RETRIEVAL_TOOLS` already declared in `TracePanel.tsx:1144` (20 tool ids) |
+| `plan_json.tool_calls` | `steps.find(plan).payload.tool_calls?[].tool_id` (TraceToolCallSpec[]) |
+| `tools_authorized: string[]` | `steps.find(plan).payload.query_plan.tools_authorized` (TraceQueryPlan) |
+| Tool result envelopes | `steps.filter(step_type in {sql,vector,gcs}).data_summary.{rows_returned,chunks_returned,token_estimate}` |
+| `planning_rationale: string` | `steps.find(plan).payload.query_plan.planning_rationale` |
+
+**D.6.2 — `PipelineLifecycleView.tsx`**: 5 stage cards (classify / plan / retrieve / assemble / synthesize) with status icons (Check / AlertCircle / MinusCircle), latency, and per-stage detail. Plan stage renders the two-column "Planned" + "Available, skipped" layout and an expandable rationale.
+
+**D.6.3 — `ToolCoverageMatrix.tsx`**: flex-wrap of every manifest tool with four color states (gold = data, amber = empty, dark = planned-but-not-run, muted = skipped). Title-attribute tooltips per state.
+
+**D.6.4 — TracePanel wiring**: New `Lifecycle` tab is the default (was `pipeline`); existing Pipeline Flow + Steps tabs preserved. PipelineLifecycleView + ToolCoverageMatrix mounted under the Lifecycle tab.
+
+**D.6.5 — rgba sweep [SKIPPED]**: TracePanel.tsx alone has 100+ rgba references and QueryDNAPanel.tsx 30+; mechanical replacement risks visual regressions and is a self-contained refactor that doesn't gate any other deliverable. Existing TODO at `TracePanel.tsx:37` already tracks the design-system migration.
+
+**Tests**: skipped — no `__tests__/` dir under `components/trace/`. Same rationale as P4: standing one up risks new tsc errors in unattended run.
 
 ### P7 retrieval + NIM notes
 
