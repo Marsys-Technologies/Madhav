@@ -75,6 +75,8 @@ export interface ToolExecutionLogRow {
   tool_input_payload?: unknown | null
   tool_output_summary?: unknown | null
   error_class?: ToolExecutionErrorClass | null
+  // P7 D.7.4 (migration 042) — quality score; nullable until a scorer fills it.
+  retrieval_score?: number | null
   created_at: string
 }
 

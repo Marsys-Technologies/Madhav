@@ -850,7 +850,7 @@ These were under-specified in the source request; the architect made the call.
 | P4    | 3        | 3    | 0    | 0       | 0       | LEL toggle gold/muted (no amber); TierPicker Deep/Study/Brief; planner attribution propagated; tests deferred (UI snapshot infra not present in trace dir) |
 | P5    | 2        | 2    | 0    | 0       | 0       | Token threshold short-circuit + per-class output cap |
 | P6    | 5        | 4    | 0    | 0       | 1       | D.6.5 rgba sweep skipped (separate refactor; would inflate diff with no behavioral change) |
-| P7    | 4        |      |      |         |         |       |
+| P7    | 4        | 3    | 0    | 1       | 0       | D.7.4 partial: migration + writer + type landed; RetrievalScorecard not wired (no scorer yet to populate retrieval_score) |
 
 ### P1 measurement notes
 
@@ -924,6 +924,11 @@ These were under-specified in the source request; the architect made the call.
 **Tests**: skipped — no `__tests__/` dir under `components/trace/`. Same rationale as P4: standing one up risks new tsc errors in unattended run.
 
 ### P7 retrieval + NIM notes
+
+- **D.7.1**: SIG.MSR.150 status was fully captured in P1 D.1.2 (signal exists, embedding present and fresh — 2026-04-29; not stale). Re-embed not required. Therefore F014 misses are caused by a **retrieval bug** in the planner / vector-search ranking — out of scope for this brief but the ground truth is recorded.
+- **D.7.2**: NIM degraded indicator added to `ModelStylePicker.tsx`. Reads `NEXT_PUBLIC_NIM_STACK_DEGRADED` (build-time env). When true, renders an amber `Limited` badge next to the NIM stack option with a tooltip; option remains selectable. No `useStackHealth` hook exists in this codebase, so the env flag is the operator's manual lever — documented in the helper's docstring.
+- **D.7.3**: `AUDIT_VIEW_VISIBLE` flipped `false → true` in `src/lib/config/feature_flags.ts`.
+- **D.7.4 [PARTIAL]**: Migration `platform/migrations/042_tool_execution_log_scores.sql` authored (NOT applied — operator runs during business hours per architect decision §10.12). Adds `retrieval_score` column (additive, `IF NOT EXISTS`); `rows_returned` and `token_estimate` already exist from migration 034. `ToolExecutionLogRow.retrieval_score` field added; `writeToolExecutionLog` extended to write the new column with `row.retrieval_score ?? null`. RetrievalScorecard wiring skipped — there is no scorer in this codebase that emits `retrieval_score`, so the column would always be null in the UI. Wiring it now would be code that displays "N/A" for every row indefinitely; better to leave the shape ready and wire when a scorer lands. Documented as **partial** in ledger.
 
 ### Final verification
 

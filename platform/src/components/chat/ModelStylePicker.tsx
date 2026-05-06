@@ -35,6 +35,21 @@ function formatCtx(tokens: number | undefined): string | null {
   return `${tokens} ctx`
 }
 
+/**
+ * P7 D.7.2 — NIM degraded indicator.
+ *
+ * The brief asked us not to invent a new health system. There is no
+ * `useStackHealth` hook in this codebase; circuit-breaker state for the
+ * planner exists but isn't exposed to the client. This helper reads
+ * `NEXT_PUBLIC_NIM_STACK_DEGRADED` (build-time env), which an operator can
+ * flip while NIM is impaired. Returns false by default — the option remains
+ * fully selectable; only the visual cue toggles.
+ */
+function isNimDegraded(): boolean {
+  if (typeof process === 'undefined') return false
+  return process.env.NEXT_PUBLIC_NIM_STACK_DEGRADED === 'true'
+}
+
 interface Props {
   stack: ModelStack
   style: StyleId
@@ -75,6 +90,7 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
           {stacks.map(opt => {
             const synthMeta = getModelMeta(opt.synthesisModelId)
             const optCtx = formatCtx(opt.synthesisContextWindow)
+            const showLimited = opt.stack === 'nim' && isNimDegraded()
             return (
               <DropdownMenuItem
                 key={opt.stack}
@@ -87,6 +103,14 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
                     {opt.isDefault && (
                       <span className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
                         default
+                      </span>
+                    )}
+                    {showLimited && (
+                      <span
+                        title="NIM is currently degraded; calls may fall back to the secondary stack."
+                        className="rounded bg-amber-400/10 px-1.5 py-0 text-[9px] text-amber-400 ring-1 ring-amber-400/30"
+                      >
+                        Limited
                       </span>
                     )}
                   </div>
