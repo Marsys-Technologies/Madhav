@@ -188,10 +188,11 @@ def score_fixture(
     fixture: dict[str, Any],
     response_text: str,
     judge_enabled: bool,
+    rubric: str = "jyotish",
 ) -> dict[str, float]:
     kw = keyword_recall_score(response_text, fixture)
     sig = signal_recall_score(response_text, fixture)
-    syn = synthesis_score(response_text, fixture) if judge_enabled else 0.5
+    syn = synthesis_score(response_text, fixture, rubric=rubric) if judge_enabled else 0.5
     weights = fixture.get("scoring_weights", {})
     wtd = weighted_score(kw, sig, syn, weights)
     return {
@@ -209,6 +210,7 @@ def run_one(
     session_cookie: str,
     timeout_s: int,
     judge_enabled: bool,
+    rubric: str = "jyotish",
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "fixture_id": fixture["fixture_id"],
@@ -237,7 +239,7 @@ def run_one(
         record["planner_active"] = parse_planner_active(raw)
         record["tools_used"] = parse_tools_used(raw)
         record["tool_count"] = len(record["tools_used"])
-        record["scores"] = score_fixture(fixture, response_text, judge_enabled)
+        record["scores"] = score_fixture(fixture, response_text, judge_enabled, rubric=rubric)
     except urlerror.HTTPError as err:
         record["status"] = "error"
         try:
@@ -315,6 +317,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_S)
     parser.add_argument("--output", default="", help="If set, write full JSON results here")
     parser.add_argument("--no-judge", action="store_true", help="Skip Haiku judge calls")
+    # P3 D.3.1: pre-loop warm-up to absorb cold-start latency on the endpoint.
+    warm_group = parser.add_mutually_exclusive_group()
+    warm_group.add_argument("--warm-up", dest="warm_up", action="store_true", default=True,
+                            help="(default) Send one trivial request and wait 3s before scoring loop")
+    warm_group.add_argument("--no-warm-up", dest="warm_up", action="store_false",
+                            help="Skip the pre-loop warm-up request")
+    # P3 D.3.2: inter-fixture sleep to ease pressure on rate limits / dev server.
+    parser.add_argument("--delay", type=float, default=2.0,
+                        help="Seconds to sleep between fixtures (default: 2.0)")
+    # P3 D.3.4: opt out of the new structured Jyotish rubric, restore old single-score behavior.
+    parser.add_argument("--legacy-rubric", action="store_true",
+                        help="Use pre-P3 single-score judge prompt instead of structured 4-axis rubric")
     args = parser.parse_args(argv)
 
     # Set planner env so a locally-spawned dev server picks it up. For an
@@ -340,11 +354,27 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     judge_enabled = not args.no_judge
+    rubric = "legacy" if args.legacy_rubric else "jyotish"
+
+    if args.warm_up:
+        warmup_query = "What is the ascendant of the chart?"
+        try:
+            call_consume(
+                args.base_url, args.chart_id, args.session_cookie,
+                warmup_query, min(args.timeout, 30),
+            )
+        except Exception as err:  # noqa: BLE001 — warmup is best-effort
+            print(f"  warm-up request errored ({err}); continuing", file=sys.stderr)
+        print("  warm-up complete; sleeping 3s before fixture #1")
+        time.sleep(3)
+
     records: list[dict[str, Any]] = []
-    for fixture in fixtures:
+    for idx, fixture in enumerate(fixtures):
+        if idx > 0 and args.delay > 0:
+            time.sleep(args.delay)
         record = run_one(
             fixture, args.base_url, args.chart_id, args.session_cookie,
-            args.timeout, judge_enabled,
+            args.timeout, judge_enabled, rubric=rubric,
         )
         records.append(record)
         s = record["scores"]

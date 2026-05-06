@@ -86,14 +86,25 @@ def signal_recall_score(response_text: str, fixture: dict[str, Any]) -> float:
     return hits / len(expected_set)
 
 
+# Truncation raised 800 → 2000 (P3 D.3.3) — remedial / holistic answers'
+# operative reasoning routinely appears past the 800-char mark; the legacy
+# cap caused the judge to score on the preamble only.
+JUDGE_RESPONSE_TRUNCATION = 2000
+
+
 def synthesis_score(
     response_text: str,
     fixture: dict[str, Any],
     model: str = HAIKU_MODEL,
+    rubric: str = "jyotish",
 ) -> float:
     """
     Use Haiku as a judge on a 0.0-1.0 scale. On any failure (no API key,
     HTTP error, malformed JSON), return 0.5 with a stderr warning.
+
+    rubric:
+      'jyotish' — structured 4-axis Jyotish-aware rubric (default, P3 D.3.4)
+      'legacy'  — pre-P3 single-score behavior, kept for back-compat
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -115,18 +126,53 @@ def synthesis_score(
         return 0.5
 
     gold = fixture.get("gold_answer_summary", "")
-    user_prompt = f"Gold: {gold}\nAnswer: {response_text[:800]}"
-    system_prompt = (
-        "You are an expert Jyotish evaluator. Score this answer from 0.0 to 1.0 "
-        "on synthesis quality given the gold answer summary. Output JSON: "
-        '{"score": 0.0-1.0, "reason": "<one sentence>"}. Be strict.'
-    )
+    truncated_answer = response_text[:JUDGE_RESPONSE_TRUNCATION]
+    expected_signals = ", ".join(fixture.get("expected_signals") or []) or "(none specified)"
+    fixture_class = fixture.get("type", "unknown")
+
+    if rubric == "legacy":
+        user_prompt = f"Gold: {gold}\nAnswer: {truncated_answer}"
+        system_prompt = (
+            "You are an expert Jyotish evaluator. Score this answer from 0.0 to 1.0 "
+            "on synthesis quality given the gold answer summary. Output JSON: "
+            '{"score": 0.0-1.0, "reason": "<one sentence>"}. Be strict.'
+        )
+        max_tokens = 200
+    else:
+        user_prompt = (
+            f"Query class: {fixture_class}\n"
+            f"Expected signals: {expected_signals}\n"
+            f"Gold answer summary: {gold}\n\n"
+            f"Candidate answer:\n{truncated_answer}"
+        )
+        system_prompt = (
+            "You are an expert Jyotish (Vedic astrology) evaluator. Score the candidate "
+            "answer on FOUR axes (each 0.0-1.0), then return a final weighted score.\n\n"
+            "AXIS A — Astrological grounding (weight 0.30): Did the answer cite specific "
+            "signals (SIG.MSR.NNN), houses, planets, or divisional charts that match the "
+            "gold answer's expected signals?\n\n"
+            "AXIS B — Reasoning chain (weight 0.30): Did the answer show inference "
+            "(e.g. AK→D9 Karakamsa→deity for spiritual queries; mahadasha→sub-period→event "
+            "for temporal; planet→remedy for remedial) rather than just listing facts?\n\n"
+            "AXIS C — Calibration discipline (weight 0.20): Did the answer state confidence "
+            "('strong indication', 'moderate', 'tentative') or use hedging ('suggests', "
+            "'indicates') rather than absolute claims?\n\n"
+            "AXIS D — B.10 ledger / B.11 whole-chart (weight 0.20): Did the answer cite "
+            "chart facts with IDs OR explicitly mark [EXTERNAL_COMPUTATION_REQUIRED] for "
+            "missing data?\n\n"
+            "Return ONLY JSON: {\"axis_a\": 0.0-1.0, \"axis_b\": 0.0-1.0, "
+            "\"axis_c\": 0.0-1.0, \"axis_d\": 0.0-1.0, \"final\": <weighted_sum>, "
+            "\"rationale\": \"<one sentence>\"}.\n"
+            "Note: 'final' = 0.30*axis_a + 0.30*axis_b + 0.20*axis_c + 0.20*axis_d. "
+            "Be strict but fair."
+        )
+        max_tokens = 400
 
     try:
         client = Anthropic(api_key=api_key)
         msg = client.messages.create(
             model=model,
-            max_tokens=200,
+            max_tokens=max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
@@ -137,19 +183,27 @@ def synthesis_score(
         print(f"[scorer] WARNING: Haiku judge call failed: {err}", file=sys.stderr)
         return 0.5
 
-    return _parse_score(text)
+    return _parse_score(text, rubric=rubric)
 
 
-def _parse_score(text: str) -> float:
+def _parse_score(text: str, rubric: str = "jyotish") -> float:
     if not text:
         return 0.5
-    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
+    match = re.search(r"\{.*\}", text, re.DOTALL)
     candidate = match.group(0) if match else text
     try:
         obj = json.loads(candidate)
-        score = float(obj.get("score", 0.5))
-        return max(0.0, min(1.0, score))
     except (json.JSONDecodeError, TypeError, ValueError):
+        return 0.5
+    if rubric == "jyotish" and "final" in obj:
+        try:
+            return max(0.0, min(1.0, float(obj.get("final", 0.5))))
+        except (TypeError, ValueError):
+            pass
+    try:
+        score = float(obj.get("score", obj.get("final", 0.5)))
+        return max(0.0, min(1.0, score))
+    except (TypeError, ValueError):
         return 0.5
 
 

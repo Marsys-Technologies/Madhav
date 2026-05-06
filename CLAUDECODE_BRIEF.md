@@ -846,7 +846,7 @@ These were under-specified in the source request; the architect made the call.
 |-------|----------|------|------|---------|---------|-------|
 | P1    | 3        | 2    | 0    | 0       | 1       | D.1.1 skipped (no live endpoint reachable in unattended run); D.1.2 + D.1.3 pass |
 | P2    | 4        | 3    | 0    | 1       | 0       | D.2.4 backfill skipped (no helper exists; brief said "skip if not present") |
-| P3    | 5        |      |      |         |         |       |
+| P3    | 5        | 4    | 0    | 0       | 1       | D.3.5 re-run skipped (same live-endpoint blocker as D.1.1) |
 | P4    | 3        |      |      |         |         |       |
 | P5    | 2        |      |      |         |         |       |
 | P6    | 5        |      |      |         |         |       |
@@ -873,14 +873,20 @@ These were under-specified in the source request; the architect made the call.
 
 ### P3 eval harness re-run results
 
+**Code changes**:
+- `scripts/eval/scorer.py`: judge truncation 800 → 2000 (`JUDGE_RESPONSE_TRUNCATION` constant); structured 4-axis Jyotish rubric (axes A/B/C/D weighted 0.30/0.30/0.20/0.20) added; `synthesis_score(rubric=...)` parameter; `_parse_score(rubric=...)` reads `final` field for jyotish, falls back to `score` for legacy.
+- `scripts/eval/runner.py`: `--warm-up` (default on) fires one trivial request and sleeps 3s; `--delay 2.0` inter-fixture sleep; `--legacy-rubric` opts back to old behavior.
+
+**D.3.5 re-run [SKIPPED]** — needs live endpoint + chart_id + session cookie. Logged to FAILURE LOG. Re-run table left empty for the working-hours operator who runs it.
+
 | Class | KW | Signal | Synthesis (new rubric) | Weighted | 500-error count |
 |-------|----|--------|------------------------|----------|-----------------|
-| factual       | | | | | |
-| signal_recall | | | | | |
-| temporal      | | | | | |
-| remedial      | | | | | |
-| cross_domain  | | | | | |
-| holistic      | | | | | |
+| factual       | _pending re-run_ | | | | |
+| signal_recall | _pending re-run_ | | | | |
+| temporal      | _pending re-run_ | | | | |
+| remedial      | _pending re-run_ | | | | |
+| cross_domain  | _pending re-run_ | | | | |
+| holistic      | _pending re-run_ | | | | |
 
 ### P4 chat fixes notes
 
@@ -915,6 +921,16 @@ ERROR: harness requires BASE_URL pointing at a live /api/chat/consume endpoint p
 DECISION: skip; defer to working-hours run
 ROOT CAUSE: brief assumed a live local server; none was running at session-open
 ```
+
+```
+DELIVERABLE: D.3.5 (24-fixture re-run with new rubric + flags)
+PHASE: 3
+ATTEMPTED: code-side changes landed (warm-up, delay, rubric) and validated via --help; would need to invoke runner.py with --chart-id and --session-cookie pointing at a live server
+ERROR: same blocker as D.1.1 — no live /api/chat/consume endpoint reachable in the unattended overnight environment
+DECISION: skip the run; defer to working-hours operator who has SMOKE_CHART_ID and a fresh session cookie
+ROOT CAUSE: brief assumed a live local dev server with auth context; the unattended overnight run has neither
+```
+
 
 
 ```
