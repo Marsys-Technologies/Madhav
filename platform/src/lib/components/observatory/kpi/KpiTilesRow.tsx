@@ -63,18 +63,15 @@ export function KpiTilesRow({
         <KpiTile
           testId="kpi-cost-hero"
           label="Total cost"
-          value={
-            summary ? (
-              <span className="text-2xl font-bold text-[var(--brand-gold,oklch(0.78_0.13_80))]">
-                {formatUsd(summary.total_cost_usd)}
-              </span>
-            ) : undefined
-          }
+          value={summary ? formatUsd(summary.total_cost_usd) : undefined}
           delta={costDelta}
           loading={loading && !summary}
           error={error}
           onRetry={onRetry}
           title="Total computed cost across all LLM calls in the selected period"
+          size="hero"
+          accent
+          hot
         />
         <KpiTile
           testId="kpi-requests-hero"
@@ -84,6 +81,7 @@ export function KpiTilesRow({
           error={error}
           onRetry={onRetry}
           title="Total number of individual LLM API calls (planner + synthesis)"
+          size="hero"
         />
         <KpiTile
           testId="kpi-latency-hero"
@@ -95,6 +93,7 @@ export function KpiTilesRow({
           error={error}
           onRetry={onRetry}
           title="Median (p50) and 95th-percentile LLM call latency"
+          size="hero"
         />
       </div>
     )

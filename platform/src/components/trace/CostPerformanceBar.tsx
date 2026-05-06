@@ -78,13 +78,12 @@ interface CostBreakdown {
   total_usd: number
 }
 
-// TODO(I.3): cost_usd in llm_call_log is currently null for all stacks
-// (synthesis writes cost_usd: null in single_model_strategy.ts MON-5).
-// Once cost_usd is populated in the DB, prefer DB-backed value fetched from
-// GET /api/audit/[query_id] over this client-side computation.
-// Token pricing constants needed for NIM (nvidia) free-tier: currently
-// costPer1MInput/Output are non-zero in the registry, so NIM queries will
-// compute a non-zero client-side cost even though NIM is billed separately.
+// Client-side computation kept as a defense — DB-backed cost_usd in
+// llm_call_log is populated as of GANGA-OVERNIGHT-S1 P2, but a recent or in-
+// flight trace may still surface here before the fire-and-forget DB write
+// lands. Pricing for the NIM (nvidia) free tier is non-zero in the registry,
+// so NIM rows here will show a notional dollar value even though NIM is
+// billed separately.
 function extractCost(steps: TraceStep[]): CostBreakdown {
   const llmSteps = steps.filter(s => s.step_type === 'llm' && s.status === 'done')
   const rows: Array<{ label: string; usd: number }> = []

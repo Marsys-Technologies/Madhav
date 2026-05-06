@@ -5,6 +5,7 @@
 
 import { AnomalyPanel } from '@/lib/components/observatory/analytics/AnomalyPanel'
 import { detectAnomalies } from '@/lib/observatory/analytics/anomaly'
+import { ObsPageShell } from '@/lib/components/observatory/shared'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Anomaly Detection — Observatory' }
@@ -12,9 +13,13 @@ export const metadata = { title: 'Anomaly Detection — Observatory' }
 export default async function AnomalyDetectionPage() {
   const initialResult = await detectAnomalies()
   return (
-    <div data-testid="observatory-anomaly-page" className="space-y-6 p-4">
-      <h1 className="text-lg font-semibold">Anomaly Detection</h1>
+    <ObsPageShell
+      title="Anomaly Detection"
+      subtitle="Z-score outliers across providers, stages, and users · 14-day lookback"
+      testId="observatory-anomaly-page"
+      tone="warn"
+    >
       <AnomalyPanel initialResult={initialResult} />
-    </div>
+    </ObsPageShell>
   )
 }

@@ -13,6 +13,7 @@ import type {
 } from '@/lib/observatory/budget/types'
 
 import { BudgetStatusChip } from './BudgetStatusChip'
+import { ObsCard, type ObsTone } from '../shared/ObsCard'
 
 function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`
@@ -39,11 +40,21 @@ function progressGradient(status?: string): string {
 
 function statusTextColor(status?: string): string {
   switch (status) {
-    case 'ok':       return 'text-emerald-400'
-    case 'warning':  return 'text-amber-400'
+    case 'ok':       return 'text-[var(--status-success)]'
+    case 'warning':  return 'text-[var(--status-warn)]'
     case 'alert':
-    case 'exceeded': return 'text-red-400'
+    case 'exceeded': return 'text-[var(--status-halt)]'
     default:         return 'text-[rgba(212,175,55,0.60)]'
+  }
+}
+
+function statusTone(status?: string): ObsTone {
+  switch (status) {
+    case 'ok':       return 'good'
+    case 'warning':  return 'warn'
+    case 'alert':
+    case 'exceeded': return 'bad'
+    default:         return 'neutral'
   }
 }
 
@@ -68,14 +79,17 @@ export function BudgetRuleCard({
       : `${rule.scope}: ${rule.scope_value ?? '—'}`
 
   return (
-    <div
+    <ObsCard
+      tone={statusTone(evaluation?.status)}
+      alertPulse={evaluation?.status === 'exceeded'}
+      padding="normal"
       data-testid={`budget-rule-card-${rule.budget_rule_id}`}
       data-rule-id={rule.budget_rule_id}
-      className="rounded-xl border border-[rgba(212,175,55,0.12)] bg-[oklch(0.11_0.010_70)] p-5 transition-colors hover:border-[rgba(212,175,55,0.20)]"
+      className="transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-[#fce29a]">{rule.name}</div>
+          <div className="bt-heading text-[var(--brand-gold-cream)]">{rule.name}</div>
           <div className="mt-0.5 text-xs text-[rgba(212,175,55,0.45)]">
             {scopeLabel} · {rule.period}
           </div>
@@ -104,7 +118,7 @@ export function BudgetRuleCard({
         <>
           <div
             data-testid={`budget-rule-progress-${rule.budget_rule_id}`}
-            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[rgba(212,175,55,0.08)]"
+            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)]"
             role="progressbar"
             aria-valuenow={Math.min(100, Math.round(evaluation.pct_used))}
             aria-valuemin={0}
@@ -156,14 +170,14 @@ export function BudgetRuleCard({
               setConfirming(false)
               onDeactivate()
             }}
-            className="rounded-lg border border-red-500/40 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+            className="rounded-lg border border-[color-mix(in_oklch,var(--status-halt)_40%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--status-halt)] transition-colors hover:bg-[color-mix(in_oklch,var(--status-halt)_10%,transparent)]"
           >
             Confirm
           </button>
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="rounded-lg border border-[rgba(212,175,55,0.15)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.50)] transition-colors hover:text-[#d4af37]"
+            className="rounded-lg border border-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.55)] transition-colors hover:text-[var(--brand-gold)]"
           >
             Cancel
           </button>
@@ -173,11 +187,11 @@ export function BudgetRuleCard({
           type="button"
           data-testid={`budget-rule-deactivate-${rule.budget_rule_id}`}
           onClick={() => setConfirming(true)}
-          className="mt-4 rounded-lg border border-[rgba(212,175,55,0.12)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.40)] transition-colors hover:border-red-500/30 hover:text-red-400"
+          className="mt-4 rounded-lg border border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.45)] transition-colors hover:border-[color-mix(in_oklch,var(--status-halt)_30%,transparent)] hover:text-[var(--status-halt)]"
         >
           Deactivate
         </button>
       )}
-    </div>
+    </ObsCard>
   )
 }

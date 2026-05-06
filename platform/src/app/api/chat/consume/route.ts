@@ -58,6 +58,7 @@ import {
   resolveProvider,
 } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
+import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 
@@ -1058,7 +1059,10 @@ async function generateConversationTitle(
         output_tokens: usage?.outputTokens ?? null,
         reasoning_tokens: null,
         latency_ms,
-        cost_usd: null,
+        cost_usd: computeCostUsd(getModelPricingSync(TITLE_MODEL_ID), {
+          input_tokens: usage?.inputTokens ?? null,
+          output_tokens: usage?.outputTokens ?? null,
+        }),
         fallback_used: false,
         error_code: errorCode,
         payload: null,

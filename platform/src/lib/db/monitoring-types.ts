@@ -22,7 +22,7 @@ export interface LlmCallLogRow {
   output_tokens: number | null
   reasoning_tokens: number | null
   latency_ms: number | null
-  cost_usd: string | null
+  cost_usd: string | number | null
   fallback_used: boolean | null
   error_code: string | null
   payload: unknown | null

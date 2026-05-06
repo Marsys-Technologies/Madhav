@@ -1,8 +1,11 @@
-// Pure presentation: brand header + provider pill tabs + history table +
-// (provider-conditional) CSV upload form. Server-renderable; receives the
-// loaded rows as a prop so unit tests don't need to hit the DB loader.
+// Pure presentation: provider pill tabs + history table + (provider-conditional)
+// CSV upload drop zone. Server-renderable; receives the loaded rows as a prop
+// so unit tests don't need to hit the DB loader.
+// OBS-UX-S5: glass tabs, semantic-token status colors, drop zone styling. The
+// brand header is now provided by ObsPageShell at the page level.
 
 import Link from 'next/link'
+import { UploadCloud } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PROVIDER_COLORS } from '@/lib/components/observatory/charts/utils'
 import type { ReconciliationHistoryRow } from '@/lib/observatory/reconciliation/types'
@@ -39,9 +42,15 @@ function VarianceBadge({ pct }: { pct: number | null | undefined }) {
   }
   const abs = Math.abs(pct)
   let cls: string
-  if (abs <= 5) cls = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-  else if (abs <= 15) cls = 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-  else cls = 'text-red-400 bg-red-500/10 border-red-500/20'
+  if (abs <= 5)
+    cls =
+      'text-[var(--status-success)] bg-[var(--status-success-bg)] border-[color-mix(in_oklch,var(--status-success)_25%,transparent)]'
+  else if (abs <= 15)
+    cls =
+      'text-[var(--status-warn)] bg-[var(--status-warn-bg)] border-[color-mix(in_oklch,var(--status-warn)_25%,transparent)]'
+  else
+    cls =
+      'text-[var(--status-halt)] bg-[var(--status-halt-bg)] border-[color-mix(in_oklch,var(--status-halt)_25%,transparent)]'
 
   const sign = pct > 0 ? '+' : ''
   return (
@@ -57,6 +66,18 @@ function VarianceBadge({ pct }: { pct: number | null | undefined }) {
   )
 }
 
+const TAB_BASE =
+  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors'
+
+const TAB_ACTIVE =
+  'obs-glass text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+
+const TAB_IDLE =
+  'text-[rgba(212,175,55,0.50)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)] hover:text-[var(--brand-gold)]'
+
+const FORM_INPUT =
+  'rounded-lg border border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-[color-mix(in_oklch,var(--brand-charcoal)_70%,transparent)] px-3 py-2 text-sm text-[var(--brand-gold-cream)] focus:border-[var(--brand-gold)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+
 export interface ReconciliationHistoryViewProps {
   selectedProvider?: string | null
   rows: ReconciliationHistoryRow[]
@@ -66,7 +87,6 @@ export interface ReconciliationHistoryViewProps {
 export function ReconciliationHistoryView({
   selectedProvider,
   rows,
-  total,
 }: ReconciliationHistoryViewProps) {
   const active = selectedProvider ?? null
   const showUpload = active === null || MANUAL_UPLOAD_PROVIDERS.has(active)
@@ -76,18 +96,7 @@ export function ReconciliationHistoryView({
       data-testid="reconciliation-history-page"
       className="flex flex-col gap-6"
     >
-      {/* Deliverable 6 — brand header */}
-      <div>
-        <h1 className="font-heading text-xl font-semibold text-[#fce29a] tracking-wide">
-          Reconciliation
-        </h1>
-        <p className="mt-0.5 text-xs text-[rgba(212,175,55,0.45)]">
-          Per-provider cost reconciliation against authoritative billing ·{' '}
-          {total} total run{total === 1 ? '' : 's'}
-        </p>
-      </div>
-
-      {/* Deliverable 2 — pill-style provider tabs */}
+      {/* Pill provider tabs */}
       <nav
         data-testid="reconciliation-tabs"
         aria-label="Provider filter"
@@ -97,12 +106,7 @@ export function ReconciliationHistoryView({
           href="/observatory/reconciliation"
           data-testid="reconciliation-tab-all"
           aria-current={active === null ? 'page' : undefined}
-          className={cn(
-            'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-            active === null
-              ? 'border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.12)] text-[#d4af37]'
-              : 'border-[rgba(212,175,55,0.10)] text-[rgba(212,175,55,0.45)] hover:border-[rgba(212,175,55,0.20)] hover:text-[#d4af37]',
-          )}
+          className={cn(TAB_BASE, active === null ? TAB_ACTIVE : TAB_IDLE)}
         >
           All
         </Link>
@@ -117,12 +121,7 @@ export function ReconciliationHistoryView({
               href={`/observatory/reconciliation?provider=${p}`}
               data-testid={`reconciliation-tab-${p}`}
               aria-current={isActiveProv ? 'page' : undefined}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                isActiveProv
-                  ? 'border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.12)] text-[#d4af37]'
-                  : 'border-[rgba(212,175,55,0.10)] text-[rgba(212,175,55,0.45)] hover:border-[rgba(212,175,55,0.20)] hover:text-[#d4af37]',
-              )}
+              className={cn(TAB_BASE, isActiveProv ? TAB_ACTIVE : TAB_IDLE)}
             >
               <span
                 aria-hidden="true"
@@ -139,33 +138,31 @@ export function ReconciliationHistoryView({
       </nav>
 
       {rows.length === 0 ? (
-        /* Deliverable 7 — brand empty state */
         <div
           data-testid="reconciliation-empty"
-          className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[rgba(212,175,55,0.15)] py-16 text-center"
+          className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-[oklch(0.115_0.012_70)] py-16 text-center"
         >
-          <span className="text-3xl opacity-20">⚖</span>
-          <p className="text-sm font-medium text-[rgba(212,175,55,0.45)]">
+          <span className="text-3xl text-[var(--brand-gold)] opacity-30">⚖</span>
+          <p className="text-sm font-medium text-[rgba(212,175,55,0.50)]">
             No reconciliation runs yet
           </p>
-          <p className="text-xs text-[rgba(212,175,55,0.30)]">
+          <p className="text-xs text-[rgba(212,175,55,0.35)]">
             Trigger a reconciliation from the API, or upload a CSV below for DeepSeek / NIM
           </p>
         </div>
       ) : (
-        /* Deliverable 3 — brand-styled table */
         <div
           data-testid="reconciliation-table-wrapper"
-          className="overflow-x-auto rounded-xl border border-[rgba(212,175,55,0.10)]"
+          className="overflow-x-auto rounded-xl border border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] bg-[oklch(0.115_0.012_70)]"
         >
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-[rgba(212,175,55,0.10)]">
+              <tr className="border-b border-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)]">
                 {['Date', 'Provider', 'Period', 'Status', 'Authoritative', 'Computed', 'Variance %'].map(
                   (h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.35)]"
+                      className="px-4 py-3 text-left bt-label bt-label-upper text-[rgba(212,175,55,0.45)]"
                     >
                       {h}
                     </th>
@@ -178,9 +175,9 @@ export function ReconciliationHistoryView({
                 <tr
                   key={row.reconciliation_id}
                   data-testid={`reconciliation-row-${row.reconciliation_id}`}
-                  className="border-b border-[rgba(212,175,55,0.06)] transition-colors hover:bg-[rgba(212,175,55,0.03)]"
+                  className="border-b border-[color-mix(in_oklch,var(--brand-gold)_5%,transparent)] transition-colors hover:bg-[color-mix(in_oklch,var(--brand-gold)_4%,transparent)]"
                 >
-                  <td className="px-4 py-3 font-mono text-[10px] text-[rgba(212,175,55,0.50)]">
+                  <td className="px-4 py-3 font-mono text-[10px] text-[rgba(212,175,55,0.55)]">
                     {fmtDate(row.created_at)}
                   </td>
                   <td className="px-4 py-3">
@@ -195,12 +192,12 @@ export function ReconciliationHistoryView({
                             ] ?? '#64748b',
                         }}
                       />
-                      <span className="text-xs text-[rgba(212,175,55,0.70)] capitalize">
+                      <span className="text-xs text-[var(--brand-gold-cream)] capitalize">
                         {providerLabel(row.provider)}
                       </span>
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-[rgba(212,175,55,0.50)]">
+                  <td className="px-4 py-3 font-mono text-[10px] text-[rgba(212,175,55,0.55)]">
                     {fmtPeriod(row)}
                   </td>
                   <td className="px-4 py-3">
@@ -210,10 +207,10 @@ export function ReconciliationHistoryView({
                       variancePct={row.variance_pct}
                     />
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-[rgba(212,175,55,0.70)]">
+                  <td className="px-4 py-3 text-right font-mono text-xs text-[var(--brand-gold-cream)]">
                     {fmtUsd(row.authoritative_cost_usd)}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-[rgba(212,175,55,0.70)]">
+                  <td className="px-4 py-3 text-right font-mono text-xs text-[var(--brand-gold-cream)]">
                     {fmtUsd(row.computed_cost_usd)}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -226,16 +223,22 @@ export function ReconciliationHistoryView({
         </div>
       )}
 
-      {/* Deliverable 5 — brand CSV upload form */}
       {showUpload && (
-        <section className="rounded-xl border border-[rgba(212,175,55,0.12)] bg-[oklch(0.11_0.010_70)] p-5">
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold text-[#fce29a]">
-              Manual reconciliation upload
-            </h2>
-            <p className="mt-0.5 text-xs text-[rgba(212,175,55,0.40)]">
-              DeepSeek and NIM don't expose billing APIs. Upload the invoice CSV for the period.
-            </p>
+        <section className="rounded-xl border border-dashed border-[color-mix(in_oklch,var(--brand-gold)_22%,transparent)] bg-[oklch(0.115_0.012_70)] p-6">
+          <div className="mb-5 flex items-start gap-3">
+            <UploadCloud
+              size={20}
+              aria-hidden
+              className="mt-0.5 text-[var(--brand-gold)] opacity-80"
+            />
+            <div>
+              <h2 className="bt-heading text-[var(--brand-gold-cream)]">
+                Manual reconciliation upload
+              </h2>
+              <p className="mt-0.5 text-xs text-[rgba(212,175,55,0.50)]">
+                DeepSeek and NIM don&apos;t expose billing APIs. Upload the invoice CSV for the period.
+              </p>
+            </div>
           </div>
 
           <form
@@ -246,7 +249,7 @@ export function ReconciliationHistoryView({
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]">
+              <label className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)]">
                 Provider
               </label>
               <select
@@ -255,7 +258,7 @@ export function ReconciliationHistoryView({
                   active && MANUAL_UPLOAD_PROVIDERS.has(active) ? active : 'deepseek'
                 }
                 data-testid="reconciliation-upload-provider"
-                className="rounded-lg border border-[rgba(212,175,55,0.15)] bg-[oklch(0.13_0.008_70)] px-3 py-2 text-sm text-[rgba(212,175,55,0.85)] focus:border-[rgba(212,175,55,0.40)] focus:outline-none"
+                className={FORM_INPUT}
               >
                 <option value="deepseek">DeepSeek</option>
                 <option value="nim">NIM</option>
@@ -263,7 +266,7 @@ export function ReconciliationHistoryView({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]">
+              <label className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)]">
                 Period start
               </label>
               <input
@@ -271,12 +274,12 @@ export function ReconciliationHistoryView({
                 name="period_start"
                 required
                 data-testid="reconciliation-upload-period-start"
-                className="rounded-lg border border-[rgba(212,175,55,0.15)] bg-[oklch(0.13_0.008_70)] px-3 py-2 text-sm text-[rgba(212,175,55,0.85)] focus:border-[rgba(212,175,55,0.40)] focus:outline-none"
+                className={FORM_INPUT}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]">
+              <label className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)]">
                 Period end
               </label>
               <input
@@ -284,12 +287,12 @@ export function ReconciliationHistoryView({
                 name="period_end"
                 required
                 data-testid="reconciliation-upload-period-end"
-                className="rounded-lg border border-[rgba(212,175,55,0.15)] bg-[oklch(0.13_0.008_70)] px-3 py-2 text-sm text-[rgba(212,175,55,0.85)] focus:border-[rgba(212,175,55,0.40)] focus:outline-none"
+                className={FORM_INPUT}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[rgba(212,175,55,0.40)]">
+              <label className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)]">
                 CSV file
               </label>
               <input
@@ -298,7 +301,10 @@ export function ReconciliationHistoryView({
                 accept=".csv,text/csv"
                 required
                 data-testid="reconciliation-upload-file"
-                className="rounded-lg border border-[rgba(212,175,55,0.15)] bg-[oklch(0.13_0.008_70)] px-3 py-2 text-sm text-[rgba(212,175,55,0.55)] file:mr-3 file:rounded file:border-0 file:bg-[rgba(212,175,55,0.12)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-[#d4af37]"
+                className={cn(
+                  FORM_INPUT,
+                  'file:mr-3 file:rounded file:border-0 file:bg-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-[var(--brand-gold)]',
+                )}
               />
             </div>
 
@@ -306,7 +312,7 @@ export function ReconciliationHistoryView({
               <button
                 type="submit"
                 data-testid="reconciliation-upload-submit"
-                className="rounded-lg bg-gradient-to-r from-[#d4af37] to-[#fce29a] px-5 py-2 text-xs font-semibold text-[oklch(0.10_0.012_70)] transition-opacity hover:opacity-90"
+                className="brand-cta rounded-lg px-5 py-2 text-xs"
               >
                 Upload &amp; reconcile
               </button>

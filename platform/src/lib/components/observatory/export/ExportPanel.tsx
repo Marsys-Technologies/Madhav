@@ -3,12 +3,12 @@
 // Phase O — O.3 Export — UI panel.
 //
 // Mounted on the events page (/observatory/events) above the EventExplorer
-// as a collapsible "Export data" section. Authored by USTAD_S3_4. Form state
-// is local; on submit we call buildExportUrl and navigate the browser to it,
-// which triggers a file-download dialog without us having to materialise the
-// file in memory inside the React app.
+// as a collapsible "Export data" section. Authored by USTAD_S3_4. OBS-UX-S5
+// reskin: charcoal/gold theming, glass surface, lucide icons. All test ids
+// preserved (observatory-export-{panel,toggle,form}, export-*).
 
 import * as React from 'react'
+import { ChevronRight, Download } from 'lucide-react'
 
 import { buildExportUrl } from '@/lib/api-clients/observatory'
 import {
@@ -36,6 +36,9 @@ function defaultDateRange(): { start: string; end: string } {
   return { start, end }
 }
 
+const INPUT_CLS =
+  'rounded-md border border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-[color-mix(in_oklch,var(--brand-charcoal)_70%,transparent)] px-2 py-1 text-xs text-[var(--brand-gold-cream)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-gold)] focus:border-transparent'
+
 export function ExportPanel(): React.ReactElement {
   const [open, setOpen] = React.useState(false)
   const initial = React.useMemo(defaultDateRange, [])
@@ -59,7 +62,6 @@ export function ExportPanel(): React.ReactElement {
     }
     const url = buildExportUrl(params)
     window.location.href = url
-    // Reset busy after a short delay; the download happens in another stack.
     window.setTimeout(() => setBusy(false), 500)
   }
 
@@ -67,53 +69,58 @@ export function ExportPanel(): React.ReactElement {
     <section
       data-testid="observatory-export-panel"
       data-open={open ? 'true' : 'false'}
-      className="rounded border bg-card"
+      className="rounded-xl border border-[color-mix(in_oklch,var(--brand-gold)_14%,transparent)] bg-[oklch(0.115_0.012_70)]"
     >
       <button
         type="button"
         data-testid="observatory-export-toggle"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-muted"
+        className="group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--brand-gold)_5%,transparent)]"
       >
-        <span>Export data</span>
-        <span aria-hidden className="text-xs text-muted-foreground">
-          {open ? '▾' : '▸'}
+        <span className="flex items-center gap-2">
+          <Download size={14} className="text-[var(--brand-gold)] opacity-80" aria-hidden />
+          <span className="bt-label bt-label-upper text-[var(--brand-gold-cream)]">Export data</span>
         </span>
+        <ChevronRight
+          size={14}
+          aria-hidden
+          className={`text-[rgba(212,175,55,0.55)] transition-transform ${open ? 'rotate-90' : ''}`}
+        />
       </button>
 
       {open ? (
         <div
           data-testid="observatory-export-form"
-          className="grid gap-3 border-t px-3 py-3 sm:grid-cols-6 sm:items-end"
+          className="grid gap-3 border-t border-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)] px-4 py-4 sm:grid-cols-6 sm:items-end"
         >
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <span>Date start</span>
             <input
               type="date"
               data-testid="export-date-start"
               value={dateStart}
               onChange={(e) => setDateStart(e.target.value)}
-              className="rounded border px-2 py-1 text-xs"
+              className={INPUT_CLS}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <span>Date end</span>
             <input
               type="date"
               data-testid="export-date-end"
               value={dateEnd}
               onChange={(e) => setDateEnd(e.target.value)}
-              className="rounded border px-2 py-1 text-xs"
+              className={INPUT_CLS}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <span>Provider</span>
             <select
               data-testid="export-provider"
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
-              className="rounded border px-2 py-1 text-xs"
+              className={INPUT_CLS}
             >
               <option value="">All</option>
               {PROVIDERS.map((p) => (
@@ -123,13 +130,13 @@ export function ExportPanel(): React.ReactElement {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <span>Pipeline stage</span>
             <select
               data-testid="export-pipeline-stage"
               value={pipelineStage}
               onChange={(e) => setPipelineStage(e.target.value)}
-              className="rounded border px-2 py-1 text-xs"
+              className={INPUT_CLS}
             >
               <option value="">All</option>
               {STAGES.map((s) => (
@@ -139,12 +146,9 @@ export function ExportPanel(): React.ReactElement {
               ))}
             </select>
           </label>
-          <fieldset className="flex flex-col gap-1 text-xs">
+          <fieldset className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <legend>Format</legend>
-            <div
-              data-testid="export-format"
-              className="flex items-center gap-3"
-            >
+            <div data-testid="export-format" className="flex items-center gap-3 text-[var(--brand-gold-cream)]">
               <label className="flex items-center gap-1">
                 <input
                   type="radio"
@@ -153,6 +157,7 @@ export function ExportPanel(): React.ReactElement {
                   data-testid="export-format-csv"
                   checked={format === 'csv'}
                   onChange={() => setFormat('csv')}
+                  className="accent-[var(--brand-gold)]"
                 />
                 CSV
               </label>
@@ -164,12 +169,13 @@ export function ExportPanel(): React.ReactElement {
                   data-testid="export-format-json"
                   checked={format === 'json'}
                   onChange={() => setFormat('json')}
+                  className="accent-[var(--brand-gold)]"
                 />
                 JSON
               </label>
             </div>
           </fieldset>
-          <label className="flex flex-col gap-1 text-xs">
+          <label className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <span>Limit (max {EXPORT_MAX_LIMIT.toLocaleString()})</span>
             <input
               type="number"
@@ -181,7 +187,7 @@ export function ExportPanel(): React.ReactElement {
                 const next = Number(e.target.value)
                 if (Number.isFinite(next)) setLimit(next)
               }}
-              className="rounded border px-2 py-1 text-xs"
+              className={INPUT_CLS}
             />
           </label>
           <div className="sm:col-span-6">
@@ -190,7 +196,7 @@ export function ExportPanel(): React.ReactElement {
               data-testid="export-download"
               onClick={handleDownload}
               disabled={busy || !dateStart || !dateEnd}
-              className="rounded border bg-primary px-3 py-1 text-xs text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              className="brand-cta rounded-md px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Preparing…' : 'Download export'}
             </button>

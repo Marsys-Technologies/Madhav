@@ -23,7 +23,7 @@ import { KpiTilesRow } from '../kpi/KpiTilesRow'
 import { StackBreakdownCards } from '../StackBreakdownCards'
 import { EmptyObservatoryState } from '../EmptyObservatoryState'
 import { uiToApiFilters, uiToDashboardRange } from './filterAdapter'
-import { SectionLabel } from '../shared'
+import { ObsPageShell, ObsCard, SectionLabel } from '../shared'
 
 type GroupedBreakdowns = {
   provider: BreakdownsResponse | null
@@ -92,136 +92,136 @@ export function OverviewClient({
 
   const hasNoData = !loading && !error && summary !== null && summary.total_requests === 0
 
-  return (
-    <div data-testid="observatory-overview" className="min-h-full bg-[var(--brand-charcoal,oklch(0.10_0.012_70))]">
-      {/* ── Page header ── */}
-      <div className="border-b border-[rgba(212,175,55,0.10)] px-6 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-heading text-xl font-semibold text-[#fce29a] tracking-wide">
-              LLM Observatory
-            </h1>
-            <p className="mt-0.5 text-xs text-[rgba(212,175,55,0.45)]">
-              Token usage · cost · latency across all provider stacks
-            </p>
-          </div>
-
-          {/* Quick date presets */}
-          <QuickDateToggle
-            preset={filters.preset}
-            onChange={(preset) => setFilters({ ...filters, preset })}
-          />
-        </div>
-
-        {/* Advanced filter bar (collapsed by default on small screens) */}
-        <details className="mt-4 group">
-          <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-[rgba(212,175,55,0.35)] hover:text-[rgba(212,175,55,0.65)] list-none select-none">
-            <span aria-hidden="true" className="transition-transform group-open:rotate-90">▶</span>
-            Advanced filters
-          </summary>
-          <div className="mt-3">
-            <FiltersBar
-              filters={filters}
-              modelOptions={modelOptions}
-              onFiltersChange={setFilters}
-            />
-          </div>
-        </details>
-      </div>
-
-      {/* ── Main content ── */}
-      <div className="flex flex-col gap-8 p-6">
-        {/* Error */}
-        {error ? (
-          <div
-            data-testid="observatory-overview-error"
-            role="alert"
-            className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400"
-          >
-            {error}
-            <button
-              type="button"
-              onClick={() => void refetch(filters)}
-              className="ml-4 underline hover:no-underline"
-            >
-              Retry
-            </button>
-          </div>
-        ) : null}
-
-        {/* Empty state */}
-        {hasNoData ? (
-          <EmptyObservatoryState dateRangeLabel={filters.preset !== 'custom' ? filters.preset : undefined} />
-        ) : (
-          <>
-            {/* ── Zone 1: Hero KPIs ── */}
-            <section>
-              <SectionLabel>Key metrics</SectionLabel>
-              <KpiTilesRow
-                summary={summary ?? undefined}
-                loading={loading && !summary}
-                mode="hero3"
-                onRetry={() => void refetch(filters)}
-              />
-            </section>
-
-            {/* ── Zone 2: Stack breakdown cards ── */}
-            <section data-testid="observatory-overview-provider-breakdown">
-              <SectionLabel>By provider stack</SectionLabel>
-              <StackBreakdownCards
-                data={breakdowns.provider}
-                loading={loading && !breakdowns.provider}
-              />
-            </section>
-
-            {/* ── Zone 3: Cost over time ── */}
-            <section data-testid="observatory-overview-timeseries">
-              <div className="mb-3 flex items-center justify-between">
-                <SectionLabel>Cost over time</SectionLabel>
-                <span className="text-[10px] text-[rgba(212,175,55,0.30)] uppercase tracking-wider">
-                  by provider · daily
-                </span>
-              </div>
-              <div className="rounded-xl border border-[rgba(212,175,55,0.10)] bg-[oklch(0.11_0.010_70)] p-4">
-                <CostOverTimeChart
-                  data={timeseries}
-                  dimension="provider"
-                  granularity="day"
-                  loading={loading && !timeseries}
-                  onRetry={() => void refetch(filters)}
-                />
-              </div>
-            </section>
-
-            {/* ── Zone 4: Stage breakdown ── */}
-            <section data-testid="observatory-overview-stage-breakdown">
-              <SectionLabel>By pipeline stage</SectionLabel>
-              <div className="rounded-xl border border-[rgba(212,175,55,0.10)] bg-[oklch(0.11_0.010_70)] p-4">
-                <CostByModelChart
-                  data={breakdowns.pipeline_stage}
-                  dimension="pipeline_stage"
-                  loading={loading && !breakdowns.pipeline_stage}
-                  onRetry={() => void refetch(filters)}
-                />
-              </div>
-            </section>
-
-            {/* ── Zone 5: Full detail metrics (collapsed) ── */}
-            <details className="group">
-              <summary className="mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-[rgba(212,175,55,0.30)] hover:text-[rgba(212,175,55,0.60)] list-none select-none">
-                <span aria-hidden="true" className="transition-transform group-open:rotate-90">▶</span>
-                All metrics detail
-              </summary>
-              <KpiTilesRow
-                summary={summary ?? undefined}
-                loading={loading && !summary}
-                onRetry={() => void refetch(filters)}
-              />
-            </details>
-          </>
-        )}
-      </div>
+  const headerRight = (
+    <div className="flex flex-wrap items-center gap-2">
+      <QuickDateToggle
+        preset={filters.preset}
+        onChange={(preset) => setFilters({ ...filters, preset })}
+      />
+      <CompareToggle
+        active={filters.compare_to_previous ?? false}
+        onChange={(compare_to_previous) => setFilters({ ...filters, compare_to_previous })}
+      />
     </div>
+  )
+
+  const headerBottom = (
+    <details className="group">
+      <summary className="inline-flex cursor-pointer items-center gap-1.5 bt-label bt-label-upper text-[rgba(212,175,55,0.45)] hover:text-[var(--brand-gold)] list-none select-none">
+        <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
+        Advanced filters
+      </summary>
+      <div className="mt-3">
+        <FiltersBar
+          filters={filters}
+          modelOptions={modelOptions}
+          onFiltersChange={setFilters}
+        />
+      </div>
+    </details>
+  )
+
+  return (
+    <ObsPageShell
+      testId="observatory-overview"
+      title="LLM Observatory"
+      subtitle="Token usage · cost · latency across all provider stacks"
+      devanagari
+      live={!loading && !error}
+      liveLabel="live"
+      headerRight={headerRight}
+      headerBottom={headerBottom}
+    >
+      {/* Error */}
+      {error ? (
+        <div
+          data-testid="observatory-overview-error"
+          role="alert"
+          className="rounded-xl border border-[color-mix(in_oklch,var(--status-halt)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-halt)_8%,transparent)] p-4 text-sm text-[var(--status-halt)]"
+        >
+          {error}
+          <button
+            type="button"
+            onClick={() => void refetch(filters)}
+            className="ml-4 underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {/* Empty state */}
+      {hasNoData ? (
+        <EmptyObservatoryState dateRangeLabel={filters.preset !== 'custom' ? filters.preset : undefined} />
+      ) : (
+        <>
+          {/* Hero KPIs */}
+          <section>
+            <SectionLabel accent>Key metrics</SectionLabel>
+            <KpiTilesRow
+              summary={summary ?? undefined}
+              loading={loading && !summary}
+              mode="hero3"
+              onRetry={() => void refetch(filters)}
+            />
+          </section>
+
+          {/* Provider stack breakdown */}
+          <section data-testid="observatory-overview-provider-breakdown">
+            <SectionLabel>By provider stack</SectionLabel>
+            <StackBreakdownCards
+              data={breakdowns.provider}
+              loading={loading && !breakdowns.provider}
+            />
+          </section>
+
+          {/* Cost over time */}
+          <section data-testid="observatory-overview-timeseries">
+            <div className="mb-3 flex items-center justify-between">
+              <SectionLabel>Cost over time</SectionLabel>
+              <span className="bt-label bt-label-upper text-[rgba(212,175,55,0.40)]">
+                by provider · daily
+              </span>
+            </div>
+            <ObsCard padding="normal">
+              <CostOverTimeChart
+                data={timeseries}
+                dimension="provider"
+                granularity="day"
+                loading={loading && !timeseries}
+                onRetry={() => void refetch(filters)}
+              />
+            </ObsCard>
+          </section>
+
+          {/* Pipeline-stage breakdown */}
+          <section data-testid="observatory-overview-stage-breakdown">
+            <SectionLabel>By pipeline stage</SectionLabel>
+            <ObsCard padding="normal">
+              <CostByModelChart
+                data={breakdowns.pipeline_stage}
+                dimension="pipeline_stage"
+                loading={loading && !breakdowns.pipeline_stage}
+                onRetry={() => void refetch(filters)}
+              />
+            </ObsCard>
+          </section>
+
+          {/* All metrics drawer */}
+          <details className="group">
+            <summary className="mb-3 inline-flex cursor-pointer items-center gap-1.5 bt-label bt-label-upper text-[rgba(212,175,55,0.40)] hover:text-[var(--brand-gold)] list-none select-none">
+              <span aria-hidden="true" className="transition-transform group-open:rotate-90">▸</span>
+              All metrics detail
+            </summary>
+            <KpiTilesRow
+              summary={summary ?? undefined}
+              loading={loading && !summary}
+              onRetry={() => void refetch(filters)}
+            />
+          </details>
+        </>
+      )}
+    </ObsPageShell>
   )
 }
 
@@ -242,21 +242,55 @@ function QuickDateToggle({
   onChange: (p: DateRangePresetId) => void
 }) {
   return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(0,0,0,0.2)] p-0.5">
-      {DATE_PRESETS.map(({ value, label }) => (
-        <button
-          key={value}
-          type="button"
-          onClick={() => onChange(value)}
-          className={
-            preset === value
-              ? 'rounded-md bg-[rgba(212,175,55,0.16)] px-3 py-1 text-xs font-semibold text-[#d4af37]'
-              : 'rounded-md px-3 py-1 text-xs font-medium text-[rgba(212,175,55,0.35)] hover:text-[#d4af37] transition-colors'
-          }
-        >
-          {label}
-        </button>
-      ))}
+    <div
+      role="radiogroup"
+      aria-label="Date range"
+      className="obs-glass flex items-center gap-0.5 rounded-full p-0.5"
+    >
+      {DATE_PRESETS.map(({ value, label }) => {
+        const active = preset === value
+        return (
+          <button
+            key={value}
+            role="radio"
+            aria-checked={active}
+            type="button"
+            onClick={() => onChange(value)}
+            className={
+              active
+                ? 'rounded-full bg-[color-mix(in_oklch,var(--brand-gold)_20%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+                : 'rounded-full px-3 py-1 text-xs font-medium text-[rgba(212,175,55,0.45)] hover:text-[var(--brand-gold)] transition-colors'
+            }
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
+  )
+}
+
+function CompareToggle({
+  active,
+  onChange,
+}: {
+  active: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      onClick={() => onChange(!active)}
+      className={
+        active
+          ? 'obs-glass rounded-full px-3 py-1 text-[11px] font-medium text-[var(--brand-gold)]'
+          : 'obs-glass rounded-full px-3 py-1 text-[11px] font-medium text-[rgba(212,175,55,0.45)] hover:text-[var(--brand-gold)] transition-colors'
+      }
+      title="Show change vs previous equal-length period"
+    >
+      Δ vs previous
+    </button>
   )
 }

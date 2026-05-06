@@ -441,3 +441,164 @@ body {
   color: var(--brand-gold);
   font-family: var(--font-serif);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Observatory shell (OBS-UX-S5)
+   Mirrors .consume-shell's token re-pointing for the /observatory surface so
+   gold/charcoal becomes the ambient palette without per-component overrides.
+   The shell also paints the page-level radial backdrop and inner gold glow.
+   ────────────────────────────────────────────────────────────────────────── */
+.obs-shell {
+  --background: var(--brand-charcoal);
+  --foreground: var(--brand-gold-cream);
+  --accent: var(--brand-gold);
+  --accent-foreground: var(--brand-ink);
+  --ring: var(--brand-gold);
+  --primary: var(--brand-gold);
+  --primary-foreground: var(--brand-ink);
+  --border: color-mix(in oklch, var(--brand-gold) 18%, transparent);
+  --card: oklch(0.115 0.012 70);
+  --card-foreground: var(--brand-gold-cream);
+  --popover: oklch(0.115 0.012 70);
+  --popover-foreground: var(--brand-gold-cream);
+  --muted: oklch(0.16 0.010 70);
+  --muted-foreground: oklch(0.78 0.13 80 / 0.55);
+  background:
+    radial-gradient(
+      ellipse 120% 80% at 50% -10%,
+      oklch(0.13 0.018 70) 0%,
+      oklch(0.08 0.008 70) 55%,
+      oklch(0.04 0.005 70) 100%
+    );
+  color: var(--brand-gold-cream);
+}
+
+/* Tone-driven inner glows for ObsCard / KPI tiles. Use as a class layer:
+     <div class="obs-card obs-glow-good"> ... </div>
+   The glow is an inset color-shift; it does not paint outside the box and
+   stays inside whatever parent border the card already has. */
+.obs-glow-neutral {
+  box-shadow:
+    inset 0 0 60px color-mix(in oklch, var(--brand-gold) 6%, transparent),
+    0 1px 0 color-mix(in oklch, var(--brand-gold) 8%, transparent);
+}
+.obs-glow-good {
+  box-shadow:
+    inset 0 0 60px color-mix(in oklch, var(--status-success) 12%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--status-success) 18%, transparent);
+}
+.obs-glow-warn {
+  box-shadow:
+    inset 0 0 60px color-mix(in oklch, var(--status-warn) 14%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--status-warn) 22%, transparent);
+}
+.obs-glow-bad {
+  box-shadow:
+    inset 0 0 60px color-mix(in oklch, var(--status-halt) 14%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--status-halt) 22%, transparent);
+}
+.obs-glow-hot {
+  box-shadow:
+    inset 0 0 80px color-mix(in oklch, var(--brand-gold) 14%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--brand-gold) 30%, transparent),
+    0 8px 32px -12px color-mix(in oklch, var(--brand-gold) 22%, transparent);
+}
+
+/* Live-data dot — emerald pulsing. Reduced-motion already pins via the global
+   guard; the @keyframes target stays expressive. */
+@keyframes obs-live-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.85); }
+}
+.obs-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--status-success);
+  box-shadow: 0 0 12px var(--status-success);
+  animation: obs-live-pulse 1.6s ease-in-out infinite;
+}
+.obs-live-dot[data-tone='gold'] {
+  background: var(--brand-gold);
+  box-shadow: 0 0 12px color-mix(in oklch, var(--brand-gold) 60%, transparent);
+}
+
+/* Shimmer-on-mount — applied once to flipped pricing-diff rows or replay
+   result cards. Single 1.6 s pass, then the element settles. */
+@keyframes obs-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.obs-shimmer-once {
+  position: relative;
+  overflow: hidden;
+}
+.obs-shimmer-once::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in oklch, var(--brand-gold) 16%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: obs-shimmer 1.6s ease-out 1 both;
+  pointer-events: none;
+}
+
+/* Conic-gradient hairline — reserved for the single highest-severity card
+   per page (anomaly hero, replay in-flight). Outer ring only; performant. */
+@keyframes obs-conic-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.obs-hairline-conic {
+  position: relative;
+  z-index: 0;
+}
+.obs-hairline-conic::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    color-mix(in oklch, var(--brand-gold) 0%,  transparent),
+    color-mix(in oklch, var(--brand-gold) 55%, transparent),
+    color-mix(in oklch, var(--brand-gold) 0%,  transparent),
+    color-mix(in oklch, var(--brand-gold) 55%, transparent),
+    color-mix(in oklch, var(--brand-gold) 0%,  transparent)
+  );
+  animation: obs-conic-spin 6s linear infinite;
+  filter: blur(0.4px);
+}
+
+/* Slow pulsing alert hairline — over-budget rule cards. Two-state, 2.4 s. */
+@keyframes obs-alert-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in oklch, var(--status-halt) 30%, transparent); }
+  50%      { box-shadow: 0 0 0 1px color-mix(in oklch, var(--status-halt) 60%, transparent),
+                          0 0 24px -4px color-mix(in oklch, var(--status-halt) 35%, transparent); }
+}
+.obs-alert-pulse {
+  animation: obs-alert-pulse 2.4s ease-in-out infinite;
+}
+
+/* CTA pulsing — gold-glow during in-flight replay. */
+@keyframes obs-cta-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand-gold) 50%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklch, var(--brand-gold) 0%,  transparent); }
+}
+.obs-cta-pulse {
+  animation: obs-cta-pulse 1.8s ease-out infinite;
+}
+
+/* Glass surface — used by sticky filter bars, segmented controls, drop zones. */
+.obs-glass {
+  background: color-mix(in oklch, var(--brand-charcoal) 70%, transparent);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  border: 1px solid color-mix(in oklch, var(--brand-gold) 14%, transparent);
+}

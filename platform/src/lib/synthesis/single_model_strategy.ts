@@ -39,6 +39,7 @@ import type { Checkpoint45Result, Checkpoint55Result, Checkpoint85Result } from 
 import { countSignalCitations } from './citation_check'
 import { runAll } from '@/lib/validators/index'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
+import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
@@ -555,11 +556,14 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
             ? Math.ceil(r1Reasoning.length / 4)
             : null,
           latency_ms: synthesisLatencyMs,
-          // TODO(G.2): cost_usd is null — compute from (input_tokens/1M)*costPer1MInput +
-          // (output_tokens/1M)*costPer1MOutput using getModelMeta(selected_model_id).
-          // Blocked on confirming all three stacks (anthropic/deepseek/nvidia) populate
-          // usage tokens reliably before writing a non-null value here.
-          cost_usd: null,
+          cost_usd: computeCostUsd(getModelPricingSync(selected_model_id), {
+            input_tokens: usage?.inputTokens ?? null,
+            output_tokens: usage?.outputTokens ?? null,
+            cache_read_tokens:
+              (usage as { cacheReadInputTokens?: number })?.cacheReadInputTokens ?? null,
+            cache_write_tokens:
+              (usage as { cacheCreationInputTokens?: number })?.cacheCreationInputTokens ?? null,
+          }),
           fallback_used: false,
           error_code: finishReason === 'error' ? finishReason : null,
           payload: null,

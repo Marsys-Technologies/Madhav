@@ -33,6 +33,7 @@ import {
 import { buildPlannerContext } from '@/lib/pipeline/planner_context_builder'
 import type { PlanningStartEvent, PlanningDoneEvent, TraceEvent } from '@/lib/trace/types'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
+import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { writePlanAlternatives } from '@/lib/db/trace/plan_alternatives_writer'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
@@ -464,7 +465,10 @@ export async function callLlmPlanner(
       output_tokens: result.usage?.outputTokens ?? null,
       reasoning_tokens: null,
       latency_ms,
-      cost_usd: null,
+      cost_usd: computeCostUsd(getModelPricingSync(activeModelId), {
+        input_tokens: result.usage?.inputTokens ?? null,
+        output_tokens: result.usage?.outputTokens ?? null,
+      }),
       fallback_used: fallbackWasUsed,
       error_code: null,
       payload: null,

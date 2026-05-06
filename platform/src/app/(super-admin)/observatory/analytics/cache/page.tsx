@@ -9,6 +9,7 @@ import {
   toJson,
 } from '@/lib/observatory/analytics/cache_effectiveness'
 import { CacheEffectivenessPanel } from '@/lib/components/observatory/analytics/CacheEffectivenessPanel'
+import { ObsPageShell } from '@/lib/components/observatory/shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,18 +30,14 @@ export default async function CacheEffectivenessPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <header>
-        <h1 className="text-xl font-semibold">Cache Effectiveness</h1>
-        <p className="text-sm text-muted-foreground">
-          Last 30 days · {new Date(date_start).toISOString().slice(0, 10)} →{' '}
-          {new Date(date_end).toISOString().slice(0, 10)}
-        </p>
-      </header>
+    <ObsPageShell
+      title="Cache Effectiveness"
+      subtitle={`Last 30 days · ${date_start.slice(0, 10)} → ${date_end.slice(0, 10)}`}
+    >
       <CacheEffectivenessPanel
         data={dataJson}
         error={errorMessage ? new Error(errorMessage) : null}
       />
-    </div>
+    </ObsPageShell>
   )
 }
