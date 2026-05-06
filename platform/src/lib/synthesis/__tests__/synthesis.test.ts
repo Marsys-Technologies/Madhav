@@ -10,6 +10,7 @@ vi.mock('@/lib/models/resolver', () => ({
   resolveWorkerModel: vi.fn((id: string) => id ?? 'claude-haiku-4-5'),
   supportsStreaming: vi.fn(() => true),
   googleProviderOptions: vi.fn(() => null),
+  deepseekProviderOptions: vi.fn(() => null),
 }))
 
 // Mock streamText at the ai module level — must be before any imports
