@@ -57,7 +57,7 @@ function AnswerViewImpl({ text, className, traceId, queryId }: Props) {
             <button
               type="button"
               onClick={() => setTraceOpen(true)}
-              className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-[color-mix(in_oklch,var(--status-warn)_40%,transparent)] hover:text-[var(--status-warn)] transition-colors"
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-[rgba(var(--status-warn-rgb),0.4)] hover:text-[var(--status-warn)] transition-colors"
               title="Open query trace"
             >
               <Zap className="h-3 w-3" />

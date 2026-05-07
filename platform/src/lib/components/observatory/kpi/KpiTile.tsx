@@ -71,7 +71,7 @@ export function KpiTile({
       <div
         data-testid={`${testId}-error`}
         role="alert"
-        className="flex h-full flex-col justify-between rounded-xl border border-[color-mix(in_oklch,var(--status-halt)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-halt)_8%,transparent)] p-5"
+        className="flex h-full flex-col justify-between rounded-xl border border-[rgba(var(--status-halt-rgb),0.3)] bg-[rgba(var(--status-halt-rgb),0.08)] p-5"
       >
         <p className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)]">{label}</p>
         <p className="mt-2 text-sm text-[var(--status-halt)]">Failed to load.</p>
@@ -80,7 +80,7 @@ export function KpiTile({
             type="button"
             onClick={onRetry}
             data-testid={`${testId}-retry`}
-            className="mt-2 self-start rounded border border-[color-mix(in_oklch,var(--brand-gold)_22%,transparent)] px-2 py-1 text-xs text-[var(--brand-gold-cream)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]"
+            className="mt-2 self-start rounded border border-[rgba(var(--brand-gold-rgb),0.22)] px-2 py-1 text-xs text-[var(--brand-gold-cream)] hover:bg-[rgba(var(--brand-gold-rgb),0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]"
           >
             Retry
           </button>
@@ -94,11 +94,11 @@ export function KpiTile({
       <div
         data-testid={`${testId}-skeleton`}
         aria-busy="true"
-        className="flex h-full flex-col rounded-xl border border-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)] bg-[oklch(0.115_0.012_70)] p-5"
+        className="flex h-full flex-col rounded-xl border border-[rgba(var(--brand-gold-rgb),0.1)] bg-[oklch(0.115_0.012_70)] p-5"
       >
-        <div className="h-3 w-1/2 animate-pulse rounded bg-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)]" />
-        <div className="mt-4 h-8 w-3/4 animate-pulse rounded bg-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)]" />
-        <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)]" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-[rgba(var(--brand-gold-rgb),0.1)]" />
+        <div className="mt-4 h-8 w-3/4 animate-pulse rounded bg-[rgba(var(--brand-gold-rgb),0.1)]" />
+        <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[rgba(var(--brand-gold-rgb),0.08)]" />
       </div>
     )
   }

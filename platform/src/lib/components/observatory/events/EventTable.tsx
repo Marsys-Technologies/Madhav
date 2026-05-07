@@ -183,7 +183,7 @@ export function EventTable({
   return (
     <div data-testid="event-table" className="flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(var(--brand-gold-rgb),0.08)]">
         <span
           data-testid="event-table-count"
           className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)] tabular-nums"
@@ -199,8 +199,8 @@ export function EventTable({
           className={cn(
             'rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors',
             showColumnPanel
-              ? 'bg-[color-mix(in_oklch,var(--brand-gold)_16%,transparent)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_28%,transparent)]'
-              : 'text-[rgba(212,175,55,0.55)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)] hover:text-[var(--brand-gold)]',
+              ? 'bg-[rgba(var(--brand-gold-rgb),0.16)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.28)]'
+              : 'text-[rgba(212,175,55,0.55)] hover:bg-[rgba(var(--brand-gold-rgb),0.08)] hover:text-[var(--brand-gold)]',
           )}
         >
           Columns
@@ -333,10 +333,10 @@ export function EventTable({
               data-event-id={row.event_id}
               onClick={() => onRowClick?.(row)}
               className={cn(
-                'grid w-full grid-flow-col items-center gap-2 border-b border-[color-mix(in_oklch,var(--brand-gold)_5%,transparent)] px-4 text-left text-xs transition-all',
-                'hover:bg-[color-mix(in_oklch,var(--brand-gold)_5%,transparent)]',
+                'grid w-full grid-flow-col items-center gap-2 border-b border-[rgba(var(--brand-gold-rgb),0.05)] px-4 text-left text-xs transition-all',
+                'hover:bg-[rgba(var(--brand-gold-rgb),0.05)]',
                 selectedEventId === row.event_id &&
-                  'bg-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)] shadow-[inset_3px_0_0_0_var(--brand-gold),inset_0_0_24px_color-mix(in_oklch,var(--brand-gold)_8%,transparent)]',
+                  'bg-[rgba(var(--brand-gold-rgb),0.1)] shadow-[inset_3px_0_0_0_var(--brand-gold),inset_0_0_24px_rgba(var(--brand-gold-rgb),0.08)]',
               )}
               style={{
                 gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(0, 1fr))`,

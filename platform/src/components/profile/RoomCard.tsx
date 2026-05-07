@@ -21,8 +21,8 @@ export function RoomCard({ title, description, cta, children, className }: RoomC
     <div
       className={cn(
         'flex flex-col gap-4 rounded-lg border p-5',
-        'border-[color-mix(in_oklch,var(--brand-gold)_20%,transparent)]',
-        'bg-[color-mix(in_oklch,var(--brand-charcoal)_94%,var(--brand-gold)_6%)]',
+        'border-[rgba(var(--brand-gold-rgb),0.2)]',
+        'bg-[#191408]',
         className,
       )}
     >

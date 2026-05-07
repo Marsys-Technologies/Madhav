@@ -38,7 +38,7 @@ export const ObsCard = React.forwardRef<HTMLDivElement, ObsCardProps>(function O
     <div
       ref={ref}
       className={cn(
-        'relative rounded-xl border border-[color-mix(in_oklch,var(--brand-gold)_14%,transparent)]',
+        'relative rounded-xl border border-[rgba(var(--brand-gold-rgb),0.14)]',
         'bg-[oklch(0.115_0.012_70)]',
         TONE_CLASS[tone],
         PADDING_CLASS[padding],

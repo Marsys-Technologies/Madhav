@@ -21,6 +21,7 @@ import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
 import { concurrentRetry } from './concurrent_retry'
 import { loadPanelMemberPrompt } from './prompt_loader'
+import { recordAiSdkCall } from '@/lib/llm/observability/observe_ai_sdk'
 import type { PanelMemberConfig, PanelMemberOutput, DegradeNotice } from './types'
 import type { SynthesisRequest } from '../types'
 
@@ -115,11 +116,26 @@ async function runSingleMember(
         setTimeout(() => reject(new Error(`Member ${idx} timed out after ${MEMBER_TIMEOUT_MS}ms`)), MEMBER_TIMEOUT_MS),
       )
 
+      const callStartedAt = new Date()
       const callPromise = generateText({
         model: resolveModel(config.model_id),
         messages: [{ role: 'user', content: prompt }],
         maxOutputTokens: 4096,
-      }).then(r => r.text)
+      }).then(r => {
+        recordAiSdkCall({
+          pipeline_stage: 'compose',
+          model_id: config.model_id,
+          conversation_id: request.conversation_id ?? request.query_plan.query_plan_id,
+          prompt_id: `${request.query_plan.query_plan_id}:panel:member_${idx}`,
+          user_id: 'native',
+          parameters: { model: config.model_id, role: `panel_member_${idx}` },
+          usage: r.usage,
+          status: 'success',
+          started_at: callStartedAt,
+          finished_at: new Date(),
+        })
+        return r.text
+      })
 
       return Promise.race([callPromise, timeoutPromise])
     }, RETRY_ATTEMPTS)

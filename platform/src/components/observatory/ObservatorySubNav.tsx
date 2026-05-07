@@ -43,19 +43,19 @@ export function ObservatorySubNav() {
   return (
     <nav
       aria-label="Observatory navigation"
-      className="hidden w-52 shrink-0 flex-col gap-3 border-r border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] bg-[var(--brand-charcoal,oklch(0.10_0.012_70))] py-4 md:flex"
+      className="hidden w-52 shrink-0 flex-col gap-3 border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[var(--brand-charcoal,oklch(0.10_0.012_70))] py-4 md:flex"
     >
       {/* Back to Roster */}
       <Link
         href="/dashboard"
-        className="mx-2 flex items-center gap-2 rounded-full px-3 py-1.5 bt-label bt-label-upper text-[rgba(212,175,55,0.45)] transition-colors hover:bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)] hover:text-[var(--brand-gold)]"
+        className="mx-2 flex items-center gap-2 rounded-full px-3 py-1.5 bt-label bt-label-upper text-[rgba(212,175,55,0.45)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.08)] hover:text-[var(--brand-gold)]"
         aria-label="Back to Roster"
       >
         <ArrowLeft size={12} aria-hidden="true" />
         Roster
       </Link>
 
-      <div className="mx-3 h-px bg-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)]" />
+      <div className="mx-3 h-px bg-[rgba(var(--brand-gold-rgb),0.1)]" />
 
       <div className="flex flex-col gap-1 px-2">
         <p className="px-3 bt-label bt-label-upper text-[rgba(212,175,55,0.35)]">
@@ -71,8 +71,8 @@ export function ObservatorySubNav() {
               className={cn(
                 'group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
                 active
-                  ? 'bg-[color-mix(in_oklch,var(--brand-gold)_14%,transparent)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_28%,transparent),inset_0_0_24px_color-mix(in_oklch,var(--brand-gold)_8%,transparent)]'
-                  : 'text-[rgba(212,175,55,0.50)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_7%,transparent)] hover:text-[var(--brand-gold)]',
+                  ? 'bg-[rgba(var(--brand-gold-rgb),0.14)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.28),inset_0_0_24px_rgba(var(--brand-gold-rgb),0.08)]'
+                  : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(var(--brand-gold-rgb),0.07)] hover:text-[var(--brand-gold)]',
               )}
             >
               <Icon size={14} aria-hidden="true" className="shrink-0 opacity-90" />
@@ -82,7 +82,7 @@ export function ObservatorySubNav() {
         })}
       </div>
 
-      <div className="mx-3 h-px bg-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)]" />
+      <div className="mx-3 h-px bg-[rgba(var(--brand-gold-rgb),0.1)]" />
 
       <div className="flex flex-col gap-1 px-2">
         <p className="px-3 bt-label bt-label-upper text-[rgba(212,175,55,0.35)]">
@@ -98,8 +98,8 @@ export function ObservatorySubNav() {
               className={cn(
                 'group flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors',
                 active
-                  ? 'bg-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_22%,transparent)]'
-                  : 'text-[rgba(212,175,55,0.42)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_6%,transparent)] hover:text-[var(--brand-gold)]',
+                  ? 'bg-[rgba(var(--brand-gold-rgb),0.12)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.22)]'
+                  : 'text-[rgba(212,175,55,0.42)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[var(--brand-gold)]',
               )}
             >
               <Icon size={12} aria-hidden="true" className="shrink-0 opacity-80" />

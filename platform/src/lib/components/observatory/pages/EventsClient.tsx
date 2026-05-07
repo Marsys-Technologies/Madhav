@@ -81,7 +81,7 @@ export function EventsClient(): React.ReactElement {
       className={cn(
         'obs-glass inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors',
         groupByQuery
-          ? 'text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+          ? 'text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.3)]'
           : 'text-[rgba(212,175,55,0.50)] hover:text-[var(--brand-gold)]',
       )}
     >

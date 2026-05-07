@@ -37,7 +37,7 @@ function defaultDateRange(): { start: string; end: string } {
 }
 
 const INPUT_CLS =
-  'rounded-md border border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-[color-mix(in_oklch,var(--brand-charcoal)_70%,transparent)] px-2 py-1 text-xs text-[var(--brand-gold-cream)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-gold)] focus:border-transparent'
+  'rounded-md border border-[rgba(var(--brand-gold-rgb),0.18)] bg-[rgba(var(--brand-charcoal-rgb),0.7)] px-2 py-1 text-xs text-[var(--brand-gold-cream)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-gold)] focus:border-transparent'
 
 export function ExportPanel(): React.ReactElement {
   const [open, setOpen] = React.useState(false)
@@ -69,14 +69,14 @@ export function ExportPanel(): React.ReactElement {
     <section
       data-testid="observatory-export-panel"
       data-open={open ? 'true' : 'false'}
-      className="rounded-xl border border-[color-mix(in_oklch,var(--brand-gold)_14%,transparent)] bg-[oklch(0.115_0.012_70)]"
+      className="rounded-xl border border-[rgba(var(--brand-gold-rgb),0.14)] bg-[oklch(0.115_0.012_70)]"
     >
       <button
         type="button"
         data-testid="observatory-export-toggle"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--brand-gold)_5%,transparent)]"
+        className="group flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.05)]"
       >
         <span className="flex items-center gap-2">
           <Download size={14} className="text-[var(--brand-gold)] opacity-80" aria-hidden />
@@ -92,7 +92,7 @@ export function ExportPanel(): React.ReactElement {
       {open ? (
         <div
           data-testid="observatory-export-form"
-          className="grid gap-3 border-t border-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)] px-4 py-4 sm:grid-cols-6 sm:items-end"
+          className="grid gap-3 border-t border-[rgba(var(--brand-gold-rgb),0.1)] px-4 py-4 sm:grid-cols-6 sm:items-end"
         >
           <label className="flex flex-col gap-1 text-xs text-[rgba(212,175,55,0.65)]">
             <span>Date start</span>

@@ -36,7 +36,7 @@ export function LogPredictionAction({ answerText, queryId }: Props) {
         <button
           type="button"
           onClick={() => setDialogOpen(true)}
-          className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-[color-mix(in_oklch,var(--brand-gold)_40%,transparent)] hover:text-[var(--brand-gold)] transition-colors"
+          className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:border-[rgba(var(--brand-gold-rgb),0.4)] hover:text-[var(--brand-gold)] transition-colors"
           title="Log this prediction to the prediction ledger"
         >
           <BookmarkPlus className="h-3 w-3" />

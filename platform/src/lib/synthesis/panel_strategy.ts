@@ -25,6 +25,7 @@ import { telemetry } from '@/lib/telemetry/index'
 import { runCheckpoint8_5 } from '@/lib/checkpoints/checkpoint_8_5'
 import type { Checkpoint85Result } from '@/lib/checkpoints/types'
 
+import { recordAiSdkCall } from '@/lib/llm/observability/observe_ai_sdk'
 import { runPanelMembers } from './panel/member_runner'
 import { adjudicate } from './panel/adjudicator'
 import { classifyDivergence } from './panel/divergence_detector'
@@ -114,6 +115,7 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
     // "verbatim output" streamText call using the cheapest model.
     const passthroughModel = PASSTHROUGH_MODEL
     const finalAnswer = adjudication.final_answer
+    const passthroughStartedAt = new Date()
 
     const result = streamText({
       model: resolveModel(passthroughModel),
@@ -145,6 +147,20 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
           usage?.outputTokens ?? 0,
           0,
         )
+
+        recordAiSdkCall({
+          pipeline_stage: 'synthesize',
+          model_id: passthroughModel,
+          conversation_id: request.conversation_id ?? query_plan.query_plan_id,
+          prompt_id: `${query_plan.query_plan_id}:panel:passthrough`,
+          user_id: 'native',
+          parameters: { model: passthroughModel, role: 'panel_passthrough' },
+          usage,
+          status: finishReason === 'error' ? 'error' : 'success',
+          error_code: finishReason === 'error' ? finishReason : null,
+          started_at: passthroughStartedAt,
+          finished_at: new Date(),
+        })
 
         const auditEvent: SynthesisAuditEvent = {
           event_type: 'synthesis_complete',

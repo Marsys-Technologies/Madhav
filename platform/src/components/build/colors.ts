@@ -12,8 +12,8 @@ export const statusColors = {
 
 export const statusBg = {
   completed:   'bg-status-success-bg',
-  active:      'bg-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)]',
-  in_progress: 'bg-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)]',
+  active:      'bg-[rgba(var(--brand-gold-rgb),0.15)]',
+  in_progress: 'bg-[rgba(var(--brand-gold-rgb),0.15)]',
   pending:     'bg-muted',
   blocked:     'bg-status-halt-bg',
   unknown:     'bg-muted',

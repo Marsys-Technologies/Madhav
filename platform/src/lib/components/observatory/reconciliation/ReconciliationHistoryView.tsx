@@ -44,13 +44,13 @@ function VarianceBadge({ pct }: { pct: number | null | undefined }) {
   let cls: string
   if (abs <= 5)
     cls =
-      'text-[var(--status-success)] bg-[var(--status-success-bg)] border-[color-mix(in_oklch,var(--status-success)_25%,transparent)]'
+      'text-[var(--status-success)] bg-[var(--status-success-bg)] border-[rgba(var(--status-success-rgb),0.25)]'
   else if (abs <= 15)
     cls =
-      'text-[var(--status-warn)] bg-[var(--status-warn-bg)] border-[color-mix(in_oklch,var(--status-warn)_25%,transparent)]'
+      'text-[var(--status-warn)] bg-[var(--status-warn-bg)] border-[rgba(var(--status-warn-rgb),0.25)]'
   else
     cls =
-      'text-[var(--status-halt)] bg-[var(--status-halt-bg)] border-[color-mix(in_oklch,var(--status-halt)_25%,transparent)]'
+      'text-[var(--status-halt)] bg-[var(--status-halt-bg)] border-[rgba(var(--status-halt-rgb),0.25)]'
 
   const sign = pct > 0 ? '+' : ''
   return (
@@ -70,13 +70,13 @@ const TAB_BASE =
   'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors'
 
 const TAB_ACTIVE =
-  'obs-glass text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+  'obs-glass text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.3)]'
 
 const TAB_IDLE =
-  'text-[rgba(212,175,55,0.50)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)] hover:text-[var(--brand-gold)]'
+  'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(var(--brand-gold-rgb),0.08)] hover:text-[var(--brand-gold)]'
 
 const FORM_INPUT =
-  'rounded-lg border border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-[color-mix(in_oklch,var(--brand-charcoal)_70%,transparent)] px-3 py-2 text-sm text-[var(--brand-gold-cream)] focus:border-[var(--brand-gold)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+  'rounded-lg border border-[rgba(var(--brand-gold-rgb),0.18)] bg-[rgba(var(--brand-charcoal-rgb),0.7)] px-3 py-2 text-sm text-[var(--brand-gold-cream)] focus:border-[var(--brand-gold)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--brand-gold-rgb),0.3)]'
 
 export interface ReconciliationHistoryViewProps {
   selectedProvider?: string | null
@@ -140,7 +140,7 @@ export function ReconciliationHistoryView({
       {rows.length === 0 ? (
         <div
           data-testid="reconciliation-empty"
-          className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-[oklch(0.115_0.012_70)] py-16 text-center"
+          className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[rgba(var(--brand-gold-rgb),0.18)] bg-[oklch(0.115_0.012_70)] py-16 text-center"
         >
           <span className="text-3xl text-[var(--brand-gold)] opacity-30">⚖</span>
           <p className="text-sm font-medium text-[rgba(212,175,55,0.50)]">
@@ -153,11 +153,11 @@ export function ReconciliationHistoryView({
       ) : (
         <div
           data-testid="reconciliation-table-wrapper"
-          className="overflow-x-auto rounded-xl border border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] bg-[oklch(0.115_0.012_70)]"
+          className="overflow-x-auto rounded-xl border border-[rgba(var(--brand-gold-rgb),0.12)] bg-[oklch(0.115_0.012_70)]"
         >
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-[color-mix(in_oklch,var(--brand-gold)_10%,transparent)]">
+              <tr className="border-b border-[rgba(var(--brand-gold-rgb),0.1)]">
                 {['Date', 'Provider', 'Period', 'Status', 'Authoritative', 'Computed', 'Variance %'].map(
                   (h) => (
                     <th
@@ -175,7 +175,7 @@ export function ReconciliationHistoryView({
                 <tr
                   key={row.reconciliation_id}
                   data-testid={`reconciliation-row-${row.reconciliation_id}`}
-                  className="border-b border-[color-mix(in_oklch,var(--brand-gold)_5%,transparent)] transition-colors hover:bg-[color-mix(in_oklch,var(--brand-gold)_4%,transparent)]"
+                  className="border-b border-[rgba(var(--brand-gold-rgb),0.05)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.04)]"
                 >
                   <td className="px-4 py-3 font-mono text-[10px] text-[rgba(212,175,55,0.55)]">
                     {fmtDate(row.created_at)}
@@ -224,7 +224,7 @@ export function ReconciliationHistoryView({
       )}
 
       {showUpload && (
-        <section className="rounded-xl border border-dashed border-[color-mix(in_oklch,var(--brand-gold)_22%,transparent)] bg-[oklch(0.115_0.012_70)] p-6">
+        <section className="rounded-xl border border-dashed border-[rgba(var(--brand-gold-rgb),0.22)] bg-[oklch(0.115_0.012_70)] p-6">
           <div className="mb-5 flex items-start gap-3">
             <UploadCloud
               size={20}
@@ -303,7 +303,7 @@ export function ReconciliationHistoryView({
                 data-testid="reconciliation-upload-file"
                 className={cn(
                   FORM_INPUT,
-                  'file:mr-3 file:rounded file:border-0 file:bg-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-[var(--brand-gold)]',
+                  'file:mr-3 file:rounded file:border-0 file:bg-[rgba(var(--brand-gold-rgb),0.15)] file:px-2 file:py-1 file:text-xs file:font-medium file:text-[var(--brand-gold)]',
                 )}
               />
             </div>

@@ -22,13 +22,13 @@ interface ObsHeroProps {
 
 const TONE_BG: Record<NonNullable<ObsHeroProps['tone']>, string> = {
   neutral:
-    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,color-mix(in_oklch,var(--brand-gold)_8%,transparent),transparent_70%)]',
+    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(var(--brand-gold-rgb),0.08),transparent_70%)]',
   good:
-    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,color-mix(in_oklch,var(--status-success)_14%,transparent),transparent_70%)]',
+    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(var(--status-success-rgb),0.14),transparent_70%)]',
   warn:
-    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,color-mix(in_oklch,var(--status-warn)_16%,transparent),transparent_70%)]',
+    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(var(--status-warn-rgb),0.16),transparent_70%)]',
   bad:
-    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,color-mix(in_oklch,var(--status-halt)_16%,transparent),transparent_70%)]',
+    'bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(var(--status-halt-rgb),0.16),transparent_70%)]',
 }
 
 export function ObsHero({
@@ -45,7 +45,7 @@ export function ObsHero({
   return (
     <header
       className={cn(
-        'relative border-b border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] px-6 pt-7 pb-5',
+        'relative border-b border-[rgba(var(--brand-gold-rgb),0.12)] px-6 pt-7 pb-5',
         TONE_BG[tone],
         className,
       )}

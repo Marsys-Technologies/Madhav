@@ -584,8 +584,8 @@ export function ConsumeChat({
                     className={[
                       'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
                       panelOptIn
-                        ? 'border-[color-mix(in_oklch,var(--brand-gold)_60%,transparent)] bg-[var(--brand-gold-faint)] text-[var(--brand-gold)]'
-                        : 'border-border text-muted-foreground hover:border-[color-mix(in_oklch,var(--brand-gold)_40%,transparent)] hover:bg-[var(--brand-gold-faint)] hover:text-[var(--brand-gold)]',
+                        ? 'border-[rgba(var(--brand-gold-rgb),0.6)] bg-[var(--brand-gold-faint)] text-[var(--brand-gold)]'
+                        : 'border-border text-muted-foreground hover:border-[rgba(var(--brand-gold-rgb),0.4)] hover:bg-[var(--brand-gold-faint)] hover:text-[var(--brand-gold)]',
                     ].join(' ')}
                     aria-label="Panel mode — run 3 independent models and adjudicate"
                   >
@@ -609,8 +609,8 @@ export function ConsumeChat({
                     className={[
                       'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
                       traceDrawerOpen
-                        ? 'border-[color-mix(in_oklch,var(--status-warn)_60%,transparent)] bg-[var(--status-warn-bg)] text-[var(--status-warn)] hover:bg-[var(--status-warn-bg)]'
-                        : 'border-border text-muted-foreground hover:border-[color-mix(in_oklch,var(--status-warn)_40%,transparent)] hover:bg-[var(--status-warn-bg)] hover:text-[var(--status-warn)]',
+                        ? 'border-[rgba(var(--status-warn-rgb),0.6)] bg-[var(--status-warn-bg)] text-[var(--status-warn)] hover:bg-[var(--status-warn-bg)]'
+                        : 'border-border text-muted-foreground hover:border-[rgba(var(--status-warn-rgb),0.4)] hover:bg-[var(--status-warn-bg)] hover:text-[var(--status-warn)]',
                     ].join(' ')}
                     aria-label="Toggle query trace drawer"
                   >

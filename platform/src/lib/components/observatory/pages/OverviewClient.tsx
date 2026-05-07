@@ -15,7 +15,6 @@ import type {
   TimeseriesResponse,
 } from '@/lib/observatory/types'
 import { CostOverTimeChart } from '../charts'
-import { CostByModelChart } from '../charts/CostByModelChart'
 import { FiltersBar } from '../filters/FiltersBar'
 import { useObservatoryFilters } from '../filters/useObservatoryFilters'
 import type { DateRangePresetId, ObservatoryFilters as UiFilters } from '../filters/types'
@@ -54,6 +53,7 @@ export function OverviewClient({
   })
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null)
 
   const refetch = React.useCallback(
     async (f: UiFilters) => {
@@ -72,6 +72,7 @@ export function OverviewClient({
         setSummary(s)
         setTimeseries(ts)
         setBreakdowns({ provider: prov, pipeline_stage: stage, model })
+        setLastUpdated(new Date())
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load observatory data')
       } finally {
@@ -83,6 +84,16 @@ export function OverviewClient({
 
   React.useEffect(() => {
     void refetch(filters)
+  }, [filters, refetch])
+
+  // Auto-refresh every 30s while the tab is visible. The "live" pill is a
+  // promise — without this it's stale until the user changes a filter.
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void refetch(filters)
+    }, 30_000)
+    return () => clearInterval(id)
   }, [filters, refetch])
 
   const modelOptions = React.useMemo(
@@ -101,6 +112,11 @@ export function OverviewClient({
       <CompareToggle
         active={filters.compare_to_previous ?? false}
         onChange={(compare_to_previous) => setFilters({ ...filters, compare_to_previous })}
+      />
+      <RefreshButton
+        loading={loading}
+        lastUpdated={lastUpdated}
+        onClick={() => void refetch(filters)}
       />
     </div>
   )
@@ -137,7 +153,7 @@ export function OverviewClient({
         <div
           data-testid="observatory-overview-error"
           role="alert"
-          className="rounded-xl border border-[color-mix(in_oklch,var(--status-halt)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-halt)_8%,transparent)] p-4 text-sm text-[var(--status-halt)]"
+          className="rounded-xl border border-[rgba(var(--status-halt-rgb),0.3)] bg-[rgba(var(--status-halt-rgb),0.08)] p-4 text-sm text-[var(--status-halt)]"
         >
           {error}
           <button
@@ -197,14 +213,11 @@ export function OverviewClient({
           {/* Pipeline-stage breakdown */}
           <section data-testid="observatory-overview-stage-breakdown">
             <SectionLabel>By pipeline stage</SectionLabel>
-            <ObsCard padding="normal">
-              <CostByModelChart
-                data={breakdowns.pipeline_stage}
-                dimension="pipeline_stage"
-                loading={loading && !breakdowns.pipeline_stage}
-                onRetry={() => void refetch(filters)}
-              />
-            </ObsCard>
+            <StackBreakdownCards
+              data={breakdowns.pipeline_stage}
+              loading={loading && !breakdowns.pipeline_stage}
+              dimension="pipeline_stage"
+            />
           </section>
 
           {/* All metrics drawer */}
@@ -258,7 +271,7 @@ function QuickDateToggle({
             onClick={() => onChange(value)}
             className={
               active
-                ? 'rounded-full bg-[color-mix(in_oklch,var(--brand-gold)_20%,transparent)] px-3 py-1 text-xs font-semibold text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--brand-gold)_30%,transparent)]'
+                ? 'rounded-full bg-[rgba(var(--brand-gold-rgb),0.2)] px-3 py-1 text-xs font-semibold text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.3)]'
                 : 'rounded-full px-3 py-1 text-xs font-medium text-[rgba(212,175,55,0.45)] hover:text-[var(--brand-gold)] transition-colors'
             }
           >
@@ -267,6 +280,47 @@ function QuickDateToggle({
         )
       })}
     </div>
+  )
+}
+
+function RefreshButton({
+  loading,
+  lastUpdated,
+  onClick,
+}: {
+  loading: boolean
+  lastUpdated: Date | null
+  onClick: () => void
+}) {
+  const [tick, setTick] = React.useState(0)
+  React.useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 15_000)
+    return () => clearInterval(id)
+  }, [])
+  void tick
+
+  const label = (() => {
+    if (loading) return 'Refreshing…'
+    if (!lastUpdated) return 'Refresh'
+    const sec = Math.max(0, Math.floor((Date.now() - lastUpdated.getTime()) / 1000))
+    if (sec < 5) return 'Just now'
+    if (sec < 60) return `${sec}s ago`
+    const min = Math.floor(sec / 60)
+    if (min < 60) return `${min}m ago`
+    return lastUpdated.toLocaleTimeString()
+  })()
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      title="Refresh observatory data"
+      className="obs-glass inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium text-[rgba(212,175,55,0.65)] hover:text-[var(--brand-gold)] transition-colors disabled:opacity-60"
+    >
+      <span aria-hidden="true" className={loading ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
+      <span className="tabular-nums">{label}</span>
+    </button>
   )
 }
 

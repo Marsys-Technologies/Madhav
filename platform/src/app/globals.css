@@ -146,6 +146,15 @@ body {
   --trace-blue-rgb:   60,130,210;   /* #3c82d2 — sql, factual */
   --trace-green-rgb:  40,180,120;   /* #28b478 — vector, discovery */
   --trace-red-rgb:    220,100,60;   /* #dc6428 — gcs, remedial, error */
+
+  /* Brand + status RGB aliases — same pattern, used by all components that previously  */
+  /* used color-mix(in_oklch,...) in Tailwind [arbitrary] values (triggers LightningCSS).*/
+  --brand-gold-rgb:     212,175,55;   /* oklch(0.78 0.13 80) ≈ #d4af37 */
+  --brand-charcoal-rgb: 13,10,5;      /* oklch(0.10 0.012 70) ≈ #0d0a05 */
+  --brand-ink-rgb:      2,2,1;        /* oklch(0.04 0.005 70) ≈ #020201 */
+  --status-warn-rgb:    212,175,55;   /* same as brand-gold */
+  --status-halt-rgb:    184,56,18;    /* oklch(0.55 0.20 25) ≈ #b83812 */
+  --status-success-rgb: 46,167,94;   /* oklch(0.70 0.12 145) ≈ #2ea75e */
 }
 
 /* Consume-shell scope: applies the brand gold/ink palette only to the consume

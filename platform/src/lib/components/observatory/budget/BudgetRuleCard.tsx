@@ -118,7 +118,7 @@ export function BudgetRuleCard({
         <>
           <div
             data-testid={`budget-rule-progress-${rule.budget_rule_id}`}
-            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[color-mix(in_oklch,var(--brand-gold)_8%,transparent)]"
+            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[rgba(var(--brand-gold-rgb),0.08)]"
             role="progressbar"
             aria-valuenow={Math.min(100, Math.round(evaluation.pct_used))}
             aria-valuemin={0}
@@ -170,14 +170,14 @@ export function BudgetRuleCard({
               setConfirming(false)
               onDeactivate()
             }}
-            className="rounded-lg border border-[color-mix(in_oklch,var(--status-halt)_40%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--status-halt)] transition-colors hover:bg-[color-mix(in_oklch,var(--status-halt)_10%,transparent)]"
+            className="rounded-lg border border-[rgba(var(--status-halt-rgb),0.4)] px-2.5 py-1 text-xs font-medium text-[var(--status-halt)] transition-colors hover:bg-[rgba(var(--status-halt-rgb),0.1)]"
           >
             Confirm
           </button>
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="rounded-lg border border-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.55)] transition-colors hover:text-[var(--brand-gold)]"
+            className="rounded-lg border border-[rgba(var(--brand-gold-rgb),0.15)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.55)] transition-colors hover:text-[var(--brand-gold)]"
           >
             Cancel
           </button>
@@ -187,7 +187,7 @@ export function BudgetRuleCard({
           type="button"
           data-testid={`budget-rule-deactivate-${rule.budget_rule_id}`}
           onClick={() => setConfirming(true)}
-          className="mt-4 rounded-lg border border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.45)] transition-colors hover:border-[color-mix(in_oklch,var(--status-halt)_30%,transparent)] hover:text-[var(--status-halt)]"
+          className="mt-4 rounded-lg border border-[rgba(var(--brand-gold-rgb),0.12)] px-2.5 py-1 text-xs text-[rgba(212,175,55,0.45)] transition-colors hover:border-[rgba(var(--status-halt-rgb),0.3)] hover:text-[var(--status-halt)]"
         >
           Deactivate
         </button>

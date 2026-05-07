@@ -10,10 +10,26 @@ types.setTypeParser(1700, parseFloat)
 
 let _pool: Pool | null = null
 
+// Recycle idle sockets before Cloud SQL Auth Proxy drops them (~10 min)
+// to avoid ECONNRESET on pooled-but-dead connections.
+const POOL_KEEPALIVE = {
+  keepAlive: true,
+  idleTimeoutMillis: 30_000,
+}
+
+function attachErrorHandler(pool: Pool): Pool {
+  pool.on('error', (err) => {
+    console.error('[pg pool] idle client error (evicted)', err)
+  })
+  return pool
+}
+
 async function initPool(): Promise<Pool> {
   if (process.env.DATABASE_URL) {
     // Local dev: Cloud SQL Auth Proxy via DATABASE_URL from .env.rag
-    return new Pool({ connectionString: process.env.DATABASE_URL })
+    return attachErrorHandler(
+      new Pool({ connectionString: process.env.DATABASE_URL, ...POOL_KEEPALIVE })
+    )
   }
   // Production (Cloud Run): cloud-sql-connector authenticates via ADC
   const { Connector } = await import('@google-cloud/cloud-sql-connector')
@@ -21,12 +37,15 @@ async function initPool(): Promise<Pool> {
   const clientOpts = await connector.getOptions({
     instanceConnectionName: process.env.INSTANCE_CONNECTION_NAME!,
   })
-  return new Pool({
-    ...clientOpts,
-    user: process.env.DB_USER!,
-    password: process.env.DB_PASSWORD!,
-    database: process.env.DB_NAME!,
-  })
+  return attachErrorHandler(
+    new Pool({
+      ...clientOpts,
+      user: process.env.DB_USER!,
+      password: process.env.DB_PASSWORD!,
+      database: process.env.DB_NAME!,
+      ...POOL_KEEPALIVE,
+    })
+  )
 }
 
 export async function getPool(): Promise<Pool> {
