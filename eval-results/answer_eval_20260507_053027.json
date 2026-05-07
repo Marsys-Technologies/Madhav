@@ -1,0 +1,164 @@
+{
+  "session": "GANGA-MOPUP-S1",
+  "phase": "D.1.1",
+  "base_url": "https://amjis-web-938361928218.asia-south1.run.app",
+  "prod_revision_at_run": "amjis-web-00044-sn5",
+  "timestamp": "20260507_053027",
+  "aggregate": {
+    "queries_run": 14,
+    "queries_total": 15,
+    "pass_count": 0,
+    "pass_total": 14,
+    "avg_layer_coverage_pct": 0,
+    "avg_b10_pct": 100,
+    "avg_b11_pct": 0,
+    "avg_citations_pct": 0,
+    "avg_calibration_pct": 0
+  },
+  "skipped": [
+    "GQ-002"
+  ],
+  "results": [
+    {
+      "qid": "GQ-001",
+      "category": "factual",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-003",
+      "category": "factual",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-004",
+      "category": "interpretive",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-005",
+      "category": "interpretive",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-006",
+      "category": "interpretive",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-007",
+      "category": "holistic",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-008",
+      "category": "holistic",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-009",
+      "category": "holistic",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-010",
+      "category": "discovery",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-011",
+      "category": "discovery",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-012",
+      "category": "discovery",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-013",
+      "category": "predictive",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-014",
+      "category": "predictive",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    },
+    {
+      "qid": "GQ-015",
+      "category": "predictive",
+      "layer_coverage_pct": 0,
+      "b10_pct": 100,
+      "b11_pct": 0,
+      "citations_pct": 0,
+      "calibration_pct": 0,
+      "result": "FAIL"
+    }
+  ],
+  "note": "answer_eval.ts does not write JSON natively; this summary reconstructed from log. Zero scores on citations/calibration/B11 indicate prod revision predates SYNTHESIS_PROMPT v2.0 / structured-citation output. Branch fixes (Phase 2 dasha + others) not yet deployed."
+}

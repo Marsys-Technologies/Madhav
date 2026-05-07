@@ -1,0 +1,425 @@
+{
+  "run_date": "2026-05-06T23:59:33.521484+00:00",
+  "base_url": "https://amjis-web-938361928218.asia-south1.run.app",
+  "planner_branch": "on",
+  "judge_enabled": true,
+  "aggregate": {
+    "fixture_count": 24,
+    "ok_count": 19,
+    "error_count": 5,
+    "keyword_recall": 0.0,
+    "signal_recall": 0.4211,
+    "synthesis": 0.0,
+    "weighted": 0.0
+  },
+  "results": [
+    {
+      "fixture_id": "F001",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"1205fb4e-6a64-4302-9c07-77d12450d65a\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 2608,
+      "error": null
+    },
+    {
+      "fixture_id": "F002",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"4d19fca9-121d-4389-9138-7bfed888ada2\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 5002,
+      "error": null
+    },
+    {
+      "fixture_id": "F003",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"25023123-9dee-483e-8086-c41899e48cef\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 11546,
+      "error": null
+    },
+    {
+      "fixture_id": "F004",
+      "type": "factual",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F005",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"e063edb9-8cfa-4212-9519-94a2c56cb290\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3248,
+      "error": null
+    },
+    {
+      "fixture_id": "F006",
+      "type": "signal_recall",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F007",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"e8aa63bb-1606-4717-81a4-75cffb44f5eb\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 5577,
+      "error": null
+    },
+    {
+      "fixture_id": "F008",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"645e7d90-b32a-45d8-b805-ce0452da48db\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 4009,
+      "error": null
+    },
+    {
+      "fixture_id": "F009",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"59c3d196-6d2e-4544-aad9-af4eef377165\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3772,
+      "error": null
+    },
+    {
+      "fixture_id": "F010",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"3b121637-0727-4e3b-bcb3-5b38ec3d659d\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 5680,
+      "error": null
+    },
+    {
+      "fixture_id": "F011",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"222f2290-b4e9-49ce-bd8c-e6ae75339d9b\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 4555,
+      "error": null
+    },
+    {
+      "fixture_id": "F012",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"f2cf4d59-339a-4956-b0fe-65542b10ae20\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3936,
+      "error": null
+    },
+    {
+      "fixture_id": "F013",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"0de13b45-1263-4bdf-a261-bcb53de43087\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 2826,
+      "error": null
+    },
+    {
+      "fixture_id": "F014",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"0d2846b0-0196-455b-a803-79bbf8d82022\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3346,
+      "error": null
+    },
+    {
+      "fixture_id": "F015",
+      "type": "temporal",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F016",
+      "type": "temporal",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F017",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"e65909c4-d6ad-4c60-aa3c-4c2aa12a71eb\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3210,
+      "error": null
+    },
+    {
+      "fixture_id": "F018",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"44d8112d-9306-4c39-8a24-d9a9d0896c70\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 6420,
+      "error": null
+    },
+    {
+      "fixture_id": "F019",
+      "type": "remedial",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties; /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F020",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"f9c78f44-2228-485d-897b-d7f40fd1ea6a\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 5882,
+      "error": null
+    },
+    {
+      "fixture_id": "F021",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"88b00b65-d25f-4163-a681-f38ef5db2e5f\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3499,
+      "error": null
+    },
+    {
+      "fixture_id": "F022",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"dfecb464-3d1f-4835-a12c-7207aabe0fe1\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 4431,
+      "error": null
+    },
+    {
+      "fixture_id": "F023",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"83ee0d8b-9b36-41ea-94f4-167d014333a0\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 2872,
+      "error": null
+    },
+    {
+      "fixture_id": "F024",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "data: {\"type\":\"start\",\"messageMetadata\":{\"conversationId\":\"0d9da8cc-526a-4a7e-a21a-69f6ce7ec626\",\"model\":\"nvidia/nemotron-3-super-120b-a12b\",\"stack\":\"nim\",\"style\":\"acharya\",\"disclosure_tier\":\"super_ad",
+      "latency_ms": 3744,
+      "error": null
+    }
+  ]
+}
