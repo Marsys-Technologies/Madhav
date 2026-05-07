@@ -48,49 +48,49 @@ interface Props {
 const STEP_TYPE_CONFIG = {
   deterministic: {
     label: 'DET',
-    color: 'bg-[color-mix(in_oklch,var(--trace-gold)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-gold)_75%,transparent)] border-[color-mix(in_oklch,var(--trace-gold)_25%,transparent)]',
+    color: 'bg-[rgba(var(--trace-gold-rgb),0.15)] text-[rgba(var(--trace-gold-rgb),0.75)] border-[rgba(var(--trace-gold-rgb),0.25)]',
   },
   llm: {
     label: 'LLM',
-    color: 'bg-[color-mix(in_oklch,var(--trace-violet)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-violet)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-violet)_25%,transparent)]',
+    color: 'bg-[rgba(var(--trace-violet-rgb),0.15)] text-[rgba(var(--trace-violet-rgb),0.85)] border-[rgba(var(--trace-violet-rgb),0.25)]',
   },
   sql: {
     label: 'SQL',
-    color: 'bg-[color-mix(in_oklch,var(--trace-blue)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-blue)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-blue)_25%,transparent)]',
+    color: 'bg-[rgba(var(--trace-blue-rgb),0.15)] text-[rgba(var(--trace-blue-rgb),0.85)] border-[rgba(var(--trace-blue-rgb),0.25)]',
   },
   vector: {
     label: 'VEC',
-    color: 'bg-[color-mix(in_oklch,var(--trace-green)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-green)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-green)_25%,transparent)]',
+    color: 'bg-[rgba(var(--trace-green-rgb),0.15)] text-[rgba(var(--trace-green-rgb),0.85)] border-[rgba(var(--trace-green-rgb),0.25)]',
   },
   gcs: {
     label: 'GCS',
-    color: 'bg-[color-mix(in_oklch,var(--trace-red)_15%,transparent)] text-[color-mix(in_oklch,var(--trace-red)_85%,transparent)] border-[color-mix(in_oklch,var(--trace-red)_25%,transparent)]',
+    color: 'bg-[rgba(var(--trace-red-rgb),0.15)] text-[rgba(var(--trace-red-rgb),0.85)] border-[rgba(var(--trace-red-rgb),0.25)]',
   },
 } as const
 
 const TIMELINE_BAR_COLOR = {
-  deterministic: 'bg-[color-mix(in_oklch,var(--trace-gold)_60%,transparent)]',
-  llm:           'bg-[color-mix(in_oklch,var(--trace-violet)_70%,transparent)]',
-  sql:           'bg-[color-mix(in_oklch,var(--trace-blue)_70%,transparent)]',
-  vector:        'bg-[color-mix(in_oklch,var(--trace-green)_70%,transparent)]',
-  gcs:           'bg-[color-mix(in_oklch,var(--trace-red)_70%,transparent)]',
+  deterministic: 'bg-[rgba(var(--trace-gold-rgb),0.6)]',
+  llm:           'bg-[rgba(var(--trace-violet-rgb),0.7)]',
+  sql:           'bg-[rgba(var(--trace-blue-rgb),0.7)]',
+  vector:        'bg-[rgba(var(--trace-green-rgb),0.7)]',
+  gcs:           'bg-[rgba(var(--trace-red-rgb),0.7)]',
 } as const
 
 const LAYER_COLOR = {
   L1:      {
-    dot: 'bg-[color-mix(in_oklch,var(--trace-gold)_85%,transparent)]',
-    bar: 'bg-[color-mix(in_oklch,var(--trace-gold)_85%,transparent)]',
-    text: 'text-[color-mix(in_oklch,var(--trace-gold)_90%,transparent)]',
+    dot: 'bg-[rgba(var(--trace-gold-rgb),0.85)]',
+    bar: 'bg-[rgba(var(--trace-gold-rgb),0.85)]',
+    text: 'text-[rgba(var(--trace-gold-rgb),0.9)]',
   },
   'L2.5':  {
-    dot: 'bg-[color-mix(in_oklch,var(--trace-violet)_85%,transparent)]',
-    bar: 'bg-[color-mix(in_oklch,var(--trace-violet)_85%,transparent)]',
-    text: 'text-[color-mix(in_oklch,var(--trace-violet)_90%,transparent)]',
+    dot: 'bg-[rgba(var(--trace-violet-rgb),0.85)]',
+    bar: 'bg-[rgba(var(--trace-violet-rgb),0.85)]',
+    text: 'text-[rgba(var(--trace-violet-rgb),0.9)]',
   },
   system:  {
-    dot: 'bg-[color-mix(in_oklch,var(--trace-gold)_40%,transparent)]',
-    bar: 'bg-[color-mix(in_oklch,var(--trace-gold)_40%,transparent)]',
-    text: 'text-[color-mix(in_oklch,var(--trace-gold)_60%,transparent)]',
+    dot: 'bg-[rgba(var(--trace-gold-rgb),0.4)]',
+    bar: 'bg-[rgba(var(--trace-gold-rgb),0.4)]',
+    text: 'text-[rgba(var(--trace-gold-rgb),0.6)]',
   },
 }
 

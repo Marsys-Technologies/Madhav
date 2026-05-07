@@ -24,20 +24,20 @@ interface Props {
 // ── Query class colour map (warm tonal palette, per §5.1 design system) ──────
 
 const QUERY_CLASS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  factual:       { bg: 'bg-[color-mix(in_oklch,var(--trace-blue)_12%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-blue)_90%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-blue)_30%,transparent)]',   label: 'FACTUAL' },
-  interpretive:  { bg: 'bg-[color-mix(in_oklch,var(--trace-gold)_12%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-gold)_90%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-gold)_35%,transparent)]',   label: 'INTERPRETIVE' },
-  predictive:    { bg: 'bg-[color-mix(in_oklch,var(--trace-red)_12%,transparent)]',    text: 'text-[color-mix(in_oklch,var(--trace-red)_90%,transparent)]',    border: 'border-[color-mix(in_oklch,var(--trace-red)_30%,transparent)]',    label: 'PREDICTIVE' },
-  cross_domain:  { bg: 'bg-[color-mix(in_oklch,var(--trace-violet)_12%,transparent)]', text: 'text-[color-mix(in_oklch,var(--trace-violet)_90%,transparent)]', border: 'border-[color-mix(in_oklch,var(--trace-violet)_30%,transparent)]', label: 'CROSS-DOMAIN' },
-  discovery:     { bg: 'bg-[color-mix(in_oklch,var(--trace-green)_12%,transparent)]',  text: 'text-[color-mix(in_oklch,var(--trace-green)_90%,transparent)]',  border: 'border-[color-mix(in_oklch,var(--trace-green)_30%,transparent)]',  label: 'DISCOVERY' },
-  holistic:      { bg: 'bg-[color-mix(in_oklch,var(--trace-gold)_16%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-gold)_95%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-gold)_45%,transparent)]',   label: 'HOLISTIC' },
-  remedial:      { bg: 'bg-[color-mix(in_oklch,var(--trace-red)_12%,transparent)]',    text: 'text-[color-mix(in_oklch,var(--trace-red)_85%,transparent)]',    border: 'border-[color-mix(in_oklch,var(--trace-red)_30%,transparent)]',    label: 'REMEDIAL' },
-  cross_native:  { bg: 'bg-[color-mix(in_oklch,var(--trace-blue)_12%,transparent)]',   text: 'text-[color-mix(in_oklch,var(--trace-blue)_85%,transparent)]',   border: 'border-[color-mix(in_oklch,var(--trace-blue)_30%,transparent)]',   label: 'CROSS-NATIVE' },
+  factual:       { bg: 'bg-[rgba(var(--trace-blue-rgb),0.12)]',   text: 'text-[rgba(var(--trace-blue-rgb),0.9)]',   border: 'border-[rgba(var(--trace-blue-rgb),0.3)]',   label: 'FACTUAL' },
+  interpretive:  { bg: 'bg-[rgba(var(--trace-gold-rgb),0.12)]',   text: 'text-[rgba(var(--trace-gold-rgb),0.9)]',   border: 'border-[rgba(var(--trace-gold-rgb),0.35)]',   label: 'INTERPRETIVE' },
+  predictive:    { bg: 'bg-[rgba(var(--trace-red-rgb),0.12)]',    text: 'text-[rgba(var(--trace-red-rgb),0.9)]',    border: 'border-[rgba(var(--trace-red-rgb),0.3)]',    label: 'PREDICTIVE' },
+  cross_domain:  { bg: 'bg-[rgba(var(--trace-violet-rgb),0.12)]', text: 'text-[rgba(var(--trace-violet-rgb),0.9)]', border: 'border-[rgba(var(--trace-violet-rgb),0.3)]', label: 'CROSS-DOMAIN' },
+  discovery:     { bg: 'bg-[rgba(var(--trace-green-rgb),0.12)]',  text: 'text-[rgba(var(--trace-green-rgb),0.9)]',  border: 'border-[rgba(var(--trace-green-rgb),0.3)]',  label: 'DISCOVERY' },
+  holistic:      { bg: 'bg-[rgba(var(--trace-gold-rgb),0.16)]',   text: 'text-[rgba(var(--trace-gold-rgb),0.95)]',   border: 'border-[rgba(var(--trace-gold-rgb),0.45)]',   label: 'HOLISTIC' },
+  remedial:      { bg: 'bg-[rgba(var(--trace-red-rgb),0.12)]',    text: 'text-[rgba(var(--trace-red-rgb),0.85)]',    border: 'border-[rgba(var(--trace-red-rgb),0.3)]',    label: 'REMEDIAL' },
+  cross_native:  { bg: 'bg-[rgba(var(--trace-blue-rgb),0.12)]',   text: 'text-[rgba(var(--trace-blue-rgb),0.85)]',   border: 'border-[rgba(var(--trace-blue-rgb),0.3)]',   label: 'CROSS-NATIVE' },
 }
 
 const UNKNOWN_CLASS_STYLE = {
-  bg: 'bg-[color-mix(in_oklch,var(--trace-gold)_6%,transparent)]',
-  text: 'text-[color-mix(in_oklch,var(--trace-gold)_60%,transparent)]',
-  border: 'border-[color-mix(in_oklch,var(--trace-gold)_20%,transparent)]',
+  bg: 'bg-[rgba(var(--trace-gold-rgb),0.06)]',
+  text: 'text-[rgba(var(--trace-gold-rgb),0.6)]',
+  border: 'border-[rgba(var(--trace-gold-rgb),0.2)]',
   label: 'UNCLASSIFIED',
 }
 

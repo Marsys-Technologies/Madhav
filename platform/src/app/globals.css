@@ -139,11 +139,13 @@ body {
   --brand-gold-faint: oklch(0.78 0.13 80 / 0.12);
 
   /* Trace / pipeline semantic colours (TracePanel, QueryDNAPanel) — closes TODO(J.1) */
-  --trace-gold:   oklch(0.78 0.13 80);    /* ≈ #d4af37 — L1, temporal, holistic */
-  --trace-violet: oklch(0.60 0.18 290);   /* ≈ #a06edc — L2.5, llm, cross_domain */
-  --trace-blue:   oklch(0.55 0.16 250);   /* ≈ #3c82d2 — sql, factual */
-  --trace-green:  oklch(0.65 0.16 160);   /* ≈ #28b478 — vector, discovery */
-  --trace-red:    oklch(0.60 0.18 35);    /* ≈ #dc6428 — gcs, remedial, error */
+  /* RGB component form (r,g,b) — used as rgba(var(--trace-X-rgb),alpha) in Tailwind    */
+  /* arbitrary values. Avoids color-mix() which triggers LightningCSS native binary.    */
+  --trace-gold-rgb:   212,175,55;   /* #d4af37 — L1, temporal, holistic */
+  --trace-violet-rgb: 160,110,220;  /* #a06edc — L2.5, llm, cross_domain */
+  --trace-blue-rgb:   60,130,210;   /* #3c82d2 — sql, factual */
+  --trace-green-rgb:  40,180,120;   /* #28b478 — vector, discovery */
+  --trace-red-rgb:    220,100,60;   /* #dc6428 — gcs, remedial, error */
 }
 
 /* Consume-shell scope: applies the brand gold/ink palette only to the consume
