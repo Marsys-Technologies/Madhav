@@ -2,9 +2,10 @@
 
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -221,7 +222,7 @@ export function CostOverTimeChart({
       className="h-72 w-full"
     >
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
+        <ComposedChart
           data={chartRows}
           onClick={handleChartClick as never}
           style={{ background: 'transparent' }}
@@ -259,10 +260,23 @@ export function CostOverTimeChart({
               stackId="cost"
               stroke={colorForDimension(dimension, value)}
               fill={colorForDimension(dimension, value)}
-              fillOpacity={0.5}
+              fillOpacity={0.55}
             />
           ))}
-        </AreaChart>
+          {/* Total line — answers "is the absolute total trending?" while the
+              stacks answer "who's spending?". */}
+          <Line
+            type="monotone"
+            dataKey="__total"
+            name="total"
+            stroke="var(--brand-gold-cream)"
+            strokeWidth={1.25}
+            strokeOpacity={0.9}
+            dot={{ r: 2, fill: 'var(--brand-gold-cream)', strokeWidth: 0 }}
+            activeDot={{ r: 3, fill: 'var(--brand-gold-cream)' }}
+            isAnimationActive={false}
+          />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )

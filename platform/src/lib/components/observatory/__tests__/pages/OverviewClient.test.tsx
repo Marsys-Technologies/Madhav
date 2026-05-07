@@ -78,10 +78,12 @@ describe('OverviewClient (S1.13 wiring)', () => {
       screen.getByTestId('observatory-overview-stage-breakdown'),
     ).toBeInTheDocument()
 
-    // Each of the 5 fetches fires exactly once for the initial filters.
+    // Six fetches fire on initial load: summary + two timeseries (provider +
+    // pipeline_stage, the second added so stage cards get sparklines and the
+    // stage stacked-bar gets a series row) + three breakdowns.
     await waitFor(() => {
       expect(api.getSummary).toHaveBeenCalledTimes(1)
-      expect(api.getTimeseries).toHaveBeenCalledTimes(1)
+      expect(api.getTimeseries).toHaveBeenCalledTimes(2)
       expect(api.getBreakdowns).toHaveBeenCalledTimes(3)
     })
 

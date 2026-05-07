@@ -20,6 +20,7 @@ import { useObservatoryFilters } from '../filters/useObservatoryFilters'
 import type { DateRangePresetId, ObservatoryFilters as UiFilters } from '../filters/types'
 import { KpiTilesRow } from '../kpi/KpiTilesRow'
 import { StackBreakdownCards } from '../StackBreakdownCards'
+import { StackedDistributionBar } from '../StackedDistributionBar'
 import { EmptyObservatoryState } from '../EmptyObservatoryState'
 import { uiToApiFilters, uiToDashboardRange } from './filterAdapter'
 import { ObsPageShell, ObsCard, SectionLabel } from '../shared'
@@ -46,6 +47,7 @@ export function OverviewClient({
   const { filters, setFilters } = useObservatoryFilters()
   const [summary, setSummary] = React.useState<SummaryResponse | null>(null)
   const [timeseries, setTimeseries] = React.useState<TimeseriesResponse | null>(null)
+  const [stageTimeseries, setStageTimeseries] = React.useState<TimeseriesResponse | null>(null)
   const [breakdowns, setBreakdowns] = React.useState<GroupedBreakdowns>({
     provider: null,
     pipeline_stage: null,
@@ -62,15 +64,17 @@ export function OverviewClient({
       try {
         const range = uiToDashboardRange(f)
         const apiF = uiToApiFilters(f)
-        const [s, ts, prov, stage, model] = await Promise.all([
+        const [s, ts, tsStage, prov, stage, model] = await Promise.all([
           apiClient.getSummary({ ...range, compare_to_previous: f.compare_to_previous, filters: apiF }),
           apiClient.getTimeseries({ ...range, granularity: 'day', dimension: 'provider', filters: apiF }),
+          apiClient.getTimeseries({ ...range, granularity: 'day', dimension: 'pipeline_stage', filters: apiF }),
           apiClient.getBreakdowns({ ...range, dimension: 'provider', filters: apiF }),
           apiClient.getBreakdowns({ ...range, dimension: 'pipeline_stage', filters: apiF }),
           apiClient.getBreakdowns({ ...range, dimension: 'model', filters: apiF }),
         ])
         setSummary(s)
         setTimeseries(ts)
+        setStageTimeseries(tsStage)
         setBreakdowns({ provider: prov, pipeline_stage: stage, model })
         setLastUpdated(new Date())
       } catch (e) {
@@ -182,12 +186,18 @@ export function OverviewClient({
             />
           </section>
 
-          {/* Provider stack breakdown */}
-          <section data-testid="observatory-overview-provider-breakdown">
+          {/* Provider stack breakdown — stacked bar overview + per-provider sparkline cards */}
+          <section data-testid="observatory-overview-provider-breakdown" className="flex flex-col gap-3">
             <SectionLabel>By provider stack</SectionLabel>
+            <StackedDistributionBar
+              data={breakdowns.provider}
+              loading={loading && !breakdowns.provider}
+              dimension="provider"
+            />
             <StackBreakdownCards
               data={breakdowns.provider}
               loading={loading && !breakdowns.provider}
+              series={timeseries}
             />
           </section>
 
@@ -210,13 +220,19 @@ export function OverviewClient({
             </ObsCard>
           </section>
 
-          {/* Pipeline-stage breakdown */}
-          <section data-testid="observatory-overview-stage-breakdown">
+          {/* Pipeline-stage breakdown — stacked bar overview + per-stage sparkline cards */}
+          <section data-testid="observatory-overview-stage-breakdown" className="flex flex-col gap-3">
             <SectionLabel>By pipeline stage</SectionLabel>
+            <StackedDistributionBar
+              data={breakdowns.pipeline_stage}
+              loading={loading && !breakdowns.pipeline_stage}
+              dimension="pipeline_stage"
+            />
             <StackBreakdownCards
               data={breakdowns.pipeline_stage}
               loading={loading && !breakdowns.pipeline_stage}
               dimension="pipeline_stage"
+              series={stageTimeseries}
             />
           </section>
 
