@@ -186,7 +186,12 @@ async function callSynthesisEndpoint(query: string): Promise<string> {
   }
 
   const AUTH_TOKEN = process.env.AUTH_TOKEN
-  const evalHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+  const evalHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    // Disable keep-alive so a timed-out or reset connection is never reused
+    // by the next request (fixes cascading fetch-failed after GQ-006 timeout)
+    'Connection': 'close',
+  }
   // Server uses cookie-based session auth (__session); Bearer fallback for forward compat
   if (AUTH_TOKEN) evalHeaders['Cookie'] = `__session=${AUTH_TOKEN}`
 
@@ -194,7 +199,7 @@ async function callSynthesisEndpoint(query: string): Promise<string> {
     method: 'POST',
     headers: evalHeaders,
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000), // 2 min timeout
+    signal: AbortSignal.timeout(130_000), // 2m10s — slight buffer over server timeout
   })
 
   if (!res.ok) {
