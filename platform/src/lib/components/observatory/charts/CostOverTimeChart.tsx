@@ -108,7 +108,9 @@ interface CostTooltipProps {
 
 function CostTooltip({ active, payload, label, granularity }: CostTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
-  const total = payload.reduce((sum, p) => sum + (p.value ?? 0), 0)
+  const total = payload
+    .filter((p) => p.name !== 'total')
+    .reduce((sum, p) => sum + (p.value ?? 0), 0)
   return (
     <div
       data-testid="cost-over-time-tooltip"

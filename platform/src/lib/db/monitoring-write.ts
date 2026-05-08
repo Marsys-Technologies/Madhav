@@ -166,7 +166,10 @@ export async function writeContextAssemblyLog(
 }
 
 export function resolveProvider(modelId: string): string {
-  return getModelMeta(modelId)?.provider ?? 'unknown'
+  const raw = getModelMeta(modelId)?.provider ?? 'unknown'
+  if (raw === 'google') return 'gemini'
+  if (raw === 'nvidia') return 'nim'
+  return raw
 }
 
 export async function writeObservatoryQueryEvent(
