@@ -686,6 +686,8 @@ export async function POST(request: Request) {
             // currently surfaced as a separate model in this route — left null.
             planning_model_id: plannerModelIdUsed ?? null,
             planning_latency_ms: plannerLatencyMs ?? null,
+            // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
+            planner_active: planSchema !== null && !plannerFallbackUsed,
             context_assembler_model_id: null,
             context_assembler_latency_ms: null,
           }
@@ -700,6 +702,7 @@ export async function POST(request: Request) {
             queryId,
             planning_model_id: plannerModelIdUsed ?? null,
             planning_latency_ms: plannerLatencyMs ?? null,
+            planner_active: planSchema !== null && !plannerFallbackUsed,
             context_assembler_model_id: null,
             context_assembler_latency_ms: null,
           }
