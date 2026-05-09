@@ -100,9 +100,9 @@ export async function writeToolExecutionLog(
          token_estimate, data_asset_id, error_code, served_from_cache,
          fallback_used,
          raw_result_count, kept_result_count, dropped_items, kept_items,
-         tool_input_payload, tool_output_summary, error_class)
+         tool_input_payload, tool_output_summary, error_class, retrieval_score)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-               $12, $13, $14, $15, $16, $17, $18)`,
+               $12, $13, $14, $15, $16, $17, $18, $19)`,
       [
         row.query_id,
         row.tool_name,
@@ -126,6 +126,7 @@ export async function writeToolExecutionLog(
         row.tool_output_summary === null || row.tool_output_summary === undefined
           ? null : JSON.stringify(row.tool_output_summary),
         row.error_class ?? 'OK',
+        row.retrieval_score ?? null,
       ]
     )
   } catch (err) {
@@ -165,7 +166,10 @@ export async function writeContextAssemblyLog(
 }
 
 export function resolveProvider(modelId: string): string {
-  return getModelMeta(modelId)?.provider ?? 'unknown'
+  const raw = getModelMeta(modelId)?.provider ?? 'unknown'
+  if (raw === 'google') return 'gemini'
+  if (raw === 'nvidia') return 'nim'
+  return raw
 }
 
 export async function writeObservatoryQueryEvent(

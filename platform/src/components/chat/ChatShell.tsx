@@ -108,7 +108,7 @@ export function ChatShell({
           type="button"
           onClick={onToggleDesktopSidebar}
           aria-label="Expand sidebar"
-          className="hidden md:flex fixed left-0 top-1/2 z-10 -translate-y-1/2 h-24 w-2 hover:w-8 transition-all duration-200 rounded-r bg-[color-mix(in_oklch,var(--brand-gold)_25%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand-gold)_60%,transparent)] items-center justify-center overflow-hidden"
+          className="hidden md:flex fixed left-0 top-1/2 z-10 -translate-y-1/2 h-24 w-2 hover:w-8 transition-all duration-200 rounded-r bg-[rgba(var(--brand-gold-rgb),0.25)] hover:bg-[rgba(var(--brand-gold-rgb),0.6)] items-center justify-center overflow-hidden"
         >
           <PanelLeft className="h-4 w-4 text-[var(--brand-charcoal)] opacity-0 group-hover:opacity-100 shrink-0" />
         </button>

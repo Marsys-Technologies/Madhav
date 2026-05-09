@@ -125,7 +125,7 @@ export function UsersTable({
 
   return (
     <section className={adminCard + ' overflow-hidden'}>
-      <header className="flex items-center justify-between gap-3 border-b border-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)] px-6 py-4">
+      <header className="flex items-center justify-between gap-3 border-b border-[rgba(var(--brand-gold-rgb),0.15)] px-6 py-4">
         <h2 className="font-serif text-lg text-brand-gold-cream">Users</h2>
         <div className="flex items-center gap-3">
           <input
@@ -133,7 +133,7 @@ export function UsersTable({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search…"
-            className="rounded-md border border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-brand-ink px-3 py-1.5 text-sm text-brand-gold-cream placeholder:text-muted-foreground focus:border-brand-gold focus:outline-none"
+            className="rounded-md border border-[rgba(var(--brand-gold-rgb),0.18)] bg-brand-ink px-3 py-1.5 text-sm text-brand-gold-cream placeholder:text-muted-foreground focus:border-brand-gold focus:outline-none"
           />
           <button onClick={() => setNewUserOpen(true)} className={adminPrimaryBtn}>
             + New user
@@ -184,7 +184,7 @@ export function UsersTable({
                     <td className={adminTableTd + ' text-right'}>
                       {isMe ? null : (
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="rounded border border-[color-mix(in_oklch,var(--brand-gold)_22%,transparent)] px-3 py-1 text-xs text-brand-gold hover:border-brand-gold hover:text-brand-gold-cream">
+                          <DropdownMenuTrigger className="rounded border border-[rgba(var(--brand-gold-rgb),0.22)] px-3 py-1 text-xs text-brand-gold hover:border-brand-gold hover:text-brand-gold-cream">
                             Actions
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-brand-ink text-brand-gold-cream">
@@ -280,7 +280,7 @@ export function UsersTable({
             value={resetLink}
             rows={3}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full break-all rounded border border-[color-mix(in_oklch,var(--brand-gold)_18%,transparent)] bg-brand-ink p-3 font-mono text-xs text-brand-gold-cream"
+            className="w-full break-all rounded border border-[rgba(var(--brand-gold-rgb),0.18)] bg-brand-ink p-3 font-mono text-xs text-brand-gold-cream"
           />
           <div className="mt-2 flex justify-end">
             <button onClick={() => setResetLink(null)} className={adminGhostBtn}>

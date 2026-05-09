@@ -1,0 +1,46 @@
+
+MARSYS-JIS Answer Eval Harness
+BASE_URL: https://amjis-web-938361928218.asia-south1.run.app  CHART_ID: 362f9f17-95a5-490b-a5a7-027d3e0efda0  STACK: nim
+Running 15 golden queries...
+
+  GQ-001 [factual] ... ❌
+  GQ-002 [factual] ... skipped (HTTP 500 Internal Server Error)
+  GQ-003 [factual] ... ❌
+  GQ-004 [interpretive] ... ❌
+  GQ-005 [interpretive] ... ❌
+  GQ-006 [interpretive] ... ❌
+  GQ-007 [holistic] ... ❌
+  GQ-008 [holistic] ... ❌
+  GQ-009 [holistic] ... ❌
+  GQ-010 [discovery] ... ❌
+  GQ-011 [discovery] ... ❌
+  GQ-012 [discovery] ... ❌
+  GQ-013 [predictive] ... ❌
+  GQ-014 [predictive] ... ❌
+  GQ-015 [predictive] ... ❌
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+QID     Category      LayerCov  B10    B11    Cites   Calib   RESULT
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+GQ-001  factual         0%      100%     0%     0%      0%    ❌ FAIL
+GQ-002  factual       SKIPPED — HTTP 500 Internal Server Error
+GQ-003  factual         0%      100%     0%     0%      0%    ❌ FAIL
+GQ-004  interpretive    0%      100%     0%     0%      0%    ❌ FAIL
+GQ-005  interpretive    0%      100%     0%     0%      0%    ❌ FAIL
+GQ-006  interpretive    0%      100%     0%     0%      0%    ❌ FAIL
+GQ-007  holistic        0%      100%     0%     0%      0%    ❌ FAIL
+GQ-008  holistic        0%      100%     0%     0%      0%    ❌ FAIL
+GQ-009  holistic        0%      100%     0%     0%      0%    ❌ FAIL
+GQ-010  discovery       0%      100%     0%     0%      0%    ❌ FAIL
+GQ-011  discovery       0%      100%     0%     0%      0%    ❌ FAIL
+GQ-012  discovery       0%      100%     0%     0%      0%    ❌ FAIL
+GQ-013  predictive      0%      100%     0%     0%      0%    ❌ FAIL
+GQ-014  predictive      0%      100%     0%     0%      0%    ❌ FAIL
+GQ-015  predictive      0%      100%     0%     0%      0%    ❌ FAIL
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+AGGREGATE:
+  Queries run:   14 / 15 (1 skipped)
+  Pass rate:     0 / 14 (0%)
+  Avg scores:    layer_coverage=  0%  b10=100%  b11=  0%  citations=  0%  calibration=  0%
+

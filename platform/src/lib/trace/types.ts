@@ -105,6 +105,15 @@ export interface TraceDataSummary {
   error_reason?: string
   /** step_error step: which pipeline stage failed (classify|compose|tool_fetch|synthesis). */
   error_stage?: string
+  // ── P5 D.5.1 additive (context_assembly short-circuit) ─────────────────────
+  /** context_assembly: true when the LLM call was skipped. */
+  short_circuited?: boolean
+  /** context_assembly: short-circuit reason ('token_threshold' | 'flag_off'). */
+  reason?: string
+  /** context_assembly: estimated total tokens of the bundle examined. */
+  total_token_estimate?: number
+  /** context_assembly: token threshold used for the short-circuit decision. */
+  threshold?: number
 }
 
 /** Full drill-down content stored in payload column */

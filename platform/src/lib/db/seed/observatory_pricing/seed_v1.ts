@@ -84,6 +84,9 @@ const PRICING_V1: PricingSeedRow[] = [
   { provider: 'gemini', model: 'gemini-2.5-flash', token_class: 'input',  price_per_million_usd: 0.30, source_url: 'https://ai.google.dev/gemini-api/docs/pricing' },
   { provider: 'gemini', model: 'gemini-2.5-flash', token_class: 'output', price_per_million_usd: 2.50, source_url: 'https://ai.google.dev/gemini-api/docs/pricing' },
 
+  { provider: 'gemini', model: 'gemini-2.5-flash-lite', token_class: 'input',  price_per_million_usd: 0.015, source_url: 'https://ai.google.dev/gemini-api/docs/pricing' },
+  { provider: 'gemini', model: 'gemini-2.5-flash-lite', token_class: 'output', price_per_million_usd: 0.060, source_url: 'https://ai.google.dev/gemini-api/docs/pricing' },
+
   // ---------------------------------------------------------------------------
   // DeepSeek — https://api-docs.deepseek.com/quick_start/pricing
   // V3 chat: cache-miss input $0.27, output $1.10, cache-hit input $0.07.

@@ -33,6 +33,7 @@ import {
 import { buildPlannerContext } from '@/lib/pipeline/planner_context_builder'
 import type { PlanningStartEvent, PlanningDoneEvent, TraceEvent } from '@/lib/trace/types'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
+import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { writePlanAlternatives } from '@/lib/db/trace/plan_alternatives_writer'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
@@ -74,6 +75,15 @@ function isRateLimitError(err: unknown): boolean {
   if (e.status === 429 || e.statusCode === 429) return true
   if (typeof e.message === 'string' && e.message.includes('429')) return true
   if (typeof e.message === 'string' && e.message.toLowerCase().includes('rate')) return true
+  return false
+}
+
+function isServerError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { status?: number; statusCode?: number; message?: string }
+  if (e.status === 500 || e.statusCode === 500) return true
+  if (e.status === 503 || e.statusCode === 503) return true
+  if (typeof e.message === 'string' && /\b(500|503|internal server error|service unavailable)\b/i.test(e.message)) return true
   return false
 }
 
@@ -319,7 +329,7 @@ export async function callLlmPlanner(
   let activeModelId = plannerModelId
   let fallbackWasUsed = false
   for (let attempt = 0; attempt <= MAX_PLANNER_RETRIES; attempt++) {
-    activeModelId = (attempt > 0 && fallbackModelId && isRateLimitError(lastErr))
+    activeModelId = (attempt > 0 && fallbackModelId && (isRateLimitError(lastErr) || isServerError(lastErr)))
       ? fallbackModelId
       : plannerModelId
     fallbackWasUsed = activeModelId !== plannerModelId
@@ -353,9 +363,9 @@ export async function callLlmPlanner(
       break
     } catch (err) {
       lastErr = err
-      if (isRateLimitError(err) && attempt === 0 && fallbackModelId) {
+      if ((isRateLimitError(err) || isServerError(err)) && attempt === 0 && fallbackModelId) {
         console.warn(
-          `[manifest_planner] 429 on primary ${plannerModelId}, retrying with fallback ${fallbackModelId}`,
+          `[manifest_planner] ${isRateLimitError(err) ? '429' : '500/503'} on primary ${plannerModelId}, retrying with fallback ${fallbackModelId}`,
         )
         continue
       }
@@ -464,7 +474,10 @@ export async function callLlmPlanner(
       output_tokens: result.usage?.outputTokens ?? null,
       reasoning_tokens: null,
       latency_ms,
-      cost_usd: null,
+      cost_usd: computeCostUsd(getModelPricingSync(activeModelId), {
+        input_tokens: result.usage?.inputTokens ?? null,
+        output_tokens: result.usage?.outputTokens ?? null,
+      }),
       fallback_used: fallbackWasUsed,
       error_code: null,
       payload: null,

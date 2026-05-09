@@ -25,9 +25,9 @@ export function TraceDrawer({ queryId, open, onOpenChange }: Props) {
       <SheetContent
         side="right"
         showCloseButton={true}
-        className="w-[65vw] min-w-[700px] max-w-[1100px] p-0 flex flex-col gap-0 bg-brand-ink border-l border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)]"
+        className="w-[65vw] min-w-[700px] max-w-[1100px] p-0 flex flex-col gap-0 bg-brand-ink border-l border-[rgba(var(--brand-gold-rgb),0.12)]"
       >
-        <SheetHeader className="px-4 py-2.5 border-b border-[color-mix(in_oklch,var(--brand-gold)_12%,transparent)] bg-[color-mix(in_oklch,var(--brand-ink)_85%,var(--brand-gold)_15%)] flex-shrink-0">
+        <SheetHeader className="px-4 py-2.5 border-b border-[rgba(var(--brand-gold-rgb),0.12)] bg-[#211c0a] flex-shrink-0">
           <SheetTitle className="text-[13px] font-bold text-brand-gold-cream">
             Query Trace
           </SheetTitle>

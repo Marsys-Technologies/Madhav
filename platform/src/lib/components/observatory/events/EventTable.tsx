@@ -183,22 +183,24 @@ export function EventTable({
   return (
     <div data-testid="event-table" className="flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(var(--brand-gold-rgb),0.08)]">
         <span
           data-testid="event-table-count"
-          className="text-xs text-[rgba(212,175,55,0.45)]"
+          className="bt-label bt-label-upper text-[rgba(212,175,55,0.55)] tabular-nums"
         >
-          Showing {rows.length} of {totalCount}
+          Showing <span className="text-[var(--brand-gold-cream)]">{rows.length}</span>
+          {' of '}
+          <span className="text-[var(--brand-gold-cream)]">{totalCount}</span>
         </span>
         <button
           type="button"
           data-testid="event-table-columns-toggle"
           onClick={() => setShowColumnPanel((s) => !s)}
           className={cn(
-            'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
+            'rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors',
             showColumnPanel
-              ? 'border-[rgba(212,175,55,0.4)] bg-[rgba(212,175,55,0.12)] text-[#d4af37]'
-              : 'border-[rgba(212,175,55,0.12)] text-[rgba(212,175,55,0.45)] hover:text-[#d4af37]',
+              ? 'bg-[rgba(var(--brand-gold-rgb),0.16)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(var(--brand-gold-rgb),0.28)]'
+              : 'text-[rgba(212,175,55,0.55)] hover:bg-[rgba(var(--brand-gold-rgb),0.08)] hover:text-[var(--brand-gold)]',
           )}
         >
           Columns
@@ -331,10 +333,10 @@ export function EventTable({
               data-event-id={row.event_id}
               onClick={() => onRowClick?.(row)}
               className={cn(
-                'grid w-full grid-flow-col items-center gap-2 border-b border-[rgba(212,175,55,0.06)] px-4 text-left text-xs transition-colors',
-                'hover:bg-[rgba(212,175,55,0.04)]',
+                'grid w-full grid-flow-col items-center gap-2 border-b border-[rgba(var(--brand-gold-rgb),0.05)] px-4 text-left text-xs transition-all',
+                'hover:bg-[rgba(var(--brand-gold-rgb),0.05)]',
                 selectedEventId === row.event_id &&
-                  'bg-[rgba(212,175,55,0.08)] border-l-2 border-l-[#d4af37]',
+                  'bg-[rgba(var(--brand-gold-rgb),0.1)] shadow-[inset_3px_0_0_0_var(--brand-gold),inset_0_0_24px_rgba(var(--brand-gold-rgb),0.08)]',
               )}
               style={{
                 gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(0, 1fr))`,

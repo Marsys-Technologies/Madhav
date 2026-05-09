@@ -1,39 +1,49 @@
 'use client'
 import * as React from 'react'
+import { ObsHero } from './ObsHero'
 
 interface ObsPageShellProps {
   title: string
   subtitle?: string
   headerRight?: React.ReactNode
+  /** Optional bottom slot under the hero (advanced filters, secondary tabs). */
+  headerBottom?: React.ReactNode
+  /** Render the Devanagari accent on the title. */
+  devanagari?: boolean
+  /** Tone-tinted radial backdrop behind the hero. */
+  tone?: 'neutral' | 'good' | 'warn' | 'bad'
+  /** Show the live-data dot. */
+  live?: boolean
+  liveLabel?: string
   children: React.ReactNode
   testId?: string
 }
 
-export function ObsPageShell({ title, subtitle, headerRight, children, testId }: ObsPageShellProps) {
+export function ObsPageShell({
+  title,
+  subtitle,
+  headerRight,
+  headerBottom,
+  devanagari,
+  tone,
+  live,
+  liveLabel,
+  children,
+  testId,
+}: ObsPageShellProps) {
   return (
-    <div
-      data-testid={testId}
-      className="min-h-full bg-[var(--brand-charcoal,oklch(0.10_0.012_70))]"
-    >
-      {/* Page header */}
-      <div className="border-b border-[rgba(212,175,55,0.10)] px-6 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-heading text-xl font-semibold text-[#fce29a] tracking-wide">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-0.5 text-xs text-[rgba(212,175,55,0.45)]">{subtitle}</p>
-            )}
-          </div>
-          {headerRight && <div>{headerRight}</div>}
-        </div>
-      </div>
-
-      {/* Page content */}
-      <div className="flex flex-col gap-8 p-6">
-        {children}
-      </div>
+    <div data-testid={testId} className="obs-shell page-ascend min-h-full">
+      <ObsHero
+        title={title}
+        subtitle={subtitle}
+        devanagari={devanagari}
+        tone={tone}
+        live={live}
+        liveLabel={liveLabel}
+        right={headerRight}
+        bottom={headerBottom}
+      />
+      <div className="flex flex-col gap-8 p-6">{children}</div>
     </div>
   )
 }

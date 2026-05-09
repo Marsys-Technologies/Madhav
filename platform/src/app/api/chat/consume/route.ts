@@ -41,7 +41,11 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
-import { contextAssembler } from '@/lib/synthesis/context_assembler'
+import {
+  contextAssembler,
+  CONTEXT_ASSEMBLY_TOKEN_THRESHOLD,
+  estimateBundleTokens,
+} from '@/lib/synthesis/context_assembler'
 import type { ContextBundle } from '@/lib/synthesis/types'
 import { validateCitations } from '@/lib/synthesis/citation_check'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
@@ -58,6 +62,7 @@ import {
   resolveProvider,
 } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
+import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 
@@ -542,7 +547,10 @@ export async function POST(request: Request) {
 
     let assembledBundle: ContextBundle | null = null
     let synthesisToolResults: ToolBundle[] = validToolResults
-    if (effectiveContextAssembly) {
+    // P5 D.5.1 — short-circuit when tool-result bundle is already small.
+    const totalToolTokens = estimateBundleTokens(validToolResults)
+    const belowThreshold = totalToolTokens < CONTEXT_ASSEMBLY_TOKEN_THRESHOLD
+    if (effectiveContextAssembly && !belowThreshold) {
       const ctxLlmSeq = nextSeq()
       const assemblerModelId = STACK_ROUTING[selectedStack].context_assembly.primary
       assembledBundle = await contextAssembler(
@@ -556,6 +564,33 @@ export async function POST(request: Request) {
         },
       )
       synthesisToolResults = assembledBundle.tool_bundles
+    } else if (effectiveContextAssembly && belowThreshold) {
+      // Emit a trace event so the lifecycle view can show "skipped — token
+      // threshold met". synthesisToolResults stays as validToolResults; the
+      // downstream synthesis path already handles a null assembledBundle.
+      const ctxLlmSeq = nextSeq()
+      traceEmitter.emitStep({
+        event: 'step_done',
+        query_id: queryId,
+        step: {
+          query_id: queryId,
+          conversation_id: finalConversationId,
+          step_seq: ctxLlmSeq,
+          step_name: 'context_assembly',
+          step_type: 'llm',
+          status: 'done',
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          latency_ms: 0,
+          data_summary: {
+            short_circuited: true,
+            reason: 'token_threshold',
+            total_token_estimate: totalToolTokens,
+            threshold: CONTEXT_ASSEMBLY_TOKEN_THRESHOLD,
+          },
+          payload: {},
+        },
+      })
     }
 
     // UQE-9: pre-allocate context_assembly seq first (single_model_strategy
@@ -639,10 +674,38 @@ export async function POST(request: Request) {
       generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
       messageMetadata: ({ part }: { part: { type: string } }) => {
         if (part.type === 'start' && isFirstTurn) {
-          return { conversationId: finalConversationId, model: modelId, stack: selectedStack, style, disclosure_tier: audienceTier, pipeline: 'v2', queryId }
+          return {
+            conversationId: finalConversationId,
+            model: modelId,
+            stack: selectedStack,
+            style,
+            disclosure_tier: audienceTier,
+            pipeline: 'v2',
+            queryId,
+            // P4 D.4.3: planner attribution propagation. context_assembler not
+            // currently surfaced as a separate model in this route — left null.
+            planning_model_id: plannerModelIdUsed ?? null,
+            planning_latency_ms: plannerLatencyMs ?? null,
+            // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
+            planner_active: planSchema !== null && !plannerFallbackUsed,
+            context_assembler_model_id: null,
+            context_assembler_latency_ms: null,
+          }
         }
         if (part.type === 'start') {
-          return { model: modelId, stack: selectedStack, style, disclosure_tier: audienceTier, pipeline: 'v2', queryId }
+          return {
+            model: modelId,
+            stack: selectedStack,
+            style,
+            disclosure_tier: audienceTier,
+            pipeline: 'v2',
+            queryId,
+            planning_model_id: plannerModelIdUsed ?? null,
+            planning_latency_ms: plannerLatencyMs ?? null,
+            planner_active: planSchema !== null && !plannerFallbackUsed,
+            context_assembler_model_id: null,
+            context_assembler_latency_ms: null,
+          }
         }
         if (part.type === 'finish') {
           return { methodology_block: methodologyBlockHolder?.value ?? null }
@@ -1058,7 +1121,10 @@ async function generateConversationTitle(
         output_tokens: usage?.outputTokens ?? null,
         reasoning_tokens: null,
         latency_ms,
-        cost_usd: null,
+        cost_usd: computeCostUsd(getModelPricingSync(TITLE_MODEL_ID), {
+          input_tokens: usage?.inputTokens ?? null,
+          output_tokens: usage?.outputTokens ?? null,
+        }),
         fallback_used: false,
         error_code: errorCode,
         payload: null,

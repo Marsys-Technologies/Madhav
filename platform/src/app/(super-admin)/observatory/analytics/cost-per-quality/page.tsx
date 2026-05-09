@@ -8,6 +8,7 @@ import {
 } from '@/lib/components/observatory/analytics/CostPerQualityPanel'
 import { getPool } from '@/lib/db/client'
 import { queryCostPerQuality } from '@/lib/observatory/analytics/cost_per_quality'
+import { ObsPageShell } from '@/lib/components/observatory/shared'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,8 +44,11 @@ export default async function CostPerQualityPage() {
   }))
 
   return (
-    <div className="space-y-6 p-4" data-testid="cost-per-quality-page">
-      <h1 className="text-lg font-semibold">Cost per Quality</h1>
+    <ObsPageShell
+      title="Cost per Quality"
+      subtitle={`Pareto frontier across pipeline stages · ${result.date_start.slice(0, 10)} → ${result.date_end.slice(0, 10)}`}
+      testId="cost-per-quality-page"
+    >
       <CostPerQualityPanel
         date_start={result.date_start}
         date_end={result.date_end}
@@ -52,6 +56,6 @@ export default async function CostPerQualityPage() {
         stages={stages}
         totals={result.totals}
       />
-    </div>
+    </ObsPageShell>
   )
 }

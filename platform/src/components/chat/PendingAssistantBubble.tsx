@@ -21,7 +21,7 @@ export function PendingAssistantBubble() {
       aria-label="Assistant is thinking"
     >
       <div className="flex gap-4">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklch,var(--brand-gold)_35%,transparent)] bg-muted text-[var(--brand-gold)] shadow-sm">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[rgba(var(--brand-gold-rgb),0.35)] bg-muted text-[var(--brand-gold)] shadow-sm">
           <AssistantSigil size={18} />
         </div>
         <div className="min-w-0 flex-1 pt-2">

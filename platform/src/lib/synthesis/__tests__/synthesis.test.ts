@@ -10,6 +10,7 @@ vi.mock('@/lib/models/resolver', () => ({
   resolveWorkerModel: vi.fn((id: string) => id ?? 'claude-haiku-4-5'),
   supportsStreaming: vi.fn(() => true),
   googleProviderOptions: vi.fn(() => null),
+  deepseekProviderOptions: vi.fn(() => null),
 }))
 
 // Mock streamText at the ai module level — must be before any imports
@@ -24,6 +25,7 @@ vi.mock('ai', () => ({
 // Mock the registry/supports for models
 vi.mock('@/lib/models/registry', () => ({
   supports: vi.fn(),
+  MODELS: [],
   getModelMeta: vi.fn((id: string) => ({
     id,
     label: 'Test Model',

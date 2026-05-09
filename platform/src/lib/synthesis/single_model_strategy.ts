@@ -39,6 +39,7 @@ import type { Checkpoint45Result, Checkpoint55Result, Checkpoint85Result } from 
 import { countSignalCitations } from './citation_check'
 import { runAll } from '@/lib/validators/index'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
+import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
@@ -56,6 +57,17 @@ import type {
 
 // Token-budget constants for pre-fetched content injection (FUB-2 + FUB-3)
 const MAX_CHART_CONTEXT_TOKENS = 6000
+
+export {
+  STYLE_OUTPUT_CAP,
+  CLASS_TOKEN_CAP,
+  computeEffectiveMaxTokens,
+} from './token_caps'
+import {
+  STYLE_OUTPUT_CAP,
+  CLASS_TOKEN_CAP,
+  computeEffectiveMaxTokens,
+} from './token_caps'
 const MAX_TOOL_RESULTS_TOKENS = 3000
 // Rough chars-per-token estimate for truncation (conservative)
 const CHARS_PER_TOKEN = 4
@@ -378,13 +390,13 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     //   acharya → 8000 tokens  (~6000 words) — full acharya-grade depth
     //
     // These caps apply to the synthesis output only, not to tool-use steps.
-    const STYLE_OUTPUT_CAP: Record<string, number> = {
-      brief:   1200,
-      client:  3500,
-      acharya: 8000,
-    }
     const styleCap = STYLE_OUTPUT_CAP[style ?? 'acharya'] ?? 8000
-    const effectiveMaxTokens = Math.min(styleCap, modelMeta?.maxOutputTokens ?? styleCap)
+    const classCap = CLASS_TOKEN_CAP[query_plan.query_class] ?? 8000
+    const effectiveMaxTokens = computeEffectiveMaxTokens(
+      styleCap,
+      classCap,
+      modelMeta?.maxOutputTokens,
+    )
 
     // UQE-2 (W2-BUGS B2W-5) — temperature gate: deterministic for single-truth
     // queries (factual lookups, prescriptive remedies, time-indexed predictions),
@@ -555,11 +567,14 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
             ? Math.ceil(r1Reasoning.length / 4)
             : null,
           latency_ms: synthesisLatencyMs,
-          // TODO(G.2): cost_usd is null — compute from (input_tokens/1M)*costPer1MInput +
-          // (output_tokens/1M)*costPer1MOutput using getModelMeta(selected_model_id).
-          // Blocked on confirming all three stacks (anthropic/deepseek/nvidia) populate
-          // usage tokens reliably before writing a non-null value here.
-          cost_usd: null,
+          cost_usd: computeCostUsd(getModelPricingSync(selected_model_id), {
+            input_tokens: usage?.inputTokens ?? null,
+            output_tokens: usage?.outputTokens ?? null,
+            cache_read_tokens:
+              (usage as { cacheReadInputTokens?: number })?.cacheReadInputTokens ?? null,
+            cache_write_tokens:
+              (usage as { cacheCreationInputTokens?: number })?.cacheCreationInputTokens ?? null,
+          }),
           fallback_used: false,
           error_code: finishReason === 'error' ? finishReason : null,
           payload: null,

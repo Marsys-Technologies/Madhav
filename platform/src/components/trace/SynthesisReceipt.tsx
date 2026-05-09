@@ -30,6 +30,10 @@ interface SynthesisReceiptProps {
   citation_validation: CitationValidationSummary | null
   b3_compliant: boolean
   isLoading: boolean
+  /** P4 D.4.3 step C — populated from trace payload when available; row hidden if absent. */
+  planning_model_id?: string | null
+  planning_latency_ms?: number | null
+  planning_cost_usd?: number | null
 }
 
 function fmtTokens(n: number): string {
@@ -87,6 +91,9 @@ export function SynthesisReceipt({
   citation_validation,
   b3_compliant,
   isLoading,
+  planning_model_id,
+  planning_latency_ms,
+  planning_cost_usd,
 }: SynthesisReceiptProps) {
   if (isLoading) {
     return (
@@ -122,6 +129,21 @@ export function SynthesisReceipt({
       </div>
 
       <div className="rounded border border-[rgba(212,175,55,0.15)] bg-[rgba(13,10,5,0.5)] divide-y divide-[rgba(212,175,55,0.08)]">
+        {/* Planner row — P4 D.4.3 step C; rendered only when planner data present */}
+        {planning_model_id && (
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="text-[10px] font-semibold text-[rgba(212,175,55,0.55)] uppercase tracking-[0.12em] w-20">
+              Planner
+            </span>
+            <span className="text-[11px] text-[rgba(252,226,154,0.85)] font-mono">
+              {planning_model_id}
+            </span>
+            <span className="ml-auto text-[10px] text-[rgba(244,209,96,0.7)]">
+              {planning_latency_ms != null ? `${(planning_latency_ms / 1000).toFixed(1)}s` : ''}
+              {planning_cost_usd != null ? `  ${fmtCost(planning_cost_usd)}` : ''}
+            </span>
+          </div>
+        )}
         {/* Model + temperature */}
         <div className="flex items-center gap-2 px-3 py-2">
           <span className="text-[10px] font-semibold text-[rgba(212,175,55,0.55)] uppercase tracking-[0.12em] w-20">

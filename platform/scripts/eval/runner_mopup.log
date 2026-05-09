@@ -1,0 +1,56 @@
+  warm-up complete; sleeping 3s before fixture #1
+  F001 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (2608ms)
+  F002 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (5002ms)
+  F003 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (11546ms)
+  F004 error    kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (0ms)
+  F005 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (3248ms)
+  F006 error    kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (0ms)
+  F007 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (5577ms)
+  F008 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (4009ms)
+  F009 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (3772ms)
+  F010 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (5680ms)
+  F011 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (4555ms)
+  F012 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (3936ms)
+  F013 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (2826ms)
+  F014 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (3346ms)
+  F015 error    kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (0ms)
+  F016 error    kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (0ms)
+  F017 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (3210ms)
+  F018 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (6420ms)
+  F019 error    kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (0ms)
+  F020 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (5882ms)
+  F021 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (3499ms)
+  F022 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (4431ms)
+  F023 ok       kw=0.00 sig=1.00 syn=0.00 wtd=0.00 (2872ms)
+  F024 ok       kw=0.00 sig=0.00 syn=0.00 wtd=0.00 (3744ms)
+
+Results written to: platform/scripts/eval/results_post_mopup.json
+
+Fixture Type              KW   Sig   Syn   Wtd  Status
+────────────────────────────────────────────────────────────
+F001    factual         0.00  1.00  0.00  0.00  ok
+F002    factual         0.00  1.00  0.00  0.00  ok
+F003    factual         0.00  1.00  0.00  0.00  ok
+F004    factual         0.00  0.00  0.00  0.00  error
+F005    signal_recall   0.00  0.00  0.00  0.00  ok
+F006    signal_recall   0.00  0.00  0.00  0.00  error
+F007    signal_recall   0.00  0.00  0.00  0.00  ok
+F008    signal_recall   0.00  0.00  0.00  0.00  ok
+F009    cross_domain    0.00  1.00  0.00  0.00  ok
+F010    cross_domain    0.00  0.00  0.00  0.00  ok
+F011    cross_domain    0.00  0.00  0.00  0.00  ok
+F012    cross_domain    0.00  0.00  0.00  0.00  ok
+F013    temporal        0.00  1.00  0.00  0.00  ok
+F014    temporal        0.00  0.00  0.00  0.00  ok
+F015    temporal        0.00  0.00  0.00  0.00  error
+F016    temporal        0.00  0.00  0.00  0.00  error
+F017    remedial        0.00  1.00  0.00  0.00  ok
+F018    remedial        0.00  1.00  0.00  0.00  ok
+F019    remedial        0.00  0.00  0.00  0.00  error
+F020    remedial        0.00  0.00  0.00  0.00  ok
+F021    holistic        0.00  0.00  0.00  0.00  ok
+F022    holistic        0.00  0.00  0.00  0.00  ok
+F023    holistic        0.00  1.00  0.00  0.00  ok
+F024    holistic        0.00  0.00  0.00  0.00  ok
+────────────────────────────────────────────────────────────
+AGGREGATE               0.00  0.42  0.00  0.00  19/24 ok

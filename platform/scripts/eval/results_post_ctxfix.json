@@ -1,0 +1,425 @@
+{
+  "run_date": "2026-05-06T15:23:46.941841+00:00",
+  "base_url": "https://amjis-web-938361928218.asia-south1.run.app",
+  "planner_branch": "on",
+  "judge_enabled": true,
+  "aggregate": {
+    "fixture_count": 24,
+    "ok_count": 17,
+    "error_count": 7,
+    "keyword_recall": 0.8873,
+    "signal_recall": 0.8824,
+    "synthesis": 0.6106,
+    "weighted": 0.7656
+  },
+  "results": [
+    {
+      "fixture_id": "F001",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.75,
+        "weighted": 0.925
+      },
+      "response_excerpt": "Mercury is placed in **Capricorn, 10th House** in the natal chart [SIG.MSR.154][SIG.MSR.056][SIG.MSR.200].\n\nSpecifically, Mercury is conjunct Sun in Capricorn 10H (Budhaditya Yoga) [SIG.MSR.154], with",
+      "latency_ms": 13378,
+      "error": null
+    },
+    {
+      "fixture_id": "F002",
+      "type": "factual",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F003",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.95,
+        "weighted": 0.985
+      },
+      "response_excerpt": "**Current Vimshottari Dasha:**\n\n- **Mahadasha:** Mercury (Budha) \u2014 2010-08-21 to 2027-08-21 [SIG.MSR.255]\n- **Antardasha:** Mercury\u2013Saturn \u2014 2024-12-12 to 2027-08-21 [SIG.MSR.258]\n- **Antardasha end d",
+      "latency_ms": 10700,
+      "error": null
+    },
+    {
+      "fixture_id": "F004",
+      "type": "factual",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F005",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.92,
+        "weighted": 0.984
+      },
+      "response_excerpt": "The signal identifying Mercury as the chart's primary operational planet is:\n\n**[SIG.MSR.413]** \u2014 *Mercury Eight-System Convergence \u2014 Chart's Primary Operational Planet (v2.0 UPGRADED from Seven)*\n\n**",
+      "latency_ms": 13673,
+      "error": null
+    },
+    {
+      "fixture_id": "F006",
+      "type": "signal_recall",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F007",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.85,
+        "weighted": 0.97
+      },
+      "response_excerpt": "The Saraswati Yoga is documented in **[SIG.MSR.007]** \u2014 \"Saraswati Yoga \u2014 Jupiter + Venus + Mercury in Kendra/Trikona \u2014 CYSS 91\".\n\nThe three planets forming the yoga:\n- **Jupiter** [F.SIG.MSR.007]\n- *",
+      "latency_ms": 14503,
+      "error": null
+    },
+    {
+      "fixture_id": "F008",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.92,
+        "weighted": 0.984
+      },
+      "response_excerpt": "The signal you are looking for is **[SIG.MSR.396]**:\n\n> **Meta-Convergence \u2014 Sade Sati Paradox Confirmed Across Three Systems: Parashari (Moon Own-Sign Mitigation) + LEL Retrodiction (Best Events in P",
+      "latency_ms": 25896,
+      "error": null
+    },
+    {
+      "fixture_id": "F009",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.65,
+        "weighted": 0.6583
+      },
+      "response_excerpt": "I'll consult the CDLM (Cross-Domain Linkage Matrix) and pull additional bridging signals before synthesizing.I have sufficient bundle coverage now (CDLM via PAT/RES + MSR linkage signals + Contradicti",
+      "latency_ms": 85229,
+      "error": null
+    },
+    {
+      "fixture_id": "F010",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.8,
+        "signal_recall": 1.0,
+        "synthesis": 0.95,
+        "weighted": 0.905
+      },
+      "response_excerpt": "# The Mercury-Saturn Relational Mechanism: Four-System Trace\n\nThe chart contains a striking **Mercury-Saturn mutual-reinforcement architecture** that operates simultaneously across four independent as",
+      "latency_ms": 45380,
+      "error": null
+    },
+    {
+      "fixture_id": "F011",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.8,
+        "signal_recall": 1.0,
+        "synthesis": 0.65,
+        "weighted": 0.815
+      },
+      "response_excerpt": "I'll consult the CDLM and pull the 7H convergence facts before composing the response.# The 7th House in Abhisek's Chart \u2014 Cross-Domain Convergence Analysis\n\nThe 7th house Libra is the **single most l",
+      "latency_ms": 77964,
+      "error": null
+    },
+    {
+      "fixture_id": "F012",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6,
+        "signal_recall": 1.0,
+        "synthesis": 0.65,
+        "weighted": 0.735
+      },
+      "response_excerpt": "I need to consult the CDLM (Cross-Domain Linkage Matrix) per protocol for cross-domain queries, plus extend on the 7H\u219411H polarity mechanics.# The 7H Libra \u2194 11H Aquarius Axis: Two Supreme Convergence",
+      "latency_ms": 75853,
+      "error": null
+    },
+    {
+      "fixture_id": "F013",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.95,
+        "weighted": 0.985
+      },
+      "response_excerpt": "# Mercury MD Termination & Successor Period\n\n## Direct Answer\n\n**Mercury Mahadasha ends 2027-08-21**, after which **Ketu Mahadasha (2027-08-21 to 2034-08-21, 7 years)** commences [SIG.MSR.255][SIG.MSR",
+      "latency_ms": 53585,
+      "error": null
+    },
+    {
+      "fixture_id": "F014",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.15,
+        "weighted": 0.33
+      },
+      "response_excerpt": "## Signal flagging Ketu MD as moksha-stack activation\n\nThe pattern register entry **PAT.011** \u2014 operating off the underlying MSR signal **[SIG.MSR.194]** (Mercury\u2013Saturn\u2013Ketu dasha sequence) \u2014 is the ",
+      "latency_ms": 48327,
+      "error": null
+    },
+    {
+      "fixture_id": "F015",
+      "type": "temporal",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F016",
+      "type": "temporal",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F017",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.35,
+        "weighted": 0.805
+      },
+      "response_excerpt": "I'll route through L2.5 holistic synthesis. The Ishta Devata derivation requires the 12th lord from the Karakamsa (D9 sign of the Atmakaraka). Let me extend the bundle to confirm the specific Ishta De",
+      "latency_ms": 71160,
+      "error": null
+    },
+    {
+      "fixture_id": "F018",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.35,
+        "weighted": 0.5083
+      },
+      "response_excerpt": "I have most of what I need from the bundle, but let me retrieve the specific MSR signals on Jupiter's Phalita Ishta/Kashta reading and any associated remedial guidance to ground the answer fully.Let m",
+      "latency_ms": 113008,
+      "error": null
+    },
+    {
+      "fixture_id": "F019",
+      "type": "remedial",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /: must NOT have additional properties; /: must NOT have additional properties\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F020",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.75,
+        "signal_recall": 1.0,
+        "synthesis": 0.15,
+        "weighted": 0.645
+      },
+      "response_excerpt": "I'll fetch the standing remedial map and the relevant MSR signals before composing the prescription.I now have what I need. Let me also pull MSR signals on Moon AK 11H and Karakamsa to satisfy the cit",
+      "latency_ms": 142618,
+      "error": null
+    },
+    {
+      "fixture_id": "F021",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.3,
+        "weighted": 0.72
+      },
+      "response_excerpt": "I'll extend the bundle with the UCN, CGM, CDLM, and RM layers required by the Whole-Chart-Read Protocol before synthesizing.I have sufficient bundle depth across CGM, MSR, RM (resonance), CDLM (cluste",
+      "latency_ms": 130599,
+      "error": null
+    },
+    {
+      "fixture_id": "F022",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.8,
+        "signal_recall": 0.0,
+        "synthesis": 0.42,
+        "weighted": 0.408
+      },
+      "response_excerpt": "I'll extend the bundle with targeted retrieval on the spiritual/dharmic axis before synthesizing.# The Spiritual & Dharmic Mission Encoded in This Chart\n\n## Whole-Chart-Read Protocol Sequence\n\n**(a) C",
+      "latency_ms": 86626,
+      "error": null
+    },
+    {
+      "fixture_id": "F023",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.42,
+        "weighted": 0.652
+      },
+      "response_excerpt": "I'll extend the bundle along the axes most relevant to psychological tension \u2014 the UCN (unified narrative), CDLM (cross-domain linkages), and contradiction register \u2014 before synthesizing.I have suffic",
+      "latency_ms": 134345,
+      "error": null
+    },
+    {
+      "fixture_id": "F024",
+      "type": "holistic",
+      "status": "timeout",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "",
+      "latency_ms": 0,
+      "error": "The read operation timed out"
+    }
+  ]
+}

@@ -25,6 +25,8 @@ import { QueryDNAPanel } from './QueryDNAPanel'
 import { CostPerformanceBar } from './CostPerformanceBar'
 import { RetrievalScorecard, RetrievalEfficiency } from './RetrievalScorecard'
 import { AnalyticsTab } from './AnalyticsTab'
+import { PipelineLifecycleView } from './PipelineLifecycleView'
+import { ToolCoverageMatrix } from './ToolCoverageMatrix'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,53 +36,62 @@ interface Props {
   onClose: () => void
 }
 
-// TODO(J.1): TracePanel and QueryDNAPanel use hardcoded rgba() colour values.
-// Once the R7 portal design system publishes CSS variables (e.g. --color-gold,
-// --color-violet, --color-error) or Tailwind tokens, replace the inline rgba()
-// strings below with those tokens. Track missing tokens as design-system-owner
-// requests. Current palette reference: §5.1 warm-gold scheme (BHISMA-B3).
 // TODO(J.2): TracePanel has no React context dependencies beyond useTraceStream
 // (which is self-contained). No missing providers identified for R7 shell
 // integration. If a ThemeProvider or AuthContext is added to the R7 shell,
 // verify TracePanel doesn't duplicate its own provider.
 
 // ── Step type display config (warm tonal palette per BHISMA §5.1) ─────────────
+// Colour-map constants below consume the --trace-* CSS custom properties from
+// globals.css via Tailwind arbitrary-value color-mix() (closes TODO(J.1)).
 
 const STEP_TYPE_CONFIG = {
   deterministic: {
     label: 'DET',
-    color: 'bg-[rgba(180,140,20,0.15)] text-[rgba(212,175,55,0.75)] border-[rgba(212,175,55,0.25)]',
+    color: 'bg-[rgba(var(--trace-gold-rgb),0.15)] text-[rgba(var(--trace-gold-rgb),0.75)] border-[rgba(var(--trace-gold-rgb),0.25)]',
   },
   llm: {
     label: 'LLM',
-    color: 'bg-[rgba(140,90,200,0.15)] text-[rgba(180,140,240,0.85)] border-[rgba(160,110,220,0.25)]',
+    color: 'bg-[rgba(var(--trace-violet-rgb),0.15)] text-[rgba(var(--trace-violet-rgb),0.85)] border-[rgba(var(--trace-violet-rgb),0.25)]',
   },
   sql: {
     label: 'SQL',
-    color: 'bg-[rgba(20,100,180,0.15)] text-[rgba(100,160,240,0.85)] border-[rgba(60,130,210,0.25)]',
+    color: 'bg-[rgba(var(--trace-blue-rgb),0.15)] text-[rgba(var(--trace-blue-rgb),0.85)] border-[rgba(var(--trace-blue-rgb),0.25)]',
   },
   vector: {
     label: 'VEC',
-    color: 'bg-[rgba(20,160,100,0.15)] text-[rgba(80,200,140,0.85)] border-[rgba(40,180,120,0.25)]',
+    color: 'bg-[rgba(var(--trace-green-rgb),0.15)] text-[rgba(var(--trace-green-rgb),0.85)] border-[rgba(var(--trace-green-rgb),0.25)]',
   },
   gcs: {
     label: 'GCS',
-    color: 'bg-[rgba(200,80,40,0.15)] text-[rgba(240,130,100,0.85)] border-[rgba(220,100,60,0.25)]',
+    color: 'bg-[rgba(var(--trace-red-rgb),0.15)] text-[rgba(var(--trace-red-rgb),0.85)] border-[rgba(var(--trace-red-rgb),0.25)]',
   },
 } as const
 
 const TIMELINE_BAR_COLOR = {
-  deterministic: 'bg-[rgba(212,175,55,0.6)]',
-  llm:           'bg-[rgba(160,110,220,0.7)]',
-  sql:           'bg-[rgba(60,130,210,0.7)]',
-  vector:        'bg-[rgba(40,180,120,0.7)]',
-  gcs:           'bg-[rgba(220,100,60,0.7)]',
+  deterministic: 'bg-[rgba(var(--trace-gold-rgb),0.6)]',
+  llm:           'bg-[rgba(var(--trace-violet-rgb),0.7)]',
+  sql:           'bg-[rgba(var(--trace-blue-rgb),0.7)]',
+  vector:        'bg-[rgba(var(--trace-green-rgb),0.7)]',
+  gcs:           'bg-[rgba(var(--trace-red-rgb),0.7)]',
 } as const
 
 const LAYER_COLOR = {
-  L1:      { dot: 'bg-[rgba(244,209,96,0.85)]', bar: 'bg-[rgba(244,209,96,0.85)]', text: 'text-[rgba(244,209,96,0.9)]' },
-  'L2.5':  { dot: 'bg-[rgba(190,150,240,0.85)]', bar: 'bg-[rgba(190,150,240,0.85)]', text: 'text-[rgba(190,150,240,0.9)]' },
-  system:  { dot: 'bg-[rgba(212,175,55,0.4)]', bar: 'bg-[rgba(212,175,55,0.4)]', text: 'text-[rgba(212,175,55,0.6)]' },
+  L1:      {
+    dot: 'bg-[rgba(var(--trace-gold-rgb),0.85)]',
+    bar: 'bg-[rgba(var(--trace-gold-rgb),0.85)]',
+    text: 'text-[rgba(var(--trace-gold-rgb),0.9)]',
+  },
+  'L2.5':  {
+    dot: 'bg-[rgba(var(--trace-violet-rgb),0.85)]',
+    bar: 'bg-[rgba(var(--trace-violet-rgb),0.85)]',
+    text: 'text-[rgba(var(--trace-violet-rgb),0.9)]',
+  },
+  system:  {
+    dot: 'bg-[rgba(var(--trace-gold-rgb),0.4)]',
+    bar: 'bg-[rgba(var(--trace-gold-rgb),0.4)]',
+    text: 'text-[rgba(var(--trace-gold-rgb),0.6)]',
+  },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -901,7 +912,7 @@ export function TracePanelContent({
   planningModel: planningModelProp,
 }: ContentProps) {
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live')
-  const [viewTab, setViewTab] = useState<'steps' | 'pipeline'>('pipeline')
+  const [viewTab, setViewTab] = useState<'steps' | 'pipeline' | 'lifecycle'>('lifecycle')
   const [historySubTab, setHistorySubTab] = useState<HistorySubTab>('list')
   const [historyQueryId, setHistoryQueryId] = useState<string | null>(null)
   const [historyList, setHistoryList] = useState<TraceHistoryRow[]>([])
@@ -1081,6 +1092,17 @@ export function TracePanelContent({
             <div className="flex gap-px bg-[rgba(5,3,1,0.6)] rounded p-0.5">
               <button
                 type="button"
+                onClick={() => setViewTab('lifecycle')}
+                className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                  viewTab === 'lifecycle'
+                    ? 'bg-[rgba(212,175,55,0.12)] text-[rgba(252,226,154,0.95)]'
+                    : 'text-[rgba(212,175,55,0.45)] hover:text-[rgba(252,226,154,0.85)]'
+                }`}
+              >
+                Lifecycle
+              </button>
+              <button
+                type="button"
                 onClick={() => setViewTab('pipeline')}
                 className={`px-2.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
                   viewTab === 'pipeline'
@@ -1103,7 +1125,35 @@ export function TracePanelContent({
               </button>
             </div>
           </div>
-          {viewTab === 'steps' ? (
+          {viewTab === 'lifecycle' ? (
+            <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-3">
+              <PipelineLifecycleView steps={steps} manifestTools={ALL_RETRIEVAL_TOOLS as unknown as string[]} />
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                  Tool coverage
+                </div>
+                <ToolCoverageMatrix
+                  manifestTools={ALL_RETRIEVAL_TOOLS as unknown as string[]}
+                  planned={
+                    (steps.find(s => s.step_name === 'plan')?.payload as { query_plan?: { tools_authorized?: string[] } } | undefined)
+                      ?.query_plan?.tools_authorized ?? []
+                  }
+                  executed={steps
+                    .filter(s => (s.step_type === 'sql' || s.step_type === 'vector' || s.step_type === 'gcs') && s.status === 'done')
+                    .map(s => s.step_name)}
+                  results={Object.fromEntries(
+                    steps
+                      .filter(s => s.step_type === 'sql' || s.step_type === 'vector' || s.step_type === 'gcs')
+                      .map(s => {
+                        const ds = s.data_summary as { rows_returned?: number; chunks_returned?: number }
+                        const rows = ds?.rows_returned ?? ds?.chunks_returned ?? 0
+                        return [s.step_name, { rows, empty: rows === 0 }]
+                      }),
+                  )}
+                />
+              </div>
+            </div>
+          ) : viewTab === 'steps' ? (
             <div className="flex-1 flex overflow-hidden min-h-0">
               <div className="w-[300px] flex-shrink-0 overflow-hidden flex flex-col">
                 <TraceTimeline

@@ -53,7 +53,7 @@ export function PendingRequestsTable({
 
   return (
     <section className={adminCard + ' overflow-hidden'}>
-      <header className="flex items-center justify-between border-b border-[color-mix(in_oklch,var(--brand-gold)_15%,transparent)] px-6 py-4">
+      <header className="flex items-center justify-between border-b border-[rgba(var(--brand-gold-rgb),0.15)] px-6 py-4">
         <h2 className="font-serif text-lg text-brand-gold-cream">Pending access requests</h2>
         <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           {requests.length} pending

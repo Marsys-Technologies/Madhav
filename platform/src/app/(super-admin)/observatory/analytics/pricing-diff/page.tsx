@@ -5,6 +5,7 @@
 
 import { PricingDiffPanel } from '@/lib/components/observatory/analytics/PricingDiffPanel'
 import { checkPricingHealth } from '@/lib/observatory/analytics/pricing_diff'
+import { ObsPageShell } from '@/lib/components/observatory/shared'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Pricing Diff Monitor' }
@@ -12,9 +13,12 @@ export const metadata = { title: 'Pricing Diff Monitor' }
 export default async function PricingDiffPage() {
   const initialResult = await checkPricingHealth()
   return (
-    <div data-testid="observatory-pricing-diff-page" className="space-y-6 p-4">
-      <h1 className="text-lg font-semibold">Pricing Diff Monitor</h1>
+    <ObsPageShell
+      title="Pricing Diff Monitor"
+      subtitle="Active pricing version health · drift across providers and models"
+      testId="observatory-pricing-diff-page"
+    >
       <PricingDiffPanel initialResult={initialResult} />
-    </div>
+    </ObsPageShell>
   )
 }
