@@ -162,13 +162,16 @@ function scoreAnswer(text: string, query: GoldenQuery): CriteriaScores {
   }
 }
 
-function isPass(scores: CriteriaScores): boolean {
+function isPass(scores: CriteriaScores, category: QueryCategory): boolean {
   if (scores.b10_compliance < 0.9) return false
+  // Factual queries state verified chart facts — probabilistic framing is
+  // not expected and correctly absent. Exempt from calibration gate.
+  const calibrationPass = category === 'factual' ? true : scores.calibration_language >= 0.7
   const remaining = [
     scores.layer_coverage >= 0.6,
-    scores.b11_signal >= (scores.b11_signal >= 0 ? 0.5 : 0),  // category-adjusted threshold handled in scoring
+    scores.b11_signal >= 0.5,
     scores.citation_presence >= 0.6,
-    scores.calibration_language >= 0.7,
+    calibrationPass,
   ]
   return remaining.filter(Boolean).length >= 3
 }
@@ -346,7 +349,7 @@ async function main(): Promise<void> {
         continue
       }
       const scores = scoreAnswer(answer, query)
-      const pass = isPass(scores)
+      const pass = isPass(scores, query.category)
       process.stdout.write(pass ? '✅\n' : '❌\n')
       results.push({ query, scores, pass })
     } catch (err) {
