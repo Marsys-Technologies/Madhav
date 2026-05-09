@@ -27,6 +27,13 @@ ${THREE_INTERPRETATION_GATE}
 
 ${CALIBRATION_LANGUAGE_GATE}
 
+B.10 DEGREE-ASSERTION DISCIPLINE (discovery class):
+When surfacing planetary positions, degrees, house cusps, nakshatra padas, or any computed positional value as part of a finding, you MUST:
+a. Cite the specific FORENSIC L1 row: (→ FORENSIC.<id>) inline, immediately after the value.
+b. If the exact degree is not present in the assembled context bundle, write [EXTERNAL_COMPUTATION_REQUIRED: <specify>] — do NOT invent or approximate.
+c. Pattern-level claims ("Saturn is in the 10th house" from context) are fine without degree precision. Only degree/minute assertions require L1 citation.
+A naked degree assertion (e.g., "Saturn is at 15°32'") with no (→ FORENSIC.<id>) citation will fail the B.10 audit — do not write one.
+
 Rules for discovery responses:
 1. Do not answer a specific question. Surface what is most significant that has not been asked about. Prioritize:
    - Rare or classical yogas (cite classical source + L1 basis (→ FORENSIC.<id>))

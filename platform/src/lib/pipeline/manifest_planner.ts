@@ -78,6 +78,15 @@ function isRateLimitError(err: unknown): boolean {
   return false
 }
 
+function isServerError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { status?: number; statusCode?: number; message?: string }
+  if (e.status === 500 || e.statusCode === 500) return true
+  if (e.status === 503 || e.statusCode === 503) return true
+  if (typeof e.message === 'string' && /\b(500|503|internal server error|service unavailable)\b/i.test(e.message)) return true
+  return false
+}
+
 function isTimeoutError(err: unknown): boolean {
   if (err instanceof Error) {
     const msg = err.message.toLowerCase()
@@ -320,7 +329,7 @@ export async function callLlmPlanner(
   let activeModelId = plannerModelId
   let fallbackWasUsed = false
   for (let attempt = 0; attempt <= MAX_PLANNER_RETRIES; attempt++) {
-    activeModelId = (attempt > 0 && fallbackModelId && isRateLimitError(lastErr))
+    activeModelId = (attempt > 0 && fallbackModelId && (isRateLimitError(lastErr) || isServerError(lastErr)))
       ? fallbackModelId
       : plannerModelId
     fallbackWasUsed = activeModelId !== plannerModelId
@@ -354,9 +363,9 @@ export async function callLlmPlanner(
       break
     } catch (err) {
       lastErr = err
-      if (isRateLimitError(err) && attempt === 0 && fallbackModelId) {
+      if ((isRateLimitError(err) || isServerError(err)) && attempt === 0 && fallbackModelId) {
         console.warn(
-          `[manifest_planner] 429 on primary ${plannerModelId}, retrying with fallback ${fallbackModelId}`,
+          `[manifest_planner] ${isRateLimitError(err) ? '429' : '500/503'} on primary ${plannerModelId}, retrying with fallback ${fallbackModelId}`,
         )
         continue
       }
