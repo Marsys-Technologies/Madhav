@@ -164,18 +164,19 @@ describe('planPerTool', () => {
     expect(BASE_PLAN.planets).toEqual(originalPlanets)
   })
 
-  it('13. all 17 tool templates are defined', () => {
+  it('13. all 18 tool templates are defined', () => {
     const expectedTools = [
       'msr_sql', 'pattern_register', 'resonance_register', 'cluster_atlas',
       'contradiction_register', 'temporal', 'query_msr_aggregate', 'cgm_graph_walk',
       'manifest_query', 'vector_search', 'kp_query', 'saham_query',
-      'divisional_query', 'chart_facts_query', 'domain_report_query',
+      'divisional_query', 'cross_varga_dignity_query',
+      'chart_facts_query', 'domain_report_query',
       'remedial_codex_query', 'timeline_query',
     ]
     for (const tool of expectedTools) {
       expect(TOOL_PROMPT_TEMPLATES[tool], `missing template for ${tool}`).toBeDefined()
     }
-    expect(Object.keys(TOOL_PROMPT_TEMPLATES)).toHaveLength(17)
+    expect(Object.keys(TOOL_PROMPT_TEMPLATES)).toHaveLength(18)
   })
 
   it('14. tool_count reflects the number of tools passed in', async () => {

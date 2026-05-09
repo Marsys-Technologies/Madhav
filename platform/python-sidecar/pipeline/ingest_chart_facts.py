@@ -5,6 +5,17 @@ Reads CHART_FACTS_EXTRACTION_v1_0.yaml from GCS, validates against
 CHART_FACTS_SCHEMA_v1_0.json, writes to chart_facts_staging, validates,
 and swaps to live.
 
+As of v1.1 YAML (VARGA-ETL-FULL-S1-CPA, 2026-05-10), this is the SOLE ETL
+path for chart_facts. The markdown extractor (chart_facts_extractor.py +
+chart_facts_loader.py) is deprecated and frozen — running it concurrently
+with this pipeline causes a dual-pipeline race condition where the
+DELETE-then-INSERT swap wipes the upsert's rows (or vice versa). All
+formerly-extractor categories have been migrated into the YAML.
+See 00_ARCHITECTURE/CHART_FACTS_PIPELINE_AUDIT_v1_0.md.
+
+Row-count sanity gates: see chart_facts_writer.py
+EXPECTED_COUNT_MIN/MAX (currently 500–820, accommodating ~666 facts in v1.1).
+
 Usage:
   cd platform/python-sidecar
   DATABASE_URL=... python -m pipeline.ingest_chart_facts [--dry-run]

@@ -11,7 +11,8 @@
  * the matching pair to update.
  *
  * Source of truth for tool implementations: platform/src/lib/retrieve/index.ts
- * (RETRIEVAL_TOOLS registry, 17 tools as of 2026-05-01).
+ * (RETRIEVAL_TOOLS registry, 18 tools as of 2026-05-10 — VARGA-ETL-FULL-S1-CPA
+ * added cross_varga_dignity_query for the §3.15 CSI ledger).
  */
 
 export type CostTier = 'low' | 'medium' | 'high'
@@ -293,6 +294,29 @@ const divisional_query: RetrievalCapabilityEntry = {
   requires_temporal: false,
 }
 
+const cross_varga_dignity_query: RetrievalCapabilityEntry = {
+  tool_name: 'cross_varga_dignity_query',
+  description:
+    'Returns the §3.15 CSI cross-divisional dignity ledger — per-planet D1/D9/D10 sign + dignity ' +
+    '(exalted/debilitated/own_sign/mooltrikona/neutral) and vargottama status. Priority-1 for any ' +
+    'query mentioning "navamsha comparison", "strength across charts", "vargottama", "three-state ' +
+    'dignity", or "how does X planet behave across charts". Always schedule alongside divisional_query ' +
+    'for D9 and D10 to give the synthesis layer the cross-walk it needs.',
+  data_surface:
+    'L1 — chart_facts CSI.* (§3.15 ledger) + D9.* + D10.* per-planet rows. Returns a structured per-planet ' +
+    'record: {planet, d1_sign, d1_dignity, d9_sign, d9_dignity, d10_sign, d10_house, d10_dignity, vargottama, fact_ids}.',
+  supported_params:
+    '{ planets?: string[] (canonical names: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu; omit for all 9) }',
+  optimal_patterns: [
+    'All planets: {}',
+    'Saturn three-state: {planets:["Saturn"]}',
+    'Cross-varga comparison: {planets:["Sun","Moon","Saturn"]}',
+    'Vargottama check: {} then filter result by vargottama=true',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // L3+ synthesis-document tools
 // ────────────────────────────────────────────────────────────────────────────
@@ -367,6 +391,7 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   saham_query,
   divisional_query,
   chart_facts_query,
+  cross_varga_dignity_query,
   domain_report_query,
   remedial_codex_query,
   timeline_query,

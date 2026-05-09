@@ -1,5 +1,14 @@
+# DEPRECATED 2026-05-10 — VARGA-ETL-FULL-S1-CPA
+# This loader implemented Pipeline B (ON CONFLICT upsert against live
+# chart_facts) which raced with Pipeline A (chart_facts_writer.py
+# staging-then-swap DELETE-then-INSERT). Whichever pipeline ran last won;
+# the other pipeline's rows were lost. The canonical resolution is to run
+# only ingest_chart_facts.py + chart_facts_writer.py against the unified
+# CHART_FACTS_EXTRACTION_v1_0.yaml v1.1 (see 00_ARCHITECTURE/
+# CHART_FACTS_PIPELINE_AUDIT_v1_0.md). This file is frozen — do not invoke
+# for new ingests; do not extend its category enum.
 """
-pipeline.loaders.chart_facts_loader
+pipeline.loaders.chart_facts_loader — FROZEN/DEPRECATED 2026-05-10
 KARN-W2-R2-CHART-FACTS-ETL — Direct-upsert loader for chart_facts rows
 produced by chart_facts_extractor.
 

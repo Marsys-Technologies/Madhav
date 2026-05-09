@@ -230,6 +230,17 @@ Output JSON with zero or more of:
 - "divisional_chart": string — e.g. "D9", "D10", "D1"
 - "limit": number (default 20)`,
 
+  cross_varga_dignity_query: (plan) => `
+Tool: cross_varga_dignity_query — §3.15 CSI cross-divisional dignity ledger surface.
+Returns per-planet D1 / D9 / D10 sign + dignity (exalted, debilitated, own_sign,
+mooltrikona, neutral, shadow_node) and vargottama status.
+Query: "${plan.query_text}"
+Planets: ${JSON.stringify(plan.planets ?? [])}
+
+Output JSON with zero or one of:
+- "planets": string[] — canonical planet names: Sun, Moon, Mars, Mercury, Jupiter,
+  Venus, Saturn, Rahu, Ketu. Omit (or pass empty array) for all 9 planets.`,
+
   chart_facts_query: (plan) => `
 Tool: chart_facts_query — parametric query over chart_facts table (795 rows, §1–§27 coverage).
 Query: "${plan.query_text}"

@@ -52,6 +52,8 @@ const SQL_VECTOR_SEARCH = `
   WHERE c.is_stale = false
     AND ($3::text[] IS NULL OR c.doc_type = ANY($3::text[]))
     AND ($4::text IS NULL OR c.layer = $4)
+    AND ($5::text IS NULL OR c.metadata->>'varga' = $5)
+    AND ($6::text IS NULL OR c.metadata->>'section_id' LIKE $6 || '%')
   ORDER BY e.embedding <=> $1::vector
   LIMIT $2
 `.trim()
@@ -241,9 +243,11 @@ async function retrieveImpl(
   const topK =
     typeof params?.top_k === 'number' && params.top_k > 0 ? params.top_k : configTopK
 
-  // Resolve filter: from plan.vector_search_filter; null = no filter (all doc_types/layers)
+  // Resolve filter: from plan.vector_search_filter; null = no filter
   const docTypeFilter = plan.vector_search_filter?.doc_type ?? null
   const layerFilter = plan.vector_search_filter?.layer ?? null
+  const vargaFilter = plan.vector_search_filter?.varga ?? null
+  const sectionIdPrefixFilter = plan.vector_search_filter?.section_id_prefix ?? null
 
   // --- Feature flag gate ---
   if (!getFlag('VECTOR_SEARCH_ENABLED')) {
@@ -305,6 +309,8 @@ async function retrieveImpl(
       topK,
       docTypeFilter,
       layerFilter,
+      vargaFilter,
+      sectionIdPrefixFilter,
     ])
     rows = result.rows
   } catch (err) {
@@ -360,6 +366,8 @@ async function retrieveImpl(
       query_text: queryText,
       doc_type_filter: docTypeFilter,
       layer_filter: layerFilter,
+      varga_filter: vargaFilter,
+      section_id_prefix_filter: sectionIdPrefixFilter,
     },
     results,
     served_from_cache: false,

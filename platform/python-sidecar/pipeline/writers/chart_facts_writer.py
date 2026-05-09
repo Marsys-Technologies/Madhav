@@ -31,7 +31,10 @@ YAML_URI = "gs://madhav-marsys-sources/L1/facts/STRUCTURED/CHART_FACTS_EXTRACTIO
 SCHEMA_URI = "gs://madhav-marsys-sources/L1/facts/STRUCTURED/CHART_FACTS_SCHEMA_v1_0.json"
 
 EXPECTED_COUNT_MIN = 500
-EXPECTED_COUNT_MAX = 700
+EXPECTED_COUNT_MAX = 820  # v1.1 (VARGA-ETL-FULL-S1-CPA): expanded from 700 → 820 to
+                          # accommodate +77 rows (§2.4 + §3.5.2 completeness + §6.4 +
+                          # §11.6 + §16.x + §21) migrated from the deprecated
+                          # markdown extractor. Current row count: 666.
 
 _INSERT_SQL = f"""
 INSERT INTO {TABLE_STAGING}

@@ -31,8 +31,18 @@ _SIDECAR_ROOT = Path(__file__).resolve().parents[2]
 _REPO_ROOT = _SIDECAR_ROOT.parents[1]
 _FORENSIC_PATH = _REPO_ROOT / "01_FACTS_LAYER" / "FORENSIC_ASTROLOGICAL_DATA_v8_0.md"
 
-# Target sections for AC.11: must have ≥1 chunk each post-run
-TARGET_SECTIONS = ["§6", "§7", "§8", "§9", "§11", "§13", "§16", "§17", "§18", "§20", "§22", "§24"]
+# Target sections for AC.11: must have ≥1 chunk each post-run.
+# VARGA-ETL-FULL-S1-CPA D11 (2026-05-10): added §3 + every §3.1–§3.15 sub-section
+# so the verify-coverage report explicitly confirms each divisional chart section
+# (D2 Hora through D60 Shashtyamsha + the §3.15 CSI ledger) produces ≥1 chunk.
+# l1_fact.py MIN_BODY_TOKENS lowered to 12 (was 20) so §3.1 D2 Hora (only 2 table
+# rows, ~30–50 tokens) is no longer at risk of being below the threshold.
+TARGET_SECTIONS = [
+    "§3", "§3.1", "§3.2", "§3.3", "§3.4", "§3.5", "§3.6", "§3.7",
+    "§3.8", "§3.9", "§3.10", "§3.11", "§3.12", "§3.13", "§3.14", "§3.15",
+    "§6", "§7", "§8", "§9", "§11", "§13",
+    "§16", "§17", "§18", "§20", "§22", "§24",
+]
 
 
 def verify_coverage(repo_root: str | Path | None = None) -> dict[str, Any]:

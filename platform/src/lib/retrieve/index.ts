@@ -29,6 +29,9 @@ import * as divisionalQuery from './divisional_query'
 // Wave 4 — M2-C1-CHART-FACTS-QUERY
 import * as chartFactsQuery from './chart_facts_query'
 
+// VARGA-ETL-FULL-S1-CPA D8 — §3.15 CSI cross-divisional dignity surface
+import * as crossVargaDignityQuery from './cross_varga_dignity_query'
+
 // Wave 5 additions — M2-D234-BUNDLE
 import * as domainReportQuery from './domain_report_query'
 import * as remedialCodexQuery from './remedial_codex_query'
@@ -59,6 +62,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   sahamQuery.tool,
   divisionalQuery.tool,
   chartFactsQuery.tool,
+  crossVargaDignityQuery.tool,
   domainReportQuery.tool,
   remedialCodexQuery.tool,
   timelineQuery.tool,

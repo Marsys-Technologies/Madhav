@@ -29,7 +29,9 @@
       "type": "object",
       "properties": {
         "doc_type": { "type": "array", "items": { "type": "string" } },
-        "layer": { "type": "string" }
+        "layer": { "type": "string" },
+        "varga": { "type": "string", "description": "Filter to chunks whose metadata.varga matches (e.g. 'D9', 'D10', 'CSI')." },
+        "section_id_prefix": { "type": "string", "description": "Filter to chunks whose metadata.section_id starts with this prefix (e.g. '§3.5')." }
       },
       "additionalProperties": false
     },

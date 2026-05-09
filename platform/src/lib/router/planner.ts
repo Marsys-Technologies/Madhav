@@ -358,7 +358,7 @@ The current_date is provided in the user message; use it whenever you need to re
 
 ## Retrieval tool catalog
 
-There are 17 retrieval tools. Choose only those relevant to the query. Each tool's data surface, params, cost, and optimal usage patterns are below.
+There are 18 retrieval tools. Choose only those relevant to the query. Each tool's data surface, params, cost, and optimal usage patterns are below.
 
 ${rcs}
 
@@ -425,7 +425,19 @@ Emit exactly one JSON object. Start with \`{\` and end with \`}\`. No fences, no
 - history_mode: "research" for discovery and cross_native; "synthesized" for all others.
 - expected_output_shape: factual→single_answer; predictive→time_indexed_prediction; discovery and cross_native→structured_data; everything else (interpretive, cross_domain, holistic, remedial)→three_interpretation.
 - graph_seed_hints: extract every chart entity named in the query and map each to a valid CGM node ID. Prefixes: PLN.<PLANET>, HSE.<N>, SGN.<SIGN>, NAK.<NAKSHATRA>, YOG.<NAME>, KRK.C8.<KARAKA>, KRK.C7.<KARAKA>, SEN.<NAME>, DSH.MD.<PLANET>, DSH.AD.<PLANET>, DVS.<DIVISIONAL>.<ENT>, UCN.SEC.<PART>.<SUB>, KARAKA.<NAME>. If the query is generic, leave empty [].
-- tool_calls.tool_name MUST be one of the 17 names in the catalog above. Spelling matters.
+- tool_calls.tool_name MUST be one of the 18 names in the catalog above. Spelling matters.
+
+## Planning Principle 9 — cross_varga_dignity_query scheduling (added 2026-05-10, VARGA-ETL-FULL-S1-CPA)
+
+Schedule \`cross_varga_dignity_query\` at priority-1 for any query that:
+- Mentions cross-varga / multi-chart strength comparison ("how strong is X across charts",
+  "navamsha comparison", "three-state dignity", "vargottama").
+- Names a specific planet whose D1/D9/D10 dignity arc is asymmetric (Saturn — D1 exalted,
+  D9 debilitated NBRY, D10 angular; Venus — D1 neutral, D9 debilitated NBRY).
+- Is holistic (always include for cross-chart anchoring).
+For domain-specific interpretive queries (career, marriage, etc.), include this tool
+alongside \`divisional_query\` for the relevant varga so the synthesis layer has both the
+single-chart placements AND the cross-walk.
 
 ## Few-shot examples
 
@@ -459,11 +471,17 @@ User query: "What unusual patterns or exceptional features does my chart show?"
 Output:
 {"query_class":"discovery","domains":[],"forward_looking":false,"history_mode":"research","panel_mode":false,"expected_output_shape":"structured_data","graph_seed_hints":[],"query_intent_summary":"Surface rare or otherwise-noteworthy patterns and clusters in this chart.","planning_rationale":"Discovery is the cluster_atlas's job, supported by the high-rarity slice of pattern_register. Resonances pick out unexpected confluences.","synthesis_guidance":"Structured-data shape. Tabulate the top patterns/clusters by rarity and significance. State each one's claim crisply; do NOT pad with interpretation. Acharya audience expects density.","tool_calls":[{"tool_name":"cluster_atlas","params":{"min_rarity":0.7,"limit":15},"priority":1,"reason":"The discovery layer's primary surface."},{"tool_name":"pattern_register","params":{"min_strength":0.7,"limit":20},"priority":1,"reason":"Named patterns above the strength threshold."},{"tool_name":"resonance_register","params":{"min_strength":0.75,"limit":10},"priority":2,"reason":"High-strength resonances that mark unexpected confluences."},{"tool_name":"msr_sql","params":{"min_significance":0.85,"limit":15},"priority":2,"reason":"Top-significance signals as anchor points."}]}
 
+### Example 2c — interpretive with cross-varga focus
+
+User query: "How does Saturn behave across my charts? Walk me through D1, D9, and D10."
+Output:
+{"query_class":"interpretive","domains":[],"forward_looking":false,"history_mode":"synthesized","panel_mode":false,"expected_output_shape":"three_interpretation","graph_seed_hints":["PLN.SATURN"],"query_intent_summary":"Surface Saturn's three-state dignity arc across D1 / D9 / D10 and interpret the cross-varga shift.","planning_rationale":"This is the canonical cross-varga dignity question. cross_varga_dignity_query is the §3.15 CSI ledger surface — pair with divisional_query for D9 + D10 specifics, and msr_sql for Saturn-tagged signals.","synthesis_guidance":"Three-interpretation. Open with the three-state arc (D1 exalted Libra → D9 debilitated Aries with NBRY → D10 angular Taurus). Cite CSI.SATURN, D9.SATURN, D10.SATURN. Frame Saturn as the primary deliverer per Ishta/Kashta §6.7.","tool_calls":[{"tool_name":"cross_varga_dignity_query","params":{"planets":["Saturn"]},"priority":1,"reason":"§3.15 CSI ledger — Saturn-only slice."},{"tool_name":"divisional_query","params":{"varga":"D9","planet":"Saturn"},"priority":1,"reason":"D9 Saturn placement + NBRY context."},{"tool_name":"divisional_query","params":{"varga":"D10","planet":"Saturn"},"priority":1,"reason":"D10 Saturn placement (angular Taurus)."},{"tool_name":"msr_sql","params":{"planets":["Saturn"],"min_significance":0.7,"limit":15},"priority":2,"reason":"Saturn-tagged signals for interpretive layer."}]}
+
 ### Example 6 — holistic
 
 User query: "Give me a complete and comprehensive reading of my chart covering all major life areas."
 Output:
-{"query_class":"holistic","domains":["career","finance","relationships","health","spiritual","psychology"],"forward_looking":false,"history_mode":"synthesized","panel_mode":true,"expected_output_shape":"three_interpretation","graph_seed_hints":[],"query_intent_summary":"Produce a comprehensive read across all major life domains with explicit attention to the chart's organising spine.","planning_rationale":"Holistic needs breadth. MSR + patterns + resonances + clusters + contradictions + L3 reports across domains. Token budget is tight — most calls are priority 2 with broad limits.","synthesis_guidance":"Panel-mode three-interpretation. Open with the chart's organising spine in 2–3 sentences, then per-domain sections. Surface contradictions explicitly. Cite signal_ids throughout.","tool_calls":[{"tool_name":"msr_sql","params":{"min_significance":0.7,"limit":50},"priority":1,"reason":"High-significance signals across all domains."},{"tool_name":"pattern_register","params":{"min_strength":0.6,"limit":20},"priority":1,"reason":"Yogas that anchor the life-shape."},{"tool_name":"resonance_register","params":{"min_strength":0.65,"limit":15},"priority":2,"reason":"Confluences that organise multiple signals."},{"tool_name":"cluster_atlas","params":{"min_rarity":0.6,"limit":10},"priority":2,"reason":"Recognisable life-shapes."},{"tool_name":"contradiction_register","params":{"min_severity":0.6,"limit":12},"priority":2,"reason":"Tensions are part of an honest holistic read."},{"tool_name":"domain_report_query","params":{"domains":["career","financial","relationships","health","spiritual","psychology"],"limit":12},"priority":2,"reason":"L3 syntheses for each major domain."},{"tool_name":"vector_search","params":{"top_k":40},"priority":3,"reason":"Breadth backstop."}]}
+{"query_class":"holistic","domains":["career","finance","relationships","health","spiritual","psychology"],"forward_looking":false,"history_mode":"synthesized","panel_mode":true,"expected_output_shape":"three_interpretation","graph_seed_hints":[],"query_intent_summary":"Produce a comprehensive read across all major life domains with explicit attention to the chart's organising spine.","planning_rationale":"Holistic needs breadth. MSR + patterns + resonances + clusters + contradictions + L3 reports across domains, plus the §3.15 CSI cross-varga dignity ledger as the cross-chart anchor. Token budget is tight — most calls are priority 2 with broad limits.","synthesis_guidance":"Panel-mode three-interpretation. Open with the chart's organising spine in 2–3 sentences (lean on the CSI cross-varga picture for the spine), then per-domain sections. Surface contradictions explicitly. Cite signal_ids throughout.","tool_calls":[{"tool_name":"msr_sql","params":{"min_significance":0.7,"limit":50},"priority":1,"reason":"High-significance signals across all domains."},{"tool_name":"pattern_register","params":{"min_strength":0.6,"limit":20},"priority":1,"reason":"Yogas that anchor the life-shape."},{"tool_name":"cross_varga_dignity_query","params":{},"priority":1,"reason":"§3.15 CSI ledger — full 9-planet cross-varga picture; the cross-chart anchor for the holistic spine."},{"tool_name":"resonance_register","params":{"min_strength":0.65,"limit":15},"priority":2,"reason":"Confluences that organise multiple signals."},{"tool_name":"cluster_atlas","params":{"min_rarity":0.6,"limit":10},"priority":2,"reason":"Recognisable life-shapes."},{"tool_name":"contradiction_register","params":{"min_severity":0.6,"limit":12},"priority":2,"reason":"Tensions are part of an honest holistic read."},{"tool_name":"domain_report_query","params":{"domains":["career","financial","relationships","health","spiritual","psychology"],"limit":12},"priority":2,"reason":"L3 syntheses for each major domain."},{"tool_name":"vector_search","params":{"top_k":40},"priority":3,"reason":"Breadth backstop."}]}
 
 ### Example 7 — remedial
 

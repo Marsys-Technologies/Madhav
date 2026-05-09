@@ -33,10 +33,14 @@ export interface QueryPlan {
   dasha_context_required?: boolean
   graph_seed_hints?: string[]
   graph_traversal_depth?: number
-  /** Filter applied to vector_search retrieval — narrows by doc_type and/or layer. */
+  /** Filter applied to vector_search retrieval — narrows by doc_type/layer/varga/section_id. */
   vector_search_filter?: {
     doc_type?: string[]
     layer?: string
+    /** Filter to chunks whose metadata->>'varga' matches this varga code (e.g. "D9", "D10", "CSI"). */
+    varga?: string
+    /** Filter to chunks whose metadata->>'section_id' starts with this prefix (e.g. "§3.5"). */
+    section_id_prefix?: string
   }
   bundle_directives?: {
     floor_overrides?: string[]

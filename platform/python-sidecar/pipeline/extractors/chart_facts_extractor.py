@@ -1,5 +1,19 @@
+# DEPRECATED 2026-05-10 — VARGA-ETL-FULL-S1-CPA
+# This extractor produced a parallel chart_facts population that races with the
+# YAML pipeline's staging-swap. The dual-pipeline race condition (Pipeline A
+# DELETE-then-INSERT vs Pipeline B ON CONFLICT upserts) caused divisional rows
+# to disappear depending on run order. All of its categories have been migrated
+# into CHART_FACTS_EXTRACTION_v1_0.yaml v1.1 (the new YAML is the canonical
+# single source of truth for chart_facts). This file is frozen — do not extend
+# it; do not invoke chart_facts_loader against it for new ingests.
+#
+# The canonical pipeline is: ingest_chart_facts.py -> chart_facts_writer.py
+# (reads CHART_FACTS_EXTRACTION_v1_0.yaml from GCS, validates against schema,
+#  writes to chart_facts_staging, swaps to chart_facts via DELETE-then-INSERT).
+#
+# See 00_ARCHITECTURE/CHART_FACTS_PIPELINE_AUDIT_v1_0.md for the full rationale.
 """
-pipeline.extractors.chart_facts_extractor
+pipeline.extractors.chart_facts_extractor — FROZEN/DEPRECATED 2026-05-10
 KARN-W2-R2-CHART-FACTS-ETL — Parse FORENSIC_ASTROLOGICAL_DATA_v8_0.md for
 sections §6–§24 and produce chart_facts rows for new categories.
 

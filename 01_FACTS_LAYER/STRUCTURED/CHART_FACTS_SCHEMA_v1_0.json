@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "CHART_FACTS_SCHEMA_v1_0",
   "title": "MARSYS-JIS Chart Facts Extraction Schema",
-  "description": "JSON Schema for CHART_FACTS_EXTRACTION_v1_0.yaml — structured projection of FORENSIC_ASTROLOGICAL_DATA_v8_0.md for the chart_facts Postgres table.",
-  "version": "1.0",
+  "description": "JSON Schema for CHART_FACTS_EXTRACTION_v1_0.yaml — structured projection of FORENSIC_ASTROLOGICAL_DATA_v8_0.md for the chart_facts Postgres table. v1.1 (2026-05-10, VARGA-ETL-FULL-S1-CPA): expanded category enum to the union of categories produced by the (now-deprecated) markdown extractor plus the new YAML-side §6.4/§11.6/§16/§21 rows. The YAML is the canonical ETL surface; the markdown extractor is frozen.",
+  "version": "1.1",
   "type": "object",
   "required": ["schema_version", "source", "extracted_at", "extracted_by", "facts"],
   "properties": {
@@ -12,6 +12,7 @@
     "extracted_at": {"type": "string", "format": "date"},
     "extracted_by": {"type": "string"},
     "cross_check_finding": {"type": "string"},
+    "v1_1_changelog": {"type": "string"},
     "facts": {
       "type": "array",
       "items": {
@@ -25,7 +26,19 @@
           },
           "category": {
             "type": "string",
-            "enum": ["birth_metadata", "planet", "house", "cusp", "kp_cusp", "kp_planet", "kp_significator", "dasha_vimshottari", "dasha_yogini", "dasha_chara", "special_lagna", "saham", "arudha", "navatara", "panchang", "yoga", "strength", "mercury_convergence"]
+            "enum": [
+              "birth_metadata", "planet", "house", "cusp",
+              "kp_cusp", "kp_planet", "kp_significator",
+              "dasha_vimshottari", "dasha_yogini", "dasha_chara",
+              "special_lagna", "saham", "arudha", "navatara", "panchang",
+              "yoga", "strength", "mercury_convergence",
+              "shadbala", "bhava_bala", "ishta_kashta", "strength_extra",
+              "ashtakavarga_bav", "ashtakavarga_sav", "ashtakavarga_pinda",
+              "kakshya_zone", "avastha", "upagraha", "sensitive_point",
+              "mrityu_bhaga", "arudha_occupancy", "aspect", "chalit_shift",
+              "chandra_placement", "deity_assignment", "varshphal",
+              "longevity_indicator", "transit"
+            ]
           },
           "divisional_chart": {
             "type": "string",

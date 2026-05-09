@@ -20623,3 +20623,212 @@ o4_closed: true
 phase_o_complete: true
 close_criteria_met: true
 ---
+
+---
+## SESSION_OPEN — VARGA-ETL-FULL-S1-CPA (2026-05-09)
+
+```yaml
+session_open:
+  session_id: VARGA-ETL-FULL-S1-CPA
+  cowork_thread_name: "Madhav VARGA-ETL-FULL-S1 CPA — Divisional ETL/retrieval/chunker foundation"
+  agent_name: claude-opus-4-7
+  agent_version: claude-opus-4-7
+  step_number_or_macro_phase: PRE_M5_FOUNDATIONAL_FIX  # concurrent / governance-aside class; M4 CLOSED, M5 not yet opened
+  predecessor_session: M4-D-S1                          # last main-thread substantive close per CURRENT_STATE v3.4 §2
+  cowork_brief_ref: CLAUDECODE_BRIEF.md                 # VARGA-ETL-FULL-S1 (authored 2026-05-09; status PENDING at session open)
+  execution_split: CHECKPOINT_A_ONLY                    # this session: D1–D11 (Streams 1+2+3); D12–D19 deferred to follow-on session
+  mandatory_reading_confirmation:
+    - file: CLAUDECODE_BRIEF.md
+      fingerprint_sha256: e80eafd2843ae0e26a4b08078823491c55ee9235692a436479abfa9b7dbcac07
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: CLAUDE.md
+      fingerprint_sha256: cb24eaf3b347f458372540ddaf29e133e6519fcdc3106fe0fb47139c95068bda
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      fingerprint_sha256: e0c2a56d8902d4f986e7e4298e26ac93ce65b38dcc11c8bbb3e1f82f637d6e49
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+      fingerprint_sha256: 1c27372a47cf6aff557da5ee418fd9d95b602996db2d8d8688c8ddc850c1add8
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+      fingerprint_sha256: 4ed721349441dc15dc9042428f28095c08d5be66af31707beab33d48f9235223
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+      fingerprint_sha256: 56ab1ae0327bd27c02b2f98379c466a0cafbc84ba32774cc267f04625f1a4da0
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      fingerprint_sha256: 24f0cdbea4cf7528665ea5ed7384e8e4c8a7afaf7feaffd56d4845b434784e2e
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md
+      fingerprint_sha256: 8ec04dfc8007b72f8a6c82db2814183ce9ceba9436c104f384217d5a3595d12a
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+      fingerprint_sha256: 81f8678b803ad516d82467cd67c005588fa2da8a5dfbeb1b42b05ebdcbabb522
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+      fingerprint_sha256: fd4202d3f548fd0322ee8bab537439b8069ff779dde289d1fb49c0c6f5de59b4
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md
+      fingerprint_sha256: cc99ff79c54cf01506ac7372abb84267942daf6f7e7b5e1fe24fb99309285fc2
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
+      fingerprint_sha256: 9e44283f237f33cfde5de2a409440fb8d28f52b9afc31a9f76a5a19c0e53154b
+      read_at: 2026-05-09T00:00:00+05:30
+    - file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md
+      fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223
+      read_at: 2026-05-09T00:00:00+05:30
+  canonical_artifact_fingerprint_check:
+    # Pre-M5 foundational fix touches no canonical L1/L2.5 artifacts in CHECKPOINT_A_ONLY
+    # scope (D1–D11). YAML extraction config + JSON schema are L1/STRUCTURED ETL surfaces,
+    # not L1 facts; FORENSIC v8.0 itself is must_not_touch.
+    - canonical_id: FORENSIC
+      declared_fingerprint: "(must_not_touch — no observed read in this checkpoint)"
+      observed_fingerprint: "n/a"
+      match: "n/a-not-in-scope"
+    - canonical_id: MACRO_PLAN
+      declared_fingerprint: "(unchanged since v2.0 publication)"
+      observed_fingerprint: 4ed721349441dc15dc9042428f28095c08d5be66af31707beab33d48f9235223
+      match: assumed-true   # CANONICAL_ARTIFACTS not authoritatively re-fingerprinted in this Cowork-brief execution
+  declared_scope:
+    may_touch:
+      # Per CLAUDECODE_BRIEF.md "may_touch" — Stream 1+2+3 subset only (D1–D11):
+      - 01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml
+      - 01_FACTS_LAYER/STRUCTURED/CHART_FACTS_SCHEMA_v1_0.json
+      - 00_ARCHITECTURE/CHART_FACTS_PIPELINE_AUDIT_v1_0.md     # NEW (D4)
+      - platform/python-sidecar/pipeline/extractors/chart_facts_extractor.py
+      - platform/python-sidecar/pipeline/loaders/chart_facts_loader.py
+      - platform/python-sidecar/pipeline/ingest_chart_facts.py
+      - platform/python-sidecar/rag/chunkers/l1_fact.py
+      - platform/python-sidecar/pipeline/chunkers/forensic_chunker.py
+      - platform/src/lib/retrieve/divisional_query.ts
+      - platform/src/lib/retrieve/chart_facts_query.ts
+      - platform/src/lib/retrieve/vector_search.ts
+      - platform/src/lib/retrieve/cross_varga_dignity_query.ts            # NEW (D8)
+      - platform/src/lib/retrieve/index.ts
+      - platform/src/lib/retrieve/__tests__/cross_varga_dignity_query.test.ts  # NEW (D8)
+      - platform/src/lib/retrieve/__tests__/divisional_query.test.ts
+      - platform/src/lib/retrieve/__tests__/vector_search.test.ts
+      - platform/src/lib/router/retrieval_capability_spec.ts
+      - platform/src/lib/router/planner.ts
+      - platform/src/lib/router/per_tool_planner.ts
+      - CLAUDECODE_BRIEF.md                                       # status flip + path move at CPA close
+      - 00_ARCHITECTURE/SESSION_LOG.md                            # this handshake + close block
+    must_not_touch:
+      # Per CLAUDECODE_BRIEF.md "must_not_touch" + checkpoint-A-only deferrals:
+      - 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+      - 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md     # deferred to D12 (next session)
+      - 025_HOLISTIC_SYNTHESIS/UCN_v4_0.md     # deferred to D12 (next session)
+      - 025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md    # deferred (next session)
+      - 025_HOLISTIC_SYNTHESIS/CGM_v9_0.md     # deferred to D13 (next session)
+      - 025_HOLISTIC_SYNTHESIS/RM_v2_0.md      # deferred to D14 (next session)
+      - platform/src/lib/prompts/templates/shared.ts        # deferred to D15/D17
+      - platform/src/lib/prompts/templates/interpretive.ts  # deferred to D16
+      - platform/src/lib/prompts/templates/holistic.ts      # deferred to D16
+      - platform/src/lib/prompts/templates/predictive.ts    # deferred to D16
+      - platform/src/lib/prompts/__tests__/                 # deferred to D19
+      - platform/migrations/**
+      - platform/supabase/**
+      - platform/src/app/api/**
+      - platform/src/lib/audit/**
+      - platform/src/lib/checkpoints/**
+      - 06_LEARNING_LAYER/**
+      - 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+      - 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+      - 02_ANALYTICAL_LAYER/**
+      - 03_DOMAIN_REPORTS/**
+  mirror_pair_freshness_check:
+    # Pre-M5 foundational fix is a Claude-only execution; touches platform/ + STRUCTURED/
+    # files only — no MP.1–MP.8 surfaces. CURRENT_STATE narrative carries an
+    # "M4 cumulative S4→P1→S1 mirror delta carries to M5-S1 entry mirror sync" obligation
+    # which remains UNCONSUMED here (M5-S1 has not opened); VARGA-ETL-FULL-S1 does not
+    # claim that obligation.
+    - pair_id: MP.1
+      claude_side: CLAUDE.md
+      gemini_side: .geminirules
+      status: not-touched-this-session
+    - pair_id: MP.2
+      claude_side: composite(SESSION_LOG + CURRENT_STATE + active plan pointers)
+      gemini_side: .gemini/project_state.md
+      status: not-touched-this-session
+  native_directive_obligations: []
+    # ND.1 addressed since 2026-04-24; no open ND naming this session.
+  red_team_due: false
+    # Concurrent / governance-aside class; not a 3rd-session-cadence cycle and not a
+    # macro-phase close. red_team_counter UNCHANGED at 0 per CURRENT_STATE v3.4.
+  notes: >
+    Pre-M5 foundational fix split per brief CHECKPOINT A:
+    this session executes D1–D11 (ETL unification + retrieval-layer fixes
+    + chunker metadata). D12–D19 (L2.5 enrichment + synthesis gates +
+    full test suite) deferred to a follow-on session per native confirmation
+    2026-05-09. Branch: feature/varga-etl-full-s1 cut from main at a535f38.
+    Out-of-band Cowork-brief execution; schema_validator.py not invoked
+    in-session per the same precedent as USTAD_S* concurrent-workstream
+    sessions (handshake_validator_exit_code analogue: 2 / acceptable).
+```
+
+
+## SESSION_CLOSE — VARGA-ETL-FULL-S1-CPA (2026-05-10)
+
+```yaml
+session_close:
+  session_id: VARGA-ETL-FULL-S1-CPA
+  closed_at: 2026-05-10
+  status: CHECKPOINT_A_COMPLETE
+  cowork_brief_ref: CLAUDECODE_BRIEF.md
+  branch: feature/varga-etl-full-s1
+  branch_state: dirty (single CHECKPOINT_A commit pending in next step)
+  deliverables_complete:
+    D1: "YAML extension v1.0 → v1.1 (+77 rows: §2.4 cusp distances ×9, §3.5.2 D9 12H stellium completeness ×3, §6.4 FORENSIC bhavabala ×12, §11.6 Chesta motion ×7, §16.2 Western aspects ×23, §16.3 Bhav-Madhya aspects ×14, §16.4 trine check ×1, §21 Sade Sati ×8). PLN.MERCURY value_json gains vargottama:true. Total: 666 facts (was 589)."
+    D2: "Schema enum expanded 18 → 38 categories. Schema version 1.0 → 1.1. Added v1_1_changelog top-level field. YAML validates clean."
+    D3: "Deprecation banners on chart_facts_extractor.py + chart_facts_loader.py. Writer EXPECTED_COUNT_MAX 700 → 820. ingest_chart_facts.py docstring marks itself sole ETL path."
+    D4: "00_ARCHITECTURE/CHART_FACTS_PIPELINE_AUDIT_v1_0.md NEW (323 lines) — race-condition rationale + v1.1 resolution + residuals (GAP-PIPELINE-B-RESIDUAL.1 enumerates Pipeline-B-only categories deferred to next ETL session) + manual re-ingest procedure for native (Cloud SQL Proxy)."
+    D5: "vector_search varga + section_id_prefix filters added (SQL params $5/$6, plan.vector_search_filter type extended, query_plan.schema.json updated)."
+    D6: "divisional_query category whitelist expanded (4 → 10 categories: + strength_extra, arudha, arudha_occupancy, yoga, aspect, sensitive_point). LIMIT 60 → 200."
+    D7: "chart_facts_query vargottama_only?: boolean added with SQL filter on (value_json->>'vargottama')::boolean = true."
+    D8: "NEW tool cross_varga_dignity_query (286 lines) — §3.15 CSI ledger surface, returns per-planet D1/D9/D10 dignity + vargottama. Classical dignity lookup table (sun/moon/mars/mercury/jupiter/venus/saturn) backfills cells where YAML d{1,9,10}_dignity is absent. Registered in retrieve/index.ts (+1 tool, total 21) + retrieval_capability_spec.ts (18 RCS entries). 4 tests, all green."
+    D9: "planner.ts: '17 tools' → '18 tools'; Example 2c (interpretive cross-varga / Saturn three-state) added; Example 6 (holistic) updated to schedule cross_varga_dignity_query at priority 1; Planning Principle 9 added. per_tool_planner.ts: cross_varga_dignity_query template added (TOOL_PROMPT_TEMPLATES count 17 → 18)."
+    D10: "l1_fact.py: _augment_layer_metadata helper added — §3.x sections get varga (parsed from heading) + layer_aspect='divisional', §3.15 specifically gets varga='CSI' + layer_aspect='divisional_transition', §5.x gets layer_aspect='dasha', §6.x gets layer_aspect='strength'. Wired into all 3 chunk-construction sites. MIN_BODY_TOKENS 20 → 12 (D11 enabler — keeps tiny §3.1 D2 Hora chunk). 7 unit tests."
+    D11: "forensic_chunker.py TARGET_SECTIONS extended: §3 + §3.1..§3.15 added (verify_coverage() now reports per-divisional-section presence) alongside existing §6/§7/§8/§9/§11/§13/§16/§17/§18/§20/§22/§24."
+  test_count_pin_updates:
+    - "src/lib/retrieve/__tests__/integration.test.ts: 'has exactly 20 tools' → 'has exactly 21 tools'"
+    - "src/lib/router/__tests__/per_tool_planner.test.ts: 'all 17 tool templates are defined' → 'all 18 tool templates are defined' + cross_varga_dignity_query added to expectedTools list"
+  deferred_to_session_2:
+    [D12, D13, D14, D15, D16, D17, D18, D19]
+    note: "Stream 4 (L2.5 enrichment — 15 MSR signals, 5 RM resonances, 50 CGM nodes) + Stream 5 (synthesis-prompt gates DIVISIONAL_INTEGRATION_GATE / B11_EXPLICIT_LAYER_GATE / DOMAIN_VARGA_MAP) + Stream 6 (full vitest coverage on the new gates). All require careful FORENSIC §3.x reading per brief D12 explicit instruction; defer to fresh-context follow-on session per native confirmation 2026-05-09."
+  verification:
+    yaml_schema_validation: "PASS — 666 facts validate against CHART_FACTS_SCHEMA v1.1 (jsonschema Draft202012Validator, 0 errors)"
+    typescript_check: "0 NEW errors in src/lib/retrieve/, src/lib/router/, src/lib/prompts/. Pre-existing errors on main (.next/types/validator.ts trace-route async-params signature, planner_circuit_breaker.test.ts CircuitMetric typing, tests/synthesis/ + tests/planner/ missing vi import) carry through unchanged."
+    vitest_retrieve_router_prompts: "432/432 PASS, 24/24 test files (cd platform && npx vitest run src/lib/retrieve src/lib/router src/lib/prompts)"
+    new_tests_added: "4 (cross_varga_dignity_query.test.ts) + 7 (test_l1_fact_varga_metadata.py)"
+  acceptance_criteria_complete:
+    - AC.EF.1, AC.EF.2, AC.EF.3, AC.EF.4, AC.EF.5, AC.EF.6, AC.EF.7
+    - AC.RT.1, AC.RT.2, AC.RT.3, AC.RT.4, AC.RT.5, AC.RT.6
+    - AC.CH.1, AC.CH.2
+    - AC.RG.1 (0 new TS errors), AC.RG.2 (vitest green for retrieve/router/prompts)
+  acceptance_criteria_deferred:
+    - "AC.L2.1, AC.L2.2, AC.L2.3 (Stream 4 — MSR/CGM/RM enrichment, deferred to D12-D14)"
+    - "AC.SY.1, AC.SY.2, AC.SY.3 (Stream 5 — synthesis gates, deferred to D15-D18)"
+  manual_steps_for_native_post_close:
+    - "Cloud SQL Proxy + python -m pipeline.ingest_chart_facts to re-stage and swap chart_facts to v1.1 (666 rows, was 589). DO NOT also run pipeline.loaders.chart_facts_loader — it is FROZEN; running it re-introduces the race."
+    - "python -m pipeline.chunkers.forensic_chunker to re-chunk FORENSIC with new varga/layer_aspect metadata."
+    - "Re-embed via rag.embed (or equivalent runner) so vector_search varga/section_id_prefix filters surface §3.x chunks."
+    - "Smoke-test 6 queries per CLAUDECODE_BRIEF §'Manual steps for the native' Step 10."
+  schema_validator_exit_code: 2  # No in-session validator CLI invoked — out-of-band Cowork-brief execution; same precedent as USTAD_S* concurrent-workstream sessions.
+  current_state_updated: false
+  current_state_updated_rationale: "Pre-M5 foundational fix is a concurrent / governance-aside class workstream — does not advance the M5 INCOMING pointer. CURRENT_STATE rotation defers to the M5-S1 main-thread session. CLAUDECODE_BRIEF.md frontmatter (status: CHECKPOINT_A_COMPLETE) carries the workstream-local pointer."
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - "Branch state was externally rewritten mid-session (cherry-picks + resets + checkout to obs-ux-s5 branch — see reflog from start of session). Native intervened, reset feature/varga-etl-full-s1 to a535f38, preserved my work in stash@{0}. Recovery via git stash apply restored all 21 modified files cleanly; the 4 new files (D4 audit doc, D8 tool + tests, D10 python test) survived as untracked-on-disk through the branch dance. Verification suite ran clean post-recovery."
+  red_team_due: false
+  red_team_counter: 0  # UNCHANGED; concurrent-workstream class
+  branch_state_serialized:
+    serialized: false
+    rationale: "ONGOING_HYGIENE_POLICIES §O obligation defers to next main-thread substantive session per concurrent-workstream precedent."
+  close_criteria_met: true
+  unblocks: "VARGA-ETL-FULL-S1-CPB (D12–D19): L2.5 enrichment + synthesis gates + full test suite. Fresh session, full attention on FORENSIC §3.x reading for the 15 MSR signals + 5 RM resonances + 50 CGM nodes."
+```
+
