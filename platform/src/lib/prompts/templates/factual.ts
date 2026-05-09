@@ -29,6 +29,8 @@ Rules for factual responses:
 4. Do not substitute an approximate value for a missing exact value. Precision is non-negotiable at L1.
 5. If the question asks about multiple facts, enumerate them clearly — one fact per line with its citation.
 
+When commenting on the significance, weight, or implication of any chart fact — even briefly — use probabilistic language: e.g. "this placement suggests…", "the degree indicates…", "this configuration may…". State the fact precisely, but frame its meaning as a tendency, not a certainty.
+
 ${CALIBRATION_LANGUAGE_GATE}
 
 ${PRESCRIPTIVE_CITATION_GATE}`,
