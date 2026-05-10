@@ -1,10 +1,9 @@
 /**
  * MARSYS-JIS — context_assembly step (W2-CTX-ASSEMBLY)
  *
- * Optional LLM step inserted between retrieval and synthesis in the
- * NEW_QUERY_PIPELINE_ENABLED path. Gated behind CONTEXT_ASSEMBLY_ENABLED
- * (default OFF). When OFF, route.ts forwards the raw ToolBundle[] directly
- * — this module is never called.
+ * Optional LLM step inserted between retrieval and synthesis. Gated behind
+ * CONTEXT_ASSEMBLY_ENABLED (default OFF). When OFF, route.ts forwards the
+ * raw ToolBundle[] directly — this module is never called.
  *
  * When ON: receives the full retrieval bundle and asks the assembler model
  * to compress + reorder it (remove redundancy, surface most-relevant first,

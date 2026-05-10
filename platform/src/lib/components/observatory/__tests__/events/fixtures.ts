@@ -78,7 +78,7 @@ export function makeDetail(
     provider_request_id: `req-${i}`,
     started_at: new Date(2026, 4, 1, 10, 0, i).toISOString(),
     finished_at: new Date(2026, 4, 1, 10, 0, i, 500).toISOString(),
-    feature_flag_state: { NEW_QUERY_PIPELINE_ENABLED: true },
+    feature_flag_state: {},
     client_ip_hash: null,
     created_at: new Date(2026, 4, 1, 10, 0, i, 600).toISOString(),
   }

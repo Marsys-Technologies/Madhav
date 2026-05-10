@@ -3,7 +3,7 @@
  * cutover:stage1-smoke — Phase 11A end-to-end smoke test.
  *
  * Verifies the new query pipeline is default-on and working:
- *   1. Env guard: NEW_QUERY_PIPELINE_ENABLED + AUDIT_ENABLED both true, all
+ *   1. Env guard: AUDIT_ENABLED true, all
  *      provider keys present, Cloud SQL reachable.
  *   2. Sends one query per query class (8 classes) to POST /api/chat/consume.
  *   3. Asserts: HTTP 200, stream completes, citation marker present.
@@ -322,13 +322,8 @@ function guardEnv(): string[] {
   }
   if (!process.env.DATABASE_URL) errors.push('DATABASE_URL is not set. Start Cloud SQL Auth Proxy.')
 
-  // Verify flag defaults by importing the flags module
-  // (flags are read at import time, so this reflects actual defaults)
-  const newPipelineFlag = process.env.MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED
+  // NEW_QUERY_PIPELINE_ENABLED retired Phase 11B (2026-05-11) — only pipeline now.
   const auditFlag = process.env.MARSYS_FLAG_AUDIT_ENABLED
-  if (newPipelineFlag === 'false') {
-    errors.push('MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED is explicitly set to false — pipeline cutover not active.')
-  }
   if (auditFlag === 'false') {
     errors.push('MARSYS_FLAG_AUDIT_ENABLED is explicitly set to false — audit logging not active.')
   }

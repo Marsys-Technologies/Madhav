@@ -5298,6 +5298,7 @@ At the close of KARN-W8-R2-M2-CLOSE (2026-05-01) — **M2 (Corpus Activation) SE
 - Composition rules: 39/39 vitest — PASS
 - Red-team pass: REDTEAM_M2_v1_0.md verdict **PASS** (9/9 axes; 0 findings; 0 fixes) — PASS
 - New query pipeline default: NEW_QUERY_PIPELINE_ENABLED=true (Phase 11A Stage 1, 2026-04-28) — PASS
+- Legacy code path removed: Phase 11B (2026-05-11) deleted the flag-OFF branch from route.ts, deleted consume-tools.ts, removed `pipelineEnabled` prop chain from ConsumeChat + consume page wrappers, removed `NEW_QUERY_PIPELINE_ENABLED` from feature_flags.ts. New pipeline is now the only pipeline; rollback is `git revert` of PR (no flag-flip path) — DONE
 
 **Overall:** 8 PASS / 1 WARN / 0 FAIL.
 

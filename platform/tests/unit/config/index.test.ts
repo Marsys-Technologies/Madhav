@@ -13,11 +13,7 @@ describe('ConfigService', () => {
     }
   })
 
-  it('NEW_QUERY_PIPELINE_ENABLED defaults true (Phase 11A cutover)', () => {
-    const svc = createConfigService()
-    expect(svc.getFlag('NEW_QUERY_PIPELINE_ENABLED')).toBe(true)
-  })
-
+  // NEW_QUERY_PIPELINE_ENABLED retired Phase 11B (2026-05-11); legacy path deleted.
   // AUDIT_ENABLED retired BHISMA-B1 §6.2; replaced by always-on observability flags.
   // REASONING_MODEL_STREAMING retired BHISMA Wave 2; o-series models removed from registry.
   it('BHISMA-B1 observability flags default true', () => {
@@ -29,16 +25,6 @@ describe('ConfigService', () => {
     ]
     for (const flag of flags) {
       expect(svc.getFlag(flag)).toBe(true)
-    }
-  })
-
-  it('env var override: MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED=false reverts to legacy path', () => {
-    process.env.MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED = 'false'
-    try {
-      const svc = createConfigService()
-      expect(svc.getFlag('NEW_QUERY_PIPELINE_ENABLED')).toBe(false)
-    } finally {
-      delete process.env.MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED
     }
   })
 
@@ -74,16 +60,6 @@ describe('ConfigService', () => {
   it('PANEL_MODE_ENABLED defaults true', () => {
     const svc = createConfigService()
     expect(svc.getFlag('PANEL_MODE_ENABLED')).toBe(true)
-  })
-
-  it('env var override: MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED=false disables pipeline', () => {
-    process.env.MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED = 'false'
-    try {
-      const svc = createConfigService()
-      expect(svc.getFlag('NEW_QUERY_PIPELINE_ENABLED')).toBe(false)
-    } finally {
-      delete process.env.MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED
-    }
   })
 
   it('env var override: MARSYS_FLAG_PANEL_MODE_ENABLED=true enables the flag', () => {
