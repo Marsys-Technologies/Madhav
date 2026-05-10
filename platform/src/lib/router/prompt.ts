@@ -92,6 +92,54 @@ Output:
   "schema_version": "1.0",
   "dasha_context_required": true,
   "graph_seed_hints": ["DSH.MD.SATURN", "PLN.SATURN"],
+  "vector_search_filter": { "doc_type": ["l1_fact", "msr_signal"] },
+  "time_window": { "start": "2024-03-15", "end": "2025-09-30" }
+}
+
+#### predictive (eclipse / planetary transit window)
+Query: "When is the next solar eclipse over my natal Moon, and what does that mean for me?"
+Output:
+{
+  "query_plan_id": "00000000-0000-0000-0000-000000000010",
+  "query_text": "When is the next solar eclipse over my natal Moon, and what does that mean for me?",
+  "query_class": "predictive",
+  "domains": [],
+  "forward_looking": true,
+  "audience_tier": "client",
+  "tools_authorized": ["temporal", "msr_sql", "pattern_register"],
+  "history_mode": "synthesized",
+  "panel_mode": false,
+  "expected_output_shape": "time_indexed_prediction",
+  "manifest_fingerprint": "__PLACEHOLDER__",
+  "schema_version": "1.0",
+  "dasha_context_required": false,
+  "eclipse_query": true,
+  "time_window": { "start": "2025-03-29", "end": "2025-04-30" },
+  "planets": ["Moon"],
+  "graph_seed_hints": ["PLN.MOON"],
+  "vector_search_filter": { "doc_type": ["l1_fact", "msr_signal"] }
+}
+
+#### predictive (dasha-chain temporal — named antardasha with end date)
+Query: "I'm in Mercury MD / Saturn AD until August 2027. What will the rest of this Saturn AD bring?"
+Output:
+{
+  "query_plan_id": "00000000-0000-0000-0000-000000000011",
+  "query_text": "I'm in Mercury MD / Saturn AD until August 2027. What will the rest of this Saturn AD bring?",
+  "query_class": "predictive",
+  "domains": [],
+  "forward_looking": true,
+  "audience_tier": "client",
+  "tools_authorized": ["temporal", "msr_sql", "pattern_register", "resonance_register"],
+  "history_mode": "synthesized",
+  "panel_mode": false,
+  "expected_output_shape": "time_indexed_prediction",
+  "manifest_fingerprint": "__PLACEHOLDER__",
+  "schema_version": "1.0",
+  "dasha_context_required": true,
+  "time_window": { "start": "2025-01-01", "end": "2027-08-31" },
+  "planets": ["Mercury", "Saturn"],
+  "graph_seed_hints": ["DSH.MD.MERCURY", "DSH.AD.SATURN", "PLN.SATURN"],
   "vector_search_filter": { "doc_type": ["l1_fact", "msr_signal"] }
 }
 
