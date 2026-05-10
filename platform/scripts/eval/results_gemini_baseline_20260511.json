@@ -1,0 +1,425 @@
+{
+  "run_date": "2026-05-10T19:35:26.049972+00:00",
+  "base_url": "https://amjis-web-938361928218.asia-south1.run.app",
+  "planner_branch": "unspecified",
+  "judge_enabled": true,
+  "aggregate": {
+    "fixture_count": 24,
+    "ok_count": 18,
+    "error_count": 6,
+    "keyword_recall": 0.8093,
+    "signal_recall": 0.8889,
+    "synthesis": 0.7189,
+    "weighted": 0.7543
+  },
+  "results": [
+    {
+      "fixture_id": "F001",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.45,
+        "weighted": 0.6017
+      },
+      "response_excerpt": "In the natal chart of Abhisek Mohanty, Mercury is placed in the 10th house",
+      "latency_ms": 36169,
+      "error": null
+    },
+    {
+      "fixture_id": "F002",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.92,
+        "weighted": 0.976
+      },
+      "response_excerpt": "Based on the canonical chart data, the following details pertain to the 7th house:\n\n*   **Ruling Sign:** The 7th house is ruled by the sign of **Libra** (\u2192 SIG.MSR.254). Venus, as the lord of Libra, i",
+      "latency_ms": 30962,
+      "error": null
+    },
+    {
+      "fixture_id": "F003",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.6,
+        "weighted": 0.88
+      },
+      "response_excerpt": "Based on the provided chart data, the current Vimshottari dasha periods for Abhisek Mohanty are as follows. This analysis is a direct lookup from the dasha sequence computed from the L1 chart data (\u2192 ",
+      "latency_ms": 36129,
+      "error": null
+    },
+    {
+      "fixture_id": "F004",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.6,
+        "weighted": 0.6467
+      },
+      "response_excerpt": "Based on the L1 chart data and L2 signals from the Master Signal Register (MSR), the Moon's placement is as follows.\n\nThe Moon is in the nakshatra of **Purva Bhadrapada**, placed in **Pada 3** (\u2192 FORE",
+      "latency_ms": 41107,
+      "error": null
+    },
+    {
+      "fixture_id": "F005",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.64,
+        "weighted": 0.928
+      },
+      "response_excerpt": "Based on the provided context, the primary signal identifying Mercury's role is **SIG.MSR.413**.\n\nThis signal is titled \"Mercury Eight-System Convergence \u2014 Chart's Primary Operational Planet (v2.0 UPG",
+      "latency_ms": 31460,
+      "error": null
+    },
+    {
+      "fixture_id": "F006",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.92,
+        "weighted": 0.984
+      },
+      "response_excerpt": "For this factual query, the Master Signal Register (MSR) provides the direct answer. The Causal Graph Model (CGM) and other synthesis layers like the UCN, CDLM, and RM are less relevant for this speci",
+      "latency_ms": 31057,
+      "error": null
+    },
+    {
+      "fixture_id": "F007",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.94,
+        "weighted": 0.988
+      },
+      "response_excerpt": "The Saraswati Yoga is documented in the Master Signal Register (MSR), which is the primary L2.5 synthesis artifact for this query.\n\nThe specific signal is:\n*   **SIG.MSR.007**: Saraswati Yoga \u2014 Jupite",
+      "latency_ms": 29272,
+      "error": null
+    },
+    {
+      "fixture_id": "F008",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 1.0,
+        "weighted": 1.0
+      },
+      "response_excerpt": "The Master Signal Register (MSR) signal that captures this specific convergence is **SIG.MSR.396**.\n\nThis signal is titled: **Meta-Convergence \u2014 Sade Sati Paradox Confirmed Across Three Systems: Paras",
+      "latency_ms": 33299,
+      "error": null
+    },
+    {
+      "fixture_id": "F009",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.5,
+        "signal_recall": 1.0,
+        "synthesis": 0.0,
+        "weighted": 0.25
+      },
+      "response_excerpt": "An analysis of Abhisek Mohanty's birth chart reveals an exceptionally integrated and mutually reinforcing relationship between the domains of career and wealth. This connection is not merely incidenta",
+      "latency_ms": 57648,
+      "error": null
+    },
+    {
+      "fixture_id": "F010",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6,
+        "signal_recall": 1.0,
+        "synthesis": 1.0,
+        "weighted": 0.84
+      },
+      "response_excerpt": "Based on the provided signals, the Mercury-Saturn relational mechanism is a core structural and operational dynamic in this chart, confirmed across four distinct astrological systems. Signal `SIG.MSR.",
+      "latency_ms": 48250,
+      "error": null
+    },
+    {
+      "fixture_id": "F011",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.8,
+        "signal_recall": 1.0,
+        "synthesis": 0.88,
+        "weighted": 0.884
+      },
+      "response_excerpt": "An analysis of the 7th house in this birth chart reveals its pivotal role as a nexus where multiple life domains converge, creating complex and powerful dynamics. This reading draws primarily from the",
+      "latency_ms": 80857,
+      "error": null
+    },
+    {
+      "fixture_id": "F012",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 1.0,
+        "weighted": 1.0
+      },
+      "response_excerpt": "An analysis of the two primary convergence zones in this birth chart\u2014the 7th House in Libra and the 11th House in Aquarius\u2014reveals a profound and complex interplay between relationship karma and soul ",
+      "latency_ms": 84994,
+      "error": null
+    },
+    {
+      "fixture_id": "F013",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.92,
+        "weighted": 0.976
+      },
+      "response_excerpt": "For this query regarding dasha timing, the Master Signal Register (MSR) provides the most direct data (\u2192 SIG.MSR.255). The other synthesis layers such as the UCN, CDLM, CGM, and RM are less central to",
+      "latency_ms": 23471,
+      "error": null
+    },
+    {
+      "fixture_id": "F014",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 0.0,
+        "synthesis": 0.2,
+        "weighted": 0.24
+      },
+      "response_excerpt": "To address your query regarding the Ketu mahadasha, a full analysis requires data that has not been successfully retrieved from the context bundle. The core components needed to identify the specific ",
+      "latency_ms": 53408,
+      "error": null
+    },
+    {
+      "fixture_id": "F015",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.67,
+        "weighted": 0.6677
+      },
+      "response_excerpt": "Yes, the native is currently in his second lifetime Sade Sati cycle, and is in the peak (second) phase. This analysis is primarily drawn from the MSR (Master Signal Register) and the LEL (Life Event L",
+      "latency_ms": 40540,
+      "error": null
+    },
+    {
+      "fixture_id": "F016",
+      "type": "temporal",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /time_window: must have required property 'end'\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F017",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.15
+      },
+      "response_excerpt": "To determine the Ishta Devata for this chart, a specific calculation based on Jaimini astrology is required. This involves identifying the Atmakaraka (the planet with the highest degree), its position",
+      "latency_ms": 31889,
+      "error": null
+    },
+    {
+      "fixture_id": "F018",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.78,
+        "weighted": 0.89
+      },
+      "response_excerpt": "An analysis of remedial measures for Jupiter in this chart requires a careful assessment of its dual role and the dynamic pressures it faces. The most relevant synthesis artifacts for this query are t",
+      "latency_ms": 75983,
+      "error": null
+    },
+    {
+      "fixture_id": "F019",
+      "type": "remedial",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /time_window: must have required property 'start'\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F020",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": false,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.92,
+        "weighted": 0.676
+      },
+      "response_excerpt": "Based on the canonical chart data for Abhisek Mohanty (\u2192 F.L1), this remedial analysis focuses on cultivating the soul mission indicated by the Atmakaraka Moon. The primary synthesis artifacts guiding",
+      "latency_ms": 70752,
+      "error": null
+    },
+    {
+      "fixture_id": "F021",
+      "type": "holistic",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "",
+      "latency_ms": 0,
+      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+    },
+    {
+      "fixture_id": "F022",
+      "type": "holistic",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "",
+      "latency_ms": 0,
+      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+    },
+    {
+      "fixture_id": "F023",
+      "type": "holistic",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "",
+      "latency_ms": 0,
+      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+    },
+    {
+      "fixture_id": "F024",
+      "type": "holistic",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "",
+      "latency_ms": 0,
+      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+    }
+  ]
+}
