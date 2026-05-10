@@ -202,6 +202,26 @@ Output:
   "graph_seed_hints": []
 }
 
+#### holistic (architectural synthesis — karaka / yoga / dharma-mission)
+Query: "Lay out the architectural spine of my chart — the soul-pattern karakas, the active yogas, and how the current dasha lord ties them together."
+Output:
+{
+  "query_plan_id": "00000000-0000-0000-0000-000000000012",
+  "query_text": "Lay out the architectural spine of my chart — the soul-pattern karakas, the active yogas, and how the current dasha lord ties them together.",
+  "query_class": "holistic",
+  "domains": ["spiritual", "career"],
+  "forward_looking": false,
+  "audience_tier": "client",
+  "tools_authorized": ["msr_sql", "pattern_register", "cluster_atlas", "temporal", "cgm_graph_walk", "vector_search"],
+  "history_mode": "synthesized",
+  "panel_mode": true,
+  "expected_output_shape": "three_interpretation",
+  "manifest_fingerprint": "__PLACEHOLDER__",
+  "schema_version": "1.0",
+  "dasha_context_required": true,
+  "graph_seed_hints": ["KRK.C8.AK", "KRK.C8.AmK", "YOG.LAKSHMI", "YOG.SASHA", "DSH.MD.MERCURY"]
+}
+
 #### remedial
 Query: "What remedies should I do for my Saturn placement?"
 Output:
