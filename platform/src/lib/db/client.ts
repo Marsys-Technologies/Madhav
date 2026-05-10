@@ -53,10 +53,29 @@ export async function getPool(): Promise<Pool> {
   return _pool
 }
 
+function isTransientConnectionError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { code?: string; message?: string }
+  return (
+    e.code === 'ECONNRESET' ||
+    e.code === '57P01' ||
+    e.message === 'Connection terminated unexpectedly' ||
+    e.message === 'Client has encountered a connection error and is not queryable'
+  )
+}
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   sql: string,
   params?: unknown[]
 ): Promise<QueryResult<T>> {
   const pool = await getPool()
-  return pool.query<T>(sql, params)
+  try {
+    return await pool.query<T>(sql, params)
+  } catch (err) {
+    if (isTransientConnectionError(err)) {
+      console.warn('[pg pool] transient connection error, retrying once', err)
+      return pool.query<T>(sql, params)
+    }
+    throw err
+  }
 }
