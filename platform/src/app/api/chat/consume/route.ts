@@ -890,7 +890,16 @@ export async function POST(request: Request) {
       },
       onError: (error: unknown) => {
         const msg = error instanceof Error ? error.message : String(error)
-        console.error('[consume:v2] synthesis error:', msg)
+        // Surface the actual Anthropic error body (overloaded_error / api_error /
+        // invalid_request_error) so Cloud Run logs can disambiguate provider outage
+        // vs bad request vs per-IP throttling. Previously invisible — only the SDK
+        // wrapper ("Internal Server Error") was logged.
+        const errObj = error as Record<string, unknown>
+        const responseBody = errObj?.responseBody ?? errObj?.cause ?? errObj?.data
+        console.error(
+          '[consume:v2] synthesis error:', msg,
+          responseBody !== undefined ? `| responseBody=${JSON.stringify(responseBody)}` : ''
+        )
         return msg
       },
     })
