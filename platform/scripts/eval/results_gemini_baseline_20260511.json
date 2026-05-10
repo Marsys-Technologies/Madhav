@@ -5,12 +5,11 @@
   "judge_enabled": true,
   "aggregate": {
     "fixture_count": 24,
-    "ok_count": 18,
-    "error_count": 6,
-    "keyword_recall": 0.8093,
-    "signal_recall": 0.8889,
-    "synthesis": 0.7189,
-    "weighted": 0.7543
+    "ok_count": 22,
+    "mean_keyword_recall": 0.6986,
+    "mean_signal_recall": 0.75,
+    "mean_synthesis": 0.61,
+    "mean_weighted": 0.6413
   },
   "results": [
     {
@@ -356,70 +355,81 @@
     {
       "fixture_id": "F021",
       "type": "holistic",
-      "status": "error",
-      "planner_active": null,
+      "status": "ok",
+      "planner_active": false,
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.0,
-        "signal_recall": 0.0,
-        "synthesis": 0.0,
-        "weighted": 0.0
+        "keyword_recall": 0.8,
+        "signal_recall": 1.0,
+        "synthesis": 0.78,
+        "weighted": 0.852
       },
-      "response_excerpt": "",
-      "latency_ms": 0,
-      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+      "response_excerpt": "A holistic reading of this chart reveals a life of immense structural power, intellectual brilliance, and profound tension. The core architecture is best understood through the interplay of the Master",
+      "latency_ms": 60769,
+      "error": null
     },
     {
       "fixture_id": "F022",
       "type": "holistic",
-      "status": "error",
-      "planner_active": null,
+      "status": "ok",
+      "planner_active": false,
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.0,
+        "keyword_recall": 0.4,
         "signal_recall": 0.0,
-        "synthesis": 0.0,
-        "weighted": 0.0
+        "synthesis": 0.1,
+        "weighted": 0.16
       },
-      "response_excerpt": "",
-      "latency_ms": 0,
-      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+      "response_excerpt": "Based on the available astrological data, the spiritual and dharmic mission encoded in this chart is exceptionally focused and integrated. The analysis draws principally from the Resonance Map (RM), w",
+      "latency_ms": 46676,
+      "error": null
     },
     {
       "fixture_id": "F023",
       "type": "holistic",
-      "status": "error",
-      "planner_active": null,
+      "status": "ok",
+      "planner_active": false,
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.0,
-        "signal_recall": 0.0,
-        "synthesis": 0.0,
-        "weighted": 0.0
+        "keyword_recall": 0.75,
+        "signal_recall": 1.0,
+        "synthesis": 0.62,
+        "weighted": 0.672
       },
-      "response_excerpt": "",
-      "latency_ms": 0,
-      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+      "response_excerpt": "Based on the birth chart of Abhisek Mohanty, the core psychological tension and its resolution can be understood by examining the interplay between planetary functions and house placements, primarily ",
+      "latency_ms": 62185,
+      "error": null
     },
     {
       "fixture_id": "F024",
       "type": "holistic",
-      "status": "error",
-      "planner_active": null,
+      "status": "ok",
+      "planner_active": false,
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.0,
+        "keyword_recall": 0.25,
         "signal_recall": 0.0,
-        "synthesis": 0.0,
-        "weighted": 0.0
+        "synthesis": 0.2,
+        "weighted": 0.13
       },
-      "response_excerpt": "",
-      "latency_ms": 0,
-      "error": "URLError: [Errno 8] nodename nor servname provided, or not known"
+      "response_excerpt": "[EXTERNAL_COMPUTATION_REQUIRED: The foundational chart data for Abhisek Mohanty (born 1984-02-05, 10:43:00, Bhubaneswar) could not be retrieved from the database. A complete analysis requires the foll",
+      "latency_ms": 23187,
+      "error": null
     }
-  ]
+  ],
+  "merged_from_retry": {
+    "retry_file": "platform/scripts/eval/results_gemini_retry6_20260511.json",
+    "retry_fixture_ids": [
+      "F016",
+      "F019",
+      "F021",
+      "F022",
+      "F023",
+      "F024"
+    ]
+  }
 }
