@@ -133,7 +133,21 @@ interface QueryResult {
   error: string | null
 }
 
-async function submitQuery(q: SmokeQuery): Promise<QueryResult> {
+// A "hollow" stream has a queryId in metadata but no text-delta lines — the
+// synthesis model call threw (typically a transient upstream 500) before any
+// tokens were produced. Detect by checking streamText length after stripping
+// the known metadata lines.
+function isHollowStream(fullText: string): boolean {
+  // Strip metadata JSON lines (prefixed with digit codes like "f:", "8:", "e:", "d:")
+  // and [DONE] sentinel; if nothing substantive remains the stream is hollow.
+  const stripped = fullText
+    .split('\n')
+    .filter(l => !/^[0-9a-f]+:/.test(l.trim()) && l.trim() !== '[DONE]' && l.trim() !== '')
+    .join('')
+  return stripped.length < 20
+}
+
+async function submitQueryOnce(q: SmokeQuery): Promise<QueryResult> {
   const result: QueryResult = {
     queryClass: q.queryClass,
     source: q.source,
@@ -194,11 +208,38 @@ async function submitQuery(q: SmokeQuery): Promise<QueryResult> {
 
     result.passCitation = CITATION_RE.test(fullText)
     result.passDisclosure = PIPELINE_TIER_RE.test(fullText)
+
+    // Mark hollow streams (upstream 500 swallowed by pipeline) as failures
+    // so the caller knows to retry.
+    if (isHollowStream(fullText)) {
+      result.passHttp = false
+      result.error = 'hollow-stream: synthesis returned no tokens (upstream 500)'
+    }
   } catch (err) {
     result.error = err instanceof Error ? err.message : String(err)
   }
 
   return result
+}
+
+// Wraps submitQueryOnce with one retry on hollow-stream / transient-500 failures.
+// Backs off 8s before the retry to let the upstream provider recover.
+async function submitQuery(q: SmokeQuery): Promise<QueryResult> {
+  const r1 = await submitQueryOnce(q)
+  if (r1.passHttp) return r1
+
+  const isRetryable = r1.error?.includes('hollow-stream') ||
+    r1.error?.includes('500') ||
+    r1.error?.includes('Internal Server Error')
+  if (!isRetryable) return r1
+
+  process.stdout.write(' [retry in 8s] ')
+  await new Promise(resolve => setTimeout(resolve, 8_000))
+  const r2 = await submitQueryOnce(q)
+  if (!r2.passHttp) {
+    r2.error = `[retry] ${r2.error ?? 'failed'} (original: ${r1.error ?? 'hollow-stream'})`
+  }
+  return r2
 }
 
 async function checkAuditRows(pool: Pool, since: Date, minCount: number): Promise<{ count: number; pass: boolean }> {
@@ -334,7 +375,11 @@ async function main(): Promise<void> {
   const smokeStart = new Date()
   const queryResults: QueryResult[] = []
 
-  for (const q of SMOKE_QUERIES) {
+  for (let i = 0; i < SMOKE_QUERIES.length; i++) {
+    const q = SMOKE_QUERIES[i]
+    // 4s gap between queries to avoid saturating the upstream provider's RPM
+    // limit. At burst rates (8 rapid queries) Anthropic returns transient 500s.
+    if (i > 0) await new Promise(resolve => setTimeout(resolve, 4_000))
     process.stdout.write(`  [${q.queryClass}] (${q.source}) ... `)
     const r = await submitQuery(q)
     queryResults.push(r)
