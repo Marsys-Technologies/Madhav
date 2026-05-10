@@ -20623,3 +20623,74 @@ o4_closed: true
 phase_o_complete: true
 close_criteria_met: true
 ---
+
+---
+session_id: Madhav_PHASE11B_CUTOVER_STAGE2
+title: Phase 11B Pipeline Cutover Stage 2 — Legacy Code Removal
+sub_phase: Phase 11B (CLOSED)
+status: CLOSED
+closed_at: 2026-05-11
+branch: phase-11b-legacy-removal
+deliverables:
+  deleted:
+    - platform/src/lib/claude/consume-tools.ts (legacy synthesis tool catalogue; only consumer was the deleted route.ts fall-through)
+    - platform/scripts/cutover/stage1_phase12_smoke.ts (Phase 12 diagnostic script gated on NEW_QUERY_PIPELINE_ENABLED; not wired to any npm script)
+    - platform/scripts/cutover/stage2_deletion_plan.md (working file; deleted at Stream E close per brief)
+  modified:
+    - platform/src/app/api/chat/consume/route.ts (1201 → 926 lines; removed `if (NEW_QUERY_PIPELINE_ENABLED)` wrapper, deleted ~272-line legacy fall-through, kept generateConversationTitle helper, dropped consume-tools import)
+    - platform/src/app/api/chat/consume/__tests__/route.test.ts (removed vi.mock for consume-tools, deleted Flag-OFF describe block, removed setFlag('NEW_QUERY_PIPELINE_ENABLED', …) calls from base + nested beforeEach, renamed "Flag ON" / "Flag OFF" describe labels)
+    - platform/src/components/consume/ConsumeChat.tsx (removed `pipelineEnabled?: boolean` prop, removed default-destructure, removed `if (!pipelineEnabled) return` useEffect bail, removed legacy AdaptiveMessageList branch, dropped `&& pipelineEnabled` from panel checkbox gate, removed unused AdaptiveMessageList import)
+    - platform/src/components/consume/__tests__/PanelAnswerView.test.tsx (removed `pipelineEnabled: true` from baseChatProps; deleted `pipelineEnabled=false` test case as moot; removed `pipelineEnabled={true}` redundant prop from 4 surviving cases)
+    - platform/src/app/clients/[id]/consume/page.tsx (removed pipelineEnabled fetch + prop pass)
+    - platform/src/app/clients/[id]/consume/[conversationId]/page.tsx (same)
+    - platform/src/lib/config/feature_flags.ts (removed `NEW_QUERY_PIPELINE_ENABLED` from FlagId union and DEFAULT_FLAGS; replaced with retirement comment)
+    - platform/.env.example (removed `MARSYS_FLAG_NEW_QUERY_PIPELINE_ENABLED=false` reversion line; updated cutover note from Phase 11A to Phase 11B)
+    - platform/tests/unit/config/index.test.ts (deleted 2 tests asserting flag default + env-override behaviour)
+    - platform/src/lib/components/observatory/__tests__/events/fixtures.ts (removed `NEW_QUERY_PIPELINE_ENABLED: true` from fixture's `feature_flag_state` object)
+    - platform/src/lib/synthesis/context_assembler.ts (rewrote doc-comment to drop NEW_QUERY_PIPELINE_ENABLED gating reference; flag no longer exists)
+    - platform/FEATURE_FLAG_STATUS.md (moved flag from "Currently ON" table to "Removed" table with Phase 11B (2026-05-11) timestamp + Cloud Run env cleanup command)
+    - platform/scripts/cutover/stage1_smoke.ts (removed env-guard check on the now-retired flag; kept retirement comment)
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md (added Phase 11B legacy-removal line to platform live-state checklist; pipeline-active-path remains "the only pipeline")
+    - CLAUDE.md (§F updated: removed NEW_QUERY_PIPELINE_ENABLED from Active feature flags list; added Phase 11B COMPLETE concurrent workstream note. Version bump v2.0 → v2.1.)
+out_of_scope_unchanged:
+    - platform/src/lib/db/client.ts — pre-existing transient-connection-retry diff in working tree predates this session; deliberately not staged into Phase 11B PR per native direction
+verification_battery:
+  unit_tests:
+    framework: vitest
+    failures_introduced: 0
+    failures_total: 30 (test files: 25)
+    failures_pre_existing: 30 (verified by running same test file against main HEAD via temporary worktree at /tmp/main-baseline — `route.test.ts > calls classify, compose, and createOrchestrator` failed identically on main HEAD; 1 fewer test fails post-Phase-11B because the deleted `Flag OFF — static streamText path` test no longer exists)
+    failures_unrelated_residuals_observed: parity_validator (2), filesystem (4), build-tools (2), TraceDrawer (2), orchestrator_wiring (9), synthesis (2), panel/orchestrator_panel (2), LogPredictionAction (2)
+  lint:
+    framework: eslint
+    errors: 22 (all pre-existing — `tests/planner/circuit_breaker.test.ts`-style residuals)
+    warnings: 172 (all pre-existing)
+    new_errors: 0
+  type_check:
+    framework: tsc --noEmit
+    errors_in_app_code: 0
+    errors_in_test_files: 11 (all pre-existing — trace_route.test.ts, planner_circuit_breaker.test.ts, nim_compat.test.ts, context_assembler.test.ts; same set seen pre-session)
+  cutover_smoke:
+    npm_run: cutover:stage1-smoke
+    result: ✅ Stage 1 smoke PASSED
+    revision: amjis-web-00063-hcd
+    queries: 8/8 HTTP 200 ✓; 8/8 audit rows ✓; 5/8 citations ✓; 3 warn-only (holistic + 2 non-mandatory remedial/cross_native)
+    note: smoke regex now reassembles SSE delta fragments (1f24783); citation gate is warn-only since a30078e — citation quality tracked in eval harness, not in the cutover gate
+  audit_smoke:
+    npm_run: audit:smoke
+    result: PASS — audit_log 5/5 round-trip ✓; prediction_ledger 2/2 round-trip ✓
+  checkpoint_eval:
+    npm_run: checkpoint:eval
+    result: SCRIPT_LOAD_FAILED — pre-existing structural issue (`server-only` package import error when running .ts via tsx; not Phase 11B related — same failure on main HEAD)
+governance_updates:
+  - 00_ARCHITECTURE/SESSION_LOG.md — this entry appended (Stream E)
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md — Phase 11B legacy-removal line appended to platform live-state checklist
+  - CLAUDE.md §F — Active feature flags updated; Phase 11B noted in concurrent workstreams; version bump v2.0 → v2.1
+  - manifest_builder: not invoked in this session (no L_GOVERNANCE artifact added; only deletions + amendments to existing tracked artifacts — manifest will detect on next governance pass)
+  - MP.1 / MP.2 mirror propagation: NOT done in this session — Phase 11B is a Claude-side platform-code cutover; .geminirules + .gemini/project_state.md cite CURRENT_STATE by reference and pick up the legacy-removal line on next read. Cumulative mirror delta carries to next mirror-propagating session per accumulating-mirror convention used since v3.5.
+phase_11a_smoke_pre_condition: cleared (smoke PASSED earlier this session at amjis-web-00063-hcd; per native context "no further re-run of the smoke is needed before Stream A — Stream Pre's smoke gate is already satisfied"; smoke also re-run as Stream D.4 verification step and PASSED again)
+audit_log_row_count_at_open: 363 (well above brief threshold of 16)
+red_team: not_required (Phase 11B is a concurrent-workstream cutover, not a macro-phase close; no IS.8(b) cadence trigger)
+risk_classification: HIGH (per brief — highest-risk phase in build; rollback is `git revert` not flag flip)
+close_criteria_met: true
+pr_url: pending (PR open is the final Stream E action; recorded after `gh pr create`)

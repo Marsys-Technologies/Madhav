@@ -4,7 +4,7 @@ export type FeatureFlag =
   | 'LLM_CHECKPOINTS_ENABLED'
   // BHISMA-B1 §6.2 — retired: BUNDLE_AUGMENTER_ENABLED, MSR_RERANKER_ENABLED,
   // SEMANTIC_GATE_ENABLED were declared but never implemented in any code path.
-  | 'NEW_QUERY_PIPELINE_ENABLED'
+  // NEW_QUERY_PIPELINE_ENABLED retired Phase 11B (2026-05-11): legacy code path deleted.
   | 'VALIDATOR_FAILURE_HALT'
   | 'SYNTHESIS_PROMPT_DEBUG'
   | 'DISCLOSURE_TIER_DEBUG'
@@ -76,9 +76,6 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
   MANIFEST_BUILDER_ENABLED: false,
   LLM_CHECKPOINTS_ENABLED: false,
-  // NEW_QUERY_PIPELINE_ENABLED: always ON since Phase 11A cutover (2026-04-28).
-  // Targeted for type-union removal in B4 convergence once legacy branch deleted.
-  NEW_QUERY_PIPELINE_ENABLED: true,
   VALIDATOR_FAILURE_HALT: true,
   SYNTHESIS_PROMPT_DEBUG: false,
   DISCLOSURE_TIER_DEBUG: false,

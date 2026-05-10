@@ -476,7 +476,6 @@ const baseChatProps = {
   chartName: 'Test Chart',
   reports: [],
   conversations: [],
-  pipelineEnabled: true,
 }
 
 describe('ConsumeChat — panel checkbox', () => {
@@ -494,31 +493,26 @@ describe('ConsumeChat — panel checkbox', () => {
     expect(screen.queryByLabelText(/panel mode/i)).not.toBeInTheDocument()
   })
 
-  it('checkbox is visible when panelModeEnabled=true AND pipelineEnabled=true', () => {
-    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} pipelineEnabled={true} />)
+  it('checkbox is visible when panelModeEnabled=true', () => {
+    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
     expect(screen.getByLabelText(/panel mode/i)).toBeInTheDocument()
   })
 
-  it('checkbox is hidden when panelModeEnabled=true but pipelineEnabled=false', () => {
-    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} pipelineEnabled={false} />)
-    expect(screen.queryByLabelText(/panel mode/i)).not.toBeInTheDocument()
-  })
-
   it('checkbox is initially unchecked', () => {
-    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} pipelineEnabled={true} />)
+    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
     const checkbox = screen.getByLabelText(/panel mode/i) as HTMLInputElement
     expect(checkbox.checked).toBe(false)
   })
 
   it('checkbox can be checked by the user', () => {
-    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} pipelineEnabled={true} />)
+    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
     const checkbox = screen.getByLabelText(/panel mode/i) as HTMLInputElement
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(true)
   })
 
   it('checkbox auto-resets to unchecked after submit', () => {
-    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} pipelineEnabled={true} />)
+    render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
     const checkbox = screen.getByLabelText(/panel mode/i) as HTMLInputElement
     // Check the box
     fireEvent.click(checkbox)

@@ -52,10 +52,6 @@ vi.mock('@/lib/models/resolver', () => ({
   googleProviderOptions: vi.fn(() => null),
 }))
 
-vi.mock('@/lib/claude/consume-tools', () => ({
-  consumeTools: {},
-}))
-
 vi.mock('@/lib/claude/system-prompts', () => ({
   consumeSystemPrompt: vi.fn(() => 'MOCK_SYSTEM_PROMPT'),
 }))
@@ -204,8 +200,6 @@ function setupDbMocks(role = 'super_admin') {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // Default: flag OFF
-  configService.setFlag('NEW_QUERY_PIPELINE_ENABLED', false)
   configService.setFlag('VALIDATOR_FAILURE_HALT', true)
 
   vi.mocked(getServerUser).mockResolvedValue({ uid: 'user-uid-001', email: 'test@test.com' } as ReturnType<typeof getServerUser> extends Promise<infer T> ? T : never)
@@ -217,34 +211,9 @@ beforeEach(() => {
   vi.mocked(summarize).mockReturnValue({ overall: 'pass', by_validator: {}, failures: [] })
 })
 
-// ── Test 1: Flag OFF — hits existing streamText path ─────────────────────────
+// ── Test: new query pipeline (only path since Phase 11B) ─────────────────────
 
-describe('Flag OFF (default) — static streamText path', () => {
-  it('calls streamText with consumeSystemPrompt result as system content', async () => {
-    setupDbMocks()
-    const mockResult = makeStreamResult()
-    mockStreamText.mockReturnValue(mockResult)
-
-    const res = await POST(makeRequest())
-
-    expect(mockStreamText).toHaveBeenCalledOnce()
-    expect(consumeSystemPrompt).toHaveBeenCalledOnce()
-    expect(res.status).toBe(200)
-
-    // v2 pipeline functions must NOT be called
-    expect(vi.mocked(classify)).not.toHaveBeenCalled()
-    expect(vi.mocked(compose)).not.toHaveBeenCalled()
-    expect(vi.mocked(createOrchestrator)).not.toHaveBeenCalled()
-  })
-})
-
-// ── Test 2: Flag ON — calls v2 pipeline ──────────────────────────────────────
-
-describe('Flag ON — new query pipeline', () => {
-  beforeEach(() => {
-    configService.setFlag('NEW_QUERY_PIPELINE_ENABLED', true)
-  })
-
+describe('new query pipeline', () => {
   it('calls classify, compose, and createOrchestrator', async () => {
     setupDbMocks()
 
@@ -272,7 +241,7 @@ describe('Flag ON — new query pipeline', () => {
 
 // ── Test 3: Auth failure returns 401 ─────────────────────────────────────────
 
-describe('Flag OFF — auth failure', () => {
+describe('auth failure', () => {
   it('returns 401 when user is not authenticated', async () => {
     vi.mocked(getServerUser).mockResolvedValue(null)
 
@@ -286,7 +255,7 @@ describe('Flag OFF — auth failure', () => {
 
 // ── Test 4: Missing chartId returns 400 ──────────────────────────────────────
 
-describe('Flag OFF — missing chartId', () => {
+describe('missing chartId', () => {
   it('returns 400 when chartId is missing', async () => {
     const req = new Request('http://localhost/api/chat/consume', {
       method: 'POST',
@@ -304,9 +273,8 @@ describe('Flag OFF — missing chartId', () => {
 
 // ── Test 5: Flag ON — validator halt returns 422 ─────────────────────────────
 
-describe('Flag ON — validator halt on bundle failure', () => {
+describe('validator halt on bundle failure', () => {
   beforeEach(() => {
-    configService.setFlag('NEW_QUERY_PIPELINE_ENABLED', true)
     configService.setFlag('VALIDATOR_FAILURE_HALT', true)
   })
 

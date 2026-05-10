@@ -22,7 +22,6 @@ import {
 import { stackPicker, getModelMeta, PROVIDER_LABEL } from '@/lib/models/registry'
 import { ChatShell } from '@/components/chat/ChatShell'
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
-import { AdaptiveMessageList } from '@/components/chat/AdaptiveMessageList'
 import { PendingAssistantBubble } from '@/components/chat/PendingAssistantBubble'
 import { Composer, type ComposerHandle } from '@/components/chat/Composer'
 import { WelcomeGreeting } from '@/components/chat/WelcomeGreeting'
@@ -68,7 +67,6 @@ interface Props {
   conversations: ConversationRow[]
   currentConversationId?: string
   initialMessages?: UIMessage[]
-  pipelineEnabled?: boolean
   panelModeEnabled?: boolean
   audienceTier?: AudienceTier
 }
@@ -81,7 +79,6 @@ export function ConsumeChat({
   conversations: initialConversations,
   currentConversationId,
   initialMessages,
-  pipelineEnabled = false,
   panelModeEnabled = false,
   audienceTier: initialAudienceTier = 'client',
 }: Props) {
@@ -166,14 +163,13 @@ export function ConsumeChat({
   }, [])
 
   useEffect(() => {
-    if (!pipelineEnabled) return
     if (session.error) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setValidatorFailures(parseValidatorError(session.error))
     } else {
       setValidatorFailures(null)
     }
-  }, [pipelineEnabled, session.error])
+  }, [session.error])
 
   const attachmentsApi = useAttachments()
 
@@ -414,7 +410,7 @@ export function ConsumeChat({
               reports={reports}
               onSuggest={handleSend}
             />
-          ) : pipelineEnabled ? (
+          ) : (
             <>
               {validatorFailures ? (
                 <ValidatorFailureView
@@ -444,21 +440,6 @@ export function ConsumeChat({
                   {showPendingAssistant && <PendingAssistantBubble />}
                 </>
               )}
-            </>
-          ) : (
-            <>
-              <AdaptiveMessageList
-                messages={displayMessages}
-                isStreaming={session.isStreaming && !branches.isViewingArchived}
-                onRegenerate={branches.isViewingArchived ? undefined : handleRegenerate}
-                onEditUserMessage={branches.isViewingArchived ? undefined : handleEdit}
-                ratings={ratings}
-                onRate={branches.isViewingArchived ? undefined : rate}
-                branchStats={branches.stats}
-                onStepBranch={branches.stepBranch}
-                scrollRef={scrollRef}
-              />
-              {showPendingAssistant && <PendingAssistantBubble />}
             </>
           )}
           <div ref={bottomRef} className="h-1" />
@@ -571,7 +552,7 @@ export function ConsumeChat({
                   <><BookOpen className="h-3.5 w-3.5" /><span>Life Events: Off</span></>
                 )}
               </button>
-              {(panelModeEnabled || initialAudienceTier === 'super_admin') && pipelineEnabled && (
+              {(panelModeEnabled || initialAudienceTier === 'super_admin') && (
                 <>
                 {/* TierPicker — visible to super_admin role regardless of currently-viewed tier */}
                 {initialAudienceTier === 'super_admin' && (
