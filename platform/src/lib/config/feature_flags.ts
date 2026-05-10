@@ -25,14 +25,10 @@ export type FeatureFlag =
   | 'CHECKPOINT_8_5_PREDICTION_EXTRACT'
   // Phase 7 — Panel Mode
   | 'PANEL_DEGRADE_2_OF_3'
-  // PER_TOOL_PLANNER_ENABLED retired BHISMA-B1 §6.2: was never flipped true; removed from route.ts.
-  // BHISMA Stream 2 — LLM-first planner replaces classify+compose+plan_per_tool when ON.
-  // Default ON since Lever-2 gate cleared (2026-05-04, recall 0.940 / precision 0.945).
-  // Set MARSYS_FLAG_LLM_FIRST_PLANNER_ENABLED=false in env to revert to legacy path.
-  | 'LLM_FIRST_PLANNER_ENABLED'
-  // W2-CTX-ASSEMBLY: context assembly LLM step between retrieval and synthesis.
-  // Default OFF. Flip true after smoke verification. Model: STACK_ROUTING[stack].context_assembly.primary.
-  | 'CONTEXT_ASSEMBLY_ENABLED'
+  // PER_TOOL_PLANNER_ENABLED retired BHISMA-B1 §6.2.
+  // Pipeline-Transform-S1 (2026-05-11) retired both planner-related flags:
+  // the new pipeline_planner is the only planner (no fallback); planner-
+  // emitted synthesis_guidance replaces the LLM context assembler step.
   // BHISMA-B1 §6.2 — New observability flags (all default ON)
   /** Enables the Trace Analytics tab and cross-query history aggregations. */
   | 'TRACE_ANALYTICS_ENABLED'
@@ -93,12 +89,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   CHECKPOINT_8_5_PREDICTION_EXTRACT: false,
   // Phase 7 — Panel Mode (all default OFF)
   PANEL_DEGRADE_2_OF_3: false,
-  // BHISMA Stream 2 — LLM-first planner. Default ON (Lever-2 cleared 2026-05-04).
-  LLM_FIRST_PLANNER_ENABLED: true,
-  // W2-CTX-ASSEMBLY — context assembly LLM step.
-  // Re-flipped true (GANGA-D4-UNBLOCK): added generateText + context_assembler mocks
-  // to orchestrator_wiring.test.ts and route.test.ts; full suite passes at 0 net new failures.
-  CONTEXT_ASSEMBLY_ENABLED: true,
+  // Two planner flags retired in Pipeline-Transform-S1 (2026-05-11): the
+  // new pipeline_planner is unconditional; synthesis_guidance from the
+  // planner replaces the prior intermediate LLM compression step.
   // BHISMA-B1 §6.2 — New observability flags (all default ON)
   TRACE_ANALYTICS_ENABLED: true,
   COST_TRACKING_ENABLED: true,

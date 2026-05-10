@@ -72,8 +72,8 @@ export interface QueryPlan {
 // ────────────────────────────────────────────────────────────────────────────
 // BHISMA Stream 2 — LLM-first planner types (§4.2)
 //
-// `RichQueryPlan` is what the unified `plan()` function returns when
-// `LLM_FIRST_PLANNER_ENABLED=true`. It is a strict superset of `QueryPlan`,
+// `RichQueryPlan` was returned by the legacy unified `plan()` when the
+// LLM planner was flag-gated. It is a strict superset of `QueryPlan`,
 // so every downstream consumer that already accepts a `QueryPlan` continues
 // to work without change. Only the planner-aware code paths (route.ts when
 // the flag is on, single_model_strategy synthesis_guidance reader) need to

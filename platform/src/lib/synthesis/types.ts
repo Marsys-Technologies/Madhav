@@ -27,17 +27,9 @@ export interface ChartContext {
 }
 
 /**
- * W2-CTX-ASSEMBLY — Wrapping bundle returned by `contextAssembler()`.
- *
- * Wraps the (possibly LLM-compressed/reordered) ToolBundle[] together with
- * per-layer token estimates and the model that ran the assembly pass.
- * `tool_bundles` is the array passed downstream to synthesis when the
- * CONTEXT_ASSEMBLY_ENABLED flag is ON; when OFF, route.ts skips this layer
- * and forwards the raw ToolBundle[] directly (no behaviour change).
- *
- * `context_assembly_compressed: true` indicates the bundle has been processed
- * by the assembler step — distinct from `context_assembly_model_id` which
- * disambiguates pass-through (`'pass-through'`) from a real LLM compression.
+ * Legacy wrapping bundle from the prior intermediate compression step.
+ * Retired in Pipeline-Transform-S1; the type is kept for any downstream
+ * audit/historical readers that still reference its shape.
  */
 export interface ContextBundle {
   tool_bundles: ToolBundle[]
@@ -83,6 +75,10 @@ export interface SynthesisRequest {
    *  synthesis-stage ValidationResult[]. Called before onAuditEvent so the
    *  audit consumer's validator_results array is populated in time. */
   onValidatorResults?: (results: ValidationResult[]) => void
+  /** Phase 3: planner-emitted synthesis guidance (replaces context_assembler).
+   *  When present, single_model_strategy appends it to the system prompt as a
+   *  separator + guidance block. Absent for trivial factual queries. */
+  synthesis_guidance?: string
 }
 
 export interface SynthesisMetadata {

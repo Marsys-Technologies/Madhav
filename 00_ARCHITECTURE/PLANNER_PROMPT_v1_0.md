@@ -1,7 +1,9 @@
 ---
 artifact: PLANNER_PROMPT_v1_0.md
 version: 1.7
-status: CURRENT
+status: SUPERSEDED
+superseded_by: PLANNER_PROMPT_v2_0.md
+superseded_on: 2026-05-11
 produced_during: W2-MANIFEST (UQE-4a part 2)
 produced_on: 2026-05-01
 amended_on: 2026-05-04

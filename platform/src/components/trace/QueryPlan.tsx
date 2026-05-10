@@ -13,10 +13,10 @@
  */
 
 import { useState } from 'react'
-import type { PlanSchema } from '@/lib/pipeline/manifest_planner'
+import type { PipelinePlan } from '@/lib/pipeline/types'
 
 interface QueryPlanProps {
-  plan: PlanSchema | null
+  plan: PipelinePlan | null
   isLoading: boolean
 }
 
@@ -47,7 +47,7 @@ function RowSkeleton() {
 function ToolCard({
   toolCall,
 }: {
-  toolCall: PlanSchema['tool_calls'][number]
+  toolCall: PipelinePlan['tool_calls'][number]
 }) {
   const [expanded, setExpanded] = useState(false)
   const priority = PRIORITY_STYLE[toolCall.priority]

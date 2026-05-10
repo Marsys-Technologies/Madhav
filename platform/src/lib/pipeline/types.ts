@@ -366,16 +366,3 @@ export class PipelinePlannerError extends Error {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// §7. Legacy type aliases — for incremental migration only
-//
-//     These allow existing consumers of QueryPlan to import PipelinePlan
-//     under a familiar name during the Phase 2–3 migration window.
-//     DELETE these aliases at Phase 4 cleanup.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** @deprecated Use PipelinePlan. Alias for the migration window only. */
-export type UnifiedQueryPlan = PipelinePlan
-
-/** @deprecated Use PipelinePlannerError. Alias for the migration window only. */
-export { PipelinePlannerError as UnifiedPlannerError }
