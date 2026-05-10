@@ -547,14 +547,13 @@ export const MODELS: ModelMeta[] = [
   },
 ]
 
-// Default stack and synthesis model. New users / new charts start on the NIM
-// stack (all free). A user's previously-persisted stack choice in localStorage
-// overrides this. DEFAULT_MODEL_ID is now derived from the default stack —
-// kept for backward compatibility with call sites that read it directly.
-export const DEFAULT_STACK_ID = 'nim' as const
-// Updated 2026-05-03: kimi-k2-instruct removed from synthesis (256K ctx — fails 340K minimum).
-// nemotron-3-super-120b-a12b is the only confirmed 1M ctx model actively serving on NIM free tier.
-export const DEFAULT_MODEL_ID = 'nvidia/nemotron-3-super-120b-a12b' // NIM stack synthesis primary
+// Default stack and synthesis model. Switched from NIM → Gemini on 2026-05-10:
+// NIM Nemotron endpoint is degraded (axum Bearer auth 500s); Anthropic credits
+// exhausted. Gemini 2.5 Pro is the active default going forward.
+// A user's previously-persisted stack choice in localStorage overrides this.
+// DEFAULT_MODEL_ID is derived from the default stack — kept for backward compat.
+export const DEFAULT_STACK_ID = 'gemini' as const
+export const DEFAULT_MODEL_ID = 'gemini-2.5-pro' // Gemini stack synthesis primary
 
 /**
  * Title generator always uses the worker of the same family as the user's
