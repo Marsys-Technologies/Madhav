@@ -189,10 +189,11 @@ def score_fixture(
     response_text: str,
     judge_enabled: bool,
     rubric: str = "jyotish",
+    judge: str = "gemini",
 ) -> dict[str, float]:
     kw = keyword_recall_score(response_text, fixture)
     sig = signal_recall_score(response_text, fixture)
-    syn = synthesis_score(response_text, fixture, rubric=rubric) if judge_enabled else 0.5
+    syn = synthesis_score(response_text, fixture, rubric=rubric, judge=judge) if judge_enabled else 0.5
     weights = fixture.get("scoring_weights", {})
     wtd = weighted_score(kw, sig, syn, weights)
     return {
@@ -211,6 +212,7 @@ def run_one(
     timeout_s: int,
     judge_enabled: bool,
     rubric: str = "jyotish",
+    judge: str = "gemini",
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "fixture_id": fixture["fixture_id"],
@@ -239,7 +241,7 @@ def run_one(
         record["planner_active"] = parse_planner_active(raw)
         record["tools_used"] = parse_tools_used(raw)
         record["tool_count"] = len(record["tools_used"])
-        record["scores"] = score_fixture(fixture, response_text, judge_enabled, rubric=rubric)
+        record["scores"] = score_fixture(fixture, response_text, judge_enabled, rubric=rubric, judge=judge)
     except urlerror.HTTPError as err:
         record["status"] = "error"
         try:
@@ -316,7 +318,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--session-cookie", default=os.environ.get("SMOKE_SESSION_COOKIE", ""))
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_S)
     parser.add_argument("--output", default="", help="If set, write full JSON results here")
-    parser.add_argument("--no-judge", action="store_true", help="Skip Haiku judge calls")
+    parser.add_argument("--no-judge", action="store_true", help="Skip judge calls")
+    parser.add_argument("--judge", choices=["gemini", "anthropic", "none"],
+                        default=os.environ.get("EVAL_JUDGE", "gemini"),
+                        help="Judge provider (default: gemini)")
     # P3 D.3.1: pre-loop warm-up to absorb cold-start latency on the endpoint.
     warm_group = parser.add_mutually_exclusive_group()
     warm_group.add_argument("--warm-up", dest="warm_up", action="store_true", default=True,
@@ -353,8 +358,9 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: no fixtures matched filter", file=sys.stderr)
         return 2
 
-    judge_enabled = not args.no_judge
+    judge_enabled = not args.no_judge and args.judge != "none"
     rubric = "legacy" if args.legacy_rubric else "jyotish"
+    judge_provider = args.judge
 
     if args.warm_up:
         warmup_query = "What is the ascendant of the chart?"
@@ -374,7 +380,7 @@ def main(argv: list[str] | None = None) -> int:
             time.sleep(args.delay)
         record = run_one(
             fixture, args.base_url, args.chart_id, args.session_cookie,
-            args.timeout, judge_enabled, rubric=rubric,
+            args.timeout, judge_enabled, rubric=rubric, judge=judge_provider,
         )
         records.append(record)
         s = record["scores"]
