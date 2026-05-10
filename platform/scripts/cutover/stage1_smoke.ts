@@ -164,6 +164,10 @@ async function submitQueryOnce(q: SmokeQuery): Promise<QueryResult> {
   try {
     const body = {
       chartId: CHART_ID,
+      stack: 'anthropic', // NIM stack is degraded (NEXT_PUBLIC_NIM_STACK_DEGRADED=true);
+                          // smoke must target a known-working synthesis stack explicitly.
+                          // Without this, the route defaults to NIM which returns axum
+                          // Bearer auth errors for all non-factual query classes.
       messages: [{ role: 'user', id: 'smoke-msg-1', parts: [{ type: 'text', text: q.text }] }],
     }
 
