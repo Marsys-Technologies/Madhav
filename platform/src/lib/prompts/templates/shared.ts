@@ -17,7 +17,11 @@ const BUNDLE_CONTEXT = `You have access to the following validated context bundl
 
 const TOOL_AVAILABILITY = `You may call additional retrieval tools to extend the bundle. Tools available: {{tools_available}}.`
 
-const CITATION_DISCIPLINE = `Every L2+ interpretive claim must cite L1 fact IDs in the format (→ FORENSIC.<id>) or (→ F.<id>). Every MSR signal claim must cite the signal in the format (→ SIG.MSR.NNN) where NNN is a three-digit number. These exact inline citation forms are required for the grounding audit — use them consistently.`
+const CITATION_DISCIPLINE = `CITATION DISCIPLINE (read this before any content instruction below):
+Every factual or interpretive claim MUST carry an inline citation marker. The exact required forms are:
+  • L1 facts: (→ FORENSIC.<id>) or the short form (→ F.<id>)
+  • MSR signals: (→ SIG.MSR.NNN) where NNN is a three-digit number drawn from the bundle's [chunk:SIG.MSR.NNN] labels
+Count requirement: a long-form response (interpretive / holistic / cross-domain / remedial / predictive) without citation markers on at least 3 distinct signals or facts is incomplete regardless of length, regardless of how confident the prose sounds. Citation density is a quality gate, not stylistic decoration. The grounding audit fails any response that drifts into uncited interpretation in its later paragraphs — citations must persist through the END of the response, not just appear in the opening.`
 
 const ACHARYA_GRADE = `Respond at acharya grade — the depth and precision expected of a senior Jyotish acharya, not a general overview.`
 
@@ -46,7 +50,9 @@ export const FALSIFIER_GATE = `Every time-indexed claim must include a falsifier
  * flagged as training-data leaks — only cite ids you can see in the context.
  */
 export const PRESCRIPTIVE_CITATION_GATE = `CITATION GATE (mandatory for this query class):
-Your response MUST contain citations in the format (→ SIG.MSR.NNN) for MSR signals and (→ FORENSIC.<id>) or (→ F.<id>) for L1 facts. NNN is a three-digit number matching a signal id from the context bundle (chunk labels appear as [chunk:SIG.MSR.NNN] — copy those ids into (→ SIG.MSR.NNN) inline citations). Do not invent ids not present in the bundle. A response with zero (→ ...) citations will fail the grounding audit. If no MSR signals have been retrieved yet, call the msr_sql or query_signal_state tool to fetch relevant signals before composing your answer.`
+Your response MUST contain citations in the format (→ SIG.MSR.NNN) for MSR signals and (→ FORENSIC.<id>) or (→ F.<id>) for L1 facts. NNN is a three-digit number matching a signal id from the context bundle (chunk labels appear as [chunk:SIG.MSR.NNN] — copy those ids into (→ SIG.MSR.NNN) inline citations). Do not invent ids not present in the bundle. A response with zero (→ ...) citations will fail the grounding audit. If no MSR signals have been retrieved yet, call the msr_sql or query_signal_state tool to fetch relevant signals before composing your answer.
+
+TERMINAL CITATION REMINDER (do not omit): before emitting your final paragraph, scan back through the response. If the later paragraphs contain interpretive prose without (→ SIG.MSR.NNN) or (→ FORENSIC.<id>) markers, add the citations now — citation density must persist through the end of the response, not decay across length.`
 
 export const CALIBRATION_LANGUAGE_GATE = `CALIBRATION GATE (mandatory — every paragraph): Every interpretive, predictive, or synthesis claim MUST use probabilistic hedging language. Required markers (use liberally, multiple times per paragraph): "suggests", "indicates", "may", "likely", "tends to", "pattern of", "inclines toward", "points to", "could", "potentially", "appears to", "seems to", "is consistent with". PROHIBITED oracular language (zero tolerance): "will happen", "will definitely", "definitely", "certainly", "guaranteed", "without doubt", "will certainly", "is certain to", "assuredly". Calibration rule: for every claim you make, ask whether a senior statistician would accept the framing as probabilistic. If not, rephrase before writing it. Jyotish identifies tendencies and timing windows — never deterministic fate. Calibrated framing is a hard quality requirement enforced by automated scoring.`
 
@@ -102,11 +108,11 @@ export function buildOpeningBlock(): string {
 
 ${BUNDLE_CONTEXT}
 
+${CITATION_DISCIPLINE}
+
 ${TOOL_AVAILABILITY}
 
 ${ACHARYA_GRADE}
-
-${CITATION_DISCIPLINE}
 
 ${NO_FABRICATION}
 
