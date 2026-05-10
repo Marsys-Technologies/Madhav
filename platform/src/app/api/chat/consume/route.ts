@@ -301,6 +301,11 @@ export async function POST(request: Request) {
       manifest_fingerprint: manifest.fingerprint,
       conversation_history: plannerHistory,
       query_plan_id: preAllocatedQueryId,
+      // Thread the selected synthesis model so the router picks the same-family
+      // worker model (e.g. gemini-2.5-pro → gemini-2.5-flash-lite) instead of
+      // defaulting to claude-haiku-4-5. Without this, every stack change only
+      // affects synthesis; the classifier always calls Anthropic Haiku.
+      synthesis_model_id: stackSynthPrimary,
     })
     const queryId = queryPlan.query_plan_id
 
