@@ -61,7 +61,7 @@ const CHART_ID = process.env.SMOKE_CHART_ID ?? ''
 
 // Citation patterns produced by synthesis prompts.
 // Matches [F.xxx], [FORENSIC.xxx], [SIG.MSR.xxx], [signal:xxx], [asset:xxx], [chunk:xxx]
-const CITATION_RE = /\[(F\.|FORENSIC\.|SIG\.MSR\.|signal:|asset:|chunk:)[^\]]+\]/
+const CITATION_RE = /(?:\[(F\.|FORENSIC\.|SIG\.MSR\.|signal:|asset:|chunk:)[^\]]+\]|\(→\s*(?:SIG\.MSR\.\d+|FORENSIC\.[^\s)]+|F\.[^\s)]+)\))/
 
 // Disclosure / pipeline-tier indicator in the AI SDK stream JSON.
 const PIPELINE_TIER_RE = /"pipeline"\s*:\s*"v2"/
@@ -379,7 +379,12 @@ async function main(): Promise<void> {
   }
 
   // ── Audit log check ──────────────────────────────────────────────────────
-  console.log('\nStep 4 — Checking audit_log for written rows...')
+  // onAuditEvent fires inside server-side onFinish which runs asynchronously
+  // after the HTTP response body closes. Give the server time to flush all
+  // audit writes before querying the DB.
+  console.log('\nStep 4 — Waiting 10s for audit writes to settle...')
+  await new Promise(resolve => setTimeout(resolve, 10_000))
+  console.log('  Checking audit_log for written rows...')
   const { count, pass: passAuditCount } = await checkAuditRows(pool, smokeStart, 8)
   console.log(`  audit_log rows since smoke start: ${count} (need ≥ 8) ${passAuditCount ? '✓' : '✗'}`)
   if (!passAuditCount) {
