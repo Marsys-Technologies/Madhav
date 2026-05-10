@@ -1,0 +1,50 @@
+
+> platform@0.1.0 answer:eval
+> npx tsx scripts/answer_eval.ts
+
+
+MARSYS-JIS Answer Eval Harness
+BASE_URL: https://amjis-web-938361928218.asia-south1.run.app  CHART_ID: 362f9f17-95a5-490b-a5a7-027d3e0efda0  STACK: gemini
+Running 15 golden queries...
+
+  GQ-001 [factual] ... ❌
+  GQ-002 [factual] ... skipped (fetch failed)
+  GQ-003 [factual] ... skipped (fetch failed)
+  GQ-004 [interpretive] ... skipped (fetch failed)
+  GQ-005 [interpretive] ... ✅
+  GQ-006 [interpretive] ... ✅
+  GQ-007 [holistic] ... skipped (fetch failed)
+  GQ-008 [holistic] ... skipped (fetch failed)
+  GQ-009 [holistic] ... skipped (fetch failed)
+  GQ-010 [discovery] ... ✅
+  GQ-011 [discovery] ... ✅
+  GQ-012 [discovery] ... skipped (fetch failed)
+  GQ-013 [predictive] ... skipped (fetch failed)
+  GQ-014 [predictive] ... skipped (fetch failed)
+  GQ-015 [predictive] ... skipped (fetch failed)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+QID     Category      LayerCov  B10    B11    Cites   Calib   RESULT
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+GQ-001  factual         0%      100%     0%     0%      0%    ❌ FAIL
+GQ-002  factual       SKIPPED — fetch failed
+GQ-003  factual       SKIPPED — fetch failed
+GQ-004  interpretive  SKIPPED — fetch failed
+GQ-005  interpretive   67%      100%   100%   100%     94%    ✅ PASS
+GQ-006  interpretive  100%      100%   100%   100%     91%    ✅ PASS
+GQ-007  holistic      SKIPPED — fetch failed
+GQ-008  holistic      SKIPPED — fetch failed
+GQ-009  holistic      SKIPPED — fetch failed
+GQ-010  discovery     100%      100%   100%   100%     92%    ✅ PASS
+GQ-011  discovery     100%      100%   100%   100%     92%    ✅ PASS
+GQ-012  discovery     SKIPPED — fetch failed
+GQ-013  predictive    SKIPPED — fetch failed
+GQ-014  predictive    SKIPPED — fetch failed
+GQ-015  predictive    SKIPPED — fetch failed
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+AGGREGATE:
+  Queries run:   5 / 15 (10 skipped)
+  Pass rate:     4 / 5 (80%)
+  Avg scores:    layer_coverage= 73%  b10=100%  b11= 80%  citations= 80%  calibration= 74%
+
