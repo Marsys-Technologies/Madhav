@@ -3380,7 +3380,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M4-D-S1
+  last_session_id: Pipeline-Transform-S1
     # M4-D-S1 (2026-05-02). Macro-phase close-class substantive session sealing
     # the M4 macro-phase. Single-session substantive close per PHASE_M4D_PLAN §3.1
     # with 10 work items (W1–W10) discharged: W1 SESSION_OPEN handshake;
@@ -4174,30 +4174,13 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-S1 — open M5 macro-phase. First-session scope per MACRO_PLAN §M5
-    (Probabilistic Engine — DBN topology + signal-embedding refit-stability test
-    design + CW.PPL volume gate verification). At session-open: read MACRO_PLAN
-    §M5 in full + M4_CLOSE §5 (M5 setup recommendations 8 items) + HANDOFF
-    pointer in M4_CLOSE §1 (LL.1–LL.7 final state). Decide whether to expand
-    MACRO_PLAN §M5 into PHASE_M5_PLAN_v1_0.md (analogue of PHASE_M4_PLAN +
-    PHASE_M3_PLAN) or drive M5 directly from MACRO_PLAN — decision at M5 open
-    per CURRENT_STATE narrative precedent of M3 → M4 transition.
-    M5-S1 priority order per M4_CLOSE §5: (1) PHASE_M5_PLAN authoring;
-    (2) PPL volume-gate verification (current 16 predictions vs ≥50 target with
-    ≥6 months elapsed — hard prerequisite per MACRO_PLAN §M5 entry state);
-    (3) consume M4-D-P1 patched CDLM v1.3 + re-emit ll7_discovery_prior over
-    patched substrate (8 MED-tier sanity anchors expected to flip novel →
-    confirmed); (4) Gemini synchronization re-attempt per R.LL1TPA.1 carry-
-    forward (final M4 record NOT_REACHABLE; M5 entry obligation per
-    LL1_TWO_PASS_APPROVAL §5.5; if REACHABLE in M5+, retroactive ratification
-    of accumulated M4 surrogate decisions per GOVERNANCE_INTEGRITY_PROTOCOL
-    §K.3); (5) JH-export workstream coordination (KR.M3A.JH-EXPORT + Sthana/
-    Drik Shadbala ECR + Narayana Dasha verification — external-computation
-    items per NAP.M4.3 Option Y); (6) LL.3 fix-before-prod recommendations
-    (R.LL3.1/.2/.3 retrieval-pipeline change); (7) LL.2 per-edge promotion
-    campaign for 8 MED-tier Pancha-MP anchors (and any LL.7 flips from novel
-    → confirmed post-CDLM-patch); (8) MSR signal-completeness pass
-    (SIG.MSR.207/497/498/499 absent from MSR_v3_0.md).
+    Planner-Eval-S1 — 30-query golden-set eval re-run against PLANNER_PROMPT_v2_0.md.
+    Measure recall + precision delta vs v1.7 baseline (recall 0.940, precision 0.945).
+    Confirm asset_bundle accuracy criterion (new §5 rubric ≥8/12). After eval: open
+    M5 macro-phase per prior commitment (read MACRO_PLAN §M5 + M4_CLOSE §5 + HANDOFF
+    pointer; draft PHASE_M5_PLAN_v1_0.md; priority order per M4_CLOSE §5 items 1–8).
+    Also: merge feature/pipeline-transform-s1 PR to main after Planner-Eval-S1 passes
+    and feature/varga-etl-full-s1 Checkpoint B is verified conflict-free.
     M5-S1 entry gates per MACRO_PLAN §M5: M4 closed (SATISFIED at this M4-D-S1
     close — M4_CLOSE_v1_0.md sealed; calibration tables stable; LL.1–LL.7 active);
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must
@@ -4748,7 +4731,7 @@ current_state:
       DIS.010/011/012 RESOLVED-N3 (defer to M9).
       Naisargika + Nathonnatha, Sthana+Drik ECR, KR.W9.1/2, KR.M3A2.1, AC.M3A.5.
       msr_domain_buckets: 4 absent signal IDs (207, 497, 498, 499) flagged for M5+.
-  next_session_proposed_cowork_thread_name: "Madhav M5-S1 — M5 OPEN + PHASE_M5_PLAN authoring"
+  next_session_proposed_cowork_thread_name: "Madhav Planner-Eval-S1 — PLANNER_PROMPT_v2_0 golden-set eval"
   red_team_due_note: >
     Counter at 1 post M4-B-S5-NAP-M45-EXECUTE (substantive session 0→1; no in-session
     red-team — counter has not reached 3 IS.8(a) trigger). M4-B-S5 closed F.RT.S4.1
@@ -4841,11 +4824,39 @@ current_state:
         - DEF-6: PHASE11B legacy deletion safe after 2026-05-11
       worktree: /Users/Dev/Vibe-Coding/Apps/Ganga/  # retained; feature/ganga-umbrella still exists
 
+    pipeline_transform_s1:
+      active_since: 2026-05-11
+      closed_at: 2026-05-11
+      phase_status: COMPLETE                       # All 24 ACs + 3 INV PASS
+      description: >
+        4-phase LLM-first pipeline transformation. Eliminated dual classify()+callLlmPlanner()
+        path. route.ts now executes exactly 2 LLM calls per request (planner + synthesis).
+        Zero silent fallbacks; PipelinePlan is the single authoritative contract.
+      deliverables:
+        - pipeline_planner.ts (callPipelinePlanner → Promise<PipelinePlan>)
+        - bundle_hydrator.ts (hydrateBundle; FORENSIC+CGM floor enforced)
+        - route.ts rewritten (single linear path; PipelinePlannerError → HTTP 422)
+        - 12 legacy files deleted (manifest_planner, rule_composer, context_assembler, router/*, etc.)
+        - LLM_FIRST_PLANNER_ENABLED + CONTEXT_ASSEMBLY_ENABLED pruned from feature_flags.ts
+      branch: feature/pipeline-transform-s1
+      worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-pipeline
+      merge_status: pending_pr                     # merge after Planner-Eval-S1 + varga Checkpoint B
+      executor: claude-code-antigravity (bypass permissions)
+      brief: CLAUDECODE_BRIEF.md (Pipeline-Transform-S1, status COMPLETE)
+      platform_flags_at_close:
+        LLM_FIRST_PLANNER_ENABLED: removed
+        CONTEXT_ASSEMBLY_ENABLED: removed
+        AUDIT_ENABLED: true
+        LLM_FIRST_PLANNER_ENABLED: removed
+        MARSYS_FLAG_OBSERVATORY_ENABLED: true
+        DISCOVERY_ALL: true
+
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-05T23:59:00+05:30
-  file_updated_by_session: GANGA-CLOSE-G4
+  file_updated_at: 2026-05-11T23:59:00+05:30
+  file_updated_by_session: Pipeline-Transform-S1 (Cowork governance close)
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
