@@ -210,7 +210,28 @@ async function submitQueryOnce(q: SmokeQuery): Promise<QueryResult> {
       ?? fullText.match(/"queryId"\s*:\s*"([0-9a-f-]{36})"/i)
     result.queryId = qIdMatch?.[1] ?? null
 
-    result.passCitation = CITATION_RE.test(fullText)
+    // Reassemble synthesis text from per-word text-delta events before testing
+    // the citation regex. The AI SDK splits output into many tiny SSE frames
+    // (one per word), so a citation like "(→ FORENSIC.SIG.MSR.291)" spans
+    // multiple lines in the raw stream and never matches a single-line regex.
+    // Two formats handled:
+    //   data: {"type":"text-delta","id":"0","delta":"text "}  — UI stream format
+    //   0:"text "                                              — compact v6 format
+    const synthesisText = fullText.split('\n').flatMap(line => {
+      const trimmed = line.trim()
+      // UI message stream: data: {..., "delta":"..."}
+      const deltaMatch = trimmed.match(/"delta"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+      if (deltaMatch) {
+        try { return [JSON.parse(`"${deltaMatch[1]}"`)] } catch { return [deltaMatch[1]] }
+      }
+      // Compact v6 stream: 0:"..."
+      const compactMatch = trimmed.match(/^0:"((?:[^"\\]|\\.)*)"/)
+      if (compactMatch) {
+        try { return [JSON.parse(`"${compactMatch[1]}"`)] } catch { return [compactMatch[1]] }
+      }
+      return []
+    }).join('')
+    result.passCitation = CITATION_RE.test(synthesisText)
     result.passDisclosure = PIPELINE_TIER_RE.test(fullText)
 
     // Mark hollow streams (upstream 500 swallowed by pipeline) as failures
