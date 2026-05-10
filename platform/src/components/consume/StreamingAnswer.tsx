@@ -39,6 +39,16 @@ export function StreamingAnswer({
 
   if (messages.length === 0) return null
 
+  if (process.env.NODE_ENV === 'development') {
+    // Phase 1 debug: track part-to-message attribution for Q1→Q2 misattribution repro
+    messages.forEach(m => {
+      const preview = m.parts
+        ?.map(p => `${p.type}:${('text' in p ? String((p as { text: unknown }).text).slice(0, 80) : '')}`)
+        .join(' | ')
+      console.debug('[StreamingAnswer] msg', m.id, m.role, '|', preview)
+    })
+  }
+
   return (
     <div role="log" aria-label="Conversation" aria-live="polite" className={cn('flex w-full flex-col', className)}>
       {messages.map((message, idx) => {

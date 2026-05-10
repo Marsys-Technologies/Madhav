@@ -47,6 +47,13 @@ export function useChatSession({
       const metadata = message.metadata as { conversationId?: string } | undefined
       const newId = metadata?.conversationId
       if (newId && newId !== persistedId) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            '[useChatSession] conversationId transition:',
+            persistedId ?? 'new', '→', newId,
+            '| chat.status at transition:', chat.status
+          )
+        }
         setPersistedId(newId)
         onConversationCreated?.(newId)
       }
