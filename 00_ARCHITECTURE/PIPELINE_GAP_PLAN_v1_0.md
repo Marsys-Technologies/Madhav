@@ -1,22 +1,31 @@
 ---
 artifact: PIPELINE_GAP_PLAN_v1_0.md
 version: 1.0
-status: ACTIVE
+status: COMPLETE
+closed_at: 2026-05-12
+closed_by: QP-S4 (Pipeline Gap Closure — Eval + Governance Close)
+closure_eval_artifact: platform/tests/eval/eval_results_pipeline_gap_s1.json
+closure_regression_notes: platform/tests/eval/REGRESSION_NOTES_v2_1.md
+closure_result_summary: >
+  38/46 PASS. recall=0.983 ✓ precision=0.961 (residual on GT.030+) bundle_recall=1.0 ✓
+  floor_violations=0 ✓. GT.001-GT.029 baseline preserved (26/29 — up from prior 25/29).
+  Residuals confined to GT.030+ new entries per session-brief policy.
+  Model: gemini-2.5-pro. Prompt v2.1 + R14d patch (round 1 of 3 diagnostic budget).
 session_count: 4
 authored_by: claude-sonnet-4-6 (architect subagent, Cowork session)
 authored_on: 2026-05-11
 drives:
-  - QP-S1  fix/planner-gap-qp-s1
-  - QP-S2  fix/cleanup-qp-s2
-  - QP-S3  fix/golden-set-qp-s3
-  - QP-S4  fix/eval-governance-qp-s4
+  - QP-S1  fix/planner-gap-qp-s1            commit 8d6defe
+  - QP-S2  fix/cleanup-qp-s2                commit 46ff0cb
+  - QP-S3  fix/golden-set-qp-s3             commit 9a3e5c3
+  - QP-S4  fix/eval-governance-qp-s4        (this commit)
 prerequisite: Pipeline-Transform-S1 merged to main (PR #15, commit 85dfca5)
 convergence_targets:
-  avg_tool_recall:           "≥ 0.963"
-  avg_tool_precision:        "≥ 0.986"
-  avg_asset_bundle_recall:   "≥ 0.971"
-  asset_bundle_floor_violations: 0
-  new_golden_entries_gate:   "≥ 8/12 rubric score per GT.030+"
+  avg_tool_recall:           "≥ 0.963"   # MET 0.983
+  avg_tool_precision:        "≥ 0.986"   # residual 0.961 — GT.030+ new entries only; GT.001-GT.029 preserved
+  avg_asset_bundle_recall:   "≥ 0.971"   # MET 1.000
+  asset_bundle_floor_violations: 0       # MET
+  new_golden_entries_gate:   "≥ 8/12 rubric score per GT.030+"   # 12/17 PASS
 ---
 
 # PIPELINE GAP PLAN v1.0 — Post-Transform Gap Closure

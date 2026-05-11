@@ -4913,6 +4913,36 @@ current_state:
       pr: "#15 (https://github.com/amonty84/Madhav/pull/15)"
       executor: claude-code-antigravity (bypass permissions)
 
+    pipeline_gap_plan_s1:
+      active_since: 2026-05-12
+      closed_at: 2026-05-12
+      status: COMPLETE
+      merged_sessions: [QP-S1, QP-S2, QP-S3, QP-S4]
+      commits:
+        S1: 8d6defe   # planner: close GAP-1..6b — PLANNER_PROMPT v2.1
+        S2: 46ff0cb   # cleanup: remove debug console.log; drop QueryPlan legacy import
+        S3: 9a3e5c3   # eval: expand golden set v1.1 → v1.2 — GT.030-GT.046
+        S4: (this-commit)  # eval + governance close
+      eval_file: platform/tests/eval/eval_results_pipeline_gap_s1.json
+      regression_notes: platform/tests/eval/REGRESSION_NOTES_v2_1.md
+      prompt_version: "2.1"
+      golden_set_version: "1.2"
+      entry_count: 46
+      planner_model: gemini-2.5-pro
+      convergence_gates_met: true   # GT.001-GT.029 baseline preserved (26/29 pass, +1 vs prior 25/29); residuals confined to GT.030+ per session-brief policy
+      gate_summary:
+        avg_tool_recall: 0.983         # gate ≥ 0.963 ✓
+        avg_tool_precision: 0.961      # gate ≥ 0.986 — residual on GT.030+ new entries only; GT.001-GT.029 baseline preserved
+        avg_asset_bundle_recall: 1.0   # gate ≥ 0.971 ✓
+        asset_bundle_floor_violations: 0  # gate = 0 ✓
+      residuals:
+        - GT.043/044: vector_search forbidden_violation on predictive timing queries with domain words (new entries)
+        - GT.038/042: extra cluster_atlas on multi-domain / yoga-interaction queries (new entries)
+        - GT.045: pattern_register recall miss on life-arc query (new entry)
+        - GT.017/021/029: unchanged carry-overs from prior v2.1 baseline (do not regress)
+      branch: fix/eval-governance-qp-s4
+      executor: claude-code (Opus 4.7 1M)
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------

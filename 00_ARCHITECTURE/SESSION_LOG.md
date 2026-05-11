@@ -20725,3 +20725,28 @@ summary: >
   Floor violations resolved (GT.027/028 PASS).
   Model: claude-haiku-4-5 (NIM unreachable, same as baseline).
   Result artifact: platform/tests/eval/eval_results_planner_prompt_fix_s1.json.
+
+---
+session_id: QP-S4
+date: 2026-05-12
+summary: >
+  Pipeline Gap Plan — full eval + governance close. Sealing session for
+  QP-S1..S4 series (PLANNER_PROMPT v2.0.1 → v2.1 + golden set v1.1 → v1.2 +
+  46-entry eval). Model: gemini-2.5-pro (ANTHROPIC keyset unavailable in
+  finalize repo; Gemini stack chosen by native).
+  Eval result: 38/46 PASS. avg_tool_recall=0.983 (≥0.963 ✓).
+  avg_tool_precision=0.961 (target 0.986 — residual on GT.030+ new entries
+  only). avg_asset_bundle_recall=1.000 (≥0.971 ✓). asset_bundle_floor_violations=0 ✓.
+  GT.001-GT.029 baseline: 26/29 PASS (up from prior 25/29) — net +1, no regressions.
+  One diagnostic round taken (R14d amendment to suppress pattern_register on
+  single-divisional / single-house domain-read queries, overriding R17b);
+  GT.011 confirmed fixed by patch. Rounds 2-3 not consumed — remaining
+  failures are GT.030+ residuals per brief policy "Do NOT block close on
+  residuals that don't regress the existing GT.001-GT.029 baseline."
+  Files modified: PLANNER_PROMPT_v2_0.md (R14d patch), REGRESSION_NOTES_v2_1.md (new),
+  eval_results_pipeline_gap_s1.json (new), CURRENT_STATE_v1_0.md (pipeline_gap_plan_s1
+  block under concurrent_workstreams), PIPELINE_GAP_PLAN_v1_0.md (status COMPLETE),
+  SESSION_LOG.md (this entry). Branch: fix/eval-governance-qp-s4.
+  Residuals carried forward to next prompt-iteration session: GT.043/044
+  vector_search forbidden_violation on predictive-with-domain-words queries;
+  GT.038/042 extra cluster_atlas; GT.045 pattern_register recall miss.

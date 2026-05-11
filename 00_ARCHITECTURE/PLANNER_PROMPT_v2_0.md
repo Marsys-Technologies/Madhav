@@ -416,8 +416,12 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
   R14d. INTERPRETIVE house-or-divisional queries asking about DOMAIN
         INTERPRETATION (e.g. "what does my Nth house say about [domain]",
         "read my D9 for marriage", "what does my 10th house say about
-        profession"): use `msr_sql` + `vector_search`. Do NOT add
-        cgm_graph_walk. Hypothesis: reduces FP cgm_graph_walk on
+        profession"): use `msr_sql` + `vector_search` ONLY. Do NOT add
+        cgm_graph_walk. Do NOT add pattern_register (this rule overrides
+        R17b for single-divisional or single-house domain-read queries —
+        a divisional chart used to interpret one domain is NOT the
+        "chart-level multi-layer scope" R17b targets). Hypothesis:
+        reduces FP cgm_graph_walk + pattern_register on
         GT.007/011/012.
   R15. `resonance_register` is for REMEDIAL queries and for HOLISTIC or
        INTERPRETIVE queries that LITERALLY contain one of the keywords
