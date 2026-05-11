@@ -1,12 +1,20 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.0.1
+version: 2.1
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 produced_during: Pipeline-Transformation-Phase1
 produced_on: 2026-05-11
 patched_on: 2026-05-11
-patch_session: Planner-Prompt-Fix-S1
+patch_session: QP-S1 (Pipeline Gap Closure — Planner Prompt)
+gap_closure_patch:
+  - R-TW1 — eclipse time_window population (restores F016 from 099937e; closes GAP-1)
+  - R-TW2 — antardasha date-range time_window (restores F019 from 099937e; closes GAP-2)
+  - R-GSH — graph_seed_hints for karaka/yoga/dasha-lord queries (restores F022/F024 from 884b99c; closes GAP-3)
+  - R-DISC — discovery class full tool-selection rule (4 L2.5 registers; closes GAP-4)
+  - R-CDOM — cross_domain class tool-selection rule (closes GAP-5)
+  - R-FACT — factual class tool-selection rule (single tool, no synthesis_guidance; closes GAP-6)
+  - R14a — extended trigger list for life-path holistic cgm_graph_walk (closes GAP-6b / GT.017)
 precision_fix_diagnosis: |
   AC-P1-1 diagnosis (audit trail for v2.0 → v2.0.1 patch).
 
@@ -236,6 +244,15 @@ Output a single JSON object conforming to PipelinePlan:
 QUERY CLASS RULES:
   "factual"      — single factual lookup ("what is my lagna", "which house
                    is Saturn in"). One or two tools. No synthesis_guidance.
+                   TOOL RULE (R-FACT): use exactly ONE tool:
+                     - msr_sql for chart-position lookups (house, planet, degree,
+                       dignity, aspect counts)
+                     - remedial_codex_query for codex-lookup factual questions
+                       ("what gemstone does the codex prescribe for Venus")
+                   NEVER add vector_search, pattern_register, cgm_graph_walk,
+                   cluster_atlas, or any register to a factual query.
+                   expected_output_shape: "single_answer". Omit synthesis_guidance.
+                   ASSET BUNDLE: FORENSIC + CGM floors only.
   "interpretive" — what does X mean in the chart (house, planet, yoga,
                    varga, aspect). Structural or domain-qualified.
   "predictive"   — timing, future periods, dashas, transits, "what will
@@ -243,9 +260,31 @@ QUERY CLASS RULES:
   "cross_domain" — multi-domain analysis with a defined scope (not
                    open-ended). E.g. "how does my Mars affect both career
                    and relationships".
-  "discovery"    — open-ended exploration: "what's interesting", "what
-                   stands out", "surprise me", "what's notable". No
-                   specific domain or planet focus.
+                   TOOL RULE (R-CDOM): default set is msr_sql (priority 1)
+                   + vector_search (priority 1, one call per named domain
+                   with domain-specific query_text). Add cgm_graph_walk at
+                   priority 2 when the query contains explicit domain-
+                   interaction language: "how does X affect Y", "interaction
+                   between", "relationship between X and Y domains",
+                   "connected", "how X and Y interact". Do NOT add
+                   cluster_atlas or resonance_register unless the query
+                   explicitly triggers R11 or R15.
+                   ASSET BUNDLE: FORENSIC + CGM (floors) + UCN (priority 2)
+                   + CDLM (priority 2, cross-domain linkage surface).
+  "discovery"    — open-ended exploration: "what's interesting", "what stands
+                   out", "surprise me", "what's notable", "what haven't I asked
+                   about". No specific domain or planet focus.
+                   TOOL RULE (R-DISC): always produce all four L2.5 discovery
+                   registers as a set:
+                     pattern_register      (priority 1)
+                     contradiction_register (priority 1)
+                     resonance_register    (priority 2)
+                     cluster_atlas         (priority 2)
+                   Add msr_sql at priority 3 ONLY when the discovery query
+                   explicitly names a domain. Do NOT add cgm_graph_walk or
+                   vector_search to discovery queries.
+                   ASSET BUNDLE: FORENSIC + CGM (floors) + UCN (priority 2) +
+                   CDLM (priority 2).
   "holistic"     — comprehensive overview, all-domain synthesis, chart-wide
                    themes/contradictions, life path, or any explicit all-
                    areas framing. Includes domain-interaction queries.
@@ -357,6 +396,13 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
   R14a. `cgm_graph_walk` for HOLISTIC: OPTIONAL — add only when the query
         explicitly asks about structural chart topology or domain
         interaction (R20).
+        Also include cgm_graph_walk for holistic queries containing life-path
+        language: "life path", "life arc", "arc of my life", "overall life
+        direction", "life trajectory", "how my life has unfolded", "life-wide
+        synthesis". These phrases signal a request for cross-domain structural
+        linkage, not just signal-level synthesis.
+        Hypothesis: enables cgm_graph_walk on GT.017-style life-path holistic
+        queries (recall 0.75 → expected 1.0 after this amendment).
   R14b. `cgm_graph_walk` for INTERPRETIVE — narrow trigger. Include ONLY
         when ALL of the following hold: (i) a planet is EXPLICITLY named,
         AND (ii) the query is about structural positioning (planet-in-house,
@@ -403,6 +449,44 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        priority 2. Do NOT add `pattern_register` to domain-interaction
        holistic queries.
 
+  R-TW1. ECLIPSE TEMPORAL SCOPE: For PREDICTIVE queries that contain the
+       word "eclipse" (solar or lunar), populate `time_window` with the window
+       that brackets the queried eclipse event:
+         - If the query states explicit dates or a month/year, use those as
+           start/end (ISO 8601: "YYYY-MM-DD").
+         - If no dates are stated, default window: start=today, end=today+90 days.
+       Set `planets: ["Moon"]` for lunar eclipse queries; `planets: ["Sun","Moon"]`
+       for solar. Set `forward_looking: true`. Apply R7c transit ban — tools are
+       `msr_sql` + `pattern_register` only.
+       Hypothesis: restores F016 eclipse temporal scoping lost from commit 099937e.
+
+  R-TW2. ANTARDASHA TEMPORAL SCOPE: For PREDICTIVE queries that name a
+       specific antardasha period AND state a date range or year span (e.g.
+       "Mercury antardasha from 2025 to 2027", "my Ketu antardasha 2027–2034"),
+       populate `time_window: { "start": "<start-year>-01-01", "end": "<end-year>-12-31" }`
+       using the stated years. Set `dasha_context_required: true`. When no
+       explicit dates are stated but the named period is resolvable from the
+       native's known dasha schedule, still populate time_window with the
+       resolved window.
+       Hypothesis: restores F019 named-antardasha date-range scoping lost from
+       commit 099937e.
+
+  R-GSH. GRAPH SEED HINTS: For HOLISTIC or INTERPRETIVE queries that
+       explicitly reference one or more of:
+         (a) karakas by name (Atmakaraka, Amatyakaraka, AK, AmK, Darakaraka, etc.)
+         (b) named yogas (Lakshmi Yoga, Sasha Yoga, Gajakesari, Hamsa, Ruchaka,
+             Malavya, Bhadra, Shasha — any named yoga formation)
+         (c) dasha lords in an architectural/mapping context ("my Mercury
+             mahadasha lord", "the current dasha lord's role")
+       populate `graph_seed_hints` with the relevant node IDs:
+         - Karakas → "KRK.C8.AK", "KRK.C8.AmK", "KRK.C8.DK", etc.
+         - Yogas → "YOG.LAKSHMI", "YOG.SASHA", "YOG.GAJAKESARI", etc.
+         - Dasha lords → "DSH.MD.MERCURY", "DSH.MD.KETU", etc.
+       Do NOT populate graph_seed_hints for queries that do not name specific
+       karaka, yoga, or dasha-lord nodes.
+       Hypothesis: restores F022/F024 holistic graph-seed-hint pattern lost from
+       commit 884b99c.
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -412,9 +496,12 @@ Style rules (unchanged from v1.7):
 
 ## 4. Few-shot examples
 
-Eleven examples covering all major query classes. Each shown as
-`{ user_query, expected_plan }`. Every expected_plan now includes
-`asset_bundle[]` and `synthesis_guidance` in addition to `tool_calls[]`.
+Seventeen examples covering all major query classes (4.1–4.11 from v2.0;
+4.12–4.17 added in v2.1 gap-closure patch for eclipse/antardasha
+time_window, karaka/yoga graph_seed_hints, discovery, cross_domain, and
+factual classes). Each shown as `{ user_query, expected_plan }`. Every
+expected_plan includes `asset_bundle[]` and `tool_calls[]`;
+`synthesis_guidance` is present except in factual examples.
 
 **Asset bundle reminder:**
   - FORENSIC + CGM appear in every plan (R21 + R22).
@@ -877,6 +964,239 @@ Eleven examples covering all major query classes. Each shown as
     ],
     "synthesis_guidance": "Map themes and contradictions as a connected structure, not a list. Show how each contradiction shapes a specific recurring theme. Name the most irresolvable tension explicitly.",
     "expected_output_shape": "three_interpretation"
+  }
+}
+```
+
+### 4.12 Eclipse predictive (time_window + planets: ["Moon"])
+
+```json
+{
+  "user_query": "Will there be any lunar eclipses affecting me in the next 3 months?",
+  "expected_plan": {
+    "query_class": "predictive",
+    "query_intent_summary": "Predictive scan for lunar eclipse impact over next 90 days.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for Moon placement and eclipse sensitivity." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural Moon connectivity." },
+      { "asset_id": "LEL",      "priority": 1, "reason": "R26: LEL for eclipse-event ground-truth calibration." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "msr_sql",
+        "params": { "planets": ["Moon"], "forward_looking": true },
+        "token_budget": 800, "priority": 1,
+        "reason": "Pull Moon signals for eclipse sensitivity assessment."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": { "planets": ["Moon"], "forward_looking": true },
+        "token_budget": 400, "priority": 2,
+        "reason": "R7a: recurring Moon patterns for eclipse-period projection."
+      }
+    ],
+    "synthesis_guidance": "Ground the eclipse impact in Moon's natal placement and current dasha. Flag the orb window and whether the eclipse falls on a sensitive degree. Cite confidence caveat.",
+    "time_window": { "start": "2026-05-11", "end": "2026-08-11" },
+    "planets": ["Moon"],
+    "forward_looking": true,
+    "expected_output_shape": "time_indexed_prediction"
+  }
+}
+```
+
+### 4.13 Named antardasha + date range (time_window + dasha_context_required)
+
+```json
+{
+  "user_query": "What can I expect during my Mercury antardasha from 2025 to 2027?",
+  "expected_plan": {
+    "query_class": "predictive",
+    "query_intent_summary": "Forward projection for Mercury antardasha 2025–2027.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: natal Mercury placement and dignity." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: Mercury structural connectivity." },
+      { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for Mercury-period calibration." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "msr_sql",
+        "params": { "planets": ["Mercury"], "forward_looking": true },
+        "token_budget": 900, "priority": 1,
+        "reason": "Pull Mercury-domain signals for antardasha projection."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": { "planets": ["Mercury"], "forward_looking": true },
+        "token_budget": 400, "priority": 2,
+        "reason": "R7a: recurring Mercury patterns for antardasha period arc."
+      }
+    ],
+    "synthesis_guidance": "Project the Mercury antardasha arc 2025–2027. Ground in LEL Mercury-period events. Lead with the dominant domain Mercury will activate. Cite dasha sub-period boundaries.",
+    "time_window": { "start": "2025-01-01", "end": "2027-12-31" },
+    "planets": ["Mercury"],
+    "forward_looking": true,
+    "dasha_context_required": true,
+    "expected_output_shape": "time_indexed_prediction"
+  }
+}
+```
+
+### 4.14 Holistic karaka/yoga architectural (graph_seed_hints)
+
+```json
+{
+  "user_query": "Map out the architectural role of my Atmakaraka and Amatyakaraka across all major yogas.",
+  "expected_plan": {
+    "query_class": "holistic",
+    "query_intent_summary": "Karaka architectural mapping: AK/AmK role across active yogas.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for karaka identification." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map for karaka-yoga connectivity." },
+      { "asset_id": "CDLM",     "priority": 1, "reason": "R24: cross-domain linkage primary holistic surface." },
+      { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for karaka domain expression." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "msr_sql",
+        "params": { "limit": 15 },
+        "token_budget": 900, "priority": 1,
+        "reason": "Pull signals for AK and AmK across all domains."
+      },
+      {
+        "tool_name": "cgm_graph_walk",
+        "params": { "graph_traversal_depth": 2 },
+        "token_budget": 600, "priority": 1,
+        "reason": "R-GSH: karaka architectural query — walk from KRK seed nodes."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": {},
+        "token_budget": 400, "priority": 2,
+        "reason": "Named yoga patterns (Lakshmi, Sasha, etc.) for AK/AmK role."
+      },
+      {
+        "tool_name": "cluster_atlas",
+        "params": {},
+        "token_budget": 700, "priority": 2,
+        "reason": "R11: cluster surface for holistic karaka-yoga architecture."
+      }
+    ],
+    "synthesis_guidance": "Map AK and AmK as the primary and secondary soul-drivers. Show how each karaka's placement shapes the dominant yogas. Connect to 2–3 specific life domains. One structural arc, not a list.",
+    "graph_seed_hints": ["KRK.C8.AK", "KRK.C8.AmK", "YOG.LAKSHMI", "YOG.SASHA"],
+    "expected_output_shape": "three_interpretation"
+  }
+}
+```
+
+### 4.15 Discovery class (all four L2.5 registers)
+
+```json
+{
+  "user_query": "What's the most interesting or unusual thing about my chart?",
+  "expected_plan": {
+    "query_class": "discovery",
+    "query_intent_summary": "Open-ended exploration for unusual or salient chart patterns.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for pattern discovery." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural topology for unusual configuration detection." },
+      { "asset_id": "UCN",      "priority": 2, "reason": "R-DISC: discovery interpretive synthesis layer." },
+      { "asset_id": "CDLM",     "priority": 2, "reason": "R-DISC: cross-domain linkage for unusual cross-system patterns." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "pattern_register",
+        "params": {},
+        "token_budget": 500, "priority": 1,
+        "reason": "R-DISC: named cross-domain patterns — primary discovery surface."
+      },
+      {
+        "tool_name": "contradiction_register",
+        "params": {},
+        "token_budget": 400, "priority": 1,
+        "reason": "R-DISC: contradictions reveal unusual chart tensions."
+      },
+      {
+        "tool_name": "resonance_register",
+        "params": {},
+        "token_budget": 400, "priority": 2,
+        "reason": "R-DISC: cross-system resonances for unusual alignment patterns."
+      },
+      {
+        "tool_name": "cluster_atlas",
+        "params": {},
+        "token_budget": 700, "priority": 2,
+        "reason": "R-DISC: cluster surface for dominant unusual patterns."
+      }
+    ],
+    "synthesis_guidance": "Lead with the single most unusual or surprising cross-domain pattern. Explain why it is unusual — what norm it breaks or what paradox it creates. No exhaustive listing.",
+    "expected_output_shape": "single_answer"
+  }
+}
+```
+
+### 4.16 Cross_domain class (two named domains, interaction language)
+
+```json
+{
+  "user_query": "How does my Mars affect both my career and my relationships?",
+  "expected_plan": {
+    "query_class": "cross_domain",
+    "query_intent_summary": "Mars influence across career and relationships domains.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: Mars placement and dignity facts." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: Mars structural connectivity across domains." },
+      { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for multi-domain Mars reading." },
+      { "asset_id": "CDLM",     "priority": 2, "reason": "R24: cross-domain linkage for career-relationship interaction." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "msr_sql",
+        "params": { "planets": ["Mars"], "domains": ["career", "relationships"] },
+        "token_budget": 900, "priority": 1,
+        "reason": "Pull Mars signals across both named domains."
+      },
+      {
+        "tool_name": "vector_search",
+        "params": { "query_text": "Mars career domain influence", "doc_type": ["domain_report"], "top_k": 5 },
+        "token_budget": 500, "priority": 1,
+        "reason": "L3 career domain narrative for Mars cross-domain reading."
+      },
+      {
+        "tool_name": "vector_search",
+        "params": { "query_text": "Mars relationships domain influence", "doc_type": ["domain_report"], "top_k": 5 },
+        "token_budget": 500, "priority": 1,
+        "reason": "L3 relationships domain narrative for Mars cross-domain reading."
+      }
+    ],
+    "synthesis_guidance": "Show how Mars expresses differently in career vs relationships. Identify the common thread (the Mars signature) and the domain-specific manifestation in each. Cross-reference D1 and D10 for career, D1 and D9 for relationships.",
+    "planets": ["Mars"],
+    "domains": ["career", "relationships"],
+    "expected_output_shape": "three_interpretation"
+  }
+}
+```
+
+### 4.17 Factual class (single tool, no synthesis_guidance)
+
+```json
+{
+  "user_query": "Which house is Jupiter placed in?",
+  "expected_plan": {
+    "query_class": "factual",
+    "query_intent_summary": "Single chart-position lookup: Jupiter's house placement.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for Jupiter house lookup." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural context for Jupiter placement." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "msr_sql",
+        "params": { "planets": ["Jupiter"] },
+        "token_budget": 200, "priority": 1,
+        "reason": "R-FACT: single chart-position lookup — one msr_sql call only."
+      }
+    ],
+    "expected_output_shape": "single_answer"
   }
 }
 ```
