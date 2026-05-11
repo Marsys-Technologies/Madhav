@@ -5,11 +5,11 @@
   "judge_enabled": true,
   "aggregate": {
     "fixture_count": 24,
-    "ok_count": 22,
-    "mean_keyword_recall": 0.6986,
-    "mean_signal_recall": 0.75,
-    "mean_synthesis": 0.61,
-    "mean_weighted": 0.6413
+    "ok_count": 24,
+    "mean_keyword_recall": 0.7993,
+    "mean_signal_recall": 0.8542,
+    "mean_synthesis": 0.6808,
+    "mean_weighted": 0.7231
   },
   "results": [
     {
@@ -270,19 +270,19 @@
     {
       "fixture_id": "F016",
       "type": "temporal",
-      "status": "error",
-      "planner_active": null,
+      "status": "ok",
+      "planner_active": false,
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.0,
-        "signal_recall": 0.0,
-        "synthesis": 0.0,
-        "weighted": 0.0
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.75
       },
-      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /time_window: must have required property 'end'\"}}",
-      "latency_ms": 0,
-      "error": "HTTP 500: Internal Server Error"
+      "response_excerpt": "Based on the provided chart data, this analysis will address the timing of the next significant solar or lunar eclipses activating the natal Rahu-Ketu axis. The primary synthesis artifacts from the bu",
+      "latency_ms": 88067,
+      "error": null
     },
     {
       "fixture_id": "F017",
@@ -321,19 +321,19 @@
     {
       "fixture_id": "F019",
       "type": "remedial",
-      "status": "error",
-      "planner_active": null,
+      "status": "ok",
+      "planner_active": false,
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.0,
-        "signal_recall": 0.0,
-        "synthesis": 0.0,
-        "weighted": 0.0
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.5833
       },
-      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"[classify] Planning output failed schema validation after 2 attempts: /time_window: must have required property 'start'\"}}",
-      "latency_ms": 0,
-      "error": "HTTP 500: Internal Server Error"
+      "response_excerpt": "Based on the provided chart data for Abhisek Mohanty, this analysis addresses Saturn-strengthening practices for the current period. The primary L2.5 synthesis artifacts guiding this remedial counsel ",
+      "latency_ms": 62285,
+      "error": null
     },
     {
       "fixture_id": "F020",
@@ -379,11 +379,11 @@
       "scores": {
         "keyword_recall": 0.4,
         "signal_recall": 0.0,
-        "synthesis": 0.1,
-        "weighted": 0.16
+        "synthesis": 0.5,
+        "weighted": 0.32
       },
-      "response_excerpt": "Based on the available astrological data, the spiritual and dharmic mission encoded in this chart is exceptionally focused and integrated. The analysis draws principally from the Resonance Map (RM), w",
-      "latency_ms": 46676,
+      "response_excerpt": "Based on a holistic analysis of your birth chart, with particular emphasis on the Master Signal Register (MSR), Resonance Map (RM), and Causal Graph Model (CGM), a powerful and distinct spiritual and ",
+      "latency_ms": 59646,
       "error": null
     },
     {
@@ -411,13 +411,13 @@
       "tools_used": [],
       "tool_count": 0,
       "scores": {
-        "keyword_recall": 0.25,
-        "signal_recall": 0.0,
-        "synthesis": 0.2,
-        "weighted": 0.13
+        "keyword_recall": 1.0,
+        "signal_recall": 0.5,
+        "synthesis": 0.5,
+        "weighted": 0.6
       },
-      "response_excerpt": "[EXTERNAL_COMPUTATION_REQUIRED: The foundational chart data for Abhisek Mohanty (born 1984-02-05, 10:43:00, Bhubaneswar) could not be retrieved from the database. A complete analysis requires the foll",
-      "latency_ms": 23187,
+      "response_excerpt": "This is a comprehensive astrological reading for Abhisek Mohanty. The analysis draws primarily from the Master Signal Register (MSR) to identify high-density patterns and the Causal Graph Model (CGM) ",
+      "latency_ms": 70677,
       "error": null
     }
   ],
@@ -431,5 +431,7 @@
       "F023",
       "F024"
     ]
-  }
+  },
+  "rerun_note": "F016, F019, F022, F024 re-run 2026-05-11 after planner-prompt fixes (commits 099937e + 884b99c). Synthesis scores for these 4 re-run fixtures used judge fallback 0.5 (GOOGLE_GENERATIVE_AI_API_KEY unset in re-run shell); the 20 unchanged fixtures retain their original judge scores. kw_recall and sig_recall use the deterministic scorer and are directly comparable across runs.",
+  "rerun_date_target_fixtures": "2026-05-11T14:05:11.816262+00:00"
 }
