@@ -11,7 +11,8 @@
  * the matching pair to update.
  *
  * Source of truth for tool implementations: platform/src/lib/retrieve/index.ts
- * (RETRIEVAL_TOOLS registry, 17 tools as of 2026-05-01).
+ * (RETRIEVAL_TOOLS registry, 18 tools as of 2026-05-10 — VARGA-ETL-FULL-S1-CPA
+ * added cross_varga_dignity_query for the §3.15 CSI ledger).
  */
 
 export type CostTier = 'low' | 'medium' | 'high'
@@ -293,6 +294,29 @@ const divisional_query: RetrievalCapabilityEntry = {
   requires_temporal: false,
 }
 
+const cross_varga_dignity_query: RetrievalCapabilityEntry = {
+  tool_name: 'cross_varga_dignity_query',
+  description:
+    'Returns the §3.15 CSI cross-divisional dignity ledger — per-planet D1/D9/D10 sign + dignity ' +
+    '(exalted/debilitated/own_sign/mooltrikona/neutral) and vargottama status. Priority-1 for any ' +
+    'query mentioning "navamsha comparison", "strength across charts", "vargottama", "three-state ' +
+    'dignity", or "how does X planet behave across charts". Always schedule alongside divisional_query ' +
+    'for D9 and D10 to give the synthesis layer the cross-walk it needs.',
+  data_surface:
+    'L1 — chart_facts CSI.* (§3.15 ledger) + D9.* + D10.* per-planet rows. Returns a structured per-planet ' +
+    'record: {planet, d1_sign, d1_dignity, d9_sign, d9_dignity, d10_sign, d10_house, d10_dignity, vargottama, fact_ids}.',
+  supported_params:
+    '{ planets?: string[] (canonical names: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu; omit for all 9) }',
+  optimal_patterns: [
+    'All planets: {}',
+    'Saturn three-state: {planets:["Saturn"]}',
+    'Cross-varga comparison: {planets:["Sun","Moon","Saturn"]}',
+    'Vargottama check: {} then filter result by vargottama=true',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // L3+ synthesis-document tools
 // ────────────────────────────────────────────────────────────────────────────
@@ -367,6 +391,7 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   saham_query,
   divisional_query,
   chart_facts_query,
+  cross_varga_dignity_query,
   domain_report_query,
   remedial_codex_query,
   timeline_query,
@@ -400,4 +425,86 @@ export function renderRetrievalCapabilitySpec(
 /** Lookup helper. */
 export function getCapability(toolName: string): RetrievalCapabilityEntry | undefined {
   return RETRIEVAL_CAPABILITY_SPEC.find((e) => e.tool_name === toolName)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// DOMAIN_VARGA_MAP — domain → divisional chart routing (VARGA-ETL-FULL-S1 D18)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mapping from canonical (and alias) domain codes to the divisional charts that
+ * MUST appear in retrieval context for a domain-scoped query, and the secondary
+ * vargas that strengthen the read.
+ *
+ * Used by the planner to schedule `divisional_query` for the mandatory vargas
+ * and (where applicable) `cross_varga_dignity_query` alongside them. Used by
+ * the synthesis layer (DIVISIONAL_INTEGRATION_GATE) to decide whether the
+ * mandatory varga context is present before answering.
+ *
+ * Canonical keys are the L3 domain-report names (career_dharma, health_longevity,
+ * etc.). Aliases (career, marriage, etc.) resolve to the same entry to keep the
+ * planner robust against naming drift.
+ */
+export interface DomainVargaEntry {
+  /** Vargas that MUST appear in the retrieval bundle for an acharya-grade read. */
+  mandatory: readonly string[]
+  /** Vargas that materially strengthen the read but are not blocking. */
+  secondary: readonly string[]
+}
+
+export const DOMAIN_VARGA_MAP: Readonly<Record<string, DomainVargaEntry>> = {
+  // Career / status (D10 dasamsha)
+  career: { mandatory: ['D10'], secondary: ['D9'] },
+  career_dharma: { mandatory: ['D10', 'D9'], secondary: ['D24'] },
+  status: { mandatory: ['D10'], secondary: ['D9'] },
+
+  // Dharma / marriage / relationships (D9 navamsha)
+  dharma: { mandatory: ['D9'], secondary: ['D10'] },
+  marriage: { mandatory: ['D9'], secondary: ['D7'] },
+  partner: { mandatory: ['D9'], secondary: ['D7'] },
+  relationships: { mandatory: ['D9'], secondary: ['D7', 'D10'] },
+
+  // Children (D7 saptamsha)
+  children: { mandatory: ['D7'], secondary: ['D9'] },
+
+  // Parents / ancestry (D12 dvadashamsa)
+  parents: { mandatory: ['D12'], secondary: ['D9'] },
+  ancestry: { mandatory: ['D12'], secondary: ['D60'] },
+
+  // Education / knowledge (D24 siddhamsa)
+  education: { mandatory: ['D24'], secondary: ['D9'] },
+  knowledge: { mandatory: ['D24'], secondary: ['D9'] },
+
+  // Spiritual / moksha (D20 vimsamsha)
+  spiritual: { mandatory: ['D20'], secondary: ['D9', 'D60'] },
+  moksha: { mandatory: ['D20'], secondary: ['D9', 'D60'] },
+  spirit: { mandatory: ['D20'], secondary: ['D9'] },
+
+  // Health / longevity (D30 trimsamsha)
+  health: { mandatory: ['D30'], secondary: ['D9'] },
+  longevity: { mandatory: ['D30'], secondary: ['D9'] },
+  health_longevity: { mandatory: ['D30'], secondary: ['D9'] },
+
+  // Finance / wealth (D2 hora)
+  finance: { mandatory: ['D2'], secondary: ['D9', 'D10'] },
+  wealth: { mandatory: ['D2'], secondary: ['D9', 'D10'] },
+  financial: { mandatory: ['D2'], secondary: ['D9', 'D10'] },
+
+  // Vehicles / comforts (D16 shodashamsha)
+  vehicles_comforts: { mandatory: ['D16'], secondary: ['D9'] },
+  comforts: { mandatory: ['D16'], secondary: ['D9'] },
+
+  // Auspiciousness (D40 khavedamsha)
+  auspiciousness: { mandatory: ['D40'], secondary: ['D9'] },
+
+  // Purity (D45 akshavedamsha)
+  purity: { mandatory: ['D45'], secondary: ['D9'] },
+
+  // Past karma (D60 shashtyamsha) — D60 mandatory; D45 + D9 strengthen
+  past_karma: { mandatory: ['D60'], secondary: ['D45', 'D9'] },
+} as const
+
+/** Resolve a domain code (or alias) to its mandatory + secondary vargas. */
+export function getDomainVargas(domain: string): DomainVargaEntry | undefined {
+  return DOMAIN_VARGA_MAP[domain]
 }

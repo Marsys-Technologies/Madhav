@@ -38,6 +38,7 @@ Rules for predictive responses:
 4. Distinguish active windows (dasha + transit confluence) from background themes (natal promise only).
 5. For any prediction involving an exact degree transit or eclipse hit, write [EXTERNAL_COMPUTATION_REQUIRED: exact transit date for <planet> over <degree> <sign> in <year range>] if not present in the bundle.
 6. Do not produce predictions beyond 5 years from the query date without explicitly flagging the reduced reliability of long-horizon forecasting.
+7. Domain-specific predictions must layer at least 2 divisional charts: D9 (always — the dharma/strength varga) plus the domain-mandatory varga from the DIVISIONAL INTEGRATION GATE (D10 for career, D7 for children, D30 for health, etc.). A predictive read that consults only D1 + dasha is structurally incomplete.
 
 ${PRESCRIPTIVE_CITATION_GATE}`,
   style_suffixes: { ...STYLE_SUFFIXES },

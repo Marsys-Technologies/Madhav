@@ -2,7 +2,7 @@
 artifact: RM_v2_0.md
 artifact_type: Resonance Map
 layer: L2.5 — Holistic Synthesis
-version: 2.1
+version: 2.2
 status: CURRENT
 date_opened: 2026-04-18
 supersedes: RM_v1_1.md
@@ -12,6 +12,7 @@ feeds_into: [Domain Reports L3, future UCN v2.0]
 native: Abhisek Mohanty, b. 1984-02-05, 10:43 IST, Bhubaneswar
 schema_ref: Architecture §C.3.4, §D.4.D, §G.4.D
 v2_1_changelog: "Corrective text stripped 2026-04-19 per corpus cleanup brief. See 00_ARCHITECTURE/AUDIT_REPORT_v1_0.md for history."
+v2_2_changelog: "VARGA-ETL-FULL-S1 D14 (2026-05-10): added RM.31–RM.35 — five cross-varga resonances anchored in MSR.500–514 (vargottama Mercury, Saturn three-state, Venus three-state, D9 12H stellium, D10 career triad). Brief specified RM.30–34 but RM.30 already occupied by v2.0 Chart's Central Paradox Stack; new entries indexed RM.31–RM.35 to avoid collision."
 expose_to_chat: true
 native_id: "abhisek"
 ---
@@ -690,6 +691,108 @@ interpretive_note: "Seven paired truths to hold simultaneously. Not errors. The 
 
 ---
 
+### RM.31 — Vargottama Mercury Resonance (Cross-Varga Anchor)
+
+```yaml
+element: "Mercury D1 Capricorn = D9 Capricorn — sole vargottama planet; disposits D9 12H stellium and NBRY-Venus"
+domains_primary: [career, wealth, mind, dharma]
+msr_anchors: [SIG.MSR.514, SIG.MSR.500, SIG.MSR.002, SIG.MSR.001]
+cdlm_anchors: [career×mind, career×wealth]
+constructive_resonance:
+  - "Vargottama Mercury is the chart's single most stable cross-varga element — D1 = D9 = Capricorn"
+  - "Mercury disposits the D9 12H stellium (Moon + Jupiter + Rahu in Gemini) via Mercury-ruled Gemini"
+  - "Mercury cancels Venus's D9 debilitation (NBRY) via Kendra placement in D9 7th"
+  - "Mercury anchors D10 2H (own sign Virgo), D24 3H (Cancer — disposited by Moon at D24 exalted lagna), and D60 Lagna lord (Gemini)"
+destructive_resonance:
+  - "If Mercury's transit/dasha state weakens, the cross-varga stability propagates as ambient drift across all Mercury-routed dispositor chains"
+net_resonance: "STRUCTURAL ANCHOR — chart's stability surface"
+interpretive_note: "Where everything else moves between D1 and D9 (six of seven planets shift dignity per CSI), Mercury stays. Every dispositor chain that touches Mercury inherits this stability; every dharmic move that routes through Mercury-ruled signs (Gemini, Virgo) is structurally reliable. Operationally this is why Mercury MD (2010–2031) and Mercury-AD windows show signal density and predictability above the chart's baseline."
+strength: 0.88
+```
+
+---
+
+### RM.32 — Saturn Three-State Resonance (Career-Delivered-Through-Challenge)
+
+```yaml
+element: "Saturn D1 Libra exaltation (Sasha MPY) → D9 Aries debilitation (NBRY via Sun in D9 Lagna) → D10 Taurus 10th (angular delivery)"
+domains_primary: [career, wealth, dharma, mind]
+msr_anchors: [SIG.MSR.501, SIG.MSR.003, SIG.MSR.001]
+cdlm_anchors: [career×relationships, career×wealth]
+constructive_resonance:
+  - "Three-state arc: foundation (D1 Sasha) + dissolution (D9 debilitated, then cancelled by NBRY) + delivery (D10 angular)"
+  - "Each state is structurally distinct: the chart deliberately routes Saturn through challenge to extract authority"
+  - "Sun is the cancellation agent for D9 NBRY (Sun rules Aries; Sun in D9 Lagna Cancer = Kendra) — note Sun-Saturn relationship is also D1 Capricorn co-presence (mutual reception via opposition lord)"
+destructive_resonance:
+  - "If the native reads any single state in isolation (only Sasha, or only D9 debility), the architecture misfires — the three states are one structural unit"
+net_resonance: "DELIVERY-THROUGH-CONTRACTION — Saturn earns authority by undergoing depletion"
+interpretive_note: "The chart's career architecture is not Saturn-as-strong (Sasha alone) and not Saturn-as-weak (D9 alone). It is Saturn-as-passed-through. The D10 10th-house angular placement is the resolved residue — what remains after Saturn has been ground through D9 debilitation. Acharya reading: Sasha is the seed, D9 debility is the test, D10 angularity is the harvest."
+strength: 0.87
+```
+
+---
+
+### RM.33 — Venus Three-State Resonance (Relational-Delivery-Through-Mercury)
+
+```yaml
+element: "Venus D1 Sagittarius (neutral, 9H joined Jupiter) → D9 Virgo debilitation (NBRY via vargottama Mercury Kendra) → D10 Gemini 11H (gains, Mercury-sign)"
+domains_primary: [relationships, wealth, spirit]
+msr_anchors: [SIG.MSR.502, SIG.MSR.002, SIG.MSR.514]
+cdlm_anchors: [relationships×wealth, relationships×mind]
+constructive_resonance:
+  - "Mirror of RM.32 Saturn architecture, in relational register: three-state arc with NBRY at D9 and angular/gains-house delivery"
+  - "Both ends of the arc route through Mercury: D9 cancellation via Mercury-vargottama dispositor, D10 placement in Mercury-sign Gemini"
+  - "Relational delivery is not Venus-direct (debilitation in D9 blocks that path); it is Venus-mediated-by-Mercury"
+destructive_resonance:
+  - "If Mercury weakens, Venus's relational delivery loses its anchor — both NBRY cancellation and D10 dispositor support require Mercury"
+net_resonance: "MEDIATED RELATIONAL DELIVERY — partnership comes via Mercury significations (commerce, communication, dispositor strength)"
+interpretive_note: "The chart routes relational wealth (Venus + 7H Shree Lagna) through Mercury-mediated channels — partnership-as-communication, partnership-as-commerce. Venus alone does not carry the load; Mercury (D9 dispositor, D10 sign-lord) carries it for her. Compare with RM.31 — same Mercury-anchor surface, different domain face."
+strength: 0.80
+```
+
+---
+
+### RM.34 — D9 12H Stellium Resonance (Moksha Routed Through Vargottama Mercury)
+
+```yaml
+element: "D9 12H Gemini holds Moon + Jupiter + Rahu, disposited by vargottama Mercury in D9 7H Capricorn (Kendra)"
+domains_primary: [spirit, dharma, mind]
+msr_anchors: [SIG.MSR.500, SIG.MSR.514, SIG.MSR.026, SIG.MSR.027]
+cdlm_anchors: [spirit×mind, spirit×relationships]
+constructive_resonance:
+  - "Three planets concentrated in the moksha-house of the dharma varga (D9) — high signal density for dissolution/moksha trajectories"
+  - "All three planets (Moon, Jupiter, Rahu) are in Gemini = Mercury-ruled, and the dispositor (Mercury) is vargottama in Kendra — moksha pathway anchored in the chart's most stable planetary surface"
+  - "Stellium is anchored: the 12H concentration does not dissipate because its dispositor is structurally fixed across D1/D9"
+destructive_resonance:
+  - "Stellium intensity is read as ungrounded by readings that miss the vargottama anchor — those readings interpret it as scattered moksha-tension rather than anchored moksha-architecture"
+net_resonance: "ANCHORED MOKSHA — dissolution path routes through the chart's most stable signification (Mercury)"
+interpretive_note: "Classical readings of a D9 12H stellium often flag it as dharma-loss or relationship dissolution. In this chart that reading is incomplete: the dispositor (vargottama Mercury) gives the stellium structural ground. The moksha trajectory is not chaotic — it is mediated through Mercury significations (intellect, dispositor chains, communication). Read alongside RM.31 (vargottama anchor) and SIG.MSR.500 (six-shift backdrop)."
+strength: 0.82
+```
+
+---
+
+### RM.35 — D10 Career Architectural Triad (Mars 9H + Saturn 10H + Mercury 2H)
+
+```yaml
+element: "D10 Mars Aries 9H (own sign) + D10 Saturn Taurus 10th (angular) + D10 Mercury Virgo 2H (own sign)"
+domains_primary: [career, wealth, dharma]
+msr_anchors: [SIG.MSR.501, SIG.MSR.514, SIG.MSR.001]
+cdlm_anchors: [career×wealth, career×dharma]
+constructive_resonance:
+  - "Three dignified placements form a 2-9-10 architecture in the career varga: own-sign Mars in dharma-trine, angular Saturn in career-house, own-sign Mercury in wealth/speech-house"
+  - "Saturn's D10 angularity is the resolved residue of the three-state arc (see RM.32) — career delivery is exactly where the Sasha-NBRY-Angular cascade terminates"
+  - "Mercury's D10 own-sign placement extends the vargottama anchor (RM.31) into career — the same Mercury that disposits D9 12H stellium owns the D10 wealth-chamber"
+  - "D10 Lagna is Leo (Sun-ruled) with D10 Sun also in 9H Aries (Mars sign) — the Sun-Mars exchange via Aries reinforces the 9H dharma anchor"
+destructive_resonance:
+  - "Reading career via D1 alone misses the architecture — D1 10H is empty in many senses, D10 10H is the actual career-house"
+net_resonance: "CAREER ARCHITECTURE FULLY VISIBLE IN D10 — three dignified planets across 2/9/10 trine-angle axis"
+interpretive_note: "The chart's career signature crystallises in D10, not D1. D1 gives the Sasha foundation (Saturn 7H exalted) and the Mercury 10H placement; D10 gives the delivery topology: dharma-trine Mars, angular Saturn, wealth-house Mercury. Read this triad as the single most important career-axis fact in the divisional layer. Compare with SIG.MSR.501 (Saturn three-state) and SIG.MSR.514 (Mercury anchor)."
+strength: 0.83
+```
+
+---
+
 ## §2 — META-PATTERNS (v2.0 updated)
 
 | Pattern | Description | Primary Elements |
@@ -707,12 +810,13 @@ interpretive_note: "Seven paired truths to hold simultaneously. Not errors. The 
 
 ## §3 — RESONANCE SUMMARY STATISTICS
 
-- **Total elements**: 32 (30 from v1.1 + 2 new: RM.21A Ghati, RM.21B Varnada replacing old RM.21)
-- **STRONGLY AMPLIFIED**: 20 elements
-- **TENSION-BEARING (productive)**: 4 elements (RM.06, RM.14, RM.24, RM.30)
+- **Total elements**: 37 (32 from v2.1 + 5 new in v2.2: RM.31–RM.35 cross-varga resonances)
+- **STRONGLY AMPLIFIED**: 23 elements (20 prior + RM.31, RM.34, RM.35)
+- **TENSION-BEARING (productive)**: 6 elements (RM.06, RM.14, RM.24, RM.30, RM.32, RM.33)
 - **MIXED / COMPENSATED**: 3 elements (RM.04, RM.13, RM.07 partial)
 - **Elements with v2.0 corrections from v1.1**: 8 (RM.01, RM.02, RM.03, RM.08, RM.14, RM.15, RM.20, RM.21 split + RM.26, RM.28)
 - **Elements carried forward verbatim from v1.1**: 22
+- **v2.2 cross-varga additions (VARGA-ETL-FULL-S1 D14)**: 5 (RM.31 vargottama anchor, RM.32 Saturn three-state, RM.33 Venus three-state, RM.34 D9 12H stellium, RM.35 D10 career triad)
 
 ### v2.1 Key Structural Features
 

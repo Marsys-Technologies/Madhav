@@ -1,9 +1,21 @@
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md
-extracted_at: "2026-04-29"
-extracted_by: "direct_read by Claude Code (Sonnet 4.6) — Session Phase14C-StreamB"
+extracted_at: "2026-05-10"
+extracted_by: "direct_read by Claude Code (Opus 4.7) — VARGA-ETL-FULL-S1-CPA"
 cross_check_finding: "All 9 natal planets show delta 0.003°–0.027° between FORENSIC (JH engine) and EVENT_CHART_STATES (pyswisseph). This is a known engine divergence, not a transcription error. FORENSIC values used as canonical per CLAUDE.md §B."
+v1_1_changelog: |
+  v1.1 (2026-05-10, VARGA-ETL-FULL-S1-CPA): Phase 14C dual-pipeline race condition resolved
+  by migrating six FORENSIC sections from the deprecated markdown extractor into this YAML
+  (single source of truth for chart_facts ETL). Added rows:
+    §2.4 Planet-to-Cusp Distance (9 CDL.* rows, category=cusp)
+    §3.5.2 D9 12th-stellium completeness (D9.12H.TENANTS / DISPOSITOR / DISP.PLACE — 3 rows)
+    §6.4 FORENSIC-engine Bhavabala (12 BVB.FORENSIC.H01..H12 rows)
+    §11.6 Chesta motion audit (7 CHS.MOTION.* rows; Sun and Moon absent in FORENSIC §11.6 source)
+    §16.2/§16.3/§16.4 Aspect ledgers (23 ASP.W.* + 14 ASP.BM.* + 1 ASP.TRN.* rows)
+    §21 Sade Sati transit (8 TRS.SS.* rows)
+    PLN.MERCURY value_json now carries vargottama: true (D1.h)
+  See 00_ARCHITECTURE/CHART_FACTS_PIPELINE_AUDIT_v1_0.md for the race-condition rationale.
 facts:
   # ── §1.1 Birth Metadata ───────────────────────────────────────────────────
   - fact_id: MET.NAME
@@ -210,9 +222,10 @@ facts:
       nakshatra: Uttara Ashadha
       nakshatra_pada: 2
       is_retrograde: false
+      vargottama: true
     source_section: "§2.1 row 4"
     extraction_method: direct_read
-    notes: "Vargottama — Capricorn in both D1 and D9"
+    notes: "Vargottama — Capricorn in both D1 and D9 (D1.h queryable boolean added v1.1)"
   - fact_id: PLN.JUPITER
     category: planet
     divisional_chart: D1
@@ -556,6 +569,80 @@ facts:
       mid_bhava_sign: Pisces
       mid_bhava_degree: "09°15′24″"
     source_section: "§2.3 row 12"
+    extraction_method: direct_read
+  # ── §2.4 Planet-to-Cusp Distance ──────────────────────────────────────────
+  - fact_id: CDL.SUN
+    category: cusp
+    divisional_chart: D1
+    value_number: 14.16
+    value_text: "Sun → House 10 (Cap 2°58′)"
+    value_json: {planet: Sun, abs_long_deg: 291.96, assigned_house: 10, nearest_cusp: "Capricorn 2°58′", distance_deg: 14.16}
+    source_section: "§2.4 row 1"
+    extraction_method: direct_read
+  - fact_id: CDL.MOON
+    category: cusp
+    divisional_chart: D1
+    value_number: 12.21
+    value_text: "Moon → House 11 (Aqu 6°06′)"
+    value_json: {planet: Moon, abs_long_deg: 327.05, assigned_house: 11, nearest_cusp: "Aquarius 6°06′", distance_deg: 12.21}
+    source_section: "§2.4 row 2"
+    extraction_method: direct_read
+  - fact_id: CDL.MARS
+    category: cusp
+    divisional_chart: D1
+    value_number: 6.13
+    value_text: "Mars → House 7 (Lib 12°23′)"
+    value_json: {planet: Mars, abs_long_deg: 198.53, assigned_house: 7, nearest_cusp: "Libra 12°23′", distance_deg: 6.13}
+    source_section: "§2.4 row 3"
+    extraction_method: direct_read
+  - fact_id: CDL.MERCURY
+    category: cusp
+    divisional_chart: D1
+    value_number: 2.14
+    value_text: "Mercury → House 10 (Cap 2°58′) — nearest-to-cusp planet in chart"
+    value_json: {planet: Mercury, abs_long_deg: 270.84, assigned_house: 10, nearest_cusp: "Capricorn 2°58′", distance_deg: 2.14, nearest_to_cusp: true}
+    source_section: "§2.4 row 4"
+    extraction_method: direct_read
+    notes: "MCS.5 — Mercury is the nearest-to-cusp planet in the chart"
+  - fact_id: CDL.JUPITER
+    category: cusp
+    divisional_chart: D1
+    value_number: 3.69
+    value_text: "Jupiter → House 9 (Sag 6°06′)"
+    value_json: {planet: Jupiter, abs_long_deg: 249.81, assigned_house: 9, nearest_cusp: "Sagittarius 6°06′", distance_deg: 3.69}
+    source_section: "§2.4 row 5"
+    extraction_method: direct_read
+  - fact_id: CDL.VENUS
+    category: cusp
+    divisional_chart: D1
+    value_number: 13.06
+    value_text: "Venus → House 9 (Sag 6°06′)"
+    value_json: {planet: Venus, abs_long_deg: 259.17, assigned_house: 9, nearest_cusp: "Sagittarius 6°06′", distance_deg: 13.06}
+    source_section: "§2.4 row 6"
+    extraction_method: direct_read
+  - fact_id: CDL.SATURN
+    category: cusp
+    divisional_chart: D1
+    value_number: 10.05
+    value_text: "Saturn → House 7 (Lib 12°23′)"
+    value_json: {planet: Saturn, abs_long_deg: 202.45, assigned_house: 7, nearest_cusp: "Libra 12°23′", distance_deg: 10.05}
+    source_section: "§2.4 row 7"
+    extraction_method: direct_read
+  - fact_id: CDL.RAHU
+    category: cusp
+    divisional_chart: D1
+    value_number: 9.77
+    value_text: "Rahu → House 2 (Tau 9°15′)"
+    value_json: {planet: Rahu, abs_long_deg: 49.03, assigned_house: 2, nearest_cusp: "Taurus 9°15′", distance_deg: 9.77}
+    source_section: "§2.4 row 8"
+    extraction_method: direct_read
+  - fact_id: CDL.KETU
+    category: cusp
+    divisional_chart: D1
+    value_number: 9.77
+    value_text: "Ketu → House 8 (Sco 9°15′)"
+    value_json: {planet: Ketu, abs_long_deg: 229.03, assigned_house: 8, nearest_cusp: "Scorpio 9°15′", distance_deg: 9.77}
+    source_section: "§2.4 row 9"
     extraction_method: direct_read
   # ── §3.1 D2 — Hora ───────────────────────────────────────────────────────
   - fact_id: D2.CANCER
@@ -973,6 +1060,30 @@ facts:
     source_section: "§3.5.2 row 1"
     extraction_method: direct_read
     notes: "D9 12th stellium — Moon+Jupiter+Rahu in Gemini; dispositor Mercury is Vargottama in 7th Kendra"
+  - fact_id: D9.12H.TENANTS
+    category: planet
+    divisional_chart: D9
+    value_text: "Moon, Jupiter, Rahu"
+    value_json: {house: 12, sign: Gemini, tenants: [Moon, Jupiter, Rahu]}
+    source_section: "§3.5.2 row 2"
+    extraction_method: direct_read
+    notes: "D9 12th-house stellium tenants — added v1.1 for direct queryability"
+  - fact_id: D9.12H.DISPOSITOR
+    category: planet
+    divisional_chart: D9
+    value_text: Mercury
+    value_json: {house: 12, sign: Gemini, dispositor: Mercury}
+    source_section: "§3.5.2 row 3"
+    extraction_method: direct_read
+    notes: "Mercury (Gemini ruler) disposits the D9 12H stellium — added v1.1"
+  - fact_id: D9.12H.DISP.PLACE
+    category: planet
+    divisional_chart: D9
+    value_text: "Capricorn, 7th from D9 Lagna (Kendra)"
+    value_json: {dispositor: Mercury, d9_sign: Capricorn, d9_house_from_lagna: 7, kendra: true, vargottama: true}
+    source_section: "§3.5.2 row 4"
+    extraction_method: direct_read
+    notes: "Mercury (D9 12H dispositor) sits in Capricorn, 7th-Kendra from D9 Lagna Cancer — added v1.1"
   - fact_id: D9.12H.DISP.VARG
     category: planet
     divisional_chart: D9
@@ -4230,3 +4341,527 @@ facts:
     source_section: "§26.5 row 8"
     extraction_method: direct_read
     notes: "v8.0 addition — upgrades Seven-System to Eight-System Convergence."
+  # ── §6.4 Bhavabala (FORENSIC engine — v1.1 added) ─────────────────────────
+  - fact_id: BVB.FORENSIC.H01
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 340.08
+    value_text: "House 1 — 340.08 virupa (rank 10)"
+    value_json: {engine: FORENSIC, house: 1, life_area: "Self / Body", total_bala_virupa: 340.08, forensic_rupas: 5.67, rank_forensic: 10, lord_strength_virupa: 316.23, lord: Mars, directional_dig: 30, aspectual_drishti: -6.15}
+    source_section: "§6.4 row 10"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H02
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 266.26
+    value_text: "House 2 — 266.26 virupa (rank 11)"
+    value_json: {engine: FORENSIC, house: 2, life_area: "Family / Savings", total_bala_virupa: 266.26, forensic_rupas: 4.44, rank_forensic: 11, lord_strength_virupa: 276.01, lord: Venus, directional_dig: 20, aspectual_drishti: -29.75}
+    source_section: "§6.4 row 11"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H03
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 447.37
+    value_text: "House 3 — 447.37 virupa (rank 7)"
+    value_json: {engine: FORENSIC, house: 3, life_area: "Skills / Courage", total_bala_virupa: 447.37, forensic_rupas: 7.46, rank_forensic: 7, lord_strength_virupa: 393.26, lord: Mercury, directional_dig: 40, aspectual_drishti: 14.11}
+    source_section: "§6.4 row 7"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H04
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 474.87
+    value_text: "House 4 — 474.87 virupa (rank 6)"
+    value_json: {engine: FORENSIC, house: 4, life_area: "Home / Peace", total_bala_virupa: 474.87, forensic_rupas: 7.91, rank_forensic: 6, lord_strength_virupa: 435.51, lord: Moon, directional_dig: 60, aspectual_drishti: -20.64}
+    source_section: "§6.4 row 6"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H05
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 486.86
+    value_text: "House 5 — 486.86 virupa (rank 2)"
+    value_json: {engine: FORENSIC, house: 5, life_area: "Creativity / Future", total_bala_virupa: 486.86, forensic_rupas: 8.11, rank_forensic: 2, lord_strength_virupa: 510.85, lord: Sun, directional_dig: 10, aspectual_drishti: -33.99}
+    source_section: "§6.4 row 2"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H06
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 405.17
+    value_text: "House 6 — 405.17 virupa (rank 8)"
+    value_json: {engine: FORENSIC, house: 6, life_area: "Enemies / Debt", total_bala_virupa: 405.17, forensic_rupas: 6.75, rank_forensic: 8, lord_strength_virupa: 393.26, lord: Mercury, directional_dig: 10, aspectual_drishti: 1.91}
+    source_section: "§6.4 row 8"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H07
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 253.36
+    value_text: "House 7 — 253.36 virupa (rank 12 weakest)"
+    value_json: {engine: FORENSIC, house: 7, life_area: "Partners / Spouse", total_bala_virupa: 253.36, forensic_rupas: 4.22, rank_forensic: 12, lord_strength_virupa: 276.01, lord: Venus, directional_dig: 0, aspectual_drishti: -22.65}
+    source_section: "§6.4 row 12"
+    extraction_method: direct_read
+    notes: "FORENSIC engine 7H weakest — same conclusion as JH §6.6 (rank 12). ATT-architecture structural weakness."
+  - fact_id: BVB.FORENSIC.H08
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 358.67
+    value_text: "House 8 — 358.67 virupa (rank 9)"
+    value_json: {engine: FORENSIC, house: 8, life_area: "Crisis / Occult", total_bala_virupa: 358.67, forensic_rupas: 5.98, rank_forensic: 9, lord_strength_virupa: 316.23, lord: Mars, directional_dig: 50, aspectual_drishti: -7.56}
+    source_section: "§6.4 row 9"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H09
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 477.55
+    value_text: "House 9 — 477.55 virupa (rank 5)"
+    value_json: {engine: FORENSIC, house: 9, life_area: "Luck / Dharma", total_bala_virupa: 477.55, forensic_rupas: 7.96, rank_forensic: 5, lord_strength_virupa: 464.07, lord: Jupiter, directional_dig: 20, aspectual_drishti: -6.52}
+    source_section: "§6.4 row 5"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H10
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 482.99
+    value_text: "House 10 — 482.99 virupa (rank 3)"
+    value_json: {engine: FORENSIC, house: 10, life_area: "Career / Status", total_bala_virupa: 482.99, forensic_rupas: 8.05, rank_forensic: 3, lord_strength_virupa: 447.98, lord: Saturn, directional_dig: 60, aspectual_drishti: -24.99}
+    source_section: "§6.4 row 3"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H11
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 478.27
+    value_text: "House 11 — 478.27 virupa (rank 4)"
+    value_json: {engine: FORENSIC, house: 11, life_area: "Gains / Network", total_bala_virupa: 478.27, forensic_rupas: 7.97, rank_forensic: 4, lord_strength_virupa: 447.98, lord: Saturn, directional_dig: 40, aspectual_drishti: -9.71}
+    source_section: "§6.4 row 4"
+    extraction_method: direct_read
+  - fact_id: BVB.FORENSIC.H12
+    category: bhava_bala
+    divisional_chart: D1
+    value_number: 506.09
+    value_text: "House 12 — 506.09 virupa (rank 1 strongest)"
+    value_json: {engine: FORENSIC, house: 12, life_area: "Isolation / Foreign", total_bala_virupa: 506.09, forensic_rupas: 8.43, rank_forensic: 1, lord_strength_virupa: 464.07, lord: Jupiter, directional_dig: 20, aspectual_drishti: 22.02}
+    source_section: "§6.4 row 1"
+    extraction_method: direct_read
+  # ── §11.6 Chesta motion audit (v1.1 added) ────────────────────────────────
+  - fact_id: CHS.MOTION.MERCURY
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 110
+    value_text: "Mercury — Direct, ~110% speed"
+    value_json: {planet: Mercury, motion: Direct, is_retrograde: false, speed_pct_of_avg: 110}
+    source_section: "§11.6 row 1"
+    extraction_method: direct_read
+  - fact_id: CHS.MOTION.MARS
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 85
+    value_text: "Mars — Direct, ~85% speed"
+    value_json: {planet: Mars, motion: Direct, is_retrograde: false, speed_pct_of_avg: 85}
+    source_section: "§11.6 row 2"
+    extraction_method: direct_read
+  - fact_id: CHS.MOTION.JUPITER
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 98
+    value_text: "Jupiter — Direct, ~98% speed"
+    value_json: {planet: Jupiter, motion: Direct, is_retrograde: false, speed_pct_of_avg: 98}
+    source_section: "§11.6 row 3"
+    extraction_method: direct_read
+  - fact_id: CHS.MOTION.VENUS
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 105
+    value_text: "Venus — Direct, ~105% speed"
+    value_json: {planet: Venus, motion: Direct, is_retrograde: false, speed_pct_of_avg: 105}
+    source_section: "§11.6 row 4"
+    extraction_method: direct_read
+  - fact_id: CHS.MOTION.SATURN
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 92
+    value_text: "Saturn — Direct, ~92% speed"
+    value_json: {planet: Saturn, motion: Direct, is_retrograde: false, speed_pct_of_avg: 92}
+    source_section: "§11.6 row 5"
+    extraction_method: direct_read
+  - fact_id: CHS.MOTION.RAHU
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 100
+    value_text: "Rahu — Retrograde (mean node), 100%"
+    value_json: {planet: Rahu, motion: "Retrograde (mean node)", is_retrograde: true, speed_pct_of_avg: 100}
+    source_section: "§11.6 row 6"
+    extraction_method: direct_read
+  - fact_id: CHS.MOTION.KETU
+    category: strength_extra
+    divisional_chart: D1
+    value_number: 100
+    value_text: "Ketu — Retrograde (mean node), 100%"
+    value_json: {planet: Ketu, motion: "Retrograde (mean node)", is_retrograde: true, speed_pct_of_avg: 100}
+    source_section: "§11.6 row 7"
+    extraction_method: direct_read
+  # NOTE: §11.6 in FORENSIC v8.0 lists 7 rows (Mercury, Mars, Jupiter, Venus, Saturn, Rahu, Ketu).
+  # Sun and Moon are not present in the FORENSIC §11.6 motion audit table.
+  # ── §16.2 Tight-Orb Aspects — Western Overlay (v1.1 added) ────────────────
+  - fact_id: ASP.W.PLUTO_KETU
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.28
+    value_text: "Pluto–Ketu Nonile (orb 0.28°)"
+    value_json: {pair: [Pluto, Ketu], aspect: Nonile, orb_deg: 0.28, weight: 1, system: western}
+    source_section: "§16.2 row 1"
+    extraction_method: direct_read
+  - fact_id: ASP.W.PLUTO_URANUS
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.45
+    value_text: "Pluto–Uranus Nonile (orb 0.45°)"
+    value_json: {pair: [Pluto, Uranus], aspect: Nonile, orb_deg: 0.45, weight: 1, system: western}
+    source_section: "§16.2 row 2"
+    extraction_method: direct_read
+  - fact_id: ASP.W.MERCURY_KETU
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.50
+    value_text: "Mercury–Ketu Quincunx (orb 0.50°)"
+    value_json: {pair: [Mercury, Ketu], aspect: Quincunx, orb_deg: 0.50, weight: 1, system: western}
+    source_section: "§16.2 row 3"
+    extraction_method: direct_read
+  - fact_id: ASP.W.PLUTO_SATURN
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.69
+    value_text: "Pluto–Saturn Conjunction (orb 0.69°)"
+    value_json: {pair: [Pluto, Saturn], aspect: Conjunction, orb_deg: 0.69, weight: 10, system: western}
+    source_section: "§16.2 row 4"
+    extraction_method: direct_read
+  - fact_id: ASP.W.SATURN_MOON
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.70
+    value_text: "Saturn–Moon Trine (orb 0.70°)"
+    value_json: {pair: [Saturn, Moon], aspect: Trine, orb_deg: 0.70, weight: 3, system: western}
+    source_section: "§16.2 row 5"
+    extraction_method: direct_read
+  - fact_id: ASP.W.NEPTUNE_MERCURY
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.92
+    value_text: "Neptune–Mercury Semi-Square (orb 0.92°)"
+    value_json: {pair: [Neptune, Mercury], aspect: "Semi-Square", orb_deg: 0.92, weight: 1, system: western}
+    source_section: "§16.2 row 6"
+    extraction_method: direct_read
+  - fact_id: ASP.W.MARS_SUN
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.28
+    value_text: "Mars–Sun Square (orb 1.28°)"
+    value_json: {pair: [Mars, Sun], aspect: Square, orb_deg: 1.28, weight: 3, system: western}
+    source_section: "§16.2 row 7"
+    extraction_method: direct_read
+  - fact_id: ASP.W.SATURN_JUPITER
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.36
+    value_text: "Saturn–Jupiter Sextile (orb 1.36°)"
+    value_json: {pair: [Saturn, Jupiter], aspect: Sextile, orb_deg: 1.36, weight: 3, system: western}
+    source_section: "§16.2 row 8"
+    extraction_method: direct_read
+  - fact_id: ASP.W.VENUS_KETU
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.53
+    value_text: "Venus–Ketu Sextile (orb 1.53°)"
+    value_json: {pair: [Venus, Ketu], aspect: Sextile, orb_deg: 1.53, weight: 3, system: western}
+    source_section: "§16.2 row 9"
+    extraction_method: direct_read
+  - fact_id: ASP.W.URANUS_VENUS
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.62
+    value_text: "Uranus–Venus Sextile (orb 1.62°)"
+    value_json: {pair: [Uranus, Venus], aspect: Sextile, orb_deg: 1.62, weight: 3, system: western}
+    source_section: "§16.2 row 10"
+    extraction_method: direct_read
+  - fact_id: ASP.W.NEPTUNE_VENUS
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.81
+    value_text: "Neptune–Venus Conjunction (orb 1.81°)"
+    value_json: {pair: [Neptune, Venus], aspect: Conjunction, orb_deg: 1.81, weight: 10, system: western}
+    source_section: "§16.2 row 11"
+    extraction_method: direct_read
+  - fact_id: ASP.W.PLUTO_NEPTUNE
+    category: aspect
+    divisional_chart: D1
+    value_number: 2.20
+    value_text: "Pluto–Neptune Sextile (orb 2.20°)"
+    value_json: {pair: [Pluto, Neptune], aspect: Sextile, orb_deg: 2.20, weight: 3, system: western}
+    source_section: "§16.2 row 12"
+    extraction_method: direct_read
+  - fact_id: ASP.W.PLUTO_JUPITER
+    category: aspect
+    divisional_chart: D1
+    value_number: 2.34
+    value_text: "Pluto–Jupiter Sextile (orb 2.34°)"
+    value_json: {pair: [Pluto, Jupiter], aspect: Sextile, orb_deg: 2.34, weight: 3, system: western}
+    source_section: "§16.2 row 13"
+    extraction_method: direct_read
+  - fact_id: ASP.W.MARS_VENUS
+    category: aspect
+    divisional_chart: D1
+    value_number: 2.68
+    value_text: "Mars–Venus Sextile (orb 2.68°)"
+    value_json: {pair: [Mars, Venus], aspect: Sextile, orb_deg: 2.68, weight: 3, system: western}
+    source_section: "§16.2 row 14"
+    extraction_method: direct_read
+  - fact_id: ASP.W.SATURN_MARS
+    category: aspect
+    divisional_chart: D1
+    value_number: 2.75
+    value_text: "Saturn–Mars Square (orb 2.75°)"
+    value_json: {pair: [Saturn, Mars], aspect: Square, orb_deg: 2.75, weight: 3, system: western}
+    source_section: "§16.2 row 15"
+    extraction_method: direct_read
+  - fact_id: ASP.W.PLUTO_MOON
+    category: aspect
+    divisional_chart: D1
+    value_number: 3.30
+    value_text: "Pluto–Moon Conjunction (orb 3.30°)"
+    value_json: {pair: [Pluto, Moon], aspect: Conjunction, orb_deg: 3.30, weight: 10, system: western}
+    source_section: "§16.2 row 16"
+    extraction_method: direct_read
+  - fact_id: ASP.W.JUPITER_VENUS
+    category: aspect
+    divisional_chart: D1
+    value_number: 3.76
+    value_text: "Jupiter–Venus Conjunction (orb 3.76°)"
+    value_json: {pair: [Jupiter, Venus], aspect: Conjunction, orb_deg: 3.76, weight: 10, system: western}
+    source_section: "§16.2 row 17"
+    extraction_method: direct_read
+  - fact_id: ASP.W.MARS_SATURN
+    category: aspect
+    divisional_chart: D1
+    value_number: 7.38
+    value_text: "Mars–Saturn Conjunction (orb 7.38°)"
+    value_json: {pair: [Mars, Saturn], aspect: Conjunction, orb_deg: 7.38, weight: 10, system: western}
+    source_section: "§16.2 row 18"
+    extraction_method: direct_read
+    notes: "ATT-architecture anchor — 7H Saturn+Mars conjunction"
+  - fact_id: ASP.W.NEPTUNE_JUPITER
+    category: aspect
+    divisional_chart: D1
+    value_number: 8.05
+    value_text: "Neptune–Jupiter Conjunction (orb 8.05°)"
+    value_json: {pair: [Neptune, Jupiter], aspect: Conjunction, orb_deg: 8.05, weight: 10, system: western}
+    source_section: "§16.2 row 19"
+    extraction_method: direct_read
+  - fact_id: ASP.W.KETU_MOON
+    category: aspect
+    divisional_chart: D1
+    value_number: 9.89
+    value_text: "Ketu–Moon Conjunction (orb 9.89°)"
+    value_json: {pair: [Ketu, Moon], aspect: Conjunction, orb_deg: 9.89, weight: 10, system: western}
+    source_section: "§16.2 row 20"
+    extraction_method: direct_read
+  - fact_id: ASP.W.URANUS_KETU
+    category: aspect
+    divisional_chart: D1
+    value_number: 9.89
+    value_text: "Uranus–Ketu Conjunction (orb 9.89°)"
+    value_json: {pair: [Uranus, Ketu], aspect: Conjunction, orb_deg: 9.89, weight: 10, system: western}
+    source_section: "§16.2 row 21"
+    extraction_method: direct_read
+  - fact_id: ASP.W.RAHU_MOON
+    category: aspect
+    divisional_chart: D1
+    value_number: 10.00
+    value_text: "Rahu–Moon Opposition (orb 10.00°)"
+    value_json: {pair: [Rahu, Moon], aspect: Opposition, orb_deg: 10.00, weight: 10, system: western}
+    source_section: "§16.2 row 22"
+    extraction_method: direct_read
+  - fact_id: ASP.W.RAHU_URANUS
+    category: aspect
+    divisional_chart: D1
+    value_number: 10.00
+    value_text: "Rahu–Uranus Opposition (orb 10.00°)"
+    value_json: {pair: [Rahu, Uranus], aspect: Opposition, orb_deg: 10.00, weight: 10, system: western}
+    source_section: "§16.2 row 23"
+    extraction_method: direct_read
+  # ── §16.3 Bhav-Madhya Aspects (Planet → House Cusp) (v1.1 added) ──────────
+  - fact_id: ASP.BM.PLUTO.H11
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.25
+    value_text: "Pluto → House 11 Square (orb 0.25°)"
+    value_json: {planet: Pluto, house: 11, aspect: Square, orb_deg: 0.25, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 1"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.PLUTO.H12.Q
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.22
+    value_text: "Pluto → House 12 Quincunx (orb 0.22°)"
+    value_json: {planet: Pluto, house: 12, aspect: Quincunx, orb_deg: 0.22, weight: 1, system: bhav_madhya}
+    source_section: "§16.3 row 2"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.SUN.H10
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.56
+    value_text: "Sun → House 10 Conjunction (orb 0.56°)"
+    value_json: {planet: Sun, house: 10, aspect: Conjunction, orb_deg: 0.56, weight: 10, system: bhav_madhya}
+    source_section: "§16.3 row 3"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.VENUS.H09
+    category: aspect
+    divisional_chart: D1
+    value_number: 0.80
+    value_text: "Venus → House 9 Conjunction (orb 0.80°)"
+    value_json: {planet: Venus, house: 9, aspect: Conjunction, orb_deg: 0.80, weight: 10, system: bhav_madhya}
+    source_section: "§16.3 row 4"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.JUPITER.H10
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.15
+    value_text: "Jupiter → House 10 Sextile (orb 1.15°)"
+    value_json: {planet: Jupiter, house: 10, aspect: Sextile, orb_deg: 1.15, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 5"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.NEPTUNE.H11
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.81
+    value_text: "Neptune → House 11 Square (orb 1.81°)"
+    value_json: {planet: Neptune, house: 11, aspect: Square, orb_deg: 1.81, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 6"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.PLUTO.H10
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.82
+    value_text: "Pluto → House 10 Sextile (orb 1.82°)"
+    value_json: {planet: Pluto, house: 10, aspect: Sextile, orb_deg: 1.82, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 7"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.PLUTO.H12.T
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.82
+    value_text: "Pluto → House 12 Trine (orb 1.82°)"
+    value_json: {planet: Pluto, house: 12, aspect: Trine, orb_deg: 1.82, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 8"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.MOON.H11
+    category: aspect
+    divisional_chart: D1
+    value_number: 1.86
+    value_text: "Moon → House 11 Conjunction (orb 1.86°)"
+    value_json: {planet: Moon, house: 11, aspect: Conjunction, orb_deg: 1.86, weight: 10, system: bhav_madhya}
+    source_section: "§16.3 row 9"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.NEPTUNE.H10
+    category: aspect
+    divisional_chart: D1
+    value_number: 2.62
+    value_text: "Neptune → House 10 Sextile (orb 2.62°)"
+    value_json: {planet: Neptune, house: 10, aspect: Sextile, orb_deg: 2.62, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 10"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.JUPITER.H11
+    category: aspect
+    divisional_chart: D1
+    value_number: 2.72
+    value_text: "Jupiter → House 11 Square (orb 2.72°)"
+    value_json: {planet: Jupiter, house: 11, aspect: Square, orb_deg: 2.72, weight: 3, system: bhav_madhya}
+    source_section: "§16.3 row 11"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.RAHU.H08
+    category: aspect
+    divisional_chart: D1
+    value_number: 3.48
+    value_text: "Rahu → House 8 Opposition (orb 3.48°)"
+    value_json: {planet: Rahu, house: 8, aspect: Opposition, orb_deg: 3.48, weight: 10, system: bhav_madhya}
+    source_section: "§16.3 row 12"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.PLUTO.H06
+    category: aspect
+    divisional_chart: D1
+    value_number: 7.39
+    value_text: "Pluto → House 6 Conjunction (orb 7.39°)"
+    value_json: {planet: Pluto, house: 6, aspect: Conjunction, orb_deg: 7.39, weight: 10, system: bhav_madhya}
+    source_section: "§16.3 row 13"
+    extraction_method: direct_read
+  - fact_id: ASP.BM.MERCURY.H09
+    category: aspect
+    divisional_chart: D1
+    value_number: 8.58
+    value_text: "Mercury → House 9 Conjunction (orb 8.58°)"
+    value_json: {planet: Mercury, house: 9, aspect: Conjunction, orb_deg: 8.58, weight: 10, system: bhav_madhya}
+    source_section: "§16.3 row 14"
+    extraction_method: direct_read
+  # ── §16.4 Trine Check (D1 abs-long geometry) (v1.1 added) ─────────────────
+  - fact_id: ASP.TRN.SUN_RAHU
+    category: aspect
+    divisional_chart: D1
+    value_number: 117.07
+    value_text: "Sun (291.96°) vs Rahu (49.03°): separation ≈ 117.07° → ~3° from exact 120° trine"
+    value_json: {pair: [Sun, Rahu], separation_deg: 117.07, target_aspect: Trine, target_deg: 120, deviation_deg: 2.93, system: trine_check}
+    source_section: "§16.4 row 1"
+    extraction_method: direct_read
+  # NOTE: §16.4 row 2 ("Other pairs within ±3° of 120° or 240°: None") is a negative
+  # finding, not a fact-bearing row — intentionally omitted per ETL no-empty-row policy.
+  # ── §21 Sade Sati transit (v1.1 added) ────────────────────────────────────
+  - fact_id: TRS.SS.C2.P1
+    category: transit
+    divisional_chart: D1
+    value_text: "Cycle 2 — Capricorn rising (2020-01-24 to 2022-04-28)"
+    value_json: {cycle: 2, saturn_sign: Capricorn, phase: Rising, start_date: "2020-01-24", end_date: "2022-04-28"}
+    source_section: "§21 row 1"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.C2.P2
+    category: transit
+    divisional_chart: D1
+    value_text: "Cycle 2 — Aquarius peak (2022-04-29 to 2022-07-12)"
+    value_json: {cycle: 2, saturn_sign: Aquarius, phase: Peak, start_date: "2022-04-29", end_date: "2022-07-12"}
+    source_section: "§21 row 2"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.C2.P3
+    category: transit
+    divisional_chart: D1
+    value_text: "Cycle 2 — Capricorn rising (retrograde return) (2022-07-13 to 2023-01-17)"
+    value_json: {cycle: 2, saturn_sign: Capricorn, phase: Rising, start_date: "2022-07-13", end_date: "2023-01-17"}
+    source_section: "§21 row 3"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.C2.P4
+    category: transit
+    divisional_chart: D1
+    value_text: "Cycle 2 — Aquarius peak (2023-01-18 to 2025-03-29)"
+    value_json: {cycle: 2, saturn_sign: Aquarius, phase: Peak, start_date: "2023-01-18", end_date: "2025-03-29"}
+    source_section: "§21 row 4"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.C2.P5
+    category: transit
+    divisional_chart: D1
+    value_text: "Cycle 2 — Pisces setting (2025-03-30 to 2027-06-02)"
+    value_json: {cycle: 2, saturn_sign: Pisces, phase: Setting, start_date: "2025-03-30", end_date: "2027-06-02"}
+    source_section: "§21 row 5"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.C2.P6
+    category: transit
+    divisional_chart: D1
+    value_text: "Cycle 2 — Pisces setting (retrograde tail) (2027-10-20 to 2028-02-23)"
+    value_json: {cycle: 2, saturn_sign: Pisces, phase: Setting, start_date: "2027-10-20", end_date: "2028-02-23"}
+    source_section: "§21 row 6"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.FUT1
+    category: transit
+    divisional_chart: D1
+    value_text: "Future Dhaiya — Taurus Kantaka Shani (2029-08-08 to 2029-10-05)"
+    value_json: {cycle: "future_dhaiya", saturn_sign: Taurus, phase: "Kantaka Shani", start_date: "2029-08-08", end_date: "2029-10-05"}
+    source_section: "§21 row 7"
+    extraction_method: direct_read
+  - fact_id: TRS.SS.FUT2
+    category: transit
+    divisional_chart: D1
+    value_text: "Future Dhaiya — Taurus Kantaka Shani (2030-04-17 to 2032-05-30)"
+    value_json: {cycle: "future_dhaiya", saturn_sign: Taurus, phase: "Kantaka Shani", start_date: "2030-04-17", end_date: "2032-05-30"}
+    source_section: "§21 row 8"
+    extraction_method: direct_read
