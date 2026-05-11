@@ -45,3 +45,9 @@ platform/scripts/nim_catalog_check.mjs
 platform/scripts/nim_model_test.mjs
 platform/scripts/run_nim_catalog_check.command
 platform/scripts/run_nim_test.command
+
+# Eval scratch logs and result dumps (committed results live in platform/tests/eval/)
+eval-results/
+platform/scripts/eval/results_*.json
+platform/scripts/eval/eval_results_*.json
+platform/scripts/eval/*_stderr.log
