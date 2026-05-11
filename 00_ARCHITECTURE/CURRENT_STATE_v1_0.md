@@ -54,6 +54,27 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v3.8 (2026-05-11, PR-15-merge Cowork governance close):
+    **PR #15 merged to main (85dfca5).** Squash-merge of feature/pipeline-transform-s1.
+    Remote branch deleted. Single conflict (router/prompt.ts delete/modify) resolved
+    correctly: deletion wins. Two stale test files cleaned up in cfcd4f5 pre-merge.
+    `next_session_objective` rotated to M5-S1. `pipeline_transform_s1.merge_status`
+    updated to MERGED. `file_updated_at` + `file_updated_by_session` rotated.
+    Stash `pre-merge-pr15-stash` dropped (Cowork-side governance already applied here;
+    executor's planner_eval_s1 + planner_prompt_fix_s1 blocks in the PR were more
+    detailed — kept).
+  - v3.7 (2026-05-11, Planner-Prompt-Fix-S1 executor close):
+    **Planner-Prompt-Fix-S1 COMPLETE (commit 438974b).** Precision recovered
+    0.852 → 0.986 in round 1 of 3. Recall 0.945 → 0.963. Asset bundle recall
+    0.902 → 0.971. Floor violations 2 → 0. Rules changed: R7c/R7d/R11/R14/R15/R16.
+    `planner_prompt_fix_s1` concurrent_workstream block added by executor.
+  - v3.6 (2026-05-11, Planner-Eval-S1 executor close):
+    **Planner-Eval-S1 COMPLETE (commit 58a2ad4).** 29-query golden-set eval of
+    PLANNER_PROMPT_v2_0.md. recall=0.945 ✅ precision=0.852 ❌ (regression −0.093
+    vs 0.945 baseline) asset_bundle_recall=0.902 ✅ floor_violations=2 ❌.
+    Regression driven by vector_search + cgm_graph_walk over-firing on
+    interpretive/planetary entries. `planner_eval_s1` concurrent_workstream block
+    added by executor.
   - v3.5 (2026-05-02, PHASE_O_S0_1_OBSERVATORY_GOVERNANCE_BOOTSTRAP):
     **Phase O Observatory concurrent workstream OPENED.** Gate session S0.1
     closed; OBSERVATORY_PLAN_v1_0.md authored as a concurrent workstream
@@ -4174,13 +4195,10 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    Planner-Eval-S1 — 30-query golden-set eval re-run against PLANNER_PROMPT_v2_0.md.
-    Measure recall + precision delta vs v1.7 baseline (recall 0.940, precision 0.945).
-    Confirm asset_bundle accuracy criterion (new §5 rubric ≥8/12). After eval: open
-    M5 macro-phase per prior commitment (read MACRO_PLAN §M5 + M4_CLOSE §5 + HANDOFF
-    pointer; draft PHASE_M5_PLAN_v1_0.md; priority order per M4_CLOSE §5 items 1–8).
-    Also: merge feature/pipeline-transform-s1 PR to main after Planner-Eval-S1 passes
-    and feature/varga-etl-full-s1 Checkpoint B is verified conflict-free.
+    M5-S1 — open M5 macro-phase; author PHASE_M5_PLAN_v1_0.md.
+    Planner is settled (recall=0.963, precision=0.986 at 438974b). PR #15 merged
+    to main (85dfca5, 2026-05-11). Pipeline transform workstream COMPLETE.
+    M5 entry gates per MACRO_PLAN §M5:
     M5-S1 entry gates per MACRO_PLAN §M5: M4 closed (SATISFIED at this M4-D-S1
     close — M4_CLOSE_v1_0.md sealed; calibration tables stable; LL.1–LL.7 active);
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must
@@ -4731,7 +4749,7 @@ current_state:
       DIS.010/011/012 RESOLVED-N3 (defer to M9).
       Naisargika + Nathonnatha, Sthana+Drik ECR, KR.W9.1/2, KR.M3A2.1, AC.M3A.5.
       msr_domain_buckets: 4 absent signal IDs (207, 497, 498, 499) flagged for M5+.
-  next_session_proposed_cowork_thread_name: "Madhav Planner-Eval-S1 — PLANNER_PROMPT_v2_0 golden-set eval"
+  next_session_proposed_cowork_thread_name: "Madhav M5-S1 — Open M5 macro-phase + PHASE_M5_PLAN"
   red_team_due_note: >
     Counter at 1 post M4-B-S5-NAP-M45-EXECUTE (substantive session 0→1; no in-session
     red-team — counter has not reached 3 IS.8(a) trigger). M4-B-S5 closed F.RT.S4.1
@@ -4874,11 +4892,32 @@ current_state:
       result_artifact: platform/tests/eval/eval_results_planner_prompt_fix_s1.json
       regression_notes_resolution: platform/tests/eval/REGRESSION_NOTES_v2_0.md (§ Resolution)
 
+    pipeline_transform_s1:
+      active_since: 2026-05-11
+      closed_at: 2026-05-11
+      phase_status: COMPLETE
+      description: >
+        4-phase LLM-first pipeline transformation. Eliminated dual classify()+callLlmPlanner()
+        path. route.ts executes exactly 2 LLM calls per request (planner + synthesis).
+        Zero silent fallbacks. PipelinePlan is the single authoritative contract.
+      deliverables:
+        - pipeline_planner.ts (callPipelinePlanner → Promise<PipelinePlan>)
+        - bundle_hydrator.ts (hydrateBundle; FORENSIC+CGM floor enforced)
+        - route.ts rewritten (single linear path; PipelinePlannerError → HTTP 422)
+        - 12 legacy files deleted (manifest_planner, rule_composer, context_assembler, router/*, etc.)
+        - LLM_FIRST_PLANNER_ENABLED + CONTEXT_ASSEMBLY_ENABLED pruned from feature_flags.ts
+      branch: feature/pipeline-transform-s1
+      worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-pipeline
+      merge_status: MERGED_TO_MAIN                 # squash-merged 2026-05-11 as 85dfca5; remote branch deleted
+      merge_commit: 85dfca5
+      pr: "#15 (https://github.com/amonty84/Madhav/pull/15)"
+      executor: claude-code-antigravity (bypass permissions)
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-11T23:59:00+05:30
-  file_updated_by_session: Pipeline-Transform-S1 (Cowork governance close)
+  file_updated_at: 2026-05-12T01:30:00+05:30
+  file_updated_by_session: PR-15-merge (Cowork governance close)
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
