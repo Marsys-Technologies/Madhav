@@ -1,16 +1,18 @@
 ---
 artifact: MSR_v3_0.md
-version: "3.0"
+version: "3.1"
 status: CURRENT
 layer: "L2.5"
 expose_to_chat: true
 native_id: "abhisek"
+signal_count: 514
+v3_1_changelog: "VARGA-ETL-FULL-S1 D12 (2026-05-10): added §VI — 15 Cross-Varga Dignity Signals SIG.MSR.500–514. Sourced from FORENSIC §3.15 CSI ledger + §3.1–§3.14 divisional placement tables. No prior signal mutated."
 ---
 
 # MSR_v3_0 — MASTER SIGNAL REGISTER (UNIFIED)
 
 ## §I — INTRODUCTION
-Unified registry merging v1.0 and v2.0 sources. 500 signals target.
+Unified registry merging v1.0 and v2.0 sources. 514 signals (v3.0 = 499 + v3.1 = 15 cross-varga dignity signals).
 
 SIG.MSR.001:
   signal_name: "Sasha Mahapurusha Yoga — Saturn Exalted in 7H Kendra"
@@ -11327,4 +11329,345 @@ SIG.MSR.496:
   confidence: 0.74
   v6_ids_consumed: [PLN.RAHU, PLN.KETU]
   rpt_deep_dive: "LIFE_EVENT_LOG"
+
+## §VI — CROSS-VARGA DIGNITY SIGNALS (v3.1 — VARGA-ETL-FULL-S1 D12)
+
+Fifteen signals grounded in FORENSIC §3.15 CSI ledger and §3.1–§3.14 divisional
+placement tables. These signals operationalise the chart's cross-varga dignity
+architecture — the structural meta-pattern that no single-chart read can surface.
+
+SIG.MSR.500:
+  signal_name: "D1→D9 Dignity Coherence — Six Planets Shift, Mercury Sole Vargottama Anchor"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Shodashavargas); Phaladeepika Ch.2 (Vargottama doctrine)"
+  entities_involved: [PLN.MERCURY, PLN.SUN, PLN.MOON, PLN.MARS, PLN.JUPITER, PLN.VENUS, PLN.SATURN, PLN.RAHU, PLN.KETU]
+  strength_score: 0.92
+  valence: mixed
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.15 CSI ledger: Sun D1 Capricorn → D9 Cancer, Moon D1 Aquarius → D9 Gemini,
+      Mars D1 Libra → D9 Pisces, Mercury D1 Capricorn → D9 Capricorn (retained), Jupiter D1
+      Sagittarius → D9 Gemini, Venus D1 Sagittarius → D9 Virgo (debilitation), Saturn D1 Libra
+      (exaltation) → D9 Aries (debilitation), Rahu D1 Taurus → D9 Gemini, Ketu D1 Scorpio → D9 Sagittarius"
+    - "Six of seven primary planets shift dignity state between D1 and D9 (Sun/Moon/Mars/Jupiter/Venus/Saturn);
+      Mercury alone retains its Capricorn placement and is the chart's sole vargottama planet"
+    - "The structural meta-fact: dharmic-self (D9) is approached from a substantially different
+      planetary configuration than the rashi self (D1) — instability of disposition except through Mercury"
+  falsifier: "If any planet besides Mercury shows D1=D9 sign equality in FORENSIC §3.15, vargottama-singularity claim is invalidated"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [career, dharma, relationships, mind, all]
+  confidence: 0.95
+  v6_ids_consumed: [CSI.SUN, CSI.MOON, CSI.MARS, CSI.MERCURY, CSI.JUPITER, CSI.VENUS, CSI.SATURN, CSI.RAHU, CSI.KETU, D9.MERCURY]
+  rpt_deep_dive: "FORENSIC §3.15"
+
+SIG.MSR.501:
+  signal_name: "Saturn Three-State Dignity Architecture — D1 Exaltation → D9 Debilitation (NBRY) → D10 Angular"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.26 (Mahapurusha); BPHS Ch.7 (Vargas); Phaladeepika Ch.2 (Neecha Bhanga)"
+  entities_involved: [PLN.SATURN, PLN.SUN, YOG.SASHA_MPY, YOG.NBRY_SATURN]
+  strength_score: 0.90
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "CSI.SATURN: D1 Libra (exaltation) → D9 Aries (debilitation) → D10 10th house Taurus (angular)"
+    - "D9 debilitation cancelled — Sun (exaltation-sign lord of Aries) sits in D9 Cancer = D9 Lagna (Kendra); see SIG.MSR.003"
+    - "Three-state arc encodes career-delivered-through-challenge: D1 Sasha foundation +
+      D9 ego-dissolution + D10 angular dharmic delivery"
+    - "Read together with the Mahapurusha (Sasha) and NBRY signals as a single structural unit, not three independents"
+  falsifier: "If FORENSIC §3.6 places D10 Saturn outside an angle (1/4/7/10), the angular-delivery claim fails"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [career, wealth, dharma, mind]
+  confidence: 0.90
+  v6_ids_consumed: [CSI.SATURN, D9.SATURN, D10.SATURN, PLN.SATURN]
+  rpt_deep_dive: "FORENSIC §3.15, §3.5, §3.6; SIG.MSR.001, SIG.MSR.003"
+
+SIG.MSR.502:
+  signal_name: "Venus Three-State Dignity Architecture — D1 Sagittarius → D9 Virgo (Debil, NBRY via Vargottama Mercury) → D10 Gemini 11th"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Vargas; Phaladeepika Ch.2 Neecha Bhanga (dispositor in Kendra)"
+  entities_involved: [PLN.VENUS, PLN.MERCURY, YOG.NBRY_VENUS]
+  strength_score: 0.82
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "CSI.VENUS: D1 Sagittarius → D9 Virgo (debilitation) → D10 11th house Gemini (neutral, gains)"
+    - "Venus D9 debilitation cancelled by dispositor Mercury vargottama in D9 7th (Capricorn, Kendra); see SIG.MSR.002"
+    - "Three-state arc routes relational/aesthetic significations through Mercury — D10 Gemini
+      placement (Mercury sign) extends the Mercury-anchored disposition into career-gains house"
+    - "Venus enters relationship dharma via NBRY, not via native dignity — relational delivery
+      requires cancellation mechanism, not direct planetary power"
+  falsifier: "If FORENSIC §3.6 places D10 Venus outside Mercury's signs, the Mercury-anchored claim weakens"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [relationships, wealth, spirit]
+  confidence: 0.85
+  v6_ids_consumed: [CSI.VENUS, D9.VENUS, D9.NBR.VENUS, D10.VENUS, D9.MERCURY]
+  rpt_deep_dive: "FORENSIC §3.15, §3.5.1, §3.6; SIG.MSR.002"
+
+SIG.MSR.503:
+  signal_name: "D7 Saptamsha — Saturn + Rahu Conjoined in 9H Pisces (Child Karma Burden in Fortune House)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Saptamsha for progeny); JH §3 divisional rules"
+  entities_involved: [PLN.SATURN, PLN.RAHU, HSE.9]
+  strength_score: 0.78
+  valence: malefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.4: D7 9H Pisces holds both Saturn and Rahu — two malefics in the dharma house of the progeny chart"
+    - "D7 9H is the 3H-from-5H (children's effort/sibling axis read from the children's
+      fortune-house) — delay/karmic-weight signature for child-related processes"
+    - "Saturn-Rahu conjunction across a malefic-prone house = pacing + unconventional path for child domain"
+  falsifier: "If FORENSIC §3.4 shows Saturn or Rahu in a different D7 house, signal invalidates"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [children]
+  confidence: 0.78
+  v6_ids_consumed: [D7.9, D7.LAGNA, PLN.SATURN, PLN.RAHU]
+  rpt_deep_dive: "FORENSIC §3.4"
+
+SIG.MSR.504:
+  signal_name: "D7 Saptamsha — Jupiter + Mars in 8H Aquarius, Venus in 10H Aries"
+  signal_type: divisional-pattern
+  classical_source: "Jaimini Saptamsha-padhati; BPHS Ch.7"
+  entities_involved: [PLN.JUPITER, PLN.MARS, PLN.VENUS, HSE.8, HSE.10]
+  strength_score: 0.75
+  valence: mixed
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.4: Jupiter (putrakaraka — child significator) joined Mars in D7 8H Aquarius"
+    - "Putrakaraka in 8H of the progeny chart marks transformation/concealment in child domain;
+      conjunction with Mars adds initiative + friction"
+    - "Venus in D7 10H Aries (exaltation-of-Sun sign) — relational delivery into progeny dharma is angular"
+    - "Read jointly with SIG.MSR.503 (Saturn-Rahu in D7 9H) as the chart's full child-axis architecture"
+  falsifier: "If FORENSIC §3.4 places Jupiter outside D7 8H, putrakaraka-in-8H claim fails"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [children]
+  confidence: 0.75
+  v6_ids_consumed: [D7.8, D7.10, PLN.JUPITER, PLN.MARS, PLN.VENUS]
+  rpt_deep_dive: "FORENSIC §3.4"
+
+SIG.MSR.505:
+  signal_name: "D12 Dvadashamsha — Saturn + Ketu in Gemini, Sun in Virgo, Moon in Scorpio (Parental Lineage Architecture)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Dvadashamsa for parental ancestry); Phaladeepika"
+  entities_involved: [PLN.SATURN, PLN.KETU, PLN.SUN, PLN.MOON, HSE.4, HSE.9]
+  strength_score: 0.72
+  valence: mixed
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.7: Saturn + Ketu both in Gemini (Mercury-ruled) in D12 — ancestral karmic
+      load mediated through Mercury significations"
+    - "Sun (pitri-karaka) in D12 Virgo (Mercury sign) — father-line dharmic signature also routes through Mercury"
+    - "Moon (matri-karaka) in D12 Scorpio — emotional/maternal lineage carries transformative intensity"
+    - "D12 lagna in Leo (Sun-ruled) — paternal axis frames the parental chart"
+    - "LEL-correlated: father's death 2003 within D12 Saturn-Ketu malefic-density window read against
+      the parental chart's karmic-load architecture"
+  falsifier: "If FORENSIC §3.7 shows Saturn or Ketu outside Gemini, the Mercury-ancestry claim weakens"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [parents]
+  confidence: 0.75
+  v6_ids_consumed: [D12.GEMINI, D12.VIRGO, D12.SCORPIO, D12.LEO, PLN.SATURN, PLN.KETU, PLN.SUN, PLN.MOON]
+  rpt_deep_dive: "FORENSIC §3.7; LIFE_EVENT_LOG §parental"
+
+SIG.MSR.506:
+  signal_name: "D24 Siddhamsha — Saturn in 9H Capricorn (Own Sign), Jupiter in 11H Pisces (Own Sign), Moon at Lagna Taurus (Exalted)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Siddhamsa — education/knowledge varga); Phaladeepika"
+  entities_involved: [PLN.SATURN, PLN.JUPITER, PLN.MOON, HSE.1, HSE.9, HSE.11]
+  strength_score: 0.78
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.10: D24 Saturn in 9H Capricorn = own-sign + dharma-house — disciplined
+      knowledge-acquisition signature"
+    - "D24 Jupiter in 11H Pisces = own-sign + gains-house — wisdom-yielding-gains in the
+      education varga (BPHS standard signature for higher learning)"
+    - "D24 Moon at Lagna Taurus = exalted — emotional/intuitive intelligence anchors the education chart"
+    - "Triple-own/exaltation density in D24 trines/angles is uncommon — the education varga supports
+      depth-domain mastery (PhD-level, research-oriented, or long-cycle learning paths)"
+  falsifier: "If FORENSIC §3.10 places Saturn or Jupiter outside own-signs, the triple-dignity claim is invalidated"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [education, mind]
+  confidence: 0.80
+  v6_ids_consumed: [D24.9, D24.11, D24.LAGNA, PLN.SATURN, PLN.JUPITER, PLN.MOON]
+  rpt_deep_dive: "FORENSIC §3.10"
+
+SIG.MSR.507:
+  signal_name: "D20 Vimsamsha — Jupiter at Lagna Scorpio, Saturn 2H Sagittarius, Sun 5H Pisces (Spiritual Sadhana Architecture)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Vimsamsha — spiritual sadhana); Phaladeepika"
+  entities_involved: [PLN.JUPITER, PLN.SATURN, PLN.SUN, HSE.1, HSE.5]
+  strength_score: 0.72
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.9: D20 Lagna Scorpio with Jupiter — sadhana chart anchored by guru-karaka
+      in a fixed water sign (transformative depth)"
+    - "D20 Saturn in 2H Sagittarius (Jupiter sign) — disciplined practice routes through dharmic
+      speech/value chamber"
+    - "D20 Sun in 5H Pisces (Jupiter sign, debilitation of Mercury) — soul-purva-punya in
+      dharma-house of the sadhana chart"
+    - "Three Jupiter-ruled signs hold key D20 planets — sadhana inclination is Jupiterian (guru/dharma)
+      rather than Shiva/Saturn (renunciative) or Devi (Mars/Kali)"
+  falsifier: "If FORENSIC §3.9 shows Jupiter outside D20 Lagna, anchor claim collapses"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [spirit]
+  confidence: 0.72
+  v6_ids_consumed: [D20.SCORPIO, D20.SAGITTARIUS, D20.PISCES, PLN.JUPITER, PLN.SATURN, PLN.SUN]
+  rpt_deep_dive: "FORENSIC §3.9"
+
+SIG.MSR.508:
+  signal_name: "D30 Trimsamsha — Saturn + Mars + Venus Triple-Stellium in 6H Gemini (Health-Disease Concentration)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Trimsamsha — misfortune/disease varga); Phaladeepika Ch.7 Trimsamsa rules"
+  entities_involved: [PLN.SATURN, PLN.MARS, PLN.VENUS, HSE.6]
+  strength_score: 0.80
+  valence: malefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.11: D30 6H Gemini holds Saturn + Mars + Venus — three planets concentrated
+      in the disease/effort house of the misfortune varga"
+    - "Saturn-Mars conjunction (already present in D1 7H) replicates in D30 6H — natal Saturn-Mars
+      ATT tension manifests as health/effort-stress signature in the disease varga"
+    - "Venus in 6H Trimsamsha is classically a vulnerability marker for nervous/reproductive systems"
+    - "Read with SIG.MSR.501 (Saturn three-state) — Saturn's structural delivery comes via disease/effort discipline"
+  falsifier: "If FORENSIC §3.11 shows any of Saturn/Mars/Venus outside D30 6H Gemini, stellium claim fails"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [health, longevity]
+  confidence: 0.80
+  v6_ids_consumed: [D30.6, PLN.SATURN, PLN.MARS, PLN.VENUS]
+  rpt_deep_dive: "FORENSIC §3.11"
+
+SIG.MSR.509:
+  signal_name: "D40 Khavedamsha — Jupiter + Venus Conjunct in 9H Taurus (Maternal Auspiciousness Signature)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Khavedamsa — maternal-line auspiciousness)"
+  entities_involved: [PLN.JUPITER, PLN.VENUS, HSE.9]
+  strength_score: 0.68
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.12: D40 9H Taurus holds Jupiter + Venus — two benefics in the dharma house
+      of the auspiciousness varga"
+    - "Venus in own-sign Taurus + Jupiter conjunction in D40 9H = strong maternal-line good-karma
+      signature (BPHS standard reading for Khavedamsa)"
+    - "D40 lagna in Virgo with Saturn — disciplined channel for auspiciousness; full chart
+      shape: benefic 9H + saturnian lagna = auspiciousness earned through disciplined dharma"
+  falsifier: "If FORENSIC §3.12 places Jupiter or Venus outside D40 9H Taurus, conjunction claim fails"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [parents, dharma, spirit]
+  confidence: 0.70
+  v6_ids_consumed: [D40.9, D40.LAGNA, PLN.JUPITER, PLN.VENUS, PLN.SATURN]
+  rpt_deep_dive: "FORENSIC §3.12"
+
+SIG.MSR.510:
+  signal_name: "D45 Akshavedamsha — Jupiter in 5H Aquarius, Saturn in 4H Capricorn (Spiritual Purity Architecture)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Akshavedamsa — paternal-line / spiritual purity)"
+  entities_involved: [PLN.JUPITER, PLN.SATURN, HSE.4, HSE.5]
+  strength_score: 0.65
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.13: D45 Jupiter in 5H Aquarius (Saturn-sign) — purva-punya chamber of
+      purity-varga held by guru-karaka in a Saturnian sign (discipline-of-merit)"
+    - "D45 Saturn in 4H Capricorn (own-sign) — sukha/foundation chamber of purity-varga
+      anchored in own-sign Saturn (stable inner foundation)"
+    - "D45 lagna at Libra with placeholder body (Neptune in FORENSIC) — non-classical body
+      noted; classical reading prioritises Saturn-Jupiter angular/trine architecture"
+  falsifier: "If FORENSIC §3.13 places Jupiter outside D45 5H or Saturn outside D45 4H, claim weakens"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [spirit, parents]
+  confidence: 0.68
+  v6_ids_consumed: [D45.5, D45.4, PLN.JUPITER, PLN.SATURN]
+  rpt_deep_dive: "FORENSIC §3.13"
+
+SIG.MSR.511:
+  signal_name: "D60 Shashtyamsha — Saturn at Lagna Gemini, Ketu in 8H Capricorn (Past-Karma Soul Texture)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.10 (Shashtyamsha highest weight); Phaladeepika past-karma readings"
+  entities_involved: [PLN.SATURN, PLN.KETU, HSE.1, HSE.8]
+  strength_score: 0.75
+  valence: mixed
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.14: D60 Lagna Gemini with Saturn — past-karma chart anchored by Saturn in
+      Mercury's sign (karmic discipline mediated through Mercury, mirroring D1 Mercury-spine)"
+    - "D60 Ketu in 8H Capricorn — moksha-karaka in the transformation chamber of the past-karma varga;
+      past-life renunciative trajectory still operative in this incarnation"
+    - "Shashtyamsa receives highest weight in Parashara's varga hierarchy — these placements carry
+      structural weight for soul-level reading"
+    - "Birth-time sensitivity is highest in D60 — claims here are calibrated to FORENSIC v8.0 chart"
+  falsifier: "If FORENSIC §3.14 shows Saturn outside D60 Lagna or Ketu outside D60 8H, claim invalidates"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [spirit, mind]
+  confidence: 0.72
+  v6_ids_consumed: [D60.LAGNA, D60.8, PLN.SATURN, PLN.KETU]
+  rpt_deep_dive: "FORENSIC §3.14"
+
+SIG.MSR.512:
+  signal_name: "D16 Shodashamsha — Moon + Mars at Lagna Leo, Mercury + Jupiter in 10H Taurus (Vehicles-Comforts Architecture)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Shodashamsa — vehicles/comforts/happiness from conveyances)"
+  entities_involved: [PLN.MOON, PLN.MARS, PLN.MERCURY, PLN.JUPITER, HSE.1, HSE.10]
+  strength_score: 0.60
+  valence: mixed
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.8: D16 Lagna Leo with Moon + Mars — vehicles/comforts chart led by fiery
+      anchor; emotional + initiative signature for conveyances"
+    - "D16 10H Taurus holds Mercury + Jupiter — benefic pair in dignified earth sign in the
+      angular delivery-house of the comforts varga (favourable for stable conveyances)"
+    - "Comforts/vehicles domain is mid-tier in significance for the chart's overall architecture"
+  falsifier: "If FORENSIC §3.8 places these planets elsewhere, claim fails"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [wealth, mind]
+  confidence: 0.65
+  v6_ids_consumed: [D16.LEO, D16.TAURUS, PLN.MOON, PLN.MARS, PLN.MERCURY, PLN.JUPITER]
+  rpt_deep_dive: "FORENSIC §3.8"
+
+SIG.MSR.513:
+  signal_name: "D2 Hora — Five Planets in Cancer (Moon) Hora, Four in Leo (Sun) Hora (Wealth-Distribution Asymmetry)"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Sl.14 (Hora — wealth division); Parashara hora rules"
+  entities_involved: [PLN.MOON, PLN.MARS, PLN.VENUS, PLN.SATURN, PLN.MERCURY, PLN.JUPITER, PLN.SUN]
+  strength_score: 0.62
+  valence: mixed
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.1: D2 Cancer hora (Moon-ruled) holds Moon, Mars, Venus, Saturn, Mercury (5 planets)"
+    - "D2 Leo hora (Sun-ruled) holds Jupiter, Ketu, Sun, Rahu (4 planets — including nodes)"
+    - "Hora-asymmetry tilt toward Moon (Cancer hora) — wealth-flow signature is Moon-mediated
+      (emotional/intuitive wealth pathways) more than Sun-mediated (status/authority wealth)"
+    - "All 5 Cancer-hora planets are classical primary planets; Leo hora carries Sun + Jupiter + 2 nodes"
+  falsifier: "If FORENSIC §3.1 redistributes planets, the Moon-tilt claim fails"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [wealth]
+  confidence: 0.68
+  v6_ids_consumed: [D2.CANCER, D2.LEO]
+  rpt_deep_dive: "FORENSIC §3.1"
+
+SIG.MSR.514:
+  signal_name: "Vargottama Mercury as Cross-Varga Anchor — Stability of Mercury's Disposition Propagates Across D1/D9/D10/D12/D24/D60"
+  signal_type: divisional-pattern
+  classical_source: "BPHS Ch.7 Vargottama doctrine; Phaladeepika vargottama strength rules"
+  entities_involved: [PLN.MERCURY]
+  strength_score: 0.88
+  valence: benefic
+  temporal_activation: natal-permanent
+  supporting_rules:
+    - "FORENSIC §3.5 + §3.15 CSI.MERCURY: D1 Capricorn = D9 Capricorn — only vargottama planet in the chart"
+    - "Mercury's stable disposition cascades structurally: dispositor of D9 12H stellium (§3.5.2),
+      dispositor of NBRY-Venus (§3.5.1), Mercury sign Virgo in D10 2H, Mercury sign Gemini in
+      D24 3H, D60 Saturn in Mercury-sign Gemini (§3.14)"
+    - "Vargottama Mercury is the single most stable cross-varga structural element — every chart
+      that names Mercury as a co-actor inherits this stability"
+    - "Operationally: queries that engage Mercury, dispositor chains routing through Mercury,
+      or Mercury-ruled signs (Gemini/Virgo) acquire elevated reliability"
+    - "Meta-signal linking SIG.MSR.500 (six-shift) and the chart's interpretive surface — Mercury
+      is what stays when everything else moves"
+  falsifier: "If Mercury is shown to be non-vargottama in any future FORENSIC revision, the entire signal collapses"
+  provenance: v3_1-VARGA-ETL-FULL-S1
+  domains_affected: [career, wealth, mind, dharma, all]
+  confidence: 0.92
+  v6_ids_consumed: [CSI.MERCURY, D9.MERCURY, D10.MERCURY, D12.VIRGO, D24.3, D60.LAGNA, PLN.MERCURY]
+  rpt_deep_dive: "FORENSIC §3.5, §3.5.1, §3.5.2, §3.6, §3.7, §3.10, §3.14, §3.15; SIG.MSR.500"
 

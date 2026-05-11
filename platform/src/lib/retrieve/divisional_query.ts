@@ -67,10 +67,16 @@ async function retrieveImpl(
 
   const varga: VargaCode = input?.varga ?? 'D9'
 
+  // VARGA-ETL-FULL-S1-CPA D6: expanded category list. After v1.1 YAML migration,
+  // D-tagged rows include arudha occupancy, yogas, aspects (§16 tagged to D9
+  // where applicable), and sensitive_point rows — wider whitelist surfaces them.
   const categories =
     input?.category === 'house' ? ['house']
     : input?.category === 'planet' ? ['planet']
-    : ['house', 'planet', 'strength', 'chalit_shift']
+    : [
+        'house', 'planet', 'strength', 'strength_extra', 'chalit_shift',
+        'arudha', 'arudha_occupancy', 'yoga', 'aspect', 'sensitive_point',
+      ]
 
   const conditions: string[] = [
     `divisional_chart = $1`,
@@ -99,7 +105,7 @@ async function retrieveImpl(
     FROM chart_facts
     WHERE ${conditions.join(' AND ')}
     ORDER BY category, fact_id
-    LIMIT 60
+    LIMIT 200
   `.trim()
 
   const { rows } = await getStorageClient().query<ChartFactsRow>(sql, queryParams)

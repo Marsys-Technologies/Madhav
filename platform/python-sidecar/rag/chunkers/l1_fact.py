@@ -20,12 +20,22 @@ from rag.validators import p1_layer_separation as p1
 logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 1000
-MIN_BODY_TOKENS = 20  # skip near-empty intro stubs
+MIN_BODY_TOKENS = 12  # skip near-empty intro stubs.
+                     # VARGA-ETL-FULL-S1-CPA D11: lowered 20 → 12 to ensure tiny
+                     # divisional sections like §3.1 D2 Hora (only 2 table rows,
+                     # ~30–50 tokens including header) always produce a chunk.
 SOURCE_FILE = "01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md"
 SOURCE_VERSION = "8.0"
 LAYER = "L1"
 
 _SECTION_ID_RE = re.compile(r"§(\d+(?:\.\d+)*)")
+# VARGA-ETL-FULL-S1-CPA D10 — varga + layer_aspect metadata for §3.x / §5.x / §6.x chunks.
+# Used by vector_search's varga + section_id_prefix filters (D5).
+_VARGA_RE = re.compile(r"\b(D\d+)\b")
+_SECTION_3_RE = re.compile(r"^§3\.\d+")
+_SECTION_3_15_RE = re.compile(r"^§3\.15\b")
+_SECTION_5_RE = re.compile(r"^§5(\.|$)")
+_SECTION_6_RE = re.compile(r"^§6(\.|$)")
 # Two pre-processing patterns for P1 validation of L1 chunks:
 # 1. Strip HTML comments — FORENSIC uses <!-- ... --> for LLM navigation notes, not facts.
 #    Navigation words like "shows" in comments trigger false-positive P1 rejects.
@@ -55,6 +65,32 @@ def _extract_title(heading: str) -> str:
     """Strip leading §N — prefix to get the human-readable title."""
     title = re.sub(r"^§[\d.]+\s*[—–-]?\s*", "", heading).strip()
     return title if title else heading.strip()
+
+
+def _augment_layer_metadata(meta: dict[str, Any], section_id: str, section_title: str) -> None:
+    """VARGA-ETL-FULL-S1-CPA D10 — attach varga + layer_aspect to §3.x / §5.x / §6.x chunks.
+
+    For §3.15 specifically the varga code is "CSI" (cross-divisional dignity ledger);
+    for any other §3.x section the varga is parsed from the heading (e.g. "§3.5 D9 — Navamsha"
+    → varga="D9"). §5.x → layer_aspect="dasha"; §6.x → layer_aspect="strength".
+    Mutates meta in place. No-op for sections that don't match.
+    """
+    if _SECTION_3_15_RE.match(section_id or ""):
+        meta["varga"] = "CSI"
+        meta["layer_aspect"] = "divisional_transition"
+        return
+    if _SECTION_3_RE.match(section_id or ""):
+        meta["layer_aspect"] = "divisional"
+        m = _VARGA_RE.search(section_title or "")
+        if m:
+            meta["varga"] = m.group(1)
+        return
+    if _SECTION_5_RE.match(section_id or ""):
+        meta["layer_aspect"] = "dasha"
+        return
+    if _SECTION_6_RE.match(section_id or ""):
+        meta["layer_aspect"] = "strength"
+        return
 
 
 def _extract_provenance(content: str) -> str:
@@ -132,11 +168,13 @@ def _split_at_h4(content: str, heading: str, section_id: str, provenance: str) -
         truncated_content, was_truncated = truncate_to_tokens(content, MAX_TOKENS)
         token_count = count_tokens(truncated_content)
         ext_comp = bool(_EXT_COMP_RE.search(truncated_content))
+        title = _extract_title(heading)
         meta: dict[str, Any] = {
             "section_id": section_id,
-            "section_title": _extract_title(heading),
+            "section_title": title,
             "data_provenance": provenance,
         }
+        _augment_layer_metadata(meta, section_id, title)
         if was_truncated:
             meta["truncation_note"] = f"Hard truncated at {MAX_TOKENS} tokens"
         if ext_comp:
@@ -165,13 +203,15 @@ def _split_at_h4(content: str, heading: str, section_id: str, provenance: str) -
             token_count = count_tokens(sub_content)
         ext_comp = bool(_EXT_COMP_RE.search(sub_content))
         sub_prov = _extract_provenance(sub_content) if _PROVENANCE_RE.search(sub_content) else provenance
+        title = _extract_title(heading)
         meta: dict[str, Any] = {
             "section_id": section_id,
-            "section_title": _extract_title(heading),
+            "section_title": title,
             "sub_heading": sub_heading,
             "sub_chunk_index": idx,
             "data_provenance": sub_prov,
         }
+        _augment_layer_metadata(meta, section_id, title)
         if was_truncated:
             meta["truncation_note"] = f"Hard truncated at {MAX_TOKENS} tokens"
         if ext_comp:
@@ -219,11 +259,13 @@ def chunk_l1_facts(repo_root: str) -> list[Chunk]:
         ext_comp = bool(_EXT_COMP_RE.search(body))
 
         if token_count <= MAX_TOKENS:
+            title = _extract_title(heading)
             meta: dict[str, Any] = {
                 "section_id": section_id,
-                "section_title": _extract_title(heading),
+                "section_title": title,
                 "data_provenance": provenance,
             }
+            _augment_layer_metadata(meta, section_id, title)
             if ext_comp:
                 meta["external_computation_pending"] = True
             chunk = Chunk(

@@ -48,6 +48,8 @@ export interface ChartFactsQueryInput {
   keyword?: string
   rank_by?: RankBy
   limit?: number
+  /** If true, restrict to rows whose value_json->>'vargottama' = 'true'. Surfaces vargottama Mercury (and any other vargottama planet) across all vargas. */
+  vargottama_only?: boolean
 }
 
 interface ChartFactsRow {
@@ -117,6 +119,10 @@ function buildWhereClause(p: ChartFactsQueryInput): { where: string; args: unkno
     )
     args.push(`%${p.keyword}%`, `%${p.keyword}%`, `%${p.keyword}%`)
     idx += 3
+  }
+
+  if (p.vargottama_only === true) {
+    conditions.push(`(value_json->>'vargottama')::boolean = true`)
   }
 
   return { where: conditions.join(' AND '), args }
@@ -227,6 +233,7 @@ async function retrieveImpl(
       divisional_chart: p.divisional_chart,
       keyword: p.keyword,
       rank_by: p.rank_by,
+      vargottama_only: p.vargottama_only,
       limit,
     },
     results,
