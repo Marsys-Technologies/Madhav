@@ -4845,6 +4845,35 @@ current_state:
       result_artifact: platform/tests/eval/eval_results_planner_eval_s1.json
       regression_notes_artifact: platform/tests/eval/REGRESSION_NOTES_v2_0.md
 
+    planner_prompt_fix_s1:
+      date: 2026-05-11
+      phase_status: COMPLETE
+      prompt_version: PLANNER_PROMPT_v2_0.md (in-place patch v2.0 → v2.0.1)
+      pre_fix_precision: 0.852
+      pre_fix_recall: 0.945
+      pre_fix_asset_bundle_recall: 0.902
+      pre_fix_floor_violations: 2
+      post_fix_precision: 0.986
+      post_fix_recall: 0.963
+      post_fix_asset_bundle_recall: 0.971
+      post_fix_floor_violations: 0
+      floor_violations_resolved: true
+      gates_status: "ALL PASS (recall≥0.940, precision≥0.945, asset_bundle_recall≥0.90)"
+      rounds_consumed: 1  # 3-round budget allotted; converged in round 1
+      escape_clause_invoked: false
+      model_used: claude-haiku-4-5  # NIM unreachable, same as Planner-Eval-S1
+      rules_changed:
+        - R7c (transit absolute ban + explicit keyword list + expanded banned-tool set)
+        - R7d (NEW — single-planet interpretive scope: default msr_sql + pattern_register)
+        - R11 (signal-density holistic exception: no cluster_atlas for "currently lit/ripening")
+        - R14 split into R14a/b/c/d (cgm_graph_walk narrowed; require named planet AND structural language)
+        - R14d (house-or-divisional domain-interpretation queries: msr_sql + vector_search, no cgm_graph_walk)
+        - R15 (resonance_register strict literal-keyword test)
+        - R16 (degenerate-input FORENSIC+CGM floor preserved in asset_bundle)
+      remaining_failures: [GT.017, GT.021, GT.025, GT.029]  # all recall-side or near-edge; aggregate gates PASS
+      result_artifact: platform/tests/eval/eval_results_planner_prompt_fix_s1.json
+      regression_notes_resolution: platform/tests/eval/REGRESSION_NOTES_v2_0.md (§ Resolution)
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------

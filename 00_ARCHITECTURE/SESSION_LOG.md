@@ -20708,3 +20708,20 @@ summary: >
   Eval harness rewired: callLlmPlanner→callPipelinePlanner (3 files);
   classify side replaced with oracle baseline; golden_set v1.0→v1.1 with required_asset_ids.
   Next session: Planner-Prompt-Fix-S1 (out of scope this brief per §5 + §9.1).
+
+---
+session_id: Planner-Prompt-Fix-S1
+date: 2026-05-11
+summary: >
+  Precision regression fix for PLANNER_PROMPT_v2_0.md (in-place patch v2.0 → v2.0.1).
+  Pre-fix: recall=0.945 precision=0.852 asset_bundle_recall=0.902 floor_violations=2.
+  Post-fix: recall=0.963 precision=0.986 asset_bundle_recall=0.971 floor_violations=0.
+  All three convergence gates PASS in one edit+eval round (3-round budget not consumed).
+  Rules changed: R7c (transit absolute ban + keyword list), R7d (NEW —
+  single-planet interpretive scope), R11 (signal-density holistic exception),
+  R14 split into R14a/b/c/d (cgm_graph_walk narrowed; explicit
+  house-or-divisional domain-interpretation default), R15 (resonance_register
+  strict literal-keyword), R16 (degenerate-input FORENSIC+CGM floor).
+  Floor violations resolved (GT.027/028 PASS).
+  Model: claude-haiku-4-5 (NIM unreachable, same as baseline).
+  Result artifact: platform/tests/eval/eval_results_planner_prompt_fix_s1.json.

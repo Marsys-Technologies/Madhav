@@ -1,0 +1,978 @@
+{
+  "aggregate": {
+    "total": 29,
+    "passed": 25,
+    "failed": 4,
+    "avg_tool_recall": 0.9626436781609196,
+    "avg_tool_precision": 0.985632183908046,
+    "forbidden_violations": 0,
+    "required_misses": 0,
+    "pass_rate": 0.8620689655172413,
+    "avg_asset_bundle_recall": 0.971264367816092,
+    "asset_bundle_floor_violations": 0
+  },
+  "results": [
+    {
+      "id": "GT.001",
+      "query": "What gemstone should I wear to strengthen my career?",
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "vector_search",
+        "resonance_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "remedial_codex_query",
+        "resonance_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.002",
+      "query": "Which mantra should I recite to support spiritual progress?",
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "vector_search",
+        "resonance_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "remedial_codex_query",
+        "resonance_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "query_varshaphala",
+        "temporal"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.003",
+      "query": "Should I wear a yellow sapphire?",
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "domain_report_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.004",
+      "query": "What planetary remedies are recommended for my Mars?",
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "predicted_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.005",
+      "query": "Recommend a daily ritual to strengthen my chart's weakest planet.",
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "remedial_codex_query",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "query_varshaphala"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.006",
+      "query": "Are there fasting practices that would help my health?",
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "vector_search",
+        "resonance_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "remedial_codex_query",
+        "vector_search",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "vector_search",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "query_varshaphala"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.007",
+      "query": "What does my 7th house say about marriage?",
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "temporal",
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.008",
+      "query": "Tell me about my Lagna and overall chart strength.",
+      "expected_tools": [
+        "msr_sql",
+        "vector_search",
+        "pattern_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.009",
+      "query": "What yogas are present in my chart?",
+      "expected_tools": [
+        "pattern_register",
+        "msr_sql"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "temporal",
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.010",
+      "query": "Explain the role of Saturn in my 11th house.",
+      "expected_tools": [
+        "msr_sql",
+        "cgm_graph_walk"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.011",
+      "query": "Read my D9 Navamsha for marriage indications.",
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.012",
+      "query": "What does my 10th house say about my profession?",
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.013",
+      "query": "What can I expect from the upcoming Ketu Mahadasha starting in 2027?",
+      "expected_tools": [
+        "vector_search",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "vector_search",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.014",
+      "query": "Where is Saturn transiting in my chart right now and what should I expect?",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.015",
+      "query": "Will the next year bring career growth?",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.016",
+      "query": "When is my next favorable period for starting a new venture?",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.017",
+      "query": "Give me a comprehensive overview of my life path across all major domains.",
+      "expected_tools": [
+        "cluster_atlas",
+        "vector_search",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "predicted_tools": [
+        "cluster_atlas",
+        "msr_sql",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "cluster_atlas",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "tool_recall": 0.75,
+      "tool_precision": 0.75,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": false,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "CDLM",
+        "UCN",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.018",
+      "query": "What are the central themes and contradictions in my chart?",
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas"
+      ],
+      "predicted_tools": [
+        "cluster_atlas",
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "contradiction_register",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "temporal",
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "CDLM",
+        "UCN",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.019",
+      "query": "Synthesize how my career, marriage, and health interact in my chart.",
+      "expected_tools": [
+        "cgm_graph_walk",
+        "vector_search",
+        "cluster_atlas",
+        "msr_sql"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "cgm_graph_walk",
+        "vector_search",
+        "cluster_atlas"
+      ],
+      "required_tools": [
+        "cgm_graph_walk",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "CDLM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.020",
+      "query": "What signals are currently lit or ripening in my chart?",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 0.75,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.021",
+      "query": "Tell me everything about Jupiter in my chart.",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "tool_recall": 0.6666666666666666,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": false,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.022",
+      "query": "What is Mars's role across my divisional charts?",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.023",
+      "query": "What patterns and resonances surface for Saturn in my chart?",
+      "expected_tools": [
+        "pattern_register",
+        "resonance_register",
+        "msr_sql"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "pattern_register",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "domain_report_query",
+        "temporal"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.024",
+      "query": "Give me a high-level read of the chart.",
+      "expected_tools": [
+        "pattern_register",
+        "cluster_atlas"
+      ],
+      "predicted_tools": [
+        "cluster_atlas",
+        "pattern_register"
+      ],
+      "required_tools": [],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.025",
+      "query": "Tell me something interesting about the chart.",
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas"
+      ],
+      "predicted_tools": [
+        "cluster_atlas",
+        "pattern_register"
+      ],
+      "required_tools": [],
+      "forbidden_tools": [
+        "temporal",
+        "query_varshaphala",
+        "remedial_codex_query",
+        "timeline_query"
+      ],
+      "tool_recall": 0.5,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": false,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 0.75,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.026",
+      "query": "According to my Vimshottari Dasha sequence, when does my Mercury period begin and what will it activate?",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "msr_sql",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "asset_bundle_recall": 0.6666666666666666,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.027",
+      "query": "",
+      "expected_tools": [],
+      "predicted_tools": [],
+      "required_tools": [],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.028",
+      "query": "?",
+      "expected_tools": [],
+      "predicted_tools": [],
+      "required_tools": [],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 1,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": true,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    },
+    {
+      "id": "GT.029",
+      "query": "Tell me everything about everything in my entire chart in full detail with all possible combinations and permutations and every possible interpretation",
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "cluster_atlas",
+        "cgm_graph_walk",
+        "vector_search"
+      ],
+      "predicted_tools": [
+        "cluster_atlas",
+        "msr_sql",
+        "vector_search",
+        "pattern_register",
+        "cgm_graph_walk",
+        "resonance_register"
+      ],
+      "required_tools": [],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "tool_recall": 1,
+      "tool_precision": 0.8333333333333334,
+      "required_hit": true,
+      "forbidden_violation": false,
+      "pass": false,
+      "asset_bundle_ids": [
+        "FORENSIC",
+        "CGM",
+        "CDLM",
+        "UCN",
+        "RM"
+      ],
+      "asset_bundle_recall": 1,
+      "asset_bundle_floor_ok": true
+    }
+  ]
+}

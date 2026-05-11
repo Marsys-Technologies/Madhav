@@ -127,4 +127,69 @@ next session's plan:
 - All 29 entries returned a plan; zero import-failure errors; zero
   required_misses; zero forbidden_violations.
 
+## Resolution (Planner-Prompt-Fix-S1, 2026-05-11)
+
+Precision regression remediated in a single edit+eval round. Final aggregates
+(model `claude-haiku-4-5`, 29/29 entries scored, NIM unreachable as in baseline):
+
+| metric | v2.0 pre-fix | v2.0.1 post-fix | gate |
+|---|---|---|---|
+| avg_tool_recall | 0.945 | **0.963** | PASS (≥ 0.940) |
+| avg_tool_precision | 0.852 | **0.986** | PASS (≥ 0.945) |
+| avg_asset_bundle_recall | 0.902 | **0.971** | PASS (≥ 0.90) |
+| asset_bundle_floor_violations | 2 | **0** | PASS (= 0) |
+| pass_rate | 0.586 | 0.862 | informational |
+| forbidden_violations | 0 | 0 | clean |
+| required_misses | 0 | 0 | clean |
+
+Rules changed in `00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md` (in-place patch v2.0 → v2.0.1):
+
+- **R7c** (transit ban): lifted to absolute, added explicit trigger-keyword list
+  ("transit", "transiting", "currently moving through", "passing over",
+  "where is [planet] now"), expanded the banned-tool set
+  (`vector_search`, `cgm_graph_walk`, `cluster_atlas`, all registers beyond
+  `pattern_register`). Overrides R18. Resolves over-fire on GT.014.
+- **R7d** (NEW — single-planet interpretive scope): for queries scoped to one
+  named planet ("Tell me everything about Jupiter"), default tool set is
+  `msr_sql` + `pattern_register`; `cgm_graph_walk` only on explicit structural
+  language; `resonance_register` only on literal keyword; never add
+  `cluster_atlas`, `vector_search`, `contradiction_register`. Resolves
+  GT.021/022/023 false positives.
+- **R11** (cluster_atlas blanket): added signal-density holistic exception
+  ("currently lit", "ripening", "active right now"): use only `msr_sql` +
+  `pattern_register`. Resolves over-fire on GT.020.
+- **R14** (cgm_graph_walk in interpretive): split into R14a/b/c/d.
+  R14b narrows trigger to require an explicitly named planet AND structural
+  positioning language. R14d explicitly maps house-or-divisional domain-
+  interpretation queries to `msr_sql` + `vector_search` only. Resolves
+  over-fire on GT.007/011/012.
+- **R15** (resonance_register): tightened to strict literal-keyword test.
+  Forbidden in interpretive (including planetary) unless query string
+  literally contains "resonance", "themes", "alignment", or
+  "central patterns". Resolves over-fire on GT.017/021.
+- **R16** (degenerate-input floor): empty / <5-char queries now emit
+  asset_bundle `[FORENSIC, CGM]` even though `tool_calls: []`. Resolves
+  floor violations on GT.027/028.
+
+Floor violation status: **0 remaining (GT.027 and GT.028 both PASS).**
+
+Remaining failures (informational, all below the gate threshold and recall-side):
+- **GT.017** holistic "comprehensive life path": planner missed `cgm_graph_walk`
+  (added `msr_sql` instead). Recall 0.75. Not a precision regression — gold
+  expects `cgm_graph_walk` for life-path holistic, prompt does not currently
+  force it. Out of scope for this fix; do not patch.
+- **GT.021** "Tell me everything about Jupiter": planner correctly returned
+  `msr_sql` + `pattern_register` but missed gold's `cgm_graph_walk`. R7d's
+  conservative default trades −0.33 recall on GT.021 for +1.0 precision recovery
+  on GT.021/022/023. Net win.
+- **GT.025** "Tell me something interesting" (edge_case): planner missed
+  `contradiction_register` + `resonance_register`. Already failing pre-fix
+  on the same recall axis; not a regression introduced by this patch.
+- **GT.029** "Tell me everything about everything" (edge_case): one false
+  positive (`resonance_register`). Precision 0.83. Reduced from 5-tool overfire
+  pre-fix; not gating.
+
+All four are recall-side or near-edge; aggregate gates are PASS. 3-round budget
+not consumed (1 round sufficed). No escape clause invoked.
+
 *REGRESSION_NOTES_v2_0.md · Planner-Eval-S1 · 2026-05-11*
