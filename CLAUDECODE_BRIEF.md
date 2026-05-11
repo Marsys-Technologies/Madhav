@@ -1,330 +1,252 @@
 ---
-artifact: CLAUDECODE_BRIEF.md
+artifact: CLAUDECODE_BRIEF_QP_S2.md
 status: COMPLETE
-session_id: Planner-Prompt-Fix-S1
-phase: PLANNER_PROMPT_v2_0 Precision Regression Fix
-executor: claude-code-extension (anti-gravity VS Code)
-run_from_worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-pipeline
+session_id: QP-S2
+phase: Pipeline Gap Closure — Code Cleanup (GAP-8, GAP-9)
+executor: claude-opus-4-6 (anti-gravity VS Code)
+run_from_worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-cleanup
+branch: fix/cleanup-qp-s2
 authored_by: Cowork (Abhisek session 2026-05-11)
 authored_on: 2026-05-11
-acceptance_criteria_count: 10
-supersedes: Planner-Eval-S1 (COMPLETE 2026-05-11, commit 58a2ad4)
+acceptance_criteria_count: 4
+parallel_safe: true
+parallel_siblings: QP-S1 (fix/planner-gap-qp-s1), QP-S3 (fix/golden-set-qp-s3)
+depends_on: Pipeline-Transform-S1 merged to main (commit 85dfca5)
+master_plan: 00_ARCHITECTURE/PIPELINE_GAP_PLAN_v1_0.md §4/QP-S2
 ---
 
-# Planner-Prompt-Fix-S1 — Precision Regression Fix
+# QP-S2 — Code Cleanup
 
 ## §0 — HOW TO READ THIS BRIEF
 
-**Run from the worktree:** `/Users/Dev/Vibe-Coding/Apps/Madhav-pipeline`
-(branch `feature/pipeline-transform-s1`). That is where `PLANNER_PROMPT_v2_0.md`,
-`callPipelinePlanner`, and all eval artifacts live.
+**Run from the worktree:** `/Users/Dev/Vibe-Coding/Apps/Madhav-cleanup`
+(branch `fix/cleanup-qp-s2`).
 
-When all 10 ACs are GREEN, set `status: COMPLETE` in this frontmatter and stop.
-Do not emit SESSION_OPEN or SESSION_CLOSE artifacts.
+**Minimal surface.** This session touches exactly three source files:
+`platform/src/app/api/chat/consume/route.ts`,
+`platform/src/components/consume/StreamingAnswer.tsx`, and
+`platform/src/hooks/useChatSession.ts`.
+Everything else is out of scope.
+
+When all 4 ACs are GREEN, commit, push, and set `status: COMPLETE` in this
+file's frontmatter. Do not emit SESSION_OPEN or SESSION_CLOSE artifacts.
 
 ---
 
 ## §1 — CONTEXT AND PROBLEM
 
-**Planner-Eval-S1 (2026-05-11, commit 58a2ad4) revealed a precision regression:**
+Pipeline-Transform-S1 (PR #15, commit 85dfca5) converted the query pipeline
+to use `PipelinePlan` exclusively. The refactor left two residual housekeeping
+items in source code:
 
-| Metric | v1.7 baseline | v2.0 result | Delta |
-|---|---|---|---|
-| avg_tool_recall | 0.940 | 0.945 | **+0.005 ✅** |
-| avg_tool_precision | 0.945 | 0.852 | **−0.093 ❌** |
-| avg_asset_bundle_recall | — (new) | 0.902 | ✅ first baseline |
-| floor_violations | — | 2 | ❌ GT.027, GT.028 |
+| Gap | Problem | Location |
+|-----|---------|----------|
+| GAP-8 | Debug `console.log` calls left in from development | `route.ts` line 314 (confirmed); `StreamingAnswer.tsx` and `useChatSession.ts` (verify clean) |
+| GAP-9 | `route.ts` imports `QueryPlan` from `@/lib/router/types` — a legacy module. The router module was only partially cleaned up. The adapter at line 320 creates a `QueryPlan`-shaped object from `PipelinePlan` data to feed downstream validators and orchestrator. This coupling should be resolved. |
 
-**Recall held; precision dropped sharply.** Classic symptom: the v2.0 prompt causes
-the planner to predict *more tools than the gold standard expects* — over-inclusion.
+**Note on GAP-10:** The `.gitignore` patterns for eval scratch files were
+already committed at `7b8aa61`. GAP-10 is CLOSED. Do not re-add them.
 
-**What changed v1.7 → v2.0 that could cause over-inclusion:**
-- Expanded `query_class` enum (8 vs 6 classes; new `discovery`, `cross_domain`, `factual`,
-  `cross_native` may invoke wider tool selection rules)
-- New `asset_bundle` output field (rules R21–R26) — bundle selection is separate from
-  tool selection, but ambiguous rules could bleed into over-eager tool selection
-- New `synthesis_guidance` output field — similarly separate, but prompts are holistic
-- `discovery` and `holistic` class rules (§4.6, §4.7) historically trigger large tool sets
-
-**Floor violations (GT.027 empty query, GT.028 single-punctuation):**
-The planner returned an empty `asset_bundle` for degenerate inputs, bypassing the
-FORENSIC+CGM floor. `bundle_hydrator.ts` enforces the floor at hydration time, but
-the planner should still emit the floor assets. These are low-priority vs precision.
+**Pre-confirmed state (verified by the brief author before authoring):**
+- `route.ts` line 314: `console.log('[consume:v3] B.11 enforcement: added msr_sql + cgm_graph_walk')` — confirmed present, to be removed.
+- `StreamingAnswer.tsx`: grep shows **zero** `console.log` calls — already clean.
+- `useChatSession.ts`: grep shows **zero** `console.log` calls — already clean.
+- `@/lib/router/types.ts` **still exists** (types.ts, errors.ts, retrieval_capability_spec.ts
+  were not deleted in Pipeline-Transform-S1 — only `router.ts` and `prompt.ts` were removed).
+  The TypeScript compiler does not error on the import at line 41 today.
 
 ---
 
 ## §2 — MANDATORY READING BEFORE WRITING ANYTHING
 
 ```
-platform/tests/eval/REGRESSION_NOTES_v2_0.md       ← READ FIRST. Per-entry breakdown,
-                                                       category-level analysis, hypotheses.
-platform/tests/eval/eval_results_planner_eval_s1.json ← Per-entry scores (all 29)
-platform/tests/eval/planner_golden_set.json         ← v1.1 (29 entries + required_asset_ids)
-00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md              ← The file to fix
-platform/src/lib/pipeline/pipeline_planner.ts       ← How the prompt is loaded/called
+platform/src/app/api/chat/consume/route.ts       ← PRIMARY file to edit
+platform/src/lib/router/types.ts                 ← Read to understand QueryPlan shape (read-only)
+platform/src/lib/pipeline/types.ts               ← PipelinePlan schema (read-only)
+platform/src/lib/validators/index.ts             ← Verify validator accepts QueryPlan shape
+00_ARCHITECTURE/PIPELINE_GAP_PLAN_v1_0.md §4/QP-S2  ← Master spec (read-only)
 ```
 
-Do NOT touch any other source files. The eval harness is already fixed (Planner-Eval-S1).
+Do NOT touch any other file.
 
 ---
 
-## §3 — PHASE 1: Diagnose the regression
+## §3 — WORK TO DO (3 items)
 
-### 3A. Read REGRESSION_NOTES_v2_0.md
+### 3A. Remove debug console.log from route.ts (GAP-8)
 
-The executor authored this file after scoring. It contains:
-- Per-entry failures: which of the 29 entries had false-positive tools (predicted but
-  not in gold standard)
-- Category breakdown: which query_class drove the most false positives
-- Hypotheses from the executor about root cause
+**Confirmed target:** route.ts line 314:
+```ts
+console.log('[consume:v3] B.11 enforcement: added msr_sql + cgm_graph_walk')
+```
 
-Build a mental model before touching the prompt. Answer:
-1. Which 1–3 categories account for most of the precision loss?
-2. Are the false positives concentrated on specific tools (e.g., `vector_search`,
-   `get_dasha_periods`, `get_chart_data`)?
-3. Do the false positives follow a pattern (e.g., "planner adds vector_search to
-   every query" or "discovery-class gets too many retrieval tools")?
+**Action:** Delete this line. It is a development-mode debug print — the B.11
+enforcement logic itself (the `.push()` calls above it) must be preserved.
 
-### 3B. Cross-reference with PLANNER_PROMPT_v2_0.md
+**Scan for additional console.logs:** After removing line 314, grep route.ts
+for any other `console.log` calls introduced in or after commit `b3fcb77`.
+Use `git log --oneline platform/src/app/api/chat/consume/route.ts` to identify
+which commits are relevant. Remove any debug-level logs that are not intentional
+monitoring calls (i.e., not part of the `[MON-*]` or `[audit:*]` patterns).
 
-For each false-positive pattern identified, locate the rule(s) in the prompt that
-could cause it. Candidate sections:
-- §4.6 discovery class rules (B.11 whole-chart-read may be triggering extra tools)
-- §4.7 holistic class rules
-- §4.3 factual class (if factual entries were previously `single_answer` and are
-  now getting a broader tool set)
-- §4.5 cross_domain rules
-- The few-shot examples in §6 (if a few-shot shows a wide tool set, the model
-  generalises it too broadly)
-
-**AC-P1-1:** Before any prompt edit, write a brief diagnosis comment at the top
-of your first edit explaining: (a) which categories drove the regression; (b) which
-specific prompt rules/few-shots are implicated. This is for audit trail.
-
----
-
-## §4 — PHASE 2: Fix PLANNER_PROMPT_v2_0.md
-
-**Precision-targeted edits only.** Do not change rules that did not regress.
-Do not change asset_bundle rules (R21–R26) unless they are the root cause.
-Do not change the output schema.
-
-Guiding constraint: **For every edit, state the hypothesis: "This edit reduces
-false positives in [category] by [mechanism]."** If you cannot state this,
-do not make the edit.
-
-### Permitted categories of fix
-
-1. **Tighten over-broad rules** — if `§4.6 discovery` says "always include
-   `vector_search` + `get_chart_data` + `get_dasha_periods`", and the gold standard
-   for discovery queries only expects 2 of those 3, narrow the rule.
-
-2. **Add negative constraints** — add a `DO NOT include [tool_X] unless [condition]`
-   rule if the planner is systematically adding a tool when it shouldn't.
-
-3. **Fix few-shot contamination** — if a few-shot example in §6 shows a wider
-   tool set than the gold standard implies, tighten the few-shot to match
-   actual gold expectations.
-
-4. **Floor violation fix (secondary)** — for GT.027/GT.028: add a rule in §2 or §3
-   that even for empty/malformed queries, the planner must emit
-   `asset_bundle: [{asset_id:"FORENSIC"}, {asset_id:"CGM"}]`. This is defensive;
-   `bundle_hydrator.ts` already enforces it at runtime, so this is belt-and-suspenders.
-
-### Prohibited categories of change
-
-- Do NOT change `query_class` enum values (8 classes are correct).
-- Do NOT change the output JSON schema.
-- Do NOT change rules for categories that did NOT regress (preserves recall).
-- Do NOT add new few-shot examples — existing 11 are sufficient.
-
----
-
-## §5 — PHASE 3: Re-run the eval
-
-After each round of prompt edits, re-run the full 29-entry eval:
-
+**Verify StreamingAnswer.tsx + useChatSession.ts are clean:**
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav-pipeline/platform
-PLANNER_MODEL_ID=nvidia/llama-3.3-nemotron-super-49b-v1 \
-  npx tsx --conditions=react-server \
-  tests/eval/planner_smoke_runner.ts \
-  2>eval_stderr.log | tee eval_results_fix_attempt.json
-cat eval_stderr.log
+grep -n "console\.log" platform/src/components/consume/StreamingAnswer.tsx
+grep -n "console\.log" platform/src/hooks/useChatSession.ts
 ```
+Both should return zero matches (pre-confirmed clean; verify hasn't regressed).
 
-If NIM unavailable:
+### 3B. Resolve the QueryPlan adapter coupling in route.ts (GAP-9)
+
+**Current state:**
+- Line 41: `import type { QueryPlan } from '@/lib/router/types'`
+- Line 320: `const queryPlan: QueryPlan & { tool_calls?: PipelinePlan['tool_calls'] } = { ... }`
+
+The adapter at line 317–340 constructs a `QueryPlan`-shaped object from a
+`PipelinePlan` to satisfy downstream consumers (validators, audit, orchestrator)
+that were written before the new pipeline. `@/lib/router/types` still exists, so
+the compiler does not error today — but it is a legacy dependency coupling the
+new pipeline to the old router namespace.
+
+**Resolution path — choose the lowest-risk correct fix:**
+
+**Option A (preferred if downstream types permit):** Check whether `PipelinePlan`
+from `@/lib/pipeline/types` is a structural superset of `QueryPlan`. If every
+field on `QueryPlan` also exists on `PipelinePlan` (possibly optional vs required
+differences), replace the adapter's type annotation:
+```ts
+// Before
+const queryPlan: QueryPlan & { tool_calls?: PipelinePlan['tool_calls'] } = { ... }
+
+// After
+const queryPlan: PipelinePlan & { query_plan_id: string; schema_version: string } = {
+  ...plan,
+  query_plan_id: queryId,
+  schema_version: '1.0',
+  tools_authorized: toolsAuthorized,
+  tool_calls: plan.tool_calls,
+}
+```
+Then remove the `import type { QueryPlan } from '@/lib/router/types'` line.
+Run `tsc --noEmit` immediately after. If it passes → you're done.
+
+**Option B (fallback if Option A produces type errors):** Define a minimal
+inline interface in route.ts that replaces `QueryPlan` as a local structural
+type, removing the external import dependency:
+```ts
+// Replace the import with a local definition capturing only what route.ts uses:
+interface LegacyQueryPlanShape {
+  query_plan_id: string
+  query_text: string
+  query_class: string
+  domains: string[]
+  forward_looking: boolean
+  audience_tier: string
+  tools_authorized: string[]
+  history_mode: string
+  panel_mode: boolean
+  expected_output_shape: string
+  manifest_fingerprint: string
+  schema_version: string
+  planets?: string[]
+  houses?: number[]
+  dasha_context_required?: boolean
+  graph_seed_hints?: string[]
+  vector_search_filter?: Record<string, unknown>
+  time_window?: { start: string; end: string }
+  tool_calls?: PipelinePlan['tool_calls']
+}
+```
+Use `LegacyQueryPlanShape` in place of `QueryPlan &` at line 320. Run
+`tsc --noEmit` to confirm.
+
+**Decision rule:** Pick whichever option compiles cleanly with `tsc --noEmit`
+returning exit 0. Do **not** leave downstream consumers with broken types.
+Do **not** modify `@/lib/router/types.ts` — that is a shared module; its
+cleanup is a separate task.
+
+### 3C. Run TypeScript check
+
+After all edits:
 ```bash
-PLANNER_MODEL_ID=claude-haiku-4-5-20251001 \
-  npx tsx --conditions=react-server \
-  tests/eval/planner_smoke_runner.ts \
-  2>eval_stderr.log | tee eval_results_fix_attempt.json
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-cleanup/platform
+npx tsc --noEmit
 ```
 
-**Convergence target (all three must hold simultaneously):**
-- `avg_tool_recall ≥ 0.940`
-- `avg_tool_precision ≥ 0.945`
-- `avg_asset_bundle_recall ≥ 0.90`
-
-**Allowed iterations:** up to 3 rounds of edit+eval. If precision target is not
-reached in 3 rounds, record findings and stop — do not keep iterating without
-native review. See §8 escape clause.
+Exit code must be `0`. If it is not, iterate on 3B until it is.
 
 ---
 
-## §6 — PHASE 4: Persist final results and update governance
+## §4 — ACCEPTANCE CRITERIA (4 items)
 
-### 6A. Save final eval results
-
-Write final eval output to:
-```
-platform/tests/eval/eval_results_planner_prompt_fix_s1.json
-```
-
-### 6B. Update REGRESSION_NOTES_v2_0.md
-
-Append a `## Resolution` section at the bottom with:
-- What rules were changed and why (one line per rule)
-- Final aggregate scores
-- Floor violation status (GT.027/GT.028 — fixed or still failing)
-
-### 6C. Append to SESSION_LOG.md (00_ARCHITECTURE/SESSION_LOG.md)
-
-```
-session_id: Planner-Prompt-Fix-S1
-date: 2026-05-11
-summary: >
-  Precision regression fix for PLANNER_PROMPT_v2_0.md.
-  Pre-fix: recall=0.945 precision=0.852.
-  Post-fix: recall=<X.XXX> precision=<X.XXX> asset_bundle_recall=<X.XXX>.
-  Rules changed: <list>.
-  Floor violations: <0 | 2 (GT.027/GT.028 still failing)>.
-```
-
-### 6D. Update CURRENT_STATE_v1_0.md
-
-In `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`, find the `planner_eval_s1`
-concurrent workstream block. Add immediately after it:
-
-```yaml
-    planner_prompt_fix_s1:
-      date: 2026-05-11
-      phase_status: COMPLETE
-      prompt_version: PLANNER_PROMPT_v2_0.md (in-place patch)
-      pre_fix_precision: 0.852
-      post_fix_precision: <actual value>
-      post_fix_recall: <actual value>
-      post_fix_asset_bundle_recall: <actual value>
-      floor_violations_resolved: <true|false>
-      rules_changed: <list of rule IDs or section references>
-      result_artifact: platform/tests/eval/eval_results_planner_prompt_fix_s1.json
-```
+- [ ] **AC-1** `grep -n "console\.log" platform/src/app/api/chat/consume/route.ts` returns zero lines that are debug prints from b3fcb77 or later (intentional `[MON-*]`/`[audit:*]` monitoring patterns are exempt if any exist).
+- [ ] **AC-2** `grep -rn "console\.log" platform/src/components/consume/StreamingAnswer.tsx platform/src/hooks/useChatSession.ts` returns zero matches.
+- [ ] **AC-3** `grep -rn "@/lib/router/types" platform/src/app/api/chat/consume/route.ts` returns zero matches — the stale import is removed.
+- [ ] **AC-4** `cd platform && npx tsc --noEmit` exits `0` with no TypeScript errors in the consume route or any files it imports.
 
 ---
 
-## §7 — ACCEPTANCE CRITERIA (10 items)
-
-### Phase 1 — Diagnosis (1 criterion)
-- [ ] **AC-P1-1** Diagnosis comment written before first edit (category + rule cause)
-
-### Phase 2 — Prompt fix (2 criteria)
-- [ ] **AC-P2-1** Every edit has a stated hypothesis ("reduces FP in X by Y")
-- [ ] **AC-P2-2** No changes to: output schema, query_class enum, asset_bundle schema,
-      rules for non-regressing categories, or new few-shot additions
-
-### Phase 3 — Eval convergence (3 criteria)
-- [ ] **AC-P3-1** `avg_tool_recall ≥ 0.940` (must not regress recall)
-- [ ] **AC-P3-2** `avg_tool_precision ≥ 0.945` (target: recover to baseline)
-- [ ] **AC-P3-3** `avg_asset_bundle_recall ≥ 0.90`
-
-### Phase 4 — Governance (4 criteria)
-- [ ] **AC-P4-1** `eval_results_planner_prompt_fix_s1.json` written
-- [ ] **AC-P4-2** `REGRESSION_NOTES_v2_0.md` has `## Resolution` section
-- [ ] **AC-P4-3** `SESSION_LOG.md` entry appended
-- [ ] **AC-P4-4** `CURRENT_STATE_v1_0.md` `planner_prompt_fix_s1` block added
-
----
-
-## §8 — ESCAPE CLAUSE
-
-If after 3 rounds of edit+eval, `avg_tool_precision < 0.945`:
-1. Do NOT keep iterating.
-2. Record the best result achieved (even if below threshold) in
-   `eval_results_planner_prompt_fix_s1.json`.
-3. Append to `REGRESSION_NOTES_v2_0.md §Resolution`:
-   "3 rounds exhausted. Best precision achieved: X.XXX. Remaining gap: X.XXX.
-    Hypothesis for continued regression: [your analysis]. Recommend native review
-    before proceeding to Planner-Prompt-Fix-S2."
-4. Still mark ACs P4-1 through P4-4 as PASS (governance artifacts created).
-5. Mark AC-P3-2 as FAIL.
-6. Set `status: COMPLETE` with a note in this frontmatter:
-   `status_note: Escape clause invoked — precision recovered to X.XXX (target 0.945)`
-7. The overall brief is still COMPLETE per escape clause; Planner-Prompt-Fix-S2
-   is the next session.
-
----
-
-## §9 — MAY TOUCH / MUST NOT TOUCH
+## §5 — MAY TOUCH / MUST NOT TOUCH
 
 ### may_touch
 ```
-00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md              (precision-targeted edits only)
-platform/tests/eval/eval_results_planner_prompt_fix_s1.json  (CREATE)
-platform/tests/eval/REGRESSION_NOTES_v2_0.md        (append §Resolution section)
-00_ARCHITECTURE/CURRENT_STATE_v1_0.md               (planner_prompt_fix_s1 block only)
-00_ARCHITECTURE/SESSION_LOG.md                      (append only)
-CLAUDECODE_BRIEF.md                                 (set status: COMPLETE at end)
+platform/src/app/api/chat/consume/route.ts        (all edits go here)
+platform/src/components/consume/StreamingAnswer.tsx (verify-only unless console.logs found)
+platform/src/hooks/useChatSession.ts               (verify-only unless console.logs found)
+CLAUDECODE_BRIEF.md                                (set status: COMPLETE at end)
 ```
 
 ### must_not_touch
 ```
-platform/src/**                                     (platform source FROZEN)
-platform/tests/eval/planner_smoke_runner.ts         (already fixed — do not touch)
-platform/tests/eval/planner_regression_gate.test.ts (already fixed — do not touch)
-platform/tests/eval/planner_golden_set.json         (v1.1 is final — do not touch)
-platform/tests/eval/eval_results_planner_eval_s1.json (Planner-Eval-S1 artifact — read-only)
-platform/src/lib/pipeline/types.ts                  (schema frozen)
-CLAUDE.md
+00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md             (QP-S1 owns this)
+platform/tests/eval/planner_golden_set.json        (QP-S3 owns this)
+platform/src/lib/router/types.ts                   (shared module — do NOT edit)
+platform/src/lib/pipeline/types.ts                 (schema frozen)
+platform/src/lib/validators/**                     (do NOT edit validators)
+platform/src/lib/synthesis/**                      (do NOT edit orchestrator)
+.gitignore                                         (GAP-10 already closed at 7b8aa61)
+00_ARCHITECTURE/CURRENT_STATE_v1_0.md              (QP-S4 owns governance)
+00_ARCHITECTURE/SESSION_LOG.md                     (QP-S4 owns governance)
 ```
 
 ---
 
-## §10 — KNOWN OUT-OF-SCOPE
+## §6 — KNOWN OUT-OF-SCOPE
 
-1. **PR merge** — `feature/pipeline-transform-s1` is awaiting native review. Do not
-   merge in this session.
-2. **M5 open** — PHASE_M5_PLAN_v1_0.md authoring follows after this session.
-3. **Varga CPB** — D12–D19 running in parallel on `feature/varga-etl-full-s1`.
-4. **Planner model upgrade** — if scores differ substantially between NIM and Haiku,
-   record in REGRESSION_NOTES but do not change model selection; that is Planner-Prompt-Fix-S2 scope.
+1. **Full router module deletion** — `@/lib/router/types.ts`, `errors.ts`, and
+   `retrieval_capability_spec.ts` still exist. Their complete removal would
+   require updating all their consumers. That is a separate planned cleanup, not
+   this session.
+2. **Eval run** — QP-S4 runs the full eval after S1+S3 are merged.
+3. **Planner prompt** — QP-S1 owns `PLANNER_PROMPT_v2_0.md`.
+4. **Golden set** — QP-S3 owns `planner_golden_set.json`.
+5. **Governance close** — SESSION_LOG + CURRENT_STATE are QP-S4's responsibility.
 
 ---
 
-## §11 — COMPLETION SEQUENCE
+## §7 — COMPLETION SEQUENCE
 
-When all 10 ACs are PASS (or escape clause invoked):
+When all 4 ACs are PASS:
 
 1. Set `status: COMPLETE` in this file's frontmatter.
-2. Commit all changes to `feature/pipeline-transform-s1`:
+2. Commit:
    ```bash
-   git add 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md \
-     platform/tests/eval/eval_results_planner_prompt_fix_s1.json \
-     platform/tests/eval/REGRESSION_NOTES_v2_0.md \
-     00_ARCHITECTURE/CURRENT_STATE_v1_0.md \
-     00_ARCHITECTURE/SESSION_LOG.md \
-     CLAUDECODE_BRIEF.md
-   git commit -m "fix(planner): PLANNER_PROMPT_v2_0 precision regression remediation
+   git add platform/src/app/api/chat/consume/route.ts \
+           platform/src/components/consume/StreamingAnswer.tsx \
+           platform/src/hooks/useChatSession.ts \
+           CLAUDECODE_BRIEF.md
+   git commit -m "fix(cleanup): remove debug console.logs; drop QueryPlan legacy import in route.ts
 
-   Pre-fix: recall=0.945 precision=0.852 (Planner-Eval-S1 baseline)
-   Post-fix: recall=<X.XXX> precision=<X.XXX> asset_bundle_recall=<X.XXX>
-   Rules changed: <list>
-   Floor violations: <resolved|still failing GT.027/GT.028>
-   29/29 entries scored. eval_results_planner_prompt_fix_s1.json written."
+   GAP-8: remove console.log at route.ts:314 (B.11 enforcement debug print)
+   GAP-9: replace QueryPlan import from @/lib/router/types with local type or PipelinePlan
+   GAP-10: already closed at 7b8aa61 (gitignore patterns committed)
+   tsc --noEmit: exit 0 confirmed"
+   git push -u origin fix/cleanup-qp-s2
    ```
-3. Print the final 10-item AC checklist with PASS/FAIL.
+3. Notify: session QP-S2 COMPLETE on branch `fix/cleanup-qp-s2`.
 
 ---
 
-*CLAUDECODE_BRIEF.md · Planner-Prompt-Fix-S1 · 2026-05-11*
-*10 acceptance criteria: diagnosis + precision-targeted prompt fix + eval convergence*
-*Supersedes Planner-Eval-S1 (COMPLETE 2026-05-11, commit 58a2ad4)*
+*CLAUDECODE_BRIEF_QP_S2.md · Pipeline Gap Plan QP-S2 · 2026-05-11*
+*4 acceptance criteria: debug log removal + legacy import elimination → tsc clean*
+*Parallel with: QP-S1 (planner prompt), QP-S3 (golden set)*

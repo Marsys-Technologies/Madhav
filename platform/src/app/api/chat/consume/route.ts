@@ -38,7 +38,6 @@ import { createToolCache, executeWithCache } from '@/lib/cache/index'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
-import type { QueryPlan } from '@/lib/router/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
 import { validateCitations } from '@/lib/synthesis/citation_check'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
@@ -311,13 +310,49 @@ export async function POST(request: Request) {
       { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 2, reason: 'B.11 floor enforcement' },
     )
     toolsAuthorized.push('msr_sql', 'cgm_graph_walk')
-    console.log('[consume:v3] B.11 enforcement: added msr_sql + cgm_graph_walk')
   }
 
-  // Adapter: PipelinePlan → QueryPlan-shaped object for retrieval tools,
+  // Adapter: PipelinePlan → legacy-shaped object for retrieval tools,
   // validators, audit, the orchestrator. Carries plan.tool_calls as an extra
   // field so single_model_strategy can read planner-supplied per-tool params.
-  const queryPlan: QueryPlan & { tool_calls?: PipelinePlan['tool_calls'] } = {
+  interface LegacyQueryPlanShape {
+    query_plan_id: string
+    query_text: string
+    query_class:
+      | 'factual'
+      | 'interpretive'
+      | 'predictive'
+      | 'cross_domain'
+      | 'discovery'
+      | 'holistic'
+      | 'remedial'
+      | 'cross_native'
+    domains: string[]
+    forward_looking: boolean
+    audience_tier:
+      | 'super_admin'
+      | 'acharya_reviewer'
+      | 'client'
+      | 'public_redacted'
+    tools_authorized: string[]
+    history_mode: 'synthesized' | 'research'
+    panel_mode: boolean
+    expected_output_shape:
+      | 'single_answer'
+      | 'three_interpretation'
+      | 'time_indexed_prediction'
+      | 'structured_data'
+    manifest_fingerprint: string
+    schema_version: '1.0'
+    planets?: string[]
+    houses?: number[]
+    dasha_context_required?: boolean
+    graph_seed_hints?: string[]
+    vector_search_filter?: { doc_type?: string[]; layer?: string }
+    time_window?: { start: string; end: string }
+    tool_calls?: PipelinePlan['tool_calls']
+  }
+  const queryPlan: LegacyQueryPlanShape = {
     query_plan_id: queryId,
     query_text: queryText,
     query_class: plan.query_class,
