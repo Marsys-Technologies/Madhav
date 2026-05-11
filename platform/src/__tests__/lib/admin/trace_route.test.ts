@@ -27,7 +27,7 @@ describe('GET /api/admin/trace/[query_id]', () => {
 
   it('returns 401 when user is not authenticated', async () => {
     vi.mocked(getServerUserWithProfile).mockResolvedValue(null)
-    const res = await GET(makeReq(), { params: { query_id: QUERY_ID } })
+    const res = await GET(makeReq(), { params: Promise.resolve({ query_id: QUERY_ID }) })
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body.error).toBe('Unauthorized')
@@ -38,7 +38,7 @@ describe('GET /api/admin/trace/[query_id]', () => {
       user: { uid: 'user-1' } as never,
       profile: { id: 'user-1', role: 'client', status: 'active' },
     })
-    const res = await GET(makeReq(), { params: { query_id: QUERY_ID } })
+    const res = await GET(makeReq(), { params: Promise.resolve({ query_id: QUERY_ID }) })
     expect(res.status).toBe(403)
     const body = await res.json()
     expect(body.error).toBe('Forbidden')
@@ -49,7 +49,7 @@ describe('GET /api/admin/trace/[query_id]', () => {
       user: { uid: 'admin-1' } as never,
       profile: { id: 'admin-1', role: 'super_admin', status: 'disabled' },
     })
-    const res = await GET(makeReq(), { params: { query_id: QUERY_ID } })
+    const res = await GET(makeReq(), { params: Promise.resolve({ query_id: QUERY_ID }) })
     expect(res.status).toBe(403)
   })
 
@@ -61,7 +61,7 @@ describe('GET /api/admin/trace/[query_id]', () => {
     const mockTrace = { query: { id: QUERY_ID, health: 'HEALTHY' }, partial: false }
     vi.mocked(assembleTrace).mockResolvedValue(mockTrace as never)
 
-    const res = await GET(makeReq(), { params: { query_id: QUERY_ID } })
+    const res = await GET(makeReq(), { params: Promise.resolve({ query_id: QUERY_ID }) })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.query.id).toBe(QUERY_ID)
