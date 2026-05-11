@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 600
 SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md"
-SOURCE_VERSION = "9.0"
+SOURCE_VERSION = "9.1"
 LAYER = "L2.5"
 
 # CGM_v9_0 node blocks begin with a line matching `node_id: <ID>`

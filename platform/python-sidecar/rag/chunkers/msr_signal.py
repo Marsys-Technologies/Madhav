@@ -2,7 +2,7 @@
 chunkers.msr_signal — Doc-type 1: MSR Signal chunker.
 Phase B.2. Per M2A_EXEC_PLAN_v1_0.md §PLAN B.2 Task 1.1 + chunker_spec_v1_0.md §1 Doc-Type 1.
 Spec ref: chunker_spec_v1_0.md §1 Doc-Type 1.
-Boundary: ^SIG\\.MSR\\.\\d{3}[a-z]?:$ — one chunk per signal. Target: 499 chunks.
+Boundary: ^SIG\\.MSR\\.\\d{3}[a-z]?:$ — one chunk per signal. Target: 514 chunks (v3.1).
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 800
 SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
-SOURCE_VERSION = "3.0"
+SOURCE_VERSION = "3.1"
 LAYER = "L2.5"
 
 _BOUNDARY = re.compile(r"^(SIG\.MSR\.\d{3}[a-z]?):\s*$", re.MULTILINE)
@@ -63,7 +63,7 @@ def chunk_msr_signals(repo_root: str) -> list[Chunk]:
     """
     Parse MSR_v3_0.md and produce one Chunk per signal.
     Applies P1 (layer separation), P2 (citation), P5 (signal ID resolution) gating.
-    Stop condition: raises RuntimeError if chunk count ≠ 499.
+    Stop condition: raises RuntimeError if chunk count ≠ 514.
     """
     msr_path = Path(repo_root) / SOURCE_FILE
     if not msr_path.exists():
@@ -145,9 +145,9 @@ def chunk_msr_signals(repo_root: str) -> list[Chunk]:
         logger.error("%d MSR signals blocked by P5 (unresolvable signal_id)", p5_blocks)
 
     total_parsed = len(signals)
-    if len(chunks) != 499:
+    if len(chunks) != 514:
         raise RuntimeError(
-            f"STOP: MSR chunk count {len(chunks)} ≠ 499 "
+            f"STOP: MSR chunk count {len(chunks)} ≠ 514 "
             f"(parsed={total_parsed}, p1_violations={p1_violations}, p5_blocks={p5_blocks}). "
             "Check MSR_v3_0.md parse or validator gating."
         )
