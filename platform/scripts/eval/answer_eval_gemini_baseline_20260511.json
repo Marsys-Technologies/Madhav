@@ -1,0 +1,241 @@
+{
+  "run_date": "2026-05-11T14:48:37.341330+00:00",
+  "base_url": "https://amjis-web-938361928218.asia-south1.run.app",
+  "chart_id": "362f9f17-95a5-490b-a5a7-027d3e0efda0",
+  "eval_stack": "gemini",
+  "cloud_run_revision": "amjis-web-00076-hkr",
+  "harness": "scripts/answer_eval.ts",
+  "isPass_reform_commit": "3b70a70",
+  "router_prompt_fix_commits": [
+    "099937e",
+    "884b99c"
+  ],
+  "retry_policy": "first pass for 15 queries; 5 fetch-failed queries retried individually with --query-id (Connection: close header in harness, 5s inter-retry sleep)",
+  "results": [
+    {
+      "id": "GQ-001",
+      "category": "factual",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.83
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-002",
+      "category": "factual",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.8
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-003",
+      "category": "factual",
+      "scores": {
+        "layer_coverage": 0.5,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.75
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-004",
+      "category": "interpretive",
+      "scores": {
+        "layer_coverage": 0.67,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.92
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-005",
+      "category": "interpretive",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.86
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-006",
+      "category": "interpretive",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 0.5,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.92
+      },
+      "pass": false,
+      "error": null
+    },
+    {
+      "id": "GQ-007",
+      "category": "holistic",
+      "scores": {
+        "layer_coverage": 0.8,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.92
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-008",
+      "category": "holistic",
+      "scores": {
+        "layer_coverage": 0.75,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.91
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-009",
+      "category": "holistic",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.94
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-010",
+      "category": "discovery",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.94
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-011",
+      "category": "discovery",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.9
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-012",
+      "category": "discovery",
+      "scores": {
+        "layer_coverage": 0.67,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.93
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-013",
+      "category": "predictive",
+      "scores": {
+        "layer_coverage": 0.67,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.93
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-014",
+      "category": "predictive",
+      "scores": {
+        "layer_coverage": 1.0,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.91
+      },
+      "pass": true,
+      "error": null
+    },
+    {
+      "id": "GQ-015",
+      "category": "predictive",
+      "scores": {
+        "layer_coverage": 0.75,
+        "b10_compliance": 1.0,
+        "b11_signal": 1.0,
+        "citation_presence": 1.0,
+        "calibration_language": 0.93
+      },
+      "pass": true,
+      "error": null
+    }
+  ],
+  "aggregate": {
+    "queries_total": 15,
+    "queries_run": 15,
+    "queries_skipped": 0,
+    "passed": 14,
+    "pass_rate": 0.9333,
+    "mean_layer_coverage": 0.854,
+    "mean_b10_compliance": 0.9667,
+    "mean_b11_signal": 1.0,
+    "mean_citation_presence": 1.0,
+    "mean_calibration_language": 0.8927,
+    "calibration_factual_mean": 0.7933,
+    "calibration_nonfactual_mean": 0.9175
+  },
+  "anthropic_baseline": {
+    "citations": 1.0,
+    "b11_signal": 1.0,
+    "layer_coverage": 1.0,
+    "b10_compliance": 1.0,
+    "calibration_structural": 0.47,
+    "pass_rate": 0.7333333333333333
+  },
+  "delta_vs_anthropic": {
+    "citation_presence": 0.0,
+    "b11_signal": 0.0,
+    "layer_coverage": -0.146,
+    "b10_compliance": -0.0333,
+    "calibration_nonfactual_vs_anthropic_structural": 0.4475,
+    "pass_rate": 0.2
+  }
+}
