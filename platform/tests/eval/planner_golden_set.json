@@ -32,7 +32,8 @@
     "category": "Test-set grouping for distribution coverage. 'planetary' and 'edge_case' are not QueryPlan enum values — they describe what the test exercises about the planner.",
     "expected_tools": "The full set of tools a correct planner SHOULD select. Subset of PRIMARY_TOOL_NAMES (available_tools).",
     "required_tools": "Subset of expected_tools that MUST appear in the planner's output. Empty list = no hard requirement.",
-    "forbidden_tools": "Tools that MUST NOT appear in the planner's output. Disjoint from expected_tools. May reference non-primary names — those are inert under a planner restricted to primary tools, but preserved for documentation."
+    "forbidden_tools": "Tools that MUST NOT appear in the planner's output. Disjoint from expected_tools. May reference non-primary names — those are inert under a planner restricted to primary tools, but preserved for documentation.",
+    "required_asset_ids": "Minimum set of canonical document IDs (asset_id values from CAPABILITY_MANIFEST.json) that a correct planner MUST include in asset_bundle[]. Grounded in PLANNER_PROMPT_v2_0.md rules R21–R26. FORENSIC and CGM are floor assets required for every entry."
   },
   "entries": [
     {
@@ -40,260 +41,640 @@
       "query": "What gemstone should I wear to strengthen my career?",
       "query_class": "remedial",
       "category": "remedial",
-      "expected_tools": ["remedial_codex_query", "msr_sql", "vector_search", "resonance_register"],
-      "required_tools": ["remedial_codex_query", "resonance_register"],
-      "forbidden_tools": ["temporal"],
-      "notes": "Career-domain remedial. remedial_codex_query supplies gemstone prescription (doc_type=l4_remedial). msr_sql identifies the planet to strengthen via career-domain signals (10H lord, Sun, Saturn). vector_search reaches the career L3 domain_report rag_chunks for diagnostic context. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a gemstone is a remedial alignment between planet, native, and career domain — resonance is the right lens. temporal is forbidden because the question is not transit-bound."
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "vector_search",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "notes": "Career-domain remedial. remedial_codex_query supplies gemstone prescription (doc_type=l4_remedial). msr_sql identifies the planet to strengthen via career-domain signals (10H lord, Sun, Saturn). vector_search reaches the career L3 domain_report rag_chunks for diagnostic context. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a gemstone is a remedial alignment between planet, native, and career domain — resonance is the right lens. temporal is forbidden because the question is not transit-bound.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ]
     },
     {
       "id": "GT.002",
       "query": "Which mantra should I recite to support spiritual progress?",
       "query_class": "remedial",
       "category": "remedial",
-      "expected_tools": ["remedial_codex_query", "msr_sql", "vector_search", "resonance_register"],
-      "required_tools": ["remedial_codex_query", "resonance_register"],
-      "forbidden_tools": ["query_varshaphala", "temporal"],
-      "notes": "Spiritual-domain remedial. Mantra is a remedial_codex artifact (doc_type=l4_remedial). msr_sql surfaces Jupiter / Ketu / 9H signals in the spiritual domain. vector_search reaches the spirituality L3 domain_report. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a mantra aligns deity/planet vibration with the spiritual domain — resonance is the right lens. No annual-return or transit dependence."
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "vector_search",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "query_varshaphala",
+        "temporal"
+      ],
+      "notes": "Spiritual-domain remedial. Mantra is a remedial_codex artifact (doc_type=l4_remedial). msr_sql surfaces Jupiter / Ketu / 9H signals in the spiritual domain. vector_search reaches the spirituality L3 domain_report. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a mantra aligns deity/planet vibration with the spiritual domain — resonance is the right lens. No annual-return or transit dependence.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ]
     },
     {
       "id": "GT.003",
       "query": "Should I wear a yellow sapphire?",
       "query_class": "remedial",
       "category": "remedial",
-      "expected_tools": ["remedial_codex_query", "msr_sql", "resonance_register"],
-      "required_tools": ["remedial_codex_query", "msr_sql", "resonance_register"],
-      "forbidden_tools": ["vector_search", "domain_report_query"],
-      "notes": "Single-stone remedial. remedial_codex_query holds the yellow-sapphire prescription rules (gemstone practice_type, planet=Jupiter). msr_sql returns Jupiter's natal signals — placement, dignity, and signal strength. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a yellow-sapphire prescription rests on Jupiter's resonance with the native — confirm the alignment before recommending the stone. The query has a precise structured answer; vector_search is forbidden because semantic retrieval would dilute the codex-grounded prescription."
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "domain_report_query"
+      ],
+      "notes": "Single-stone remedial. remedial_codex_query holds the yellow-sapphire prescription rules (gemstone practice_type, planet=Jupiter). msr_sql returns Jupiter's natal signals — placement, dignity, and signal strength. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a yellow-sapphire prescription rests on Jupiter's resonance with the native — confirm the alignment before recommending the stone. The query has a precise structured answer; vector_search is forbidden because semantic retrieval would dilute the codex-grounded prescription.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ]
     },
     {
       "id": "GT.004",
       "query": "What planetary remedies are recommended for my Mars?",
       "query_class": "remedial",
       "category": "remedial",
-      "expected_tools": ["remedial_codex_query", "msr_sql", "resonance_register"],
-      "required_tools": ["remedial_codex_query", "msr_sql", "resonance_register"],
-      "forbidden_tools": ["temporal"],
-      "notes": "Single-planet remedial scoped to Mars. msr_sql for Mars-domain signals (planet=Mars, all signal_types). remedial_codex_query for the rituals/stones/mantras keyed to Mars (planet=Mars, all practice_types). resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: Mars-keyed remedies must be tuned to Mars's resonance with the native's domains — alignment lens before prescription."
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "notes": "Single-planet remedial scoped to Mars. msr_sql for Mars-domain signals (planet=Mars, all signal_types). remedial_codex_query for the rituals/stones/mantras keyed to Mars (planet=Mars, all practice_types). resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: Mars-keyed remedies must be tuned to Mars's resonance with the native's domains — alignment lens before prescription.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ]
     },
     {
       "id": "GT.005",
       "query": "Recommend a daily ritual to strengthen my chart's weakest planet.",
       "query_class": "remedial",
       "category": "remedial",
-      "expected_tools": ["remedial_codex_query", "msr_sql", "pattern_register"],
-      "required_tools": ["remedial_codex_query", "msr_sql", "pattern_register"],
-      "forbidden_tools": ["query_varshaphala"],
-      "notes": "Whole-chart strength scan + remedial. msr_sql surfaces low-strength signals across grahas (signal_type=strength, valence=challenging). remedial_codex_query supplies the dinacharya / daily-practice prescription for the implicated planet. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate: identifying the chart's weakest planet is fundamentally a recurring-weakness-pattern question — pattern_register is the right lens, not resonance."
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "query_varshaphala"
+      ],
+      "notes": "Whole-chart strength scan + remedial. msr_sql surfaces low-strength signals across grahas (signal_type=strength, valence=challenging). remedial_codex_query supplies the dinacharya / daily-practice prescription for the implicated planet. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate: identifying the chart's weakest planet is fundamentally a recurring-weakness-pattern question — pattern_register is the right lens, not resonance.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ]
     },
     {
       "id": "GT.006",
       "query": "Are there fasting practices that would help my health?",
       "query_class": "remedial",
       "category": "remedial",
-      "expected_tools": ["remedial_codex_query", "msr_sql", "vector_search", "resonance_register"],
-      "required_tools": ["remedial_codex_query", "vector_search", "resonance_register"],
-      "forbidden_tools": ["query_varshaphala"],
-      "notes": "Health-domain remedial. remedial_codex_query supplies the fasting/dinacharya prescription. vector_search reaches the health L3 domain_report (doc_type='domain_report') for diagnosis context. msr_sql identifies the implicated graha via health-domain signals. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a fasting prescription aligns the body's rhythms with the implicated planet's resonance — alignment lens, not pattern."
+      "expected_tools": [
+        "remedial_codex_query",
+        "msr_sql",
+        "vector_search",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "remedial_codex_query",
+        "vector_search",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "query_varshaphala"
+      ],
+      "notes": "Health-domain remedial. remedial_codex_query supplies the fasting/dinacharya prescription. vector_search reaches the health L3 domain_report (doc_type='domain_report') for diagnosis context. msr_sql identifies the implicated graha via health-domain signals. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a fasting prescription aligns the body's rhythms with the implicated planet's resonance — alignment lens, not pattern.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "RM"
+      ]
     },
     {
       "id": "GT.007",
       "query": "What does my 7th house say about marriage?",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "vector_search"],
-      "required_tools": ["msr_sql", "vector_search"],
-      "forbidden_tools": ["temporal", "remedial_codex_query"],
-      "notes": "House-scoped interpretive read. msr_sql returns 7H-keyed signals (house=7, signal_type=placement|aspect|lordship). vector_search reaches the marriage L3 domain_report (doc_type='domain_report') for the narrative. No remedy asked."
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "temporal",
+        "remedial_codex_query"
+      ],
+      "notes": "House-scoped interpretive read. msr_sql returns 7H-keyed signals (house=7, signal_type=placement|aspect|lordship). vector_search reaches the marriage L3 domain_report (doc_type='domain_report') for the narrative. No remedy asked.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.008",
       "query": "Tell me about my Lagna and overall chart strength.",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "vector_search", "pattern_register"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "notes": "Whole-chart interpretive. msr_sql is the structured surface for Lagna lord, ascendant degree, shadbala-type signals. pattern_register surfaces named yogas tied to Lagna strength (Raja, Dhana, etc.). vector_search reaches L3 narrative chunks for overall life-path context."
+      "expected_tools": [
+        "msr_sql",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "notes": "Whole-chart interpretive. msr_sql is the structured surface for Lagna lord, ascendant degree, shadbala-type signals. pattern_register surfaces named yogas tied to Lagna strength (Raja, Dhana, etc.). vector_search reaches L3 narrative chunks for overall life-path context.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.009",
       "query": "What yogas are present in my chart?",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["pattern_register", "msr_sql"],
-      "required_tools": ["pattern_register"],
-      "forbidden_tools": ["temporal", "remedial_codex_query"],
-      "notes": "Yogas are a structural pattern read. pattern_register is the L2.5 surface for named yogas (Raja, Dhana, Pancha-mahapurusha, etc.); msr_sql supplies the underlying placement signals (signal_type=yoga) that confirm each yoga."
+      "expected_tools": [
+        "pattern_register",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "temporal",
+        "remedial_codex_query"
+      ],
+      "notes": "Yogas are a structural pattern read. pattern_register is the L2.5 surface for named yogas (Raja, Dhana, Pancha-mahapurusha, etc.); msr_sql supplies the underlying placement signals (signal_type=yoga) that confirm each yoga.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.010",
       "query": "Explain the role of Saturn in my 11th house.",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "cgm_graph_walk"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala"],
-      "notes": "Planet-in-house interpretive. msr_sql returns Saturn's 11H placement signals and aspects (planet=Saturn, house=11). cgm_graph_walk traces conceptual links from the Saturn-11H seed (CGM nodes PLN.Saturn + HSE.11) outward to dependent concepts."
+      "expected_tools": [
+        "msr_sql",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "notes": "Planet-in-house interpretive. msr_sql returns Saturn's 11H placement signals and aspects (planet=Saturn, house=11). cgm_graph_walk traces conceptual links from the Saturn-11H seed (CGM nodes PLN.Saturn + HSE.11) outward to dependent concepts.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.011",
       "query": "Read my D9 Navamsha for marriage indications.",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "vector_search"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["remedial_codex_query", "temporal"],
-      "notes": "Divisional read. msr_sql surfaces marriage-domain signals tagged with the D9 divisional chart (planet=marriage-significators, signal_type=divisional). vector_search reaches the marriage L3 domain_report for the Navamsha narrative."
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal"
+      ],
+      "notes": "Divisional read. msr_sql surfaces marriage-domain signals tagged with the D9 divisional chart (planet=marriage-significators, signal_type=divisional). vector_search reaches the marriage L3 domain_report for the Navamsha narrative.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.012",
       "query": "What does my 10th house say about my profession?",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "vector_search"],
-      "required_tools": ["msr_sql", "vector_search"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "notes": "Career-house interpretive. msr_sql returns 10H lord, occupants, aspects, and D10-tagged signals. vector_search reaches the career L3 domain_report for the narrative."
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "notes": "Career-house interpretive. msr_sql returns 10H lord, occupants, aspects, and D10-tagged signals. vector_search reaches the career L3 domain_report for the narrative.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.013",
       "query": "What can I expect from the upcoming Ketu Mahadasha starting in 2027?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["vector_search", "msr_sql", "pattern_register"],
-      "required_tools": ["vector_search", "msr_sql", "pattern_register"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala"],
-      "notes": "Long-horizon dasha-based prediction. vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the Ketu MD arc 2027–2034. msr_sql supplies natal Ketu signals (planet=Ketu, forward_looking=true). pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing Ketu-keyed forward_looking patterns; promoted to required_tools so a predictive answer cannot ship without the cross-domain pattern lens."
+      "expected_tools": [
+        "vector_search",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "vector_search",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "notes": "Long-horizon dasha-based prediction. vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the Ketu MD arc 2027–2034. msr_sql supplies natal Ketu signals (planet=Ketu, forward_looking=true). pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing Ketu-keyed forward_looking patterns; promoted to required_tools so a predictive answer cannot ship without the cross-domain pattern lens.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ]
     },
     {
       "id": "GT.014",
       "query": "Where is Saturn transiting in my chart right now and what should I expect?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala", "timeline_query"],
-      "notes": "Live-transit prediction. msr_sql with planet=Saturn + temporal_activation=lit returns currently-active Saturn signals; pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing forward_looking Saturn patterns and is promoted to required_tools. The L5 timeline horizon is wrong for a live-transit question."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "notes": "Live-transit prediction. msr_sql with planet=Saturn + temporal_activation=lit returns currently-active Saturn signals; pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing forward_looking Saturn patterns and is promoted to required_tools. The L5 timeline horizon is wrong for a live-transit question.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ]
     },
     {
       "id": "GT.015",
       "query": "Will the next year bring career growth?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register", "vector_search"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "notes": "Annual-horizon prediction. msr_sql with domain=career + forward_looking=true + temporal_activation=ripening surfaces near-term career-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking career yogas and is promoted to required_tools. vector_search reaches the career L3 domain_report for context."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "notes": "Annual-horizon prediction. msr_sql with domain=career + forward_looking=true + temporal_activation=ripening surfaces near-term career-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking career yogas and is promoted to required_tools. vector_search reaches the career L3 domain_report for context.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ]
     },
     {
       "id": "GT.016",
       "query": "When is my next favorable period for starting a new venture?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register", "vector_search"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "notes": "Forward-looking timing. msr_sql with forward_looking=true + temporal_activation=ripening returns ripening venture-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking patterns and is promoted to required_tools. vector_search reaches L5 timeline (doc_type='l5_timeline') for upcoming favorable windows."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "notes": "Forward-looking timing. msr_sql with forward_looking=true + temporal_activation=ripening returns ripening venture-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking patterns and is promoted to required_tools. vector_search reaches L5 timeline (doc_type='l5_timeline') for upcoming favorable windows.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ]
     },
     {
       "id": "GT.017",
       "query": "Give me a comprehensive overview of my life path across all major domains.",
       "query_class": "holistic",
       "category": "holistic",
-      "expected_tools": ["cluster_atlas", "vector_search", "pattern_register", "cgm_graph_walk"],
-      "required_tools": ["cluster_atlas", "vector_search"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala"],
-      "notes": "Multi-domain whole-chart synthesis. cluster_atlas surfaces the dominant signal clusters across domains. vector_search reaches L3 domain_report chunks (doc_type='domain_report') for per-domain narratives. pattern_register adds named yogas across domains. cgm_graph_walk shows cross-domain linkages between domain seed nodes."
+      "expected_tools": [
+        "cluster_atlas",
+        "vector_search",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "cluster_atlas",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "notes": "Multi-domain whole-chart synthesis. cluster_atlas surfaces the dominant signal clusters across domains. vector_search reaches L3 domain_report chunks (doc_type='domain_report') for per-domain narratives. pattern_register adds named yogas across domains. cgm_graph_walk shows cross-domain linkages between domain seed nodes.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ]
     },
     {
       "id": "GT.018",
       "query": "What are the central themes and contradictions in my chart?",
       "query_class": "holistic",
       "category": "holistic",
-      "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas"],
-      "required_tools": ["contradiction_register", "pattern_register"],
-      "forbidden_tools": ["temporal", "remedial_codex_query", "query_varshaphala"],
-      "notes": "Pattern-and-contradiction holistic. contradiction_register and pattern_register are both required; resonance_register and cluster_atlas amplify the synthesis with cross-system resonances and dominant clusters."
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas"
+      ],
+      "required_tools": [
+        "contradiction_register",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "temporal",
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "notes": "Pattern-and-contradiction holistic. contradiction_register and pattern_register are both required; resonance_register and cluster_atlas amplify the synthesis with cross-system resonances and dominant clusters.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ]
     },
     {
       "id": "GT.019",
       "query": "Synthesize how my career, marriage, and health interact in my chart.",
       "query_class": "holistic",
       "category": "holistic",
-      "expected_tools": ["cgm_graph_walk", "vector_search", "cluster_atlas", "msr_sql"],
-      "required_tools": ["cgm_graph_walk", "vector_search"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala"],
-      "notes": "Cross-domain synthesis (3 domains). cgm_graph_walk traverses conceptual links between career-marriage-health seed nodes. vector_search reaches the per-domain L3 domain_report narratives. cluster_atlas surfaces clusters spanning the three domains. msr_sql supplies the underlying cross-domain signals."
+      "expected_tools": [
+        "cgm_graph_walk",
+        "vector_search",
+        "cluster_atlas",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "cgm_graph_walk",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "notes": "Cross-domain synthesis (3 domains). cgm_graph_walk traverses conceptual links between career-marriage-health seed nodes. vector_search reaches the per-domain L3 domain_report narratives. cluster_atlas surfaces clusters spanning the three domains. msr_sql supplies the underlying cross-domain signals.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ]
     },
     {
       "id": "GT.020",
       "query": "What signals are currently lit or ripening in my chart?",
       "query_class": "holistic",
       "category": "holistic",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala", "timeline_query"],
-      "notes": "Date-indexed signal-state holistic. msr_sql with temporal_activation in {lit, ripening} returns the date-indexed signal state directly from the 499-row MSR. pattern_register adds forward_looking patterns currently in play."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "notes": "Date-indexed signal-state holistic. msr_sql with temporal_activation in {lit, ripening} returns the date-indexed signal state directly from the 499-row MSR. pattern_register adds forward_looking patterns currently in play.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ]
     },
     {
       "id": "GT.021",
       "query": "Tell me everything about Jupiter in my chart.",
       "query_class": "interpretive",
       "category": "planetary",
-      "expected_tools": ["msr_sql", "pattern_register", "cgm_graph_walk"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["remedial_codex_query", "query_varshaphala"],
-      "notes": "Single-planet deep dive. msr_sql with planet=Jupiter returns all Jupiter-keyed signals across signal_types (placement, aspect, dignity, divisional). pattern_register surfaces Jupiter yogas (Gajakesari, Hamsa, etc.). cgm_graph_walk seeded at PLN.Jupiter traces Jupiter's conceptual neighborhood."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "query_varshaphala"
+      ],
+      "notes": "Single-planet deep dive. msr_sql with planet=Jupiter returns all Jupiter-keyed signals across signal_types (placement, aspect, dignity, divisional). pattern_register surfaces Jupiter yogas (Gajakesari, Hamsa, etc.). cgm_graph_walk seeded at PLN.Jupiter traces Jupiter's conceptual neighborhood.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ]
     },
     {
       "id": "GT.022",
       "query": "What is Mars's role across my divisional charts?",
       "query_class": "interpretive",
       "category": "planetary",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["remedial_codex_query", "temporal"],
-      "notes": "Multi-varga single-planet read. msr_sql with planet=Mars + signal_type=divisional returns Mars across D1, D9, D10, D7 etc. pattern_register adds named Mars yogas (Mangal Dosha, Ruchaka, etc.) that cross divisional charts."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal"
+      ],
+      "notes": "Multi-varga single-planet read. msr_sql with planet=Mars + signal_type=divisional returns Mars across D1, D9, D10, D7 etc. pattern_register adds named Mars yogas (Mangal Dosha, Ruchaka, etc.) that cross divisional charts.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ]
     },
     {
       "id": "GT.023",
       "query": "What patterns and resonances surface for Saturn in my chart?",
       "query_class": "interpretive",
       "category": "planetary",
-      "expected_tools": ["pattern_register", "resonance_register", "msr_sql"],
-      "required_tools": ["pattern_register"],
-      "forbidden_tools": ["remedial_codex_query", "domain_report_query", "temporal"],
-      "notes": "Single-planet pattern + resonance read. pattern_register filtered on Saturn-tagged patterns; resonance_register filtered on Saturn-bridging resonance pairs; msr_sql with planet=Saturn anchors the underlying signals. (Rewritten from a KP ruling-planets query — KP cusp/star-lord retrieval has no primary-tool surface; the planetary-pattern framing is what the 8 primary tools actually support.)"
+      "expected_tools": [
+        "pattern_register",
+        "resonance_register",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "domain_report_query",
+        "temporal"
+      ],
+      "notes": "Single-planet pattern + resonance read. pattern_register filtered on Saturn-tagged patterns; resonance_register filtered on Saturn-bridging resonance pairs; msr_sql with planet=Saturn anchors the underlying signals. (Rewritten from a KP ruling-planets query — KP cusp/star-lord retrieval has no primary-tool surface; the planetary-pattern framing is what the 8 primary tools actually support.)",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ]
     },
     {
       "id": "GT.024",
       "query": "Give me a high-level read of the chart.",
       "query_class": "interpretive",
       "category": "edge_case",
-      "expected_tools": ["pattern_register", "cluster_atlas"],
+      "expected_tools": [
+        "pattern_register",
+        "cluster_atlas"
+      ],
       "required_tools": [],
-      "forbidden_tools": ["remedial_codex_query", "temporal", "query_varshaphala", "timeline_query"],
-      "notes": "Edge case: ambiguous, low-specificity prompt. A correct planner should reach for L2.5 discovery surfaces (pattern_register for revealed patterns, cluster_atlas for dominant clusters) rather than time-bound or remedial tools. (Rewritten from a degenerate single-character '?' query that previously expected manifest_query — manifest_query is not a primary tool, and a degenerate query is an unrealistic test of planner robustness against the constrained primary surface.)"
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "notes": "Edge case: ambiguous, low-specificity prompt. A correct planner should reach for L2.5 discovery surfaces (pattern_register for revealed patterns, cluster_atlas for dominant clusters) rather than time-bound or remedial tools. (Rewritten from a degenerate single-character '?' query that previously expected manifest_query — manifest_query is not a primary tool, and a degenerate query is an unrealistic test of planner robustness against the constrained primary surface.)",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ]
     },
     {
       "id": "GT.025",
       "query": "Tell me something interesting about the chart.",
       "query_class": "holistic",
       "category": "edge_case",
-      "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas"],
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas"
+      ],
       "required_tools": [],
-      "forbidden_tools": ["temporal", "query_varshaphala", "remedial_codex_query", "timeline_query"],
-      "notes": "Edge case: open-ended ambiguous prompt. A correct planner should reach for L2.5 discovery surfaces (patterns, contradictions, resonances, clusters) rather than time-bound or remedial tools. No required_tools because any non-empty subset of the four discovery registers is acceptable."
+      "forbidden_tools": [
+        "temporal",
+        "query_varshaphala",
+        "remedial_codex_query",
+        "timeline_query"
+      ],
+      "notes": "Edge case: open-ended ambiguous prompt. A correct planner should reach for L2.5 discovery surfaces (patterns, contradictions, resonances, clusters) rather than time-bound or remedial tools. No required_tools because any non-empty subset of the four discovery registers is acceptable.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ]
     },
     {
       "id": "GT.026",
       "query": "According to my Vimshottari Dasha sequence, when does my Mercury period begin and what will it activate?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register", "vector_search"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "notes": "Dasha-timing predictive (BHISMA-W2-S-D gap-close: predictive entry #5). The brief specified `l1_facts_query` + `msr_sql`, but `l1_facts_query` is not a primary tool (W2-MANIFEST AC.M.1 limits the planner to 8 primary tools). Mapped to the constrained surface: msr_sql for Mercury-domain forward_looking signals; pattern_register satisfies R7's predictive cross-domain-lens mandate (Mercury-keyed forward_looking patterns) and is promoted to required_tools; vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the MD arc. Note: the native is currently in Mercury MD (ends 2027-08-21 per native_context); the planner must surface the active arc, not a forecast of a future onset."
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "notes": "Dasha-timing predictive (BHISMA-W2-S-D gap-close: predictive entry #5). The brief specified `l1_facts_query` + `msr_sql`, but `l1_facts_query` is not a primary tool (W2-MANIFEST AC.M.1 limits the planner to 8 primary tools). Mapped to the constrained surface: msr_sql for Mercury-domain forward_looking signals; pattern_register satisfies R7's predictive cross-domain-lens mandate (Mercury-keyed forward_looking patterns) and is promoted to required_tools; vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the MD arc. Note: the native is currently in Mercury MD (ends 2027-08-21 per native_context); the planner must surface the active arc, not a forecast of a future onset.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ]
     },
     {
       "id": "GT.027",
@@ -302,8 +683,17 @@
       "category": "edge_case",
       "expected_tools": [],
       "required_tools": [],
-      "forbidden_tools": ["remedial_codex_query", "temporal", "query_varshaphala", "timeline_query"],
-      "notes": "Edge case: empty query. The planner must not error or hang; circuit-breaker / fallback must return a minimal plan (zero tool_calls is acceptable). recall is undefined for empty expected_tools and counts as 1.0 by smoke_runner convention; precision is 1.0 when the planner also returns zero tools (empty/empty case). No tool is required to fire; remedial/temporal/varshaphala/timeline tools are forbidden because they would represent the planner inventing intent the user did not express."
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "notes": "Edge case: empty query. The planner must not error or hang; circuit-breaker / fallback must return a minimal plan (zero tool_calls is acceptable). recall is undefined for empty expected_tools and counts as 1.0 by smoke_runner convention; precision is 1.0 when the planner also returns zero tools (empty/empty case). No tool is required to fire; remedial/temporal/varshaphala/timeline tools are forbidden because they would represent the planner inventing intent the user did not express.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ]
     },
     {
       "id": "GT.028",
@@ -312,18 +702,42 @@
       "category": "edge_case",
       "expected_tools": [],
       "required_tools": [],
-      "forbidden_tools": ["remedial_codex_query", "temporal", "query_varshaphala", "timeline_query"],
-      "notes": "Edge case: degenerate single-punctuation query. The planner must return a graceful no-op plan (zero tool_calls acceptable) without crashing. Same scoring convention as GT.027. Forbidden tools mirror GT.027 — invoking a time-bound or remedial tool on a single character is hallucinated intent."
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "temporal",
+        "query_varshaphala",
+        "timeline_query"
+      ],
+      "notes": "Edge case: degenerate single-punctuation query. The planner must return a graceful no-op plan (zero tool_calls acceptable) without crashing. Same scoring convention as GT.027. Forbidden tools mirror GT.027 — invoking a time-bound or remedial tool on a single character is hallucinated intent.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ]
     },
     {
       "id": "GT.029",
       "query": "Tell me everything about everything in my entire chart in full detail with all possible combinations and permutations and every possible interpretation",
       "query_class": "holistic",
       "category": "edge_case",
-      "expected_tools": ["msr_sql", "pattern_register", "cluster_atlas", "cgm_graph_walk", "vector_search"],
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "cluster_atlas",
+        "cgm_graph_walk",
+        "vector_search"
+      ],
       "required_tools": [],
-      "forbidden_tools": ["remedial_codex_query"],
-      "notes": "Edge case: overloaded holistic prompt. The planner must not hang or run unbounded — budget arbitration (W2-PLANNER ADR-6) is expected to trim the plan to fit the synthesis-model context envelope. expected_tools enumerates the holistic L2.5 surface a budget-unconstrained planner would select; required_tools is empty because budget arbitration may legitimately prune any single tool. remedial_codex_query is forbidden because the prompt expresses no remedial intent."
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "notes": "Edge case: overloaded holistic prompt. The planner must not hang or run unbounded — budget arbitration (W2-PLANNER ADR-6) is expected to trim the plan to fit the synthesis-model context envelope. expected_tools enumerates the holistic L2.5 surface a budget-unconstrained planner would select; required_tools is empty because budget arbitration may legitimately prune any single tool. remedial_codex_query is forbidden because the prompt expresses no remedial intent.",
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ]
     }
-  ]
+  ],
+  "_schema_version": "1.1"
 }

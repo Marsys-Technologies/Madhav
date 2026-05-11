@@ -36,6 +36,7 @@ export interface GoldenEntry {
   expected_tools: string[]
   required_tools: string[]
   forbidden_tools: string[]
+  required_asset_ids?: string[]
   notes?: string
 }
 
@@ -56,6 +57,9 @@ export interface EvalResult {
   forbidden_violation: boolean
   pass: boolean
   error?: string
+  asset_bundle_ids?: string[]
+  asset_bundle_recall?: number
+  asset_bundle_floor_ok?: boolean
 }
 
 export interface AggregateResult {
@@ -67,6 +71,8 @@ export interface AggregateResult {
   forbidden_violations: number
   required_misses: number
   pass_rate: number
+  avg_asset_bundle_recall?: number
+  asset_bundle_floor_violations?: number
 }
 
 export type PlannerFn = (
@@ -74,7 +80,10 @@ export type PlannerFn = (
   history: Array<{ role: string; content: string }>,
   modelId: string,
   chartId: string,
-) => Promise<{ tool_calls: Array<{ tool_name: string }> }>
+) => Promise<{
+  tool_calls: Array<{ tool_name: string }>
+  asset_bundle?: Array<{ asset_id: string }>
+}>
 
 // ────────────────────────────────────────────────────────────────────────────
 // Thresholds (must match tests/eval/README.md)
@@ -91,6 +100,7 @@ export function scoreEntry(
   entry: GoldenEntry,
   predicted: string[],
   error?: string,
+  predictedAssets?: string[],
 ): EvalResult {
   const expectedSet = new Set(entry.expected_tools)
   const predictedSet = new Set(predicted)
@@ -118,6 +128,19 @@ export function scoreEntry(
     required_hit &&
     !forbidden_violation
 
+  let asset_bundle_ids: string[] | undefined
+  let asset_bundle_recall: number | undefined
+  let asset_bundle_floor_ok: boolean | undefined
+
+  if (predictedAssets !== undefined) {
+    asset_bundle_ids = predictedAssets
+    const floor = ['FORENSIC', 'CGM']
+    asset_bundle_floor_ok = floor.every(id => predictedAssets.includes(id))
+    const required = entry.required_asset_ids ?? floor
+    const hit = required.filter(id => predictedAssets.includes(id)).length
+    asset_bundle_recall = required.length > 0 ? hit / required.length : 1
+  }
+
   return {
     id: entry.id,
     query: entry.query,
@@ -131,6 +154,9 @@ export function scoreEntry(
     forbidden_violation,
     pass,
     error,
+    asset_bundle_ids,
+    asset_bundle_recall,
+    asset_bundle_floor_ok,
   }
 }
 
@@ -139,6 +165,15 @@ export function aggregateResults(results: EvalResult[]): AggregateResult {
   const passed = results.filter(r => r.pass).length
   const sumRecall = results.reduce((s, r) => s + r.tool_recall, 0)
   const sumPrecision = results.reduce((s, r) => s + r.tool_precision, 0)
+
+  const assetScored = results.filter(r => r.asset_bundle_recall !== undefined)
+  const avg_asset_bundle_recall = assetScored.length
+    ? assetScored.reduce((s, r) => s + (r.asset_bundle_recall ?? 0), 0) / assetScored.length
+    : undefined
+  const asset_bundle_floor_violations = assetScored.length
+    ? assetScored.filter(r => r.asset_bundle_floor_ok === false).length
+    : undefined
+
   return {
     total,
     passed,
@@ -148,6 +183,8 @@ export function aggregateResults(results: EvalResult[]): AggregateResult {
     forbidden_violations: results.filter(r => r.forbidden_violation).length,
     required_misses: results.filter(r => !r.required_hit).length,
     pass_rate: total ? passed / total : 0,
+    avg_asset_bundle_recall,
+    asset_bundle_floor_violations,
   }
 }
 
@@ -172,14 +209,16 @@ export async function runSmoke(
   const results: EvalResult[] = []
   for (const entry of goldenSet.entries) {
     let predicted: string[] = []
+    let predictedAssets: string[] | undefined
     let error: string | undefined
     try {
       const plan = await plannerFn(entry.query, [], modelId, chartId)
       predicted = plan.tool_calls.map(tc => tc.tool_name)
+      predictedAssets = plan.asset_bundle?.map(a => a.asset_id)
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)
     }
-    results.push(scoreEntry(entry, predicted, error))
+    results.push(scoreEntry(entry, predicted, error, predictedAssets))
   }
   return { results, aggregate: aggregateResults(results) }
 }
@@ -214,6 +253,13 @@ export function formatSummary(aggregate: AggregateResult, results: EvalResult[])
   lines.push(`Forbidden violations: ${aggregate.forbidden_violations}`)
   lines.push(`Required misses:      ${aggregate.required_misses}`)
 
+  if (aggregate.avg_asset_bundle_recall !== undefined) {
+    lines.push('')
+    lines.push('ASSET BUNDLE RECALL')
+    lines.push(`  avg_asset_bundle_recall: ${aggregate.avg_asset_bundle_recall.toFixed(3)}   (threshold: ≥ 0.90)`)
+    lines.push(`  floor_violations (missing FORENSIC or CGM): ${aggregate.asset_bundle_floor_violations ?? 0}`)
+  }
+
   const failures = results.filter(r => !r.pass)
   if (failures.length > 0) {
     lines.push('')
@@ -245,10 +291,10 @@ async function main(): Promise<void> {
   const chartId = process.env.CHART_ID ?? 'test-native'
 
   // Lazy import: pulls server-only deps (resolver) only at CLI runtime.
-  const { callLlmPlanner } = await import('@/lib/pipeline/manifest_planner')
+  const { callPipelinePlanner } = await import('@/lib/pipeline/pipeline_planner')
 
   const plannerFn: PlannerFn = (query, history, modelIdArg, chartIdArg) =>
-    callLlmPlanner(query, history, modelIdArg, chartIdArg)
+    callPipelinePlanner(query, history, modelIdArg, chartIdArg)
 
   const goldenSet = loadGoldenSet()
   const { results, aggregate } = await runSmoke(goldenSet, plannerFn, modelId, chartId)

@@ -1,10 +1,56 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.0
+version: 2.0.1
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 produced_during: Pipeline-Transformation-Phase1
 produced_on: 2026-05-11
+patched_on: 2026-05-11
+patch_session: Planner-Prompt-Fix-S1
+precision_fix_diagnosis: |
+  AC-P1-1 diagnosis (audit trail for v2.0 → v2.0.1 patch).
+
+  Planner-Eval-S1 (commit 58a2ad4) measured avg_tool_precision = 0.852 vs
+  v1.7 baseline 0.945 (−0.093). Recall held (0.945). Root cause is
+  over-inclusion concentrated in three categories:
+
+  (1) PLANETARY-SCOPE INTERPRETIVE (GT.021/022/023 — single most-degraded).
+      Queries like "Tell me everything about Jupiter" got cluster_atlas,
+      vector_search, resonance_register added on top of expected
+      msr_sql + pattern_register + cgm_graph_walk. The prompt has no
+      explicit planetary-scope rule, so the planner falls back to a
+      holistic-style sweep. Implicated rules: R11 (cluster_atlas blanket),
+      R15 (resonance_register), absence of single-planet scope rule.
+
+  (2) INTERPRETIVE HOUSE/DIVISIONAL (GT.007/011/012). Queries like
+      "What does my 7th house say about marriage" got cgm_graph_walk added
+      on top of expected msr_sql + vector_search. Implicated rule: R14
+      "For divisional placement queries, include cgm_graph_walk but NOT
+      vector_search" — this directly contradicts gold for GT.011 (D9 for
+      marriage indication wants vector_search, not cgm_graph_walk). R14's
+      "planet-in-house" trigger is also too broad — it fires on house-only
+      queries that name no planet.
+
+  (3) PREDICTIVE TRANSITS + HOLISTIC SIGNAL-DENSITY. GT.014 (Saturn transit)
+      got vector_search added despite R7c forbidding it — rule needs
+      stronger phrasing. GT.020 (holistic "what signals are lit") got
+      cluster_atlas + vector_search added despite expecting only msr_sql +
+      pattern_register; R11's blanket cluster_atlas trigger needs an
+      exception for signal-density holistic queries.
+
+  Floor violations (GT.027/028 empty/punctuation): R16 currently emits
+  asset_bundle: [] for degenerate inputs, bypassing the FORENSIC+CGM floor.
+
+  Targeted edits in this patch:
+    - R7c: lift to absolute ban with explicit example list.
+    - R14: split into R14a (planet-in-house — requires named planet) and
+      R14b (divisional placement — flip default: vector_search for domain
+      interpretation, cgm_graph_walk only for explicit structural language).
+    - R15: explicitly forbid resonance_register in interpretive queries
+      unless the query literally contains "resonance"/"themes"/"alignment".
+    - R11: add exception for signal-density holistic queries.
+    - R-new (R7d): explicit single-planet planetary-scope rule.
+    - R16: emit FORENSIC+CGM floor even for degenerate inputs.
 amendment_reason: >
   v1.7 → v2.0 (Pipeline Transformation Phase 1): three structural changes
   that constitute the Phase 1 schema contract.
@@ -272,30 +318,75 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
   R7b. For REMEDIAL queries, ALWAYS include `resonance_register` at
        priority ≤ 2 (default alignment lens). ALSO include
        `pattern_register` when the query describes a recurring pattern.
-  R7c. For PREDICTIVE queries about specific TRANSITS (e.g. "Saturn
-       transit", "when Mars transits my 7th"), use only `msr_sql` +
-       `pattern_register`. Do NOT add `vector_search` for transits.
+  R7c. ABSOLUTE BAN: For PREDICTIVE queries about TRANSITS (any query
+       containing "transit", "transiting", "currently moving through",
+       "passing over", "where is [planet] now"), the ONLY allowed tools
+       are `msr_sql` and `pattern_register`. NEVER add `vector_search`,
+       `cgm_graph_walk`, `cluster_atlas`, or any register beyond
+       `pattern_register` to a transit query. This rule overrides R18.
+       Hypothesis: reduces FP `vector_search` on transit predictive (GT.014).
+  R7d. SINGLE-PLANET INTERPRETIVE SCOPE: For interpretive queries whose
+       entire scope is one named planet (e.g. "Tell me everything about
+       Jupiter", "What is Mars's role across my divisional charts",
+       "What patterns surface for Saturn"), the default tool set is
+       `msr_sql` + `pattern_register`. Add `cgm_graph_walk` ONLY when the
+       query explicitly asks about structural topology (dispositor chain,
+       aspect web, connectivity). Add `resonance_register` ONLY when the
+       query literally contains "resonance", "themes", or "alignment".
+       NEVER add `cluster_atlas`, `vector_search`, or `contradiction_register`
+       to a single-planet interpretive query. Hypothesis: reduces FP
+       cluster_atlas/vector_search/resonance_register on GT.021/022/023.
   R8.  For REMEDIAL queries, ALWAYS include `msr_sql` at priority 1.
   R9.  Output JSON only — no preface, no trailing prose, no markdown fence.
   R10. If the query is unanswerable, return tool_calls: [] and put the
        reason in query_intent_summary.
-  R11. For HOLISTIC queries, ALWAYS include `cluster_atlas` at priority ≤ 2.
+  R11. For HOLISTIC queries asking for comprehensive synthesis, life path,
+       or general overview ("stands out", "high-level read", "overview",
+       "everything", "themes and contradictions"), include `cluster_atlas`
+       at priority ≤ 2. EXCEPTION — SIGNAL-DENSITY HOLISTIC: for holistic
+       queries asking which signals are currently active/lit/ripening
+       (e.g. "what signals are currently lit", "what's active right now",
+       "what's ripening in my chart"), use ONLY `msr_sql` + `pattern_register`
+       — DO NOT add `cluster_atlas` or `vector_search`. Hypothesis: reduces
+       FP cluster_atlas/vector_search on signal-density holistic (GT.020).
   R12. For holistic queries that EXPLICITLY use "contradictions",
        "tensions", or "conflicts", include `contradiction_register`
        at priority ≤ 2.
   R13. NEVER include `remedial_codex_query` in interpretive, predictive,
        or holistic queries. Only for explicit prescription queries.
-  R14. `cgm_graph_walk` is OPTIONAL for HOLISTIC queries — add only when
-       the query explicitly asks about structural chart topology. For
-       INTERPRETIVE structural-positional queries (planet-in-house,
-       dispositor chain, aspect web), include at priority 2. Never in
-       predictive or remedial queries. For divisional placement queries,
-       include cgm_graph_walk but NOT vector_search.
-  R15. `resonance_register` is for REMEDIAL queries and HOLISTIC queries
-       that EXPLICITLY use "themes", "resonance", "alignment", or
-       "central patterns". Never in interpretive or predictive.
+  R14a. `cgm_graph_walk` for HOLISTIC: OPTIONAL — add only when the query
+        explicitly asks about structural chart topology or domain
+        interaction (R20).
+  R14b. `cgm_graph_walk` for INTERPRETIVE — narrow trigger. Include ONLY
+        when ALL of the following hold: (i) a planet is EXPLICITLY named,
+        AND (ii) the query is about structural positioning (planet-in-house,
+        dispositor chain, aspect web). Do NOT add cgm_graph_walk to
+        house-only queries that name no planet (e.g. "What does my 7th
+        house say about marriage"). Do NOT add cgm_graph_walk to
+        single-planet scope queries (see R7d). Do NOT add cgm_graph_walk
+        to divisional-chart queries asking about domain interpretation.
+        Hypothesis: reduces FP cgm_graph_walk on GT.007/011/012/022.
+  R14c. `cgm_graph_walk` is NEVER used in predictive or remedial queries.
+  R14d. INTERPRETIVE house-or-divisional queries asking about DOMAIN
+        INTERPRETATION (e.g. "what does my Nth house say about [domain]",
+        "read my D9 for marriage", "what does my 10th house say about
+        profession"): use `msr_sql` + `vector_search`. Do NOT add
+        cgm_graph_walk. Hypothesis: reduces FP cgm_graph_walk on
+        GT.007/011/012.
+  R15. `resonance_register` is for REMEDIAL queries and for HOLISTIC or
+       INTERPRETIVE queries that LITERALLY contain one of the keywords
+       "resonance", "themes", "alignment", or "central patterns" in the
+       query string. Strict literal-keyword test — no paraphrastic
+       expansion. NEVER add resonance_register to interpretive,
+       holistic, planetary, or predictive queries lacking the literal
+       keyword. Hypothesis: reduces FP resonance_register on
+       GT.017/021 (queries without those keywords).
   R16. If the query is empty or <5 non-whitespace characters, return
-       query_class "factual" with tool_calls: [] and asset_bundle: [].
+       query_class "factual" with tool_calls: [] and asset_bundle:
+       [{"asset_id":"FORENSIC","priority":1,"reason":"Floor"},
+        {"asset_id":"CGM","priority":1,"reason":"Floor"}].
+       The FORENSIC+CGM floor (R21+R22) applies even to degenerate inputs.
+       Hypothesis: resolves floor violations on GT.027/028.
   R17. For INTERPRETIVE queries with (a) a temporal/recurring dimension
        or (b) chart-level multi-layer scope (yogas, Lagna, divisionals),
        add `pattern_register` at priority 2.

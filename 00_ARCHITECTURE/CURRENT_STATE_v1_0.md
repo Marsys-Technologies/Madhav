@@ -4824,33 +4824,55 @@ current_state:
         - DEF-6: PHASE11B legacy deletion safe after 2026-05-11
       worktree: /Users/Dev/Vibe-Coding/Apps/Ganga/  # retained; feature/ganga-umbrella still exists
 
-    pipeline_transform_s1:
-      active_since: 2026-05-11
-      closed_at: 2026-05-11
-      phase_status: COMPLETE                       # All 24 ACs + 3 INV PASS
-      description: >
-        4-phase LLM-first pipeline transformation. Eliminated dual classify()+callLlmPlanner()
-        path. route.ts now executes exactly 2 LLM calls per request (planner + synthesis).
-        Zero silent fallbacks; PipelinePlan is the single authoritative contract.
-      deliverables:
-        - pipeline_planner.ts (callPipelinePlanner → Promise<PipelinePlan>)
-        - bundle_hydrator.ts (hydrateBundle; FORENSIC+CGM floor enforced)
-        - route.ts rewritten (single linear path; PipelinePlannerError → HTTP 422)
-        - 12 legacy files deleted (manifest_planner, rule_composer, context_assembler, router/*, etc.)
-        - LLM_FIRST_PLANNER_ENABLED + CONTEXT_ASSEMBLY_ENABLED pruned from feature_flags.ts
-      branch: feature/pipeline-transform-s1
-      worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-pipeline
-      merge_status: pending_pr                     # merge after Planner-Eval-S1 + varga Checkpoint B
-      executor: claude-code-antigravity (bypass permissions)
-      brief: CLAUDECODE_BRIEF.md (Pipeline-Transform-S1, status COMPLETE)
-      platform_flags_at_close:
-        LLM_FIRST_PLANNER_ENABLED: removed
-        CONTEXT_ASSEMBLY_ENABLED: removed
-        AUDIT_ENABLED: true
-        LLM_FIRST_PLANNER_ENABLED: removed
-        MARSYS_FLAG_OBSERVATORY_ENABLED: true
-        DISCOVERY_ALL: true
+    planner_eval_s1:
+      date: 2026-05-11
+      phase_status: COMPLETE
+      prompt_version: PLANNER_PROMPT_v2_0.md
+      golden_set_version: "1.1"
+      entries_scored: 29
+      model_used: claude-haiku-4-5  # NIM unreachable mid-run; fell back to Anthropic per brief §5
+      avg_tool_recall: 0.945
+      avg_tool_precision: 0.852
+      avg_asset_bundle_recall: 0.902
+      asset_bundle_floor_violations: 2  # GT.027 empty-query, GT.028 single-punctuation — both returned empty asset_bundle[]
+      vs_v1_7_baseline: "recall_delta=+0.005 precision_delta=-0.093"
+      regression: [GT.007, GT.011, GT.012, GT.014, GT.017, GT.020, GT.021, GT.022, GT.023, GT.025, GT.026, GT.029]
+      regression_pattern: >
+        Precision regression −0.093. Planner over-fires vector_search (9/12 failures) and
+        cgm_graph_walk (6/12 failures) on interpretive/planetary/single-house queries.
+        Recall held (+0.005). See platform/tests/eval/REGRESSION_NOTES_v2_0.md.
+      next_session: Planner-Prompt-Fix-S1 (out of scope for this brief per §5 + §9.1)
+      result_artifact: platform/tests/eval/eval_results_planner_eval_s1.json
+      regression_notes_artifact: platform/tests/eval/REGRESSION_NOTES_v2_0.md
 
+    planner_prompt_fix_s1:
+      date: 2026-05-11
+      phase_status: COMPLETE
+      prompt_version: PLANNER_PROMPT_v2_0.md (in-place patch v2.0 → v2.0.1)
+      pre_fix_precision: 0.852
+      pre_fix_recall: 0.945
+      pre_fix_asset_bundle_recall: 0.902
+      pre_fix_floor_violations: 2
+      post_fix_precision: 0.986
+      post_fix_recall: 0.963
+      post_fix_asset_bundle_recall: 0.971
+      post_fix_floor_violations: 0
+      floor_violations_resolved: true
+      gates_status: "ALL PASS (recall≥0.940, precision≥0.945, asset_bundle_recall≥0.90)"
+      rounds_consumed: 1  # 3-round budget allotted; converged in round 1
+      escape_clause_invoked: false
+      model_used: claude-haiku-4-5  # NIM unreachable, same as Planner-Eval-S1
+      rules_changed:
+        - R7c (transit absolute ban + explicit keyword list + expanded banned-tool set)
+        - R7d (NEW — single-planet interpretive scope: default msr_sql + pattern_register)
+        - R11 (signal-density holistic exception: no cluster_atlas for "currently lit/ripening")
+        - R14 split into R14a/b/c/d (cgm_graph_walk narrowed; require named planet AND structural language)
+        - R14d (house-or-divisional domain-interpretation queries: msr_sql + vector_search, no cgm_graph_walk)
+        - R15 (resonance_register strict literal-keyword test)
+        - R16 (degenerate-input FORENSIC+CGM floor preserved in asset_bundle)
+      remaining_failures: [GT.017, GT.021, GT.025, GT.029]  # all recall-side or near-edge; aggregate gates PASS
+      result_artifact: platform/tests/eval/eval_results_planner_prompt_fix_s1.json
+      regression_notes_resolution: platform/tests/eval/REGRESSION_NOTES_v2_0.md (§ Resolution)
 
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)

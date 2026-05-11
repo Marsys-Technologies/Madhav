@@ -44,7 +44,6 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { checkB11Compliance } from './b11_guard'
-import { assembleContext, type LayerContext } from './context_assembler'
 
 import type {
   SynthesisRequest,
@@ -258,69 +257,6 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       content: m.content,
     }))
 
-    // ── Context assembler metadata log ───────────────────────────────────────
-    // Map the assembled context pieces to LayerContext objects and call
-    // assembleContext() to log assembly metadata (included artifacts, token
-    // estimate, B.11 compliance) for monitoring. Does not replace FUB-2/FUB-3;
-    // the assembled string is informational only — renderedPrompt is already built.
-    {
-      const assemblerLayers: LayerContext[] = []
-
-      if (vsResults.length > 0) {
-        const vsContent = vsResults.map(r => r.content).join('\n')
-        assemblerLayers.push({
-          layer: 'L1',
-          artifactId: 'FORENSIC',
-          content: vsContent,
-          tokenEstimate: Math.ceil(vsContent.length / 4),
-          priority: 1,
-        })
-        // Detect L2.5 artifacts in vector_search results
-        const l25Artifacts = ['MSR', 'UCN', 'CDLM', 'CGM', 'RM'] as const
-        for (const artifact of l25Artifacts) {
-          const matching = vsResults.filter(r =>
-            r.content.toLowerCase().includes(artifact.toLowerCase()) ||
-            (r.signal_id ?? '').toUpperCase().startsWith(artifact)
-          )
-          if (matching.length > 0) {
-            const content = matching.map(r => r.content).join('\n')
-            assemblerLayers.push({
-              layer: 'L2_5',
-              artifactId: artifact,
-              content,
-              tokenEstimate: Math.ceil(content.length / 4),
-              priority: 1,
-            })
-          }
-        }
-      }
-
-      if (nonVsResults.length > 0) {
-        const l3Content = nonVsResults.flatMap(tb => tb.results.map(r => r.content)).join('\n')
-        assemblerLayers.push({
-          layer: 'L3',
-          artifactId: 'query_retrieval',
-          content: l3Content,
-          tokenEstimate: Math.ceil(l3Content.length / 4),
-          priority: 2,
-        })
-      }
-
-      const assemblyResult = assembleContext(assemblerLayers, {
-        queryId: query_plan.query_plan_id,
-        requiredLayers: ['MSR', 'UCN', 'CGM'],
-      })
-
-      console.log(JSON.stringify({
-        event: 'context_assembler_metadata',
-        included_artifacts: assemblyResult.includedArtifacts,
-        dropped_artifacts: assemblyResult.droppedArtifacts,
-        total_token_estimate: assemblyResult.totalTokenEstimate,
-        b11_compliant: assemblyResult.b11Compliant,
-        query_id: query_plan.query_plan_id ?? null,
-      }))
-    }
-
     // ── B.11 Whole-Chart-Read guard ───────────────────────────────────────────
     // Check that the assembled context contains the required L2.5 layers before
     // invoking the synthesis LLM. Zero overhead in the happy path (string scan).
@@ -340,6 +276,11 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
           renderedPrompt = b11.annotation + '\n\n' + renderedPrompt
         }
       }
+    }
+
+    // Phase 3 — planner-emitted synthesis guidance (replaces context_assembler).
+    if (request.synthesis_guidance && request.synthesis_guidance.trim().length > 0) {
+      renderedPrompt += `\n\n---\n\nSYNTHESIS GUIDANCE (from planner):\n${request.synthesis_guidance.trim()}`
     }
 
     const systemMessage: ModelMessage = supports(selected_model_id, 'prompt-caching')
