@@ -20,8 +20,8 @@ import { fileURLToPath } from 'node:url'
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/lib/pipeline/manifest_planner', () => ({
-  callLlmPlanner: vi.fn(),
+vi.mock('@/lib/pipeline/pipeline_planner', () => ({
+  callPipelinePlanner: vi.fn(),
 }))
 
 import {

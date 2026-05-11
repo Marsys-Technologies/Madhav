@@ -20696,34 +20696,15 @@ close_criteria_met: true
 pr_url: pending (PR open is the final Stream E action; recorded after `gh pr create`)
 
 ---
-session_id: Pipeline-Transform-S1
+session_id: Planner-Eval-S1
 date: 2026-05-11
-sub_phase: Pipeline Transformation Phases 2–4 (COMPLETE)
-executor: claude-code-antigravity (feature/pipeline-transform-s1 worktree)
-brief: CLAUDECODE_BRIEF.md (Pipeline-Transform-S1, 24 ACs)
 summary: >
-  Completed 4-phase LLM-first pipeline transformation. Route.ts now executes exactly
-  2 LLM calls per request (planner → synthesis). Zero silent fallbacks. Zero flag guards.
-  PipelinePlan is the single authoritative contract throughout the pipeline.
-acceptance_criteria: 24/24 PASS + 3/3 INV PASS
-files_created:
-  - platform/src/lib/pipeline/pipeline_planner.ts (callPipelinePlanner → Promise<PipelinePlan>)
-  - platform/src/lib/bundle/bundle_hydrator.ts (hydrateBundle; floor FORENSIC+CGM enforced)
-  - platform/src/__tests__/lib/bundle/bundle_hydrator.test.ts (3/3 pass)
-  - platform/src/lib/conversations/title.ts (title generation extracted from route.ts)
-files_rewritten:
-  - platform/src/app/api/chat/consume/route.ts (single linear path: planner→hydrate→tools→synthesize; PipelinePlannerError→HTTP 422)
-files_surgically_edited:
-  - platform/src/lib/synthesis/single_model_strategy.ts (synthesis_guidance appended to system prompt)
-  - platform/src/lib/synthesis/types.ts (synthesis_guidance?: string on SynthesisRequest)
-  - platform/src/components/trace/QueryPlan.tsx (re-typed to PipelinePlan)
-files_deleted: >
-  manifest_planner.ts, planner_circuit_breaker.ts, universal_query_engine.ts,
-  rule_composer.ts, composition_rules.ts, context_assembler.ts,
-  router/router.ts, router/prompt.ts, router/planner.ts, router/per_tool_planner.ts,
-  admin/planner/reset-circuit/route.ts, scripts/test/pipeline_smoke.ts + 8 dead test files
-flags_pruned: [LLM_FIRST_PLANNER_ENABLED, CONTEXT_ASSEMBLY_ENABLED]
-type_check: npx tsc --noEmit — 0 errors in src/ non-test files
-build: TypeScript phase PASS (Firebase prerender failure is env-only, unrelated)
-red_team: not_required (platform code session; no macro-phase close)
-governance_deferred_to_cowork: [CURRENT_STATE_v1_0.md update, SESSION_LOG append — done in Cowork]
+  PLANNER_PROMPT_v2_0 golden-set eval. 29 entries scored.
+  recall=0.945 precision=0.852 asset_bundle_recall=0.902 floor_violations=2.
+  v1.7 baseline: recall=0.940 precision=0.945.
+  Delta: recall+0.005 precision-0.093.
+  REGRESSION — see platform/tests/eval/REGRESSION_NOTES_v2_0.md.
+  NIM unreachable mid-run (DNS/SSL/connection-reset); fell back to claude-haiku-4-5 per brief §5.
+  Eval harness rewired: callLlmPlanner→callPipelinePlanner (3 files);
+  classify side replaced with oracle baseline; golden_set v1.0→v1.1 with required_asset_ids.
+  Next session: Planner-Prompt-Fix-S1 (out of scope this brief per §5 + §9.1).
