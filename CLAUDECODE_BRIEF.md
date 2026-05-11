@@ -1,29 +1,29 @@
 ---
-artifact: CLAUDECODE_BRIEF_QP_S1.md
+artifact: CLAUDECODE_BRIEF_QP_S3.md
 status: COMPLETE
-session_id: QP-S1
-phase: Pipeline Gap Closure — Planner Prompt (v2.0.1 → v2.1)
+session_id: QP-S3
+phase: Pipeline Gap Closure — Golden Set Expansion (v1.1 → v1.2)
 executor: claude-opus-4-6 (anti-gravity VS Code)
-run_from_worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-gap
-branch: fix/planner-gap-qp-s1
+run_from_worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-eval
+branch: fix/golden-set-qp-s3
 authored_by: Cowork (Abhisek session 2026-05-11)
 authored_on: 2026-05-11
 acceptance_criteria_count: 5
 parallel_safe: true
-parallel_siblings: QP-S2 (fix/cleanup-qp-s2), QP-S3 (fix/golden-set-qp-s3)
+parallel_siblings: QP-S1 (fix/planner-gap-qp-s1), QP-S2 (fix/cleanup-qp-s2)
 depends_on: Pipeline-Transform-S1 merged to main (commit 85dfca5)
-master_plan: 00_ARCHITECTURE/PIPELINE_GAP_PLAN_v1_0.md §4/QP-S1
+master_plan: 00_ARCHITECTURE/PIPELINE_GAP_PLAN_v1_0.md §4/QP-S3
 ---
 
-# QP-S1 — Planner Prompt Gap Closure
+# QP-S3 — Golden Set Expansion
 
 ## §0 — HOW TO READ THIS BRIEF
 
-**Run from the worktree:** `/Users/Dev/Vibe-Coding/Apps/Madhav-gap`
-(branch `fix/planner-gap-qp-s1`).
+**Run from the worktree:** `/Users/Dev/Vibe-Coding/Apps/Madhav-eval`
+(branch `fix/golden-set-qp-s3`).
 
 **One file only.** This session touches exactly one file:
-`00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md`. Everything else is out of scope.
+`platform/tests/eval/planner_golden_set.json`. Everything else is out of scope.
 
 When all 5 ACs are GREEN, commit, push, and set `status: COMPLETE` in this
 file's frontmatter. Do not emit SESSION_OPEN or SESSION_CLOSE artifacts.
@@ -32,430 +32,381 @@ file's frontmatter. Do not emit SESSION_OPEN or SESSION_CLOSE artifacts.
 
 ## §1 — CONTEXT AND PROBLEM
 
-Pipeline-Transform-S1 (PR #15, commit 85dfca5) replaced the dual
-`classify()+callLlmPlanner()` architecture with a single
-`callPipelinePlanner()` that emits a `PipelinePlan` containing
-`asset_bundle[]`, `tool_calls[]`, `synthesis_guidance`, **`time_window`**,
-and **`graph_seed_hints`**.
+The current golden set (`planner_golden_set.json` v1.1, 29 entries) was
+designed to verify the existing prompt rules. Post-Transform-S1, it has zero
+coverage for four of the eight query classes:
 
-The new planner prompt (`PLANNER_PROMPT_v2_0.md` at v2.0.1) reaches
-recall=0.963 / precision=0.986 on the existing 29-entry golden set.
-However the post-merge commit analysis exposed **6 semantic gaps**:
+| Class | Current entries | Problem |
+|-------|----------------|---------|
+| `discovery` | 0 | No entries validate R-DISC rule QP-S1 is adding |
+| `cross_domain` | 0 | No entries validate R-CDOM rule QP-S1 is adding |
+| `factual` | 0 | No entries validate R-FACT rule QP-S1 is adding |
+| `cross_native` | 0 | No native-2 data — deferred to M5; one stub entry to hold slot |
 
-| Gap | Problem | Root cause |
-|-----|---------|-----------|
-| GAP-1 | `time_window` never populated for eclipse queries | `099937e` fix was in deleted `router/prompt.ts`, never ported |
-| GAP-2 | `time_window` never populated for named antardasha + date range | Same — `099937e`, never ported |
-| GAP-3 | `graph_seed_hints` never populated for karaka/yoga architectural queries | `884b99c` fix in deleted file, never ported |
-| GAP-4 | `discovery` class: only 2 sentences of definition, no tool-selection rule | New class added in v2.0 but under-specified |
-| GAP-5 | `cross_domain` class: no explicit tool-selection rule | Same |
-| GAP-6 | `factual` class: no explicit tool-selection rule | Same |
-| GAP-6b | GT.017 recall residual: life-path holistic misses `cgm_graph_walk` | R14a trigger list too narrow |
+Additionally, the new fields `time_window` and `graph_seed_hints` introduced
+by Pipeline-Transform-S1 have zero golden entries asserting on their population.
+The smoke runner currently has no way to verify these fields are correctly set.
 
-**Schema status:** `time_window` and `graph_seed_hints` both exist in
-`PipelinePlan` (types.ts). The contract is complete; the prompt-level
-behavioral specification is missing.
+**What this session does:** Add 17 new entries (GT.030–GT.046) to fill these
+gaps. Bump `$schema_version` to `"1.2"`. Update `category_distribution`.
+
+**What this session does NOT do:** Edit any prompt file. Edit any source code.
+Run the eval. Those belong to QP-S1 and QP-S4 respectively.
+
+**Dependency note:** QP-S3 entries are authored against the rules that QP-S1
+is *adding* to the prompt. The entries describe what the correct plan *should*
+look like once R-DISC, R-CDOM, R-FACT, R-TW1, R-TW2, R-GSH, and the R14a
+amendment are in place. The full eval validating these entries runs in QP-S4
+after both QP-S1 and QP-S3 are merged to main.
 
 ---
 
 ## §2 — MANDATORY READING BEFORE WRITING ANYTHING
 
 ```
-00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md       ← THE ONLY FILE TO EDIT
-00_ARCHITECTURE/PIPELINE_GAP_PLAN_v1_0.md §4/QP-S1  ← Full work spec
-platform/src/lib/pipeline/types.ts           ← PipelinePlan schema (read-only)
-platform/tests/eval/planner_golden_set.json  ← Golden set (read-only — QP-S3 owns edits)
+platform/tests/eval/planner_golden_set.json          ← THE ONLY FILE TO EDIT
+platform/tests/eval/planner_smoke_runner.ts          ← Read to understand entry schema (read-only)
+00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md               ← Read §3 for rule context (read-only)
+00_ARCHITECTURE/PIPELINE_GAP_PLAN_v1_0.md §4/QP-S3  ← Full entry specs (read-only)
 ```
 
 Do NOT touch any other file.
 
 ---
 
-## §3 — WORK TO DO (8 items)
+## §3 — WORK TO DO: ADD GT.030–GT.046 (17 entries)
 
-For every edit, state the hypothesis: **"This edit enables/fixes [behaviour]
-by [mechanism]."** If you cannot state this, do not make the edit.
+### Schema requirements per entry
 
-### 3A. R-TW1 — time_window for eclipse queries (closes GAP-1)
+Every entry must include:
+- `id`: string (e.g. `"GT.030"`)
+- `query`: string (the natural language query being tested)
+- `query_class`: one of the 8 valid enum values
+- `category`: string label (e.g. `"factual"`, `"discovery"`, `"cross_domain"`, `"predictive"`, `"holistic"`, `"interpretive"`, `"deferred"`)
+- `expected_tools`: string[] (ordered by priority — what the planner should produce)
+- `required_tools`: string[] (subset that must be present — eval fails if any are absent)
+- `forbidden_tools`: string[] (eval fails if any of these appear in the plan)
+- `required_asset_ids`: string[] (FORENSIC, CGM, UCN, CDLM, LEL as applicable)
+- `notes`: string (explains why this plan is correct; cite rule IDs where applicable)
 
-Add a new rule in the TOOL_CALLS HARD RULES section (after R16, before the
-Style rules block):
+**Extension field for new schema fields:** For entries that assert on `time_window`
+or `graph_seed_hints` population, add:
+- `required_plan_fields`: string[] (e.g. `["time_window"]`, `["graph_seed_hints"]`)
 
-```
-R-TW1. ECLIPSE TEMPORAL SCOPE: For PREDICTIVE queries that contain the
-word "eclipse" (solar or lunar), populate `time_window` with the window
-that brackets the queried eclipse event:
-  - If the query states explicit dates or a month/year, use those as
-    start/end (ISO 8601: "YYYY-MM-DD").
-  - If no dates are stated, default window: start=today, end=today+90 days.
-Set `planets: ["Moon"]` for lunar eclipse queries; `planets: ["Sun","Moon"]`
-for solar. Set `forward_looking: true`. Apply R7c transit ban — tools are
-`msr_sql` + `pattern_register` only.
-Hypothesis: restores F016 eclipse temporal scoping lost from commit 099937e.
-```
+The smoke runner's existing degenerate-entry guard skips entries with empty
+`expected_tools[]` — the GT.046 cross_native stub will be skipped automatically.
 
-### 3B. R-TW2 — time_window for named antardasha + date range (closes GAP-2)
+---
 
-Add immediately after R-TW1:
+### GT.030–GT.032: factual class (3 entries)
 
-```
-R-TW2. ANTARDASHA TEMPORAL SCOPE: For PREDICTIVE queries that name a
-specific antardasha period AND state a date range or year span (e.g.
-"Mercury antardasha from 2025 to 2027", "my Ketu antardasha 2027–2034"),
-populate `time_window: { "start": "<start-year>-01-01", "end": "<end-year>-12-31" }`
-using the stated years. Set `dasha_context_required: true`. When no
-explicit dates are stated but the named period is resolvable from the
-native's known dasha schedule, still populate time_window with the
-resolved window.
-Hypothesis: restores F019 named-antardasha date-range scoping lost from
-commit 099937e.
-```
-
-### 3C. R-GSH — graph_seed_hints for karaka/yoga/dasha-lord architectural queries (closes GAP-3)
-
-Add immediately after R-TW2:
-
-```
-R-GSH. GRAPH SEED HINTS: For HOLISTIC or INTERPRETIVE queries that
-explicitly reference one or more of:
-  (a) karakas by name (Atmakaraka, Amatyakaraka, AK, AmK, Darakaraka, etc.)
-  (b) named yogas (Lakshmi Yoga, Sasha Yoga, Gajakesari, Hamsa, Ruchaka,
-      Malavya, Bhadra, Shasha — any named yoga formation)
-  (c) dasha lords in an architectural/mapping context ("my Mercury
-      mahadasha lord", "the current dasha lord's role")
-populate `graph_seed_hints` with the relevant node IDs:
-  - Karakas → "KRK.C8.AK", "KRK.C8.AmK", "KRK.C8.DK", etc.
-  - Yogas → "YOG.LAKSHMI", "YOG.SASHA", "YOG.GAJAKESARI", etc.
-  - Dasha lords → "DSH.MD.MERCURY", "DSH.MD.KETU", etc.
-Do NOT populate graph_seed_hints for queries that do not name specific
-karaka, yoga, or dasha-lord nodes.
-Hypothesis: restores F022/F024 holistic graph-seed-hint pattern lost from
-commit 884b99c.
+```json
+{
+  "id": "GT.030",
+  "query": "What is my lagna?",
+  "query_class": "factual",
+  "category": "factual",
+  "expected_tools": ["msr_sql"],
+  "required_tools": ["msr_sql"],
+  "forbidden_tools": ["cgm_graph_walk", "cluster_atlas", "resonance_register", "vector_search"],
+  "required_asset_ids": ["FORENSIC", "CGM"],
+  "notes": "R-FACT: single chart-lookup — one msr_sql call, no synthesis_guidance, no discovery register. expected_output_shape: single_answer."
+}
 ```
 
-### 3D. R-DISC — discovery class tool-selection rule (closes GAP-4)
-
-In the QUERY CLASS RULES section, replace the current 2-sentence discovery
-definition with a full tool-selection rule:
-
-```
-"discovery" — open-ended exploration: "what's interesting", "what stands
-              out", "surprise me", "what's notable", "what haven't I asked
-              about". No specific domain or planet focus.
-              TOOL RULE (R-DISC): always produce all four L2.5 discovery
-              registers as a set:
-                pattern_register      (priority 1)
-                contradiction_register (priority 1)
-                resonance_register    (priority 2)
-                cluster_atlas         (priority 2)
-              Add msr_sql at priority 3 ONLY when the discovery query
-              explicitly names a domain. Do NOT add cgm_graph_walk or
-              vector_search to discovery queries.
-              ASSET BUNDLE: FORENSIC + CGM (floors) + UCN (priority 2) +
-              CDLM (priority 2).
+```json
+{
+  "id": "GT.031",
+  "query": "Which house is Jupiter placed in?",
+  "query_class": "factual",
+  "category": "factual",
+  "expected_tools": ["msr_sql"],
+  "required_tools": ["msr_sql"],
+  "forbidden_tools": ["vector_search", "pattern_register", "cgm_graph_walk"],
+  "required_asset_ids": ["FORENSIC", "CGM"],
+  "notes": "R-FACT: positional chart lookup — one msr_sql call sufficient. No interpretation layer needed."
+}
 ```
 
-### 3E. R-CDOM — cross_domain class tool-selection rule (closes GAP-5)
-
-In the QUERY CLASS RULES section, expand the cross_domain definition:
-
-```
-"cross_domain" — multi-domain analysis with a defined scope (not
-                 open-ended). E.g. "how does my Mars affect both career
-                 and relationships".
-                 TOOL RULE (R-CDOM): default set is msr_sql (priority 1)
-                 + vector_search (priority 1, one call per named domain
-                 with domain-specific query_text). Add cgm_graph_walk at
-                 priority 2 when the query contains explicit domain-
-                 interaction language: "how does X affect Y", "interaction
-                 between", "relationship between X and Y domains",
-                 "connected", "how X and Y interact". Do NOT add
-                 cluster_atlas or resonance_register unless the query
-                 explicitly triggers R11 or R15.
-                 ASSET BUNDLE: FORENSIC + CGM (floors) + UCN (priority 2)
-                 + CDLM (priority 2, cross-domain linkage surface).
+```json
+{
+  "id": "GT.032",
+  "query": "What gemstone does the Marakacharya prescribe for Venus?",
+  "query_class": "factual",
+  "category": "factual",
+  "expected_tools": ["remedial_codex_query"],
+  "required_tools": ["remedial_codex_query"],
+  "forbidden_tools": ["msr_sql", "vector_search", "pattern_register"],
+  "required_asset_ids": ["FORENSIC", "CGM"],
+  "notes": "R-FACT codex-lookup branch: remedial codex query, not chart analysis. No msr_sql needed."
+}
 ```
 
-### 3F. R-FACT — factual class tool-selection rule (closes GAP-6)
+---
 
-In the QUERY CLASS RULES section, expand the factual definition:
+### GT.033–GT.035: discovery class (3 entries)
 
-```
-"factual" — single factual lookup ("what is my lagna", "which house is
-            Saturn in"). One or two tools. No synthesis_guidance.
-            TOOL RULE (R-FACT): use exactly ONE tool:
-              - msr_sql for chart-position lookups (house, planet, degree,
-                dignity, aspect counts)
-              - remedial_codex_query for codex-lookup factual questions
-                ("what gemstone does the codex prescribe for Venus")
-            NEVER add vector_search, pattern_register, cgm_graph_walk,
-            cluster_atlas, or any register to a factual query.
-            expected_output_shape: "single_answer". Omit synthesis_guidance.
-            ASSET BUNDLE: FORENSIC + CGM floors only.
-```
-
-### 3G. R14a amendment — GT.017 life-path holistic (closes GAP-6b)
-
-In rule R14a, extend the trigger phrase list. Current text ends with
-"domain interaction (R20)". Append:
-
-```
-Also include cgm_graph_walk for holistic queries containing life-path
-language: "life path", "life arc", "arc of my life", "overall life
-direction", "life trajectory", "how my life has unfolded", "life-wide
-synthesis". These phrases signal a request for cross-domain structural
-linkage, not just signal-level synthesis.
-Hypothesis: enables cgm_graph_walk on GT.017-style life-path holistic
-queries (recall 0.75 → expected 1.0 after this amendment).
+```json
+{
+  "id": "GT.033",
+  "query": "What's the most interesting or unusual thing about my chart?",
+  "query_class": "discovery",
+  "category": "discovery",
+  "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas"],
+  "required_tools": ["pattern_register", "contradiction_register"],
+  "forbidden_tools": ["remedial_codex_query"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R-DISC: open-ended discovery — all four L2.5 registers. No domain anchor so msr_sql is not added. Open exploration language triggers all four registers."
+}
 ```
 
-### 3H. Version bump + §4 few-shot additions
+```json
+{
+  "id": "GT.034",
+  "query": "Surprise me — what patterns in my chart haven't I asked about yet?",
+  "query_class": "discovery",
+  "category": "discovery",
+  "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas"],
+  "required_tools": ["pattern_register", "cluster_atlas"],
+  "forbidden_tools": ["remedial_codex_query", "msr_sql"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R-DISC: classic discovery trigger ('surprise me', 'patterns'). No domain signal — msr_sql explicitly forbidden. All four L2.5 registers required."
+}
+```
 
-1. **Frontmatter**: change `version: 2.0.1` → `version: 2.1`, update
-   `patched_on:` to 2026-05-11, add a `gap_closure_patch:` block listing
-   the 7 changes (R-TW1, R-TW2, R-GSH, R-DISC, R-CDOM, R-FACT, R14a).
+```json
+{
+  "id": "GT.035",
+  "query": "What stands out in my career domain that I might be overlooking?",
+  "query_class": "discovery",
+  "category": "discovery",
+  "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas", "msr_sql"],
+  "required_tools": ["pattern_register", "msr_sql"],
+  "forbidden_tools": ["remedial_codex_query"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R-DISC with domain anchor: discovery query naming 'career' domain — msr_sql added at priority 3 per R-DISC exception rule. All four L2.5 registers remain required."
+}
+```
 
-2. **§4 few-shots**: add six new examples numbered **4.12–4.17** after
-   the existing eleven (4.11 is the last current example). Each must
-   contain a complete `expected_plan` with `asset_bundle[]`, `tool_calls[]`,
-   `synthesis_guidance`, and the relevant new fields where applicable.
+---
 
-   **4.12 — Eclipse predictive** (`time_window` + `planets: ["Moon"]`):
-   ```json
-   {
-     "user_query": "Will there be any lunar eclipses affecting me in the next 3 months?",
-     "expected_plan": {
-       "query_class": "predictive",
-       "query_intent_summary": "Predictive scan for lunar eclipse impact over next 90 days.",
-       "asset_bundle": [
-         { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for Moon placement and eclipse sensitivity." },
-         { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural Moon connectivity." },
-         { "asset_id": "LEL",      "priority": 1, "reason": "R26: LEL for eclipse-event ground-truth calibration." }
-       ],
-       "tool_calls": [
-         {
-           "tool_name": "msr_sql",
-           "params": { "planets": ["Moon"], "forward_looking": true },
-           "token_budget": 800, "priority": 1,
-           "reason": "Pull Moon signals for eclipse sensitivity assessment."
-         },
-         {
-           "tool_name": "pattern_register",
-           "params": { "planets": ["Moon"], "forward_looking": true },
-           "token_budget": 400, "priority": 2,
-           "reason": "R7a: recurring Moon patterns for eclipse-period projection."
-         }
-       ],
-       "synthesis_guidance": "Ground the eclipse impact in Moon's natal placement and current dasha. Flag the orb window and whether the eclipse falls on a sensitive degree. Cite confidence caveat.",
-       "time_window": { "start": "2026-05-11", "end": "2026-08-11" },
-       "planets": ["Moon"],
-       "forward_looking": true,
-       "expected_output_shape": "time_indexed_prediction"
-     }
-   }
-   ```
+### GT.036–GT.038: cross_domain class (3 entries)
 
-   **4.13 — Named antardasha + date range** (`time_window` + `dasha_context_required`):
-   ```json
-   {
-     "user_query": "What can I expect during my Mercury antardasha from 2025 to 2027?",
-     "expected_plan": {
-       "query_class": "predictive",
-       "query_intent_summary": "Forward projection for Mercury antardasha 2025–2027.",
-       "asset_bundle": [
-         { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: natal Mercury placement and dignity." },
-         { "asset_id": "CGM",      "priority": 1, "reason": "Floor: Mercury structural connectivity." },
-         { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for Mercury-period calibration." }
-       ],
-       "tool_calls": [
-         {
-           "tool_name": "msr_sql",
-           "params": { "planets": ["Mercury"], "forward_looking": true },
-           "token_budget": 900, "priority": 1,
-           "reason": "Pull Mercury-domain signals for antardasha projection."
-         },
-         {
-           "tool_name": "pattern_register",
-           "params": { "planets": ["Mercury"], "forward_looking": true },
-           "token_budget": 400, "priority": 2,
-           "reason": "R7a: recurring Mercury patterns for antardasha period arc."
-         }
-       ],
-       "synthesis_guidance": "Project the Mercury antardasha arc 2025–2027. Ground in LEL Mercury-period events. Lead with the dominant domain Mercury will activate. Cite dasha sub-period boundaries.",
-       "time_window": { "start": "2025-01-01", "end": "2027-12-31" },
-       "planets": ["Mercury"],
-       "forward_looking": true,
-       "dasha_context_required": true,
-       "expected_output_shape": "time_indexed_prediction"
-     }
-   }
-   ```
+```json
+{
+  "id": "GT.036",
+  "query": "How does my Mars affect both my career and my relationships?",
+  "query_class": "cross_domain",
+  "category": "cross_domain",
+  "expected_tools": ["msr_sql", "vector_search"],
+  "required_tools": ["msr_sql", "vector_search"],
+  "forbidden_tools": ["remedial_codex_query"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R-CDOM: two named domains (career, relationships) — msr_sql + vector_search x2 (one per domain). No explicit interaction language so cgm_graph_walk not required."
+}
+```
 
-   **4.14 — Holistic karaka/yoga architectural** (`graph_seed_hints`):
-   ```json
-   {
-     "user_query": "Map out the architectural role of my Atmakaraka and Amatyakaraka across all major yogas.",
-     "expected_plan": {
-       "query_class": "holistic",
-       "query_intent_summary": "Karaka architectural mapping: AK/AmK role across active yogas.",
-       "asset_bundle": [
-         { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for karaka identification." },
-         { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map for karaka-yoga connectivity." },
-         { "asset_id": "CDLM",     "priority": 1, "reason": "R24: cross-domain linkage primary holistic surface." },
-         { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for karaka domain expression." }
-       ],
-       "tool_calls": [
-         {
-           "tool_name": "msr_sql",
-           "params": { "limit": 15 },
-           "token_budget": 900, "priority": 1,
-           "reason": "Pull signals for AK and AmK across all domains."
-         },
-         {
-           "tool_name": "cgm_graph_walk",
-           "params": { "graph_traversal_depth": 2 },
-           "token_budget": 600, "priority": 1,
-           "reason": "R-GSH: karaka architectural query — walk from KRK seed nodes."
-         },
-         {
-           "tool_name": "pattern_register",
-           "params": {},
-           "token_budget": 400, "priority": 2,
-           "reason": "Named yoga patterns (Lakshmi, Sasha, etc.) for AK/AmK role."
-         },
-         {
-           "tool_name": "cluster_atlas",
-           "params": {},
-           "token_budget": 700, "priority": 2,
-           "reason": "R11: cluster surface for holistic karaka-yoga architecture."
-         }
-       ],
-       "synthesis_guidance": "Map AK and AmK as the primary and secondary soul-drivers. Show how each karaka's placement shapes the dominant yogas. Connect to 2–3 specific life domains. One structural arc, not a list.",
-       "graph_seed_hints": ["KRK.C8.AK", "KRK.C8.AmK", "YOG.LAKSHMI", "YOG.SASHA"],
-       "expected_output_shape": "three_interpretation"
-     }
-   }
-   ```
+```json
+{
+  "id": "GT.037",
+  "query": "What is the relationship between my spiritual growth and financial stability in my chart?",
+  "query_class": "cross_domain",
+  "category": "cross_domain",
+  "expected_tools": ["msr_sql", "vector_search", "cgm_graph_walk"],
+  "required_tools": ["msr_sql", "vector_search"],
+  "forbidden_tools": ["remedial_codex_query", "pattern_register"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R-CDOM: two named domains + 'relationship between' interaction language — cgm_graph_walk added at priority 2 per R-CDOM. vector_search fires once per domain."
+}
+```
 
-   **4.15 — Discovery class** (all four L2.5 registers):
-   ```json
-   {
-     "user_query": "What's the most interesting or unusual thing about my chart?",
-     "expected_plan": {
-       "query_class": "discovery",
-       "query_intent_summary": "Open-ended exploration for unusual or salient chart patterns.",
-       "asset_bundle": [
-         { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for pattern discovery." },
-         { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural topology for unusual configuration detection." },
-         { "asset_id": "UCN",      "priority": 2, "reason": "R-DISC: discovery interpretive synthesis layer." },
-         { "asset_id": "CDLM",     "priority": 2, "reason": "R-DISC: cross-domain linkage for unusual cross-system patterns." }
-       ],
-       "tool_calls": [
-         {
-           "tool_name": "pattern_register",
-           "params": {},
-           "token_budget": 500, "priority": 1,
-           "reason": "R-DISC: named cross-domain patterns — primary discovery surface."
-         },
-         {
-           "tool_name": "contradiction_register",
-           "params": {},
-           "token_budget": 400, "priority": 1,
-           "reason": "R-DISC: contradictions reveal unusual chart tensions."
-         },
-         {
-           "tool_name": "resonance_register",
-           "params": {},
-           "token_budget": 400, "priority": 2,
-           "reason": "R-DISC: cross-system resonances for unusual alignment patterns."
-         },
-         {
-           "tool_name": "cluster_atlas",
-           "params": {},
-           "token_budget": 700, "priority": 2,
-           "reason": "R-DISC: cluster surface for dominant unusual patterns."
-         }
-       ],
-       "synthesis_guidance": "Lead with the single most unusual or surprising cross-domain pattern. Explain why it is unusual — what norm it breaks or what paradox it creates. No exhaustive listing.",
-       "expected_output_shape": "single_answer"
-     }
-   }
-   ```
+```json
+{
+  "id": "GT.038",
+  "query": "Tell me how career, health, and relationships are connected in my chart.",
+  "query_class": "cross_domain",
+  "category": "cross_domain",
+  "expected_tools": ["msr_sql", "vector_search", "cgm_graph_walk"],
+  "required_tools": ["msr_sql", "cgm_graph_walk"],
+  "forbidden_tools": ["remedial_codex_query", "pattern_register"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R-CDOM: three named domains + 'connected' interaction language — cgm_graph_walk required per explicit interaction trigger. msr_sql + vector_search fire per domain."
+}
+```
 
-   **4.16 — Cross_domain class** (two named domains, interaction language):
-   ```json
-   {
-     "user_query": "How does my Mars affect both my career and my relationships?",
-     "expected_plan": {
-       "query_class": "cross_domain",
-       "query_intent_summary": "Mars influence across career and relationships domains.",
-       "asset_bundle": [
-         { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: Mars placement and dignity facts." },
-         { "asset_id": "CGM",      "priority": 1, "reason": "Floor: Mars structural connectivity across domains." },
-         { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for multi-domain Mars reading." },
-         { "asset_id": "CDLM",     "priority": 2, "reason": "R24: cross-domain linkage for career-relationship interaction." }
-       ],
-       "tool_calls": [
-         {
-           "tool_name": "msr_sql",
-           "params": { "planets": ["Mars"], "domains": ["career", "relationships"] },
-           "token_budget": 900, "priority": 1,
-           "reason": "Pull Mars signals across both named domains."
-         },
-         {
-           "tool_name": "vector_search",
-           "params": { "query_text": "Mars career domain influence", "doc_type": ["domain_report"], "top_k": 5 },
-           "token_budget": 500, "priority": 1,
-           "reason": "L3 career domain narrative for Mars cross-domain reading."
-         },
-         {
-           "tool_name": "vector_search",
-           "params": { "query_text": "Mars relationships domain influence", "doc_type": ["domain_report"], "top_k": 5 },
-           "token_budget": 500, "priority": 1,
-           "reason": "L3 relationships domain narrative for Mars cross-domain reading."
-         }
-       ],
-       "synthesis_guidance": "Show how Mars expresses differently in career vs relationships. Identify the common thread (the Mars signature) and the domain-specific manifestation in each. Cross-reference D1 and D10 for career, D1 and D9 for relationships.",
-       "planets": ["Mars"],
-       "domains": ["career", "relationships"],
-       "expected_output_shape": "three_interpretation"
-     }
-   }
-   ```
+---
 
-   **4.17 — Factual class** (single tool, no synthesis_guidance):
-   ```json
-   {
-     "user_query": "Which house is Jupiter placed in?",
-     "expected_plan": {
-       "query_class": "factual",
-       "query_intent_summary": "Single chart-position lookup: Jupiter's house placement.",
-       "asset_bundle": [
-         { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for Jupiter house lookup." },
-         { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural context for Jupiter placement." }
-       ],
-       "tool_calls": [
-         {
-           "tool_name": "msr_sql",
-           "params": { "planets": ["Jupiter"] },
-           "token_budget": 200, "priority": 1,
-           "reason": "R-FACT: single chart-position lookup — one msr_sql call only."
-         }
-       ],
-       "expected_output_shape": "single_answer"
-     }
-   }
-   ```
+### GT.039–GT.040: time_window population (2 entries)
+
+```json
+{
+  "id": "GT.039",
+  "query": "Will there be any significant lunar eclipses affecting me in the next 3 months?",
+  "query_class": "predictive",
+  "category": "predictive",
+  "expected_tools": ["msr_sql", "pattern_register"],
+  "required_tools": ["msr_sql", "pattern_register"],
+  "forbidden_tools": ["vector_search", "cgm_graph_walk"],
+  "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
+  "required_plan_fields": ["time_window"],
+  "notes": "R-TW1: eclipse keyword in predictive query — time_window must be populated with 90-day forward window. planets: ['Moon']. R7c transit ban: vector_search forbidden. required_plan_fields asserts time_window presence in emitted plan."
+}
+```
+
+```json
+{
+  "id": "GT.040",
+  "query": "What can I expect during my Mercury antardasha from 2025 to 2027?",
+  "query_class": "predictive",
+  "category": "predictive",
+  "expected_tools": ["msr_sql", "pattern_register"],
+  "required_tools": ["msr_sql", "pattern_register"],
+  "forbidden_tools": ["vector_search", "remedial_codex_query"],
+  "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
+  "required_plan_fields": ["time_window", "dasha_context_required"],
+  "notes": "R-TW2: named antardasha (Mercury) + explicit date range (2025–2027) — time_window: {start: '2025-01-01', end: '2027-12-31'}, dasha_context_required: true. required_plan_fields asserts both fields populated."
+}
+```
+
+---
+
+### GT.041–GT.042: graph_seed_hints population (2 entries)
+
+```json
+{
+  "id": "GT.041",
+  "query": "Map out the architectural role of my Atmakaraka and Amatyakaraka across all major yogas.",
+  "query_class": "holistic",
+  "category": "holistic",
+  "expected_tools": ["msr_sql", "cgm_graph_walk", "cluster_atlas", "pattern_register"],
+  "required_tools": ["msr_sql", "cgm_graph_walk"],
+  "forbidden_tools": ["remedial_codex_query", "resonance_register"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "required_plan_fields": ["graph_seed_hints"],
+  "notes": "R-GSH: explicit AK/AmK + yoga mapping — graph_seed_hints must be populated with KRK.* and YOG.* namespace node IDs. required_plan_fields asserts graph_seed_hints presence."
+}
+```
+
+```json
+{
+  "id": "GT.042",
+  "query": "How do Lakshmi Yoga and Sasha Yoga interact with my current Mercury mahadasha?",
+  "query_class": "interpretive",
+  "category": "interpretive",
+  "expected_tools": ["msr_sql", "pattern_register", "cgm_graph_walk"],
+  "required_tools": ["msr_sql", "pattern_register"],
+  "forbidden_tools": ["remedial_codex_query", "resonance_register"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN"],
+  "required_plan_fields": ["graph_seed_hints"],
+  "notes": "R-GSH: named yogas (Lakshmi Yoga, Sasha Yoga) + named dasha lord (Mercury mahadasha) — graph_seed_hints should include YOG.LAKSHMI, YOG.SASHA, DSH.MD.MERCURY. required_plan_fields asserts graph_seed_hints non-empty."
+}
+```
+
+---
+
+### GT.043–GT.044: predictive edge cases (2 entries)
+
+```json
+{
+  "id": "GT.043",
+  "query": "When is the most favorable window for career advancement in the next 2 years?",
+  "query_class": "predictive",
+  "category": "predictive",
+  "expected_tools": ["msr_sql", "pattern_register"],
+  "required_tools": ["msr_sql", "pattern_register"],
+  "forbidden_tools": ["vector_search", "cgm_graph_walk"],
+  "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
+  "notes": "R7a: predictive with temporal window — pattern_register required. No transit language so R7c transit ban does not apply; vector_search forbidden regardless (no domain document signal in a timing query)."
+}
+```
+
+```json
+{
+  "id": "GT.044",
+  "query": "Will my health improve after my Saturn mahadasha ends in 2027?",
+  "query_class": "predictive",
+  "category": "predictive",
+  "expected_tools": ["msr_sql", "pattern_register"],
+  "required_tools": ["msr_sql", "pattern_register"],
+  "forbidden_tools": ["vector_search", "remedial_codex_query"],
+  "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
+  "notes": "Mahadasha-end event + health domain + year-anchored → time_window encouraged but not required (year implicit, not explicit range). No remedial prescription asked — remedial_codex_query forbidden."
+}
+```
+
+---
+
+### GT.045: life-path R14a variant (1 entry)
+
+```json
+{
+  "id": "GT.045",
+  "query": "Give me an overview of the arc of my life across all major domains.",
+  "query_class": "holistic",
+  "category": "holistic",
+  "expected_tools": ["msr_sql", "cgm_graph_walk", "cluster_atlas", "pattern_register"],
+  "required_tools": ["msr_sql", "cgm_graph_walk"],
+  "forbidden_tools": ["remedial_codex_query", "resonance_register"],
+  "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+  "notes": "R14a amended trigger: 'arc of my life' is a new trigger phrase added in QP-S1 for cgm_graph_walk. Variant of GT.017 ('Give me a comprehensive overview of my life path') using synonym phrasing to verify R14a trigger list breadth."
+}
+```
+
+---
+
+### GT.046: cross_native deferred stub (1 entry)
+
+```json
+{
+  "id": "GT.046",
+  "query": "[DEFERRED — M5] Compare my chart with my partner's chart for relationship compatibility.",
+  "query_class": "cross_native",
+  "category": "deferred",
+  "expected_tools": [],
+  "required_tools": [],
+  "forbidden_tools": [],
+  "required_asset_ids": [],
+  "notes": "No native-2 data exists. Deferred to M5 per GAP-7. This entry holds the cross_native class slot to satisfy all-8-classes coverage in the header. Smoke runner skips entries with empty expected_tools via degenerate-entry guard."
+}
+```
+
+---
+
+### Header and category_distribution update
+
+Update the file header:
+```json
+{
+  "$schema_version": "1.2",
+  "category_distribution": {
+    "remedial": 6,
+    "interpretive": 7,
+    "predictive": 9,
+    "holistic": 6,
+    "planetary": 3,
+    "edge_case": 5,
+    "factual": 3,
+    "discovery": 3,
+    "cross_domain": 3,
+    "deferred": 1
+  }
+}
+```
+
+Total entries after additions: **46** (29 original + 17 new).
+Verify `interpretive` count is 7 — GT.042 is interpretive class, upgrading from 6.
+Verify `predictive` count is 9 — GT.039/040/043/044 add 4 to the original 5.
+Verify `holistic` count is 6 — GT.041/045 add 2 to the original 4.
 
 ---
 
 ## §4 — ACCEPTANCE CRITERIA (5 items)
 
-- [ ] **AC-1** All seven changes (R-TW1, R-TW2, R-GSH, R-DISC, R-CDOM, R-FACT, R14a amendment) are present in the §3 system prompt verbatim body, each with an explicit `Hypothesis:` line.
-- [ ] **AC-2** The §2 output schema block (the `interface PipelinePlan` section) is NOT modified — no new fields, no type changes.
-- [ ] **AC-3** Rules R1–R20 and R21–R26 governing categories with passing golden entries are not altered except: R14a trigger list extension (additive only) and the discovery/cross_domain/factual QUERY CLASS RULES expansions (which replace the existing stub definitions, not the rule engine).
-- [ ] **AC-4** YAML frontmatter `version:` reads `2.1` and `gap_closure_patch:` block lists all 7 changes.
-- [ ] **AC-5** Six new few-shot examples (4.12–4.17) are present in §4, each with a complete `expected_plan` containing `asset_bundle[]`, `tool_calls[]`, and all relevant new fields (`time_window`, `graph_seed_hints` where applicable). The existing 11 examples (4.1–4.11) are not modified.
+- [ ] **AC-1** All 8 query classes now have ≥ 2 entries with non-empty `expected_tools[]` in the file (the deferred cross_native stub GT.046 is exempt by virtue of empty `expected_tools`).
+- [ ] **AC-2** `time_window` requirement is captured via `required_plan_fields: ["time_window"]` on at least 2 entries (GT.039, GT.040).
+- [ ] **AC-3** `graph_seed_hints` requirement is captured via `required_plan_fields: ["graph_seed_hints"]` on at least 2 entries (GT.041, GT.042).
+- [ ] **AC-4** The file header `"$schema_version"` reads `"1.2"` and `category_distribution` sums to 46 entries matching the counts above.
+- [ ] **AC-5** `JSON.parse(fs.readFileSync('planner_golden_set.json', 'utf-8'))` succeeds — file is valid JSON with no syntax errors. Verify with: `node -e "JSON.parse(require('fs').readFileSync('platform/tests/eval/planner_golden_set.json','utf-8')); console.log('valid')"`.
 
 ---
 
@@ -463,29 +414,32 @@ queries (recall 0.75 → expected 1.0 after this amendment).
 
 ### may_touch
 ```
-00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md    (all edits go here)
-CLAUDECODE_BRIEF.md                        (set status: COMPLETE at end)
+platform/tests/eval/planner_golden_set.json    (all edits go here)
+CLAUDECODE_BRIEF.md                            (set status: COMPLETE at end)
 ```
 
 ### must_not_touch
 ```
-platform/src/**                            (source code FROZEN for this session)
-platform/tests/eval/planner_golden_set.json   (QP-S3 owns this)
-platform/tests/eval/planner_smoke_runner.ts   (do not touch)
-platform/src/lib/pipeline/types.ts            (schema frozen)
-00_ARCHITECTURE/CURRENT_STATE_v1_0.md         (QP-S4 owns governance)
-00_ARCHITECTURE/SESSION_LOG.md                (QP-S4 owns governance)
+00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md         (QP-S1 owns this)
+platform/tests/eval/planner_smoke_runner.ts    (runner is frozen)
+platform/src/**                                (source code FROZEN for this session)
+platform/tests/eval/eval_results_*.json        (QP-S4 creates eval output)
+00_ARCHITECTURE/CURRENT_STATE_v1_0.md          (QP-S4 owns governance)
+00_ARCHITECTURE/SESSION_LOG.md                 (QP-S4 owns governance)
 ```
 
 ---
 
 ## §6 — KNOWN OUT-OF-SCOPE
 
-1. **Eval run** — QP-S4 runs the eval after QP-S1 + QP-S3 are merged.
-2. **Golden set edits** — QP-S3 owns `planner_golden_set.json`.
-3. **Code cleanup** — QP-S2 owns StreamingAnswer.tsx, useChatSession.ts, route.ts.
-4. **cross_native class** — No native-2 data exists; deferred to M5.
-5. **Governance close** — SESSION_LOG + CURRENT_STATE updates are QP-S4's responsibility.
+1. **Eval run** — QP-S4 runs the full eval after QP-S1 + QP-S3 are merged.
+2. **Smoke runner changes** — if the runner needs extending to support `required_plan_fields`,
+   that is out of scope for QP-S3. QP-S3 adds the extension field to the JSON entries; the
+   runner extension can be done in QP-S4 if needed.
+3. **Planner prompt edits** — QP-S1 owns the rules. QP-S3's entries assume QP-S1's rules
+   are in place; they will show as failures until QP-S1 is merged.
+4. **Code cleanup** — QP-S2 owns StreamingAnswer.tsx, useChatSession.ts, route.ts.
+5. **Governance close** — SESSION_LOG + CURRENT_STATE are QP-S4's responsibility.
 
 ---
 
@@ -496,23 +450,25 @@ When all 5 ACs are PASS:
 1. Set `status: COMPLETE` in this file's frontmatter.
 2. Commit:
    ```bash
-   git add 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md CLAUDECODE_BRIEF.md
-   git commit -m "fix(planner): close GAP-1..6b — PLANNER_PROMPT v2.1
+   git add platform/tests/eval/planner_golden_set.json CLAUDECODE_BRIEF.md
+   git commit -m "test(eval): expand golden set v1.1→v1.2 — GT.030-GT.046
 
-   R-TW1: eclipse time_window population (restores F016 from 099937e)
-   R-TW2: antardasha date-range time_window (restores F019 from 099937e)
-   R-GSH: graph_seed_hints for karaka/yoga/dasha-lord queries (restores F022/F024 from 884b99c)
-   R-DISC: discovery class full tool-selection rule (4 L2.5 registers)
-   R-CDOM: cross_domain class tool-selection rule
-   R-FACT: factual class tool-selection rule (single tool, no synthesis_guidance)
-   R14a: extended trigger list for life-path holistic cgm_graph_walk (GT.017 fix)
-   6 new few-shots added (4.12-4.17)"
-   git push -u origin fix/planner-gap-qp-s1
+   +17 entries across 4 previously-uncovered query classes:
+   - GT.030-032: factual class (R-FACT validation)
+   - GT.033-035: discovery class (R-DISC validation)
+   - GT.036-038: cross_domain class (R-CDOM validation)
+   - GT.039-040: time_window field population (R-TW1, R-TW2)
+   - GT.041-042: graph_seed_hints field population (R-GSH)
+   - GT.043-044: predictive edge cases
+   - GT.045: life-path R14a variant (cgm_graph_walk trigger)
+   - GT.046: cross_native deferred stub (M5 placeholder)
+   Total: 46 entries. schema_version 1.2."
+   git push -u origin fix/golden-set-qp-s3
    ```
-3. Notify: session QP-S1 COMPLETE on branch `fix/planner-gap-qp-s1`.
+3. Notify: session QP-S3 COMPLETE on branch `fix/golden-set-qp-s3`.
 
 ---
 
-*CLAUDECODE_BRIEF_QP_S1.md · Pipeline Gap Plan QP-S1 · 2026-05-11*
-*5 acceptance criteria: 7 prompt rules + 6 few-shots → PLANNER_PROMPT v2.1*
-*Parallel with: QP-S2 (cleanup), QP-S3 (golden set)*
+*CLAUDECODE_BRIEF_QP_S3.md · Pipeline Gap Plan QP-S3 · 2026-05-11*
+*5 acceptance criteria: 17 new golden entries → planner_golden_set.json v1.2*
+*Parallel with: QP-S1 (planner prompt), QP-S2 (code cleanup)*
