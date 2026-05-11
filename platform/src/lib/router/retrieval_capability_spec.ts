@@ -426,3 +426,85 @@ export function renderRetrievalCapabilitySpec(
 export function getCapability(toolName: string): RetrievalCapabilityEntry | undefined {
   return RETRIEVAL_CAPABILITY_SPEC.find((e) => e.tool_name === toolName)
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// DOMAIN_VARGA_MAP — domain → divisional chart routing (VARGA-ETL-FULL-S1 D18)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mapping from canonical (and alias) domain codes to the divisional charts that
+ * MUST appear in retrieval context for a domain-scoped query, and the secondary
+ * vargas that strengthen the read.
+ *
+ * Used by the planner to schedule `divisional_query` for the mandatory vargas
+ * and (where applicable) `cross_varga_dignity_query` alongside them. Used by
+ * the synthesis layer (DIVISIONAL_INTEGRATION_GATE) to decide whether the
+ * mandatory varga context is present before answering.
+ *
+ * Canonical keys are the L3 domain-report names (career_dharma, health_longevity,
+ * etc.). Aliases (career, marriage, etc.) resolve to the same entry to keep the
+ * planner robust against naming drift.
+ */
+export interface DomainVargaEntry {
+  /** Vargas that MUST appear in the retrieval bundle for an acharya-grade read. */
+  mandatory: readonly string[]
+  /** Vargas that materially strengthen the read but are not blocking. */
+  secondary: readonly string[]
+}
+
+export const DOMAIN_VARGA_MAP: Readonly<Record<string, DomainVargaEntry>> = {
+  // Career / status (D10 dasamsha)
+  career: { mandatory: ['D10'], secondary: ['D9'] },
+  career_dharma: { mandatory: ['D10', 'D9'], secondary: ['D24'] },
+  status: { mandatory: ['D10'], secondary: ['D9'] },
+
+  // Dharma / marriage / relationships (D9 navamsha)
+  dharma: { mandatory: ['D9'], secondary: ['D10'] },
+  marriage: { mandatory: ['D9'], secondary: ['D7'] },
+  partner: { mandatory: ['D9'], secondary: ['D7'] },
+  relationships: { mandatory: ['D9'], secondary: ['D7', 'D10'] },
+
+  // Children (D7 saptamsha)
+  children: { mandatory: ['D7'], secondary: ['D9'] },
+
+  // Parents / ancestry (D12 dvadashamsa)
+  parents: { mandatory: ['D12'], secondary: ['D9'] },
+  ancestry: { mandatory: ['D12'], secondary: ['D60'] },
+
+  // Education / knowledge (D24 siddhamsa)
+  education: { mandatory: ['D24'], secondary: ['D9'] },
+  knowledge: { mandatory: ['D24'], secondary: ['D9'] },
+
+  // Spiritual / moksha (D20 vimsamsha)
+  spiritual: { mandatory: ['D20'], secondary: ['D9', 'D60'] },
+  moksha: { mandatory: ['D20'], secondary: ['D9', 'D60'] },
+  spirit: { mandatory: ['D20'], secondary: ['D9'] },
+
+  // Health / longevity (D30 trimsamsha)
+  health: { mandatory: ['D30'], secondary: ['D9'] },
+  longevity: { mandatory: ['D30'], secondary: ['D9'] },
+  health_longevity: { mandatory: ['D30'], secondary: ['D9'] },
+
+  // Finance / wealth (D2 hora)
+  finance: { mandatory: ['D2'], secondary: ['D9', 'D10'] },
+  wealth: { mandatory: ['D2'], secondary: ['D9', 'D10'] },
+  financial: { mandatory: ['D2'], secondary: ['D9', 'D10'] },
+
+  // Vehicles / comforts (D16 shodashamsha)
+  vehicles_comforts: { mandatory: ['D16'], secondary: ['D9'] },
+  comforts: { mandatory: ['D16'], secondary: ['D9'] },
+
+  // Auspiciousness (D40 khavedamsha)
+  auspiciousness: { mandatory: ['D40'], secondary: ['D9'] },
+
+  // Purity (D45 akshavedamsha)
+  purity: { mandatory: ['D45'], secondary: ['D9'] },
+
+  // Past karma (D60 shashtyamsha) — D60 mandatory; D45 + D9 strengthen
+  past_karma: { mandatory: ['D60'], secondary: ['D45', 'D9'] },
+} as const
+
+/** Resolve a domain code (or alias) to its mandatory + secondary vargas. */
+export function getDomainVargas(domain: string): DomainVargaEntry | undefined {
+  return DOMAIN_VARGA_MAP[domain]
+}

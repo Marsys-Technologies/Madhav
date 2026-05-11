@@ -1,12 +1,12 @@
 ---
 document: CGM_v9_0
-version: "9.0"
+version: "9.1"
 status: CURRENT
 supersedes: "CGM_v2_0.md (archived to 99_ARCHIVE/CGM_v2_0.md)"
 canonical_id: CGM
 layer: L2.5
 source: FORENSIC_v8_0 (canonical L1 basis for all position facts)
-node_count: 234
+node_count: 284
 edge_count_v2: 339
 date: 2026-04-26
 session: Madhav_M2A_Exec_5
@@ -20,6 +20,10 @@ purpose: >
 reconciled_edges_manifest: "035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json"
 edge_count_reconciled: 22
 changelog:
+  - "9.1 (2026-05-10, VARGA-ETL-FULL-S1 D13): added 50 DVS nodes for D24/D30/D40/D45/D60
+     (10 per varga = lagna + 9 planets), grounded in FORENSIC §3.10–§3.14. Added §6
+     DIVISIONAL_TRANSITION edges: 9 edges per §3.15 CSI ledger from PLN.{PLANET} to
+     DVS.D9.{PLANET}. node_count 234 → 284. DVS breakdown updated. No prior node mutated."
   - "9.0 amended-in-place (2026-04-26, Madhav_M2A_Exec_6): manifest pointer added
      (reconciled_edges_manifest + edge_count_reconciled: 22); no node content changed; fingerprint rotates."
   - "9.0 (2026-04-26): Full rebuild on FORENSIC_v8_0. GAP.13 resolved: 8-karaka system canonical,
@@ -64,12 +68,12 @@ pattern `\b(PLN|HSE|SGN|NAK|KRK|DSH|YGA|LAG|ARD|SAH|BVB|SBL|AVG)\.[A-Z0-9_.]+\b`
 | NAK  | 15    |
 | YOG  | 19    |
 | KRK  | 18    |
-| DVS  | 77    |
+| DVS  | 127   |
 | DSH  | 30    |
 | SEN  | 42    |
-| **TOTAL** | **234** |
+| **TOTAL** | **284** |
 
-DVS breakdown: D9×10 + D10×10 + D12×10 + D7×10 + D2×2 + D3×10 + D4×9 + D16×7 + D20×9 = 77 ✓
+DVS breakdown: D9×10 + D10×10 + D12×10 + D7×10 + D2×2 + D3×10 + D4×9 + D16×7 + D20×9 + D24×10 + D30×10 + D40×10 + D45×10 + D60×10 = 127 ✓ (v9.1 adds 50 nodes for D24/D30/D40/D45/D60)
 DSH breakdown: VM-MD×9 + VM-AD(Mercury)×9 + Yogini×8 + Chara×4 = 30 ✓
 SEN breakdown: UPG×9 + ARD×12 + LAG×8 + SAH×10 + MISC×3 = 42 ✓
 
@@ -2710,4 +2714,592 @@ avayogi_planet: PLN.MARS
 formula: "6th nakshatra from Yogi nakshatra (Revati)"
 note: "Avayogi planet PLN.MARS. Mrigashira is also the nakshatra of LAG.HORA."
 l1_source: "FORENSIC_v8_0 §11.3"
-# end_node_blocks: CGM_v9_0 — 234 nodes total
+# --- v9.1 additions (VARGA-ETL-FULL-S1 D13) — 50 DVS nodes for D24/D30/D40/D45/D60 ---
+
+node_id: DVS.D24.LAGNA
+node_type: DVS
+node_label: D24 Lagna — Taurus
+varga: D24
+position_type: lagna
+sign: Taurus
+lagna_lord: PLN.VENUS
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.SUN
+node_type: DVS
+node_label: D24 Sun — Sagittarius H8
+varga: D24
+planet: PLN.SUN
+sign: Sagittarius
+house_from_d24_lagna: 8
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.MOON
+node_type: DVS
+node_label: D24 Moon — Taurus H1 (exalted, lagna)
+varga: D24
+planet: PLN.MOON
+sign: Taurus
+house_from_d24_lagna: 1
+dignity: exalted
+note: "Moon exalted at D24 Lagna — emotional/intuitive anchor of the education varga."
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.MARS
+node_type: DVS
+node_label: D24 Mars — Libra H6
+varga: D24
+planet: PLN.MARS
+sign: Libra
+house_from_d24_lagna: 6
+dignity: debilitated
+note: "In Libra (debilitation) joined Rahu and Ketu in D24 6H."
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.MERCURY
+node_type: DVS
+node_label: D24 Mercury — Cancer H3
+varga: D24
+planet: PLN.MERCURY
+sign: Cancer
+house_from_d24_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.JUPITER
+node_type: DVS
+node_label: D24 Jupiter — Pisces H11 (own sign)
+varga: D24
+planet: PLN.JUPITER
+sign: Pisces
+house_from_d24_lagna: 11
+dignity: own_sign
+note: "Jupiter own-sign in 11H of the education varga — wisdom-yielding-gains signature."
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.VENUS
+node_type: DVS
+node_label: D24 Venus — Scorpio H7
+varga: D24
+planet: PLN.VENUS
+sign: Scorpio
+house_from_d24_lagna: 7
+dignity: debilitated
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.SATURN
+node_type: DVS
+node_label: D24 Saturn — Capricorn H9 (own sign)
+varga: D24
+planet: PLN.SATURN
+sign: Capricorn
+house_from_d24_lagna: 9
+dignity: own_sign
+note: "Saturn own-sign in D24 9H — disciplined knowledge-acquisition in the dharma house of education varga."
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.RAHU
+node_type: DVS
+node_label: D24 Rahu — Libra H6
+varga: D24
+planet: PLN.RAHU
+sign: Libra
+house_from_d24_lagna: 6
+note: "Joined Mars and Ketu in D24 6H."
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D24.KETU
+node_type: DVS
+node_label: D24 Ketu — Libra H6
+varga: D24
+planet: PLN.KETU
+sign: Libra
+house_from_d24_lagna: 6
+l1_source: "FORENSIC_v8_0 §3.10"
+
+node_id: DVS.D30.LAGNA
+node_type: DVS
+node_label: D30 Lagna — Capricorn
+varga: D30
+position_type: lagna
+sign: Capricorn
+lagna_lord: PLN.SATURN
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.SUN
+node_type: DVS
+node_label: D30 Sun — Capricorn H1 (lagna)
+varga: D30
+planet: PLN.SUN
+sign: Capricorn
+house_from_d30_lagna: 1
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.MOON
+node_type: DVS
+node_label: D30 Moon — Libra H10
+varga: D30
+planet: PLN.MOON
+sign: Libra
+house_from_d30_lagna: 10
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.MARS
+node_type: DVS
+node_label: D30 Mars — Gemini H6
+varga: D30
+planet: PLN.MARS
+sign: Gemini
+house_from_d30_lagna: 6
+note: "In D30 6H Gemini triple-stellium with Saturn and Venus — disease/effort concentration."
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.MERCURY
+node_type: DVS
+node_label: D30 Mercury — Taurus H5
+varga: D30
+planet: PLN.MERCURY
+sign: Taurus
+house_from_d30_lagna: 5
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.JUPITER
+node_type: DVS
+node_label: D30 Jupiter — Aquarius H2
+varga: D30
+planet: PLN.JUPITER
+sign: Aquarius
+house_from_d30_lagna: 2
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.VENUS
+node_type: DVS
+node_label: D30 Venus — Gemini H6
+varga: D30
+planet: PLN.VENUS
+sign: Gemini
+house_from_d30_lagna: 6
+note: "In D30 6H triple-stellium — health/aesthetic-system vulnerability marker."
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.SATURN
+node_type: DVS
+node_label: D30 Saturn — Gemini H6
+varga: D30
+planet: PLN.SATURN
+sign: Gemini
+house_from_d30_lagna: 6
+note: "Anchors the D30 6H triple-stellium; replicates D1 Saturn-Mars ATT tension into disease varga."
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.RAHU
+node_type: DVS
+node_label: D30 Rahu — Pisces H3
+varga: D30
+planet: PLN.RAHU
+sign: Pisces
+house_from_d30_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D30.KETU
+node_type: DVS
+node_label: D30 Ketu — Pisces H3
+varga: D30
+planet: PLN.KETU
+sign: Pisces
+house_from_d30_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.11"
+
+node_id: DVS.D40.LAGNA
+node_type: DVS
+node_label: D40 Lagna — Virgo
+varga: D40
+position_type: lagna
+sign: Virgo
+lagna_lord: PLN.MERCURY
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.SUN
+node_type: DVS
+node_label: D40 Sun — Pisces H7
+varga: D40
+planet: PLN.SUN
+sign: Pisces
+house_from_d40_lagna: 7
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.MOON
+node_type: DVS
+node_label: D40 Moon — Aries H8
+varga: D40
+planet: PLN.MOON
+sign: Aries
+house_from_d40_lagna: 8
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.MARS
+node_type: DVS
+node_label: D40 Mars — Aries H8 (own sign)
+varga: D40
+planet: PLN.MARS
+sign: Aries
+house_from_d40_lagna: 8
+dignity: own_sign
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.MERCURY
+node_type: DVS
+node_label: D40 Mercury — Scorpio H3
+varga: D40
+planet: PLN.MERCURY
+sign: Scorpio
+house_from_d40_lagna: 3
+note: "Joined Rahu and Ketu in D40 3H."
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.JUPITER
+node_type: DVS
+node_label: D40 Jupiter — Taurus H9
+varga: D40
+planet: PLN.JUPITER
+sign: Taurus
+house_from_d40_lagna: 9
+note: "Jupiter + Venus conjunct in D40 9H — maternal-line auspiciousness signature."
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.VENUS
+node_type: DVS
+node_label: D40 Venus — Taurus H9 (own sign)
+varga: D40
+planet: PLN.VENUS
+sign: Taurus
+house_from_d40_lagna: 9
+dignity: own_sign
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.SATURN
+node_type: DVS
+node_label: D40 Saturn — Virgo H1 (lagna)
+varga: D40
+planet: PLN.SATURN
+sign: Virgo
+house_from_d40_lagna: 1
+note: "Saturn at D40 Lagna — disciplined channel for auspiciousness varga."
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.RAHU
+node_type: DVS
+node_label: D40 Rahu — Scorpio H3
+varga: D40
+planet: PLN.RAHU
+sign: Scorpio
+house_from_d40_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D40.KETU
+node_type: DVS
+node_label: D40 Ketu — Scorpio H3
+varga: D40
+planet: PLN.KETU
+sign: Scorpio
+house_from_d40_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.12"
+
+node_id: DVS.D45.LAGNA
+node_type: DVS
+node_label: D45 Lagna — Libra
+varga: D45
+position_type: lagna
+sign: Libra
+lagna_lord: PLN.VENUS
+note: "FORENSIC notes placeholder Neptune body at D45 Lagna; classical reading uses sign only."
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.SUN
+node_type: DVS
+node_label: D45 Sun — Sagittarius H3
+varga: D45
+planet: PLN.SUN
+sign: Sagittarius
+house_from_d45_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.MOON
+node_type: DVS
+node_label: D45 Moon — Sagittarius H3
+varga: D45
+planet: PLN.MOON
+sign: Sagittarius
+house_from_d45_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.MARS
+node_type: DVS
+node_label: D45 Mars — Cancer H10 (debilitated)
+varga: D45
+planet: PLN.MARS
+sign: Cancer
+house_from_d45_lagna: 10
+dignity: debilitated
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.MERCURY
+node_type: DVS
+node_label: D45 Mercury — Taurus H8
+varga: D45
+planet: PLN.MERCURY
+sign: Taurus
+house_from_d45_lagna: 8
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.JUPITER
+node_type: DVS
+node_label: D45 Jupiter — Aquarius H5
+varga: D45
+planet: PLN.JUPITER
+sign: Aquarius
+house_from_d45_lagna: 5
+note: "Jupiter in D45 5H (purva-punya chamber of spiritual-purity varga)."
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.VENUS
+node_type: DVS
+node_label: D45 Venus — Aries H7
+varga: D45
+planet: PLN.VENUS
+sign: Aries
+house_from_d45_lagna: 7
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.SATURN
+node_type: DVS
+node_label: D45 Saturn — Capricorn H4 (own sign)
+varga: D45
+planet: PLN.SATURN
+sign: Capricorn
+house_from_d45_lagna: 4
+dignity: own_sign
+note: "Saturn own-sign in D45 4H — stable inner foundation in purity varga."
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.RAHU
+node_type: DVS
+node_label: D45 Rahu — Sagittarius H3
+varga: D45
+planet: PLN.RAHU
+sign: Sagittarius
+house_from_d45_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D45.KETU
+node_type: DVS
+node_label: D45 Ketu — Sagittarius H3
+varga: D45
+planet: PLN.KETU
+sign: Sagittarius
+house_from_d45_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.13"
+
+node_id: DVS.D60.LAGNA
+node_type: DVS
+node_label: D60 Lagna — Gemini
+varga: D60
+position_type: lagna
+sign: Gemini
+lagna_lord: PLN.MERCURY
+note: "Mercury-sign lagna in D60 mirrors D1 Mercury-spine across past-karma varga."
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.SUN
+node_type: DVS
+node_label: D60 Sun — Leo H3 (own sign)
+varga: D60
+planet: PLN.SUN
+sign: Leo
+house_from_d60_lagna: 3
+dignity: own_sign
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.MOON
+node_type: DVS
+node_label: D60 Moon — Leo H3
+varga: D60
+planet: PLN.MOON
+sign: Leo
+house_from_d60_lagna: 3
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.MARS
+node_type: DVS
+node_label: D60 Mars — Scorpio H6 (own sign)
+varga: D60
+planet: PLN.MARS
+sign: Scorpio
+house_from_d60_lagna: 6
+dignity: own_sign
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.MERCURY
+node_type: DVS
+node_label: D60 Mercury — Aquarius H9
+varga: D60
+planet: PLN.MERCURY
+sign: Aquarius
+house_from_d60_lagna: 9
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.JUPITER
+node_type: DVS
+node_label: D60 Jupiter — Cancer H2 (exalted)
+varga: D60
+planet: PLN.JUPITER
+sign: Cancer
+house_from_d60_lagna: 2
+dignity: exalted
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.VENUS
+node_type: DVS
+node_label: D60 Venus — Aquarius H9
+varga: D60
+planet: PLN.VENUS
+sign: Aquarius
+house_from_d60_lagna: 9
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.SATURN
+node_type: DVS
+node_label: D60 Saturn — Gemini H1 (lagna)
+varga: D60
+planet: PLN.SATURN
+sign: Gemini
+house_from_d60_lagna: 1
+note: "Saturn at D60 Lagna — past-karma chart anchored by Saturn in Mercury-sign; mirrors D1 Mercury-spine."
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.RAHU
+node_type: DVS
+node_label: D60 Rahu — Cancer H2
+varga: D60
+planet: PLN.RAHU
+sign: Cancer
+house_from_d60_lagna: 2
+l1_source: "FORENSIC_v8_0 §3.14"
+
+node_id: DVS.D60.KETU
+node_type: DVS
+node_label: D60 Ketu — Capricorn H8
+varga: D60
+planet: PLN.KETU
+sign: Capricorn
+house_from_d60_lagna: 8
+note: "Moksha-karaka in D60 8H — past-life renunciative trajectory in transformation chamber of past-karma varga."
+l1_source: "FORENSIC_v8_0 §3.14"
+
+# end_node_blocks: CGM_v9_1 — 284 nodes total (v9.0 234 + v9.1 50 DVS D24/D30/D40/D45/D60)
+
+## §6 — DIVISIONAL_TRANSITION Edges (v9.1 — VARGA-ETL-FULL-S1 D13)
+
+Nine edges sourced from FORENSIC §3.15 CSI ledger. Each edge connects a D1 planet
+node to its D9 placement node and carries the dignity-shift across the navamsha
+transition. These edges are the structural correspondents of SIG.MSR.500–502 and the
+§3.15 cross-varga dignity matrix. Edge type extends the existing edge inventory
+beyond the 15 DIVISIONAL_CONFIRMATION edges noted in §4.
+
+```yaml
+edges:
+  - edge_id: EDGE.DT.SUN
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.SUN
+    to: DVS.D9.SUN
+    properties:
+      d1_sign: Capricorn
+      d9_sign: Cancer
+      dignity_shift: "neutral → neutral (sign change, opposite axis)"
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.SUN"
+
+  - edge_id: EDGE.DT.MOON
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.MOON
+    to: DVS.D9.MOON
+    properties:
+      d1_sign: Aquarius
+      d9_sign: Gemini
+      dignity_shift: "neutral → neutral (sign change; D9 placement is in 12H stellium)"
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.MOON, §3.5.2"
+
+  - edge_id: EDGE.DT.MARS
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.MARS
+    to: DVS.D9.MARS
+    properties:
+      d1_sign: Libra
+      d9_sign: Pisces
+      dignity_shift: "debilitated → neutral (D1 Libra is Mars debilitation; D9 Pisces is neutral)"
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.MARS"
+
+  - edge_id: EDGE.DT.MERCURY
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.MERCURY
+    to: DVS.D9.MERCURY
+    properties:
+      d1_sign: Capricorn
+      d9_sign: Capricorn
+      dignity_shift: "vargottama (D1 = D9 sign — sole vargottama planet)"
+      vargottama: true
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.MERCURY, §3.5.2"
+
+  - edge_id: EDGE.DT.JUPITER
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.JUPITER
+    to: DVS.D9.JUPITER
+    properties:
+      d1_sign: Sagittarius
+      d9_sign: Gemini
+      dignity_shift: "own_sign → neutral (loss of dignity; D9 placement is in 12H stellium)"
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.JUPITER, §3.5.2"
+
+  - edge_id: EDGE.DT.VENUS
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.VENUS
+    to: DVS.D9.VENUS
+    properties:
+      d1_sign: Sagittarius
+      d9_sign: Virgo
+      dignity_shift: "neutral → debilitated (NBRY active via vargottama Mercury in D9 Kendra)"
+      nbr: true
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.VENUS, §3.5.1"
+
+  - edge_id: EDGE.DT.SATURN
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.SATURN
+    to: DVS.D9.SATURN
+    properties:
+      d1_sign: Libra
+      d9_sign: Aries
+      dignity_shift: "exalted → debilitated (NBRY active via Sun in D9 Lagna Cancer Kendra)"
+      nbr: true
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.SATURN, §3.5.1"
+
+  - edge_id: EDGE.DT.RAHU
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.RAHU
+    to: DVS.D9.RAHU
+    properties:
+      d1_sign: Taurus
+      d9_sign: Gemini
+      dignity_shift: "neutral → neutral (D9 placement is in 12H stellium)"
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.RAHU, §3.5.2"
+
+  - edge_id: EDGE.DT.KETU
+    edge_type: DIVISIONAL_TRANSITION
+    from: PLN.KETU
+    to: DVS.D9.KETU
+    properties:
+      d1_sign: Scorpio
+      d9_sign: Sagittarius
+      dignity_shift: "neutral → neutral"
+    l1_source: "FORENSIC_v8_0 §3.15 CSI.KETU"
+```
+
+Edge inventory update (extends §4): DIVISIONAL_CONFIRMATION (15, prior) +
+DIVISIONAL_TRANSITION (9, new v9.1) = 24 divisional-class edges total.

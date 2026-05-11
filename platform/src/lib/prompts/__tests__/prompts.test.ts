@@ -518,3 +518,47 @@ describe('CTX-GAP-S1: QUERY_INDEPENDENCE_GATE', () => {
     expect(capped.length).toBe(4)
   })
 })
+
+// ---------------------------------------------------------------------------
+// VARGA-ETL-FULL-S1 D15/D17 — DIVISIONAL_INTEGRATION_GATE + B11 CSI extension
+// ---------------------------------------------------------------------------
+
+describe('VARGA-ETL-FULL-S1: DIVISIONAL_INTEGRATION_GATE', () => {
+  it('buildOpeningBlock includes DIVISIONAL INTEGRATION GATE header', () => {
+    const block = buildOpeningBlock()
+    expect(block).toContain('DIVISIONAL INTEGRATION GATE')
+  })
+
+  it('DIVISIONAL_INTEGRATION_GATE contains vargottama, CSI, and three-state', () => {
+    const block = buildOpeningBlock()
+    expect(block).toContain('vargottama')
+    expect(block).toContain('CSI')
+    expect(block.toLowerCase()).toContain('three-state')
+  })
+
+  it('DIVISIONAL_INTEGRATION_GATE names domain-mandatory vargas', () => {
+    const block = buildOpeningBlock()
+    expect(block).toContain('D10')
+    expect(block).toContain('D9')
+    expect(block).toContain('D7')
+    expect(block).toContain('D30')
+  })
+
+  it('B11_EXPLICIT_LAYER_GATE extension names CSI ledger for divisional context', () => {
+    const ACTIVE_QUERY_CLASSES: QueryClass[] = [
+      'factual',
+      'interpretive',
+      'predictive',
+      'cross_domain',
+      'discovery',
+      'holistic',
+      'remedial',
+    ]
+    const registry = getDefaultRegistry()
+    for (const qc of ACTIVE_QUERY_CLASSES) {
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).toContain('§3.15 CSI')
+    }
+  })
+})

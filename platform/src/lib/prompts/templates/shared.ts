@@ -62,7 +62,33 @@ Before answering, draw on all five L2.5 synthesis artifacts:
   • CDLM (Cross-Domain Linkage Matrix) — cross-domain correlations and tensions
   • CGM (Causal Graph Model) — structural house/planet causal relationships
   • RM (Resonance Map) — dasha resonance and natal-transit interaction
-In the opening paragraph of your response, note which of MSR, UCN, CDLM, CGM, and RM are most relevant to this query. A response that does not explicitly reference these five layer acronyms is a B.11 procedural violation.`
+In the opening paragraph of your response, note which of MSR, UCN, CDLM, CGM, and RM are most relevant to this query. A response that does not explicitly reference these five layer acronyms is a B.11 procedural violation.
+
+For queries with divisional context present: also consult the §3.15 CSI cross-divisional dignity ledger (cross_varga_dignity_query results or CSI.* rows in chart_facts) as the canonical D1↔D9↔D10 cross-walk. Treating MSR/UCN/CDLM/CGM/RM as the complete synthesis surface without referencing CSI when divisional data is in scope is a B.11 violation.`
+
+export const DIVISIONAL_INTEGRATION_GATE = `DIVISIONAL INTEGRATION GATE (mandatory for interpretive, holistic, predictive, and cross_domain query classes):
+When divisional chart placements are present in the retrieved context (any fact_id of the form D9.*, D10.*, D7.*, D12.*, D24.*, D30.*, D40.*, D45.*, D60.*, or CSI.*), you MUST:
+
+1. Cross-check D1 dignity against D9 dignity for every planet whose D9 placement is in context. The §3.15 CSI ledger (CSI.* fact_ids) is the canonical cross-varga dignity matrix — cite CSI.{PLANET} when discussing cross-varga dignity transitions.
+
+2. Vargottama status: if a planet is vargottama (same sign in D1 and D9), note this explicitly as a stability indicator. Mercury is vargottama in this chart.
+
+3. Domain-mandatory varga: for domain-specific queries, the matching divisional chart is mandatory — answering without it is an incomplete answer:
+   career/status → D10 (dasamsha)
+   dharma/marriage/relationships → D9 (navamsha)
+   children → D7 (saptamsha)
+   parents/ancestry → D12 (dvadashamsa)
+   education/knowledge → D24 (siddhamsa)
+   spiritual/moksha → D20 (vimsamsha)
+   health/longevity → D30 (trimsamsha)
+   finance/wealth → D2 (hora)
+   auspiciousness → D40 (khavedamsha)
+   purity/past-karma → D45/D60 (akshavedamsha/shashtiamsha)
+   If the mandatory varga context is absent from the retrieved data, write [EXTERNAL_COMPUTATION_REQUIRED: {varga}.{placement_description}] — do not answer D1-only.
+
+4. Three-state dignity architecture: when discussing Saturn or any planet with different dignity states across D1/D9/D10, frame the full arc (D1 state → D9 state → D10 state) rather than any single chart in isolation. This is standard acharya practice.
+
+5. The B11_EXPLICIT_LAYER_GATE requires MSR/UCN/CDLM/CGM/RM consultation. For domain or holistic queries with divisional context, also consult the §3.15 CSI surface (cross_varga_dignity_query results if present, or CSI.* fact_ids in chart_facts) — this is the canonical cross-varga reference layer.`
 
 export const REQUIRED_PLACEHOLDERS_BASE = [
   'chart_name',
@@ -104,6 +130,8 @@ ${NO_FABRICATION}
 ${CONTRADICTION_FRAMING}
 
 ${QUERY_INDEPENDENCE_GATE}
+
+${DIVISIONAL_INTEGRATION_GATE}
 
 ${METHODOLOGY_INSTRUCTION}`
 }
