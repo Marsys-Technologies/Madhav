@@ -12,6 +12,19 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
+
+function loadEnvLocal(): Record<string, string> {
+  try {
+    const contents = fs.readFileSync('.env.local', 'utf-8')
+    const env: Record<string, string> = {}
+    for (const line of contents.split('\n')) {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+      if (m) env[m[1]] = m[2].trim()
+    }
+    return env
+  } catch { return {} }
+}
 
 export default defineConfig({
   plugins: [react()],
@@ -23,20 +36,8 @@ export default defineConfig({
     // Live API calls can be slow; allow 90s per test
     testTimeout: 90_000,
     pool: 'forks',
-    // Load .env.local so GOOGLE_GENERATIVE_AI_API_KEY is available
     env: {
-      ...((() => {
-        try {
-          const fs = require('fs')
-          const contents = fs.readFileSync('.env.local', 'utf-8')
-          const env: Record<string, string> = {}
-          for (const line of contents.split('\n')) {
-            const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
-            if (m) env[m[1]] = m[2].trim()
-          }
-          return env
-        } catch { return {} }
-      })()),
+      ...loadEnvLocal(),
     },
   },
   resolve: {
