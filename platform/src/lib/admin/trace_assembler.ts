@@ -137,11 +137,12 @@ interface TraceStepRow {
   payload: unknown
 }
 
+// Gate II.5: aligned with production audit_events columns (migration 045 added D11 nullable cols).
 interface AuditEventRow {
-  audit_event_id: string
-  audit_event_version: number | null
+  audit_event_id: string      // audit_events.id aliased in SELECT
+  audit_status: string        // 'ok' | 'warn' | 'block'
+  audit_warnings: unknown     // jsonb array or null
   disclosure_tier: string | null
-  validator_verdict: string | null
   b10_compliant: boolean | null
   b11_compliant: boolean | null
 }
@@ -166,11 +167,15 @@ function buildGrouped(steps: TraceStep[], audit: AuditEventRow | null): Assemble
     if (stage) byStage[stage].push(s)
   }
 
-  // Planner — the emitter writes step_name='classify' for the planner LLM call.
+  // Planning — classify = planner LLM call; compose_bundle = bundle hydration; plan_per_tool = per-tool refinement.
   const plannerLlm = byStage.planner.find(s => s.step_name === 'classify')
-  const composeBundle = byStage.planner.find(s => s.step_name === 'compose_bundle')
+  const composeBundleStep = byStage.planner.find(s => s.step_name === 'compose_bundle')
+  const planPerToolStep = byStage.planner.find(s => s.step_name === 'plan_per_tool')
   const plannerPayload = plannerLlm?.payload as
     | { query_plan?: TraceQueryPlan; tool_calls?: Array<{ tool_name: string; params: Record<string, unknown>; priority: 1 | 2 | 3; reason?: string }> }
+    | undefined
+  const planPerToolDs = planPerToolStep?.data_summary as
+    | { tool_count?: number; planner_active?: boolean }
     | undefined
   const planner: PlannerStepMetadata | null = plannerLlm
     ? {
@@ -179,8 +184,22 @@ function buildGrouped(steps: TraceStep[], audit: AuditEventRow | null): Assemble
         latency_ms: plannerLlm.latency_ms ?? null,
         query_plan: plannerPayload?.query_plan ?? null,
         tool_calls: plannerPayload?.tool_calls ?? [],
-        bundle_summary: composeBundle
-          ? (composeBundle.data_summary as { result?: string })?.result ?? null
+        bundle_summary: composeBundleStep
+          ? (composeBundleStep.data_summary as { result?: string })?.result ?? null
+          : null,
+        compose_bundle: composeBundleStep
+          ? {
+              latency_ms: composeBundleStep.latency_ms ?? null,
+              result: (composeBundleStep.data_summary as { result?: string })?.result ?? null,
+            }
+          : null,
+        plan_per_tool: planPerToolStep
+          ? {
+              step_seq: planPerToolStep.step_seq,
+              latency_ms: planPerToolStep.latency_ms ?? null,
+              tool_count: planPerToolDs?.tool_count ?? 0,
+              planner_active: planPerToolDs?.planner_active ?? false,
+            }
           : null,
       }
     : null
@@ -235,19 +254,31 @@ function buildGrouped(steps: TraceStep[], audit: AuditEventRow | null): Assemble
     }
   }
 
-  // Audit — citation_warn / citation_error trace steps + audit_events row.
+  // Audit — citation_warn / citation_error trace steps + audit_events JOIN (Gate II.5: column names fixed).
   const citationStep = byStage.audit.find(s => s.step_name === 'citation_error' || s.step_name === 'citation_warn')
+
+  // Map production audit_status values to the validator_verdict enum.
+  function mapAuditStatus(s: string | undefined | null): AuditStepMetadata['validator_verdict'] {
+    if (s === 'ok') return 'PASS'
+    if (s === 'warn') return 'WARN'
+    if (s === 'block') return 'ERROR'
+    return 'UNKNOWN'
+  }
+
   let auditMeta: AuditStepMetadata | null = null
   if (audit || citationStep) {
     const citationDs = citationStep?.data_summary as { result?: string; citation_count?: number } | undefined
+    const rawWarnings = audit?.audit_warnings
+    const auditWarnings: string[] | null = Array.isArray(rawWarnings)
+      ? (rawWarnings as unknown[]).map(w => String(w))
+      : null
+
     auditMeta = {
       audit_event_id: audit?.audit_event_id ?? null,
-      audit_event_version: audit?.audit_event_version ?? null,
-      disclosure_tier: audit?.disclosure_tier === 'super_admin' || audit?.disclosure_tier === 'client'
-        ? audit.disclosure_tier
-        : null,
-      validator_verdict: audit?.validator_verdict === 'PASS' || audit?.validator_verdict === 'WARN' || audit?.validator_verdict === 'ERROR'
-        ? audit.validator_verdict
+      audit_warnings: auditWarnings,
+      disclosure_tier: audit?.disclosure_tier ?? null,
+      validator_verdict: audit
+        ? mapAuditStatus(audit.audit_status)
         : citationStep
           ? (citationStep.step_name === 'citation_error' ? 'ERROR' : 'WARN')
           : 'UNKNOWN',
@@ -265,7 +296,7 @@ function buildGrouped(steps: TraceStep[], audit: AuditEventRow | null): Assemble
   } else {
     auditMeta = {
       audit_event_id: null,
-      audit_event_version: null,
+      audit_warnings: null,
       disclosure_tier: null,
       validator_verdict: 'UNKNOWN',
       b10_compliant: null,
@@ -487,14 +518,24 @@ async function loadTraceSteps(queryId: string, db: StorageClient): Promise<Trace
 }
 
 async function loadAuditRow(queryId: string, db: StorageClient): Promise<AuditEventRow | null> {
+  // Gate II.5: SELECT uses actual production column names (audit_events.id → audit_event_id alias).
+  // disclosure_tier, b10_compliant, b11_compliant added via migration 045 (nullable; null until
+  // audit writer populates — see POST_GATE_II_FOLLOWUPS FU.2).
   const r = await db.query<AuditEventRow>(
-    `SELECT audit_event_id, audit_event_version, disclosure_tier,
-            validator_verdict, b10_compliant, b11_compliant
+    `SELECT id AS audit_event_id,
+            audit_status,
+            audit_warnings,
+            disclosure_tier,
+            b10_compliant,
+            b11_compliant
      FROM audit_events
      WHERE query_id = $1::uuid
      LIMIT 1`,
     [queryId],
-  ).catch(() => ({ rows: [] as AuditEventRow[] }))
+  ).catch((err: unknown) => {
+    console.warn('[trace_assembler] loadAuditRow failed:', err)
+    return { rows: [] as AuditEventRow[] }
+  })
   return r.rows[0] ?? null
 }
 
