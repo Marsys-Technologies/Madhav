@@ -166,7 +166,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
 
         {/* Center: Step detail */}
         <div className="overflow-y-auto">
-          <StepDetail trace={trace} selectedStepId={selectedStepId} />
+          <StepDetail assembled={envelope.assembled} selectedStepId={selectedStepId} />
         </div>
 
         {/* Right: Health rail */}

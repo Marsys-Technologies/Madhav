@@ -1,11 +1,33 @@
 import 'server-only'
 import type { StorageClient } from '@/lib/storage/types'
 import { resolveBaseline } from './baseline_resolver'
+import type {
+  AssembledTrace,
+  AuditStepMetadata,
+  CheckpointStepMetadata,
+  PipelineStage,
+  PlannerStepMetadata,
+  RetrievalSubToolRun,
+  SynthesisStepMetadata,
+  TraceQueryPlan,
+  TraceStep,
+} from '@/lib/trace/types'
+import { mapStepToStage } from '@/lib/trace/types'
+
+/**
+ * Gate II (2026-05-12) — trace_assembler now sources its primary view from
+ * the new emitter's `query_trace_steps` table and returns AssembledTrace,
+ * the schema defined in lib/trace/types.ts. The legacy TraceDocument shape
+ * is retained as a backward-compatible projection for consumers that have
+ * not yet been migrated (HealthRail, QueryHeaderStrip, TimingRibbon, etc.).
+ */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TraceDocument — the full trace for one query_id
+// Legacy TraceDocument shape — kept for backward compatibility (deprecated).
+// New code should use `AssembledTrace` from `@/lib/trace/types`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** @deprecated since Gate II (2026-05-12). Use `AssembledTrace` from `@/lib/trace/types`. */
 export interface TraceDocument {
   query: {
     id: string
@@ -16,6 +38,12 @@ export interface TraceDocument {
     total_cost_usd: number | null
     health: 'HEALTHY' | 'DEGRADED' | 'FAILED' | 'UNKNOWN'
   }
+  /**
+   * Legacy classifier slot. The new pipeline has no classifier stage —
+   * this field is always `null` post-Gate II but kept on the interface so
+   * existing renderers (HealthRail, TimingRibbon) continue to type-check
+   * while they are migrated to AssembledTrace.
+   */
   classify: {
     input: unknown
     alternatives: Array<{ type: string; confidence: number; rationale: string | null }>
@@ -39,6 +67,11 @@ export interface TraceDocument {
     latency_ms: number | null
     error_class: string
   }>
+  /**
+   * Legacy context-assembly slot. Stage retired in Pipeline-Transform-S1
+   * (2026-05-11); kept on the interface (always `null`) for the same
+   * migration-period reason as `classify` above.
+   */
   context_assembly: {
     items: Array<{
       rank: number
@@ -86,52 +119,31 @@ export interface TraceDocument {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DB row types (internal)
+// DB row types
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface LlmCallRow {
-  id: string
-  call_stage: string
-  model_id: string
-  input_tokens: number | null
-  output_tokens: number | null
+interface TraceStepRow {
+  query_id: string
+  conversation_id: string | null
+  step_seq: number
+  step_name: string
+  step_type: TraceStep['step_type']
+  status: TraceStep['status']
+  started_at: string
+  completed_at: string | null
   latency_ms: number | null
-  cost_usd: string | null
-  decision_alternatives: unknown | null
-  decision_reasoning: string | null
-  payload: unknown | null
+  parallel_group: string | null
+  data_summary: unknown
+  payload: unknown
 }
 
-interface ToolExecRow {
-  id: string
-  tool_name: string
-  raw_result_count: number | null
-  kept_result_count: number | null
-  dropped_items: unknown | null
-  kept_items: unknown | null
-  latency_ms: number | null
-  error_class: string | null
-  rows_returned: number | null
-}
-
-interface PlanAltRow {
-  bundle_name: string
-  was_selected: boolean
-  rationale: string | null
-  expected_recall_score: number | null
-}
-
-interface ContextItemRow {
-  item_rank: number
-  source_bundle: string
-  source_item_id: string
-  layer: string
-  token_cost: number
-  relevance_score: number | null
-  status: 'INCLUDED' | 'TRUNCATED' | 'DROPPED'
-  drop_reason: string | null
-  cumulative_tokens_at_decision: number | null
-  budget_at_decision: number | null
+interface AuditEventRow {
+  audit_event_id: string
+  audit_event_version: number | null
+  disclosure_tier: string | null
+  validator_verdict: string | null
+  b10_compliant: boolean | null
+  b11_compliant: boolean | null
 }
 
 interface ScorecardRow {
@@ -140,341 +152,413 @@ interface ScorecardRow {
   failures: unknown | null
 }
 
-interface QueryPlanRow {
-  query_text: string | null
-  query_class: string | null
-  plan_json: unknown | null
-  planner_latency_ms: number | null
+// ─────────────────────────────────────────────────────────────────────────────
+// Grouped projection — converts TraceStep[] into AssembledTrace.grouped
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildGrouped(steps: TraceStep[], audit: AuditEventRow | null): AssembledTrace['grouped'] {
+  const byStage: Record<PipelineStage, TraceStep[]> = {
+    planner: [], retrieval: [], synthesis: [], audit: [],
+    checkpoint_4_5: [], checkpoint_5_5: [], checkpoint_8_5: [],
+  }
+  for (const s of steps) {
+    const stage = mapStepToStage(s)
+    if (stage) byStage[stage].push(s)
+  }
+
+  // Planner — the emitter writes step_name='classify' for the planner LLM call.
+  const plannerLlm = byStage.planner.find(s => s.step_name === 'classify')
+  const composeBundle = byStage.planner.find(s => s.step_name === 'compose_bundle')
+  const plannerPayload = plannerLlm?.payload as
+    | { query_plan?: TraceQueryPlan; tool_calls?: Array<{ tool_name: string; params: Record<string, unknown>; priority: 1 | 2 | 3; reason?: string }> }
+    | undefined
+  const planner: PlannerStepMetadata | null = plannerLlm
+    ? {
+        step_seq: plannerLlm.step_seq,
+        status: plannerLlm.status,
+        latency_ms: plannerLlm.latency_ms ?? null,
+        query_plan: plannerPayload?.query_plan ?? null,
+        tool_calls: plannerPayload?.tool_calls ?? [],
+        bundle_summary: composeBundle
+          ? (composeBundle.data_summary as { result?: string })?.result ?? null
+          : null,
+      }
+    : null
+
+  // Retrieval — every parallel_group='tool_fetch' step is a sub-tool run.
+  const retrieval: RetrievalSubToolRun[] = byStage.retrieval.map(s => ({
+    tool_name: s.step_name,
+    step_seq: s.step_seq,
+    step_type: s.step_type,
+    status: s.status,
+    latency_ms: s.latency_ms ?? null,
+    data_summary: s.data_summary,
+    payload: s.payload,
+  }))
+
+  // Synthesis — discriminated by mode. Emitter has no `mode` field yet;
+  // default to single_model (§I.2 in GAP_ANALYSIS).
+  const synthStep = byStage.synthesis.find(s => s.step_name === 'synthesis' || s.step_name === 'synthesis_done')
+  const ctxAssembly = byStage.synthesis.find(s => s.step_name === 'context_assembly')
+  let synthesis: SynthesisStepMetadata | null = null
+  if (synthStep) {
+    const ds = synthStep.data_summary as {
+      model?: string; input_tokens?: number; output_tokens?: number;
+      citation_count?: number; provider?: string; reasoning_path?: boolean;
+      output_shape_compliant?: boolean; temperature?: number;
+    }
+    const pl = synthStep.payload as { prompt_preview?: string; reasoning_trace?: string }
+    const ctxDs = ctxAssembly?.data_summary as { short_circuited?: boolean; total_token_estimate?: number; threshold?: number; reason?: string } | undefined
+    synthesis = {
+      mode: 'single_model',
+      step_seq: synthStep.step_seq,
+      status: synthStep.status,
+      latency_ms: synthStep.latency_ms ?? null,
+      model: ds?.model ?? null,
+      input_tokens: ds?.input_tokens ?? null,
+      output_tokens: ds?.output_tokens ?? null,
+      citation_count: ds?.citation_count ?? null,
+      provider: ds?.provider ?? null,
+      reasoning_path: ds?.reasoning_path ?? null,
+      output_shape_compliant: ds?.output_shape_compliant ?? null,
+      temperature: ds?.temperature ?? null,
+      prompt_preview: pl?.prompt_preview ?? null,
+      reasoning_trace: pl?.reasoning_trace ?? null,
+      context_assembly_short_circuit: ctxDs
+        ? {
+            short_circuited: ctxDs.short_circuited === true,
+            total_token_estimate: ctxDs.total_token_estimate ?? 0,
+            threshold: ctxDs.threshold ?? 0,
+            reason: ctxDs.reason ?? null,
+          }
+        : null,
+    }
+  }
+
+  // Audit — citation_warn / citation_error trace steps + audit_events row.
+  const citationStep = byStage.audit.find(s => s.step_name === 'citation_error' || s.step_name === 'citation_warn')
+  let auditMeta: AuditStepMetadata | null = null
+  if (audit || citationStep) {
+    const citationDs = citationStep?.data_summary as { result?: string; citation_count?: number } | undefined
+    auditMeta = {
+      audit_event_id: audit?.audit_event_id ?? null,
+      audit_event_version: audit?.audit_event_version ?? null,
+      disclosure_tier: audit?.disclosure_tier === 'super_admin' || audit?.disclosure_tier === 'client'
+        ? audit.disclosure_tier
+        : null,
+      validator_verdict: audit?.validator_verdict === 'PASS' || audit?.validator_verdict === 'WARN' || audit?.validator_verdict === 'ERROR'
+        ? audit.validator_verdict
+        : citationStep
+          ? (citationStep.step_name === 'citation_error' ? 'ERROR' : 'WARN')
+          : 'UNKNOWN',
+      b10_compliant: audit?.b10_compliant ?? null,
+      b11_compliant: audit?.b11_compliant ?? null,
+      citation_gate: citationStep
+        ? {
+            result: citationStep.step_name === 'citation_error' ? 'ERROR' : 'WARN',
+            reason: citationDs?.result ?? null,
+            layer1_count: citationDs?.citation_count ?? null,
+          }
+        : null,
+      placeholder_note: audit ? null : 'No audit_events row found for this query_id. Citation-gate signal (if any) is surfaced inline.',
+    }
+  } else {
+    auditMeta = {
+      audit_event_id: null,
+      audit_event_version: null,
+      disclosure_tier: null,
+      validator_verdict: 'UNKNOWN',
+      b10_compliant: null,
+      b11_compliant: null,
+      citation_gate: null,
+      placeholder_note: 'Audit data is not on the trace stream; pipeline writes directly to audit_events. No row found for this query_id.',
+    }
+  }
+
+  // Checkpoints — render dimmed when not emitted (D1).
+  const cpStages: PipelineStage[] = ['checkpoint_4_5', 'checkpoint_5_5', 'checkpoint_8_5']
+  const checkpoints: CheckpointStepMetadata[] = cpStages.map(stage => {
+    const cpSteps = byStage[stage]
+    const ran = cpSteps.length > 0
+    const first = cpSteps[0]
+    return {
+      stage: stage as CheckpointStepMetadata['stage'],
+      enabled: null,
+      ran,
+      status: first?.status ?? null,
+      latency_ms: first?.latency_ms ?? null,
+      verdict: ran ? 'PASS' : 'SKIPPED',
+      notes: ran ? null : 'Checkpoint disabled or did not run',
+    }
+  })
+
+  return { planner, retrieval, synthesis, audit: auditMeta, checkpoints }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Anomaly detectors
+// Anomaly detectors (legacy TraceDocument projection)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function detectAnomalies(
-  doc: Omit<TraceDocument, 'anomalies' | 'query'> & {
-    planLatencyMs: number | null
-    baselineP50LatencyMs: number | null
-  },
+  retrieval: RetrievalSubToolRun[],
+  synthesis: SynthesisStepMetadata | null,
+  scorecard: ScorecardRow | null,
+  planLatencyMs: number | null,
+  baselineP50LatencyMs: number | null,
 ): TraceDocument['anomalies'] {
   const anomalies: TraceDocument['anomalies'] = []
 
-  // Detector 1: plan latency > 2× p50
-  if (doc.planLatencyMs !== null && doc.baselineP50LatencyMs !== null && doc.baselineP50LatencyMs > 0) {
-    const ratio = doc.planLatencyMs / doc.baselineP50LatencyMs
+  if (planLatencyMs !== null && baselineP50LatencyMs !== null && baselineP50LatencyMs > 0) {
+    const ratio = planLatencyMs / baselineP50LatencyMs
     if (ratio > 2) {
       anomalies.push({
-        stage: 'plan',
+        stage: 'planner',
         severity: 'WARNING',
-        message: `Plan latency ${doc.planLatencyMs}ms (${ratio.toFixed(1)}× p50)`,
+        message: `Planner latency ${planLatencyMs}ms (${ratio.toFixed(1)}× p50)`,
         step_id: null,
       })
     }
   }
 
-  // Detector 2: fetch error_class !== 'OK'
-  for (const fetch of doc.fetches) {
-    if (fetch.error_class && fetch.error_class !== 'OK') {
+  for (const r of retrieval) {
+    if (r.status === 'error') {
       anomalies.push({
-        stage: 'fetch',
+        stage: 'retrieval',
         severity: 'ERROR',
-        message: `${fetch.bundle} fetch failed: ${fetch.error_class}`,
+        message: `${r.tool_name} fetch failed`,
+        step_id: null,
+      })
+    }
+    const ds = r.data_summary as { rows_returned?: number; chunks_returned?: number }
+    const kept = ds?.rows_returned ?? ds?.chunks_returned
+    if (kept === 0 && r.status === 'done') {
+      anomalies.push({
+        stage: 'retrieval',
+        severity: 'WARNING',
+        message: `${r.tool_name} returned 0 items`,
         step_id: null,
       })
     }
   }
 
-  // Detector 3: fetch returned 0 items
-  for (const fetch of doc.fetches) {
-    if (fetch.kept_count === 0) {
-      anomalies.push({
-        stage: 'fetch',
-        severity: 'WARNING',
-        message: `${fetch.bundle} returned 0 items`,
-        step_id: null,
-      })
-    }
+  if (synthesis?.mode === 'single_model' && synthesis.citation_count != null && synthesis.citation_count < 3) {
+    anomalies.push({
+      stage: 'synthesis',
+      severity: 'WARNING',
+      message: `Synthesis emitted ${synthesis.citation_count} citations (< 3)`,
+      step_id: null,
+    })
   }
 
-  // Detector 4: context assembly dropped >30% of candidates
-  if (doc.context_assembly) {
-    const { dropped_count } = doc.context_assembly.token_ledger
-    const total = doc.context_assembly.items.length
-    if (total > 0 && dropped_count / total > 0.3) {
-      anomalies.push({
-        stage: 'context_assembly',
-        severity: 'WARNING',
-        message: `Context assembly dropped >30% of candidates (budget pressure)`,
-        step_id: null,
-      })
-    }
-  }
-
-  // Detector 5: low citation density in scorecard
-  if (doc.synthesis?.scorecard) {
-    const scorecard = doc.synthesis.scorecard as { citation_density?: number }
-    if (typeof scorecard.citation_density === 'number' && scorecard.citation_density < 0.5) {
-      anomalies.push({
-        stage: 'synthesis',
-        severity: 'WARNING',
-        message: `Synthesis citation density low`,
-        step_id: null,
-      })
-    }
+  if (scorecard?.citation_density !== null && scorecard?.citation_density !== undefined && scorecard.citation_density < 0.5) {
+    anomalies.push({
+      stage: 'synthesis',
+      severity: 'WARNING',
+      message: `Synthesis citation density low`,
+      step_id: null,
+    })
   }
 
   return anomalies
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Health derivation
-// ─────────────────────────────────────────────────────────────────────────────
-
 function deriveHealth(
-  fetches: TraceDocument['fetches'],
+  retrieval: RetrievalSubToolRun[],
   scorecard: ScorecardRow | null,
 ): TraceDocument['query']['health'] {
-  if (fetches.some(f => f.error_class && f.error_class !== 'OK')) return 'FAILED'
+  if (retrieval.some(r => r.status === 'error')) return 'FAILED'
   if (scorecard?.composite_score !== null && scorecard?.composite_score !== undefined
       && scorecard.composite_score < 0.5) return 'DEGRADED'
-  if (fetches.length === 0) return 'UNKNOWN'
+  if (retrieval.length === 0) return 'UNKNOWN'
   return 'HEALTHY'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// assembleTrace — main entrypoint
+// Legacy TraceDocument projection — kept until consumers migrate.
 // ─────────────────────────────────────────────────────────────────────────────
 
+function projectLegacy(
+  queryId: string,
+  assembled: AssembledTrace,
+  scorecard: ScorecardRow | null,
+  baselines: TraceDocument['baselines'],
+): TraceDocument {
+  const { grouped, query_text, total_latency_ms } = assembled
+  const planLatency = grouped.planner?.latency_ms ?? null
+  const totalCost = 0 // no cost projection in the new model; left at 0 to avoid fabrication
+  const anomalies = detectAnomalies(
+    grouped.retrieval,
+    grouped.synthesis,
+    scorecard,
+    planLatency,
+    baselines?.p50_total_latency_ms ?? null,
+  )
+
+  const includedBundles = (grouped.planner?.tool_calls ?? []).map(tc => ({
+    name: tc.tool_name,
+    rationale: tc.reason ?? null,
+    expected_recall: null,
+  }))
+
+  return {
+    query: {
+      id: queryId,
+      text: query_text,
+      type: grouped.planner?.query_plan?.query_class ?? null,
+      confidence: grouped.planner?.query_plan?.router_confidence ?? null,
+      total_ms: total_latency_ms,
+      total_cost_usd: totalCost > 0 ? totalCost : null,
+      health: deriveHealth(grouped.retrieval, scorecard),
+    },
+    classify: null,
+    plan: grouped.planner
+      ? {
+          included_bundles: includedBundles,
+          excluded_bundles: [],
+          plan_json: grouped.planner.query_plan,
+          latency_ms: grouped.planner.latency_ms,
+        }
+      : null,
+    fetches: grouped.retrieval.map((r, idx) => {
+      const ds = r.data_summary as { rows_returned?: number; chunks_returned?: number }
+      const kept = ds?.rows_returned ?? ds?.chunks_returned ?? 0
+      return {
+        bundle: r.tool_name,
+        step_order: idx,
+        raw_count: kept,
+        kept_count: kept,
+        dropped_items: [],
+        kept_items: [],
+        latency_ms: r.latency_ms,
+        error_class: r.status === 'error' ? 'ERROR' : 'OK',
+      }
+    }),
+    context_assembly: null,
+    synthesis: grouped.synthesis?.mode === 'single_model'
+      ? {
+          model: grouped.synthesis.model,
+          input_tokens: grouped.synthesis.input_tokens,
+          output_tokens: grouped.synthesis.output_tokens,
+          latency_ms: grouped.synthesis.latency_ms,
+          scorecard: scorecard,
+        }
+      : grouped.synthesis?.mode === 'panel'
+        ? {
+            model: grouped.synthesis.aggregator?.model ?? null,
+            input_tokens: grouped.synthesis.aggregator?.input_tokens ?? null,
+            output_tokens: grouped.synthesis.aggregator?.output_tokens ?? null,
+            latency_ms: grouped.synthesis.latency_ms,
+            scorecard: scorecard,
+          }
+        : null,
+    baselines,
+    anomalies,
+    partial: assembled.partial,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadTraceSteps(queryId: string, db: StorageClient): Promise<TraceStep[]> {
+  const r = await db.query<TraceStepRow>(
+    `SELECT query_id, conversation_id, step_seq, step_name, step_type, status,
+            started_at, completed_at, latency_ms, parallel_group, data_summary, payload
+     FROM query_trace_steps
+     WHERE query_id = $1::uuid
+     ORDER BY step_seq ASC`,
+    [queryId],
+  ).catch(() => ({ rows: [] as TraceStepRow[] }))
+  return r.rows.map(row => ({
+    query_id: row.query_id,
+    conversation_id: row.conversation_id ?? undefined,
+    step_seq: row.step_seq,
+    step_name: row.step_name,
+    step_type: row.step_type,
+    status: row.status,
+    started_at: row.started_at,
+    completed_at: row.completed_at ?? undefined,
+    latency_ms: row.latency_ms ?? undefined,
+    parallel_group: row.parallel_group ?? undefined,
+    data_summary: (row.data_summary ?? {}) as TraceStep['data_summary'],
+    payload: (row.payload ?? {}) as TraceStep['payload'],
+  }))
+}
+
+async function loadAuditRow(queryId: string, db: StorageClient): Promise<AuditEventRow | null> {
+  const r = await db.query<AuditEventRow>(
+    `SELECT audit_event_id, audit_event_version, disclosure_tier,
+            validator_verdict, b10_compliant, b11_compliant
+     FROM audit_events
+     WHERE query_id = $1::uuid
+     LIMIT 1`,
+    [queryId],
+  ).catch(() => ({ rows: [] as AuditEventRow[] }))
+  return r.rows[0] ?? null
+}
+
+async function loadScorecard(queryId: string, db: StorageClient): Promise<ScorecardRow | null> {
+  const r = await db.query<ScorecardRow>(
+    `SELECT composite_score, citation_density, failures
+     FROM synthesis_quality_scorecard
+     WHERE query_id = $1::uuid
+     LIMIT 1`,
+    [queryId],
+  ).catch(() => ({ rows: [] as ScorecardRow[] }))
+  return r.rows[0] ?? null
+}
+
+async function loadQueryText(queryId: string, db: StorageClient): Promise<string | null> {
+  const r = await db.query<{ query_text: string | null }>(
+    `SELECT query_text FROM query_plan_log WHERE query_id = $1::uuid LIMIT 1`,
+    [queryId],
+  ).catch(() => ({ rows: [] as Array<{ query_text: string | null }> }))
+  return r.rows[0]?.query_text ?? null
+}
+
+/**
+ * Assemble the full trace document for a query_id. Returns the new AssembledTrace
+ * shape (from `@/lib/trace/types`), the legacy TraceDocument projection, and the
+ * raw step list — all in one call so consumers can pick.
+ */
+export async function assembleTraceFull(
+  queryId: string,
+  db: StorageClient,
+): Promise<{ assembled: AssembledTrace; legacy: TraceDocument; steps: TraceStep[] }> {
+  const [steps, auditRow, scorecard, queryText, baselines] = await Promise.all([
+    loadTraceSteps(queryId, db),
+    loadAuditRow(queryId, db),
+    loadScorecard(queryId, db),
+    loadQueryText(queryId, db),
+    resolveBaseline(null, db),
+  ])
+
+  const grouped = buildGrouped(steps, auditRow)
+  const totalLatency = steps.reduce((sum, s) => sum + (s.latency_ms ?? 0), 0)
+
+  const assembled: AssembledTrace = {
+    query_id: queryId,
+    query_text: queryText,
+    total_latency_ms: totalLatency > 0 ? totalLatency : null,
+    query_plan: grouped.planner?.query_plan ?? null,
+    steps,
+    grouped,
+    partial: steps.length === 0,
+  }
+
+  const legacy = projectLegacy(queryId, assembled, scorecard, baselines)
+  return { assembled, legacy, steps }
+}
+
+/**
+ * Returns the legacy TraceDocument shape, projected from the new pipeline data.
+ * @deprecated since Gate II. Prefer `assembleTraceFull` and read `.assembled` (AssembledTrace).
+ */
 export async function assembleTrace(
   queryId: string,
   db: StorageClient,
 ): Promise<TraceDocument> {
-  // Run all queries in parallel; missing rows for pre-instrumentation queries
-  // are handled gracefully (empty arrays / null).
-  const [
-    llmRows,
-    toolRows,
-    planAltRows,
-    contextItemRows,
-    scorecardRows,
-    queryPlanRows,
-    baselines,
-  ] = await Promise.all([
-    db.query<LlmCallRow>(
-      `SELECT id, call_stage, model_id, input_tokens, output_tokens, latency_ms,
-              cost_usd, decision_alternatives, decision_reasoning, payload
-       FROM llm_call_log
-       WHERE query_id = $1::uuid
-       ORDER BY created_at ASC`,
-      [queryId],
-    ).then(r => r.rows).catch(() => [] as LlmCallRow[]),
-
-    db.query<ToolExecRow>(
-      `SELECT id, tool_name, raw_result_count, kept_result_count,
-              dropped_items, kept_items, latency_ms, error_class, rows_returned
-       FROM tool_execution_log
-       WHERE query_id = $1::uuid
-       ORDER BY created_at ASC`,
-      [queryId],
-    ).then(r => r.rows).catch(() => [] as ToolExecRow[]),
-
-    db.query<PlanAltRow>(
-      `SELECT bundle_name, was_selected, rationale, expected_recall_score
-       FROM plan_alternatives_log
-       WHERE query_id = $1::uuid
-       ORDER BY created_at ASC`,
-      [queryId],
-    ).then(r => r.rows).catch(() => [] as PlanAltRow[]),
-
-    db.query<ContextItemRow>(
-      `SELECT item_rank, source_bundle, source_item_id, layer, token_cost,
-              relevance_score, status, drop_reason,
-              cumulative_tokens_at_decision, budget_at_decision
-       FROM context_assembly_item_log
-       WHERE query_id = $1::uuid
-       ORDER BY item_rank ASC`,
-      [queryId],
-    ).then(r => r.rows).catch(() => [] as ContextItemRow[]),
-
-    db.query<ScorecardRow>(
-      `SELECT composite_score, citation_density, failures
-       FROM synthesis_quality_scorecard
-       WHERE query_id = $1::uuid`,
-      [queryId],
-    ).then(r => r.rows).catch(() => [] as ScorecardRow[]),
-
-    db.query<QueryPlanRow>(
-      `SELECT query_text, query_class, plan_json, planner_latency_ms
-       FROM query_plan_log
-       WHERE query_id = $1::uuid
-       LIMIT 1`,
-      [queryId],
-    ).then(r => r.rows).catch(() => [] as QueryPlanRow[]),
-
-    resolveBaseline(null, db),
-  ])
-
-  // ── classify section ────────────────────────────────────────────────────
-  const classifyRow = llmRows.find(r => r.call_stage === 'classifier' || r.call_stage === 'classify')
-  const classify: TraceDocument['classify'] = classifyRow
-    ? {
-        input: null,
-        alternatives: Array.isArray(classifyRow.decision_alternatives)
-          ? (classifyRow.decision_alternatives as Array<{ type?: string; confidence?: number; rationale?: string | null }>).map(a => ({
-              type: String(a.type ?? ''),
-              confidence: Number(a.confidence ?? 0),
-              rationale: a.rationale ?? null,
-            }))
-          : [],
-        decision_reasoning: classifyRow.decision_reasoning,
-        latency_ms: classifyRow.latency_ms,
-        tokens: {
-          input: classifyRow.input_tokens ?? 0,
-          output: classifyRow.output_tokens ?? 0,
-        },
-      }
-    : null
-
-  // ── plan section ────────────────────────────────────────────────────────
-  const plannerRow = llmRows.find(r => r.call_stage === 'planner')
-  const plannerLatencyMs = plannerRow?.latency_ms
-    ?? queryPlanRows[0]?.planner_latency_ms
-    ?? null
-
-  const plan: TraceDocument['plan'] = (planAltRows.length > 0 || queryPlanRows.length > 0)
-    ? {
-        included_bundles: planAltRows
-          .filter(r => r.was_selected)
-          .map(r => ({ name: r.bundle_name, rationale: r.rationale, expected_recall: r.expected_recall_score })),
-        excluded_bundles: planAltRows
-          .filter(r => !r.was_selected)
-          .map(r => ({ name: r.bundle_name, rationale: r.rationale })),
-        plan_json: queryPlanRows[0]?.plan_json ?? null,
-        latency_ms: plannerLatencyMs,
-      }
-    : null
-
-  // ── fetches section ─────────────────────────────────────────────────────
-  const fetches: TraceDocument['fetches'] = toolRows.map((row, idx) => ({
-    bundle: row.tool_name,
-    step_order: idx,
-    raw_count: row.raw_result_count ?? row.rows_returned ?? 0,
-    kept_count: row.kept_result_count ?? row.rows_returned ?? 0,
-    dropped_items: Array.isArray(row.dropped_items)
-      ? (row.dropped_items as Array<{ item_id?: string; score?: number | null; drop_reason?: string }>).map(d => ({
-          item_id: String(d.item_id ?? ''),
-          score: d.score ?? null,
-          drop_reason: String(d.drop_reason ?? 'UNKNOWN'),
-        }))
-      : [],
-    kept_items: Array.isArray(row.kept_items)
-      ? (row.kept_items as Array<{ item_id?: string; score?: number | null; contribution_tokens?: number | null }>).map(k => ({
-          item_id: String(k.item_id ?? ''),
-          score: k.score ?? null,
-          contribution_tokens: k.contribution_tokens ?? null,
-        }))
-      : [],
-    latency_ms: row.latency_ms,
-    error_class: row.error_class ?? 'OK',
-  }))
-
-  // ── context_assembly section ────────────────────────────────────────────
-  let contextAssembly: TraceDocument['context_assembly'] = null
-  if (contextItemRows.length > 0) {
-    const items = contextItemRows.map(row => ({
-      rank: row.item_rank,
-      source_bundle: row.source_bundle,
-      source_item_id: row.source_item_id,
-      layer: row.layer,
-      token_cost: row.token_cost,
-      relevance_score: row.relevance_score,
-      status: row.status,
-      drop_reason: row.drop_reason,
-      cumulative_tokens: row.cumulative_tokens_at_decision ?? 0,
-      budget: row.budget_at_decision ?? 0,
-    }))
-
-    const includedItems = items.filter(i => i.status === 'INCLUDED')
-    const l1Total = includedItems.filter(i => i.layer === 'L1').reduce((s, i) => s + i.token_cost, 0)
-    const l2_5Total = includedItems.filter(i => i.layer === 'L2_5').reduce((s, i) => s + i.token_cost, 0)
-    const totalTokens = includedItems.reduce((s, i) => s + i.token_cost, 0)
-    const budget = items[0]?.budget ?? 0
-    const droppedCount = items.filter(i => i.status === 'DROPPED').length
-    const truncatedCount = items.filter(i => i.status === 'TRUNCATED').length
-
-    contextAssembly = {
-      items,
-      token_ledger: {
-        total: totalTokens,
-        budget,
-        preamble: 0,
-        L1: l1Total,
-        L2_5: l2_5Total,
-        dropped_count: droppedCount,
-        truncated_count: truncatedCount,
-      },
-    }
-  }
-
-  // ── synthesis section ───────────────────────────────────────────────────
-  const synthRow = llmRows.find(r => r.call_stage === 'synthesis')
-  const scorecard = scorecardRows[0] ?? null
-  const synthesis: TraceDocument['synthesis'] = synthRow
-    ? {
-        model: synthRow.model_id,
-        input_tokens: synthRow.input_tokens,
-        output_tokens: synthRow.output_tokens,
-        latency_ms: synthRow.latency_ms,
-        scorecard: scorecard,
-      }
-    : null
-
-  // ── query summary ───────────────────────────────────────────────────────
-  const planRow = queryPlanRows[0] ?? null
-  const totalCostUsd = llmRows.reduce((sum, r) => {
-    if (r.cost_usd === null) return sum
-    return sum + Number(r.cost_usd)
-  }, 0)
-  const totalMs = llmRows.reduce((sum, r) => sum + (r.latency_ms ?? 0), 0)
-    + toolRows.reduce((sum, r) => sum + (r.latency_ms ?? 0), 0)
-  const health = deriveHealth(fetches, scorecard)
-
-  const querySection: TraceDocument['query'] = {
-    id: queryId,
-    text: planRow?.query_text ?? null,
-    type: planRow?.query_class ?? null,
-    confidence: null,
-    total_ms: totalMs > 0 ? totalMs : null,
-    total_cost_usd: totalCostUsd > 0 ? totalCostUsd : null,
-    health,
-  }
-
-  // ── partial flag ────────────────────────────────────────────────────────
-  // partial = true if context_assembly_item_log has no rows (pre-instrumentation)
-  const isPartial = contextItemRows.length === 0
-
-  // ── anomaly detection ───────────────────────────────────────────────────
-  const anomalies = detectAnomalies({
-    classify,
-    plan,
-    fetches,
-    context_assembly: contextAssembly,
-    synthesis,
-    baselines,
-    partial: isPartial,
-    planLatencyMs: plannerLatencyMs ?? null,
-    baselineP50LatencyMs: baselines?.p50_total_latency_ms ?? null,
-  })
-
-  return {
-    query: querySection,
-    classify,
-    plan,
-    fetches,
-    context_assembly: contextAssembly,
-    synthesis,
-    baselines,
-    anomalies,
-    partial: isPartial,
-  }
+  const { legacy } = await assembleTraceFull(queryId, db)
+  return legacy
 }

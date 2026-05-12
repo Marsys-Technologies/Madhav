@@ -1,100 +1,210 @@
 'use client'
 
-import type { TraceDocument } from '@/lib/admin/trace_assembler'
+/**
+ * SynthesisDetail — Gate II W4 (2026-05-12).
+ *
+ * Discriminated render per D6:
+ *   single_model → one LLM-call row with model / token counts / latency / finish-reason
+ *   panel        → N panelist rows + an aggregator row
+ *
+ * Per-step latency shown in the metadata block (D2).
+ */
+
+import type { SynthesisStepMetadata } from '@/lib/trace/types'
 import { Section } from './Section'
 
 interface SynthesisDetailProps {
-  trace: TraceDocument
+  synthesis: SynthesisStepMetadata | null
 }
 
-interface ScorecardData {
-  composite_score?: number | null
-  citation_density?: number | null
-  failures?: unknown
+function fmtMs(ms: number | null | undefined): string {
+  if (ms == null) return '—'
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(2)}s`
 }
 
-function ScoreDot({ value, thresholds }: { value: number | null; thresholds: [number, number] }) {
-  if (value === null) return <span className="text-zinc-600">—</span>
-  if (value >= thresholds[1]) return <span className="text-emerald-400">●</span>
-  if (value >= thresholds[0]) return <span className="text-amber-400">●</span>
-  return <span className="text-red-400">●</span>
+function fmtCount(n: number | null | undefined): string {
+  if (n == null) return '—'
+  return n.toLocaleString()
 }
 
-export function SynthesisDetail({ trace }: SynthesisDetailProps) {
-  const synth = trace.synthesis
-  const scorecard = synth?.scorecard as ScorecardData | null | undefined
+function LlmCallRow({
+  label,
+  model,
+  inputTokens,
+  outputTokens,
+  latencyMs,
+  testid,
+}: {
+  label: string
+  model: string | null
+  inputTokens: number | null
+  outputTokens: number | null
+  latencyMs: number | null
+  testid?: string
+}) {
+  return (
+    <div
+      data-testid={testid}
+      className="rounded border border-[rgba(212,175,55,0.10)] bg-[oklch(0.10_0.005_70)] p-3"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-semibold text-[#fce29a]">{label}</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{fmtMs(latencyMs)}</span>
+      </div>
+      <dl className="grid grid-cols-3 gap-2 text-[11px]">
+        <div>
+          <dt className="text-muted-foreground">model</dt>
+          <dd className="font-mono text-foreground">{model ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">tokens in</dt>
+          <dd className="font-mono text-foreground">{fmtCount(inputTokens)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">tokens out</dt>
+          <dd className="font-mono text-foreground">{fmtCount(outputTokens)}</dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
+export function SynthesisDetail({ synthesis }: SynthesisDetailProps) {
+  if (!synthesis) {
+    return (
+      <div data-testid="synthesis-detail">
+        <p className="text-xs text-zinc-500">Synthesis did not run for this query.</p>
+      </div>
+    )
+  }
+
+  if (synthesis.mode === 'panel') {
+    return (
+      <div className="space-y-4" data-testid="synthesis-detail" data-mode="panel">
+        <Section title="Panel synthesis">
+          {synthesis.panel_trace_pending && (
+            <p className="text-[11px] text-amber-400/80 mb-3" data-testid="panel-pending-note">
+              Panel-mode trace shape pending follow-up gate; per-panelist rows not yet emitted.
+            </p>
+          )}
+          {synthesis.panelists.length > 0 && (
+            <div className="space-y-2 mb-3" data-testid="panel-panelists">
+              {synthesis.panelists.map((p, i) => (
+                <LlmCallRow
+                  key={i}
+                  testid={`panel-panelist-${p.panelist_id}`}
+                  label={`Panelist · ${p.panelist_id}`}
+                  model={p.model}
+                  inputTokens={p.input_tokens}
+                  outputTokens={p.output_tokens}
+                  latencyMs={p.latency_ms}
+                />
+              ))}
+            </div>
+          )}
+          {synthesis.aggregator ? (
+            <LlmCallRow
+              testid="panel-aggregator"
+              label="Aggregator"
+              model={synthesis.aggregator.model}
+              inputTokens={synthesis.aggregator.input_tokens}
+              outputTokens={synthesis.aggregator.output_tokens}
+              latencyMs={synthesis.aggregator.latency_ms}
+            />
+          ) : (
+            <LlmCallRow
+              testid="panel-aggregator"
+              label="Aggregator (combined)"
+              model={null}
+              inputTokens={null}
+              outputTokens={null}
+              latencyMs={synthesis.latency_ms}
+            />
+          )}
+        </Section>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6" data-testid="synthesis-detail">
-      <Section title="Input">
-        <div className="text-xs text-zinc-300 space-y-1">
-          <p><span className="text-zinc-500">model: </span>{synth?.model ?? '—'}</p>
-          <p><span className="text-zinc-500">latency: </span>
-            {synth?.latency_ms !== null && synth?.latency_ms !== undefined ? `${synth.latency_ms}ms` : '—'}
-          </p>
-        </div>
+    <div className="space-y-4" data-testid="synthesis-detail" data-mode="single_model">
+      <Section title="Synthesis (single model)">
+        <LlmCallRow
+          testid="synthesis-llm-call"
+          label="LLM call"
+          model={synthesis.model}
+          inputTokens={synthesis.input_tokens}
+          outputTokens={synthesis.output_tokens}
+          latencyMs={synthesis.latency_ms}
+        />
       </Section>
 
-      <Section title="Decision">
-        <div className="text-xs text-zinc-300 space-y-1">
-          <p><span className="text-zinc-500">input tokens: </span>{synth?.input_tokens ?? '—'}</p>
-          <p><span className="text-zinc-500">output tokens: </span>{synth?.output_tokens ?? '—'}</p>
-        </div>
+      <Section title="Quality signals">
+        <dl className="grid grid-cols-2 gap-2 text-[11px]">
+          <div>
+            <dt className="text-muted-foreground">citations</dt>
+            <dd className="font-mono text-foreground">{fmtCount(synthesis.citation_count)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">output_shape_compliant</dt>
+            <dd className="font-mono text-foreground">
+              {synthesis.output_shape_compliant == null
+                ? '—'
+                : synthesis.output_shape_compliant ? 'yes' : 'no'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">provider</dt>
+            <dd className="font-mono text-foreground">{synthesis.provider ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">temperature</dt>
+            <dd className="font-mono text-foreground">
+              {synthesis.temperature != null ? synthesis.temperature.toFixed(2) : '—'}
+            </dd>
+          </div>
+        </dl>
       </Section>
 
-      <Section title="Output">
-        {scorecard ? (
-          <table className="w-full text-xs">
-            <tbody>
-              <tr className="border-b border-zinc-800/40">
-                <td className="py-1.5 w-6">
-                  <ScoreDot value={scorecard.composite_score ?? null} thresholds={[0.5, 0.75]} />
-                </td>
-                <td className="py-1.5 text-zinc-300">Composite score</td>
-                <td className="py-1.5 text-right font-mono text-zinc-200">
-                  {scorecard.composite_score != null ? scorecard.composite_score.toFixed(3) : '—'}
-                </td>
-              </tr>
-              <tr className="border-b border-zinc-800/40">
-                <td className="py-1.5">
-                  <ScoreDot value={scorecard.citation_density ?? null} thresholds={[0.4, 0.7]} />
-                </td>
-                <td className="py-1.5 text-zinc-300">Citation density</td>
-                <td className="py-1.5 text-right font-mono text-zinc-200">
-                  {scorecard.citation_density != null ? scorecard.citation_density.toFixed(3) : '—'}
-                </td>
-              </tr>
-              <tr className="border-b border-zinc-800/40">
-                <td className="py-1.5">
-                  {Array.isArray(scorecard.failures) && scorecard.failures.length > 0
-                    ? <span className="text-red-400">●</span>
-                    : <span className="text-emerald-400">●</span>}
-                </td>
-                <td className="py-1.5 text-zinc-300">Failures</td>
-                <td className="py-1.5 text-right font-mono text-zinc-200">
-                  {Array.isArray(scorecard.failures) ? scorecard.failures.length : 0}
-                </td>
-              </tr>
-              <tr className="border-b border-zinc-800/40">
-                <td className="py-1.5">
-                  <ScoreDot value={synth?.input_tokens ?? null} thresholds={[1000, 5000]} />
-                </td>
-                <td className="py-1.5 text-zinc-300">Input tokens</td>
-                <td className="py-1.5 text-right font-mono text-zinc-200">{synth?.input_tokens ?? '—'}</td>
-              </tr>
-              <tr>
-                <td className="py-1.5">
-                  <ScoreDot value={synth?.output_tokens ?? null} thresholds={[100, 500]} />
-                </td>
-                <td className="py-1.5 text-zinc-300">Output tokens</td>
-                <td className="py-1.5 text-right font-mono text-zinc-200">{synth?.output_tokens ?? '—'}</td>
-              </tr>
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-xs text-zinc-500">No scorecard data</p>
-        )}
-      </Section>
+      {synthesis.context_assembly_short_circuit?.short_circuited && (
+        <Section title="Context assembly (short-circuit)">
+          <div className="text-[11px] text-muted-foreground">
+            Skipped synthesis context-assembly LLM: bundle size{' '}
+            <span className="font-mono text-foreground">
+              {synthesis.context_assembly_short_circuit.total_token_estimate}
+            </span>{' '}
+            below threshold{' '}
+            <span className="font-mono text-foreground">
+              {synthesis.context_assembly_short_circuit.threshold}
+            </span>
+            {synthesis.context_assembly_short_circuit.reason
+              ? ` (${synthesis.context_assembly_short_circuit.reason})`
+              : ''}
+          </div>
+        </Section>
+      )}
+
+      {synthesis.reasoning_trace && (
+        <Section title="Reasoning trace">
+          <details>
+            <summary className="cursor-pointer text-xs text-zinc-400 hover:text-zinc-200">
+              Show DeepSeek R1 think block
+            </summary>
+            <pre className="mt-2 text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed">
+              {synthesis.reasoning_trace}
+            </pre>
+          </details>
+        </Section>
+      )}
+
+      {synthesis.prompt_preview && (
+        <Section title="Prompt preview">
+          <pre className="text-[11px] text-zinc-300 font-mono bg-[oklch(0.08_0.01_70)] rounded-lg p-3 max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words">
+            {synthesis.prompt_preview}
+          </pre>
+        </Section>
+      )}
     </div>
   )
 }
