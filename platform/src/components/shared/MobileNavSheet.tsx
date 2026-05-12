@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/cockpit', label: 'Cockpit', roles: ['super_admin'] as const },
   { href: '/audit', label: 'Audit', roles: ['super_admin'] as const },
   { href: '/observatory', label: 'Observatory', roles: ['super_admin'] as const },
+  { href: '/performance', label: 'Performance', roles: ['super_admin'] as const },
   { href: '/admin', label: 'Admin', roles: ['super_admin', 'admin'] as const },
 ] satisfies { href: string; label: string; roles: readonly string[] }[]
 
