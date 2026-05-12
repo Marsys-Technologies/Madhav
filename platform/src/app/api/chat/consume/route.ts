@@ -17,6 +17,8 @@ import {
   updateConversationTitle,
 } from '@/lib/conversations'
 import { generateConversationTitle } from '@/lib/conversations/title'
+import { assembleProvenance, type ToolBundleLike } from '@/lib/consume/provenance_assembler'
+import type { ContextUsageEvent, ContextUsageMode, ProvenanceEvent } from '@/types/sse_events'
 import {
   DEFAULT_MODEL_ID,
   DEFAULT_STACK_ID,
@@ -575,26 +577,46 @@ export async function POST(request: Request) {
   // consumer closes over the same array reference, so validators_run is non-empty.
   const validatorResultsHolder: ValidationResult[] = []
 
+  // ── Gate III: smart context selection ─────────────────────────────────────
+  // Trim conversation_history according to planner.prior_turn_relevance.used.
+  // When the planner has not (yet) emitted prior_turn_relevance, fall back to
+  // the legacy 2-pair window (= 4 prior messages + current user message).
+  const ptr = plan.prior_turn_relevance
+  const ptrUsedPairs = ptr ? ptr.used : 2
+  // 2 pairs = 4 prior messages; +1 to include current user message which is
+  // then dropped below.
+  const historyMessageCap = ptrUsedPairs * 2 + 1
+  const trimmedConversationHistory = messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .slice(-historyMessageCap)
+    .slice(0, -1) // drop current user message (appended via `query`)
+    .map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: extractText(m.parts ?? []),
+    }))
+    .filter(m => m.content.length > 0)
+
+  const contextUsageMeta: ContextUsageEvent = ptr
+    ? {
+        type: 'context_usage',
+        prior_turns_used: ptr.used,
+        mode: ptr.mode as ContextUsageMode,
+        reason: ptr.reason,
+      }
+    : {
+        type: 'context_usage',
+        prior_turns_used: Math.min(2, Math.floor(trimmedConversationHistory.length / 2)),
+        mode: 'narrative_context',
+        reason: 'Default 2-turn window — planner did not specify.',
+      }
+
   const orchestrator = createOrchestrator({ panel_opt_in: panelOptIn })
   const { result, methodologyBlockHolder } = await orchestrator.synthesize({
     query: queryText,
     query_plan: queryPlan,
     bundle,
     tool_results: synthesisToolResults,
-    // CTX-GAP-S1: Cap synthesis history to the last 4 messages (= 2 prior user+assistant
-    // exchange pairs) to prevent prior conversation narrative from contaminating the
-    // corpus-grounded synthesis response. Aligns with planner_context_builder's
-    // effective 2-turn window. Unbounded history (.slice(0,-1)) was the primary
-    // vector for context contamination, especially on Gemini stack.
-    conversation_history: messages
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .slice(-5)       // last 5 = 2 prior pairs + current user message
-      .slice(0, -1)    // drop current user message (appended via `query`)
-      .map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: extractText(m.parts ?? []),
-      }))
-      .filter(m => m.content.length > 0),
+    conversation_history: trimmedConversationHistory,
     selected_model_id: modelId,
     style,
     audience_tier: audienceTier,
@@ -625,6 +647,47 @@ export async function POST(request: Request) {
 
   result.consumeStream()
 
+  // ── Gate III: title for first turn (eager so it lands in start metadata)
+  let gateIIITitle: string | null = null
+  if (isFirstTurn) {
+    try {
+      // Use only the latest user message (first user message in this turn = same).
+      const titleMessages = [lastUserMessage].filter(Boolean) as typeof messages
+      gateIIITitle = await generateConversationTitle(titleMessages, {
+        queryId,
+        conversationId: finalConversationId,
+        userId: user.uid,
+      })
+      if (gateIIITitle) {
+        try { await updateConversationTitle(finalConversationId, gateIIITitle) } catch { /* non-fatal */ }
+      }
+    } catch {
+      // non-fatal; UI falls back to the conversation list refresh path
+    }
+  }
+
+  // ── Gate III: assemble provenance shell that will be finalized at finish.
+  // The deepest information (synthesis tokens/latency) lands in onFinish; the
+  // holder pattern lets messageMetadata.finish read the most-recent snapshot.
+  const provenanceHolder: { value: ProvenanceEvent | null } = { value: null }
+  const finishGuard = () => {
+    if (provenanceHolder.value) return
+    const topVectorScore = validToolResults
+      .filter(t => t.tool_name === 'vector_search')
+      .flatMap(t => t.results)
+      .map(r => r.significance ?? r.confidence ?? 0)
+      .reduce((max, v) => (v > max ? v : max), 0)
+    provenanceHolder.value = assembleProvenance({
+      models: [
+        { stage: 'planner', model_id: plannerModelId, latency_ms: plannerLatencyMs },
+        { stage: 'synthesis', model_id: modelId },
+      ],
+      toolResults: validToolResults as unknown as ToolBundleLike[],
+      totalLatencyMs: Date.now() - setupStart,
+      topVectorScore: topVectorScore > 0 ? topVectorScore : undefined,
+    })
+  }
+
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
     generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
@@ -642,6 +705,10 @@ export async function POST(request: Request) {
           planning_latency_ms: plannerLatencyMs,
           // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
           planner_active: true,
+          // Gate III additions
+          query_class: plan.query_class,
+          context_usage: contextUsageMeta,
+          conversation_title: gateIIITitle ?? undefined,
         }
       }
       if (part.type === 'start') {
@@ -655,10 +722,16 @@ export async function POST(request: Request) {
           planning_model_id: plannerModelId,
           planning_latency_ms: plannerLatencyMs,
           planner_active: true,
+          query_class: plan.query_class,
+          context_usage: contextUsageMeta,
         }
       }
       if (part.type === 'finish') {
-        return { methodology_block: methodologyBlockHolder?.value ?? null }
+        finishGuard()
+        return {
+          methodology_block: methodologyBlockHolder?.value ?? null,
+          provenance: provenanceHolder.value,
+        }
       }
     },
     onFinish: async ({ messages: finalMessages }: { messages: UIMessage[] }) => {
@@ -792,7 +865,8 @@ export async function POST(request: Request) {
           conversationId: finalConversationId,
           messages: finalMessages,
         })
-        if (isFirstTurn) {
+        if (isFirstTurn && !gateIIITitle) {
+          // Gate III: only runs if eager pre-stream title generation failed.
           generateConversationTitle(finalMessages, {
             queryId,
             conversationId: finalConversationId,

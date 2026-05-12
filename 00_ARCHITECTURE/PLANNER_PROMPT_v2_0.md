@@ -1,8 +1,13 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.1
+version: 2.2
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
+gate_iii_amendment:
+  - 2026-05-12 Gate III §3.8 PRIOR-TURN RELEVANCE — planner now emits
+    prior_turn_relevance: { used, reason, mode }. Mode bias: "independent"
+    unless prior turns are needed for comprehension-of-query (never for
+    substance-of-answer). All existing rules R1–R26 preserved verbatim.
 produced_during: Pipeline-Transformation-Phase1
 produced_on: 2026-05-11
 patched_on: 2026-05-11
@@ -238,7 +243,12 @@ Output a single JSON object conforming to PipelinePlan:
     "planets": [...],
     "houses": [...],
     "domains": [...],
-    "forward_looking": true|false
+    "forward_looking": true|false,
+    "prior_turn_relevance": {
+      "used": 0 | 1 | 2,
+      "reason": "<≤20 words on why this many turns>",
+      "mode": "independent" | "narrative_context" | "continuation"
+    }
   }
 
 QUERY CLASS RULES:
@@ -496,6 +506,36 @@ Style rules (unchanged from v1.7):
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
   S2. `reason` cites the specific signal-class, domain, or asset.
   S3. Do not repeat the manifest `d` field as your `reason`.
+
+PRIOR-TURN RELEVANCE SELECTION (Gate III, added v2.2):
+
+  Emit `prior_turn_relevance: { used, reason, mode }` with these rules:
+
+    - mode = "independent" — the query is self-contained. Set `used: 0`.
+      This is the default. Choose it whenever you are not sure.
+
+    - mode = "narrative_context" — the query references prior turns ONLY
+      for comprehension (e.g., "tell me more about that", "what about
+      her?", "and the second one?"). Set `used: 1` or `used: 2`. The
+      synthesis layer will use prior turns to RESOLVE PRONOUNS, not to
+      borrow substance. Reasoning still derives from the retrieved corpus
+      and the current chart, never from prior assistant conclusions.
+
+    - mode = "continuation" — the query is a direct follow-up that needs
+      the prior turn's framing to make sense (e.g., "go deeper on the
+      Saturn-Moon point"). Set `used: 1`. Narrowly — never more than one
+      prior turn for a continuation.
+
+  Bias HARD toward "independent". The only justifications for non-zero
+  `used` are pronoun resolution or scoping a direct follow-up. Never use
+  prior turns to extend, restate, or weight the substance of the answer
+  itself — that is the corpus's job.
+
+  `reason` is a ≤20-word human-readable explanation that will be shown
+  to the native as the context-usage cue, e.g.:
+    "Independent question — chart facts alone are enough."
+    "Resolves pronoun 'that' from prior turn."
+    "Direct follow-up — needs prior framing for scope."
 ```
 
 ## 4. Few-shot examples

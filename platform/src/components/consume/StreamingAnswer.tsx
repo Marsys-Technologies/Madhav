@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo, useEffect } from 'react'
 import type { UIMessage } from 'ai'
 import { StreamingMarkdown } from '@/components/chat/StreamingMarkdown'
 import { StreamingDots } from '@/components/chat/StreamingDots'
@@ -7,6 +8,13 @@ import { AssistantMessage } from '@/components/chat/AssistantMessage'
 import { MessageErrorBoundary } from '@/components/chat/MessageErrorBoundary'
 import type { Rating } from '@/hooks/useFeedback'
 import { cn } from '@/lib/utils'
+import { parseMarkers } from '@/lib/consume/marker_parser'
+import type {
+  ReasoningStepEvent,
+  SanskritTerm,
+  CorrectionEvent,
+  OutOfDomainEvent,
+} from '@/types/sse_events'
 
 interface Props {
   messages: UIMessage[]
@@ -16,17 +24,26 @@ interface Props {
   ratings?: Record<string, Rating>
   onRate?: (messageId: string, rating: Rating) => void
   className?: string
+  /** Gate III — surface parsed markers from the in-flight assistant message. */
+  onMarkers?: (markers: {
+    reasoning: ReasoningStepEvent[]
+    sanskrit: SanskritTerm[]
+    correction: CorrectionEvent | null
+    outOfDomain: OutOfDomainEvent | null
+    messageId: string | null
+  }) => void
 }
 
 /**
  * Flag-ON message renderer for the pipeline-v2 path.
  *
- * Streaming tail: bare StreamingMarkdown with caret while the last assistant
- * message is in flight.
- *
- * Completed turns: rendered through AssistantMessage (avatar + actions bar)
- * wrapped in MessageErrorBoundary so a single broken message cannot crash the
- * whole conversation.
+ * Gate III adds marker-aware rendering:
+ *   - Streamed assistant text is run through `parseMarkers` so ‹reasoning›,
+ *     ‹correction›, ‹sanskrit›, and ‹out_of_domain› spans are extracted.
+ *   - Markers bubble up via `onMarkers` so ConsumeChat can drive
+ *     LiveReasoningCard, CorrectionNotice, etc.
+ *   - The visible streamed prose has markers stripped (Sanskrit display
+ *     text is kept; reasoning/correction/out_of_domain are removed).
  */
 export function StreamingAnswer({
   messages,
@@ -35,19 +52,32 @@ export function StreamingAnswer({
   ratings,
   onRate,
   className,
+  onMarkers,
 }: Props) {
+  // Find the last assistant message + parse its markers once per render.
+  // Hooks are declared unconditionally so they run on every render regardless
+  // of the empty-message early-return.
+  const lastAssistantIdx = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'assistant') return i
+    return -1
+  })()
+  const lastAssistant = lastAssistantIdx >= 0 ? messages[lastAssistantIdx] : null
+  const lastAssistantText = lastAssistant ? extractText(lastAssistant) : ''
+  const parsed = useMemo(() => parseMarkers(lastAssistantText), [lastAssistantText])
+
+  // Surface markers to parent on every change.
+  useEffect(() => {
+    if (!onMarkers) return
+    onMarkers({
+      reasoning: parsed.reasoning,
+      sanskrit: parsed.sanskrit,
+      correction: parsed.correction,
+      outOfDomain: parsed.outOfDomain,
+      messageId: lastAssistant?.id ?? null,
+    })
+  }, [parsed, lastAssistant?.id, onMarkers])
 
   if (messages.length === 0) return null
-
-  if (process.env.NODE_ENV === 'development') {
-    // Phase 1 debug: track part-to-message attribution for Q1→Q2 misattribution repro
-    messages.forEach(m => {
-      const preview = m.parts
-        ?.map(p => `${p.type}:${('text' in p ? String((p as { text: unknown }).text).slice(0, 80) : '')}`)
-        .join(' | ')
-      console.debug('[StreamingAnswer] msg', m.id, m.role, '|', preview)
-    })
-  }
 
   return (
     <div role="log" aria-label="Conversation" aria-live="polite" className={cn('flex w-full flex-col', className)}>
@@ -72,13 +102,14 @@ export function StreamingAnswer({
 
         if (message.role === 'assistant') {
           const isCurrentlyStreaming = isLast && isStreaming
+          const visible = idx === lastAssistantIdx ? parsed.visibleText : parseMarkers(textContent).visibleText
 
           if (isCurrentlyStreaming) {
             return (
               <div key={message.id} className="mx-auto w-full max-w-4xl px-4 py-2">
-                {textContent ? (
+                {visible ? (
                   <StreamingMarkdown isStreaming>
-                    {textContent}
+                    {visible}
                   </StreamingMarkdown>
                 ) : (
                   <StreamingDots />
@@ -90,7 +121,7 @@ export function StreamingAnswer({
           return (
             <MessageErrorBoundary key={message.id} messageId={message.id}>
               <AssistantMessage
-                message={message}
+                message={maskedMessage(message, visible)}
                 isStreaming={false}
                 isLast={isLast}
                 onRegenerate={isLast ? onRegenerate : undefined}
@@ -113,4 +144,18 @@ function extractText(message: UIMessage): string {
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
     .map(p => p.text)
     .join('')
+}
+
+/**
+ * Returns a shallow-cloned message whose text parts are the marker-stripped
+ * `visible` string. Used for finalized turns so AssistantMessage doesn't
+ * render raw ‹marker› tags.
+ */
+function maskedMessage(message: UIMessage, visible: string): UIMessage {
+  if (!message.parts) return message
+  const parts = message.parts.map(p => {
+    if (p.type === 'text') return { ...p, text: visible }
+    return p
+  })
+  return { ...message, parts } as UIMessage
 }

@@ -218,6 +218,22 @@ export const PipelinePlanSchema = z.object({
   /** [PLANNER OUTPUT] Why this overall plan was chosen. Stored in audit trail. */
   planning_rationale: z.string().optional(),
 
+  // ── Gate III: prior-turn relevance ───────────────────────────────────────
+  //
+  // [PLANNER OUTPUT] Smart per-query context selection. The planner decides
+  // how many prior turns the synthesis layer should see, and in what mode.
+  // The synthesis prompt enforces "context for comprehension only, never for
+  // substance". route.ts uses `used` to trim the conversation_history slice;
+  // the UI renders mode + reason as a ContextUsageCue chip.
+  //
+  // Optional for backwards-compat with planner outputs predating Gate III.
+  // When absent, route.ts falls back to the legacy 2-pair window.
+  prior_turn_relevance: z.object({
+    used: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+    reason: z.string().min(1).max(400),
+    mode: z.enum(['independent', 'narrative_context', 'continuation']),
+  }).optional(),
+
   // ── Route-stamped metadata ────────────────────────────────────────────────
   // These fields are NEVER part of the LLM output. route.ts stamps them
   // after the plan is validated so downstream consumers see a single object.
@@ -342,6 +358,15 @@ export const PipelinePlanInputJsonSchema: JSONSchema7 = {
         end: { type: 'string' },
       },
       required: ['start', 'end'],
+    },
+    prior_turn_relevance: {
+      type: 'object',
+      properties: {
+        used: { type: 'integer', minimum: 0, maximum: 2 },
+        reason: { type: 'string' },
+        mode: { type: 'string', enum: ['independent', 'narrative_context', 'continuation'] },
+      },
+      required: ['used', 'reason', 'mode'],
     },
   },
   required: ['query_class', 'query_intent_summary', 'asset_bundle', 'tool_calls'],
