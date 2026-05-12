@@ -133,7 +133,7 @@ At the close of M4-D-S1 (2026-05-02) — M4 MACRO-PHASE CLOSED; M4→M5 TRANSITI
 - **ND status:** ND.1 (Mirror Discipline) `addressed` 2026-04-24 at Step 7 close. No open directive.
 - **red_team_counter:** 0 (reset at M4 macro-phase-close IS.8(b) discharge).
 - **Concurrent workstreams:** Phase O Observatory COMPLETE (2026-05-03; branch merged to main; live at amjis-web-00044-sn5 behind `MARSYS_FLAG_OBSERVATORY_ENABLED=true`). BHISMA Wave 2 Lever 2 CLOSED (2026-05-04; `LLM_FIRST_PLANNER_ENABLED=true` commit fa75e1a; AC.W2.3 DEFERRED pending Lever 3 NAP). **Phase 11B Pipeline Cutover Stage 2 COMPLETE (2026-05-11)** — legacy code path deleted from route.ts, `consume-tools.ts` deleted, `pipelineEnabled` prop chain removed from ConsumeChat + consume page wrappers, `NEW_QUERY_PIPELINE_ENABLED` flag retired from `feature_flags.ts`. New pipeline is the only pipeline. Rollback path is `git revert`, not flag flip.
-- **Active feature flags:** `AUDIT_ENABLED=true`, `MARSYS_FLAG_OBSERVATORY_ENABLED=true`, all `DISCOVERY_*_ENABLED=true`. (`NEW_QUERY_PIPELINE_ENABLED` removed Phase 11B 2026-05-11. `LLM_FIRST_PLANNER_ENABLED` + `CONTEXT_ASSEMBLY_ENABLED` removed Pipeline-Transform-S1 2026-05-11.)
+- **Active feature flags:** `AUDIT_ENABLED=true`, `MARSYS_FLAG_OBSERVATORY_ENABLED=true`, all `DISCOVERY_*_ENABLED=true`. (`NEW_QUERY_PIPELINE_ENABLED` removed Phase 11B 2026-05-11. `LLM_FIRST_PLANNER_ENABLED` + `CONTEXT_ASSEMBLY_ENABLED` removed Pipeline-Transform-S1 2026-05-11 — **note**: `CONTEXT_ASSEMBLY_ENABLED`'s underlying stage was renamed to `compose_bundle` and preserved in production `query_trace_steps`; only the feature flag was retired. Stage was NOT removed. Confirmed by Gate II.5 close 2026-05-13.)
 
 ## §G — Session-open handshake (reference)
 
@@ -196,4 +196,4 @@ Daily sessions. Closed-artifact-per-session discipline — one phase or one step
 
 ---
 
-*End of CLAUDE.md v2.2 (amended 2026-05-11 — Pipeline-Transform-S1 close: §F active feature flags updated to remove LLM_FIRST_PLANNER_ENABLED + CONTEXT_ASSEMBLY_ENABLED; both pruned from feature_flags.ts on feature/pipeline-transform-s1). Prior: v2.1 (2026-05-11 Phase 11B). Governance rebuild closed; M4 CLOSED 2026-05-02; M5 active.*
+*End of CLAUDE.md v2.3 (amended 2026-05-13 — Gate II.5 close: §F active feature flags footnote clarifies that CONTEXT_ASSEMBLY_ENABLED's underlying stage was renamed to compose_bundle and preserved, not removed; only the flag was retired. Per MP.1 mirror discipline, `.geminirules` requires an adapted-parity update — surfaced to native for handling). Prior: v2.2 (2026-05-11 Pipeline-Transform-S1 close), v2.1 (2026-05-11 Phase 11B). Governance rebuild closed; M4 CLOSED 2026-05-02; M5 active.*

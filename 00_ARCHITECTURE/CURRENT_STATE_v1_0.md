@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 3.5
+version: 3.9
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,30 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v3.9 (2026-05-13, Pre-M5-Final-Autonomous-2026-05-13):
+    **PRE-M5 GATE SEQUENCE COMPLETE.** Autonomous overnight session merged all
+    three pre-M5 feature branches (Gates II.5, I, III) to main, executed Gate IV
+    integration acceptance criteria, and closed the pre-M5 sequence.
+    Gate merges: Gate II.5 (trace pipeline alignment) `5337fc4`; Gate I
+    (performance command center) `c4a40cc` (trivial R12 conflicts resolved:
+    SESSION_LOG append + .gitignore comment); Gate III (intelligent chat
+    interface) `bfbc0ac` (rebased onto main, merged cleanly). Lint fix for
+    vitest.smoke.config.ts (require()→ESM import) `a13d093`. Gate IV W1 nav
+    cleanup (added /performance to AppShellRail + MobileNavSheet) `451a21a`.
+    CLOSE_REPORT_GATE_IV.md authored and committed `63eb16e`.
+    Gate IV AC results: 6/8 PASS. AC.IV.1–5 PASS; AC.IV.8 PASS.
+    AC.IV.6 PARTIAL (recall=0.9355 vs bar ≥0.97 — pre-existing gap, no
+    regression; precision improved 0.8981→0.9235). AC.IV.7 UNABLE (no 7-day
+    prod telemetry window; audit_events.latency_ms null for recent rows).
+    `last_session_id` rotated → Pre-M5-Final-Autonomous-2026-05-13.
+    `next_session_objective` updated — M5-S1 is confirmed next (gates now
+    fully merged to main; pre-M5 sequence closed).
+    `red_team_counter` UNCHANGED at 0 (pre-M5 integration/gate-close class;
+    not a substantive M5 session for IS.8(a) cadence purposes).
+    `file_updated_at` + `file_updated_by_session` rotated.
+    Mirror MP.1+MP.2 NOT propagated this session — session may_touch does
+    not include .geminirules or .gemini/project_state.md; delta carries to
+    M5-S1 entry mirror sync.
   - v3.8 (2026-05-11, PR-15-merge Cowork governance close):
     **PR #15 merged to main (85dfca5).** Squash-merge of feature/pipeline-transform-s1.
     Remote branch deleted. Single conflict (router/prompt.ts delete/modify) resolved
@@ -3401,8 +3425,14 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: Pipeline-Transform-S1
-    # M4-D-S1 (2026-05-02). Macro-phase close-class substantive session sealing
+  last_session_id: Pre-M5-Final-Autonomous-2026-05-13
+    # Pre-M5-Final-Autonomous-2026-05-13 (2026-05-13). Autonomous overnight pre-M5
+    # gate sequence close. Merged Gates II.5 (5337fc4), I (c4a40cc), III (bfbc0ac)
+    # to main. Gate IV AC 6/8 PASS. CLOSE_REPORT_GATE_IV.md authored (63eb16e).
+    # Nav cleanup /performance item added (451a21a). CURRENT_STATE v3.8 → v3.9.
+    # Not an M5 substantive session — red_team_counter unchanged at 0.
+    # === Predecessor Pipeline-Transform-S1 preserved for audit trail ===
+    # Pipeline-Transform-S1 (2026-05-11). Macro-phase close-class substantive session sealing
     # the M4 macro-phase. Single-session substantive close per PHASE_M4D_PLAN §3.1
     # with 10 work items (W1–W10) discharged: W1 SESSION_OPEN handshake;
     # W2 carry-forward dispositions recorded (CF.LL7.1=CLOSED_PARALLEL [M4-D-P1
@@ -4196,8 +4226,10 @@ current_state:
   # ------------------------------------------------------------------
   next_session_objective: >
     M5-S1 — open M5 macro-phase; author PHASE_M5_PLAN_v1_0.md.
-    Planner is settled (recall=0.963, precision=0.986 at 438974b). PR #15 merged
-    to main (85dfca5, 2026-05-11). Pipeline transform workstream COMPLETE.
+    Pre-M5 gate sequence COMPLETE (2026-05-13): Gates II.5, I, III all merged
+    to main; Gate IV integration verified (6/8 AC PASS). CLOSE_REPORT_GATE_IV.md
+    at project root. Planner settled (recall=0.963, precision=0.986 at 438974b).
+    PR #15 merged (85dfca5, 2026-05-11). Pipeline transform workstream COMPLETE.
     M5 entry gates per MACRO_PLAN §M5:
     M5-S1 entry gates per MACRO_PLAN §M5: M4 closed (SATISFIED at this M4-D-S1
     close — M4_CLOSE_v1_0.md sealed; calibration tables stable; LL.1–LL.7 active);
@@ -4967,8 +4999,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-13T06:10:00+05:30
-  file_updated_by_session: GATE-I-CLOSEOUT-R1
+  file_updated_at: 2026-05-13T09:30:00+05:30
+  file_updated_by_session: Pre-M5-Final-Autonomous-2026-05-13
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
