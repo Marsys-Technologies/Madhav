@@ -1,34 +1,29 @@
 'use client'
 
 /**
- * LifecycleGraph — Gate II realignment (2026-05-12).
+ * LifecycleGraph — Gate II.5 realignment (2026-05-13).
  *
- * Used by the admin trace page (TraceModal). Renders the canonical pipeline
- * shape per D5 + D1: Planner → Retrieval (grouped) → Synthesis → Audit,
- * followed by a collapsible Checkpoints group.
- *
- * Consumes the new trace step schema (TraceStep[] from lib/trace/types.ts).
- * Stage names come from PipelineStage / mapStepToStage — no hard-coded
- * stage literals.
+ * Renders the grouped production pipeline shape per D9 + D10:
+ *   Planning [classify + compose_bundle + plan_per_tool inline sub-rows]
+ *   → Retrieval [21 inline sub-rows; unfired tools dimmed]
+ *   → Synthesis → Audit
+ *   → Checkpoints (collapsible group, D1)
  */
 
 import { useMemo, useState } from 'react'
-import type { PipelineStage, TraceStep } from '@/lib/trace/types'
-import { mapStepToStage } from '@/lib/trace/types'
+import type { AssembledTrace, PipelineStage, TraceStep } from '@/lib/trace/types'
+import { ALL_21_RETRIEVAL_TOOLS, mapStepToStage } from '@/lib/trace/types'
 
 interface LifecycleGraphProps {
   steps: TraceStep[]
+  assembled: AssembledTrace
   selectedStepId: string
   onSelectStep: (stepId: string) => void
   searchFilter?: string
 }
 
 const CHECKPOINTS: PipelineStage[] = ['checkpoint_4_5', 'checkpoint_5_5', 'checkpoint_8_5']
-const CHECKPOINT_LABEL: Record<PipelineStage, string> = {
-  planner: 'Planner',
-  retrieval: 'Retrieval',
-  synthesis: 'Synthesis',
-  audit: 'Audit',
+const CHECKPOINT_LABEL: Record<string, string> = {
   checkpoint_4_5: 'Checkpoint 4.5',
   checkpoint_5_5: 'Checkpoint 5.5',
   checkpoint_8_5: 'Checkpoint 8.5',
@@ -43,8 +38,7 @@ function dim(matches: boolean): string {
   return matches ? '' : 'opacity-20 pointer-events-none'
 }
 
-function StageNode({
-  id,
+function ContainerHeader({
   title,
   selected,
   hasData,
@@ -52,7 +46,6 @@ function StageNode({
   testid,
   children,
 }: {
-  id: string
   title: string
   selected: boolean
   hasData: boolean
@@ -65,7 +58,6 @@ function StageNode({
       type="button"
       onClick={onSelect}
       data-testid={testid}
-      data-stage-id={id}
       data-stage-has-data={hasData}
       className={`w-full text-left rounded border p-3 transition-colors ${
         selected
@@ -81,12 +73,42 @@ function StageNode({
   )
 }
 
+function SubRow({
+  label,
+  dim: isDimmed,
+  onClick,
+  selected,
+  testid,
+  status,
+}: {
+  label: string
+  dim: boolean
+  onClick: () => void
+  selected: boolean
+  testid?: string
+  status?: string
+}) {
+  return (
+    <li
+      data-testid={testid}
+      data-subrow-status={status}
+      onClick={onClick}
+      className={`text-[11px] font-mono pl-2 cursor-pointer hover:underline ${
+        isDimmed ? 'text-muted-foreground/50' : selected ? 'text-[#fce29a]' : 'text-foreground'
+      }`}
+    >
+      • {label}
+    </li>
+  )
+}
+
 function Edge() {
   return <div className="my-1 w-px h-3 mx-auto bg-[rgba(212,175,55,0.20)]" />
 }
 
 export function LifecycleGraph({
   steps,
+  assembled,
   selectedStepId,
   onSelectStep,
   searchFilter = '',
@@ -106,91 +128,144 @@ export function LifecycleGraph({
   const [checkpointsExpanded, setCheckpointsExpanded] = useState(false)
   const checkpointRan = CHECKPOINTS.filter(c => groups[c].length > 0).length
 
-  const plannerStep = groups.planner.find(s => s.step_name === 'classify')
-  const synthStep = groups.synthesis.find(s => s.step_name === 'synthesis' || s.step_name === 'synthesis_done')
+  const { planner, retrieval, synthesis, audit } = assembled.grouped
+
+  // Planning: 3 inline sub-rows in emission order
+  const planningSubRows: Array<{ id: string; label: string; hasData: boolean; status?: string }> = [
+    {
+      id: 'planner:classify',
+      label: 'classify',
+      hasData: planner !== null,
+      status: planner?.status,
+    },
+    {
+      id: 'planner:compose_bundle',
+      label: 'compose_bundle',
+      hasData: planner?.compose_bundle !== null && planner?.compose_bundle !== undefined,
+      status: planner?.compose_bundle ? 'done' : undefined,
+    },
+    {
+      id: 'planner:plan_per_tool',
+      label: 'plan_per_tool',
+      hasData: planner?.plan_per_tool !== null && planner?.plan_per_tool !== undefined,
+      status: planner?.plan_per_tool ? 'done' : undefined,
+    },
+  ]
+
+  // Retrieval: all 21 tools; dim unfired ones
+  const firedTools = new Set(retrieval.map(r => r.tool_name))
+  const synthStep = steps.find(
+    s => s.step_name === 'synthesis' || s.step_name === 'synthesis_done',
+  )
 
   return (
     <div className="p-3 space-y-0" data-testid="lifecycle-graph">
-      <div className={dim(matchesFilter('planner', searchFilter))}>
-        <StageNode
-          id="planner"
-          title="Planner"
+
+      {/* Planning container */}
+      <div className={dim(matchesFilter('planning', searchFilter))}>
+        <ContainerHeader
+          title="Planning"
           selected={selectedStepId === 'planner'}
-          hasData={!!plannerStep}
+          hasData={planner !== null}
           onSelect={() => onSelectStep('planner')}
           testid="lifecycle-node-planner"
         >
-          {plannerStep
-            ? `${((plannerStep.payload as { tool_calls?: unknown[] })?.tool_calls?.length ?? 0)} tools planned`
+          {planner
+            ? `${planner.tool_calls.length} tools planned`
             : 'not invoked'}
-        </StageNode>
+        </ContainerHeader>
+        <ul
+          className="ml-4 mt-1 space-y-0.5"
+          data-testid="planning-subrows"
+          aria-label="Planning sub-steps"
+        >
+          {planningSubRows.map(row => (
+            <SubRow
+              key={row.id}
+              label={row.label}
+              dim={!row.hasData}
+              onClick={() => onSelectStep(row.id)}
+              selected={selectedStepId === row.id}
+              testid={`planning-subrow-${row.label}`}
+              status={row.status}
+            />
+          ))}
+        </ul>
       </div>
 
       <Edge />
 
+      {/* Retrieval container — all 21 tools, unfired dimmed */}
       <div className={dim(matchesFilter('retrieval', searchFilter))}>
-        <StageNode
-          id="retrieval"
+        <ContainerHeader
           title="Retrieval"
           selected={selectedStepId === 'retrieval'}
-          hasData={groups.retrieval.length > 0}
+          hasData={retrieval.length > 0}
           onSelect={() => onSelectStep('retrieval')}
           testid="lifecycle-node-retrieval"
         >
-          {groups.retrieval.length} sub-tools fired
-        </StageNode>
-        {groups.retrieval.length > 0 && (
-          <ul className="ml-4 mt-1 space-y-0.5" data-testid="retrieval-subrows-graph">
-            {groups.retrieval.map(s => {
-              const dimmed = s.status !== 'done'
-              return (
-                <li
-                  key={s.step_seq + ':' + s.step_name}
-                  data-testid={`retrieval-subrow-${s.step_name}`}
-                  data-subrow-status={s.status}
-                  className={`text-[11px] font-mono pl-2 ${dimmed ? 'text-muted-foreground/60' : 'text-foreground'} cursor-pointer hover:underline`}
-                  onClick={() => onSelectStep(`retrieval:${s.step_name}`)}
-                >
-                  • {s.step_name}
-                </li>
-              )
-            })}
-          </ul>
-        )}
+          {retrieval.length} of {ALL_21_RETRIEVAL_TOOLS.length} tools fired
+        </ContainerHeader>
+        <ul
+          className="ml-4 mt-1 space-y-0.5"
+          data-testid="retrieval-subrows-graph"
+          aria-label="Retrieval tools"
+        >
+          {ALL_21_RETRIEVAL_TOOLS.map(toolName => {
+            const run = retrieval.find(r => r.tool_name === toolName)
+            const fired = firedTools.has(toolName)
+            return (
+              <SubRow
+                key={toolName}
+                label={toolName}
+                dim={!fired}
+                onClick={() => fired ? onSelectStep(`retrieval:${toolName}`) : undefined}
+                selected={selectedStepId === `retrieval:${toolName}`}
+                testid={`retrieval-subrow-${toolName}`}
+                status={run?.status ?? 'skipped'}
+              />
+            )
+          })}
+        </ul>
       </div>
 
       <Edge />
 
+      {/* Synthesis */}
       <div className={dim(matchesFilter('synthesis', searchFilter))}>
-        <StageNode
-          id="synthesis"
+        <ContainerHeader
           title="Synthesis"
           selected={selectedStepId === 'synthesis'}
-          hasData={!!synthStep}
+          hasData={synthesis !== null}
           onSelect={() => onSelectStep('synthesis')}
           testid="lifecycle-node-synthesis"
         >
-          {synthStep ? (synthStep.data_summary as { model?: string })?.model ?? '—' : 'not invoked'}
-        </StageNode>
+          {synthesis?.mode === 'single_model'
+            ? (synthesis.model ?? '—')
+            : synthesis?.mode === 'panel'
+              ? 'panel mode'
+              : 'not invoked'}
+        </ContainerHeader>
       </div>
 
       <Edge />
 
+      {/* Audit */}
       <div className={dim(matchesFilter('audit', searchFilter))}>
-        <StageNode
-          id="audit"
+        <ContainerHeader
           title="Audit"
           selected={selectedStepId === 'audit'}
-          hasData={groups.audit.length > 0}
+          hasData={audit !== null && audit.placeholder_note === null}
           onSelect={() => onSelectStep('audit')}
           testid="lifecycle-node-audit"
         >
-          {groups.audit.length > 0 ? 'citation gate fired' : 'audit_events JOIN (assembler)'}
-        </StageNode>
+          {audit?.placeholder_note ? 'pending' : audit?.validator_verdict ?? 'not invoked'}
+        </ContainerHeader>
       </div>
 
       <Edge />
 
+      {/* Checkpoints — collapsible group (D1) */}
       <div
         className="rounded border border-[rgba(212,175,55,0.08)] bg-[oklch(0.10_0.005_70)]"
         data-testid="lifecycle-node-checkpoints"
@@ -212,7 +287,7 @@ export function LifecycleGraph({
           </span>
         </button>
         {checkpointsExpanded && (
-          <ul className="px-3 pb-3 space-y-1.5 pl-6">
+          <ul className="px-3 pb-3 space-y-1.5 pl-6" aria-label="Checkpoint stages">
             {CHECKPOINTS.map(c => {
               const ran = groups[c].length > 0
               const label = CHECKPOINT_LABEL[c]

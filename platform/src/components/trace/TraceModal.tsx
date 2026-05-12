@@ -19,6 +19,9 @@ interface TraceModalProps {
 function buildStepOrder(env: TraceEnvelope): string[] {
   return [
     'planner',
+    'planner:classify',
+    'planner:compose_bundle',
+    'planner:plan_per_tool',
     'retrieval',
     ...env.assembled.grouped.retrieval.map(r => `retrieval:${r.tool_name}`),
     'synthesis',
@@ -28,6 +31,9 @@ function buildStepOrder(env: TraceEnvelope): string[] {
 
 function extractStepData(env: TraceEnvelope, stepId: string): unknown {
   if (stepId === 'planner') return env.assembled.grouped.planner
+  if (stepId === 'planner:classify') return env.assembled.grouped.planner
+  if (stepId === 'planner:compose_bundle') return env.assembled.grouped.planner?.compose_bundle ?? null
+  if (stepId === 'planner:plan_per_tool') return env.assembled.grouped.planner?.plan_per_tool ?? null
   if (stepId === 'retrieval') return env.assembled.grouped.retrieval
   if (stepId === 'synthesis') return env.assembled.grouped.synthesis
   if (stepId === 'audit') return env.assembled.grouped.audit
@@ -157,6 +163,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
           <div className="flex-1 overflow-y-auto">
             <LifecycleGraph
               steps={envelope.steps}
+              assembled={envelope.assembled}
               selectedStepId={selectedStepId}
               onSelectStep={setSelectedStepId}
               searchFilter={showSearch ? searchValue : ''}

@@ -20,6 +20,7 @@ import { useState, useMemo } from 'react'
 import { X, ChevronRight, ChevronDown, Clock, Layers, Database, Zap, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useTraceStream } from '@/hooks/useTraceStream'
 import type { TraceStep, TraceChunkItem, TraceHistoryRow } from '@/lib/trace/types'
+import { ALL_21_RETRIEVAL_TOOLS } from '@/lib/trace/types'
 import { getModelMeta } from '@/lib/models/registry'
 import { QueryDNAPanel } from './QueryDNAPanel'
 import { CostPerformanceBar } from './CostPerformanceBar'
@@ -1259,14 +1260,8 @@ export function TracePanelContent({
 
 // ── PipelineFlowView — structured pipeline command centre ─────────────────────
 
-const ALL_RETRIEVAL_TOOLS = [
-  'msr_sql', 'pattern_register', 'resonance_register', 'cluster_atlas',
-  'contradiction_register', 'temporal', 'query_msr_aggregate', 'cgm_graph_walk',
-  'manifest_query', 'vector_search', 'kp_query', 'saham_query',
-  'divisional_query', 'chart_facts_query', 'domain_report_query',
-  'remedial_codex_query', 'timeline_query', 'query_signal_state',
-  'query_kp_ruling_planets', 'query_varshaphala',
-] as const
+// Gate II.5: use canonical 21-tool list from types.ts (was local 20-tool copy missing cross_varga_dignity_query).
+const ALL_RETRIEVAL_TOOLS = ALL_21_RETRIEVAL_TOOLS
 
 function PfRow({
   icon, name, dim, meta, pulse,
