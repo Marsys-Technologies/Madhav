@@ -1,0 +1,22 @@
+tests/pipeline/manifest_planner.test.ts(23,8): error TS2307: Cannot find module '@/lib/pipeline/manifest_planner' or its corresponding type declarations.
+tests/pipeline/manifest_planner.test.ts(108,43): error TS7006: Parameter 'tc' implicitly has an 'any' type.
+tests/pipeline/manifest_planner.test.ts(128,43): error TS7006: Parameter 'tc' implicitly has an 'any' type.
+tests/pipeline/universal_query_engine.test.ts(25,8): error TS2307: Cannot find module '@/lib/pipeline/universal_query_engine' or its corresponding type declarations.
+tests/pipeline/universal_query_engine.test.ts(26,39): error TS2307: Cannot find module '@/lib/pipeline/planner_circuit_breaker' or its corresponding type declarations.
+tests/pipeline/universal_query_engine.test.ts(27,47): error TS2307: Cannot find module '@/lib/pipeline/manifest_planner' or its corresponding type declarations.
+tests/pipeline/universal_query_engine.test.ts(127,45): error TS7006: Parameter 's' implicitly has an 'any' type.
+tests/pipeline/universal_query_engine.test.ts(127,48): error TS7006: Parameter 't' implicitly has an 'any' type.
+tests/pipeline/universal_query_engine.test.ts(130,39): error TS7006: Parameter 't' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(16,64): error TS2307: Cannot find module '@/lib/pipeline/planner_circuit_breaker' or its corresponding type declarations.
+tests/planner/circuit_breaker.test.ts(41,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(44,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(58,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(72,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(99,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(104,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(105,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(117,30): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/circuit_breaker.test.ts(135,33): error TS7006: Parameter 'm' implicitly has an 'any' type.
+tests/planner/nim_compat.test.ts(9,1): error TS2304: Cannot find name 'vi'.
+tests/synthesis/context_assembler.test.ts(9,1): error TS2304: Cannot find name 'vi'.
+tests/synthesis/context_assembler.test.ts(11,52): error TS2307: Cannot find module '@/lib/synthesis/context_assembler' or its corresponding type declarations.

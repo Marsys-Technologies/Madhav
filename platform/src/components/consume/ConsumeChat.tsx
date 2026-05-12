@@ -24,7 +24,7 @@ import { ChatShell } from '@/components/chat/ChatShell'
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
 import { PendingAssistantBubble } from '@/components/chat/PendingAssistantBubble'
 import { Composer, type ComposerHandle } from '@/components/chat/Composer'
-import { WelcomeGreeting } from '@/components/chat/WelcomeGreeting'
+// WelcomeGreeting retired in favor of Gate III EmptyState; kept import-free.
 import { ScrollToBottomButton } from '@/components/chat/ScrollToBottomButton'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { CommandPalette, type Command } from '@/components/chat/CommandPalette'
@@ -32,6 +32,22 @@ import { ReportLibrary } from './ReportLibrary'
 import { ReportReader } from './ReportReader'
 import { TraceDrawer } from './TraceDrawer'
 import { TierPicker } from './TierPicker'
+import { LiveReasoningCard } from './LiveReasoningCard'
+import { CorrectionNotice } from './CorrectionNotice'
+import { ContextUsageCue } from './ContextUsageCue'
+import { OutOfDomainBanner } from './OutOfDomainBanner'
+import { PostAnswerProvenance } from './PostAnswerProvenance'
+import { EmptyState } from './EmptyState'
+import { ConversationHistoryDrawer } from './ConversationHistoryDrawer'
+import { ConversationHistoryButton } from './ConversationHistoryButton'
+import type {
+  ReasoningStepEvent,
+  SanskritTerm,
+  CorrectionEvent,
+  OutOfDomainEvent,
+  ContextUsageEvent,
+  ProvenanceEvent,
+} from '@/types/sse_events'
 import { useChatSession } from '@/hooks/useChatSession'
 import { useScrollAnchor } from '@/hooks/useScrollAnchor'
 import { useHotkeys } from '@/hooks/useHotkeys'
@@ -90,6 +106,15 @@ export function ConsumeChat({
   const [conversations, setConversations] = useState(initialConversations)
   const [panelOptIn, setPanelOptIn] = useState(false)
   const [traceDrawerOpen, setTraceDrawerOpen] = useState(false)
+  // ── Gate III: per-turn state for the new surfaces ─────────────────────────
+  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStepEvent[]>([])
+  const [correction, setCorrection] = useState<CorrectionEvent | null>(null)
+  const [outOfDomain, setOutOfDomain] = useState<OutOfDomainEvent | null>(null)
+  const [sanskritTerms, setSanskritTerms] = useState<SanskritTerm[]>([])
+  const [contextUsage, setContextUsage] = useState<ContextUsageEvent | null>(null)
+  const [provenance, setProvenance] = useState<ProvenanceEvent | null>(null)
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false)
+  const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false)
@@ -183,6 +208,12 @@ export function ConsumeChat({
           mediaType: a.mime,
           url: a.url!,
         }))
+      // Gate III: reset per-turn marker state on new submission.
+      setReasoningSteps([])
+      setCorrection(null)
+      setOutOfDomain(null)
+      setSanskritTerms([])
+      setProvenance(null)
       session.send(text, files, {
         lel_context_enabled: lelContextEnabled,
         ...(panelOptIn ? { panel_opt_in: true } : {}),
@@ -326,6 +357,48 @@ export function ConsumeChat({
   const displayMessages = branches.viewingMessages ?? session.messages
   const messagesEmpty = displayMessages.length === 0
 
+  // Gate III: callback for StreamingAnswer's marker parser.
+  const handleMarkers = useCallback((m: {
+    reasoning: ReasoningStepEvent[]
+    sanskrit: SanskritTerm[]
+    correction: CorrectionEvent | null
+    outOfDomain: OutOfDomainEvent | null
+    messageId: string | null
+  }) => {
+    // Reset state when assistant message id changes (new turn).
+    if (m.messageId !== activeAssistantId) setActiveAssistantId(m.messageId)
+    setReasoningSteps(m.reasoning)
+    setSanskritTerms(m.sanskrit)
+    if (m.correction) setCorrection(m.correction)
+    if (m.outOfDomain) setOutOfDomain(m.outOfDomain)
+    // Suppress unused warning for sanskritTerms (passed to children that
+    // already get the parsed list via StreamingAnswer).
+    void sanskritTerms
+  }, [activeAssistantId, sanskritTerms])
+
+  // Gate III: read context_usage / provenance / conversation_title from the
+  // latest assistant message metadata.
+  useEffect(() => {
+    const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')
+    const meta = (msg?.metadata ?? {}) as Record<string, unknown>
+    const usage = meta.context_usage as ContextUsageEvent | undefined
+    const prov = meta.provenance as ProvenanceEvent | undefined
+    const newTitle = meta.conversation_title as string | undefined
+    const newConversationId = meta.conversationId as string | undefined
+    // Sync state from streamed message metadata — this is the
+    // external-system case (the assistant message's metadata payload arrives
+    // over SSE), which is what the rule explicitly permits.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (usage) setContextUsage(usage)
+    if (prov) setProvenance(prov)
+    if (newTitle && newConversationId) {
+      setConversations(prev =>
+        prev.map(c => (c.id === newConversationId ? { ...c, title: newTitle } : c)),
+      )
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [displayMessages])
+
   const lastAssistantMeta = useMemo(() => {
     const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')
     const meta = msg?.metadata as Record<string, unknown> | undefined
@@ -388,7 +461,15 @@ export function ConsumeChat({
         rightPanelBadge={reports.length}
         headerTitle={chartName}
         headerMeta={chartMeta}
-        headerActions={<ShareButton conversationId={session.conversationId} />}
+        headerActions={
+          <div className="flex items-center gap-1">
+            <ConversationHistoryButton
+              onClick={() => setHistoryDrawerOpen(true)}
+              count={conversations.length}
+            />
+            <ShareButton conversationId={session.conversationId} />
+          </div>
+        }
         desktopSidebarCollapsed={desktopSidebarCollapsed}
         mobileSidebarOpen={mobileSidebarOpen}
         onToggleDesktopSidebar={() => setDesktopSidebarCollapsed(c => !c)}
@@ -405,10 +486,13 @@ export function ConsumeChat({
           className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]"
         >
           {messagesEmpty ? (
-            <WelcomeGreeting
+            <EmptyState
+              chartId={chartId}
               chartName={chartName}
-              reports={reports}
-              onSuggest={handleSend}
+              onPick={(text) => {
+                composerRef.current?.setValue(text)
+                composerRef.current?.focus()
+              }}
             />
           ) : (
             <>
@@ -429,6 +513,25 @@ export function ConsumeChat({
                 />
               ) : (
                 <>
+                  {/* Gate III: top-of-turn surfaces */}
+                  {outOfDomain && (
+                    <div className="mx-auto w-full max-w-4xl px-4 pt-3">
+                      <OutOfDomainBanner event={outOfDomain} />
+                    </div>
+                  )}
+                  {correction && (
+                    <div className="mx-auto w-full max-w-4xl px-4">
+                      <CorrectionNotice correction={correction} />
+                    </div>
+                  )}
+                  {contextUsage && session.isStreaming && (
+                    <div className="mx-auto w-full max-w-4xl px-4 pt-2">
+                      <ContextUsageCue usage={contextUsage} />
+                    </div>
+                  )}
+                  {session.isStreaming && (
+                    <LiveReasoningCard reasoningSteps={reasoningSteps} isStreaming />
+                  )}
                   <StreamingAnswer
                     messages={displayMessages}
                     isStreaming={session.isStreaming && !branches.isViewingArchived}
@@ -436,8 +539,15 @@ export function ConsumeChat({
                     onRegenerate={branches.isViewingArchived ? undefined : handleRegenerate}
                     ratings={ratings}
                     onRate={branches.isViewingArchived ? undefined : rate}
+                    onMarkers={handleMarkers}
                   />
                   {showPendingAssistant && <PendingAssistantBubble />}
+                  {/* Gate III: after-answer provenance pills */}
+                  {!session.isStreaming && provenance && (
+                    <div className="mx-auto w-full max-w-4xl px-4 pb-4">
+                      <PostAnswerProvenance provenance={provenance} />
+                    </div>
+                  )}
                 </>
               )}
             </>
@@ -631,6 +741,18 @@ export function ConsumeChat({
         queryId={session.currentQueryId ?? null}
         open={traceDrawerOpen && activeTier === 'super_admin'}
         onOpenChange={setTraceDrawerOpen}
+      />
+      {/* Gate III: conversation history overlay drawer */}
+      <ConversationHistoryDrawer
+        chartId={chartId}
+        open={historyDrawerOpen}
+        onOpenChange={setHistoryDrawerOpen}
+        initialConversations={conversations.map(c => ({
+          id: c.id,
+          title: c.title,
+          created_at: c.created_at,
+        }))}
+        currentConversationId={currentConversationId}
       />
     </div>
   )
