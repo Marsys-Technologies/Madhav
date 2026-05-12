@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-05-12T16:12:49.072Z",
+  "generated_at": "2026-05-12T16:13:06.880Z",
   "generator_version": "1.0",
-  "entry_count": 76,
-  "fingerprint": "ff8c185ec1741368448a310145fbab6dcb5525fc013dab1c0faba04467199034",
+  "entry_count": 68,
+  "fingerprint": "6013107d6218ba251abc34c3b59a26a27bf3454b70ce8bf42ddd473aa82adcb7",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -592,20 +592,6 @@
       "native_id": "abhisek"
     },
     {
-      "canonical_id": "035_DISCOVERY_LAYER/README",
-      "path": "035_DISCOVERY_LAYER/README.md",
-      "version": "1",
-      "status": "CURRENT",
-      "layer": "L3.5",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "6f57969a7c1042abbc74636b6c0f6014dd8f1eb76044bb67ea813bdb91ad285a",
-      "native_id": "abhisek"
-    },
-    {
       "canonical_id": "CLUSTER_ATLAS_v1_0",
       "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.md",
       "version": "1",
@@ -732,34 +718,6 @@
       "native_id": "abhisek"
     },
     {
-      "canonical_id": "06_LEARNING_LAYER/EMBEDDING_SPACE_ADAPTATION/README",
-      "path": "06_LEARNING_LAYER/EMBEDDING_SPACE_ADAPTATION/README.md",
-      "version": "1",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "5ffd760c2d33a40af68e6ccfc67dc23dfa26ad66be4b74f9ccd8e947d7142a4a",
-      "native_id": "abhisek"
-    },
-    {
-      "canonical_id": "06_LEARNING_LAYER/GRAPH_EDGE_WEIGHT_LEARNING/README",
-      "path": "06_LEARNING_LAYER/GRAPH_EDGE_WEIGHT_LEARNING/README.md",
-      "version": "1",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "2cb652b28a15b401eb59cf5ebdf0c4ed6cf660fa34f2546f6f4bb516e3ad39b3",
-      "native_id": "abhisek"
-    },
-    {
       "canonical_id": "M4_CLOSE",
       "path": "06_LEARNING_LAYER/M4_CLOSE_v1_0.md",
       "version": "1",
@@ -771,34 +729,6 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "1378f4f9d3a85a1893fd4e95df02f6c2efa4cc6fb10675f9b9ebdad57dbd3f11",
-      "native_id": "abhisek"
-    },
-    {
-      "canonical_id": "06_LEARNING_LAYER/PROMPT_OPTIMIZATION/README",
-      "path": "06_LEARNING_LAYER/PROMPT_OPTIMIZATION/README.md",
-      "version": "1",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "aa63903bf91550c716a07a7ba4b84f53d87d2935d021c7c4478545d80c0b35ac",
-      "native_id": "abhisek"
-    },
-    {
-      "canonical_id": "06_LEARNING_LAYER/README",
-      "path": "06_LEARNING_LAYER/README.md",
-      "version": "1",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "23e84433b70e2ce62eff2705502bb701cef923e98b090cdc1b599403f68e84e4",
       "native_id": "abhisek"
     },
     {
@@ -953,48 +883,6 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "89317368115eb91ca6004d5fb74e00cc6e12ccb0adc8a01d4be6611b77861adf",
-      "native_id": "abhisek"
-    },
-    {
-      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README",
-      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md",
-      "version": "1",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "bdf7789cb5193ff7d55115e5f51d7b781e649d7c99165e47ef16923292c3dea3",
-      "native_id": "abhisek"
-    },
-    {
-      "canonical_id": "README",
-      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/README.md",
-      "version": "unknown",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "730629da8acb649fa22869279c52804e039aefad06b3a5912ec690b18295fff7",
-      "native_id": "abhisek"
-    },
-    {
-      "canonical_id": "README",
-      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/README.md",
-      "version": "unknown",
-      "status": "CURRENT",
-      "layer": "L6",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "d950da71ab40f08f1df958e3ca46c846e2d9ce5f35213890c19ca4ec023ef5ff",
       "native_id": "abhisek"
     },
     {

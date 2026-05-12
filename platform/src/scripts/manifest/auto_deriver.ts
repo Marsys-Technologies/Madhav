@@ -21,7 +21,10 @@ const SCAN_DIRS = [
 ]
 
 // Files to skip
-const SKIP_FILENAMES = new Set(['CLAUDE.md'])
+// README.md files are directory scaffolding, not corpus assets — they have no
+// canonical_id frontmatter and would all derive to the same "README" id, causing
+// silent byId collisions in the manifest (entry_count > byId.size).
+const SKIP_FILENAMES = new Set(['CLAUDE.md', 'README.md'])
 const SKIP_EXTENSIONS = new Set(['.csv'])
 // Directory names to skip (anywhere in the tree)
 const SKIP_DIRNAMES = new Set(['PROMPTS', 'responses', 'LEDGER', 'OBSERVATIONS', 'PARAMETER_UPDATES'])
