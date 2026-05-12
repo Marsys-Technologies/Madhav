@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
 SOURCE_VERSION = "3.1"
-EXPECTED_COUNT = 514  # MSR v3.1 (was 499 for v3.0; updated 2026-05-12)
+EXPECTED_COUNT = 514
 
 _VALENCE_MAP: dict[str, str] = {
     "benefic": "positive",
@@ -56,11 +56,11 @@ def extract_msr_signals(repo_root: str) -> list[dict[str, Any]]:
         repo_root: Absolute path to the repository root.
 
     Returns:
-        List of exactly EXPECTED_COUNT signal dicts.
+        List of exactly 499 signal dicts.
 
     Raises:
         FileNotFoundError: If MSR_v3_0.md is not found.
-        ValueError: If the parsed count is not exactly EXPECTED_COUNT.
+        ValueError: If the parsed count is not exactly 499.
     """
     msr_path = Path(repo_root) / SOURCE_FILE
     if not msr_path.exists():
