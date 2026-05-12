@@ -8,10 +8,26 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from typing import Any
 
 import numpy as np
 import psycopg
+
+
+# TCP keepalive kwargs for long-running staging writes on Cloud SQL — added
+# 2026-05-12 after build-865dd96e reingest, where idle connections were silently
+# reset by the proxy mid-batch.
+_KEEPALIVE_KWARGS: dict[str, int] = {
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
+}
+
+
+def _connect(db_url: str, **extra: Any) -> psycopg.Connection:
+    return psycopg.connect(db_url, **_KEEPALIVE_KWARGS, **extra)
 
 from pipeline.writers.base import IBuildWriter, SwapResult, ValidationResult, WriteResult
 
@@ -37,72 +53,101 @@ class RAGChunksWriter(IBuildWriter):
     def __init__(self) -> None:
         self._db_url = _db_url()
 
+    def _open_conn(self) -> psycopg.Connection:
+        from pgvector.psycopg import register_vector
+
+        conn = _connect(self._db_url)
+        register_vector(conn)
+        return conn
+
+    def _write_batch(self, conn: psycopg.Connection, batch: list[Any], build_id: str) -> None:
+        with conn.cursor() as cur:
+            for chunk, emb in batch:
+                meta = {
+                    **chunk.metadata,
+                    "citation_valid": chunk.citation_valid,
+                    "external_computation_pending": chunk.external_computation_pending,
+                    "build_id": build_id,
+                }
+                cur.execute(
+                    """
+                    INSERT INTO rag_chunks_staging
+                      (chunk_id, doc_type, layer, source_file, source_version,
+                       content, token_count, is_stale, stale_reason, stale_since, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (chunk_id) DO UPDATE SET
+                      content       = EXCLUDED.content,
+                      token_count   = EXCLUDED.token_count,
+                      is_stale      = EXCLUDED.is_stale,
+                      metadata      = EXCLUDED.metadata
+                    """,
+                    (
+                        chunk.chunk_id,
+                        chunk.doc_type,
+                        chunk.layer,
+                        chunk.source_file,
+                        chunk.source_version,
+                        chunk.content,
+                        chunk.token_count,
+                        chunk.is_stale,
+                        chunk.stale_reason,
+                        chunk.stale_since,
+                        json.dumps(meta),
+                    ),
+                )
+                vec = np.array(emb, dtype=np.float32)
+                cur.execute(
+                    """
+                    INSERT INTO rag_embeddings_staging
+                      (chunk_id, model, embedding)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (chunk_id, model) DO UPDATE SET
+                      embedding = EXCLUDED.embedding
+                    """,
+                    (chunk.chunk_id, EMBEDDING_MODEL, vec),
+                )
+        conn.commit()
+
     def write_to_staging(self, rows: list[Any], build_id: str) -> WriteResult:
         """
         Write chunk+embedding pairs to rag_chunks_staging / rag_embeddings_staging.
         rows is list[tuple[chunk, list[float]]] — (chunk, embedding) pairs.
+
+        Resilience (added 2026-05-12 after build-865dd96e): on
+        psycopg.OperationalError per batch (Cloud SQL proxy drop), close the
+        connection, sleep 5s, reopen, and retry the batch once before re-raising.
         """
         errors: list[str] = []
         written = 0
 
+        conn = self._open_conn()
         try:
-            from pgvector.psycopg import register_vector
-
-            with psycopg.connect(self._db_url) as conn:
-                register_vector(conn)
-                with conn.cursor() as cur:
-                    for i in range(0, len(rows), 100):
-                        batch = rows[i : i + 100]
-                        for chunk, emb in batch:
-                            meta = {
-                                **chunk.metadata,
-                                "citation_valid": chunk.citation_valid,
-                                "external_computation_pending": chunk.external_computation_pending,
-                                "build_id": build_id,
-                            }
-                            cur.execute(
-                                """
-                                INSERT INTO rag_chunks_staging
-                                  (chunk_id, doc_type, layer, source_file, source_version,
-                                   content, token_count, is_stale, stale_reason, stale_since, metadata)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                ON CONFLICT (chunk_id) DO UPDATE SET
-                                  content       = EXCLUDED.content,
-                                  token_count   = EXCLUDED.token_count,
-                                  is_stale      = EXCLUDED.is_stale,
-                                  metadata      = EXCLUDED.metadata
-                                """,
-                                (
-                                    chunk.chunk_id,
-                                    chunk.doc_type,
-                                    chunk.layer,
-                                    chunk.source_file,
-                                    chunk.source_version,
-                                    chunk.content,
-                                    chunk.token_count,
-                                    chunk.is_stale,
-                                    chunk.stale_reason,
-                                    chunk.stale_since,
-                                    json.dumps(meta),
-                                ),
-                            )
-                            vec = np.array(emb, dtype=np.float32)
-                            cur.execute(
-                                """
-                                INSERT INTO rag_embeddings_staging
-                                  (chunk_id, model, embedding)
-                                VALUES (%s, %s, %s)
-                                ON CONFLICT (chunk_id, model) DO UPDATE SET
-                                  embedding = EXCLUDED.embedding
-                                """,
-                                (chunk.chunk_id, EMBEDDING_MODEL, vec),
-                            )
-                        conn.commit()
-                        written += len(batch)
-                        logger.info("Wrote staging batch %d–%d (%d total)", i, i + len(batch) - 1, written)
+            for i in range(0, len(rows), 100):
+                batch = rows[i : i + 100]
+                try:
+                    self._write_batch(conn, batch, build_id)
+                except psycopg.OperationalError as exc:
+                    logger.warning(
+                        "rag_chunks_staging OperationalError at batch %d: %s — reconnecting",
+                        i, exc,
+                    )
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    time.sleep(5)
+                    conn = self._open_conn()
+                    self._write_batch(conn, batch, build_id)
+                written += len(batch)
+                logger.info("Wrote staging batch %d–%d (%d total)", i, i + len(batch) - 1, written)
         except Exception as exc:
             errors.append(str(exc))
             raise
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
         return WriteResult(chunk_count=written, embedding_count=written, errors=errors)
 
@@ -122,7 +167,7 @@ class RAGChunksWriter(IBuildWriter):
     def validate_staging(self, build_id: str) -> ValidationResult:
         issues: list[str] = []
 
-        with psycopg.connect(self._db_url) as conn:
+        with _connect(self._db_url) as conn:
             row = conn.execute("SELECT COUNT(*) FROM rag_chunks_staging").fetchone()
             chunk_count = int(row[0]) if row else 0
 
@@ -166,7 +211,7 @@ class RAGChunksWriter(IBuildWriter):
 
     def swap_to_live(self, build_id: str) -> SwapResult:
         # Safety gate: abort if staging has fewer than 50% of live rows
-        with psycopg.connect(self._db_url) as conn:
+        with _connect(self._db_url) as conn:
             live_count = int((conn.execute("SELECT COUNT(*) FROM rag_chunks").fetchone() or [0])[0])
             staging_count = int((conn.execute("SELECT COUNT(*) FROM rag_chunks_staging").fetchone() or [0])[0])
 
@@ -178,7 +223,7 @@ class RAGChunksWriter(IBuildWriter):
             logger.error(msg)
             return SwapResult(success=False, promoted_chunk_count=0, message=msg)
 
-        with psycopg.connect(self._db_url, autocommit=False) as conn:
+        with _connect(self._db_url, autocommit=False) as conn:
             from pgvector.psycopg import register_vector
             register_vector(conn)
             with conn.transaction():
@@ -201,7 +246,7 @@ class RAGChunksWriter(IBuildWriter):
 
         # Best-effort HNSW reindex post-swap
         try:
-            with psycopg.connect(self._db_url, autocommit=True) as conn:
+            with _connect(self._db_url, autocommit=True) as conn:
                 conn.execute(
                     "REINDEX INDEX CONCURRENTLY idx_rag_embeddings_hnsw"
                 )
