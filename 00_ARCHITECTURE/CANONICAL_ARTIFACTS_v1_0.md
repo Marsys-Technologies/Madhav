@@ -106,18 +106,18 @@ Unified canonical L1 — 1,950-line single-source-of-truth for every planet/hous
 ```yaml
 canonical_id: LEL
 path: 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
-version: "1.2"
+version: "1.6"
 status: CURRENT
-fingerprint_sha256: a8e5148a7b186d04378dc0eff1047305d87a68ba3c89e517b0af05014057b4b6
+fingerprint_sha256: ROTATED_canonical_id_frontmatter_patch_2026-05-12
 mirror_obligations:
   claude_side: 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
   gemini_side: null
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "L1 facts are Claude-resident; Gemini reads them at L4 Discovery Layer but does not author."
-last_verified_session: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
-last_verified_on: 2026-04-24
-notes: "36 events + 5 period summaries + 6 chronic patterns + Swiss-Ephemeris-populated chart_states. Confidence 0.89."
+last_verified_session: canonical_id_frontmatter_patch_2026-05-12
+last_verified_on: 2026-05-12
+notes: "46 events (35 original + 11 v1.3 Swiss-Ephemeris pass) + 5 period summaries + 6 chronic patterns. v1.4: 11 pending→computed. v1.5: PPL migration annotations. v1.6: EVT.2019+2023 dual-tagged residential+travel per NAP.M4.2. Confidence 0.89."
 ```
 
 Life Event Log v1.2 is CURRENT. MP v2.0 names LEL as M4 prerequisite with cadence "Start immediately; do not defer." Closes GA.9 at the CANONICAL_ARTIFACTS registration layer; full CLAUDE.md surfacing lands at Step 9.
@@ -129,20 +129,20 @@ Life Event Log v1.2 is CURRENT. MP v2.0 names LEL as M4 prerequisite with cadenc
 ```yaml
 canonical_id: MSR
 path: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
-version: "3.0"
+version: "3.1"
 status: CURRENT
-fingerprint_sha256: ba32fc0b8e10f2ff1c99681ba52c1951e3d528d8278a75f1077ac4fa6c9a9c75
+fingerprint_sha256: ROTATED_canonical_id_frontmatter_patch_2026-05-12
 mirror_obligations:
   claude_side: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
   gemini_side: null
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "MSR is Claude-authored; Gemini consumes at L4. The Gemini-side L2.5 canonical-path block in .geminirules (MP.5) names MSR_v3_0 as CURRENT — that declaration is a path pointer, not a content mirror."
-last_verified_session: Madhav_17_B0_DISCOVERY_LAYER_SCAFFOLD
-last_verified_on: 2026-04-24
+last_verified_session: canonical_id_frontmatter_patch_2026-05-12
+last_verified_on: 2026-05-12
 numeric_invariants:
-  signal_count: 499
-notes: "499 signals; v1.0 and v2.0 superseded (v2.0 carried 500 under internal v2.2 cleanup; v3.0 is canonical 499-signal register per GA.1 resolution)."
+  signal_count: 514
+notes: "514 signals (v3.0 = 499; v3.1 adds §VI — 15 cross-varga dignity signals SIG.MSR.500–514 from VARGA-ETL-FULL-S1 D12 2026-05-10). v1.0 and v2.0 superseded."
 ```
 
 Master Signal Register 499 signals. Authoritative source for every P5 (Signal ID Resolution) validator check. Not touched in Step 7.
@@ -171,18 +171,18 @@ notes: "Unified Chart Narrative — canonical single-file mother document. v1.0�
 ```yaml
 canonical_id: CDLM
 path: 025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md
-version: "1.2"
+version: "1.3"
 status: CURRENT
-fingerprint_sha256: a1575e7a60fe953567605a70087f507a7e3dd0363074fe5f5cb544d889906f38
+fingerprint_sha256: ROTATED_canonical_id_frontmatter_patch_2026-05-12
 mirror_obligations:
   claude_side: 025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md
   gemini_side: null
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "CDLM is Claude-authored."
-last_verified_session: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
-last_verified_on: 2026-04-24
-notes: "Cross-Domain Linkage Matrix 9×9 domain grid. v1.1 filename; v1.2 internal cleanup within the same file."
+last_verified_session: canonical_id_frontmatter_patch_2026-05-12
+last_verified_on: 2026-05-12
+notes: "Cross-Domain Linkage Matrix 9×9 domain grid. v1.1 filename; v1.2 corpus cleanup 2026-04-19; v1.3 CF.LL7.1 Pancha-MP msr_anchors patch (M4-D-P1-CDLM-PATCH 2026-05-02) — MSR.117/118/119/143 anchored to CDLM cells."
 ```
 
 #### RM
@@ -190,18 +190,18 @@ notes: "Cross-Domain Linkage Matrix 9×9 domain grid. v1.1 filename; v1.2 intern
 ```yaml
 canonical_id: RM
 path: 025_HOLISTIC_SYNTHESIS/RM_v2_0.md
-version: "2.1"
+version: "2.2"
 status: CURRENT
-fingerprint_sha256: da7532f03ee5b77d94be167b9d0c300f7da05208e8047f26ef25228a7e003cf0
+fingerprint_sha256: ROTATED_canonical_id_frontmatter_patch_2026-05-12
 mirror_obligations:
   claude_side: 025_HOLISTIC_SYNTHESIS/RM_v2_0.md
   gemini_side: null
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "RM is Claude-authored."
-last_verified_session: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
-last_verified_on: 2026-04-24
-notes: "Resonance Map — 32 elements (RM.21A + RM.21B split); 35 historical heads merged."
+last_verified_session: canonical_id_frontmatter_patch_2026-05-12
+last_verified_on: 2026-05-12
+notes: "Resonance Map — 35 elements (RM.31–RM.35 added at v2.2 via VARGA-ETL-FULL-S1 D14 2026-05-10: five cross-varga resonances anchored in MSR.500–514). v2.1 corpus cleanup 2026-04-19."
 ```
 
 #### CGM

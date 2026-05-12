@@ -4,6 +4,7 @@ project: MARSYS-JIS (Abhisek Mohanty Jyotish Intelligence System)
 layer: L1 (Facts Layer)
 artifact_id: LIFE_EVENT_LOG_v1_2
 version: 1.6
+canonical_id: LEL
 status: CLOSED (Session 4 — chart_state fields populated from Swiss Ephemeris tooling; see `.tools/` scripts. v1.4: 11 v1.3 pending_computation events advanced to computed state via M4-A-T1-SWISS-EPHEMERIS pass. v1.5: §9 PPL migration annotations added. v1.6: GAP.M4A.04 partial close — EVT.2019.05.XX.01 + EVT.2023.05.XX.01 dual-tagged residential+travel per NAP.M4.2 native disposition.)
 supersedes: v1.1 (same-corpus, chart-state-populated)
 author: Claude (Session 2, Claude Code instance)

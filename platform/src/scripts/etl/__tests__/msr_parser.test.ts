@@ -7,8 +7,8 @@ const content = readFileSync('/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SY
 describe('parseMsrSignals', () => {
   const signals = parseMsrSignals(content)
 
-  it('parses 499 signals', () => {
-    expect(signals).toHaveLength(499)
+  it('parses 514 signals', () => {
+    expect(signals).toHaveLength(514)
   })
 
   it('first signal has correct signal_id', () => {

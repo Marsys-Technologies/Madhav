@@ -164,9 +164,9 @@ const FORENSIC_ENTRY: ManifestEntry = {
 }
 
 const LEL_ENTRY: ManifestEntry = {
-  canonical_id: 'LIFE_EVENT_LOG_v1_2',
+  canonical_id: 'LEL',
   path: '01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md',
-  version: '1.2',
+  version: '1.6',
   status: 'CURRENT',
   layer: 'L1',
   expose_to_chat: true,
@@ -177,9 +177,9 @@ const LEL_ENTRY: ManifestEntry = {
 }
 
 const MSR_ENTRY: ManifestEntry = {
-  canonical_id: 'MSR_v3_0',
+  canonical_id: 'MSR',
   path: '025_HOLISTIC_SYNTHESIS/MSR_v3_0.md',
-  version: '3',
+  version: '3.1',
   status: 'CURRENT',
   layer: 'L2.5',
   expose_to_chat: true,
@@ -324,7 +324,7 @@ describe('buildManifestIndex', () => {
   it('indexes entries by canonical_id', () => {
     const { byId } = buildManifestIndex([FORENSIC_ENTRY, LEL_ENTRY])
     expect(byId.get('FORENSIC')).toBe(FORENSIC_ENTRY)
-    expect(byId.get('LIFE_EVENT_LOG_v1_2')).toBe(LEL_ENTRY)
+    expect(byId.get('LEL')).toBe(LEL_ENTRY)
   })
 
   it('indexes entries by path', () => {
@@ -354,13 +354,12 @@ describe('runParityCheck — PASS scenario', () => {
     // Use the sample CA text which has FORENSIC, LEL, MSR (CURRENT), STEP_LEDGER (GOVERNANCE_CLOSED), SESSION_LOG (LIVE)
     const { artifacts, mirrorPairs } = parseCanonicalArtifacts(SAMPLE_CA_TEXT)
 
-    // LEL is in CA as "LEL" but manifest uses "LIFE_EVENT_LOG_v1_2" — path match
-    // MSR is in CA as "MSR" but manifest uses "MSR_v3_0" — path match
-    // So we need entries matching by id or path
+    // LEL now has canonical_id "LEL" in both CA and manifest — exact id match
+    // MSR now has canonical_id "MSR" in both CA and manifest — exact id match
     const manifest = makeSampleManifest([
       FORENSIC_ENTRY,  // matches CA "FORENSIC" by id
-      LEL_ENTRY,       // matches CA "LEL" by path (canonical_id mismatch → canonicalIdMismatch)
-      MSR_ENTRY,       // matches CA "MSR" by path (canonical_id mismatch → canonicalIdMismatch)
+      LEL_ENTRY,       // matches CA "LEL" by id (canonical_id now aligned)
+      MSR_ENTRY,       // matches CA "MSR" by id (canonical_id now aligned)
       {
         canonical_id: 'SESSION_LOG',
         path: '00_ARCHITECTURE/SESSION_LOG.md',
@@ -378,8 +377,8 @@ describe('runParityCheck — PASS scenario', () => {
     const report = runParityCheck(artifacts, mirrorPairs, manifest, '1.14', '1.0')
 
     // FORENSIC matches by id with version "8" vs "8.0" → PASS (same normalized)
-    // LEL not found by id "LEL", found by path → canonical_id_mismatch
-    // MSR not found by id "MSR", found by path → canonical_id_mismatch
+    // LEL matches by id "LEL" → canonical_id aligned, no mismatch
+    // MSR matches by id "MSR" → canonical_id aligned, no mismatch
     // SESSION_LOG matches by id
     // STEP_LEDGER is GOVERNANCE_CLOSED → skipped
     expect(report.summary.missing_from_manifest).toBe(0)
@@ -460,8 +459,10 @@ describe('runParityCheck — FAIL: missing_from_manifest', () => {
     const report = runParityCheck(artifacts, mirrorPairs, manifest, '1.14', '1.0')
 
     expect(report.parity_status).toBe('FAIL')
-    // 4 active artifacts: FORENSIC, LEL, MSR, SESSION_LOG (STEP_LEDGER is GOVERNANCE_CLOSED)
-    expect(report.summary.missing_from_manifest).toBe(4)
+    // 3 active data-layer artifacts: FORENSIC, LEL, MSR
+    // STEP_LEDGER excluded: GOVERNANCE_CLOSED status
+    // SESSION_LOG excluded: path is 00_ARCHITECTURE/ (governance path, not data layer)
+    expect(report.summary.missing_from_manifest).toBe(3)
     expect(report.summary.matched).toBe(0)
   })
 })
@@ -556,8 +557,10 @@ describe('runParityCheck — report structure', () => {
     const manifest = makeSampleManifest([FORENSIC_ENTRY, LEL_ENTRY, MSR_ENTRY])
     const report = runParityCheck(artifacts, mirrorPairs, manifest, '1.14', '1.0')
 
-    // 5 artifacts total: FORENSIC, LEL, MSR (CURRENT), STEP_LEDGER (GOVERNANCE_CLOSED), SESSION_LOG (LIVE)
-    // Only 4 are active (CURRENT/LIVE/LIVING/AUTHORITATIVE)
-    expect(report.summary.registry_assets).toBe(4)
+    // 5 artifacts in SAMPLE_CA_TEXT; only 3 are active data-layer assets:
+    // - FORENSIC, LEL, MSR: CURRENT status + non-governance paths → counted
+    // - STEP_LEDGER: GOVERNANCE_CLOSED status → excluded
+    // - SESSION_LOG: LIVE status but path 00_ARCHITECTURE/ → excluded by isDataLayerArtifact
+    expect(report.summary.registry_assets).toBe(3)
   })
 })

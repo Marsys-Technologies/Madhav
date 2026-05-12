@@ -3,6 +3,7 @@ artifact: RM_v2_0.md
 artifact_type: Resonance Map
 layer: L2.5 — Holistic Synthesis
 version: 2.2
+canonical_id: RM
 status: CURRENT
 date_opened: 2026-04-18
 supersedes: RM_v1_1.md

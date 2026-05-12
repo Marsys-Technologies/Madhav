@@ -29,7 +29,7 @@ const SAMPLE_MANIFEST = {
   entries: [
     makeAsset({ canonical_id: 'FORENSIC', path: 'L1/FORENSIC_ASTROLOGICAL_DATA_v8_0.md' }),
     makeAsset({ canonical_id: 'CGM', path: 'L2.5/CGM_v9_0.md' }),
-    makeAsset({ canonical_id: 'UCN_v4_0', path: 'L2.5/UCN_v4_0.md' }),
+    makeAsset({ canonical_id: 'UCN', path: 'L2.5/UCN_v4_0.md' }),
   ],
 }
 
@@ -83,7 +83,7 @@ describe('loadManifest', () => {
     expect(data.byId.size).toBe(3)
     expect(data.byId.has('FORENSIC')).toBe(true)
     expect(data.byId.has('CGM')).toBe(true)
-    expect(data.byId.has('UCN_v4_0')).toBe(true)
+    expect(data.byId.has('UCN')).toBe(true)
   })
 
   it('merges always_required from overrides by exact canonical_id', async () => {
@@ -96,8 +96,8 @@ describe('loadManifest', () => {
   it('merges always_required from overrides by path_pattern', async () => {
     const { loadManifest } = await import('../manifest_reader')
     const data = await loadManifest()
-    // UCN_v4_0 is matched via path_pattern "UCN_v4_0" under key "UCN"
-    const ucn = data.byId.get('UCN_v4_0')
+    // UCN now has canonical_id "UCN" (exact match with override key "UCN"); path_pattern is a no-op fallback
+    const ucn = data.byId.get('UCN')
     expect(ucn?.preferred_for).toContain('interpretive')
     expect(ucn?.cost_weight).toBe(0.8)
   })

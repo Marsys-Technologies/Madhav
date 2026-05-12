@@ -1,6 +1,7 @@
 ---
 artifact: CDLM_v1_1.md
 version: 1.3
+canonical_id: CDLM
 status: CURRENT
 session: M4-D-P1-CDLM-PATCH
 date_opened: 2026-04-18

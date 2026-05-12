@@ -1,6 +1,7 @@
 ---
 artifact: MSR_v3_0.md
 version: "3.1"
+canonical_id: MSR
 status: CURRENT
 layer: "L2.5"
 expose_to_chat: true

@@ -3,6 +3,7 @@ artifact: UCN_v4_0.md
 artifact_type: Unified Chart Narrative — Canonical Mother Document (single-file)
 layer: L2.5 — Holistic Synthesis
 version: 4.1
+canonical_id: UCN
 status: CURRENT
 date_closed: 2026-04-19
 date_v4_1_correction: 2026-04-19
