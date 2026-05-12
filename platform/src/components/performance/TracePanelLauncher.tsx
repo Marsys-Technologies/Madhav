@@ -62,22 +62,11 @@ function TraceOrFallback({ queryId }: { queryId: string }) {
       </div>
     )
   }
-  try {
-    return (
-      <ErrorBoundary onError={() => setFailed(true)}>
-        <TracePanel queryId={queryId} />
-      </ErrorBoundary>
-    )
-  } catch {
-    return (
-      <div className="text-xs text-muted-foreground">
-        Trace unavailable —{' '}
-        <Link href={`/audit/${queryId}`} className="text-foreground underline">
-          see /audit/{queryId}
-        </Link>
-      </div>
-    )
-  }
+  return (
+    <ErrorBoundary onError={() => setFailed(true)}>
+      <TracePanel queryId={queryId} />
+    </ErrorBoundary>
+  )
 }
 
 class ErrorBoundary extends React.Component<

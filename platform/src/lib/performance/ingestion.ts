@@ -21,22 +21,6 @@ import { detectB10Violation, detectB11Violation, parseCitations } from './compli
  * how to handle them.
  */
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Layer membership for L2.5 detection — must match compliance.ts. We keep a
-// second copy here only for the small `is_l25(toolName)` lookup; if this list
-// drifts in the future, drift_detector.py is the appropriate enforcement.
-// ─────────────────────────────────────────────────────────────────────────────
-const L2_5_TOOLS = new Set([
-  'msr_sql',
-  'query_msr_aggregate',
-  'pattern_register',
-  'resonance_register',
-  'cluster_atlas',
-  'contradiction_register',
-  'temporal',
-  'cgm_graph_walk',
-])
-
 const RETRIEVAL_TOP_SCORE_TOOLS = new Set(['vector_search'])
 
 // ─────────────────────────────────────────────────────────────────────────────
