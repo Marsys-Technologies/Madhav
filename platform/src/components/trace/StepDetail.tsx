@@ -1,64 +1,45 @@
 'use client'
 
-import type { TraceDocument } from '@/lib/admin/trace_assembler'
-import { ClassifyDetail } from './step_detail/ClassifyDetail'
-import { PlanDetail } from './step_detail/PlanDetail'
-import { FetchSqlDetail } from './step_detail/FetchSqlDetail'
-import { FetchGcsDetail } from './step_detail/FetchGcsDetail'
-import { FetchVectorDetail } from './step_detail/FetchVectorDetail'
-import { ContextAssemblyDetail } from './step_detail/ContextAssemblyDetail'
-import { SynthesisDetail } from './step_detail/SynthesisDetail'
+/**
+ * StepDetail — Gate II W4 (2026-05-12).
+ *
+ * Dispatcher for the per-stage detail panel. Reads from the new AssembledTrace
+ * shape. Stage IDs (per the lifecycle graph):
+ *   - 'planner'
+ *   - 'retrieval'
+ *   - 'retrieval:<tool_name>'
+ *   - 'synthesis'
+ *   - 'audit'
+ *   - 'checkpoint_4_5' | 'checkpoint_5_5' | 'checkpoint_8_5'
+ *
+ * The dispatcher imports its variants from `step_detail/*Detail.tsx`. No
+ * registry entries for the deleted Classify / ContextAssembly / Fetch*
+ * variants remain (D7).
+ */
 
-type StepVariant =
-  | 'classify'
-  | 'plan'
-  | 'fetch_sql'
-  | 'fetch_gcs'
-  | 'fetch_vector'
-  | 'context_assembly'
-  | 'synthesis'
+import type { AssembledTrace, PipelineStage } from '@/lib/trace/types'
+import { PlannerDetail } from './step_detail/PlannerDetail'
+import { RetrievalDetail } from './step_detail/RetrievalDetail'
+import { SynthesisDetail } from './step_detail/SynthesisDetail'
+import { AuditDetail } from './step_detail/AuditDetail'
+import { CheckpointDetail } from './step_detail/CheckpointDetail'
+
+type StepVariant = 'planner' | 'retrieval' | 'synthesis' | 'audit' | 'checkpoint'
 
 const VARIANT_LABELS: Record<StepVariant, string> = {
-  classify: 'Classify',
-  plan: 'Plan',
-  fetch_sql: 'Fetch · SQL',
-  fetch_gcs: 'Fetch · GCS',
-  fetch_vector: 'Fetch · Vector',
-  context_assembly: 'Context Assembly',
+  planner: 'Planner',
+  retrieval: 'Retrieval',
   synthesis: 'Synthesis',
-}
-
-function resolveVariant(stepId: string, trace: TraceDocument): StepVariant {
-  if (stepId === 'classify') return 'classify'
-  if (stepId === 'plan') return 'plan'
-  if (stepId === 'context_assembly') return 'context_assembly'
-  if (stepId === 'synthesis') return 'synthesis'
-  const fetch = trace.fetches.find(f => f.bundle === stepId)
-  if (fetch) {
-    const name = fetch.bundle.toLowerCase()
-    if (name.includes('gcs') || name.includes('document') || name.includes('storage')) return 'fetch_gcs'
-    if (name.includes('vector') || name.includes('embed')) return 'fetch_vector'
-    return 'fetch_sql'
-  }
-  return 'synthesis'
-}
-
-function copyStepJson(trace: TraceDocument, stepId: string): unknown {
-  if (stepId === 'classify') return trace.classify
-  if (stepId === 'plan') return trace.plan
-  if (stepId === 'context_assembly') return trace.context_assembly
-  if (stepId === 'synthesis') return trace.synthesis
-  return trace.fetches.find(f => f.bundle === stepId) ?? null
+  audit: 'Audit',
+  checkpoint: 'Checkpoint',
 }
 
 const BADGE_COLORS: Record<StepVariant, string> = {
-  classify: 'bg-blue-400/10 text-blue-400',
-  plan: 'bg-[rgba(212,175,55,0.1)] text-[#d4af37]',
-  fetch_sql: 'bg-emerald-400/10 text-emerald-400',
-  fetch_gcs: 'bg-teal-400/10 text-teal-400',
-  fetch_vector: 'bg-violet-400/10 text-violet-400',
-  context_assembly: 'bg-amber-400/10 text-amber-400',
+  planner: 'bg-[rgba(212,175,55,0.1)] text-[#d4af37]',
+  retrieval: 'bg-violet-400/10 text-violet-400',
   synthesis: 'bg-pink-400/10 text-pink-400',
+  audit: 'bg-blue-400/10 text-blue-400',
+  checkpoint: 'bg-emerald-400/10 text-emerald-400',
 }
 
 function StepTypeBadge({ variant }: { variant: StepVariant }) {
@@ -69,26 +50,61 @@ function StepTypeBadge({ variant }: { variant: StepVariant }) {
   )
 }
 
+function resolveVariant(stepId: string): { variant: StepVariant; subId: string | null } {
+  if (stepId === 'planner') return { variant: 'planner', subId: null }
+  if (stepId === 'planner:classify') return { variant: 'planner', subId: 'classify' }
+  if (stepId === 'planner:compose_bundle') return { variant: 'planner', subId: 'compose_bundle' }
+  if (stepId === 'planner:plan_per_tool') return { variant: 'planner', subId: 'plan_per_tool' }
+  if (stepId === 'synthesis') return { variant: 'synthesis', subId: null }
+  if (stepId === 'audit') return { variant: 'audit', subId: null }
+  if (stepId === 'retrieval') return { variant: 'retrieval', subId: null }
+  if (stepId.startsWith('retrieval:')) return { variant: 'retrieval', subId: stepId.slice('retrieval:'.length) }
+  if (stepId.startsWith('checkpoint_')) return { variant: 'checkpoint', subId: stepId }
+  // Fallback for unknown stage ids — render synthesis with a console warning.
+  if (typeof console !== 'undefined') {
+    console.warn(`[StepDetail] unknown stage id "${stepId}" — falling back to synthesis`)
+  }
+  return { variant: 'synthesis', subId: null }
+}
+
+function extractStepData(assembled: AssembledTrace, stepId: string): unknown {
+  if (stepId === 'planner' || stepId === 'planner:classify') return assembled.grouped.planner
+  if (stepId === 'planner:compose_bundle') return assembled.grouped.planner?.compose_bundle ?? null
+  if (stepId === 'planner:plan_per_tool') return assembled.grouped.planner?.plan_per_tool ?? null
+  if (stepId === 'retrieval') return assembled.grouped.retrieval
+  if (stepId === 'synthesis') return assembled.grouped.synthesis
+  if (stepId === 'audit') return assembled.grouped.audit
+  if (stepId.startsWith('retrieval:')) {
+    const name = stepId.slice('retrieval:'.length)
+    return assembled.grouped.retrieval.find(r => r.tool_name === name) ?? null
+  }
+  if (stepId.startsWith('checkpoint_')) {
+    return assembled.grouped.checkpoints.find(c => c.stage === (stepId as PipelineStage)) ?? null
+  }
+  return null
+}
+
 interface StepDetailProps {
-  trace: TraceDocument
+  assembled: AssembledTrace
   selectedStepId: string
 }
 
-export function StepDetail({ trace, selectedStepId }: StepDetailProps) {
-  const variant = resolveVariant(selectedStepId, trace)
+export function StepDetail({ assembled, selectedStepId }: StepDetailProps) {
+  const { variant, subId } = resolveVariant(selectedStepId)
 
   function handleCopyJson() {
-    const data = copyStepJson(trace, selectedStepId)
+    const data = extractStepData(assembled, selectedStepId)
     void navigator.clipboard.writeText(JSON.stringify(data, null, 2))
   }
 
   return (
     <div className="flex flex-col h-full" data-testid="step-detail">
-      {/* Sticky sub-header */}
       <div className="sticky top-0 z-10 bg-[oklch(0.10_0.012_70)] border-b border-[rgba(212,175,55,0.1)] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StepTypeBadge variant={variant} />
-          <span className="text-sm font-medium text-zinc-200">{selectedStepId}</span>
+          <span className="text-sm font-medium text-zinc-200">
+            {subId ?? selectedStepId}
+          </span>
         </div>
         <button
           onClick={handleCopyJson}
@@ -99,15 +115,20 @@ export function StepDetail({ trace, selectedStepId }: StepDetailProps) {
         </button>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {variant === 'classify' && <ClassifyDetail trace={trace} />}
-        {variant === 'plan' && <PlanDetail trace={trace} />}
-        {variant === 'fetch_sql' && <FetchSqlDetail trace={trace} stepId={selectedStepId} />}
-        {variant === 'fetch_gcs' && <FetchGcsDetail trace={trace} stepId={selectedStepId} />}
-        {variant === 'fetch_vector' && <FetchVectorDetail trace={trace} stepId={selectedStepId} />}
-        {variant === 'context_assembly' && <ContextAssemblyDetail trace={trace} />}
-        {variant === 'synthesis' && <SynthesisDetail trace={trace} />}
+        {variant === 'planner' && <PlannerDetail planner={assembled.grouped.planner} focusedSub={subId} />}
+        {variant === 'retrieval' && (
+          <RetrievalDetail retrieval={assembled.grouped.retrieval} focusedTool={subId} />
+        )}
+        {variant === 'synthesis' && <SynthesisDetail synthesis={assembled.grouped.synthesis} />}
+        {variant === 'audit' && <AuditDetail audit={assembled.grouped.audit} />}
+        {variant === 'checkpoint' && (
+          <CheckpointDetail
+            checkpoint={
+              assembled.grouped.checkpoints.find(c => c.stage === subId) ?? null
+            }
+          />
+        )}
       </div>
     </div>
   )

@@ -20750,3 +20750,86 @@ summary: >
   Residuals carried forward to next prompt-iteration session: GT.043/044
   vector_search forbidden_violation on predictive-with-domain-words queries;
   GT.038/042 extra cluster_atlas; GT.045 pattern_register recall miss.
+
+---
+session_id: GATE-II-EXEC
+date: 2026-05-12
+summary: >
+  Gate II — Trace Pipeline Alignment. Autonomous overnight execution by
+  Claude Code Sonnet 4.6 in worktree feature/gate2-trace-pipeline-align.
+  Realigns TracePanel + LifecycleGraph + PipelineLifecycleView + step-detail
+  variants + trace_assembler + admin trace endpoint to the new query pipeline
+  (post Phase 11B / Pipeline-Transform-S1). Establishes lib/trace/types.ts
+  v1.2 as the single source of truth for stage names, step discriminants,
+  and per-stage metadata interfaces. AssembledTrace shape with grouped
+  projection by canonical PipelineStage.
+  Deletions per D7: step_detail/ClassifyDetail, ContextAssemblyDetail,
+  FetchSqlDetail, FetchGcsDetail, FetchVectorDetail, PlanDetail; lifecycle/
+  ClassifyNode, ContextAssemblyNode, PlanNode, FetchNode, SynthesisNode,
+  EdgeConnector, NodeWrapper; ContextAssembly.tsx; and the corresponding
+  legacy test files (fixture-dependent).
+  New: PlannerDetail, RetrievalDetail (replaces all three Fetch* variants),
+  AuditDetail, CheckpointDetail; QueryPlan summary banner + total wall-clock
+  latency pill in TracePanel; `satisfies` typing on SSE encoder + admin
+  endpoint return + assembler.
+  Migration 045 reserved-unused (no DB schema change required; new pipeline
+  schema lives in jsonb payload + grouped projection in the assembler).
+  Test delta: 31 new passing tests; same failing test file set as baseline;
+  zero new tsc/lint regressions.
+  All 20 ACs pass. No blockers (BLOCKERS.md absent). Open items for §12
+  native review documented in CLOSE_REPORT.md §"Open items".
+  Files: see commit history e79e5df…1d93cbf on
+  feature/gate2-trace-pipeline-align. Brief moved to
+  00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_GATE_II_v2_0.md (status: COMPLETE).
+
+
+---
+
+## Gate II.5 — Production-State Alignment · 2026-05-13 (autonomous overnight)
+
+**Session ID:** Gate-II.5-Autonomous-2026-05-13
+**Branch:** feature/gate2-trace-pipeline-align
+**Executor:** Claude Code Sonnet 4.6 (autonomous overnight, native asleep)
+**Brief:** 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GATE_II_5_v1_0.md (status: COMPLETE)
+
+### What was done
+Closed the three production gaps discovered after Gate II v2.0 closed:
+
+1. **audit_events JOIN fix (W1–W4)**: `loadAuditRow()` was querying 6 non-existent
+   columns (audit_event_version, validator_verdict, etc.) — always returned null —
+   AuditDetail always rendered placeholder. Fixed to query actual production columns
+   (`id AS audit_event_id, audit_status, audit_warnings, disclosure_tier,
+   b10_compliant, b11_compliant`). D11: migration 045 adds three nullable columns
+   to audit_events (disclosure_tier TEXT, b10_compliant BOOLEAN, b11_compliant
+   BOOLEAN). J.2 live verification confirms real rows returned.
+
+2. **LifecycleGraph D9 shape (W5–W6)**: Planning container now shows 3 inline
+   sub-rows (classify, compose_bundle, plan_per_tool). Retrieval shows all 21
+   production tools (unfired dimmed). StepDetail dispatcher routes planner:* sub-IDs
+   to PlannerDetail with focusedSub. PlannerDetail shows compose_bundle +
+   plan_per_tool sub-step metadata sections.
+
+3. **21-tool universe (W3, W5)**: `cross_varga_dignity_query` added to
+   ALL_21_RETRIEVAL_TOOLS; TracePanel imports from central types.ts.
+
+4. **Governance (W9)**: POST_GATE_II_FOLLOWUPS.md FU.2 (audit writer update
+   pending) + FU.3 (compose_bundle ≠ context_assembly correction). CURRENT_STATE
+   footnote added.
+
+5. **Tests (W10)**: LifecycleGraph.test.tsx + StepDetailVariants.test.tsx fixtures
+   updated for new schema shapes. Trace component suite 20/20 pass. Net test
+   improvement: 34 failures → 30 failures.
+
+6. **Playwright (W8)**: 7-test smoke spec authored at
+   platform/tests/e2e/gate_ii_trace_smoke.spec.ts; skips when env vars absent;
+   full re-run instructions in spec header (SMOKE_SESSION_COOKIE + SMOKE_QUERY_ID).
+
+### AC summary
+AC.1–AC.19: PASS. AC.12: N/A (W8 run skipped; env vars absent).
+AC.20–AC.24: COMPLETE (brief moved, SESSION_LOG appended, pushed, CLOSE_REPORT §15).
+
+### Commits (this session)
+10e4202, 5463702, 53f4459, 4c77051, 5fe7ba0, 97f272f, a152ecf, 257aee2, 3961a6f, fa3d65f, 9fe23fd + close commit
+
+### Next session
+Merge PR review or M5-S1 open per CURRENT_STATE_v1_0.md §2.

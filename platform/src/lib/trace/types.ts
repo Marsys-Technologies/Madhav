@@ -1,11 +1,20 @@
 /**
- * MARSYS-JIS Query Trace Panel — shared types
- * schema_version: 1.1
+ * MARSYS-JIS Query Trace — single source of truth for trace UI and assembler.
+ * schema_version: 1.2
  *
- * v1.1 (BHISMA-B3, 2026-05-01): additive extensions for the Trace Command
- * Center. New fields are all OPTIONAL; existing emit sites continue to satisfy
- * the schema. Stream B2 will populate the new fields on context_assembly +
- * synthesis_done + plan emit; B3 panels guard every read with null checks.
+ * This module is the authoritative schema for the trace surface. Renderers,
+ * the assembler, the SSE stream, and the admin endpoint all import their
+ * stage names, step discriminants, and per-stage metadata interfaces from
+ * here. Hard-coded string literals for stage names anywhere in the trace UI
+ * are a regression — point them at `PipelineStage` instead.
+ *
+ * History:
+ *  - v1.0 — initial schema (TraceStep / TraceEvent).
+ *  - v1.1 (BHISMA-B3, 2026-05-01) — additive Trace Command Center fields.
+ *  - v1.2 (Gate II, 2026-05-12) — adds `PipelineStage`, `AssembledTrace`, and
+ *    per-stage metadata interfaces. The emitter writes legacy `step_name`
+ *    values (e.g. `'classify'` for the planner); `STAGE_FROM_STEP_NAME`
+ *    projects them onto canonical stages.
  */
 
 export type StepType = 'deterministic' | 'llm' | 'sql' | 'vector' | 'gcs'
@@ -206,6 +215,250 @@ export interface TraceEvent {
 }
 
 // ── BHISMA-B3 analytics types ─────────────────────────────────────────────────
+
+// ── Gate II.5 v1.3 — production-state realignment (2026-05-13) ───────────────
+
+/**
+ * Canonical pipeline stages, as the trace UI presents them.
+ *
+ * Renderers key off `PipelineStage` for container identity; raw `step_name`
+ * values are projected via `STAGE_FROM_STEP_NAME` / `mapStepToStage`.
+ */
+export type PipelineStage =
+  | 'planner'
+  | 'retrieval'
+  | 'synthesis'
+  | 'audit'
+  | 'checkpoint_4_5'
+  | 'checkpoint_5_5'
+  | 'checkpoint_8_5'
+
+/**
+ * All 21 retrieval tools registered in the RETRIEVAL_TOOLS manifest (D10).
+ * Sub-rows for unfired tools render dimmed in the Retrieval container.
+ */
+export const ALL_21_RETRIEVAL_TOOLS = [
+  'msr_sql',
+  'pattern_register',
+  'resonance_register',
+  'cluster_atlas',
+  'contradiction_register',
+  'temporal',
+  'query_msr_aggregate',
+  'cgm_graph_walk',
+  'manifest_query',
+  'vector_search',
+  'kp_query',
+  'saham_query',
+  'divisional_query',
+  'chart_facts_query',
+  'cross_varga_dignity_query',
+  'domain_report_query',
+  'remedial_codex_query',
+  'timeline_query',
+  'query_signal_state',
+  'query_kp_ruling_planets',
+  'query_varshaphala',
+] as const
+
+export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]
+
+/**
+ * Map a raw emitted `step_name` to its canonical pipeline stage.
+ *
+ * `'classify'` → planner (route.ts:393; emitter preserves legacy name for compat).
+ * `'compose_bundle'` → planner sub-step (bundle hydration, fires after classify).
+ * `'plan_per_tool'` → planner sub-step (per-tool LLM refinement; Gate II.5 addition).
+ * `'context_assembly'` → synthesis (pre-synthesis context step, still emitted in prod).
+ * Steps with `parallel_group === 'tool_fetch'` → retrieval (any tool name).
+ */
+export const STAGE_FROM_STEP_NAME: Record<string, PipelineStage> = {
+  classify: 'planner',
+  compose_bundle: 'planner',
+  plan_per_tool: 'planner',
+  context_assembly: 'synthesis',
+  synthesis: 'synthesis',
+  synthesis_done: 'synthesis',
+  citation_warn: 'audit',
+  citation_error: 'audit',
+  checkpoint_4_5: 'checkpoint_4_5',
+  checkpoint_5_5: 'checkpoint_5_5',
+  checkpoint_8_5: 'checkpoint_8_5',
+}
+
+/**
+ * Resolve a step row to its canonical pipeline stage, honoring the
+ * `parallel_group === 'tool_fetch'` rule (any tool fetch belongs to the
+ * Retrieval stage regardless of its tool name).
+ */
+export function mapStepToStage(step: Pick<TraceStep, 'step_name' | 'parallel_group'>): PipelineStage | null {
+  if (step.parallel_group === 'tool_fetch') return 'retrieval'
+  return STAGE_FROM_STEP_NAME[step.step_name] ?? null
+}
+
+/** One tool's run inside the Retrieval group (D5). */
+export interface RetrievalSubToolRun {
+  /** Manifest tool_name (e.g. 'vector_search', 'cgm_graph_walk', 'chart_facts_query', etc.). */
+  tool_name: string
+  step_seq: number
+  step_type: StepType
+  status: StepStatus
+  latency_ms: number | null
+  data_summary: TraceDataSummary
+  payload: TracePayload
+}
+
+/** Planner stage metadata (D3). Covers all 3 Planning sub-steps: classify, compose_bundle, plan_per_tool. */
+export interface PlannerStepMetadata {
+  /** step_seq of the classify (planner LLM) step. */
+  step_seq: number
+  status: StepStatus
+  latency_ms: number | null
+  query_plan: TraceQueryPlan | null
+  tool_calls: TraceToolCallSpec[]
+  /** From the `compose_bundle` sub-step (bundle hydration result string). */
+  bundle_summary: string | null
+  /** Gate II.5: sub-step metadata for compose_bundle and plan_per_tool. */
+  compose_bundle: {
+    latency_ms: number | null
+    result: string | null
+  } | null
+  plan_per_tool: {
+    step_seq: number
+    latency_ms: number | null
+    tool_count: number
+    planner_active: boolean
+  } | null
+}
+
+/**
+ * Synthesis stage metadata (D6).
+ *
+ * Discriminated by `mode`. The emitter does not yet write a `mode` field
+ * (§J.4 in GAP_ANALYSIS); the assembler infers it from query-plan / message
+ * metadata and defaults to `single_model` when ambiguous (§4.5 R1).
+ */
+export type SynthesisStepMetadata =
+  | {
+      mode: 'single_model'
+      step_seq: number
+      status: StepStatus
+      latency_ms: number | null
+      model: string | null
+      input_tokens: number | null
+      output_tokens: number | null
+      citation_count: number | null
+      provider: string | null
+      reasoning_path: boolean | null
+      output_shape_compliant: boolean | null
+      temperature: number | null
+      prompt_preview: string | null
+      reasoning_trace: string | null
+      /** Optional short-circuit metadata from the vestigial `context_assembly` step. */
+      context_assembly_short_circuit: {
+        short_circuited: boolean
+        total_token_estimate: number
+        threshold: number
+        reason: string | null
+      } | null
+    }
+  | {
+      mode: 'panel'
+      step_seq: number
+      status: StepStatus
+      latency_ms: number | null
+      /** Per-panelist rows; empty array if the emitter has not been extended yet (§J.4). */
+      panelists: Array<{
+        panelist_id: string
+        model: string | null
+        latency_ms: number | null
+        input_tokens: number | null
+        output_tokens: number | null
+      }>
+      aggregator: {
+        model: string | null
+        latency_ms: number | null
+        input_tokens: number | null
+        output_tokens: number | null
+      } | null
+      /** Render hint: when true, render a "panel trace shape pending follow-up gate" note. */
+      panel_trace_pending: boolean
+    }
+
+/**
+ * Audit stage metadata (assembled from `audit_events` JOIN + `citation_*` trace steps).
+ * Gate II.5: aligned with production audit_events columns; D11 nullable columns added.
+ */
+export interface AuditStepMetadata {
+  /** Present when an `audit_events` row exists (audit_events.id). */
+  audit_event_id: string | null
+  /** Mapped from audit_events.audit_status ('ok'→'PASS', 'warn'→'WARN', 'block'→'ERROR'). */
+  validator_verdict: 'PASS' | 'WARN' | 'ERROR' | 'UNKNOWN'
+  /** Raw audit_events.audit_warnings (jsonb array, or null if no warnings). */
+  audit_warnings: string[] | null
+  /** D11: nullable; null until audit writer populates (POST_GATE_II_FOLLOWUPS FU.2). */
+  disclosure_tier: string | null
+  /** D11: B.10 (no fabricated computation) compliance. Null until audit writer populates. */
+  b10_compliant: boolean | null
+  /** D11: B.11 (whole-chart-read) compliance. Null until audit writer populates. */
+  b11_compliant: boolean | null
+  /** Inline citation-gate signal carried by `citation_warn` / `citation_error` trace steps. */
+  citation_gate: {
+    result: 'PASS' | 'WARN' | 'ERROR'
+    reason: string | null
+    layer1_count: number | null
+  } | null
+  /** When the assembler had no audit row, surface a placeholder note (§J.2). */
+  placeholder_note: string | null
+}
+
+/** Checkpoint stage metadata (D1 — collapsible group). */
+export interface CheckpointStepMetadata {
+  stage: 'checkpoint_4_5' | 'checkpoint_5_5' | 'checkpoint_8_5'
+  /** Flag-driven; `null` until the assembler resolves the config. */
+  enabled: boolean | null
+  /** `true` if a corresponding trace step exists; `false` if the checkpoint did not run. */
+  ran: boolean
+  status: StepStatus | null
+  latency_ms: number | null
+  verdict: 'PASS' | 'WARN' | 'ERROR' | 'SKIPPED' | null
+  notes: string | null
+}
+
+/**
+ * Type alias for the brief's `QueryPlan` interface; this surface uses the
+ * existing `TraceQueryPlan` to avoid duplicating the source of truth.
+ */
+export type QueryPlan = TraceQueryPlan
+
+/**
+ * Assembled view of a single query's trace — the shape returned by
+ * `/api/admin/trace/[query_id]` and consumed by every renderer that reads
+ * the full trace (not the live SSE stream).
+ *
+ * `steps` retains the raw `TraceStep[]` for renderers that scan/group
+ * themselves (e.g. RetrievalScorecard); `grouped` is the canonical view
+ * keyed by pipeline stage.
+ */
+export interface AssembledTrace {
+  query_id: string
+  query_text: string | null
+  total_latency_ms: number | null
+  /** Top-line QueryPlan for the header banner (D3). */
+  query_plan: TraceQueryPlan | null
+  /** Raw step rows for renderers that need everything. */
+  steps: TraceStep[]
+  /** Canonical per-stage projection. */
+  grouped: {
+    planner: PlannerStepMetadata | null
+    retrieval: RetrievalSubToolRun[]
+    synthesis: SynthesisStepMetadata | null
+    audit: AuditStepMetadata | null
+    checkpoints: CheckpointStepMetadata[]
+  }
+  /** Schema-version + diagnostics — true if any expected projection was missing. */
+  partial: boolean
+}
 
 /** Single-row summary returned by /api/trace/history (default mode). */
 export interface TraceHistoryRow {

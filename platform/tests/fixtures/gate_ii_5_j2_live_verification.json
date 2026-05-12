@@ -1,0 +1,21 @@
+{
+  "verification_date": "2026-05-13",
+  "session": "Gate II.5 autonomous overnight",
+  "purpose": "J.2 live verification — loadAuditRow() returns real audit_events row",
+  "fix_applied": "W3: loadAuditRow() rewritten to query actual production columns (id AS audit_event_id, audit_status, audit_warnings, disclosure_tier, b10_compliant, b11_compliant)",
+  "db_connection": "Cloud SQL Auth Proxy at 127.0.0.1:5433, DB amjis",
+  "query_id": "5067ea2a-9d88-41ee-92a0-8e70e145b26c",
+  "sql_executed": "SELECT id AS audit_event_id, audit_status, audit_warnings, disclosure_tier, b10_compliant, b11_compliant FROM audit_events WHERE query_id = $1::uuid LIMIT 1",
+  "result_row": {
+    "audit_event_id": "73920808-7a29-4cbb-89c5-57fbda82a725",
+    "audit_status": "ok",
+    "audit_warnings": null,
+    "disclosure_tier": null,
+    "b10_compliant": null,
+    "b11_compliant": null
+  },
+  "verdict": "PASS — real audit_events row returned; audit_event_id is a real UUID (not null/placeholder). D11 columns null per FU.2 (audit writer not yet updated).",
+  "mapped_validator_verdict": "PASS (audit_status 'ok' → mapAuditStatus() → 'PASS')",
+  "pre_fix_behavior": "loadAuditRow() queried 6 non-existent columns (audit_event_version, validator_verdict, etc.) — always returned null, causing AuditDetail to render placeholder",
+  "migration_045_confirmed": "disclosure_tier TEXT, b10_compliant BOOLEAN, b11_compliant BOOLEAN added to audit_events (non-destructive ADD COLUMN)"
+}

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { getStorageClient } from '@/lib/storage'
-import { assembleTrace } from '@/lib/admin/trace_assembler'
+import { assembleTraceFull } from '@/lib/admin/trace_assembler'
+import type { TraceEnvelope } from '@/lib/admin/trace_client'
 
 export async function GET(
   _req: NextRequest,
@@ -14,6 +15,6 @@ export async function GET(
 
   const { query_id } = await params
   const db = getStorageClient()
-  const trace = await assembleTrace(query_id, db)
-  return NextResponse.json(trace)
+  const envelope = (await assembleTraceFull(query_id, db)) satisfies TraceEnvelope
+  return NextResponse.json(envelope)
 }

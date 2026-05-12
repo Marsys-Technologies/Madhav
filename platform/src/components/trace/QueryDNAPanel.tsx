@@ -138,8 +138,11 @@ export function QueryDNAPanel({ steps }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const [expandedToolParams, setExpandedToolParams] = useState<Set<string>>(new Set())
 
-  // Find planning step — accept either legacy 'classify' or BHISMA-B2 'plan'.
-  const planStep = steps.find(s => s.step_name === 'plan' || s.step_name === 'classify')
+  // Realigned for new pipeline 2026-05-12 (Gate II W6).
+  // The emitter writes step_name='classify' for the planner LLM call (route.ts:393
+  // comment preserves the legacy literal for trace UI compat). The 'plan' branch
+  // was dead — kept here as a transitional alias for any old trace rows.
+  const planStep = steps.find(s => s.step_name === 'classify' || s.step_name === 'plan')
 
   if (!planStep) {
     return (

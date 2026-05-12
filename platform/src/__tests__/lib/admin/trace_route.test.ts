@@ -9,12 +9,13 @@ vi.mock('@/lib/storage', () => ({
 }))
 vi.mock('@/lib/admin/trace_assembler', () => ({
   assembleTrace: vi.fn(),
+  assembleTraceFull: vi.fn(),
 }))
 
 import { NextRequest } from 'next/server'
 import { GET } from '@/app/api/admin/trace/[query_id]/route'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
-import { assembleTrace } from '@/lib/admin/trace_assembler'
+import { assembleTraceFull } from '@/lib/admin/trace_assembler'
 
 const QUERY_ID = 'dddddddd-0000-0000-0000-000000000001'
 
@@ -53,18 +54,38 @@ describe('GET /api/admin/trace/[query_id]', () => {
     expect(res.status).toBe(403)
   })
 
-  it('returns 200 with TraceDocument for authenticated super_admin', async () => {
+  it('returns 200 with TraceEnvelope (assembled + legacy + steps) for authenticated super_admin', async () => {
     vi.mocked(getServerUserWithProfile).mockResolvedValue({
       user: { uid: 'admin-1' } as never,
       profile: { id: 'admin-1', role: 'super_admin', status: 'active' },
     })
-    const mockTrace = { query: { id: QUERY_ID, health: 'HEALTHY' }, partial: false }
-    vi.mocked(assembleTrace).mockResolvedValue(mockTrace as never)
+    const mockEnvelope = {
+      assembled: {
+        query_id: QUERY_ID,
+        query_text: null,
+        total_latency_ms: null,
+        query_plan: null,
+        steps: [],
+        grouped: {
+          planner: null,
+          retrieval: [],
+          synthesis: null,
+          audit: null,
+          checkpoints: [],
+        },
+        partial: true,
+      },
+      legacy: { query: { id: QUERY_ID, health: 'UNKNOWN' }, partial: true },
+      steps: [],
+    }
+    vi.mocked(assembleTraceFull).mockResolvedValue(mockEnvelope as never)
 
     const res = await GET(makeReq(), { params: Promise.resolve({ query_id: QUERY_ID }) })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.query.id).toBe(QUERY_ID)
-    expect(assembleTrace).toHaveBeenCalledWith(QUERY_ID, expect.anything())
+    expect(body.assembled.query_id).toBe(QUERY_ID)
+    expect(body.legacy.query.id).toBe(QUERY_ID)
+    expect(Array.isArray(body.steps)).toBe(true)
+    expect(assembleTraceFull).toHaveBeenCalledWith(QUERY_ID, expect.anything())
   })
 })

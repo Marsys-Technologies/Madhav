@@ -1,5 +1,13 @@
 'use client'
 
+// Realigned for new pipeline 2026-05-12 (Gate II W6).
+// HealthRail still consumes the legacy `TraceDocument` shape produced by
+// `trace_assembler.assembleTrace`. Post-Gate II that document is a backward-
+// compatible projection over the new pipeline; `trace.classify` and
+// `trace.context_assembly` are always `null`, and the related guards below
+// skip cleanly. Follow-up gates can migrate this component to
+// `AssembledTrace` directly; the displayed information is unchanged.
+
 import { useState } from 'react'
 import {
   BarChart,

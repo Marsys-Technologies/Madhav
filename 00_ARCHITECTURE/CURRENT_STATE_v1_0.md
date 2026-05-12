@@ -5560,4 +5560,27 @@ notes: msr_signals updated via ALTER ADD COLUMN IF NOT EXISTS (028);
 
 ---
 
+## Terminology Correction (Gate II.5 — 2026-05-13)
+
+**compose_bundle ≠ context_assembly** — these are two distinct pipeline steps.
+
+- `compose_bundle` (step_seq 2, step_name='compose_bundle'): bundle hydration.
+  Fires before tool_fetch. Assembles the retrieval bundle spec from planner output.
+  Emitted in production by route.ts at step_seq 2.
+
+- `context_assembly` (step_seq 7, step_name='context_assembly'): pre-synthesis
+  context assembly. Fires after tool_fetch. Builds the LLM context window from
+  retrieved chunks. The `CONTEXT_ASSEMBLY_ENABLED` feature flag was retired in
+  Pipeline-Transform-S1 (2026-05-11), but the step still emits in production.
+
+Any earlier session note or document that equates these two steps is incorrect.
+Canonical reference: DISCOVERY_REPORT.md §F (Gate II.5 worktree, commit 5463702).
+Follow-up action documented in POST_GATE_II_FOLLOWUPS.md FU.3.
+
+The DEF-2 entry in Pipeline-Transform-S1's deferred_items ("compose_bundle() 0-tool
+fix") refers to the planner's bundle composition logic — NOT to the context_assembly
+step. These remain distinct.
+
+---
+
 *End of CURRENT_STATE_v1_0.md — amended in-place 2026-04-24 at Step 15 (GOVERNANCE_BASELINE_CLOSE) to transition from rebuild-era secondary surface to steady-state authoritative state pointer. §2 YAML, §3 narrative, §5.1 authority rule all updated. Governance rebuild CLOSED.*

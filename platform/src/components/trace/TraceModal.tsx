@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { fetchTrace } from '@/lib/admin/trace_client'
+import { fetchTraceEnvelope, type TraceEnvelope } from '@/lib/admin/trace_client'
 import type { TraceDocument } from '@/lib/admin/trace_assembler'
 import { detectAnomalies } from '@/lib/admin/anomaly_detector'
 import { QueryHeaderStrip } from './QueryHeaderStrip'
@@ -16,35 +16,50 @@ interface TraceModalProps {
   queryId: string
 }
 
-function buildStepOrder(trace: TraceDocument): string[] {
+function buildStepOrder(env: TraceEnvelope): string[] {
   return [
-    'classify',
-    'plan',
-    ...trace.fetches.map(f => f.bundle),
-    'context_assembly',
+    'planner',
+    'planner:classify',
+    'planner:compose_bundle',
+    'planner:plan_per_tool',
+    'retrieval',
+    ...env.assembled.grouped.retrieval.map(r => `retrieval:${r.tool_name}`),
     'synthesis',
+    'audit',
   ]
 }
 
-function extractStepData(trace: TraceDocument, stepId: string): unknown {
-  if (stepId === 'classify') return trace.classify
-  if (stepId === 'plan') return trace.plan
-  if (stepId === 'context_assembly') return trace.context_assembly
-  if (stepId === 'synthesis') return trace.synthesis
-  return trace.fetches.find(f => f.bundle === stepId) ?? null
+function extractStepData(env: TraceEnvelope, stepId: string): unknown {
+  if (stepId === 'planner') return env.assembled.grouped.planner
+  if (stepId === 'planner:classify') return env.assembled.grouped.planner
+  if (stepId === 'planner:compose_bundle') return env.assembled.grouped.planner?.compose_bundle ?? null
+  if (stepId === 'planner:plan_per_tool') return env.assembled.grouped.planner?.plan_per_tool ?? null
+  if (stepId === 'retrieval') return env.assembled.grouped.retrieval
+  if (stepId === 'synthesis') return env.assembled.grouped.synthesis
+  if (stepId === 'audit') return env.assembled.grouped.audit
+  if (stepId.startsWith('retrieval:')) {
+    const name = stepId.slice('retrieval:'.length)
+    return env.assembled.grouped.retrieval.find(r => r.tool_name === name) ?? null
+  }
+  if (stepId.startsWith('checkpoint_')) {
+    return env.assembled.grouped.checkpoints.find(c => c.stage === stepId) ?? null
+  }
+  return null
 }
 
 export function TraceModal({ queryId }: TraceModalProps) {
-  const [trace, setTrace] = useState<TraceDocument | null>(null)
+  const [envelope, setEnvelope] = useState<TraceEnvelope | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedStepId, setSelectedStepId] = useState<string>('synthesis')
   const [showSearch, setShowSearch] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showHelp, setShowHelp] = useState(false)
 
+  const trace: TraceDocument | null = envelope?.legacy ?? null
+
   useEffect(() => {
-    fetchTrace(queryId)
-      .then(t => { setTrace(t); setSelectedStepId('synthesis') })
+    fetchTraceEnvelope(queryId)
+      .then(env => { setEnvelope(env); setSelectedStepId('synthesis') })
       .catch(e => setError(String(e)))
   }, [queryId])
 
@@ -55,8 +70,8 @@ export function TraceModal({ queryId }: TraceModalProps) {
 
   // Keyboard navigation
   useEffect(() => {
-    if (!trace) return
-    const stepOrder = buildStepOrder(trace)
+    if (!envelope) return
+    const stepOrder = buildStepOrder(envelope)
 
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -95,7 +110,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
       }
       if (e.key === 'c') {
         setSelectedStepId(prev => {
-          const stepData = extractStepData(trace, prev)
+          const stepData = extractStepData(envelope, prev)
           void navigator.clipboard.writeText(JSON.stringify(stepData, null, 2))
           return prev
         })
@@ -108,7 +123,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [trace, showHelp, showSearch])
+  }, [envelope, showHelp, showSearch])
 
   if (error) {
     return (
@@ -118,7 +133,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
     )
   }
 
-  if (!trace) return null
+  if (!trace || !envelope) return null
 
   return (
     <div
@@ -147,7 +162,8 @@ export function TraceModal({ queryId }: TraceModalProps) {
           )}
           <div className="flex-1 overflow-y-auto">
             <LifecycleGraph
-              trace={trace}
+              steps={envelope.steps}
+              assembled={envelope.assembled}
               selectedStepId={selectedStepId}
               onSelectStep={setSelectedStepId}
               searchFilter={showSearch ? searchValue : ''}
@@ -157,7 +173,7 @@ export function TraceModal({ queryId }: TraceModalProps) {
 
         {/* Center: Step detail */}
         <div className="overflow-y-auto">
-          <StepDetail trace={trace} selectedStepId={selectedStepId} />
+          <StepDetail assembled={envelope.assembled} selectedStepId={selectedStepId} />
         </div>
 
         {/* Right: Health rail */}

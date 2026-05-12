@@ -20,6 +20,7 @@ import { useState, useMemo } from 'react'
 import { X, ChevronRight, ChevronDown, Clock, Layers, Database, Zap, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useTraceStream } from '@/hooks/useTraceStream'
 import type { TraceStep, TraceChunkItem, TraceHistoryRow } from '@/lib/trace/types'
+import { ALL_21_RETRIEVAL_TOOLS } from '@/lib/trace/types'
 import { getModelMeta } from '@/lib/models/registry'
 import { QueryDNAPanel } from './QueryDNAPanel'
 import { CostPerformanceBar } from './CostPerformanceBar'
@@ -967,6 +968,17 @@ export function TracePanelContent({
     ? 'bg-[rgba(212,175,55,0.10)] text-[rgba(244,209,96,0.95)] border-[rgba(212,175,55,0.4)]'
     : 'bg-[rgba(5,3,1,0.6)] text-[rgba(212,175,55,0.4)] border-[rgba(212,175,55,0.15)]'
 
+  // Gate II W5 — total wall-clock latency (D2): sum of step latencies. Used in
+  // the drawer header pill. Live updates as `steps` grows.
+  const totalWallClockMs = steps.reduce((acc, s) => acc + (s.latency_ms ?? 0), 0)
+
+  // Gate II W5 — QueryPlan summary banner (D3): read from the planner step's
+  // payload.query_plan (emitted under step_name='classify' for trace UI compat).
+  // Renderers must not duplicate this state; PlannerStepDetail reads the same
+  // payload from the same step.
+  const plannerStepForBanner = steps.find(s => s.step_name === 'classify')
+  const bannerQueryPlan = (plannerStepForBanner?.payload as { query_plan?: { query_class?: string; expected_output_shape?: string; router_confidence?: number } } | undefined)?.query_plan ?? null
+
   return (
     <div className="flex flex-col h-full">
       {/* Sub-header: query pill + live badge + tabs */}
@@ -982,6 +994,16 @@ export function TracePanelContent({
           <div className="flex-1 min-w-0 px-2 py-0.5 bg-[rgba(5,3,1,0.6)] border border-[rgba(212,175,55,0.12)] rounded text-[10px] text-[rgba(212,175,55,0.5)] font-mono truncate">
             {effectiveQueryId}
           </div>
+        )}
+
+        {totalWallClockMs > 0 && (
+          <span
+            data-testid="trace-total-latency"
+            className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-[rgba(212,175,55,0.30)] bg-[rgba(212,175,55,0.06)] text-[rgba(252,226,154,0.95)]"
+            title="Total wall-clock latency (sum of step durations)"
+          >
+            Total · {fmtMs(totalWallClockMs)}
+          </span>
         )}
 
         <div className="flex gap-px bg-[rgba(5,3,1,0.6)] rounded p-0.5">
@@ -1009,6 +1031,53 @@ export function TracePanelContent({
           </button>
         </div>
       </div>
+
+      {/* Gate II W5 — QueryPlan summary banner (D3). Sticky on scroll inside the drawer. */}
+      {bannerQueryPlan && (
+        <div
+          data-testid="query-plan-summary-banner"
+          className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 border-b border-[rgba(212,175,55,0.10)] bg-[rgba(13,10,5,0.85)] backdrop-blur flex-shrink-0"
+        >
+          {bannerQueryPlan.query_class && (
+            <span
+              data-testid="query-class-badge"
+              className="text-[10px] font-mono font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[rgba(212,175,55,0.10)] text-[rgba(252,226,154,0.95)] border border-[rgba(212,175,55,0.30)]"
+            >
+              {bannerQueryPlan.query_class}
+            </span>
+          )}
+          {bannerQueryPlan.expected_output_shape && (
+            <span
+              data-testid="plan-type-chip"
+              className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[rgba(5,3,1,0.6)] text-[rgba(212,175,55,0.7)] border border-[rgba(212,175,55,0.15)]"
+            >
+              {bannerQueryPlan.expected_output_shape}
+            </span>
+          )}
+          {typeof bannerQueryPlan.router_confidence === 'number' && (
+            <div
+              data-testid="confidence-indicator"
+              className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+            >
+              <span>conf</span>
+              <span
+                className="font-mono text-foreground"
+                data-testid="confidence-value"
+              >
+                {bannerQueryPlan.router_confidence.toFixed(2)}
+              </span>
+              <span className="inline-block w-16 h-1.5 bg-zinc-800 rounded overflow-hidden">
+                <span
+                  className="block h-full bg-[var(--brand-gold)]"
+                  style={{
+                    width: `${Math.max(0, Math.min(1, bannerQueryPlan.router_confidence)) * 100}%`,
+                  }}
+                />
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (
@@ -1191,14 +1260,8 @@ export function TracePanelContent({
 
 // ── PipelineFlowView — structured pipeline command centre ─────────────────────
 
-const ALL_RETRIEVAL_TOOLS = [
-  'msr_sql', 'pattern_register', 'resonance_register', 'cluster_atlas',
-  'contradiction_register', 'temporal', 'query_msr_aggregate', 'cgm_graph_walk',
-  'manifest_query', 'vector_search', 'kp_query', 'saham_query',
-  'divisional_query', 'chart_facts_query', 'domain_report_query',
-  'remedial_codex_query', 'timeline_query', 'query_signal_state',
-  'query_kp_ruling_planets', 'query_varshaphala',
-] as const
+// Gate II.5: use canonical 21-tool list from types.ts (was local 20-tool copy missing cross_varga_dignity_query).
+const ALL_RETRIEVAL_TOOLS = ALL_21_RETRIEVAL_TOOLS
 
 function PfRow({
   icon, name, dim, meta, pulse,
