@@ -1,9 +1,14 @@
+// Realigned for new pipeline 2026-05-12 (Gate II W6).
+// The `context_assembly` anomaly branch is dormant — the legacy
+// trace.context_assembly field is always null post-Gate II. The branch is
+// retained as a guard for older trace rows from the legacy-pipeline era.
 import type { TraceDocument } from './trace_assembler'
 
 export type AnomalySeverity = 'ERROR' | 'WARNING' | 'INFO'
 
 export interface Anomaly {
-  stage: 'classify' | 'plan' | 'fetch' | 'context_assembly' | 'synthesis' | 'overall'
+  /** `classify` is retained as a legacy stage tag; new code emits `planner` instead. */
+  stage: 'classify' | 'planner' | 'plan' | 'fetch' | 'context_assembly' | 'synthesis' | 'overall'
   severity: AnomalySeverity
   message: string
   step_id: string | null
