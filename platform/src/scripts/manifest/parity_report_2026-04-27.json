@@ -1,25 +1,19 @@
 {
-  "parity_status": "PASS",
-  "checked_at": "2026-04-27T16:13:30.023Z",
-  "manifest_fingerprint": "sha256:825f8dfe337b3f3b73a361d4023398de9495d6bdea8055cf17749874aebe224d",
+  "parity_status": "FAIL",
+  "checked_at": "2026-05-12T15:34:50.377Z",
+  "manifest_fingerprint": "sha256:1a0720ff03d51517acdbf28d33ea43609eb57ba1b83328af63153fc787cf1dda",
   "file_registry_version": "v1.14",
   "canonical_artifacts_version": "v1.0",
   "summary": {
     "registry_assets": 7,
-    "manifest_assets": 62,
-    "matched": 7,
+    "manifest_assets": 76,
+    "matched": 2,
     "missing_from_manifest": 0,
-    "version_mismatches": 0,
-    "canonical_id_mismatches": 6,
+    "version_mismatches": 5,
+    "canonical_id_mismatches": 5,
     "missing_mirror_pairs": 8
   },
   "drift_details": [
-    {
-      "drift_mode": "canonical_id_alias",
-      "canonical_id": "FORENSIC",
-      "path": "01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md",
-      "detail": "CA short-form canonical_id \"FORENSIC\" resolved to manifest entry \"FORENSIC_ASTROLOGICAL_DATA_v8_0\" by path match. This is an expected alias — not a hard failure."
-    },
     {
       "drift_mode": "canonical_id_alias",
       "canonical_id": "LEL",
@@ -27,10 +21,22 @@
       "detail": "CA short-form canonical_id \"LEL\" resolved to manifest entry \"LIFE_EVENT_LOG_v1_2\" by path match. This is an expected alias — not a hard failure."
     },
     {
+      "drift_mode": "version_mismatch",
+      "canonical_id": "LEL",
+      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
+      "detail": "CA version=\"1.2\" (normalized: \"1.2\") ≠ manifest version=\"1.6\" (normalized: \"1.6\")."
+    },
+    {
       "drift_mode": "canonical_id_alias",
       "canonical_id": "MSR",
       "path": "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md",
       "detail": "CA short-form canonical_id \"MSR\" resolved to manifest entry \"MSR_v3_0\" by path match. This is an expected alias — not a hard failure."
+    },
+    {
+      "drift_mode": "version_mismatch",
+      "canonical_id": "MSR",
+      "path": "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md",
+      "detail": "CA version=\"3.0\" (normalized: \"3\") ≠ manifest version=\"3.1\" (normalized: \"3.1\")."
     },
     {
       "drift_mode": "canonical_id_alias",
@@ -45,10 +51,28 @@
       "detail": "CA short-form canonical_id \"CDLM\" resolved to manifest entry \"CDLM_v1_1\" by path match. This is an expected alias — not a hard failure."
     },
     {
+      "drift_mode": "version_mismatch",
+      "canonical_id": "CDLM",
+      "path": "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md",
+      "detail": "CA version=\"1.2\" (normalized: \"1.2\") ≠ manifest version=\"1.3\" (normalized: \"1.3\")."
+    },
+    {
       "drift_mode": "canonical_id_alias",
       "canonical_id": "RM",
       "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
       "detail": "CA short-form canonical_id \"RM\" resolved to manifest entry \"RM_v2_0\" by path match. This is an expected alias — not a hard failure."
+    },
+    {
+      "drift_mode": "version_mismatch",
+      "canonical_id": "RM",
+      "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
+      "detail": "CA version=\"2.1\" (normalized: \"2.1\") ≠ manifest version=\"2.2\" (normalized: \"2.2\")."
+    },
+    {
+      "drift_mode": "version_mismatch",
+      "canonical_id": "CGM",
+      "path": "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md",
+      "detail": "CA version=\"9.0\" (normalized: \"9\") ≠ manifest version=\"9.1\" (normalized: \"9.1\")."
     },
     {
       "drift_mode": "missing_mirror_pair",

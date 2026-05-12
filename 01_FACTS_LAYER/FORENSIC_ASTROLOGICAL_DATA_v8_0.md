@@ -1,5 +1,6 @@
 ---
 document: Forensic Astrological Data
+canonical_id: FORENSIC
 subject: Abhisek Mohanty
 version: 8.0
 supersedes: "6.0 + FORENSIC_DATA_v8_0_SUPPLEMENT.md (both now SUPERSEDED)"
