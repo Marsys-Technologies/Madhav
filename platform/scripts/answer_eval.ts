@@ -17,6 +17,11 @@
  */
 
 import { GOLDEN_QUERIES, MIN_CITATIONS_BY_CATEGORY, type GoldenQuery, type QueryCategory } from './golden_queries'
+import {
+  writeEvalRun,
+  writeEvalPerformanceRow,
+  finalizeEvalRun,
+} from '../src/lib/performance/ingestion'
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
 const CHART_ID = process.env.CHART_ID ?? 'default'
@@ -339,6 +344,21 @@ async function main(): Promise<void> {
 
   const results: Array<{ query: GoldenQuery; scores: CriteriaScores; pass: boolean; error?: string }> = []
 
+  // Gate I auto-hook: persist this eval invocation as an eval_runs row +
+  // one performance_queries row per query. Best-effort: a DB outage logs a
+  // warning and skips persistence; the eval itself still runs.
+  let evalRunId: string | null = null
+  try {
+    const r = await writeEvalRun({
+      golden_set_version: process.env.GOLDEN_SET_VERSION ?? '1.0',
+      synthesis_prompt_version: process.env.SYNTHESIS_PROMPT_VERSION,
+      triggered_by: 'answer_eval.ts',
+    })
+    evalRunId = r.runId
+  } catch (err) {
+    console.warn('  (gate1 eval auto-hook disabled — could not write eval_runs row):', err instanceof Error ? err.message : err)
+  }
+
   for (const query of queries) {
     process.stdout.write(`  ${query.id} [${query.category}] ... `)
     try {
@@ -365,6 +385,60 @@ async function main(): Promise<void> {
   }
 
   printTable(results)
+
+  if (evalRunId) {
+    try {
+      // Per-query performance rows. The script's scoring is per-criterion;
+      // we map its `pass` boolean to `plan_accuracy_label='correct'|'wrong'`
+      // and the b10/b11 sub-scores to the corresponding violation flags.
+      const completed = results.filter((r) => !r.error)
+      for (const r of completed) {
+        const isPredictive = r.query.category === 'predictive'
+        await writeEvalPerformanceRow(evalRunId, {
+          query_id: r.query.id,
+          query_text: r.query.query,
+          query_class: r.query.category,
+          plan_type: isPredictive ? 'time_indexed_prediction' : 'single_answer',
+          plan_tools_selected: [],
+          planner_confidence: null,
+          latency_planner_ms: null,
+          latency_retrieval_ms: null,
+          latency_synthesis_ms: null,
+          latency_total_ms: null,
+          citations_present: r.scores.citation_presence > 0,
+          citation_count: Math.round(r.scores.citation_presence * 10),
+          synthesis_status: 'success',
+          validator_verdict: r.pass ? 'pass' : 'fail',
+          disclosure_tier: 'super_admin',
+          b10_violation: r.scores.b10_compliance < 1,
+          b11_violation: r.scores.b11_signal < 1,
+          retrieval_hit: r.scores.layer_coverage > 0,
+          retrieval_score_top1: null,
+          plan_accuracy_label: r.pass ? 'correct' : 'wrong',
+          is_prediction: isPredictive,
+        })
+      }
+      const passed = completed.filter((r) => r.pass)
+      const avg = (k: keyof CriteriaScores) =>
+        completed.length === 0 ? null : completed.reduce((s, r) => s + r.scores[k], 0) / completed.length
+      await finalizeEvalRun(evalRunId, {
+        finishedAt: new Date(),
+        queryCount: completed.length,
+        recall: completed.length > 0 ? passed.length / completed.length : null,
+        precision: completed.length > 0 ? passed.length / completed.length : null,
+        citationRate: avg('citation_presence'),
+        avgLatencyMs: null,
+        synthesisPassRate: completed.length > 0 ? passed.length / completed.length : null,
+        retrievalHitRate: avg('layer_coverage'),
+        b10ComplianceRate: avg('b10_compliance'),
+        b11ComplianceRate: avg('b11_signal'),
+        notes: `stack=${EVAL_STACK} chart=${CHART_ID}`,
+      })
+      console.log(`\n  gate1: eval_run ${evalRunId} persisted with ${completed.length} performance_queries rows.`)
+    } catch (err) {
+      console.warn('  (gate1 eval auto-hook: persistence failed):', err instanceof Error ? err.message : err)
+    }
+  }
 }
 
 main().catch(err => {

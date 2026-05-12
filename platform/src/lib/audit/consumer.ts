@@ -4,6 +4,7 @@ import { telemetry } from '@/lib/telemetry/index'
 import { writeAuditLog } from './writer'
 import { logPrediction } from '@/lib/prediction/writer'
 import { getFlag } from '@/lib/config/index'
+import { writeConsumePerformanceRow } from '@/lib/performance/ingestion'
 import type { AuditEvent, ValidatorRecord, ToolCallRecord } from './types'
 import type { SynthesisAuditEvent } from '@/lib/synthesis/types'
 import type { QueryPlan } from '@/lib/router/types'
@@ -66,6 +67,16 @@ export function createAuditConsumer(
         'audit_write_failed',
         err instanceof Error ? err : new Error(String(err))
       )
+    })
+
+    // Gate I: fire-and-forget performance row. Writer is non-throwing.
+    void writeConsumePerformanceRow({
+      query_id: event.query_plan_id,
+      query_plan: ctx.query_plan,
+      tool_results: ctx.tool_results,
+      validator_results: ctx.validator_results,
+      disclosure_tier: ctx.disclosure_tier,
+      synthesis_event: event,
     })
 
     // L.5.1: checkpoint-derived prediction (Phase 6 path, flag-gated).
