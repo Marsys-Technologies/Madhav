@@ -139,8 +139,6 @@ to CLOSE_REPORT final baseline. No regressions.
 ### T3 — J.2 audit_events JOIN
 **Static review: PASS.** `loadAuditRow()` in `trace_assembler.ts:489-499`:
 - Joins on `query_id = $1::uuid` ✅
-- Selects `audit_event_id`, `audit_event_version`, `disclosure_tier`,
-  `validator_verdict`, `b10_compliant`, `b11_compliant` ✅
 - Handles null (no row) gracefully: `placeholder_note` set; `validator_verdict`
   defaults to `'UNKNOWN'` ✅
 
@@ -150,15 +148,48 @@ full audit JOIN with a synthetic `audit_events` fixture row
 smoke fixture at `platform/tests/fixtures/gate_ii_smoke_trace.json` confirms
 `audit.audit_event_id = 'ae-gate2-smoke'`, `placeholder_note = null`.
 
-**Runtime live-DB verification:** deferred. Cloud SQL Auth Proxy not running;
-`amjis` database not available at localhost:5432. Native: start Cloud SQL Auth
-Proxy, run:
-```bash
-psql -h localhost -p 5432 -d amjis -c \
-  "SELECT q.id FROM query_logs q JOIN audit_events a ON a.query_id = q.id \
-   ORDER BY q.created_at DESC LIMIT 5;"
-# Then: curl http://localhost:3000/api/admin/trace/<query_id> | jq '.grouped.audit'
-```
+**Live-DB verification: COMPLETED 2026-05-13 — SCHEMA MISMATCH FOUND.**
+Cloud SQL Auth Proxy confirmed running (`madhav-astrology:asia-south1:amjis-postgres`,
+port 5433). Database `amjis` accessible. Test query_id:
+`5067ea2a-9d88-41ee-92a0-8e70e145b26c` (2026-05-01). Full results in
+`platform/tests/fixtures/gate_ii_j2_live_verification.json`.
+
+**Findings:**
+- `query_trace_steps`: schema match ✅ — all columns queried by `loadTraceSteps()`
+  exist in production. 14 step rows confirmed for the test query (including
+  `classify`, `compose_bundle`, `plan_per_tool`, multiple `tool_fetch` tools,
+  `context_assembly`, `synthesis`).
+- `audit_events`: schema mismatch ❌ **CRITICAL** — `loadAuditRow()` queries
+  columns `audit_event_id`, `audit_event_version`, `disclosure_tier`,
+  `validator_verdict`, `b10_compliant`, `b11_compliant`, **none of which exist in
+  the live production table**. The live table has: `id`, `audit_status`,
+  `audit_warnings`, `query_class`, `tool_bundles`, `latency_ms`, etc. The
+  assembler's `.catch()` silently returns null for every production query — the
+  Audit node **always** renders `placeholder_note` regardless of whether an
+  `audit_events` row exists.
+- Live `audit_events` row for test query: `id=73920808-7a29-4cbb-89c5-57fbda82a725`,
+  `audit_status=ok`, `audit_warnings=null`, `query_class=remedial`. ✅ Row exists;
+  assembler just can't read it with the current column list.
+
+**Column mapping needed for follow-up gate:**
+| Assembler column | Live column | Note |
+|---|---|---|
+| `audit_event_id` | `id` | rename |
+| `validator_verdict` | `audit_status` | closest equivalent: `'ok'`\|`'warn'`\|`'block'` |
+| `audit_event_version` | (not present) | omit or add DB column |
+| `disclosure_tier` | (not present) | omit or add DB column |
+| `b10_compliant` | (not present) | omit or derive from `audit_status` |
+| `b11_compliant` | (not present) | omit or derive from `audit_warnings` |
+
+**Additional finding:** A `plan_per_tool` step (`step_type: llm`, between `classify`
+and the `tool_fetch` group) appears in production but is not documented in
+`GAP_ANALYSIS §A` and is not rendered by the current `LifecycleGraph`. This is a
+minor gap; it doesn't crash the renderer (unknown steps are ignored), but the
+full planner sequence is: `classify → plan_per_tool → tool_fetch group`.
+
+**Endpoint-level verification:** Skipped — no admin session cookie available.
+Data-layer verification confirms the JOIN target rows exist and are well-formed.
+Full detail: `platform/tests/fixtures/gate_ii_j2_live_verification.json`.
 
 ### T4 — J.4 panel-mode follow-up
 Captured in `00_ARCHITECTURE/POST_GATE_II_FOLLOWUPS.md` as FU.1.
@@ -168,11 +199,12 @@ Commit: d55adf6
 
 ### T5 — Visual smoke test
 **Playwright available** (v1.59.1 installed, chromium-1217 present).
-**Dev server up** (localhost:3000 → 307 auth-redirect, confirmed running).
-**Auth credentials not available** (`SMOKE_SESSION_COOKIE` not set in env).
-Live API/browser smoke deferred to native.
+**Auth credentials not available** (`SMOKE_SESSION_COOKIE` + `SMOKE_CHART_ID` not set).
+**Dedicated Gate II spec not authored** (previous fixup session noted it "can be added"
+but did not do so). Per Phase C.1 autonomous protocol: treated as a blocker;
+documented in `BLOCKERS.md §B.1`.
 
-**Structural assertions against synthetic fixture** (`gate_ii_smoke_trace.json`): **7/7 PASS**
+**Structural assertions against synthetic fixture** (`gate_ii_smoke_trace.json`): **7/7 PASS** (from previous fixup session)
 - (a) `query_plan` block present with `query_class`/`router_confidence` ✅
 - (b) `steps` contains `step_name=classify` (planner) ✅
 - (c) `steps` contains `parallel_group=tool_fetch` sub-tools (vector_search, cgm_graph_walk, chart_facts_query) ✅
@@ -183,35 +215,58 @@ Live API/browser smoke deferred to native.
 
 Fixture saved to `platform/tests/fixtures/gate_ii_live_smoke_trace.json`.
 
-**Native reproduction steps for live smoke:**
-1. Set `SMOKE_SESSION_COOKIE` to a valid super_admin session cookie
-2. Set `SMOKE_CHART_ID` to a client ID with recent queries
-3. `cd platform && npx playwright test portal/consume-polish --reporter=list`
-   (auth pattern: `context.addCookies([{ name: 'session', value: ... }])`)
-4. For the trace drawer specifically: the `consume-polish.spec.ts` test
-   "Trace button opens drawer" covers the open/close path. A dedicated
-   Gate II trace drawer spec can be added at
-   `platform/tests/e2e/portal/gate_ii_trace_drawer.spec.ts` following
-   the same auth pattern.
+**Native reproduction steps for live smoke (see also `BLOCKERS.md §B.1`):**
+1. Obtain `SMOKE_SESSION_COOKIE` (super_admin Firebase session cookie from browser DevTools)
+2. Set `SMOKE_CHART_ID` to a client UUID with recent queries
+3. Author `tests/e2e/portal/gate_ii_trace_drawer.spec.ts` following the
+   `consume-polish.spec.ts` auth pattern (`test.skip` guard + `context.addCookies`)
+4. Run: `SMOKE_SESSION_COOKIE="..." SMOKE_CHART_ID="..." npx playwright test gate_ii_trace_drawer --reporter=list --workers=1`
+
+**Impact on merge eligibility:** None. T5 is supplementary visual verification.
 
 ### Remaining native-only items
-1. **Live DB spot-check** (T3): Start Cloud SQL Auth Proxy; run the psql + curl
-   commands above to confirm `audit_events` JOIN returns populated fields for a
-   real production query_id.
-2. **Visual drawer confirmation** (T5): Start dev server with `SMOKE_SESSION_COOKIE`
-   and `SMOKE_CHART_ID` set; open a query on the consume page; toggle trace drawer;
-   visually verify: total-latency pill in header, QueryPlan banner (query_class
-   badge + plan_type chip + confidence bar), lifecycle graph
-   (Planner → Retrieval grouped → Synthesis → Audit → Checkpoints), per-step
-   detail panels, per-step latency in expanded metadata.
-3. **PR creation**: Deferred to §12 — wait until Gates I and III also close before
+1. **`audit_events` schema realignment** (T3 follow-up): `loadAuditRow()` in
+   `src/lib/admin/trace_assembler.ts:489-499` queries 6 columns that don't exist in
+   the live production `audit_events` table. The assembler silently returns null for
+   all production queries; the Audit node always shows `placeholder_note`. Fix:
+   update the SELECT to use `id AS audit_event_id`, `audit_status AS validator_verdict`,
+   and omit or derive the absent columns. Full detail in `BLOCKERS.md §B.2` +
+   `platform/tests/fixtures/gate_ii_j2_live_verification.json`. Estimated effort: 1 hour.
+2. **Visual drawer confirmation** (T5): Set `SMOKE_SESSION_COOKIE` and `SMOKE_CHART_ID`;
+   author `tests/e2e/portal/gate_ii_trace_drawer.spec.ts` following the
+   `consume-polish.spec.ts` auth pattern; run with `--workers=1`. Verify: total-latency
+   pill in header, QueryPlan banner, lifecycle graph layout, per-step detail panels.
+   Full repro steps in `BLOCKERS.md §B.1`.
+3. **`plan_per_tool` lifecycle node**: Production trace includes a `plan_per_tool`
+   step (step_type: llm) between `classify` and the `tool_fetch` group; it is not
+   rendered by `LifecycleGraph`. This is a minor gap — the step is silently skipped
+   by the renderer. Confirm whether it should be surfaced in the Planner stage detail
+   or as a separate node; estimate 1-2 hours if surfacing is desired.
+4. **PR creation**: Deferred to §12 — wait until Gates I and III also close before
    opening the merge PR (per OPUS_PLANNING_SESSION_v2_0.md §9).
 
-### Commits this session
+### Commits this session (first fixup pass, 2026-05-13)
 - `d55adf6` — Gate II J.4: panel-mode validation queued in POST_GATE_II_FOLLOWUPS
 - `ba4ec8b` — Gate II T5: visual + API smoke artifacts captured
-- (pending) Gate II: post-close fixup session results — §13 added
+- `7298844` — Gate II: post-close fixup session results — §13 added
+
+### §14 Post-close fixup pass 2 — 2026-05-13
+
+**Summary:** Second autonomous pass resolving J.2 live-DB verification and T5
+visual smoke. Cloud SQL Auth Proxy confirmed running (PID 35110, port 5433).
+ADC valid. Live `amjis` DB accessible. J.2: critical schema mismatch found in
+`audit_events` — `loadAuditRow()` silently fails in production (see details in T3
+above and `BLOCKERS.md §B.2`). T5: dedicated spec not authored; auth credentials
+absent; documented in `BLOCKERS.md §B.1` with full repro instructions.
+
+**Artifacts produced:**
+- `platform/tests/fixtures/gate_ii_j2_live_verification.json` — live DB schema
+  comparison + actual row values for test query_id `5067ea2a-...` (2026-05-01)
+- `BLOCKERS.md` — authored at worktree root documenting B.1 (T5) + B.2 (audit schema)
+
+**Test/TS/lint delta vs. baseline:** zero regressions (27 failed / 152 passed,
+22 TS errors, 21 lint errors — identical to §12 close baseline).
 
 ---
 
-*End of CLOSE_REPORT — Gate II · Trace Pipeline Alignment · 2026-05-12 (fixup 2026-05-13).*
+*End of CLOSE_REPORT — Gate II · Trace Pipeline Alignment · 2026-05-12 (fixup-1 2026-05-13, fixup-2 2026-05-13).*

@@ -1,0 +1,60 @@
+{
+  "captured": "2026-05-13",
+  "query_id": "5067ea2a-9d88-41ee-92a0-8e70e145b26c",
+  "cloud_sql_instance": "madhav-astrology:asia-south1:amjis-postgres",
+  "db_name": "amjis",
+  "verification_type": "direct_db_only",
+  "reason_no_endpoint_test": "No admin session cookie available; dev server not started",
+
+  "query_trace_steps": {
+    "schema_match": true,
+    "note": "All columns queried by loadTraceSteps() exist in the live table",
+    "assembler_columns": ["query_id","conversation_id","step_seq","step_name","step_type","status","started_at","completed_at","latency_ms","parallel_group","data_summary","payload"],
+    "live_table_columns": ["id","query_id","conversation_id","step_seq","step_name","step_type","status","started_at","completed_at","latency_ms","parallel_group","data_summary","payload","created_at"],
+    "rows_for_test_query": [
+      {"step_name": "classify",             "step_type": "deterministic", "status": "done",    "latency_ms": 2188, "parallel_group": null},
+      {"step_name": "compose_bundle",       "step_type": "deterministic", "status": "done",    "latency_ms": 4,    "parallel_group": null},
+      {"step_name": "plan_per_tool",        "step_type": "llm",           "status": "done",    "latency_ms": 0,    "parallel_group": null},
+      {"step_name": "msr_sql",              "step_type": "sql",           "status": "done",    "latency_ms": 50,   "parallel_group": "tool_fetch"},
+      {"step_name": "msr_sql",              "step_type": "sql",           "status": "running", "latency_ms": null, "parallel_group": "tool_fetch"},
+      {"step_name": "pattern_register",     "step_type": "gcs",           "status": "running", "latency_ms": null, "parallel_group": "tool_fetch"},
+      {"step_name": "pattern_register",     "step_type": "gcs",           "status": "done",    "latency_ms": 2,    "parallel_group": "tool_fetch"},
+      {"step_name": "remedial_codex_query", "step_type": "gcs",           "status": "running", "latency_ms": null, "parallel_group": "tool_fetch"},
+      {"step_name": "remedial_codex_query", "step_type": "gcs",           "status": "error",   "latency_ms": 46,   "parallel_group": "tool_fetch"},
+      {"step_name": "context_assembly",     "step_type": "deterministic", "status": "done",    "latency_ms": 0,    "parallel_group": null},
+      {"step_name": "chart_facts_query",    "step_type": "gcs",           "status": "running", "latency_ms": null, "parallel_group": "tool_fetch"},
+      {"step_name": "chart_facts_query",    "step_type": "gcs",           "status": "done",    "latency_ms": 407,  "parallel_group": "tool_fetch"},
+      {"step_name": "synthesis",            "step_type": "llm",           "status": "done",    "latency_ms": 49040,"parallel_group": null},
+      {"step_name": "synthesis",            "step_type": "llm",           "status": "running", "latency_ms": null, "parallel_group": null}
+    ]
+  },
+
+  "audit_events": {
+    "schema_match": false,
+    "severity": "CRITICAL",
+    "note": "loadAuditRow() in trace_assembler.ts queries columns that do NOT exist in the live audit_events table. The .catch() handler silently returns null for ALL production queries — the Audit node always renders placeholder_note even for queries that have audit_events rows.",
+    "assembler_queries_columns": ["audit_event_id","audit_event_version","disclosure_tier","validator_verdict","b10_compliant","b11_compliant"],
+    "live_table_actual_columns": ["id","query_id","query_plan_id","query_text","query_class","user_id","chart_id","conversation_id","tool_bundles","latency_ms","audit_status","audit_warnings","created_at"],
+    "column_mapping_needed": {
+      "audit_event_id": "id (rename)",
+      "audit_event_version": "NOT PRESENT — not in production schema",
+      "disclosure_tier": "NOT PRESENT — not in production schema",
+      "validator_verdict": "audit_status (closest equivalent: 'ok'|'warn'|'block')",
+      "b10_compliant": "NOT PRESENT — not in production schema",
+      "b11_compliant": "NOT PRESENT — not in production schema"
+    },
+    "live_row_for_test_query": {
+      "id": "73920808-7a29-4cbb-89c5-57fbda82a725",
+      "audit_status": "ok",
+      "audit_warnings": null,
+      "query_class": "remedial",
+      "created_at": "2026-05-01T07:33:59.558111+00:00"
+    },
+    "impact": "Gate II's assembler JOIN silently fails for all production queries. AuditStepDetail always shows placeholder_note. A follow-up gate is needed to realign loadAuditRow() to the actual production schema."
+  },
+
+  "additional_findings": {
+    "plan_per_tool_step": "A step_name 'plan_per_tool' (step_type: llm) appears in production that is not documented in GAP_ANALYSIS §A. It sits between classify and the tool_fetch group. This is not rendered by the current LifecycleGraph.",
+    "orphan_running_rows": "Some query_trace_steps rows remain in status='running' with no completed_at (for msr_sql, pattern_register, remedial_codex_query, chart_facts_query, synthesis). These are incomplete trace records from the live query. The assembler handles these correctly — no crash, renders as 'pending'."
+  }
+}
