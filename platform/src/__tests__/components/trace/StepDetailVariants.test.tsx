@@ -38,6 +38,8 @@ describe('PlannerDetail', () => {
         { tool_name: 'cgm_graph_walk', params: {}, priority: 2 },
       ],
       bundle_summary: '3 assets · 2 tools',
+      compose_bundle: null,
+      plan_per_tool: null,
     }
     render(<PlannerDetail planner={planner} />)
     expect(screen.getByTestId('planner-query-class')).toHaveTextContent('CHART_ANALYSIS')
@@ -147,11 +149,11 @@ describe('AuditDetail', () => {
   it('renders verdict, compliance flags, and audit_event_id', () => {
     const audit: AuditStepMetadata = {
       audit_event_id: 'ae-42',
-      audit_event_version: 1,
       disclosure_tier: 'super_admin',
       validator_verdict: 'PASS',
       b10_compliant: true,
       b11_compliant: true,
+      audit_warnings: null,
       citation_gate: null,
       placeholder_note: null,
     }
@@ -163,9 +165,9 @@ describe('AuditDetail', () => {
 
   it('surfaces placeholder_note when audit_events row is missing', () => {
     const audit: AuditStepMetadata = {
-      audit_event_id: null, audit_event_version: null, disclosure_tier: null,
+      audit_event_id: null, disclosure_tier: null,
       validator_verdict: 'UNKNOWN', b10_compliant: null, b11_compliant: null,
-      citation_gate: null,
+      audit_warnings: null, citation_gate: null,
       placeholder_note: 'No audit_events row found for this query_id.',
     }
     render(<AuditDetail audit={audit} />)

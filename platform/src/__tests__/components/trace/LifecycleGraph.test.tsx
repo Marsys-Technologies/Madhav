@@ -10,7 +10,23 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { LifecycleGraph } from '@/components/trace/LifecycleGraph'
-import type { TraceStep } from '@/lib/trace/types'
+import type { AssembledTrace, TraceStep } from '@/lib/trace/types'
+
+const ASSEMBLED_EMPTY: AssembledTrace = {
+  query_id: 'q1',
+  query_text: null,
+  total_latency_ms: null,
+  query_plan: null,
+  steps: [],
+  partial: false,
+  grouped: {
+    planner: null,
+    retrieval: [],
+    synthesis: null,
+    audit: null,
+    checkpoints: [],
+  },
+}
 
 function step(
   seq: number,
@@ -52,6 +68,7 @@ describe('LifecycleGraph', () => {
     render(
       <LifecycleGraph
         steps={STEPS_NO_CHECKPOINTS}
+        assembled={ASSEMBLED_EMPTY}
         selectedStepId="synthesis"
         onSelectStep={vi.fn()}
       />,
@@ -68,6 +85,7 @@ describe('LifecycleGraph', () => {
     render(
       <LifecycleGraph
         steps={STEPS_WITH_CHECKPOINTS}
+        assembled={ASSEMBLED_EMPTY}
         selectedStepId="synthesis"
         onSelectStep={vi.fn()}
       />,
@@ -84,6 +102,7 @@ describe('LifecycleGraph', () => {
     render(
       <LifecycleGraph
         steps={STEPS_NO_CHECKPOINTS}
+        assembled={ASSEMBLED_EMPTY}
         selectedStepId="synthesis"
         onSelectStep={vi.fn()}
       />,
@@ -96,6 +115,7 @@ describe('LifecycleGraph', () => {
     render(
       <LifecycleGraph
         steps={STEPS_NO_CHECKPOINTS}
+        assembled={ASSEMBLED_EMPTY}
         selectedStepId="synthesis"
         onSelectStep={vi.fn()}
       />,
