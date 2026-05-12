@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS performance_judge_verdict (
   planner_verdict             TEXT NOT NULL
                               CHECK (planner_verdict IN ('correct', 'wrong', 'ambiguous')),
   planner_reasoning           TEXT,
-  triggered_by_user_id        UUID,
+  triggered_by_user_id        TEXT,           -- Firebase UID (base62, not UUID format)
   created_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

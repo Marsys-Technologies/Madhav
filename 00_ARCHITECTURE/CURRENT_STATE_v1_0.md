@@ -4943,11 +4943,32 @@ current_state:
       branch: fix/eval-governance-qp-s4
       executor: claude-code (Opus 4.7 1M)
 
+    gate_i_perf_command_center:
+      active_since: 2026-05-12
+      closed_at: 2026-05-13
+      status: COMPLETE
+      description: >
+        Gate I — Performance Command Center. Adds platform observability
+        for the query pipeline: performance_queries + eval_runs +
+        performance_judge_verdict tables, 5 API routes (KPIs/queries/
+        eval-runs/judge), full UI (landing, eval-runs list+detail,
+        TracePanelLauncher), ingestion writers (consume + eval paths),
+        B.10/B.11 compliance detectors, LLM judge (gemini-2.5-flash-lite).
+        Regression fix: triggered_by_user_id UUID→TEXT (Firebase UID base62).
+      sessions:
+        executor: gate1-S1           # 2026-05-12; W0..W14 + lint + 52 tests
+        closeout: GATE-I-CLOSEOUT-R1 # 2026-05-13; live smoke + SESSION_LOG + residuals
+      branch: feature/gate1-perf-command-center
+      gate_i_tests: 52/52 PASS
+      known_residuals: 00_ARCHITECTURE/known_residuals/GATE_I_KNOWN_RESIDUALS.md
+      merge_ready: true
+      executor: claude-code (Sonnet 4.6)
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-12T01:30:00+05:30
-  file_updated_by_session: PR-15-merge (Cowork governance close)
+  file_updated_at: 2026-05-13T06:10:00+05:30
+  file_updated_by_session: GATE-I-CLOSEOUT-R1
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

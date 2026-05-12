@@ -20750,3 +20750,47 @@ summary: >
   Residuals carried forward to next prompt-iteration session: GT.043/044
   vector_search forbidden_violation on predictive-with-domain-words queries;
   GT.038/042 extra cluster_atlas; GT.045 pattern_register recall miss.
+
+---
+session_id: GATE-I-CLOSEOUT-R1
+date: 2026-05-13
+summary: >
+  Gate I — Performance Command Center closeout. Discharges all deferred items from the
+  2026-05-12 executor session (gate1-S1: W1–W14, lint, tests) plus live-environment
+  verification, SESSION_LOG append, and golden-set reconciliation.
+
+  Work accomplished in executor session (gate1-S1, 2026-05-12):
+  W0 audit (established scope: 2 golden sets, 15 synthesis + 46 planner post-QP-S3).
+  W1 migrations 043_performance_schema + 044_eval_runs_and_judge applied.
+  W2/W3/W4 ingestion writers (writeConsumePerformanceRow, writeEvalRun/Row/finalize),
+  compliance detectors (B.10/B.11), eval auto-hook.
+  W5/W6/W7/W8/W8a/W12 performance API surface (KPIs, queries, eval-runs, judge).
+  W9/W10/W11/W13 performance UI (landing, eval-runs list+detail, TracePanelLauncher).
+  W14 component tests KpiTile + QueryLogTable. Lint fixes. 52/52 Gate I tests green.
+  Branch: feature/gate1-perf-command-center.
+
+  Closeout session (this session, 2026-05-13):
+  Gate I regression fix — performance_judge_verdict.triggered_by_user_id was UUID;
+  Firebase UIDs are base62 strings. Fixed by ALTER TABLE + migration SQL update.
+  W2 smoke (pg.Pool direct inserts): consume row + eval run 07745f1f inserted cleanly.
+  W3 API smoke (curl with Firebase session cookie): /kpis /queries /eval-runs
+  /eval-runs/[id] /judge all return 200 with correct shapes; advisory lock returns 409
+  on concurrent judge run.
+  W4 judge end-to-end: 15 unjudged rows judged via gemini-2.5-flash-lite; 15 verdicts
+  created; plan_accuracy_label updated.
+  W5 UI smoke (Playwright): /performance landing (4 KPI tiles, 19-row query log,
+  judge button), row click → TracePanel dialog, /performance/eval-runs list (1 run,
+  all KPI columns), /performance/eval-runs/07745f1f detail (all aggregate stats +
+  constituent queries table).
+  W6 full test suite: 52/52 Gate I tests green; 27 pre-existing failures (E2E portal,
+  synthesis mock, pipeline — none Gate I). GATE_I_KNOWN_RESIDUALS.md created.
+  W7 golden-set reconciliation: 15 synthesis (GQ-001..015) + 46 planner (GT.001..046,
+  schema v1.2 after QP-S3 expansion from 29). GATE_I_AUDIT.md "29" was pre-QP-S3.
+  W8 rebase: no-op (branch 8 commits ahead of main, no diverging main commits).
+  Post-rebase tsc: 22 errors all in tests/ (pre-existing). ESLint Gate I surface: 0.
+  W9 model audit: gemini-2.0-flash-lite appears only in explanatory comments; all
+  runtime references use gemini-2.5-flash-lite.
+  W10 this entry.
+  Governance: CLOSEOUT_PREFLIGHT.md evidence document created at project root.
+  00_ARCHITECTURE/known_residuals/GATE_I_KNOWN_RESIDUALS.md created.
+  Branch feature/gate1-perf-command-center is merge-ready for Gate IV intake.
