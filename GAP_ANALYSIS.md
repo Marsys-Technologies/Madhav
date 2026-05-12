@@ -238,7 +238,7 @@ Exports: `StepType`, `StepStatus`, `TraceChunkItem`, `TraceToolCallSpec`, `Trace
 
 ---
 
-## §H — Recommended migration 045 disposition: **NO**
+## §H — Migration 045 disposition: **RESERVED-UNUSED (final disposition W9)**
 
 W1 finds zero database schema changes required for trace alignment.
 
