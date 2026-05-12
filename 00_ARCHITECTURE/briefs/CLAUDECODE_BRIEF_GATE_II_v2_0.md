@@ -1,7 +1,8 @@
 ---
 brief_id: GATE-II-TRACE-ALIGN
 version: 2.0
-status: ACTIVE-AUTONOMOUS
+status: COMPLETE
+closed_on: 2026-05-12
 authored_by: Claude Opus 4.7 (Gate II — Trace Pipeline Alignment design session) — 2026-05-12
 supersedes: CLAUDECODE_BRIEF_GATE_II.md v1.0 (had a human-in-the-loop pause after W1; v2.0 removes the pause for single-session overnight execution)
 purpose: Rewire TracePanel + sub-components + trace assembler + supporting trace UI to accurately reflect the new (and only) query pipeline's stages, step vocabulary, and metadata schema. No new features — pure alignment. Single-session autonomous execution.

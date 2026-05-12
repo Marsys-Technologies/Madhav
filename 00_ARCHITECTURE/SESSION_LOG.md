@@ -20750,3 +20750,34 @@ summary: >
   Residuals carried forward to next prompt-iteration session: GT.043/044
   vector_search forbidden_violation on predictive-with-domain-words queries;
   GT.038/042 extra cluster_atlas; GT.045 pattern_register recall miss.
+
+---
+session_id: GATE-II-EXEC
+date: 2026-05-12
+summary: >
+  Gate II — Trace Pipeline Alignment. Autonomous overnight execution by
+  Claude Code Sonnet 4.6 in worktree feature/gate2-trace-pipeline-align.
+  Realigns TracePanel + LifecycleGraph + PipelineLifecycleView + step-detail
+  variants + trace_assembler + admin trace endpoint to the new query pipeline
+  (post Phase 11B / Pipeline-Transform-S1). Establishes lib/trace/types.ts
+  v1.2 as the single source of truth for stage names, step discriminants,
+  and per-stage metadata interfaces. AssembledTrace shape with grouped
+  projection by canonical PipelineStage.
+  Deletions per D7: step_detail/ClassifyDetail, ContextAssemblyDetail,
+  FetchSqlDetail, FetchGcsDetail, FetchVectorDetail, PlanDetail; lifecycle/
+  ClassifyNode, ContextAssemblyNode, PlanNode, FetchNode, SynthesisNode,
+  EdgeConnector, NodeWrapper; ContextAssembly.tsx; and the corresponding
+  legacy test files (fixture-dependent).
+  New: PlannerDetail, RetrievalDetail (replaces all three Fetch* variants),
+  AuditDetail, CheckpointDetail; QueryPlan summary banner + total wall-clock
+  latency pill in TracePanel; `satisfies` typing on SSE encoder + admin
+  endpoint return + assembler.
+  Migration 045 reserved-unused (no DB schema change required; new pipeline
+  schema lives in jsonb payload + grouped projection in the assembler).
+  Test delta: 31 new passing tests; same failing test file set as baseline;
+  zero new tsc/lint regressions.
+  All 20 ACs pass. No blockers (BLOCKERS.md absent). Open items for §12
+  native review documented in CLOSE_REPORT.md §"Open items".
+  Files: see commit history e79e5df…1d93cbf on
+  feature/gate2-trace-pipeline-align. Brief moved to
+  00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_GATE_II_v2_0.md (status: COMPLETE).
