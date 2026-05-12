@@ -52,6 +52,9 @@ function StepTypeBadge({ variant }: { variant: StepVariant }) {
 
 function resolveVariant(stepId: string): { variant: StepVariant; subId: string | null } {
   if (stepId === 'planner') return { variant: 'planner', subId: null }
+  if (stepId === 'planner:classify') return { variant: 'planner', subId: 'classify' }
+  if (stepId === 'planner:compose_bundle') return { variant: 'planner', subId: 'compose_bundle' }
+  if (stepId === 'planner:plan_per_tool') return { variant: 'planner', subId: 'plan_per_tool' }
   if (stepId === 'synthesis') return { variant: 'synthesis', subId: null }
   if (stepId === 'audit') return { variant: 'audit', subId: null }
   if (stepId === 'retrieval') return { variant: 'retrieval', subId: null }
@@ -65,7 +68,9 @@ function resolveVariant(stepId: string): { variant: StepVariant; subId: string |
 }
 
 function extractStepData(assembled: AssembledTrace, stepId: string): unknown {
-  if (stepId === 'planner') return assembled.grouped.planner
+  if (stepId === 'planner' || stepId === 'planner:classify') return assembled.grouped.planner
+  if (stepId === 'planner:compose_bundle') return assembled.grouped.planner?.compose_bundle ?? null
+  if (stepId === 'planner:plan_per_tool') return assembled.grouped.planner?.plan_per_tool ?? null
   if (stepId === 'retrieval') return assembled.grouped.retrieval
   if (stepId === 'synthesis') return assembled.grouped.synthesis
   if (stepId === 'audit') return assembled.grouped.audit
@@ -111,7 +116,7 @@ export function StepDetail({ assembled, selectedStepId }: StepDetailProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {variant === 'planner' && <PlannerDetail planner={assembled.grouped.planner} />}
+        {variant === 'planner' && <PlannerDetail planner={assembled.grouped.planner} focusedSub={subId} />}
         {variant === 'retrieval' && (
           <RetrievalDetail retrieval={assembled.grouped.retrieval} focusedTool={subId} />
         )}

@@ -1,11 +1,11 @@
 'use client'
 
 /**
- * AuditDetail — Gate II W4 (2026-05-12).
+ * AuditDetail — Gate II.5 realignment (2026-05-13).
  *
- * Renders audit_events JOIN + citation-gate trace-step signal per the
- * AuditStepMetadata schema. Validator verdict, disclosure tier, B.10/B.11
- * compliance flags, audit-event id.
+ * Renders audit_events JOIN + citation-gate trace-step signal per AuditStepMetadata.
+ * Null D11 columns (disclosure_tier, b10_compliant, b11_compliant) render as "—"
+ * with a tooltip per R10: not yet tracked — pending audit writer update (FU.2).
  */
 
 import type { AuditStepMetadata } from '@/lib/trace/types'
@@ -14,6 +14,8 @@ import { Section } from './Section'
 interface Props {
   audit: AuditStepMetadata | null
 }
+
+const PENDING_TOOLTIP = 'Not yet tracked — pending audit writer update (POST_GATE_II_FOLLOWUPS.md FU.2)'
 
 function VerdictBadge({ verdict }: { verdict: AuditStepMetadata['validator_verdict'] }) {
   const map: Record<AuditStepMetadata['validator_verdict'], string> = {
@@ -29,8 +31,15 @@ function VerdictBadge({ verdict }: { verdict: AuditStepMetadata['validator_verdi
   )
 }
 
+function NullableText({ value }: { value: string | null }) {
+  if (value === null)
+    return <span className="text-muted-foreground" title={PENDING_TOOLTIP}>—</span>
+  return <span className="font-mono text-foreground">{value}</span>
+}
+
 function BoolFlag({ value }: { value: boolean | null }) {
-  if (value === null) return <span className="text-muted-foreground">—</span>
+  if (value === null)
+    return <span className="text-muted-foreground" title={PENDING_TOOLTIP}>—</span>
   return (
     <span className={value ? 'text-emerald-400' : 'text-amber-400'}>
       {value ? 'compliant' : 'non-compliant'}
@@ -53,7 +62,7 @@ export function AuditDetail({ audit }: Props) {
         <div className="flex items-center gap-2 text-[11px]">
           <VerdictBadge verdict={audit.validator_verdict} />
           <span className="text-muted-foreground">disclosure tier:</span>
-          <span className="font-mono text-foreground">{audit.disclosure_tier ?? '—'}</span>
+          <NullableText value={audit.disclosure_tier} />
         </div>
       </Section>
 
@@ -70,17 +79,23 @@ export function AuditDetail({ audit }: Props) {
         </dl>
       </Section>
 
+      {audit.audit_warnings && audit.audit_warnings.length > 0 && (
+        <Section title="Audit warnings">
+          <ul className="space-y-0.5 text-[11px] text-amber-400">
+            {audit.audit_warnings.map((w, i) => (
+              <li key={i}>• {w}</li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
       <Section title="Audit event">
         <dl className="grid grid-cols-2 gap-2 text-[11px]">
           <div>
             <dt className="text-muted-foreground">audit_event_id</dt>
-            <dd className="font-mono text-foreground" data-testid="audit-event-id">
+            <dd className="font-mono text-foreground break-all" data-testid="audit-event-id">
               {audit.audit_event_id ?? '—'}
             </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">version</dt>
-            <dd className="font-mono text-foreground">{audit.audit_event_version ?? '—'}</dd>
           </div>
         </dl>
       </Section>

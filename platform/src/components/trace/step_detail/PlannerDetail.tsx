@@ -17,6 +17,8 @@ import { RawPayloadDialog } from '../RawPayloadDialog'
 
 interface PlannerDetailProps {
   planner: PlannerStepMetadata | null
+  /** Sub-step focus from lifecycle graph: 'classify' | 'compose_bundle' | 'plan_per_tool' | null */
+  focusedSub?: string | null
 }
 
 function fmtMs(ms: number | null | undefined): string {
@@ -25,7 +27,7 @@ function fmtMs(ms: number | null | undefined): string {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-export function PlannerDetail({ planner }: PlannerDetailProps) {
+export function PlannerDetail({ planner, focusedSub = null }: PlannerDetailProps) {
   const [showRaw, setShowRaw] = useState(false)
 
   if (!planner) {
@@ -113,6 +115,50 @@ export function PlannerDetail({ planner }: PlannerDetailProps) {
           </details>
         </Section>
       )}
+
+      {/* compose_bundle sub-step — D9 */}
+      <Section title={`compose_bundle${focusedSub === 'compose_bundle' ? ' ·focused' : ''}`}>
+        {planner.compose_bundle ? (
+          <div className="text-xs text-zinc-300 space-y-1" data-testid="planner-compose-bundle">
+            <p>
+              <span className="text-zinc-500">latency: </span>
+              <span className="font-mono text-foreground">{fmtMs(planner.compose_bundle.latency_ms)}</span>
+            </p>
+            {planner.compose_bundle.result && (
+              <p>
+                <span className="text-zinc-500">result: </span>
+                <span className="text-foreground">{planner.compose_bundle.result}</span>
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500">compose_bundle did not fire.</p>
+        )}
+      </Section>
+
+      {/* plan_per_tool sub-step — D9 */}
+      <Section title={`plan_per_tool${focusedSub === 'plan_per_tool' ? ' ·focused' : ''}`}>
+        {planner.plan_per_tool ? (
+          <dl className="grid grid-cols-3 gap-2 text-[11px]" data-testid="planner-plan-per-tool">
+            <div>
+              <dt className="text-muted-foreground">tool_count</dt>
+              <dd className="font-mono text-foreground">{planner.plan_per_tool.tool_count}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">planner_active</dt>
+              <dd className={planner.plan_per_tool.planner_active ? 'text-emerald-400' : 'text-zinc-400'}>
+                {planner.plan_per_tool.planner_active ? 'yes' : 'no'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">latency</dt>
+              <dd className="font-mono text-foreground">{fmtMs(planner.plan_per_tool.latency_ms)}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="text-xs text-zinc-500">plan_per_tool did not fire.</p>
+        )}
+      </Section>
 
       <Section title="Raw plan">
         {plan ? (
