@@ -1,7 +1,8 @@
 import { Suspense } from 'react'
 import { TraceModal } from '@/components/trace/TraceModal'
 
-export default function TracePage({ params }: { params: { query_id: string } }) {
+export default async function TracePage({ params }: { params: Promise<{ query_id: string }> }) {
+  const { query_id } = await params
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <Suspense fallback={
@@ -9,7 +10,7 @@ export default function TracePage({ params }: { params: { query_id: string } }) 
           <span className="animate-spin">◎</span> Loading trace…
         </div>
       }>
-        <TraceModal queryId={params.query_id} />
+        <TraceModal queryId={query_id} />
       </Suspense>
     </div>
   )

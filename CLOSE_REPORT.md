@@ -298,7 +298,7 @@ and realigns the full trace UI to the production pipeline shape.
 | AC.9 | PASS | AuditDetail renders verdict + compliance flags; null → "—" with tooltip per R10 |
 | AC.10 | PASS | HealthRail/QueryDNAPanel/RetrievalScorecard: re-audited; taxonomy-aligned with graceful degradation |
 | AC.11 | PASS | gate_ii_trace_smoke.spec.ts authored; 7 tests skip when env vars absent; instructions in spec header |
-| AC.12 | N/A | W8 run skipped (env vars absent); no screenshots required per AC.12 condition |
+| AC.12 | PASS | W8 live run: 7/7 PASS (2026-05-13 CROSS_GATE_VISUAL_SMOKE session); 8 screenshots in tests/screenshots/gate_ii_smoke/ |
 | AC.13 | PASS | POST_GATE_II_FOLLOWUPS.md: FU.2 (audit writer) + FU.3 (compose_bundle terminology) appended |
 | AC.14 | PASS | CURRENT_STATE_v1_0.md: compose_bundle ≠ context_assembly correction footnote appended |
 | AC.15 | PASS | Baseline: 34 test failures; post-fix: 30 failures (net −4). No new failures. |
@@ -335,5 +335,15 @@ and realigns the full trace UI to the production pipeline shape.
 - **Terminology**: compose_bundle ≠ context_assembly; clarified in FU.3 + CURRENT_STATE footnote.
 
 ---
+
+### §16 — Cross-Gate Visual Smoke (2026-05-13, CROSS_GATE_VISUAL_SMOKE session)
+
+**Summary:** Live Playwright run completed. 7/7 tests PASS with real session cookie (Firebase Admin SDK generated) and real `query_id` (`57fb6f82-135a-4fcf-b6d5-078b8d1a9a9a`, interpretive class, 18 trace steps, `audit_events` row present).
+
+**Bug fixed:** `TracePage` at `src/app/admin/trace/[query_id]/page.tsx` accessed `params.query_id` synchronously — Next.js 15 requires `await params`. Without this fix, `TraceModal` received `queryId = undefined`, all API calls hit `/api/admin/trace/undefined`, and audit + planner detail sections rendered as placeholders. Fixed: made `TracePage` async, added `const { query_id } = await params`.
+
+**Screenshots:** 8 files in `platform/tests/screenshots/gate_ii_smoke/` — `drawer_full.png`, `planning_container.png`, `planner_compose_bundle.png`, `planner_plan_per_tool.png`, `retrieval_container.png`, `checkpoints_expanded.png`, `audit_detail.png`, `banner.png`.
+
+**AC.12 status:** PASS (previously N/A). All ACs now PASS.
 
 *End of CLOSE_REPORT — Gate II / Gate II.5 · Trace Pipeline Alignment · 2026-05-12/2026-05-13.*
