@@ -24,28 +24,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import concurrent.futures
 import structlog
 import vertexai
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from google.api_core import exceptions as gax_exceptions
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
-try:
-    from google.api_core import exceptions as gapi_exceptions  # type: ignore
-    _TRANSIENT_GAPI = (
-        gapi_exceptions.Unknown,
-        gapi_exceptions.ServiceUnavailable,
-        gapi_exceptions.DeadlineExceeded,
-    )
-except Exception:  # pragma: no cover - google-api-core always present in prod
-    _TRANSIENT_GAPI = ()
-
-try:
-    import grpc  # type: ignore
-    _TRANSIENT_GRPC = (grpc.RpcError,)
-except Exception:  # pragma: no cover
-    _TRANSIENT_GRPC = ()
-
-_TRANSIENT_EMBED_EXC = _TRANSIENT_GAPI + _TRANSIENT_GRPC
+_EMBED_TIMEOUT_S = 120
+_EMBED_MODEL: TextEmbeddingModel | None = None
 
 from pipeline.manifest_writer import EMBEDDING_DIM, EMBEDDING_MODEL, write_manifest
 from pipeline.registry_loader import collect_current_assets, load_registry
@@ -111,76 +97,65 @@ def _build_chunker_registry() -> dict[str, tuple[str, Any]]:
 # ── Vertex AI embedding ───────────────────────────────────────────────────────
 
 def _init_vertexai() -> None:
+    global _EMBED_MODEL
     project = os.environ.get("GCP_PROJECT", "")
     location = os.environ.get("VERTEX_AI_LOCATION", "us-central1")
     if not project:
         raise RuntimeError("GCP_PROJECT env var not set")
     vertexai.init(project=project, location=location)
+    _EMBED_MODEL = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
+    log.info("vertex_init", project=project, location=location, model=EMBEDDING_MODEL)
 
 
 def _embed_batch(texts: list[str]) -> list[list[float]]:
-    model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
+    assert _EMBED_MODEL is not None, "call _init_vertexai() first"
     inputs = [TextEmbeddingInput(t, "RETRIEVAL_DOCUMENT") for t in texts]
-    results = model.get_embeddings(inputs)
+    # Wrap in a thread + Future with hard timeout. The SDK's get_embeddings has no
+    # timeout kwarg and the underlying gRPC channel relies on kernel TCP keepalives
+    # (~2h on macOS), so silent stream-breaks can otherwise wedge the call indefinitely.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        future = ex.submit(_EMBED_MODEL.get_embeddings, inputs)
+        results = future.result(timeout=_EMBED_TIMEOUT_S)
     return [r.values for r in results]
 
 
 def _embed_chunks(chunks: list[Any]) -> list[list[float]]:
-    """Embed all chunks in batches of 20.
-
-    Resilience (added 2026-05-12 after build-865dd96e reingest):
-      - Per-batch retry up to 3 attempts on transient Vertex/gRPC errors
-        (google.api_core Unknown / ServiceUnavailable / DeadlineExceeded,
-        grpc.RpcError). Backoff: 5s, 15s, 45s.
-      - Each attempt runs inside ThreadPoolExecutor.submit(...).result(timeout=120)
-        so silent gRPC hangs surface within 2 minutes instead of hanging forever.
+    """
+    Embed all chunks. Batch size 20 keeps each request under the model's 20k-token
+    per-request cap even with the 800-token worst-case chunk. Retries transient
+    errors (5 attempts, 5/15/45/90/180s). InvalidArgument (400) is deterministic
+    and re-raised immediately.
     """
     batch_size = 20
-    backoffs = [5, 15, 45]
     all_embeddings: list[list[float]] = []
+    backoffs = [5, 15, 45, 90, 180]
 
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        for i in range(0, len(chunks), batch_size):
-            batch = chunks[i : i + batch_size]
-            texts = [
-                f"[{c.layer}] [{c.doc_type}]\n{c.content}" for c in batch
-            ]
-
-            last_exc: Exception | None = None
-            vecs: list[list[float]] | None = None
-            for attempt in range(3):
-                try:
-                    future = executor.submit(_embed_batch, texts)
-                    vecs = future.result(timeout=120)
-                    last_exc = None
-                    break
-                except FuturesTimeoutError as exc:
-                    last_exc = exc
-                    log.warning(
-                        "embed_batch_timeout",
-                        batch_start=i, attempt=attempt + 1, timeout_s=120,
-                    )
-                except _TRANSIENT_EMBED_EXC as exc:  # type: ignore[misc]
-                    last_exc = exc
-                    log.warning(
-                        "embed_batch_transient_error",
-                        batch_start=i, attempt=attempt + 1, error=str(exc),
-                    )
-                except Exception as exc:
-                    raise RuntimeError(
-                        f"[STOP] Vertex AI embedding failed at batch {i}: {exc}"
-                    ) from exc
-
-                if attempt < len(backoffs):
-                    time.sleep(backoffs[attempt])
-
-            if vecs is None:
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i : i + batch_size]
+        texts = [
+            f"[{c.layer}] [{c.doc_type}]\n{c.content}" for c in batch
+        ]
+        vecs = None
+        last_exc: Exception | None = None
+        for attempt, delay in enumerate([0] + backoffs):
+            if delay:
+                log.warning("vertex_retry", batch_start=i, attempt=attempt, delay_s=delay, prior_error=str(last_exc))
+                time.sleep(delay)
+            try:
+                vecs = _embed_batch(texts)
+                break
+            except gax_exceptions.InvalidArgument as exc:
                 raise RuntimeError(
-                    f"[STOP] Vertex AI embedding failed at batch {i} after 3 attempts: {last_exc}"
-                ) from last_exc
-
-            all_embeddings.extend(vecs)
-            log.info("embedded_batch", start=i, end=i + len(batch), total_so_far=len(all_embeddings))
+                    f"[STOP] Vertex AI rejected batch {i} (deterministic, no retry): {exc}"
+                ) from exc
+            except Exception as exc:
+                last_exc = exc
+        if vecs is None:
+            raise RuntimeError(
+                f"[STOP] Vertex AI embedding failed at batch {i} after {len(backoffs) + 1} attempts: {last_exc}"
+            ) from last_exc
+        all_embeddings.extend(vecs)
+        log.info("embedded_batch", start=i, end=i + len(batch), total_so_far=len(all_embeddings))
 
     return all_embeddings
 
@@ -198,7 +173,7 @@ def _insert_manifest_row(
     db_url = os.environ.get("DATABASE_URL", "")
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
-    with psycopg.connect(db_url) as conn:
+    with psycopg.connect(db_url, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=3) as conn:
         conn.execute(
             """
             INSERT INTO build_manifests
@@ -230,7 +205,7 @@ def _update_manifest_row(
 ) -> None:
     import psycopg
     db_url = os.environ.get("DATABASE_URL", "")
-    with psycopg.connect(db_url) as conn:
+    with psycopg.connect(db_url, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=3) as conn:
         conn.execute(
             """
             UPDATE build_manifests
