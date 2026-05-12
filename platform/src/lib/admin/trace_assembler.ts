@@ -537,7 +537,9 @@ export async function assembleTraceFull(
   const grouped = buildGrouped(steps, auditRow)
   const totalLatency = steps.reduce((sum, s) => sum + (s.latency_ms ?? 0), 0)
 
-  const assembled: AssembledTrace = {
+  // `satisfies AssembledTrace` — any drift in the AssembledTrace shape will
+  // become a compile-time error here (added Gate II 2026-05-12 per W7).
+  const assembled = {
     query_id: queryId,
     query_text: queryText,
     total_latency_ms: totalLatency > 0 ? totalLatency : null,
@@ -545,7 +547,7 @@ export async function assembleTraceFull(
     steps,
     grouped,
     partial: steps.length === 0,
-  }
+  } satisfies AssembledTrace
 
   const legacy = projectLegacy(queryId, assembled, scorecard, baselines)
   return { assembled, legacy, steps }

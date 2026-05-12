@@ -31,8 +31,10 @@ export async function GET(
   }
 
   const encoder = new TextEncoder()
+  // `satisfies TraceEvent` ensures any drift in event shape becomes a compile-time
+  // error here (added Gate II 2026-05-12 per W7).
   const encode = (event: TraceEvent) =>
-    encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+    encoder.encode(`data: ${JSON.stringify(event satisfies TraceEvent)}\n\n`)
 
   const reqUrl = new URL(request.url)
   const isHistorical = reqUrl.searchParams.get('mode') === 'historical'
