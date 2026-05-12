@@ -269,4 +269,71 @@ absent; documented in `BLOCKERS.md §B.1` with full repro instructions.
 
 ---
 
-*End of CLOSE_REPORT — Gate II · Trace Pipeline Alignment · 2026-05-12 (fixup-1 2026-05-13, fixup-2 2026-05-13).*
+---
+
+## §15 — Gate II.5 Production-State Alignment (2026-05-13, autonomous overnight)
+
+### Overview
+Gate II v2.0 closed 20/20 ACs but against an incomplete pipeline model. Three
+production gaps were discovered post-close:
+1. `loadAuditRow()` queried 6 non-existent columns → always null → placeholder
+2. LifecycleGraph missing classify / compose_bundle / plan_per_tool sub-rows (D9)
+3. Only 4 of 21 retrieval tools rendered (missing `cross_varga_dignity_query`)
+
+Gate II.5 fixes all three, adds D11 nullable audit columns via migration 045,
+and realigns the full trace UI to the production pipeline shape.
+
+### Acceptance Criteria Evaluation (AC.1–AC.24)
+
+| AC | Status | Notes |
+|----|--------|-------|
+| AC.1 | PASS | DISCOVERY_REPORT.md §A–§F committed at `5463702` |
+| AC.2 | PASS | Migration 045 applied; `\d audit_events` confirms 3 new nullable columns |
+| AC.3 | PASS | STAGE_FROM_STEP_NAME includes plan_per_tool; PipelineStage union complete |
+| AC.4 | PASS | ALL_21_RETRIEVAL_TOOLS const enumerates all 21 tools |
+| AC.5 | PASS | AuditStepMetadata: removed audit_event_version, added audit_warnings + D11 fields |
+| AC.6 | PASS | loadAuditRow() queries production columns; J.2 live verification confirms real row returned |
+| AC.7 | PASS | LifecycleGraph: Planning[3 sub-rows] → Retrieval[21 sub-rows] → Synthesis → Audit → Checkpoints |
+| AC.8 | PASS | StepDetail routes planner:classify / compose_bundle / plan_per_tool → PlannerDetail |
+| AC.9 | PASS | AuditDetail renders verdict + compliance flags; null → "—" with tooltip per R10 |
+| AC.10 | PASS | HealthRail/QueryDNAPanel/RetrievalScorecard: re-audited; taxonomy-aligned with graceful degradation |
+| AC.11 | PASS | gate_ii_trace_smoke.spec.ts authored; 7 tests skip when env vars absent; instructions in spec header |
+| AC.12 | N/A | W8 run skipped (env vars absent); no screenshots required per AC.12 condition |
+| AC.13 | PASS | POST_GATE_II_FOLLOWUPS.md: FU.2 (audit writer) + FU.3 (compose_bundle terminology) appended |
+| AC.14 | PASS | CURRENT_STATE_v1_0.md: compose_bundle ≠ context_assembly correction footnote appended |
+| AC.15 | PASS | Baseline: 34 test failures; post-fix: 30 failures (net −4). No new failures. |
+| AC.16 | PASS | No new TS errors in source files. Pre-existing test stub errors unchanged. |
+| AC.17 | PASS | Lint: 124 problems — identical to baseline; no new errors. |
+| AC.18 | PASS | J.2 verified; fixture at platform/tests/fixtures/gate_ii_5_j2_live_verification.json |
+| AC.19 | PASS | All changes within may_touch scope per CLAUDECODE_BRIEF.md §2 |
+| AC.20 | COMPLETE | CLAUDECODE_BRIEF.md moved to 00_ARCHITECTURE/briefs/ with status: COMPLETE |
+| AC.21 | COMPLETE | SESSION_LOG.md entry appended |
+| AC.22 | PASS | BLOCKERS.md: B.2 resolved by Gate II.5; B.1 (T5 auth) remains non-fatal |
+| AC.23 | COMPLETE | Pushed to origin/feature/gate2-trace-pipeline-align |
+| AC.24 | COMPLETE | This §15 section |
+
+### Work Items
+
+| Work Item | Commit | Status |
+|-----------|--------|--------|
+| W1 Discovery Report | `5463702` | COMPLETE |
+| W2 Migration 045 | `53f4459` | COMPLETE |
+| W3 Schema alignment | `4c77051` | COMPLETE |
+| W4 Assembler alignment | `5fe7ba0` | COMPLETE |
+| W5 LifecycleGraph realignment | `97f272f` | COMPLETE |
+| W6 Step-detail variants | `a152ecf` | COMPLETE |
+| W7 Supporting components re-audit | (no changes; in-place) | COMPLETE |
+| W8 Playwright smoke spec | `257aee2` | COMPLETE |
+| W9 Governance corrections | `3961a6f` | COMPLETE |
+| W10 Test fixture fixes | `fa3d65f` | COMPLETE |
+| W11 J.2 live verification | `9fe23fd` | COMPLETE |
+
+### Technical highlights
+- **loadAuditRow() fix**: queries `id AS audit_event_id, audit_status, audit_warnings, disclosure_tier, b10_compliant, b11_compliant`. D11 columns NULL in production (FU.2 — writer update pending). Renders "—" with tooltip per R10.
+- **D9 lifecycle shape**: Planning[classify + compose_bundle + plan_per_tool] → Retrieval[21 tools; unfired dimmed] → Synthesis → Audit → Checkpoints. PlannerDetail shows compose_bundle latency/result + plan_per_tool tool_count/planner_active sections.
+- **21-tool fix**: `cross_varga_dignity_query` added to `ALL_21_RETRIEVAL_TOOLS`; TracePanel now imports from central types.ts.
+- **Terminology**: compose_bundle ≠ context_assembly; clarified in FU.3 + CURRENT_STATE footnote.
+
+---
+
+*End of CLOSE_REPORT — Gate II / Gate II.5 · Trace Pipeline Alignment · 2026-05-12/2026-05-13.*

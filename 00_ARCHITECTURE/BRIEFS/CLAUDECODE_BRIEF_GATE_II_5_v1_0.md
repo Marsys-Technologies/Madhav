@@ -1,7 +1,7 @@
 ---
 brief_id: GATE-II-5-PRODUCTION-ALIGN
 version: 1.0
-status: ACTIVE-AUTONOMOUS
+status: COMPLETE
 authored_by: Claude Opus 4.7 (Gate II.5 — Production-State Alignment design session) — 2026-05-13
 supersedes_partial: CLAUDECODE_BRIEF_GATE_II_v2_0.md (which closed with 20/20 ACs but against an incomplete pipeline model; this brief completes the alignment against actual production emit)
 purpose: >
