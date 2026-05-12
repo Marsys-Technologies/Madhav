@@ -26,7 +26,26 @@ from typing import Any
 
 import structlog
 import vertexai
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
+
+try:
+    from google.api_core import exceptions as gapi_exceptions  # type: ignore
+    _TRANSIENT_GAPI = (
+        gapi_exceptions.Unknown,
+        gapi_exceptions.ServiceUnavailable,
+        gapi_exceptions.DeadlineExceeded,
+    )
+except Exception:  # pragma: no cover - google-api-core always present in prod
+    _TRANSIENT_GAPI = ()
+
+try:
+    import grpc  # type: ignore
+    _TRANSIENT_GRPC = (grpc.RpcError,)
+except Exception:  # pragma: no cover
+    _TRANSIENT_GRPC = ()
+
+_TRANSIENT_EMBED_EXC = _TRANSIENT_GAPI + _TRANSIENT_GRPC
 
 from pipeline.manifest_writer import EMBEDDING_DIM, EMBEDDING_MODEL, write_manifest
 from pipeline.registry_loader import collect_current_assets, load_registry
@@ -107,23 +126,61 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
 
 
 def _embed_chunks(chunks: list[Any]) -> list[list[float]]:
-    """Embed all chunks in batches of 10. Halt on first Vertex AI error."""
-    batch_size = 10
+    """Embed all chunks in batches of 20.
+
+    Resilience (added 2026-05-12 after build-865dd96e reingest):
+      - Per-batch retry up to 3 attempts on transient Vertex/gRPC errors
+        (google.api_core Unknown / ServiceUnavailable / DeadlineExceeded,
+        grpc.RpcError). Backoff: 5s, 15s, 45s.
+      - Each attempt runs inside ThreadPoolExecutor.submit(...).result(timeout=120)
+        so silent gRPC hangs surface within 2 minutes instead of hanging forever.
+    """
+    batch_size = 20
+    backoffs = [5, 15, 45]
     all_embeddings: list[list[float]] = []
 
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i : i + batch_size]
-        texts = [
-            f"[{c.layer}] [{c.doc_type}]\n{c.content}" for c in batch
-        ]
-        try:
-            vecs = _embed_batch(texts)
-        except Exception as exc:
-            raise RuntimeError(
-                f"[STOP] Vertex AI embedding failed at batch {i}: {exc}"
-            ) from exc
-        all_embeddings.extend(vecs)
-        log.info("embedded_batch", start=i, end=i + len(batch), total_so_far=len(all_embeddings))
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i : i + batch_size]
+            texts = [
+                f"[{c.layer}] [{c.doc_type}]\n{c.content}" for c in batch
+            ]
+
+            last_exc: Exception | None = None
+            vecs: list[list[float]] | None = None
+            for attempt in range(3):
+                try:
+                    future = executor.submit(_embed_batch, texts)
+                    vecs = future.result(timeout=120)
+                    last_exc = None
+                    break
+                except FuturesTimeoutError as exc:
+                    last_exc = exc
+                    log.warning(
+                        "embed_batch_timeout",
+                        batch_start=i, attempt=attempt + 1, timeout_s=120,
+                    )
+                except _TRANSIENT_EMBED_EXC as exc:  # type: ignore[misc]
+                    last_exc = exc
+                    log.warning(
+                        "embed_batch_transient_error",
+                        batch_start=i, attempt=attempt + 1, error=str(exc),
+                    )
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"[STOP] Vertex AI embedding failed at batch {i}: {exc}"
+                    ) from exc
+
+                if attempt < len(backoffs):
+                    time.sleep(backoffs[attempt])
+
+            if vecs is None:
+                raise RuntimeError(
+                    f"[STOP] Vertex AI embedding failed at batch {i} after 3 attempts: {last_exc}"
+                ) from last_exc
+
+            all_embeddings.extend(vecs)
+            log.info("embedded_batch", start=i, end=i + len(batch), total_so_far=len(all_embeddings))
 
     return all_embeddings
 
