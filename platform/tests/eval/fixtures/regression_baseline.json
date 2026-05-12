@@ -1,211 +1,667 @@
 {
   "$schema_version": "1.0",
-  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall ≥ 0.80, precision ≥ 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) — see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026–GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls — by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1.",
+  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1.",
   "entries": [
     {
       "id": "GT.001",
       "mock_tool_calls": [
-        { "tool_name": "remedial_codex_query", "params": {}, "token_budget": 800, "priority": 1, "reason": "career-domain remedial prescription (codex)" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — gemstone-planet-career resonance" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "career-domain signal lookup; identifies the planet to strengthen" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "career L3 domain_report narrative" }
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "career-domain remedial prescription (codex)"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 gemstone-planet-career resonance"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "career-domain signal lookup; identifies the planet to strengthen"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "career L3 domain_report narrative"
+        }
       ]
     },
     {
       "id": "GT.002",
       "mock_tool_calls": [
-        { "tool_name": "remedial_codex_query", "params": {}, "token_budget": 800, "priority": 1, "reason": "mantra prescription (codex)" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — mantra-deity-spirituality resonance" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "spirituality-domain signal lookup (Jupiter / Ketu / 9H)" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "spirituality L3 domain_report narrative" }
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "mantra prescription (codex)"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 mantra-deity-spirituality resonance"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "spirituality-domain signal lookup (Jupiter / Ketu / 9H)"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "spirituality L3 domain_report narrative"
+        }
       ]
     },
     {
       "id": "GT.003",
       "mock_tool_calls": [
-        { "tool_name": "remedial_codex_query", "params": {}, "token_budget": 800, "priority": 1, "reason": "yellow-sapphire suitability rules (codex)" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "Jupiter natal placement, dignity, signal strength" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — yellow-sapphire-Jupiter resonance" }
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "yellow-sapphire suitability rules (codex)"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Jupiter natal placement, dignity, signal strength"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 yellow-sapphire-Jupiter resonance"
+        }
       ]
     },
     {
       "id": "GT.004",
       "mock_tool_calls": [
-        { "tool_name": "remedial_codex_query", "params": {}, "token_budget": 800, "priority": 1, "reason": "Mars-keyed remedial rituals/stones/mantras (codex)" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "Mars-domain signals" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — Mars-domain remedial alignment" }
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Mars-keyed remedial rituals/stones/mantras (codex)"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Mars-domain signals"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 Mars-domain remedial alignment"
+        }
       ]
     },
     {
       "id": "GT.005",
       "mock_tool_calls": [
-        { "tool_name": "remedial_codex_query", "params": {}, "token_budget": 800, "priority": 1, "reason": "daily-ritual / dinacharya prescription (codex)" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "low-strength signals across grahas" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — weakest-planet pattern across the chart" }
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "daily-ritual / dinacharya prescription (codex)"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "low-strength signals across grahas"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 weakest-planet pattern across the chart"
+        }
       ]
     },
     {
       "id": "GT.006",
       "mock_tool_calls": [
-        { "tool_name": "remedial_codex_query", "params": {}, "token_budget": 800, "priority": 1, "reason": "fasting-practice prescription (codex)" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 1, "reason": "health L3 domain_report narrative" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — fasting-planet-health resonance" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "health-domain signals" }
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "fasting-practice prescription (codex)"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "health L3 domain_report narrative"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 fasting-planet-health resonance"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "health-domain signals"
+        }
       ]
     },
     {
       "id": "GT.007",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "7H lord, occupants, aspects (signal-level)" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 1, "reason": "marriage L3 domain_report narrative" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "7H lord, occupants, aspects (signal-level)"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "marriage L3 domain_report narrative"
+        }
       ]
     },
     {
       "id": "GT.008",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "Lagna lord, ascendant degree, shadbala signals" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "overall life-path L3 narrative" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "Lagna-strength yogas" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Lagna lord, ascendant degree, shadbala signals"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "overall life-path L3 narrative"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "Lagna-strength yogas"
+        }
       ]
     },
     {
       "id": "GT.009",
       "mock_tool_calls": [
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "named yogas (Raja, Dhana, etc.)" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "yoga-confirming placement signals" }
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "named yogas (Raja, Dhana, etc.)"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "yoga-confirming placement signals"
+        }
       ]
     },
     {
       "id": "GT.010",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "Saturn 11H placement and aspects" },
-        { "tool_name": "cgm_graph_walk", "params": {}, "token_budget": 800, "priority": 2, "reason": "Saturn-11H concept graph traversal" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Saturn 11H placement and aspects"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "Saturn-11H concept graph traversal"
+        }
       ]
     },
     {
       "id": "GT.011",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "marriage-domain D9-tagged signals" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "marriage L3 domain_report (Navamsha narrative)" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "marriage-domain D9-tagged signals"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "marriage L3 domain_report (Navamsha narrative)"
+        }
       ]
     },
     {
       "id": "GT.012",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "10H lord, occupants, aspects, D10 signals" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 1, "reason": "career L3 domain_report narrative" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "10H lord, occupants, aspects, D10 signals"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "career L3 domain_report narrative"
+        }
       ]
     },
     {
       "id": "GT.013",
       "mock_tool_calls": [
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 1, "reason": "L5 lifetime timeline (doc_type=l5_timeline) for Ketu MD arc" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "natal Ketu signals (forward_looking)" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — Ketu-keyed forward_looking patterns" }
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "L5 lifetime timeline (doc_type=l5_timeline) for Ketu MD arc"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "natal Ketu signals (forward_looking)"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 Ketu-keyed forward_looking patterns"
+        }
       ]
     },
     {
       "id": "GT.014",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "currently-active Saturn signals (planet=Saturn, temporal_activation=lit)" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — forward_looking Saturn patterns" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "currently-active Saturn signals (planet=Saturn, temporal_activation=lit)"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 forward_looking Saturn patterns"
+        }
       ]
     },
     {
       "id": "GT.015",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "career-domain forward_looking, ripening signals" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — forward_looking career yogas" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "career L3 domain_report context" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "career-domain forward_looking, ripening signals"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 forward_looking career yogas"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "career L3 domain_report context"
+        }
       ]
     },
     {
       "id": "GT.016",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "ripening venture-positive signals (forward_looking, temporal_activation=ripening)" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — forward_looking patterns" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "L5 timeline upcoming favorable windows" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "ripening venture-positive signals (forward_looking, temporal_activation=ripening)"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 forward_looking patterns"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "L5 timeline upcoming favorable windows"
+        }
       ]
     },
     {
       "id": "GT.017",
       "mock_tool_calls": [
-        { "tool_name": "cluster_atlas", "params": {}, "token_budget": 800, "priority": 1, "reason": "dominant cross-domain clusters" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 1, "reason": "L3 domain_report narratives across domains" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "named yogas across domains" },
-        { "tool_name": "cgm_graph_walk", "params": {}, "token_budget": 800, "priority": 2, "reason": "cross-domain linkage traversal" }
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "dominant cross-domain clusters"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "L3 domain_report narratives across domains"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "named yogas across domains"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "cross-domain linkage traversal"
+        }
       ]
     },
     {
       "id": "GT.018",
       "mock_tool_calls": [
-        { "tool_name": "contradiction_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "structural contradictions" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "named patterns / yogas" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "cross-system resonances" },
-        { "tool_name": "cluster_atlas", "params": {}, "token_budget": 800, "priority": 2, "reason": "dominant clusters" }
+        {
+          "tool_name": "contradiction_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "structural contradictions"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "named patterns / yogas"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "cross-system resonances"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "dominant clusters"
+        }
       ]
     },
     {
       "id": "GT.019",
       "mock_tool_calls": [
-        { "tool_name": "cgm_graph_walk", "params": {}, "token_budget": 800, "priority": 1, "reason": "career–marriage–health graph traversal" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 1, "reason": "per-domain L3 domain_report narratives" },
-        { "tool_name": "cluster_atlas", "params": {}, "token_budget": 800, "priority": 2, "reason": "cross-domain clusters" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "cross-domain signals" }
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "career\u2013marriage\u2013health graph traversal"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "per-domain L3 domain_report narratives"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "cross-domain clusters"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "cross-domain signals"
+        }
       ]
     },
     {
       "id": "GT.020",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "msr_sql temporal_activation=lit|ripening returns date-indexed signal state" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "forward_looking patterns currently in play" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "msr_sql temporal_activation=lit|ripening returns date-indexed signal state"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "forward_looking patterns currently in play"
+        }
       ]
     },
     {
       "id": "GT.021",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "all Jupiter-keyed signals across signal_types" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "Jupiter yogas (Gajakesari, Hamsa, etc.)" },
-        { "tool_name": "cgm_graph_walk", "params": {}, "token_budget": 800, "priority": 2, "reason": "PLN.Jupiter conceptual neighborhood" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "all Jupiter-keyed signals across signal_types"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "Jupiter yogas (Gajakesari, Hamsa, etc.)"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "PLN.Jupiter conceptual neighborhood"
+        }
       ]
     },
     {
       "id": "GT.022",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "Mars across D1/D9/D10/D7 vargas (signal_type=divisional)" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "named Mars yogas across divisional charts" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Mars across D1/D9/D10/D7 vargas (signal_type=divisional)"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "named Mars yogas across divisional charts"
+        }
       ]
     },
     {
       "id": "GT.023",
       "mock_tool_calls": [
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "Saturn-tagged discovery patterns" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "Saturn-bridging resonance pairs" },
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "Saturn-keyed signal anchors" }
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Saturn-tagged discovery patterns"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "Saturn-bridging resonance pairs"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "Saturn-keyed signal anchors"
+        }
       ]
     },
     {
       "id": "GT.024",
       "mock_tool_calls": [
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "L2.5 discovery — revealed patterns, ambiguous prompt fallback" },
-        { "tool_name": "cluster_atlas", "params": {}, "token_budget": 800, "priority": 2, "reason": "L2.5 discovery — dominant clusters, ambiguous prompt fallback" }
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "L2.5 discovery \u2014 revealed patterns, ambiguous prompt fallback"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "L2.5 discovery \u2014 dominant clusters, ambiguous prompt fallback"
+        }
       ]
     },
     {
       "id": "GT.025",
       "mock_tool_calls": [
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "discovery surface — named patterns" },
-        { "tool_name": "contradiction_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "discovery surface — contradictions" },
-        { "tool_name": "resonance_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "discovery surface — resonances" },
-        { "tool_name": "cluster_atlas", "params": {}, "token_budget": 800, "priority": 2, "reason": "discovery surface — clusters" }
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "discovery surface \u2014 named patterns"
+        },
+        {
+          "tool_name": "contradiction_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "discovery surface \u2014 contradictions"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "discovery surface \u2014 resonances"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "discovery surface \u2014 clusters"
+        }
       ]
     },
     {
       "id": "GT.026",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 1, "reason": "Mercury-domain forward_looking signals + dasha-tagged signals" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 1, "reason": "R7 cross-domain lens — Mercury-keyed forward_looking patterns" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "L5 lifetime timeline (doc_type='l5_timeline') for Mercury MD arc" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "Mercury-domain forward_looking signals + dasha-tagged signals"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7 cross-domain lens \u2014 Mercury-keyed forward_looking patterns"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "L5 lifetime timeline (doc_type='l5_timeline') for Mercury MD arc"
+        }
       ]
     },
     {
@@ -219,12 +675,427 @@
     {
       "id": "GT.029",
       "mock_tool_calls": [
-        { "tool_name": "msr_sql", "params": {}, "token_budget": 800, "priority": 2, "reason": "holistic signal sweep (post-budget-arbitration)" },
-        { "tool_name": "pattern_register", "params": {}, "token_budget": 800, "priority": 2, "reason": "named yogas across the chart" },
-        { "tool_name": "cluster_atlas", "params": {}, "token_budget": 800, "priority": 2, "reason": "dominant cross-domain clusters" },
-        { "tool_name": "cgm_graph_walk", "params": {}, "token_budget": 800, "priority": 2, "reason": "cross-domain conceptual traversal" },
-        { "tool_name": "vector_search", "params": {}, "token_budget": 800, "priority": 2, "reason": "L3 domain_report narratives" }
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "holistic signal sweep (post-budget-arbitration)"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "named yogas across the chart"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "dominant cross-domain clusters"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "cross-domain conceptual traversal"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 2,
+          "reason": "L3 domain_report narratives"
+        }
       ]
+    },
+    {
+      "id": "GT.030",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.031",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.032",
+      "mock_tool_calls": [
+        {
+          "tool_name": "remedial_codex_query",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.033",
+      "mock_tool_calls": [
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "contradiction_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.034",
+      "mock_tool_calls": [
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "contradiction_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.035",
+      "mock_tool_calls": [
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "contradiction_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.036",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.037",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.038",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.039",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.040",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.041",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.042",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.043",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.044",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.045",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "cluster_atlas",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "mock for regression gate"
+        }
+      ]
+    },
+    {
+      "id": "GT.046",
+      "mock_tool_calls": []
     }
   ]
 }

@@ -29,7 +29,9 @@ const CLOSE = /[›>]{1,2}/
 
 const REASONING_RX = /‹reasoning›([\s\S]*?)‹\/reasoning›/g
 const CORRECTION_RX = /‹correction›([\s\S]*?)‹\/correction›/g
-const OUT_OF_DOMAIN_RX = /‹out_of_domain\s+reason="([^"]*)"\s*›\s*‹\/out_of_domain›/g
+// Match both the full self-closing form (‹out_of_domain ...›‹/out_of_domain›)
+// and the open-only form (‹out_of_domain ...›) — models often skip the closing tag.
+const OUT_OF_DOMAIN_RX = /‹out_of_domain\s+reason="([^"]*)"\s*›(?:\s*‹\/out_of_domain›)?/g
 const SANSKRIT_RX = /‹sanskrit\s+([^›]+)›([\s\S]*?)‹\/sanskrit›/g
 const SANSKRIT_ATTR_RX = /(\w+)="([^"]*)"/g
 

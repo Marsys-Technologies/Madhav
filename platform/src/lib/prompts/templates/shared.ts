@@ -143,7 +143,12 @@ export const INLINE_CITATIONS_GATE = `INLINE REASONING + CITATIONS (Gate III):
 The answer is a single piece of prose; there is no separate "Reasoning:" section. Reasoning is woven through the prose naturally. Every inferential step — every claim that bridges from a fact to a conclusion — carries an inline citation marker [N] referring to entries in the post-answer source list. The conclusion is the natural payoff of the reasoning chain. Do not produce a bulleted derivation ledger.`
 
 export const SANSKRIT_ANNOTATION_GATE = `SANSKRIT TERM ANNOTATION (Gate III):
-When a Sanskrit, technical Jyotish, or otherwise specialized term appears in your answer, wrap it in ‹sanskrit term="<term>" def="<one-sentence definition>" translit="<IAST or simple roman>"›<display text>‹/sanskrit›. The renderer turns this into a hover tooltip. Annotate terms like Vimshottari, Antardasha, Shadbala, Avastha, Karaka, Yoga, Argala, Atmakaraka, Lagnesha, Sade-Sati, Drekkana, Navamsa, Ashtakavarga. Do not annotate the same term twice within one answer.`
+When a Sanskrit, technical Jyotish, or otherwise specialized term appears in your answer, wrap it in the FULL open+display+close form:
+  ‹sanskrit term="<term>" def="<one-sentence definition>" translit="<IAST or simple roman>"›<display text>‹/sanskrit›
+CRITICAL: the term MUST appear as <display text> between the opening and closing tags. The closing ‹/sanskrit› marker is REQUIRED. The renderer needs the display text to know which word to underline for the tooltip.
+Example (correct): The ‹sanskrit term="Mahadasha" def="major planetary period governed by a single planet" translit="Mahādaśā"›Mahadasha‹/sanskrit› of Mercury spans 17 years.
+Example (wrong — missing display+close): The ‹sanskrit term="Mahadasha" def="major planetary period"› of Mercury…
+Annotate terms like Vimshottari, Antardasha, Shadbala, Avastha, Karaka, Yoga, Argala, Atmakaraka, Lagnesha, Sade-Sati, Drekkana, Navamsa, Ashtakavarga. Do not annotate the same term twice within one answer.`
 
 export const OUT_OF_DOMAIN_GATE = `OUT-OF-DOMAIN HANDLING (Gate III):
 If the query is clearly outside the Jyotish scope of this instrument (e.g., "what's the weather", "summarize this PDF", "write me a poem unrelated to astrology"), emit ‹out_of_domain reason="<brief reason>"›‹/out_of_domain› at the start of your response, then answer briefly (3–5 sentences) in good faith without elaborate scaffolding. Do NOT refuse; do NOT redirect; do NOT lecture. The flag tells the UI to render an "outside scope" notice above the answer.`

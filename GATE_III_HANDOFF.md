@@ -171,3 +171,13 @@ Gate III shipped the foundation and core surfaces for a Jyotish-aware, reasoning
 ## Do not merge yet
 
 Per §9 of the brief: Gate I (perf-center) and Gate II (trace-align) must also complete before the coordinated merge sequence runs. This branch is ready for review on its own merits; do not merge `feature/gate3-intelligent-chat` into `main` until the macro plan conversation runs the merge sequence.
+
+---
+
+## Smoke Verification (2026-05-13)
+
+Smoke completed by Claude Code Sonnet 4.6. See `GATE_III_SMOKE_FINDINGS.md`.
+
+**Automated phase:** All 10 AC items tested — PASS after 4 fixes (regression baseline extended for GT.030-046, SANSKRIT_ANNOTATION_GATE prompt clarified with example, OUT_OF_DOMAIN_RX regex relaxed for optional closing tag, smoke test function-signature corrected). tsc stays at 22/22. Gate III 37/37 tests green.
+
+**Visual walkthrough:** Pending native review per `GATE_III_SMOKE_VISUAL_CHECKLIST.md`. 20 items covering all major surfaces. Run `npm run dev` from `platform/` before starting.
