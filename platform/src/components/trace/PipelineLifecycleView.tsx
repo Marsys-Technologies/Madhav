@@ -1,63 +1,63 @@
 'use client'
 
 /**
- * PipelineLifecycleView — P6 D.6.2.
+ * PipelineLifecycleView — Gate II realignment (2026-05-12).
  *
- * Vertical 5-stage flow over the pipeline: classify → plan → retrieve →
- * assemble → synthesize. Reads TraceStep[] (already what TracePanel feeds
- * everywhere) plus an explicit manifest tool list to compute "Available,
- * skipped" — the tools that exist but the planner did not select.
+ * Renders the new query pipeline shape per the Gate II brief:
+ *   Planner → Retrieval (grouped, with one row per fired tool) → Synthesis → Audit,
+ *   followed by a collapsible Checkpoints group with "N of 3 ran" header.
  *
- * Implementation note (P6 D.6.1 mapping table): we read what's actually
- * surfaced by the route in this codebase rather than the field names in the
- * brief. See the per-stage comments below.
+ * Stage shape is stable across flag combinations (D1). Per-step latency does NOT
+ * appear on lifecycle node headers (D2); details are surfaced in the step-detail
+ * panel. The grouped retrieval node lists every tool that fired under
+ * `parallel_group === 'tool_fetch'`; skipped tools (from the planner) render dimmed.
+ *
+ * All stage names are sourced from `lib/trace/types.ts` (PipelineStage / mapStepToStage),
+ * not hard-coded string literals.
  */
 
-import { useMemo } from 'react'
-import { Check, AlertCircle, MinusCircle } from 'lucide-react'
-import type { TraceStep } from '@/lib/trace/types'
+import { useMemo, useState } from 'react'
+import { Check, AlertCircle, MinusCircle, ChevronDown, ChevronRight } from 'lucide-react'
+import type { PipelineStage, TraceStep } from '@/lib/trace/types'
+import { mapStepToStage } from '@/lib/trace/types'
 
 interface Props {
   steps: TraceStep[]
   manifestTools: string[]
 }
 
-function fmtMs(ms: number | null | undefined): string {
-  if (ms == null) return '—'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
+type RowStatus = 'done' | 'error' | 'skipped' | 'pending'
 
-function StageIcon({ status }: { status: 'done' | 'error' | 'skipped' }) {
-  if (status === 'error') {
-    return <AlertCircle size={12} className="text-amber-400" aria-label="error" />
-  }
-  if (status === 'skipped') {
-    return <MinusCircle size={12} className="text-muted-foreground" aria-label="skipped" />
-  }
+function StatusIcon({ status }: { status: RowStatus }) {
+  if (status === 'error') return <AlertCircle size={12} className="text-amber-400" aria-label="error" />
+  if (status === 'skipped' || status === 'pending') return <MinusCircle size={12} className="text-muted-foreground" aria-label={status} />
   return <Check size={12} className="text-[var(--brand-gold)]" aria-label="done" />
 }
 
 function StageCard({
   index,
   title,
-  latencyMs,
   status,
   children,
+  testid,
 }: {
-  index: number
+  index: number | string
   title: string
-  latencyMs?: number | null
-  status: 'done' | 'error' | 'skipped'
+  status: RowStatus
   children?: React.ReactNode
+  testid?: string
 }) {
+  const dimmed = status === 'skipped' || status === 'pending'
   return (
-    <div className="rounded border border-[rgba(212,175,55,0.12)] bg-[oklch(0.11_0.010_70)] p-3">
+    <div
+      data-testid={testid}
+      data-stage-status={status}
+      className={`rounded border p-3 ${dimmed ? 'border-[rgba(212,175,55,0.06)] bg-[oklch(0.10_0.005_70)] opacity-60' : 'border-[rgba(212,175,55,0.12)] bg-[oklch(0.11_0.010_70)]'}`}
+    >
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-mono text-muted-foreground/70 w-4">{index}.</span>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-[#fce29a]">{title}</span>
-        <StageIcon status={status} />
-        <span className="ml-auto text-[10px] text-muted-foreground">{fmtMs(latencyMs ?? null)}</span>
+        <StatusIcon status={status} />
       </div>
       {children && <div className="mt-2 pl-6 text-[11px]">{children}</div>}
     </div>
@@ -68,91 +68,86 @@ function Connector() {
   return <div className="bg-[rgba(212,175,55,0.20)] w-px h-4 mx-auto" />
 }
 
-export function PipelineLifecycleView({ steps, manifestTools }: Props) {
-  // Field-name mapping (D.6.1):
-  //   step_name === 'classify'         → classify stage
-  //   step_name === 'plan'             → plan stage; payload.query_plan + payload.tool_calls
-  //   step_type in {'sql','vector','gcs'} after plan, before context_assembly → retrieve
-  //   step_name === 'context_assembly' → assemble stage (incl. short-circuit)
-  //   step_name in {'synthesis_done','synthesis'} → synthesize stage
-  const classifyStep = useMemo(() => steps.find(s => s.step_name === 'classify'), [steps])
-  const planStep = useMemo(() => steps.find(s => s.step_name === 'plan'), [steps])
-  const retrievalSteps = useMemo(
-    () => steps.filter(s => s.step_type === 'sql' || s.step_type === 'vector' || s.step_type === 'gcs'),
-    [steps],
-  )
-  const assembleStep = useMemo(() => steps.find(s => s.step_name === 'context_assembly'), [steps])
-  const synthStep = useMemo(
-    () => steps.find(s => s.step_name === 'synthesis_done' || s.step_name === 'synthesis'),
-    [steps],
-  )
+function deriveStageStatus(stageSteps: TraceStep[]): RowStatus {
+  if (stageSteps.length === 0) return 'skipped'
+  if (stageSteps.some(s => s.status === 'error')) return 'error'
+  if (stageSteps.every(s => s.status === 'done')) return 'done'
+  return 'pending'
+}
 
-  const planPayload = planStep?.payload as
-    | { query_plan?: { tools_authorized?: string[]; planning_rationale?: string }; tool_calls?: Array<{ tool_id?: string; tool_name?: string }> }
+const CHECKPOINT_STAGES: Array<{ stage: PipelineStage; label: string }> = [
+  { stage: 'checkpoint_4_5', label: 'Checkpoint 4.5' },
+  { stage: 'checkpoint_5_5', label: 'Checkpoint 5.5' },
+  { stage: 'checkpoint_8_5', label: 'Checkpoint 8.5' },
+]
+
+export function PipelineLifecycleView({ steps, manifestTools }: Props) {
+  const stageGroups = useMemo(() => {
+    const groups: Record<PipelineStage, TraceStep[]> = {
+      planner: [],
+      retrieval: [],
+      synthesis: [],
+      audit: [],
+      checkpoint_4_5: [],
+      checkpoint_5_5: [],
+      checkpoint_8_5: [],
+    }
+    for (const s of steps) {
+      const stage = mapStepToStage(s)
+      if (!stage) continue
+      groups[stage].push(s)
+    }
+    return groups
+  }, [steps])
+
+  // Planner stage data — emitter writes step_name='classify' for the planner LLM call.
+  // Also surfaces the `compose_bundle` deterministic sub-step's result line.
+  const plannerLlmStep = stageGroups.planner.find(s => s.step_name === 'classify')
+  const composeBundleStep = stageGroups.planner.find(s => s.step_name === 'compose_bundle')
+  const plannerPayload = plannerLlmStep?.payload as
+    | { query_plan?: { tools_authorized?: string[]; planning_rationale?: string }; tool_calls?: Array<{ tool_name?: string }> }
     | undefined
   const planned: string[] = useMemo(() => {
-    const fromCalls = planPayload?.tool_calls?.map(c => c.tool_id ?? c.tool_name).filter(Boolean) as string[] | undefined
+    const fromCalls = plannerPayload?.tool_calls?.map(c => c.tool_name).filter(Boolean) as string[] | undefined
     if (fromCalls && fromCalls.length > 0) return fromCalls
-    return planPayload?.query_plan?.tools_authorized ?? []
-  }, [planPayload])
-  const planningRationale = planPayload?.query_plan?.planning_rationale ?? null
+    return plannerPayload?.query_plan?.tools_authorized ?? []
+  }, [plannerPayload])
+  const planningRationale = plannerPayload?.query_plan?.planning_rationale ?? null
 
-  const executed: string[] = useMemo(
-    () => retrievalSteps.filter(s => s.status === 'done').map(s => s.step_name),
-    [retrievalSteps],
-  )
-  const skipped: string[] = useMemo(
-    () => manifestTools.filter(t => !planned.includes(t)),
-    [manifestTools, planned],
-  )
+  // Retrieval grouped — one row per fired tool (D5). Tools the planner picked but
+  // that did not fire (or fired but errored) are surfaced too.
+  const retrievalFired = stageGroups.retrieval
+  const firedNames = new Set(retrievalFired.map(s => s.step_name))
+  const plannerPickedButMissing = planned.filter(p => !firedNames.has(p))
+  const manifestSkipped = manifestTools.filter(t => !planned.includes(t))
 
-  const classifyStatus: 'done' | 'error' | 'skipped' =
-    classifyStep?.status === 'done' ? 'done' : classifyStep?.status === 'error' ? 'error' : 'skipped'
+  // Synthesis stage data
+  const synthStep = stageGroups.synthesis.find(s => s.step_name === 'synthesis' || s.step_name === 'synthesis_done')
+  const contextAssemblyStep = stageGroups.synthesis.find(s => s.step_name === 'context_assembly')
 
-  const assembleShortCircuited =
-    !!assembleStep?.data_summary && (assembleStep.data_summary as { short_circuited?: boolean }).short_circuited === true
-  const assembleStatus: 'done' | 'error' | 'skipped' =
-    !assembleStep ? 'skipped' : assembleShortCircuited ? 'skipped' : assembleStep.status === 'error' ? 'error' : 'done'
+  // Audit stage data — citation_warn / citation_error trace steps (audit_events JOIN
+  // happens at the assembler boundary, not here).
+  const citationGateStep = stageGroups.audit.find(s => s.step_name === 'citation_error' || s.step_name === 'citation_warn')
+
+  // Checkpoints — collapsible group per D1.
+  const [checkpointsExpanded, setCheckpointsExpanded] = useState(false)
+  const checkpointRan = CHECKPOINT_STAGES.filter(c => stageGroups[c.stage].length > 0).length
+
+  const plannerStatus = deriveStageStatus(stageGroups.planner)
+  const retrievalStatus: RowStatus = retrievalFired.length === 0 ? 'skipped'
+    : retrievalFired.some(s => s.status === 'error') ? 'error'
+    : retrievalFired.some(s => s.status !== 'done') ? 'pending'
+    : 'done'
+  const synthStatus = deriveStageStatus(stageGroups.synthesis.filter(s => s.step_name !== 'context_assembly'))
+  const auditStatus: RowStatus = citationGateStep
+    ? (citationGateStep.step_name === 'citation_error' ? 'error' : 'done')
+    : 'pending'
 
   return (
-    <div className="space-y-1">
-      <StageCard
-        index={1}
-        title="Classify"
-        latencyMs={classifyStep?.latency_ms ?? null}
-        status={classifyStatus}
-      >
-        {classifyStep && (
-          <div className="text-muted-foreground">
-            class:{' '}
-            <span className="text-foreground font-mono">
-              {(classifyStep.data_summary as { query_class?: string })?.query_class ?? '—'}
-            </span>
-            <span className="ml-3">
-              confidence:{' '}
-              <span className="text-foreground">
-                {((classifyStep.data_summary as { confidence?: number })?.confidence ?? 0).toFixed(2)}
-              </span>
-            </span>
-          </div>
-        )}
-      </StageCard>
-      <Connector />
-
-      <StageCard
-        index={2}
-        title="Plan"
-        latencyMs={planStep?.latency_ms ?? null}
-        status={planStep ? (planStep.status === 'error' ? 'error' : 'done') : 'skipped'}
-      >
-        {planStep && (
+    <div className="space-y-1" data-testid="pipeline-lifecycle-view">
+      <StageCard index={1} title="Planner" status={plannerStatus} testid="lifecycle-stage-planner">
+        {plannerLlmStep ? (
           <>
-            <div className="text-muted-foreground mb-1">
-              Planner:{' '}
-              <span className="text-foreground font-mono">
-                {(planStep.data_summary as { model?: string })?.model ?? '—'}
-              </span>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">
@@ -172,13 +167,13 @@ export function PipelineLifecycleView({ steps, manifestTools }: Props) {
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">
-                  Available, skipped ({skipped.length})
+                  Available, skipped ({manifestSkipped.length})
                 </div>
                 <ul className="space-y-0.5">
-                  {skipped.length === 0 ? (
+                  {manifestSkipped.length === 0 ? (
                     <li className="text-muted-foreground/70 italic">none</li>
                   ) : (
-                    skipped.map(t => (
+                    manifestSkipped.map(t => (
                       <li key={t} className="font-mono text-[11px] text-muted-foreground/70">
                         • {t}
                         <span className="ml-1 italic text-[10px]">not selected</span>
@@ -188,6 +183,11 @@ export function PipelineLifecycleView({ steps, manifestTools }: Props) {
                 </ul>
               </div>
             </div>
+            {composeBundleStep && (
+              <div className="mt-2 text-muted-foreground">
+                Bundle: <span className="text-foreground">{(composeBundleStep.data_summary as { result?: string })?.result ?? '—'}</span>
+              </div>
+            )}
             {planningRationale && (
               <details className="mt-2">
                 <summary className="cursor-pointer text-[10px] text-muted-foreground/80 hover:text-foreground">
@@ -199,72 +199,61 @@ export function PipelineLifecycleView({ steps, manifestTools }: Props) {
               </details>
             )}
           </>
+        ) : (
+          <span className="text-muted-foreground italic">not invoked</span>
         )}
       </StageCard>
       <Connector />
 
-      <StageCard
-        index={3}
-        title="Retrieve"
-        latencyMs={retrievalSteps.reduce((acc, s) => acc + (s.latency_ms ?? 0), 0)}
-        status={retrievalSteps.length === 0 ? 'skipped' : 'done'}
-      >
+      <StageCard index={2} title="Retrieval" status={retrievalStatus} testid="lifecycle-stage-retrieval">
         <div className="text-muted-foreground mb-1">
-          {executed.length} tool{executed.length === 1 ? '' : 's'} executed
+          {retrievalFired.length} tool{retrievalFired.length === 1 ? '' : 's'} fired
         </div>
-        <ul className="space-y-0.5 font-mono text-[11px]">
-          {retrievalSteps.map(s => {
-            const ds = s.data_summary as { rows_returned?: number; chunks_returned?: number; token_estimate?: number }
-            const count = ds?.rows_returned ?? ds?.chunks_returned ?? null
-            return (
-              <li key={s.step_seq + ':' + s.step_name} className="text-foreground">
-                • {s.step_name}
-                {count !== null && <span className="text-muted-foreground"> · {count} rows</span>}
-                {ds?.token_estimate != null && (
-                  <span className="text-muted-foreground"> · ~{ds.token_estimate} tk</span>
-                )}
-              </li>
-            )
-          })}
+        <ul className="space-y-0.5 font-mono text-[11px]" data-testid="retrieval-subrows">
+          {retrievalFired.length === 0 && plannerPickedButMissing.length === 0 ? (
+            <li className="text-muted-foreground/70 italic">no retrieval steps</li>
+          ) : (
+            <>
+              {retrievalFired.map(s => {
+                const ds = s.data_summary as { rows_returned?: number; chunks_returned?: number; token_estimate?: number; top_score?: number }
+                const count = ds?.rows_returned ?? ds?.chunks_returned ?? null
+                const dimmed = s.status !== 'done'
+                return (
+                  <li
+                    key={s.step_seq + ':' + s.step_name}
+                    className={dimmed ? 'text-muted-foreground/60' : 'text-foreground'}
+                    data-testid={`retrieval-subrow-${s.step_name}`}
+                    data-subrow-status={s.status}
+                  >
+                    • {s.step_name}
+                    {count !== null && <span className="text-muted-foreground"> · {count} rows</span>}
+                    {ds?.token_estimate != null && (
+                      <span className="text-muted-foreground"> · ~{ds.token_estimate} tk</span>
+                    )}
+                    {typeof ds?.top_score === 'number' && (
+                      <span className="text-muted-foreground"> · top {ds.top_score.toFixed(2)}</span>
+                    )}
+                  </li>
+                )
+              })}
+              {plannerPickedButMissing.map(t => (
+                <li
+                  key={'missing:' + t}
+                  className="text-muted-foreground/40 italic"
+                  data-testid={`retrieval-subrow-${t}`}
+                  data-subrow-status="missing"
+                >
+                  • {t} <span className="text-[10px]">(picked, not yet emitted)</span>
+                </li>
+              ))}
+            </>
+          )}
         </ul>
       </StageCard>
       <Connector />
 
-      <StageCard
-        index={4}
-        title="Assemble"
-        latencyMs={assembleStep?.latency_ms ?? null}
-        status={assembleStatus}
-      >
-        {!assembleStep ? (
-          <span className="text-muted-foreground italic">not invoked</span>
-        ) : assembleShortCircuited ? (
-          <span className="text-muted-foreground">
-            Skipped — token threshold met (
-            <span className="font-mono">
-              {(assembleStep.data_summary as { total_token_estimate?: number })?.total_token_estimate ?? 0}
-            </span>
-            {' < '}
-            <span className="font-mono">
-              {(assembleStep.data_summary as { threshold?: number })?.threshold ?? 2000}
-            </span>
-            )
-          </span>
-        ) : (
-          <span className="text-muted-foreground">
-            assembled — see token breakdown in Context Inspector
-          </span>
-        )}
-      </StageCard>
-      <Connector />
-
-      <StageCard
-        index={5}
-        title="Synthesize"
-        latencyMs={synthStep?.latency_ms ?? null}
-        status={synthStep ? (synthStep.status === 'error' ? 'error' : 'done') : 'skipped'}
-      >
-        {synthStep && (
+      <StageCard index={3} title="Synthesis" status={synthStatus} testid="lifecycle-stage-synthesis">
+        {synthStep ? (
           <div className="text-muted-foreground">
             <span>
               Model:{' '}
@@ -282,9 +271,92 @@ export function PipelineLifecycleView({ steps, manifestTools }: Props) {
                 {(synthStep.data_summary as { output_tokens?: number })?.output_tokens ?? 0}
               </span>
             </span>
+            {contextAssemblyStep && (() => {
+              const ds = contextAssemblyStep.data_summary as { short_circuited?: boolean; total_token_estimate?: number; threshold?: number; reason?: string }
+              if (ds?.short_circuited) {
+                return (
+                  <div className="mt-1 text-[10px] text-muted-foreground/80">
+                    context_assembly short-circuited at <span className="font-mono">{ds.total_token_estimate ?? 0}</span> /{' '}
+                    <span className="font-mono">{ds.threshold ?? 0}</span> tk
+                    {ds.reason ? ` (${ds.reason})` : ''}
+                  </div>
+                )
+              }
+              return null
+            })()}
           </div>
+        ) : (
+          <span className="text-muted-foreground italic">not invoked</span>
         )}
       </StageCard>
+      <Connector />
+
+      <StageCard index={4} title="Audit" status={auditStatus} testid="lifecycle-stage-audit">
+        {citationGateStep ? (
+          <div className="text-muted-foreground">
+            Citation gate:{' '}
+            <span className={citationGateStep.step_name === 'citation_error' ? 'text-amber-400' : 'text-foreground'}>
+              {citationGateStep.step_name === 'citation_error' ? 'ERROR' : 'WARN'}
+            </span>
+            <span className="ml-2 text-[10px]">
+              {(citationGateStep.data_summary as { result?: string })?.result ?? ''}
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground italic">
+            Audit data lives in audit_events; full audit detail surfaced in step-detail panel
+          </span>
+        )}
+      </StageCard>
+      <Connector />
+
+      <div
+        className="rounded border border-[rgba(212,175,55,0.08)] bg-[oklch(0.10_0.005_70)]"
+        data-testid="lifecycle-stage-checkpoints"
+      >
+        <button
+          type="button"
+          onClick={() => setCheckpointsExpanded(v => !v)}
+          aria-expanded={checkpointsExpanded}
+          className="w-full flex items-center gap-2 p-3 text-left hover:bg-[rgba(212,175,55,0.04)] rounded"
+        >
+          <span className="text-[10px] font-mono text-muted-foreground/70 w-4">5.</span>
+          {checkpointsExpanded
+            ? <ChevronDown size={12} className="text-muted-foreground" />
+            : <ChevronRight size={12} className="text-muted-foreground" />}
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#fce29a]">
+            Checkpoints
+          </span>
+          <span className="text-[10px] text-muted-foreground" data-testid="checkpoints-summary">
+            · {checkpointRan} of {CHECKPOINT_STAGES.length} ran
+          </span>
+        </button>
+        {checkpointsExpanded && (
+          <ul className="px-3 pb-3 space-y-1.5 pl-10">
+            {CHECKPOINT_STAGES.map(c => {
+              const ran = stageGroups[c.stage].length > 0
+              const stageStep = stageGroups[c.stage][0]
+              const status: RowStatus = ran
+                ? (stageStep?.status === 'error' ? 'error' : 'done')
+                : 'skipped'
+              return (
+                <li
+                  key={c.stage}
+                  data-testid={`checkpoint-${c.stage}`}
+                  data-checkpoint-status={status}
+                  className={`flex items-center gap-2 text-[11px] ${ran ? '' : 'opacity-50'}`}
+                >
+                  <StatusIcon status={status} />
+                  <span className="font-mono text-foreground">{c.label}</span>
+                  {!ran && (
+                    <span className="text-[10px] italic text-muted-foreground/70">disabled / skipped</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
