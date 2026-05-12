@@ -216,14 +216,13 @@ export interface TraceEvent {
 
 // ── BHISMA-B3 analytics types ─────────────────────────────────────────────────
 
-// ── Gate II v1.2 — canonical stage model ──────────────────────────────────────
+// ── Gate II.5 v1.3 — production-state realignment (2026-05-13) ───────────────
 
 /**
  * Canonical pipeline stages, as the trace UI presents them.
  *
- * The emitter's `step_name` values are LEGACY in places (e.g. `'classify'` is
- * really the planner — see `STAGE_FROM_STEP_NAME` below). Renderers should
- * key off `PipelineStage`, not raw `step_name`.
+ * Renderers key off `PipelineStage` for container identity; raw `step_name`
+ * values are projected via `STAGE_FROM_STEP_NAME` / `mapStepToStage`.
  */
 export type PipelineStage =
   | 'planner'
@@ -235,24 +234,48 @@ export type PipelineStage =
   | 'checkpoint_8_5'
 
 /**
+ * All 21 retrieval tools registered in the RETRIEVAL_TOOLS manifest (D10).
+ * Sub-rows for unfired tools render dimmed in the Retrieval container.
+ */
+export const ALL_21_RETRIEVAL_TOOLS = [
+  'msr_sql',
+  'pattern_register',
+  'resonance_register',
+  'cluster_atlas',
+  'contradiction_register',
+  'temporal',
+  'query_msr_aggregate',
+  'cgm_graph_walk',
+  'manifest_query',
+  'vector_search',
+  'kp_query',
+  'saham_query',
+  'divisional_query',
+  'chart_facts_query',
+  'cross_varga_dignity_query',
+  'domain_report_query',
+  'remedial_codex_query',
+  'timeline_query',
+  'query_signal_state',
+  'query_kp_ruling_planets',
+  'query_varshaphala',
+] as const
+
+export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]
+
+/**
  * Map a raw emitted `step_name` to its canonical pipeline stage.
  *
- * `'classify'` → planner is a renamed-but-not-yet-migrated emitter literal
- * (route.ts:393 carries the inline reason).
- *
- * `'compose_bundle'` → planner sub-step.
- *
- * `'context_assembly'` is a vestigial short-circuit marker (the legacy stage
- * was retired in Pipeline-Transform-S1) — surfaced inside the Synthesis
- * step-detail, not as its own canonical stage.
- *
- * Steps whose `parallel_group === 'tool_fetch'` map to `retrieval` regardless
- * of their `step_name`. Use `mapStepToStage()` for the parallel-group aware
- * resolver.
+ * `'classify'` → planner (route.ts:393; emitter preserves legacy name for compat).
+ * `'compose_bundle'` → planner sub-step (bundle hydration, fires after classify).
+ * `'plan_per_tool'` → planner sub-step (per-tool LLM refinement; Gate II.5 addition).
+ * `'context_assembly'` → synthesis (pre-synthesis context step, still emitted in prod).
+ * Steps with `parallel_group === 'tool_fetch'` → retrieval (any tool name).
  */
 export const STAGE_FROM_STEP_NAME: Record<string, PipelineStage> = {
   classify: 'planner',
   compose_bundle: 'planner',
+  plan_per_tool: 'planner',
   context_assembly: 'synthesis',
   synthesis: 'synthesis',
   synthesis_done: 'synthesis',
@@ -285,15 +308,27 @@ export interface RetrievalSubToolRun {
   payload: TracePayload
 }
 
-/** Planner stage metadata (D3). */
+/** Planner stage metadata (D3). Covers all 3 Planning sub-steps: classify, compose_bundle, plan_per_tool. */
 export interface PlannerStepMetadata {
+  /** step_seq of the classify (planner LLM) step. */
   step_seq: number
   status: StepStatus
   latency_ms: number | null
   query_plan: TraceQueryPlan | null
   tool_calls: TraceToolCallSpec[]
-  /** From the `compose_bundle` sub-step, if present. */
+  /** From the `compose_bundle` sub-step (bundle hydration result string). */
   bundle_summary: string | null
+  /** Gate II.5: sub-step metadata for compose_bundle and plan_per_tool. */
+  compose_bundle: {
+    latency_ms: number | null
+    result: string | null
+  } | null
+  plan_per_tool: {
+    step_seq: number
+    latency_ms: number | null
+    tool_count: number
+    planner_active: boolean
+  } | null
 }
 
 /**
@@ -350,16 +385,22 @@ export type SynthesisStepMetadata =
       panel_trace_pending: boolean
     }
 
-/** Audit stage metadata (assembled from `audit_events` + `citation_*` trace steps). */
+/**
+ * Audit stage metadata (assembled from `audit_events` JOIN + `citation_*` trace steps).
+ * Gate II.5: aligned with production audit_events columns; D11 nullable columns added.
+ */
 export interface AuditStepMetadata {
-  /** Present when an `audit_events` row exists for the query_id. */
+  /** Present when an `audit_events` row exists (audit_events.id). */
   audit_event_id: string | null
-  audit_event_version: number | null
-  disclosure_tier: 'super_admin' | 'client' | null
+  /** Mapped from audit_events.audit_status ('ok'→'PASS', 'warn'→'WARN', 'block'→'ERROR'). */
   validator_verdict: 'PASS' | 'WARN' | 'ERROR' | 'UNKNOWN'
-  /** B.10 (no fabricated computation) compliance flag. `null` when not yet computed. */
+  /** Raw audit_events.audit_warnings (jsonb array, or null if no warnings). */
+  audit_warnings: string[] | null
+  /** D11: nullable; null until audit writer populates (POST_GATE_II_FOLLOWUPS FU.2). */
+  disclosure_tier: string | null
+  /** D11: B.10 (no fabricated computation) compliance. Null until audit writer populates. */
   b10_compliant: boolean | null
-  /** B.11 (whole-chart-read) compliance flag. */
+  /** D11: B.11 (whole-chart-read) compliance. Null until audit writer populates. */
   b11_compliant: boolean | null
   /** Inline citation-gate signal carried by `citation_warn` / `citation_error` trace steps. */
   citation_gate: {
