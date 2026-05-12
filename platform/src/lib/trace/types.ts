@@ -258,6 +258,9 @@ export const STAGE_FROM_STEP_NAME: Record<string, PipelineStage> = {
   synthesis_done: 'synthesis',
   citation_warn: 'audit',
   citation_error: 'audit',
+  checkpoint_4_5: 'checkpoint_4_5',
+  checkpoint_5_5: 'checkpoint_5_5',
+  checkpoint_8_5: 'checkpoint_8_5',
 }
 
 /**

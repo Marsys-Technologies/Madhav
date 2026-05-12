@@ -1,0 +1,293 @@
+{
+  "query_id": "11111111-2222-3333-4444-555555555555",
+  "query_text": "Forensic chart analysis test",
+  "total_latency_ms": 5250,
+  "query_plan": {
+    "query_class": "CHART_ANALYSIS",
+    "router_confidence": 0.92,
+    "expected_output_shape": "analytical",
+    "planning_rationale": "Selected analytical tools for forensic chart query",
+    "tools_authorized": [
+      "vector_search",
+      "cgm_graph_walk",
+      "chart_facts_query"
+    ]
+  },
+  "steps": [
+    {
+      "query_id": "11111111-2222-3333-4444-555555555555",
+      "step_seq": 1,
+      "step_name": "classify",
+      "step_type": "llm",
+      "status": "done",
+      "started_at": "2026-05-12T00:00:00.000Z",
+      "completed_at": "2026-05-12T00:00:00.250Z",
+      "latency_ms": 250,
+      "data_summary": {
+        "query_class": "CHART_ANALYSIS",
+        "confidence": 0.92,
+        "planning_confidence": 0.92
+      },
+      "payload": {
+        "query_plan": {
+          "query_class": "CHART_ANALYSIS",
+          "router_confidence": 0.92,
+          "expected_output_shape": "analytical",
+          "planning_rationale": "Selected analytical tools for forensic chart query",
+          "tools_authorized": [
+            "vector_search",
+            "cgm_graph_walk",
+            "chart_facts_query"
+          ]
+        },
+        "tool_calls": [
+          {
+            "tool_name": "vector_search",
+            "params": {
+              "q": "forensic"
+            },
+            "priority": 1,
+            "reason": "semantic"
+          },
+          {
+            "tool_name": "cgm_graph_walk",
+            "params": {},
+            "priority": 2,
+            "reason": "graph"
+          },
+          {
+            "tool_name": "chart_facts_query",
+            "params": {},
+            "priority": 3,
+            "reason": "facts"
+          }
+        ]
+      }
+    },
+    {
+      "query_id": "11111111-2222-3333-4444-555555555555",
+      "step_seq": 2,
+      "step_name": "compose_bundle",
+      "step_type": "deterministic",
+      "status": "done",
+      "started_at": "2026-05-12T00:00:00.250Z",
+      "completed_at": "2026-05-12T00:00:00.300Z",
+      "latency_ms": 50,
+      "data_summary": {
+        "result": "3 assets · 3 tools"
+      },
+      "payload": {}
+    },
+    {
+      "query_id": "11111111-2222-3333-4444-555555555555",
+      "step_seq": 3,
+      "step_name": "vector_search",
+      "step_type": "vector",
+      "status": "done",
+      "started_at": "2026-05-12T00:00:00.300Z",
+      "completed_at": "2026-05-12T00:00:00.700Z",
+      "latency_ms": 400,
+      "parallel_group": "tool_fetch",
+      "data_summary": {
+        "rows_returned": 20,
+        "token_estimate": 1800,
+        "top_score": 0.87,
+        "tool_name": "vector_search"
+      },
+      "payload": {}
+    },
+    {
+      "query_id": "11111111-2222-3333-4444-555555555555",
+      "step_seq": 4,
+      "step_name": "cgm_graph_walk",
+      "step_type": "sql",
+      "status": "done",
+      "started_at": "2026-05-12T00:00:00.300Z",
+      "completed_at": "2026-05-12T00:00:00.500Z",
+      "latency_ms": 200,
+      "parallel_group": "tool_fetch",
+      "data_summary": {
+        "rows_returned": 5,
+        "token_estimate": 600
+      },
+      "payload": {}
+    },
+    {
+      "query_id": "11111111-2222-3333-4444-555555555555",
+      "step_seq": 5,
+      "step_name": "chart_facts_query",
+      "step_type": "sql",
+      "status": "done",
+      "started_at": "2026-05-12T00:00:00.300Z",
+      "completed_at": "2026-05-12T00:00:00.450Z",
+      "latency_ms": 150,
+      "parallel_group": "tool_fetch",
+      "data_summary": {
+        "rows_returned": 18,
+        "token_estimate": 1200
+      },
+      "payload": {}
+    },
+    {
+      "query_id": "11111111-2222-3333-4444-555555555555",
+      "step_seq": 6,
+      "step_name": "synthesis",
+      "step_type": "llm",
+      "status": "done",
+      "started_at": "2026-05-12T00:00:00.700Z",
+      "completed_at": "2026-05-12T00:00:04.900Z",
+      "latency_ms": 4200,
+      "data_summary": {
+        "model": "gemini-2.5-pro",
+        "input_tokens": 14000,
+        "output_tokens": 1800,
+        "citation_count": 11,
+        "temperature": 0.3,
+        "provider": "google",
+        "output_shape_compliant": true,
+        "reasoning_path": false
+      },
+      "payload": {
+        "prompt_preview": "You are an acharya …"
+      }
+    }
+  ],
+  "grouped": {
+    "planner": {
+      "step_seq": 1,
+      "status": "done",
+      "latency_ms": 250,
+      "query_plan": {
+        "query_class": "CHART_ANALYSIS",
+        "router_confidence": 0.92,
+        "expected_output_shape": "analytical",
+        "planning_rationale": "Selected analytical tools for forensic chart query",
+        "tools_authorized": [
+          "vector_search",
+          "cgm_graph_walk",
+          "chart_facts_query"
+        ]
+      },
+      "tool_calls": [
+        {
+          "tool_name": "vector_search",
+          "params": {
+            "q": "forensic"
+          },
+          "priority": 1,
+          "reason": "semantic"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "priority": 2,
+          "reason": "graph"
+        },
+        {
+          "tool_name": "chart_facts_query",
+          "params": {},
+          "priority": 3,
+          "reason": "facts"
+        }
+      ],
+      "bundle_summary": "3 assets · 3 tools"
+    },
+    "retrieval": [
+      {
+        "tool_name": "vector_search",
+        "step_seq": 3,
+        "step_type": "vector",
+        "status": "done",
+        "latency_ms": 400,
+        "data_summary": {
+          "rows_returned": 20,
+          "token_estimate": 1800,
+          "top_score": 0.87,
+          "tool_name": "vector_search"
+        },
+        "payload": {}
+      },
+      {
+        "tool_name": "cgm_graph_walk",
+        "step_seq": 4,
+        "step_type": "sql",
+        "status": "done",
+        "latency_ms": 200,
+        "data_summary": {
+          "rows_returned": 5,
+          "token_estimate": 600
+        },
+        "payload": {}
+      },
+      {
+        "tool_name": "chart_facts_query",
+        "step_seq": 5,
+        "step_type": "sql",
+        "status": "done",
+        "latency_ms": 150,
+        "data_summary": {
+          "rows_returned": 18,
+          "token_estimate": 1200
+        },
+        "payload": {}
+      }
+    ],
+    "synthesis": {
+      "mode": "single_model",
+      "step_seq": 6,
+      "status": "done",
+      "latency_ms": 4200,
+      "model": "gemini-2.5-pro",
+      "input_tokens": 14000,
+      "output_tokens": 1800,
+      "citation_count": 11,
+      "provider": "google",
+      "reasoning_path": false,
+      "output_shape_compliant": true,
+      "temperature": 0.3,
+      "prompt_preview": "You are an acharya …",
+      "reasoning_trace": null,
+      "context_assembly_short_circuit": null
+    },
+    "audit": {
+      "audit_event_id": "ae-gate2-smoke",
+      "audit_event_version": 1,
+      "disclosure_tier": "super_admin",
+      "validator_verdict": "PASS",
+      "b10_compliant": true,
+      "b11_compliant": true,
+      "citation_gate": null,
+      "placeholder_note": null
+    },
+    "checkpoints": [
+      {
+        "stage": "checkpoint_4_5",
+        "enabled": null,
+        "ran": false,
+        "status": null,
+        "latency_ms": null,
+        "verdict": "SKIPPED",
+        "notes": "Checkpoint disabled or did not run"
+      },
+      {
+        "stage": "checkpoint_5_5",
+        "enabled": null,
+        "ran": false,
+        "status": null,
+        "latency_ms": null,
+        "verdict": "SKIPPED",
+        "notes": "Checkpoint disabled or did not run"
+      },
+      {
+        "stage": "checkpoint_8_5",
+        "enabled": null,
+        "ran": false,
+        "status": null,
+        "latency_ms": null,
+        "verdict": "SKIPPED",
+        "notes": "Checkpoint disabled or did not run"
+      }
+    ]
+  },
+  "partial": false
+}
