@@ -22726,3 +22726,77 @@ session_close:
 Execute **M5-D-S5**: AC.M5D.6 M5-D sub-phase sealing artifact; deferred items (AC.M5B.6, CF.M5C.5); M5-D → M5-E transition scope declaration.
 
 *End of M5-D-S4 entry — 2026-05-13.*
+
+---
+
+## M5-D-S5 — M5-D Sub-Phase Sealing Artifact
+
+```yaml
+session_open:
+  session_id: M5-D-S5
+  cowork_thread_name: "M5-D-S5 — M5-D Sub-Phase Sealing Artifact"
+  timestamp: 2026-05-13
+  active_macro_phase: M5
+  active_sub_phase: M5-D (OPEN → CLOSED this session)
+  last_session_id: M5-D-S4
+  red_team_counter_at_open: 0
+  session_class: sub_phase_close
+  scope: >
+    AC.M5D.6 M5-D sealing artifact (M5_D_CLOSE_v1_0.md). IS.8(b)-class in-document RT.
+    CURRENT_STATE v5.0→v5.1. SESSION_LOG append. MP.1+MP.2 mirror sync.
+```
+
+**Body:**
+
+- **AC.M5D.6 COMPLETE** — `06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md` v1.0 authored
+  and sealed. Six sections: §1 scope + session arc (5 sessions S1–S5); §2 AC ledger
+  (AC.M5D.1–6 PASS, AC.M5D.7 DEFERRED non-blocking, AC.M5D.8 COMPLETE; two phase-plan
+  ACs deferred to M5-E: Bayesian posterior framing + LL.8 activation); §3 IS.8(b)-class
+  in-document red-team PASS 8/8 axes; §4 NAP registry at M5-D close; §5 carry-forwards
+  to M5-E; §6 M5-D close seal.
+
+- **IS.8(b)-class red-team: PASS 8/8 axes.** RT.M5D.1 held-out sacrosanctness PASS;
+  RT.M5D.2 tolerance pre-declaration PASS; RT.M5D.3 PPL blinding (R.M5.7) PASS;
+  RT.M5D.4 B.10 no-fabrication PASS; RT.M5D.5 B.3 derivation ledger PASS; RT.M5D.6
+  mirror discipline PASS; RT.M5D.7 versioning discipline PASS; RT.M5D.8 scope compliance
+  PASS. 0 CRITICAL / 0 HIGH / 0 MEDIUM / 0 LOW. M5-D close gate CLEARED.
+
+- **CURRENT_STATE v5.0→v5.1.** M5-D CLOSED / M5-E INCOMING. next_session_objective
+  updated to M5-E-S1 (Bayesian framing + LL.8 activation + IS.8(b) macro RT + M5_CLOSE).
+
+- **red_team_counter: 0** (unchanged; sub-phase-close class per ONGOING_HYGIENE_POLICIES §G).
+
+```yaml
+session_close:
+  session_id: M5-D-S5
+  timestamp: 2026-05-13
+  session_class: sub_phase_close
+  deliverables_completed:
+    - AC.M5D.6: M5_D_CLOSE_v1_0.md COMPLETE (IS.8(b)-class RT PASS 8/8)
+    - AC.M5D.8: CURRENT_STATE v5.0→v5.1 COMPLETE (M5-D CLOSED / M5-E INCOMING)
+  red_team_result:
+    type: IS.8(b)-class sub-phase-close (in-document)
+    axes: 8
+    verdict: PASS
+    findings: 0 CRITICAL / 0 HIGH / 0 MEDIUM / 0 LOW
+    counter_rotation: "0 (unchanged; sub-phase-close class)"
+  current_state_updated: true
+  current_state_version: "5.1"
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 mirror: §F state block updated to M5-D-S5 close / M5-E INCOMING"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror: Active Phase block updated to M5-D CLOSED / M5-E INCOMING"
+  artifacts_modified:
+    - path: "06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md"
+      change: "NEW — M5-D sub-phase sealing artifact v1.0 CLOSED"
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      change: "v5.0→v5.1; M5-D CLOSED / M5-E INCOMING; next_session_objective rotated"
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      change: "M5-D-S5 entry appended"
+    - path: ".geminirules"
+      change: "MP.1 mirror update"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update"
+  session_close_valid: true
+```
