@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "mechanism": "LL.9",
+  "mechanism_label": "Counterfactual Learning from Misses — Registry",
+  "status": "STUB",
+  "activation_condition": "Populate at M6 open when first PPL miss is recorded and analyzed",
+  "spec_path": "06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md",
+  "produced_during": "M5-A-S1",
+  "produced_on": "2026-05-13",
+  "miss_threshold": "≥2σ contradiction OR explicit CONTRADICTED outcome on MED/HIGH confidence prediction",
+  "schema": {
+    "miss_entry": {
+      "miss_id": "string — sequential: MISS.001, MISS.002, ...",
+      "prediction_id": "string — PRED.NNN from prediction_ledger.jsonl",
+      "prediction_domain": "string — career | health | relationships | finance | spiritual | other",
+      "prediction_text": "string — verbatim from PPL claim_text",
+      "predicted_probability": "float (0.0–1.0)",
+      "predicted_uncertainty": "float (1σ)",
+      "predicted_confidence_tier": "HIGH | MED | LOW",
+      "outcome_observed": "string — what actually happened",
+      "outcome_recorded_at": "ISO 8601 timestamp",
+      "outcome_session": "string — session_id that recorded the outcome",
+      "miss_classification": "QUANTITATIVE (≥2σ) | QUALITATIVE (CONTRADICTED + MED/HIGH)",
+      "signal_chain": "array of MSR.NNN signal IDs active in the prediction",
+      "dbn_nodes_affected": "array of DBN node IDs from dbn_params_v1_0.json",
+      "hypotheses": {
+        "H1_signal_weight": {
+          "description": "string — which signal weight(s) may be incorrect",
+          "counterfactual_prediction": "float — what the model would have predicted with corrected weight",
+          "corrects_miss": "bool"
+        },
+        "H2_topology": {
+          "description": "string — which DBN edge or node may be missing/wrong",
+          "counterfactual_prediction": "float",
+          "corrects_miss": "bool"
+        },
+        "H3_prior": {
+          "description": "string — which prior specification may be too strong",
+          "counterfactual_prediction": "float",
+          "corrects_miss": "bool"
+        }
+      },
+      "recommended_action": "LL1_RECALIBRATION | LL2_REPROMOTION | TOPOLOGY_REVIEW | PRIOR_REVISION | NO_ACTION",
+      "recommended_action_target": "string — specific signal, edge, or prior to address",
+      "analysis_status": "PENDING | ANALYZED | ACTION_TAKEN",
+      "analysis_session": "string — session_id that performed counterfactual analysis",
+      "notes": "string"
+    }
+  },
+  "summary": {
+    "total_misses": 0,
+    "misses_pending_analysis": 0,
+    "misses_analyzed": 0,
+    "recommendations_pending": 0,
+    "recommendations_executed": 0
+  },
+  "entries": [],
+  "n1_disclaimer": "VALIDITY NOTICE: Miss analysis derives from a single native (n=1) corpus. Per MACRO_PLAN §3.5.A Principle 1 — n=1 validity disclaimer applies to all entries.",
+  "audit_trail": {
+    "stub_created_session": "M5-A-S1",
+    "stub_created_date": "2026-05-13",
+    "first_entry_session": null
+  }
+}

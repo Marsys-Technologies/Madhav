@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "mechanism": "LL.8",
+  "mechanism_label": "Bayesian Model Updating — Parameter Register",
+  "status": "STUB",
+  "activation_condition": "Populate at M5-D when dbn_params_v1_0.json exists and first PPL outcome arrives",
+  "spec_path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
+  "produced_during": "M5-A-S1",
+  "produced_on": "2026-05-13",
+  "kill_switch_id": "KS.LL8.1",
+  "kill_switch_threshold_ratio": 2.0,
+  "credible_interval_level": "80% (provisional — per NAP.M5.3 policy at M5-D close)",
+  "schema": {
+    "update_entry": {
+      "update_id": "string — sequential: UPD.LL8.001, UPD.LL8.002, ...",
+      "parameter_id": "string — references DBN parameter (e.g., node_id.edge_id from dbn_params_v1_0.json)",
+      "signal_ids_affected": "array of MSR.NNN signal IDs whose weights feed this parameter",
+      "triggering_prediction_id": "string — PRED.NNN from prediction_ledger.jsonl",
+      "triggering_ppl_outcome": "CONFIRMED | CONTRADICTED | PARTIAL",
+      "prior_value": "float",
+      "prior_CI_lower": "float",
+      "prior_CI_upper": "float",
+      "prior_CI_level": "float (0.80 default)",
+      "prior_CI_width": "float (prior_CI_upper - prior_CI_lower)",
+      "posterior_value": "float",
+      "posterior_CI_lower": "float",
+      "posterior_CI_upper": "float",
+      "posterior_CI_width": "float",
+      "update_ratio": "float (posterior_CI_width / prior_CI_width)",
+      "kill_switch_triggered": "bool — true if update_ratio > 2.0",
+      "update_status": "COMMITTED | SUSPENDED | PENDING_OVERWRITE",
+      "cascades_to_ll1": "array of MSR.NNN signal IDs if update cascades to LL.1 weights",
+      "update_session": "string — session_id that recorded the update",
+      "recorded_at": "ISO 8601 timestamp",
+      "native_override": "null | {approved_by_session, reason}",
+      "notes": "string"
+    }
+  },
+  "parameters": [],
+  "update_log": [],
+  "n1_disclaimer": "VALIDITY NOTICE: All parameters derive from a single native (n=1) life corpus. Per MACRO_PLAN §3.5.A Principle 1 — n=1 validity disclaimer applies to all entries.",
+  "audit_trail": {
+    "stub_created_session": "M5-A-S1",
+    "stub_created_date": "2026-05-13",
+    "first_population_session": null
+  }
+}

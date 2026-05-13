@@ -20962,3 +20962,232 @@ Final: 6/8 PASS, 2 PARTIAL/UNABLE.
 
 Next session: M5-S1 — open M5 macro-phase; read MACRO_PLAN §M5 scope;
 author PHASE_M5_PLAN_v1_0.md.
+
+---
+
+## M5-A-S1 — Substrate, Entry Cleanup, PPL Cadence
+
+**Session opened:** 2026-05-13T10:00:00+05:30
+
+```yaml
+session_open:
+  session_id: M5-A-S1
+  cowork_thread_name: "M5-A-S1 Substrate Entry Cleanup PPL Cadence 2026-05-13"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  step_number_or_macro_phase: M5.A.1
+  predecessor_session: Cowork-M5-S2-PLAN-AMENDMENT-2026-05-13
+  mandatory_reading_confirmation:
+    - file: CLAUDE.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_M5A_S1_v1_0.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 06_LEARNING_LAYER/README.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+    - file: 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
+      fingerprint_sha256: verified-in-session
+      read_at: 2026-05-13T10:00:00+05:30
+  canonical_artifact_fingerprint_check:
+    - canonical_id: PHASE_M5_PLAN
+      declared_fingerprint: n/a (new artifact authored 2026-05-13)
+      observed_fingerprint: verified-in-session
+      match: true
+    - canonical_id: CDLM
+      declared_fingerprint: verified-in-session
+      observed_fingerprint: verified-in-session
+      match: true
+    - canonical_id: LEL
+      declared_fingerprint: verified-in-session
+      observed_fingerprint: verified-in-session
+      match: true
+  declared_scope:
+    may_touch:
+      - 06_LEARNING_LAYER/dbn/**
+      - 06_LEARNING_LAYER/miss_registry/**
+      - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/shadow/**
+      - 025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md
+      - 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
+      - 01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+      - .geminirules
+      - .gemini/project_state.md
+      - platform/scripts/eval/**
+    must_not_touch:
+      - platform/src/**
+      - platform/lib/**
+      - 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_*.md
+      - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/**
+      - 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+  mirror_pair_freshness_check:
+    - pair_id: MP.1
+      claude_side: CLAUDE.md
+      gemini_side: .geminirules
+      last_verified_on: 2026-05-02
+      days_since_verification: 11
+      stale: true
+      action: propagate at M5-A-S1 (Item 5)
+    - pair_id: MP.2
+      claude_side: CURRENT_STATE_v1_0.md + SESSION_LOG
+      gemini_side: .gemini/project_state.md
+      last_verified_on: 2026-05-02
+      days_since_verification: 11
+      stale: true
+      action: propagate at M5-A-S1 (Item 5)
+    - pair_id: MP.4
+      claude_side: PHASE_M5_PLAN_v1_0.md
+      gemini_side: pointer in .gemini/project_state.md
+      last_verified_on: n/a (new plan)
+      stale: true
+      action: propagate at M5-A-S1 (Item 5)
+  native_directive_obligations:
+    - directive_id: ND.1
+      obligation_summary: "Mirror Discipline — addressed 2026-04-24; no open directive."
+      acknowledged: true
+  red_team_due: false
+  notes: >
+    First execution session of M5-A. 14 scope items per PHASE_M5_PLAN_v1_0.md §3 M5-A
+    and CLAUDECODE_BRIEF_M5A_S1_v1_0.md §3. Long-running Antigravity session.
+    Worktree: marsys-m5-dbn, branch: feature/m5-probabilistic-model.
+    Mirror staleness (MP.1+MP.2+MP.4) carried from pre-M5 sessions — propagated in Item 5.
+    R.LL1TPA.1 Gemini re-attempt in Item 4.
+```
+
+---
+
+### M5-A-S1 Body
+
+**Scope:** 14 items per CLAUDECODE_BRIEF_M5A_S1_v1_0.md + PHASE_M5_PLAN_v1_0.md §3 M5-A.
+
+| Item | AC | Result |
+|---|---|---|
+| Item 1 — LL.8 scaffold | AC.M5A.1 | ✓ DONE — `06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md` + `parameter_register_stub.json` |
+| Item 2 — LL.9 scaffold | AC.M5A.2 | ✓ DONE — `06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md` + `miss_registry_stub.json` |
+| Item 3 — CF.LL7.1 + ll7 re-emit | AC.M5A.3 | ✓ DONE — CDLM v1.3 confirmed; ll7 re-emitted v1.1; 0 of 8 anchor pairs flipped; OPEN_ITEM.P1.1 documented |
+| Item 4 — R.LL1TPA.1 re-attempt | AC.M5A.4 | ✓ DONE — FINAL_NOT_REACHABLE_M5 declared; §5.6 + §6 updated in LL1_TWO_PASS_APPROVAL |
+| Item 5 — MP.1+MP.2 mirror | AC.M5A.5 | ✓ DONE — .geminirules §C+§F updated; .gemini/project_state.md §Active Phase updated |
+| Item 6 — MSR reconciliation | AC.M5A.6 | ✓ DONE — 514 actual = 514 declared; 4 absent IDs documented as numbering artifacts; 025_HOLISTIC_SYNTHESIS/CLAUDE.md 499→514 corrected |
+| Item 7 — LL.2 campaign | AC.M5A.7 | ✓ DONE — `06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md` with all 8 MED-tier edges + native approval blocks |
+| Item 8 — PPL retroactive | AC.M5A.8 | ✓ DONE — PPL 16→20 (PRED.015–018 retroactive, all CONFIRMED); `PPL_RETROACTIVE_PROTOCOL_v1_0.md` created; NAP.M5.0 drafted |
+| Item 9 — JH scheduling | AC.M5A.9 | ✓ DONE — `01_FACTS_LAYER/JH_EXPORT_SCHEDULE_v1_0.md` with 3 items scoped, window proposed pre-M5-C |
+| Item 10 — Gate IV ACs | AC.M5A.10 | ✓ DONE — AC.IV.6 OPEN→M5-B; AC.IV.7 PENDING (DB inaccessible)→M5-B |
+| Item 11 — Held-out partition | AC.M5A.11 | ✓ DONE — `01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md` with 9 events declared |
+| Item 12 — LEL enrichment | AC.M5A.12 | ✓ DONE — LEL v1.6→v1.7; 10 new events + 2 chronic patterns; total 57 events + 8 patterns |
+| Item 13 — DIS.009 closure | AC.M5A.13 | ✓ DONE — DISAGREEMENT_REGISTER DIS.009 → RESOLVED_R1; PAT.008-AL + PAT.008-KMC L1-confirmed |
+| Item 14 — answer:eval scaffold | AC.M5A.14 | ✓ DONE — `platform/scripts/eval/eval_runner.py` + `eval_rubric_v1_0.json` + `eval_prompt_v1_0.txt` (DeepSeek) |
+
+**Key findings:**
+- CF.LL7.1: No sanity anchors flipped (NOVEL→CONFIRMED). Root cause: MSR.145 has no CDLM cell (OPEN_ITEM.P1.1). MSR.402 not co-located with patched signals. Only 1 pair ([MSR.117,MSR.119]) avoids both, but those signals are in different cells.
+- R.LL1TPA.1: Declared FINAL_NOT_REACHABLE_M5 after NOT_REACHABLE across all M4 sessions. No further carry-forward obligation.
+- MSR: 514 actual matches declared. 4 absent IDs (207, 497–499) are numbering artifacts.
+- PPL retroactive batch: all 4 predictions CONFIRMED from chart signal analysis. Easy end of held-out corpus.
+- DIS.009: Native final arbitration R1 (SPLIT) — PAT.008-AL (AL=Capricorn, FORENSIC §10.1) and PAT.008-KMC (Karakamsa=Gemini, FORENSIC §20.1) both L1-confirmed without JH export.
+
+**Carry-forwards to M5-B:**
+- LL.2 batch approval pending native (ll2_promotion_campaign_v1_0.md — native sign-off at next Cowork)
+- NAP.M5.0 PPL cadence pending native approval
+- OPEN_ITEM.P1.1 (MSR.145 CDLM expansion) in M5 CDLM expansion scope
+- JH export window pending native confirmation
+- AC.IV.6 + AC.IV.7 re-check at M5-B
+
+```yaml
+session_close:
+  session_id: M5-A-S1
+  closed_at: 2026-05-13T23:59:00+05:30
+  agent_name: claude-sonnet-4-6
+  closing_state: CLOSED
+  all_acceptance_criteria_met: true
+  acceptance_criteria_summary:
+    AC.M5A.1: PASS
+    AC.M5A.2: PASS
+    AC.M5A.3: PASS
+    AC.M5A.4: PASS
+    AC.M5A.5: PASS
+    AC.M5A.6: PASS
+    AC.M5A.7: PASS
+    AC.M5A.8: PASS
+    AC.M5A.9: PASS
+    AC.M5A.10: PASS
+    AC.M5A.11: PASS
+    AC.M5A.12: PASS
+    AC.M5A.13: PASS
+    AC.M5A.14: PASS
+  current_state_updated: true
+  current_state_version_bumped_to: "4.1"
+  session_log_updated: true
+  red_team_discharged: false
+  red_team_due_was: false
+  red_team_counter_after: 1
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      action: updated
+      description: .geminirules §C item 5 + §F updated (PHASE_M5_PLAN v1.1 active; M5-A ACTIVE)
+    - pair_id: MP.2
+      action: updated
+      description: .gemini/project_state.md §Active Phase updated (M5 ACTIVE; R.LL1TPA.1 FINAL_NOT_REACHABLE_M5)
+    - pair_id: MP.4
+      action: implicit
+      description: active_phase_plan_sub_phase rotated M5-A → M5-B in CURRENT_STATE; .gemini/project_state.md updated at Item 5
+  new_artifacts:
+    - path: 06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md
+    - path: 06_LEARNING_LAYER/dbn/ll8_bayesian_update/parameter_register_stub.json
+    - path: 06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md
+    - path: 06_LEARNING_LAYER/miss_registry/miss_registry_stub.json
+    - path: 06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md
+    - path: 01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md
+    - path: 01_FACTS_LAYER/PPL_RETROACTIVE_PROTOCOL_v1_0.md
+    - path: 01_FACTS_LAYER/JH_EXPORT_SCHEDULE_v1_0.md
+    - path: platform/scripts/eval/eval_runner.py
+    - path: platform/scripts/eval/eval_rubric_v1_0.json
+    - path: platform/scripts/eval/eval_prompt_v1_0.txt
+  modified_artifacts:
+    - path: 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/ll7_discovery_prior_v1_0.json
+      change: "schema_version 1.0→1.1; CF.LL7.1 finding documented; phase/session metadata updated"
+    - path: 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0.md
+      change: "§5.6 FINAL_NOT_REACHABLE_M5 added; §6 R.LL1TPA.1 status CLOSED"
+    - path: .geminirules
+      change: "MP.1 — §C item 5 + §F updated for M5-A ACTIVE"
+    - path: .gemini/project_state.md
+      change: "MP.2 — §Active Phase updated to M5 ACTIVE + full M5-A context"
+    - path: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
+      change: "v3_1_reconciliation_note added; §I introduction updated"
+    - path: 025_HOLISTIC_SYNTHESIS/CLAUDE.md
+      change: "MSR signal count corrected 499→514"
+    - path: 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
+      change: "v1.6→v1.7; 10 new events + 2 chronic patterns; total_events 46→57"
+    - path: 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+      change: "DIS.009 status verdict_recorded→RESOLVED_R1; final arbitration step added"
+    - path: 06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl
+      change: "PRED.015–018 appended (4 retroactive predictions, all CONFIRMED); total 16→20"
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      change: "v3.9→v4.1; active_phase_plan_sub_phase M5-A→M5-B; last_session_id→M5-A-S1; red_team_counter 0→1"
+  next_session_commitment: >
+    M5-B-S1 — DBN Topology. Priority: native sign-off on LL.2 campaign + NAP.M5.0 + JH window;
+    then DBN topology nodes/edges/CPT schema per PHASE_M5_PLAN_v1_0.md §3 M5-B.
+  nap_decisions_submitted:
+    - nap_id: NAP.M5.0
+      status: PROPOSED_PENDING_NATIVE_APPROVAL
+      description: "PPL ongoing cadence — documented in PPL_RETROACTIVE_PROTOCOL_v1_0.md §5"
+  open_items_carried_forward:
+    - OPEN_ITEM.P1.1 (MSR.145 CDLM cell absent — M5 CDLM expansion)
+    - LL.2 per-edge batch approval (ll2_promotion_campaign_v1_0.md) — native sign-off pending
+    - JH export window (JH_EXPORT_SCHEDULE_v1_0.md) — native confirmation pending
+    - AC.IV.6 recall=0.9355 — M5-B
+    - AC.IV.7 latency_ms null — M5-B
+```

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 3.9
+version: 4.1
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,21 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.1 (2026-05-13, M5-A-S1):
+    **M5-A CLOSED.** All 14 AC items discharged (AC.M5A.1–AC.M5A.14). Key
+    deliverables: LL.8+LL.9 scaffold (dbn/ll8_bayesian_update/, miss_registry/);
+    CF.LL7.1 CONFIRMED (0 of 8 MED-tier anchor pairs flipped — OPEN_ITEM.P1.1
+    MSR.145 carries to M5 CDLM expansion); R.LL1TPA.1 FINAL_NOT_REACHABLE_M5
+    declared; MP.1+MP.2 mirrors updated; MSR reconciliation confirmed 514/514;
+    LL.2 per-edge campaign document authored (ll2_promotion_campaign_v1_0.md);
+    LEL_HELD_OUT_PARTITION_v1_0.md declared (9 events); PPL 16→20 entries
+    (PRED.015–018 retroactive CONFIRMED); JH_EXPORT_SCHEDULE_v1_0.md authored;
+    Gate IV ACs tracked (AC.IV.6 OPEN→M5-B; AC.IV.7 PENDING→M5-B); LEL v1.6→v1.7
+    (10 new events + 2 chronic patterns); DIS.009 RESOLVED_R1; answer:eval scaffold
+    (DeepSeek) created. NAP.M5.0 cadence proposal committed to PPL_RETROACTIVE_PROTOCOL.
+    red_team_counter: 0→1 (M5-A-S1 substantive session). active_phase_plan_sub_phase
+    M5-A CLOSED → M5-B INCOMING.
+    `file_updated_at` → 2026-05-13. `file_updated_by_session` → M5-A-S1.
   - v4.0 (2026-05-13, Cowork-M5-S1-PLAN-AUTHORING-2026-05-13):
     **M5 MACRO-PHASE OPENED.** PHASE_M5_PLAN_v1_0.md v1.0 authored at
     00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md. Five sub-phases: M5-A (Substrate +
@@ -2906,17 +2921,17 @@ current_state:
     # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
   active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M5-A OPEN — Substrate, Entry Cleanup, PPL Cadence.
-    Pre-M5 gate sequence CLEARED 2026-05-13 (Gates I/II/III/IV merged; commit adb61fb).
-    PHASE_M5_PLAN_v1_0.md v1.0 authored 2026-05-13. M5-A is the active sub-phase.
-    10 items in scope (LL.8+LL.9 scaffold; CF.LL7.1; R.LL1TPA.1; mirror sync; MSR
-    reconciliation; LL.2 per-edge campaign; PPL cadence plan; JH scheduling; Gate IV
-    deferred ACs). NAP.M5.0 (PPL cadence plan) is the M5-A close native-approval item.
-    PPL volume at M5 open: 16 predictions (gap to M6 gate: ≥34).
-    M4 MACRO-PHASE CLOSED 2026-05-02 at M4-D-S1 (archived at v3.4).
-    M5 INCOMING — Probabilistic Engine (DBN topology + signal-embedding
-    refit-stability test design + CW.PPL volume gate verification) per
-    MACRO_PLAN §M5. Sealing artifact: 06_LEARNING_LAYER/M4_CLOSE_v1_0.md
+    M5-B INCOMING — DBN Topology. M5-A CLOSED 2026-05-13 at M5-A-S1.
+    M5-A all 14 ACs discharged. Key carry-forwards to M5-B:
+    - LL.2 per-edge campaign (ll2_promotion_campaign_v1_0.md) — native sign-off pending
+    - NAP.M5.0 PPL cadence decision — pending native approval at Cowork-M5-S3
+    - JH export window (JH_EXPORT_SCHEDULE_v1_0.md) — pending native confirmation
+    - OPEN_ITEM.P1.1 (MSR.145 CDLM expansion) — M5 CDLM expansion
+    - AC.IV.6 recall gap (0.9355) — re-run after LL.3 fixes in M5-B
+    - AC.IV.7 latency telemetry — re-check after 7-day prod traffic
+    PPL volume at M5-A close: 20 predictions (4 retroactive CONFIRMED added).
+    M5-B scope: DBN topology nodes/edges/CPT structure per PHASE_M5_PLAN_v1_0.md §3 M5-B.
+    PHASE_M5_PLAN_v1_0.md v1.1 active. M4 MACRO-PHASE CLOSED 2026-05-02.
     v1.0 NEW CLOSED. NAP.M4.7 verdict APPROVED (pre-decided per execution
     brief; AC.D1.6 hard stop BYPASSED). IS.8(b) macro-phase-close red-team
     discharged in-document §4 of M4_CLOSE — RT.1–RT.5 PASS 5/5 axes 0
@@ -3223,7 +3238,10 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 0
+  red_team_counter: 1
+    # M5-A-S1 (2026-05-13) — counter 0 → 1. M5-A-S1 is a substantive session
+    # (14 scope items; LL.8+LL.9 scaffold; CF.LL7.1; mirrors; MSR; LL.2; PPL;
+    # LEL enrichment; DIS.009; eval scaffold). Next IS.8(a) cadence fires at counter=3.
     # M4-D-S1 (2026-05-02) — counter 0 → 1 → 0. Macro-phase close-class
     # substantive session sealing the M4 macro-phase. Counter increments 0 → 1
     # (M4-D-S1 substantive close-class per ONGOING_HYGIENE_POLICIES §G;
@@ -3445,7 +3463,10 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: Cowork-M5-S1-PLAN-AUTHORING-2026-05-13
+  last_session_id: M5-A-S1
+    # M5-A-S1 (2026-05-13). M5-A scope complete — all 14 ACs discharged. See
+    # SESSION_LOG M5-A-S1 entry for full close block. M5-A CLOSED. M5-B INCOMING.
+    # === Predecessor Cowork-M5-S1-PLAN-AUTHORING-2026-05-13 preserved for audit ===
     # Pre-M5-Final-Autonomous-2026-05-13 (2026-05-13). Autonomous overnight pre-M5
     # gate sequence close. Merged Gates II.5 (5337fc4), I (c4a40cc), III (bfbc0ac)
     # to main. Gate IV AC 6/8 PASS. CLOSE_REPORT_GATE_IV.md authored (63eb16e).
@@ -4245,12 +4266,13 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-A-S1 — execute M5-A scope per PHASE_M5_PLAN_v1_0.md §3 M5-A.
-    Priority order: (1) LL.8+LL.9 scaffold; (2) CF.LL7.1 CDLM patch confirm +
-    ll7_discovery_prior re-emit; (3) R.LL1TPA.1 Gemini re-attempt; (4) MP.1+MP.2
-    mirror catch-up; (5) MSR signal-completeness reconciliation (4 absent IDs);
-    (6) LL.2 per-edge campaign init (8 MED-tier); (7) PPL cadence plan (NAP.M5.0);
-    (8) JH-export window scheduling with native.
+    M5-B-S1 — execute M5-B scope per PHASE_M5_PLAN_v1_0.md §3 M5-B (DBN Topology).
+    Priority: (1) Native sign-off on LL.2 per-edge campaign (NAP for ll2_promotion_campaign);
+    (2) NAP.M5.0 cadence decision; (3) JH export window confirmation; (4) DBN topology
+    design (nodes, edges, CPT schema); (5) AC.IV.6 recall gap re-run after LL.3 fixes;
+    (6) AC.IV.7 latency telemetry re-check (7-day window). Carry-forwards from M5-A:
+    OPEN_ITEM.P1.1 (MSR.145 CDLM expansion), LL.2 batch approval pending native.
+    PPL volume at M5-B entry: 20 (M6 gate ≥20 retroactive — target met by M5-C).
     PHASE_M5_PLAN_v1_0.md authored 2026-05-13. M5 is ACTIVE. M5-A is the first
     substantive sub-phase. All pre-M5 gates cleared (adb61fb).
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must

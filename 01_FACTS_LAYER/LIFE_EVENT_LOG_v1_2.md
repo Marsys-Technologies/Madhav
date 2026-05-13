@@ -3,9 +3,9 @@ document: LIFE EVENT LOG — ABHISEK MOHANTY
 project: MARSYS-JIS (Abhisek Mohanty Jyotish Intelligence System)
 layer: L1 (Facts Layer)
 artifact_id: LIFE_EVENT_LOG_v1_2
-version: 1.6
+version: 1.7
 canonical_id: LEL
-status: CLOSED (Session 4 — chart_state fields populated from Swiss Ephemeris tooling; see `.tools/` scripts. v1.4: 11 v1.3 pending_computation events advanced to computed state via M4-A-T1-SWISS-EPHEMERIS pass. v1.5: §9 PPL migration annotations added. v1.6: GAP.M4A.04 partial close — EVT.2019.05.XX.01 + EVT.2023.05.XX.01 dual-tagged residential+travel per NAP.M4.2 native disposition.)
+status: CLOSED (Session 4 — chart_state fields populated from Swiss Ephemeris tooling; see `.tools/` scripts. v1.4: 11 v1.3 pending_computation events advanced to computed state via M4-A-T1-SWISS-EPHEMERIS pass. v1.5: §9 PPL migration annotations added. v1.6: GAP.M4A.04 partial close — EVT.2019.05.XX.01 + EVT.2023.05.XX.01 dual-tagged residential+travel per NAP.M4.2 native disposition. v1.7: M5-A-S1 enrichment — 10 new events + 2 chronic patterns added from native Cowork-M5-S2 disclosure.)
 supersedes: v1.1 (same-corpus, chart-state-populated)
 author: Claude (Session 2, Claude Code instance)
 date_built: 2026-04-17
@@ -18,13 +18,21 @@ chart_state_sources:
   sade_sati: SADE_SATI_CYCLES_ALL.md + FORENSIC_ASTROLOGICAL_DATA_v8_0.md §21
   transits_eclipses_retrograde_ashtakavarga: Swiss Ephemeris self-compute (Session 4) — per-event blocks in this file + EVENT_CHART_STATES_v1_0.md; optional JH cross-check via EXTERNAL_COMPUTATION_SPEC
 retrodictive_signal_source: DEEP_ANALYSIS_Abhisek_Mohanty_v1 (v1.2.1) §D.0.F (SIG.01-15, CVG.01-08, CTR.01-07)
-total_events_logged: 46 (35 original + 11 added v1.3; v1.4 advanced all 11 pending events to computed state via Swiss Ephemeris) + 5 period summaries + 6 chronic patterns
+total_events_logged: 57 (46 prior + 10 new at M5-A-S1; EVT.CURRENT.01 not counted as a point event) + 5 period summaries + 8 chronic patterns (6 prior + 2 added M5-A-S1)
 confidence_self_assessment: 0.89 (v1.2 populates transits, eclipses, retrograde, Ashtakavarga via Swiss Ephemeris pipelines. Native JH spot-check remains optional.)
 next_steps:
   - Optional v1.3: Promote eclipse/transit evidence from chart_state into each event's signals_that_matched lists (SESSION_LOG red-team note)
   - Future: Expand toward 75-100 events; drain §6 gap register
   - Future (v2.0): Pattern Library (RPT.LFE.01) when Deep Analysis v2.0 exists
 changelog:
+  - v1.7 (2026-05-13, M5-A-S1): Domain enrichment batch — 10 new events added to §3 Era M5A
+    Enrichment section (EVT.1993.XX.XX.01 CRE.A, EVT.1995.XX.XX.02 PSY.B, EVT.1998.XX.XX.02
+    SPR.A, EVT.2002.XX.XX.01 PSY.A, EVT.2002.XX.XX.02 SPR.B, EVT.2010.XX.XX.02 SPR.C,
+    EVT.2015.XX.XX.01 SPR.D, EVT.2024.XX.XX.01 SPR.E, EVT.2025.06.XX.01 SPR.F,
+    EVT.2025.11.XX.01 SPR.G). 2 chronic patterns added to §4 (PATTERN.COCKROACH_PHOBIA.01,
+    PATTERN.MANASA_PUJA.01). Chart states marked pending_computation (year/month proxy);
+    Swiss Ephemeris pass deferred to M5-B. Events approved by native Cowork-M5-S2
+    (2026-05-13). Total events 47→57; chronic patterns 6→8. AC.M5A.12 discharged.
   - v1.6 (2026-05-02, M4-A-CLOSE-LEL-PATCH): GAP.M4A.04 partial close —
     EVT.2019.05.XX.01 (US move, May 2019) and EVT.2023.05.XX.01 (India return,
     May 2023) dual-tagged `residential+travel` per NAP.M4.2 native disposition
@@ -1575,6 +1583,302 @@ EVT.CURRENT.01:
   notes: Ongoing state. To be updated with trajectory as v1.1+ evolves.
 ```
 
+### Era M5A Enrichment — Spiritual, Creative, Psychological (M5-A-S1 additions, 2026-05-13)
+
+*10 events approved by native in Cowork session 2026-05-13. Inserted at end of §3 for this session; should be merged into appropriate era sections in a future maintenance pass. Chart states marked `pending_computation` where year-approx; proxy dates used per established convention.*
+
+```yaml
+EVT.1993.XX.XX.01:
+  date: 1993-XX-XX
+  date_confidence: year-approx
+  category: creative
+  subcategory: award
+  description: Mother enrolled native in painting classes at early age; native excelled and won multiple awards in childhood painting competitions. Creative visual skill established early. Subsequently moved away from painting; creative output shifted to digital/professional domains (presentations, brand design). The visual-spatial gift persisted as a latent trait activated selectively in professional/entrepreneurial contexts.
+  magnitude: moderate
+  valence: positive
+  native_reflection: "At an early age my mother had put me to learn painting and I was pretty good at it. I won several awards in my childhood in painting competitions."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 1993-07-01
+    vimshottari:
+      maha_dasha: Saturn (approx 1991-08 to 2010-08)
+      antar_dasha: Saturn AD (approx 1991-08 to 1994-10)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: null (Cycle 1 approach — Sade Sati C1 peak approx 1995-1998)
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [SIG.MSR.002 substrate (Venus/creativity), Mercury-Saturn spine early activation]
+    signals_that_missed: []
+    retrodictive_reasoning: Creative ability surfacing under Saturn-Saturn AD (Saturn = discipline + structure) with Mercury's Vargottama creativity substrate.
+  notes: "CRE.A from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.1995.XX.XX.02:
+  date: 1995-XX-XX
+  date_confidence: year-approx
+  category: psychological
+  subcategory: speech_pattern_arc
+  description: Stammering onset in childhood (anchor: ~1995, school years). Three-phase arc: Phase 1 (childhood ~1995–2006): significant stammering; nickname 'sacca' given by friend. Phase 2 (engineering/MBA ~2007–2024): sustained practice substantially overcame it — contemporaries unaware native stammered. Phase 3 (resurgence ~2025–present): stammering has resurfaced after approximately one year; diagnosis unknown (psychological, neural, or genetic). Native manages but carries psychological impact. NOTE: three phases described; this EVT anchors the onset; phases 2+3 can be split into separate EVTs if warranted.
+  magnitude: moderate
+  valence: negative (phases 1+3); positive (phase 2 overcome)
+  native_reflection: "In my childhood I used to stammer quite a bit. I practiced a lot and during my engineering days and my MBA days I significantly got over it... That stammering has resurfaced over the last one year and I'm struggling with it."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 1995-06-01
+    vimshottari:
+      maha_dasha: Saturn (approx 1991-08 to 2010-08)
+      antar_dasha: Mercury AD (approx 1994-10 to 1997-07)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: Cycle1_approx_approach (Sade Sati C1 peak ~1995-1998)
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [Mercury natal placement (speech), Saturn-Mercury dasha spine activating speech domain]
+    signals_that_missed: []
+    retrodictive_reasoning: Mercury AD under Saturn MD — Mercury governs speech; Saturn as dominant MD brings discipline/restraint to Mercury domains including speech fluency.
+  notes: "PSY.B from M5-A-S1 enrichment batch. PATTERN.STAMMER.01 in §4 captures the ongoing pattern; this EVT captures the onset anchor."
+```
+
+```yaml
+EVT.1998.XX.XX.02:
+  date: 1998-XX-XX
+  date_confidence: year-approx
+  category: spiritual
+  subcategory: transmission
+  description: Father (Late Shri Soumya Ranjan Mohanty) held late-night spiritual dialogues with close friends; native joined in limited capacity during teens (~1997–2001). These conversations planted the seed of spirituality. Father's approach intermingled Hinduism and spirituality — became the native's foundational spiritual orientation. Astrologically significant: father as transmitter of Saturn-discipline (Saturn rules native's Arudha Lagna, Capricorn, 10H).
+  magnitude: significant
+  valence: positive
+  native_reflection: "My father was a very spiritual person. I would join late night conversation between my father and one or two specific friends of his who might be staying over in these spiritual conversations in a limited way."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 1998-07-01
+    vimshottari:
+      maha_dasha: Saturn (approx 1991-08 to 2010-08)
+      antar_dasha: Ketu AD (approx 1997-07 to 1998-08) or Venus AD onset (1998-08)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: Cycle1_approx_end (Sade Sati C1 declining, Saturn leaving Aries ~1998-1999)
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [Saturn Arudha Lagna Capricorn (10H) — father as transmitter of Saturn-dharma; 9H Jupiter (spiritual wisdom domain)]
+    signals_that_missed: []
+    retrodictive_reasoning: Saturn-Ketu AD under Saturn MD — Ketu = moksha, spiritual withdrawal, transmission from beyond the mundane. Father's late-night transmissions fit Ketu's domain of subtle, non-material learning.
+  notes: "SPR.A from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2002.XX.XX.01:
+  date: 2002-XX-XX
+  date_confidence: year-approx
+  category: psychological
+  subcategory: chronic_episode
+  description: Inherited vertigo/head reeling (maternal line — mother and maternal grandmother both affected) reached peak debilitation during engineering competitive exam preparation (~2001–2004). Bouts were described as 'debilitating' and directly impacted academic performance. The fear of recurrence persisted for approximately one decade. Onset likely earlier (teen years); peak impact on career trajectory was during exam prep.
+  magnitude: significant
+  valence: negative
+  native_reflection: "The period between 2001 to 2004 especially 2001 to 2002 when I was preparing for my competitive exams, engineering exams. I was hit hard by vertigo and that left a deep mark, psychological mark and I've feared it with all my life for close to a decade."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2002-07-01
+    vimshottari:
+      maha_dasha: Saturn (approx 1991-08 to 2010-08)
+      antar_dasha: Sun AD (approx 2001-10 to 2002-10)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: null (between Cycle 1 and Cycle 2)
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [Aries Lagna (head vulnerability), Saturn-Sun AD (sun governs vitality; Saturn-Sun dasha = vitality restriction under exam-preparation pressure)]
+    signals_that_missed: []
+    retrodictive_reasoning: Saturn-Sun AD — Sun as 5H lord (intelligence/education) under Saturn's restraint. Health disruption to head (Aries Lagna) during exam preparation is consistent with Saturn-Sun dasha adversity pattern.
+  notes: "PSY.A from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2002.XX.XX.02:
+  date: 2002-XX-XX
+  date_confidence: year-approx
+  category: spiritual
+  subcategory: sadhana_initiation
+  description: Father instructed native (age ~18–19) to perform Shani Puja nightly. Native read Shani Shtotram every night for approximately 7–10 years. This became the first formal sustained sadhana practice. Father as transmitter of Saturn-discipline is astrologically significant: Saturn rules native's Arudha Lagna (Capricorn, 10th house). Shani Puja directly invokes the chart's most powerful planet — a father-directed dharma initiation.
+  magnitude: significant
+  valence: positive
+  native_reflection: "My father asked me to do Shani Puja. So every night I used to read Shani Shtotram for a good seven, eight years or ten years."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2002-07-01
+    vimshottari:
+      maha_dasha: Saturn (approx 1991-08 to 2010-08)
+      antar_dasha: Sun AD (approx 2001-10 to 2002-10)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: null
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: yes
+    signals_that_matched: [SIG.MSR.001 (Sasha — Saturn exalted, Arudha Lagna Capricorn = Saturn domain), Saturn MD prime (strongest possible MD-lord alignment for Shani worship)]
+    signals_that_missed: []
+    retrodictive_reasoning: Initiating Shani Puja during Saturn MD under paternal instruction is structurally predicted by Saturn's architectural dominance in this chart. Saturn-Sun AD = Saturn invoked directly under Sun (father signification) sub-period.
+  notes: "SPR.B from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2010.XX.XX.02:
+  date: 2010-XX-XX
+  date_confidence: year-approx
+  category: spiritual
+  subcategory: devata_adoption
+  description: Began regular devotion to Maa Ugratara at the Ugratara Shakti pitha near Bhubaneswar (~15 years running as of 2026). A tantric Shakti form. This is the native's longest-sustained single devata relationship. Commenced during mid-to-late twenties (Mercury MD transition coincides). Ugratara = fierce, solar, transformative Shakti — astrologically aligned with this chart's Aries Lagna + Saturn-Venus axis.
+  magnitude: significant
+  valence: positive
+  native_reflection: "During my mid-twenties and until today, I became a devout devotee of Mah Ugratara. Near to Bhubaneswar, there is a Ugratara Shakti peat, which I have been visiting for the last ten years or more, close to about fifteen years."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2010-07-01
+    vimshottari:
+      maha_dasha: Mercury transition (Mercury MD starts 2010-08-18 — this event is right at the Saturn-to-Mercury MD boundary)
+      antar_dasha: Saturn MD ending / Mercury MD starting (boundary event)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: null
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [Saturn-Venus Parivartana (SIG.MSR.145) — Venus rules Shakti domain; Ketu in 8H Scorpio = tantric/moksha substrate; Mercury MD transition = new experiential chapter]
+    signals_that_missed: []
+    retrodictive_reasoning: Ugratara (fierce Shakti) adoption at the Saturn→Mercury MD boundary is structurally significant — the conclusion of Saturn's long MD catalyzes a new devata adoption as Mercury's domains open. Ketu-8H tantric disposition aligns with fierce/transformative deity adoption.
+  notes: "SPR.C from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2015.XX.XX.01:
+  date: 2015-XX-XX
+  date_confidence: year-approx
+  category: spiritual
+  subcategory: devata_adoption
+  description: In early thirties (~2014–2016), native began gravitating toward Mahadev/Shiva. This deepened over the following decade to the point of daily abhisheka (see EVT.2024.XX.XX.01). Concurrent with Ugratara devotion; no conflict perceived until Krishna re-emerged. Shiva = Mahadeva, primordial; astrologically associated with Saturn, Ketu, moksha themes — all strongly placed in this chart.
+  magnitude: significant
+  valence: positive
+  native_reflection: "In my early thirties I started gravitating towards Mahadev or Shiv, and until today, I am a devout devotee of Mahadev."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2015-07-01
+    vimshottari:
+      maha_dasha: Mercury (2010-08-18 to 2027-08-19)
+      antar_dasha: Rahu AD (approx 2013-04 to 2015-10) or Jupiter AD onset (2015-10)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: null
+    transits_of_note: pending_computation
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [Ketu in 8H Scorpio (moksha/spiritual transformation substrate), Saturn exalted 7H (Shiva as Saturn-archetype resonance), Mercury-Rahu AD themes of expansion into non-ordinary domains]
+    signals_that_missed: []
+    retrodictive_reasoning: Shiva adoption under Mercury MD / Rahu AD (or Mercury-Jupiter AD boundary) is consistent with Rahu's amplification of unconventional or tantric spiritual channels. Ketu-8H = direct moksha pull toward Shiva's domain.
+  notes: "SPR.D from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2024.XX.XX.01:
+  date: 2024-XX-XX
+  date_confidence: year-approx
+  category: spiritual
+  subcategory: practice_intensification
+  description: From ~2024: daily pouring of water on shivalinga (abhisheka); independent yajna execution (fire ritual, self-conducted without a pandit); systematic panchang study (transit, muhurta, tithi); identification and planning of yajna timings using astrological data. Simultaneous with entrepreneurial transition and dharma-embrace (self-described 'I must align my life to Dharma'). Highest concentration of new spiritual practices in native's life. Coincides with Mercury-Saturn AD start (Dec 2024) and Sade Sati peak.
+  magnitude: major
+  valence: positive
+  native_reflection: "For the last two years I have been pouring water on the shiveling almost every day... I have been doing enormous amount of yajna. Now I have developed a skill that I do a yajna on my own... I have been following astrological data, looking at the panchang."
+  chart_state_at_event:
+    status: computed_year_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2024-07-01
+    vimshottari:
+      maha_dasha: Mercury (2010-08-18 to 2027-08-19)
+      antar_dasha: Jupiter AD (2022-09 to 2024-12) → Saturn AD (Dec 2024 onward)
+    yogini: pending_computation
+    chara: pending_computation
+    sade_sati_phase: TRS.SS.C2.P4/P5 (Cycle 2 peak-to-setting phase, Saturn in Aquarius → Pisces)
+    transits_of_note: ["Saturn transit Aquarius (Sade Sati peak)", "Jupiter transit Aries → Taurus 2024"]
+  retrodictive_match:
+    predicted_by_chart: yes
+    signals_that_matched: [SIG.MSR.001 (Sasha — Saturn domain intensification at Sade Sati peak), Ketu-8H (tantric/yajna substrate), Jupiter AD (dharma-expansion), PPL retroactive pattern alignment]
+    signals_that_missed: []
+    retrodictive_reasoning: Mercury-Jupiter AD (dharma-expansion) → Mercury-Saturn AD (Saturn-worship intensification) at Sade Sati peak is architecturally predicted: the Saturn-transit-peak + Saturn-MD-AD convergence forces direct Shiva/Saturn invocation as the chart's natural karmic response.
+  notes: "SPR.E from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2025.06.XX.01:
+  date: 2025-06-XX
+  date_confidence: month-approx
+  category: spiritual
+  subcategory: ritual_infrastructure
+  description: Native established a personal yantra mandala in his bedroom — a permanent ritual space. Prayers offered almost daily, sometimes more than once. Combined with daily ritual routine (~1.5–2 years running as of 2026). Represents formalization of the private ritual life begun in ~2024. The yantra mandala is a physical spatial commitment to the tantric stream running through Ugratara, Mahadev, and now Ma Kamlatmika devotions.
+  magnitude: significant
+  valence: positive
+  native_reflection: "I have my own yantra mandala established in my bedroom, which I offer prayers almost every day, sometimes more than once. There is a daily ritual that I follow."
+  chart_state_at_event:
+    status: computed_month_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2025-06-01
+    vimshottari:
+      maha_dasha: Mercury (2010-08-18 to 2027-08-19)
+      antar_dasha: Saturn AD (2024-12-09 to 2027-08-19)
+    yogini:
+      maha_dasha: Bhadrika/Mercury (through Dec 2026)
+    chara: pending_computation
+    sade_sati_phase: TRS.SS.C2.P5 (Cycle 2 Setting, Saturn in Pisces 12H from Moon, began ~Jan 2025)
+    transits_of_note: ["Saturn transit Pisces (12H from Lagna — spiritual/renunciative)", "Sade Sati Cycle 2 Setting phase"]
+  retrodictive_match:
+    predicted_by_chart: yes
+    signals_that_matched: [SIG.MSR.145 (Parivartana under Saturn AD — Saturn's domain intensification), Saturn-12H transit (spatial withdrawal to private ritual), Ketu-8H (yantra/tantric formalization)]
+    signals_that_missed: []
+    retrodictive_reasoning: Mercury-Saturn AD + Saturn transiting 12H (private spiritual retreat domain) = formal yantra mandala establishment is architecturally predicted as Saturn's domain crystallizes under its own AD.
+  notes: "SPR.F from M5-A-S1 enrichment batch."
+```
+
+```yaml
+EVT.2025.11.XX.01:
+  date: 2025-11-XX
+  date_confidence: month-approx
+  category: spiritual
+  subcategory: devata_adoption
+  description: Native began praying intensely to the tantric form of Mahalakshmi — Ma Kamlatmika (one of the Dasha Mahavidyas). Coincides with financial recovery and business intensification. A Lakshmi-form alongside the existing Ugratara (Shakti) and Mahadev lineages — now three tantric streams active simultaneously. Ma Kamlatmika = tantric Mahalakshmi, the tenth Mahavidya; governs wealth, abundance, sovereignty under transformation.
+  magnitude: significant
+  valence: positive
+  native_reflection: "Over the last six months, I have started praying a lot to Mahalakshmi the tantric form of Mahalakshmi that is Ma Kamlatmika."
+  chart_state_at_event:
+    status: computed_month_proxy
+    computation_session: M5-A-S1
+    proxy_date_used: 2025-11-01
+    vimshottari:
+      maha_dasha: Mercury (2010-08-18 to 2027-08-19)
+      antar_dasha: Saturn AD (2024-12-09 to 2027-08-19)
+    yogini:
+      maha_dasha: Bhadrika/Mercury (through Dec 2026)
+    chara: pending_computation
+    sade_sati_phase: TRS.SS.C2.P5 (Cycle 2 Setting, Saturn in Pisces)
+    transits_of_note: ["Saturn transit Pisces", "Jupiter transit Cancer (from mid-2025, 4H = home/family — wealth domain)"]
+  retrodictive_match:
+    predicted_by_chart: partial
+    signals_that_matched: [Venus-Saturn Parivartana (SIG.MSR.145) — Venus governs Lakshmi/wealth domain; Saturn-AD + Venus Parivartana = Venus invoked through Saturn's framework; Mahalakshmi = Venus domain under Saturn channel]
+    signals_that_missed: []
+    retrodictive_reasoning: Ma Kamlatmika adoption under Mercury-Saturn AD is consistent with Saturn's activation of the Venus-Saturn Parivartana (SIG.MSR.145) — Venus domain (Lakshmi/wealth) accessed through Saturn's lens produces the tantric wealth form rather than conventional Lakshmi puja.
+  notes: "SPR.G from M5-A-S1 enrichment batch."
+```
+
 ---
 
 ## §4 — CHRONIC PATTERNS AND UNDATED TRAITS
@@ -1625,6 +1929,26 @@ PATTERN.COMPUTER_APTITUDE.01:
   trait: Exceptional computer/programming aptitude from teenage onward; recognized early; returned to it recently
   native_reflection: "Was a 'successful geek' and extremely proficient with computers at a young age, achieving recognition." / "Back to it now."
   likely_astrological_basis: SIG.09 (Mercury Vargottama + Yogi + MD) = Mercury operational spine. Mercury = technology, programming, pattern-processing. Return-to-it post-2023 aligns with Marsys Technology vertical in Marsys Group.
+```
+
+```yaml
+PATTERN.COCKROACH_PHOBIA.01:
+  trait: Cockroach phobia — early childhood onset, persists to present
+  onset: early childhood (likely triggered by village environment with high cockroach density)
+  trajectory: Lifelong; mildly subdued over time but not resolved. Psychological fear response without known exposure therapy.
+  native_reflection: Not verbatim captured; characterized as childhood environmental trigger persisting.
+  likely_astrological_basis: Ketu in 8H Scorpio (hidden fears, irrational phobias, insect symbolism from 8H Scorpio domain — scorpions/insects as Ketu-8H associated); Mars-Saturn aspect (heightened fear response under adversarial conditions).
+  notes: "M5-A-S1 chronic pattern addition from native Cowork-M5-S2 disclosure."
+```
+
+```yaml
+PATTERN.MANASA_PUJA.01:
+  trait: Manasa puja (visualized inner ritual) — lifelong capacity for deep internalized puja
+  onset: unknown; appears constitutional
+  trajectory: Lifelong, selectively applied. Distinct from seated meditation. Used during bead-counting, physical puja sessions, and independent visualization exercises.
+  native_reflection: Not verbatim captured; described as capacity for elaborate emotional and visual detail in internalized ritual — offering prayers, small rituals, and puja entirely in the mind.
+  likely_astrological_basis: Moon in 11H Aquarius (Purva Bhadrapada Pada 3) — Moon-11H = mind directed toward networks/ideals; Purva Bhadrapada = a nakshatra associated with fire ritual, transformation, and visionary states. Ketu-8H = access to non-ordinary internal states. Mercury as AK (mind-spine) supports elaborate visualization.
+  notes: "M5-A-S1 chronic pattern addition from native Cowork-M5-S2 disclosure."
 ```
 
 ---

@@ -377,20 +377,52 @@ M4-B close)
 
 ---
 
+## §5.6 — Gemini reachability check (M5-A-S1, 2026-05-13) — FINAL_NOT_REACHABLE_M5
+
+Per PHASE_M5_PLAN_v1_0.md §3 Item 4 (R.LL1TPA.1), this session re-attempted to reach
+Gemini for independent supplemental review of LL1_TWO_PASS_APPROVAL at M5-A entry.
+
+**Result: NOT_REACHABLE. Declaring FINAL_NOT_REACHABLE_M5.**
+
+**Channels checked (same as §5.5):**
+
+- `gemini` / `gemini-cli` binary in PATH — not installed.
+- `GEMINI_API_KEY` environment variable — not set in session env.
+- `~/.gemini/` directory exists (oauth_creds.json) but no in-project tool for
+  synchronous agent-to-agent review.
+- Multi-agent collaboration is operationalized as mirror-pair discipline over static
+  surfaces (MP.1–MP.8), not live IPC. No synchronous channel exists.
+
+**Reachability trail:** NOT_REACHABLE at M4-B-S5 (2026-05-02) → NOT_REACHABLE at
+M4-C re-attempt (per M4-C carry-forward notes) → NOT_REACHABLE at M4-D-S1 (per
+M4_CLOSE §6.1 surrogate-disclosure) → **FINAL_NOT_REACHABLE_M5 declared at M5-A-S1
+(2026-05-13). No further reachability re-attempts scheduled; surrogate-disclosure
+convention is permanent for this pass_1 review.**
+
+**Disposition:**
+- R.LL1TPA.1 status: **FINAL_NOT_REACHABLE_M5** — no further carry-forward
+  obligation. The surrogate-disclosure ledger is extended and sealed at this entry.
+- Production weights (30 signals, ll1_weights_promoted_v1_0.json) remain valid —
+  pass_2 (native, NAP.M4.5) is the binding gate and was discharged 2026-05-02.
+- M5-A topology and prior work (M5-B, M5-C) proceed under surrogate-disclosure
+  convention; native adjudication substitutes for Gemini two-pass on all M5 scope.
+
+**Session:** M5-A-S1 | **Date:** 2026-05-13
+
+---
+
 ## §6 — Known residuals
 
-- **R.LL1TPA.1 (LOW, OPEN — carry-forward to M4-C entry) — surrogate-not-Gemini.**
+- **R.LL1TPA.1 (LOW, CLOSED M5-A-S1 — FINAL_NOT_REACHABLE_M5) — surrogate-not-Gemini.**
   Pass_1 was performed by Claude-surrogate rather than Gemini per the Multi-Agent
-  Collaboration framework. Reachability check executed at M4-B-S5 (this session)
-  returned NOT_REACHABLE — no live channel from a Claude Code session to an active
-  Gemini agent exists today; see §5.5 above. Carry-forward: re-attempt reachability at
-  M4-C entry; if Gemini ratifies, R.LL1TPA.1 closes; if Gemini contests, open a
-  `DIS.class.output_conflict` entry per `GOVERNANCE_INTEGRITY_PROTOCOL §K.2`. Pass_2
-  (native) is the binding final gate and has been discharged 2026-05-02; this residual
-  is audit-trail completeness only, not a production-blocker. Severity LOW because
-  (a) the surrogate role was flagged explicitly throughout, (b) production weights are
-  now gated by pass_2 (discharged), (c) the surrogate applied the same numerical
-  rubric Gemini would apply.
+  Collaboration framework. Reachability check executed at M4-B-S5 returned NOT_REACHABLE;
+  re-attempts at M4-C, M4-D, and M5-A-S1 all returned NOT_REACHABLE. FINAL_NOT_REACHABLE_M5
+  declared at §5.6. Surrogate-disclosure convention is permanent for this document;
+  see §5.6 for full disposition. Pass_2 (native) is the binding gate and was
+  discharged 2026-05-02; this residual is audit-trail completeness only, not a
+  production-blocker. Severity LOW because (a) the surrogate role was flagged explicitly
+  throughout, (b) production weights are now gated by pass_2 (discharged), (c) the
+  surrogate applied the same numerical rubric Gemini would apply.
 - **R.LL1TPA.2 (CLOSED 2026-05-02 NAP.M4.5) — Tier-C joint-firing question.**
   SIG.MSR.118, .119, .143 carry identical descriptive statistics across 11 observations
   each. Native verdict at pass_2: **(a) three independent calibrated phenomena** —

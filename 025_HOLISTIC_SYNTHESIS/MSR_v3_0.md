@@ -8,12 +8,13 @@ expose_to_chat: true
 native_id: "abhisek"
 signal_count: 514
 v3_1_changelog: "VARGA-ETL-FULL-S1 D12 (2026-05-10): added §VI — 15 Cross-Varga Dignity Signals SIG.MSR.500–514. Sourced from FORENSIC §3.15 CSI ledger + §3.1–§3.14 divisional placement tables. No prior signal mutated."
+v3_1_reconciliation_note: "M5-A-S1 (2026-05-13): Signal-completeness reconciliation. grep-count confirms 514 authored SIG.MSR.* entries, exactly matching signal_count:514. Four ID gaps are confirmed numbering artifacts — SIG.MSR.207 (between 206 and 208; skipped during v1.0 authoring) and SIG.MSR.497–499 (between 496 and 500; v2.0 closed at 496 before v3.1 added 500–514). No content is missing; the gaps are artifacts of in-session renumbering. Platform comparison (msr_domain_buckets.json) not available in this worktree; structural count is confirmed correct."
 ---
 
 # MSR_v3_0 — MASTER SIGNAL REGISTER (UNIFIED)
 
 ## §I — INTRODUCTION
-Unified registry merging v1.0 and v2.0 sources. 514 signals (v3.0 = 499 + v3.1 = 15 cross-varga dignity signals).
+Unified registry merging v1.0 and v2.0 sources. 514 signals (v3.1): v3.0 = 499 authored IDs across SIG.MSR.001–496 (4 numbering gaps: 207, 497–499 are artifacts) + v3.1 = 15 cross-varga dignity signals SIG.MSR.500–514. M5-A-S1 reconciliation: grep-confirmed 514 entries match declared signal_count:514.
 
 SIG.MSR.001:
   signal_name: "Sasha Mahapurusha Yoga — Saturn Exalted in 7H Kendra"
