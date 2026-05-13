@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.2
+version: 5.3
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,30 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.3 (2026-05-14, M5-E-S2):
+    **M5 MACRO-PHASE CLOSED. IS.8(b) PASS 5/5. M5_CLOSE_v1_0.md SEALED. M6 INCOMING. NAP.M5.4 APPROVED.**
+    Key outcomes: (1) AC.M5E.1 PASS — IS.8(b) macro-phase-close red-team PASS 5/5 axes: RT.M5.1
+    factual accuracy PASS (0 fabricated computations); RT.M5.2 layer separation PASS (L1/L6 boundaries
+    maintained throughout M5); RT.M5.3 derivation ledger PASS (all claims traceable to LEL events /
+    dbn_params); RT.M5.4 mirror discipline PASS (1 LOW F.RT.M5.4.MP4.1 self-resolving at S2 close —
+    .geminirules §C item #5 phase pointer stale, resolved by MP.4 update this session); RT.M5.5 scope
+    discipline PASS (no pre-building for M6; all must_not_touch respected across M5). 0 CRITICAL / 0 HIGH
+    / 0 MEDIUM / 1 LOW (self-resolving). M5 close gate CLEARED.
+    (2) AC.M5E.2 PASS — PPL volume checkpoint: 20 predictions (gate ≥20 SATISFIED); 4 CONFIRMED
+    outcomes (PRED.015–018); 5 retroactive blind predictions (ppl_retroactive_m5d_v1_0.json; AC.M5D.4);
+    held-out PASS mean_lift=1.145 beat_fraction=5/5; M6 gate SATISFIED.
+    (3) AC.M5E.3 PASS — M5_CLOSE_v1_0.md authored at 06_LEARNING_LAYER/M5_CLOSE_v1_0.md. §0 session arc
+    (14 sessions); §1 full AC ledger (M5-A 14/14 + M5-B 6/7 + M5-C 6/6 + M5-D 7/8 + M5-E 6/6 = 39 PASS
+    3 DEFERRED 0 FAIL); §2 IS.8(b) RT record; §3 LL activation table (LL.1 PRODUCTION through LL.9
+    SCAFFOLD); §4 PPL checkpoint; §5 NAP registry (NAP.M5.0–5 all APPROVED); §6 carry-forwards
+    (CF.M5.1–9); §7 topology risk register (AC.M5B.6 CLOSED); §8 seal block.
+    (4) NAP.M5.4 APPROVED (pre-authorized per M5-E execution brief).
+    (5) active_macro_phase M5 → M6 INCOMING. PHASE_M5_PLAN_v1_0.md SUPERSEDED-AS-COMPLETE.
+    (6) MP.1+MP.2+MP.4 mirrors propagated (M5-E-S2 SESSION CLOSE).
+    red_team_counter: 0 (IS.8(b) macro-phase-close cadence DISCHARGED; resets per ONGOING_HYGIENE_POLICIES §G).
+    active_phase_plan_sub_phase: M5 MACRO-PHASE CLOSED. M6 INCOMING.
+    last_session_id → M5-E-S2. next_session_objective → M6-A-S1 (M6 plan authoring + first execution).
+    file_updated_at → 2026-05-14T12:00:00+05:30. file_updated_by_session → M5-E-S2.
   - v5.2 (2026-05-14, M5-E-S1):
     **M5-E-S1 CLOSED. CF.M5D.1+2 ADDRESSED. LL.8 ACTIVE. LL.9 SCAFFOLD CONFIRMED. CAPABILITY_MANIFEST UPDATED.**
     Key outcomes: (1) CF.M5D.1 CLOSED — Bayesian posterior framing implemented in
@@ -3152,9 +3176,9 @@ current_state:
   # ------------------------------------------------------------------
   # Macro-phase position (per MACRO_PLAN_v2_0.md §"Ten macro-phase arc")
   # ------------------------------------------------------------------
-  active_macro_phase: M5                       # M4 CLOSED 2026-05-02 at M4-D-S1; M5 INCOMING
-  active_macro_phase_title: "Probabilistic Engine — DBN topology + signal-embedding refit + CW.PPL volume gate"
-  active_macro_phase_status: active
+  active_macro_phase: M6                       # M5 CLOSED 2026-05-14 at M5-E-S2; M6 INCOMING
+  active_macro_phase_title: "M6 — INCOMING (title TBD at M6-A-S1 plan-authoring session per MACRO_PLAN §M6)"
+  active_macro_phase_status: incoming
     # One of: active | paused_governance_rebuild | paused_native_hold | closed | incoming
     # M5 ACTIVE — PHASE_M5_PLAN_v1_0.md authored 2026-05-13 at Cowork-M5-S1-PLAN-AUTHORING.
     # M5-A is the active sub-phase. M4 CLOSED 2026-05-02 at M4-D-S1.
@@ -3191,13 +3215,13 @@ current_state:
   #   MACRO_PLAN §M3 into a PHASE_C_PLAN_v1_0.md or drive M3 directly from MACRO_PLAN.)
   # ------------------------------------------------------------------
   active_phase_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
-    # PHASE_M5_PLAN_v1_0.md v1.0 authored 2026-05-13 at Cowork-M5-S1-PLAN-AUTHORING.
-    # Five sub-phases: M5-A (Substrate + Entry Cleanup), M5-B (DBN Topology),
-    # M5-C (Prior Specification), M5-D (DBN Fit + Validation), M5-E (M5 Close).
-    # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
-  active_phase_plan_version: "1.0"
+    # PHASE_M5_PLAN_v1_0.md v1.1 SUPERSEDED-AS-COMPLETE (M5 CLOSED 2026-05-14 at M5-E-S2).
+    # M6 phase plan: TBD — first M6 session (M6-A-S1) authors PHASE_M6_PLAN_v1_0.md.
+    # PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED 2026-05-02).
+  active_phase_plan_version: "1.1 SUPERSEDED-AS-COMPLETE"
   active_phase_plan_sub_phase: >
-    M5-E OPEN (S1 CLOSED 2026-05-14 at M5-E-S1; S2 next: IS.8(b) macro-phase-close RT + M5_CLOSE).
+    M5 MACRO-PHASE CLOSED (2026-05-14 at M5-E-S2; sealing artifact 06_LEARNING_LAYER/M5_CLOSE_v1_0.md;
+    IS.8(b) PASS 5/5; NAP.M5.4 APPROVED). M6 INCOMING — phase plan TBD at M6-A-S1.
     M5-E-S1 deliverables: predictive.ts v3.0 Bayesian posterior framing (CF.M5D.1 CLOSED);
     LL.8 ACTIVE (LL8_SPEC_v1_0.md v1.1; parameter_register.json initialized; CF.M5D.2 CLOSED);
     LL.9 SCAFFOLD confirmed; carry-forwards CF.M5D.1-6 dispositioned; CAPABILITY_MANIFEST updated.
@@ -3769,7 +3793,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-E-S1
+  last_session_id: M5-E-S2                     # M5 macro-phase CLOSED; M5-E-S1 preserved in audit trail
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
     # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
     # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
@@ -4607,22 +4631,16 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-E-S2 — IS.8(b) Macro-Phase Red-Team + M5_CLOSE + Sealing.
-    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-E-S2."
-    Entry gate (all satisfied): M5-E-S1 CLOSED ✓ (this update); red_team_counter = 0 ✓;
-    predictive.ts v3.0 Bayesian framing committed ✓; LL.8 ACTIVE committed ✓.
-    M5-E-S2 scope (macro-phase-close session):
-      — IS.8(b) macro-phase-close red-team (5 axes): RT.M5.1 factual accuracy; RT.M5.2 layer
-        separation; RT.M5.3 derivation ledger; RT.M5.4 mirror discipline; RT.M5.5 scope discipline.
-        M5 does NOT close until red-team PASS. If any axis FAILS: resolve finding first.
-      — PPL volume checkpoint: total count at M5 close; verified outcomes; M6 gate (≥20 met?).
-      — M5_CLOSE_v1_0.md authored at 06_LEARNING_LAYER/M5_CLOSE_v1_0.md (§0–§8 per brief).
-        Sections: session arc, AC ledger, IS.8(b) RT, LL activation table, PPL checkpoint,
-        NAP registry (NAP.M5.4 APPROVED pre-authorized), carry-forwards into M6, seal block.
-      — CURRENT_STATE v5.2→v5.3: flip active_macro_phase M5→M6 INCOMING.
-      — MP.1 (.geminirules §F) + MP.2 (.gemini/project_state.md) + MP.4 mirrors updated.
-    red_team_counter: 0 entering M5-E-S2. IS.8(b) fires THIS session (macro-phase-close cadence).
-    Counter resets to 0 after IS.8(b) DISCHARGED per ONGOING_HYGIENE_POLICIES §G.
+    M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
+    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
+    Entry gate: M5 MACRO-PHASE CLOSED ✓ (this update 2026-05-14); M5_CLOSE_v1_0.md sealed ✓;
+    IS.8(b) PASS 5/5 ✓; NAP.M5.4 APPROVED ✓; red_team_counter = 0 ✓.
+    M6-A-S1 scope: Author PHASE_M6_PLAN_v1_0.md (analogue of PHASE_M5_PLAN); declare M6 sub-phases
+    and AC ledger; address M6 carry-forwards (CF.M5.1–9, priority CF.M5.6 first live LL.8 update);
+    CURRENT_STATE M6 status = active; SESSION_LOG M6-A-S1 entry; mirror sync MP.1+MP.2.
+    red_team_counter: 0 entering M6 (IS.8(b) discharged at M5-E-S2). Next IS.8(a) fires at counter=3.
+    Priority carry-forwards entering M6: CF.M5.6 (first live LL.8 update — HIGH); CF.M5.1 (calibration
+    UI — MEDIUM); CF.M5.4 (answer:eval integration — MEDIUM); CF.M5.7 (first LL.9 entry — MEDIUM).
     M5-D CLOSED 2026-05-13. DBN fit outcome: mean_lift=1.145, beat_fraction=5/5 PASS.
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must
     propose cadence to close gap); native-approved DBN topology (M5 scope —
@@ -5390,8 +5408,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-14T00:00:00+05:30
-  file_updated_by_session: M5-E-S1
+  file_updated_at: 2026-05-14T12:00:00+05:30
+  file_updated_by_session: M5-E-S2
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

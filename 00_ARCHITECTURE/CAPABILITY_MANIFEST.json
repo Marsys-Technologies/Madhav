@@ -1215,6 +1215,20 @@
       "native_id": "abhisek",
       "produced_during": "M5-A-S1",
       "notes": "LL.9 miss registry stub. Dormant until M6 open; no entries expected during M5."
+    },
+    {
+      "canonical_id": "M5_CLOSE",
+      "path": "06_LEARNING_LAYER/M5_CLOSE_v1_0.md",
+      "version": "1.0",
+      "status": "CLOSED",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-E-S2",
+      "notes": "M5 macro-phase sealing artifact. IS.8(b) PASS 5/5. Full AC ledger, LL table, PPL checkpoint, NAP registry, carry-forwards, topology risk register. NAP.M5.4 APPROVED. Successor: M6 INCOMING."
     }
   ]
 }

@@ -26,11 +26,21 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 - **L4 Discovery impact:** **None.** Phase O lives at the platform observability layer. Gemini L4 Discovery work continues unaffected.
 - **Phase-O+1 follow-ups (logged, not blocking):** pg-cursor migration of `queryUsageForExportStream()` for true SQL streaming; MAD-based parallel anomaly detector; DNS-rebinding defence on `validateWebhookUrl()`; cost-per-quality rubric wiring once Learning Layer is in place.
 
-## Active Phase: M5 — ACTIVE (M5-E OPEN; S1 CLOSED 2026-05-14; S2 next: IS.8(b) macro-phase-close RT + M5_CLOSE)
+## Active Phase: M6 — INCOMING (Phase plan TBD at M6-A-S1)
 
-**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-E OPEN — S1 CLOSED 2026-05-14; S2 next: IS.8(b) macro-phase-close RT + M5_CLOSE_v1_0.md + CURRENT_STATE M5→M6.** DBN tooling: Hybrid-C. M4 CLOSED 2026-05-02.
+**M6 MACRO-PHASE INCOMING.** M5 CLOSED 2026-05-14 at M5-E-S2. M6 phase plan TBD at M6-A-S1. Priority carry-forwards: CF.M5.6 first live LL.8 update (HIGH); CF.M5.1 calibration UI (MEDIUM); CF.M5.7 first LL.9 miss (MEDIUM). red_team_counter: 0. Next IS.8(a) at counter=3.
 
-**M5-E-S1 (2026-05-14) deliverables COMPLETE — CF.M5D.1+2 CLOSED; LL.8 ACTIVE:** CF.M5D.1 CLOSED — `predictive.ts` v2.0→v3.0; DBN POSTERIOR CONTEXT block + §CALIBRATION mandatory block (T1/T2/T3 tiers). CF.M5D.2 CLOSED — LL.8 ACTIVE: `LL8_SPEC_v1_0.md` v1.0→v1.1 SCAFFOLD→ACTIVE; conjugate Beta §3.2b protocol; `parameter_register.json` initialized (update_count=0). LL.9 SCAFFOLD confirmed (no change). CF.M5D.3–6 dispositioned. CAPABILITY_MANIFEST 5 new entries (M5_D_CLOSE, LL8_SPEC, LL8_PARAM_REGISTER, LL9_SPEC, LL9_MISS_REGISTRY). CURRENT_STATE v5.1→v5.2. red_team_counter: 0 (IS.8(b) fires at M5-E-S2).
+**Next session:** M6-A-S1 — M6 phase plan authoring + first execution. Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
+
+---
+
+## (Predecessor) Active Phase: M5 — CLOSED 2026-05-14 (M5-E-S2; sealing artifact: 06_LEARNING_LAYER/M5_CLOSE_v1_0.md)
+
+**M5 MACRO-PHASE CLOSED.** `PHASE_M5_PLAN_v1_0.md` v1.1 SUPERSEDED-AS-COMPLETE. IS.8(b) PASS 5/5. NAP.M5.4 APPROVED. DBN tooling: Hybrid-C; n=37 training; mean_lift=1.145; LL.8 ACTIVE; LL.9 SCAFFOLD.
+
+**M5-E-S2 (2026-05-14) deliverables COMPLETE — M5 MACRO-PHASE CLOSE:** AC.M5E.1 IS.8(b) PASS 5/5 (0 CRITICAL/HIGH/MEDIUM; 1 LOW self-resolved). AC.M5E.2 PPL checkpoint: 20 predictions (gate ≥20 SATISFIED). AC.M5E.3 M5_CLOSE_v1_0.md CLOSED (§0–§8). AC.M5E.4 CURRENT_STATE v5.2→v5.3 (M5→M6 INCOMING). NAP.M5.4 APPROVED. red_team_counter: 0. M6 INCOMING.
+
+**M5-E-S1 (2026-05-14) deliverables COMPLETE — CF.M5D.1+2 CLOSED; LL.8 ACTIVE:** CF.M5D.1 CLOSED — `predictive.ts` v3.0 Bayesian framing + §CALIBRATION. CF.M5D.2 CLOSED — LL.8 ACTIVE (LL8_SPEC v1.1; parameter_register.json). LL.9 SCAFFOLD confirmed. CURRENT_STATE v5.1→v5.2.
 
 **M5-D-S4 (2026-05-13) deliverables COMPLETE — IS.8(a) PASS 8/8 + AC.M5D.4/5 COMPLETE:** IS.8(a) red-team 8/8 axes PASS — red_team_counter 2→3→0 discharged. AC.M5D.4 PPL retroactive blind predictions COMPLETE — 5 blind retroactive predictions with Monte Carlo 90% HDI per NAP.M5.3; wide marginal HDIs [0.013–0.944] range reflect mixture uncertainty across SUPPRESSED/NORMAL/ELEVATED — epistemically correct. Artifact: `06_LEARNING_LAYER/dbn/ppl_retroactive_m5d_v1_0.json`. AC.M5D.5 domain activation timeline COMPLETE — 23-period hard E-step assignments; 9 key findings including Jupiter ALL NORMAL, 0 SUPPRESSED periods, CAREER ELEVATED 11/23=0.4783 (matches null base rate — internal consistency confirmed). Artifact: `06_LEARNING_LAYER/dbn/domain_activation_timeline_v1_0.json`. CURRENT_STATE v4.9→v5.0. red_team_counter: 2→3→0.
 

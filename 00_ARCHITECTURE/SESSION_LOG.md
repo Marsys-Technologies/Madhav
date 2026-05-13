@@ -22924,3 +22924,119 @@ session_close:
       change: "MP.2 mirror update (M5-E-S1 close)"
   session_close_valid: true
 ```
+
+### Next session objective
+
+Execute **M5-E-S2**: IS.8(b) macro-phase-close red-team (5 axes); PPL volume checkpoint; M5_CLOSE_v1_0.md; CURRENT_STATE flip M5→M6; NAP.M5.4 APPROVED.
+
+*End of M5-E-S1 entry — 2026-05-14.*
+
+---
+
+## M5-E-S2 — M5 Macro-Phase Close (IS.8(b) + M5_CLOSE)
+
+```yaml
+session_open:
+  session_id: M5-E-S2
+  cowork_thread_name: "M5-E-S2 — M5 Macro-Phase Close (IS.8(b) + M5_CLOSE)"
+  timestamp: 2026-05-14
+  active_macro_phase: M5
+  active_sub_phase: M5-E (OPEN → CLOSED this session; M5 MACRO-PHASE CLOSES this session)
+  last_session_id: M5-E-S1
+  red_team_counter_at_open: 0
+  session_class: macro_phase_close
+  scope: >
+    IS.8(b) macro-phase-close red-team (5 axes); PPL volume checkpoint; M5_CLOSE_v1_0.md
+    authored; CURRENT_STATE v5.2→v5.3 (M5 CLOSED, M6 INCOMING); CAPABILITY_MANIFEST M5_CLOSE
+    entry; SESSION_LOG M5-E-S2 entry; MP.1+MP.2+MP.4 mirrors propagated; git commit M5-E-S2.
+  may_touch:
+    - 06_LEARNING_LAYER/M5_CLOSE_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .geminirules
+    - .gemini/project_state.md
+  must_not_touch:
+    - 06_LEARNING_LAYER/dbn/dbn_params_v1_0.json
+    - 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
+    - platform/src/lib/prompts/templates/predictive.ts
+    - 06_LEARNING_LAYER/dbn/ll8_bayesian_update/
+```
+
+**Body:**
+
+- **AC.M5E.1 PASS — IS.8(b) macro-phase-close red-team PASS 5/5.** RT.M5.1 factual accuracy PASS
+  (0 fabricated computations; dbn_params + CI values all derivable from LEL+EM fit); RT.M5.2 layer
+  separation PASS (L1/L6 boundaries maintained throughout M5; L2.5 unchanged); RT.M5.3 derivation
+  ledger PASS (all claims traceable: LEL event IDs → training partition → EM fit → params → PPL);
+  RT.M5.4 mirror discipline PASS (1 LOW finding F.RT.M5.4.MP4.1 — .geminirules §C item #5 stale
+  from M5-B; resolved at this session's MP.4 update; 0 blocking findings); RT.M5.5 scope discipline
+  PASS (no M6 pre-building; all must_not_touch respected). 0 CRITICAL / 0 HIGH / 0 MEDIUM / 1 LOW.
+
+- **AC.M5E.2 PASS — PPL volume checkpoint.** 20 total predictions in ledger (gate ≥20 SATISFIED);
+  4 CONFIRMED outcomes (PRED.015–018 retroactive blind); 5 retroactive blind predictions in
+  ppl_retroactive_m5d_v1_0.json (AC.M5D.4); 16 future-dated prospective (outcomes pending); held-out
+  validation: mean_lift=1.145, beat_fraction=5/5 PASS. M6 gate SATISFIED.
+
+- **AC.M5E.3 PASS — M5_CLOSE_v1_0.md authored.** 06_LEARNING_LAYER/M5_CLOSE_v1_0.md v1.0 CLOSED.
+  §0 session arc (14 sessions); §1 full AC ledger (39 PASS, 3 DEFERRED, 0 FAIL across M5-A–E);
+  §2 IS.8(b) RT PASS 5/5; §3 LL activation table (LL.1–LL.9); §4 PPL checkpoint; §5 NAP registry
+  (NAP.M5.0–4 all APPROVED); §6 carry-forwards (CF.M5.1–9); §7 topology risk register (R.M5B.6.1+2);
+  §8 seal block (DBN fit summary; NAP.M5.4 APPROVED; M5 CLOSED; M6 INCOMING).
+
+- **AC.M5E.4 PASS — CURRENT_STATE v5.2→v5.3.** active_macro_phase M5→M6 (status incoming);
+  active_phase_plan_sub_phase updated to "M5 MACRO-PHASE CLOSED / M6 INCOMING";
+  last_session_id → M5-E-S2; next_session_objective → M6-A-S1 (M6 plan authoring + first execution).
+
+- **AC.M5E.5 — SESSION_LOG.md M5-E-S2 entry appended.** (this entry)
+
+- **AC.M5E.6 — MP.1+MP.2+MP.4 mirrors propagated.** (see session_close below)
+
+- **NAP.M5.4 APPROVED** (pre-authorized per M5-E execution brief 2026-05-14). M5 macro-phase close
+  gate CLEARED. IS.8(b) PASS 5/5.
+
+- **red_team_counter: 0** (IS.8(b) macro-phase-close cadence DISCHARGED; counter resets per
+  ONGOING_HYGIENE_POLICIES §G).
+
+```yaml
+session_close:
+  session_id: M5-E-S2
+  timestamp: 2026-05-14
+  session_class: macro_phase_close
+  deliverables_completed:
+    - AC.M5E.1: IS.8(b) red-team PASS 5/5 (0 CRITICAL/HIGH/MEDIUM; 1 LOW self-resolved)
+    - AC.M5E.2: PPL volume checkpoint COMPLETE (20 predictions; M6 gate SATISFIED)
+    - AC.M5E.3: M5_CLOSE_v1_0.md COMPLETE (06_LEARNING_LAYER/M5_CLOSE_v1_0.md v1.0 CLOSED)
+    - AC.M5E.4: CURRENT_STATE v5.2→v5.3 COMPLETE (M5 CLOSED; M6 INCOMING)
+    - AC.M5E.5: SESSION_LOG M5-E-S2 entry appended COMPLETE
+    - AC.M5E.6: MP.1+MP.2+MP.4 mirrors propagated COMPLETE
+    - CAPABILITY_MANIFEST: M5_CLOSE entry added
+    - NAP.M5.4: APPROVED (pre-authorized)
+  red_team_result:
+    type: IS.8(b) macro-phase-close
+    axes: 5
+    verdict: PASS
+    findings: 0 CRITICAL / 0 HIGH / 0 MEDIUM / 1 LOW (F.RT.M5.4.MP4.1 — self-resolving)
+    counter_rotation: "0→0 (macro-phase-close cadence DISCHARGED; every-third counter unchanged at 0)"
+  current_state_updated: true
+  current_state_version: "5.3"
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 §F state block: M5-E-S2 CLOSED, M5 MACRO-PHASE CLOSED, M6 INCOMING. MP.4 §C item #5: PHASE_M5_PLAN SUPERSEDED-AS-COMPLETE, M6 phase plan TBD."
+    - path: ".gemini/project_state.md"
+      change: "MP.2: Active Phase section header updated M5→M6; M5-E-S2 close block added; M5 predecessor archived."
+  artifacts_modified:
+    - path: "06_LEARNING_LAYER/M5_CLOSE_v1_0.md"
+      change: "NEW — M5 macro-phase sealing artifact v1.0 CLOSED"
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      change: "v5.2→v5.3; M5 CLOSED / M6 INCOMING; active_macro_phase M5→M6; next_session_objective → M6-A-S1"
+    - path: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      change: "M5_CLOSE entry added (CLOSED v1.0)"
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      change: "M5-E-S2 entry appended"
+    - path: ".geminirules"
+      change: "MP.1+MP.4 mirror update (M5-E-S2 close; M5 CLOSED; M6 INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M5-E-S2 close; M5 CLOSED; M6 INCOMING)"
+  session_close_valid: true
+```
