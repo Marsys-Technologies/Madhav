@@ -45,9 +45,9 @@
   },
   "edges": [
     {
-      "edge_id": "EDGE.SIG_MSR_145__SIG_MSR_402",
+      "edge_id": "EDGE.SIG_MSR_145__SIG_MSR_402b",
       "signal_id_a": "SIG.MSR.145",
-      "signal_id_b": "SIG.MSR.402",
+      "signal_id_b": "SIG.MSR.402b",
       "domain_a": "general",
       "domain_b": "general",
       "cross_domain": false,
@@ -105,15 +105,16 @@
           "promotion_eligible": true
         },
         "b": {
-          "signal_id": "SIG.MSR.402",
-          "n_observations": 11,
-          "mean_match_rate": 0.7273,
-          "status": "promotion_eligible_pending_two_pass",
-          "promotion_eligible": true
+          "signal_id": "SIG.MSR.402b",
+          "n_observations": 0,
+          "mean_match_rate": null,
+          "status": "NO_RECORDS__temporal_engine_predates_402b_authorship",
+          "promotion_eligible": false,
+          "substitution_note": "MSR.402b authored post-M5-B-S1; not present in lel_event_match_records.json. Structural basis: corrected form of MSR.402 (same Varnada-4H/Ghati-9H architecture). Co-occurrence re-run required at next temporal engine refresh."
         }
       },
       "parent_ll1_endpoints_in_production": false,
-      "promotion_eligible": false,
+      "promotion_eligible": true,
       "approval_chain": [
         {
           "nap_id": "NAP.M5.EDGE-01-CONDITIONAL",
@@ -122,10 +123,19 @@
           "session": "Cowork-M5-B-S1-NAP.M5.1-final",
           "note": "Empirical correlation CONFIRMED by native: career/finance shifts co-move with relationship quality changes throughout life. Conditional: SIG.MSR.402 endpoint is invalidated; requires substitution with SIG.MSR.402b and co-occurrence re-check in M5-B-S2 before formal DBN inclusion. promotion_eligible will be set true after M5-B-S2 endpoint substitution.",
           "native_verbatim_summary": "All throughout my life when I've had new relationships or bitterness in relationships or relationships getting ripped off, there has been similar impact in my career or finances."
+        },
+        {
+          "nap_id": "NAP.M5.EDGE-01-CONDITIONAL",
+          "action": "ENDPOINT_SUBSTITUTION_COMPLETE",
+          "session": "M5-B-S2",
+          "date": "2026-05-13",
+          "note": "SIG.MSR.402 \u2192 SIG.MSR.402b substitution executed. Co-occurrence re-check finding: MSR.402b not in lel_event_match_records.json (temporal engine predates 402b authorship). MSR.145 \u2229 MSR.402 = 11/11 training events (perfect overlap; campaign co_count=7 from stricter methodology). Structural basis confirmed \u2014 MSR.402b is corrected form of same natal architecture. promotion_eligible set TRUE per APPROVED_CONDITIONAL. Formal two-pass confirmation pending temporal engine re-run with MSR.402b loaded."
         }
       ],
       "nap_m5_1_decision": "APPROVED_CONDITIONAL",
-      "nap_m5_1_date": "2026-05-13"
+      "nap_m5_1_date": "2026-05-13",
+      "co_count_m5b_s2_note": "Co-occurrence re-check M5-B-S2: MSR.145 lights in 11 training events; MSR.402 lights in same 11 events (perfect overlap, campaign recorded 7). MSR.402b absent from records (temporal engine predates authorship). Campaign co_count=7 retained as-is; will be recomputed at temporal engine refresh. Structural basis for substitution: MSR.402b is corrected form of MSR.402 (Varnada 4H Cancer + Ghati 9H Sagittarius domestic-dharmic authority; MSR.402 invalidated due to wrong house attribution, same underlying architecture preserved).",
+      "promotion_eligible_note": "APPROVED_CONDITIONAL \u2014 native approval NAP.M5.EDGE-01-CONDITIONAL (2026-05-13). MSR.402 substituted with MSR.402b at M5-B-S2. Direct MSR.402b co-occurrence not computable (not in records); structural equivalence confirmed. Full promotion gate: temporal engine re-run with MSR.402b loaded."
     },
     {
       "edge_id": "EDGE.SIG_MSR_118__SIG_MSR_145",

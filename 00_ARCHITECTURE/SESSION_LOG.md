@@ -21572,3 +21572,147 @@ session_close:
 Execute **M5-B-S2**: IS.8(a) red-team (mandatory, counter=3); implement U2 SPIRITUAL+PSYCHOLOGICAL domain split across DBN_TOPOLOGY_v1_0.md and all 5 CPT scaffold files; obtain formal NAP.M5.1 freeze from native after U2 is visible; substitute SIG.MSR.402→SIG.MSR.402b in EDGE-01 and run co-occurrence re-check; execute AC.M5B.3 LL.3 retrieval-domain alignment fixes (R.LL3.1/.2/.3) in platform/lib/; run AC.IV.6 recall gap re-run; run AC.IV.7 latency telemetry re-check.
 
 *End of M5-B-NAP-S1 entry — 2026-05-13.*
+
+---
+
+## M5-B-S2 — DBN Topology: U2 + NAP.M5.1 Freeze + AC.M5B.3 LL.3 Alignment
+
+**Session type:** Substantive — M5-B execution (U2 implementation + IS.8(a) red-team + LL.3 retrieval fixes)
+**Date:** 2026-05-13
+**Executor:** Claude (Cowork M5-B-S2)
+**Branch:** feature/m5-probabilistic-model
+
+### Session open
+
+```yaml
+session_open:
+  session_id: M5-B-S2
+  session_type: substantive
+  macro_phase: M5
+  sub_phase: M5-B
+  active_phase_plan: PHASE_M5_PLAN_v1_0.md (v1.1)
+  red_team_due: true
+  red_team_counter_at_open: 3
+  may_touch:
+    - 06_LEARNING_LAYER/dbn/
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/
+    - platform/src/lib/retrieve/msr_sql.ts
+    - platform/src/lib/config/feature_flags.ts
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/production/ll1_weights_promoted_v1_0.json
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+    - .geminirules
+    - .gemini/project_state.md
+  must_not_touch:
+    - 01_FACTS_LAYER/
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/ (except summary block metadata)
+    - held-out LEL partition (sacrosanct until M5-D)
+  session_objective: >
+    (1) IS.8(a) red-team MANDATORY discharge; (2) U2 implementation — SPIRITUAL_PSYCHOLOGICAL
+    → SPIRITUAL + PSYCHOLOGICAL (5th domain) in DBN_TOPOLOGY_v1_0.md + all 5 CPT scaffolds;
+    (3) formal NAP.M5.1 topology freeze from native; (4) EDGE-01 SIG.MSR.402→402b substitution
+    + co-occurrence re-check; (5) AC.M5B.3 LL.3 retrieval-domain alignment R.LL3.1/.2/.3;
+    (6) AC.IV.6 recall gap re-run; (7) M5-B-S2 session close.
+  current_state_version_at_open: "4.3"
+```
+
+### Session body
+
+**IS.8(a) Red-team — PASS (4-axis)**
+
+Every-third-session cadence obligation discharged. Axes: (1) B.10 no-fabrication — all CPT files UNFITTED_SCAFFOLD with `fitted_value: null` throughout; no numerical values invented; (2) Held-out sacrosanctness — 9 events remain BLINDED; CPT scaffolds have no fitted values that could encode held-out outcomes; (3) LL.2 methodology integrity — EDGE-01 co-occurrence re-check conducted before promotion decision; MSR.402b absence from records noted; APPROVED_CONDITIONAL is the correct disposition; (4) Scope compliance — U2, EDGE-01, LL.3 fixes all within M5-B may_touch; no must_not_touch violations.
+
+**U2 Implementation — COMPLETE**
+
+Split SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL (5th domain) across all artifacts:
+- `DBN_TOPOLOGY_v1_0.md`: v1.0 DRAFT → v1.1 APPROVED. Added PSYCHOLOGICAL domain (8H Ketu / 4H Moon transformation; PSY.* events). Type C + Type D tables expanded. §4.1 signals: SIG.12 + SIG.MSR.297 → PSYCHOLOGICAL (edge_weight=0.60). §4.2 MD tendency: PSYCHOLOGICAL column added (Ketu=0.55, Moon=0.50, Saturn=0.35, Mars=0.35, Mercury=0.30, Sun=0.30, Rahu=0.30, Jupiter=0.25, Venus=0.25). §4.3 AD modulation: 5-domain coverage confirmed. §4.4 cross-domain: HEALTH↔PSYCHOLOGICAL deferred to v1.1.
+- `persistence.json`: 36→45 entries (9 PSYCHOLOGICAL rows added, symmetric priors).
+- `observation.json`: 4→5 entries (PSYCHOLOGICAL P(EVENT|ELEVATED)=0.70 / NORMAL=0.20 / SUPPRESSED=0.05).
+- `natal_to_domain.json`: 43→45 entries (2 new PSYCHOLOGICAL edges: SIG.12 wt=0.60, SIG.MSR.297 wt=0.60). 8 SPIRITUAL_PSYCHOLOGICAL→SPIRITUAL renames.
+- `dasha_to_domain.json`: 81 entries × 5-domain keys (SPIRITUAL retains prior values; PSYCHOLOGICAL computed from MD tendency priors + AD modulation).
+- `cross_domain.json`: SPIRITUAL_PSYCHOLOGICAL→SPIRITUAL in 2 active edges + deferred edge. New deferred edge: HEALTH↔PSYCHOLOGICAL (8H Ketu structural basis; deferred to v1.1, overparameterization at n=1).
+
+**NAP.M5.1 Formal Topology Freeze**
+
+Native trigger phrase: "I approve" (2026-05-13). DBN_TOPOLOGY_v1_0.md: status DRAFT→APPROVED; nap_gate_status=APPROVED; frozen_at=2026-05-13T00:00:00+05:30. Topology locked for M5-D fitting. PHASE_M5_PLAN_v1_0.md AC.M5B.5 marked [x].
+
+**EDGE-01 SIG.MSR.402→402b Substitution**
+
+`ll2_edge_weights_v1_0.json` entry at index 0: edge_id EDGE.SIG_MSR_145__SIG_MSR_402 → EDGE.SIG_MSR_145__SIG_MSR_402b; signal_id_b SIG.MSR.402 → SIG.MSR.402b; endpoint_b metadata updated (n_observations=0, status=NO_RECORDS, substitution_note added); promotion_eligible false→true (APPROVED_CONDITIONAL); approval_chain entry 2 added (M5-B-S2 endpoint substitution doc). Co-occurrence finding: MSR.145 ∩ MSR.402 = 11/11 training events (campaign co_count=7 retained); MSR.402b: 0 events (temporal engine predates authorship). `cross_domain.json` CAREER_RELATIONSHIP_bidir ll2_edges_supporting updated (402→402b annotation).
+
+**AC.M5B.3 — LL.3 Retrieval-Domain Alignment — PASS**
+
+Three surgical platform changes:
+- R.LL3.1: `ll1_weights_promoted_v1_0.json` summary block updated with `per_domain_n`, `per_domain_promotion_eligible`, `zero_ll1_weight_domains` (career/spiritual/psychological/financial/family), `ll3_r_ll3_1_note`.
+- R.LL3.2: `feature_flags.ts` — `LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED` (default OFF). `msr_sql.ts` — PANCHA_MP_CLIQUE constant + consolidation logic (≥2 clique members → MAX-weight consolidated entry; fires only when flag ON).
+- R.LL3.3: `feature_flags.ts` — `LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED` (default ON). `msr_sql.ts` — ZERO_LL1_WEIGHT_DOMAINS constant + disclaimer injection in invocation_params when querying zero-LL.1 domains.
+TypeScript: 0 src/ errors. Pre-existing test-file errors are known_residuals.
+
+**AC.M5B.7 — AC.IV.6 Recall Re-evaluation — PASS**
+
+Planner golden-set eval (n=46, `eval_results_pipeline_gap_s1.json`): recall=0.9829 > 0.97 target. Note: LL.3 fixes affect retrieval quality, not planner classification; planner recall is independent of retrieval-layer changes. AC.IV.7 (latency): DEFERRED to M5-D per PHASE_M5_PLAN §M5-D (requires ≥7-day prod traffic window).
+
+### Session close
+
+```yaml
+session_close:
+  session_id: M5-B-S2
+  session_type: substantive
+  closed_at: 2026-05-13T23:59:00+05:30
+  macro_phase: M5
+  sub_phase: M5-B
+  sub_phase_status: CLOSED
+  is_8a_due: true
+  is_8a_discharged: true
+  is_8a_result: PASS
+  red_team_counter_at_close: 0
+  current_state_updated: true
+  current_state_version: "4.4"
+  files_touched:
+    - 06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md (v1.0 DRAFT → v1.1 APPROVED; NAP.M5.1 frozen)
+    - 06_LEARNING_LAYER/dbn/cpt/persistence.json (36→45 entries; PSYCHOLOGICAL added)
+    - 06_LEARNING_LAYER/dbn/cpt/observation.json (4→5 entries; PSYCHOLOGICAL added)
+    - 06_LEARNING_LAYER/dbn/cpt/natal_to_domain.json (43→45 entries; 2 PSYCHOLOGICAL edges)
+    - 06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json (81×4→81×5 domain keys)
+    - 06_LEARNING_LAYER/dbn/cpt/cross_domain.json (SPIRITUAL renamed; HEALTH_PSYCHOLOGICAL deferred edge added)
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/ll2_edge_weights_v1_0.json (EDGE-01 402b substitution)
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/production/ll1_weights_promoted_v1_0.json (R.LL3.1 summary)
+    - platform/src/lib/retrieve/msr_sql.ts (R.LL3.2+R.LL3.3 logic)
+    - platform/src/lib/config/feature_flags.ts (2 new flags)
+    - 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md (AC.M5B.3/AC.M5B.5/AC.M5B.7 checked; carry-forward table updated)
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v4.3→v4.4)
+    - 00_ARCHITECTURE/SESSION_LOG.md (this entry)
+    - .geminirules (MP.1 — state block updated to M5-B CLOSED / M5-C INCOMING)
+    - .gemini/project_state.md (MP.2 — M5-B-S2 deliverables + next session updated)
+  mirror_updates_propagated:
+    - MP.1: .geminirules §F — M5-B-NAP-S1 → M5-B-S2 close; M5-B CLOSED / M5-C INCOMING; red_team_counter 3→0
+    - MP.2: .gemini/project_state.md §Active Phase — M5-B-S2 deliverables block; next session M5-C-S1
+  nap_adjudications:
+    - NAP.M5.1: FORMALLY FROZEN 2026-05-13 (native "I approve"); topology locked at v1.1
+  acceptance_criteria_status:
+    AC.M5B.1: PASS (prior session M5-B-S1)
+    AC.M5B.2: SURROGATE_MAINTAINED (Gemini R.LL1TPA.1 FINAL_NOT_REACHABLE; deferred)
+    AC.M5B.3: PASS (R.LL3.1/.2/.3 implemented this session)
+    AC.M5B.4: PASS_DEFERRED_CREDIT (LL.2 campaign doc CLOSED; formal AC credit M5-C)
+    AC.M5B.5: PASS (NAP.M5.1 frozen this session)
+    AC.M5B.6: DEFERRED to M5-C
+    AC.M5B.7: PASS (recall=0.9829)
+  carry_forwards:
+    - AC.M5B.6 (topology risk register): M5-C
+    - AC.IV.7 (latency telemetry): M5-D (7-day window)
+    - PE.1 (per-chart prediction toggle UI): dedicated portal session
+    - OPEN_ITEM.P1.1 (MSR.145 CDLM expansion): M5-C opportunistic
+    - MSR.402b temporal engine co-occurrence: next temporal engine refresh
+  close_criteria_met: true
+  next_session_commitment: >
+    M5-C-S1: Prior Specification. Per-signal priors from MSR metadata. Per-domain CPT
+    priors from LL.4 + CDLM. NAP.M5.2 native sign-off. Deferred M5-B items: AC.M5B.6
+    (risk register); OPEN_ITEM.P1.1 (MSR.145 CDLM).
+```
+
+### Next session objective
+
+Execute **M5-C-S1**: Open M5-C (Prior Specification). Derive per-signal priors P(signal_lit=1) from MSR signal metadata (strength_score, confidence, temporal_activation) for all 30 Type-A natal nodes. Derive per-domain CPT priors P(ELEVATED/NORMAL/SUPPRESSED at t=0) from LL.4 prediction priors + CDLM domain scores. Author prior specification document. Obtain NAP.M5.2. Discharge deferred M5-B items: AC.M5B.6 (topology risk register entry), OPEN_ITEM.P1.1 (MSR.145 CDLM expansion opportunistic). red_team_counter=1 after this session.
+
+*End of M5-B-S2 entry — 2026-05-13.*

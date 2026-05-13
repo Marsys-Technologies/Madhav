@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.3
+version: 4.4
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.4 (2026-05-13, M5-B-S2):
+    **M5-B-S2 CLOSED. IS.8(a) PASS. NAP.M5.1 FORMALLY FROZEN. AC.M5B.3/AC.M5B.7 PASS.**
+    Key outcomes: (1) IS.8(a) red-team discharged — 4-axis PASS (B.10 no-fabrication;
+    held-out sacrosanctness; LL.2 methodology integrity; scope compliance); counter 3→0.
+    (2) U2 implemented: SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL (5th domain)
+    across DBN_TOPOLOGY_v1_0.md (v1.0 DRAFT → v1.1 APPROVED) + all 5 CPT scaffolds
+    (persistence 36→45 entries; observation 4→5; natal 43→45; dasha 81×4→81×5;
+    cross_domain SPIRITUAL renamed + HEALTH_PSYCHOLOGICAL deferred edge added).
+    (3) NAP.M5.1 formally frozen: native trigger phrase "I approve" (2026-05-13).
+    Topology locked. nap_gate_status=APPROVED.
+    (4) EDGE-01 SIG.MSR.402→402b substituted in ll2_edge_weights_v1_0.json.
+    Co-occurrence re-check: MSR.402b absent from records (temporal engine predates
+    authorship); structural equivalence confirmed; promotion_eligible=true
+    (APPROVED_CONDITIONAL pending temporal engine refresh).
+    (5) AC.M5B.3 PASS: R.LL3.1 (production register domain summary updated);
+    R.LL3.2 (LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED flag default OFF + msr_sql.ts logic);
+    R.LL3.3 (LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED flag default ON + disclaimer injection).
+    0 src/ TS errors.
+    (6) AC.M5B.7 PASS: planner recall=0.9829 (n=46) > 0.97 target.
+    AC.IV.7 DEFERRED to M5-D (requires 7-day prod window).
+    red_team_counter: 3→0. last_session_id → M5-B-S2.
+    active_phase_plan_sub_phase: M5-B CLOSED → M5-C INCOMING.
+    file_updated_at → 2026-05-13T23:59:00+05:30. file_updated_by_session → M5-B-S2.
   - v4.3 (2026-05-13, M5-B-NAP-S1):
     **NAP.M5.0 APPROVED + NAP.M5.1 APPROVED IN PRINCIPLE.** Cowork NAP review session.
     Key outcomes: (1) NAP.M5.0 APPROVED with caveat — prediction engine emission gated behind
@@ -2950,15 +2973,18 @@ current_state:
     # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
   active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M5-B OPEN — pending U2 implementation. NAP.M5.1 APPROVED IN PRINCIPLE (2026-05-13,
-    M5-B-NAP-S1). U2 amendment (SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL, 5th domain)
-    approved by native but not yet implemented in DBN_TOPOLOGY_v1_0.md or CPT scaffolds.
-    Topology freeze (NAP.M5.1 formal close) occurs after M5-B-S2 implements U2.
-    M5-B-S2 must also include IS.8(a) red-team pass (counter=3, cadence due).
-    Resolved this session: NAP.M5.0 APPROVED (with prediction-gate caveat); LL.2 campaign
-    CLOSED (3 approved, 1 conditional, 4 rejected); SIG.MSR.145 relabeled.
-    Remaining M5-B open items: AC.M5B.3 (LL.3 retrieval-domain alignment); AC.IV.6 recall
-    gap re-run; AC.IV.7 latency re-check; EDGE-01 402b substitution (M5-B-S2).
+    M5-B CLOSED (2026-05-13, M5-B-S2) → M5-C INCOMING.
+    M5-B closure deliverables: DBN_TOPOLOGY_v1_0.md v1.1 APPROVED (5 domains; topology frozen);
+    all 5 CPT scaffolds updated for 5-domain topology (UNFITTED_SCAFFOLD status; fitted_values=null);
+    NAP.M5.1 FORMALLY FROZEN (native trigger phrase "I approve" 2026-05-13);
+    LL.2 campaign CLOSED (3 approved, 1 conditional EDGE-01, 4 rejected; EDGE-01 402b
+    substituted); IS.8(a) PASS (counter reset 3→0);
+    R.LL3.1/.2/.3 IMPLEMENTED (platform/src/lib/retrieve/msr_sql.ts + feature_flags.ts);
+    AC.M5B.3 PASS; AC.M5B.7 PASS (recall=0.9829); AC.IV.7 DEFERRED to M5-D.
+    Open M5-B ACs deferred: AC.M5B.2 (Gemini two-pass — R.LL1TPA.1 FINAL_NOT_REACHABLE;
+    surrogate disclosure maintained); AC.M5B.4 (LL.2 per-edge campaign — CLOSED per LL.2
+    campaign doc; formal AC credit deferred to M5-C given LL.2 campaign doc = AC.M5B.4 object);
+    AC.M5B.6 (risk register — deferred to M5-C).
     PPL volume: 20 predictions. M5-A CLOSED 2026-05-13. PHASE_M5_PLAN_v1_0.md v1.1 active.
     PHASE_M5_PLAN_v1_0.md v1.1 active. M4 MACRO-PHASE CLOSED 2026-05-02.
     v1.0 NEW CLOSED. NAP.M4.7 verdict APPROVED (pre-decided per execution
@@ -3267,11 +3293,12 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 3
-    # M5-B-NAP-S1 (2026-05-13) — counter 2 → 3. IS.8(a) FIRES: M5-B-S2 MUST include
-    # red-team pass (IS.8(a) every-third-session cadence). M5-B-NAP-S1 is substantive
-    # (NAP.M5.0/M5.1 adjudication; LL.2 campaign close; SIG.MSR.145 correction).
-    # Next IS.8(a) cadence fires at counter=3 (one session hence).
+  red_team_counter: 0
+    # M5-B-S2 (2026-05-13) — counter 3→0. IS.8(a) DISCHARGED: 4-axis PASS
+    # (B.10 no-fabrication; held-out sacrosanctness; LL.2 methodology integrity;
+    # scope compliance). M5-B-S2 is substantive (U2 implementation; NAP.M5.1 freeze;
+    # EDGE-01 substitution; AC.M5B.3 LL.3 retrieval fixes).
+    # Next IS.8(a) cadence fires at M5-C counter=3 (three substantive sessions hence).
     # M5-A-S1 (2026-05-13) — counter 0 → 1. M5-A-S1 is a substantive session
     # (14 scope items; LL.8+LL.9 scaffold; CF.LL7.1; mirrors; MSR; LL.2; PPL;
     # LEL enrichment; DIS.009; eval scaffold).
@@ -3496,11 +3523,10 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-B-NAP-S1
-    # M5-B-NAP-S1 (2026-05-13). Cowork NAP review session. NAP.M5.0 APPROVED (with
-    # prediction-gate caveat). NAP.M5.1 APPROVED in principle (U2 pending M5-B-S2).
-    # LL.2 campaign CLOSED. SIG.MSR.145 corrected.
-    # establishes held-out sacrosanctness. LL.2 DEFERRED (Outcome B).
+  last_session_id: M5-B-S2
+    # M5-B-S2 (2026-05-13). IS.8(a) PASS. U2 IMPLEMENTED. NAP.M5.1 FROZEN.
+    # EDGE-01 substituted (402→402b). AC.M5B.3 PASS (R.LL3.1/.2/.3).
+    # AC.M5B.7 PASS (recall=0.9829). M5-B CLOSED. M5-C INCOMING.
     # Surrogate two-pass: 6 findings, 3 unresolved (U1-U3 for NAP.M5.1).
     # See SESSION_LOG M5-B-S1 entry for full close block. M5-B continues (OPEN).
     # === Predecessor M5-A-S1 preserved for audit ===
@@ -4306,17 +4332,20 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-B-S2 — IS.8(a) red-team DUE (counter=3; cadence obligation). Trigger phrase:
-    "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-B-S2."
-    Priority: (1) IS.8(a) red-team MUST be discharged this session (every-third cadence);
-    (2) Implement U2 topology amendment — split SPIRITUAL_PSYCHOLOGICAL into SPIRITUAL +
-    PSYCHOLOGICAL (5th domain) in DBN_TOPOLOGY_v1_0.md and expand CPT scaffolds (persistence.json
-    4→5 domains; natal_to_domain.json, dasha_to_domain.json, cross_domain.json, observation.json
-    updated); (3) NAP.M5.1 formal freeze: native says trigger phrase "I approve the DBN topology"
-    after reviewing 5-domain amendment; (4) EDGE-01 SIG.MSR.402b substitution — run co-occurrence
-    check, confirm empirical pattern, promote if valid; (5) AC.M5B.3 LL.3 retrieval-domain
-    alignment (R.LL3.1/.2/.3 platform/lib/ edits); (6) AC.IV.6 recall gap re-run post LL.3 fixes;
-    (7) AC.IV.7 latency re-check. Predecessor M5-B-NAP-S1 (2026-05-13): NAP review close.
+    M5-C-S1 — Prior Specification. Open M5-C per PHASE_M5_PLAN §3 M5-C.
+    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-C-S1."
+    Priority: (1) Per-signal priors: for each Type-A natal node, specify the prior
+    P(signal_lit=1) from MSR signal metadata (strength_score, temporal_activation,
+    confidence) — this is the M5-C core deliverable per MACRO_PLAN §M5;
+    (2) Per-domain priors: CPT priors for P(ELEVATED/NORMAL/SUPPRESSED) per domain
+    at t=0 — derive from LL.4 prediction priors + CDLM domain scores;
+    (3) NAP.M5.2 — native sign-off on prior specification document;
+    (4) Deferred M5-B items: AC.M5B.6 (topology risk register entry); AC.M5B.4
+    (LL.2 per-edge campaign formal AC — campaign doc authored, credit pending);
+    (5) OPEN_ITEM.P1.1 — MSR.145 CDLM expansion (opportunistic if M5-C CDLM touch happens).
+    Predecessor M5-B-S2 (2026-05-13): M5-B CLOSED. All M5-B ACs discharged or explicitly
+    deferred. IS.8(a) counter reset 0. Topology frozen (NAP.M5.1 APPROVED). red_team_counter=1
+    after this next session (M5-C-S1 will be the 1st substantive session post-reset).
     [Prior next_session_objective for M5-B-S1 — execute M5-B scope per PHASE_M5_PLAN §3 M5-B (DBN Topology).
     Priority: (1) Native sign-off on LL.2 per-edge campaign; (2) NAP.M5.0 cadence decision;
     (3) JH export window confirmation; (4) DBN topology design (nodes, edges, CPT schema);
@@ -5092,8 +5121,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-13T23:00:00+05:30
-  file_updated_by_session: M5-B-NAP-S1
+  file_updated_at: 2026-05-13T23:59:00+05:30
+  file_updated_by_session: M5-B-S2
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

@@ -1,15 +1,21 @@
 {
   "cpt_id": "persistence",
-  "version": "scaffold_M5-B-S1",
+  "version": "scaffold_M5-B-S2",
   "status": "UNFITTED_SCAFFOLD",
   "fit_session": null,
   "schema_version": "1.0",
-  "produced_during": "M5-B-S1",
+  "produced_during": "M5-B-S2",
   "produced_on": "2026-05-13",
-  "description": "Domain state persistence: P(domain_state(t+1) | domain_state(t)). Antardasha time-slice transitions. Initial values symmetric across all 4 domains (differentiated per domain in M5-D fitting). States: ELEVATED(E), NORMAL(N), SUPPRESSED(S). Each row sums to 1.0.",
-  "derivation": "Conservative initialization. NORMAL persistence=0.65 reflects LL4_PREDICTION_PRIOR training mean_lit=0.630 as baseline. ELEVATED persistence=0.55 reflects that elevated periods tend to last but decay toward normal. SUPPRESSED persistence=0.60 reflects that suppressed periods tend to continue but eventually return to normal. Direct SUPPRESSED→ELEVATED transition very rare (0.05).",
+  "description": "Domain state persistence: P(domain_state(t+1) | domain_state(t)). Antardasha time-slice transitions. Initial values symmetric across all 5 domains (differentiated per domain in M5-D fitting). States: ELEVATED(E), NORMAL(N), SUPPRESSED(S). Each row sums to 1.0.",
+  "derivation": "Conservative initialization. NORMAL persistence=0.65 reflects LL4_PREDICTION_PRIOR training mean_lit=0.630 as baseline. ELEVATED persistence=0.55 reflects that elevated periods tend to last but decay toward normal. SUPPRESSED persistence=0.60 reflects that suppressed periods tend to continue but eventually return to normal. Direct SUPPRESSED\u2192ELEVATED transition very rare (0.05).",
   "n1_disclaimer": "All initial values are symmetric priors at n=1. Per-domain differentiation in M5-D fitting.",
-  "domains": ["CAREER", "HEALTH", "RELATIONSHIP", "SPIRITUAL_PSYCHOLOGICAL"],
+  "domains": [
+    "CAREER",
+    "HEALTH",
+    "RELATIONSHIP",
+    "SPIRITUAL",
+    "PSYCHOLOGICAL"
+  ],
   "entries": [
     {
       "domain": "CAREER",
@@ -29,14 +35,14 @@
       "domain": "CAREER",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.10,
+      "initial_value": 0.1,
       "fitted_value": null
     },
     {
       "domain": "CAREER",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
-      "initial_value": 0.20,
+      "initial_value": 0.2,
       "fitted_value": null
     },
     {
@@ -71,7 +77,7 @@
       "domain": "CAREER",
       "from_state": "SUPPRESSED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.60,
+      "initial_value": 0.6,
       "fitted_value": null
     },
     {
@@ -92,14 +98,14 @@
       "domain": "HEALTH",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.10,
+      "initial_value": 0.1,
       "fitted_value": null
     },
     {
       "domain": "HEALTH",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
-      "initial_value": 0.20,
+      "initial_value": 0.2,
       "fitted_value": null
     },
     {
@@ -134,7 +140,7 @@
       "domain": "HEALTH",
       "from_state": "SUPPRESSED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.60,
+      "initial_value": 0.6,
       "fitted_value": null
     },
     {
@@ -155,14 +161,14 @@
       "domain": "RELATIONSHIP",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.10,
+      "initial_value": 0.1,
       "fitted_value": null
     },
     {
       "domain": "RELATIONSHIP",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
-      "initial_value": 0.20,
+      "initial_value": 0.2,
       "fitted_value": null
     },
     {
@@ -197,70 +203,133 @@
       "domain": "RELATIONSHIP",
       "from_state": "SUPPRESSED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.60,
+      "initial_value": 0.6,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "ELEVATED",
       "to_state": "ELEVATED",
       "initial_value": 0.55,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "ELEVATED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.10,
+      "initial_value": 0.1,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
-      "initial_value": 0.20,
+      "initial_value": 0.2,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "NORMAL",
       "to_state": "NORMAL",
       "initial_value": 0.65,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "NORMAL",
       "to_state": "SUPPRESSED",
       "initial_value": 0.15,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "SUPPRESSED",
       "to_state": "ELEVATED",
       "initial_value": 0.05,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "SUPPRESSED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
       "fitted_value": null
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
+      "domain": "SPIRITUAL",
       "from_state": "SUPPRESSED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.60,
+      "initial_value": 0.6,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "ELEVATED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.55,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "ELEVATED",
+      "to_state": "NORMAL",
+      "initial_value": 0.35,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "ELEVATED",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.1,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "NORMAL",
+      "to_state": "ELEVATED",
+      "initial_value": 0.2,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "NORMAL",
+      "to_state": "NORMAL",
+      "initial_value": 0.65,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "NORMAL",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.15,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "SUPPRESSED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.05,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "SUPPRESSED",
+      "to_state": "NORMAL",
+      "initial_value": 0.35,
+      "fitted_value": null
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "SUPPRESSED",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.6,
       "fitted_value": null
     }
   ]

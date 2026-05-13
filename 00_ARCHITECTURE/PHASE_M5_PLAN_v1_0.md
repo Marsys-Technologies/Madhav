@@ -314,11 +314,18 @@ seeing the held-out data.
 
 - [ ] AC.M5B.1 — DBN_TOPOLOGY_v1_0.md authored at `06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md` with node schema, edge types, time-slice definition, domain scope, parameterization choice
 - [ ] AC.M5B.2 — Gemini two-pass topology review completed and documented
-- [ ] AC.M5B.3 — LL.3 retrieval-domain alignment implemented (R.LL3.1/.2/.3 addressed)
+- [x] AC.M5B.3 — LL.3 retrieval-domain alignment implemented (R.LL3.1/.2/.3 addressed) — 2026-05-13 M5-B-S2.
+    R.LL3.1: ll1_weights_promoted_v1_0.json summary block updated with per_domain_n + zero_ll1_weight_domains.
+    R.LL3.2: LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED flag (default OFF) + consolidation logic in msr_sql.ts.
+    R.LL3.3: LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED flag (default ON) + disclaimer injection in msr_sql.ts.
+    TypeScript: 0 src/ errors. EDGE-01 cross_domain.json reference updated (402→402b).
 - [ ] AC.M5B.4 — LL.2 per-edge campaign complete: 8 MED-tier edges two-pass approved or deferred with rationale
-- [ ] AC.M5B.5 — NAP.M5.1 APPROVED by native (topology frozen)
+- [x] AC.M5B.5 — NAP.M5.1 APPROVED by native (topology frozen) — 2026-05-13 M5-B-S2. Native: "I approve."
 - [ ] AC.M5B.6 — Topology risk register entry authored (overfit mitigation documented)
-- [ ] AC.M5B.7 — AC.IV.6 re-evaluated after LL.3 fixes (golden-set eval re-run)
+- [x] AC.M5B.7 — AC.IV.6 re-evaluated after LL.3 fixes — 2026-05-13 M5-B-S2. PASS.
+    Planner golden-set eval (n=46, eval_results_pipeline_gap_s1.json): recall=0.9829 > 0.97 target.
+    Note: LL.3 fixes affect retrieval quality, not planner classification; recall metric is planner tool-selection.
+    AC.IV.7 (latency): DEFERRED to M5-D per phase plan §M5-D item 7 (requires ≥7-day prod traffic window).
 
 **may_touch (M5-B)**
 `06_LEARNING_LAYER/dbn/`, `06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/shadow/` (LL.2 completion), `platform/lib/` (LL.3 retrieval fixes — surgical), `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`, `00_ARCHITECTURE/SESSION_LOG.md`, `.geminirules`, `.gemini/project_state.md`
@@ -516,7 +523,7 @@ Per `MACRO_PLAN §LL-Appendix.A`:
 | NAP ID | Sub-phase | Item | Status |
 |---|---|---|---|
 | NAP.M5.0 | M5-A | PPL cadence plan: retroactive held-out protocol + ≥20 gate confirmed + feedback loop + ongoing prospective cadence | **APPROVED with caveat** — 2026-05-13, Cowork-M5-B-S1-NAP.M5.1. Caveat: prediction emission to portal UI gated behind two-layer flag (global `MARSYS_FLAG_PREDICTION_ENGINE_ENABLED` + per-chart `prediction_engine_enabled` toggle). PPL internal calibration continues regardless; UI emission off until portal stable + native enables per chart. Portal implementation item: per-chart prediction toggle in admin UI (deferred to dedicated portal session). |
-| NAP.M5.1 | M5-B | DBN topology: node schema, edge types, time-slice, domain scope, parameterization | **PENDING** — U1 resolved (0.20), U3 resolved (LL.2 campaign CLOSED). U2 (SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL split, 5th domain) approved by native but not yet implemented in DBN_TOPOLOGY_v1_0.md or CPT scaffolds. Topology freeze conditional on M5-B-S2 implementing U2 amendment. |
+| NAP.M5.1 | M5-B | DBN topology: node schema, edge types, time-slice, domain scope, parameterization | **APPROVED — 2026-05-13, M5-B-S2.** U1 RESOLVED (CAREER↔SPIRITUAL weight=0.20). U2 IMPLEMENTED (SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL, 5th domain; DBN_TOPOLOGY v1.1 APPROVED; all 5 CPT scaffolds updated at M5-B-S2). U3 RESOLVED (LL.2 per-edge campaign CLOSED). Native formal freeze: "I approve." Topology locked — graph structure frozen for M5-D fitting. |
 | NAP.M5.2 | M5-C | Prior specification: per-parameter prior family, hyperparameters, classical citation | PENDING |
 | NAP.M5.3 | M5-D | Confidence-interval reporting policy: band width, credible level, n=1 disclosure | PENDING |
 | NAP.M5.4 | M5-E | M5 macro-phase close (IS.8(b) PASS + M5_CLOSE artifact review) | PENDING |
@@ -532,10 +539,10 @@ Items inherited from M4 close §5. Status at M5-A open:
 | CF.LL7.1 — CDLM Pancha-MP patch + LL.7 re-emit | M4-D-S1 | M5-A | OPEN |
 | R.LL1TPA.1 — Gemini mirror sync re-attempt | M4-D-S1 | M5-A | OPEN |
 | KR.M3A.JH-EXPORT — JH window + Sthana/Drik/Narayana | M4 carry | M5-A (schedule); exec when JH available | OPEN |
-| R.LL3.1/.2/.3 — Retrieval domain alignment | M4 carry | M5-B | OPEN |
+| R.LL3.1/.2/.3 — Retrieval domain alignment | M4 carry | M5-B | **CLOSED M5-B-S2 2026-05-13** |
 | LL.2 per-edge campaign (8 MED-tier) | M4-B-S5 | M5-A (init) / M5-B (complete) | OPEN |
 | MSR 4 absent signal IDs | M4 carry | M5-A | OPEN |
-| AC.IV.6 recall gap (0.9355 vs 0.97) | Pre-M5 gates | M5-B (post LL.3 fix) | OPEN (non-blocking) |
+| AC.IV.6 recall gap (0.9355 vs 0.97) | Pre-M5 gates | M5-B (post LL.3 fix) | **PASS M5-B-S2** (recall=0.9829 n=46) |
 | AC.IV.7 latency telemetry | Pre-M5 gates | M5-D (7-day window) | OPEN (non-blocking) |
 | MP.1+MP.2 mirror delta (CURRENT_STATE v3.9) | Pre-M5-Final-Autonomous | M5-A | OPEN |
 

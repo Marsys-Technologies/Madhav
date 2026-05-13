@@ -10,6 +10,7 @@ import type { MsrSignal } from '@/lib/db/types'
 import { getStorageClient } from '@/lib/storage'
 import { validate } from '@/lib/schemas'
 import { telemetry } from '@/lib/telemetry'
+import { getFlag } from '@/lib/config'
 import { writeToolExecutionLog } from '@/lib/db/monitoring-write'
 import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool, MsrSqlInput } from './types'
 
@@ -22,6 +23,26 @@ const DEFAULT_CONFIDENCE_FLOOR = 0.6
 // so medium-confidence finance signals reach the synthesizer.
 const FINANCE_WEALTH_CONFIDENCE_FLOOR = 0.35
 const FINANCE_WEALTH_DOMAINS = new Set(['finance', 'wealth'])
+
+// LL.3 R.LL3.2 — Pancha-Mahapurusha clique (M5-B 2026-05-13).
+// These 6 signals form a single natal yoga configuration. When the cluster-modifier
+// flag is ON, treat them as one consolidated entry (MAX weight) rather than 6
+// additive entries to prevent 6× double-counting in synthesis.
+// Note: SIG.MSR.402 is invalidated (wrong house attribution); SIG.MSR.402b is the
+// corrected form. Both are included so the modifier fires regardless of DB state.
+const PANCHA_MP_CLIQUE = new Set([
+  'SIG.MSR.117', 'SIG.MSR.118', 'SIG.MSR.119',
+  'SIG.MSR.143', 'SIG.MSR.145',
+  'SIG.MSR.402', 'SIG.MSR.402b',  // 402 invalidated; 402b is the corrected form
+])
+const PANCHA_MP_CONSOLIDATED_ID = 'PANCHA_MP_CLIQUE_CONSOLIDATED'
+
+// LL.3 R.LL3.3 — Domains with zero LL.1 calibration weight at M5-B open.
+// When retrieving these domains, signals are ranked by MSR-native confidence ×
+// significance only (not LL.1 calibrated). Surface this as an explicit disclaimer
+// rather than silently treating absence-of-weight as absence-of-signal.
+// Source: ll1_weights_promoted_v1_0.json summary.zero_ll1_weight_domains (updated M5-B-S2).
+const ZERO_LL1_WEIGHT_DOMAINS = new Set(['career', 'spiritual', 'psychological', 'financial', 'family'])
 
 const SQL = `
   SELECT * FROM msr_signals
@@ -138,7 +159,7 @@ async function retrieveImpl(
   }
 
   // pg returns NUMERIC/DECIMAL columns as strings by default; coerce to number for schema validation
-  const results: ToolBundleResult[] = rows.map(signal => ({
+  let results: ToolBundleResult[] = rows.map(signal => ({
     content: signal.claim_text,
     source_canonical_id: 'MSR',
     source_version: signal.source_version,
@@ -146,6 +167,30 @@ async function retrieveImpl(
     significance: Number(signal.significance),
     signal_id: signal.signal_id,
   }))
+
+  // LL.3 R.LL3.2 — Pancha-MP cluster-modifier (M5-B 2026-05-13).
+  // When flag is ON and ≥2 Pancha-MP clique members appear in results, consolidate
+  // them into a single entry with the MAX of their confidence × significance scores.
+  // Prevents 6× additive double-counting of the same natal yoga structure.
+  if (getFlag('LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED')) {
+    const clique_members = results.filter(r => r.signal_id != null && PANCHA_MP_CLIQUE.has(r.signal_id))
+    if (clique_members.length >= 2) {
+      const non_clique = results.filter(r => r.signal_id == null || !PANCHA_MP_CLIQUE.has(r.signal_id))
+      const max_confidence = Math.max(...clique_members.map(r => r.confidence ?? 0))
+      const max_significance = Math.max(...clique_members.map(r => r.significance ?? 0))
+      const consolidated: ToolBundleResult = {
+        content: `[PANCHA_MP_CLUSTER] Pancha-Mahapurusha yoga configuration: ${clique_members.map(r => r.signal_id).join(', ')}. ` +
+          `Consolidated per LL.3 R.LL3.2 cluster-modifier (prevents ${clique_members.length}× double-counting). ` +
+          `Representative signal: ${clique_members[0]?.content ?? ''}`,
+        source_canonical_id: 'MSR',
+        source_version: clique_members[0]?.source_version,
+        confidence: max_confidence,
+        significance: max_significance,
+        signal_id: PANCHA_MP_CONSOLIDATED_ID,
+      }
+      results = [...non_clique, consolidated]
+    }
+  }
 
   const result_hash =
     'sha256:' +
@@ -155,6 +200,19 @@ async function retrieveImpl(
       .digest('hex')
 
   const latency_ms = Date.now() - start
+
+  // LL.3 R.LL3.3 — Zero-LL.1-weight domain disclaimer (M5-B 2026-05-13).
+  // When querying domains with no LL.1 calibration weight, annotate the bundle so
+  // that the synthesis layer does not treat absence-of-weight as absence-of-signal.
+  // Signals are ranked by MSR-native confidence × significance, not LL.1 calibrated.
+  const zero_ll1_domains_in_query = getFlag('LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED')
+    ? plan.domains.filter(d => ZERO_LL1_WEIGHT_DOMAINS.has(d))
+    : []
+  const ll3_r_ll3_3_disclaimer = zero_ll1_domains_in_query.length > 0
+    ? `LL.3 R.LL3.3: domain(s) [${zero_ll1_domains_in_query.join(', ')}] have zero LL.1 calibration weight at M5-B-S2. ` +
+      `Signals are ranked by MSR-native confidence × significance only (not LL.1 calibrated). ` +
+      `Treat results as pre-calibration; n=0 LL.1 signal does NOT mean no relevant signals exist.`
+    : null
 
   const bundle: ToolBundle = {
     tool_bundle_id: crypto.randomUUID(),
@@ -171,6 +229,7 @@ async function retrieveImpl(
       valence: valenceFilter,
       entities_involved_any: entitiesFilter,
       fallback_used,
+      ...(ll3_r_ll3_3_disclaimer ? { ll3_zero_weight_disclaimer: ll3_r_ll3_3_disclaimer } : {}),
     },
     results,
     served_from_cache: false,

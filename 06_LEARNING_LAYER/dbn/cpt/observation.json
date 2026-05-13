@@ -1,47 +1,61 @@
 {
   "cpt_id": "observation",
-  "version": "scaffold_M5-B-S1",
+  "version": "scaffold_M5-B-S2",
   "status": "UNFITTED_SCAFFOLD",
   "fit_session": null,
   "schema_version": "1.0",
-  "produced_during": "M5-B-S1",
+  "produced_during": "M5-B-S2",
   "produced_on": "2026-05-13",
-  "description": "Observation model: P(EVENT_OCCURRED=1 | domain_state). Links latent domain activation state to observed event occurrence (binary). One row per domain. In v1.0 the emission probabilities are symmetric across all 4 domains — differentiated in M5-D fitting.",
-  "derivation": "Initial values from DBN_TOPOLOGY_v1_0.md §3.4. P(EVENT|ELEVATED)=0.70 reflects that elevated periods are where major life events concentrate (LL.4 training base). P(EVENT|NORMAL)=0.20 reflects background rate. P(EVENT|SUPPRESSED)=0.05 reflects suppression blocks event occurrence.",
-  "n1_disclaimer": "Symmetric priors at n=1. Per-domain differentiation in M5-D fitting. Preliminary calibration target: calibration_slope ≥ 0.7 per LL.4 PREDICTION_PRIOR training.",
-  "domains": ["CAREER", "HEALTH", "RELATIONSHIP", "SPIRITUAL_PSYCHOLOGICAL"],
+  "description": "Observation model: P(EVENT_OCCURRED=1 | domain_state). Links latent domain activation state to observed event occurrence (binary). One row per domain. In v1.0 the emission probabilities are symmetric across all 5 domains \u2014 differentiated in M5-D fitting.",
+  "derivation": "Initial values from DBN_TOPOLOGY_v1_0.md \u00a73.4. P(EVENT|ELEVATED)=0.70 reflects that elevated periods are where major life events concentrate (LL.4 training base). P(EVENT|NORMAL)=0.20 reflects background rate. P(EVENT|SUPPRESSED)=0.05 reflects suppression blocks event occurrence.",
+  "n1_disclaimer": "Symmetric priors at n=1. Per-domain differentiation in M5-D fitting. Preliminary calibration target: calibration_slope \u2265 0.7 per LL.4 PREDICTION_PRIOR training.",
+  "domains": [
+    "CAREER",
+    "HEALTH",
+    "RELATIONSHIP",
+    "SPIRITUAL",
+    "PSYCHOLOGICAL"
+  ],
   "entries": [
     {
       "domain": "CAREER",
-      "P_event_given_ELEVATED": 0.70,
-      "P_event_given_NORMAL": 0.20,
+      "P_event_given_ELEVATED": 0.7,
+      "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
       "fitted_values": null,
       "ll4_basis": "career MODERATE prior mean_lit=0.5016 suggests non-trivial baseline; ELEVATED threshold reflects event concentration in high-signal antardashas"
     },
     {
       "domain": "HEALTH",
-      "P_event_given_ELEVATED": 0.70,
-      "P_event_given_NORMAL": 0.20,
+      "P_event_given_ELEVATED": 0.7,
+      "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
       "fitted_values": null,
       "ll4_basis": "health MODERATE prior mean_lit=0.4948; symmetric with CAREER at v1.0; health events may require asymmetric adjustment at M5-D"
     },
     {
       "domain": "RELATIONSHIP",
-      "P_event_given_ELEVATED": 0.70,
-      "P_event_given_NORMAL": 0.20,
+      "P_event_given_ELEVATED": 0.7,
+      "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
       "fitted_values": null,
       "ll4_basis": "relationship MODERATE prior mean_lit=0.4113; lower domain prior than career/health may push fitted ELEVATED value down at M5-D"
     },
     {
-      "domain": "SPIRITUAL_PSYCHOLOGICAL",
-      "P_event_given_ELEVATED": 0.70,
-      "P_event_given_NORMAL": 0.20,
+      "domain": "SPIRITUAL",
+      "P_event_given_ELEVATED": 0.7,
+      "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
       "fitted_values": null,
-      "ll4_basis": "spiritual WEAK prior (n=6, mean_lit=1.0 unreliable); symmetric scaffold only; high uncertainty — requires NAP.M5.1 consideration for SPIRITUAL domain split (U2)"
+      "ll4_basis": "spiritual WEAK prior (n=6 combined SPR+PSY, mean_lit=1.0 unreliable after split); SPIRITUAL captures dharmic practice events (SPR.*); symmetric scaffold pending M5-D per-domain fit. U2 split: SPIRITUAL receives existing scaffold values; PSYCHOLOGICAL receives new node."
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "P_event_given_ELEVATED": 0.7,
+      "P_event_given_NORMAL": 0.2,
+      "P_event_given_SUPPRESSED": 0.05,
+      "fitted_values": null,
+      "ll4_basis": "PSYCHOLOGICAL \u2014 new 5th domain (U2 split from SPIRITUAL_PSYCHOLOGICAL). n_obs insufficient for separate prior (PSY.* events subset of n=6 combined). Symmetric scaffold: ELEVATED=0.70, NORMAL=0.20, SUPPRESSED=0.05. Domain captures psychological transformation events (8H Ketu activation, 4H Moon distress periods). M5-D fitting will differentiate from SPIRITUAL per-domain."
     }
   ]
 }

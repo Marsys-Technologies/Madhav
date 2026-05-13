@@ -1,11 +1,15 @@
 ---
 artifact: DBN_TOPOLOGY_v1_0.md
 canonical_id: DBN_TOPOLOGY
-version: "1.0"
-status: DRAFT
+version: "1.1"
+status: APPROVED
+frozen_at: "2026-05-13T00:00:00+05:30"
+frozen_session: M5-B-S2
+native_approval_phrase: "I approve"
+nap_gate_status: APPROVED
 phase: M5-B
-sub_phase: M5-B-S1
-authored_by: M5-B-S1
+sub_phase: M5-B-S2
+authored_by: M5-B-S1 (U2 expansion at M5-B-S2)
 authored_at: 2026-05-13
 nap_gate: NAP.M5.1
 held_out_status: >
@@ -29,9 +33,9 @@ derivation_ledger:
   - claim: "Antardasha is the atomic time-slice"
     l1_source: "FORENSIC §5.1 — Vimshottari dasha sequence (DSH.V.001–DSH.V.050+) for native's birth 1984-02-05"
     ll_source: "LL5_DASHA_TRANSIT_DESIGN §1.1 — dasha_weight = primary axis for 410/420 observed activations"
-  - claim: "4 domains selected (CAREER, HEALTH, RELATIONSHIP, SPIRITUAL_PSYCHOLOGICAL)"
-    l1_source: "FORENSIC §1.2 (Lagna Aries, 10H Capricorn career apex, 7H Libra relationship, 8H Scorpio transformation)"
-    ll_source: "LL4_PREDICTION_PRIOR §4 — career/health/relationship each MODERATE tier; spiritual WEAK but 100% lit-rate on 6 observations; LL.2 corpus 37 training events covers these 4 domains richly"
+  - claim: "5 domains selected (CAREER, HEALTH, RELATIONSHIP, SPIRITUAL, PSYCHOLOGICAL) — U2 split at M5-B-S2"
+    l1_source: "FORENSIC §1.2 (Lagna Aries, 10H Capricorn career apex, 7H Libra relationship, 8H Scorpio transformation/psychology, 9H Sagittarius dharma/spirit)"
+    ll_source: "LL4_PREDICTION_PRIOR §4 — career/health/relationship each MODERATE tier; spiritual+psychological combined WEAK (n=6, mean_lit=1.0 unreliable); split approved NAP.M5.1 U2 2026-05-13. SPIRITUAL captures dharma/practice events (SPR.*); PSYCHOLOGICAL captures transformation/inner-state events (PSY.*)"
   - claim: "30 production MSR signals are Type A natal static nodes"
     l1_source: "FORENSIC §1–§2 — all 30 signals derive from natal chart structure fixed at birth"
     ll_source: "ll1_weights_promoted_v1_0.json — 30 signals status=production, all natal-static"
@@ -51,16 +55,19 @@ derivation_ledger:
     l1_source: "FORENSIC §5.1 — 9 Vimshottari mahadasha lords; precise antardasha sequence from birth"
     ll_source: "LL5_DASHA_TRANSIT_DESIGN §2–§3 — dasha_weight computed for 380 signals; HIGH tier: Sun+Ketu dasha_dominant; MED tier: 12 signals"
 nap_m5_1_status: >
-  NAP.M5.1 native review completed 2026-05-13 at M5-B-NAP-S1. Three unresolved items
-  adjudicated: U1 RESOLVED (CAREER↔SPIRITUAL weight confirmed 0.20); U2 APPROVED_PENDING_IMPLEMENTATION
-  (SPIRITUAL_PSYCHOLOGICAL split → SPIRITUAL + PSYCHOLOGICAL, 5th domain; implementation deferred
-  to M5-B-S2 — topology must be updated before formal freeze); U3 RESOLVED (LL.2 per-edge campaign
-  closed — see ll2_promotion_campaign_v1_0.md §6). Native approval phrase issued: "I approve the
-  deviant topology" — conditional on U2 implementation. Formal freeze (status DRAFT → APPROVED) at
-  M5-B-S2 after U2 implementation and re-issue of native approval.
+  NAP.M5.1 FULLY RESOLVED AND FROZEN at M5-B-S2 (2026-05-13). Three unresolved items all
+  resolved: U1 RESOLVED (CAREER↔SPIRITUAL weight confirmed 0.20 by native at M5-B-NAP-S1);
+  U2 IMPLEMENTED at M5-B-S2 (SPIRITUAL_PSYCHOLOGICAL split → SPIRITUAL + PSYCHOLOGICAL, 5th domain;
+  all 5 CPT scaffolds updated — persistence.json 45 entries, observation.json 5 entries,
+  natal_to_domain.json 45 entries, dasha_to_domain.json 81×5-domain, cross_domain.json updated);
+  U3 RESOLVED (LL.2 per-edge campaign closed — see ll2_promotion_campaign_v1_0.md §6).
+  Native formal freeze approval issued at M5-B-S2: "I approve". Topology status: APPROVED.
+  This topology is now frozen — no further design changes permitted. CPT fitting at M5-D may
+  adjust initial_values but the graph structure (nodes, edges, domains) is locked.
 changelog:
   - v1.0 (2026-05-13, M5-B-S1): Initial committed topology. DRAFT pending NAP.M5.1. All 9 sections populated. D1–D6 committed before held-out consultation.
   - v1.0 amended in-place (2026-05-13, M5-B-NAP-S1): NAP.M5.1 review outcomes recorded in nap_m5_1_status. CAREER↔SPIRITUAL edge weight confirmed 0.20 (U1 resolved). Domain split SPIRITUAL_PSYCHOLOGICAL→SPIRITUAL+PSYCHOLOGICAL approved (U2 approved; implementation deferred to M5-B-S2). LL.2 campaign closed: 3 APPROVED + 1 APPROVED_CONDITIONAL + 4 REJECTED. SIG.MSR.145 label corrected in MSR_v3_0.md. Status remains DRAFT pending U2 implementation.
+  - v1.1 (2026-05-13, M5-B-S2): U2 IMPLEMENTED + NAP.M5.1 FORMALLY FROZEN. SPIRITUAL_PSYCHOLOGICAL split into SPIRITUAL (dharmic practice, 9H domain) + PSYCHOLOGICAL (transformation, inner-state, 8H Ketu / 4H Moon domain). D2 updated to 5 domains. §3.3 PSYCHOLOGICAL Type C node added (P(E)=0.25, P(N)=0.50, P(S)=0.25 symmetric scaffold). §3.4 PSYCHOLOGICAL_EVENT Type D node added. §4.1 PSYCHOLOGICAL conditioning edges added: SIG.12 (wt=0.60 MED) and SIG.MSR.297 (wt=0.60 MED). §4.2 PSYCHOLOGICAL column added. §4.4 domain labels updated. §5 CPT file references updated. All 5 CPT scaffolds updated simultaneously. Native issued formal approval at M5-B-S2: "I approve". Status: APPROVED — topology frozen.
 ---
 
 # DBN TOPOLOGY — v1.0
@@ -70,7 +77,9 @@ changelog:
 
 ## §1 — Purpose and scope
 
-This document specifies the Dynamic Bayesian Network (DBN) topology for the MARSYS-JIS probabilistic prediction layer. The DBN models how this native's fixed natal chart structure (30 calibrated MSR signals), the unfolding Vimshottari dasha sequence, and latent domain activation states jointly produce observable life events across four life domains: CAREER, HEALTH, RELATIONSHIP, and SPIRITUAL_PSYCHOLOGICAL.
+This document specifies the Dynamic Bayesian Network (DBN) topology for the MARSYS-JIS probabilistic prediction layer. The DBN models how this native's fixed natal chart structure (30 calibrated MSR signals), the unfolding Vimshottari dasha sequence, and latent domain activation states jointly produce observable life events across five life domains: CAREER, HEALTH, RELATIONSHIP, SPIRITUAL, and PSYCHOLOGICAL.
+
+**U2 amendment (M5-B-S2):** The original v1.0 combined domain `SPIRITUAL_PSYCHOLOGICAL` has been split into two distinct domains: `SPIRITUAL` (dharmic practice, 9H Jupiter/Venus domain — captures SPR.* events: practice deepening, devotional intensification, philosophical shifts) and `PSYCHOLOGICAL` (transformation and inner-state, 8H Ketu / 4H Moon domain — captures PSY.* events: psychological pressure periods, inner dissolution, identity restructuring). Native approval phrase issued conditionally at M5-B-NAP-S1: "I approve the deviant topology." Formal freeze at M5-B-S2 after U2 visible.
 
 **What the v1.0 DBN models:** The conditional probability structure linking natal static signals → domain activation states → event occurrences, mediated by the time-varying dasha-state node, across Vimshottari antardasha time-slices from 1984-02-05 forward.
 
@@ -107,7 +116,10 @@ The Vimshottari antardasha (sub-period) is the atomic time-slice for this DBN.
 1. `CAREER` — professional role changes, promotions, geographic relocations, business launches, employer transitions
 2. `HEALTH` — physical symptoms onset, medical procedures, recovery arcs, chronic pattern activations
 3. `RELATIONSHIP` — marriage, partnership formation, significant relationship events, separations
-4. `SPIRITUAL_PSYCHOLOGICAL` — spiritual practice onset/deepening, psychological shifts, sustained inner-orientation changes
+4. `SPIRITUAL` — spiritual practice onset/deepening, devotional intensification, dharmic turning points, philosophical consolidations (SPR.* events; 9H Jupiter/Venus domain; Ishta Devata / Dharma Devata activations)
+5. `PSYCHOLOGICAL` — psychological pressure periods, inner dissolution, identity restructuring, emotional pattern shifts (PSY.* events; 8H Ketu / 4H Moon domain; Sade Sati inner pressure, Ketu-period deconstruction)
+
+*(U2 amendment at M5-B-S2: domains expanded from 4 → 5 by splitting `SPIRITUAL_PSYCHOLOGICAL` into `SPIRITUAL` + `PSYCHOLOGICAL`. Native approved: "I approve the deviant topology" at M5-B-NAP-S1, conditional on U2 implementation.)*
 
 **Rationale for selection:**
 - LL.4 domain priors (ll4_prediction_priors_v1_0.json): career (0.5016 mean_lit, n_obs=431), health (0.4948, n_obs=97), relationship (0.4113, n_obs=124), spiritual (1.0000 lit, n_obs=6). All four have substantial LEL training coverage.
@@ -128,10 +140,10 @@ All 30 production MSR signals from `ll1_weights_promoted_v1_0.json`. These are s
 At each antardasha time-slice t: the tuple `(mahadasha_lord, antardasha_lord)` — 81 possible states (9 planets × 9 planets). This node is **observed** (not latent): the Vimshottari sequence is deterministic from the birth date; we know the state at every t. Source: FORENSIC §5.1 DSH.V.001–DSH.V.050+.
 
 **Type C — Domain activation nodes (latent, time-varying, 3-state):**
-One per domain: `CAREER_STATE(t)`, `HEALTH_STATE(t)`, `RELATIONSHIP_STATE(t)`, `SPIRITUAL_STATE(t)`. States: `{ELEVATED, NORMAL, SUPPRESSED}`. These are the hidden variables. They are NOT directly observed — only the occurrence of events (Type D) is observed. The DBN infers the most probable domain state sequence from the evidence.
+One per domain: `CAREER_STATE(t)`, `HEALTH_STATE(t)`, `RELATIONSHIP_STATE(t)`, `SPIRITUAL_STATE(t)`, `PSYCHOLOGICAL_STATE(t)`. States: `{ELEVATED, NORMAL, SUPPRESSED}`. These are the hidden variables. They are NOT directly observed — only the occurrence of events (Type D) is observed. The DBN infers the most probable domain state sequence from the evidence. *(v1.1 U2: SPIRITUAL_PSYCHOLOGICAL_STATE split into SPIRITUAL_STATE + PSYCHOLOGICAL_STATE.)*
 
 **Type D — Event occurrence nodes (observed, binary):**
-Per domain per antardasha time-slice: `CAREER_EVENT(t)`, `HEALTH_EVENT(t)`, `RELATIONSHIP_EVENT(t)`, `SPIRITUAL_EVENT(t)`. Value = 1 if ≥1 LEL training event in that domain falls within this antardasha period; 0 otherwise. These are the observation model nodes — the "data" the DBN fits against.
+Per domain per antardasha time-slice: `CAREER_EVENT(t)`, `HEALTH_EVENT(t)`, `RELATIONSHIP_EVENT(t)`, `SPIRITUAL_EVENT(t)`, `PSYCHOLOGICAL_EVENT(t)`. Value = 1 if ≥1 LEL training event in that domain falls within this antardasha period; 0 otherwise. These are the observation model nodes — the "data" the DBN fits against. *(v1.1 U2: SPIRITUAL_EVENT retains SPR.* events; PSYCHOLOGICAL_EVENT captures PSY.* events.)*
 
 ### D4 — Edge types
 
@@ -280,9 +292,12 @@ One node per domain per antardasha time-slice. These are the primary hidden vari
 | CAREER | {ELEVATED, NORMAL, SUPPRESSED} | 0.5016 | 0.30 | 0.45 | 0.25 | 0.65 | SIG.13 (wt=0.60), CTR.01 (wt=0.60), SIG.15 (wt=0.60) |
 | HEALTH | {ELEVATED, NORMAL, SUPPRESSED} | 0.4948 | 0.30 | 0.45 | 0.25 | 0.65 | SIG.MSR.297 (wt=1.00), SIG.MSR.402 (wt=0.73), SIG.MSR.013 (wt=0.60) |
 | RELATIONSHIP | {ELEVATED, NORMAL, SUPPRESSED} | 0.4113 | 0.25 | 0.50 | 0.25 | 0.65 | SIG.MSR.391 (wt=0.60), SIG.MSR.145 (wt=0.55), SIG.01 (wt=0.60) |
-| SPIRITUAL_PSYCHOLOGICAL | {ELEVATED, NORMAL, SUPPRESSED} | 1.0000 (n=6, unreliable) | 0.25 | 0.50 | 0.25 | 0.65 | SIG.MSR.297 (wt=0.60), SIG.MSR.402 (wt=0.44), CVG.02 (wt=0.60) |
+| SPIRITUAL | {ELEVATED, NORMAL, SUPPRESSED} | 1.0000 (n=SPR.* subset, WEAK) | 0.25 | 0.50 | 0.25 | 0.65 | CTR.03 (wt=0.60), CVG.02 (wt=0.60), SIG.MSR.297 (wt=0.60) |
+| PSYCHOLOGICAL | {ELEVATED, NORMAL, SUPPRESSED} | n/a (n=PSY.* subset, WEAK) | 0.25 | 0.50 | 0.25 | 0.65 | SIG.12 (wt=0.60), SIG.MSR.297 (wt=0.60), CTR.01 (wt=0.20 LOW) |
 
-**Note on SPIRITUAL prior:** LL.4 shows mean_lit=1.0 for spiritual domain but n=6 observations (WEAK tier). This is almost certainly selection bias — the 6 observed spiritual signals all matched (100%) but the sample is too small to trust. Initialize P(ELEVATED)=0.25 (conservative, below career/health) to avoid overfitting to the small sample. M5-D will calibrate from training partition events.
+**Note on SPIRITUAL and PSYCHOLOGICAL priors (U2 split):** The original SPIRITUAL_PSYCHOLOGICAL mean_lit=1.0 (n=6, WEAK tier) spanned both SPR.* and PSY.* events combined. After split, each domain has insufficient observations to compute a reliable separate mean_lit — both inherit the conservative symmetric prior P(E)=0.25, P(N)=0.50, P(S)=0.25. Ketu MD periods show highest PSYCHOLOGICAL P(E) (0.55–0.66 in dasha_to_domain.json) consistent with Ketu 8H psychological transformation role. M5-D will calibrate per-domain from training partition events once PSY.* and SPR.* are counted separately.
+
+**Note on HEALTH conditioning for SPIRITUAL_PSYCHOLOGICAL split:** SIG.MSR.402 (now invalidated, revised_confidence=0.00) has been removed from SPIRITUAL primary conditioning signals. SIG.MSR.402b (replacement, strength_score=0.72) will be incorporated at Task #8 after EDGE-01 co-occurrence re-check.
 
 **ELEVATED state definition:** Domain activation node = ELEVATED when the dasha evidence + natal signal evidence collectively suggest this domain is a primary focus period for the native — characterized by high signal co-activation density and dasha-state alignment with the domain.
 
@@ -297,7 +312,8 @@ One binary observation node per domain per antardasha time-slice. These are the 
 | CAREER_EVENT(t) | ≥1 LEL training event categorized as career/professional in antardasha t | No career events in antardasha t |
 | HEALTH_EVENT(t) | ≥1 LEL training event categorized as health/physical in antardasha t | No health events |
 | RELATIONSHIP_EVENT(t) | ≥1 LEL training event categorized as relationship/marriage in antardasha t | No relationship events |
-| SPIRITUAL_EVENT(t) | ≥1 LEL training event categorized as spiritual/psychological in antardasha t | No spiritual events |
+| SPIRITUAL_EVENT(t) | ≥1 LEL training event tagged SPR.* (spiritual practice, devotional, dharmic) in antardasha t | No SPR.* events |
+| PSYCHOLOGICAL_EVENT(t) | ≥1 LEL training event tagged PSY.* (psychological pressure, inner dissolution, identity shift) in antardasha t | No PSY.* events |
 
 **Observation model (initial values, to be fitted in M5-D):**
 | Domain state | P(EVENT=1 | state) | Basis |
@@ -321,17 +337,18 @@ Edge weight = `LL.1_production_weight × CDLM_linkage_strength_score`
 | Signal_ID | Domain | Edge_weight | Conditioning_strength | Source |
 |---|---|---|---|---|
 | CTR.01 | CAREER | 0.600 | MED | LL.1 wt=1.0 × classical-inferred 0.6 (Saturn AmK, career driver) |
-| CTR.01 | SPIRITUAL | 0.200 | LOW | LL.1 wt=1.0 × 0.2 (Saturn as Dharma Devata, low tier — no CDLM anchor) |
-| CTR.03 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Jupiter 9H = spirit domain; domains_affected includes spirit) |
+| CTR.01 | SPIRITUAL | 0.200 | LOW | LL.1 wt=1.0 × 0.2 (Saturn as Dharma Devata → SPIRITUAL dharma channel; no CDLM anchor) |
+| CTR.03 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Jupiter 9H = dharma/spirit domain; 9H is the SPIRITUAL domain house) |
 | CVG.02 | CAREER | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Jupiter dharma-wealth chain, career domain) |
-| CVG.02 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Jupiter 9L own sign = spirit-dharma; domains include spirit) |
+| CVG.02 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Jupiter 9L own sign = dharma; SPIRITUAL domain primary) |
 | SIG.01 | CAREER | 0.600 | MED | LL.1 wt=1.0 × 0.6 (D9 NBRY; domains=[career,wealth,relationships,mind]) |
 | SIG.01 | RELATIONSHIP | 0.600 | MED | LL.1 wt=1.0 × 0.6 (domains include relationships) |
 | SIG.09 | CAREER | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Rahu 2H ambition → career; CDLM.D2.D1 strength=0.88) |
 | SIG.10 | RELATIONSHIP | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Anapha Yoga; domains=[wealth,relationships,family]) |
 | SIG.12 | RELATIONSHIP | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Sade Sati C2; domains include relationships) |
-| SIG.12 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Sade Sati → spiritual deepening in this chart) |
+| SIG.12 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Sade Sati → spiritual deepening / devotional intensification in this chart) |
 | SIG.12 | HEALTH | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Sade Sati C2 health dimension) |
+| SIG.12 | PSYCHOLOGICAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (U2: Sade Sati creates psychological pressure periods — Saturn transiting 12H from Lagna = liminal inner pressure, identity restructuring; distinct from spiritual deepening) |
 | SIG.13 | CAREER | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Sun 10H stellium; primary career signal) |
 | SIG.13 | HEALTH | 0.200 | LOW | LL.1 wt=1.0 × 0.2 (domains include health; secondary domain only) |
 | SIG.15 | CAREER | 0.600 | MED | LL.1 wt=1.0 × 0.6 (Mercury dominance; primary career domain) |
@@ -347,7 +364,8 @@ Edge weight = `LL.1_production_weight × CDLM_linkage_strength_score`
 | SIG.MSR.291 | HEALTH | 0.600 | MED | LL.1 wt=1.0 × 0.6 (health domain) |
 | SIG.MSR.295 | HEALTH | 0.600 | MED | LL.1 wt=1.0 × 0.6 (health domain) |
 | SIG.MSR.297 | HEALTH | 1.000 | HIGH | LL.1 wt=1.0 × 1.0 (CDLM.D4.D6 confirmed msr_anchor; high-strength Health cell) |
-| SIG.MSR.297 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (CDLM.D4.D6 = Health→Spirit; conditioning SPIRITUAL via health-spirit bridge) |
+| SIG.MSR.297 | SPIRITUAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (CDLM.D4.D6 Health→Spirit; conditioning SPIRITUAL via health-spirit moksha bridge) |
+| SIG.MSR.297 | PSYCHOLOGICAL | 0.600 | MED | LL.1 wt=1.0 × 0.6 (U2: 8H Ketu transformation drives PSYCHOLOGICAL states; 8H is the house of inner dissolution, hidden fears, psychological depth — Ketu 8H activates PSY.* events alongside health events) |
 | SIG.MSR.300 | HEALTH | 0.600 | MED | LL.1 wt=1.0 × 0.6 (health domain) |
 | SIG.MSR.301 | HEALTH | 0.600 | MED | LL.1 wt=1.0 × 0.6 (health domain) |
 | SIG.MSR.391 | RELATIONSHIP | 0.600 | MED | LL.1 wt=1.0 × 0.6 (relationship domain; 7H Saturn-Mars dynamic) |
@@ -360,16 +378,17 @@ Edge weight = `LL.1_production_weight × CDLM_linkage_strength_score`
 | SIG.MSR.118 | CAREER | 0.091 | LOW | LL.1 wt=0.4545 × 0.2 (Ruchaka ABSENT; classical: Mars in 7H Avayogi) |
 | SIG.MSR.118 | HEALTH | 0.091 | LOW | LL.1 wt=0.4545 × 0.2 (Mars health-risk association; classical) |
 | SIG.MSR.119 | RELATIONSHIP | 0.273 | MED | LL.1 wt=0.4545 × 0.6 (Malavya ABSENT; Venus 9H; CDLM.D5.D6 anchor adjacent) |
-| SIG.MSR.119 | SPIRITUAL | 0.091 | LOW | LL.1 wt=0.4545 × 0.2 (Venus as Ishta Devata; spiritual secondary) |
+| SIG.MSR.119 | SPIRITUAL | 0.091 | LOW | LL.1 wt=0.4545 × 0.2 (Venus as Ishta Devata → SPIRITUAL devotional secondary domain) |
 | SIG.MSR.143 | CAREER | 0.273 | MED | LL.1 wt=0.4545 × 0.6 (Sarpa ABSENT = structural openness; CDLM.D5.D7 anchor) |
-| SIG.MSR.117 | SPIRITUAL | 0.073 | LOW_SHADOW | LL.1 wt=0.3636 × 0.2 (shadow node; pending LL.2 promotion approval; CDLM.D1.D1 anchor) |
+| SIG.MSR.117 | SPIRITUAL | 0.073 | LOW_SHADOW | LL.1 wt=0.3636 × 0.2 (shadow node; pending LL.2 EDGE-06 promotion; CDLM.D1.D1 anchor; conditions SPIRITUAL — Hamsa near-miss is a dharmic wisdom signal, not PSY domain) |
 
-**Summary counts:**
-- CAREER edges: 9 (CTR.01, CVG.02, SIG.01, SIG.09, SIG.13, SIG.15, SIG.MSR.145, RPT.DSH.01, SIG.MSR.118, SIG.MSR.143)
+**Summary counts (v1.1 — 5 domains):**
+- CAREER edges: 10 (CTR.01, CVG.02, SIG.01, SIG.09, SIG.13, SIG.15, SIG.MSR.145, RPT.DSH.01, SIG.MSR.118, SIG.MSR.143)
 - HEALTH edges: 16 (all 14 health-domain signals + SIG.12 + SIG.13 + SIG.MSR.402 + SIG.MSR.118)
-- RELATIONSHIP edges: 8 (SIG.MSR.391, SIG.MSR.145, SIG.01, SIG.09→career, SIG.10, SIG.12, SIG.15, SIG.MSR.119)
+- RELATIONSHIP edges: 8 (SIG.MSR.391, SIG.MSR.145, SIG.01, SIG.10, SIG.12, SIG.15, SIG.MSR.119)
 - SPIRITUAL edges: 8 (CTR.01, CTR.03, CVG.02, SIG.12, SIG.MSR.297, SIG.MSR.402, SIG.MSR.119, SIG.MSR.117)
-- Total Type A→C edges: 41 (before adding SIG.MSR.117 shadow node = 42)
+- PSYCHOLOGICAL edges: 2 (SIG.12, SIG.MSR.297) — U2 new additions
+- Total Type A→C edges: 44 (including SIG.MSR.117 shadow node)
 
 ### §4.2 — Dasha-state → domain edges (Type B → Type C)
 
@@ -377,17 +396,19 @@ The dasha-state node `(MD_lord, AD_lord)` conditions all four domain activation 
 
 **Mahadasha lord → domain tendency mapping (scaffold; for CPT initialization):**
 
-| MD Lord | CAREER: P(E/N/S) | HEALTH: P(E/N/S) | RELATIONSHIP: P(E/N/S) | SPIRITUAL: P(E/N/S) |
-|---|---|---|---|---|
-| Jupiter | 0.45/0.40/0.15 | 0.30/0.50/0.20 | 0.35/0.45/0.20 | 0.55/0.35/0.10 |
-| Saturn | 0.50/0.35/0.15 | 0.25/0.45/0.30 | 0.30/0.40/0.30 | 0.45/0.40/0.15 |
-| Mercury | 0.55/0.35/0.10 | 0.30/0.50/0.20 | 0.35/0.45/0.20 | 0.35/0.45/0.20 |
-| Ketu | 0.20/0.35/0.45 | 0.25/0.45/0.30 | 0.15/0.35/0.50 | 0.60/0.30/0.10 |
-| Venus | 0.30/0.45/0.25 | 0.35/0.45/0.20 | 0.55/0.35/0.10 | 0.45/0.40/0.15 |
-| Sun | 0.50/0.40/0.10 | 0.30/0.50/0.20 | 0.25/0.45/0.30 | 0.35/0.45/0.20 |
-| Moon | 0.30/0.45/0.25 | 0.45/0.40/0.15 | 0.45/0.40/0.15 | 0.40/0.45/0.15 |
-| Mars | 0.40/0.40/0.20 | 0.35/0.35/0.30 | 0.30/0.35/0.35 | 0.20/0.40/0.40 |
-| Rahu | 0.40/0.35/0.25 | 0.25/0.40/0.35 | 0.30/0.35/0.35 | 0.25/0.40/0.35 |
+*(v1.1 U2: SPIRITUAL column retains original SPIRITUAL_PSYCHOLOGICAL values. PSYCHOLOGICAL column is new — derived from Ketu 8H / Moon AK analysis. Ketu MD: highest PSYCHOLOGICAL P(E)=0.55 (8H deconstruction). Moon MD: HIGH PSYCHOLOGICAL P(E)=0.50 (AK emotional soul). Saturn MD: MED P(E)=0.35 (discipline-through-restriction). Jupiter MD: LOW-stable P(E)=0.25 (protective). All are n=1 priors; M5-D fitting will differentiate.)*
+
+| MD Lord | CAREER: P(E/N/S) | HEALTH: P(E/N/S) | RELATIONSHIP: P(E/N/S) | SPIRITUAL: P(E/N/S) | PSYCHOLOGICAL: P(E/N/S) |
+|---|---|---|---|---|---|
+| Jupiter | 0.45/0.40/0.15 | 0.30/0.50/0.20 | 0.35/0.45/0.20 | 0.55/0.35/0.10 | 0.25/0.55/0.20 |
+| Saturn | 0.50/0.35/0.15 | 0.25/0.45/0.30 | 0.30/0.40/0.30 | 0.45/0.40/0.15 | 0.35/0.40/0.25 |
+| Mercury | 0.55/0.35/0.10 | 0.30/0.50/0.20 | 0.35/0.45/0.20 | 0.35/0.45/0.20 | 0.30/0.50/0.20 |
+| Ketu | 0.20/0.35/0.45 | 0.25/0.45/0.30 | 0.15/0.35/0.50 | 0.60/0.30/0.10 | 0.55/0.30/0.15 |
+| Venus | 0.30/0.45/0.25 | 0.35/0.45/0.20 | 0.55/0.35/0.10 | 0.45/0.40/0.15 | 0.25/0.55/0.20 |
+| Sun | 0.50/0.40/0.10 | 0.30/0.50/0.20 | 0.25/0.45/0.30 | 0.35/0.45/0.20 | 0.30/0.45/0.25 |
+| Moon | 0.30/0.45/0.25 | 0.45/0.40/0.15 | 0.45/0.40/0.15 | 0.40/0.45/0.15 | 0.50/0.35/0.15 |
+| Mars | 0.40/0.40/0.20 | 0.35/0.35/0.30 | 0.30/0.35/0.35 | 0.20/0.40/0.40 | 0.35/0.35/0.30 |
+| Rahu | 0.40/0.35/0.25 | 0.25/0.40/0.35 | 0.30/0.35/0.35 | 0.25/0.40/0.35 | 0.30/0.38/0.32 |
 
 **Antardasha modulation:** The antardasha lord modulates the mahadasha tendency. When MD and AD lords are the same planet, the tendency is amplified (multiply P(ELEVATED) by 1.1, renormalize). When AD lord is traditionally antagonistic to MD lord, suppress the ELEVATED probability.
 
@@ -397,7 +418,7 @@ The full 81-state CPT scaffold is in `cpt/dasha_to_domain.json`. Initial values 
 
 ### §4.3 — Domain persistence edges (Type C(t) → Type C(t+1))
 
-Initial 3×3 transition matrix (same across all 4 domains in v1.0; to be fitted per-domain in M5-D):
+Initial 3×3 transition matrix (same across all 5 domains in v1.1; to be fitted per-domain in M5-D):
 
 | From state \ To state | ELEVATED | NORMAL | SUPPRESSED |
 |---|---|---|---|
@@ -423,22 +444,25 @@ Three cross-domain edges in v1.0, all verified against CDLM v1.3:
 
 **Edge 2: CAREER(t) ↔ SPIRITUAL(t)**
 - Direction: bidirectional
-- Initial weight: 0.20
+- Initial weight: 0.20 (U1 confirmed by native at NAP.M5.1; supersedes surrogate recommendation of 0.15)
+- Domain interpretation: SPIRITUAL = dharmic practice domain (9H Jupiter/Venus). Career excellence IS dharmic practice in this chart (Saturn = Dharma Devata/Venkateswara).
 - CDLM basis: CDLM.D1.D6 strength=0.89 bidirectional ("Career and spirit are mutually feeding — professional excellence IS dharmic practice; Saturn = Dharma Devata")
 - LL.7 supporting: LL.7 novel edges include MSR.145↔MSR.402 cluster which spans career-spiritual dimension
-- [CDLM_VERIFICATION_REQUIRED: LL.7 does not have a distinct career-spiritual cluster separate from the Pancha-MP cluster. CDLM.D1.D6 supports the mechanism conceptually but msr_anchors=[MSR.397, MSR.407, MSR.388] do not include production signals. Weight initialized conservatively at 0.20 pending M5-C prior specification review.]
-- `pending_promotion: false` (CDLM mechanistic support but lower empirical evidence)
+- [CDLM_VERIFICATION_REQUIRED: CDLM.D1.D6 supports the mechanism conceptually but msr_anchors=[MSR.397, MSR.407, MSR.388] do not include production signals. Weight initialized conservatively at 0.20 per native confirmation at NAP.M5.1.]
+- `pending_promotion: false` (CDLM mechanistic support confirmed by native)
 
 **Edge 3: HEALTH(t) ↔ SPIRITUAL(t)**
 - Direction: bidirectional
 - Initial weight: 0.25
+- Domain interpretation: SPIRITUAL = moksha / dharmic-protection channel. Ketu 8H transforms health crises into spiritual catalysis (Health→Spirit direction); Jupiter+Venus 9H provides dharmic protective supervision (Spirit→Health direction).
 - CDLM basis: CDLM.D4.D6 strength=0.82 Health→Spirit ("Ketu exalted 8H transforms health challenges into spiritual catalysts"); CDLM.D6.D4 strength=0.80 Spirit→Health ("Spirit compensates health challenges — Jupiter+Venus Jaimini supervision provides dharmic protection")
-- LL.2 supporting: EDGE-07 (MSR.117↔MSR.402 co_count=4, is_ll2_med=True) — pending native approval; MSR.402 is CDLM.D4.D6 msr_anchor
-- Astrology note: Ketu exalted in 8H (moksha-karaka in transformation-health house) is the structural basis. EVT.PSY.A (vertigo during engineering exam prep) and subsequent spiritual pattern in this chart confirm the health-spiritual co-activation empirically.
-- `pending_promotion: true` (LL.2 EDGE-07 pending for full confirmation)
+- LL.2 supporting: EDGE-07 (MSR.117↔MSR.402 co_count=4, is_ll2_med=True) — REJECTED at NAP.M5.1 (native cannot confirm); edge motivation remains via CDLM basis.
+- Note on U2: HEALTH↔PSYCHOLOGICAL is a deferred edge (HEALTH_PSYCHOLOGICAL_bidir in cross_domain.json deferred_edges). The 8H Ketu mechanism motivates both SPIRITUAL and PSYCHOLOGICAL connections from HEALTH; SPIRITUAL captures the dharmic/moksha direction; PSYCHOLOGICAL captures the inner-dissolution direction. HEALTH↔PSYCHOLOGICAL deferred to v1.1 to avoid overparameterization.
+- `pending_promotion: false` (CDLM.D4.D6 confirmed independently; EDGE-07 rejection does not invalidate the edge)
 
-**Additional CDLM-supported cross-domain pair considered but deferred:**
-- RELATIONSHIP↔SPIRITUAL (CDLM.D3.D6 strength=0.86): Strong structural support (AK-DK soul-spouse connection). Deferred to v1.1 to avoid overparameterization of v1.0. Added to risk register as RT.M5B.1 extension item.
+**Additional CDLM-supported cross-domain pairs considered but deferred:**
+- RELATIONSHIP↔SPIRITUAL (CDLM.D3.D6 strength=0.86): Strong structural support (AK-DK soul-spouse connection; Shree Lagna 7H Lakshmi grace in relationship domain). Deferred to v1.1 to avoid overparameterization. Added to risk register as RT.M5B.1 extension item.
+- HEALTH↔PSYCHOLOGICAL (U2 addition): 8H Ketu drives PSYCHOLOGICAL activation during health-crisis periods (same structural basis as HEALTH↔SPIRITUAL). Deferred to v1.1 — adding a 4th active cross-domain edge at 5 nodes would overcomplicate the n=1 topology. See cross_domain.json deferred_edges.
 
 ---
 
@@ -446,12 +470,14 @@ Three cross-domain edges in v1.0, all verified against CDLM v1.3:
 
 The CPT files live under `06_LEARNING_LAYER/dbn/cpt/`. All files are `UNFITTED_SCAFFOLD` status — initial values are provided but `fitted_value` fields are null. M5-D fitting populates the fitted values.
 
-### CPT file paths:
-- `cpt/natal_to_domain.json` — Type A → C edges (one row per signal-domain pair with edge_weight > 0)
-- `cpt/dasha_to_domain.json` — Type B → C (81-state dasha × 4-domain conditional distribution)
-- `cpt/persistence.json` — Type C(t)→C(t+1) (3×3 per domain)
-- `cpt/cross_domain.json` — Type C↔C inter-domain edges
-- `cpt/observation.json` — Type C → D observation model
+*(v1.1 U2: All 5 CPT files updated at M5-B-S2 to reflect 5-domain topology. Domain list in all files: `["CAREER", "HEALTH", "RELATIONSHIP", "SPIRITUAL", "PSYCHOLOGICAL"]`.)*
+
+### CPT file paths and entry counts (v1.1):
+- `cpt/natal_to_domain.json` — Type A → C edges (45 entries; 43 original + 2 U2 PSYCHOLOGICAL additions: SIG.12 + SIG.MSR.297)
+- `cpt/dasha_to_domain.json` — Type B → C (81-state dasha × 5-domain conditional distribution; SPIRITUAL retains original SPIRITUAL_PSYCHOLOGICAL values; PSYCHOLOGICAL column derived from MD tendency analysis)
+- `cpt/persistence.json` — Type C(t)→C(t+1) (3×3 per domain × 5 domains = 45 entries)
+- `cpt/cross_domain.json` — Type C↔C inter-domain edges (3 active + 2 deferred; RELATIONSHIP_SPIRITUAL + HEALTH_PSYCHOLOGICAL both deferred to v1.1)
+- `cpt/observation.json` — Type C → D observation model (5 entries; PSYCHOLOGICAL symmetric scaffold P(EVENT|ELEVATED)=0.70)
 
 ### JSON schema (common pattern):
 ```json
