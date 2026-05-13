@@ -1,0 +1,3 @@
+# This directory is populated during M5-D by the 3-run embedding refit procedure.
+# See: LL8_EMBEDDING_REFIT_SPEC_v1_0.md §3 and refit_procedure.md
+# Expected subdirectories: run_01/, run_02/, run_03/
