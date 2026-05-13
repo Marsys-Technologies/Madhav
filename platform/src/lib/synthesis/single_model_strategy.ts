@@ -333,11 +333,20 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // These caps apply to the synthesis output only, not to tool-use steps.
     const styleCap = STYLE_OUTPUT_CAP[style ?? 'acharya'] ?? 8000
     const classCap = CLASS_TOKEN_CAP[query_plan.query_class] ?? 8000
-    const effectiveMaxTokens = computeEffectiveMaxTokens(
+    const contentCap = computeEffectiveMaxTokens(
       styleCap,
       classCap,
       modelMeta?.maxOutputTokens,
     )
+    // DeepSeek V4 Pro with thinking=enabled: max_tokens covers BOTH thinking
+    // tokens AND text output tokens in a single budget. Without headroom,
+    // the model consumes 4 000–8 000 tokens for CoT and the text answer is
+    // truncated mid-sentence. Add 10 000-token thinking headroom so the
+    // answer text always receives the full content cap.
+    const isThinkingModeSynthesis = !!deepseekProviderOptions(selected_model_id, 'synthesis')
+    const effectiveMaxTokens = isThinkingModeSynthesis
+      ? Math.min(contentCap + 10_000, modelMeta?.maxOutputTokens ?? contentCap + 10_000)
+      : contentCap
 
     // UQE-2 (W2-BUGS B2W-5) — temperature gate: deterministic for single-truth
     // queries (factual lookups, prescriptive remedies, time-indexed predictions),
@@ -355,16 +364,24 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // hard abort on headers, so combined the worst-case NIM hang is ~30 s.
     const isNvidiaSynthesis = modelMeta?.provider === 'nvidia'
 
+    // DeepSeek V4 Pro thinking=enabled + tools + tool_choice:none is an
+    // unsupported combination on the DeepSeek API: the model routes thinking
+    // content into delta.content (text) instead of delta.reasoning_content,
+    // so <think> blocks appear in the visible stream. All retrieval data is
+    // already pre-injected via FUB-2/FUB-3 — tools are unnecessary here.
+    const synthesisTools = isThinkingModeSynthesis ? undefined : toolsForModel
+
     const result = streamText({
       model: resolveModel(selected_model_id),
       messages: modelMessages,
-      tools: toolsForModel,
+      tools: synthesisTools,
       // BUG-B fix: synthesis is the text-generation phase; all retrieval tools
       // have already executed. Prohibit the synthesis model from calling any
       // tool so it must generate text. Without this, tool-capable models
-      // (deepseek-v4-pro, gemini-2.5-pro) may emit finish_reason=tool-calls
-      // with empty final_output instead of a synthesis response.
-      toolChoice: toolsForModel ? ('none' as const) : undefined,
+      // (gemini-2.5-pro) may emit finish_reason=tool-calls with empty
+      // final_output instead of a synthesis response.
+      // Not applied to thinking-mode models (synthesisTools is undefined above).
+      toolChoice: synthesisTools ? ('none' as const) : undefined,
       stopWhen: stepCountIs(5),
       maxOutputTokens: effectiveMaxTokens,
       temperature: synthesisTemperature,

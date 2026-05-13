@@ -307,11 +307,26 @@ export async function POST(request: Request) {
   const L2_5_TOOLS = ['msr_sql', 'query_msr_aggregate', 'pattern_register',
     'resonance_register', 'cluster_atlas', 'contradiction_register', 'cgm_graph_walk']
   if (!toolsAuthorized.some(t => L2_5_TOOLS.includes(t))) {
-    plan.tool_calls.push(
-      { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1, reason: 'B.11 floor enforcement' },
-      { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 2, reason: 'B.11 floor enforcement' },
-    )
-    toolsAuthorized.push('msr_sql', 'cgm_graph_walk')
+    // Predictive class: cgm_graph_walk is banned (R14c); pattern_register is
+    // required (R7a). Inject msr_sql + vector_search + pattern_register so the
+    // synthesis model receives the domain narrative it needs.
+    if (plan.query_class === 'predictive') {
+      const domainSearchQuery = (plan.domains ?? []).length > 0
+        ? (plan.domains ?? []).join(' ')
+        : 'relationships family marriage children'
+      plan.tool_calls.push(
+        { tool_name: 'msr_sql', params: { forward_looking: true }, token_budget: 600, priority: 1 as const, reason: 'B.11 predictive floor: signal foundation' },
+        { tool_name: 'vector_search', params: { query_text: domainSearchQuery, doc_type: ['domain_report'], top_k: 6 }, token_budget: 500, priority: 1 as const, reason: 'B.11 predictive floor: domain narrative' },
+        { tool_name: 'pattern_register', params: { forward_looking: true }, token_budget: 400, priority: 2 as const, reason: 'B.11 predictive floor: R7a requirement' },
+      )
+      toolsAuthorized.push('msr_sql', 'vector_search', 'pattern_register')
+    } else {
+      plan.tool_calls.push(
+        { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'B.11 floor enforcement' },
+        { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 2 as const, reason: 'B.11 floor enforcement' },
+      )
+      toolsAuthorized.push('msr_sql', 'cgm_graph_walk')
+    }
   }
 
   // Adapter: PipelinePlan → legacy-shaped object for retrieval tools,

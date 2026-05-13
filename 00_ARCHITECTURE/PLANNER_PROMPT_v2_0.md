@@ -1,6 +1,6 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.2
+version: 2.3
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 gate_iii_amendment:
@@ -1241,6 +1241,54 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
       }
     ],
     "expected_output_shape": "single_answer"
+  }
+}
+```
+
+### 4.18 Predictive query — multi-domain lifetime phases (marriage + children)
+
+```json
+{
+  "user_query": "How will my marriage be over my entire lifetime divided into key phases? How will my relationship with my kids be?",
+  "expected_plan": {
+    "query_class": "predictive",
+    "query_intent_summary": "Lifetime marriage-phase projection and children-relationship forecast.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: 7H, Venus, D9, 5H, Jupiter placement facts." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map for 7H-Venus-Jupiter connectivity." },
+      { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for dasha-calibrated phase boundaries." },
+      { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for marriage and children domain arc." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "msr_sql",
+        "params": { "domains": ["relationships", "family"], "forward_looking": true },
+        "token_budget": 900, "priority": 1,
+        "reason": "Pull all relationships and family signals for marriage/children projection."
+      },
+      {
+        "tool_name": "vector_search",
+        "params": { "query_text": "marriage life phases relationship children family", "doc_type": ["domain_report"], "top_k": 6 },
+        "token_budget": 600, "priority": 1,
+        "reason": "L3 domain narrative on marriage arc and children relationship across time."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": { "domains": ["relationships", "family"], "forward_looking": true },
+        "token_budget": 400, "priority": 2,
+        "reason": "R7a: recurring relationships/family patterns for lifetime projection."
+      }
+    ],
+    "synthesis_guidance": "Divide the marriage arc into dasha-aligned phases: pre-marriage, early, mid, late. For children, anchor to 5H and Jupiter. Ground phase boundaries in LEL events. Flag confidence caveats for post-current-dasha projections.",
+    "domains": ["relationships", "family"],
+    "forward_looking": true,
+    "dasha_context_required": true,
+    "expected_output_shape": "time_indexed_prediction",
+    "prior_turn_relevance": {
+      "used": 0,
+      "reason": "Independent lifetime query — no prior turns needed.",
+      "mode": "independent"
+    }
   }
 }
 ```
