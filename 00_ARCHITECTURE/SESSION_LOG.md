@@ -21191,3 +21191,158 @@ session_close:
     - AC.IV.6 recall=0.9355 — M5-B
     - AC.IV.7 latency_ms null — M5-B
 ```
+
+---
+
+## M5-B-S1 — DBN Topology Design
+
+```yaml
+session_open:
+  session_id: M5-B-S1
+  cowork_thread_name: "Madhav M5-B-S1 — DBN Topology Design"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  step_number_or_macro_phase: M5.B.1
+  predecessor_session: M5-A-S1
+  declared_scope:
+    may_touch:
+      - 06_LEARNING_LAYER/dbn/**
+      - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/ll2_edge_weights_v1_0.json
+      - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - .geminirules
+      - .gemini/project_state.md
+      - CLAUDECODE_BRIEF.md
+    must_not_touch:
+      - 01_FACTS_LAYER/**
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/**
+      - platform/src/**
+      - platform/lib/**
+      - 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+      - 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+  mirror_pair_freshness_check:
+    - pair_id: MP.1
+      claude_side: CLAUDE.md
+      gemini_side: .geminirules
+      stale: false
+    - pair_id: MP.2
+      claude_side: CURRENT_STATE_v1_0.md
+      gemini_side: .gemini/project_state.md
+      stale: false
+  native_directive_obligations:
+    - directive_id: ND.1
+      status: "addressed (2026-04-24 at Step 7 close)"
+      acknowledged: true
+  red_team_due: false
+  notes: >
+    M5-B-S1. Primary deliverable: DBN_TOPOLOGY_v1_0.md (DRAFT).
+    Held-out partition sacrosanct throughout. LL.2 campaign DEFERRED (Outcome B).
+    LLM stack: Gemini→DeepSeek→NIM; no Anthropic API.
+```
+
+**Session work summary:**
+
+M5-B-S1 executed the M5-B DBN Topology Design scope per CLAUDECODE_BRIEF.md (M5-B-S1). 
+Session continued from context-overflow mid-session; context summary provided the prior state.
+
+**Primary deliverable: `06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md` — DRAFT authored.**
+- §1–§9 all populated per CLAUDECODE_BRIEF §4.2 structure specification
+- Committed design decisions D1–D6 (antardasha time-slice; 4 domains; 4 node types; 4 edge types; Hybrid-C; v1.0 scope boundary)
+- §3.1: 30 Type A natal nodes + SIG.MSR.117 shadow node — full domain conditioning table (44 edges total)
+- §3.2: Type B dasha-state — antardasha sequence with BLINDED entries for all 9 held-out period windows
+- §3.3: Type C domain activation — base priors from LL.4 (CAREER P(E)=0.30, HEALTH P(E)=0.30, RELATIONSHIP P(E)=0.25, SPIRITUAL P(E)=0.25)
+- §3.4: Type D observation model — P(EVENT|ELEVATED)=0.70, P(EVENT|NORMAL)=0.20, P(EVENT|SUPPRESSED)=0.05
+- §4.1: 44 natal→domain edges; highest SIG.MSR.297→HEALTH=1.00 (HIGH CDLM anchor)
+- §4.4: 3 cross-domain edges: CAREER↔REL(0.35), CAREER↔SPIRIT(0.20), HEALTH↔SPIRIT(0.25); RELATIONSHIP↔SPIRITUAL deferred to v1.1
+- §5: CPT file structure specification (5 files declared)
+- §6.1: LL.2 campaign DEFERRED (Outcome B — no native approval received in session)
+- §8: Surrogate two-pass — 6 findings documented; 3 RESOLVED in-session; 3 UNRESOLVED (U1-U3) for NAP.M5.1
+
+**Secondary deliverables: 5 CPT scaffold files created:**
+- `06_LEARNING_LAYER/dbn/cpt/natal_to_domain.json` — 44 entries (signal_id × domain; all fitted_value=null)
+- `06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json` — 81 entries (9 MD × 9 AD × 4 domains; all fitted_value=null)
+- `06_LEARNING_LAYER/dbn/cpt/persistence.json` — 36 entries (4 domains × 9 transitions; all fitted_value=null)
+- `06_LEARNING_LAYER/dbn/cpt/cross_domain.json` — 3 active + 1 deferred entry (all fitted_value=null)
+- `06_LEARNING_LAYER/dbn/cpt/observation.json` — 4 entries (one per domain; all fitted_values=null)
+
+**Governance updates:**
+- CAPABILITY_MANIFEST: 6 new entries registered (DBN_TOPOLOGY + 5 CPTs); entry_count 68→74
+- CURRENT_STATE: v4.1→v4.2; active_phase_plan_sub_phase M5-B OPEN; red_team_counter 1→2; last_session_id→M5-B-S1
+- MP.1 (.geminirules): active sub-phase pointer M5-A→M5-B OPEN; M5-B-S1 deliverables noted
+- MP.2 (.gemini/project_state.md): Active Phase section updated; M5-B-S1 deliverables noted
+- LL1_TWO_PASS_APPROVAL: §5.7 surrogate ledger entry added for M5-B-S1 topology review
+
+**Held-out partition discipline:** MAINTAINED throughout. 9 held-out event IDs listed in topology frontmatter. Antardasha periods containing held-out events are BLINDED in §3.2 table. Topology committed before any held-out outcomes consulted.
+
+**LL.2 campaign status:** DEFERRED (Outcome B). ll2_promotion_campaign_v1_0.md remains PENDING_NATIVE_APPROVAL. 8 MED-tier edges carry pending_promotion: true in topology.
+
+**Scope compliance:** No writes to 01_FACTS_LAYER/**, 025_HOLISTIC_SYNTHESIS/**, or production/** confirmed. B.10 compliance maintained (no fabricated computations).
+
+```yaml
+session_close:
+  session_id: M5-B-S1
+  status: CLOSED
+  closed_at: "2026-05-13T23:59:00+05:30"
+  deliverables_produced:
+    - path: 06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md
+      status: DRAFT
+      note: "NAP.M5.1 pending — topology frozen when approved; pre-registration commit timestamp established"
+    - path: 06_LEARNING_LAYER/dbn/cpt/natal_to_domain.json
+      status: UNFITTED_SCAFFOLD
+      entries: 44
+    - path: 06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json
+      status: UNFITTED_SCAFFOLD
+      entries: 81
+    - path: 06_LEARNING_LAYER/dbn/cpt/persistence.json
+      status: UNFITTED_SCAFFOLD
+      entries: 36
+    - path: 06_LEARNING_LAYER/dbn/cpt/cross_domain.json
+      status: UNFITTED_SCAFFOLD
+      entries: 3_active_plus_1_deferred
+    - path: 06_LEARNING_LAYER/dbn/cpt/observation.json
+      status: UNFITTED_SCAFFOLD
+      entries: 4
+  ac_status:
+    AC.S1.1: "PARTIAL — DBN_TOPOLOGY_v1_0.md DRAFT authored; all 9 sections populated; CLOSED at NAP.M5.1"
+    AC.S1.2: "PASS — Decisions D1-D6 committed in writing; held-out partition maintained sacrosanct throughout; 9 event IDs listed in frontmatter; antardasha BLINDED entries in §3.2"
+    AC.S1.3: "PASS — All 5 CPT scaffold files present with valid JSON"
+    AC.S1.4: "PASS — All 30 production signals assigned Type A; domains assigned per LL.1 + CDLM"
+    AC.S1.5: "PASS — Surrogate two-pass in §8; surrogate_disclosure block present; 6 findings; 3 unresolved for NAP.M5.1"
+    AC.S1.6: "PASS — CAPABILITY_MANIFEST valid JSON; entry_count 68→74; 6 new entries"
+    AC.S1.7: "PASS — CURRENT_STATE v4.2; M5-B sub-phase OPEN; red_team_counter 1→2"
+    AC.S1.8: "PASS — This SESSION_LOG entry (open + work summary + close)"
+    AC.S1.9: "PASS — Single clean commit after SESSION_LOG append"
+    AC.S1.10: "PASS — CLAUDECODE_BRIEF.md status flipped COMPLETE"
+    AC.S1.11: "PASS — LL.2 DEFERRED (Outcome B) documented in topology §6.1 and here"
+  ll2_campaign_status: "DEFERRED — Outcome B; awaiting native instruction at next Cowork session"
+  gemini_two_pass_status: "SURROGATE_EXECUTED (Gemini FINAL_NOT_REACHABLE_M5; §5.7 ledger entry added)"
+  surrogate_disclosure_ledger_updated: true
+  current_state_updated: true
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      updated: true
+      update_summary: "Active sub-phase M5-B OPEN; M5-B-S1 deliverables block; red_team_counter→2"
+    - pair_id: MP.2
+      updated: true
+      update_summary: "project_state.md Active Phase → M5-B OPEN; M5-B-S1 deliverables block"
+  red_team_counter: 2
+  scope_violations: none
+  nap_items_open:
+    - nap_id: NAP.M5.1
+      description: "DBN topology native review — U1 (CAREER↔SPIRITUAL weight); U2 (SPIRITUAL split); U3 (LL.2 approval)"
+      status: PENDING_NATIVE_DECISION
+  next_session_commitment: >
+    M5-B-S2 or M5-C-S1 pending NAP.M5.1 native review of DBN_TOPOLOGY_v1_0.md DRAFT.
+    Priority: (1) NAP.M5.1 U1/U2/U3 adjudication; (2) if approved → flip to CLOSED and
+    proceed to M5-C Prior Specification; (3) NAP.M5.0; (4) JH window; (5) AC.IV.6/IV.7.
+  open_items_carried_forward:
+    - OPEN_ITEM.P1.1 (MSR.145 CDLM cell absent)
+    - LL.2 per-edge batch approval — NAP.M5.1 pending
+    - JH export window — native confirmation pending
+    - NAP.M5.0 PPL cadence — native approval pending
+    - AC.IV.6 recall=0.9355 — after LL.3 fixes
+    - AC.IV.7 latency_ms null — after 7-day prod traffic window
+```

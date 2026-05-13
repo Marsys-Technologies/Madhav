@@ -1,0 +1,66 @@
+{
+  "cpt_id": "cross_domain",
+  "version": "scaffold_M5-B-S1",
+  "status": "UNFITTED_SCAFFOLD",
+  "fit_session": null,
+  "schema_version": "1.0",
+  "produced_during": "M5-B-S1",
+  "produced_on": "2026-05-13",
+  "description": "Cross-domain conditional edges at same time-slice t. These edges encode how one domain's activation state conditions another domain's activation at the same antardasha. All edges are bidirectional in v1.0 per CDLM structural analysis.",
+  "n1_disclaimer": "Initial weights from CDLM strength scores and LL.2 co-count evidence. UNFITTED — M5-D fitting required.",
+  "entries": [
+    {
+      "edge_id": "CAREER_RELATIONSHIP_bidir",
+      "domain_a": "CAREER",
+      "domain_b": "RELATIONSHIP",
+      "direction": "bidirectional",
+      "initial_weight": 0.35,
+      "fitted_value": null,
+      "cdlm_basis": "CDLM.D1.D3 strength=0.91 bidirectional — Saturn exalted AmK in 7H (relationship house); career and relationship share Saturn as structural backbone; karmically inseparable",
+      "ll2_edges_supporting": ["EDGE-01 (MSR.145↔MSR.402 co_count=7)", "EDGE-02 (MSR.118↔MSR.145 co_count=5)", "EDGE-04 (MSR.143↔MSR.145 co_count=5)", "EDGE-08 (MSR.119↔MSR.145 co_count=4)"],
+      "pending_promotion": true,
+      "ll2_promotion_status": "PENDING_NATIVE_APPROVAL",
+      "cdlm_verification_required": false,
+      "notes": "Strongest cross-domain edge in chart. Saturn exalted in 7H as AmK = tightest career-relationship structural fusion. Career transitions reliably co-activate relationship-domain."
+    },
+    {
+      "edge_id": "CAREER_SPIRITUAL_bidir",
+      "domain_a": "CAREER",
+      "domain_b": "SPIRITUAL_PSYCHOLOGICAL",
+      "direction": "bidirectional",
+      "initial_weight": 0.20,
+      "fitted_value": null,
+      "cdlm_basis": "CDLM.D1.D6 strength=0.89 bidirectional — career IS dharmic practice (Saturn=Dharma Devata/Venkateswara); Mercury as Yogi (career planet) AND fortune-activator = career and spiritual fortune same channel. msr_anchors=[MSR.397, MSR.407, MSR.388] — none are production signals in LL.1.",
+      "ll2_edges_supporting": ["No confirmed LL.2 edge for career-spiritual; LL.7 novel edges include MSR.145↔MSR.402 cluster which spans career-spiritual dimension indirectly"],
+      "pending_promotion": false,
+      "ll2_promotion_status": "NOT_IN_CAMPAIGN",
+      "cdlm_verification_required": true,
+      "cdlm_verification_note": "CDLM.D1.D6 mechanistic support confirmed (conceptual: Saturn=Dharma Devata) but msr_anchors=[MSR.397,MSR.407,MSR.388] do not include any LL.1 production signals. Weight initialized conservatively at 0.20. Surrogate reviewer recommends 0.15. Native adjudication at NAP.M5.1 (U1).",
+      "notes": "Conceptually strong (Saturn=Dharma Devata; Mercury Yogi), empirically weaker than career-relationship edge. Initial weight 0.20 is conservative pending M5-C prior specification."
+    },
+    {
+      "edge_id": "HEALTH_SPIRITUAL_bidir",
+      "domain_a": "HEALTH",
+      "domain_b": "SPIRITUAL_PSYCHOLOGICAL",
+      "direction": "bidirectional",
+      "initial_weight": 0.25,
+      "fitted_value": null,
+      "cdlm_basis": "CDLM.D4.D6 strength=0.82 Health→Spirit (Ketu exalted 8H = moksha-karaka in health-transformation house; health challenges are spiritually catalytic). CDLM.D6.D4 strength=0.80 Spirit→Health (Jupiter+Venus 9H Jaimini supervision of 8H provides dharmic protection). msr_anchors D4.D6=[MSR.402, MSR.408, MSR.297] — MSR.402 and MSR.297 are both LL.1 production signals.",
+      "ll2_edges_supporting": ["EDGE-07 (MSR.117↔MSR.402 co_count=4, is_ll2_med=True) — PENDING_NATIVE_APPROVAL; EDGE-03 (MSR.119↔MSR.402 co_count=5) — PENDING_NATIVE_APPROVAL"],
+      "pending_promotion": true,
+      "ll2_promotion_status": "PENDING_NATIVE_APPROVAL (EDGE-07)",
+      "cdlm_verification_required": false,
+      "notes": "Well-motivated by Ketu 8H structural basis. CDLM anchor confirmed (MSR.297 and MSR.402 both production signals in D4.D6 cell). Bidirectional: health feeds spirit (Ketu 8H catalytic) AND spirit compensates health (Jupiter+Venus dharmic protection)."
+    }
+  ],
+  "deferred_edges": [
+    {
+      "edge_id": "RELATIONSHIP_SPIRITUAL_bidir",
+      "domain_a": "RELATIONSHIP",
+      "domain_b": "SPIRITUAL_PSYCHOLOGICAL",
+      "cdlm_basis": "CDLM.D3.D6 strength=0.86 bidirectional — AK-DK soul-spouse connection; marriage is soul-mirror; Shree Lagna 7H Lakshmi-grace in relationship domain",
+      "deferred_to": "v1.1",
+      "deferral_reason": "Avoid overparameterization in v1.0. CDLM support is strong (0.86) but adding 4th cross-domain edge with 4 domain nodes creates 6-edge cross-domain subgraph at n=1. Revisit at M5-D if residuals suggest this edge is needed."
+    }
+  ]
+}

@@ -475,5 +475,32 @@ No HIGH or CRITICAL residuals.
 
 ---
 
-*End of LL1_TWO_PASS_APPROVAL_v1_0.md v1.1. Two-pass complete; downstream pipeline may
-consume the 30 promoted weights with the n=1 disclaimer carried through.*
+---
+
+## §5.7 — Surrogate-reviewer disclosure: M5-B-S1 DBN topology two-pass (2026-05-13)
+
+Per PHASE_M5_PLAN_v1_0.md §3 M5-B and DBN_TOPOLOGY_v1_0.md §8, a surrogate two-pass
+review of the DBN topology was conducted in-session at M5-B-S1. As R.LL1TPA.1 is
+declared FINAL_NOT_REACHABLE_M5 (§5.6), the reviewer was **Claude-surrogate-M5-B-S1**
+standing in for the Gemini independent-review role.
+
+**Scope:** DBN_TOPOLOGY_v1_0.md DRAFT — structural review (6 findings listed in §8).
+**Outcome:** 3 RESOLVED in-session; 3 UNRESOLVED (U1-U3) flagged for native adjudication
+at NAP.M5.1. This is NOT a review of LL.1 production weights (those remain UNCHANGED);
+it is a topology-structure review only, conducted under the same surrogate-disclosure
+convention as pass_1 (§2).
+
+**Unresolved items for NAP.M5.1:**
+- U1: CAREER↔SPIRITUAL initial_weight 0.20 vs surrogate recommendation 0.15
+- U2: SPIRITUAL domain split vs unified-with-caveat
+- U3: LL.2 per-edge approval (8 MED-tier edges PENDING_NATIVE_APPROVAL)
+
+**Disclosure:** Surrogate role flagged explicitly in DBN_TOPOLOGY_v1_0.md §8.
+Native adjudication at NAP.M5.1 substitutes for live Gemini review per
+FINAL_NOT_REACHABLE_M5 convention.
+
+**Session:** M5-B-S1 | **Date:** 2026-05-13
+
+---
+
+*End of LL1_TWO_PASS_APPROVAL_v1_0.md v1.1 (amended M5-B-S1 with §5.7 surrogate ledger entry). Two-pass complete; downstream pipeline may consume the 30 promoted weights with the n=1 disclaimer carried through.*

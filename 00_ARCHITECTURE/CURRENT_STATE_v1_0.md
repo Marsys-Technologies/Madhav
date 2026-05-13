@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.1
+version: 4.2
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,19 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.2 (2026-05-13, M5-B-S1):
+    **M5-B OPEN.** DBN topology first draft authored: DBN_TOPOLOGY_v1_0.md (DRAFT,
+    pre-registration committed). 5 CPT scaffold JSON files created (natal_to_domain,
+    dasha_to_domain, persistence, cross_domain, observation — all UNFITTED_SCAFFOLD,
+    fitted_values=null). CAPABILITY_MANIFEST updated: 6 new entries (DBN_TOPOLOGY +
+    5 CPTs); entry_count 68 → 74. LL.2 per-edge campaign DEFERRED (Outcome B —
+    no native approval received in session). Surrogate two-pass review conducted
+    (6 findings, 3 unresolved items U1-U3 for NAP.M5.1). Held-out partition
+    sacrosanctness maintained — 9 events BLINDED in antardasha table; topology
+    committed before outcomes seen. Mirror MP.1+MP.2 updated.
+    red_team_counter: 1 → 2 (M5-B-S1 substantive session; DBN topology authoring).
+    active_phase_plan_sub_phase M5-B OPEN (in flight).
+    `file_updated_at` → 2026-05-13. `file_updated_by_session` → M5-B-S1.
   - v4.1 (2026-05-13, M5-A-S1):
     **M5-A CLOSED.** All 14 AC items discharged (AC.M5A.1–AC.M5A.14). Key
     deliverables: LL.8+LL.9 scaffold (dbn/ll8_bayesian_update/, miss_registry/);
@@ -2921,7 +2934,7 @@ current_state:
     # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
   active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M5-B INCOMING — DBN Topology. M5-A CLOSED 2026-05-13 at M5-A-S1.
+    M5-B OPEN (IN FLIGHT) — DBN Topology. M5-A CLOSED 2026-05-13 at M5-A-S1.
     M5-A all 14 ACs discharged. Key carry-forwards to M5-B:
     - LL.2 per-edge campaign (ll2_promotion_campaign_v1_0.md) — native sign-off pending
     - NAP.M5.0 PPL cadence decision — pending native approval at Cowork-M5-S3
@@ -3238,10 +3251,13 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 1
+  red_team_counter: 2
+    # M5-B-S1 (2026-05-13) — counter 1 → 2. M5-B-S1 is a substantive session
+    # (DBN topology authoring; CPT scaffold; manifest; mirrors; CURRENT_STATE).
+    # Next IS.8(a) cadence fires at counter=3 (one session hence).
     # M5-A-S1 (2026-05-13) — counter 0 → 1. M5-A-S1 is a substantive session
     # (14 scope items; LL.8+LL.9 scaffold; CF.LL7.1; mirrors; MSR; LL.2; PPL;
-    # LEL enrichment; DIS.009; eval scaffold). Next IS.8(a) cadence fires at counter=3.
+    # LEL enrichment; DIS.009; eval scaffold).
     # M4-D-S1 (2026-05-02) — counter 0 → 1 → 0. Macro-phase close-class
     # substantive session sealing the M4 macro-phase. Counter increments 0 → 1
     # (M4-D-S1 substantive close-class per ONGOING_HYGIENE_POLICIES §G;
@@ -3463,7 +3479,13 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-A-S1
+  last_session_id: M5-B-S1
+    # M5-B-S1 (2026-05-13). M5-B primary deliverable complete — DBN_TOPOLOGY_v1_0.md
+    # DRAFT authored + 5 CPT scaffolds created. Pre-registration commit timestamp
+    # establishes held-out sacrosanctness. LL.2 DEFERRED (Outcome B).
+    # Surrogate two-pass: 6 findings, 3 unresolved (U1-U3 for NAP.M5.1).
+    # See SESSION_LOG M5-B-S1 entry for full close block. M5-B continues (OPEN).
+    # === Predecessor M5-A-S1 preserved for audit ===
     # M5-A-S1 (2026-05-13). M5-A scope complete — all 14 ACs discharged. See
     # SESSION_LOG M5-A-S1 entry for full close block. M5-A CLOSED. M5-B INCOMING.
     # === Predecessor Cowork-M5-S1-PLAN-AUTHORING-2026-05-13 preserved for audit ===
@@ -4266,11 +4288,21 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-B-S1 — execute M5-B scope per PHASE_M5_PLAN_v1_0.md §3 M5-B (DBN Topology).
-    Priority: (1) Native sign-off on LL.2 per-edge campaign (NAP for ll2_promotion_campaign);
-    (2) NAP.M5.0 cadence decision; (3) JH export window confirmation; (4) DBN topology
-    design (nodes, edges, CPT schema); (5) AC.IV.6 recall gap re-run after LL.3 fixes;
-    (6) AC.IV.7 latency telemetry re-check (7-day window). Carry-forwards from M5-A:
+    M5-B-S2 (or M5-C-S1 if NAP.M5.1 approved) — pending native review of DBN_TOPOLOGY_v1_0.md DRAFT.
+    Priority: (1) NAP.M5.1 — native adjudication of DRAFT topology (U1: CAREER↔SPIRITUAL
+    weight 0.15 vs 0.20; U2: SPIRITUAL domain split; U3: LL.2 approval);
+    (2) If NAP.M5.1 APPROVED — flip DBN_TOPOLOGY to CLOSED and proceed to M5-C
+    (Prior Specification per PHASE_M5_PLAN §3 M5-C); (3) NAP.M5.0 PPL cadence decision
+    still pending; (4) JH export window confirmation still pending; (5) AC.IV.6 recall
+    gap re-run after LL.3 fixes; (6) AC.IV.7 latency re-check. M5-B OPEN IN FLIGHT.
+    DBN_TOPOLOGY_v1_0.md DRAFT committed (pre-registration seal established).
+    5 CPT scaffold files all present in 06_LEARNING_LAYER/dbn/cpt/.
+    Predecessor M5-B-S1 (2026-05-13): DBN topology + CPT scaffolds + manifest + mirrors.
+    [Prior next_session_objective for M5-B-S1 — execute M5-B scope per PHASE_M5_PLAN §3 M5-B (DBN Topology).
+    Priority: (1) Native sign-off on LL.2 per-edge campaign; (2) NAP.M5.0 cadence decision;
+    (3) JH export window confirmation; (4) DBN topology design (nodes, edges, CPT schema);
+    (5) AC.IV.6 recall gap re-run after LL.3 fixes; (6) AC.IV.7 latency telemetry re-check.]
+    Carry-forwards from M5-A:
     OPEN_ITEM.P1.1 (MSR.145 CDLM expansion), LL.2 batch approval pending native.
     PPL volume at M5-B entry: 20 (M6 gate ≥20 retroactive — target met by M5-C).
     PHASE_M5_PLAN_v1_0.md authored 2026-05-13. M5 is ACTIVE. M5-A is the first
@@ -5041,8 +5073,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-13T09:30:00+05:30
-  file_updated_by_session: Pre-M5-Final-Autonomous-2026-05-13
+  file_updated_at: 2026-05-13T23:59:00+05:30
+  file_updated_by_session: M5-B-S1
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
