@@ -22800,3 +22800,127 @@ session_close:
       change: "MP.2 mirror update"
   session_close_valid: true
 ```
+
+### Next session objective
+
+Execute **M5-E-S1**: Bayesian posterior framing in synthesis outputs; LL.8 activation first cycle; LL.9 scaffold confirmation; carry-forwards dispositioned; CAPABILITY_MANIFEST updated.
+
+*End of M5-D-S5 entry — 2026-05-13.*
+
+---
+
+## M5-E-S1 — Bayesian Posterior Framing + LL.8 Activation
+
+```yaml
+session_open:
+  session_id: M5-E-S1
+  cowork_thread_name: "M5-E-S1 — Bayesian Posterior Framing + LL.8 Activation"
+  timestamp: 2026-05-14
+  active_macro_phase: M5
+  active_sub_phase: M5-E (OPEN this session)
+  last_session_id: M5-D-S5
+  red_team_counter_at_open: 0
+  session_class: substantive
+  scope: >
+    CF.M5D.1 (Bayesian posterior framing in predictive.ts); CF.M5D.2 (LL.8 SCAFFOLD→ACTIVE);
+    LL.9 scaffold confirmation; CF.M5D.3–6 carry-forward disposition; CAPABILITY_MANIFEST
+    update (LL8_SPEC, LL8_PARAM_REGISTER, LL9_SPEC, LL9_MISS_REGISTRY, M5_D_CLOSE).
+    CURRENT_STATE v5.1→v5.2. SESSION_LOG append. MP.1+MP.2 mirror sync.
+  may_touch:
+    - platform/src/lib/prompts/templates/predictive.ts
+    - 06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md
+    - 06_LEARNING_LAYER/dbn/ll8_bayesian_update/parameter_register.json
+    - 06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .geminirules
+    - .gemini/project_state.md
+  must_not_touch:
+    - 06_LEARNING_LAYER/dbn/dbn_params_v1_0.json
+    - 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
+    - 06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md
+    - platform/src/lib/retrieve/
+    - platform/src/lib/synthesis/
+```
+
+**Body:**
+
+- **CF.M5D.1 CLOSED** — `platform/src/lib/prompts/templates/predictive.ts` bumped v2.0→v3.0.
+  DBN POSTERIOR CONTEXT block added (domain-probability CI notation rules; [CALIBRATION_REQUIRED]
+  flag for non-DBN claims; n=1 caveat R.M5.2). §CALIBRATION mandatory block added with T1/T2/T3
+  tier-gating (T1 full disclosure: n=37 training events, mean_lift=1.145, beat_fraction=5/5,
+  90% HDI 300k MC samples).
+
+- **CF.M5D.2 CLOSED — LL.8 ACTIVE** — `LL8_SPEC_v1_0.md` v1.0→v1.1 upgraded SCAFFOLD→ACTIVE.
+  All 3 activation conditions confirmed met as of 2026-05-14 (dbn_params_v1_0.json PASS AC.M5D.2;
+  held-out mean_lift=1.145 PASS AC.M5D.3; NAP.M5.3 APPROVED). Conjugate Beta cell-level update
+  protocol added (§3.2b): ELEVATED→alpha+1, SUPPRESSED→beta+1, NORMAL→no update; kill-switch
+  extensions (posterior_mean<0.02/>0.98; alpha+beta>500; topology gap). `parameter_register.json`
+  initialized (update_count=0, status ACTIVE). §6 Activation Status section authored.
+
+- **LL.9 SCAFFOLD confirmed** — `LL9_SPEC_v1_0.md` already at SCAFFOLD status from M5-A-S1;
+  no changes required. Activates at M6 per MACRO_PLAN.
+
+- **Carry-forward dispositions:**
+  - CF.M5D.1 CLOSED (S1.1 — predictive.ts Bayesian framing)
+  - CF.M5D.2 CLOSED (S1.2 — LL.8 ACTIVE)
+  - CF.M5D.3 DEFERRED to M6 (non-blocking; no 7-day production window as of 2026-05-14)
+  - CF.M5D.4 (AC.M5B.6) — risk register entry to be authored within M5_CLOSE §7 carry-forwards
+  - CF.M5D.5 (CF.M5C.5 Gemini ratification) FINAL_NOT_REACHABLE_M5E — Gemini not accessible
+    in this execution context; surrogate-disclosure extended; carry to M6
+  - CF.M5D.6 (KR.M4A.RT.LOW.1) LOW cosmetic — carry to M6 hygiene
+
+- **CAPABILITY_MANIFEST.json updated** — 5 new entries: M5_D_CLOSE (CLOSED), LL8_SPEC (ACTIVE
+  v1.1), LL8_PARAM_REGISTER (LIVE), LL9_SPEC (SCAFFOLD), LL9_MISS_REGISTRY (SCAFFOLD).
+
+- **CURRENT_STATE v5.1→v5.2.** M5-E OPEN (S1 CLOSED). next_session_objective rotated to
+  M5-E-S2 (IS.8(b) macro-phase-close RT + M5_CLOSE_v1_0.md + CURRENT_STATE M5→M6).
+
+- **red_team_counter: 0** (unchanged; M5-E-S1 substantive session; IS.8(b) fires at M5-E-S2
+  macro-phase-close cadence; per ONGOING_HYGIENE_POLICIES §G).
+
+```yaml
+session_close:
+  session_id: M5-E-S1
+  timestamp: 2026-05-14
+  session_class: substantive
+  deliverables_completed:
+    - CF.M5D.1: predictive.ts v2.0→v3.0 DBN posterior framing + §CALIBRATION block COMPLETE
+    - CF.M5D.2: LL8_SPEC_v1_0.md v1.0→v1.1 SCAFFOLD→ACTIVE; parameter_register.json initialized COMPLETE
+    - LL.9: SCAFFOLD status confirmed (no change required)
+    - CF.M5D.3-6: carry-forwards dispositioned (3+4+5 deferred/FINAL_NOT_REACHABLE/cosmetic; 1+2 CLOSED)
+    - CAPABILITY_MANIFEST: 5 new entries added
+    - CURRENT_STATE_v5.2: v5.1→v5.2 COMPLETE (M5-E OPEN, S1 CLOSED, S2 next)
+  red_team_result:
+    type: none
+    axes: 0
+    verdict: n/a
+    findings: n/a
+    counter_rotation: "0 (unchanged; IS.8(b) fires at M5-E-S2 macro-phase-close)"
+  current_state_updated: true
+  current_state_version: "5.2"
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 mirror: §F state block updated to M5-E-S1 CLOSED / M5-E-S2 next"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror: Active Phase block updated to M5-E-S1 CLOSED / S2 next"
+  artifacts_modified:
+    - path: "platform/src/lib/prompts/templates/predictive.ts"
+      change: "v2.0→v3.0: DBN POSTERIOR CONTEXT block + §CALIBRATION mandatory block"
+    - path: "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md"
+      change: "v1.0→v1.1: SCAFFOLD→ACTIVE; §3.2b conjugate Beta protocol; §6 Activation Status"
+    - path: "06_LEARNING_LAYER/dbn/ll8_bayesian_update/parameter_register.json"
+      change: "NEW — initialized ACTIVE parameter register (update_count=0)"
+    - path: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      change: "5 new entries: M5_D_CLOSE, LL8_SPEC, LL8_PARAM_REGISTER, LL9_SPEC, LL9_MISS_REGISTRY"
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      change: "v5.1→v5.2; M5-E OPEN S1 CLOSED; next_session_objective rotated to M5-E-S2"
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      change: "M5-E-S1 entry appended"
+    - path: ".geminirules"
+      change: "MP.1 mirror update (M5-E-S1 close)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M5-E-S1 close)"
+  session_close_valid: true
+```

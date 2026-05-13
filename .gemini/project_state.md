@@ -26,9 +26,11 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 - **L4 Discovery impact:** **None.** Phase O lives at the platform observability layer. Gemini L4 Discovery work continues unaffected.
 - **Phase-O+1 follow-ups (logged, not blocking):** pg-cursor migration of `queryUsageForExportStream()` for true SQL streaming; MAD-based parallel anomaly detector; DNS-rebinding defence on `validateWebhookUrl()`; cost-per-quality rubric wiring once Learning Layer is in place.
 
-## Active Phase: M5 — ACTIVE (M5-D OPEN; IS.8(a) PASS 8/8 + AC.M5D.4/5 COMPLETE)
+## Active Phase: M5 — ACTIVE (M5-E OPEN; S1 CLOSED 2026-05-14; S2 next: IS.8(b) macro-phase-close RT + M5_CLOSE)
 
-**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-D OPEN — AC.M5D.1–5 PASS; IS.8(a) discharged at S4 (counter 2→3→0); next M5-D-S5 sealing artifact.** DBN tooling: Hybrid-C. M4 CLOSED 2026-05-02.
+**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-E OPEN — S1 CLOSED 2026-05-14; S2 next: IS.8(b) macro-phase-close RT + M5_CLOSE_v1_0.md + CURRENT_STATE M5→M6.** DBN tooling: Hybrid-C. M4 CLOSED 2026-05-02.
+
+**M5-E-S1 (2026-05-14) deliverables COMPLETE — CF.M5D.1+2 CLOSED; LL.8 ACTIVE:** CF.M5D.1 CLOSED — `predictive.ts` v2.0→v3.0; DBN POSTERIOR CONTEXT block + §CALIBRATION mandatory block (T1/T2/T3 tiers). CF.M5D.2 CLOSED — LL.8 ACTIVE: `LL8_SPEC_v1_0.md` v1.0→v1.1 SCAFFOLD→ACTIVE; conjugate Beta §3.2b protocol; `parameter_register.json` initialized (update_count=0). LL.9 SCAFFOLD confirmed (no change). CF.M5D.3–6 dispositioned. CAPABILITY_MANIFEST 5 new entries (M5_D_CLOSE, LL8_SPEC, LL8_PARAM_REGISTER, LL9_SPEC, LL9_MISS_REGISTRY). CURRENT_STATE v5.1→v5.2. red_team_counter: 0 (IS.8(b) fires at M5-E-S2).
 
 **M5-D-S4 (2026-05-13) deliverables COMPLETE — IS.8(a) PASS 8/8 + AC.M5D.4/5 COMPLETE:** IS.8(a) red-team 8/8 axes PASS — red_team_counter 2→3→0 discharged. AC.M5D.4 PPL retroactive blind predictions COMPLETE — 5 blind retroactive predictions with Monte Carlo 90% HDI per NAP.M5.3; wide marginal HDIs [0.013–0.944] range reflect mixture uncertainty across SUPPRESSED/NORMAL/ELEVATED — epistemically correct. Artifact: `06_LEARNING_LAYER/dbn/ppl_retroactive_m5d_v1_0.json`. AC.M5D.5 domain activation timeline COMPLETE — 23-period hard E-step assignments; 9 key findings including Jupiter ALL NORMAL, 0 SUPPRESSED periods, CAREER ELEVATED 11/23=0.4783 (matches null base rate — internal consistency confirmed). Artifact: `06_LEARNING_LAYER/dbn/domain_activation_timeline_v1_0.json`. CURRENT_STATE v4.9→v5.0. red_team_counter: 2→3→0.
 
@@ -48,7 +50,9 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 
 **M5-B-NAP-S1 (2026-05-13, Cowork NAP) deliverables COMPLETE:** NAP.M5.0 APPROVED. NAP.M5.1 partially resolved. LL.2 campaign CLOSED. SIG.MSR.145 corrected. SIG.MSR.402b documented.
 
-**Next session:** M5-D-S5 — AC.M5D.6 M5-D sub-phase sealing artifact. Author `M5_D_CLOSE_v1_0.md` (IS.8(b)-class sub-phase-close red-team; AC.M5D.1–6 PASS bar; state pointer CURRENT_STATE v5.0→v5.1). red_team_counter entering M5-D-S5: 0.
+**M5-D-S5 (2026-05-13) deliverables COMPLETE — AC.M5D.6 + M5-D CLOSED:** AC.M5D.6 COMPLETE — M5_D_CLOSE_v1_0.md authored and sealed. IS.8(b)-class in-document red-team PASS 8/8 axes (0 CRITICAL/HIGH/MEDIUM/LOW). AC ledger: AC.M5D.1–6 PASS. CURRENT_STATE v5.0→v5.1.
+
+**Next session:** M5-E-S2 — IS.8(b) macro-phase-close red-team (5 axes, all must PASS); PPL volume checkpoint; `M5_CLOSE_v1_0.md` authored (§0–§8); CURRENT_STATE flip M5→M6 INCOMING (v5.2→v5.3); NAP.M5.4 PRE-APPROVED. Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-E-S2." red_team_counter entering M5-E-S2: 0.
 
 **M5-A deliverables (closed):** LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_updater_v1_0.md` + `ll9_counterfactual_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed); LL.2 per-edge promotion campaign authored; PPL retroactive protocol; held-out partition declared (9 events sacrosanct until M5-D); PRED.015–018 added; LEL v1.7; DIS.009 RESOLVED_R1; JH export schedule. Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
 

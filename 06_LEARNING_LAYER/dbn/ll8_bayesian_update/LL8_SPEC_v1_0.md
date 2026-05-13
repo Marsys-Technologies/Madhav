@@ -1,19 +1,21 @@
 ---
 artifact: LL8_SPEC_v1_0.md
 canonical_id: LL8_SPEC
-version: 1.0
-status: SCAFFOLD
+version: "1.1"
+status: ACTIVE
 mechanism: LL.8
 mechanism_label: Bayesian Model Updating
 produced_during: M5-A-S1
 produced_on: 2026-05-13
+activated_during: M5-E-S1
+activated_on: 2026-05-14
 authored_by: claude-sonnet-4-6
 governing_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md §3 M5-A Item 1
 activation_condition: >
-  SCAFFOLD at M5. Activates at M5-D once DBN parameters exist (dbn_params_v1_0.json or
-  equivalent at 06_LEARNING_LAYER/dbn/). LL.8 transitions from scaffold → active when
-  the first fitted parameter set is available and the first PPL outcome arrives for
-  comparison against a prior prediction.
+  DBN parameters exist (dbn_params_v1_0.json PASS, M5-D-S2).
+  Held-out validation PASS (mean_lift=1.145, beat_fraction=5/5, M5-D-S3).
+  NAP.M5.3 CI reporting policy APPROVED (M5-D-S3).
+  All three conditions met as of 2026-05-13. LL.8 is ACTIVE from M5-E close.
 kill_switch:
   condition: >
     Update suspended if the credible-interval width of the posterior exceeds 2× the
@@ -27,6 +29,12 @@ kill_switch:
     Resume only after native review and explicit NAP override.
   kill_switch_id: KS.LL8.1
 changelog:
+  - v1.1 (2026-05-14, M5-E-S1): Status SCAFFOLD → ACTIVE. All three activation
+      conditions confirmed met (dbn_params_v1_0.json PASS, held-out mean_lift=1.145,
+      NAP.M5.3 APPROVED). Added §2b conjugate Beta update protocol (precise cell-level
+      update rule). Added §6 Activation Status section. parameter_register.json
+      initialized (update_count=0). First live update will fire on next LEL training
+      event added post-M5 close.
   - v1.0 (2026-05-13, M5-A-S1): Initial scaffold spec. Activation condition declared;
       kill-switch KS.LL8.1 defined; parameter register stub path declared;
       update mechanism framework specified. Status: SCAFFOLD (activates M5-D).
@@ -91,6 +99,33 @@ A PPL outcome recording triggers an LL.8 candidate update when:
    - At least 3 independent PPL updates have been processed for this parameter
    - OR native explicitly approves early overwrite
 
+### §3.2b — Conjugate Beta cell-level update protocol (ACTIVE from M5-E)
+
+For new LEL training-partition events, the precise update rule is:
+
+For each new event E with domain D and dasha lord MD:
+  1. Identify the CPT row: `dasha_to_domain_posteriors[MD][D]` in dbn_params_v1_0.json
+  2. Read current (alpha, beta) for the relevant state cell
+  3. Apply conjugate Beta update:
+     - If event domain-state = ELEVATED: alpha ← alpha + 1
+     - If event domain-state = SUPPRESSED: beta ← beta + 1
+     - If event domain-state = NORMAL: no update (NORMAL is the residual state)
+  4. Recompute posterior mean = alpha / (alpha + beta)
+  5. Write updated (alpha, beta) back to dbn_params_v1_0.json with:
+     - update_log entry: {date, event_id, domain, md_lord, update_type}
+     - version bump: patch increment (e.g., 1.0 → 1.0.1)
+  6. Regenerate 90% HDI via Monte Carlo (300,000 samples, seed = 42 + update_count)
+  7. Archive the pre-update JSON snapshot in
+     `06_LEARNING_LAYER/dbn/param_history/` with ISO timestamp
+
+Additional kill-switch conditions (supplement to KS.LL8.1):
+  - posterior_mean for any domain-state cell < 0.02 or > 0.98
+    (degenerate posterior → flag for native review; do not update)
+  - alpha + beta > 500 for any cell
+    (overfitting risk → convene M7 re-fit; halt updates for that cell)
+  - New event's dasha lord not present in existing CPT
+    (topology gap → open DISAGREEMENT_REGISTER entry class topology_gap; defer update)
+
 ### §3.3 — Feedback loop (prediction → outcome → LL.8 update)
 
 ```
@@ -152,5 +187,25 @@ per NAP.M5.3 policy).
 
 ---
 
-*End of LL8_SPEC_v1_0.md — SCAFFOLD status. Activates at M5-D.*
-*Governing plan: PHASE_M5_PLAN_v1_0.md §3 M5-A Item 1. Session: M5-A-S1.*
+## §6 — Activation Status
+
+LL.8 is **ACTIVE** as of M5-E close (2026-05-14).
+
+All three activation conditions are confirmed:
+
+| Condition | Evidence | Date |
+|---|---|---|
+| DBN parameters exist + fitted | `dbn_params_v1_0.json` PASS (AC.M5D.2) | 2026-05-13 |
+| Held-out validation PASS | mean_lift=1.145, beat_fraction=5/5 (AC.M5D.3) | 2026-05-13 |
+| NAP.M5.3 CI policy APPROVED | `NAP_M5_3_CI_REPORTING_POLICY_v1_0.md` | 2026-05-13 |
+
+First live update will occur when the next LEL event is added to the training partition
+after M5 close. Until then, `parameter_register.json` holds update_count=0.
+
+The SCAFFOLD-era `parameter_register_stub.json` is superseded by the active
+`parameter_register.json` in this directory; the stub is retained for historical audit.
+
+---
+
+*End of LL8_SPEC_v1_0.md — v1.1 ACTIVE status. Activated M5-E-S1 2026-05-14.*
+*Governing plan: PHASE_M5_PLAN_v1_0.md §3 M5-A Item 1. Original session: M5-A-S1.*
