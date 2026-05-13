@@ -1,10 +1,12 @@
 ---
 artifact: PHASE_M5_PLAN_v1_0.md
 canonical_id: PHASE_M5_PLAN
-version: 1.0
+version: 1.1
 status: CURRENT
 authored_by: Cowork-M5-S1-PLAN-AUTHORING-2026-05-13
 authored_at: 2026-05-13
+amended_by: Cowork-M5-S2-PLAN-AMENDMENT-2026-05-13
+amended_at: 2026-05-13
 parent_macro_phase: M5 — Probabilistic Model
 parent_plan: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md §M5
 predecessor_artifact: 06_LEARNING_LAYER/M4_CLOSE_v1_0.md
@@ -16,16 +18,25 @@ hard_prerequisite_gate: >
   Pre-M5 portal gates (I, II, III, IV) — CLEARED 2026-05-13 (commit adb61fb).
   No hard prerequisite blocks M5-A entry.
 ppl_volume_tracking:
-  required_for_m6_entry: "≥50 prospective predictions with ≥6-month horizon elapsed"
+  required_for_m6_entry: "≥20 predictions verified against known outcomes (retroactive held-out LEL approach accepted at M5-S2 Cowork session 2026-05-13)"
+  required_for_m6_entry_v1_0: "≥50 prospective predictions with ≥6-month horizon elapsed [SUPERSEDED by v1.1 gate redefinition]"
   current_count_at_m5_open: 16
-  gap: 34 predictions minimum
+  gap: "≥4 additional retroactive predictions minimum; ongoing prospective cadence for M7+ calibration depth"
+  retroactive_protocol: >
+    Generate predictions from chart+dasha state at the time of each held-out LEL event
+    WITHOUT reading the recorded LEL outcome. Prediction is written first; then outcome
+    is revealed and scored. Blinding is enforced within the session: Claude does not
+    consult the LEL entry for the event being predicted until after the prediction is
+    committed. This protocol decouples M6 entry from calendar time.
+  held_out_partition_target: "9 most recent LEL events (approx 2019–2026); to be formally documented in M5-A-S1"
   note: >
-    PPL volume is a M6 entry gate, not a M5 entry gate. However M5 is the phase
-    during which this volume must be built. CW.PPL logging is active throughout
-    all M5 sub-phases. M5-A must produce a cadence proposal to close the gap
-    before M6 can open.
+    PPL volume gate redefined (Cowork session 2026-05-13) to use retroactive held-out
+    LEL events. This allows M6 to open once ≥20 predictions are verified, rather than
+    waiting 6 calendar months for prospective horizons to elapse. Ongoing prospective
+    predictions continue to accumulate for M7+ calibration depth; M6 is no longer
+    blocked on calendar time.
 native_approval_points:
-  - M5-A close — PPL cadence plan: how ≥50 predictions will be logged by M6 entry
+  - M5-A close — PPL cadence plan: retroactive held-out protocol + ongoing prospective cadence (NAP.M5.0); ≥20 gate confirmed
   - M5-B close — DBN topology: node schema, edge types, time-slice structure (NAP.M5.1)
   - M5-C close — Prior specification: per-signal and per-domain priors (NAP.M5.2)
   - M5-D close — Confidence-interval reporting policy: band width, disclosure tier (NAP.M5.3)
@@ -49,6 +60,19 @@ carry_forward_from_m4:
   - AC.IV.6 partial (recall=0.9355): pre-existing planner gap — target improvement in M5 retrieval work
   - AC.IV.7 unable (latency_ms null): re-test after M5-A has prod traffic with populated telemetry
 changelog:
+  - v1.1 (2026-05-13, Cowork-M5-S2-PLAN-AMENDMENT-2026-05-13): Gap-resolution amendment.
+      (1) PPL/M6 gate redefined: ≥50/6-month → ≥20 retroactive held-out LEL approach;
+      blinding protocol specified; calendar-time dependency eliminated. (2) M5-A scope
+      expanded: added items 11–14 (held-out partition formalization, LEL domain enrichment,
+      DIS.009 R1 closure, answer:eval framework). (3) DBN tooling confirmed: Hybrid-C
+      (JSON CPT manually computed; LLM does inference; LLM-assisted signal selection).
+      (4) LLM stack declared: Gemini → DeepSeek → NIM; no Anthropic/Claude API.
+      (5) DIS.009 R1 confirmed (AL=Capricorn native-confirmed; PAT.008 split into
+      PAT.008-AL + PAT.008-KMC; both L1-groundable from FORENSIC). (6) Execution strategy
+      added: dedicated worktree marsys-m5-dbn on feature/m5-probabilistic-model; long-running
+      Antigravity session with --dangerously-skip-permissions. (7) R.M5.7 added (retroactive
+      PPL blinding risk). (8) LEL enrichment scope: 10 new events from Cowork session
+      across spiritual, creative, psychological domains documented for M5-A-S1 addition.
   - v1.0 (2026-05-13, Cowork-M5-S1-PLAN-AUTHORING-2026-05-13): Initial M5 phase plan.
       Sub-phases M5-A through M5-E defined per M4_CLOSE_v1_0.md §5 and MACRO_PLAN §M5.
       Pre-M5 gate sequence declared CLEARED (Gates I, II, III, IV — 6/8 ACs; 2 deferred as
@@ -65,11 +89,14 @@ changelog:
 |---|---|
 | Macro-phase | **M5 — Probabilistic Model** |
 | Active sub-phase | **M5-A — Substrate, Entry Cleanup, PPL Cadence** |
-| Sub-phase status | OPEN — this session is plan-authoring (M5-S1 equivalent) |
+| Sub-phase status | OPEN — M5-A-S1 is next execution session |
 | Phase opened | 2026-05-13 (pre-M5 gate sequence CLEARED at adb61fb) |
-| Phase plan authored | 2026-05-13 (this Cowork session) |
+| Phase plan authored | 2026-05-13 (v1.0); amended 2026-05-13 (v1.1) |
 | Hard prerequisite gate | M4 CLOSED — **CLEARED** 2026-05-02; Pre-M5 gates — **CLEARED** 2026-05-13 |
-| PPL volume at open | 16 predictions (target ≥50 for M6 gate; gap = 34) |
+| PPL volume at open | 16 predictions (target ≥20 for M6 gate per v1.1; gap = ≥4 retroactive + ongoing prospective) |
+| DBN tooling | Hybrid-C: JSON CPT manually computed; LLM does inference; LLM-assisted signal selection |
+| LLM stack | Gemini → DeepSeek → NIM (no Anthropic/Claude API) |
+| Execution strategy | Dedicated worktree: marsys-m5-dbn on feature/m5-probabilistic-model; long-running Antigravity session |
 | Concurrent (non-blocking) | CW.PPL (active throughout); CW.LEL maintenance; JH-export when JH available |
 
 ---
@@ -149,11 +176,15 @@ add-ons:
    two-pass approval campaign for these 8 edges. Native review is the bottleneck; schedule
    at M5-A open. Target completion: M5-A close or M5-B open.
 
-8. **PPL volume audit + cadence plan** — Current: 16 predictions. Gap to M6 gate: ≥34
-   more predictions with ≥6-month horizon. Audit the 16 existing entries: how many have
-   ≥6-month windows elapsed? Propose a PPL cadence — how many predictions per session,
-   which life-domains to prioritize, falsifier definitions. This cadence plan is the M5-A
-   close native-approval item.
+8. **PPL volume audit + cadence plan (v1.1 — gate redefined)** — M6 gate is now ≥20
+   predictions verified against known outcomes (retroactive held-out LEL approach; calendar-
+   time dependency eliminated per Cowork session 2026-05-13). Scope: (a) audit the 16
+   existing entries for completeness; (b) execute retroactive prediction protocol on held-out
+   LEL partition (≥4 events minimum to reach M6 gate; each prediction written BEFORE the
+   LEL outcome is read in-session); (c) document the feedback loop: prediction emission →
+   LEL outcome recording → comparison → LL.8 Bayesian update; (d) propose ongoing prospective
+   cadence for M7+ calibration depth. Cadence plan is the M5-A close native-approval item
+   (NAP.M5.0). Falsifier definitions must accompany every prediction.
 
 9. **JH-export workstream scheduling (KR.M3A.JH-EXPORT)** — Three items: JH export of
    Sthana (positional strength) + Drik (aspectual strength) values; ECR for Sthana/Drik
@@ -166,6 +197,49 @@ add-ons:
       (target: M5-B). Not a blocker for M5-A close.
     - AC.IV.7 (latency_ms null): Re-check audit_events telemetry after 7 days prod traffic.
 
+11. **Held-out partition formalization** — The LEL held-out partition was never formally
+    documented at M4-B close. At M5-A-S1 open: declare the held-out partition explicitly
+    before any retroactive prediction work begins. Target: 9 most recent LEL events
+    (approximate range 2019–2026). Document the partition in a dedicated file or LEL
+    section. From this point forward, held-out events are treated as sacrosanct: no
+    topology, prior, or DBN-design session may read held-out outcomes until M5-D fitting
+    begins.
+
+12. **LEL domain enrichment (10 new events)** — Cowork session 2026-05-13 produced
+    structured life-event data across four previously sparse domains. Events to be written
+    into the LEL as new YAML entries with full chart_state_at_event, retrodictive_match,
+    and notes fields. Dasha and transit tags will require Swiss-Ephemeris lookup for events
+    prior to 2026-05-01 (proxy-date computation acceptable for year-approx events).
+    New event list (approved by native in Cowork session):
+    - SPR.A: Father's spiritual dialogue transmission (late teens ~1997–2001) — seed event
+    - SPR.B: Shani Puja initiation by father (~2002–2003, sustained ~10 years) — Shani Shtotram nightly
+    - SPR.C: Ugratara Shakti pitha devotion onset (~2009–2011, ongoing ~15 years)
+    - SPR.D: Mahadev/Shiva devotion onset (early thirties ~2014–2016)
+    - SPR.E: Daily abhisheka + yajna practice + panchang study convergence (~2024)
+    - SPR.F: Yantra mandala established (mid-2025)
+    - SPR.G: Ma Kamlatmika (tantric Mahalakshmi) devotion onset (late 2025)
+    - CRE.A: Painting competition awards, childhood (~1990–1996) — multiple prizes
+    - PSY.A: Vertigo/head reeling onset and peak debilitation during engineering exam prep (~2001–2004)
+    - PSY.B: Stammering onset-overcome-resurgence arc (childhood → overcome by MBA years → resurgence 2025)
+    NOTE: Cockroach phobia (childhood) to be added as a §5 chronic_pattern entry, not a
+    point event. Father's passing, knee surgery, and panic attacks are already in the LEL.
+
+13. **DIS.009 formal closure** — R1 verdict confirmed by native in Cowork session 2026-05-13.
+    PAT.008 is to be split into two patterns:
+    - PAT.008-AL: Arudha Lagna = Capricorn (10th house); lord = Saturn; confirmed by native.
+    - PAT.008-KMC: Karakamsa = Gemini (Moon AK in Gemini D9); lord = Mercury; confirmed
+      from FORENSIC_ASTROLOGICAL_DATA §20.1 (Moon D9 = Gemini; Atmakaraka = Moon 27°02').
+    Both patterns are L1-groundable without JHora. DISAGREEMENT_REGISTER_v1_0.md DIS.009
+    entry to be updated: status = RESOLVED_R1; verdict = split accepted; both patterns
+    confirmed from FORENSIC L1 data; native adjudication 2026-05-13.
+
+14. **answer:eval framework scaffold (DeepSeek)** — Per Cowork session 2026-05-13 decision:
+    answer:eval uses DeepSeek (not Claude API — costs too high). Scaffold the evaluation
+    framework: prompt template for DeepSeek-based quality scoring; rubric aligned to
+    B.11 (Whole-Chart-Read discipline), citation completeness, calibration, and B.10
+    (no fabricated computation). Output: eval harness runnable against production responses.
+    This scaffold is parallel-safe with DBN topology work.
+
 **Acceptance criteria (M5-A close)**
 
 - [ ] AC.M5A.1 — LL.8 scaffold: directory created; spec document at `06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md`; parameter register stub present; kill-switch condition defined
@@ -175,12 +249,16 @@ add-ons:
 - [ ] AC.M5A.5 — MP.1+MP.2 mirror propagated for CURRENT_STATE v3.9 delta
 - [ ] AC.M5A.6 — MSR signal-completeness reconciled: 4 absent IDs resolved or count updated with rationale
 - [ ] AC.M5A.7 — LL.2 per-edge campaign initiated: 8 MED-tier edges submitted for two-pass native review
-- [ ] AC.M5A.8 — PPL cadence plan authored and native-approved: target ≥50 predictions; cadence per session; domain coverage; falsifier policy
+- [ ] AC.M5A.8 — PPL cadence plan authored and native-approved: retroactive held-out protocol documented; ≥4 retroactive predictions executed against held-out partition (blinding enforced); feedback loop (prediction → outcome → LL.8 update) documented; ongoing prospective cadence proposed; NAP.M5.0 approved
 - [ ] AC.M5A.9 — JH-export workstream scheduled with native (window agreed; items scoped)
 - [ ] AC.M5A.10 — CURRENT_STATE updated to M5-A CLOSED / M5-B INCOMING
+- [ ] AC.M5A.11 — Held-out partition formally declared: ≥9 LEL events identified by ID; partition document or LEL section created; sacrosanct status confirmed before any topology/prior work begins
+- [ ] AC.M5A.12 — LEL enrichment complete: all 10 new events from Cowork session 2026-05-13 added to LEL as YAML entries with chart_state_at_event, retrodictive_match, and notes fields; cockroach phobia added as §5 chronic_pattern entry
+- [ ] AC.M5A.13 — DIS.009 closed: DISAGREEMENT_REGISTER updated with R1 verdict; PAT.008 split recorded (PAT.008-AL + PAT.008-KMC); L1 grounding citations confirmed; status = RESOLVED_R1
+- [ ] AC.M5A.14 — answer:eval scaffold complete: DeepSeek-based eval harness exists; rubric covers B.11, citation completeness, calibration, B.10; runnable against production responses
 
 **may_touch (M5-A)**
-`06_LEARNING_LAYER/dbn/`, `06_LEARNING_LAYER/miss_registry/`, `06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/shadow/` (LL.2), `025_HOLISTIC_SYNTHESIS/` (CDLM re-emit for CF.LL7.1), `01_FACTS_LAYER/LIFE_EVENT_LOG_*.md` (PPL section), `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`, `00_ARCHITECTURE/SESSION_LOG.md`, `.geminirules`, `.gemini/project_state.md`
+`06_LEARNING_LAYER/dbn/`, `06_LEARNING_LAYER/miss_registry/`, `06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/shadow/` (LL.2), `025_HOLISTIC_SYNTHESIS/` (CDLM re-emit for CF.LL7.1), `01_FACTS_LAYER/LIFE_EVENT_LOG_*.md` (new entries + PPL section + held-out partition declaration), `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`, `00_ARCHITECTURE/SESSION_LOG.md`, `00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md` (DIS.009 closure), `.geminirules`, `.gemini/project_state.md`, `platform/scripts/eval/` (answer:eval scaffold — new directory)
 
 **must_not_touch (M5-A)**
 `platform/` (no app code in M5-A), `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_*.md`, `06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/` (production weights are frozen until M5-D validated)
@@ -399,6 +477,7 @@ declared at M4-B close; its contents are blinded until this sub-phase begins.
 | R.M5.4 | §M5 risk (d) | Topology overfit to LEL history — topology designed with LEL in mind, not locked before seeing data | Held-out partition sacrosanct; topology locked at NAP.M5.1 before any data consultation; audit trail |
 | R.M5.5 | New | PPL volume gap (16 → ≥50) — M6 gate unreachable if cadence is too slow | M5-A cadence plan; daily/weekly prediction emission discipline; PPL volume tracked at every M5 sub-phase close |
 | R.M5.6 | New | Gemini unavailability (R.LL1TPA.1 persists) — two-pass topology and prior review degraded to surrogate | Surrogate-disclosure ledger; accept FINAL_NOT_REACHABLE_M5 if re-attempt fails; proceed with single-agent pass + native adjudication |
+| R.M5.7 | New (v1.1) | Retroactive PPL blinding failure — predictions generated after implicitly reading LEL outcome in same session, invalidating the held-out verification | Strict in-session protocol: prediction YAML committed before LEL entry for that event is opened; separate tool-call sequence; audit trail in PPL log recording which session generated the prediction and which session revealed the outcome |
 
 ---
 
@@ -425,7 +504,7 @@ Per `MACRO_PLAN §LL-Appendix.A`:
 
 | NAP ID | Sub-phase | Item | Status |
 |---|---|---|---|
-| NAP.M5.0 | M5-A | PPL cadence plan: ≥50 predictions cadence + domain + falsifier policy | PENDING |
+| NAP.M5.0 | M5-A | PPL cadence plan: retroactive held-out protocol + ≥20 gate confirmed + feedback loop + ongoing prospective cadence | PENDING |
 | NAP.M5.1 | M5-B | DBN topology: node schema, edge types, time-slice, domain scope, parameterization | PENDING |
 | NAP.M5.2 | M5-C | Prior specification: per-parameter prior family, hyperparameters, classical citation | PENDING |
 | NAP.M5.3 | M5-D | Confidence-interval reporting policy: band width, credible level, n=1 disclosure | PENDING |
@@ -451,5 +530,6 @@ Items inherited from M4 close §5. Status at M5-A open:
 
 ---
 
-*End of PHASE_M5_PLAN_v1_0.md — authored 2026-05-13 at M5-S1 plan-authoring session.*
-*M5-A is now the active sub-phase. Next session: M5-A-S1 — execute §3 M5-A scope items.*
+*End of PHASE_M5_PLAN_v1_0.md — v1.1 (amended 2026-05-13 at Cowork-M5-S2-PLAN-AMENDMENT session).*
+*M5-A is the active sub-phase. Next session: M5-A-S1 — execute §3 M5-A scope items 1–14.*
+*Execution vehicle: worktree marsys-m5-dbn on feature/m5-probabilistic-model; long-running Antigravity session.*
