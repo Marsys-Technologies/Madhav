@@ -1,7 +1,8 @@
 import { STACK_ROUTING, type ModelStack, type CallType } from '@/lib/models/registry'
 import { StackPickerCards } from '@/lib/components/aiops/StackPickerCards'
-import { CallTypeRow } from '@/lib/components/aiops/CallTypeRow'
-import { EmptyRightRail } from '@/lib/components/aiops/EmptyRightRail'
+import { InteractiveCallTypeRow } from '@/lib/components/aiops/InteractiveCallTypeRow'
+import { StackSmokeButton } from '@/lib/components/aiops/StackSmokeButton'
+import { AuditRail } from '@/lib/components/aiops/AuditRail'
 import { query } from '@/lib/db/client'
 import type { LlmStackConfigRow, LlmStackRoutingOverrideRow } from '@/lib/db/schema/aiops'
 
@@ -49,9 +50,10 @@ export default async function AiopsControlPage() {
     <div className="p-6">
       <h1 className="text-2xl font-semibold tracking-tight">AIOps Control Panel</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Read-only view — write side lands in CP.2.
+        Live configuration — changes take effect within 60s (runtime_config cache TTL).
       </p>
 
+      {/* Stack picker */}
       <section className="mt-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Stack
@@ -61,6 +63,7 @@ export default async function AiopsControlPage() {
 
       <div className="mt-8 flex gap-6">
         <div className="min-w-0 flex-1">
+          {/* Pipeline call types */}
           <section>
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Pipeline — {active_stack} stack
@@ -69,30 +72,34 @@ export default async function AiopsControlPage() {
               {PIPELINE_CALL_TYPES.map(ct => {
                 const { primary, fallback } = getRouting(active_stack, ct, routingIdx)
                 return (
-                  <CallTypeRow
+                  <InteractiveCallTypeRow
                     key={ct}
+                    stack={active_stack}
                     callType={ct}
-                    primaryModel={primary}
-                    fallbackModel={fallback}
+                    initialPrimary={primary}
+                    initialFallback={fallback}
                   />
                 )
               })}
             </div>
+            <StackSmokeButton stack={active_stack} />
           </section>
 
+          {/* Quality & Verification — cross-stack */}
           <section className="mt-6">
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Quality & Verification (cross-stack)
             </h2>
             <div className="rounded-lg border border-border bg-card px-4">
               {QUALITY_CALL_TYPES.map(ct => {
-                const { primary, fallback } = getRouting(active_stack, ct, routingIdx)
+                const { primary, fallback } = getRouting('marsys', ct, routingIdx)
                 return (
-                  <CallTypeRow
+                  <InteractiveCallTypeRow
                     key={ct}
+                    stack="marsys"
                     callType={ct}
-                    primaryModel={primary}
-                    fallbackModel={fallback}
+                    initialPrimary={primary}
+                    initialFallback={fallback}
                   />
                 )
               })}
@@ -100,8 +107,15 @@ export default async function AiopsControlPage() {
           </section>
         </div>
 
+        {/* Right rail */}
         <aside className="w-64 shrink-0">
-          <EmptyRightRail />
+          <AuditRail />
+          <div className="mt-4 rounded-lg border border-border bg-card p-4">
+            <h3 className="text-sm font-semibold text-foreground">Health Status</h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Health probes start in CP.4.
+            </p>
+          </div>
         </aside>
       </div>
     </div>
