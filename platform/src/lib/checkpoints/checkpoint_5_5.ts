@@ -22,6 +22,7 @@ import { generateText } from 'ai'
 import { resolveModel } from '@/lib/models/resolver'
 import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
 
 import {
   Checkpoint55OutputSchema,
@@ -32,7 +33,6 @@ import {
 } from './types'
 
 const CHECKPOINT_ID = 'checkpoint_5_5'
-const CHECKPOINT_MODEL = 'claude-haiku-4-5'
 
 /** Max chars of content to include per bundle asset (prevents prompt overflow) */
 const ASSET_PREVIEW_CHARS = 200
@@ -87,9 +87,10 @@ export async function runCheckpoint5_5(input: Checkpoint55Input): Promise<Checkp
 
   try {
     const prompt = buildPrompt(input)
+    const checkpointModel = await getEffectiveModel('marsys', 'checkpoint_5_5', 'primary')
 
     const { text } = await generateText({
-      model: resolveModel(CHECKPOINT_MODEL),
+      model: resolveModel(checkpointModel),
       messages: [{ role: 'user', content: prompt }],
       maxOutputTokens: 768,
     })

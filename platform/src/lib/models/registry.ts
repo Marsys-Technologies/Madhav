@@ -815,6 +815,13 @@ export type CallType =
   | 'planner_fast'
   | 'context_assembly'
   | 'worker'
+  // AIOps CP.1 — Quality & Verification call types (cross-stack; pick from full catalog)
+  | 'eval_judge'       // grades outputs in answer:eval / planner:eval scripts
+  | 'eval_generator'   // generates eval prompts dynamically
+  | 'smoke_synth'      // stack smoke-test synthesis probe
+  | 'checkpoint_4_5'   // Phase 6 planner mid-flight verification
+  | 'checkpoint_5_5'   // Phase 6 context-assembly mid-flight verification
+  | 'checkpoint_8_5'   // Phase 6 synthesis post-hoc verification
 
 // ── ModelStack ────────────────────────────────────────────────────────────────
 
@@ -825,7 +832,7 @@ export type CallType =
  *
  * Default stack: 'nim' — all calls free via NVIDIA NIM.
  */
-export type ModelStack = 'nim' | 'anthropic' | 'gemini' | 'gpt' | 'deepseek'
+export type ModelStack = 'nim' | 'anthropic' | 'gemini' | 'gpt' | 'deepseek' | 'marsys'
 
 export const STACK_LABEL: Record<ModelStack, string> = {
   nim:       'NIM Stack',
@@ -833,10 +840,12 @@ export const STACK_LABEL: Record<ModelStack, string> = {
   gemini:    'Gemini Stack',
   gpt:       'GPT Stack',
   deepseek:  'DeepSeek Stack',
+  marsys:    'MARSYS Stack',
 }
 
-/** The provider whose models serve as primaries in each stack. */
-export const STACK_PRIMARY_PROVIDER: Record<ModelStack, Provider> = {
+/** The provider whose models serve as primaries in each stack.
+ *  MARSYS is excluded — it is cross-provider; its routing lives in llm_stack_routing_override. */
+export const STACK_PRIMARY_PROVIDER: Record<Exclude<ModelStack, 'marsys'>, Provider> = {
   nim:       'nvidia',
   anthropic: 'anthropic',
   gemini:    'google',
@@ -912,6 +921,13 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'nvidia/nemotron-3-super-120b-a12b',        // ✅ 356ms, confirmed live 2026-05-03
       fallback: 'claude-haiku-4-5',                         // prompt-caching, reliable paid fallback
     },
+    // AIOps CP.1 Quality & Verification (R13 seeds — same as synthesis/planner_deep/worker)
+    eval_judge:      { primary: 'nvidia/nemotron-3-super-120b-a12b',             fallback: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' },
+    eval_generator:  { primary: 'nvidia/llama-3.3-nemotron-super-49b-v1',        fallback: 'nvidia/nemotron-3-super-120b-a12b' },
+    smoke_synth:     { primary: 'nvidia/nemotron-3-super-120b-a12b',             fallback: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' },
+    checkpoint_4_5:  { primary: 'nvidia/nemotron-3-super-120b-a12b',             fallback: 'claude-haiku-4-5' },
+    checkpoint_5_5:  { primary: 'nvidia/nemotron-3-super-120b-a12b',             fallback: 'claude-haiku-4-5' },
+    checkpoint_8_5:  { primary: 'nvidia/nemotron-3-super-120b-a12b',             fallback: 'claude-haiku-4-5' },
   },
 
   // ── Anthropic Stack ───────────────────────────────────────────────────────
@@ -937,6 +953,12 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'claude-haiku-4-5',                         // $1/$5, prompt-caching
       fallback: 'claude-sonnet-4-6',                        // fallback if Haiku fails
     },
+    eval_judge:      { primary: 'claude-opus-4-7',   fallback: 'claude-sonnet-4-6' },
+    eval_generator:  { primary: 'claude-sonnet-4-6', fallback: 'claude-opus-4-7' },
+    smoke_synth:     { primary: 'claude-opus-4-7',   fallback: 'claude-sonnet-4-6' },
+    checkpoint_4_5:  { primary: 'claude-haiku-4-5',  fallback: 'claude-sonnet-4-6' },
+    checkpoint_5_5:  { primary: 'claude-haiku-4-5',  fallback: 'claude-sonnet-4-6' },
+    checkpoint_8_5:  { primary: 'claude-haiku-4-5',  fallback: 'claude-sonnet-4-6' },
   },
 
   // ── Gemini Stack ──────────────────────────────────────────────────────────
@@ -963,6 +985,12 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'gemini-2.5-flash-lite',                    // $0.015/$0.06, tool-use (replaced gemini-2.0-flash-lite, HTTP 404 2026-05-03)
       fallback: 'gemini-2.5-flash',                         // 1M ctx fallback
     },
+    eval_judge:      { primary: 'gemini-2.5-pro',       fallback: 'gemini-2.5-flash' },
+    eval_generator:  { primary: 'gemini-2.5-flash',     fallback: 'gemini-2.5-pro' },
+    smoke_synth:     { primary: 'gemini-2.5-pro',       fallback: 'gemini-2.5-flash' },
+    checkpoint_4_5:  { primary: 'gemini-2.5-flash-lite', fallback: 'gemini-2.5-flash' },
+    checkpoint_5_5:  { primary: 'gemini-2.5-flash-lite', fallback: 'gemini-2.5-flash' },
+    checkpoint_8_5:  { primary: 'gemini-2.5-flash-lite', fallback: 'gemini-2.5-flash' },
   },
 
   // ── GPT Stack ─────────────────────────────────────────────────────────────
@@ -989,6 +1017,12 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'gpt-4.1-nano',                             // 1M ctx, $0.05/$0.20
       fallback: 'gpt-4.1-mini',                             // 1M ctx fallback
     },
+    eval_judge:      { primary: 'gpt-4.1',      fallback: 'gpt-4.1-mini' },
+    eval_generator:  { primary: 'gpt-4.1-mini', fallback: 'gpt-4.1' },
+    smoke_synth:     { primary: 'gpt-4.1',      fallback: 'gpt-4.1-mini' },
+    checkpoint_4_5:  { primary: 'gpt-4.1-nano', fallback: 'gpt-4.1-mini' },
+    checkpoint_5_5:  { primary: 'gpt-4.1-nano', fallback: 'gpt-4.1-mini' },
+    checkpoint_8_5:  { primary: 'gpt-4.1-nano', fallback: 'gpt-4.1-mini' },
   },
 
   // ── DeepSeek Stack (via api.deepseek.com) ────────────────────────────────
@@ -1016,6 +1050,31 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'deepseek-chat',                            // non-thinking, correct API ID
       fallback: 'deepseek-v4-pro',                          // fallback
     },
+    eval_judge:      { primary: 'deepseek-v4-pro',  fallback: 'deepseek-chat' },
+    eval_generator:  { primary: 'deepseek-v4-pro',  fallback: 'deepseek-chat' },
+    smoke_synth:     { primary: 'deepseek-v4-pro',  fallback: 'deepseek-chat' },
+    checkpoint_4_5:  { primary: 'deepseek-chat',    fallback: 'deepseek-v4-pro' },
+    checkpoint_5_5:  { primary: 'deepseek-chat',    fallback: 'deepseek-v4-pro' },
+    checkpoint_8_5:  { primary: 'deepseek-chat',    fallback: 'deepseek-v4-pro' },
+  },
+
+  // ── MARSYS Stack (AIOps CP.1) ─────────────────────────────────────────────
+  // Cross-provider custom mix. No single-provider constraint. These seeds are
+  // the starting state; the super-admin overrides via the Control Panel UI.
+  // The resolver falls through to llm_stack_routing_override for MARSYS;
+  // STACK_ROUTING['marsys'] serves as the last-resort registry default only.
+  marsys: {
+    synthesis:        { primary: 'gemini-2.5-pro',       fallback: 'deepseek-v4-pro' },
+    planner_deep:     { primary: 'gemini-2.5-flash',     fallback: 'deepseek-v4-pro' },
+    planner_fast:     { primary: 'gemini-2.5-flash-lite', fallback: 'gemini-2.5-flash' },
+    context_assembly: { primary: 'gemini-2.5-flash',     fallback: 'gemini-2.5-pro' },
+    worker:           { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
+    eval_judge:       { primary: 'gemini-2.5-pro',       fallback: 'deepseek-v4-pro' },
+    eval_generator:   { primary: 'gemini-2.5-flash',     fallback: 'deepseek-v4-pro' },
+    smoke_synth:      { primary: 'gemini-2.5-pro',       fallback: 'deepseek-v4-pro' },
+    checkpoint_4_5:   { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
+    checkpoint_5_5:   { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
+    checkpoint_8_5:   { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
   },
 }
 

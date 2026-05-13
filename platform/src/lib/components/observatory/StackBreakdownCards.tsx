@@ -4,6 +4,7 @@
 // Each card carries a 7-day cost trace in the provider/stage color, replacing
 // the share-fill bar. Width-resilient single-line secondary metrics.
 
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type {
   BreakdownsResponse,
@@ -22,6 +23,14 @@ const PROVIDER_LABELS: Record<string, string> = {
 }
 
 const PROVIDER_ORDER = ['anthropic', 'openai', 'gemini', 'deepseek', 'nim']
+
+const PROVIDER_TO_STACK: Record<string, string> = {
+  anthropic: 'anthropic',
+  openai:    'gpt',
+  gemini:    'gemini',
+  deepseek:  'deepseek',
+  nim:       'nim',
+}
 
 const STAGE_LABELS: Record<string, string> = {
   classify: 'Classify',
@@ -83,9 +92,10 @@ interface StackCardProps {
   totalCost: number
   isTop: boolean
   series?: number[]
+  configHref?: string
 }
 
-function StackCard({ label, color, row, totalCost, isTop, series }: StackCardProps) {
+function StackCard({ label, color, row, totalCost, isTop, series, configHref }: StackCardProps) {
   const shareLabel = pct(row.cost_usd, totalCost)
   const totalTokens = row.input_tokens + row.output_tokens + row.cache_tokens
 
@@ -113,12 +123,23 @@ function StackCard({ label, color, row, totalCost, isTop, series }: StackCardPro
             {label}
           </span>
         </div>
-        <span
-          className="text-[10px] font-semibold uppercase tabular-nums tracking-wider"
-          style={{ color: `color-mix(in oklch, ${color} 70%, white 30%)` }}
-        >
-          {shareLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          {configHref && (
+            <Link
+              href={configHref}
+              title="Configure in AIOps"
+              className="text-[color-mix(in_oklch,var(--brand-gold)_40%,transparent)] hover:text-[color-mix(in_oklch,var(--brand-gold)_80%,transparent)] transition-colors"
+            >
+              ✏
+            </Link>
+          )}
+          <span
+            className="text-[10px] font-semibold uppercase tabular-nums tracking-wider"
+            style={{ color: `color-mix(in oklch, ${color} 70%, white 30%)` }}
+          >
+            {shareLabel}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-end justify-between gap-3">
@@ -244,17 +265,22 @@ export function StackBreakdownCards({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-      {ordered.map(({ key, row }) => (
-        <StackCard
-          key={key}
-          label={labelMap[key] ?? key}
-          color={(colorMap as Record<string, string>)[key] ?? '#94a3b8'}
-          row={row}
-          totalCost={totalCost}
-          isTop={key === topKey}
-          series={series ? extractSeries(series, key) : undefined}
-        />
-      ))}
+      {ordered.map(({ key, row }) => {
+        const stack = !isStage ? PROVIDER_TO_STACK[key] : undefined
+        const configHref = stack ? `/aiops/control?stack=${stack}&from=observatory` : undefined
+        return (
+          <StackCard
+            key={key}
+            label={labelMap[key] ?? key}
+            color={(colorMap as Record<string, string>)[key] ?? '#94a3b8'}
+            row={row}
+            totalCost={totalCost}
+            isTop={key === topKey}
+            series={series ? extractSeries(series, key) : undefined}
+            configHref={configHref}
+          />
+        )
+      })}
     </div>
   )
 }

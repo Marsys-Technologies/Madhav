@@ -1,0 +1,1714 @@
+{
+  "note": "Live run requires DB + provider API keys. This skeleton satisfies AC.CP5.2 file existence. Run `npm run aiops:cutover-smoke` locally after `npm install` + DB proxy start to populate real results.",
+  "runs": [
+    {
+      "ran_at": "2026-05-13T00:00:00.000Z",
+      "flag_state": "PENDING_LIVE_RUN",
+      "total": 0,
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "rows": []
+    },
+    {
+      "ran_at": "2026-05-13T18:43:43.819Z",
+      "flag_state": "false",
+      "total": 84,
+      "pass": 69,
+      "fail": 15,
+      "skip": 0,
+      "rows": [
+        {
+          "stack": "nim",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 4573,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "status": "pass",
+          "latency_ms": 4472,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "status": "pass",
+          "latency_ms": 7331,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 3982,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 11729,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "status": "pass",
+          "latency_ms": 4583,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 7065,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "status": "pass",
+          "latency_ms": 3114,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 1611,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "claude-haiku-4-5",
+          "status": "fail",
+          "latency_ms": 24,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 14199,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "status": "pass",
+          "latency_ms": 1282,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 6337,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "nim",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "status": "pass",
+          "latency_ms": 5788,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3394,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2449,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2412,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 2996,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2304,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1270,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2292,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 2970,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1034,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 1711,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3904,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2376,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3082,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2239,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8580,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 2213,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8229,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 2151,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 1433,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8675,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 2869,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8410,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 794,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 4890,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8401,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 1244,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 9463,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 2435,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 2857,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 3073,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 3763,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 1986,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 2299,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "gpt-4.1-nano",
+          "status": "pass",
+          "latency_ms": 4901,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 4533,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 2566,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "gpt-4.1-nano",
+          "status": "pass",
+          "latency_ms": 1539,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 3016,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 1644,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 1803,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 2540,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 1971,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "claude-haiku-4-5",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "claude-haiku-4-5",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3378,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 9071,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2765,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8608,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1841,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2559,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2015,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 2871,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1218,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "gpt-4.1-nano",
+          "status": "pass",
+          "latency_ms": 2560,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3494,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8995,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3568,
+          "error": null,
+          "flag_state": "false"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8372,
+          "error": null,
+          "flag_state": "false"
+        }
+      ]
+    },
+    {
+      "ran_at": "2026-05-13T18:48:18.640Z",
+      "flag_state": "true",
+      "total": 84,
+      "pass": 69,
+      "fail": 15,
+      "skip": 0,
+      "rows": [
+        {
+          "stack": "nim",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 3330,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "status": "pass",
+          "latency_ms": 3598,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "status": "pass",
+          "latency_ms": 3461,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 7208,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 9011,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "status": "pass",
+          "latency_ms": 7766,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 5811,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "status": "pass",
+          "latency_ms": 3978,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 5996,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "claude-haiku-4-5",
+          "status": "fail",
+          "latency_ms": 22,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 3723,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "status": "pass",
+          "latency_ms": 1573,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "nvidia/nemotron-3-super-120b-a12b",
+          "status": "pass",
+          "latency_ms": 10259,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "nim",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "status": "pass",
+          "latency_ms": 1755,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3732,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2247,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2797,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3118,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2252,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1479,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2445,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3480,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 920,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 1460,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3893,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2552,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 2714,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gemini",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2317,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 9109,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 2438,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8965,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 1527,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 1467,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 7823,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 3025,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 7787,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 994,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 6302,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 7467,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 1335,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8802,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "deepseek",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "deepseek-chat",
+          "status": "pass",
+          "latency_ms": 2386,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 2497,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 2583,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 2885,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 1651,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 2641,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "gpt-4.1-nano",
+          "status": "pass",
+          "latency_ms": 2185,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 3522,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 2540,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "gpt-4.1-nano",
+          "status": "pass",
+          "latency_ms": 1189,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 3051,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 1559,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 1678,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "gpt-4.1",
+          "status": "pass",
+          "latency_ms": 2314,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "gpt",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "gpt-4.1-mini",
+          "status": "pass",
+          "latency_ms": 2976,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "claude-haiku-4-5",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "claude-haiku-4-5",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 1,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "claude-opus-4-7",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "anthropic",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "claude-sonnet-4-6",
+          "status": "fail",
+          "latency_ms": 0,
+          "error": "Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.",
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "synthesis",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3604,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "synthesis",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8249,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_deep",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2551,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_deep",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8822,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_fast",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1727,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "planner_fast",
+          "role": "fallback",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2626,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "context_assembly",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash",
+          "status": "pass",
+          "latency_ms": 2241,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "context_assembly",
+          "role": "fallback",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3684,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "worker",
+          "role": "primary",
+          "model_id": "gemini-2.5-flash-lite",
+          "status": "pass",
+          "latency_ms": 1053,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "worker",
+          "role": "fallback",
+          "model_id": "gpt-4.1-nano",
+          "status": "pass",
+          "latency_ms": 2858,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "eval_judge",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3579,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "eval_judge",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8561,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "smoke_synth",
+          "role": "primary",
+          "model_id": "gemini-2.5-pro",
+          "status": "pass",
+          "latency_ms": 3442,
+          "error": null,
+          "flag_state": "true"
+        },
+        {
+          "stack": "marsys",
+          "call_type": "smoke_synth",
+          "role": "fallback",
+          "model_id": "deepseek-v4-pro",
+          "status": "pass",
+          "latency_ms": 8029,
+          "error": null,
+          "flag_state": "true"
+        }
+      ]
+    }
+  ]
+}

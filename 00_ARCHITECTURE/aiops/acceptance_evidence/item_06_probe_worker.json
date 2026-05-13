@@ -1,0 +1,1 @@
+{"model_id":"gemini-2.5-flash-lite","stack":"marsys","call_type":"worker","role":"primary","status":"pass","latency_ms":955,"input_tokens":33,"output_tokens":31,"output_text":"In Jyotish, the ascendant, also known as the lagna, is the first house and signifies the individual's self and physical form.","finish_reason":"stop","cost_usd":0.000002355}

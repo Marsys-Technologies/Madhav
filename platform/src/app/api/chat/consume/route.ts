@@ -29,6 +29,7 @@ import {
   supports,
   type ModelStack,
 } from '@/lib/models/registry'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { resolveModel, googleProviderOptions, deepseekProviderOptions } from '@/lib/models/resolver'
 import { configService } from '@/lib/config/index'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
@@ -141,7 +142,7 @@ export async function POST(request: Request) {
   const selectedStack: ModelStack = VALID_STACKS.includes(body.stack as ModelStack)
     ? (body.stack as ModelStack)
     : DEFAULT_STACK_ID
-  const stackSynthPrimary = STACK_ROUTING[selectedStack].synthesis.primary
+  const stackSynthPrimary = await getEffectiveModel(selectedStack, 'synthesis', 'primary', request)
   // Backward-compat: if the legacy `model` field is a known model ID AND no
   // stack was sent (old client), honour it directly so sessions mid-upgrade
   // don't silently switch models on the user.
@@ -239,8 +240,10 @@ export async function POST(request: Request) {
     .filter(m => m.content.length > 0)
 
   const preAllocatedQueryId = crypto.randomUUID()
-  const plannerModelId = STACK_ROUTING[selectedStack].planner_fast.primary
-  const plannerFallbackModelId = STACK_ROUTING[selectedStack].planner_fast.fallback
+  const [plannerModelId, plannerFallbackModelId] = await Promise.all([
+    getEffectiveModel(selectedStack, 'planner_fast', 'primary', request),
+    getEffectiveModel(selectedStack, 'planner_fast', 'fallback', request),
+  ])
 
   // UQE-9 — atomic per-request step_seq counter. Declared before the planner
   // emits its trace step so all subsequent stages share one counter.
