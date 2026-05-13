@@ -1,26 +1,69 @@
 ---
 artifact: LL8_EMBEDDING_REFIT_SPEC_v1_0.md
 canonical_id: LL8_EMBEDDING_REFIT_SPEC
-version: "1.0"
-status: SCAFFOLD
-phase: M5-C
-sub_phase: M5-C-S1
+version: "1.1"
+status: ACTIVE  # M5-D-S1: O1/O2/O3 resolved; refit.py authored; awaiting run execution
+phase: M5-D
+sub_phase: M5-D-S1
 authored_by: M5-C-S1
 authored_at: 2026-05-13
+amended_by: M5-D-S1
+amended_at: 2026-05-13
 purpose: >
   Scaffold specification for the signal embedding refit infrastructure needed
   in M5-D. Establishes the stability criterion, refit procedure, and directory
   layout before M5-D fitting begins, so no setup delays occur during fitting.
 nap_gate: NAP.M5.2
-nap_gate_status: PENDING
+nap_gate_status: APPROVED  # NAP.M5.2 approved 2026-05-13 M5-C-S2; prior freeze cleared
 exit_criterion: >
   MACRO_PLAN §M5 exit state (b): "signal embeddings stable across 3 refit runs."
   Stability is defined in §4 below.
 predecessor_artifacts:
   - 06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md (v1.1, NAP.M5.1 APPROVED)
-  - 06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md (M5-C-S1 DRAFT, NAP.M5.2 PENDING)
+  - 06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md (v1.1 APPROVED, NAP.M5.2 APPROVED 2026-05-13)
   - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/production/ll1_weights_promoted_v1_0.json
+m5_d_s1_findings:
+  LL8.O1: >
+    RESOLVED 2026-05-13 M5-D-S1. Signal ID source is ll1_weights_promoted_v1_0.json
+    signal_weights keys (30 IDs) — NOT natal_to_domain.json edges/from_node.
+    natal_to_domain.json uses entries/signal_id schema (not edges/from_node as
+    refit_procedure.md assumed). It contains 31 unique signal_ids; the extra is
+    SIG.MSR.117 (shadow_node=true, pending_promotion=true) — excluded from refit.
+    Authoritative 30 IDs: CTR.01, CTR.03, CVG.02, RPT.DSH.01, SIG.01, SIG.09,
+    SIG.10, SIG.12, SIG.13, SIG.15, SIG.MSR.013, SIG.MSR.030, SIG.MSR.118,
+    SIG.MSR.119, SIG.MSR.143, SIG.MSR.145, SIG.MSR.163, SIG.MSR.170, SIG.MSR.198,
+    SIG.MSR.229, SIG.MSR.251, SIG.MSR.278, SIG.MSR.291, SIG.MSR.295, SIG.MSR.297,
+    SIG.MSR.300, SIG.MSR.301, SIG.MSR.391, SIG.MSR.402, SIG.MSR.476.
+  LL8.O2: >
+    RESOLVED 2026-05-13 M5-D-S1. GCS madhav-marsys-sources does NOT contain
+    per-signal chunks. GCS holds document-level objects (MSR_v3_0.md, FORENSIC_...,
+    etc.) at L1/facts/, L2_5/, L3/registers/. Per-signal chunk text lives in
+    Postgres msr_signals table (claim_text + classical_basis columns), keyed by
+    signal_id (VARCHAR 64 PRIMARY KEY). Refit Phase B revised to query Postgres
+    via Cloud SQL Auth Proxy (port 5433, DATABASE_URL env var). Composite/synthetic
+    signals (CTR.*, CVG.*, RPT.DSH.01) not in msr_signals → fallback uses
+    natal_to_domain.json derivation text as proxy embedding input.
+  LL8.O3: >
+    RESOLVED 2026-05-13 M5-D-S1. Full refit.py script authored at
+    06_LEARNING_LAYER/dbn/embedding_refit/refit.py. Corrects scaffold model name
+    from textembedding-gecko@003 to text-multilingual-embedding-002 (production
+    model, 768-dim, confirmed from platform/src/lib/retrieve/vector_search.ts).
+    Corrects signal ID source (LL8.O1) and corpus source (LL8.O2). Includes
+    --stability-check flag for post-run analysis and JSON summary for
+    stability_report.md authoring.
+  embedding_model_correction: >
+    Production model: text-multilingual-embedding-002 (768-dim, Vertex AI).
+    Scaffold assumed textembedding-gecko@003 — incorrect. Corrected in refit.py.
 changelog:
+  - version: "1.1"
+    date: 2026-05-13
+    author: M5-D-S1 (Claude)
+    note: >
+      M5-D-S1 open findings. nap_gate_status PENDING→APPROVED (NAP.M5.2 cleared at
+      M5-C-S2). LL8.O1 resolved (30 IDs from ll1_weights; SIG.MSR.117 shadow excluded;
+      schema mismatch corrected). LL8.O2 resolved (corpus source is msr_signals Postgres
+      table, not GCS per-signal chunks). LL8.O3 resolved (refit.py authored with
+      text-multilingual-embedding-002). m5_d_s1_findings block added.
   - version: "1.0"
     date: 2026-05-13
     author: M5-C-S1 (Claude, surrogate)
@@ -153,7 +196,7 @@ a hotfix session investigates before M5-D opens.
 - Confirm Vertex AI auth (Application Default Credentials, project `amjis-jyotish`).
 - Confirm GCS corpus at `gs://amjis-corpus/L1/` and `gs://amjis-corpus/L2_5/` is accessible.
 - Confirm `ll1_weights_promoted_v1_0.json` is the production file (fingerprint check).
-- Confirm embedding model: `textembedding-gecko@003`, `task_type=RETRIEVAL_DOCUMENT`, 768 dims.
+- Confirm embedding model: `text-multilingual-embedding-002`, `task_type=RETRIEVAL_DOCUMENT`, 768 dims.
 
 ### Step 2 — Signal ID inventory
 Load the 30 Type A signal IDs from `ll1_weights_promoted_v1_0.json`. These are the signals
@@ -222,13 +265,13 @@ meaningful stability checks are §4.2 (top-1 retrieval pass rate) and §4.3 (cos
 
 ## §8 Open items
 
-| ID | Item | Owner | Target |
-|----|------|-------|--------|
-| LL8.O1 | Enumerate 30 Type A IDs from natal_to_domain.json; confirm count | M5-D-S1 | M5-D open |
-| LL8.O2 | Confirm GCS corpus is populated with ≥ 30 L1-tagged chunks | M5-D-S1 | M5-D open |
-| LL8.O3 | Author full refit.py script | M5-D-S1 | M5-D open |
-| LL8.O4 | Execute 3 refit runs | M5-D-S1 | M5-D in-session |
-| LL8.O5 | Author REFIT_GATE_v1_0.md with stability verdict | M5-D-S1 | M5-D close |
+| ID | Item | Owner | Target | Status |
+|----|------|-------|--------|--------|
+| LL8.O1 | Enumerate 30 Type A IDs from ll1_weights (authoritative); confirm count | M5-D-S1 | M5-D open | **RESOLVED** — see m5_d_s1_findings.LL8.O1 |
+| LL8.O2 | Confirm corpus source for chunk text; revised from GCS to msr_signals Postgres | M5-D-S1 | M5-D open | **RESOLVED** — see m5_d_s1_findings.LL8.O2 |
+| LL8.O3 | Author full refit.py script (corrected model + corpus source) | M5-D-S1 | M5-D open | **RESOLVED** — refit.py at embedding_refit/refit.py |
+| LL8.O4 | Execute 3 refit runs (native runs refit.py) | M5-D-S1 | M5-D in-session | PENDING — awaiting native execution |
+| LL8.O5 | Author REFIT_GATE_v1_0.md with stability verdict | M5-D-S1 | M5-D in-session | PENDING — blocked on LL8.O4 |
 
 ---
 

@@ -1,0 +1,182 @@
+{
+  "CTR.01": {
+    "chunk_length_chars": 131,
+    "embedding_dims": 768,
+    "embedding_hash": "770d11ebb85add79b34b2de1594061ff79706c615caa9495853aa088da7f7492",
+    "latency_ms": 1680.7
+  },
+  "CTR.03": {
+    "chunk_length_chars": 86,
+    "embedding_dims": 768,
+    "embedding_hash": "1e187e8d86e2e1381e8908628f25ed47b5d3e69a0ea5a1c6d881a654393e5234",
+    "latency_ms": 397.4
+  },
+  "CVG.02": {
+    "chunk_length_chars": 150,
+    "embedding_dims": 768,
+    "embedding_hash": "d594ea33b6d85725cf28b53a2de444211aea4f40ec8c35af05881e01c16545ad",
+    "latency_ms": 1176.3
+  },
+  "RPT.DSH.01": {
+    "chunk_length_chars": 77,
+    "embedding_dims": 768,
+    "embedding_hash": "b5000151ea9a8c8544edc7cd33f84120441992f1d6271c297f2f0218ff276b6a",
+    "latency_ms": 385.7
+  },
+  "SIG.01": {
+    "chunk_length_chars": 105,
+    "embedding_dims": 768,
+    "embedding_hash": "044da4a64fc8b88dadf25ae0d5b4b3d851ecfbb0efc53ae9f9e4bef77e510e77",
+    "latency_ms": 1173.8
+  },
+  "SIG.09": {
+    "chunk_length_chars": 74,
+    "embedding_dims": 768,
+    "embedding_hash": "f73766a582c1516a5c6b47d72502683c0a15b42cb9ab0483ab2e8b6c6666a11d",
+    "latency_ms": 384.5
+  },
+  "SIG.10": {
+    "chunk_length_chars": 74,
+    "embedding_dims": 768,
+    "embedding_hash": "5c027482ed2883ec3ca78cc9372de93b015d6a8639a19b73c99a827a6dc7d202",
+    "latency_ms": 1147.2
+  },
+  "SIG.12": {
+    "chunk_length_chars": 481,
+    "embedding_dims": 768,
+    "embedding_hash": "1000369611ffe60d1086ab5686ab0bf44a30e2f9a8a6fccb992a91bce3f00168",
+    "latency_ms": 401.7
+  },
+  "SIG.13": {
+    "chunk_length_chars": 107,
+    "embedding_dims": 768,
+    "embedding_hash": "a1096a128d4335ce56f02cff7352ba727b858b0bea8b468813d4689434d21b74",
+    "latency_ms": 1103.8
+  },
+  "SIG.15": {
+    "chunk_length_chars": 125,
+    "embedding_dims": 768,
+    "embedding_hash": "49d9e7188f0ec3ab7aa7cc198f3f5253d9c6ac5ef48ee8fc5717d6412d72a9a4",
+    "latency_ms": 693.3
+  },
+  "SIG.MSR.013": {
+    "chunk_length_chars": 164,
+    "embedding_dims": 768,
+    "embedding_hash": "ae4cebdc75674b8470a01cfe73345fa2fe388e5853d8d08e5d46f811624462df",
+    "latency_ms": 872.4
+  },
+  "SIG.MSR.030": {
+    "chunk_length_chars": 139,
+    "embedding_dims": 768,
+    "embedding_hash": "368d2b731253ff9e2f4009be0cd5b41a67bdcc9d213f2b2f645fd67726576c0c",
+    "latency_ms": 433.9
+  },
+  "SIG.MSR.118": {
+    "chunk_length_chars": 158,
+    "embedding_dims": 768,
+    "embedding_hash": "23fd3d7215d85a0632bb652a84582c1ef49645ba8ada8b9a6d71f8129da91b32",
+    "latency_ms": 524.5
+  },
+  "SIG.MSR.119": {
+    "chunk_length_chars": 146,
+    "embedding_dims": 768,
+    "embedding_hash": "927a9b785705f6dfa072156cade172adb5e0e8c2c503ca7c4c30d5031e84ae08",
+    "latency_ms": 380.2
+  },
+  "SIG.MSR.143": {
+    "chunk_length_chars": 165,
+    "embedding_dims": 768,
+    "embedding_hash": "fd1837e529616c2d9a3483b950d7440da2745faf346293858cb7ffea4e8c2510",
+    "latency_ms": 385.0
+  },
+  "SIG.MSR.145": {
+    "chunk_length_chars": 179,
+    "embedding_dims": 768,
+    "embedding_hash": "fa7d308761f256d46a4fc1a50ddeac38a1d73947d6c86d75f90594bdc5b9219b",
+    "latency_ms": 389.0
+  },
+  "SIG.MSR.163": {
+    "chunk_length_chars": 184,
+    "embedding_dims": 768,
+    "embedding_hash": "17670526cc369f460780aa1b34c25dc148bf8b3c2f385bd17d85f8cc65f6c3fa",
+    "latency_ms": 471.7
+  },
+  "SIG.MSR.170": {
+    "chunk_length_chars": 208,
+    "embedding_dims": 768,
+    "embedding_hash": "ef4bfacc4fbde9267b75c9911a3e2798c0b1a367dca88d372bc8fe43cff9ad4e",
+    "latency_ms": 391.0
+  },
+  "SIG.MSR.198": {
+    "chunk_length_chars": 171,
+    "embedding_dims": 768,
+    "embedding_hash": "416a548785520b3c27e63a8b04312fc95d52e5d7b0f3bef23fc6c919f69da63a",
+    "latency_ms": 423.3
+  },
+  "SIG.MSR.229": {
+    "chunk_length_chars": 250,
+    "embedding_dims": 768,
+    "embedding_hash": "6f2aeccb98c8fdb39366702d8d90bf16ee79876381782b81f52de4ae843c77f9",
+    "latency_ms": 389.6
+  },
+  "SIG.MSR.251": {
+    "chunk_length_chars": 287,
+    "embedding_dims": 768,
+    "embedding_hash": "4ebaaa4a275793faee181754ecb04771188930ec014783b9a28b870d70ff7319",
+    "latency_ms": 596.8
+  },
+  "SIG.MSR.278": {
+    "chunk_length_chars": 217,
+    "embedding_dims": 768,
+    "embedding_hash": "715c52a4b66769fa305773ded2a3ac7442b5712a650faa635457734361335300",
+    "latency_ms": 391.9
+  },
+  "SIG.MSR.291": {
+    "chunk_length_chars": 238,
+    "embedding_dims": 768,
+    "embedding_hash": "aedb37c47773e3e360a72c2b44b634083dd1826407ec02b62d6328d18e24ffef",
+    "latency_ms": 442.6
+  },
+  "SIG.MSR.295": {
+    "chunk_length_chars": 206,
+    "embedding_dims": 768,
+    "embedding_hash": "5cfb77c4934d45562dd2f8f7ecce06d06935a2370b815e1fe11e31831fa7c6c7",
+    "latency_ms": 456.0
+  },
+  "SIG.MSR.297": {
+    "chunk_length_chars": 211,
+    "embedding_dims": 768,
+    "embedding_hash": "801e15820d0ff1d773daac473d0ed11989a11679db90128e37107b6670a6c034",
+    "latency_ms": 567.9
+  },
+  "SIG.MSR.300": {
+    "chunk_length_chars": 213,
+    "embedding_dims": 768,
+    "embedding_hash": "832541be09241e7dcb736ae1d8f4241c1497b5e7d9001b258c53a13a87f2d1b2",
+    "latency_ms": 385.1
+  },
+  "SIG.MSR.301": {
+    "chunk_length_chars": 174,
+    "embedding_dims": 768,
+    "embedding_hash": "0bc53b8200f35e8d4c2110e97f1ec27725476d8012fbbcad8eaeac82ed0b89fb",
+    "latency_ms": 378.8
+  },
+  "SIG.MSR.391": {
+    "chunk_length_chars": 223,
+    "embedding_dims": 768,
+    "embedding_hash": "37a0bb823055af787f152a7fe58947c2cfc2949a34b462004c882eeee428311c",
+    "latency_ms": 423.6
+  },
+  "SIG.MSR.402": {
+    "chunk_length_chars": 69,
+    "embedding_dims": 768,
+    "embedding_hash": "337f7428224b7377fe7e9d551e08d2024434aabf2b94b8dc11ece083b6de5409",
+    "latency_ms": 1523.3
+  },
+  "SIG.MSR.476": {
+    "chunk_length_chars": 118,
+    "embedding_dims": 768,
+    "embedding_hash": "5aab88824d6534d6695c160e31c6d98113e78db9fb536a2dd149e9d94d79d1b7",
+    "latency_ms": 463.1
+  }
+}

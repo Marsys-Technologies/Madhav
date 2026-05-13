@@ -1,0 +1,212 @@
+{
+  "CTR.01": {
+    "query_text": "ctr 01 signal",
+    "top1_signal_id": "CTR.01",
+    "top1_score": 0.6675357818603516,
+    "self_score": 0.6675357818603516,
+    "pass": true
+  },
+  "CTR.03": {
+    "query_text": "ctr 03 signal",
+    "top1_signal_id": "CTR.03",
+    "top1_score": 0.674091100692749,
+    "self_score": 0.674091100692749,
+    "pass": true
+  },
+  "CVG.02": {
+    "query_text": "cvg 02 signal",
+    "top1_signal_id": "CVG.02",
+    "top1_score": 0.649552583694458,
+    "self_score": 0.649552583694458,
+    "pass": true
+  },
+  "RPT.DSH.01": {
+    "query_text": "rpt dsh 01 signal",
+    "top1_signal_id": "RPT.DSH.01",
+    "top1_score": 0.712277352809906,
+    "self_score": 0.712277352809906,
+    "pass": true
+  },
+  "SIG.01": {
+    "query_text": "sig 01 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6943707466125488,
+    "self_score": 0.6846939921379089,
+    "pass": false
+  },
+  "SIG.09": {
+    "query_text": "sig 09 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6807912588119507,
+    "self_score": 0.6505789756774902,
+    "pass": false
+  },
+  "SIG.10": {
+    "query_text": "sig 10 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6969738006591797,
+    "self_score": 0.6630667448043823,
+    "pass": false
+  },
+  "SIG.12": {
+    "query_text": "sig 12 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.7093172073364258,
+    "self_score": 0.6677697896957397,
+    "pass": false
+  },
+  "SIG.13": {
+    "query_text": "sig 13 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.7111918926239014,
+    "self_score": 0.7111918926239014,
+    "pass": true
+  },
+  "SIG.15": {
+    "query_text": "sig 15 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6866331100463867,
+    "self_score": 0.6430109143257141,
+    "pass": false
+  },
+  "SIG.MSR.013": {
+    "query_text": "sig msr 013 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.672893226146698,
+    "self_score": 0.5735769271850586,
+    "pass": false
+  },
+  "SIG.MSR.030": {
+    "query_text": "sig msr 030 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6328725814819336,
+    "self_score": 0.6302157640457153,
+    "pass": false
+  },
+  "SIG.MSR.118": {
+    "query_text": "sig msr 118 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6515740752220154,
+    "self_score": 0.5324136018753052,
+    "pass": false
+  },
+  "SIG.MSR.119": {
+    "query_text": "sig msr 119 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6467562317848206,
+    "self_score": 0.5059062242507935,
+    "pass": false
+  },
+  "SIG.MSR.143": {
+    "query_text": "sig msr 143 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6380900740623474,
+    "self_score": 0.5131722688674927,
+    "pass": false
+  },
+  "SIG.MSR.145": {
+    "query_text": "sig msr 145 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6257227063179016,
+    "self_score": 0.47132670879364014,
+    "pass": false
+  },
+  "SIG.MSR.163": {
+    "query_text": "sig msr 163 signal",
+    "top1_signal_id": "SIG.13",
+    "top1_score": 0.6322987079620361,
+    "self_score": 0.5655037760734558,
+    "pass": false
+  },
+  "SIG.MSR.170": {
+    "query_text": "sig msr 170 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6219620704650879,
+    "self_score": 0.561461329460144,
+    "pass": false
+  },
+  "SIG.MSR.198": {
+    "query_text": "sig msr 198 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6313437223434448,
+    "self_score": 0.49264171719551086,
+    "pass": false
+  },
+  "SIG.MSR.229": {
+    "query_text": "sig msr 229 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.628855288028717,
+    "self_score": 0.570844292640686,
+    "pass": false
+  },
+  "SIG.MSR.251": {
+    "query_text": "sig msr 251 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6192876100540161,
+    "self_score": 0.5295275449752808,
+    "pass": false
+  },
+  "SIG.MSR.278": {
+    "query_text": "sig msr 278 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6364777684211731,
+    "self_score": 0.5341788530349731,
+    "pass": false
+  },
+  "SIG.MSR.291": {
+    "query_text": "sig msr 291 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6406435966491699,
+    "self_score": 0.47671937942504883,
+    "pass": false
+  },
+  "SIG.MSR.295": {
+    "query_text": "sig msr 295 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6284026503562927,
+    "self_score": 0.4984511733055115,
+    "pass": false
+  },
+  "SIG.MSR.297": {
+    "query_text": "sig msr 297 signal",
+    "top1_signal_id": "SIG.MSR.476",
+    "top1_score": 0.6304411888122559,
+    "self_score": 0.5107502937316895,
+    "pass": false
+  },
+  "SIG.MSR.300": {
+    "query_text": "sig msr 300 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6245265007019043,
+    "self_score": 0.5916647911071777,
+    "pass": false
+  },
+  "SIG.MSR.301": {
+    "query_text": "sig msr 301 signal",
+    "top1_signal_id": "SIG.MSR.476",
+    "top1_score": 0.6494573354721069,
+    "self_score": 0.558725893497467,
+    "pass": false
+  },
+  "SIG.MSR.391": {
+    "query_text": "sig msr 391 signal",
+    "top1_signal_id": "SIG.MSR.476",
+    "top1_score": 0.6393324136734009,
+    "self_score": 0.5575673580169678,
+    "pass": false
+  },
+  "SIG.MSR.402": {
+    "query_text": "sig msr 402 signal",
+    "top1_signal_id": "SIG.MSR.402",
+    "top1_score": 0.6419385671615601,
+    "self_score": 0.6419385671615601,
+    "pass": true
+  },
+  "SIG.MSR.476": {
+    "query_text": "sig msr 476 signal",
+    "top1_signal_id": "SIG.MSR.476",
+    "top1_score": 0.640539288520813,
+    "self_score": 0.640539288520813,
+    "pass": true
+  }
+}
