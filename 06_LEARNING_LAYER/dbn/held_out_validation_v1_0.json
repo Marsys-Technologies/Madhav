@@ -1,0 +1,183 @@
+{
+  "artifact": "held_out_validation_v1_0.json",
+  "version": "1.0",
+  "canonical_id": "HELD_OUT_VALIDATION",
+  "status": "CURRENT",
+  "produced_session": "M5-D-S3",
+  "produced_date": "2026-05-13",
+  "layer": "L6",
+  "description": "AC.M5D.3 held-out validation: 9 held-out LEL events scored against fitted DBN (dbn_params_v1_0.json). 5 domain-mappable events tested; 4 skipped (loss/other category \u2014 no DBN domain mapping). P(event|MD_lord,domain) = \u03a3_s P(s|MD,domain)\u00d7P(event|s,domain). Null model = domain training base rate (n_events_with_event_in_domain/n_training_periods).",
+  "tolerance_thresholds": {
+    "mean_lift_ratio_min": 1.05,
+    "total_llr_min": 0.0,
+    "beat_fraction_min": 0.6,
+    "declared_at": "M5-D-S3 (gap in PRIOR_SPEC \u00a79 \u2014 no numeric threshold present; declared per-session per PHASE_M5_PLAN \u00a73 M5-D item 3)"
+  },
+  "null_model": {
+    "method": "domain base rate: n_periods_with_event / n_training_periods",
+    "n_training_periods": 23,
+    "rates": {
+      "CAREER": 0.4783,
+      "HEALTH": 0.1739,
+      "RELATIONSHIP": 0.2609,
+      "SPIRITUAL": 0.0435,
+      "PSYCHOLOGICAL": 0.0435
+    }
+  },
+  "domain_mapping_rules": {
+    "CAREER": [
+      "career",
+      "education",
+      "finance",
+      "travel",
+      "residential+travel"
+    ],
+    "HEALTH": [
+      "health"
+    ],
+    "RELATIONSHIP": [
+      "family",
+      "relationship"
+    ],
+    "SPIRITUAL": [
+      "spiritual"
+    ],
+    "PSYCHOLOGICAL": [
+      "creative"
+    ],
+    "SKIP": [
+      "loss",
+      "other",
+      "birth"
+    ]
+  },
+  "results": [
+    {
+      "evt_id": "EVT.2008.06.09.01",
+      "date": "2008-06-09",
+      "category": "career",
+      "period": "DSH.V.014",
+      "md_lord": "Saturn",
+      "domain": "CAREER",
+      "p_event_model": 0.4829,
+      "p_event_null": 0.4783,
+      "lift_ratio": 1.0098,
+      "log_likelihood_ratio": 0.0097,
+      "beats_null": true,
+      "validation_status": "MAPPED"
+    },
+    {
+      "evt_id": "EVT.2009.06.XX.01",
+      "date": "2009-06",
+      "category": "loss",
+      "period": "DSH.V.014",
+      "md_lord": "Saturn",
+      "domain": null,
+      "validation_status": "SKIPPED",
+      "skip_reason": "loss \u2014 no domain mapping in DBN schema"
+    },
+    {
+      "evt_id": "EVT.2017.03.XX.01",
+      "date": "2017-03",
+      "category": "career",
+      "period": "DSH.V.018",
+      "md_lord": "Mercury",
+      "domain": "CAREER",
+      "p_event_model": 0.5372,
+      "p_event_null": 0.4783,
+      "lift_ratio": 1.1233,
+      "log_likelihood_ratio": 0.1163,
+      "beats_null": true,
+      "validation_status": "MAPPED"
+    },
+    {
+      "evt_id": "EVT.2018.11.28.01",
+      "date": "2018-11-28",
+      "category": "loss",
+      "period": "DSH.V.019",
+      "md_lord": "Mercury",
+      "domain": null,
+      "validation_status": "SKIPPED",
+      "skip_reason": "loss \u2014 no domain mapping in DBN schema"
+    },
+    {
+      "evt_id": "EVT.2019.05.XX.01",
+      "date": "2019-05",
+      "category": "residential+travel",
+      "period": "DSH.V.020",
+      "md_lord": "Mercury",
+      "domain": "CAREER",
+      "p_event_model": 0.5372,
+      "p_event_null": 0.4783,
+      "lift_ratio": 1.1233,
+      "log_likelihood_ratio": 0.1163,
+      "beats_null": true,
+      "validation_status": "MAPPED"
+    },
+    {
+      "evt_id": "EVT.2022.01.03.01",
+      "date": "2022-01-03",
+      "category": "family",
+      "period": "DSH.V.021",
+      "md_lord": "Mercury",
+      "domain": "RELATIONSHIP",
+      "p_event_model": 0.3509,
+      "p_event_null": 0.2609,
+      "lift_ratio": 1.3449,
+      "log_likelihood_ratio": 0.2963,
+      "beats_null": true,
+      "validation_status": "MAPPED"
+    },
+    {
+      "evt_id": "EVT.2024.02.16.01",
+      "date": "2024-02-16",
+      "category": "career",
+      "period": "DSH.V.022",
+      "md_lord": "Mercury",
+      "domain": "CAREER",
+      "p_event_model": 0.5372,
+      "p_event_null": 0.4783,
+      "lift_ratio": 1.1233,
+      "log_likelihood_ratio": 0.1163,
+      "beats_null": true,
+      "validation_status": "MAPPED"
+    },
+    {
+      "evt_id": "EVT.2025.05.XX.01",
+      "date": "2025-05",
+      "category": "loss",
+      "period": "DSH.V.024",
+      "md_lord": "Ketu",
+      "domain": null,
+      "validation_status": "SKIPPED",
+      "skip_reason": "loss \u2014 no domain mapping in DBN schema"
+    },
+    {
+      "evt_id": "EVT.2026.01.XX.01",
+      "date": "2026-01",
+      "category": "other",
+      "period": "DSH.V.024",
+      "md_lord": "Ketu",
+      "domain": null,
+      "validation_status": "SKIPPED",
+      "skip_reason": "other \u2014 no domain mapping in DBN schema"
+    }
+  ],
+  "aggregate": {
+    "n_total_held_out": 9,
+    "n_mapped": 5,
+    "n_skipped": 4,
+    "n_beats_null": 5,
+    "beat_fraction": 1.0,
+    "mean_lift_ratio": 1.1449,
+    "total_log_likelihood_ratio": 0.6549,
+    "pass_lift_ratio": true,
+    "pass_llr": true,
+    "pass_beat_fraction": true,
+    "overall_verdict": "PASS"
+  },
+  "n1_caveat": "n=5 domain-mapped held-out events (4 CAREER, 1 RELATIONSHIP). HEALTH/SPIRITUAL/PSYCHOLOGICAL domains have zero held-out events; their calibration is untested at this stage. Validation power is low \u2014 PASS is a necessary but not sufficient condition. Full calibration requires M5-E prospective testing with \u226520 events per domain.",
+  "prior_spec_ref": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "dbn_params_ref": "06_LEARNING_LAYER/dbn/dbn_params_v1_0.json (FITTED, M5-D-S2)",
+  "held_out_partition_ref": "01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md"
+}

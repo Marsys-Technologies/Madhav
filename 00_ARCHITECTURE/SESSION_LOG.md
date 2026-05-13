@@ -22368,3 +22368,192 @@ session_close:
 Execute **M5-D-S3**: AC.M5D.3 held-out validation — apply the fitted DBN (dbn_params_v1_0.json) to the 9 held-out LEL events and confirm the model materially outperforms a null baseline. Then draft NAP.M5.3 confidence-interval reporting policy for native approval.
 
 *End of M5-D-S2 entry — 2026-05-13.*
+
+---
+
+## M5-D-S3 — 2026-05-13
+
+### Session open
+
+```yaml
+session_open:
+  session_id: M5-D-S3
+  cowork_thread_name: "M5-D-S3: AC.M5D.3 held-out validation + NAP.M5.3"
+  opened_at: "2026-05-13"
+  macro_phase: M5
+  sub_phase: M5-D
+  phase_plan: PHASE_M5_PLAN_v1_0.md
+  prior_session: M5-D-S2
+  entry_gate_verified: true
+  entry_gate_items:
+    - "AC.M5D.2 PASS — dbn_params_v1_0.json produced ✓"
+    - "CF.M5C.2+3+4 COMPLETE ✓"
+    - "M5-D-S2 committed on feature/m5-probabilistic-model ✓"
+  red_team_counter_entering: 1
+  scope_declared:
+    may_touch:
+      - "06_LEARNING_LAYER/dbn/**"
+      - "06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "platform/**"
+      - "06_LEARNING_LAYER/dbn/cpt/**"
+```
+
+### Work completed
+
+**AC.M5D.3 — Held-out validation — PASS**
+
+Fixed `p_event_model()` TypeError from prior session (root cause: `dasha_to_domain_posteriors[MD][domain]["post_means"]` is a list `[pE, pN, pS]`, not a dict). Re-wrote script from scratch using correct structure. Produced `held_out_validation_v1_0.json`.
+
+Domain mapping: 5 of 9 held-out events have DBN domain mappings (4 CAREER, 1 RELATIONSHIP); 4 skipped (loss/other — no domain in DBN schema). Tolerance thresholds declared at session open (gap in PRIOR_SPEC §9, no numeric threshold present):
+- mean_lift_ratio > 1.05
+- total_LLR > 0
+- beat_fraction ≥ 0.60
+
+| Event | Domain/MD | P_model | P_null | Lift | LLR |
+|---|---|---|---|---|---|
+| EVT.2008.06.09.01 | CAREER/Saturn | 0.4829 | 0.4783 | 1.010 | 0.010 |
+| EVT.2017.03.XX.01 | CAREER/Mercury | 0.5372 | 0.4783 | 1.123 | 0.116 |
+| EVT.2019.05.XX.01 | CAREER/Mercury | 0.5372 | 0.4783 | 1.123 | 0.116 |
+| EVT.2022.01.03.01 | RELATIONSHIP/Mercury | 0.3509 | 0.2609 | 1.345 | 0.296 |
+| EVT.2024.02.16.01 | CAREER/Mercury | 0.5372 | 0.4783 | 1.123 | 0.116 |
+
+Aggregate: mean_lift=1.145 ✓ · total_LLR=0.655 ✓ · beat_fraction=5/5=1.00 ✓ → **OVERALL: PASS**
+
+Artifact: `06_LEARNING_LAYER/dbn/held_out_validation_v1_0.json`
+
+**NAP.M5.3 — CI Reporting Policy — APPROVED**
+
+Drafted `NAP_M5_3_CI_REPORTING_POLICY_v1_0.md`. Native approved ("APPROVED"). Key rules:
+- CI.1: Default 90% HDI (Highest Density Interval); asymmetric, computed via `scipy.stats.beta.ppf([0.05, 0.95])`
+- CI.2: Display format `0.857 [90% HDI: 0.709 – 0.958]` — ± notation forbidden
+- CI.4: Small-n caveat triggers at n_successes=1 (SPIRITUAL/PSYCHOLOGICAL ELEVATED), post_alpha+post_beta<12, or SUPPRESSED state
+- Disclosure tiers: T1 Summary (default), T2 Research (+95% HDI + Beta params), T3 Technical (full posterior dump)
+- Reference table: all 5 domain-state combinations with computed 90% HDI in §8
+
+Artifact: `06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md`
+
+### AC status
+
+| AC | Status | Notes |
+|---|---|---|
+| AC.M5D.2 | PASS (M5-D-S2) | dbn_params_v1_0.json produced |
+| AC.M5D.3 | **PASS** | held_out_validation_v1_0.json; mean_lift=1.145; all 3 tolerances met |
+| NAP.M5.3 | **APPROVED** | CI_REPORTING_POLICY v1.0; 90% HDI asymmetric; small-n caveat rules |
+| AC.M5D.4 | PENDING | PPL retroactive predictions — M5-D-S4 |
+| AC.M5D.5 | PENDING | Domain activation timeline — M5-D-S4 |
+
+### Session close
+
+```yaml
+session_close:
+  session_id: M5-D-S3
+  closed_at: "2026-05-13"
+  macro_phase: M5
+  sub_phase: M5-D
+  artifacts_produced:
+    - path: "06_LEARNING_LAYER/dbn/held_out_validation_v1_0.json"
+      canonical_id: HELD_OUT_VALIDATION
+      status: CURRENT
+      version: "1.0"
+      ac: AC.M5D.3
+    - path: "06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md"
+      canonical_id: CI_REPORTING_POLICY
+      status: APPROVED
+      version: "1.0"
+      ac: NAP.M5.3
+  artifacts_modified:
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      change: "v4.8→v4.9; last_session→M5-D-S3; red_team_counter 1→2; next→M5-D-S4"
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      change: "M5-D-S3 entry appended"
+    - path: ".geminirules"
+      change: "MP.1 mirror: state block updated to M5-D-S3 close"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror: M5-D-S3 deliverables block added"
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+      rationale: "CLAUDE.md §F + state block updated for M5-D-S3 close"
+    - pair_id: MP.2
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+      rationale: "CURRENT_STATE v4.9 + project_state.md updated"
+    - pair_id: MP.3
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "PHASE_M5_PLAN unchanged"
+    - pair_id: MP.4
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "CAPABILITY_MANIFEST unchanged"
+    - pair_id: MP.6
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "Declared Claude-only; GOVERNANCE_STACK unchanged"
+    - pair_id: MP.7
+      claude_side_touched: true
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "Declared Claude-only (SESSION_LOG)"
+    - pair_id: MP.8
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "PROJECT_ARCHITECTURE unchanged"
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+    note: "red_team_counter=1→2 at M5-D-S3 close. IS.8(a) MANDATORY at M5-D-S4 (counter=3)."
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 2
+    divergences_found: 168
+    note: "Known residuals per ONGOING_HYGIENE_POLICIES §F whitelist; exit=2 is expected steady-state"
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 2
+    violations_found: 142
+    note: "Known residuals; expected steady-state"
+  mirror_enforcer_run:
+    script: platform/scripts/governance/mirror_enforcer.py
+    exit_code: 0
+    desync_pairs: []
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    note: "Pure learning-layer session — no platform/ code touched"
+  close_criteria_met: true
+  unblocks: "M5-D-S4 — AC.M5D.4 PPL retroactive predictions + IS.8(a) red-team (mandatory)"
+  handoff_notes: >
+    M5-D-S4 opens with: AC.M5D.3 PASS + NAP.M5.3 APPROVED. IS.8(a) MANDATORY (counter=2→3
+    at M5-D-S4 open — must discharge red-team before close). Primary work: AC.M5D.4 PPL
+    retroactive blind predictions for 5 domain-mapped held-out events using NAP.M5.3 CI format.
+    AC.M5D.5 domain activation timeline. AC.M5B.6 topology risk register (deferred from M5-C).
+    Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S4."
+```
+
+### Next session objective
+
+Execute **M5-D-S4**: IS.8(a) red-team MANDATORY (counter fires at 3). AC.M5D.4 PPL retroactive blind predictions for 5 domain-mapped held-out events (NAP.M5.3 CI format). AC.M5D.5 domain activation timeline.
+
+*End of M5-D-S3 entry — 2026-05-13.*
