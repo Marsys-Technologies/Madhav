@@ -518,6 +518,26 @@ export async function callPipelinePlanner(
     )
   }
 
+  // BUG-A fix: validate that the planner produced at least one tool call for
+  // non-factual query classes. An empty tool_calls array is valid for 'factual'
+  // (single-lookup, no synthesis tools needed) but indicates model non-compliance
+  // for all other classes. Log a WARN so this is visible in observatory + logs.
+  // B.11 floor enforcement in route.ts will inject msr_sql + cgm_graph_walk as
+  // a safety net, but a WARN here ensures the gap is tracked per query.
+  const FACTUAL_CLASSES = ['factual', 'cross_native'] as const
+  const isTrivialClass = (FACTUAL_CLASSES as readonly string[]).includes(parsed.data.query_class)
+  if (parsed.data.tool_calls.length === 0 && !isTrivialClass) {
+    console.warn(
+      '[pipeline_planner] BUG-A: planner returned tool_calls:[] for non-factual query.' +
+      ' model=%s query_class=%s query_id=%s.' +
+      ' B.11 floor will inject floor tools but planner intent is lost.' +
+      ' Check PLANNER_PROMPT compliance for this model.',
+      plannerModelId,
+      parsed.data.query_class,
+      queryId ?? 'unknown',
+    )
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     console.log(
       `[pipeline_planner] callPipelinePlanner ok model=${plannerModelId} ` +

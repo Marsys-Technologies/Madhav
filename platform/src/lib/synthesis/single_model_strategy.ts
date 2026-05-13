@@ -359,6 +359,12 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       model: resolveModel(selected_model_id),
       messages: modelMessages,
       tools: toolsForModel,
+      // BUG-B fix: synthesis is the text-generation phase; all retrieval tools
+      // have already executed. Prohibit the synthesis model from calling any
+      // tool so it must generate text. Without this, tool-capable models
+      // (deepseek-v4-pro, gemini-2.5-pro) may emit finish_reason=tool-calls
+      // with empty final_output instead of a synthesis response.
+      toolChoice: toolsForModel ? ('none' as const) : undefined,
       stopWhen: stepCountIs(5),
       maxOutputTokens: effectiveMaxTokens,
       temperature: synthesisTemperature,
@@ -395,8 +401,13 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
         // use so neither the audit, methodology-block extractor, nor the trace
         // payload preview accidentally captures reasoning content.
         // BUG-4: broaden guard to cover all thinking models (deepseek-v4-pro etc.)
+        // BUG-E fix: gemini-2.5-* emits ‹reasoning›...‹/reasoning› markers
+        // in synthesis output. Extend isThinkingModel to cover these so
+        // extractReasoningTrace / stripThinkBlocks runs and strips the tags
+        // before validators and the audit event see the final text.
         const isThinkingModel =
           selected_model_id === 'deepseek-reasoner' ||
+          selected_model_id.startsWith('gemini-2.5') ||
           getModelMeta(selected_model_id)?.hint?.toLowerCase().includes('thinking') ||
           false
         // G.4: DeepSeek synthesis latency instrumentation.
@@ -420,6 +431,40 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
         let cleanText = (isThinkingModel && _cleanAnswer === '' && r1Reasoning)
           ? r1Reasoning
           : _cleanAnswer
+
+        // BUG-C fix: if the synthesis model called a tool instead of generating
+        // text (finish_reason=tool-calls), cleanText will be empty. This
+        // produces a silent blank response to the user. Detect it here and
+        // replace with a visible, actionable error message so the user knows
+        // the pipeline failed and can retry with a different stack.
+        // BUG-B's toolChoice:'none' should prevent this from occurring, but
+        // this guard catches any provider that ignores toolChoice.
+        if (cleanText.trim() === '' && finishReason === 'tool-calls') {
+          console.error(
+            '[synthesis] BUG-C: empty output — model=%s called a tool instead of generating text.' +
+            ' query_id=%s output_tokens=%d. Surfacing error message to user.',
+            selected_model_id,
+            query_plan.query_plan_id,
+            usage?.outputTokens ?? 0,
+          )
+          cleanText =
+            `⚠️ The synthesis model (${selected_model_id}) attempted to call a retrieval tool ` +
+            `during the text-generation phase instead of producing a response. ` +
+            `This is a model configuration issue, not a data issue. ` +
+            `Please try again — if the problem persists, switch to the Gemini stack.`
+        }
+
+        // Secondary guard: catch any other empty-output case regardless of
+        // finish reason (e.g. provider timeout, content filter wipe).
+        if (cleanText.trim() === '' && finishReason !== 'error') {
+          console.warn(
+            '[synthesis] empty output: model=%s finish=%s query_id=%s — returning placeholder.',
+            selected_model_id, finishReason, query_plan.query_plan_id,
+          )
+          cleanText =
+            `⚠️ The synthesis model returned an empty response (finish_reason=${finishReason}). ` +
+            `Please try again.`
+        }
 
         // Synchronous extraction — before any await — so the value is
         // available when the 'finish' SSE part fires in the route handler.

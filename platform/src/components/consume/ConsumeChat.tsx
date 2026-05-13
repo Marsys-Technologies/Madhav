@@ -371,10 +371,11 @@ export function ConsumeChat({
     setSanskritTerms(m.sanskrit)
     if (m.correction) setCorrection(m.correction)
     if (m.outOfDomain) setOutOfDomain(m.outOfDomain)
-    // Suppress unused warning for sanskritTerms (passed to children that
-    // already get the parsed list via StreamingAnswer).
-    void sanskritTerms
-  }, [activeAssistantId, sanskritTerms])
+    // NOTE: sanskritTerms intentionally NOT in deps and NOT read here.
+    // It is SET here; reading it would create a circular setState→render→callback
+    // dependency that causes an infinite render loop. Children receive sanskrit
+    // terms via the StreamingAnswer parsed prop, not via this callback's state.
+  }, [activeAssistantId])
 
   // Gate III: read context_usage / provenance / conversation_title from the
   // latest assistant message metadata.
