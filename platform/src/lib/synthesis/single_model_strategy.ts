@@ -167,6 +167,27 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       renderedPrompt += `\n\n<PRE_FETCHED_TOOL_RESULTS>\n${truncated}\n</PRE_FETCHED_TOOL_RESULTS>`
     }
 
+    // ── Thinking-mode prompt patch (deepseek-v4-pro) ─────────────────────────
+    // With thinking=enabled the AI SDK tools are stripped at call time
+    // (synthesisTools=undefined below). But the rendered system prompt still
+    // contains two sentences that invite tool calls, causing the model to
+    // emit <maction_call> XML as plain text in the answer stream:
+    //   1. TOOL_AVAILABILITY — "You may call additional retrieval tools..."
+    //   2. PRESCRIPTIVE_CITATION_GATE tail — "If no MSR signals have been
+    //      retrieved yet, call the msr_sql or query_signal_state tool..."
+    // Patch both out before the prompt is frozen into the ModelMessage.
+    if (deepseekProviderOptions(selected_model_id, 'synthesis')) {
+      renderedPrompt = renderedPrompt
+        .replace(
+          `You may call additional retrieval tools to extend the bundle. Tools available: ${variables.tools_available}.`,
+          'All retrieval data has been pre-fetched above in CHART_CONTEXT_BLOCK and PRE_FETCHED_TOOL_RESULTS. Synthesize from the pre-fetched context only — do not call any tools.',
+        )
+        .replace(
+          'If no MSR signals have been retrieved yet, call the msr_sql or query_signal_state tool to fetch relevant signals before composing your answer.',
+          'MSR signals are pre-fetched above in PRE_FETCHED_TOOL_RESULTS. Cite them as (→ SIG.MSR.NNN) from what is visible in context.',
+        )
+    }
+
     // ── Trace: context_assembly step ─────────────────────────────────────────
     // Emit after both FUB-2 and FUB-3 blocks are assembled so token counts
     // reflect the actual content entering the LLM context.
