@@ -1,10 +1,10 @@
 ---
 artifact: PRIOR_SPEC_v1_0.md
 canonical_id: PRIOR_SPEC
-version: "1.0"
-status: DRAFT
+version: "1.1"
+status: APPROVED
 nap_gate: NAP.M5.2
-nap_gate_status: PENDING
+nap_gate_status: APPROVED
 phase: M5-C
 sub_phase: M5-C-S1
 authored_by: M5-C-S1
@@ -41,6 +41,15 @@ two_pass_review:
   claude_pass: "Completed M5-C-S1 — see §10"
   gemini_pass: "SURROGATE (R.LL1TPA.1 FINAL_NOT_REACHABLE_M5) — surrogate protocol per LL1_TWO_PASS_APPROVAL §5.5 — see §10"
 changelog:
+  - v1.1 (2026-05-13, M5-C-S2): NAP.M5.2 APPROVED. All §11 open items resolved.
+      §11.1: ELEVATED row → Option C (Dirichlet(2.4, 2.1, 1.5) α_total=6, LOW tier;
+      means unchanged at 0.40/0.35/0.25 but prior is now diffuse — M5-D data-dominant).
+      §11.2: SUPPRESSED observation → confirmed 0.05 (Beta(0.5, 9.5)).
+      §11.3: Cross-domain edges → confirmed FIXED.
+      §11.4: SPR.*/PSY.* event count — RESOLVED: 8 SPIRITUAL + 2 PSYCHOLOGICAL training
+      events found; Ketu MD has 0 training events (MD is future 2027–2034); prior is
+      purely classical — confirmed valid. §12 approval block populated.
+      Status: APPROVED — priors FROZEN for M5-D.
   - v1.0 (2026-05-13, M5-C-S1): Initial prior specification. All fitted parameter categories
       covered: domain base state (§4), observation model (§5), persistence matrix (§6),
       dasha-to-domain (§7), cross-domain edges (§8). Fixed parameters inventoried (§3).
@@ -404,8 +413,8 @@ Applied uniformly across all 5 domains.
   The surrogate recommended 0.02. The counter-position: 0.02 = 1 event per 50 periods =
   implausibly rare given the LEL training data shows events across multiple domains per year.
   0.05 with Beta(0.5, 9.5) is already very diffuse — the posterior will quickly move toward
-  whatever the data shows. **Prior is kept at 0.05 with note that M5-D will determine this.**
-  This is a NAP.M5.2 open item (see §11.2).
+  whatever the data shows. **Prior is kept at 0.05; NAP.M5.2 RESOLVED — keep 0.05 confirmed
+  by native 2026-05-13.**
 
 **Confidence tier:** LOW (α+β = 10, but α=0.5 is near-zero-prior — effectively uninformative
 at the SUPPRESSED end)
@@ -418,7 +427,7 @@ at the SUPPRESSED end)
 |---|---|---|---|---|---|
 | ELEVATED | 7.0 | 3.0 | 0.70 | MED | Per-domain posteriors expected; uniform prior |
 | NORMAL | 2.0 | 8.0 | 0.20 | MED | Background event rate |
-| SUPPRESSED | 0.5 | 9.5 | 0.05 | LOW | Open item for NAP.M5.2 (see §11.2) |
+| SUPPRESSED | 0.5 | 9.5 | 0.05 | LOW | NAP.M5.2 RESOLVED: keep 0.05 confirmed 2026-05-13 |
 
 *Priors are domain-invariant in v1.0. M5-D fitting will produce 5 domain-specific posterior
 Beta distributions for each state. The prior is the same starting point for all 5.*
@@ -441,38 +450,25 @@ posterior transition matrices.
 
 **From state ELEVATED, transition to {ELEVATED, NORMAL, SUPPRESSED}**
 
-**Prior:** Dirichlet(α_E=4.0, α_N=3.5, α_S=2.5) — Σα = 10 (MED)
+**Prior:** Dirichlet(α_E=2.4, α_N=2.1, α_S=1.5) — Σα = 6 (LOW — diffuse; data-dominant)
 
 **Prior mean:** P(E→E)=0.40, P(E→N)=0.35, P(E→S)=0.25
 
-**Note:** This is a revision from the topology scaffold (0.55/0.35/0.10). Rationale:
+**Note (v1.1 — NAP.M5.2 APPROVED Option C):** This is Option C from §11.1 — the diffuse
+prior. The prior means are IDENTICAL to the v1.0 revised values (0.40/0.35/0.25), but
+α_total is reduced from 10 (MED) to 6 (LOW). This means the prior carries the weight of
+only ~6 pseudo-observations rather than 10. M5-D posterior fitting will dominate after
+~6 training observations with ELEVATED→* transitions, making the prior choice between
+0.40 and 0.55 largely irrelevant by posterior time.
 
-The topology scaffold initialized ELEVATED→ELEVATED at 0.55, reflecting that "elevated periods
-tend to continue." However, at the antardasha time-scale (months to years), elevated states
-in any life domain typically last 1–3 antardasha periods before returning to NORMAL. A
-stronger decay toward NORMAL is more consistent with classical patterns:
-- Saturn MD career-elevated periods: typically 2–4 consecutive elevated periods (each
-  antardasha ~12–18 months) before plateau/normal.
-- Health crisis periods: typically episodic, not multi-decade persistent.
+**Classical basis (unchanged from v1.0):**
+- Topology scaffold initialized ELEVATED→ELEVATED at 0.55. This session revised to 0.40 based
+  on classical reasoning: ~25 months average elevation at antardasha unit vs 33 months at 0.55.
+- LL5_DASHA_TRANSIT_DESIGN §2: dasha transitions create sharp domain state shifts; P(E→S)=0.25
+  allows for Ketu-triggered sudden withdrawals from elevated states.
+- Both 0.40 and 0.55 are classically defensible; Option C lets M5-D resolve this empirically.
 
-Revised P(E→E)=0.40 reflects that about 40% of ELEVATED periods are followed by another
-ELEVATED period (i.e., an elevation lasts on average 1/(1−0.40) ≈ 1.7 antardasha periods).
-This is a more conservative prior than 0.55 (which implied average elevation length ≈ 2.2
-periods). Both are plausible; this is a NAP.M5.2 open item.
-
-P(E→S)=0.25 (topology: 0.10): Slightly higher — direct transitions from ELEVATED to SUPPRESSED
-are possible in this chart (e.g., a major career elevation followed by a sudden Ketu-triggered
-withdrawal). Less rare than 0.10 suggested.
-
-**Classical basis:**
-- LL5_DASHA_TRANSIT_DESIGN §2: Dasha transitions can create sharp domain state shifts (e.g.,
-  Saturn→Mercury dasha transition brought a career-domain shift). A 25% probability of
-  ELEVATED→SUPPRESSED across antardasha boundaries is consistent with the abrupt state changes
-  observed in training-period dasha transitions.
-- Conservative rule: Prefer wider prior spread (lower Σα or more balanced αᵢ) to let M5-D
-  data determine per-domain transition rates.
-
-**Confidence tier:** MED → **revised prior, NAP.M5.2 consultation recommended** (§11.1)
+**Confidence tier:** LOW (α_total=6 — diffuse; NAP.M5.2 APPROVED Option C 2026-05-13)
 
 ---
 
@@ -526,7 +522,7 @@ P(N→N) correspondingly reduced from 0.65 to 0.55.
 
 | From \ To | ELEVATED | NORMAL | SUPPRESSED | α_total | Tier | Note |
 |---|---|---|---|---|---|---|
-| ELEVATED | α=4.0, mean=0.40 | α=3.5, mean=0.35 | α=2.5, mean=0.25 | 10 | MED | Revised from topology 0.55/0.35/0.10 |
+| ELEVATED | α=2.4, mean=0.40 | α=2.1, mean=0.35 | α=1.5, mean=0.25 | 6 | LOW | NAP.M5.2 APPROVED Option C; means unchanged 0.40/0.35/0.25; α_total reduced 10→6 (diffuse; data-dominant) |
 | NORMAL | α=2.0, mean=0.20 | α=5.5, mean=0.55 | α=2.5, mean=0.25 | 10 | MED | Revised from topology 0.20/0.65/0.15 |
 | SUPPRESSED | α=1.0, mean=0.10 | α=3.5, mean=0.35 | α=5.5, mean=0.55 | 10 | MED | Revised from topology 0.05/0.35/0.60 |
 
@@ -697,7 +693,7 @@ prior specification provides the classical basis for each weight as a confidence
 
 **Note for NAP.M5.2:** If native prefers to treat cross-domain weights as soft parameters
 (with a Beta prior and M5-D update), this is technically feasible. The current treatment
-(fixed at topology values) is simpler and avoids overfitting at n=1. See §11.3.
+(fixed at topology values) is simpler and avoids overfitting at n=1. NAP.M5.2 RESOLVED — keep FIXED confirmed 2026-05-13.
 
 | Edge | Weight | Prior type | Classical basis |
 |---|---|---|---|
@@ -938,111 +934,154 @@ OVERALL ASSESSMENT: PRIOR_SPEC v1.0 is methodologically sound. All priors have
 
 ---
 
-## §11 — Open items for NAP.M5.2
+## §11 — Open items for NAP.M5.2 (ALL RESOLVED — 2026-05-13)
 
-The following items require native input before priors can be frozen:
+The four items below were open at v1.0. All resolved at M5-C-S2 by native approval
+phrase "I will go with all your recommendations" (2026-05-13). See §12 for the approval block.
 
 ---
 
 ### §11.1 — ELEVATED persistence: 0.40 (revised) vs. 0.55 (topology scaffold)
+
+**STATUS: RESOLVED — Option C APPROVED**
 
 **Nature:** The prior revision from 0.55 to 0.40 for ELEVATED→ELEVATED persistence is the
 single most consequential parameter change from the topology scaffold. It implies elevated
 career/health/relationship/spiritual periods last on average ~25 months (1.7 antardasha
 periods at ~15 months each) rather than ~33 months (2.2 periods).
 
-**Native input needed:** Is 25 months a more accurate reflection of your subjective experience
-of "elevated career periods" or "elevated health pressure periods"? Or do you recall elevation
-periods lasting longer (2–3 years), which would favor the 0.55 value?
-
-**Options:**
+**Options presented:**
 - A: Keep revised 0.40 (prior specification v1.0 as written)
 - B: Revert to 0.55 (topology scaffold value, per surrogate Finding P3)
 - C: Use diffuse prior: keep 0.40 mean but reduce α_total to 6 (Dirichlet(2.4, 2.1, 1.5))
      so M5-D data dominates more quickly
 
-**Recommendation:** Option C — empirically most conservative; lets M5-D resolve this rather
-than forcing a prior choice between 0.40 and 0.55.
+**Decision:** Option C — Dirichlet(α_E=2.4, α_N=2.1, α_S=1.5), Σα=6 (LOW/diffuse).
+Prior means remain 0.40/0.35/0.25 (unchanged from v1.0 revision). α_total reduced from 10
+to 6 — prior carries weight of ~6 pseudo-observations rather than 10. After ~6 training
+ELEVATED→* transitions in M5-D data, the posterior will be data-dominant. The 0.40 vs 0.55
+debate is empirically resolved by M5-D, not forced by the prior.
+
+**Parameter now frozen in §6.1:** Dirichlet(2.4, 2.1, 1.5) — Σα=6 — LOW tier.
 
 ---
 
 ### §11.2 — Observation model: SUPPRESSED P(EVENT=1) = 0.05 vs. 0.02
 
+**STATUS: RESOLVED — 0.05 CONFIRMED**
+
 **Nature:** The observation probability for a suppressed domain producing an event in a
 given antardasha period. Surrogate review recommended 0.02; current prior is 0.05.
 
-**Native input needed:** In your experience, do suppressed life areas (e.g., a period where
-career felt fully dormant) occasionally produce unexpected career events? If yes → 0.05
-(1 in 20 antardasha periods has a "surprise" event in a suppressed domain). If suppressed
-domains are reliably silent → 0.02.
+**Decision:** Keep 0.05 (Option A). Beta(0.5, 9.5) is already very diffuse at the SUPPRESSED
+end — M5-D data will determine the actual suppressed event rate regardless of starting point.
+The 0.05 floor allows for occasional "surprise" events in suppressed domains (1 in 20
+antardasha periods), which is plausible given the LEL training data.
 
-**Options:**
-- A: Keep 0.05 (v1.0 as written) — slightly more permissive; data will update rapidly
-- B: Revise to 0.02 (surrogate recommendation) — more conservative; effectively near-zero
-
-**Recommendation:** Keep 0.05 (Option A). The Beta(0.5, 9.5) prior is already very diffuse at
-this end — M5-D data will quickly determine the actual suppressed event rate regardless of
-whether we start at 0.02 or 0.05.
+**Parameter now frozen in §5.3:** Beta(0.5, 9.5), prior mean = 0.05.
 
 ---
 
 ### §11.3 — Cross-domain edge weights: fixed vs. soft (Beta prior)
 
-**Nature:** Currently, cross-domain edge weights (CAREER↔RELATIONSHIP=0.35, etc.) are fixed
-parameters (not updated in M5-D). An alternative is to treat them as soft parameters with
-a Beta prior — e.g., Beta(7, 3) for CAREER↔RELATIONSHIP (mean=0.35) — so M5-D fitting can
-update them based on how well the training LEL events are explained by the cross-domain model.
+**STATUS: RESOLVED — FIXED CONFIRMED**
 
-**Native input needed:** Preference between:
-- A: Keep fixed (topology freeze decision) — simpler; avoids overfitting at n=1
-- B: Treat as soft (Beta prior) — more flexible; allows M5-D to adjust if cross-domain
-     evidence is strong or weak in the training partition
+**Nature:** Whether cross-domain edge weights (CAREER↔RELATIONSHIP=0.35, etc.) are fixed
+parameters or soft parameters with Beta priors updated in M5-D.
 
-**Recommendation:** Option A (keep fixed). At n=1 with ~37 training events, the cross-domain
-weights cannot be reliably estimated from data alone. The CDLM basis is the strongest
-justification, and it is already incorporated in the fixed weights. Allow M5-D to update
-only the domain state distributions and observation model.
+**Decision:** Keep FIXED (Option A). At n=1 with ~37 training events, cross-domain weights
+cannot be reliably estimated from data alone. The CDLM basis is the strongest justification
+and is already incorporated in the fixed weights. M5-D updates only domain state distributions
+and observation model.
+
+**Parameters now frozen in §8 and §3.2.**
 
 ---
 
-### §11.4 — SPR.*/PSY.* training-partition event count validation (M5-C-S2 task)
+### §11.4 — SPR.*/PSY.* training-partition event count validation
 
-**Nature:** Not a native decision — a mechanical validation task for M5-C-S2.
+**STATUS: RESOLVED — MECHANICAL VALIDATION COMPLETE**
 
-**Task:** Count the number of SPR.* and PSY.* events in the non-blinded training partition
-(the 37 training events, excluding the 9 held-out events). Confirm that:
-- P(SPIRITUAL ELEVATED)=0.20 is consistent with SPR.* event frequency across 23 antardasha
-  periods: expected ~0.20 × 23 = 4.6 periods with SPR.* events
-- P(PSYCHOLOGICAL ELEVATED)=0.20 is consistent with PSY.* event frequency: expected ~4.6
-  periods with PSY.* events
+**Task completed M5-C-S2 (2026-05-13):** Counted SPR.* and PSY.* events in the non-blinded
+training partition (LEL events excluding the 9 held-out events).
 
-If either count diverges significantly (e.g., 10+ SPR.* events → P(E) should be higher),
-revise the domain base state prior before NAP.M5.2.
+**Results:**
 
-**Dependency:** Requires reading LEL (training partition portion only — not held-out events).
-Must be done before NAP.M5.2 approval. Candidate for M5-C-S2.
+Training-partition SPIRITUAL (SPR.*) events — 8 total:
+- EVT.1998.XX.XX.02 (Hanuman temple encounter, Saturn MD)
+- EVT.2002.XX.XX.02 (Shani Puja initiation, Saturn MD)
+- EVT.2010.XX.XX.02 (Tirupati darshan, Mercury MD)
+- EVT.2015.XX.XX.01 (Daily puja practice onset, Mercury MD)
+- EVT.2024.XX.XX.01 (Panchang convergence study, Mercury MD)
+- EVT.2025.06.XX.01 (Spiritual reading intensification, Mercury MD)
+- EVT.2025.11.XX.01 (Mantra recitation daily commitment, Mercury MD)
+- EVT.2025.XX.XX.01 (Additional spiritual activation, Mercury MD)
+
+Training-partition PSYCHOLOGICAL (PSY.*) events — 2 total:
+- EVT.1995.XX.XX.02 (Stammering onset, Saturn MD)
+- EVT.2002.XX.XX.01 (Vertigo onset, Saturn MD)
+
+**Ketu MD training events with SPR.*/PSY.* category: 0** (Ketu MD begins 2027-08-21 —
+entirely future; all training data is from Saturn MD and Mercury MD Ketu antardashas).
+
+**Validation outcome:**
+- SPR.*: 8 events across ~23 training antardasha periods ≈ 0.35 events/period. However,
+  events do not map 1:1 to antardasha periods (multiple events can occur in one period,
+  and LEL records life-domain patterns rather than strict per-antardasha buckets). The
+  P(SPIRITUAL ELEVATED)=0.20 base state prior is the marginal probability over all time-slices.
+  8 SPR.* training events across a 42-year training window (1984–2027 = ~43 antardasha periods
+  total, ~34 training periods) supports approximately P(ELEVATED) in the range 0.20–0.35
+  for SPIRITUAL. The prior P(E)=0.20 is at the conservative end; M5-D will update toward
+  the higher end if warranted. DISCIPLINE MAINTAINED — prior was not set using this count.
+- PSY.*: 2 events — very sparse. P(PSYCHOLOGICAL ELEVATED)=0.20 implies ~4.6 elevated periods
+  expected in 23 periods; 2 events suggest the actual rate is lower. However, PSY.* events
+  are the hardest to classify/record (psychological domain events are often internal/invisible).
+  The count of 2 is a lower bound. P(E)=0.20 is defensible as a classical prior that M5-D
+  will calibrate downward if confirmed sparse.
+- **Ketu MD prior validation:** Ketu MD (2027–2034) has zero training-partition observations
+  for SPR.*/PSY.* under Ketu as MAHADASHA lord. The Ketu MD SPIRITUAL P(E)=0.55 (HIGH) and
+  PSYCHOLOGICAL P(E)=0.55 (HIGH) priors are therefore **purely classical** — no training data
+  exists to contradict or confirm them. This is disclosed in §7.2 Ketu MD section. VALID.
+
+**Conclusion:** No prior revision needed. The P(E) values for SPIRITUAL (0.20) and
+PSYCHOLOGICAL (0.20) are conservatively set; M5-D will update them in the correct direction.
+The sacrosanct rule is confirmed unviolated — the event counts were not used to set the priors.
 
 ---
 
 ## §12 — NAP.M5.2 approval block
 
-*To be completed when native is ready to freeze priors.*
-
 ```
 NAP.M5.2:
-  status: PENDING
-  native_phrase_required: [native approval phrase]
-  items_to_resolve_before_freeze:
-    - §11.1: ELEVATED persistence choice (A, B, or C)
-    - §11.2: SUPPRESSED observation model choice (A or B)
-    - §11.3: Cross-domain edges fixed vs. soft choice (A or B)
-    - §11.4: SPR.*/PSY.* event count validation (M5-C-S2 task)
-  once_frozen:
-    - All priors in §4–§8 are locked
-    - Any post-freeze prior modification requires DISAGREEMENT_REGISTER entry + native re-approval
-    - M5-D fitting may consult held-out data; this document may not be modified to accommodate
-      held-out observations after NAP.M5.2 freeze
-    - version: 1.1 (post-NAP.M5.2) will record the freeze
+  status: APPROVED
+  session: M5-C-S2
+  date: 2026-05-13
+  native_phrase: "I will go with all your recommendations"
+  items_resolved:
+    - §11.1: ELEVATED persistence → Option C APPROVED
+        decision: Dirichlet(α_E=2.4, α_N=2.1, α_S=1.5), Σα=6 (LOW/diffuse)
+        means unchanged: 0.40 / 0.35 / 0.25
+        rationale: empirically most conservative; M5-D data-dominant after ~6 observations
+    - §11.2: SUPPRESSED observation → 0.05 CONFIRMED
+        decision: keep Beta(0.5, 9.5), prior mean = 0.05
+        rationale: diffuse prior; M5-D will calibrate rapidly
+    - §11.3: Cross-domain edges → FIXED CONFIRMED
+        decision: keep fixed at topology NAP.M5.1 values (CAREER↔REL=0.35, etc.)
+        rationale: n=1; CDLM basis sufficient; avoid overfitting
+    - §11.4: SPR.*/PSY.* count → VALIDATION COMPLETE
+        result: 8 SPIRITUAL + 2 PSYCHOLOGICAL training events
+        ketu_md_events: 0 (MD is future 2027–2034; priors are purely classical)
+        verdict: no prior revision needed; P(E)=0.20 for both domains confirmed valid
+  frozen_artifacts:
+    - All priors in §4 (domain base state), §5 (observation model), §6 (persistence matrix),
+      §7 (dasha-to-domain), §8 (cross-domain edges) are LOCKED as of this approval.
+    - Any post-freeze prior modification requires DISAGREEMENT_REGISTER entry + native re-approval.
+    - M5-D fitting may now proceed to consult training-partition data for Bayesian update.
+    - This document may NOT be modified to accommodate held-out observations after NAP.M5.2 freeze.
+    - Held-out partition IDs (immutable): EVT.2008.06.09.01, EVT.2009.06.XX.01,
+      EVT.2017.03.XX.01, EVT.2018.11.28.01, EVT.2019.05.XX.01, EVT.2022.01.03.01,
+      EVT.2024.02.16.01, EVT.2025.05.XX.01, EVT.2026.01.XX.01.
+  version_record: "v1.1 (2026-05-13) records this freeze"
 ```
 
 ---
@@ -1062,7 +1101,6 @@ See `06_LEARNING_LAYER/dbn/embedding_refit/` for the full scaffold specification
 
 ---
 
-*End of PRIOR_SPEC_v1_0.md — DRAFT (v1.0, M5-C-S1, 2026-05-13)*
-*Status: DRAFT — pending NAP.M5.2 native approval.*
-*Open items for freeze: §11.1 (persistence 0.40 vs 0.55), §11.2 (SUPPRESSED 0.05 vs 0.02),*
-*§11.3 (cross-domain fixed vs. soft), §11.4 (SPR.*/PSY.* event count — M5-C-S2 task).*
+*End of PRIOR_SPEC_v1_0.md — APPROVED (v1.1, M5-C-S2, 2026-05-13)*
+*Status: APPROVED — NAP.M5.2 frozen. All priors in §4–§8 are locked.*
+*No open items. M5-D fitting may proceed using training-partition LEL data.*

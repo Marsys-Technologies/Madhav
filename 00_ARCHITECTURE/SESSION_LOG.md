@@ -21852,3 +21852,155 @@ session_close:
 Execute **M5-C-S2**: Resolve all NAP.M5.2 open items. §11.4 mechanical validation of SPR.*/PSY.* event counts in LEL training partition. Present §11.1 (ELEVATED persistence), §11.2 (SUPPRESSED observation), §11.3 (cross-domain edges) to native for decision. Update PRIOR_SPEC to v1.1 with NAP.M5.2 APPROVED. Close M5-C sub-phase. red_team_counter=1→2 after this session (no IS.8(a) fire until counter=3).
 
 *End of M5-C-S1 entry — 2026-05-13.*
+
+---
+
+## Session M5-C-S2 — Prior Freeze + M5-C Close (2026-05-13)
+
+**Environment**: Cowork (Claude agent, working dir `/Users/Dev/Vibe-Coding/Apps/Madhav`)
+**Branch**: `feature/m5-probabilistic-model`
+
+### Session open
+
+```yaml
+session_open:
+  session_id: M5-C-S2
+  session_type: substantive
+  opened_at: 2026-05-14T01:00:00+05:30
+  macro_phase: M5
+  sub_phase: M5-C
+  sub_phase_status: in_flight_closing
+  red_team_counter_at_open: 1
+  is_8a_due: false
+  cowork_thread_name: "M5-C-S2 Prior Freeze + M5-C Close"
+  may_touch:
+    - "06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md"
+    - "06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  must_not_touch:
+    - "01_FACTS_LAYER/**"
+    - "025_HOLISTIC_SYNTHESIS/**"
+    - "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/**"
+    - "platform/**"
+    - "06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md"
+    - "06_LEARNING_LAYER/dbn/cpt_scaffolds/**"
+  scope_declaration: >
+    M5-C-S2: NAP.M5.2 approval + PRIOR_SPEC v1.0 DRAFT → v1.1 APPROVED +
+    §11.4 mechanical validation + M5_C_CLOSE_v1_0.md + session close.
+    Held-out partition: NOT consulted. 9 blinded events excluded from §11.4 count.
+```
+
+### Session body
+
+**Continued from M5-C-S1 (context compaction occurred between sessions).**
+
+**Task 1 — §11.4 mechanical validation (completed M5-C-S1 in preceding context):**
+Read LEL training partition (excluding 9 held-out events). Counted SPR.* and PSY.*
+events systematically.
+
+Results:
+- Training-partition SPIRITUAL (SPR.*) events: **8**
+  EVT.1998.XX.XX.02, EVT.2002.XX.XX.02, EVT.2010.XX.XX.02, EVT.2015.XX.XX.01,
+  EVT.2024.XX.XX.01, EVT.2025.06.XX.01, EVT.2025.11.XX.01, EVT.2025.XX.XX.01
+- Training-partition PSYCHOLOGICAL (PSY.*) events: **2**
+  EVT.1995.XX.XX.02, EVT.2002.XX.XX.01
+- Ketu MD (2027–2034) SPR.*/PSY.* training events: **0** — MD is entirely future;
+  priors for Ketu MD are purely classical — validated.
+
+Validation outcome: P(E)=0.20 for SPIRITUAL and PSYCHOLOGICAL is conservative; no
+revision needed before NAP.M5.2. Sacrosanct rule confirmed maintained.
+
+**Task 2 — NAP.M5.2 native approval:**
+Native approved all recommendations with phrase "I will go with all your recommendations" (2026-05-13).
+
+Decisions:
+- §11.1: Option C APPROVED — Dirichlet(2.4, 2.1, 1.5) Σα=6 LOW/diffuse
+- §11.2: Keep 0.05 — Beta(0.5, 9.5) confirmed
+- §11.3: Keep FIXED — cross-domain edges not updated in M5-D
+- §11.4: RESOLVED — 8 SPR.* + 2 PSY.* training events; Ketu MD 0
+
+**Task 3 — PRIOR_SPEC_v1_0.md v1.0 DRAFT → v1.1 APPROVED:**
+All edits applied:
+- Frontmatter: version 1.0→1.1, status DRAFT→APPROVED, nap_gate_status PENDING→APPROVED
+- Changelog v1.1 entry added
+- §6.1 ELEVATED row: Dirichlet(4.0, 3.5, 2.5) Σα=10 MED → Dirichlet(2.4, 2.1, 1.5) Σα=6 LOW
+- §6.4 summary table ELEVATED row: α_total 10→6, tier MED→LOW
+- §5.3 SUPPRESSED text: "NAP.M5.2 open item" annotation removed; confirmed 0.05
+- §5.4 summary table SUPPRESSED note: updated to NAP.M5.2 RESOLVED
+- §8 cross-domain note: "See §11.3" replaced with NAP.M5.2 RESOLVED annotation
+- §11 section: all 4 open items flipped to RESOLVED with full outcome records
+- §12 NAP.M5.2 block: PENDING → APPROVED with all decisions populated
+- Footer: DRAFT → APPROVED; open-items list removed
+
+**Task 4 — M5_C_CLOSE_v1_0.md authored:**
+New file at 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md v1.0.
+Sections: sub-phase identity, AC verdict table (all 6 PASS), NAP.M5.2 verdict summary,
+canonical artifacts produced, held-out discipline confirmation, two-pass review status,
+carry-forwards to M5-D (5 items), M5-D entry gate, red-team counter at close.
+
+**Held-out discipline:** Maintained throughout M5-C. 9 blinded events not consulted
+in §11.4 count or any prior elicitation.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: M5-C-S2
+  session_type: substantive
+  closed_at: 2026-05-14T01:59:00+05:30
+  macro_phase: M5
+  sub_phase: M5-C
+  sub_phase_status: CLOSED
+  is_8a_due: false
+  is_8a_discharged: false
+  red_team_counter_at_close: 2
+  current_state_updated: true
+  current_state_version: "4.6"
+  files_touched:
+    - 06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md (v1.0 DRAFT → v1.1 APPROVED; §6.1/§6.4/§5.3/§5.4/§8/§11/§12/footer all updated)
+    - 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md (NEW v1.0 — M5-C sealing artifact)
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v4.5→v4.6; M5-C CLOSED; M5-D INCOMING; last_session_id→M5-C-S2; red_team_counter 1→2; next_session_objective→M5-D-S1)
+    - 00_ARCHITECTURE/SESSION_LOG.md (this entry)
+    - .geminirules (MP.1 — M5-C CLOSED; M5-D INCOMING; red_team_counter 1→2)
+    - .gemini/project_state.md (MP.2 — M5-C-S2 deliverables; M5-C CLOSED)
+  mirror_updates_propagated:
+    - MP.1: .geminirules — M5-C CLOSED; NAP.M5.2 APPROVED; M5-D INCOMING; red_team_counter 1→2
+    - MP.2: .gemini/project_state.md — M5-C-S2 deliverables block; M5-C CLOSED; next→M5-D-S1
+  nap_adjudications:
+    - NAP.M5.2: APPROVED (native phrase "I will go with all your recommendations" 2026-05-13)
+        §11.1: Option C — Dirichlet(2.4,2.1,1.5) Σα=6 LOW/diffuse
+        §11.2: keep 0.05 — Beta(0.5,9.5)
+        §11.3: keep FIXED — cross-domain edges not updated in M5-D
+        §11.4: 8 SPR.* + 2 PSY.* training events; Ketu MD 0; priors purely classical
+  acceptance_criteria_status:
+    AC.M5C.1: PASS (from M5-C-S1 — PRIOR_SPEC_v1_0.md authored, v1.0 DRAFT)
+    AC.M5C.2: PASS (from M5-C-S1 — two-pass review conducted)
+    AC.M5C.3: PASS (from M5-C-S1 — discipline audit §9 PASS)
+    AC.M5C.4: PASS (from M5-C-S1 — embedding_refit/ scaffold complete)
+    AC.M5C.5: PASS (NAP.M5.2 APPROVED — all §11 open items resolved; PRIOR_SPEC v1.1 FROZEN)
+    AC.M5C.6: PASS (CURRENT_STATE v4.6 → M5-D INCOMING; M5-C sealing artifact present)
+  carry_forwards_to_m5d:
+    - CF.M5C.1: LL8 Embedding Refit execution (M5-D entry gate)
+    - CF.M5C.2: CPT scaffold population using PRIOR_SPEC v1.1 frozen priors
+    - CF.M5C.3: Training-partition Bayesian update (~37 training LEL events)
+    - CF.M5C.4: Per-domain posterior differentiation (5 domain-specific Beta posteriors per state)
+    - CF.M5C.5: Retroactive Gemini ratification of PRIOR_SPEC §10.1 (attempt at M5-D open)
+    - AC.M5B.6: Topology risk register (deferred from M5-C)
+    - AC.IV.7: Latency telemetry (7-day prod window required)
+  close_criteria_met: true
+    # All 6 AC.M5C items PASS. NAP.M5.2 APPROVED. PRIOR_SPEC FROZEN.
+    # M5-C sub-phase CLOSED. M5-D entry gate satisfied.
+  next_session_commitment: >
+    M5-D-S1: Execute LL8 Embedding Refit (3-run stability test) then CPT Bayesian update.
+    IS.8(a) FIRES at M5-D-S1 (counter=2+1=3). M5-D-S1 must include red-team pass.
+    Entry gate: LL8 refit stability PASS required before CPT fitting begins.
+```
+
+### Next session objective
+
+Execute **M5-D-S1**: LL8 Embedding Refit (3-run stability) → CPT scaffold population → training-partition Bayesian update. IS.8(a) fires at M5-D-S1 (counter enters at 2; S1 increments to 3). Red-team MANDATORY at M5-D-S1.
+
+*End of M5-C-S2 entry — 2026-05-13.*
