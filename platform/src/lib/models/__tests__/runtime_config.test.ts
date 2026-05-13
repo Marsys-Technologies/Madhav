@@ -94,13 +94,6 @@ describe('getEffectiveStack', () => {
     vi.clearAllMocks()
   })
 
-  it('returns DEFAULT_STACK_ID when AIOPS_OVERRIDES_ENABLED=false', async () => {
-    mockGetFlag.mockReturnValue(false)
-    const result = await getEffectiveStack()
-    expect(result).toBe('gemini')
-    expect(mockQuery).not.toHaveBeenCalled()
-  })
-
   it('returns DB stack when flag is on and no header', async () => {
     mockGetFlag.mockReturnValue(true)
     makeDbWithStack('nim')
@@ -158,20 +151,6 @@ describe('getEffectiveModel', () => {
     vi.clearAllMocks()
   })
 
-  it('returns registry default when flag=false', async () => {
-    mockGetFlag.mockReturnValue(false)
-    const result = await getEffectiveModel('gemini', 'synthesis', 'primary')
-    expect(result).toBe('gemini-2.5-pro')
-    expect(mockQuery).not.toHaveBeenCalled()
-  })
-
-  it('returns registry fallback value when flag=false', async () => {
-    mockGetFlag.mockReturnValue(false)
-    const result = await getEffectiveModel('gemini', 'planner_fast', 'fallback')
-    expect(result).toBe('gemini-flash-lite')
-    expect(mockQuery).not.toHaveBeenCalled()
-  })
-
   it('DB override wins over registry when flag=true', async () => {
     mockGetFlag.mockReturnValue(true)
     makeDbWithRouting('gemini', 'synthesis', 'gemini-2.5-exp', 'gemini-2.0-flash')
@@ -201,13 +180,6 @@ describe('getEffectiveParam', () => {
   beforeEach(() => {
     invalidateRuntimeConfigCache()
     vi.clearAllMocks()
-  })
-
-  it('returns fallback when flag=false', async () => {
-    mockGetFlag.mockReturnValue(false)
-    const result = await getEffectiveParam('gemini', 'synthesis', 'temperature', 0.7)
-    expect(result).toBe(0.7)
-    expect(mockQuery).not.toHaveBeenCalled()
   })
 
   it('returns DB param when flag=true and DB has value', async () => {

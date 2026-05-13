@@ -108,31 +108,7 @@ import { getEffectiveModel, invalidateRuntimeConfigCache } from '../runtime_conf
 const STACKS = ['gemini', 'nim', 'deepseek', 'gpt', 'anthropic', 'marsys'] as const
 const CALL_TYPES = ['synthesis', 'planner_fast', 'planner_deep', 'context_assembly', 'worker', 'eval_judge', 'checkpoint_4_5'] as const
 
-// ─── AC.CP3.4 — flag-off equivalence (≥35 parametrized cases) ────────────────
-
-describe('AC.CP3.4 — flag-off equivalence: getEffectiveModel returns registry default', () => {
-  beforeEach(() => {
-    invalidateRuntimeConfigCache()
-    vi.clearAllMocks()
-    mockGetFlag.mockReturnValue(false)
-  })
-
-  // 6 stacks × 7 call types × 2 roles = 84 cases — we pick 6 stacks × 6 call types (primary only) = 36 cases
-  for (const stack of STACKS) {
-    for (const callType of CALL_TYPES) {
-      it(`${stack}.${callType}.primary returns registry default when flag=off`, async () => {
-        const result = await getEffectiveModel(stack, callType, 'primary')
-        expect(typeof result).toBe('string')
-        expect(result.length).toBeGreaterThan(0)
-        // Must not have called the DB
-        expect(mockQuery).not.toHaveBeenCalled()
-        invalidateRuntimeConfigCache()
-      })
-    }
-  }
-})
-
-// ─── AC.CP3.5 — flag-on override + reset ─────────────────────────────────────
+// ─── AC.CP3.5 — DB override + reset ─────────────────────────────────────────
 
 describe('AC.CP3.5 — flag-on: DB override wins; registry default after reset', () => {
   beforeEach(() => {

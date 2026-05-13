@@ -105,11 +105,8 @@ function getHeaderParam(req: Request | undefined, callType: CallType, paramName:
  * 2. DB override (llm_stack_config)
  * 3. Static DEFAULT_STACK_ID from registry
  *
- * When AIOPS_OVERRIDES_ENABLED=false, falls straight through to DEFAULT_STACK_ID.
  */
 export async function getEffectiveStack(req?: Request): Promise<ModelStack> {
-  if (!getFlag('AIOPS_OVERRIDES_ENABLED')) return DEFAULT_STACK_ID
-
   // 1. Per-request header
   const headerStack = getHeaderStack(req)
   if (headerStack) return headerStack
@@ -125,7 +122,6 @@ export async function getEffectiveStack(req?: Request): Promise<ModelStack> {
  * 2. DB override (llm_stack_routing_override)
  * 3. Static STACK_ROUTING registry entry
  *
- * When AIOPS_OVERRIDES_ENABLED=false, returns the static registry value directly.
  */
 export async function getEffectiveModel(
   stack: ModelStack,
@@ -135,8 +131,6 @@ export async function getEffectiveModel(
 ): Promise<string> {
   const registryDefault = STACK_ROUTING[stack]?.[callType]?.[role]
     ?? STACK_ROUTING[DEFAULT_STACK_ID][callType][role]
-
-  if (!getFlag('AIOPS_OVERRIDES_ENABLED')) return registryDefault
 
   // 1. Per-request header
   const headerModel = getHeaderModel(req, callType, role)
@@ -153,7 +147,6 @@ export async function getEffectiveModel(
  * 2. DB override (llm_param_override)
  * 3. Caller-supplied fallback value
  *
- * When AIOPS_OVERRIDES_ENABLED=false, returns the fallback directly.
  */
 export async function getEffectiveParam<T = unknown>(
   stack: ModelStack,
@@ -162,8 +155,6 @@ export async function getEffectiveParam<T = unknown>(
   fallback: T,
   req?: Request,
 ): Promise<T> {
-  if (!getFlag('AIOPS_OVERRIDES_ENABLED')) return fallback
-
   // 1. Per-request header
   const headerVal = getHeaderParam(req, callType, paramName)
   if (headerVal !== null) return headerVal as T
