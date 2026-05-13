@@ -1,0 +1,62 @@
+[
+  {
+    "model_id": "nvidia/nemotron-3-super-120b-a12b",
+    "context_window": 1000000,
+    "param_count": 120,
+    "capabilities": [],
+    "role": "both",
+    "cost_input_per_1m": 0.00,
+    "cost_output_per_1m": 0.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "context_window": 1000000,
+    "param_count": 30,
+    "capabilities": [],
+    "role": "both",
+    "cost_input_per_1m": 0.00,
+    "cost_output_per_1m": 0.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+    "context_window": 131072,
+    "param_count": 49,
+    "capabilities": ["tool-use"],
+    "role": "planner",
+    "cost_input_per_1m": 0.00,
+    "cost_output_per_1m": 0.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "moonshotai/kimi-k2-instruct",
+    "context_window": 262144,
+    "param_count": 1000,
+    "capabilities": ["tool-use"],
+    "role": "both",
+    "cost_input_per_1m": 0.00,
+    "cost_output_per_1m": 0.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "mistralai/mistral-large-3-675b-instruct-2512",
+    "context_window": null,
+    "param_count": 675,
+    "capabilities": [],
+    "role": "synthesis",
+    "cost_input_per_1m": 0.00,
+    "cost_output_per_1m": 0.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "deepseek-ai/deepseek-v4-pro",
+    "context_window": 1000000,
+    "param_count": 671,
+    "capabilities": ["tool-use"],
+    "role": "synthesis",
+    "cost_input_per_1m": 0.00,
+    "cost_output_per_1m": 0.00,
+    "quirks": { "reasoning_via": "none" }
+  }
+]

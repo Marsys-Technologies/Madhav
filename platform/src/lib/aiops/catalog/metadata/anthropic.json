@@ -1,0 +1,32 @@
+[
+  {
+    "model_id": "claude-opus-4-7",
+    "context_window": 1000000,
+    "param_count": null,
+    "capabilities": ["tool-use", "prompt-caching"],
+    "role": "synthesis",
+    "cost_input_per_1m": 15.00,
+    "cost_output_per_1m": 75.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "claude-sonnet-4-6",
+    "context_window": 1000000,
+    "param_count": null,
+    "capabilities": ["tool-use", "prompt-caching"],
+    "role": "synthesis",
+    "cost_input_per_1m": 3.00,
+    "cost_output_per_1m": 15.00,
+    "quirks": { "reasoning_via": "none" }
+  },
+  {
+    "model_id": "claude-haiku-4-5",
+    "context_window": 200000,
+    "param_count": null,
+    "capabilities": ["tool-use", "prompt-caching"],
+    "role": "both",
+    "cost_input_per_1m": 1.00,
+    "cost_output_per_1m": 5.00,
+    "quirks": { "reasoning_via": "none" }
+  }
+]

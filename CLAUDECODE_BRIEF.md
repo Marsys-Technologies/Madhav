@@ -1,33 +1,28 @@
 ---
 status: OPEN
-session_id: AIOPS_CP_1
-phase: CP.1
-phase_name: "DB migrations + catalog discovery + runtime_config + read-only UI"
-next_session: AIOPS_CP_2
+session_id: AIOPS_CP_2
+phase: CP.2
+phase_name: "Write side + probe + spec-filtered dropdowns + MARSYS UI + cross-stack UI"
+next_session: AIOPS_CP_3
 authored_at: 2026-05-13
 authored_by: AIOPS_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CP_1
-## AIOps Phase 1, Step 1 — Foundation layer
+# CLAUDECODE_BRIEF — AIOPS_CP_2
+## AIOps Phase 1, Step 2 — Full interactive Control Panel
 
 ---
 
 ## §0 — Executor orientation
 
-CP.1 builds the foundation: five DB tables, the live catalog discovery
-service, the per-call-type specs, the runtime_config resolver, the MARSYS
-stack registration, the CallType taxonomy extension, and a **read-only**
-Control Panel UI that displays the current state without allowing edits.
+CP.2 builds the entire interactive Control Panel UI plus all write
+endpoints plus the probe endpoint. After CP.2 closes, the Control Panel is
+visually and functionally complete EXCEPT for: the call-site migration
+(CP.3), the audit-rail revert button (CP.4 polish), and the production flag
+flip (CP.5).
 
-All write functionality lands in CP.2.
-
-The umbrella feature flag `AIOPS_OVERRIDES_ENABLED` is **created and set to
-`false`** in this phase. With the flag false, the system behaves identically
-to today.
-
-Read `00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md` in full.
-Read `00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md §3, §4, §5, §7, §8`.
+Read `00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md` and
+`AIOPS_MASTER_PLAN_v1_0.md §6, §9` in full.
 
 ---
 
@@ -35,15 +30,15 @@ Read `00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md §3, §4, §5, §7, §8`.
 
 ```
 1.  CLAUDE.md
-2.  00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md (full)
-3.  00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md (full)
-4.  platform/src/lib/models/registry.ts (existing taxonomy)
-5.  platform/src/lib/models/resolver.ts (existing provider-options pattern)
-6.  platform/src/lib/db/schema/observatory.ts (table conventions)
-7.  platform/supabase/migrations/  — list the latest migration number
-8.  platform/src/lib/config/feature_flags.ts (where the flag lands)
-9.  platform/src/lib/llm/providers/{nim,deepseek,gemini,openai,anthropic}_observed.ts
-    (existing provider clients — reuse their HTTP machinery)
+2.  00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md
+3.  00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+4.  platform/src/lib/models/registry.ts
+5.  platform/src/lib/models/runtime_config.ts                     # written in CP.1
+6.  platform/src/lib/aiops/catalog/index.ts                       # written in CP.1
+7.  platform/src/lib/aiops/specs/call_type_specs.ts               # written in CP.1
+8.  platform/src/lib/db/schema/aiops.ts                           # written in CP.1
+9.  platform/src/lib/components/observatory/filters/MultiSelect.tsx (existing pattern to reuse)
+10. platform/src/lib/components/observatory/events/EventSidePanel.tsx (slide-over reuse)
 ```
 
 ---
@@ -52,239 +47,167 @@ Read `00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md §3, §4, §5, §7, §8`.
 
 ### may_touch
 ```
-platform/src/lib/aiops/**                      # primary work
-platform/src/lib/models/registry.ts            # extend CallType, ModelStack, STACK_ROUTING
-platform/src/lib/models/runtime_config.ts      # NEW
-platform/src/lib/config/feature_flags.ts       # add AIOPS_OVERRIDES_ENABLED
-platform/src/lib/db/schema/aiops.ts            # NEW
-platform/supabase/migrations/**                # 5 new migrations
-platform/src/app/(super-admin)/aiops/control/page.tsx   # replace stub with read-only UI
-platform/src/lib/components/aiops/**           # new components
-platform/src/app/api/admin/aiops/state/route.ts          # GET only (read-only API)
-platform/src/app/api/admin/aiops/_guard.ts               # mirror observatory _guard pattern
-platform/src/app/api/admin/aiops/_parse.ts               # zod schemas, request parsing
+platform/src/lib/aiops/**                       # probe service, dropdown adapter
+platform/src/app/api/admin/aiops/**             # all write endpoints + probe + smoke
+platform/src/app/(super-admin)/aiops/control/page.tsx
+platform/src/lib/components/aiops/**            # all new components for CP.2 UI
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-(same as CP.0 plus: `platform/src/app/api/admin/observatory/**`,
-`platform/src/lib/components/observatory/**`)
+(same as CP.1; in particular do NOT migrate call sites yet — that's CP.3)
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Feature flag
+### 3.1 — Write API endpoints
 
-Add to `platform/src/lib/config/feature_flags.ts`:
-```ts
-export const AIOPS_OVERRIDES_ENABLED =
-  process.env.AIOPS_OVERRIDES_ENABLED === 'true'
-```
-Default: `false`. Flipped in CP.5.
+Implement per AIOPS_MASTER_PLAN §9:
 
-### 3.2 — Registry extensions
+- `PUT /api/admin/aiops/stack` — sets active stack; writes `llm_stack_config` + audit row + cache-bust.
+- `PUT /api/admin/aiops/routing/[stack]/[call_type]` — sets routing override.
+- `DELETE /api/admin/aiops/routing/[stack]/[call_type]` — resets to registry.
+- `PUT /api/admin/aiops/params/[stack]/[call_type]/[param]` — sets param override.
+- `DELETE /api/admin/aiops/params/[stack]/[call_type]/[param]` — resets param.
+- `GET /api/admin/aiops/catalog/[provider]` — live catalog (cached 6h).
+- `POST /api/admin/aiops/catalog/refresh/[provider]` — force-refresh.
+- `GET /api/admin/aiops/audit?limit=20` — recent changes.
 
-Edit `platform/src/lib/models/registry.ts`:
+Every write endpoint:
+- Validates input with zod (define schemas in `platform/src/app/api/admin/aiops/_parse.ts`).
+- Verifies the new value is sensible: model_id exists in the augmented catalog;
+  call_type is recognized; param_value matches the expected type for that param_name.
+- Writes an `llm_config_audit` row in the same transaction as the write.
+- Calls `invalidateRuntimeConfigCache()` after the transaction commits.
+- Returns the new effective state for the affected (stack, call_type).
 
-1. Extend `CallType`:
-   ```ts
-   export type CallType =
-     | 'synthesis'
-     | 'planner_deep'
-     | 'planner_fast'
-     | 'context_assembly'
-     | 'worker'
-     | 'eval_judge'
-     | 'eval_generator'
-     | 'smoke_synth'
-     | 'checkpoint_4_5'
-     | 'checkpoint_5_5'
-     | 'checkpoint_8_5'
-   ```
+Tests in `__tests__/` per endpoint: ≥3 cases each (valid update, invalid input,
+auth failure).
 
-2. Extend `ModelStack`:
-   ```ts
-   export type ModelStack = 'nim' | 'anthropic' | 'gemini' | 'gpt' | 'deepseek' | 'marsys'
-   ```
+### 3.2 — Probe service
 
-3. Extend `STACK_LABEL` + `STACK_PRIMARY_PROVIDER` with the MARSYS entries:
-   ```ts
-   marsys: 'MARSYS Stack',
-   // STACK_PRIMARY_PROVIDER['marsys'] — not applicable; comment-only
-   ```
+Create `platform/src/lib/aiops/probe/`:
 
-4. Extend `STACK_ROUTING` per Execution Rule R13:
-   - For each of the 5 existing stacks, add the 6 new call-type rows
-     (`eval_judge`, `eval_generator`, `smoke_synth`, `checkpoint_4_5/5_5/8_5`)
-     using the seed values in R13.
-   - Add a complete `STACK_ROUTING['marsys']` block with safe defaults:
-     synthesis → `gemini-2.5-pro` / `deepseek-v4-pro`; planner_deep →
-     `gemini-2.5-flash` / `deepseek-v4-pro`; planner_fast →
-     `gemini-2.5-flash-lite` / `gemini-2.5-flash`; context_assembly →
-     `gemini-2.5-flash` / `gemini-2.5-pro`; worker →
-     `gemini-2.5-flash-lite` / `gpt-4.1-nano`; eval/smoke/checkpoint per R13.
+- `prompts.ts` — per-call-type probe prompts (hardcoded). For synthesis-class
+  probes use a small Jyotish-flavored example; for planner probes ask for a
+  structured JSON tool plan; for worker probes ask for a one-sentence
+  summary.
+- `runner.ts` — `runProbe({ stack, callType, role, modelOverride? }): Promise<ProbeResult>`.
+  Internally calls `resolveModel(modelId)` then `streamText` with the
+  call-type-appropriate prompt and timeout. Captures: token counts,
+  latency, USD cost (from MODELS metadata), output text (truncated to
+  300 chars), `finishReason`, error if any.
+- `types.ts` — `ProbeResult`, `ProbeOptions`.
 
-5. Add `stackPicker()` MARSYS handling (the function already iterates stacks;
-   confirm MARSYS appears with synthesisContextWindow from `gemini-2.5-pro`).
+Probe calls go through the existing observed provider wrappers so they
+appear in the Observatory with `pipeline_stage='aiops_probe'`.
 
-### 3.3 — DB migrations
+### 3.3 — Probe + smoke endpoints
 
-Create five additive migrations, numbered sequentially after the latest in
-`platform/supabase/migrations/`:
+- `POST /api/admin/aiops/probe` — body `{ stack, call_type, role }` →
+  ProbeResult. Streams the model output to the client (server-sent events
+  pattern matching the rest of the codebase).
+- `POST /api/admin/aiops/smoke/[stack]` — runs probe for every
+  (call_type × role) pair for the stack. Returns
+  `{ results: ProbeResult[], all_pass: boolean, summary: {...} }`.
+  For the MARSYS stack: probes only what the user has explicitly set in DB
+  overrides (no fallback to registry defaults for MARSYS).
 
-```
-00XX_aiops_stack_config.sql
-00XX_aiops_routing_override.sql
-00XX_aiops_param_override.sql
-00XX_aiops_model_health.sql
-00XX_aiops_config_audit.sql
-00XX_aiops_catalog_snapshot.sql
-```
+### 3.4 — Spec-filtered model dropdown
 
-(That's six migrations; one per table.) Schema per AIOPS_MASTER_PLAN §8.
-Each migration has matching up + down SQL.
+Create `platform/src/lib/components/aiops/ModelDropdown.tsx`:
 
-Seed migration: a 7th migration `00XX_aiops_seed.sql` that:
-- Inserts `llm_stack_config(scope='global', active_stack='gemini', updated_by='system')`
-- Inserts `llm_stack_routing_override` rows for the MARSYS stack only (every
-  call type × primary/fallback from §3.2.4). Other stacks remain empty
-  (resolver falls back to registry).
+Props:
+- `stack: ModelStack`
+- `callType: CallType`
+- `role: 'primary' | 'fallback'`
+- `value: string` (current model_id)
+- `onChange: (modelId: string) => void`
 
-After authoring, run:
-```bash
-cd platform
-npx supabase db reset --local   # apply all migrations on the local test DB
-# Confirm all tables exist:
-psql $LOCAL_TEST_DATABASE_URL -c "\dt llm_*"
-```
+Internal behavior:
+- Calls `GET /api/admin/aiops/catalog/<provider>` for the stack's primary
+  provider (or all 5 providers if stack === 'marsys' or callType is
+  eval/smoke/checkpoint).
+- Applies `filterCatalogForCallType(entries, callType)` from CP.1.
+- Groups by provider (except MARSYS / eval / smoke / checkpoint — flat list).
+- Sorts per spec preferred sort key.
+- Pins registry-default to top with "default" badge.
+- Shows `[METADATA_PENDING]` entries at bottom.
+- Renders health pip next to each entry (gray initially, populated by CP.4
+  health cron).
+- Shows the spec note ("≥1M context required") as a subdued caption.
+- "Refresh catalog" icon button that calls
+  `POST /api/admin/aiops/catalog/refresh/<provider>`.
 
-All six tables should appear.
+### 3.5 — Param-override row
 
-### 3.4 — Catalog discovery service
+Create `platform/src/lib/components/aiops/ParamOverrideRow.tsx`:
 
-Create the directory tree under `platform/src/lib/aiops/catalog/` per
-AIOPS_MASTER_PLAN §5.2.
+For each (stack, call_type), an Advanced disclosure expands four rows:
+`max_output_tokens`, `temperature`, `thinkingBudget`, `timeout_ms`.
 
-Implement per-provider fetchers:
+Each row shows: param name | default value (from registry / provider options
+defaults) | current override (or "(default)") | input field | reset link.
 
-- `fetcher_nim.ts` — `GET https://integrate.api.nvidia.com/v1/models` with
-  `Bearer ${NVIDIA_NIM_API_KEY}`. Parse `{ data: [{ id, owned_by }] }`.
-- `fetcher_gemini.ts` — `GET https://generativelanguage.googleapis.com/v1beta/models?key=${GOOGLE_API_KEY}`.
-  Parse `{ models: [{ name, inputTokenLimit, outputTokenLimit, supportedGenerationMethods }] }`.
-  Strip the `models/` prefix from `name`.
-- `fetcher_deepseek.ts` — `GET https://api.deepseek.com/models` with
-  `Bearer ${DEEPSEEK_API_KEY}`.
-- `fetcher_openai.ts` — `GET https://api.openai.com/v1/models` with
-  `Bearer ${OPENAI_API_KEY}`. Filter to `gpt-*` models in the response (the
-  endpoint returns embeddings + Whisper + DALL-E too).
-- `fetcher_anthropic.ts` — `GET https://api.anthropic.com/v1/models` with
-  `x-api-key: ${ANTHROPIC_API_KEY}`, `anthropic-version: 2023-06-01`.
+On change → debounced 500ms → PUT to
+`/api/admin/aiops/params/[stack]/[call_type]/[param]`.
 
-Each fetcher:
-- Times out at 15s.
-- Returns `{ status: 'ok' | 'auth_fail' | 'timeout' | 'error', models: CatalogEntry[], raw: any, fetched_at: string }`.
-- Redacts API keys from any logged error.
+### 3.6 — Test probe inline panel
 
-Implement `augment.ts`:
-- Takes raw entries from a fetcher.
-- For each entry: if `model_id` is in `MODELS` from registry → use registered metadata.
-  Else: look up `platform/src/lib/aiops/catalog/metadata/<provider>.json` for the entry.
-  Else: mark `[METADATA_PENDING]` with `contextWindow=null`, `paramCount=null`.
+Create `platform/src/lib/components/aiops/TestProbeInline.tsx`:
 
-Implement `cache.ts`:
-- In-memory cache keyed by provider, TTL 6h.
-- On cache miss → call fetcher → on success update cache + write to
-  `llm_catalog_snapshot` row.
-- On fetcher failure → return last-known-good from cache or from
-  `llm_catalog_snapshot`, with `stale: true`.
+A collapsible region beneath each (stack, call_type) row. When the Test
+button is clicked, it expands and:
+1. Calls `POST /api/admin/aiops/probe` with `{ stack, call_type, role }`.
+2. Streams the response.
+3. Shows: status (running → pass/fail), latency, tokens in/out, cost,
+   `finishReason`, output text (truncated to 300 chars), error if any.
+4. After completion, the dropdown's health pip updates to green/red.
 
-Create curated `metadata/<provider>.json` for each of the 5 providers,
-seeded with known-good entries from the existing registry plus a few
-plausible new ones. For NIM specifically, include entries for
-`deepseek-ai/deepseek-v4-pro` (in case it comes back online), GLM-style
-models, and the active Nemotron variants.
+### 3.7 — Stack-level smoke test
 
-### 3.5 — Call-type specs
+Create `platform/src/lib/components/aiops/StackSmokeButton.tsx`:
 
-Create `platform/src/lib/aiops/specs/call_type_specs.ts` per
-AIOPS_MASTER_PLAN §5.3 — full `CALL_TYPE_SPECS` constant.
+Big button on each stack card. Clicking it:
+1. POSTs to `/api/admin/aiops/smoke/<stack>`.
+2. Renders a 5×2 grid (5 call types × {primary, fallback}) with each cell
+   showing pass/fail/running.
+3. On completion, surfaces a summary: "9/10 PASS — DeepSeek V4 Pro
+   synthesis primary timed out."
 
-Implement a helper:
-```ts
-export function filterCatalogForCallType(
-  entries: CatalogEntry[],
-  callType: CallType,
-): CatalogEntry[]
-```
-Filters by mandatory; sorts by preferred + secondary.
+### 3.8 — Full Control Panel page
 
-### 3.6 — runtime_config.ts
+Replace the CP.1 read-only page with the full interactive layout per
+AIOPS_MASTER_PLAN §6:
 
-Create `platform/src/lib/models/runtime_config.ts` per AIOPS_MASTER_PLAN §7.1.
+- Top: stack picker (6 cards, all clickable, with cost-confirmation modal for
+  paid stacks per Risk register).
+- Below: selected stack's call type rows (5 pipeline + 6 quality/verification).
+  Each row has ModelDropdown × 2 (primary + fallback), Test buttons, and
+  the Advanced disclosure with ParamOverrideRow.
+- Stack smoke button between the two row groups.
+- Right rail: Recent Changes (live data from `/api/admin/aiops/audit`).
+  Revert button is a no-op visual only in CP.2 (real revert lands in CP.4).
 
-- `getEffectiveStack(req?: Request): Promise<ModelStack>`
-- `getEffectiveModel(stack, callType, role, req?): Promise<string>`
-- `getEffectiveParam<T>(stack, callType, paramName, fallback, req?): Promise<T>`
-- `invalidateRuntimeConfigCache(): void`
+For the MARSYS card: same UI but dropdowns are unrestricted (the
+ModelDropdown logic handles this; MARSYS card just passes `stack='marsys'`).
 
-Internal:
-- 60s in-memory cache with manual invalidation.
-- DB queries via the existing Drizzle/pg connection.
-- When `AIOPS_OVERRIDES_ENABLED=false`, ALL functions short-circuit to the
-  registry — DB is not consulted. This preserves byte-identical behavior
-  during CP.1–CP.4.
+For the Quality & Verification section: each row passes `stack='marsys'`
+internally to ModelDropdown OR a dedicated `crossStack=true` flag — choose
+the cleanest implementation. Either way, the dropdown shows models across
+all 5 providers (NIM, Gemini, DeepSeek, GPT, Anthropic).
 
-Tests in `platform/src/lib/models/__tests__/runtime_config.test.ts`:
-- Resolver priority order (per-request → user → DB → registry) — at least 8 cases.
-- Flag-off behavior is identical to registry.
-- Cache TTL + invalidation correctness.
+### 3.9 — Cost-confirmation modal
 
-### 3.7 — DB schema (Drizzle / typed access)
+Create `platform/src/lib/components/aiops/CostConfirmDialog.tsx`:
 
-Create `platform/src/lib/db/schema/aiops.ts` with Drizzle table definitions
-matching the SQL migrations from §3.3. Export from
-`platform/src/lib/db/schema/index.ts`.
+Triggered when switching to a stack whose synthesis primary cost ≥ a
+threshold (e.g., > $1.00 per 1M input tokens). Shows estimated cost per
+query at current params; requires explicit click-through.
 
-### 3.8 — Read-only API
-
-Create `platform/src/app/api/admin/aiops/_guard.ts` — copy of observatory's.
-
-Create `platform/src/app/api/admin/aiops/state/route.ts`:
-- `GET` only.
-- Returns:
-  ```ts
-  {
-    active_stack: ModelStack,
-    effective_routing: Record<ModelStack, Record<CallType, { primary, fallback }>>,
-    effective_params: Record<ModelStack, Record<CallType, Record<string, unknown>>>,
-    health_summary: Record<string /* model_id */, 'pass' | 'fail' | 'stale' | 'never_probed'>,
-    audit_summary: { count: number, latest_at: string | null }
-  }
-  ```
-
-Tests under `__tests__/`. Auth gate: 401 for non-super-admin; 200 with state for super-admin.
-
-### 3.9 — Read-only Control Panel UI
-
-Replace the CP.0 stub at `platform/src/app/(super-admin)/aiops/control/page.tsx`
-with a read-only state view:
-
-- Stack picker row (6 cards including MARSYS) — selected state derived from
-  `active_stack`; clicks are noop (write lands in CP.2; show a tooltip
-  "Selection editable in CP.2").
-- For the selected stack: render the pipeline call type rows (5) with the
-  current primary + fallback model IDs as plain text (no dropdown yet).
-- Quality & Verification section with the 6 cross-stack call types as plain text.
-- Right rail: "Recent Changes" empty state ("No edits yet — write side lands in CP.2");
-  "Health Status" empty state ("Health probes start in CP.4").
-
-New components under `platform/src/lib/components/aiops/`:
-- `StackPickerCards.tsx` — 6 cards, derived from `stackPicker()` + MARSYS handling.
-- `CallTypeRow.tsx` — read-only row (label + primary + fallback + spec note).
-- `EmptyRightRail.tsx` — placeholder for Recent Changes + Health.
-
-All styled via existing Tailwind tokens; no new colors / fonts.
+Per native standing rule (Anthropic banned by default), Anthropic always
+triggers this modal regardless of pricing threshold.
 
 ---
 
@@ -292,75 +215,53 @@ All styled via existing Tailwind tokens; no new colors / fonts.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CP1.1 | `grep "AIOPS_OVERRIDES_ENABLED" platform/src/lib/config/feature_flags.ts` | match |
-| AC.CP1.2 | `grep "'marsys'" platform/src/lib/models/registry.ts` | ≥2 matches (type + STACK_ROUTING) |
-| AC.CP1.3 | `grep "'eval_judge'" platform/src/lib/models/registry.ts` | match |
-| AC.CP1.4 | `ls platform/supabase/migrations/*aiops*.sql \| wc -l` | ≥6 |
-| AC.CP1.5 | `psql $LOCAL_TEST_DATABASE_URL -c "\dt llm_stack_config llm_stack_routing_override llm_param_override llm_model_health llm_config_audit llm_catalog_snapshot"` | all 6 tables present |
-| AC.CP1.6 | `test -f platform/src/lib/aiops/catalog/fetcher_nim.ts` | exit 0 (and 4 more fetchers) |
-| AC.CP1.7 | `test -f platform/src/lib/aiops/specs/call_type_specs.ts` | exit 0 |
-| AC.CP1.8 | `test -f platform/src/lib/models/runtime_config.ts` | exit 0 |
-| AC.CP1.9 | `cd platform && npm run test -- runtime_config` | all pass, ≥8 cases |
-| AC.CP1.10 | `cd platform && npm run test -- catalog` | all pass, ≥5 cases per fetcher (mocked) |
-| AC.CP1.11 | `curl -s http://localhost:3000/api/admin/aiops/state -H "Cookie: <super-admin-cookie>"` | 200 + valid JSON shape |
-| AC.CP1.12 | `cd platform && npm run typecheck` | exit 0 |
-| AC.CP1.13 | `cd platform && npm run lint` | exit 0 |
-| AC.CP1.14 | `cd platform && npm run test -- --run` | full suite exit 0 |
-| AC.CP1.15 | Flag-off identity: with `AIOPS_OVERRIDES_ENABLED=false`, `getEffectiveModel('gemini','synthesis','primary')` === `STACK_ROUTING['gemini']['synthesis'].primary` | test asserts equality |
-| AC.CP1.16 | scope-violation grep | SCOPE_OK |
+| AC.CP2.1 | All 8 write endpoints exist + tests | `npm run test -- aiops` ≥24 endpoint cases pass |
+| AC.CP2.2 | Probe endpoint streams + returns ProbeResult shape | E2E test passes |
+| AC.CP2.3 | Smoke endpoint runs 10 probes for one stack | E2E test on `nim` stack returns 10 results |
+| AC.CP2.4 | ModelDropdown filters per spec | Test asserts synthesis dropdown shows only models with `maxInputTokens >= 1_000_000` |
+| AC.CP2.5 | MARSYS card shows all providers flat | Snapshot test of dropdown contents |
+| AC.CP2.6 | Quality & Verification rows show cross-stack catalog | Snapshot test |
+| AC.CP2.7 | Switching to Anthropic stack triggers CostConfirmDialog | UI test |
+| AC.CP2.8 | Param override round-trips | Integration test: set → read → assert |
+| AC.CP2.9 | Audit row written for every config change | Integration test counts audit rows before/after |
+| AC.CP2.10 | Catalog force-refresh updates the cache | Integration test with mock HTTP |
+| AC.CP2.11 | `npm run typecheck` | exit 0 |
+| AC.CP2.12 | `npm run lint` | exit 0 |
+| AC.CP2.13 | Full test suite green | exit 0 |
+| AC.CP2.14 | scope-violation grep | SCOPE_OK |
+| AC.CP2.15 | Manual smoke (logged in close): stack switch + routing change + probe button each work end-to-end on local dev | Captured in commit body |
 
 ---
 
 ## §5 — Test minimums
 
-- runtime_config resolver: ≥12 tests.
-- catalog fetcher modules: ≥5 tests each (mocked HTTP) = ≥25 total.
-- spec filtering: ≥10 tests (mandatory + preferred edge cases).
-- read-only API endpoint: ≥4 tests (auth, shape, MARSYS surfacing, empty-DB fallthrough).
+- Write endpoints: ≥24 cases (3 per endpoint × 8 endpoints).
+- Probe + smoke: ≥10 cases.
+- ModelDropdown: ≥8 cases (spec filter, sort, MARSYS flat-list, pending badge).
+- ParamOverrideRow: ≥6 cases (debounce, reset, validation).
+- CostConfirmDialog: ≥4 cases (trigger threshold, Anthropic always, dismiss, confirm).
 
-Total new tests ≥ 51. Pre-existing suite must still pass.
+Total ≥ 52 new tests.
 
 ---
 
 ## §6 — Session close
 
-Standard procedure per R4 + R5:
-
-1. Final commit message:
-   ```
-   feat(aiops-CP.1): foundation — schema, catalog, runtime_config, read-only UI
-
-   - 6 new DB tables + Drizzle schema + seed migration
-   - CallType extended with eval/smoke/checkpoint (6 new types)
-   - ModelStack extended with MARSYS (6th stack with cross-provider routing)
-   - Live catalog fetchers for 5 providers + augmentation + 6h cache
-   - CALL_TYPE_SPECS with mandatory + preferred filtering
-   - runtime_config.ts resolver (per-request → user → DB → registry)
-   - GET /api/admin/aiops/state read-only endpoint
-   - Read-only Control Panel UI at /aiops/control
-   - Feature flag AIOPS_OVERRIDES_ENABLED (default false; flag-off is identity)
-   - ≥51 new tests; full suite green
-
-   AC summary: 16/16 PASS
-   ```
-
-2. Rotate CLAUDECODE_BRIEF.md → contents of `PHASE_CP_2_BRIEF.md`.
-
-3. Report `[AIOPS-CLOSE] phase=CP.1 status=CLOSED next_phase=CP.2`.
+Standard. Final commit `feat(aiops-CP.2): full interactive Control Panel + probes`.
+Rotate CLAUDECODE_BRIEF.md → PHASE_CP_3_BRIEF.md.
 
 ---
 
-## §7 — BAIL OUT triggers (CP.1 specific)
+## §7 — BAIL OUT triggers (CP.2 specific)
 
-- Migration apply fails on the local DB (schema conflict, syntax error).
-- Any provider's catalog endpoint structure changed and the fetcher cannot be
-  written without guessing — BAIL OUT and let the native confirm the
-  endpoint shape.
-- runtime_config tests reveal a logical inconsistency in the priority order
-  documented in AIOPS_MASTER_PLAN §7.1.
-- `STACK_ROUTING['marsys']` cannot be added because of an unrelated type
-  constraint somewhere in the codebase.
+- Probe endpoint hangs on a particular provider (timeout not respected).
+- Streaming pattern in this codebase differs from what the brief assumes — if
+  the existing `/consume` SSE machinery isn't reusable for probe streaming,
+  BAIL OUT and let native decide.
+- A live provider catalog returns 401 for all five providers (env var
+  configuration issue) — write the catalog handlers anyway but BAIL on AC.CP2.4
+  because the dropdown will be empty.
 
 ---
 
-*End of PHASE_CP_1_BRIEF.md*
+*End of PHASE_CP_2_BRIEF.md*
