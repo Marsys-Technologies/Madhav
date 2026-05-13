@@ -1,212 +1,212 @@
 {
   "CTR.01": {
-    "query_text": "ctr 01 signal",
+    "query_text": "CTR.01: 1.0 x 0.2 (LOW; Saturn Dharma Devata; no CDLM anchor) | 1.0 x 0.6 (MED; classical Saturn AmK career driver; no C...",
     "top1_signal_id": "CTR.01",
-    "top1_score": 0.6629775762557983,
-    "self_score": 0.6629775762557983,
+    "top1_score": 0.9258849620819092,
+    "self_score": 0.9258849620819092,
     "pass": true
   },
   "CTR.03": {
-    "query_text": "ctr 03 signal",
+    "query_text": "CTR.03: 1.0 x 0.6 (MED; Jupiter 9H SPIRITUAL domain; domains_affected includes spirit)",
     "top1_signal_id": "CTR.03",
-    "top1_score": 0.674091100692749,
-    "self_score": 0.674091100692749,
+    "top1_score": 0.9170944094657898,
+    "self_score": 0.9170944094657898,
     "pass": true
   },
   "CVG.02": {
-    "query_text": "cvg 02 signal",
+    "query_text": "CVG.02: 1.0 x 0.6 (MED; Jupiter 9L own sign dharma; SPIRITUAL domain) | 1.0 x 0.6 (MED; Jupiter dharma-wealth chain; dom...",
     "top1_signal_id": "CVG.02",
-    "top1_score": 0.6456936597824097,
-    "self_score": 0.6456936597824097,
+    "top1_score": 0.9375932216644287,
+    "self_score": 0.9375932216644287,
     "pass": true
   },
   "RPT.DSH.01": {
-    "query_text": "rpt dsh 01 signal",
+    "query_text": "RPT.DSH.01: 0.8 x 0.6 (MED; dasha convergence report; career-temporal signal)",
     "top1_signal_id": "RPT.DSH.01",
-    "top1_score": 0.712277352809906,
-    "self_score": 0.712277352809906,
+    "top1_score": 0.8993996977806091,
+    "self_score": 0.8993996977806091,
     "pass": true
   },
   "SIG.01": {
-    "query_text": "sig 01 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6943707466125488,
-    "self_score": 0.6753720641136169,
-    "pass": false
+    "query_text": "SIG.01: 1.0 x 0.6 (MED; D9 NBRY; domains include career) | 1.0 x 0.6 (MED; domains include relationships)",
+    "top1_signal_id": "SIG.01",
+    "top1_score": 0.9167489409446716,
+    "self_score": 0.9167489409446716,
+    "pass": true
   },
   "SIG.09": {
-    "query_text": "sig 09 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6807912588119507,
-    "self_score": 0.6505789756774902,
-    "pass": false
+    "query_text": "SIG.09: 1.0 x 0.6 (MED; Rahu 2H ambition; CDLM.D2.D1 career-wealth driver)",
+    "top1_signal_id": "SIG.09",
+    "top1_score": 0.9341729879379272,
+    "self_score": 0.9341729879379272,
+    "pass": true
   },
   "SIG.10": {
-    "query_text": "sig 10 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6969738006591797,
-    "self_score": 0.6630667448043823,
-    "pass": false
+    "query_text": "SIG.10: 1.0 x 0.6 (MED; Anapha Yoga; domains include relationships/family)",
+    "top1_signal_id": "SIG.10",
+    "top1_score": 0.9178358316421509,
+    "self_score": 0.9178358316421509,
+    "pass": true
   },
   "SIG.12": {
-    "query_text": "sig 12 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.7093172073364258,
-    "self_score": 0.6692653894424438,
-    "pass": false
+    "query_text": "SIG.12: 1.0 x 0.6 (MED; Sade Sati C2 health dimension) | 1.0 x 0.6 (MED; Sade Sati C2; domains include relationships) | ...",
+    "top1_signal_id": "SIG.12",
+    "top1_score": 0.9426820874214172,
+    "self_score": 0.9426820874214172,
+    "pass": true
   },
   "SIG.13": {
-    "query_text": "sig 13 signal",
+    "query_text": "SIG.13: 1.0 x 0.2 (LOW; secondary health domain) | 1.0 x 0.6 (MED; Sun 10H stellium; primary career signal)",
     "top1_signal_id": "SIG.13",
-    "top1_score": 0.7111918926239014,
-    "self_score": 0.7111918926239014,
+    "top1_score": 0.9307441711425781,
+    "self_score": 0.9307441711425781,
     "pass": true
   },
   "SIG.15": {
-    "query_text": "sig 15 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6866331100463867,
-    "self_score": 0.6472232341766357,
-    "pass": false
+    "query_text": "SIG.15: 1.0 x 0.2 (LOW; secondary; domains include relationships) | 1.0 x 0.6 (MED; Mercury dominance; primary career do...",
+    "top1_signal_id": "SIG.15",
+    "top1_score": 0.9355400800704956,
+    "self_score": 0.9355400800704956,
+    "pass": true
   },
   "SIG.MSR.013": {
-    "query_text": "sig msr 013 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.672893226146698,
-    "self_score": 0.5735769271850586,
-    "pass": false
+    "query_text": "SIG.MSR.013: Sade Sati Cycle 2 Active \u2014 Saturn in Pisces Transiting 12th from Natal Moon Classical basis: BPHS Ch.53 (Sh...",
+    "top1_signal_id": "SIG.MSR.013",
+    "top1_score": 0.9244283437728882,
+    "self_score": 0.9244283437728882,
+    "pass": true
   },
   "SIG.MSR.030": {
-    "query_text": "sig msr 030 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6328725814819336,
-    "self_score": 0.6302157640457153,
-    "pass": false
+    "query_text": "SIG.MSR.030: Sade Sati Phase Labels vs Saturn Ephemeris Inconsistency \u2014 CTR.07 Classical basis: Classical Sade Sati timi...",
+    "top1_signal_id": "SIG.MSR.030",
+    "top1_score": 0.9365643858909607,
+    "self_score": 0.9365643858909607,
+    "pass": true
   },
   "SIG.MSR.118": {
-    "query_text": "sig msr 118 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6515740752220154,
-    "self_score": 0.5324136018753052,
-    "pass": false
+    "query_text": "SIG.MSR.118: Ruchaka Yoga \u2014 ABSENT (Mars in Enemy Sign, Not Own/Exalted in Kendra) Classical basis: BPHS Ch.26 Sl.1 (Ruc...",
+    "top1_signal_id": "SIG.MSR.118",
+    "top1_score": 0.9437000751495361,
+    "self_score": 0.9437000751495361,
+    "pass": true
   },
   "SIG.MSR.119": {
-    "query_text": "sig msr 119 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6467562317848206,
-    "self_score": 0.5059062242507935,
-    "pass": false
+    "query_text": "SIG.MSR.119: Malavya Yoga \u2014 ABSENT (Venus Not in Own/Exalted in Kendra) Classical basis: BPHS Ch.26 Sl.9 (Malavya: Venus...",
+    "top1_signal_id": "SIG.MSR.119",
+    "top1_score": 0.9266579151153564,
+    "self_score": 0.9266579151153564,
+    "pass": true
   },
   "SIG.MSR.143": {
-    "query_text": "sig msr 143 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6380900740623474,
-    "self_score": 0.5131722688674927,
-    "pass": false
+    "query_text": "SIG.MSR.143: Yoga Presence \u2014 Sarpa Yoga ABSENT (No Three Serpent Planets in Angles) Classical basis: BPHS Ch.22 (Sarpa Y...",
+    "top1_signal_id": "SIG.MSR.143",
+    "top1_score": 0.9407160878181458,
+    "self_score": 0.9407160878181458,
+    "pass": true
   },
   "SIG.MSR.145": {
-    "query_text": "sig msr 145 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6257227063179016,
-    "self_score": 0.47132670879364014,
-    "pass": false
+    "query_text": "SIG.MSR.145: Yoga \u2014 Parivartana (Exchange) Between Saturn-10L and Venus-7L (Both in Each Other's Sign) Classical basis: ...",
+    "top1_signal_id": "SIG.MSR.145",
+    "top1_score": 0.9227662682533264,
+    "self_score": 0.9227662682533264,
+    "pass": true
   },
   "SIG.MSR.163": {
-    "query_text": "sig msr 163 signal",
-    "top1_signal_id": "SIG.13",
-    "top1_score": 0.6322987079620361,
-    "self_score": 0.5655037760734558,
-    "pass": false
+    "query_text": "SIG.MSR.163: Aspect \u2014 Saturn (7H) 10th Drishti to Cancer 4H (Empty): Saturnine Oversight of Home Domain Classical basis:...",
+    "top1_signal_id": "SIG.MSR.163",
+    "top1_score": 0.9247689843177795,
+    "self_score": 0.9247689843177795,
+    "pass": true
   },
   "SIG.MSR.170": {
-    "query_text": "sig msr 170 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6219620704650879,
-    "self_score": 0.561461329460144,
-    "pass": false
+    "query_text": "SIG.MSR.170: Convergence \u2014 Cancer 4H (Empty) Triple-Aspected (Saturn 30v + Sun 60v + Mercury 60v = 150v): Most-Aspected ...",
+    "top1_signal_id": "SIG.MSR.170",
+    "top1_score": 0.9227469563484192,
+    "self_score": 0.9227469563484192,
+    "pass": true
   },
   "SIG.MSR.198": {
-    "query_text": "sig msr 198 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6313437223434448,
-    "self_score": 0.49264171719551086,
-    "pass": false
+    "query_text": "SIG.MSR.198: Tara Bala \u2014 Summary of Key Planetary Taras from Moon (Purva Bhadrapada): Complete Tara Diagnostic Classical...",
+    "top1_signal_id": "SIG.MSR.198",
+    "top1_score": 0.9177308082580566,
+    "self_score": 0.9177308082580566,
+    "pass": true
   },
   "SIG.MSR.229": {
-    "query_text": "sig msr 229 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.628855288028717,
-    "self_score": 0.570844292640686,
-    "pass": false
+    "query_text": "SIG.MSR.229: Sensitive-Point \u2014 Mandi in Cancer 4H (14\u00b013\u2032 Pushya): Malefic Shadow in House of Home, Mother, and Mental P...",
+    "top1_signal_id": "SIG.MSR.229",
+    "top1_score": 0.9300332069396973,
+    "self_score": 0.9300332069396973,
+    "pass": true
   },
   "SIG.MSR.251": {
-    "query_text": "sig msr 251 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6192876100540161,
-    "self_score": 0.5295275449752808,
-    "pass": false
+    "query_text": "SIG.MSR.251: Saham \u2014 Roga+Mahatmya BOTH in Libra 7H: Disease-Point AND Greatness-Point Conjunct Saturn-Mars \u2014 The 7H Cru...",
+    "top1_signal_id": "SIG.MSR.251",
+    "top1_score": 0.9321228265762329,
+    "self_score": 0.9321228265762329,
+    "pass": true
   },
   "SIG.MSR.278": {
-    "query_text": "sig msr 278 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6364777684211731,
-    "self_score": 0.5341788530349731,
-    "pass": false
+    "query_text": "SIG.MSR.278: Transit \u2014 Saturn in Aries 1H (2028-2030): Debilitated Saturn on Lagna \u2014 Identity-Crisis Window Classical ba...",
+    "top1_signal_id": "SIG.MSR.278",
+    "top1_score": 0.912443995475769,
+    "self_score": 0.912443995475769,
+    "pass": true
   },
   "SIG.MSR.291": {
-    "query_text": "sig msr 291 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6406435966491699,
-    "self_score": 0.47671937942504883,
-    "pass": false
+    "query_text": "SIG.MSR.291: Sade Sati \u2014 Chart Overview: Moon in Aquarius = 4 Lifetime Cycles (Ages 6-13, 36-44, 65-72, 95-102) Classica...",
+    "top1_signal_id": "SIG.MSR.291",
+    "top1_score": 0.9270780682563782,
+    "self_score": 0.9270780682563782,
+    "pass": true
   },
   "SIG.MSR.295": {
-    "query_text": "sig msr 295 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6284026503562927,
-    "self_score": 0.4984511733055115,
-    "pass": false
+    "query_text": "SIG.MSR.295: Sade Sati \u2014 Cycle 1 Peak (1993-1995, Ages 9-11): Headache Onset and R#1 Roots Classical basis: BPHS Ch.47 (...",
+    "top1_signal_id": "SIG.MSR.295",
+    "top1_score": 0.9446060657501221,
+    "self_score": 0.9446060657501221,
+    "pass": true
   },
   "SIG.MSR.297": {
-    "query_text": "sig msr 297 signal",
-    "top1_signal_id": "SIG.MSR.476",
-    "top1_score": 0.6304411888122559,
-    "self_score": 0.5107502937316895,
-    "pass": false
+    "query_text": "SIG.MSR.297: Sade Sati \u2014 Cycle 3 Projected (2049-2058, Ages 65-74): The Elder-Recalibration Cycle Classical basis: BPHS ...",
+    "top1_signal_id": "SIG.MSR.297",
+    "top1_score": 0.9344854950904846,
+    "self_score": 0.9344854950904846,
+    "pass": true
   },
   "SIG.MSR.300": {
-    "query_text": "sig msr 300 signal",
-    "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6245265007019043,
-    "self_score": 0.5916647911071777,
-    "pass": false
+    "query_text": "SIG.MSR.300: Sade Sati \u2014 Shani Kakshya During Peak: Saturn's Nakshatra Beam in Aquarius 11H Classical basis: KP + Tajika...",
+    "top1_signal_id": "SIG.MSR.300",
+    "top1_score": 0.9024262428283691,
+    "self_score": 0.9024262428283691,
+    "pass": true
   },
   "SIG.MSR.301": {
-    "query_text": "sig msr 301 signal",
-    "top1_signal_id": "SIG.MSR.476",
-    "top1_score": 0.6494573354721069,
-    "self_score": 0.558725893497467,
-    "pass": false
+    "query_text": "SIG.MSR.301: Sade Sati \u2014 End-of-Cycle-2 Date (2028-02-23): 7.5-Year Complete Liberation Classical basis: BPHS Ch.47 (Sad...",
+    "top1_signal_id": "SIG.MSR.301",
+    "top1_score": 0.946776270866394,
+    "self_score": 0.946776270866394,
+    "pass": true
   },
   "SIG.MSR.391": {
-    "query_text": "sig msr 391 signal",
-    "top1_signal_id": "SIG.MSR.476",
-    "top1_score": 0.6393324136734009,
-    "self_score": 0.5575673580169678,
-    "pass": false
+    "query_text": "SIG.MSR.391: 7H Five-Layer Wealth-Relational-Lakshmi Convergence Classical basis: BPHS Ch.26 (Sasha Mahapurusha); Brihat...",
+    "top1_signal_id": "SIG.MSR.391",
+    "top1_score": 0.899337887763977,
+    "self_score": 0.899337887763977,
+    "pass": true
   },
   "SIG.MSR.402": {
-    "query_text": "sig msr 402 signal",
+    "query_text": "SIG.MSR.402: Hidden-Pinnacle 8H Architecture via Varnada+Ghati Lagnas",
     "top1_signal_id": "SIG.MSR.402",
-    "top1_score": 0.6419385671615601,
-    "self_score": 0.6419385671615601,
+    "top1_score": 0.911675751209259,
+    "self_score": 0.911675751209259,
     "pass": true
   },
   "SIG.MSR.476": {
-    "query_text": "sig msr 476 signal",
+    "query_text": "SIG.MSR.476: Sade Sati Cycle 3 Peak 2049\u20132052 Early Warning Hook Classical basis: SADE_SATI_CYCLES_ALL; FALSIFIER \u00a72.3",
     "top1_signal_id": "SIG.MSR.476",
-    "top1_score": 0.640539288520813,
-    "self_score": 0.640539288520813,
+    "top1_score": 0.9294039011001587,
+    "self_score": 0.9294039011001587,
     "pass": true
   }
 }

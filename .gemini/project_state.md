@@ -26,13 +26,15 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 - **L4 Discovery impact:** **None.** Phase O lives at the platform observability layer. Gemini L4 Discovery work continues unaffected.
 - **Phase-O+1 follow-ups (logged, not blocking):** pg-cursor migration of `queryUsageForExportStream()` for true SQL streaming; MAD-based parallel anomaly detector; DNS-rebinding defence on `validateWebhookUrl()`; cost-per-quality rubric wiring once Learning Layer is in place.
 
-## Active Phase: M5 — ACTIVE (M5-C CLOSED; M5-D INCOMING)
+## Active Phase: M5 — ACTIVE (M5-D OPEN; LL8 Refit Gate CLEARED)
 
-**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-C CLOSED — M5-D INCOMING.** DBN tooling: Hybrid-C. LLM stack: DeepSeek → Gemini → NIM; no Anthropic/Claude API.
+**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-D OPEN — LL8 embedding refit gate CLEARED; CPT fitting unblocked.** DBN tooling: Hybrid-C. LLM stack: DeepSeek → Gemini → NIM; no Anthropic/Claude API.
 
-**M5-C-S2 (2026-05-13) deliverables COMPLETE — M5-C CLOSED:** NAP.M5.2 APPROVED (native phrase "I will go with all your recommendations"). §11.1 Option C: Dirichlet(2.4, 2.1, 1.5) Σα=6 LOW/diffuse — means 0.40/0.35/0.25 unchanged. §11.2: Beta(0.5,9.5) mean=0.05 confirmed. §11.3: FIXED confirmed. §11.4: 8 SPR.* + 2 PSY.* training events; Ketu MD 0 → purely classical — validated. `PRIOR_SPEC_v1_0.md` v1.0 DRAFT → v1.1 APPROVED (priors FROZEN): §6.1/§6.4 ELEVATED row updated (α_total 10→6, MED→LOW); §5.3/§5.4/§8 annotations resolved; §11 all 4 items RESOLVED; §12 NAP.M5.2 block APPROVED. `M5_C_CLOSE_v1_0.md` authored (AC.M5C.1-6 all PASS; held-out discipline confirmed; carry-forwards to M5-D enumerated). CURRENT_STATE v4.5→v4.6. red_team_counter: 1→2.
+**M5-D-S1 (2026-05-13) deliverables COMPLETE — CF.M5C.1 CLEARED:** LL8 Embedding Refit 3-run stability gate CLEARED. `REFIT_GATE_v1_0.md` status PASS/STABLE. `stability_report.md` STABLE. All §4 criteria PASS: §4.1 hash-stable (all 30 SHA-256 hashes identical across 3 runs); §4.2 30/30 top-1 pass rate in each of 3 runs (100%); §4.2 top-1 choices consistent across all runs; §4.3 cosine matrix delta 0.00000000 (perfectly deterministic). Model: `text-multilingual-embedding-002` (768-dim, Vertex AI). Corpus: `msr_signals` Postgres table (claim_text + classical_basis); fallback to `natal_to_domain.json` derivation text for 6 composite signals. Three refit.py bugs corrected before gate-qualifying run: RC1 (§4.2 7/30 pass → methodology defect fixed via self-retrieval); RC2 (§4.1 hash instability 6/30 → sorted set non-determinism fixed); RC3 (§4.3 delta 0.01635 → downstream of RC2, self-corrected). Fourth bug (chunks parameter scope) fixed independently by Claude Code executor. IS.8(a) DISCHARGED — 8-axis red-team PASS. red_team_counter: 2→3→0. CURRENT_STATE v4.6→v4.7. CF.M5C.2 (CPT scaffold population) UNBLOCKED.
 
-**M5-C-S1 (2026-05-13) deliverables COMPLETE:** `PRIOR_SPEC_v1_0.md` (DRAFT, v1.0) authored — Bayesian prior specification for all fitted DBN parameters. Embedding_refit/ scaffold COMPLETE. AC.M5C.1/2/3/4 PASS. CURRENT_STATE v4.4→v4.5. red_team_counter: 0→1.
+**M5-C-S2 (2026-05-13) deliverables COMPLETE — M5-C CLOSED:** NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5_C_CLOSE_v1_0.md authored (AC.M5C.1-6 all PASS). CURRENT_STATE v4.5→v4.6. red_team_counter: 1→2.
+
+**M5-C-S1 (2026-05-13) deliverables COMPLETE:** `PRIOR_SPEC_v1_0.md` (DRAFT, v1.0) authored. Embedding_refit/ scaffold COMPLETE. AC.M5C.1/2/3/4 PASS. CURRENT_STATE v4.4→v4.5. red_team_counter: 0→1.
 
 **M5-B-S2 (2026-05-13) deliverables COMPLETE:** IS.8(a) red-team PASS. U2 IMPLEMENTED. NAP.M5.1 FROZEN. EDGE-01 substituted. AC.M5B.3/7 PASS. CURRENT_STATE v4.3→v4.4. red_team_counter: 3→0.
 
@@ -40,7 +42,7 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 
 **M5-B-NAP-S1 (2026-05-13, Cowork NAP) deliverables COMPLETE:** NAP.M5.0 APPROVED. NAP.M5.1 partially resolved. LL.2 campaign CLOSED. SIG.MSR.145 corrected. SIG.MSR.402b documented.
 
-**Next session:** M5-D-S1 — LL8 Embedding Refit (3-run stability) → CPT scaffold population → training-partition Bayesian update. IS.8(a) FIRES at M5-D-S1 (counter=2+1=3; red-team MANDATORY).
+**Next session:** M5-D-S2 — CF.M5C.2 CPT scaffold population (use PRIOR_SPEC v1.1 frozen priors → initialize all Dirichlet/Beta params across 5 CPT JSON scaffolds). Then CF.M5C.3 training-partition Bayesian update → CF.M5C.4 per-domain posteriors. red_team_counter entering M5-D-S2: 0.
 
 **M5-A deliverables (closed):** LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_updater_v1_0.md` + `ll9_counterfactual_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed); LL.2 per-edge promotion campaign authored; PPL retroactive protocol; held-out partition declared (9 events sacrosanct until M5-D); PRED.015–018 added; LEL v1.7; DIS.009 RESOLVED_R1; JH export schedule. Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
 

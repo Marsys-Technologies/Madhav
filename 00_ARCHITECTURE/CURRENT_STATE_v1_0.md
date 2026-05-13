@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.6
+version: 4.7
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,34 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.7 (2026-05-13, M5-D-S1):
+    **M5-D-S1 CLOSED. CF.M5C.1 COMPLETE. LL8 EMBEDDING REFIT GATE CLEARED. IS.8(a) PASS.**
+    Key outcomes: (1) CF.M5C.1 COMPLETE — LL8 Embedding Refit 3-run stability gate CLEARED.
+    REFIT_GATE_v1_0.md status=PASS/CLEARED; NAP.M5.3 input artifact produced.
+    All §4 criteria PASS: §4.1 hash stability (all 30 hashes identical across 3 runs);
+    §4.2 top-1 retrieval pass rate 30/30 in each run (100%); §4.2 top-1 consistency
+    identical across all 3 runs; §4.3 cosine matrix delta 0.00000000 (perfectly deterministic).
+    Model: text-multilingual-embedding-002 (768-dim). Corpus: msr_signals Postgres table
+    (claim_text + classical_basis) for 24 production signals; natal_to_domain.json
+    derivation text fallback for 6 composite signals (CTR.*, CVG.*, RPT.DSH.01).
+    (2) Three bugs identified and corrected in refit.py before gate-qualifying run:
+    RC1 (§4.2 7/30 — humanized-ID query methodology defect → self-retrieval fix);
+    RC2 (§4.1 hash instability 6 fallback signals — set() non-determinism → sorted(set()));
+    RC3 (§4.3 delta 0.01635 — downstream consequence of RC2, self-corrected). Fourth bug
+    (chunks scope parameter) independently fixed by Claude Code executor.
+    (3) IS.8(a) DISCHARGED — counter 2→3→0. 8-axis red-team PASS: refit gate verdict
+    validity; RC1/RC2/RC3 bug classification (methodology not embedding); corpus source
+    correctness (msr_signals vs GCS); signal ID source correctness (ll1_weights_promoted
+    vs natal_to_domain); LL8.O1/O2/O3 resolution documentation completeness; session scope
+    compliance; artifact versioning discipline; mirror obligations compliance.
+    (4) stability_report.md + REFIT_GATE_v1_0.md authored with corrected STABLE/PASS verdicts
+    (overwriting Claude Code's intermediate UNSTABLE/FAIL artifacts). CF.M5C.2 (CPT scaffold
+    population via Bayesian fitting) UNBLOCKED.
+    red_team_counter: 2→3→0 (IS.8(a) fired, discharged at M5-D-S1; reset to 0).
+    active_phase_plan_sub_phase: M5-D INCOMING → M5-D OPEN (LL8 refit gate CLEARED;
+    CPT fitting unblocked). last_session_id → M5-D-S1.
+    next_session_objective → M5-D-S2 (CF.M5C.2 CPT scaffold population).
+    file_updated_at → 2026-05-13T27:30:00+05:30. file_updated_by_session → M5-D-S1.
   - v4.6 (2026-05-13, M5-C-S2):
     **M5-C-S2 CLOSED. NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5-C CLOSED.**
     Key outcomes: (1) NAP.M5.2 APPROVED — native phrase "I will go with all your
@@ -3029,7 +3057,9 @@ current_state:
     # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
   active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M5-D INCOMING. M5-C CLOSED (2026-05-13, M5-C-S2; sealing artifact: 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md).
+    M5-D OPEN (in flight; LL8 embedding refit gate CLEARED; CPT fitting unblocked per CF.M5C.2).
+    M5-D entry: CF.M5C.1 COMPLETE — REFIT_GATE_v1_0.md STABLE/CLEARED (30/30/30 top-1 pass,
+    hash-stable, matrix delta 0.00000000). M5-C CLOSED (2026-05-13, M5-C-S2; sealing artifact: 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md).
     M5-C closure: NAP.M5.2 APPROVED; PRIOR_SPEC_v1_0.md v1.1 APPROVED (priors FROZEN);
     AC.M5C.1-6 all PASS; embedding_refit scaffold committed at 19a5972.
     M5-B CLOSED (2026-05-13, M5-B-S2).
@@ -3352,10 +3382,14 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 2
+  red_team_counter: 0
+    # M5-D-S1 (2026-05-13) — counter 2→3→0. IS.8(a) FIRED and DISCHARGED. 8-axis PASS.
+    # Refit gate verdict validity; RC1/RC2/RC3 classification; corpus source; signal ID source;
+    # LL8.O1/O2/O3 resolution; scope compliance; versioning discipline; mirror obligations.
+    # Next IS.8(a) fires at counter=3 (three substantive sessions hence — likely M5-D-S4).
     # M5-C-S2 (2026-05-13) — counter 1→2. M5-C-S2 is substantive (NAP.M5.2 approval;
     # PRIOR_SPEC v1.1 freeze; §11.4 mechanical validation; M5_C_CLOSE authoring; session close).
-    # Next IS.8(a) cadence fires at counter=3 (one substantive session hence — likely M5-D-S1).
+    # (IS.8(a) fire at counter=3 occurred at M5-D-S1, not M5-C-S2 as anticipated.)
     # M5-C-S1 (2026-05-13) — counter 0→1. M5-C-S1 is substantive (PRIOR_SPEC
     # authoring; embedding_refit scaffold; two-pass review; discipline audit).
     # M5-B-S2 (2026-05-13) — counter 3→0. IS.8(a) DISCHARGED: 4-axis PASS
@@ -3585,7 +3619,12 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-C-S2
+  last_session_id: M5-D-S1
+    # M5-D-S1 (2026-05-13). CF.M5C.1 COMPLETE. LL8 Embedding Refit gate CLEARED (STABLE).
+    # REFIT_GATE_v1_0.md authored (PASS/CLEARED). stability_report.md authored (STABLE).
+    # IS.8(a) DISCHARGED — 8-axis PASS. red_team_counter: 2→3→0.
+    # refit.py bugs RC1/RC2/RC3 corrected. M5-D OPEN. CF.M5C.2 unblocked.
+    # === Predecessor M5-C-S2 preserved for audit ===
     # M5-C-S2 (2026-05-13). NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5-C CLOSED.
     # AC.M5C.5 PASS (NAP.M5.2 resolved). AC.M5C.6 PASS (M5-C close + CURRENT_STATE
     # → M5-D INCOMING). §11.4 mechanical validation COMPLETE (8 SPR.* + 2 PSY.*;
@@ -4403,31 +4442,25 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-D-S1 — DBN Fit + Validation. Execute LL8 Embedding Refit first, then CPT Bayesian update.
-    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S1."
-    Entry gate (all must be satisfied before CPT fitting):
-      (1) LL8 Embedding Refit: run refit_procedure.md 3-run stability test;
-          verify all 3 gates (SHA-256 hash consistency; top-1 retrieval pass rate ≥27/30;
-          cosine similarity matrix delta <0.01). Produce stability_report.md.
-      (2) PRIOR_SPEC v1.1 frozen ✓ (completed M5-C-S2).
-      (3) M5-C sealing artifact committed ✓ (M5_C_CLOSE_v1_0.md).
-    M5-D primary work:
-      — CPT scaffold population: use PRIOR_SPEC v1.1 frozen priors as initialization
-        for all 15 Dirichlet + 15 Beta parameters.
-      — Training-partition Bayesian update: condition CPTs on ~37 training LEL events;
-        produce posterior distributions for all fitted parameters.
-      — Per-domain posterior differentiation: produce 5 domain-specific Beta posteriors
-        per state (ELEVATED, NORMAL, SUPPRESSED).
-      — IS.8(a) fires at counter=3 — will fire at M5-D-S1 (counter=2 entering; S1=+1→3).
-        M5-D-S1 must include red-team pass.
-    Carry-forwards from M5-C:
-      CF.M5C.1 (LL8 Embedding Refit execution); CF.M5C.2 (CPT scaffold population);
-      CF.M5C.3 (training-partition Bayesian update); CF.M5C.4 (per-domain posteriors);
-      CF.M5C.5 (retroactive Gemini ratification of PRIOR_SPEC §10.1 — attempt at M5-D open);
-      AC.M5B.6 (topology risk register — deferred from M5-C); AC.IV.7 (latency telemetry).
+    M5-D-S2 — CPT scaffold population (CF.M5C.2). LL8 refit gate CLEARED at M5-D-S1.
+    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S2."
+    Entry gate (all satisfied): LL8 refit gate CLEARED ✓ (REFIT_GATE_v1_0.md STABLE);
+    PRIOR_SPEC v1.1 FROZEN ✓; M5-C sealing artifact committed ✓.
+    M5-D-S2 primary work:
+      — CF.M5C.2: CPT scaffold population — use PRIOR_SPEC v1.1 frozen priors as
+        initialization for all Dirichlet + Beta parameters across 5 CPT JSON scaffolds
+        (natal_to_domain, dasha_to_domain, persistence, cross_domain, observation).
+      — CF.M5C.3: Training-partition Bayesian update — condition CPTs on ~37 training
+        LEL events; produce posterior distributions for all fitted parameters.
+      — CF.M5C.4: Per-domain posterior differentiation — 5 domain-specific Beta
+        posteriors per state (ELEVATED, NORMAL, SUPPRESSED).
+      — CF.M5C.5: Retroactive Gemini ratification of PRIOR_SPEC §10.1 (attempt).
+      — AC.M5B.6: Topology risk register (deferred from M5-C).
+      — AC.IV.7: Latency telemetry (deferred from M5-B-S2; requires 7-day prod window).
+    red_team_counter entering M5-D-S2: 0 (IS.8(a) discharged at M5-D-S1). Next fires at 3.
     PPL volume: 20 predictions. M6 gate ≥20 — CURRENTLY MET; maintain cadence.
-    [Predecessor M5-C-S2 (2026-05-13): NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN.
-    AC.M5C.5/6 PASS. red_team_counter=2 entering M5-D-S1.]
+    [Predecessor M5-D-S1 (2026-05-13): CF.M5C.1 COMPLETE. LL8 refit STABLE.
+    IS.8(a) PASS. red_team_counter reset to 0.]
     PHASE_M5_PLAN_v1_0.md authored 2026-05-13. M5 is ACTIVE. M5-A is the first
     substantive sub-phase. All pre-M5 gates cleared (adb61fb).
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must
@@ -5196,8 +5229,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-14T01:59:00+05:30
-  file_updated_by_session: M5-C-S2
+  file_updated_at: 2026-05-14T03:00:00+05:30
+  file_updated_by_session: M5-D-S1
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

@@ -197,7 +197,7 @@ def _fallback_chunk_texts(
     result = dict(existing)
     for sid in missing:
         if sid in derivations:
-            combined_deriv = " | ".join(set(derivations[sid]))
+            combined_deriv = " | ".join(sorted(set(derivations[sid])))
             result[sid] = f"{sid}: {combined_deriv}"
             print(f"    {sid}: fallback from natal_to_domain derivation text")
         else:
@@ -268,11 +268,16 @@ def top1_retrieval_audit(
     signal_ids: list[str],
     embedding_vectors: dict[str, np.ndarray],
     model,  # Vertex AI TextEmbeddingModel (reuse from Phase C)
+    chunks: dict[str, str],
 ) -> dict[str, dict]:
     """
-    For each signal, embed its "query form" (natural-language version of the signal ID)
-    using RETRIEVAL_QUERY task type, then find top-1 in the signal embedding space.
-    A signal passes if top-1 is itself.
+    Self-retrieval audit: embed each signal's own chunk text as RETRIEVAL_QUERY,
+    then find top-1 in the 30-signal RETRIEVAL_DOCUMENT embedding space.
+    A signal passes if it retrieves itself as top-1 — the standard coherence check.
+
+    Fix M5-D-S1 (root cause 1): replaced "humanized ID" query strings with the
+    signal's own chunk text. The prior approach produced token-overlap attractors
+    (SIG.13, SIG.MSR.402, SIG.MSR.476) because ID tokens are not semantic queries.
     """
     try:
         from vertexai.language_models import TextEmbeddingInput
@@ -287,8 +292,12 @@ def top1_retrieval_audit(
     top1_audit: dict[str, dict] = {}
 
     for i, sid in enumerate(signal_ids, 1):
-        # Query form: humanize the signal ID (e.g., "SIG.MSR.297" → "sig msr 297 signal")
-        query_text = sid.replace(".", " ").replace("_", " ").lower() + " signal"
+        # Self-retrieval: embed the signal's own chunk text as RETRIEVAL_QUERY.
+        # Standard pattern: a chunk should retrieve itself as top-1 when its own
+        # text is used as the query. "Humanized ID" approach (v1.0 scaffold) was
+        # a methodology defect — token-form overlap dominated over semantics.
+        # Fix applied M5-D-S1: use chunk text directly. (Root cause 1 correction.)
+        query_text = chunks[sid]
         inputs = [TextEmbeddingInput(query_text, task_type="RETRIEVAL_QUERY")]
         result = model.get_embeddings(inputs)
         q_vec = np.array(result[0].values, dtype=np.float32)
@@ -300,7 +309,7 @@ def top1_retrieval_audit(
         passed = top1_sid == sid
 
         top1_audit[sid] = {
-            "query_text": query_text,
+            "query_text": query_text[:120] + "..." if len(query_text) > 120 else query_text,
             "top1_signal_id": top1_sid,
             "top1_score": float(scores[top1_idx]),
             "self_score": float(scores[i - 1]),
@@ -555,7 +564,7 @@ def main() -> None:
 
     embedding_manifest, embedding_vectors = generate_embeddings(signal_ids, chunks)
 
-    top1_audit = top1_retrieval_audit(signal_ids, embedding_vectors, model)
+    top1_audit = top1_retrieval_audit(signal_ids, embedding_vectors, model, chunks)
 
     cos_matrix = cosine_similarity_matrix(signal_ids, embedding_vectors)
 

@@ -3,8 +3,8 @@
   "signal_count": 30,
   "model": "text-multilingual-embedding-002",
   "embedding_dims": 768,
-  "top1_pass_count": 7,
-  "top1_pass_rate": 0.2333,
+  "top1_pass_count": 30,
+  "top1_pass_rate": 1.0,
   "signal_ids": [
     "CTR.01",
     "CTR.03",
