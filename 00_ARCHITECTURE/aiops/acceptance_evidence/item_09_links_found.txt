@@ -1,0 +1,10 @@
+PROGRAMMATIC VERIFICATION (client-side rendered page):
+Source: platform/src/lib/components/observatory/StackBreakdownCards.tsx:270
+
+Implementation confirmed:
+  const configHref = stack ? `/aiops/control?stack=${stack}&from=observatory` : undefined
+  
+Deep-link is rendered for every stack that appears in Observatory breakdown data.
+Link format: /aiops/control?stack=<stack>&from=observatory
+
+Visual verification required: pencil icon and link rendering in browser.

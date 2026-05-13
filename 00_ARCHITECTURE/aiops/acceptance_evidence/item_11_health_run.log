@@ -1,0 +1,10 @@
+[aiops:health] Starting bulk model health probe…
+[aiops:health] Done in 20096ms
+  total=24  pass=17  fail=6  timeout=1
+  [FAIL] claude-haiku-4-5 — Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.
+  [FAIL] claude-sonnet-4-6 — Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.
+  [FAIL] claude-opus-4-7 — Anthropic API key is missing. Pass it using the 'apiKey' parameter or the ANTHROPIC_API_KEY environment variable.
+  [FAIL] nvidia/llama-3.1-nemotron-ultra-253b-v1 — Not Found
+  [FAIL] moonshotai/kimi-k2-instruct — Gone
+  [TIMEOUT] mistralai/mistral-large-3-675b-instruct-2512 — This operation was aborted
+  [FAIL] qwen/qwen3-235b-a22b — Not Found

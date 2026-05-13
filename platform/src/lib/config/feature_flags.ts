@@ -67,6 +67,11 @@ export type FeatureFlag =
   // MARSYS_FLAG_OBSERVATORY_ENABLED=true. Mirrors the env-var gate already used
   // by the backend at platform/src/app/api/admin/observatory/_guard.ts.
   | 'OBSERVATORY_ENABLED'
+  // AIOps Control Panel (CP.1). Umbrella flag: when false (default through CP.4),
+  // all getEffectiveModel/Param calls fall through to STACK_ROUTING registry
+  // defaults — system behavior is byte-identical to today. Flipped to true in
+  // CP.5 after stack-smoke on all six stacks passes. Env: AIOPS_OVERRIDES_ENABLED.
+  | 'AIOPS_OVERRIDES_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -114,6 +119,8 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   CITATION_GATE_OVERRIDE: false,
   // Phase O Observatory — default OFF; flip via MARSYS_FLAG_OBSERVATORY_ENABLED=true.
   OBSERVATORY_ENABLED: false,
+  // AIOps Control Panel — default OFF through CP.4; flip via AIOPS_OVERRIDES_ENABLED=true in CP.5.
+  AIOPS_OVERRIDES_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

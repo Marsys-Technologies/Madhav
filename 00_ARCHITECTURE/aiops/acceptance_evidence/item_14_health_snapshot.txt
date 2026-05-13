@@ -1,0 +1,28 @@
+                   model_id                    | status  | latency_ms |  last_probe_at   
+-----------------------------------------------+---------+------------+------------------
+ claude-opus-4-7                               | fail    |         24 | 2026-05-13 18:37
+ claude-sonnet-4-6                             | fail    |         24 | 2026-05-13 18:37
+ claude-haiku-4-5                              | fail    |         30 | 2026-05-13 18:37
+ moonshotai/kimi-k2-instruct                   | fail    |        466 | 2026-05-13 18:37
+ qwen/qwen3-235b-a22b                          | fail    |        467 | 2026-05-13 18:37
+ nvidia/llama-3.1-nemotron-ultra-253b-v1       | fail    |        528 | 2026-05-13 18:37
+ deepseek-chat                                 | pass    |        956 | 2026-05-13 18:37
+ deepseek-reasoner                             | pass    |       1511 | 2026-05-13 18:37
+ nvidia/llama-3.3-nemotron-super-49b-v1        | pass    |       1657 | 2026-05-13 18:37
+ deepseek-v4-flash                             | pass    |       1691 | 2026-05-13 18:37
+ gemini-2.5-flash-lite                         | pass    |       1741 | 2026-05-13 18:37
+ nvidia/nemotron-3-nano-omni-30b-a3b-reasoning | pass    |       1999 | 2026-05-13 18:37
+ gemini-2.5-flash                              | pass    |       2472 | 2026-05-13 18:37
+ gpt-4.1                                       | pass    |       2652 | 2026-05-13 18:37
+ gpt-4.1-mini                                  | pass    |       2823 | 2026-05-13 18:37
+ gpt-4o                                        | pass    |       3170 | 2026-05-13 18:37
+ gpt-4.1-nano                                  | pass    |       3471 | 2026-05-13 18:37
+ gemini-2.5-pro                                | pass    |       3551 | 2026-05-13 18:37
+ gpt-4o-mini                                   | pass    |       3757 | 2026-05-13 18:37
+ meta/llama-3.1-8b-instruct                    | pass    |       4714 | 2026-05-13 18:37
+ deepseek-v4-pro                               | pass    |       6957 | 2026-05-13 18:37
+ nvidia/nemotron-3-super-120b-a12b             | pass    |       8200 | 2026-05-13 18:37
+ deepseek-ai/deepseek-v4-pro                   | pass    |      15614 | 2026-05-13 18:37
+ mistralai/mistral-large-3-675b-instruct-2512  | timeout |      20003 | 2026-05-13 18:37
+(24 rows)
+

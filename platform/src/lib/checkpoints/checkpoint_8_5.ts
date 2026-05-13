@@ -28,6 +28,7 @@ import { generateText } from 'ai'
 import { resolveModel } from '@/lib/models/resolver'
 import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
 
 import {
   Checkpoint85OutputSchema,
@@ -38,7 +39,6 @@ import {
 } from './types'
 
 const CHECKPOINT_ID = 'checkpoint_8_5'
-const CHECKPOINT_MODEL = 'claude-sonnet-4-6'
 
 /** Max chars of synthesized text to include in prompt */
 const SYNTHESIS_PREVIEW_CHARS = 4000
@@ -78,9 +78,10 @@ export async function runCheckpoint8_5(input: Checkpoint85Input): Promise<Checkp
 
   try {
     const prompt = buildPrompt(input)
+    const checkpointModel = await getEffectiveModel('marsys', 'checkpoint_8_5', 'primary')
 
     const { text } = await generateText({
-      model: resolveModel(CHECKPOINT_MODEL),
+      model: resolveModel(checkpointModel),
       messages: [{ role: 'user', content: prompt }],
       maxOutputTokens: 1024,
     })

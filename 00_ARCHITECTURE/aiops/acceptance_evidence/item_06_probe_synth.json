@@ -1,0 +1,1 @@
+{"model_id":"gemini-2.5-pro","stack":"marsys","call_type":"synthesis","role":"primary","status":"pass","latency_ms":4452,"input_tokens":54,"output_tokens":253,"output_text":"","finish_reason":"length","cost_usd":0.0025975}

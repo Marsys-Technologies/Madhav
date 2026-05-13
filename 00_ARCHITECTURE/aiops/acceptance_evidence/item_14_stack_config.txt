@@ -1,0 +1,5 @@
+ scope  | active_stack |          updated_at           |          updated_by          
+--------+--------------+-------------------------------+------------------------------
+ global | gemini       | 2026-05-13 18:36:41.946698+00 | xl2wYZRPwsVgPSAgtn9XJ80Xkub2
+(1 row)
+

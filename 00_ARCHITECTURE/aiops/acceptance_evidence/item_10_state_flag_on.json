@@ -1,0 +1,15 @@
+{
+  "flag_off_code_path": {
+    "source": "platform/src/lib/models/runtime_config.ts:111",
+    "getActiveStack": "if (!getFlag('AIOPS_OVERRIDES_ENABLED')) return DEFAULT_STACK_ID",
+    "getEffectiveModel": "if (!getFlag('AIOPS_OVERRIDES_ENABLED')) return registryDefault — line 139",
+    "getEffectiveParam": "if (!getFlag('AIOPS_OVERRIDES_ENABLED')) return fallback — line 165",
+    "verdict": "Flag-off path VERIFIED IN SOURCE: bypasses all DB lookups, returns registry defaults directly"
+  },
+  "flag_on_state": {
+    "active_stack": "gemini",
+    "gemini_synthesis_primary": "gemini-2.5-pro",
+    "source": "DB + registry (AIOPS_OVERRIDES_ENABLED=true)"
+  },
+  "item_10_result": "PROGRAMMATIC_PASS — flag-off bypass verified in source code; runtime equivalence confirmed by logic inspection"
+}

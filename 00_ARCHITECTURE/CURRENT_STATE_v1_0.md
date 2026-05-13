@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.1
+version: 4.2
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5675,6 +5675,35 @@ Follow-up action documented in POST_GATE_II_FOLLOWUPS.md FU.3.
 The DEF-2 entry in Pipeline-Transform-S1's deferred_items ("compose_bundle() 0-tool
 fix") refers to the planner's bundle composition logic — NOT to the context_assembly
 step. These remain distinct.
+
+---
+
+## AIOps Phase 1 (Control Panel) — CODE-COMPLETE (2026-05-13)
+
+Branch `feature/aiops-control-panel` is code-complete after CP.5 close. CP.0–CP.5 all closed.
+Awaiting native acceptance per `00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md` before merge.
+
+**Concurrent workstream entry (concurrent_workstreams: aiops_phase_1):**
+
+```yaml
+aiops_phase_1:
+  active_since: 2026-05-13
+  phase_status: CODE_COMPLETE
+  branch: feature/aiops-control-panel
+  phases: [CP.0, CP.1, CP.2, CP.3, CP.4, CP.5]
+  all_phases_closed: true
+  commits_on_branch: 6   # one per phase
+  acceptance_artifact: 00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md
+  cutover_report: 00_ARCHITECTURE/aiops/CP5_CUTOVER_REPORT_v1_0.md
+  merge_status: AWAITING_NATIVE_ACCEPTANCE
+  next_native_action: >
+    Complete the 16-item checklist in CP5_NATIVE_ACCEPTANCE.md.
+    Merge feature/aiops-control-panel → main.
+    Set AIOPS_OVERRIDES_ENABLED=true in production env.
+    Schedule nightly health probe Cloud Scheduler job.
+  phase_2_status: NOT_STARTED  # Adapter Layer — future scope per AIOPS_MASTER_PLAN §14
+  phase_3_status: NOT_STARTED  # Consume UI Overhaul — future scope per AIOPS_MASTER_PLAN §14
+```
 
 ---
 
