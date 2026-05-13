@@ -507,25 +507,32 @@ disagreement_register_entry:
       result: "Verdict R1 (SPLIT) — recorded on parallel main-branch governance work session M3-W1-A4 2026-05-02 (commit 9faaf99). PAT.008 deprecated (deprecated_on: 2026-05-02); two successor patterns authored in PATTERN_REGISTER_v1_2.json: PAT.008-AL (Saturn/Capricorn/AL) confidence HIGH, PAT.008-KMC (Mercury/Karakamsa/Gemini) confidence HIGH. M3-A gate AC.M3A.4 declared unblocked under R1. NOTE: This R1 verdict was recorded in parallel with the R3 path on feature/phase-o-observatory; both verdicts cite session M3-W1-A4-DIS009-DISPOSITION but reflect different downstream dispositions (R3 in-place rewrite vs R1 deprecate-and-split). Surfaced to GOV-MERGE 2026-05-03 as a DIS.class.governance_conflict requiring native re-arbitration. PATTERN_REGISTER_v1_0 retains the R3 in-place rewrite; PATTERN_REGISTER_v1_2 carries the R1 successor patterns; both files coexist in the merged tree pending re-arbitration."
       timestamp: 2026-05-02
       session_id: M3-W1-A4-DIS009-DISPOSITION
-  status: verdict_recorded
+    - step: native_arbitration_final
+      result: >
+        FINAL ARBITRATION — R1 ACCEPTED. Native confirmed at Cowork-M5-S2-PLAN-AMENDMENT-2026-05-13:
+        R1 (SPLIT) is the canonical disposition. PAT.008-AL and PAT.008-KMC are the two successor
+        patterns. Both confirmed from FORENSIC L1 data without JH export required.
+        PAT.008-AL: Arudha Lagna = Capricorn (10th house from Lagna). Lord = Saturn (exalted 7H
+        Libra). L1 grounding: FORENSIC v8.0 §10.1 (AL calculation). Native verbatim: 'I would
+        like to confirm that my Aruddha Lagna is in the tenth house, Capricorn.' Confirmation
+        session: Cowork-M5-S2-PLAN-AMENDMENT-2026-05-13. Confidence: HIGH.
+        PAT.008-KMC: Karakamsa = Gemini. Lord = Mercury. L1 grounding: FORENSIC v8.0 §20.1
+        (Moon D9 = Gemini; AK = Moon at 27°02', Atmakaraka by highest degree). Mercury rules
+        Gemini = Karakamsa sign. No JH export required — FORENSIC is authoritative. Confirmed
+        from FORENSIC §20.1 at Cowork-M5-S2. Confidence: HIGH.
+        R3 (in-place rewrite) in PATTERN_REGISTER_v1_0 superseded by R1. M5 work proceeds
+        under R1 canonical disposition. DIS.009 is formally CLOSED.
+      timestamp: 2026-05-13
+      session_id: M5-A-S1
+  status: RESOLVED_R1
   resolution: >
-    Two parallel native verdicts recorded — pending re-arbitration in next governance session.
-    Verdict R3 (RE-GROUND), 2026-05-01, M3-W1-A4-DIS009-DISPOSITION (feature/phase-o-observatory):
-    PAT.008 mechanism text rewritten in-place to make the two-step architecture explicit; AL
-    component L1-clean and active, D9 Karakamsa component carries [EXTERNAL_COMPUTATION_REQUIRED]
-    pending JH export per ED.1. Saturn-Mercury identity axis across the Capricorn-Gemini spine is
-    the corrected mechanism (Saturn → disposits → Mercury → rules → Karakamsa). M4-A-S2-T3-SHADOW-PROTOCOL
-    (2026-05-02) ratified resolved-R3 status under NAP.M4.3 Option Y carry-forward.
-    Verdict R1 (SPLIT), 2026-05-02, parallel main-branch session (commit 9faaf99): PAT.008
-    deprecated; successor patterns PAT.008-AL + PAT.008-KMC authored in PATTERN_REGISTER_v1_2.json.
-    Cross-branch surfacing: at GOV-MERGE 2026-05-03, both verdicts preserved in the merged tree —
-    PATTERN_REGISTER_v1_0.{md,json} carries R3 (in-place rewrite); PATTERN_REGISTER_v1_2.json carries
-    R1 (deprecate-and-split). Subsequent native arbitration session must reconcile (a) whether
-    R3-rewrite or R1-split is the canonical disposition, and (b) the consequent state of M4-era
-    work that proceeded under R3 framing (LL.1/LL.2/LL.3 calibration weights, NAP.M4.3
-    carry-forward, M4-A-S2-T3 shadow-protocol gate). Until then, status held at verdict_recorded.
-  resolved_on: 2026-05-02
-  resolved_by_session: M3-W1-A4-DIS009-DISPOSITION
+    CLOSED at M5-A-S1 (2026-05-13). Native final arbitration: R1 (SPLIT) accepted. PAT.008
+    deprecated; PAT.008-AL (Arudha Lagna = Capricorn, lord Saturn exalted 7H, FORENSIC §10.1)
+    and PAT.008-KMC (Karakamsa = Gemini, lord Mercury, FORENSIC §20.1) are the two L1-grounded
+    successor patterns. Both confirmed verbatim from native at Cowork-M5-S2-PLAN-AMENDMENT
+    (2026-05-13). No JH export required. R3 disposition superseded. AC.M5A.13 discharged.
+  resolved_on: 2026-05-13
+  resolved_by_session: M5-A-S1
   state_hashes:
     side_a_before: null
     side_a_after: null

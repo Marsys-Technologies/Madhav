@@ -1,0 +1,72 @@
+{
+  "rubric_id": "eval_rubric_v1_0",
+  "version": "1.0",
+  "authored_session": "M5-A-S1",
+  "authored_date": "2026-05-13",
+  "evaluator_model": "deepseek",
+  "purpose": "MARSYS-JIS answer quality rubric for DeepSeek-based eval. Scores each dimension 0-10.",
+  "dimensions": {
+    "b11_whole_chart_read": {
+      "score": null,
+      "notes": "",
+      "definition": "Did the response consult L2.5 Holistic Synthesis (MSR + UCN + CDLM + CGM + RM) before answering domain-specific content? A score of 10 = clear evidence of multi-layer synthesis (cross-domain signals surfaced, CDLM links cited). Score of 0 = domain-siloed answer with no L2.5 synthesis. Score of 5 = some synthesis language but no concrete L2.5 signal IDs cited.",
+      "scoring_anchors": {
+        "0": "No L2.5 consultation. Purely domain-siloed answer.",
+        "3": "Mentions multi-layer context vaguely but cites no specific signals.",
+        "5": "Cites some MSR/CDLM signals but misses obvious cross-domain links.",
+        "8": "Strong L2.5 synthesis; cites MSR, CDLM, or RM; surfaces cross-domain tensions.",
+        "10": "Exemplary whole-chart read; demonstrates all five L2.5 sources consulted; no siloing."
+      }
+    },
+    "citation_completeness": {
+      "score": null,
+      "notes": "",
+      "definition": "Does the response properly cite L1 source references (FORENSIC §N, MSR signal IDs SIG.MSR.NNN, LEL event IDs) for factual claims? A fabricated computation or uncited claim fails this dimension.",
+      "scoring_anchors": {
+        "0": "No citations for any factual claims.",
+        "3": "Some citations but major claims are unsourced.",
+        "5": "Most claims have approximate citations; minor gaps.",
+        "8": "Strong citation discipline; all key claims cited; minor format issues only.",
+        "10": "Every factual claim carries a specific L1 or L2.5 source citation."
+      }
+    },
+    "calibration_language": {
+      "score": null,
+      "notes": "",
+      "definition": "Does the response use appropriately calibrated probabilistic language (e.g., 'likely', 'with HIGH confidence', 'P=0.7±0.1') rather than over-confident assertions? Does it acknowledge uncertainty where warranted?",
+      "scoring_anchors": {
+        "0": "All claims made as certainties; no hedging for uncertain matters.",
+        "3": "Occasional hedging but most uncertain claims stated as fact.",
+        "5": "Reasonable calibration; some over-assertion on contested points.",
+        "8": "Good calibration; confidence levels stated for most probabilistic claims.",
+        "10": "Exemplary calibration; explicit confidence levels with uncertainty ranges where applicable."
+      }
+    },
+    "b10_no_fabricated_computation": {
+      "score": null,
+      "notes": "",
+      "definition": "Did the response avoid fabricating numerical astrological computations (degrees, Shadbala scores, Narayana Dasha periods) that require Jagannatha Hora or Swiss Ephemeris? Fabricated values score 0. Properly flagged [EXTERNAL_COMPUTATION_REQUIRED] scores 10.",
+      "scoring_anchors": {
+        "0": "Fabricates specific numerical values (degrees, Shadbala scores) without source.",
+        "3": "Asserts derived values without explicit computation citation.",
+        "5": "Mostly avoids fabrication but has 1-2 uncited numerical claims.",
+        "8": "No fabrication; uses L1 values where available; appropriately defers computation.",
+        "10": "Perfect B.10 compliance; any required but missing computation flagged [EXTERNAL_COMPUTATION_REQUIRED]."
+      }
+    },
+    "overall": {
+      "score": null,
+      "notes": "",
+      "definition": "Holistic assessment of answer quality for an acharya-grade Jyotish instrument. Would a senior independent Jyotish acharya find this answer at their level, above their level, or below? Weight B.11 and B.10 most heavily.",
+      "scoring_anchors": {
+        "0": "Generic, siloed, or fabricated. Fails basic instrument standards.",
+        "3": "Below acharya level; missing key synthesis or calibration.",
+        "5": "Adequate but not distinctive; good L2.5 usage lacking depth.",
+        "8": "Acharya-grade; demonstrates synthesis most astrologers wouldn't surface alone.",
+        "10": "Reveals something unexpected; synthesis above what a single human acharya could hold in working memory."
+      }
+    }
+  },
+  "scoring_formula": "weighted_overall = 0.30 * b11_whole_chart_read + 0.20 * citation_completeness + 0.20 * calibration_language + 0.20 * b10_no_fabricated_computation + 0.10 * overall",
+  "pass_threshold": 7.0
+}

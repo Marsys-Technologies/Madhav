@@ -8,7 +8,7 @@
 |---|---|
 | **`UCN_v4_0.md`** | **Unified Chart Narrative — canonical single-file mother document** (merged v1.0→v1.1→v2.0→v3.0). **Cite this** for new L3 work. |
 | **`CGM_v9_0.md`** | Chart Graph Model v9.0 — nodes/edges feeding MSR, CDLM, RM |
-| **`MSR_v3_0.md`** | Master Signal Register (**499** signals v3.0) |
+| **`MSR_v3_0.md`** | Master Signal Register (**514** signals v3.1) |
 | **`CDLM_v1_1.md`** | Cross-Domain Linkage Matrix (9×9, v8.0-corrected cells) |
 | **`RM_v2_0.md`** | Resonance Map |
 | **`RED_TEAM_L2_5_v1_0.md`** | Red-team audit of the L2.5 stack |
