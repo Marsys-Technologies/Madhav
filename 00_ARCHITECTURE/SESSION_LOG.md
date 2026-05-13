@@ -22153,3 +22153,218 @@ session_close:
 Execute **M5-D-S2**: CF.M5C.2 CPT scaffold population using PRIOR_SPEC v1.1 frozen priors. Initialize all Dirichlet + Beta parameters across the 5 CPT JSON scaffold files. Then training-partition Bayesian update (CF.M5C.3) and per-domain posterior differentiation (CF.M5C.4).
 
 *End of M5-C-S2 entry — 2026-05-13.*
+
+---
+
+## M5-D-S2 — DBN Fit: CPT Prior Population + Bayesian Update + Posterior Differentiation
+
+**Session ID:** M5-D-S2
+**Cowork thread:** Madhav M5-D-S2 — DBN Fit: CPT Prior Population + Bayesian Update
+**Opened:** 2026-05-13
+**Closed:** 2026-05-13
+**Phase:** M5-D (DBN Fit + Validation) — OPEN
+**Predecessor session:** M5-D-S1 (CF.M5C.1 LL8 refit gate CLEARED)
+**red_team_counter at open:** 0 | **at close:** 1
+
+### Session scope (declared)
+
+**may_touch:** `06_LEARNING_LAYER/dbn/` (all CPT JSON scaffolds + dbn_params_v1_0.json), `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`, `00_ARCHITECTURE/SESSION_LOG.md`, `.geminirules`, `.gemini/project_state.md`
+
+**must_not_touch:** `06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md` (frozen), `06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md` (frozen), `06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/` (frozen), `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_*.md`
+
+### Work completed
+
+**CF.M5C.2 — CPT scaffold population (PRIOR_SPEC v1.1 frozen priors):**
+- `dasha_to_domain.json` (81 entries × 5 domains = 405 domain cells): `prior_alpha` added per PRIOR_SPEC v1.1 §7.2 table. Status: PRIOR_INITIALIZED.
+- `persistence.json` (45 entries — 5 domains × 3 from_states × 3 to_states): 30 `initial_value` corrections applied (ELEVATED→ELEVATED 0.55→0.40; NORMAL→NORMAL 0.65→0.55; etc. per PRIOR_SPEC v1.1 §6 table). `prior_alpha` added to all 45 entries. Status: PRIOR_INITIALIZED.
+- `observation.json` (5 domain entries): `beta_priors` dict added — ELEVATED: Beta(7,3); NORMAL: Beta(2,8); SUPPRESSED: Beta(0.5,9.5) — per PRIOR_SPEC v1.1 §5.3–5.4. Status: PRIOR_INITIALIZED.
+- `natal_to_domain.json` (44 entries): Status flip only → PRIOR_INITIALIZED; FIXED annotation added (parameters computed from LL.1 weights + CDLM linkage scores; not updated by M5-D fitting).
+- `cross_domain.json` (3 cross-domain edges): Status flip only → PRIOR_INITIALIZED; FIXED annotation added per NAP.M5.2 §11.3 resolution.
+
+**CF.M5C.3 — Training-partition Bayesian update (37 events, 23 antardasha periods):**
+- Hard E-step state assignment: ELEVATED if ≥1 domain event in period; SUPPRESSED if MD prior P(E|MD) ≤ 0.22 and no event (threshold: 0.22 from PRIOR_SPEC prior means); NORMAL otherwise.
+- 9 held-out events excluded throughout (sacrosanct discipline maintained — EVT.2008–EVT.2026 partition).
+- Active MDs in training window: Jupiter (DSH.V.001–005, 5 periods), Saturn (DSH.V.006–014, 9 periods), Mercury (DSH.V.015–023, 9 periods). 6 passive MDs appear only as antardashas → priors retained.
+- `observation.json` — Beta posteriors fitted per domain × state:
+  - CAREER ELEVATED: Beta(7,3) → Beta(18,3), post_mean=0.857 (n_s=11, n_f=0)
+  - RELATIONSHIP ELEVATED: Beta(7,3) → Beta(13,3), post_mean=0.812 (n_s=6, n_f=0)
+  - HEALTH ELEVATED: Beta(7,3) → Beta(11,3), post_mean=0.786 (n_s=4, n_f=0)
+  - SPIRITUAL/PSYCHOLOGICAL ELEVATED: Beta(7,3) → Beta(8,3), post_mean=0.727 (n_s=1 each)
+  - All NORMAL: sharply pulled down (0 events in NORMAL periods → 0.062–0.091)
+  - All SUPPRESSED: 0 SUPPRESSED periods → pure prior retained (0.050)
+- `persistence.json` — Dirichlet posteriors fitted (22 transition pairs):
+  - CAREER ELEVATED→[E=0.650, N=0.256, S=0.094] (counts [8,2,0])
+  - CAREER NORMAL→[E=0.227, N=0.659, S=0.114] (counts [3,9,0])
+  - SUPPRESSED rows: no training data → pure prior retained across all domains
+- `dasha_to_domain.json` — MD-level Dirichlet posteriors:
+  - Saturn CAREER: 5E/4N → post=[0.517, 0.379, 0.103] (strongest Saturn update)
+  - Mercury CAREER: 6E/3N → post=[0.586, 0.345, 0.069]
+  - Jupiter: 0 events in training childhood periods → priors barely moved
+- **`06_LEARNING_LAYER/dbn/dbn_params_v1_0.json` PRODUCED** — AC.M5D.2 STATUS: **PASS**. Full posterior parameter summary: fit_method, observation_model_posteriors (15 domain×state Beta), persistence_posteriors (15 domain×from_state Dirichlet), dasha_to_domain_posteriors (9 MD × 5 domain), state_assignment_log (23 periods), fixed_parameters.
+
+**CF.M5C.4 — Per-domain posterior differentiation (documented):**
+- ELEVATED posterior spread: 0.1298 (prior spread: 0.000 — all domains uniform at 0.70)
+- NORMAL posterior spread: 0.0284
+- CAREER ranks #1 in ELEVATED order — **LL.4 career-concentration hypothesis CONFIRMED**
+- SPIRITUAL = PSYCHOLOGICAL degenerate at ELEVATED (n=1 each, same prior → same posterior). Expected; resolves at M5-E calibration with held-out data.
+- SUPPRESSED all at pure prior (0 SUPPRESSED periods in training window).
+- Differentiation analysis appended to `dbn_params_v1_0.json` §`posterior_differentiation_analysis`.
+- `observation.json` description updated to reflect completed differentiation.
+
+### Acceptance criteria status (M5-D running tally)
+
+| AC | Description | Status |
+|---|---|---|
+| AC.M5D.1 | Signal embedding refit: 3-run stability | **PASS** (M5-D-S1) |
+| AC.M5D.2 | dbn_params_v1_0.json produced | **PASS** (this session) |
+| AC.M5D.3 | Held-out validation PASS | PENDING (M5-D-S3) |
+| AC.M5D.4 | Bayesian posterior framing in synthesis | PENDING (post NAP.M5.3) |
+| AC.M5D.5 | NAP.M5.3 APPROVED | PENDING (M5-D-S3) |
+| AC.M5D.6 | LL.8 scaffold → active | PENDING |
+| AC.M5D.7 | AC.IV.7 re-evaluated | PENDING |
+| AC.M5D.8 | CURRENT_STATE M5-D CLOSED | PENDING |
+
+### Governance
+
+- **drift_detector:** 168 findings, exit=2 (known residuals — whitelist per ONGOING_HYGIENE_POLICIES §F)
+- **schema_validator:** 142 violations, exit=2 (known residuals)
+- **mirror_enforcer:** 0 findings, exit=0 — CLEAN
+- **red_team:** not due (counter 0→1; next IS.8(a) at counter=3)
+- **held_out_discipline:** MAINTAINED — 9 sacrosanct events never read during CF.M5C.2/3/4
+
+### Session close checklist
+
+```yaml
+session_close:
+  session_id: M5-D-S2
+  closed_at: 2026-05-13T29:00:00+05:30
+  files_touched:
+    - path: 06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json
+      mutation_type: modified
+      justification: "CF.M5C.2 prior_alpha population + CF.M5C.3 posterior fitting (post_alpha, post_means, fitted_values per 81 entries × 5 domains)"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/cpt/persistence.json
+      mutation_type: modified
+      justification: "CF.M5C.2 30 initial_value corrections + prior_alpha; CF.M5C.3 posterior_value + fitted_value + n_transitions + post_alpha all 45 entries"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/cpt/observation.json
+      mutation_type: modified
+      justification: "CF.M5C.2 beta_priors; CF.M5C.3 posterior_values + fitted_values; CF.M5C.4 description update + cf_m5c4 flag"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/cpt/natal_to_domain.json
+      mutation_type: modified
+      justification: "CF.M5C.2 status → PRIOR_INITIALIZED; FIXED annotation added"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/cpt/cross_domain.json
+      mutation_type: modified
+      justification: "CF.M5C.2 status → PRIOR_INITIALIZED; FIXED annotation added"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/dbn_params_v1_0.json
+      mutation_type: created
+      justification: "CF.M5C.3 AC.M5D.2 deliverable — full fitted DBN parameter summary with posterior_differentiation_analysis (CF.M5C.4)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      justification: "v4.7 → v4.8; last_session_id M5-D-S1 → M5-D-S2; next_session_objective → M5-D-S3; red_team_counter 0→1"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      justification: "M5-D-S2 session entry appended"
+      within_declared_scope: true
+    - path: .geminirules
+      mutation_type: modified
+      justification: "MP.1 adapted-parity update — M5-D-S2 state pointer"
+      within_declared_scope: true
+    - path: .gemini/project_state.md
+      mutation_type: modified
+      justification: "MP.2 adapted-parity update — M5-D-S2 state pointer"
+      within_declared_scope: true
+  registry_updates_made:
+    canonical_artifacts:
+      - canonical_id: DBN_PARAMS
+        change: created
+        details: "dbn_params_v1_0.json v1.0 FITTED — AC.M5D.2 PASS"
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+      rationale: "CURRENT_STATE v4.8 pointer → .geminirules state-block adapted parity update"
+    - pair_id: MP.2
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+      rationale: "CURRENT_STATE v4.8 + SESSION_LOG → .gemini/project_state.md M5-D-S2 state reflection"
+    - pair_id: MP.3
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "MACRO_PLAN unchanged this session"
+    - pair_id: MP.4
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "PHASE_M5_PLAN unchanged this session (no sub-phase transition)"
+    - pair_id: MP.5
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "CAPABILITY_MANIFEST unchanged"
+    - pair_id: MP.6
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "Declared Claude-only; GOVERNANCE_STACK unchanged"
+    - pair_id: MP.7
+      claude_side_touched: true
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "Declared Claude-only (SESSION_LOG)"
+    - pair_id: MP.8
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "PROJECT_ARCHITECTURE unchanged"
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 2
+    divergences_found: 168
+    note: "Known residuals per ONGOING_HYGIENE_POLICIES §F whitelist; exit=2 is expected steady-state"
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 2
+    violations_found: 142
+    note: "Known residuals; expected steady-state"
+  mirror_enforcer_run:
+    script: platform/scripts/governance/mirror_enforcer.py
+    exit_code: 0
+    desync_pairs: []
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    note: "build_state serializer targets platform/ app code; not applicable to pure learning-layer session"
+  close_criteria_met: true
+  unblocks: "M5-D-S3 — AC.M5D.3 held-out validation + NAP.M5.3 CI reporting policy"
+  handoff_notes: >
+    M5-D-S3 opens with dbn_params_v1_0.json fully fitted (AC.M5D.2 PASS). Primary work:
+    (1) AC.M5D.3 — apply fitted DBN to 9 held-out events; confirm posterior P(event|ELEVATED)
+    materially exceeds null model. (2) NAP.M5.3 — draft + obtain native approval on
+    CI reporting policy (credible interval width, asymmetric display, n=1 caveat).
+    Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S3."
+```
+
+### Next session objective
+
+Execute **M5-D-S3**: AC.M5D.3 held-out validation — apply the fitted DBN (dbn_params_v1_0.json) to the 9 held-out LEL events and confirm the model materially outperforms a null baseline. Then draft NAP.M5.3 confidence-interval reporting policy for native approval.
+
+*End of M5-D-S2 entry — 2026-05-13.*

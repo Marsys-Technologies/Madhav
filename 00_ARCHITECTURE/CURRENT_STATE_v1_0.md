@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.7
+version: 4.8
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,40 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.8 (2026-05-13, M5-D-S2):
+    **M5-D-S2 CLOSED. CF.M5C.2/3/4 COMPLETE. AC.M5D.2 PASS. DBN PARAMS FITTED.**
+    Key outcomes: (1) CF.M5C.2 COMPLETE — All 5 CPT JSON scaffold files populated with
+    PRIOR_SPEC v1.1 frozen priors. dasha_to_domain.json (81 entries × 5 domains),
+    persistence.json (45 entries), observation.json (5 domain entries), natal_to_domain.json
+    (44 entries FIXED), cross_domain.json (3 edges FIXED) — all status PRIOR_INITIALIZED.
+    30 initial_value corrections applied to persistence.json to match PRIOR_SPEC v1.1
+    means (ELEVATED→ELEVATED: 0.55→0.40, NORMAL→NORMAL: 0.65→0.55, etc.).
+    (2) CF.M5C.3 COMPLETE — Hard E-step conjugate Bayesian update on 37 training events
+    across 23 antardasha periods (DSH.V.001–023). All 9 held-out events excluded
+    (sacrosanct rule maintained). State assignment: ELEVATED if ≥1 domain event in period;
+    SUPPRESSED if MD prior P(E)≤0.22 and no event (threshold never triggered — 0 SUPPRESSED
+    periods in training); NORMAL otherwise. Fitted CPT files: dasha_to_domain.json (3 active
+    MDs updated: Jupiter 5p, Saturn 9p, Mercury 9p; 6 passive MDs retain priors);
+    persistence.json (all 45 entries have posterior_value + n_transitions);
+    observation.json (all 5 domain × 3 state Beta posteriors updated).
+    dbn_params_v1_0.json PRODUCED at 06_LEARNING_LAYER/dbn/dbn_params_v1_0.json —
+    AC.M5D.2 STATUS: PASS. Key posteriors: CAREER ELEVATED Beta(18,3) post_mean=0.857
+    (11/11 periods had events); RELATIONSHIP ELEVATED Beta(13,3) post_mean=0.812;
+    HEALTH ELEVATED Beta(11,3) post_mean=0.786; SPIRITUAL/PSYCHOLOGICAL ELEVATED
+    Beta(8,3) post_mean=0.727 (n=1 each — degeneracy expected). NORMAL state:
+    all 5 domains sharply pulled down (0 events in NORMAL periods → 0.062–0.091).
+    SUPPRESSED: 0 periods observed → retains pure prior 0.050 across all domains.
+    (3) CF.M5C.4 COMPLETE — Per-domain posterior differentiation documented in
+    observation.json (updated description + cf_m5c4 flag) and dbn_params_v1_0.json
+    (posterior_differentiation_analysis block). Key findings: ELEVATED spread 0.1298
+    (prior spread 0.000); NORMAL spread 0.0284; CAREER ranks #1 ELEVATED (LL.4
+    hypothesis CONFIRMED); SPIRITUAL=PSYCHOLOGICAL degenerate at n=1 (expected; resolves
+    at M5-E calibration); 0 SUPPRESSED periods → SUPPRESSED prior-anchored.
+    red_team_counter: 0→1 (M5-D-S2 substantive session — DBN fitting + posterior docs).
+    active_phase_plan_sub_phase: M5-D OPEN (continued). last_session_id → M5-D-S2.
+    next_session_objective → M5-D-S3 (AC.M5D.3 held-out validation + NAP.M5.3
+    confidence-interval reporting policy for M5-D close).
+    file_updated_at → 2026-05-13T29:00:00+05:30. file_updated_by_session → M5-D-S2.
   - v4.7 (2026-05-13, M5-D-S1):
     **M5-D-S1 CLOSED. CF.M5C.1 COMPLETE. LL8 EMBEDDING REFIT GATE CLEARED. IS.8(a) PASS.**
     Key outcomes: (1) CF.M5C.1 COMPLETE — LL8 Embedding Refit 3-run stability gate CLEARED.
@@ -2701,7 +2735,7 @@ changelog:
       last_session_id → Phase_14G_Lockdown_Verification; last_session_* block populated.
       active_phase_plan_sub_phase updated: Phase 14 SEALED — Lockdown Verification complete.
       red_team_counter unchanged (Phase 14G is parallel platform work — does not increment).
-      next_session_objective: Madhav_M2A_Exec_15 (B.9) or Phase 11B (legacy deletion).
+      next_session_objective: M5-D-S3 (AC.M5D.3 held-out validation — apply fitted DBN to 9 held-out LEL events; NAP.M5.3 confidence-interval reporting policy draft)
       Deliverables:
         verification_artifacts/PHASE_14G/ produced: schema_snapshot.sql, data_audit.json,
           tool_registry.json, schema_validator.txt, drift_detector.txt, mirror_enforcer.txt,
@@ -3057,7 +3091,7 @@ current_state:
     # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
   active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M5-D OPEN (in flight; LL8 embedding refit gate CLEARED; CPT fitting unblocked per CF.M5C.2).
+    M5-D OPEN (in flight; CF.M5C.2+3+4 COMPLETE; AC.M5D.2 PASS — dbn_params_v1_0.json PRODUCED; next: AC.M5D.3 held-out validation + NAP.M5.3 CI policy).
     M5-D entry: CF.M5C.1 COMPLETE — REFIT_GATE_v1_0.md STABLE/CLEARED (30/30/30 top-1 pass,
     hash-stable, matrix delta 0.00000000). M5-C CLOSED (2026-05-13, M5-C-S2; sealing artifact: 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md).
     M5-C closure: NAP.M5.2 APPROVED; PRIOR_SPEC_v1_0.md v1.1 APPROVED (priors FROZEN);
@@ -3382,7 +3416,7 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 0
+  red_team_counter: 1
     # M5-D-S1 (2026-05-13) — counter 2→3→0. IS.8(a) FIRED and DISCHARGED. 8-axis PASS.
     # Refit gate verdict validity; RC1/RC2/RC3 classification; corpus source; signal ID source;
     # LL8.O1/O2/O3 resolution; scope compliance; versioning discipline; mirror obligations.
@@ -3619,7 +3653,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-D-S1
+  last_session_id: M5-D-S2
     # M5-D-S1 (2026-05-13). CF.M5C.1 COMPLETE. LL8 Embedding Refit gate CLEARED (STABLE).
     # REFIT_GATE_v1_0.md authored (PASS/CLEARED). stability_report.md authored (STABLE).
     # IS.8(a) DISCHARGED — 8-axis PASS. red_team_counter: 2→3→0.
@@ -4442,18 +4476,18 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-D-S2 — CPT scaffold population (CF.M5C.2). LL8 refit gate CLEARED at M5-D-S1.
-    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S2."
-    Entry gate (all satisfied): LL8 refit gate CLEARED ✓ (REFIT_GATE_v1_0.md STABLE);
-    PRIOR_SPEC v1.1 FROZEN ✓; M5-C sealing artifact committed ✓.
-    M5-D-S2 primary work:
-      — CF.M5C.2: CPT scaffold population — use PRIOR_SPEC v1.1 frozen priors as
-        initialization for all Dirichlet + Beta parameters across 5 CPT JSON scaffolds
-        (natal_to_domain, dasha_to_domain, persistence, cross_domain, observation).
-      — CF.M5C.3: Training-partition Bayesian update — condition CPTs on ~37 training
-        LEL events; produce posterior distributions for all fitted parameters.
-      — CF.M5C.4: Per-domain posterior differentiation — 5 domain-specific Beta
-        posteriors per state (ELEVATED, NORMAL, SUPPRESSED).
+    M5-D-S3 — AC.M5D.3 held-out validation + NAP.M5.3 CI reporting policy.
+    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S3."
+    Entry gate (all satisfied): AC.M5D.2 PASS ✓ (dbn_params_v1_0.json produced);
+    CF.M5C.2+3+4 COMPLETE ✓; M5-D-S2 commit on feature/m5-probabilistic-model ✓.
+    M5-D-S3 primary work:
+      — AC.M5D.3: Held-out validation — apply fitted DBN to 9 held-out LEL events
+        (EVT.2008–EVT.2026); confirm posterior P(event|ELEVATED) materially exceeds
+        null model (random baseline) within declared PRIOR_SPEC tolerance.
+      — NAP.M5.3: Confidence-interval reporting policy — draft and obtain native
+        approval on: credible interval width (80% vs 95%), asymmetric display,
+        n=1 caveat language, disclosure tier language for Bayesian posterior outputs.
+      — AC.M5D.4: Bayesian posterior framing in synthesis outputs (if NAP.M5.3 approved).
       — CF.M5C.5: Retroactive Gemini ratification of PRIOR_SPEC §10.1 (attempt).
       — AC.M5B.6: Topology risk register (deferred from M5-C).
       — AC.IV.7: Latency telemetry (deferred from M5-B-S2; requires 7-day prod window).
@@ -5229,8 +5263,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-14T03:00:00+05:30
-  file_updated_by_session: M5-D-S1
+  file_updated_at: 2026-05-13T29:00:00+05:30
+  file_updated_by_session: M5-D-S2
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

@@ -1,12 +1,12 @@
 {
   "cpt_id": "natal_to_domain",
-  "version": "scaffold_M5-B-S2",
-  "status": "UNFITTED_SCAFFOLD",
-  "fit_session": null,
+  "version": "prior_init_M5-D-S2",
+  "status": "PRIOR_INITIALIZED",
+  "fit_session": "M5-D-S2",
   "schema_version": "1.0",
   "produced_during": "M5-B-S2",
   "produced_on": "2026-05-13",
-  "derivation": "edge_weight = LL.1_production_weight x CDLM_linkage_strength_score (HIGH=1.0, MED=0.6, LOW=0.2, ABSENT=0.0)",
+  "derivation": "CF.M5C.2 \u2014 status updated to PRIOR_INITIALIZED; no value changes. All 44 natal-to-domain edge weights are FIXED per PRIOR_SPEC \u00a73.1. Edge weight = LL.1_production_weight \u00d7 CDLM_linkage_strength_score. Fixing avoids double-counting M4 LL.1 calibration evidence. See DBN_TOPOLOGY \u00a74.1 for full 44-edge inventory.",
   "domains": [
     "CAREER",
     "HEALTH",
@@ -424,5 +424,8 @@
       "pending_promotion": false,
       "u2_new_entry": true
     }
-  ]
+  ],
+  "prior_spec_version": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "prior_init_at": "M5-D-S2 (2026-05-13)",
+  "prior_type": "FIXED \u2014 degenerate point-mass prior per PRIOR_SPEC \u00a73.1; LL.1 weights \u00d7 CDLM linkage scores locked at topology freeze"
 }

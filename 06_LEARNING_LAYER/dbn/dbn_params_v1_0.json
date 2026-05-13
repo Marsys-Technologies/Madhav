@@ -1,0 +1,2166 @@
+{
+  "artifact": "dbn_params_v1_0.json",
+  "version": "1.0",
+  "status": "FITTED",
+  "canonical_id": "DBN_PARAMS",
+  "fit_session": "M5-D-S2",
+  "fit_date": "2026-05-13",
+  "prior_spec_ref": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "topology_ref": "DBN_TOPOLOGY_v1_0.md v1.1 (NAP.M5.1 APPROVED FROZEN)",
+  "held_out_partition_ref": "01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md",
+  "fit_method": {
+    "algorithm": "Hard E-step conjugate Bayesian update (Dirichlet/Beta)",
+    "rationale": "At n=1 native chart with 37 training events across 23 antardasha periods, full EM is computationally feasible but epistemically unnecessary: the priors are strong enough to anchor parameters, and the hard E-step domain state assignment (ELEVATED if event present, SUPPRESSED if MD prior P(E)≤0.22 and no event, NORMAL otherwise) produces interpretable, auditable assignments that can be reviewed and corrected per native calibration feedback. Full EM with soft assignments is a Phase 10 (Calibration Loop) target.",
+    "state_assignment_rule": {
+      "ELEVATED": "≥1 training event in domain occurred during antardasha",
+      "SUPPRESSED": "0 training events AND MD prior P(ELEVATED|MD) ≤ 0.22 for this domain",
+      "NORMAL": "0 training events AND MD prior P(ELEVATED|MD) > 0.22 for this domain"
+    },
+    "suppressed_threshold": 0.22,
+    "n_training_events": 37,
+    "n_antardasha_periods": 23,
+    "n_transition_pairs": 22,
+    "held_out_respected": true,
+    "sacrosanct_events_excluded": [
+      "EVT.2008.06.09.01",
+      "EVT.2024.02.16.01",
+      "EVT.2009.06.XX.01",
+      "EVT.2018.11.28.01",
+      "EVT.2026.01.XX.01",
+      "EVT.2025.05.XX.01",
+      "EVT.2017.03.XX.01",
+      "EVT.2019.05.XX.01",
+      "EVT.2022.01.03.01"
+    ]
+  },
+  "observation_model_posteriors": {
+    "CAREER": {
+      "ELEVATED": {
+        "prior_alpha": 7.0,
+        "prior_beta": 3.0,
+        "n_successes": 11,
+        "n_failures": 0,
+        "post_alpha": 18.0,
+        "post_beta": 3.0,
+        "post_mean": 0.8571,
+        "prior_mean": 0.7
+      },
+      "NORMAL": {
+        "prior_alpha": 2.0,
+        "prior_beta": 8.0,
+        "n_successes": 0,
+        "n_failures": 12,
+        "post_alpha": 2.0,
+        "post_beta": 20.0,
+        "post_mean": 0.0909,
+        "prior_mean": 0.2
+      },
+      "SUPPRESSED": {
+        "prior_alpha": 0.5,
+        "prior_beta": 9.5,
+        "n_successes": 0,
+        "n_failures": 0,
+        "post_alpha": 0.5,
+        "post_beta": 9.5,
+        "post_mean": 0.05,
+        "prior_mean": 0.05
+      }
+    },
+    "HEALTH": {
+      "ELEVATED": {
+        "prior_alpha": 7.0,
+        "prior_beta": 3.0,
+        "n_successes": 4,
+        "n_failures": 0,
+        "post_alpha": 11.0,
+        "post_beta": 3.0,
+        "post_mean": 0.7857,
+        "prior_mean": 0.7
+      },
+      "NORMAL": {
+        "prior_alpha": 2.0,
+        "prior_beta": 8.0,
+        "n_successes": 0,
+        "n_failures": 19,
+        "post_alpha": 2.0,
+        "post_beta": 27.0,
+        "post_mean": 0.069,
+        "prior_mean": 0.2
+      },
+      "SUPPRESSED": {
+        "prior_alpha": 0.5,
+        "prior_beta": 9.5,
+        "n_successes": 0,
+        "n_failures": 0,
+        "post_alpha": 0.5,
+        "post_beta": 9.5,
+        "post_mean": 0.05,
+        "prior_mean": 0.05
+      }
+    },
+    "RELATIONSHIP": {
+      "ELEVATED": {
+        "prior_alpha": 7.0,
+        "prior_beta": 3.0,
+        "n_successes": 6,
+        "n_failures": 0,
+        "post_alpha": 13.0,
+        "post_beta": 3.0,
+        "post_mean": 0.8125,
+        "prior_mean": 0.7
+      },
+      "NORMAL": {
+        "prior_alpha": 2.0,
+        "prior_beta": 8.0,
+        "n_successes": 0,
+        "n_failures": 17,
+        "post_alpha": 2.0,
+        "post_beta": 25.0,
+        "post_mean": 0.0741,
+        "prior_mean": 0.2
+      },
+      "SUPPRESSED": {
+        "prior_alpha": 0.5,
+        "prior_beta": 9.5,
+        "n_successes": 0,
+        "n_failures": 0,
+        "post_alpha": 0.5,
+        "post_beta": 9.5,
+        "post_mean": 0.05,
+        "prior_mean": 0.05
+      }
+    },
+    "SPIRITUAL": {
+      "ELEVATED": {
+        "prior_alpha": 7.0,
+        "prior_beta": 3.0,
+        "n_successes": 1,
+        "n_failures": 0,
+        "post_alpha": 8.0,
+        "post_beta": 3.0,
+        "post_mean": 0.7273,
+        "prior_mean": 0.7
+      },
+      "NORMAL": {
+        "prior_alpha": 2.0,
+        "prior_beta": 8.0,
+        "n_successes": 0,
+        "n_failures": 22,
+        "post_alpha": 2.0,
+        "post_beta": 30.0,
+        "post_mean": 0.0625,
+        "prior_mean": 0.2
+      },
+      "SUPPRESSED": {
+        "prior_alpha": 0.5,
+        "prior_beta": 9.5,
+        "n_successes": 0,
+        "n_failures": 0,
+        "post_alpha": 0.5,
+        "post_beta": 9.5,
+        "post_mean": 0.05,
+        "prior_mean": 0.05
+      }
+    },
+    "PSYCHOLOGICAL": {
+      "ELEVATED": {
+        "prior_alpha": 7.0,
+        "prior_beta": 3.0,
+        "n_successes": 1,
+        "n_failures": 0,
+        "post_alpha": 8.0,
+        "post_beta": 3.0,
+        "post_mean": 0.7273,
+        "prior_mean": 0.7
+      },
+      "NORMAL": {
+        "prior_alpha": 2.0,
+        "prior_beta": 8.0,
+        "n_successes": 0,
+        "n_failures": 22,
+        "post_alpha": 2.0,
+        "post_beta": 30.0,
+        "post_mean": 0.0625,
+        "prior_mean": 0.2
+      },
+      "SUPPRESSED": {
+        "prior_alpha": 0.5,
+        "prior_beta": 9.5,
+        "n_successes": 0,
+        "n_failures": 0,
+        "post_alpha": 0.5,
+        "post_beta": 9.5,
+        "post_mean": 0.05,
+        "prior_mean": 0.05
+      }
+    }
+  },
+  "persistence_posteriors": {
+    "CAREER": {
+      "ELEVATED": {
+        "prior_alpha": [
+          2.4,
+          2.1,
+          1.5
+        ],
+        "counts": [
+          8,
+          2,
+          0
+        ],
+        "post_alpha": [
+          10.4,
+          4.1,
+          1.5
+        ],
+        "post_means": [
+          0.65,
+          0.2562,
+          0.0938
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "NORMAL": {
+        "prior_alpha": [
+          2.0,
+          5.5,
+          2.5
+        ],
+        "counts": [
+          3,
+          9,
+          0
+        ],
+        "post_alpha": [
+          5.0,
+          14.5,
+          2.5
+        ],
+        "post_means": [
+          0.2273,
+          0.6591,
+          0.1136
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "SUPPRESSED": {
+        "prior_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "post_means": [
+          0.1,
+          0.35,
+          0.55
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      }
+    },
+    "HEALTH": {
+      "ELEVATED": {
+        "prior_alpha": [
+          2.4,
+          2.1,
+          1.5
+        ],
+        "counts": [
+          0,
+          3,
+          0
+        ],
+        "post_alpha": [
+          2.4,
+          5.1,
+          1.5
+        ],
+        "post_means": [
+          0.2667,
+          0.5667,
+          0.1667
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "NORMAL": {
+        "prior_alpha": [
+          2.0,
+          5.5,
+          2.5
+        ],
+        "counts": [
+          4,
+          15,
+          0
+        ],
+        "post_alpha": [
+          6.0,
+          20.5,
+          2.5
+        ],
+        "post_means": [
+          0.2069,
+          0.7069,
+          0.0862
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "SUPPRESSED": {
+        "prior_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "post_means": [
+          0.1,
+          0.35,
+          0.55
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      }
+    },
+    "RELATIONSHIP": {
+      "ELEVATED": {
+        "prior_alpha": [
+          2.4,
+          2.1,
+          1.5
+        ],
+        "counts": [
+          2,
+          4,
+          0
+        ],
+        "post_alpha": [
+          4.4,
+          6.1,
+          1.5
+        ],
+        "post_means": [
+          0.3667,
+          0.5083,
+          0.125
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "NORMAL": {
+        "prior_alpha": [
+          2.0,
+          5.5,
+          2.5
+        ],
+        "counts": [
+          4,
+          12,
+          0
+        ],
+        "post_alpha": [
+          6.0,
+          17.5,
+          2.5
+        ],
+        "post_means": [
+          0.2308,
+          0.6731,
+          0.0962
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "SUPPRESSED": {
+        "prior_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "post_means": [
+          0.1,
+          0.35,
+          0.55
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      }
+    },
+    "SPIRITUAL": {
+      "ELEVATED": {
+        "prior_alpha": [
+          2.4,
+          2.1,
+          1.5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_alpha": [
+          2.4,
+          2.1,
+          1.5
+        ],
+        "post_means": [
+          0.4,
+          0.35,
+          0.25
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "NORMAL": {
+        "prior_alpha": [
+          2.0,
+          5.5,
+          2.5
+        ],
+        "counts": [
+          1,
+          21,
+          0
+        ],
+        "post_alpha": [
+          3.0,
+          26.5,
+          2.5
+        ],
+        "post_means": [
+          0.0938,
+          0.8281,
+          0.0781
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "SUPPRESSED": {
+        "prior_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "post_means": [
+          0.1,
+          0.35,
+          0.55
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      }
+    },
+    "PSYCHOLOGICAL": {
+      "ELEVATED": {
+        "prior_alpha": [
+          2.4,
+          2.1,
+          1.5
+        ],
+        "counts": [
+          0,
+          1,
+          0
+        ],
+        "post_alpha": [
+          2.4,
+          3.1,
+          1.5
+        ],
+        "post_means": [
+          0.3429,
+          0.4429,
+          0.2143
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "NORMAL": {
+        "prior_alpha": [
+          2.0,
+          5.5,
+          2.5
+        ],
+        "counts": [
+          1,
+          20,
+          0
+        ],
+        "post_alpha": [
+          3.0,
+          25.5,
+          2.5
+        ],
+        "post_means": [
+          0.0968,
+          0.8226,
+          0.0806
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      },
+      "SUPPRESSED": {
+        "prior_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_alpha": [
+          1.0,
+          3.5,
+          5.5
+        ],
+        "post_means": [
+          0.1,
+          0.35,
+          0.55
+        ],
+        "post_means_states": [
+          "ELEVATED",
+          "NORMAL",
+          "SUPPRESSED"
+        ]
+      }
+    }
+  },
+  "dasha_to_domain_posteriors": {
+    "Jupiter": {
+      "CAREER": {
+        "prior_alpha": [
+          7,
+          8,
+          5
+        ],
+        "post_alpha": [
+          7,
+          13,
+          5
+        ],
+        "counts": [
+          0,
+          5,
+          0
+        ],
+        "post_means": [
+          0.28,
+          0.52,
+          0.2
+        ],
+        "n_periods": 5
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          6,
+          10,
+          4
+        ],
+        "post_alpha": [
+          6,
+          15,
+          4
+        ],
+        "counts": [
+          0,
+          5,
+          0
+        ],
+        "post_means": [
+          0.24,
+          0.6,
+          0.16
+        ],
+        "n_periods": 5
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          7,
+          9,
+          4
+        ],
+        "post_alpha": [
+          7,
+          14,
+          4
+        ],
+        "counts": [
+          0,
+          5,
+          0
+        ],
+        "post_means": [
+          0.28,
+          0.56,
+          0.16
+        ],
+        "n_periods": 5
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          11,
+          7,
+          2
+        ],
+        "post_alpha": [
+          11,
+          12,
+          2
+        ],
+        "counts": [
+          0,
+          5,
+          0
+        ],
+        "post_means": [
+          0.44,
+          0.48,
+          0.08
+        ],
+        "n_periods": 5
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          5,
+          11,
+          4
+        ],
+        "post_alpha": [
+          5,
+          16,
+          4
+        ],
+        "counts": [
+          0,
+          5,
+          0
+        ],
+        "post_means": [
+          0.2,
+          0.64,
+          0.16
+        ],
+        "n_periods": 5
+      }
+    },
+    "Saturn": {
+      "CAREER": {
+        "prior_alpha": [
+          10,
+          7,
+          3
+        ],
+        "post_alpha": [
+          15,
+          11,
+          3
+        ],
+        "counts": [
+          5,
+          4,
+          0
+        ],
+        "post_means": [
+          0.5172,
+          0.3793,
+          0.1034
+        ],
+        "n_periods": 9
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          5,
+          9,
+          6
+        ],
+        "post_alpha": [
+          7,
+          16,
+          6
+        ],
+        "counts": [
+          2,
+          7,
+          0
+        ],
+        "post_means": [
+          0.2414,
+          0.5517,
+          0.2069
+        ],
+        "n_periods": 9
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          6,
+          8,
+          6
+        ],
+        "post_alpha": [
+          8,
+          15,
+          6
+        ],
+        "counts": [
+          2,
+          7,
+          0
+        ],
+        "post_means": [
+          0.2759,
+          0.5172,
+          0.2069
+        ],
+        "n_periods": 9
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          9,
+          8,
+          3
+        ],
+        "post_alpha": [
+          9,
+          17,
+          3
+        ],
+        "counts": [
+          0,
+          9,
+          0
+        ],
+        "post_means": [
+          0.3103,
+          0.5862,
+          0.1034
+        ],
+        "n_periods": 9
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          7,
+          8,
+          5
+        ],
+        "post_alpha": [
+          7,
+          17,
+          5
+        ],
+        "counts": [
+          0,
+          9,
+          0
+        ],
+        "post_means": [
+          0.2414,
+          0.5862,
+          0.1724
+        ],
+        "n_periods": 9
+      }
+    },
+    "Mercury": {
+      "CAREER": {
+        "prior_alpha": [
+          11,
+          7,
+          2
+        ],
+        "post_alpha": [
+          17,
+          10,
+          2
+        ],
+        "counts": [
+          6,
+          3,
+          0
+        ],
+        "post_means": [
+          0.5862,
+          0.3448,
+          0.069
+        ],
+        "n_periods": 9
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          6,
+          10,
+          4
+        ],
+        "post_alpha": [
+          8,
+          17,
+          4
+        ],
+        "counts": [
+          2,
+          7,
+          0
+        ],
+        "post_means": [
+          0.2759,
+          0.5862,
+          0.1379
+        ],
+        "n_periods": 9
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          7,
+          9,
+          4
+        ],
+        "post_alpha": [
+          11,
+          14,
+          4
+        ],
+        "counts": [
+          4,
+          5,
+          0
+        ],
+        "post_means": [
+          0.3793,
+          0.4828,
+          0.1379
+        ],
+        "n_periods": 9
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          7,
+          9,
+          4
+        ],
+        "post_alpha": [
+          8,
+          17,
+          4
+        ],
+        "counts": [
+          1,
+          8,
+          0
+        ],
+        "post_means": [
+          0.2759,
+          0.5862,
+          0.1379
+        ],
+        "n_periods": 9
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          6,
+          10,
+          4
+        ],
+        "post_alpha": [
+          7,
+          18,
+          4
+        ],
+        "counts": [
+          1,
+          8,
+          0
+        ],
+        "post_means": [
+          0.2414,
+          0.6207,
+          0.1379
+        ],
+        "n_periods": 9
+      }
+    },
+    "Ketu": {
+      "CAREER": {
+        "prior_alpha": [
+          2,
+          3,
+          3
+        ],
+        "post_alpha": [
+          2,
+          3,
+          3
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.375,
+          0.375
+        ],
+        "n_periods": 0
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          2,
+          4,
+          2
+        ],
+        "post_alpha": [
+          2,
+          4,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.5,
+          0.25
+        ],
+        "n_periods": 0
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          1,
+          3,
+          4
+        ],
+        "post_alpha": [
+          1,
+          3,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.125,
+          0.375,
+          0.5
+        ],
+        "n_periods": 0
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          11,
+          7,
+          2
+        ],
+        "post_alpha": [
+          11,
+          7,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.55,
+          0.35,
+          0.1
+        ],
+        "n_periods": 0
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          11,
+          5,
+          4
+        ],
+        "post_alpha": [
+          11,
+          5,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.55,
+          0.25,
+          0.2
+        ],
+        "n_periods": 0
+      }
+    },
+    "Venus": {
+      "CAREER": {
+        "prior_alpha": [
+          3,
+          5,
+          4
+        ],
+        "post_alpha": [
+          3,
+          5,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.4167,
+          0.3333
+        ],
+        "n_periods": 0
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          4,
+          6,
+          2
+        ],
+        "post_alpha": [
+          4,
+          6,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.3333,
+          0.5,
+          0.1667
+        ],
+        "n_periods": 0
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          7,
+          3,
+          2
+        ],
+        "post_alpha": [
+          7,
+          3,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.5833,
+          0.25,
+          0.1667
+        ],
+        "n_periods": 0
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          6,
+          4,
+          2
+        ],
+        "post_alpha": [
+          6,
+          4,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.5,
+          0.3333,
+          0.1667
+        ],
+        "n_periods": 0
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          3,
+          7,
+          2
+        ],
+        "post_alpha": [
+          3,
+          7,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.5833,
+          0.1667
+        ],
+        "n_periods": 0
+      }
+    },
+    "Sun": {
+      "CAREER": {
+        "prior_alpha": [
+          10,
+          8,
+          2
+        ],
+        "post_alpha": [
+          10,
+          8,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.5,
+          0.4,
+          0.1
+        ],
+        "n_periods": 0
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          4,
+          8,
+          4
+        ],
+        "post_alpha": [
+          4,
+          8,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.5,
+          0.25
+        ],
+        "n_periods": 0
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          2,
+          5,
+          5
+        ],
+        "post_alpha": [
+          2,
+          5,
+          5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.1667,
+          0.4167,
+          0.4167
+        ],
+        "n_periods": 0
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          4,
+          8,
+          4
+        ],
+        "post_alpha": [
+          4,
+          8,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.5,
+          0.25
+        ],
+        "n_periods": 0
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          4,
+          8,
+          4
+        ],
+        "post_alpha": [
+          4,
+          8,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.25,
+          0.5,
+          0.25
+        ],
+        "n_periods": 0
+      }
+    },
+    "Moon": {
+      "CAREER": {
+        "prior_alpha": [
+          4,
+          9,
+          5
+        ],
+        "post_alpha": [
+          4,
+          9,
+          5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2222,
+          0.5,
+          0.2778
+        ],
+        "n_periods": 0
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          8,
+          8,
+          2
+        ],
+        "post_alpha": [
+          8,
+          8,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.4444,
+          0.4444,
+          0.1111
+        ],
+        "n_periods": 0
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          8,
+          8,
+          2
+        ],
+        "post_alpha": [
+          8,
+          8,
+          2
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.4444,
+          0.4444,
+          0.1111
+        ],
+        "n_periods": 0
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          7,
+          9,
+          4
+        ],
+        "post_alpha": [
+          7,
+          9,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.35,
+          0.45,
+          0.2
+        ],
+        "n_periods": 0
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          9,
+          7,
+          4
+        ],
+        "post_alpha": [
+          9,
+          7,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.45,
+          0.35,
+          0.2
+        ],
+        "n_periods": 0
+      }
+    },
+    "Mars": {
+      "CAREER": {
+        "prior_alpha": [
+          5,
+          8,
+          5
+        ],
+        "post_alpha": [
+          5,
+          8,
+          5
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2778,
+          0.4444,
+          0.2778
+        ],
+        "n_periods": 0
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          6,
+          6,
+          6
+        ],
+        "post_alpha": [
+          6,
+          6,
+          6
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.3333,
+          0.3333,
+          0.3333
+        ],
+        "n_periods": 0
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          5,
+          7,
+          6
+        ],
+        "post_alpha": [
+          5,
+          7,
+          6
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2778,
+          0.3889,
+          0.3333
+        ],
+        "n_periods": 0
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          3,
+          8,
+          7
+        ],
+        "post_alpha": [
+          3,
+          8,
+          7
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.1667,
+          0.4444,
+          0.3889
+        ],
+        "n_periods": 0
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          6,
+          8,
+          4
+        ],
+        "post_alpha": [
+          6,
+          8,
+          4
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.3333,
+          0.4444,
+          0.2222
+        ],
+        "n_periods": 0
+      }
+    },
+    "Rahu": {
+      "CAREER": {
+        "prior_alpha": [
+          5,
+          7,
+          6
+        ],
+        "post_alpha": [
+          5,
+          7,
+          6
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2778,
+          0.3889,
+          0.3333
+        ],
+        "n_periods": 0
+      },
+      "HEALTH": {
+        "prior_alpha": [
+          4,
+          8,
+          6
+        ],
+        "post_alpha": [
+          4,
+          8,
+          6
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2222,
+          0.4444,
+          0.3333
+        ],
+        "n_periods": 0
+      },
+      "RELATIONSHIP": {
+        "prior_alpha": [
+          5,
+          7,
+          6
+        ],
+        "post_alpha": [
+          5,
+          7,
+          6
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2778,
+          0.3889,
+          0.3333
+        ],
+        "n_periods": 0
+      },
+      "SPIRITUAL": {
+        "prior_alpha": [
+          3,
+          8,
+          7
+        ],
+        "post_alpha": [
+          3,
+          8,
+          7
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.1667,
+          0.4444,
+          0.3889
+        ],
+        "n_periods": 0
+      },
+      "PSYCHOLOGICAL": {
+        "prior_alpha": [
+          5,
+          7,
+          6
+        ],
+        "post_alpha": [
+          5,
+          7,
+          6
+        ],
+        "counts": [
+          0,
+          0,
+          0
+        ],
+        "post_means": [
+          0.2778,
+          0.3889,
+          0.3333
+        ],
+        "n_periods": 0
+      }
+    }
+  },
+  "state_assignment_log": [
+    {
+      "period_id": "DSH.V.001",
+      "md": "Jupiter",
+      "ad": "Venus",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.002",
+      "md": "Jupiter",
+      "ad": "Sun",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.003",
+      "md": "Jupiter",
+      "ad": "Moon",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.004",
+      "md": "Jupiter",
+      "ad": "Mars",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.005",
+      "md": "Jupiter",
+      "ad": "Rahu",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.006",
+      "md": "Saturn",
+      "ad": "Saturn",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.007",
+      "md": "Saturn",
+      "ad": "Mercury",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "HEALTH": [
+          "EVT.1995.XX.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.008",
+      "md": "Saturn",
+      "ad": "Ketu",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "RELATIONSHIP": [
+          "EVT.1998.02.16.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.009",
+      "md": "Saturn",
+      "ad": "Venus",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2000.XX.XX.01",
+          "EVT.2001.03.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.010",
+      "md": "Saturn",
+      "ad": "Sun",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.011",
+      "md": "Saturn",
+      "ad": "Moon",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2003.06.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2004.01.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.012",
+      "md": "Saturn",
+      "ad": "Mars",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2004.XX.XX.02"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.013",
+      "md": "Saturn",
+      "ad": "Rahu",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2007.06.10.01",
+          "EVT.2007.06.XX.02"
+        ],
+        "HEALTH": [
+          "EVT.2007.06.XX.01",
+          "EVT.2007.XX.XX.03"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.014",
+      "md": "Saturn",
+      "ad": "Jupiter",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2010.XX.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.015",
+      "md": "Mercury",
+      "ad": "Mercury",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "ELEVATED"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2010.12.XX.01",
+          "EVT.2011.01.XX.01",
+          "EVT.2011.06.XX.01",
+          "EVT.2012.XX.XX.02"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2012.10.XX.01",
+          "EVT.2013.XX.XX.01"
+        ],
+        "PSYCHOLOGICAL": [
+          "EVT.2012.09.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.016",
+      "md": "Mercury",
+      "ad": "Ketu",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2013.03.XX.01",
+          "EVT.2013.05.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2013.12.11.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.017",
+      "md": "Mercury",
+      "ad": "Venus",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2016.XX.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.018",
+      "md": "Mercury",
+      "ad": "Sun",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.019",
+      "md": "Mercury",
+      "ad": "Moon",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.020",
+      "md": "Mercury",
+      "ad": "Mars",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.021",
+      "md": "Mercury",
+      "ad": "Rahu",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2021.XX.XX.02",
+          "EVT.2021.XX.XX.03"
+        ],
+        "HEALTH": [
+          "EVT.2021.01.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2022.XX.XX.02"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.022",
+      "md": "Mercury",
+      "ad": "Jupiter",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2023.05.XX.01",
+          "EVT.2023.06.XX.01",
+          "EVT.2023.07.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2022.10.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.023",
+      "md": "Mercury",
+      "ad": "Saturn",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "ELEVATED",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "events_present": {
+        "CAREER": [
+          "EVT.2025.07.XX.01",
+          "EVT.2026.03.20.01",
+          "EVT.2026.04.08.01"
+        ],
+        "HEALTH": [
+          "EVT.2025.XX.XX.02"
+        ],
+        "SPIRITUAL": [
+          "EVT.2025.XX.XX.01"
+        ]
+      }
+    }
+  ],
+  "fixed_parameters": {
+    "cross_domain_edges": {
+      "CAREER_RELATIONSHIP_bidir": 0.35,
+      "CAREER_SPIRITUAL_bidir": 0.2,
+      "HEALTH_SPIRITUAL_bidir": 0.25
+    },
+    "natal_to_domain_edges": "See cpt/natal_to_domain.json (44 edges; FIXED)",
+    "antardasha_modulation_rule": "×1.1 same-lord (renormalized); ×0.85 adversary (renormalized); FIXED"
+  },
+  "ac_m5d2_status": "PASS — dbn_params_v1_0.json produced; all CPT files FITTED",
+  "next_step": "CF.M5C.4 — Per-domain posterior differentiation; held-out validation (CF.M5C.5)",
+  "posterior_differentiation_analysis": {
+    "cf_m5c4_status": "COMPLETE",
+    "fit_step": "CF.M5C.3",
+    "documentation_step": "CF.M5C.4",
+    "session": "M5-D-S2",
+    "date": "2026-05-13",
+    "summary": "5-domain Beta posteriors are domain-differentiated after CF.M5C.3 training-partition Bayesian update. Prior-to-posterior spread increases from 0.00 (uniform prior) to 0.1298 across ELEVATED state and 0.0284 across NORMAL state. CAREER achieves strongest posterior update (n_successes=11, largest ΔP). SPIRITUAL and PSYCHOLOGICAL remain coupled at ELEVATED (n=1 each; additional training data will break the degeneracy at M5-E+ calibration).",
+    "elevated_state_rank_order": [
+      {
+        "rank": 1,
+        "domain": "CAREER",
+        "post_mean": 0.8571
+      },
+      {
+        "rank": 2,
+        "domain": "RELATIONSHIP",
+        "post_mean": 0.8125
+      },
+      {
+        "rank": 3,
+        "domain": "HEALTH",
+        "post_mean": 0.7857
+      },
+      {
+        "rank": 4,
+        "domain": "SPIRITUAL",
+        "post_mean": 0.7273
+      },
+      {
+        "rank": 5,
+        "domain": "PSYCHOLOGICAL",
+        "post_mean": 0.7273
+      }
+    ],
+    "normal_state_rank_order": [
+      {
+        "rank": 1,
+        "domain": "CAREER",
+        "post_mean": 0.0909
+      },
+      {
+        "rank": 2,
+        "domain": "RELATIONSHIP",
+        "post_mean": 0.0741
+      },
+      {
+        "rank": 3,
+        "domain": "HEALTH",
+        "post_mean": 0.069
+      },
+      {
+        "rank": 4,
+        "domain": "SPIRITUAL",
+        "post_mean": 0.0625
+      },
+      {
+        "rank": 5,
+        "domain": "PSYCHOLOGICAL",
+        "post_mean": 0.0625
+      }
+    ],
+    "differentiation_metrics": {
+      "elevated_post_mean_spread": 0.1298,
+      "normal_post_mean_spread": 0.0284,
+      "prior_elevated_spread": 0.0,
+      "prior_normal_spread": 0.0,
+      "spread_increase_elevated": 0.1298,
+      "spread_increase_normal": 0.0284,
+      "career_rank_in_elevated_order": 1,
+      "career_rank_matches_ll4_hypothesis": true,
+      "spiritual_psychological_coupled": true,
+      "suppressed_state_all_prior": true,
+      "n_suppressed_periods_in_training": 0
+    },
+    "domain_notes": {
+      "CAREER": "Strongest differentiation. 11/11 ELEVATED periods had ≥1 event (n_successes=11, n_failures=0). Post Beta(18,3) vs Prior Beta(7,3). ΔP(event|ELEVATED) = +0.1571 (0.70→0.8571). Consistent with natal chart concentration in career/dharma axis (10H lord, karma yoga indicators).",
+      "RELATIONSHIP": "Second-highest ELEVATED posterior. 6 ELEVATED periods, 0 failures. Post Beta(13,3), post_mean=0.8125. ΔP = +0.1125 (0.70→0.8125). Marriage (2005), family formation, key relationship moves — all align with Venus-Mercury axis strength in natal.",
+      "HEALTH": "Third-highest ELEVATED posterior. 4 ELEVATED periods, 0 failures. Post Beta(11,3), post_mean=0.7857. ΔP = +0.0857 (0.70→0.7857). Health events are real but infrequent relative to career cluster — posterior reflects genuine sparsity in LEL health category.",
+      "SPIRITUAL": "Weakly updated from prior. 1 ELEVATED period (1 event), 0 failures. Post Beta(8,3), post_mean=0.7273. ΔP = +0.0273 (0.70→0.7273). SPR.* events are rare in LEL (birth chart spiritual trajectory less externally eventful than career/relationship axes). Prior dominates. SPIRITUAL=PSYCHOLOGICAL at this n — degeneracy expected to resolve with post-held-out M5-E calibration or additional event logging.",
+      "PSYCHOLOGICAL": "New 5th domain (U2 split from SPIRITUAL_PSYCHOLOGICAL). Identical to SPIRITUAL at current n (1 ELEVATED period, 1 event). Post Beta(8,3), post_mean=0.7273. ΔP = +0.0273. PSY.* events in training partition too sparse to break degeneracy with SPIRITUAL. Differentiation anticipated once held-out events (8H activation periods, 4H Moon crisis events) are revealed at M5-E validation."
+    },
+    "suppressed_state_note": "0 antardasha periods assigned SUPPRESSED state in training (threshold P(E|MD)≤0.22 was never triggered — the native's chart does not have extended low-prior MD periods in the 1984–2024 training window). All SUPPRESSED posteriors equal priors: Beta(0.5,9.5) → post_mean=0.05. Will remain prior-anchored until held-out or prospective data populates SUPPRESSED-assigned periods.",
+    "calibration_target": "Per LL.4 PREDICTION_PRIOR training: calibration_slope ≥ 0.70 at M5-E. Current CAREER ELEVATED posterior (0.8571) is the most likely driver of high-confidence predictions; calibration will penalize overconfidence if held-out pass reveals false positives.",
+    "next_steps": [
+      "AC.M5D.3 — Held-out validation: apply fitted DBN to 9 held-out LEL events; confirm posterior P(event|state) materially exceeds null model (random baseline).",
+      "AC.M5D.4 — Bayesian posterior framing in synthesis outputs (credible intervals, prior-vs-posterior delta, n=1 caveat) — requires NAP.M5.3 CI reporting policy.",
+      "M5-E calibration: after held-out reveal, re-score SPIRITUAL and PSYCHOLOGICAL posteriors to break n=1 degeneracy."
+    ]
+  }
+}

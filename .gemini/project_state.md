@@ -26,11 +26,13 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 - **L4 Discovery impact:** **None.** Phase O lives at the platform observability layer. Gemini L4 Discovery work continues unaffected.
 - **Phase-O+1 follow-ups (logged, not blocking):** pg-cursor migration of `queryUsageForExportStream()` for true SQL streaming; MAD-based parallel anomaly detector; DNS-rebinding defence on `validateWebhookUrl()`; cost-per-quality rubric wiring once Learning Layer is in place.
 
-## Active Phase: M5 — ACTIVE (M5-D OPEN; LL8 Refit Gate CLEARED)
+## Active Phase: M5 — ACTIVE (M5-D OPEN; AC.M5D.2 PASS — DBN PARAMS FITTED)
 
-**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-D OPEN — LL8 embedding refit gate CLEARED; CPT fitting unblocked.** DBN tooling: Hybrid-C. LLM stack: DeepSeek → Gemini → NIM; no Anthropic/Claude API.
+**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-D OPEN — CF.M5C.2+3+4 COMPLETE; dbn_params_v1_0.json PRODUCED (AC.M5D.2 PASS).** DBN tooling: Hybrid-C. LLM stack: DeepSeek → Gemini → NIM; no Anthropic/Claude API.
 
-**M5-D-S1 (2026-05-13) deliverables COMPLETE — CF.M5C.1 CLEARED:** LL8 Embedding Refit 3-run stability gate CLEARED. `REFIT_GATE_v1_0.md` status PASS/STABLE. `stability_report.md` STABLE. All §4 criteria PASS: §4.1 hash-stable (all 30 SHA-256 hashes identical across 3 runs); §4.2 30/30 top-1 pass rate in each of 3 runs (100%); §4.2 top-1 choices consistent across all runs; §4.3 cosine matrix delta 0.00000000 (perfectly deterministic). Model: `text-multilingual-embedding-002` (768-dim, Vertex AI). Corpus: `msr_signals` Postgres table (claim_text + classical_basis); fallback to `natal_to_domain.json` derivation text for 6 composite signals. Three refit.py bugs corrected before gate-qualifying run: RC1 (§4.2 7/30 pass → methodology defect fixed via self-retrieval); RC2 (§4.1 hash instability 6/30 → sorted set non-determinism fixed); RC3 (§4.3 delta 0.01635 → downstream of RC2, self-corrected). Fourth bug (chunks parameter scope) fixed independently by Claude Code executor. IS.8(a) DISCHARGED — 8-axis red-team PASS. red_team_counter: 2→3→0. CURRENT_STATE v4.6→v4.7. CF.M5C.2 (CPT scaffold population) UNBLOCKED.
+**M5-D-S2 (2026-05-13) deliverables COMPLETE — AC.M5D.2 PASS:** CF.M5C.2 COMPLETE — all 5 CPT JSON scaffolds populated with PRIOR_SPEC v1.1 frozen priors (PRIOR_INITIALIZED; 30 persistence corrections applied). CF.M5C.3 COMPLETE — hard E-step Bayesian update; 37 training events / 23 antardasha periods; 9 held-out events excluded (sacrosanct maintained); observation.json FITTED (CAREER ELEVATED Beta(18,3) post_mean=0.857; RELATIONSHIP 0.812; HEALTH 0.786; SPIRITUAL/PSYCHOLOGICAL 0.727 degenerate at n=1); persistence.json FITTED (CAREER ELEVATED→E: 0.650); dasha_to_domain.json FITTED (3 active MDs: Jup/Sat/Mer); `dbn_params_v1_0.json` PRODUCED. CF.M5C.4 COMPLETE — differentiation documented; ELEVATED spread 0.1298 (prior 0.000); CAREER #1 ELEVATED (LL.4 CONFIRMED). red_team_counter: 0→1. CURRENT_STATE v4.7→v4.8.
+
+**M5-D-S1 (2026-05-13) deliverables COMPLETE — CF.M5C.1 CLEARED:** LL8 Embedding Refit 3-run stability gate CLEARED. `REFIT_GATE_v1_0.md` PASS/STABLE. IS.8(a) DISCHARGED — 8-axis PASS. red_team_counter: 2→3→0. CURRENT_STATE v4.6→v4.7.
 
 **M5-C-S2 (2026-05-13) deliverables COMPLETE — M5-C CLOSED:** NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5_C_CLOSE_v1_0.md authored (AC.M5C.1-6 all PASS). CURRENT_STATE v4.5→v4.6. red_team_counter: 1→2.
 
@@ -42,7 +44,7 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 
 **M5-B-NAP-S1 (2026-05-13, Cowork NAP) deliverables COMPLETE:** NAP.M5.0 APPROVED. NAP.M5.1 partially resolved. LL.2 campaign CLOSED. SIG.MSR.145 corrected. SIG.MSR.402b documented.
 
-**Next session:** M5-D-S2 — CF.M5C.2 CPT scaffold population (use PRIOR_SPEC v1.1 frozen priors → initialize all Dirichlet/Beta params across 5 CPT JSON scaffolds). Then CF.M5C.3 training-partition Bayesian update → CF.M5C.4 per-domain posteriors. red_team_counter entering M5-D-S2: 0.
+**Next session:** M5-D-S3 — AC.M5D.3 held-out validation (apply fitted DBN to 9 held-out LEL events; confirm materially exceeds null baseline) + NAP.M5.3 CI reporting policy draft + native approval. red_team_counter entering M5-D-S3: 1.
 
 **M5-A deliverables (closed):** LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_updater_v1_0.md` + `ll9_counterfactual_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed); LL.2 per-edge promotion campaign authored; PPL retroactive protocol; held-out partition declared (9 events sacrosanct until M5-D); PRED.015–018 added; LEL v1.7; DIS.009 RESOLVED_R1; JH export schedule. Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
 

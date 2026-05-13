@@ -1,8 +1,8 @@
 {
   "cpt_id": "cross_domain",
-  "version": "scaffold_M5-B-S2",
-  "status": "UNFITTED_SCAFFOLD",
-  "fit_session": null,
+  "version": "prior_init_M5-D-S2",
+  "status": "PRIOR_INITIALIZED",
+  "fit_session": "M5-D-S2",
   "schema_version": "1.0",
   "produced_during": "M5-B-S2",
   "produced_on": "2026-05-13",
@@ -79,5 +79,9 @@
       "deferred_to": "v1.1",
       "deferral_reason": "U2 split creates 5 domains \u2014 adding HEALTH\u2194PSYCHOLOGICAL would create 4 cross-domain edges at n=1, approaching overparameterization. HEALTH\u2194SPIRITUAL already captures the 8H mechanism. Revisit at M5-D if residuals suggest PSYCHOLOGICAL events cluster more in health-domain antardasha windows than SPIRITUAL events do."
     }
-  ]
+  ],
+  "prior_spec_version": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "prior_init_at": "M5-D-S2 (2026-05-13)",
+  "prior_type": "FIXED \u2014 degenerate point-mass prior per PRIOR_SPEC \u00a73.2 + \u00a78; NAP.M5.2 confirmed FIXED 2026-05-13",
+  "derivation": "CF.M5C.2 \u2014 status updated to PRIOR_INITIALIZED; no value changes. All 3 active cross-domain edge weights are FIXED per PRIOR_SPEC \u00a73.2 and \u00a78. NAP.M5.2 RESOLVED: FIXED confirmed by native 2026-05-13. CAREER\u2194RELATIONSHIP=0.35; CAREER\u2194SPIRITUAL=0.20; HEALTH\u2194SPIRITUAL=0.25."
 }

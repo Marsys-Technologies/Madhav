@@ -1,13 +1,13 @@
 {
   "cpt_id": "persistence",
-  "version": "scaffold_M5-B-S2",
-  "status": "UNFITTED_SCAFFOLD",
-  "fit_session": null,
+  "version": "fitted_M5-D-S2",
+  "status": "FITTED",
+  "fit_session": "M5-D-S2",
   "schema_version": "1.0",
   "produced_during": "M5-B-S2",
   "produced_on": "2026-05-13",
   "description": "Domain state persistence: P(domain_state(t+1) | domain_state(t)). Antardasha time-slice transitions. Initial values symmetric across all 5 domains (differentiated per domain in M5-D fitting). States: ELEVATED(E), NORMAL(N), SUPPRESSED(S). Each row sums to 1.0.",
-  "derivation": "Conservative initialization. NORMAL persistence=0.65 reflects LL4_PREDICTION_PRIOR training mean_lit=0.630 as baseline. ELEVATED persistence=0.55 reflects that elevated periods tend to last but decay toward normal. SUPPRESSED persistence=0.60 reflects that suppressed periods tend to continue but eventually return to normal. Direct SUPPRESSED\u2192ELEVATED transition very rare (0.05).",
+  "derivation": "CF.M5C.2 \u2014 initial_values updated to PRIOR_SPEC v1.1 \u00a76.4 Dirichlet means. Scaffold values (E\u2192E=0.55, N\u2192N=0.65, N\u2192S=0.15, S\u2192E=0.05, S\u2192S=0.60, E\u2192S=0.10) replaced by PRIOR_SPEC v1.1 means (E\u2192E=0.40, N\u2192N=0.55, N\u2192S=0.25, S\u2192E=0.10, S\u2192S=0.55, E\u2192S=0.25). prior_alpha arrays added per-from_state (Dirichlet row prior). Domain-uniform in v1.0; M5-D posterior will differentiate per domain.",
   "n1_disclaimer": "All initial values are symmetric priors at n=1. Per-domain differentiation in M5-D fitting.",
   "domains": [
     "CAREER",
@@ -21,316 +21,1086 @@
       "domain": "CAREER",
       "from_state": "ELEVATED",
       "to_state": "ELEVATED",
-      "initial_value": 0.55,
-      "fitted_value": null
+      "initial_value": 0.4,
+      "fitted_value": 0.65,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.65,
+      "n_transitions": 8,
+      "post_alpha": [
+        10.4,
+        4.1,
+        1.5
+      ]
     },
     {
       "domain": "CAREER",
       "from_state": "ELEVATED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
-      "fitted_value": null
+      "fitted_value": 0.2562,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.2562,
+      "n_transitions": 2,
+      "post_alpha": [
+        10.4,
+        4.1,
+        1.5
+      ]
     },
     {
       "domain": "CAREER",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.1,
-      "fitted_value": null
+      "initial_value": 0.25,
+      "fitted_value": 0.0938,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0938,
+      "n_transitions": 0,
+      "post_alpha": [
+        10.4,
+        4.1,
+        1.5
+      ]
     },
     {
       "domain": "CAREER",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
       "initial_value": 0.2,
-      "fitted_value": null
+      "fitted_value": 0.2273,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.2273,
+      "n_transitions": 3,
+      "post_alpha": [
+        5.0,
+        14.5,
+        2.5
+      ]
     },
     {
       "domain": "CAREER",
       "from_state": "NORMAL",
       "to_state": "NORMAL",
-      "initial_value": 0.65,
-      "fitted_value": null
-    },
-    {
-      "domain": "CAREER",
-      "from_state": "NORMAL",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.15,
-      "fitted_value": null
-    },
-    {
-      "domain": "CAREER",
-      "from_state": "SUPPRESSED",
-      "to_state": "ELEVATED",
-      "initial_value": 0.05,
-      "fitted_value": null
-    },
-    {
-      "domain": "CAREER",
-      "from_state": "SUPPRESSED",
-      "to_state": "NORMAL",
-      "initial_value": 0.35,
-      "fitted_value": null
-    },
-    {
-      "domain": "CAREER",
-      "from_state": "SUPPRESSED",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.6,
-      "fitted_value": null
-    },
-    {
-      "domain": "HEALTH",
-      "from_state": "ELEVATED",
-      "to_state": "ELEVATED",
       "initial_value": 0.55,
-      "fitted_value": null
+      "fitted_value": 0.6591,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.6591,
+      "n_transitions": 9,
+      "post_alpha": [
+        5.0,
+        14.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "CAREER",
+      "from_state": "NORMAL",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.25,
+      "fitted_value": 0.1136,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1136,
+      "n_transitions": 0,
+      "post_alpha": [
+        5.0,
+        14.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "CAREER",
+      "from_state": "SUPPRESSED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.1,
+      "fitted_value": 0.1,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "CAREER",
+      "from_state": "SUPPRESSED",
+      "to_state": "NORMAL",
+      "initial_value": 0.35,
+      "fitted_value": 0.35,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.35,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "CAREER",
+      "from_state": "SUPPRESSED",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.55,
+      "fitted_value": 0.55,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.55,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "HEALTH",
+      "from_state": "ELEVATED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.4,
+      "fitted_value": 0.2667,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.2667,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        5.1,
+        1.5
+      ]
     },
     {
       "domain": "HEALTH",
       "from_state": "ELEVATED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
-      "fitted_value": null
+      "fitted_value": 0.5667,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.5667,
+      "n_transitions": 3,
+      "post_alpha": [
+        2.4,
+        5.1,
+        1.5
+      ]
     },
     {
       "domain": "HEALTH",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.1,
-      "fitted_value": null
+      "initial_value": 0.25,
+      "fitted_value": 0.1667,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1667,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        5.1,
+        1.5
+      ]
     },
     {
       "domain": "HEALTH",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
       "initial_value": 0.2,
-      "fitted_value": null
+      "fitted_value": 0.2069,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.2069,
+      "n_transitions": 4,
+      "post_alpha": [
+        6.0,
+        20.5,
+        2.5
+      ]
     },
     {
       "domain": "HEALTH",
       "from_state": "NORMAL",
       "to_state": "NORMAL",
-      "initial_value": 0.65,
-      "fitted_value": null
-    },
-    {
-      "domain": "HEALTH",
-      "from_state": "NORMAL",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.15,
-      "fitted_value": null
-    },
-    {
-      "domain": "HEALTH",
-      "from_state": "SUPPRESSED",
-      "to_state": "ELEVATED",
-      "initial_value": 0.05,
-      "fitted_value": null
-    },
-    {
-      "domain": "HEALTH",
-      "from_state": "SUPPRESSED",
-      "to_state": "NORMAL",
-      "initial_value": 0.35,
-      "fitted_value": null
-    },
-    {
-      "domain": "HEALTH",
-      "from_state": "SUPPRESSED",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.6,
-      "fitted_value": null
-    },
-    {
-      "domain": "RELATIONSHIP",
-      "from_state": "ELEVATED",
-      "to_state": "ELEVATED",
       "initial_value": 0.55,
-      "fitted_value": null
+      "fitted_value": 0.7069,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.7069,
+      "n_transitions": 15,
+      "post_alpha": [
+        6.0,
+        20.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "HEALTH",
+      "from_state": "NORMAL",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.25,
+      "fitted_value": 0.0862,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0862,
+      "n_transitions": 0,
+      "post_alpha": [
+        6.0,
+        20.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "HEALTH",
+      "from_state": "SUPPRESSED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.1,
+      "fitted_value": 0.1,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "HEALTH",
+      "from_state": "SUPPRESSED",
+      "to_state": "NORMAL",
+      "initial_value": 0.35,
+      "fitted_value": 0.35,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.35,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "HEALTH",
+      "from_state": "SUPPRESSED",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.55,
+      "fitted_value": 0.55,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.55,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "RELATIONSHIP",
+      "from_state": "ELEVATED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.4,
+      "fitted_value": 0.3667,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.3667,
+      "n_transitions": 2,
+      "post_alpha": [
+        4.4,
+        6.1,
+        1.5
+      ]
     },
     {
       "domain": "RELATIONSHIP",
       "from_state": "ELEVATED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
-      "fitted_value": null
+      "fitted_value": 0.5083,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.5083,
+      "n_transitions": 4,
+      "post_alpha": [
+        4.4,
+        6.1,
+        1.5
+      ]
     },
     {
       "domain": "RELATIONSHIP",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.1,
-      "fitted_value": null
+      "initial_value": 0.25,
+      "fitted_value": 0.125,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.125,
+      "n_transitions": 0,
+      "post_alpha": [
+        4.4,
+        6.1,
+        1.5
+      ]
     },
     {
       "domain": "RELATIONSHIP",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
       "initial_value": 0.2,
-      "fitted_value": null
+      "fitted_value": 0.2308,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.2308,
+      "n_transitions": 4,
+      "post_alpha": [
+        6.0,
+        17.5,
+        2.5
+      ]
     },
     {
       "domain": "RELATIONSHIP",
       "from_state": "NORMAL",
       "to_state": "NORMAL",
-      "initial_value": 0.65,
-      "fitted_value": null
-    },
-    {
-      "domain": "RELATIONSHIP",
-      "from_state": "NORMAL",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.15,
-      "fitted_value": null
-    },
-    {
-      "domain": "RELATIONSHIP",
-      "from_state": "SUPPRESSED",
-      "to_state": "ELEVATED",
-      "initial_value": 0.05,
-      "fitted_value": null
-    },
-    {
-      "domain": "RELATIONSHIP",
-      "from_state": "SUPPRESSED",
-      "to_state": "NORMAL",
-      "initial_value": 0.35,
-      "fitted_value": null
-    },
-    {
-      "domain": "RELATIONSHIP",
-      "from_state": "SUPPRESSED",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.6,
-      "fitted_value": null
-    },
-    {
-      "domain": "SPIRITUAL",
-      "from_state": "ELEVATED",
-      "to_state": "ELEVATED",
       "initial_value": 0.55,
-      "fitted_value": null
+      "fitted_value": 0.6731,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.6731,
+      "n_transitions": 12,
+      "post_alpha": [
+        6.0,
+        17.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "RELATIONSHIP",
+      "from_state": "NORMAL",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.25,
+      "fitted_value": 0.0962,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0962,
+      "n_transitions": 0,
+      "post_alpha": [
+        6.0,
+        17.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "RELATIONSHIP",
+      "from_state": "SUPPRESSED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.1,
+      "fitted_value": 0.1,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "RELATIONSHIP",
+      "from_state": "SUPPRESSED",
+      "to_state": "NORMAL",
+      "initial_value": 0.35,
+      "fitted_value": 0.35,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.35,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "RELATIONSHIP",
+      "from_state": "SUPPRESSED",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.55,
+      "fitted_value": 0.55,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.55,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "SPIRITUAL",
+      "from_state": "ELEVATED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.4,
+      "fitted_value": 0.4,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.4,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ]
     },
     {
       "domain": "SPIRITUAL",
       "from_state": "ELEVATED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
-      "fitted_value": null
+      "fitted_value": 0.35,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.35,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ]
     },
     {
       "domain": "SPIRITUAL",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.1,
-      "fitted_value": null
+      "initial_value": 0.25,
+      "fitted_value": 0.25,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.25,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ]
     },
     {
       "domain": "SPIRITUAL",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
       "initial_value": 0.2,
-      "fitted_value": null
+      "fitted_value": 0.0938,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0938,
+      "n_transitions": 1,
+      "post_alpha": [
+        3.0,
+        26.5,
+        2.5
+      ]
     },
     {
       "domain": "SPIRITUAL",
       "from_state": "NORMAL",
       "to_state": "NORMAL",
-      "initial_value": 0.65,
-      "fitted_value": null
-    },
-    {
-      "domain": "SPIRITUAL",
-      "from_state": "NORMAL",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.15,
-      "fitted_value": null
-    },
-    {
-      "domain": "SPIRITUAL",
-      "from_state": "SUPPRESSED",
-      "to_state": "ELEVATED",
-      "initial_value": 0.05,
-      "fitted_value": null
-    },
-    {
-      "domain": "SPIRITUAL",
-      "from_state": "SUPPRESSED",
-      "to_state": "NORMAL",
-      "initial_value": 0.35,
-      "fitted_value": null
-    },
-    {
-      "domain": "SPIRITUAL",
-      "from_state": "SUPPRESSED",
-      "to_state": "SUPPRESSED",
-      "initial_value": 0.6,
-      "fitted_value": null
-    },
-    {
-      "domain": "PSYCHOLOGICAL",
-      "from_state": "ELEVATED",
-      "to_state": "ELEVATED",
       "initial_value": 0.55,
-      "fitted_value": null
+      "fitted_value": 0.8281,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.8281,
+      "n_transitions": 21,
+      "post_alpha": [
+        3.0,
+        26.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "SPIRITUAL",
+      "from_state": "NORMAL",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.25,
+      "fitted_value": 0.0781,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0781,
+      "n_transitions": 0,
+      "post_alpha": [
+        3.0,
+        26.5,
+        2.5
+      ]
+    },
+    {
+      "domain": "SPIRITUAL",
+      "from_state": "SUPPRESSED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.1,
+      "fitted_value": 0.1,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "SPIRITUAL",
+      "from_state": "SUPPRESSED",
+      "to_state": "NORMAL",
+      "initial_value": 0.35,
+      "fitted_value": 0.35,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.35,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "SPIRITUAL",
+      "from_state": "SUPPRESSED",
+      "to_state": "SUPPRESSED",
+      "initial_value": 0.55,
+      "fitted_value": 0.55,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.55,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "from_state": "ELEVATED",
+      "to_state": "ELEVATED",
+      "initial_value": 0.4,
+      "fitted_value": 0.3429,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.3429,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        3.1,
+        1.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "ELEVATED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
-      "fitted_value": null
+      "fitted_value": 0.4429,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.4429,
+      "n_transitions": 1,
+      "post_alpha": [
+        2.4,
+        3.1,
+        1.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "ELEVATED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.1,
-      "fitted_value": null
+      "initial_value": 0.25,
+      "fitted_value": 0.2143,
+      "prior_alpha": [
+        2.4,
+        2.1,
+        1.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.2143,
+      "n_transitions": 0,
+      "post_alpha": [
+        2.4,
+        3.1,
+        1.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "NORMAL",
       "to_state": "ELEVATED",
       "initial_value": 0.2,
-      "fitted_value": null
+      "fitted_value": 0.0968,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0968,
+      "n_transitions": 1,
+      "post_alpha": [
+        3.0,
+        25.5,
+        2.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "NORMAL",
       "to_state": "NORMAL",
-      "initial_value": 0.65,
-      "fitted_value": null
+      "initial_value": 0.55,
+      "fitted_value": 0.8226,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.8226,
+      "n_transitions": 20,
+      "post_alpha": [
+        3.0,
+        25.5,
+        2.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "NORMAL",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.15,
-      "fitted_value": null
+      "initial_value": 0.25,
+      "fitted_value": 0.0806,
+      "prior_alpha": [
+        2.0,
+        5.5,
+        2.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.0806,
+      "n_transitions": 0,
+      "post_alpha": [
+        3.0,
+        25.5,
+        2.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "SUPPRESSED",
       "to_state": "ELEVATED",
-      "initial_value": 0.05,
-      "fitted_value": null
+      "initial_value": 0.1,
+      "fitted_value": 0.1,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.1,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "SUPPRESSED",
       "to_state": "NORMAL",
       "initial_value": 0.35,
-      "fitted_value": null
+      "fitted_value": 0.35,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.35,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
     },
     {
       "domain": "PSYCHOLOGICAL",
       "from_state": "SUPPRESSED",
       "to_state": "SUPPRESSED",
-      "initial_value": 0.6,
-      "fitted_value": null
+      "initial_value": 0.55,
+      "fitted_value": 0.55,
+      "prior_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ],
+      "prior_alpha_states": [
+        "ELEVATED",
+        "NORMAL",
+        "SUPPRESSED"
+      ],
+      "posterior_value": 0.55,
+      "n_transitions": 0,
+      "post_alpha": [
+        1.0,
+        3.5,
+        5.5
+      ]
     }
-  ]
+  ],
+  "prior_spec_version": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "prior_init_at": "M5-D-S2 (2026-05-13)",
+  "fit_method": "Bayesian conjugate (Dirichlet) \u2014 hard E-step; 22 consecutive period transitions",
+  "fit_at": "2026-05-13",
+  "n_training_transitions": 22
 }

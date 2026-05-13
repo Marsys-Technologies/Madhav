@@ -1,14 +1,14 @@
 {
   "cpt_id": "observation",
-  "version": "scaffold_M5-B-S2",
-  "status": "UNFITTED_SCAFFOLD",
-  "fit_session": null,
+  "version": "fitted_M5-D-S2",
+  "status": "FITTED",
+  "fit_session": "M5-D-S2",
   "schema_version": "1.0",
   "produced_during": "M5-B-S2",
   "produced_on": "2026-05-13",
-  "description": "Observation model: P(EVENT_OCCURRED=1 | domain_state). Links latent domain activation state to observed event occurrence (binary). One row per domain. In v1.0 the emission probabilities are symmetric across all 5 domains \u2014 differentiated in M5-D fitting.",
-  "derivation": "Initial values from DBN_TOPOLOGY_v1_0.md \u00a73.4. P(EVENT|ELEVATED)=0.70 reflects that elevated periods are where major life events concentrate (LL.4 training base). P(EVENT|NORMAL)=0.20 reflects background rate. P(EVENT|SUPPRESSED)=0.05 reflects suppression blocks event occurrence.",
-  "n1_disclaimer": "Symmetric priors at n=1. Per-domain differentiation in M5-D fitting. Preliminary calibration target: calibration_slope \u2265 0.7 per LL.4 PREDICTION_PRIOR training.",
+  "description": "Observation model: P(EVENT_OCCURRED=1 | domain_state). Links latent domain activation state to observed event occurrence (binary). One entry per domain. CF.M5C.3 Bayesian update produced domain-differentiated posteriors (FITTED status). ELEVATED posterior means range 0.7273–0.8571; NORMAL means range 0.0625–0.0909. SUPPRESSED state retains prior (no SUPPRESSED periods in training). SPIRITUAL=PSYCHOLOGICAL at ELEVATED (n=1 each — degeneracy resolves at M5-E calibration).",
+  "derivation": "CF.M5C.2 — Beta priors added per PRIOR_SPEC v1.1 §5.4. initial_values unchanged: scaffold 0.70/0.20/0.05 already equal PRIOR_SPEC means. ELEVATED: Beta(7,3); NORMAL: Beta(2,8); SUPPRESSED: Beta(0.5,9.5). Domain-uniform prior; M5-D fitting produces 5 domain-specific Beta posteriors per state.",
+  "n1_disclaimer": "Domain-specific posteriors fitted at CF.M5C.3. SPIRITUAL and PSYCHOLOGICAL remain prior-anchored at ELEVATED (n_successes=1 each; ΔP=+0.027). SUPPRESSED retains pure prior (0 training periods). Calibration target: calibration_slope ≥ 0.70 per LL.4.",
   "domains": [
     "CAREER",
     "HEALTH",
@@ -22,40 +22,221 @@
       "P_event_given_ELEVATED": 0.7,
       "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
-      "fitted_values": null,
-      "ll4_basis": "career MODERATE prior mean_lit=0.5016 suggests non-trivial baseline; ELEVATED threshold reflects event concentration in high-signal antardashas"
+      "fitted_values": {
+        "P_event_given_ELEVATED": 0.8571,
+        "P_event_given_NORMAL": 0.0909,
+        "P_event_given_SUPPRESSED": 0.05
+      },
+      "ll4_basis": "career MODERATE prior mean_lit=0.5016 suggests non-trivial baseline; ELEVATED threshold reflects event concentration in high-signal antardashas",
+      "beta_priors": {
+        "ELEVATED": {
+          "prior_alpha": 7.0,
+          "prior_beta": 3.0
+        },
+        "NORMAL": {
+          "prior_alpha": 2.0,
+          "prior_beta": 8.0
+        },
+        "SUPPRESSED": {
+          "prior_alpha": 0.5,
+          "prior_beta": 9.5
+        }
+      },
+      "posterior_values": {
+        "ELEVATED": {
+          "post_alpha": 18.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8571
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 20.0,
+          "post_mean": 0.0909
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05
+        }
+      }
     },
     {
       "domain": "HEALTH",
       "P_event_given_ELEVATED": 0.7,
       "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
-      "fitted_values": null,
-      "ll4_basis": "health MODERATE prior mean_lit=0.4948; symmetric with CAREER at v1.0; health events may require asymmetric adjustment at M5-D"
+      "fitted_values": {
+        "P_event_given_ELEVATED": 0.7857,
+        "P_event_given_NORMAL": 0.069,
+        "P_event_given_SUPPRESSED": 0.05
+      },
+      "ll4_basis": "health MODERATE prior mean_lit=0.4948; symmetric with CAREER at v1.0; health events may require asymmetric adjustment at M5-D",
+      "beta_priors": {
+        "ELEVATED": {
+          "prior_alpha": 7.0,
+          "prior_beta": 3.0
+        },
+        "NORMAL": {
+          "prior_alpha": 2.0,
+          "prior_beta": 8.0
+        },
+        "SUPPRESSED": {
+          "prior_alpha": 0.5,
+          "prior_beta": 9.5
+        }
+      },
+      "posterior_values": {
+        "ELEVATED": {
+          "post_alpha": 11.0,
+          "post_beta": 3.0,
+          "post_mean": 0.7857
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 27.0,
+          "post_mean": 0.069
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05
+        }
+      }
     },
     {
       "domain": "RELATIONSHIP",
       "P_event_given_ELEVATED": 0.7,
       "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
-      "fitted_values": null,
-      "ll4_basis": "relationship MODERATE prior mean_lit=0.4113; lower domain prior than career/health may push fitted ELEVATED value down at M5-D"
+      "fitted_values": {
+        "P_event_given_ELEVATED": 0.8125,
+        "P_event_given_NORMAL": 0.0741,
+        "P_event_given_SUPPRESSED": 0.05
+      },
+      "ll4_basis": "relationship MODERATE prior mean_lit=0.4113; lower domain prior than career/health may push fitted ELEVATED value down at M5-D",
+      "beta_priors": {
+        "ELEVATED": {
+          "prior_alpha": 7.0,
+          "prior_beta": 3.0
+        },
+        "NORMAL": {
+          "prior_alpha": 2.0,
+          "prior_beta": 8.0
+        },
+        "SUPPRESSED": {
+          "prior_alpha": 0.5,
+          "prior_beta": 9.5
+        }
+      },
+      "posterior_values": {
+        "ELEVATED": {
+          "post_alpha": 13.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8125
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 25.0,
+          "post_mean": 0.0741
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05
+        }
+      }
     },
     {
       "domain": "SPIRITUAL",
       "P_event_given_ELEVATED": 0.7,
       "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
-      "fitted_values": null,
-      "ll4_basis": "spiritual WEAK prior (n=6 combined SPR+PSY, mean_lit=1.0 unreliable after split); SPIRITUAL captures dharmic practice events (SPR.*); symmetric scaffold pending M5-D per-domain fit. U2 split: SPIRITUAL receives existing scaffold values; PSYCHOLOGICAL receives new node."
+      "fitted_values": {
+        "P_event_given_ELEVATED": 0.7273,
+        "P_event_given_NORMAL": 0.0625,
+        "P_event_given_SUPPRESSED": 0.05
+      },
+      "ll4_basis": "spiritual WEAK prior (n=6 combined SPR+PSY, mean_lit=1.0 unreliable after split); SPIRITUAL captures dharmic practice events (SPR.*); symmetric scaffold pending M5-D per-domain fit. U2 split: SPIRITUAL receives existing scaffold values; PSYCHOLOGICAL receives new node.",
+      "beta_priors": {
+        "ELEVATED": {
+          "prior_alpha": 7.0,
+          "prior_beta": 3.0
+        },
+        "NORMAL": {
+          "prior_alpha": 2.0,
+          "prior_beta": 8.0
+        },
+        "SUPPRESSED": {
+          "prior_alpha": 0.5,
+          "prior_beta": 9.5
+        }
+      },
+      "posterior_values": {
+        "ELEVATED": {
+          "post_alpha": 8.0,
+          "post_beta": 3.0,
+          "post_mean": 0.7273
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 30.0,
+          "post_mean": 0.0625
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05
+        }
+      }
     },
     {
       "domain": "PSYCHOLOGICAL",
       "P_event_given_ELEVATED": 0.7,
       "P_event_given_NORMAL": 0.2,
       "P_event_given_SUPPRESSED": 0.05,
-      "fitted_values": null,
-      "ll4_basis": "PSYCHOLOGICAL \u2014 new 5th domain (U2 split from SPIRITUAL_PSYCHOLOGICAL). n_obs insufficient for separate prior (PSY.* events subset of n=6 combined). Symmetric scaffold: ELEVATED=0.70, NORMAL=0.20, SUPPRESSED=0.05. Domain captures psychological transformation events (8H Ketu activation, 4H Moon distress periods). M5-D fitting will differentiate from SPIRITUAL per-domain."
+      "fitted_values": {
+        "P_event_given_ELEVATED": 0.7273,
+        "P_event_given_NORMAL": 0.0625,
+        "P_event_given_SUPPRESSED": 0.05
+      },
+      "ll4_basis": "PSYCHOLOGICAL — new 5th domain (U2 split from SPIRITUAL_PSYCHOLOGICAL). n_obs insufficient for separate prior (PSY.* events subset of n=6 combined). Symmetric scaffold: ELEVATED=0.70, NORMAL=0.20, SUPPRESSED=0.05. Domain captures psychological transformation events (8H Ketu activation, 4H Moon distress periods). M5-D fitting will differentiate from SPIRITUAL per-domain.",
+      "beta_priors": {
+        "ELEVATED": {
+          "prior_alpha": 7.0,
+          "prior_beta": 3.0
+        },
+        "NORMAL": {
+          "prior_alpha": 2.0,
+          "prior_beta": 8.0
+        },
+        "SUPPRESSED": {
+          "prior_alpha": 0.5,
+          "prior_beta": 9.5
+        }
+      },
+      "posterior_values": {
+        "ELEVATED": {
+          "post_alpha": 8.0,
+          "post_beta": 3.0,
+          "post_mean": 0.7273
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 30.0,
+          "post_mean": 0.0625
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05
+        }
+      }
     }
-  ]
+  ],
+  "prior_spec_version": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "prior_init_at": "M5-D-S2 (2026-05-13)",
+  "fit_method": "Bayesian conjugate (Beta) — hard E-step state assignment; 23 training antardasha periods",
+  "fit_at": "2026-05-13",
+  "n_training_periods": 23,
+  "cf_m5c4": "DIFFERENTIATION_DOCUMENTED"
 }
