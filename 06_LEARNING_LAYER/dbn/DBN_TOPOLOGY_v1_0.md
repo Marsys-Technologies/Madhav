@@ -50,8 +50,17 @@ derivation_ledger:
   - claim: "Dasha-state node conditions domain activation via LL.5 axis weights"
     l1_source: "FORENSIC §5.1 — 9 Vimshottari mahadasha lords; precise antardasha sequence from birth"
     ll_source: "LL5_DASHA_TRANSIT_DESIGN §2–§3 — dasha_weight computed for 380 signals; HIGH tier: Sun+Ketu dasha_dominant; MED tier: 12 signals"
+nap_m5_1_status: >
+  NAP.M5.1 native review completed 2026-05-13 at M5-B-NAP-S1. Three unresolved items
+  adjudicated: U1 RESOLVED (CAREER↔SPIRITUAL weight confirmed 0.20); U2 APPROVED_PENDING_IMPLEMENTATION
+  (SPIRITUAL_PSYCHOLOGICAL split → SPIRITUAL + PSYCHOLOGICAL, 5th domain; implementation deferred
+  to M5-B-S2 — topology must be updated before formal freeze); U3 RESOLVED (LL.2 per-edge campaign
+  closed — see ll2_promotion_campaign_v1_0.md §6). Native approval phrase issued: "I approve the
+  deviant topology" — conditional on U2 implementation. Formal freeze (status DRAFT → APPROVED) at
+  M5-B-S2 after U2 implementation and re-issue of native approval.
 changelog:
   - v1.0 (2026-05-13, M5-B-S1): Initial committed topology. DRAFT pending NAP.M5.1. All 9 sections populated. D1–D6 committed before held-out consultation.
+  - v1.0 amended in-place (2026-05-13, M5-B-NAP-S1): NAP.M5.1 review outcomes recorded in nap_m5_1_status. CAREER↔SPIRITUAL edge weight confirmed 0.20 (U1 resolved). Domain split SPIRITUAL_PSYCHOLOGICAL→SPIRITUAL+PSYCHOLOGICAL approved (U2 approved; implementation deferred to M5-B-S2). LL.2 campaign closed: 3 APPROVED + 1 APPROVED_CONDITIONAL + 4 REJECTED. SIG.MSR.145 label corrected in MSR_v3_0.md. Status remains DRAFT pending U2 implementation.
 ---
 
 # DBN TOPOLOGY — v1.0

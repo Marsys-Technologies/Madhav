@@ -1,7 +1,7 @@
 ---
 artifact: ll2_promotion_campaign_v1_0.md
 version: "1.0"
-status: PENDING_NATIVE_APPROVAL
+status: CLOSED
 phase: M5-A
 authored_session: M5-A-S1
 authored_date: 2026-05-13
@@ -160,11 +160,7 @@ This document presents the 8 MED-tier Pancha-MP anchor edges from `ll2_edge_weig
 
 ## §4 — Batch Approval Option
 
-If native approves all 8 edges as a batch:
-
-> **NAP.M5.EDGE-BATCH:** "I approve all 8 MED-tier Pancha-MP anchor edges for DBN inclusion per ll2_promotion_campaign_v1_0.md §3, conditional on EDGE-06 and EDGE-07 shadow-node caveat for SIG.MSR.117."
-
-Upon batch approval: Claude updates `promotion_eligible: true` and `approval_chain` in `ll2_edge_weights_v1_0.json` for all 8 edges and records the NAP.
+~~Batch approval option superseded by per-edge native review at NAP.M5.1 (Cowork-M5-B-S1-NAP.M5.1, 2026-05-13). See §6 for outcomes.~~
 
 ---
 
@@ -172,10 +168,38 @@ Upon batch approval: Claude updates `promotion_eligible: true` and `approval_cha
 
 | Item | Status |
 |---|---|
-| OPEN_ITEM.P1.1 — MSR.145 CDLM cell absent | CARRIED FORWARD to M5 CDLM expansion (see ll7 JSON §cf_ll7_1_finding) |
-| SIG.MSR.117 shadow_indefinite status | Remains in shadow; EDGE-06 and EDGE-07 promotions conditional |
+| OPEN_ITEM.P1.1 — MSR.145 CDLM cell absent | CARRIED FORWARD; SIG.MSR.145 label correction now also required (M5-B-S2) |
+| SIG.MSR.117 shadow_indefinite status | Remains in shadow; EDGE-06 approved conditional on this |
 | LL.7 classification for all 8 edges | NOVEL (no CDLM anchor confirmed at M5-A-S1) |
+| SIG.MSR.145 label correction | NEW — "Parivartana" label confirmed incorrect by native 2026-05-13; relabeling required in M5-B-S2 |
+| SIG.MSR.402 invalidation resolution | NEW — SIG.MSR.402 invalidated in MSR v2.0; edges using it need SIG.MSR.402b co-occurrence re-check in M5-B-S2 |
 
 ---
 
-*Authored M5-A-S1 (2026-05-13). Pending native sign-off at Cowork-M5-S3 or equivalent.*
+## §6 — NAP.M5.1 Native Review Outcomes — FINAL (2026-05-13)
+
+Two-round review at Cowork-M5-B-S1-NAP.M5.1:
+- Round 1: Signal label verification (SIG.MSR.145 Parivartana voided; SIG.MSR.402 invalidation confirmed)
+- Round 2: Native correlation questioning — plain-language empirical confirmation per edge
+
+| Edge | Signal Pair | Final Decision | Basis |
+|---|---|---|---|
+| EDGE-01 | SIG.MSR.145 ↔ SIG.MSR.402 | **APPROVED_CONDITIONAL** | Empirical correlation confirmed by native ("career/finance shifts co-move with relationship quality throughout life"). SIG.MSR.402 endpoint requires 402b substitution in M5-B-S2 before DBN inclusion. |
+| EDGE-02 | SIG.MSR.118 ↔ SIG.MSR.145 | **REJECTED** | Native cannot speak definitively to this correlation. |
+| EDGE-03 | SIG.MSR.119 ↔ SIG.MSR.402 | **REJECTED** | Native cannot speak definitively to this correlation. |
+| EDGE-04 | SIG.MSR.143 ↔ SIG.MSR.145 | **APPROVED** ✓ | Native confirmed: authority structures not obstructing career; progress through people and relationships. Both endpoints valid. |
+| EDGE-05 | SIG.MSR.143 ↔ SIG.MSR.402 | **REJECTED** | Native cannot speak definitively to this correlation. |
+| EDGE-06 | SIG.MSR.117 ↔ SIG.MSR.119 | **APPROVED** ✓ | Confirmed (Round 1 + Round 2). Conditional on SIG.MSR.117 shadow-node status. |
+| EDGE-07 | SIG.MSR.117 ↔ SIG.MSR.402 | **REJECTED** | Native cannot speak definitively to this correlation. |
+| EDGE-08 | SIG.MSR.119 ↔ SIG.MSR.145 | **APPROVED** ✓ | Native confirmed: career shifts and relationship shifts move together throughout life. Both endpoints valid. |
+
+**Final net: 3 fully approved (EDGE-04, EDGE-06, EDGE-08) + 1 conditional (EDGE-01, pending 402b) + 4 rejected (EDGE-02, 03, 05, 07).**
+
+**M5-B-S2 one remaining action:**
+- EDGE-01 only: substitute SIG.MSR.402 → SIG.MSR.402b, run co-occurrence re-check, confirm empirical pattern holds under corrected endpoint, then promote to `promotion_eligible: true`.
+
+**SIG.MSR.145 label correction:** COMPLETE — relabeled in MSR_v3_0.md at NAP.M5.1 (2026-05-13). Now reads "Structural — Saturn-10L Tenanting Venus's Sign (Libra 7H): One-Way Dispositorship Chain, No Parivartana."
+
+---
+
+*Authored M5-A-S1 (2026-05-13). Final decisions recorded 2026-05-13 at Cowork-M5-B-S1-NAP.M5.1-final. Status: CLOSED — 3 approved, 1 conditional (M5-B-S2), 4 rejected.*

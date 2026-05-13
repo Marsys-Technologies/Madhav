@@ -3136,23 +3136,26 @@ SIG.MSR.144:
   rpt_deep_dive: "MATRIX_HOUSES §4.10, §4.11"
 
 SIG.MSR.145:
-  signal_name: "Yoga — Parivartana (Exchange) Between Saturn-10L and Venus-7L (Both in Each Other's Sign)"
-  signal_type: yoga
-  classical_source: "BPHS Ch.16 (Parivartana yoga: two lords in mutual exchange)"
-  entities_involved: [PLN.SATURN, PLN.VENUS, SGN.LIBRA, SGN.TAURUS]
-  strength_score: 0.75
-  valence: benefic
+  signal_name: "Structural — Saturn-10L Tenanting Venus's Sign (Libra 7H): One-Way Dispositorship Chain, No Parivartana"
+  signal_type: structural
+  classical_source: "BPHS (dispositorship chains; sign-lord relationship). NOTE: prior label 'Parivartana Exchange' INCORRECT — corrected at NAP.M5.1 (2026-05-13) per native confirmation. FORENSIC §2.1 PLN.VENUS = Sagittarius 9H; no mutual exchange possible."
+  entities_involved: [PLN.SATURN, PLN.VENUS, SGN.LIBRA, SGN.SAGITTARIUS]
+  strength_score: 0.60
+  valence: neutral
   temporal_activation: natal-permanent
   supporting_rules:
-    - Parivartana = two planets in each other's signs (mutual exchange)
-    - Saturn in Libra (Venus's sign) AND Venus in... wait, Venus needs to be in Capricorn or Aquarius (Saturn's signs)
-    - Venus is in Sagittarius (Jupiter's sign) — NOT in Saturn's sign
-    - Therefore traditional Parivartana does NOT form between Saturn and Venus
-    - However, Saturn is in Venus's sign with Venus dispositing to Jupiter = one-way chain
-    - Note: True Parivartana absent; dispositorship chain present
-  falsifier: "Parivartana requires reciprocal exchange; Venus in Sagittarius (not Saturn's sign) prevents this"
-  provenance: v1_0-confirmed-by-v8
-  domains_affected: []
+    - Saturn (lord of 10H, career) placed in Libra = Venus's sign (7H, relationships/partnership)
+    - One-way dispositorship: Saturn-10L is tenant in Venus's domain; career significations channeled through Venus
+    - Venus (7L) in Sagittarius (9H) = Jupiter's sign; Venus disposits to Jupiter
+    - Dispositorship chain: Saturn-10H → Venus → Jupiter → 9H (career → relationship → dharma)
+    - TRUE Parivartana does NOT form: requires Planet A in Planet B's sign AND Planet B in Planet A's sign
+    - Venus is in Sagittarius (Jupiter's sign), NOT in Capricorn/Aquarius (Saturn's signs) → no reciprocal exchange
+    - Saturn IS exalted in Libra (Uchcha) — additional dignity while operating in Venus's domain
+    - Structural implication: 10H career themes are delivered via Venus's (7H) channels, not independently
+  falsifier: "Venus confirmed in Sagittarius 9H by FORENSIC §2.1 (PLN.VENUS) and native at NAP.M5.1 2026-05-13. No Saturn-ruled sign involved."
+  label_correction_nap: "NAP.M5.1 — 2026-05-13 — native confirmed Venus in Sagittarius 9H; prior Parivartana label voided"
+  provenance: v1_0-corrected-NAP.M5.1-2026-05-13
+  domains_affected: [career, relationship]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.VENUS, SGN.LIBRA, SGN.SAGITTARIUS]
   rpt_deep_dive: "CGM §4.1"

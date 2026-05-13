@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.2
+version: 4.3
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,22 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.3 (2026-05-13, M5-B-NAP-S1):
+    **NAP.M5.0 APPROVED + NAP.M5.1 APPROVED IN PRINCIPLE.** Cowork NAP review session.
+    Key outcomes: (1) NAP.M5.0 APPROVED with caveat — prediction engine emission gated behind
+    two-layer flag (MARSYS_FLAG_PREDICTION_ENGINE_ENABLED global + per-chart
+    prediction_engine_enabled boolean); internal PPL calibration continues regardless; portal
+    UI emission suppressed until native enables per chart; implementation item PE.1 deferred to
+    portal session. (2) NAP.M5.1 APPROVED in principle — U1 (0.20 confirmed), U3 (LL.2 campaign
+    CLOSED: 3 approved EDGE-04/06/08, 1 conditional EDGE-01, 4 rejected), U2 (SPIRITUAL_PSYCHOLOGICAL
+    → 5th domain split confirmed) — topology frozen pending U2 implementation in M5-B-S2. (3) LL.2
+    campaign fully resolved: ll2_promotion_campaign_v1_0.md status CLOSED; ll2_edge_weights JSON
+    updated with final decisions. (4) SIG.MSR.145 label corrected in MSR_v3_0.md — "Parivartana
+    Exchange" voided; relabeled "Saturn-10L One-Way Dispositorship Chain in Venus's Sign."
+    red_team_counter: 2 → 3 (IS.8(a) FIRES — M5-B-S2 MUST include red-team pass).
+    last_session_id → M5-B-NAP-S1. active_phase_plan_sub_phase remains M5-B OPEN (U2 amendment
+    pending). next_session_objective → M5-B-S2.
+    file_updated_at → 2026-05-13T23:00:00+05:30. file_updated_by_session → M5-B-NAP-S1.
   - v4.2 (2026-05-13, M5-B-S1):
     **M5-B OPEN.** DBN topology first draft authored: DBN_TOPOLOGY_v1_0.md (DRAFT,
     pre-registration committed). 5 CPT scaffold JSON files created (natal_to_domain,
@@ -2934,16 +2950,16 @@ current_state:
     # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
   active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M5-B OPEN (IN FLIGHT) — DBN Topology. M5-A CLOSED 2026-05-13 at M5-A-S1.
-    M5-A all 14 ACs discharged. Key carry-forwards to M5-B:
-    - LL.2 per-edge campaign (ll2_promotion_campaign_v1_0.md) — native sign-off pending
-    - NAP.M5.0 PPL cadence decision — pending native approval at Cowork-M5-S3
-    - JH export window (JH_EXPORT_SCHEDULE_v1_0.md) — pending native confirmation
-    - OPEN_ITEM.P1.1 (MSR.145 CDLM expansion) — M5 CDLM expansion
-    - AC.IV.6 recall gap (0.9355) — re-run after LL.3 fixes in M5-B
-    - AC.IV.7 latency telemetry — re-check after 7-day prod traffic
-    PPL volume at M5-A close: 20 predictions (4 retroactive CONFIRMED added).
-    M5-B scope: DBN topology nodes/edges/CPT structure per PHASE_M5_PLAN_v1_0.md §3 M5-B.
+    M5-B OPEN — pending U2 implementation. NAP.M5.1 APPROVED IN PRINCIPLE (2026-05-13,
+    M5-B-NAP-S1). U2 amendment (SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL, 5th domain)
+    approved by native but not yet implemented in DBN_TOPOLOGY_v1_0.md or CPT scaffolds.
+    Topology freeze (NAP.M5.1 formal close) occurs after M5-B-S2 implements U2.
+    M5-B-S2 must also include IS.8(a) red-team pass (counter=3, cadence due).
+    Resolved this session: NAP.M5.0 APPROVED (with prediction-gate caveat); LL.2 campaign
+    CLOSED (3 approved, 1 conditional, 4 rejected); SIG.MSR.145 relabeled.
+    Remaining M5-B open items: AC.M5B.3 (LL.3 retrieval-domain alignment); AC.IV.6 recall
+    gap re-run; AC.IV.7 latency re-check; EDGE-01 402b substitution (M5-B-S2).
+    PPL volume: 20 predictions. M5-A CLOSED 2026-05-13. PHASE_M5_PLAN_v1_0.md v1.1 active.
     PHASE_M5_PLAN_v1_0.md v1.1 active. M4 MACRO-PHASE CLOSED 2026-05-02.
     v1.0 NEW CLOSED. NAP.M4.7 verdict APPROVED (pre-decided per execution
     brief; AC.D1.6 hard stop BYPASSED). IS.8(b) macro-phase-close red-team
@@ -3251,9 +3267,10 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 2
-    # M5-B-S1 (2026-05-13) — counter 1 → 2. M5-B-S1 is a substantive session
-    # (DBN topology authoring; CPT scaffold; manifest; mirrors; CURRENT_STATE).
+  red_team_counter: 3
+    # M5-B-NAP-S1 (2026-05-13) — counter 2 → 3. IS.8(a) FIRES: M5-B-S2 MUST include
+    # red-team pass (IS.8(a) every-third-session cadence). M5-B-NAP-S1 is substantive
+    # (NAP.M5.0/M5.1 adjudication; LL.2 campaign close; SIG.MSR.145 correction).
     # Next IS.8(a) cadence fires at counter=3 (one session hence).
     # M5-A-S1 (2026-05-13) — counter 0 → 1. M5-A-S1 is a substantive session
     # (14 scope items; LL.8+LL.9 scaffold; CF.LL7.1; mirrors; MSR; LL.2; PPL;
@@ -3479,9 +3496,10 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-B-S1
-    # M5-B-S1 (2026-05-13). M5-B primary deliverable complete — DBN_TOPOLOGY_v1_0.md
-    # DRAFT authored + 5 CPT scaffolds created. Pre-registration commit timestamp
+  last_session_id: M5-B-NAP-S1
+    # M5-B-NAP-S1 (2026-05-13). Cowork NAP review session. NAP.M5.0 APPROVED (with
+    # prediction-gate caveat). NAP.M5.1 APPROVED in principle (U2 pending M5-B-S2).
+    # LL.2 campaign CLOSED. SIG.MSR.145 corrected.
     # establishes held-out sacrosanctness. LL.2 DEFERRED (Outcome B).
     # Surrogate two-pass: 6 findings, 3 unresolved (U1-U3 for NAP.M5.1).
     # See SESSION_LOG M5-B-S1 entry for full close block. M5-B continues (OPEN).
@@ -4288,16 +4306,17 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-B-S2 (or M5-C-S1 if NAP.M5.1 approved) — pending native review of DBN_TOPOLOGY_v1_0.md DRAFT.
-    Priority: (1) NAP.M5.1 — native adjudication of DRAFT topology (U1: CAREER↔SPIRITUAL
-    weight 0.15 vs 0.20; U2: SPIRITUAL domain split; U3: LL.2 approval);
-    (2) If NAP.M5.1 APPROVED — flip DBN_TOPOLOGY to CLOSED and proceed to M5-C
-    (Prior Specification per PHASE_M5_PLAN §3 M5-C); (3) NAP.M5.0 PPL cadence decision
-    still pending; (4) JH export window confirmation still pending; (5) AC.IV.6 recall
-    gap re-run after LL.3 fixes; (6) AC.IV.7 latency re-check. M5-B OPEN IN FLIGHT.
-    DBN_TOPOLOGY_v1_0.md DRAFT committed (pre-registration seal established).
-    5 CPT scaffold files all present in 06_LEARNING_LAYER/dbn/cpt/.
-    Predecessor M5-B-S1 (2026-05-13): DBN topology + CPT scaffolds + manifest + mirrors.
+    M5-B-S2 — IS.8(a) red-team DUE (counter=3; cadence obligation). Trigger phrase:
+    "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-B-S2."
+    Priority: (1) IS.8(a) red-team MUST be discharged this session (every-third cadence);
+    (2) Implement U2 topology amendment — split SPIRITUAL_PSYCHOLOGICAL into SPIRITUAL +
+    PSYCHOLOGICAL (5th domain) in DBN_TOPOLOGY_v1_0.md and expand CPT scaffolds (persistence.json
+    4→5 domains; natal_to_domain.json, dasha_to_domain.json, cross_domain.json, observation.json
+    updated); (3) NAP.M5.1 formal freeze: native says trigger phrase "I approve the DBN topology"
+    after reviewing 5-domain amendment; (4) EDGE-01 SIG.MSR.402b substitution — run co-occurrence
+    check, confirm empirical pattern, promote if valid; (5) AC.M5B.3 LL.3 retrieval-domain
+    alignment (R.LL3.1/.2/.3 platform/lib/ edits); (6) AC.IV.6 recall gap re-run post LL.3 fixes;
+    (7) AC.IV.7 latency re-check. Predecessor M5-B-NAP-S1 (2026-05-13): NAP review close.
     [Prior next_session_objective for M5-B-S1 — execute M5-B scope per PHASE_M5_PLAN §3 M5-B (DBN Topology).
     Priority: (1) Native sign-off on LL.2 per-edge campaign; (2) NAP.M5.0 cadence decision;
     (3) JH export window confirmation; (4) DBN topology design (nodes, edges, CPT schema);
@@ -5073,8 +5092,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-13T23:59:00+05:30
-  file_updated_by_session: M5-B-S1
+  file_updated_at: 2026-05-13T23:00:00+05:30
+  file_updated_by_session: M5-B-NAP-S1
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

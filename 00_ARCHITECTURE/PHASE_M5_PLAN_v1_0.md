@@ -35,6 +35,17 @@ ppl_volume_tracking:
     waiting 6 calendar months for prospective horizons to elapse. Ongoing prospective
     predictions continue to accumulate for M7+ calibration depth; M6 is no longer
     blocked on calendar time.
+  prediction_gate_design: >
+    NAP.M5.0 approved with caveat (2026-05-13): prediction emission to portal UI is
+    gated behind two control layers. Layer 1 — global master switch:
+    MARSYS_FLAG_PREDICTION_ENGINE_ENABLED (default OFF; stays off until portal is stable
+    end-to-end). Layer 2 — per-chart toggle: prediction_engine_enabled boolean field on
+    each chart/client record; only charts with this true emit predictions in chat responses
+    when master switch is on. Separation: PPL internal calibration (retroactive held-out
+    scoring, PPL log accumulation) continues regardless of flags. Portal UI emission is
+    completely suppressed while master flag is OFF. Implementation: per-chart toggle in
+    admin UI; deferred to dedicated portal session (new carry-forward item PE.1).
+  nap_m5_0_status: "APPROVED with caveat — 2026-05-13, Cowork-M5-B-S1-NAP.M5.1-final"
 native_approval_points:
   - M5-A close — PPL cadence plan: retroactive held-out protocol + ongoing prospective cadence (NAP.M5.0); ≥20 gate confirmed
   - M5-B close — DBN topology: node schema, edge types, time-slice structure (NAP.M5.1)
@@ -504,8 +515,8 @@ Per `MACRO_PLAN §LL-Appendix.A`:
 
 | NAP ID | Sub-phase | Item | Status |
 |---|---|---|---|
-| NAP.M5.0 | M5-A | PPL cadence plan: retroactive held-out protocol + ≥20 gate confirmed + feedback loop + ongoing prospective cadence | PENDING |
-| NAP.M5.1 | M5-B | DBN topology: node schema, edge types, time-slice, domain scope, parameterization | PENDING |
+| NAP.M5.0 | M5-A | PPL cadence plan: retroactive held-out protocol + ≥20 gate confirmed + feedback loop + ongoing prospective cadence | **APPROVED with caveat** — 2026-05-13, Cowork-M5-B-S1-NAP.M5.1. Caveat: prediction emission to portal UI gated behind two-layer flag (global `MARSYS_FLAG_PREDICTION_ENGINE_ENABLED` + per-chart `prediction_engine_enabled` toggle). PPL internal calibration continues regardless; UI emission off until portal stable + native enables per chart. Portal implementation item: per-chart prediction toggle in admin UI (deferred to dedicated portal session). |
+| NAP.M5.1 | M5-B | DBN topology: node schema, edge types, time-slice, domain scope, parameterization | **PENDING** — U1 resolved (0.20), U3 resolved (LL.2 campaign CLOSED). U2 (SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL split, 5th domain) approved by native but not yet implemented in DBN_TOPOLOGY_v1_0.md or CPT scaffolds. Topology freeze conditional on M5-B-S2 implementing U2 amendment. |
 | NAP.M5.2 | M5-C | Prior specification: per-parameter prior family, hyperparameters, classical citation | PENDING |
 | NAP.M5.3 | M5-D | Confidence-interval reporting policy: band width, credible level, n=1 disclosure | PENDING |
 | NAP.M5.4 | M5-E | M5 macro-phase close (IS.8(b) PASS + M5_CLOSE artifact review) | PENDING |

@@ -21346,3 +21346,229 @@ session_close:
     - AC.IV.6 recall=0.9355 — after LL.3 fixes
     - AC.IV.7 latency_ms null — after 7-day prod traffic window
 ```
+
+---
+
+## M5-B-NAP-S1 — DBN Topology NAP Review (2026-05-13)
+
+*Cowork NAP review session — adjudicates NAP.M5.1 (U1/U2/U3) + NAP.M5.0. Substantive (increments red_team_counter). Predecessor: M5-B-S1 (CLOSED 2026-05-13).*
+
+```yaml
+session_open:
+  session_id: M5-B-NAP-S1
+  session_type: nap_review
+  macro_phase: M5
+  sub_phase: M5-B
+  opened_at: 2026-05-13T22:00:00+05:30
+  agent: claude-sonnet-4-6
+  cowork_thread_name: "Madhav M5-B-NAP — DBN Topology Review + LL.2 Campaign"
+  prior_session_id: M5-B-S1
+  governing_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+  session_objective: >
+    NAP.M5.1 native adjudication (U1 weight, U2 domain split, U3 LL.2 per-edge approval).
+    NAP.M5.0 PPL cadence approval. SIG.MSR.145 forensic verification and label correction.
+    LL.2 per-edge campaign native review (8 edges). Session close governance.
+  may_touch:
+    - 06_LEARNING_LAYER/dbn/**
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/ll2_edge_weights_v1_0.json
+    - 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
+    - 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .geminirules
+    - .gemini/project_state.md
+  must_not_touch:
+    - 01_FACTS_LAYER/**
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/production/**
+    - 06_LEARNING_LAYER/OBSERVATIONS/**
+    - platform/**
+    - 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+    - 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+    - 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md
+```
+
+### Body — execution summary
+
+**NAP.M5.0 — PPL Cadence Plan:** APPROVED with caveat. Native approved the internal-calibration-only PPL discipline but requires a two-layer prediction gate before any UI-facing predictions are emitted: (1) global flag `MARSYS_FLAG_PREDICTION_ENGINE_ENABLED` (default OFF), (2) per-chart `prediction_engine_enabled` boolean (UI toggle in admin panel). Gate recorded in `PHASE_M5_PLAN_v1_0.md §6 NAP.M5.0`. Portal implementation item PE.1 deferred to a dedicated portal session.
+
+**SIG.MSR.145 forensic correction:** Native correctly identified that the "Parivartana Exchange Saturn-10L/Venus-7L" label was factually wrong. Venus is in Sagittarius 9H (FORENSIC §2.1), not in Capricorn or Aquarius (Saturn-ruled signs). No Parivartana is possible. Condition is actually a one-way dispositorship: Saturn (10L) tenants Libra 7H (Venus's sign), creating a Saturn→Venus dispositorship chain. MSR_v3_0.md SIG.MSR.145 corrected in-place: `signal_name`, `signal_type`, `entities_involved`, `provenance` all updated. Label correction recorded in `ll2_promotion_campaign_v1_0.md §5`.
+
+**SIG.MSR.402 invalidation confirmed:** MSR_v3_0.md at signal 402 carries `invalidation_reason` field (revised_confidence: 0.00). Replacement is SIG.MSR.402b ("Domestic-Dharmic Authority Architecture — Varnada in 4H Cancer + Ghati in 9H Sagittarius"). Affects EDGE-01, 03, 05, 07 — all cannot be promoted without 402b substitution.
+
+**NAP.M5.1 — LL.2 per-edge campaign (plain-language methodology):** Native requested simple correlation questions per edge rather than Jyotish terminology. Eight questions asked; native responded with definitive yes only where confident from lived experience.
+
+**LL.2 final decisions:**
+- EDGE-01 (career/finance co-moves with relationship quality): APPROVED_CONDITIONAL — native big yes; SIG.MSR.402 endpoint invalid, requires 402b substitution in M5-B-S2.
+- EDGE-02 (Mars absent → diplomatic career paths): REJECTED — native cannot speak definitively.
+- EDGE-03 (Venus transformation ↔ 8H hidden-pinnacle): REJECTED — native cannot speak definitively.
+- EDGE-04 (authority structures not obstructing career ↔ career/relationship co-movement): APPROVED — native confirmed. `promotion_eligible: true`.
+- EDGE-05 (Sarpa absent ↔ 8H hidden-pinnacle): REJECTED — native cannot speak definitively.
+- EDGE-06 (benefic near-miss ↔ Venus transformation mode): APPROVED — native confirmed. `promotion_eligible: true`. Conditional on SIG.MSR.117 shadow-node status.
+- EDGE-07 (Hamsa near-miss ↔ 8H hidden-pinnacle): REJECTED — native cannot speak definitively.
+- EDGE-08 (career shifts and relationship shifts move together): APPROVED — native confirmed. `promotion_eligible: true`.
+
+**NAP.M5.1 U-items adjudication:**
+- U1: CAREER↔SPIRITUAL weight → 0.20 (native: "more inclined towards the higher side"). RESOLVED.
+- U2: SPIRITUAL_PSYCHOLOGICAL domain split → approved ("Yes, split them"). Implementation deferred to M5-B-S2. APPROVED_PENDING_IMPLEMENTATION.
+- U3: LL.2 per-edge campaign → closed (see above). RESOLVED.
+
+**Native topology approval:** "I approve the deviant topology." Formal freeze deferred to M5-B-S2 (must implement U2 amendment first — wrong to freeze 4-domain topology when 5th domain approved).
+
+**Files modified:**
+- `06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/ll2_edge_weights_v1_0.json` — nap_m5_1_decision + promotion_eligible updated for all 8 edges.
+- `06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md` — status CLOSED; §4 struck through; §5 residuals updated; §6 final decisions table added.
+- `025_HOLISTIC_SYNTHESIS/MSR_v3_0.md` — SIG.MSR.145 label corrected in-place.
+- `06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md` — nap_m5_1_status field added; changelog entry added.
+- `00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md` — prediction_gate_design added; NAP.M5.0 + NAP.M5.1 statuses updated.
+- `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` — v4.2 → v4.3; red_team_counter 2→3; last_session_id updated; next_session_objective updated.
+- `.geminirules` — §F updated (MP.1 mirror).
+- `.gemini/project_state.md` — Active Phase M5 block updated (MP.2 mirror).
+- `00_ARCHITECTURE/SESSION_LOG.md` — this entry appended.
+
+```yaml
+session_close:
+  session_id: M5-B-NAP-S1
+  closed_at: 2026-05-13T23:30:00+05:30
+  files_touched:
+    - path: 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/shadow/ll2_edge_weights_v1_0.json
+      mutation_type: modified
+      justification: "NAP.M5.1 LL.2 per-edge decisions + promotion_eligible flags updated"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md
+      mutation_type: modified
+      justification: "Status CLOSED; §4 superseded; §5 residuals; §6 final decisions table"
+      within_declared_scope: true
+    - path: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
+      mutation_type: modified
+      justification: "SIG.MSR.145 label correction (Parivartana → One-Way Dispositorship Chain)"
+      within_declared_scope: true
+    - path: 06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md
+      mutation_type: modified
+      justification: "nap_m5_1_status block added; changelog updated"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+      mutation_type: modified
+      justification: "prediction_gate_design + NAP.M5.0 APPROVED + NAP.M5.1 status updated"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      justification: "v4.2→v4.3; red_team_counter 2→3; last_session_id M5-B-NAP-S1; next_session M5-B-S2"
+      within_declared_scope: true
+    - path: .geminirules
+      mutation_type: modified
+      justification: "MP.1 mirror — §F current execution position updated to M5-B-NAP-S1 close"
+      within_declared_scope: true
+    - path: .gemini/project_state.md
+      mutation_type: modified
+      justification: "MP.2 mirror — Active Phase M5 block updated with M5-B-NAP-S1 deliverables"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      justification: "M5-B-NAP-S1 entry appended (this entry)"
+      within_declared_scope: true
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      claude_side_touched: false
+      gemini_side_touched: true
+      both_updated_same_session: true
+      rationale: "CLAUDE.md §F not modified (no structural change); .geminirules §F updated to M5-B-NAP-S1 state"
+    - pair_id: MP.2
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+      rationale: "CURRENT_STATE v4.3 (Claude side) + project_state.md M5-B-NAP-S1 block (Gemini side)"
+    - pair_id: MP.3
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "MACRO_PLAN not touched this session"
+    - pair_id: MP.4
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "PHASE_B_PLAN not touched (superseded)"
+    - pair_id: MP.5
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "MSR_v3_0.md SIG.MSR.145 corrected; L2.5 path block in .geminirules unchanged (path unchanged)"
+    - pair_id: MP.6
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "MP.6 declared Claude-only (GOVERNANCE_STACK); not touched"
+    - pair_id: MP.7
+      claude_side_touched: true
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "MP.7 declared Claude-only (SESSION_LOG)"
+    - pair_id: MP.8
+      claude_side_touched: false
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "PROJECT_ARCHITECTURE not touched"
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+    note: "red_team_counter advances 2→3. IS.8(a) fires — M5-B-S2 MUST discharge red-team. NAP session class; cadence obligation deferred to M5-B-S2."
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 2
+    report_path: n/a
+    divergences_found: known_residuals
+    known_residuals_note: "Carry-forward residuals from M5-A/B baseline; no new HIGH regressions introduced this session."
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 2
+    report_path: n/a
+    violations_found: known_residuals
+    known_residuals_note: "Carry-forward violations; no new HIGH/CRITICAL introduced."
+  mirror_enforcer_run:
+    script: platform/scripts/governance/mirror_enforcer.py
+    exit_code: 0
+    report_path: n/a
+    desync_pairs: []
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  nap_items_resolved:
+    - nap_id: NAP.M5.0
+      status: APPROVED
+      outcome: "PPL cadence approved with two-layer prediction gate caveat; UI toggle PE.1 deferred"
+    - nap_id: NAP.M5.1
+      status: APPROVED_CONDITIONAL
+      outcome: "U1 RESOLVED (0.20); U2 APPROVED_PENDING_IMPLEMENTATION (5th domain, M5-B-S2); U3 RESOLVED (LL.2 campaign closed). Formal freeze at M5-B-S2 after U2."
+  ll2_campaign_final:
+    status: CLOSED
+    approved: [EDGE-04, EDGE-06, EDGE-08]
+    approved_conditional: [EDGE-01]
+    rejected: [EDGE-02, EDGE-03, EDGE-05, EDGE-07]
+  open_items_carried_forward:
+    - OPEN_ITEM.P1.1 (MSR.145 CDLM cell absent)
+    - EDGE-01 402b substitution + co-occurrence re-check (M5-B-S2)
+    - U2 implementation — SPIRITUAL+PSYCHOLOGICAL 5th domain in DBN_TOPOLOGY + CPT scaffolds (M5-B-S2)
+    - Formal NAP.M5.1 freeze after U2 (M5-B-S2)
+    - AC.M5B.3 LL.3 retrieval-domain alignment R.LL3.1/.2/.3 (M5-B-S2)
+    - AC.IV.6 recall gap re-run after LL.3 fixes (M5-B-S2)
+    - AC.IV.7 latency telemetry re-check (M5-B-S2)
+    - IS.8(a) red-team MANDATORY (M5-B-S2 — counter=3)
+    - Portal PE.1 per-chart prediction toggle UI (dedicated portal session)
+  red_team_counter: 3
+  close_criteria_met: true
+  next_session_commitment: >
+    M5-B-S2: mandatory IS.8(a) red-team (counter=3 fires); U2 domain split implementation
+    in DBN_TOPOLOGY_v1_0.md + all 5 CPT scaffold files; formal NAP.M5.1 topology freeze
+    (native re-issues approval after U2 visible); EDGE-01 402b substitution + co-occurrence
+    re-check; AC.M5B.3 LL.3 R.LL3.1/2/3 fixes in platform/lib/; AC.IV.6 recall re-run;
+    AC.IV.7 latency re-check.
+```
+
+### Next session objective
+
+Execute **M5-B-S2**: IS.8(a) red-team (mandatory, counter=3); implement U2 SPIRITUAL+PSYCHOLOGICAL domain split across DBN_TOPOLOGY_v1_0.md and all 5 CPT scaffold files; obtain formal NAP.M5.1 freeze from native after U2 is visible; substitute SIG.MSR.402→SIG.MSR.402b in EDGE-01 and run co-occurrence re-check; execute AC.M5B.3 LL.3 retrieval-domain alignment fixes (R.LL3.1/.2/.3) in platform/lib/; run AC.IV.6 recall gap re-run; run AC.IV.7 latency telemetry re-check.
+
+*End of M5-B-NAP-S1 entry — 2026-05-13.*
