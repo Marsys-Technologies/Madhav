@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { CatalogFetchResult } from '@/lib/aiops/catalog/types'
 
+// Stub HealthPip so it makes no fetch calls in these tests
+vi.mock('../HealthPip', () => ({
+  HealthPip: () => null,
+}))
+
 // Mock fetch globally
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)

@@ -25,7 +25,8 @@
     "trace:smoke": "tsx scripts/trace/trace_smoke.ts",
     "observatory:smoke": "tsx scripts/observatory/smoke_test.ts",
     "answer:eval": "npx tsx scripts/answer_eval.ts",
-    "embedding:freshness": "npx tsx --conditions=react-server scripts/retrieval/embedding_freshness_check.ts"
+    "embedding:freshness": "npx tsx --conditions=react-server scripts/retrieval/embedding_freshness_check.ts",
+    "aiops:health": "tsx scripts/aiops/probe_health_cron.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",

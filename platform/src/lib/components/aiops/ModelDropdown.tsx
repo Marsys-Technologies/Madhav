@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { CallType, ModelStack, Provider } from '@/lib/models/registry'
 import { filterCatalogForCallType, CALL_TYPE_SPECS } from '@/lib/aiops/specs/call_type_specs'
 import type { CatalogEntry, CatalogFetchResult } from '@/lib/aiops/catalog/types'
+import { HealthPip } from './HealthPip'
 
 interface ModelDropdownProps {
   stack:    ModelStack
@@ -30,7 +31,7 @@ function providersFor(stack: ModelStack, callType: CallType): Provider[] {
   return [map[stack]]
 }
 
-export function ModelDropdown({ stack, callType, role, value, onChange }: ModelDropdownProps) {
+export function ModelDropdown({ stack, callType, value, onChange }: ModelDropdownProps) {
   const [entries, setEntries]     = useState<CatalogEntry[]>([])
   const [loading, setLoading]     = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -118,7 +119,10 @@ export function ModelDropdown({ stack, callType, role, value, onChange }: ModelD
                   e.metadata_pending ? 'opacity-60' : '',
                 ].join(' ')}
               >
-                <span className="truncate font-mono">{e.model_id}</span>
+                <span className="flex min-w-0 items-center gap-1.5 truncate">
+                  <HealthPip modelId={e.model_id} />
+                  <span className="truncate font-mono">{e.model_id}</span>
+                </span>
                 <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">
                   {e.metadata_pending ? '[pending]' : e.provider}
                 </span>

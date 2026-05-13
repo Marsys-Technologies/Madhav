@@ -1,28 +1,28 @@
 ---
 status: OPEN
-session_id: AIOPS_CP_2
-phase: CP.2
-phase_name: "Write side + probe + spec-filtered dropdowns + MARSYS UI + cross-stack UI"
-next_session: AIOPS_CP_3
+session_id: AIOPS_CP_5
+phase: CP.5
+phase_name: "Final smoke + flag flip + monitoring + native acceptance"
+next_session: AIOPS_PHASE_1_COMPLETE
 authored_at: 2026-05-13
 authored_by: AIOPS_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CP_2
-## AIOps Phase 1, Step 2 — Full interactive Control Panel
+# CLAUDECODE_BRIEF — AIOPS_CP_5
+## AIOps Phase 1, Step 5 — Cutover and acceptance
 
 ---
 
 ## §0 — Executor orientation
 
-CP.2 builds the entire interactive Control Panel UI plus all write
-endpoints plus the probe endpoint. After CP.2 closes, the Control Panel is
-visually and functionally complete EXCEPT for: the call-site migration
-(CP.3), the audit-rail revert button (CP.4 polish), and the production flag
-flip (CP.5).
+CP.5 is the cutover phase. The feature is code-complete after CP.4. CP.5
+runs the final stack-wide smoke, flips the feature flag from `false` to
+`true` on the branch, opens a 48-hour observation window, and writes the
+native-acceptance handoff.
 
-Read `00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md` and
-`AIOPS_MASTER_PLAN_v1_0.md §6, §9` in full.
+**Native acceptance is required to merge this branch.** CP.5 does NOT
+merge to main; it produces the PR-ready state and a written acceptance
+checklist.
 
 ---
 
@@ -30,15 +30,14 @@ Read `00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md` and
 
 ```
 1.  CLAUDE.md
-2.  00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md
+2.  00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md §10, §11, §12, §15, §17
 3.  00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-4.  platform/src/lib/models/registry.ts
-5.  platform/src/lib/models/runtime_config.ts                     # written in CP.1
-6.  platform/src/lib/aiops/catalog/index.ts                       # written in CP.1
-7.  platform/src/lib/aiops/specs/call_type_specs.ts               # written in CP.1
-8.  platform/src/lib/db/schema/aiops.ts                           # written in CP.1
-9.  platform/src/lib/components/observatory/filters/MultiSelect.tsx (existing pattern to reuse)
-10. platform/src/lib/components/observatory/events/EventSidePanel.tsx (slide-over reuse)
+4.  00_ARCHITECTURE/aiops/CP3_CALL_SITES_INVENTORY.md  (from CP.3)
+5.  00_ARCHITECTURE/aiops/CP4_A11Y_AUDIT.md            (from CP.4)
+6.  00_ARCHITECTURE/aiops/CP4_BRAND_AUDIT.md           (from CP.4)
+7.  All six provider catalog endpoints (live HTTP) — confirm at least 4 of 5
+    are reachable; one allowed degraded (e.g., NIM if Nemotron endpoint
+    flaky).
 ```
 
 ---
@@ -47,167 +46,205 @@ Read `00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md` and
 
 ### may_touch
 ```
-platform/src/lib/aiops/**                       # probe service, dropdown adapter
-platform/src/app/api/admin/aiops/**             # all write endpoints + probe + smoke
-platform/src/app/(super-admin)/aiops/control/page.tsx
-platform/src/lib/components/aiops/**            # all new components for CP.2 UI
-CLAUDECODE_BRIEF.md
+platform/src/lib/config/feature_flags.ts              # flip the flag DEFAULT? NO — see §3.4
+platform/scripts/aiops/cutover_smoke.ts                # NEW
+platform/scripts/aiops/cutover_smoke_report.json       # NEW (generated output)
+00_ARCHITECTURE/aiops/CP5_CUTOVER_REPORT_v1_0.md       # NEW
+00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md         # NEW
+00_ARCHITECTURE/CURRENT_STATE_v1_0.md                  # update concurrent_workstreams
+CLAUDECODE_BRIEF.md                                    # flip to status: COMPLETE
 ```
 
 ### must_not_touch
-(same as CP.1; in particular do NOT migrate call sites yet — that's CP.3)
+- Everything else.
+- `feature_flags.ts` is touched ONLY in the sense of confirming
+  `AIOPS_OVERRIDES_ENABLED` is read from env; we DO NOT change its default
+  in code. The flip happens at deployment time by setting the env variable
+  in production. This brief documents that step.
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Write API endpoints
+### 3.1 — Cutover smoke
 
-Implement per AIOPS_MASTER_PLAN §9:
+Author `platform/scripts/aiops/cutover_smoke.ts`:
 
-- `PUT /api/admin/aiops/stack` — sets active stack; writes `llm_stack_config` + audit row + cache-bust.
-- `PUT /api/admin/aiops/routing/[stack]/[call_type]` — sets routing override.
-- `DELETE /api/admin/aiops/routing/[stack]/[call_type]` — resets to registry.
-- `PUT /api/admin/aiops/params/[stack]/[call_type]/[param]` — sets param override.
-- `DELETE /api/admin/aiops/params/[stack]/[call_type]/[param]` — resets param.
-- `GET /api/admin/aiops/catalog/[provider]` — live catalog (cached 6h).
-- `POST /api/admin/aiops/catalog/refresh/[provider]` — force-refresh.
-- `GET /api/admin/aiops/audit?limit=20` — recent changes.
+```ts
+#!/usr/bin/env node
+// Runs a Stack Smoke against every one of the 6 stacks sequentially.
+// For MARSYS, uses the seeded defaults from CP.1.
+// Writes a structured report to cutover_smoke_report.json.
 
-Every write endpoint:
-- Validates input with zod (define schemas in `platform/src/app/api/admin/aiops/_parse.ts`).
-- Verifies the new value is sensible: model_id exists in the augmented catalog;
-  call_type is recognized; param_value matches the expected type for that param_name.
-- Writes an `llm_config_audit` row in the same transaction as the write.
-- Calls `invalidateRuntimeConfigCache()` after the transaction commits.
-- Returns the new effective state for the affected (stack, call_type).
+import { runProbe } from '@/lib/aiops/probe/runner'
+import type { ModelStack, CallType } from '@/lib/models/registry'
 
-Tests in `__tests__/` per endpoint: ≥3 cases each (valid update, invalid input,
-auth failure).
+const STACKS: ModelStack[] = ['nim', 'gemini', 'deepseek', 'gpt', 'anthropic', 'marsys']
+const CALL_TYPES: CallType[] = [
+  'synthesis', 'planner_deep', 'planner_fast',
+  'context_assembly', 'worker',
+  'eval_judge', 'smoke_synth',
+]
+const ROLES = ['primary', 'fallback'] as const
 
-### 3.2 — Probe service
+const results = []
+for (const stack of STACKS) {
+  for (const callType of CALL_TYPES) {
+    for (const role of ROLES) {
+      const r = await runProbe({ stack, callType, role })
+      results.push({ stack, callType, role, ...r })
+      console.log(`[${r.pass ? 'OK' : 'FAIL'}] ${stack}/${callType}/${role}`)
+    }
+  }
+}
 
-Create `platform/src/lib/aiops/probe/`:
+await fs.writeFile('cutover_smoke_report.json', JSON.stringify({
+  ran_at: new Date().toISOString(),
+  total: results.length,
+  pass: results.filter(r => r.pass).length,
+  fail: results.filter(r => !r.pass).length,
+  results,
+}, null, 2))
+```
 
-- `prompts.ts` — per-call-type probe prompts (hardcoded). For synthesis-class
-  probes use a small Jyotish-flavored example; for planner probes ask for a
-  structured JSON tool plan; for worker probes ask for a one-sentence
-  summary.
-- `runner.ts` — `runProbe({ stack, callType, role, modelOverride? }): Promise<ProbeResult>`.
-  Internally calls `resolveModel(modelId)` then `streamText` with the
-  call-type-appropriate prompt and timeout. Captures: token counts,
-  latency, USD cost (from MODELS metadata), output text (truncated to
-  300 chars), `finishReason`, error if any.
-- `types.ts` — `ProbeResult`, `ProbeOptions`.
+Run it twice:
+- Once with `AIOPS_OVERRIDES_ENABLED=false` (registry path).
+- Once with `AIOPS_OVERRIDES_ENABLED=true` (DB path; with current overrides).
 
-Probe calls go through the existing observed provider wrappers so they
-appear in the Observatory with `pipeline_stage='aiops_probe'`.
+Both runs should pass at the same rate for any stack/call_type combo. Diff
+between them is the surface area where DB overrides are active.
 
-### 3.3 — Probe + smoke endpoints
+Per the user's standing LLM stack rule, the Anthropic stack rows are
+expected to FAIL with `auth_fail` if no Anthropic key is configured —
+that's not a CP.5 blocker. Document it as "expected: Anthropic skipped".
 
-- `POST /api/admin/aiops/probe` — body `{ stack, call_type, role }` →
-  ProbeResult. Streams the model output to the client (server-sent events
-  pattern matching the rest of the codebase).
-- `POST /api/admin/aiops/smoke/[stack]` — runs probe for every
-  (call_type × role) pair for the stack. Returns
-  `{ results: ProbeResult[], all_pass: boolean, summary: {...} }`.
-  For the MARSYS stack: probes only what the user has explicitly set in DB
-  overrides (no fallback to registry defaults for MARSYS).
+### 3.2 — Cutover report
 
-### 3.4 — Spec-filtered model dropdown
+Author `00_ARCHITECTURE/aiops/CP5_CUTOVER_REPORT_v1_0.md`:
 
-Create `platform/src/lib/components/aiops/ModelDropdown.tsx`:
+```markdown
+---
+artifact: CP5_CUTOVER_REPORT_v1_0.md
+status: CLOSED
+authored_at: <ISO timestamp>
+session_id: AIOPS_CP_5
+---
 
-Props:
-- `stack: ModelStack`
-- `callType: CallType`
-- `role: 'primary' | 'fallback'`
-- `value: string` (current model_id)
-- `onChange: (modelId: string) => void`
+# CP.5 Cutover Report
 
-Internal behavior:
-- Calls `GET /api/admin/aiops/catalog/<provider>` for the stack's primary
-  provider (or all 5 providers if stack === 'marsys' or callType is
-  eval/smoke/checkpoint).
-- Applies `filterCatalogForCallType(entries, callType)` from CP.1.
-- Groups by provider (except MARSYS / eval / smoke / checkpoint — flat list).
-- Sorts per spec preferred sort key.
-- Pins registry-default to top with "default" badge.
-- Shows `[METADATA_PENDING]` entries at bottom.
-- Renders health pip next to each entry (gray initially, populated by CP.4
-  health cron).
-- Shows the spec note ("≥1M context required") as a subdued caption.
-- "Refresh catalog" icon button that calls
-  `POST /api/admin/aiops/catalog/refresh/<provider>`.
+## §1 — Smoke test summary
+- Flag-off run: <pass>/<total>
+- Flag-on run:  <pass>/<total>
+- Anthropic rows: <expected failures, not blocking>
 
-### 3.5 — Param-override row
+## §2 — Catalog freshness (per provider)
+- NIM:       <last_fetch>, <model_count>
+- Gemini:    <last_fetch>, <model_count>
+- DeepSeek:  <last_fetch>, <model_count>
+- GPT:       <last_fetch>, <model_count>
+- Anthropic: <last_fetch or AUTH_FAIL>, <model_count>
 
-Create `platform/src/lib/components/aiops/ParamOverrideRow.tsx`:
+## §3 — Override surface
+For each (stack, call_type) with a non-default override, list:
+- Current model_id (primary / fallback)
+- Registry default
+- Reason (if recorded in audit notes)
 
-For each (stack, call_type), an Advanced disclosure expands four rows:
-`max_output_tokens`, `temperature`, `thinkingBudget`, `timeout_ms`.
+## §4 — Health table snapshot
+List every model and its current health status.
 
-Each row shows: param name | default value (from registry / provider options
-defaults) | current override (or "(default)") | input field | reset link.
+## §5 — Outstanding risks
+- (auto-populated from any FAIL or DEGRADED)
+```
 
-On change → debounced 500ms → PUT to
-`/api/admin/aiops/params/[stack]/[call_type]/[param]`.
+### 3.3 — Native acceptance handoff
 
-### 3.6 — Test probe inline panel
+Author `00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md`:
 
-Create `platform/src/lib/components/aiops/TestProbeInline.tsx`:
+```markdown
+---
+artifact: CP5_NATIVE_ACCEPTANCE.md
+status: AWAITING_NATIVE
+session_id: AIOPS_CP_5
+---
 
-A collapsible region beneath each (stack, call_type) row. When the Test
-button is clicked, it expands and:
-1. Calls `POST /api/admin/aiops/probe` with `{ stack, call_type, role }`.
-2. Streams the response.
-3. Shows: status (running → pass/fail), latency, tokens in/out, cost,
-   `finishReason`, output text (truncated to 300 chars), error if any.
-4. After completion, the dropdown's health pip updates to green/red.
+# AIOps Phase 1 — Native Acceptance Checklist
 
-### 3.7 — Stack-level smoke test
+The AIOps Phase 1 feature branch `feature/aiops-control-panel` is
+code-complete and tested. Before merging to main:
 
-Create `platform/src/lib/components/aiops/StackSmokeButton.tsx`:
+1. [ ] Pull the branch locally; run `npm install` + `npm run db:migrate`
+   (against your local DB).
+2. [ ] Visit `/aiops/control` as super-admin. Confirm all 6 stacks render.
+3. [ ] Switch active stack to NIM. Click "Run smoke test for this stack".
+   Confirm at least 8 of 10 probes pass.
+4. [ ] Change synthesis primary on NIM to a different model from the
+   dropdown. Click Test. Confirm probe succeeds.
+5. [ ] Switch to MARSYS. Pick a synthesis primary from Gemini and a worker
+   primary from DeepSeek. Confirm Test buttons work for both.
+6. [ ] Visit `/observatory`. Click the Configure pencil on any stack card.
+   Confirm it lands on `/aiops/control?stack=<stack>`.
+7. [ ] Inspect `CP5_CUTOVER_REPORT_v1_0.md`. Confirm flag-off vs flag-on
+   parity.
+8. [ ] Inspect `CP4_A11Y_AUDIT.md`. Confirm 0 outstanding.
+9. [ ] Inspect `CP4_BRAND_AUDIT.md`. Confirm 0 violations.
 
-Big button on each stack card. Clicking it:
-1. POSTs to `/api/admin/aiops/smoke/<stack>`.
-2. Renders a 5×2 grid (5 call types × {primary, fallback}) with each cell
-   showing pass/fail/running.
-3. On completion, surfaces a summary: "9/10 PASS — DeepSeek V4 Pro
-   synthesis primary timed out."
+If all boxes check: merge the PR. Set `AIOPS_OVERRIDES_ENABLED=true` in
+production env. Schedule a Cloud Scheduler job to call
+`POST /api/admin/aiops/health/probe` nightly.
 
-### 3.8 — Full Control Panel page
+48-hour observation window starts at the env-var flip. During the window:
+- Confirm Observatory cost/usage numbers continue normally.
+- Confirm no regression in /consume latency or error rate.
+- If anything looks off, rollback by setting `AIOPS_OVERRIDES_ENABLED=false`
+  in production env — no code change required.
 
-Replace the CP.1 read-only page with the full interactive layout per
-AIOPS_MASTER_PLAN §6:
+Schedule flag removal 2 weeks after the flip (per Phase 11B precedent).
+```
 
-- Top: stack picker (6 cards, all clickable, with cost-confirmation modal for
-  paid stacks per Risk register).
-- Below: selected stack's call type rows (5 pipeline + 6 quality/verification).
-  Each row has ModelDropdown × 2 (primary + fallback), Test buttons, and
-  the Advanced disclosure with ParamOverrideRow.
-- Stack smoke button between the two row groups.
-- Right rail: Recent Changes (live data from `/api/admin/aiops/audit`).
-  Revert button is a no-op visual only in CP.2 (real revert lands in CP.4).
+### 3.4 — Update CURRENT_STATE
 
-For the MARSYS card: same UI but dropdowns are unrestricted (the
-ModelDropdown logic handles this; MARSYS card just passes `stack='marsys'`).
+Edit `00_ARCHITECTURE/CURRENT_STATE_v1_0.md §2`:
 
-For the Quality & Verification section: each row passes `stack='marsys'`
-internally to ModelDropdown OR a dedicated `crossStack=true` flag — choose
-the cleanest implementation. Either way, the dropdown shows models across
-all 5 providers (NIM, Gemini, DeepSeek, GPT, Anthropic).
+- Add to `concurrent_workstreams` block:
+  ```
+  AIOps Phase 1 (Control Panel) CODE-COMPLETE 2026-MM-DD on branch
+  feature/aiops-control-panel. Awaiting native acceptance per
+  00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md before merge.
+  Phase 2 (Adapter Layer) and Phase 3 (Consume UI Overhaul) tracked in
+  AIOPS_MASTER_PLAN_v1_0.md §14 — future scope.
+  ```
+- Bump CURRENT_STATE version + changelog entry.
 
-### 3.9 — Cost-confirmation modal
+### 3.5 — Flip CLAUDECODE_BRIEF to COMPLETE
 
-Create `platform/src/lib/components/aiops/CostConfirmDialog.tsx`:
+Rewrite root `CLAUDECODE_BRIEF.md`:
 
-Triggered when switching to a stack whose synthesis primary cost ≥ a
-threshold (e.g., > $1.00 per 1M input tokens). Shows estimated cost per
-query at current params; requires explicit click-through.
+```yaml
+---
+status: COMPLETE
+session_id: AIOPS_CP_5
+completed_at: <ISO timestamp>
+deliverables:
+  - 00_ARCHITECTURE/aiops/AIOPS_MASTER_PLAN_v1_0.md
+  - 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+  - 00_ARCHITECTURE/aiops/phase_briefs/PHASE_CP_0…5_BRIEF.md
+  - 00_ARCHITECTURE/aiops/CP3_CALL_SITES_INVENTORY.md
+  - 00_ARCHITECTURE/aiops/CP4_A11Y_AUDIT.md
+  - 00_ARCHITECTURE/aiops/CP4_BRAND_AUDIT.md
+  - 00_ARCHITECTURE/aiops/CP5_CUTOVER_REPORT_v1_0.md
+  - 00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md
+next_native_action: >
+  Review CP5_NATIVE_ACCEPTANCE.md and complete the checklist; merge
+  feature/aiops-control-panel to main when satisfied; set
+  AIOPS_OVERRIDES_ENABLED=true in production env.
+---
 
-Per native standing rule (Anthropic banned by default), Anthropic always
-triggers this modal regardless of pricing threshold.
+# AIOps Phase 1 — COMPLETE
+
+All six phases CP.0 → CP.5 closed. Native acceptance pending per
+00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md.
+```
 
 ---
 
@@ -215,53 +252,59 @@ triggers this modal regardless of pricing threshold.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CP2.1 | All 8 write endpoints exist + tests | `npm run test -- aiops` ≥24 endpoint cases pass |
-| AC.CP2.2 | Probe endpoint streams + returns ProbeResult shape | E2E test passes |
-| AC.CP2.3 | Smoke endpoint runs 10 probes for one stack | E2E test on `nim` stack returns 10 results |
-| AC.CP2.4 | ModelDropdown filters per spec | Test asserts synthesis dropdown shows only models with `maxInputTokens >= 1_000_000` |
-| AC.CP2.5 | MARSYS card shows all providers flat | Snapshot test of dropdown contents |
-| AC.CP2.6 | Quality & Verification rows show cross-stack catalog | Snapshot test |
-| AC.CP2.7 | Switching to Anthropic stack triggers CostConfirmDialog | UI test |
-| AC.CP2.8 | Param override round-trips | Integration test: set → read → assert |
-| AC.CP2.9 | Audit row written for every config change | Integration test counts audit rows before/after |
-| AC.CP2.10 | Catalog force-refresh updates the cache | Integration test with mock HTTP |
-| AC.CP2.11 | `npm run typecheck` | exit 0 |
-| AC.CP2.12 | `npm run lint` | exit 0 |
-| AC.CP2.13 | Full test suite green | exit 0 |
-| AC.CP2.14 | scope-violation grep | SCOPE_OK |
-| AC.CP2.15 | Manual smoke (logged in close): stack switch + routing change + probe button each work end-to-end on local dev | Captured in commit body |
+| AC.CP5.1 | `cutover_smoke.ts` exists + runs both flag states | exit 0 from `npm run aiops:cutover-smoke` |
+| AC.CP5.2 | Smoke report generated | `test -f platform/scripts/aiops/cutover_smoke_report.json` |
+| AC.CP5.3 | Flag-off and flag-on parity (all stacks/call_types match, Anthropic auth_fail allowed) | parse the JSON, assert |
+| AC.CP5.4 | `CP5_CUTOVER_REPORT_v1_0.md` exists with all §1–§5 populated | grep section markers |
+| AC.CP5.5 | `CP5_NATIVE_ACCEPTANCE.md` exists with all checklist items | grep `[ ]` count |
+| AC.CP5.6 | `CURRENT_STATE_v1_0.md` mentions AIOps in concurrent_workstreams | grep |
+| AC.CP5.7 | Root `CLAUDECODE_BRIEF.md` `status: COMPLETE` | grep |
+| AC.CP5.8 | Branch is on `feature/aiops-control-panel` with N commits ahead of main where N = 6 phases | `git rev-list --count main..HEAD` ≥ 6 |
+| AC.CP5.9 | Full test suite green | exit 0 |
+| AC.CP5.10 | `npm run typecheck` | exit 0 |
+| AC.CP5.11 | scope-violation grep | SCOPE_OK |
 
 ---
 
-## §5 — Test minimums
+## §5 — Session close
 
-- Write endpoints: ≥24 cases (3 per endpoint × 8 endpoints).
-- Probe + smoke: ≥10 cases.
-- ModelDropdown: ≥8 cases (spec filter, sort, MARSYS flat-list, pending badge).
-- ParamOverrideRow: ≥6 cases (debounce, reset, validation).
-- CostConfirmDialog: ≥4 cases (trigger threshold, Anthropic always, dismiss, confirm).
+Final commit message:
+```
+feat(aiops-CP.5): cutover smoke + native acceptance handoff
 
-Total ≥ 52 new tests.
+- platform/scripts/aiops/cutover_smoke.ts (both flag states)
+- 00_ARCHITECTURE/aiops/CP5_CUTOVER_REPORT_v1_0.md
+- 00_ARCHITECTURE/aiops/CP5_NATIVE_ACCEPTANCE.md
+- CURRENT_STATE_v1_0.md updated with AIOps Phase 1 code-complete note
+- CLAUDECODE_BRIEF.md flipped to status: COMPLETE
 
----
+Phase 1 (Control Panel) is now code-complete. Branch ready for native
+review + merge per CP5_NATIVE_ACCEPTANCE.md.
 
-## §6 — Session close
+AC summary: 11/11 PASS
+```
 
-Standard. Final commit `feat(aiops-CP.2): full interactive Control Panel + probes`.
-Rotate CLAUDECODE_BRIEF.md → PHASE_CP_3_BRIEF.md.
+Do NOT push the branch. Native pushes / opens the PR.
 
----
-
-## §7 — BAIL OUT triggers (CP.2 specific)
-
-- Probe endpoint hangs on a particular provider (timeout not respected).
-- Streaming pattern in this codebase differs from what the brief assumes — if
-  the existing `/consume` SSE machinery isn't reusable for probe streaming,
-  BAIL OUT and let native decide.
-- A live provider catalog returns 401 for all five providers (env var
-  configuration issue) — write the catalog handlers anyway but BAIL on AC.CP2.4
-  because the dropdown will be empty.
+Report:
+```
+[AIOPS-CLOSE] phase=CP.5 status=COMPLETE branch=feature/aiops-control-panel
+[AIOPS-COMPLETE] Phase 1 (Control Panel) code-complete. Awaiting native.
+```
 
 ---
 
-*End of PHASE_CP_2_BRIEF.md*
+## §6 — BAIL OUT triggers (CP.5 specific)
+
+- Smoke shows flag-off ≠ flag-on parity on a non-Anthropic stack — there's
+  a hidden override creeping in. BAIL OUT, log the discrepancy, ask native
+  to investigate.
+- More than one provider's catalog endpoint is dead — the Control Panel
+  is non-functional in practice. BAIL OUT for native to provision credentials.
+- Test suite or typecheck regresses from CP.4 close — something in this
+  session broke an upstream contract.
+
+---
+
+*End of PHASE_CP_5_BRIEF.md*
+*End of AIOps Phase 1 brief arc.*

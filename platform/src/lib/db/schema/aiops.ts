@@ -9,10 +9,12 @@ export type AiopsAction =
   | 'reset_param'
   | 'probe'
   | 'revert'
+  | 'reset_routing'    // emitted when routing override is deleted
 
 export type AiopsModelHealthStatus =
   | 'pass'
   | 'fail'
+  | 'timeout'
   | 'stale'
   | 'never_probed'
 
