@@ -149,10 +149,9 @@ export function googleProviderOptions(modelId: string):
         { category: 'HARM_CATEGORY_CIVIC_INTEGRITY',   threshold: 'BLOCK_NONE' },
       ],
       thinkingConfig: {
-        // Cap thinking at 8 192 tokens (~30 s) for acceptable synthesis latency.
-        // Raise to 16 384 for deeper multi-domain queries if latency is acceptable;
-        // lower to 0 to disable thinking entirely (fastest, least CoT).
-        thinkingBudget: 8_192,
+        // Restored to model-max: 32 768 is the Gemini 2.5 ceiling for thinkingBudget.
+        // Full CoT depth enabled; latency may increase for complex queries.
+        thinkingBudget: 32_768,
       },
     },
   }

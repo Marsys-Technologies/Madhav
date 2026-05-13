@@ -22,10 +22,10 @@ import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 
 const MAX_TURNS = 2
-const MAX_TOKENS_PER_TURN = 300
+const MAX_TOKENS_PER_TURN = 1000
 const MAX_TOKENS_PER_TURN_CHARS = MAX_TOKENS_PER_TURN * 4
-const HISTORY_BUDGET_TOKENS = 600
-const SUMMARY_TARGET_TOKENS = 150
+const HISTORY_BUDGET_TOKENS = 2000
+const SUMMARY_TARGET_TOKENS = 512
 const SUMMARY_TARGET_CHARS = SUMMARY_TARGET_TOKENS * 4
 
 export type PlannerRole = 'user' | 'assistant'

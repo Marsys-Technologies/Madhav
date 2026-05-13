@@ -88,7 +88,7 @@ export async function adjudicate(
   const callPromise = generateText({
     model: resolveModel(adjConfig.model_id),
     messages: [{ role: 'user', content: prompt }],
-    maxOutputTokens: 8192,
+    maxOutputTokens: 65536,
   }).then(r => {
     recordAiSdkCall({
       pipeline_stage: 'audit',

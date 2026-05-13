@@ -120,7 +120,7 @@ async function runSingleMember(
       const callPromise = generateText({
         model: resolveModel(config.model_id),
         messages: [{ role: 'user', content: prompt }],
-        maxOutputTokens: 4096,
+        maxOutputTokens: 65536,
       }).then(r => {
         recordAiSdkCall({
           pipeline_stage: 'compose',

@@ -14,8 +14,8 @@ import path from 'path'
 import type { SynthesisRequest } from '../types'
 import type { AnonymizedMemberOutput } from './types'
 
-const MAX_CHART_CONTEXT_TOKENS = 6000
-const MAX_TOOL_RESULTS_TOKENS = 3000
+const MAX_CHART_CONTEXT_TOKENS = 32768
+const MAX_TOOL_RESULTS_TOKENS = 16384
 const CHARS_PER_TOKEN = 4
 
 function loadTemplate(filename: string): string {

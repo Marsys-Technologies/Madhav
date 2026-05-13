@@ -1,0 +1,22 @@
+diff --git a/node_modules/firebase-admin/lib/utils/api-request.js b/node_modules/firebase-admin/lib/utils/api-request.js
+index 37584e2..663767a 100644
+--- a/node_modules/firebase-admin/lib/utils/api-request.js
++++ b/node_modules/firebase-admin/lib/utils/api-request.js
+@@ -707,7 +707,7 @@ class BaseRequestConfigImpl {
+     buildUrl() {
+         const fullUrl = this.urlWithProtocol();
+         if (!this.hasEntity() || this.isEntityEnclosingRequest()) {
+-            return url.parse(fullUrl);
++            return new url.URL(fullUrl);
+         }
+         if (!validator.isObject(this.data)) {
+             throw new Error(`${this.method} requests cannot have a body`);
+@@ -720,7 +720,7 @@ class BaseRequestConfigImpl {
+                 parsedUrl.searchParams.append(key, dataObj[key]);
+             }
+         }
+-        return url.parse(parsedUrl.toString());
++        return parsedUrl;
+     }
+     urlWithProtocol() {
+         const fullUrl = this.url;

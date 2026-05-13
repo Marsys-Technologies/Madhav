@@ -358,6 +358,11 @@ export function ConsumeChat({
   const messagesEmpty = displayMessages.length === 0
 
   // Gate III: callback for StreamingAnswer's marker parser.
+  // useCallback has empty deps so the reference is stable — if activeAssistantId
+  // were in deps, changing it would create a new callback reference, which would
+  // re-fire StreamingAnswer's onMarkers useEffect, which would call this again,
+  // causing the "Maximum update depth exceeded" loop. Functional setState updaters
+  // let us read previous state without capturing it in the closure.
   const handleMarkers = useCallback((m: {
     reasoning: ReasoningStepEvent[]
     sanskrit: SanskritTerm[]
@@ -365,17 +370,12 @@ export function ConsumeChat({
     outOfDomain: OutOfDomainEvent | null
     messageId: string | null
   }) => {
-    // Reset state when assistant message id changes (new turn).
-    if (m.messageId !== activeAssistantId) setActiveAssistantId(m.messageId)
-    setReasoningSteps(m.reasoning)
-    setSanskritTerms(m.sanskrit)
-    if (m.correction) setCorrection(m.correction)
-    if (m.outOfDomain) setOutOfDomain(m.outOfDomain)
-    // NOTE: sanskritTerms intentionally NOT in deps and NOT read here.
-    // It is SET here; reading it would create a circular setState→render→callback
-    // dependency that causes an infinite render loop. Children receive sanskrit
-    // terms via the StreamingAnswer parsed prop, not via this callback's state.
-  }, [activeAssistantId])
+    setActiveAssistantId(prev => prev === m.messageId ? prev : m.messageId)
+    setReasoningSteps(prev => prev === m.reasoning ? prev : m.reasoning)
+    setSanskritTerms(prev => prev === m.sanskrit ? prev : m.sanskrit)
+    if (m.correction) setCorrection(prev => prev === m.correction ? prev : m.correction)
+    if (m.outOfDomain) setOutOfDomain(prev => prev === m.outOfDomain ? prev : m.outOfDomain)
+  }, [])
 
   // Gate III: read context_usage / provenance / conversation_title from the
   // latest assistant message metadata.
