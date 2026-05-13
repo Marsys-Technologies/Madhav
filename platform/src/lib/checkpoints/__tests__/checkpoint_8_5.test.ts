@@ -11,6 +11,9 @@ vi.mock('fs', () => ({
 vi.mock('@/lib/models/resolver', () => ({
   resolveModel: vi.fn(() => ({ id: 'claude-sonnet-4-6', provider: 'anthropic' })),
 }))
+vi.mock('@/lib/models/runtime_config', () => ({
+  getEffectiveModel: vi.fn().mockResolvedValue('claude-sonnet-4-6'),
+}))
 
 const mockGenerateText = vi.fn()
 vi.mock('ai', () => ({ generateText: (...args: unknown[]) => mockGenerateText(...args) }))

@@ -22,6 +22,7 @@ import { generateText } from 'ai'
 import { resolveModel } from '@/lib/models/resolver'
 import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
 
 import {
   Checkpoint45OutputSchema,
@@ -32,7 +33,6 @@ import {
 } from './types'
 
 const CHECKPOINT_ID = 'checkpoint_4_5'
-const CHECKPOINT_MODEL = 'claude-haiku-4-5'
 
 function loadPromptTemplate(): string {
   const templatePath = path.join(
@@ -64,9 +64,10 @@ export async function runCheckpoint4_5(input: Checkpoint45Input): Promise<Checkp
 
   try {
     const prompt = buildPrompt(input)
+    const checkpointModel = await getEffectiveModel('marsys', 'checkpoint_4_5', 'primary')
 
     const { text } = await generateText({
-      model: resolveModel(CHECKPOINT_MODEL),
+      model: resolveModel(checkpointModel),
       messages: [{ role: 'user', content: prompt }],
       maxOutputTokens: 512,
     })

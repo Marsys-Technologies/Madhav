@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { STACK_ROUTING, type ModelStack, type CallType } from '@/lib/models/registry'
 import { StackPickerCards } from '@/lib/components/aiops/StackPickerCards'
 import { InteractiveCallTypeRow } from '@/lib/components/aiops/InteractiveCallTypeRow'
@@ -7,6 +8,8 @@ import { query } from '@/lib/db/client'
 import type { LlmStackConfigRow, LlmStackRoutingOverrideRow } from '@/lib/db/schema/aiops'
 
 export const dynamic = 'force-dynamic'
+
+const VALID_STACKS: ModelStack[] = ['gemini', 'nim', 'deepseek', 'gpt', 'anthropic', 'marsys']
 
 const PIPELINE_CALL_TYPES: CallType[] = [
   'synthesis', 'planner_deep', 'planner_fast', 'context_assembly', 'worker',
@@ -43,8 +46,18 @@ function getRouting(
   return routingIdx[stack]?.[callType] ?? STACK_ROUTING[stack]?.[callType] ?? { primary: '', fallback: '' }
 }
 
-export default async function AiopsControlPage() {
+export default async function AiopsControlPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { active_stack, routingIdx } = await fetchState()
+  const params = await searchParams
+  const urlStack = typeof params.stack === 'string' && VALID_STACKS.includes(params.stack as ModelStack)
+    ? (params.stack as ModelStack)
+    : null
+  const fromObservatory = params.from === 'observatory'
+  const displayStack = urlStack ?? active_stack
 
   return (
     <div className="p-6">
@@ -53,12 +66,19 @@ export default async function AiopsControlPage() {
         Live configuration — changes take effect within 60s (runtime_config cache TTL).
       </p>
 
+      {fromObservatory && (
+        <div className="mt-3 flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Came from Observatory —{' '}
+          <Link href="/observatory" className="underline hover:text-foreground">back to /observatory</Link>
+        </div>
+      )}
+
       {/* Stack picker */}
       <section className="mt-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Stack
         </h2>
-        <StackPickerCards activeStack={active_stack} />
+        <StackPickerCards activeStack={displayStack} />
       </section>
 
       <div className="mt-8 flex gap-6">
@@ -66,15 +86,15 @@ export default async function AiopsControlPage() {
           {/* Pipeline call types */}
           <section>
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Pipeline — {active_stack} stack
+              Pipeline — {displayStack} stack
             </h2>
             <div className="rounded-lg border border-border bg-card px-4">
               {PIPELINE_CALL_TYPES.map(ct => {
-                const { primary, fallback } = getRouting(active_stack, ct, routingIdx)
+                const { primary, fallback } = getRouting(displayStack, ct, routingIdx)
                 return (
                   <InteractiveCallTypeRow
                     key={ct}
-                    stack={active_stack}
+                    stack={displayStack}
                     callType={ct}
                     initialPrimary={primary}
                     initialFallback={fallback}
@@ -82,7 +102,7 @@ export default async function AiopsControlPage() {
                 )
               })}
             </div>
-            <StackSmokeButton stack={active_stack} />
+            <StackSmokeButton stack={displayStack} />
           </section>
 
           {/* Quality & Verification — cross-stack */}
