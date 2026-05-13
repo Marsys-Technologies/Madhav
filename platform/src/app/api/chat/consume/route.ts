@@ -338,8 +338,11 @@ export async function POST(request: Request) {
   ) {
     plan.tool_calls.push({
       tool_name: 'chart_facts_query',
-      params: { category: 'dasha_vimshottari' },
-      token_budget: 300,
+      // limit:50 required — there are 50 AD records (V.001–V.050). Default limit:20
+      // only covers through Mercury-Mars AD (ends 2020), cutting off the current
+      // Mercury-Saturn AD and all future Ketu MD + Venus MD periods.
+      params: { category: 'dasha_vimshottari', limit: 50 },
+      token_budget: 600,
       priority: 1 as const,
       reason: 'dasha context floor: synthesis requires canonical MD/AD sequence for phase-anchored predictions',
     })
