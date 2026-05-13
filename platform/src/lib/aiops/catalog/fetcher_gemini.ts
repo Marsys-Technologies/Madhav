@@ -12,7 +12,7 @@ interface GeminiModel {
 }
 
 export async function fetchGeminiCatalog(): Promise<CatalogFetchResult> {
-  const apiKey = process.env.GOOGLE_API_KEY
+  const apiKey = process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
   if (!apiKey) {
     return { status: 'unconfigured', models: [], raw: null, fetched_at: new Date().toISOString() }
   }

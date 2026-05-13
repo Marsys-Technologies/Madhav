@@ -15,12 +15,13 @@ type Params = { stack: string }
 // POST /api/admin/aiops/smoke/[stack]
 // Runs probe for every (call_type × role) pair for the stack.
 // For MARSYS: only probes call types that have DB overrides.
-export async function POST(_req: Request, { params }: { params: Params }) {
+export async function POST(_req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  const stackParsed = stackSchema.safeParse(params.stack)
-  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${params.stack}`)
+  const { stack: stackRaw } = await params
+  const stackParsed = stackSchema.safeParse(stackRaw)
+  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${stackRaw}`)
   const stack = stackParsed.data
 
   // Determine which call types to probe

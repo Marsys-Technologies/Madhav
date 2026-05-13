@@ -16,7 +16,10 @@ process.env.NEXT_RUNTIME = 'nodejs'
 import { writeFileSync, readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
-const REPORT_PATH = join(import.meta.dirname, 'cutover_smoke_report.json')
+const REPORT_PATH = join(
+  (typeof __dirname !== 'undefined' ? __dirname : new URL('.', import.meta.url).pathname),
+  'cutover_smoke_report.json',
+)
 
 const STACKS = ['nim', 'gemini', 'deepseek', 'gpt', 'anthropic', 'marsys'] as const
 // Core pipeline + key eval types; skip checkpoint types (require pipeline context)

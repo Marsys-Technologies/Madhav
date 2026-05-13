@@ -12,16 +12,17 @@ type Params = { provider: string }
 const VALID_PROVIDERS: Provider[] = ['nvidia', 'google', 'deepseek', 'openai', 'anthropic']
 
 // GET /api/admin/aiops/catalog/[provider]
-export async function GET(_req: Request, { params }: { params: Params }) {
+export async function GET(_req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  if (!VALID_PROVIDERS.includes(params.provider as Provider)) {
-    return res.badRequest(`Unknown provider: ${params.provider}. Must be one of: ${VALID_PROVIDERS.join(', ')}`)
+  const { provider } = await params
+  if (!VALID_PROVIDERS.includes(provider as Provider)) {
+    return res.badRequest(`Unknown provider: ${provider}. Must be one of: ${VALID_PROVIDERS.join(', ')}`)
   }
 
   try {
-    const result = await fetchProviderCatalog(params.provider as Provider)
+    const result = await fetchProviderCatalog(provider as Provider)
     return NextResponse.json(result)
   } catch (err) {
     console.error('[aiops/catalog] GET error:', err)

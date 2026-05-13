@@ -1,0 +1,4 @@
+ stack | call_type | param_name | param_value | updated_by | updated_at 
+-------+-----------+------------+-------------+------------+------------
+(0 rows)
+

@@ -12,14 +12,15 @@ export const dynamic = 'force-dynamic'
 type Params = { stack: string; call_type: string }
 
 // PUT /api/admin/aiops/routing/[stack]/[call_type]
-export async function PUT(req: Request, { params }: { params: Params }) {
+export async function PUT(req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  const stackParsed = stackSchema.safeParse(params.stack)
-  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${params.stack}`)
-  const ctParsed = callTypeSchema.safeParse(params.call_type)
-  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${params.call_type}`)
+  const { stack: stackRaw, call_type: callTypeRaw } = await params
+  const stackParsed = stackSchema.safeParse(stackRaw)
+  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${stackRaw}`)
+  const ctParsed = callTypeSchema.safeParse(callTypeRaw)
+  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${callTypeRaw}`)
 
   const stack = stackParsed.data
   const callType = ctParsed.data
@@ -68,14 +69,15 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 }
 
 // DELETE /api/admin/aiops/routing/[stack]/[call_type]
-export async function DELETE(_req: Request, { params }: { params: Params }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  const stackParsed = stackSchema.safeParse(params.stack)
-  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${params.stack}`)
-  const ctParsed = callTypeSchema.safeParse(params.call_type)
-  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${params.call_type}`)
+  const { stack: stackRaw, call_type: callTypeRaw } = await params
+  const stackParsed = stackSchema.safeParse(stackRaw)
+  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${stackRaw}`)
+  const ctParsed = callTypeSchema.safeParse(callTypeRaw)
+  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${callTypeRaw}`)
 
   const stack = stackParsed.data
   const callType = ctParsed.data

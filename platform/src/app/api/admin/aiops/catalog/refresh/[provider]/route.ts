@@ -13,15 +13,16 @@ type Params = { provider: string }
 const VALID_PROVIDERS: Provider[] = ['nvidia', 'google', 'deepseek', 'openai', 'anthropic']
 
 // POST /api/admin/aiops/catalog/refresh/[provider]
-export async function POST(_req: Request, { params }: { params: Params }) {
+export async function POST(_req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  if (!VALID_PROVIDERS.includes(params.provider as Provider)) {
-    return res.badRequest(`Unknown provider: ${params.provider}`)
+  const { provider: providerRaw } = await params
+  if (!VALID_PROVIDERS.includes(providerRaw as Provider)) {
+    return res.badRequest(`Unknown provider: ${providerRaw}`)
   }
 
-  const provider = params.provider as Provider
+  const provider = providerRaw as Provider
 
   try {
     invalidateProvider(provider)

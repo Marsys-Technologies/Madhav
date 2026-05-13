@@ -1,0 +1,1 @@
+{"stack":"nim","call_type":"synthesis","effective":{"primary":"nvidia/nemotron-3-super-120b-a12b","fallback":"nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"},"source":"registry"}

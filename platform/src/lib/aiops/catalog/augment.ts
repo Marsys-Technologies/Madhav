@@ -1,4 +1,4 @@
-import { MODELS, getModelMeta, type Provider } from '@/lib/models/registry'
+import { MODELS, type Provider } from '@/lib/models/registry'
 import type { CatalogEntry, RawModelEntry } from './types'
 
 // Build index of curated metadata per provider

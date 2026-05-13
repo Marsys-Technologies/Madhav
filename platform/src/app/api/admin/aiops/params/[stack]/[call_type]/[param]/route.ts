@@ -19,16 +19,17 @@ const paramValueSchema = z.union([z.number(), z.boolean(), z.string()])
 
 // PUT /api/admin/aiops/params/[stack]/[call_type]/[param]
 // Body: { param_value: number | boolean | string }
-export async function PUT(req: Request, { params }: { params: Params }) {
+export async function PUT(req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  const stackParsed = stackSchema.safeParse(params.stack)
-  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${params.stack}`)
-  const ctParsed = callTypeSchema.safeParse(params.call_type)
-  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${params.call_type}`)
-  const paramParsed = paramNameSchema.safeParse(params.param)
-  if (!paramParsed.success) return res.badRequest(`Unknown param: ${params.param}. Must be one of: ${VALID_PARAMS.join(', ')}`)
+  const { stack: stackRaw, call_type: callTypeRaw, param: paramRaw } = await params
+  const stackParsed = stackSchema.safeParse(stackRaw)
+  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${stackRaw}`)
+  const ctParsed = callTypeSchema.safeParse(callTypeRaw)
+  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${callTypeRaw}`)
+  const paramParsed = paramNameSchema.safeParse(paramRaw)
+  if (!paramParsed.success) return res.badRequest(`Unknown param: ${paramRaw}. Must be one of: ${VALID_PARAMS.join(', ')}`)
 
   const stack = stackParsed.data
   const callType = ctParsed.data
@@ -42,19 +43,25 @@ export async function PUT(req: Request, { params }: { params: Params }) {
   const paramValue = valueParsed.data
 
   try {
+    const before = await query<{ param_value: unknown }>(
+      `SELECT param_value FROM llm_param_override WHERE scope='global' AND stack=$1 AND call_type=$2 AND param_name=$3`,
+      [stack, callType, paramName],
+    )
+    const beforeValue = before.rows[0]?.param_value ?? null
+
     await query(
-      `INSERT INTO llm_param_override (scope, stack, call_type, param_name, param_value)
-       VALUES ('global', $1, $2, $3, $4::jsonb)
+      `INSERT INTO llm_param_override (scope, stack, call_type, param_name, param_value, updated_at, updated_by)
+       VALUES ('global', $1, $2, $3, $4::jsonb, NOW(), $5)
        ON CONFLICT (scope, stack, call_type, param_name)
-         DO UPDATE SET param_value = $4::jsonb`,
-      [stack, callType, paramName, JSON.stringify(paramValue)],
+         DO UPDATE SET param_value = $4::jsonb, updated_at = NOW(), updated_by = $5`,
+      [stack, callType, paramName, JSON.stringify(paramValue), guard.user.uid],
     )
 
     await query(
       `INSERT INTO llm_config_audit
-         (occurred_at, actor_user_id, action, scope, stack, call_type, param_name, after_value)
-       VALUES (NOW(), $1, 'set_param', 'global', $2, $3, $4, $5::jsonb)`,
-      [guard.user.uid, stack, callType, paramName, JSON.stringify(paramValue)],
+         (occurred_at, actor_user_id, action, scope, stack, call_type, param_name, before_value, after_value)
+       VALUES (NOW(), $1, 'set_param', 'global', $2, $3, $4, $5::jsonb, $6::jsonb)`,
+      [guard.user.uid, stack, callType, paramName, JSON.stringify(beforeValue), JSON.stringify(paramValue)],
     )
 
     invalidateRuntimeConfigCache()
@@ -67,16 +74,17 @@ export async function PUT(req: Request, { params }: { params: Params }) {
 }
 
 // DELETE /api/admin/aiops/params/[stack]/[call_type]/[param]
-export async function DELETE(_req: Request, { params }: { params: Params }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<Params> }) {
   const guard = await guardAiopsRoute()
   if (guard instanceof NextResponse) return guard
 
-  const stackParsed = stackSchema.safeParse(params.stack)
-  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${params.stack}`)
-  const ctParsed = callTypeSchema.safeParse(params.call_type)
-  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${params.call_type}`)
-  const paramParsed = paramNameSchema.safeParse(params.param)
-  if (!paramParsed.success) return res.badRequest(`Unknown param: ${params.param}`)
+  const { stack: stackRaw, call_type: callTypeRaw, param: paramRaw } = await params
+  const stackParsed = stackSchema.safeParse(stackRaw)
+  if (!stackParsed.success) return res.badRequest(`Unknown stack: ${stackRaw}`)
+  const ctParsed = callTypeSchema.safeParse(callTypeRaw)
+  if (!ctParsed.success) return res.badRequest(`Unknown call_type: ${callTypeRaw}`)
+  const paramParsed = paramNameSchema.safeParse(paramRaw)
+  if (!paramParsed.success) return res.badRequest(`Unknown param: ${paramRaw}`)
 
   const stack = stackParsed.data
   const callType = ctParsed.data

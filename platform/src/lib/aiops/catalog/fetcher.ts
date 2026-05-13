@@ -25,7 +25,8 @@ export async function fetchProviderCatalog(provider: Provider): Promise<CatalogF
     case 'openai':    raw = await fetchOpenaiCatalog();    break
     case 'anthropic': raw = await fetchAnthropicCatalog(); break
     default: {
-      const _: never = provider
+      const _never: never = provider
+      void _never
       return { status: 'error', models: [], raw: null, fetched_at: new Date().toISOString() }
     }
   }

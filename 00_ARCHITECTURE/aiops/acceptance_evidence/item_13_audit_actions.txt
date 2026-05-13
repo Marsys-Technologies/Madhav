@@ -1,0 +1,9 @@
+      action      | cnt 
+------------------+-----
+ reset_routing    |   1
+ revert           |   1
+ set_active_stack |   3
+ set_param        |   1
+ set_routing      |   3
+(5 rows)
+

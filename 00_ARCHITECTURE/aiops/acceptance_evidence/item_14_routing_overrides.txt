@@ -1,0 +1,15 @@
+ stack  |    call_type     |     primary_model     |  fallback_model  |          updated_by          |    updated_at    
+--------+------------------+-----------------------+------------------+------------------------------+------------------
+ marsys | checkpoint_4_5   | gemini-2.5-flash-lite | gpt-4.1-nano     | system                       | 2026-05-13 15:58
+ marsys | checkpoint_5_5   | gemini-2.5-flash-lite | gpt-4.1-nano     | system                       | 2026-05-13 15:58
+ marsys | checkpoint_8_5   | gemini-2.5-flash-lite | gpt-4.1-nano     | system                       | 2026-05-13 15:58
+ marsys | context_assembly | gemini-2.5-flash      | gemini-2.5-pro   | system                       | 2026-05-13 15:58
+ marsys | eval_generator   | gemini-2.5-flash      | deepseek-v4-pro  | system                       | 2026-05-13 15:58
+ marsys | eval_judge       | gemini-2.5-pro        | deepseek-v4-pro  | system                       | 2026-05-13 15:58
+ marsys | planner_deep     | gemini-2.5-flash      | deepseek-v4-pro  | system                       | 2026-05-13 15:58
+ marsys | planner_fast     | gemini-2.5-flash-lite | gemini-2.5-flash | system                       | 2026-05-13 15:58
+ marsys | smoke_synth      | gemini-2.5-pro        | deepseek-v4-pro  | system                       | 2026-05-13 15:58
+ marsys | synthesis        | gemini-2.5-pro        | gemini-2.5-flash | xl2wYZRPwsVgPSAgtn9XJ80Xkub2 | 2026-05-13 18:33
+ marsys | worker           | deepseek-chat         | deepseek-v3      | xl2wYZRPwsVgPSAgtn9XJ80Xkub2 | 2026-05-13 18:33
+(11 rows)
+
