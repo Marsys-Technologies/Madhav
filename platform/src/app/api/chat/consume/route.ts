@@ -329,6 +329,23 @@ export async function POST(request: Request) {
     }
   }
 
+  // Dasha context floor: predictive and holistic queries always need the
+  // canonical Vimshottari dasha sequence so synthesis can anchor phase-based
+  // predictions to correct dates (data lives in chart_facts.dasha_vimshottari).
+  if (
+    (plan.query_class === 'predictive' || plan.query_class === 'holistic') &&
+    !toolsAuthorized.includes('chart_facts_query')
+  ) {
+    plan.tool_calls.push({
+      tool_name: 'chart_facts_query',
+      params: { category: 'dasha_vimshottari' },
+      token_budget: 300,
+      priority: 1 as const,
+      reason: 'dasha context floor: synthesis requires canonical MD/AD sequence for phase-anchored predictions',
+    })
+    toolsAuthorized.push('chart_facts_query')
+  }
+
   // Adapter: PipelinePlan → legacy-shaped object for retrieval tools,
   // validators, audit, the orchestrator. Carries plan.tool_calls as an extra
   // field so single_model_strategy can read planner-supplied per-tool params.
