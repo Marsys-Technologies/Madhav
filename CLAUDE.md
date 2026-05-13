@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "2.0"
+version: "2.4"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -62,7 +62,7 @@ Every Claude session, at open, reads the following in order before any substanti
 2. `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` — **new single source of truth** for the canonical-path + artifact catalog (Phase 1B cutover 2026-04-27). Replaces the dual `FILE_REGISTRY` + `CANONICAL_ARTIFACTS` registries. Mirror pairs declared in `00_ARCHITECTURE/manifest_overrides.yaml` `mirror_pairs:` section. `CANONICAL_ARTIFACTS_v1_0.md` retained in place as SUPERSEDED historical record — read it for audit trail only; governance tooling now reads from the manifest. `drift_detector.py`, `schema_validator.py`, `mirror_enforcer.py` default to manifest mode (`*_USE_MANIFEST=true`).
 3. `00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md` (canonical_id `PROJECT_ARCHITECTURE`) — governing blueprint. Re-read relevant sections as needed.
 4. `00_ARCHITECTURE/MACRO_PLAN_v2_0.md` (canonical_id `MACRO_PLAN`) — ten-macro-phase strategic arc M1–M10, Learning Layer substrate, System Integrity Substrate per ND.1, Ethical Framework, External Dependency Graph, per-phase schema, Meta-Governance, Multi-Agent Collaboration, Post-M10 Framing. Orientation only — do not pre-build for phases later than the current one.
-5. **Active phase plan** — `PHASE_M5_PLAN_v1_0.md` (TBD; to be authored at M5-S1 open). Prior plans all SUPERSEDED-AS-COMPLETE: `PHASE_B_PLAN_v1_0.md` (M2, closed 2026-05-01), `PHASE_M3_PLAN_v1_0.md` (M3, closed 2026-05-01), `PHASE_M4_PLAN_v1_0.md` (M4, closed 2026-05-02). Consult `CURRENT_STATE_v1_0.md §2` for the active sub-phase at session open.
+5. **Active phase plan** — `00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md` (v1.0, authored 2026-05-13; M5-A is the active sub-phase). Prior plans all SUPERSEDED-AS-COMPLETE: `PHASE_B_PLAN_v1_0.md` (M2, closed 2026-05-01), `PHASE_M3_PLAN_v1_0.md` (M3, closed 2026-05-01), `PHASE_M4_PLAN_v1_0.md` (M4, closed 2026-05-02). Consult `CURRENT_STATE_v1_0.md §2` for the active sub-phase at session open.
 6. `00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md` (canonical_id `GOVERNANCE_INTEGRITY_PROTOCOL`, status CURRENT since Step 8 close) — governs session-open/close, drift/schema/mirror enforcement, disagreement protocol, meta-rules. Re-read axes §C.1–§C.6 + §K disagreement protocol at session open.
 7. `00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md` + `00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md` — the handshake + close-checklist schemas the session emits. See §G + §H below.
 8. `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` (canonical_id `CURRENT_STATE`, LIVE) — the authoritative "you are here" state pointer. Answers in one read: which macro-phase is active, which phase-plan sub-phase is in flight, which session last closed, and what the next session is committed to. Updated at every session close. Authoritative since Step 15 close (2026-04-24); STEP_LEDGER retired per §F. `STEP_LEDGER_v1_0.md` is retained as a historical record (status `GOVERNANCE_CLOSED`) — read it only for audit trail, not for current state.
@@ -128,7 +128,7 @@ At the close of M4-D-S1 (2026-05-02) — M4 MACRO-PHASE CLOSED; M4→M5 TRANSITI
 - **Active macro-phase:** M5 — INCOMING. M2 (Corpus Activation), M3 (Temporal Animation / Discovery Layer), and M4 (Calibration + LEL Ground-Truth Spine) are all CLOSED. Sealing artifacts: `00_ARCHITECTURE/M2_CLOSE_v1_0.md`, `00_ARCHITECTURE/M3_CLOSE_v1_0.md`, `06_LEARNING_LAYER/M4_CLOSE_v1_0.md`.
 - **Active phase-plan:** `PHASE_M5_PLAN_v1_0.md` — TBD (to be authored at M5-S1 open). Prior plans SUPERSEDED-AS-COMPLETE: `PHASE_B_PLAN_v1_0.md` (M2), `PHASE_M3_PLAN_v1_0.md` (M3), `PHASE_M4_PLAN_v1_0.md` (M4).
 - **Last session:** M4-D-S1 (2026-05-02) — M4 macro-phase close. IS.8(b) red-team PASS 5/5. NAP.M4.7 APPROVED.
-- **Next session:** M5-S1 — open M5 macro-phase; read `MACRO_PLAN_v2_0.md §M5` scope; draft `PHASE_M5_PLAN_v1_0.md`.
+- **Next session:** M5-A-S1 — execute M5-A scope per `PHASE_M5_PLAN_v1_0.md §3 M5-A`. Priority: LL.8+LL.9 scaffold; CF.LL7.1 CDLM confirm + LL.7 re-emit; R.LL1TPA.1 Gemini re-attempt; MP.1+MP.2 mirror catch-up; MSR reconciliation; LL.2 per-edge campaign; PPL cadence plan (NAP.M5.0); JH scheduling.
 - **Governance step:** Step 0 → Step 15 rebuild `GOVERNANCE_CLOSED`. Steady-state: quarterly governance pass per `ONGOING_HYGIENE_POLICIES §H`; next due 2026-07-24.
 - **ND status:** ND.1 (Mirror Discipline) `addressed` 2026-04-24 at Step 7 close. No open directive.
 - **red_team_counter:** 0 (reset at M4 macro-phase-close IS.8(b) discharge).
@@ -196,4 +196,4 @@ Daily sessions. Closed-artifact-per-session discipline — one phase or one step
 
 ---
 
-*End of CLAUDE.md v2.3 (amended 2026-05-13 — Gate II.5 close: §F active feature flags footnote clarifies that CONTEXT_ASSEMBLY_ENABLED's underlying stage was renamed to compose_bundle and preserved, not removed; only the flag was retired. Per MP.1 mirror discipline, `.geminirules` requires an adapted-parity update — surfaced to native for handling). Prior: v2.2 (2026-05-11 Pipeline-Transform-S1 close), v2.1 (2026-05-11 Phase 11B). Governance rebuild closed; M4 CLOSED 2026-05-02; M5 active.*
+*End of CLAUDE.md v2.4 (amended 2026-05-13 — M5 OPENED: §C item 5 updated to PHASE_M5_PLAN_v1_0.md v1.0 active; §F "Next session" rotated to M5-A-S1. Prior: v2.3 (2026-05-13 Gate II.5 close), v2.2 (2026-05-11 Pipeline-Transform-S1 close), v2.1 (2026-05-11 Phase 11B). Governance rebuild closed; M4 CLOSED 2026-05-02; M5 ACTIVE — M5-A is the active sub-phase.*

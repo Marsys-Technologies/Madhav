@@ -54,6 +54,22 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v4.0 (2026-05-13, Cowork-M5-S1-PLAN-AUTHORING-2026-05-13):
+    **M5 MACRO-PHASE OPENED.** PHASE_M5_PLAN_v1_0.md v1.0 authored at
+    00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md. Five sub-phases: M5-A (Substrate +
+    Entry Cleanup + PPL Cadence), M5-B (DBN Topology), M5-C (Prior Specification),
+    M5-D (DBN Fit + Validation), M5-E (M5 Close). Envelope 20–35 sessions.
+    `active_macro_phase_status` flipped incoming → active. `active_phase_plan`
+    set to PHASE_M5_PLAN_v1_0.md v1.0. `active_phase_plan_sub_phase` updated
+    to M5-A OPEN. `next_session_objective` rotated to M5-A-S1 (LL.8+LL.9
+    scaffold; CF.LL7.1; R.LL1TPA.1; mirror sync; MSR reconciliation; LL.2
+    per-edge campaign; PPL cadence plan NAP.M5.0; JH scheduling). Gate IV
+    deferred ACs (AC.IV.6 recall gap; AC.IV.7 latency) carried forward as
+    non-blocking M5 items. PPL volume at M5 open: 16 predictions (gap ≥34
+    to M6 gate). Mirror MP.1+MP.2 propagation deferred to M5-A-S1 (mirrors
+    not in this session's may_touch; cumulative delta carries per convention).
+    `file_updated_at` rotated to 2026-05-13T22:25:00+05:30.
+    `file_updated_by_session` rotated to Cowork-M5-S1-PLAN-AUTHORING-2026-05-13.
   - v3.9 (2026-05-13, Pre-M5-Final-Autonomous-2026-05-13):
     **PRE-M5 GATE SEQUENCE COMPLETE.** Autonomous overnight session merged all
     three pre-M5 feature branches (Gates II.5, I, III) to main, executed Gate IV
@@ -2847,9 +2863,10 @@ current_state:
   # ------------------------------------------------------------------
   active_macro_phase: M5                       # M4 CLOSED 2026-05-02 at M4-D-S1; M5 INCOMING
   active_macro_phase_title: "Probabilistic Engine — DBN topology + signal-embedding refit + CW.PPL volume gate"
-  active_macro_phase_status: incoming
+  active_macro_phase_status: active
     # One of: active | paused_governance_rebuild | paused_native_hold | closed | incoming
-    # M4 flipped to CLOSED at M4-D-S1 (2026-05-02); M5 INCOMING (first M5 session not yet opened).
+    # M5 ACTIVE — PHASE_M5_PLAN_v1_0.md authored 2026-05-13 at Cowork-M5-S1-PLAN-AUTHORING.
+    # M5-A is the active sub-phase. M4 CLOSED 2026-05-02 at M4-D-S1.
     # M4 sealing artifact: 06_LEARNING_LAYER/M4_CLOSE_v1_0.md (NEW v1.0 CLOSED)
     # M4 IS.8(b) macro-phase-close red-team: discharged in-document §4 of M4_CLOSE_v1_0.md
     #   (RT.1-RT.5 PASS 5/5 axes 0 findings; same in-document convention as M4-B-S6/M4-C-S4
@@ -2882,18 +2899,21 @@ current_state:
   # Phase-plan expansion (M3 phase plan TBD; first M3 session decides whether to expand
   #   MACRO_PLAN §M3 into a PHASE_C_PLAN_v1_0.md or drive M3 directly from MACRO_PLAN.)
   # ------------------------------------------------------------------
-  active_phase_plan: null
-    # M4 phase plan PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE at this M4-D-S1 close
-    # (M4 macro-phase formally CLOSED). PHASE_M4D_PLAN_v1_0.md v1.0 (forward-pointer M4-D
-    # execution plan authored at M4-C-P7) flipped DRAFT → CLOSED at this session per W7
-    # (10/10 work items discharged). M5 phase plan TBD; first M5 session decides whether
-    # to expand MACRO_PLAN §M5 into PHASE_M5_PLAN_v1_0.md or drive M5 directly from
-    # MACRO_PLAN. Expected: PHASE_M5_PLAN authoring (analogue of PHASE_M4_PLAN /
-    # PHASE_M3_PLAN). M3 phase plan (PHASE_M3_PLAN_v1_0.md v1.0) remains
-    # SUPERSEDED-AS-COMPLETE.
-  active_phase_plan_version: null
+  active_phase_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+    # PHASE_M5_PLAN_v1_0.md v1.0 authored 2026-05-13 at Cowork-M5-S1-PLAN-AUTHORING.
+    # Five sub-phases: M5-A (Substrate + Entry Cleanup), M5-B (DBN Topology),
+    # M5-C (Prior Specification), M5-D (DBN Fit + Validation), M5-E (M5 Close).
+    # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
+  active_phase_plan_version: "1.0"
   active_phase_plan_sub_phase: >
-    M4 MACRO-PHASE CLOSED 2026-05-02 at M4-D-S1 (this update at v3.4).
+    M5-A OPEN — Substrate, Entry Cleanup, PPL Cadence.
+    Pre-M5 gate sequence CLEARED 2026-05-13 (Gates I/II/III/IV merged; commit adb61fb).
+    PHASE_M5_PLAN_v1_0.md v1.0 authored 2026-05-13. M5-A is the active sub-phase.
+    10 items in scope (LL.8+LL.9 scaffold; CF.LL7.1; R.LL1TPA.1; mirror sync; MSR
+    reconciliation; LL.2 per-edge campaign; PPL cadence plan; JH scheduling; Gate IV
+    deferred ACs). NAP.M5.0 (PPL cadence plan) is the M5-A close native-approval item.
+    PPL volume at M5 open: 16 predictions (gap to M6 gate: ≥34).
+    M4 MACRO-PHASE CLOSED 2026-05-02 at M4-D-S1 (archived at v3.4).
     M5 INCOMING — Probabilistic Engine (DBN topology + signal-embedding
     refit-stability test design + CW.PPL volume gate verification) per
     MACRO_PLAN §M5. Sealing artifact: 06_LEARNING_LAYER/M4_CLOSE_v1_0.md
@@ -3425,7 +3445,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: Pre-M5-Final-Autonomous-2026-05-13
+  last_session_id: Cowork-M5-S1-PLAN-AUTHORING-2026-05-13
     # Pre-M5-Final-Autonomous-2026-05-13 (2026-05-13). Autonomous overnight pre-M5
     # gate sequence close. Merged Gates II.5 (5337fc4), I (c4a40cc), III (bfbc0ac)
     # to main. Gate IV AC 6/8 PASS. CLOSE_REPORT_GATE_IV.md authored (63eb16e).
@@ -4225,14 +4245,14 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-S1 — open M5 macro-phase; author PHASE_M5_PLAN_v1_0.md.
-    Pre-M5 gate sequence COMPLETE (2026-05-13): Gates II.5, I, III all merged
-    to main; Gate IV integration verified (6/8 AC PASS). CLOSE_REPORT_GATE_IV.md
-    at project root. Planner settled (recall=0.963, precision=0.986 at 438974b).
-    PR #15 merged (85dfca5, 2026-05-11). Pipeline transform workstream COMPLETE.
-    M5 entry gates per MACRO_PLAN §M5:
-    M5-S1 entry gates per MACRO_PLAN §M5: M4 closed (SATISFIED at this M4-D-S1
-    close — M4_CLOSE_v1_0.md sealed; calibration tables stable; LL.1–LL.7 active);
+    M5-A-S1 — execute M5-A scope per PHASE_M5_PLAN_v1_0.md §3 M5-A.
+    Priority order: (1) LL.8+LL.9 scaffold; (2) CF.LL7.1 CDLM patch confirm +
+    ll7_discovery_prior re-emit; (3) R.LL1TPA.1 Gemini re-attempt; (4) MP.1+MP.2
+    mirror catch-up; (5) MSR signal-completeness reconciliation (4 absent IDs);
+    (6) LL.2 per-edge campaign init (8 MED-tier); (7) PPL cadence plan (NAP.M5.0);
+    (8) JH-export window scheduling with native.
+    PHASE_M5_PLAN_v1_0.md authored 2026-05-13. M5 is ACTIVE. M5-A is the first
+    substantive sub-phase. All pre-M5 gates cleared (adb61fb).
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must
     propose cadence to close gap); native-approved DBN topology (M5 scope —
     not pre-built per MACRO_PLAN §Scope Boundary); native-approved prior
