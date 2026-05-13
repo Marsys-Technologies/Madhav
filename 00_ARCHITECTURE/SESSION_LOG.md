@@ -22557,3 +22557,172 @@ session_close:
 Execute **M5-D-S4**: IS.8(a) red-team MANDATORY (counter fires at 3). AC.M5D.4 PPL retroactive blind predictions for 5 domain-mapped held-out events (NAP.M5.3 CI format). AC.M5D.5 domain activation timeline.
 
 *End of M5-D-S3 entry — 2026-05-13.*
+
+---
+
+## M5-D-S4 — 2026-05-13
+
+### Session open
+
+```yaml
+session_open:
+  session_id: M5-D-S4
+  cowork_thread_name: "M5-D-S4: IS.8(a) red-team + AC.M5D.4 PPL retroactive predictions"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  step_number_or_macro_phase: M5.D.4
+  predecessor_session: M5-D-S3
+  entry_gate_verified: true
+  entry_gate_items:
+    - "AC.M5D.3 PASS ✓; NAP.M5.3 APPROVED ✓; M5-D-S3 commit 125fb9a ✓"
+  red_team_counter_entering: 2
+  red_team_due: true
+  declared_scope:
+    may_touch:
+      - "06_LEARNING_LAYER/dbn/**"
+      - "06_LEARNING_LAYER/PPL/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "platform/**"
+      - "06_LEARNING_LAYER/dbn/cpt/**"
+```
+
+### IS.8(a) red-team — PASS (8/8)
+
+Counter 2→3→0. Axes checked:
+1. **AC.M5D.3 verdict validity** — Tolerance thresholds legitimate (gap in PRIOR_SPEC §9 confirmed); Saturn CAREER lift 1.010 reflects well-mixed MD posterior (5 events, 4 non-events in 9 periods). **PASS**
+2. **Held-out sacrosanctness** — All 9 events listed in `sacrosanct_events_excluded`; excluded from CF.M5C.3 training; blind protocol maintained. **PASS**
+3. **NAP.M5.3 CI policy completeness** — Persistence CPT gap (Dirichlet, not Beta) is by-design (not a reporting-layer concern). **PASS**
+4. **M5-D-S3 scope compliance** — All 6 modified files within declared may_touch; 01_FACTS_LAYER/platform/ untouched. **PASS**
+5. **B.10 no-fabrication** — All predictions are arithmetic consequences of fitted parameters (post_means arrays + post_mean scalars from dbn_params_v1_0.json). **PASS**
+6. **Mirror obligations** — MP.1+MP.2 updated same-session in M5-D-S3; MP.3/8 correctly unchanged. **PASS**
+7. **Versioning discipline** — held_out_validation_v1_0.json + CI_REPORTING_POLICY carry proper frontmatter; CURRENT_STATE v4.8→v4.9. **PASS**
+8. **M5-D sub-phase integrity** — Progressing in declared order; no scope drift; AD-level CPT limitation documented. **PASS**
+
+### Work completed
+
+**AC.M5D.4 — PPL retroactive blind predictions — COMPLETE**
+
+5 retroactive blind predictions for domain-mapped held-out events (NAP.M5.3 CI format):
+
+| Event | Domain/MD | P_point | 90% HDI (marginal) | P(ELEVATED)|P(event\|ELEV) |
+|---|---|---|---|---|
+| EVT.2008.06.09.01 | CAREER/Saturn | 0.483 | [0.013–0.944] | 0.517 \| 0.857[0.717–0.958] |
+| EVT.2017.03.XX.01 | CAREER/Mercury | 0.537 | [0.018–0.947] | 0.586 \| 0.857[0.717–0.958] |
+| EVT.2019.05.XX.01 | CAREER/Mercury | 0.537 | [0.018–0.947] | 0.586 \| 0.857[0.717–0.958] |
+| EVT.2022.01.03.01 | RELATIONSHIP/Mercury | 0.351 | [0.008–0.914] | 0.379 \| 0.813[0.637–0.943] |
+| EVT.2024.02.16.01 | CAREER/Mercury | 0.537 | [0.018–0.947] | 0.586 \| 0.857[0.717–0.958] |
+
+Wide marginal HDI is epistemically correct (state-assignment uncertainty from mixture of SUPPRESSED/NORMAL/ELEVATED Betas). Point estimate is primary prediction signal. Astrological rationale documented for each (Mercury 7L+10L = primary career activator; Saturn 7L+8L = mixed signal; Jupiter AD 1L+4L = dharmic/expansion inflection; Mars AD 12L = foreign placement trigger). AD-level parameterization is Phase 10 target.
+
+Artifact: `06_LEARNING_LAYER/dbn/ppl_retroactive_m5d_v1_0.json`
+
+**AC.M5D.5 — Domain activation timeline — COMPLETE**
+
+23-period training timeline with hard E-step state assignments. Key findings:
+- Jupiter MD (5 periods): ALL NORMAL across all domains — purely prior-anchored; no training events
+- Saturn MD (9 periods): CAREER ELEVATED 5/9 (55.6%), HEALTH 2/9, RELATIONSHIP 2/9
+- Mercury MD (9 periods): CAREER ELEVATED 6/9 (66.7%), RELATIONSHIP 4/9, HEALTH 2/9
+- 7 multi-domain ELEVATED periods; peak: DSH.V.015 Mercury-Mercury (CAREER+RELATIONSHIP+PSYCHOLOGICAL) and DSH.V.021 Mercury-Rahu (CAREER+HEALTH+RELATIONSHIP)
+- 0 SUPPRESSED periods in any domain (threshold never triggered → SUPPRESSED purely prior-anchored)
+- Internal consistency: CAREER ELEVATED 11/23 = 0.4783 exactly matches AC.M5D.3 null model ✓
+- DSH.V.018/019/020 (Mercury-Sun/Moon/Mars) ALL NORMAL yet 2 held-out CAREER events fall here → confirms blind protocol integrity
+
+Artifact: `06_LEARNING_LAYER/dbn/domain_activation_timeline_v1_0.json`
+
+### AC status
+
+| AC | Status | Notes |
+|---|---|---|
+| AC.M5D.2 | PASS (M5-D-S2) | dbn_params_v1_0.json |
+| AC.M5D.3 | PASS (M5-D-S3) | held_out_validation_v1_0.json |
+| NAP.M5.3 | APPROVED (M5-D-S3) | CI_REPORTING_POLICY v1.0 |
+| AC.M5D.4 | **COMPLETE** | ppl_retroactive_m5d_v1_0.json |
+| AC.M5D.5 | **COMPLETE** | domain_activation_timeline_v1_0.json |
+| AC.M5D.6 | PENDING | M5-D sealing artifact — M5-D-S5 |
+| IS.8(a) | **DISCHARGED** | 8/8 PASS; counter 2→3→0 |
+
+### Session close
+
+```yaml
+session_close:
+  session_id: M5-D-S4
+  closed_at: "2026-05-13"
+  macro_phase: M5
+  sub_phase: M5-D
+  artifacts_produced:
+    - path: "06_LEARNING_LAYER/dbn/ppl_retroactive_m5d_v1_0.json"
+      canonical_id: PPL_RETROACTIVE_M5D
+      status: CURRENT
+      version: "1.0"
+      ac: AC.M5D.4
+    - path: "06_LEARNING_LAYER/dbn/domain_activation_timeline_v1_0.json"
+      canonical_id: DOMAIN_ACTIVATION_TIMELINE
+      status: CURRENT
+      version: "1.0"
+      ac: AC.M5D.5
+  artifacts_modified:
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      change: "v4.9→v5.0; IS.8(a) DISCHARGED; red_team_counter 2→3→0; last_session→M5-D-S4; next→M5-D-S5"
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      change: "M5-D-S4 entry appended"
+    - path: ".geminirules"
+      change: "MP.1 mirror: state block updated to M5-D-S4 close"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror: M5-D-S4 deliverables block added"
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+    - pair_id: MP.2
+      claude_side_touched: true
+      gemini_side_touched: true
+      both_updated_same_session: true
+    - pair_id: MP.7
+      claude_side_touched: true
+      gemini_side_touched: false
+      both_updated_same_session: true
+      rationale: "Declared Claude-only (SESSION_LOG)"
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS
+    axes: 8
+    axes_pass: 8
+    counter_before: 2
+    counter_after: 0
+    note: "IS.8(a) every-third-session cadence. 8/8 PASS. Counter reset 2→3→0."
+  drift_detector_run:
+    exit_code: 2
+    note: "Known residuals; expected steady-state"
+  schema_validator_run:
+    exit_code: 2
+    note: "Known residuals; expected steady-state"
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  build_state_serialized:
+    serialized: false
+    note: "Pure learning-layer session"
+  close_criteria_met: true
+  unblocks: "M5-D-S5 — AC.M5D.6 M5-D sealing artifact"
+  handoff_notes: >
+    M5-D-S5 opens with: AC.M5D.3/4/5 COMPLETE; NAP.M5.3 APPROVED; IS.8(a) discharged
+    (counter=0). Primary work: AC.M5D.6 M5-D sub-phase sealing artifact (M5_D_CLOSE_v1_0.md).
+    Optional deferred: AC.M5B.6 topology risk register; CF.M5C.5 Gemini ratification.
+    Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-D-S5."
+```
+
+### Next session objective
+
+Execute **M5-D-S5**: AC.M5D.6 M5-D sub-phase sealing artifact; deferred items (AC.M5B.6, CF.M5C.5); M5-D → M5-E transition scope declaration.
+
+*End of M5-D-S4 entry — 2026-05-13.*

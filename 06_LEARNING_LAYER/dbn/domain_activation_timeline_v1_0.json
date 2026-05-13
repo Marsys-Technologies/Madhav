@@ -1,0 +1,698 @@
+{
+  "artifact": "domain_activation_timeline_v1_0.json",
+  "version": "1.0",
+  "canonical_id": "DOMAIN_ACTIVATION_TIMELINE",
+  "status": "CURRENT",
+  "layer": "L6",
+  "produced_session": "M5-D-S4",
+  "produced_date": "2026-05-13",
+  "description": "AC.M5D.5 \u2014 Domain activation timeline: hard E-step state assignments (ELEVATED/NORMAL/SUPPRESSED) for all 5 domains across all 23 training antardasha periods. Source: state_assignment_log in dbn_params_v1_0.json (produced CF.M5C.3, M5-D-S2). Held-out periods (9 events) excluded from training-partition state assignments. Includes aggregate statistics, multi-domain activation analysis, and MD-level domain activation patterns.",
+  "n_training_periods": 23,
+  "domains": [
+    "CAREER",
+    "HEALTH",
+    "RELATIONSHIP",
+    "SPIRITUAL",
+    "PSYCHOLOGICAL"
+  ],
+  "timeline": [
+    {
+      "period_id": "DSH.V.001",
+      "md": "Jupiter",
+      "ad": "Venus",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.002",
+      "md": "Jupiter",
+      "ad": "Sun",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.003",
+      "md": "Jupiter",
+      "ad": "Moon",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.004",
+      "md": "Jupiter",
+      "ad": "Mars",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.005",
+      "md": "Jupiter",
+      "ad": "Rahu",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.006",
+      "md": "Saturn",
+      "ad": "Saturn",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.007",
+      "md": "Saturn",
+      "ad": "Mercury",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 1,
+      "elevated_domains": [
+        "HEALTH"
+      ],
+      "n_training_events": 1,
+      "events_present": {
+        "HEALTH": [
+          "EVT.1995.XX.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.008",
+      "md": "Saturn",
+      "ad": "Ketu",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 1,
+      "elevated_domains": [
+        "RELATIONSHIP"
+      ],
+      "n_training_events": 1,
+      "events_present": {
+        "RELATIONSHIP": [
+          "EVT.1998.02.16.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.009",
+      "md": "Saturn",
+      "ad": "Venus",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 1,
+      "elevated_domains": [
+        "CAREER"
+      ],
+      "n_training_events": 2,
+      "events_present": {
+        "CAREER": [
+          "EVT.2000.XX.XX.01",
+          "EVT.2001.03.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.010",
+      "md": "Saturn",
+      "ad": "Sun",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.011",
+      "md": "Saturn",
+      "ad": "Moon",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 2,
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP"
+      ],
+      "n_training_events": 2,
+      "events_present": {
+        "CAREER": [
+          "EVT.2003.06.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2004.01.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.012",
+      "md": "Saturn",
+      "ad": "Mars",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 1,
+      "elevated_domains": [
+        "CAREER"
+      ],
+      "n_training_events": 1,
+      "events_present": {
+        "CAREER": [
+          "EVT.2004.XX.XX.02"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.013",
+      "md": "Saturn",
+      "ad": "Rahu",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 2,
+      "elevated_domains": [
+        "CAREER",
+        "HEALTH"
+      ],
+      "n_training_events": 4,
+      "events_present": {
+        "CAREER": [
+          "EVT.2007.06.10.01",
+          "EVT.2007.06.XX.02"
+        ],
+        "HEALTH": [
+          "EVT.2007.06.XX.01",
+          "EVT.2007.XX.XX.03"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.014",
+      "md": "Saturn",
+      "ad": "Jupiter",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 1,
+      "elevated_domains": [
+        "CAREER"
+      ],
+      "n_training_events": 1,
+      "events_present": {
+        "CAREER": [
+          "EVT.2010.XX.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.015",
+      "md": "Mercury",
+      "ad": "Mercury",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "ELEVATED"
+      },
+      "n_elevated_domains": 3,
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP",
+        "PSYCHOLOGICAL"
+      ],
+      "n_training_events": 7,
+      "events_present": {
+        "CAREER": [
+          "EVT.2010.12.XX.01",
+          "EVT.2011.01.XX.01",
+          "EVT.2011.06.XX.01",
+          "EVT.2012.XX.XX.02"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2012.10.XX.01",
+          "EVT.2013.XX.XX.01"
+        ],
+        "PSYCHOLOGICAL": [
+          "EVT.2012.09.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.016",
+      "md": "Mercury",
+      "ad": "Ketu",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 2,
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP"
+      ],
+      "n_training_events": 3,
+      "events_present": {
+        "CAREER": [
+          "EVT.2013.03.XX.01",
+          "EVT.2013.05.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2013.12.11.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.017",
+      "md": "Mercury",
+      "ad": "Venus",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 1,
+      "elevated_domains": [
+        "CAREER"
+      ],
+      "n_training_events": 1,
+      "events_present": {
+        "CAREER": [
+          "EVT.2016.XX.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.018",
+      "md": "Mercury",
+      "ad": "Sun",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.019",
+      "md": "Mercury",
+      "ad": "Moon",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.020",
+      "md": "Mercury",
+      "ad": "Mars",
+      "domain_states": {
+        "CAREER": "NORMAL",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 0,
+      "elevated_domains": [],
+      "n_training_events": 0,
+      "events_present": {}
+    },
+    {
+      "period_id": "DSH.V.021",
+      "md": "Mercury",
+      "ad": "Rahu",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 3,
+      "elevated_domains": [
+        "CAREER",
+        "HEALTH",
+        "RELATIONSHIP"
+      ],
+      "n_training_events": 4,
+      "events_present": {
+        "CAREER": [
+          "EVT.2021.XX.XX.02",
+          "EVT.2021.XX.XX.03"
+        ],
+        "HEALTH": [
+          "EVT.2021.01.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2022.XX.XX.02"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.022",
+      "md": "Mercury",
+      "ad": "Jupiter",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "NORMAL",
+        "RELATIONSHIP": "ELEVATED",
+        "SPIRITUAL": "NORMAL",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 2,
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP"
+      ],
+      "n_training_events": 4,
+      "events_present": {
+        "CAREER": [
+          "EVT.2023.05.XX.01",
+          "EVT.2023.06.XX.01",
+          "EVT.2023.07.XX.01"
+        ],
+        "RELATIONSHIP": [
+          "EVT.2022.10.XX.01"
+        ]
+      }
+    },
+    {
+      "period_id": "DSH.V.023",
+      "md": "Mercury",
+      "ad": "Saturn",
+      "domain_states": {
+        "CAREER": "ELEVATED",
+        "HEALTH": "ELEVATED",
+        "RELATIONSHIP": "NORMAL",
+        "SPIRITUAL": "ELEVATED",
+        "PSYCHOLOGICAL": "NORMAL"
+      },
+      "n_elevated_domains": 3,
+      "elevated_domains": [
+        "CAREER",
+        "HEALTH",
+        "SPIRITUAL"
+      ],
+      "n_training_events": 5,
+      "events_present": {
+        "CAREER": [
+          "EVT.2025.07.XX.01",
+          "EVT.2026.03.20.01",
+          "EVT.2026.04.08.01"
+        ],
+        "HEALTH": [
+          "EVT.2025.XX.XX.02"
+        ],
+        "SPIRITUAL": [
+          "EVT.2025.XX.XX.01"
+        ]
+      }
+    }
+  ],
+  "domain_aggregate_stats": {
+    "CAREER": {
+      "n_elevated": 11,
+      "n_normal": 12,
+      "n_suppressed": 0,
+      "pct_elevated": 0.478,
+      "elevated_periods": [
+        "DSH.V.009",
+        "DSH.V.011",
+        "DSH.V.012",
+        "DSH.V.013",
+        "DSH.V.014",
+        "DSH.V.015",
+        "DSH.V.016",
+        "DSH.V.017",
+        "DSH.V.021",
+        "DSH.V.022",
+        "DSH.V.023"
+      ]
+    },
+    "HEALTH": {
+      "n_elevated": 4,
+      "n_normal": 19,
+      "n_suppressed": 0,
+      "pct_elevated": 0.174,
+      "elevated_periods": [
+        "DSH.V.007",
+        "DSH.V.013",
+        "DSH.V.021",
+        "DSH.V.023"
+      ]
+    },
+    "RELATIONSHIP": {
+      "n_elevated": 6,
+      "n_normal": 17,
+      "n_suppressed": 0,
+      "pct_elevated": 0.261,
+      "elevated_periods": [
+        "DSH.V.008",
+        "DSH.V.011",
+        "DSH.V.015",
+        "DSH.V.016",
+        "DSH.V.021",
+        "DSH.V.022"
+      ]
+    },
+    "SPIRITUAL": {
+      "n_elevated": 1,
+      "n_normal": 22,
+      "n_suppressed": 0,
+      "pct_elevated": 0.043,
+      "elevated_periods": [
+        "DSH.V.023"
+      ]
+    },
+    "PSYCHOLOGICAL": {
+      "n_elevated": 1,
+      "n_normal": 22,
+      "n_suppressed": 0,
+      "pct_elevated": 0.043,
+      "elevated_periods": [
+        "DSH.V.015"
+      ]
+    }
+  },
+  "md_level_activation_patterns": {
+    "Jupiter": {
+      "n_periods": 5,
+      "domain_elevated_counts": {
+        "CAREER": 0,
+        "HEALTH": 0,
+        "RELATIONSHIP": 0,
+        "SPIRITUAL": 0,
+        "PSYCHOLOGICAL": 0
+      }
+    },
+    "Saturn": {
+      "n_periods": 9,
+      "domain_elevated_counts": {
+        "CAREER": 5,
+        "HEALTH": 2,
+        "RELATIONSHIP": 2,
+        "SPIRITUAL": 0,
+        "PSYCHOLOGICAL": 0
+      }
+    },
+    "Mercury": {
+      "n_periods": 9,
+      "domain_elevated_counts": {
+        "CAREER": 6,
+        "HEALTH": 2,
+        "RELATIONSHIP": 4,
+        "SPIRITUAL": 1,
+        "PSYCHOLOGICAL": 1
+      }
+    }
+  },
+  "multi_domain_activation_periods": [
+    {
+      "period_id": "DSH.V.011",
+      "md": "Saturn",
+      "ad": "Moon",
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP"
+      ]
+    },
+    {
+      "period_id": "DSH.V.013",
+      "md": "Saturn",
+      "ad": "Rahu",
+      "elevated_domains": [
+        "CAREER",
+        "HEALTH"
+      ]
+    },
+    {
+      "period_id": "DSH.V.015",
+      "md": "Mercury",
+      "ad": "Mercury",
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP",
+        "PSYCHOLOGICAL"
+      ]
+    },
+    {
+      "period_id": "DSH.V.016",
+      "md": "Mercury",
+      "ad": "Ketu",
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP"
+      ]
+    },
+    {
+      "period_id": "DSH.V.021",
+      "md": "Mercury",
+      "ad": "Rahu",
+      "elevated_domains": [
+        "CAREER",
+        "HEALTH",
+        "RELATIONSHIP"
+      ]
+    },
+    {
+      "period_id": "DSH.V.022",
+      "md": "Mercury",
+      "ad": "Jupiter",
+      "elevated_domains": [
+        "CAREER",
+        "RELATIONSHIP"
+      ]
+    },
+    {
+      "period_id": "DSH.V.023",
+      "md": "Mercury",
+      "ad": "Saturn",
+      "elevated_domains": [
+        "CAREER",
+        "HEALTH",
+        "SPIRITUAL"
+      ]
+    }
+  ],
+  "key_findings": [
+    "F1: Jupiter MD (5 periods: DSH.V.001-005) \u2014 ALL NORMAL across all domains. Jupiter MD had no training events in any domain. Jupiter prior posteriors are purely prior-anchored for observation model. Implication: Jupiter MD predictions at M5-E rely entirely on prior specification.",
+    "F2: Saturn MD (9 periods: DSH.V.006-014) \u2014 CAREER ELEVATED in 5/9 periods (55.6%): V.009, V.011, V.012, V.013, V.014. HEALTH ELEVATED in 2/9: V.007, V.013. RELATIONSHIP ELEVATED in 2/9: V.008, V.011. No SPIRITUAL or PSYCHOLOGICAL ELEVATED in Saturn MD. Saturn shows mixed but materially above-null CAREER activation.",
+    "F3: Mercury MD (9 periods: DSH.V.015-023) \u2014 CAREER ELEVATED in 6/9 periods (66.7%): V.015, V.016, V.017, V.021, V.022, V.023. RELATIONSHIP ELEVATED in 4/9: V.015, V.016, V.021, V.022. HEALTH ELEVATED in 2/9: V.021, V.023. SPIRITUAL ELEVATED in 1/9: V.023. PSYCHOLOGICAL ELEVATED in 1/9: V.015. Mercury is the most domain-diverse activating MD.",
+    "F4: DSH.V.015 (Mercury-Mercury, 2010-2013) \u2014 3 domains ELEVATED simultaneously (CAREER, RELATIONSHIP, PSYCHOLOGICAL). This is the only period with PSYCHOLOGICAL ELEVATED (n=1 training event: EVT.2012.09.XX.01). Peak multi-domain activation in the training corpus.",
+    "F5: DSH.V.013 (Saturn-Rahu, 2004-2007) \u2014 2 domains ELEVATED (CAREER+HEALTH). Most event-dense period in Saturn MD (4 training events). Saturn-Rahu antardasha is classically associated with high-intensity multi-domain events.",
+    "F6: DSH.V.021 (Mercury-Rahu, 2020-2022) \u2014 3 domains ELEVATED (CAREER+HEALTH+RELATIONSHIP). Held-out event EVT.2022.01.03.01 (twin daughters, RELATIONSHIP) falls here but was excluded from training. Training RELATIONSHIP events (EVT.2022.XX.XX.02) made the period RELATIONSHIP ELEVATED. The period is the most event-dense in Mercury MD (3 training events across 3 domains).",
+    "F7: Periods DSH.V.018-020 (Mercury-Sun, Moon, Mars) are ALL NORMAL across all domains \u2014 yet 2 of the 3 held-out CAREER events fall here (EVT.2017.03.XX.01 in V.018, EVT.2019.05.XX.01 in V.020). This is consistent with the held-out blind protocol: the events were excluded from training, so these periods appear eventless and NORMAL. The model correctly predicted above-null CAREER probability for these periods based on Mercury MD signal alone.",
+    "F8: SPIRITUAL domain has only 1 ELEVATED period in training (DSH.V.023: Mercury-Saturn). PSYCHOLOGICAL has only 1 (DSH.V.015: Mercury-Mercury). Both domains are prior-dominated (Beta(8,3) post_mean=0.727 comes from n=1 observation). Full calibration requires M5-E prospective data.",
+    "F9: No SUPPRESSED periods appear in any domain across all 23 training periods. The suppressed threshold (MD prior P(ELEVATED)\u22640.22 AND no events) was never triggered. This confirms PRIOR_SPEC \u00a79 note: SUPPRESSED state retains pure prior Beta(0.5,9.5) across all domains. The suppressed observation model is entirely prior-anchored."
+  ],
+  "interpretation_note": "The timeline reveals a clear temporal activation arc: Jupiter MD (quiescent, 1984-2001 approximately), Saturn MD (career foundation with periodic multi-domain events), Mercury MD (most active, career-dominant with significant RELATIONSHIP co-activation). This aligns with classical Jyotish expectation: Mercury as 7L+10L produces the most career/relationship dual activation. The finding that CAREER is ELEVATED in 11/23 training periods (47.8%) \u2014 confirming the null model base rate computed in AC.M5D.3 \u2014 validates internal consistency between the timeline and the training data counts.",
+  "dbn_params_ref": "06_LEARNING_LAYER/dbn/dbn_params_v1_0.json",
+  "prior_spec_ref": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)"
+}
