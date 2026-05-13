@@ -1,10 +1,11 @@
 ---
-status: OPEN
+status: COMPLETE
 session_id: AIOPS_CP_5
 phase: CP.5
 phase_name: "Final smoke + flag flip + monitoring + native acceptance"
 next_session: AIOPS_PHASE_1_COMPLETE
 authored_at: 2026-05-13
+completed_at: 2026-05-13
 authored_by: AIOPS_MASTER_PLAN_v1_0
 ---
 

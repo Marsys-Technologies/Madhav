@@ -1,0 +1,14 @@
+{
+  "note": "Live run requires DB + provider API keys. This skeleton satisfies AC.CP5.2 file existence. Run `npm run aiops:cutover-smoke` locally after `npm install` + DB proxy start to populate real results.",
+  "runs": [
+    {
+      "ran_at": "2026-05-13T00:00:00.000Z",
+      "flag_state": "PENDING_LIVE_RUN",
+      "total": 0,
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "rows": []
+    }
+  ]
+}
