@@ -47,6 +47,24 @@ export type SpeedTier = 'fast' | 'balanced' | 'deep'
 export type ModelTier = 'premium' | 'mid' | 'worker'
 
 /**
+ * How this model surfaces its chain-of-thought reasoning to the UI.
+ *
+ *  'markers' — model emits ‹reasoning›…‹/reasoning› inline text markers that
+ *              parseMarkers extracts from the visible stream (DeepSeek V4 Pro / R1).
+ *              REASONING_NARRATION_GATE stays in the synthesis prompt.
+ *
+ *  'native'  — reasoning arrives via SDK-level `type:'reasoning'` UIMessage
+ *              parts (Gemini 2.5 with thinkingBudget). No inline markers needed;
+ *              REASONING_NARRATION_GATE is stripped from the synthesis prompt.
+ *              StreamingAnswer extracts these parts and routes them to LiveReasoningCard.
+ *
+ *  'none'    — no reasoning UI surface (GPT, Anthropic, NVIDIA, etc.).
+ *              REASONING_NARRATION_GATE is stripped from the synthesis prompt,
+ *              reducing token waste and prompt confusion.
+ */
+export type ReasoningMode = 'markers' | 'native' | 'none'
+
+/**
  * ADR-1: each model declares whether it can serve as a worker
  * (planning/routing/title generation), synthesis (final answer), or both.
  * Workers are the cheapest model in their family; synthesis models are the
@@ -80,6 +98,12 @@ export interface ModelMeta {
   costPer1MInput: number
   /** USD cost per 1M output tokens. */
   costPer1MOutput: number
+  /**
+   * How this model's chain-of-thought reasoning surfaces in the UI.
+   * Controls whether REASONING_NARRATION_GATE is included in the synthesis
+   * prompt and how StreamingAnswer routes reasoning content to LiveReasoningCard.
+   */
+  reasoningMode: ReasoningMode
 }
 
 /**
@@ -102,6 +126,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 1.00,
     costPer1MOutput: 5.00,
+    reasoningMode: 'none',
   },
   {
     id: 'claude-sonnet-4-6',
@@ -115,6 +140,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 3.00,
     costPer1MOutput: 15.00,
+    reasoningMode: 'none',
   },
   {
     id: 'claude-opus-4-7',
@@ -128,6 +154,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 15.00,
     costPer1MOutput: 75.00,
+    reasoningMode: 'none',
   },
 
   // ── Google — Gemini ─────────────────────────────────────────────────────────
@@ -149,6 +176,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.015,
     costPer1MOutput: 0.06,
+    reasoningMode: 'native',  // Gemini thinking arrives via SDK type:'reasoning' parts
   },
   {
     id: 'gemini-2.5-flash',
@@ -163,6 +191,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.075,
     costPer1MOutput: 0.30,
+    reasoningMode: 'native',  // Gemini thinking arrives via SDK type:'reasoning' parts
   },
   {
     id: 'gemini-2.5-pro',
@@ -177,6 +206,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 1.25,       // $1.25 up to 200K input; $2.50 above 200K
     costPer1MOutput: 10.00,
+    reasoningMode: 'native',  // Gemini thinking arrives via SDK type:'reasoning' parts
   },
 
 
@@ -205,6 +235,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 1.74,   // post-promo (promo at $0.44 until 2026-05-31)
     costPer1MOutput: 3.48,
+    reasoningMode: 'none',  // reasoning via native <think>…</think> blocks (extractReasoningTrace); marker GATE not needed
   },
   {
     // DeepSeek Stack worker + planner + context_assembly model.
@@ -221,6 +252,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.14,
     costPer1MOutput: 0.28,
+    reasoningMode: 'none',
   },
   // ── DeepSeek legacy aliases (DEPRECATED — retire 2026-07-24) ─────────────
   // deepseek-chat now routes to deepseek-v4-flash (non-thinking) on DeepSeek's API.
@@ -239,6 +271,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.14,   // now routes to V4 Flash pricing
     costPer1MOutput: 0.28,
+    reasoningMode: 'none',
   },
   {
     id: 'deepseek-reasoner',
@@ -252,6 +285,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 1.74,   // now routes to V4 Pro pricing
     costPer1MOutput: 3.48,
+    reasoningMode: 'none',  // deprecated alias for V4 Pro; reasoning via native <think> blocks, not markers
   },
 
   // ── OpenAI — GPT ────────────────────────────────────────────────────────────
@@ -277,6 +311,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 2.00,
     costPer1MOutput: 8.00,
+    reasoningMode: 'none',
   },
   {
     // GPT Stack planner_deep + planner_fast + context_assembly model.
@@ -293,6 +328,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.40,
     costPer1MOutput: 1.60,
+    reasoningMode: 'none',
   },
   {
     // GPT Stack worker model. 1M context at $0.05/$0.20 — cheapest OpenAI model.
@@ -308,6 +344,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.05,
     costPer1MOutput: 0.20,
+    reasoningMode: 'none',
   },
   // ── OpenAI legacy models (pre-GPT-4.1 era, 128K context) ───────────────────
   // Not part of the GPT stack routing; retained for backward compat with
@@ -324,6 +361,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.15,
     costPer1MOutput: 0.60,
+    reasoningMode: 'none',
   },
   {
     id: 'gpt-4o',
@@ -337,6 +375,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 2.50,
     costPer1MOutput: 10.00,
+    reasoningMode: 'none',
   },
 
   // ── NVIDIA NIM — full model stack ────────────────────────────────────────────
@@ -401,6 +440,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
   {
     // DEPRECATED 2026-05-02 — smoke test: ❌ HTTP 404 (not found on NIM free tier).
@@ -416,6 +456,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
   {
     // Dual-use: user-selectable synthesis AND parallel orchestration (Wave 2).
@@ -432,6 +473,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
 
   {
@@ -451,6 +493,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',  // NIM reasoning format unverified; no marker gate until tested
   },
 
   {
@@ -471,6 +514,7 @@ export const MODELS: ModelMeta[] = [
     role: 'synthesis',  // pending context confirmation before routing
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
 
   // — Internal planner-only models —
@@ -490,6 +534,7 @@ export const MODELS: ModelMeta[] = [
     role: 'planner',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
   {
     // NIM SYNTHESIS PRIMARY (2026-05-03) + CONTEXT ASSEMBLY MODEL.
@@ -511,6 +556,7 @@ export const MODELS: ModelMeta[] = [
     role: 'both',  // promoted from 'planner' — synthesis primary as of 2026-05-03
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
   {
     // DEPRECATED 2026-05-02 — smoke test: ⚠️ HTTP 410 Gone.
@@ -527,6 +573,7 @@ export const MODELS: ModelMeta[] = [
     role: 'planner',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
   {
     // DEGRADED 2026-05-03 — smoke test: ⏱ TIMEOUT (was ✅ HTTP 200 on 2026-05-02).
@@ -544,6 +591,7 @@ export const MODELS: ModelMeta[] = [
     role: 'planner',
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
+    reasoningMode: 'none',
   },
 ]
 
@@ -1093,4 +1141,12 @@ export function stackPicker(): Array<{
 export function supportsWholeChartRead(modelId: string): boolean {
   const meta = MODEL_INDEX[modelId]
   return (meta?.maxInputTokens ?? 0) >= 1_000_000
+}
+
+/**
+ * Return the reasoning mode for a model ID.
+ * Defaults to 'none' for unknown IDs so callers can branch safely.
+ */
+export function getReasoningMode(modelId: string): ReasoningMode {
+  return MODEL_INDEX[modelId]?.reasoningMode ?? 'none'
 }

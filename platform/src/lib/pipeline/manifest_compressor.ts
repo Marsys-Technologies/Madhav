@@ -61,6 +61,7 @@ export const PRIMARY_TOOL_NAMES: readonly string[] = [
   'cluster_atlas',
   'cgm_graph_walk',
   'vector_search',
+  'lel_query',
 ] as const
 
 /**

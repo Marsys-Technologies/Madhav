@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "mechanism": "LL.8",
+  "mechanism_label": "Bayesian Model Updating — Parameter Register (ACTIVE)",
+  "status": "ACTIVE",
+  "spec_path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
+  "dbn_params_ref": "06_LEARNING_LAYER/dbn/dbn_params_v1_0.json",
+  "activated_during": "M5-E-S1",
+  "activated_on": "2026-05-14",
+  "last_updated": "2026-05-14",
+  "update_count": 0,
+  "kill_switch_id": "KS.LL8.1",
+  "kill_switch_threshold_ratio": 2.0,
+  "credible_interval_level": "90% HDI (per NAP.M5.3)",
+  "n1_disclaimer": "VALIDITY NOTICE: All parameters derive from a single native (n=1) life corpus. Per MACRO_PLAN §3.5.A Principle 1 — n=1 validity disclaimer applies to all entries.",
+  "updates": [],
+  "audit_trail": {
+    "stub_created_session": "M5-A-S1",
+    "stub_created_date": "2026-05-13",
+    "activated_session": "M5-E-S1",
+    "activated_date": "2026-05-14",
+    "first_population_session": null,
+    "predecessor_stub": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/parameter_register_stub.json"
+  }
+}

@@ -323,6 +323,15 @@ ASSET BUNDLE RULES (what canonical documents to load):
        projections. For HOLISTIC queries with an explicit temporal
        dimension ("how things have evolved", "life arc", "next 5 years"),
        include LEL at priority 2.
+  R27. For PREDICTIVE queries, include lel_query in tool_calls at priority 1.
+       lel_query retrieves L1 ground-truth recorded life events from the
+       life_events table — actual dates, categories, and Swiss Ephemeris
+       chart states for events that have already occurred (marriage, career
+       transitions, health events, etc.). This prevents fabrication of event
+       dates that are already recorded facts. For INTERPRETIVE queries that
+       name a specific life domain (relationship, career, health, family),
+       include lel_query at priority 2 with the appropriate category filter.
+       Set params.category to the relevant category value.
 
 SYNTHESIS GUIDANCE RULES:
 
@@ -554,6 +563,7 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
     multi-domain interpretive and cross_domain.
   - RM appears in remedial plans (R25).
   - LEL appears in predictive plans (R26).
+  - lel_query appears in tool_calls for all predictive plans (R27) and interpretive plans that name a specific life domain (R27).
 
 ### 4.1 Remedial query — recurring-pattern character
 
@@ -743,6 +753,12 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
       { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for Ketu domain profile." }
     ],
     "tool_calls": [
+      {
+        "tool_name": "lel_query",
+        "params": {},
+        "token_budget": 600, "priority": 1,
+        "reason": "R27: ground-truth recorded life events — prevents fabricating event dates that are already L1 facts."
+      },
       {
         "tool_name": "msr_sql",
         "params": { "planets": ["Ketu"], "forward_looking": true },
@@ -1027,6 +1043,12 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
     ],
     "tool_calls": [
       {
+        "tool_name": "lel_query",
+        "params": {},
+        "token_budget": 500, "priority": 1,
+        "reason": "R27: ground-truth recorded events — prevents fabricating past event dates in predictive framing."
+      },
+      {
         "tool_name": "msr_sql",
         "params": { "planets": ["Moon"], "forward_looking": true },
         "token_budget": 800, "priority": 1,
@@ -1062,6 +1084,12 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
       { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for Mercury-period calibration." }
     ],
     "tool_calls": [
+      {
+        "tool_name": "lel_query",
+        "params": {},
+        "token_budget": 600, "priority": 1,
+        "reason": "R27: L1 ground-truth events for antardasha calibration — read what actually happened before projecting."
+      },
       {
         "tool_name": "msr_sql",
         "params": { "planets": ["Mercury"], "forward_looking": true },
@@ -1260,6 +1288,12 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
       { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for marriage and children domain arc." }
     ],
     "tool_calls": [
+      {
+        "tool_name": "lel_query",
+        "params": { "category": "relationship" },
+        "token_budget": 600, "priority": 1,
+        "reason": "R27: read recorded marriage/relationship events from LEL before projecting — actual date, chart state at marriage, actual relationship events are ground truth and must not be fabricated."
+      },
       {
         "tool_name": "msr_sql",
         "params": { "domains": ["relationships", "family"], "forward_looking": true },

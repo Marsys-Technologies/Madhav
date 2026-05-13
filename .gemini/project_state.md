@@ -26,9 +26,45 @@ _Last updated: 2026-05-04 at cowork-config-refresh (M5 INCOMING; BHISMA Wave 2 L
 - **L4 Discovery impact:** **None.** Phase O lives at the platform observability layer. Gemini L4 Discovery work continues unaffected.
 - **Phase-O+1 follow-ups (logged, not blocking):** pg-cursor migration of `queryUsageForExportStream()` for true SQL streaming; MAD-based parallel anomaly detector; DNS-rebinding defence on `validateWebhookUrl()`; cost-per-quality rubric wiring once Learning Layer is in place.
 
-## Active Phase: M5 — ACTIVE (M5-A CLOSED 2026-05-13; M5-B INCOMING)
+## Active Phase: M6 — INCOMING (Phase plan TBD at M6-A-S1)
 
-**M5 MACRO-PHASE ACTIVE.** Phase plan `PHASE_M5_PLAN_v1_0.md` v1.1. **M5-A SUB-PHASE CLOSED 2026-05-13 at M5-A-S1** — all 14 ACs discharged. Active sub-phase: **M5-B INCOMING — DBN Topology.** DBN tooling: Hybrid-C (JSON CPT manually computed; LLM does inference; LLM-assisted signal selection). LLM stack: Gemini → DeepSeek → NIM; no Anthropic/Claude API. M5-A deliverables closed: LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_updater_v1_0.md` + `ll9_counterfactual_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed; 4 absent IDs are numbering artifacts; frontmatter patched); LL.2 per-edge promotion campaign (`06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md`; 8 edges pending NAP.M5.EDGE-BATCH native approval); PPL retroactive protocol (`01_FACTS_LAYER/PPL_RETROACTIVE_PROTOCOL_v1_0.md`); held-out partition declared (`01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md`; 9 events sacrosanct until M5-D DBN fitting); PRED.015–018 added (CONFIRMED; ledger 16→20); LEL v1.6→v1.7 (+10 events → 57 total; 2 new chronic patterns → 8 total); DIS.009 RESOLVED_R1 (PAT.008-AL + PAT.008-KMC split accepted 2026-05-13); answer:eval scaffold complete (`platform/scripts/eval/eval_runner.py` + `eval_rubric_v1_0.json` + `eval_prompt_v1_0.txt`); JH export schedule authored (`01_FACTS_LAYER/JH_EXPORT_SCHEDULE_v1_0.md`; status PROPOSED); Gate IV AC.IV.7 STILL_PENDING (psql marsys_db not accessible locally — M5-B re-check). R.LL1TPA.1 FINAL_NOT_REACHABLE_M5 declared (surrogate-disclosure convention continues). NAP.M5.0 PPL cadence PROPOSED (pending native approval). CURRENT_STATE updated to v4.1. M4 CLOSED 2026-05-02 at M4-D-S1. Phase O COMPLETE (branch merged 2026-05-03 commit 4a121d7). BHISMA Wave 2 Lever 2 CLOSED (2026-05-04; `LLM_FIRST_PLANNER_ENABLED=true` fa75e1a). Phase 11B Pipeline Cutover COMPLETE (2026-05-11). Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
+**M6 MACRO-PHASE INCOMING.** M5 CLOSED 2026-05-14 at M5-E-S2. M6 phase plan TBD at M6-A-S1. Priority carry-forwards: CF.M5.6 first live LL.8 update (HIGH); CF.M5.1 calibration UI (MEDIUM); CF.M5.7 first LL.9 miss (MEDIUM). red_team_counter: 0. Next IS.8(a) at counter=3.
+
+**Next session:** M6-A-S1 — M6 phase plan authoring + first execution. Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
+
+---
+
+## (Predecessor) Active Phase: M5 — CLOSED 2026-05-14 (M5-E-S2; sealing artifact: 06_LEARNING_LAYER/M5_CLOSE_v1_0.md)
+
+**M5 MACRO-PHASE CLOSED.** `PHASE_M5_PLAN_v1_0.md` v1.1 SUPERSEDED-AS-COMPLETE. IS.8(b) PASS 5/5. NAP.M5.4 APPROVED. DBN tooling: Hybrid-C; n=37 training; mean_lift=1.145; LL.8 ACTIVE; LL.9 SCAFFOLD.
+
+**M5-E-S2 (2026-05-14) deliverables COMPLETE — M5 MACRO-PHASE CLOSE:** AC.M5E.1 IS.8(b) PASS 5/5 (0 CRITICAL/HIGH/MEDIUM; 1 LOW self-resolved). AC.M5E.2 PPL checkpoint: 20 predictions (gate ≥20 SATISFIED). AC.M5E.3 M5_CLOSE_v1_0.md CLOSED (§0–§8). AC.M5E.4 CURRENT_STATE v5.2→v5.3 (M5→M6 INCOMING). NAP.M5.4 APPROVED. red_team_counter: 0. M6 INCOMING.
+
+**M5-E-S1 (2026-05-14) deliverables COMPLETE — CF.M5D.1+2 CLOSED; LL.8 ACTIVE:** CF.M5D.1 CLOSED — `predictive.ts` v3.0 Bayesian framing + §CALIBRATION. CF.M5D.2 CLOSED — LL.8 ACTIVE (LL8_SPEC v1.1; parameter_register.json). LL.9 SCAFFOLD confirmed. CURRENT_STATE v5.1→v5.2.
+
+**M5-D-S4 (2026-05-13) deliverables COMPLETE — IS.8(a) PASS 8/8 + AC.M5D.4/5 COMPLETE:** IS.8(a) red-team 8/8 axes PASS — red_team_counter 2→3→0 discharged. AC.M5D.4 PPL retroactive blind predictions COMPLETE — 5 blind retroactive predictions with Monte Carlo 90% HDI per NAP.M5.3; wide marginal HDIs [0.013–0.944] range reflect mixture uncertainty across SUPPRESSED/NORMAL/ELEVATED — epistemically correct. Artifact: `06_LEARNING_LAYER/dbn/ppl_retroactive_m5d_v1_0.json`. AC.M5D.5 domain activation timeline COMPLETE — 23-period hard E-step assignments; 9 key findings including Jupiter ALL NORMAL, 0 SUPPRESSED periods, CAREER ELEVATED 11/23=0.4783 (matches null base rate — internal consistency confirmed). Artifact: `06_LEARNING_LAYER/dbn/domain_activation_timeline_v1_0.json`. CURRENT_STATE v4.9→v5.0. red_team_counter: 2→3→0.
+
+**M5-D-S3 (2026-05-13) deliverables COMPLETE — AC.M5D.3 PASS + NAP.M5.3 APPROVED:** AC.M5D.3 held-out validation PASS — 5 domain-mapped events scored (4 CAREER/Saturn|Mercury + 1 RELATIONSHIP/Mercury); 4 skipped (loss/other). mean_lift_ratio=1.145 · total_LLR=0.655 · beat_fraction=5/5. Tolerance gap in PRIOR_SPEC §9 declared at session (mean_lift>1.05, LLR>0, beat_frac≥0.60). Artifact: `held_out_validation_v1_0.json`. NAP.M5.3 APPROVED — CI reporting policy: 90% HDI asymmetric format `[lo – hi]`, small-n caveat triggers, T1/T2/T3 disclosure tiers. Artifact: `NAP_M5_3_CI_REPORTING_POLICY_v1_0.md`. red_team_counter: 1→2. CURRENT_STATE v4.8→v4.9.
+
+**M5-D-S2 (2026-05-13) deliverables COMPLETE — AC.M5D.2 PASS:** CF.M5C.2+3+4 COMPLETE. `dbn_params_v1_0.json` PRODUCED. ELEVATED spread 0.1298; CAREER #1 ELEVATED (LL.4 CONFIRMED). red_team_counter: 0→1.
+
+**M5-D-S1 (2026-05-13) deliverables COMPLETE — CF.M5C.1 CLEARED:** LL8 Embedding Refit gate CLEARED. IS.8(a) DISCHARGED — 8-axis PASS. red_team_counter: 2→3→0.
+
+**M5-C-S2 (2026-05-13) deliverables COMPLETE — M5-C CLOSED:** NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5_C_CLOSE_v1_0.md authored (AC.M5C.1-6 all PASS). red_team_counter: 1→2.
+
+**M5-C-S1 (2026-05-13) deliverables COMPLETE:** `PRIOR_SPEC_v1_0.md` (DRAFT, v1.0) authored. Embedding_refit/ scaffold COMPLETE. AC.M5C.1/2/3/4 PASS. red_team_counter: 0→1.
+
+**M5-B-S2 (2026-05-13) deliverables COMPLETE:** IS.8(a) red-team PASS. U2 IMPLEMENTED. NAP.M5.1 FROZEN. EDGE-01 substituted. AC.M5B.3/7 PASS. red_team_counter: 3→0.
+
+**M5-B-S1 (2026-05-13) deliverables COMPLETE:** `DBN_TOPOLOGY_v1_0.md` DRAFT. 5 CPT scaffolds created. CAPABILITY_MANIFEST 68→74 entries.
+
+**M5-B-NAP-S1 (2026-05-13, Cowork NAP) deliverables COMPLETE:** NAP.M5.0 APPROVED. NAP.M5.1 partially resolved. LL.2 campaign CLOSED. SIG.MSR.145 corrected. SIG.MSR.402b documented.
+
+**M5-D-S5 (2026-05-13) deliverables COMPLETE — AC.M5D.6 + M5-D CLOSED:** AC.M5D.6 COMPLETE — M5_D_CLOSE_v1_0.md authored and sealed. IS.8(b)-class in-document red-team PASS 8/8 axes (0 CRITICAL/HIGH/MEDIUM/LOW). AC ledger: AC.M5D.1–6 PASS. CURRENT_STATE v5.0→v5.1.
+
+**Next session:** M5-E-S2 — IS.8(b) macro-phase-close red-team (5 axes, all must PASS); PPL volume checkpoint; `M5_CLOSE_v1_0.md` authored (§0–§8); CURRENT_STATE flip M5→M6 INCOMING (v5.2→v5.3); NAP.M5.4 PRE-APPROVED. Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-E-S2." red_team_counter entering M5-E-S2: 0.
+
+**M5-A deliverables (closed):** LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_updater_v1_0.md` + `ll9_counterfactual_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed); LL.2 per-edge promotion campaign authored; PPL retroactive protocol; held-out partition declared (9 events sacrosanct until M5-D); PRED.015–018 added; LEL v1.7; DIS.009 RESOLVED_R1; JH export schedule. Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
 
 ## (Predecessor) Active Phase: M4 Calibration + LEL Ground-Truth Spine — CLOSED 2026-05-02
 

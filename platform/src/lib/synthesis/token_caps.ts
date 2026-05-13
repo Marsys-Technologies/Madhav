@@ -5,29 +5,29 @@
  */
 
 /**
- * Per-style synthesis output cap. brief/client/acharya define increasing
- * verbosity ceilings; the model max can lower further but never raise.
+ * Per-style synthesis output cap. All styles set to model-max passthrough
+ * (65536 exceeds every registered model's maxOutputTokens, so
+ * computeEffectiveMaxTokens will always resolve to the model's own ceiling).
  */
 export const STYLE_OUTPUT_CAP: Record<string, number> = {
-  brief:   1200,
-  client:  3500,
-  acharya: 8000,
+  brief:   65536,
+  client:  65536,
+  acharya: 65536,
 }
 
 /**
- * P5 D.5.2 — per-query-class output cap. Never raises a cap; only lowers
- * when the class shape is naturally compact (factual lookups, remedial
- * prescriptions). Holistic + discovery stay at 8000.
+ * Per-query-class output cap — restored to model-max passthrough.
+ * computeEffectiveMaxTokens resolves to modelMeta.maxOutputTokens.
  */
 export const CLASS_TOKEN_CAP: Record<string, number> = {
-  factual:       1500,
-  signal_recall: 2000,
-  temporal:      2500,
-  remedial:      3000,
-  cross_domain:  4000,
-  holistic:      8000,
-  discovery:     8000,
-  predictive:    4000,
+  factual:       65536,
+  signal_recall: 65536,
+  temporal:      65536,
+  remedial:      65536,
+  cross_domain:  65536,
+  holistic:      65536,
+  discovery:     65536,
+  predictive:    65536,
 }
 
 /**

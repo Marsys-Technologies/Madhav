@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect } from 'react'
 import type { UIMessage } from 'ai'
+import { isReasoningUIPart } from 'ai'
 import { StreamingMarkdown } from '@/components/chat/StreamingMarkdown'
 import { StreamingDots } from '@/components/chat/StreamingDots'
 import { AssistantMessage } from '@/components/chat/AssistantMessage'
@@ -9,6 +10,7 @@ import { MessageErrorBoundary } from '@/components/chat/MessageErrorBoundary'
 import type { Rating } from '@/hooks/useFeedback'
 import { cn } from '@/lib/utils'
 import { parseMarkers } from '@/lib/consume/marker_parser'
+import { getReasoningMode } from '@/lib/models/registry'
 import type {
   ReasoningStepEvent,
   SanskritTerm,
@@ -65,17 +67,60 @@ export function StreamingAnswer({
   const lastAssistantText = lastAssistant ? extractText(lastAssistant) : ''
   const parsed = useMemo(() => parseMarkers(lastAssistantText), [lastAssistantText])
 
+  // Derive reasoning mode from the synthesis model that produced this message.
+  // The model ID is stored in message metadata by the route handler.
+  const lastAssistantModelId = (lastAssistant?.metadata as Record<string, unknown> | undefined)
+    ?.model as string | undefined
+  const reasoningMode = getReasoningMode(lastAssistantModelId ?? '')
+
+  // For 'native' models (Gemini 2.5), reasoning arrives as SDK-level
+  // type:'reasoning' UIMessage parts rather than ‹reasoning› text markers.
+  // Extract them and convert to ReasoningStepEvent[] for LiveReasoningCard.
+  // Each reasoning part may contain a multi-line thought block; split by line
+  // so the card renders individual steps (matching the ‹reasoning› granularity).
+  //
+  // Two-level memo: the first derives a stable string from parts content.
+  // String deps are compared by value, so nativeReasoningSteps only recomputes
+  // when text changes — not when the parts array gets a new reference on each
+  // render (which would otherwise cause an infinite loop via the useEffect below).
+  const nativeReasoningText = useMemo(() => {
+    if (reasoningMode !== 'native' || !lastAssistant?.parts) return ''
+    return lastAssistant.parts.filter(isReasoningUIPart).map(p => p.text).join('\x00')
+  }, [reasoningMode, lastAssistant?.parts])
+
+  const nativeReasoningSteps = useMemo((): ReasoningStepEvent[] => {
+    if (!nativeReasoningText) return []
+    const now = Date.now()
+    return nativeReasoningText
+      .split('\x00')
+      .flatMap(block =>
+        block
+          .split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0)
+          .map((line: string) => ({
+            type: 'reasoning_step' as const,
+            phase: 'synthesis' as const,
+            text: line,
+            timestamp: now,
+          }))
+      )
+  }, [nativeReasoningText])
+
   // Surface markers to parent on every change.
+  // For 'native' models, substitute the SDK-extracted reasoning steps in place
+  // of the empty marker-parsed array (the gate was stripped from their prompt).
+  // For 'markers' models, use the marker-parsed array as before.
   useEffect(() => {
     if (!onMarkers) return
     onMarkers({
-      reasoning: parsed.reasoning,
+      reasoning: reasoningMode === 'native' ? nativeReasoningSteps : parsed.reasoning,
       sanskrit: parsed.sanskrit,
       correction: parsed.correction,
       outOfDomain: parsed.outOfDomain,
       messageId: lastAssistant?.id ?? null,
     })
-  }, [parsed, lastAssistant?.id, onMarkers])
+  }, [parsed, lastAssistant?.id, nativeReasoningSteps, reasoningMode, onMarkers])
 
   if (messages.length === 0) return null
 

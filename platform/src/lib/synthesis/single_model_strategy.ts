@@ -23,7 +23,8 @@ import type { ModelMessage, ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { resolveModel, googleProviderOptions, deepseekProviderOptions } from '@/lib/models/resolver'
-import { getModelMeta, supports } from '@/lib/models/registry'
+import { getModelMeta, getReasoningMode, supports } from '@/lib/models/registry'
+import { REASONING_NARRATION_GATE } from '@/lib/prompts/templates/shared'
 import { stripThinkBlocks, extractReasoningTrace } from './think_block_filter'
 import { getDefaultRegistry } from '@/lib/prompts/index'
 import { renderTemplate } from '@/lib/prompts/types'
@@ -55,7 +56,7 @@ import type {
 } from './types'
 
 // Token-budget constants for pre-fetched content injection (FUB-2 + FUB-3)
-const MAX_CHART_CONTEXT_TOKENS = 6000
+const MAX_CHART_CONTEXT_TOKENS = 32768
 
 export {
   STYLE_OUTPUT_CAP,
@@ -67,7 +68,7 @@ import {
   CLASS_TOKEN_CAP,
   computeEffectiveMaxTokens,
 } from './token_caps'
-const MAX_TOOL_RESULTS_TOKENS = 3000
+const MAX_TOOL_RESULTS_TOKENS = 16384
 // Rough chars-per-token estimate for truncation (conservative)
 const CHARS_PER_TOKEN = 4
 
@@ -133,6 +134,22 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       tools_available: query_plan.tools_authorized.join(', '),
     }
     let renderedPrompt = renderTemplate(template, variables, style)
+
+    // ── Reasoning-mode prompt gating ─────────────────────────────────────────
+    // REASONING_NARRATION_GATE instructs models to emit ‹reasoning›…‹/reasoning›
+    // inline markers that parseMarkers extracts client-side. This only makes sense
+    // for 'markers' models (DeepSeek V4 Pro / R1 — they follow the gate faithfully).
+    //
+    // For 'native' models (Gemini 2.5): reasoning arrives via SDK-level
+    // type:'reasoning' UIMessage parts. Including the marker gate is noise that
+    // causes the model to ALSO embed ‹reasoning› tags in visible text (BUG-E root
+    // cause). Stripping it cleanly eliminates the double-channel confusion.
+    //
+    // For 'none' models (GPT, Anthropic, NVIDIA): the gate wastes tokens and
+    // produces confusing prompts that invite unsupported output formats.
+    if (getReasoningMode(selected_model_id) !== 'markers') {
+      renderedPrompt = renderedPrompt.replace(`\n\n${REASONING_NARRATION_GATE}`, '')
+    }
 
     // ── FUB-2: Append chart context block from vector_search floor-asset results ─
     // Eagerly inject semantic chunks from floor-role assets so the LLM has
@@ -352,8 +369,8 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     //   acharya → 8000 tokens  (~6000 words) — full acharya-grade depth
     //
     // These caps apply to the synthesis output only, not to tool-use steps.
-    const styleCap = STYLE_OUTPUT_CAP[style ?? 'acharya'] ?? 8000
-    const classCap = CLASS_TOKEN_CAP[query_plan.query_class] ?? 8000
+    const styleCap = STYLE_OUTPUT_CAP[style ?? 'acharya'] ?? 65536
+    const classCap = CLASS_TOKEN_CAP[query_plan.query_class] ?? 65536
     const contentCap = computeEffectiveMaxTokens(
       styleCap,
       classCap,

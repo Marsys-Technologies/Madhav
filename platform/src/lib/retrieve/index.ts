@@ -8,6 +8,7 @@
  * Wave 4 M2-C234: kp_query, saham_query, divisional_query (3 tools)
  * Wave 4 M2-C1: chart_facts_query (1 tool)
  * Wave 5 M2-D234: domain_report_query, remedial_codex_query, timeline_query (3 tools)
+ * M5-A: lel_query — LEL ground-truth life events from life_events table (1 tool)
  */
 
 import * as msrSql from './msr_sql'
@@ -44,6 +45,9 @@ import * as querySignalState from './query_signal_state'
 import * as queryKpRulingPlanets from './query_kp_ruling_planets'
 import * as queryVarshaphala from './query_varshaphala'
 
+// M5-A — LEL ground-truth life events (fixes LEL retrieval gap)
+import * as lelQuery from './lel_query'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -69,6 +73,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   querySignalState.tool,
   queryKpRulingPlanets.tool,
   queryVarshaphala.tool,
+  lelQuery.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

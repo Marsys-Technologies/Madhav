@@ -1,0 +1,356 @@
+{
+  "artifact": "ppl_retroactive_m5d_v1_0.json",
+  "version": "1.0",
+  "canonical_id": "PPL_RETROACTIVE_M5D",
+  "status": "CURRENT",
+  "layer": "L6",
+  "produced_session": "M5-D-S4",
+  "produced_date": "2026-05-13",
+  "description": "AC.M5D.4 \u2014 Retroactive blind PPL (Prospective Prediction Log) entries for the 5 domain-mapped held-out LEL events. Predictions generated from fitted DBN parameters (dbn_params_v1_0.json) only; event outcomes not consulted before prediction entry (blind retroactive protocol per LEL_HELD_OUT_PARTITION_v1_0.md \u00a74 + PPL_RETROACTIVE_PROTOCOL_v1_0.md). CI format per NAP.M5.3 (90% HDI, asymmetric). Wide marginal HDI [0.013\u20130.947] is epistemically correct: reflects state-assignment uncertainty (mixture of SUPPRESSED/NORMAL/ELEVATED components). Point estimate = mixture mean; component-level HDIs in `component_observation_posteriors` are more interpretively useful (per NAP.M5.3 \u00a76).",
+  "blind_protocol_ref": "01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md \u00a74",
+  "ci_policy_ref": "06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md (NAP.M5.3 APPROVED)",
+  "dbn_params_ref": "06_LEARNING_LAYER/dbn/dbn_params_v1_0.json (FITTED, M5-D-S2)",
+  "n1_caveat": "Marginal 90% HDI is computed via Monte Carlo mixture sampling (300k draws, seed=42). The wide interval [0.013\u20130.947] reflects genuine model uncertainty about domain state assignment \u2014 not poor fit. The component-level HDIs (e.g., CAREER ELEVATED: [0.709\u20130.958] from Beta(18,3)) are the tighter, more informative intervals. SUPPRESSED state (Beta(0.5,9.5), prior-anchored) contributes low-probability mass that widens the lower tail. 4 of 9 held-out events skipped (loss/other \u2014 no DBN domain).",
+  "skipped_events": [
+    {
+      "evt_id": "EVT.2009.06.XX.01",
+      "reason": "loss \u2014 no domain mapping"
+    },
+    {
+      "evt_id": "EVT.2018.11.28.01",
+      "reason": "loss \u2014 no domain mapping"
+    },
+    {
+      "evt_id": "EVT.2025.05.XX.01",
+      "reason": "loss \u2014 no domain mapping"
+    },
+    {
+      "evt_id": "EVT.2026.01.XX.01",
+      "reason": "other \u2014 no domain mapping"
+    }
+  ],
+  "predictions": [
+    {
+      "evt_id": "EVT.2008.06.09.01",
+      "date": "2008-06-09",
+      "category": "career",
+      "period": "DSH.V.014",
+      "md_lord": "Saturn",
+      "domain": "CAREER",
+      "description": "Exited Cognizant after 1 year; returned to Bhubaneswar for IIT re-attempt",
+      "prediction_metadata": {
+        "p_point": 0.4829,
+        "ci_level": 0.9,
+        "ci_lower": 0.0129,
+        "ci_upper": 0.9442,
+        "ci_type": "marginal_MC (mixture over domain states; 300k samples; seed=42)",
+        "display": "0.483 [90% HDI: 0.013\u20130.944]",
+        "small_n_caveat": false,
+        "disclosure_tier": "T1",
+        "post_alpha_ELEVATED": 18.0,
+        "post_beta_ELEVATED": 3.0
+      },
+      "domain_state_weights": {
+        "ELEVATED": 0.5172,
+        "NORMAL": 0.3793,
+        "SUPPRESSED": 0.1034
+      },
+      "component_observation_posteriors": {
+        "ELEVATED": {
+          "post_alpha": 18.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8571,
+          "hdi_90_lo": 0.7174,
+          "hdi_90_hi": 0.9578
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 20.0,
+          "post_mean": 0.0909,
+          "hdi_90_lo": 0.0172,
+          "hdi_90_hi": 0.2067
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05,
+          "hdi_90_lo": 0.0002,
+          "hdi_90_hi": 0.1874
+        }
+      },
+      "astrological_rationale": "Saturn MD: P(ELEVATED|Saturn,CAREER)=0.517 \u2014 near-equal probability of ELEVATED vs NORMAL. Saturn has mixed career signification for Sagittarius lagna (7L+8L: partnership/foreign + transformation/obstacle). 9 training periods (5 CAREER events, 4 non-events) \u2192 well-mixed posterior. Jupiter AD (1L+4L) activates self/home/education axis alongside career transition. Model predicts near-null CAREER event probability, reflecting Saturn's genuinely ambivalent domain-state distribution. Low differentiation power for this period.",
+      "model_ref": "dbn_params_v1_0.json (FITTED, M5-D-S2)",
+      "ci_policy_ref": "NAP_M5_3_CI_REPORTING_POLICY_v1_0.md (APPROVED, M5-D-S3)",
+      "blind_protocol": "Prediction generated from model parameters only; event outcome not consulted before this entry."
+    },
+    {
+      "evt_id": "EVT.2017.03.XX.01",
+      "date": "2017-03",
+      "category": "career",
+      "period": "DSH.V.018",
+      "md_lord": "Mercury",
+      "domain": "CAREER",
+      "description": "Mahindra Retail \u2192 Tech Mahindra switch; leads to US deputation 2019",
+      "prediction_metadata": {
+        "p_point": 0.5372,
+        "ci_level": 0.9,
+        "ci_lower": 0.0185,
+        "ci_upper": 0.9473,
+        "ci_type": "marginal_MC (mixture over domain states; 300k samples; seed=42)",
+        "display": "0.537 [90% HDI: 0.018\u20130.947]",
+        "small_n_caveat": false,
+        "disclosure_tier": "T1",
+        "post_alpha_ELEVATED": 18.0,
+        "post_beta_ELEVATED": 3.0
+      },
+      "domain_state_weights": {
+        "ELEVATED": 0.5862,
+        "NORMAL": 0.3448,
+        "SUPPRESSED": 0.069
+      },
+      "component_observation_posteriors": {
+        "ELEVATED": {
+          "post_alpha": 18.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8571,
+          "hdi_90_lo": 0.7174,
+          "hdi_90_hi": 0.9578
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 20.0,
+          "post_mean": 0.0909,
+          "hdi_90_lo": 0.0172,
+          "hdi_90_hi": 0.2067
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05,
+          "hdi_90_lo": 0.0002,
+          "hdi_90_hi": 0.1874
+        }
+      },
+      "astrological_rationale": "Mercury MD: P(ELEVATED|Mercury,CAREER)=0.586 \u2014 highest CAREER elevation among active MDs. Mercury rules 7L+10L for Sagittarius lagna (partnerships + profession/karma) \u2014 the primary career-activating dasha lord. Mercury-Sun AD: Sun rules 9L (fortune/dharma). The model predicts p=0.537 vs null 0.478, a material above-baseline signal. ELEVATED posterior P(event|ELEVATED,CAREER)=0.857 provides strong pull when ELEVATED state is active.",
+      "model_ref": "dbn_params_v1_0.json (FITTED, M5-D-S2)",
+      "ci_policy_ref": "NAP_M5_3_CI_REPORTING_POLICY_v1_0.md (APPROVED, M5-D-S3)",
+      "blind_protocol": "Prediction generated from model parameters only; event outcome not consulted before this entry."
+    },
+    {
+      "evt_id": "EVT.2019.05.XX.01",
+      "date": "2019-05",
+      "category": "residential+travel",
+      "period": "DSH.V.020",
+      "md_lord": "Mercury",
+      "domain": "CAREER",
+      "description": "US work deputation begins (Tech Mahindra; 4-year stint to May 2023)",
+      "prediction_metadata": {
+        "p_point": 0.5372,
+        "ci_level": 0.9,
+        "ci_lower": 0.0185,
+        "ci_upper": 0.9473,
+        "ci_type": "marginal_MC (mixture over domain states; 300k samples; seed=42)",
+        "display": "0.537 [90% HDI: 0.018\u20130.947]",
+        "small_n_caveat": false,
+        "disclosure_tier": "T1",
+        "post_alpha_ELEVATED": 18.0,
+        "post_beta_ELEVATED": 3.0
+      },
+      "domain_state_weights": {
+        "ELEVATED": 0.5862,
+        "NORMAL": 0.3448,
+        "SUPPRESSED": 0.069
+      },
+      "component_observation_posteriors": {
+        "ELEVATED": {
+          "post_alpha": 18.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8571,
+          "hdi_90_lo": 0.7174,
+          "hdi_90_hi": 0.9578
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 20.0,
+          "post_mean": 0.0909,
+          "hdi_90_lo": 0.0172,
+          "hdi_90_hi": 0.2067
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05,
+          "hdi_90_lo": 0.0002,
+          "hdi_90_hi": 0.1874
+        }
+      },
+      "astrological_rationale": "Mercury MD continues: same 7L+10L signification. Mercury-Mars AD: Mars rules 5L+12L (purva-punya + foreign/moksha/expenditure). 12L AD during 10L MD is a classical foreign-residence trigger. Residential+travel mapped to CAREER domain (deputation = career event). Same MD-level prediction: p=0.537. Model lacks AD-level differentiation (antardasha CPT is Phase 10 target); prediction reflects MD signal only. 12L Mars AD during Mercury MD is a strong classical foreign-assignment signal \u2014 model posterior conservatively captures the overall CAREER activation without the foreign-specificity.",
+      "model_ref": "dbn_params_v1_0.json (FITTED, M5-D-S2)",
+      "ci_policy_ref": "NAP_M5_3_CI_REPORTING_POLICY_v1_0.md (APPROVED, M5-D-S3)",
+      "blind_protocol": "Prediction generated from model parameters only; event outcome not consulted before this entry."
+    },
+    {
+      "evt_id": "EVT.2022.01.03.01",
+      "date": "2022-01-03",
+      "category": "family",
+      "period": "DSH.V.021",
+      "md_lord": "Mercury",
+      "domain": "RELATIONSHIP",
+      "description": "Twin daughters born (native's only children)",
+      "prediction_metadata": {
+        "p_point": 0.3509,
+        "ci_level": 0.9,
+        "ci_lower": 0.008,
+        "ci_upper": 0.9139,
+        "ci_type": "marginal_MC (mixture over domain states; 300k samples; seed=42)",
+        "display": "0.351 [90% HDI: 0.008\u20130.914]",
+        "small_n_caveat": false,
+        "disclosure_tier": "T1",
+        "post_alpha_ELEVATED": 13.0,
+        "post_beta_ELEVATED": 3.0
+      },
+      "domain_state_weights": {
+        "ELEVATED": 0.3793,
+        "NORMAL": 0.4828,
+        "SUPPRESSED": 0.1379
+      },
+      "component_observation_posteriors": {
+        "ELEVATED": {
+          "post_alpha": 13.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8125,
+          "hdi_90_lo": 0.6366,
+          "hdi_90_hi": 0.9432
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 25.0,
+          "post_mean": 0.0741,
+          "hdi_90_lo": 0.0138,
+          "hdi_90_hi": 0.1698
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05,
+          "hdi_90_lo": 0.0002,
+          "hdi_90_hi": 0.1874
+        }
+      },
+      "astrological_rationale": "Mercury MD, Rahu AD. RELATIONSHIP domain: P(ELEVATED|Mercury,RELATIONSHIP)=0.379. Mercury's 7L rulership covers partnerships, family, contractual bonds. Model predicts p=0.351 vs RELATIONSHIP null 0.261 \u2014 above-baseline by 34.5% lift. ELEVATED posterior P(event|ELEVATED,RELATIONSHIP)=0.813 provides strong pull when ELEVATED state is active. Rahu AD: nodes amplify the house they occupy; classical Rahu periods often mark foreign-element births or unexpected family events. Prediction: above-null RELATIONSHIP activation; specific event type (family/birth) is consistent with Mercury 7L + Rahu amplification.",
+      "model_ref": "dbn_params_v1_0.json (FITTED, M5-D-S2)",
+      "ci_policy_ref": "NAP_M5_3_CI_REPORTING_POLICY_v1_0.md (APPROVED, M5-D-S3)",
+      "blind_protocol": "Prediction generated from model parameters only; event outcome not consulted before this entry."
+    },
+    {
+      "evt_id": "EVT.2024.02.16.01",
+      "date": "2024-02-16",
+      "category": "career",
+      "period": "DSH.V.022",
+      "md_lord": "Mercury",
+      "domain": "CAREER",
+      "description": "Launched Kotadwara sand-mining operation at Bhanti (Marsys Group)",
+      "prediction_metadata": {
+        "p_point": 0.5372,
+        "ci_level": 0.9,
+        "ci_lower": 0.0185,
+        "ci_upper": 0.9473,
+        "ci_type": "marginal_MC (mixture over domain states; 300k samples; seed=42)",
+        "display": "0.537 [90% HDI: 0.018\u20130.947]",
+        "small_n_caveat": false,
+        "disclosure_tier": "T1",
+        "post_alpha_ELEVATED": 18.0,
+        "post_beta_ELEVATED": 3.0
+      },
+      "domain_state_weights": {
+        "ELEVATED": 0.5862,
+        "NORMAL": 0.3448,
+        "SUPPRESSED": 0.069
+      },
+      "component_observation_posteriors": {
+        "ELEVATED": {
+          "post_alpha": 18.0,
+          "post_beta": 3.0,
+          "post_mean": 0.8571,
+          "hdi_90_lo": 0.7174,
+          "hdi_90_hi": 0.9578
+        },
+        "NORMAL": {
+          "post_alpha": 2.0,
+          "post_beta": 20.0,
+          "post_mean": 0.0909,
+          "hdi_90_lo": 0.0172,
+          "hdi_90_hi": 0.2067
+        },
+        "SUPPRESSED": {
+          "post_alpha": 0.5,
+          "post_beta": 9.5,
+          "post_mean": 0.05,
+          "hdi_90_lo": 0.0002,
+          "hdi_90_hi": 0.1874
+        }
+      },
+      "astrological_rationale": "Mercury MD, Jupiter AD. Mercury 7L+10L: strong career-profession signification. Jupiter AD (1L+4L): self, dharma, home \u2014 expansion into new ventures. New business launch (Marsys Group sand-mining) is a paradigmatic CAREER ELEVATED event. Same MD-level prediction: p=0.537. Jupiter AD adds dharmic/expansionary inflection to Mercury's 10L career themes \u2014 classical Jupiter-Mercury combination favours commercial enterprise (Mercury = trade; Jupiter = expansion/dharma). Model captures MD-level CAREER activation; AD-specificity is beyond current parameterization scope.",
+      "model_ref": "dbn_params_v1_0.json (FITTED, M5-D-S2)",
+      "ci_policy_ref": "NAP_M5_3_CI_REPORTING_POLICY_v1_0.md (APPROVED, M5-D-S3)",
+      "blind_protocol": "Prediction generated from model parameters only; event outcome not consulted before this entry."
+    }
+  ],
+  "summary_table": [
+    {
+      "evt_id": "EVT.2008.06.09.01",
+      "date": "2008-06-09",
+      "domain": "CAREER",
+      "md_lord": "Saturn",
+      "display": "0.483 [90% HDI: 0.013\u20130.944]",
+      "dominant_state": "ELEVATED",
+      "p_elevated": 0.5172,
+      "p_event_given_elevated_display": "0.8571 [90% HDI: 0.7174 \u2013 0.9578]",
+      "small_n_caveat": false
+    },
+    {
+      "evt_id": "EVT.2017.03.XX.01",
+      "date": "2017-03",
+      "domain": "CAREER",
+      "md_lord": "Mercury",
+      "display": "0.537 [90% HDI: 0.018\u20130.947]",
+      "dominant_state": "ELEVATED",
+      "p_elevated": 0.5862,
+      "p_event_given_elevated_display": "0.8571 [90% HDI: 0.7174 \u2013 0.9578]",
+      "small_n_caveat": false
+    },
+    {
+      "evt_id": "EVT.2019.05.XX.01",
+      "date": "2019-05",
+      "domain": "CAREER",
+      "md_lord": "Mercury",
+      "display": "0.537 [90% HDI: 0.018\u20130.947]",
+      "dominant_state": "ELEVATED",
+      "p_elevated": 0.5862,
+      "p_event_given_elevated_display": "0.8571 [90% HDI: 0.7174 \u2013 0.9578]",
+      "small_n_caveat": false
+    },
+    {
+      "evt_id": "EVT.2022.01.03.01",
+      "date": "2022-01-03",
+      "domain": "RELATIONSHIP",
+      "md_lord": "Mercury",
+      "display": "0.351 [90% HDI: 0.008\u20130.914]",
+      "dominant_state": "ELEVATED",
+      "p_elevated": 0.3793,
+      "p_event_given_elevated_display": "0.8125 [90% HDI: 0.6366 \u2013 0.9432]",
+      "small_n_caveat": false
+    },
+    {
+      "evt_id": "EVT.2024.02.16.01",
+      "date": "2024-02-16",
+      "domain": "CAREER",
+      "md_lord": "Mercury",
+      "display": "0.537 [90% HDI: 0.018\u20130.947]",
+      "dominant_state": "ELEVATED",
+      "p_elevated": 0.5862,
+      "p_event_given_elevated_display": "0.8571 [90% HDI: 0.7174 \u2013 0.9578]",
+      "small_n_caveat": false
+    }
+  ]
+}

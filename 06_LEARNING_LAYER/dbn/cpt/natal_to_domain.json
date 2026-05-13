@@ -1,0 +1,431 @@
+{
+  "cpt_id": "natal_to_domain",
+  "version": "prior_init_M5-D-S2",
+  "status": "PRIOR_INITIALIZED",
+  "fit_session": "M5-D-S2",
+  "schema_version": "1.0",
+  "produced_during": "M5-B-S2",
+  "produced_on": "2026-05-13",
+  "derivation": "CF.M5C.2 \u2014 status updated to PRIOR_INITIALIZED; no value changes. All 44 natal-to-domain edge weights are FIXED per PRIOR_SPEC \u00a73.1. Edge weight = LL.1_production_weight \u00d7 CDLM_linkage_strength_score. Fixing avoids double-counting M4 LL.1 calibration evidence. See DBN_TOPOLOGY \u00a74.1 for full 44-edge inventory.",
+  "domains": [
+    "CAREER",
+    "HEALTH",
+    "RELATIONSHIP",
+    "SPIRITUAL",
+    "PSYCHOLOGICAL"
+  ],
+  "n1_disclaimer": "All initial values derive from n=1 training corpus. UNFITTED \u2014 M5-D fitting required.",
+  "entries": [
+    {
+      "signal_id": "CTR.01",
+      "domain": "CAREER",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; classical Saturn AmK career driver; no CDLM anchor)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "CTR.01",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.2,
+      "initial_value": 0.2,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.2 (LOW; Saturn Dharma Devata; no CDLM anchor)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "CTR.03",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Jupiter 9H SPIRITUAL domain; domains_affected includes spirit)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "CVG.02",
+      "domain": "CAREER",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Jupiter dharma-wealth chain; domains_affected includes career)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "CVG.02",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Jupiter 9L own sign dharma; SPIRITUAL domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.01",
+      "domain": "CAREER",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; D9 NBRY; domains include career)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.01",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; domains include relationships)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.09",
+      "domain": "CAREER",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Rahu 2H ambition; CDLM.D2.D1 career-wealth driver)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.10",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Anapha Yoga; domains include relationships/family)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.12",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Sade Sati C2; domains include relationships)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.12",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Sade Sati spiritual deepening pattern)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.12",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Sade Sati C2 health dimension)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.13",
+      "domain": "CAREER",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Sun 10H stellium; primary career signal)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.13",
+      "domain": "HEALTH",
+      "edge_weight": 0.2,
+      "initial_value": 0.2,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.2 (LOW; secondary health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.15",
+      "domain": "CAREER",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; Mercury dominance; primary career domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.15",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.2,
+      "initial_value": 0.2,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.2 (LOW; secondary; domains include relationships)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.013",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain; no confirmed CDLM anchor)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.030",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.163",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.170",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.198",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.229",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.251",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.278",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.291",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.295",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.297",
+      "domain": "HEALTH",
+      "edge_weight": 1.0,
+      "initial_value": 1.0,
+      "fitted_value": null,
+      "derivation": "1.0 x 1.0 (HIGH; CDLM.D4.D6 confirmed msr_anchor)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.297",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; CDLM.D4.D6 Health\u2192Spirit direction)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.300",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.301",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.391",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; relationship domain; 7H dynamic)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.476",
+      "domain": "HEALTH",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; health domain)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.145",
+      "domain": "CAREER",
+      "edge_weight": 0.545,
+      "initial_value": 0.545,
+      "fitted_value": null,
+      "derivation": "0.9091 x 0.6 (MED; Parivartana Saturn-10L/Venus-7L; OPEN_ITEM.P1.1; CDLM_VERIFICATION_REQUIRED)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "SIG.MSR.145",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.545,
+      "initial_value": 0.545,
+      "fitted_value": null,
+      "derivation": "0.9091 x 0.6 (MED; Parivartana career-relationship bridge; CDLM_VERIFICATION_REQUIRED)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "RPT.DSH.01",
+      "domain": "CAREER",
+      "edge_weight": 0.48,
+      "initial_value": 0.48,
+      "fitted_value": null,
+      "derivation": "0.8 x 0.6 (MED; dasha convergence report; career-temporal signal)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.402",
+      "domain": "HEALTH",
+      "edge_weight": 0.727,
+      "initial_value": 0.727,
+      "fitted_value": null,
+      "derivation": "0.7273 x 1.0 (HIGH; CDLM.D4.D6 confirmed msr_anchor)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.402",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.436,
+      "initial_value": 0.436,
+      "fitted_value": null,
+      "derivation": "0.7273 x 0.6 (MED; CDLM.D4.D6 Health\u2192Spirit direction)",
+      "pending_promotion": false
+    },
+    {
+      "signal_id": "SIG.MSR.118",
+      "domain": "CAREER",
+      "edge_weight": 0.091,
+      "initial_value": 0.091,
+      "fitted_value": null,
+      "derivation": "0.4545 x 0.2 (LOW; Ruchaka ABSENT; Mars Avayogi classical)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "SIG.MSR.118",
+      "domain": "HEALTH",
+      "edge_weight": 0.091,
+      "initial_value": 0.091,
+      "fitted_value": null,
+      "derivation": "0.4545 x 0.2 (LOW; Mars health-risk association; classical)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "domain": "RELATIONSHIP",
+      "edge_weight": 0.273,
+      "initial_value": 0.273,
+      "fitted_value": null,
+      "derivation": "0.4545 x 0.6 (MED; Malavya ABSENT; Venus 9H relationship/spirit)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.091,
+      "initial_value": 0.091,
+      "fitted_value": null,
+      "derivation": "0.4545 x 0.2 (LOW; Venus Ishta Devata SPIRITUAL secondary)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "SIG.MSR.143",
+      "domain": "CAREER",
+      "edge_weight": 0.273,
+      "initial_value": 0.273,
+      "fitted_value": null,
+      "derivation": "0.4545 x 0.6 (MED; Sarpa ABSENT structural openness; CDLM.D5.D7 anchor adjacent)",
+      "pending_promotion": true
+    },
+    {
+      "signal_id": "SIG.MSR.117",
+      "domain": "SPIRITUAL",
+      "edge_weight": 0.073,
+      "initial_value": 0.073,
+      "fitted_value": null,
+      "derivation": "0.3636 x 0.2 (LOW_SHADOW; shadow node; CDLM.D1.D1 anchor; shadow_indefinite status)",
+      "pending_promotion": true,
+      "shadow_node": true
+    },
+    {
+      "signal_id": "SIG.12",
+      "domain": "PSYCHOLOGICAL",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; U2 split: Sade Sati C2 creates psychological pressure periods (inner re-orientation, emotional weight, identity restructuring) distinct from spiritual deepening/practice deepening captured in SPIRITUAL node. Saturn transiting Pisces 12H from Aries Lagna = psychological liminal pressure.)",
+      "pending_promotion": false,
+      "u2_new_entry": true
+    },
+    {
+      "signal_id": "SIG.MSR.297",
+      "domain": "PSYCHOLOGICAL",
+      "edge_weight": 0.6,
+      "initial_value": 0.6,
+      "fitted_value": null,
+      "derivation": "1.0 x 0.6 (MED; U2 split: SIG.MSR.297 8H Ketu transformation signal conditions PSYCHOLOGICAL domain alongside HEALTH (HIGH) and SPIRITUAL (MED). The 8H is the house of psychological transformation, hidden fears, and inner dissolution \u2014 Ketu in 8H activates psychological states (PSY.* events) in addition to the health-spirit bridge. CDLM.D4.D6 anchor supports the 8H \u2192 inner-domain connection.)",
+      "pending_promotion": false,
+      "u2_new_entry": true
+    }
+  ],
+  "prior_spec_version": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "prior_init_at": "M5-D-S2 (2026-05-13)",
+  "prior_type": "FIXED \u2014 degenerate point-mass prior per PRIOR_SPEC \u00a73.1; LL.1 weights \u00d7 CDLM linkage scores locked at topology freeze"
+}

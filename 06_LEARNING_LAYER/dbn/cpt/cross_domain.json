@@ -1,0 +1,87 @@
+{
+  "cpt_id": "cross_domain",
+  "version": "prior_init_M5-D-S2",
+  "status": "PRIOR_INITIALIZED",
+  "fit_session": "M5-D-S2",
+  "schema_version": "1.0",
+  "produced_during": "M5-B-S2",
+  "produced_on": "2026-05-13",
+  "description": "Cross-domain conditional edges at same time-slice t. These edges encode how one domain's activation state conditions another domain's activation at the same antardasha. All edges are bidirectional in v1.0 per CDLM structural analysis.",
+  "n1_disclaimer": "Initial weights from CDLM strength scores and LL.2 co-count evidence. UNFITTED \u2014 M5-D fitting required.",
+  "entries": [
+    {
+      "edge_id": "CAREER_RELATIONSHIP_bidir",
+      "domain_a": "CAREER",
+      "domain_b": "RELATIONSHIP",
+      "direction": "bidirectional",
+      "initial_weight": 0.35,
+      "fitted_value": null,
+      "cdlm_basis": "CDLM.D1.D3 strength=0.91 bidirectional \u2014 Saturn exalted AmK in 7H (relationship house); career and relationship share Saturn as structural backbone; karmically inseparable",
+      "ll2_edges_supporting": [
+        "EDGE-01 (MSR.145\u2194MSR.402b [substituted M5-B-S2: 402\u2192402b] co_count=7)",
+        "EDGE-02 (MSR.118\u2194MSR.145 co_count=5)",
+        "EDGE-04 (MSR.143\u2194MSR.145 co_count=5)",
+        "EDGE-08 (MSR.119\u2194MSR.145 co_count=4)"
+      ],
+      "pending_promotion": true,
+      "ll2_promotion_status": "PENDING_NATIVE_APPROVAL",
+      "cdlm_verification_required": false,
+      "notes": "Strongest cross-domain edge in chart. Saturn exalted in 7H as AmK = tightest career-relationship structural fusion. Career transitions reliably co-activate relationship-domain."
+    },
+    {
+      "edge_id": "CAREER_SPIRITUAL_bidir",
+      "domain_a": "CAREER",
+      "domain_b": "SPIRITUAL",
+      "direction": "bidirectional",
+      "initial_weight": 0.2,
+      "fitted_value": null,
+      "cdlm_basis": "CDLM.D1.D6 strength=0.89 bidirectional \u2014 career IS dharmic practice (Saturn=Dharma Devata/Venkateswara); Mercury as Yogi (career planet) AND fortune-activator = career and spiritual fortune same channel. msr_anchors=[MSR.397, MSR.407, MSR.388] \u2014 none are production signals in LL.1.",
+      "ll2_edges_supporting": [
+        "No confirmed LL.2 edge for career-spiritual; LL.7 novel edges include MSR.145\u2194MSR.402 cluster which spans career-spiritual dimension indirectly"
+      ],
+      "pending_promotion": false,
+      "ll2_promotion_status": "NOT_IN_CAMPAIGN",
+      "cdlm_verification_required": true,
+      "cdlm_verification_note": "CDLM.D1.D6 mechanistic support confirmed (conceptual: Saturn=Dharma Devata) but msr_anchors=[MSR.397,MSR.407,MSR.388] do not include any LL.1 production signals. Weight initialized conservatively at 0.20. Surrogate reviewer recommends 0.15. Native adjudication at NAP.M5.1 (U1).",
+      "notes": "Conceptually strong (Saturn=Dharma Devata; Mercury Yogi), empirically weaker than career-relationship edge. Initial weight 0.20 is conservative pending M5-C prior specification."
+    },
+    {
+      "edge_id": "HEALTH_SPIRITUAL_bidir",
+      "domain_a": "HEALTH",
+      "domain_b": "SPIRITUAL",
+      "direction": "bidirectional",
+      "initial_weight": 0.25,
+      "fitted_value": null,
+      "cdlm_basis": "CDLM.D4.D6 strength=0.82 Health\u2192Spirit (Ketu exalted 8H = moksha-karaka in health-transformation house; health challenges are spiritually catalytic). CDLM.D6.D4 strength=0.80 Spirit\u2192Health (Jupiter+Venus 9H Jaimini supervision of 8H provides dharmic protection). msr_anchors D4.D6=[MSR.402, MSR.408, MSR.297] \u2014 MSR.402 and MSR.297 are both LL.1 production signals.",
+      "ll2_edges_supporting": [
+        "EDGE-07 (MSR.117\u2194MSR.402 co_count=4, is_ll2_med=True) \u2014 PENDING_NATIVE_APPROVAL; EDGE-03 (MSR.119\u2194MSR.402 co_count=5) \u2014 PENDING_NATIVE_APPROVAL"
+      ],
+      "pending_promotion": true,
+      "ll2_promotion_status": "PENDING_NATIVE_APPROVAL (EDGE-07)",
+      "cdlm_verification_required": false,
+      "notes": "Well-motivated by Ketu 8H structural basis. CDLM anchor confirmed (MSR.297 and MSR.402 both production signals in D4.D6 cell). Bidirectional: health feeds spirit (Ketu 8H catalytic) AND spirit compensates health (Jupiter+Venus dharmic protection)."
+    }
+  ],
+  "deferred_edges": [
+    {
+      "edge_id": "RELATIONSHIP_SPIRITUAL_bidir",
+      "domain_a": "RELATIONSHIP",
+      "domain_b": "SPIRITUAL",
+      "cdlm_basis": "CDLM.D3.D6 strength=0.86 bidirectional \u2014 AK-DK soul-spouse connection; marriage is soul-mirror; Shree Lagna 7H Lakshmi-grace in relationship domain",
+      "deferred_to": "v1.1",
+      "deferral_reason": "Avoid overparameterization in v1.0. CDLM support is strong (0.86) but adding 4th cross-domain edge with 4 domain nodes creates 6-edge cross-domain subgraph at n=1. Revisit at M5-D if residuals suggest this edge is needed."
+    },
+    {
+      "edge_id": "HEALTH_PSYCHOLOGICAL_bidir",
+      "domain_a": "HEALTH",
+      "domain_b": "PSYCHOLOGICAL",
+      "cdlm_basis": "8H Ketu = both health-transformation and psychological-transformation house. Health challenges drive psychological activation (PSY.* events often co-occur with health events in this chart \u2014 EVT.PSY.A vertigo during exam prep is both health and psychological). Structural basis: same 8H source as HEALTH\u2194SPIRITUAL edge.",
+      "deferred_to": "v1.1",
+      "deferral_reason": "U2 split creates 5 domains \u2014 adding HEALTH\u2194PSYCHOLOGICAL would create 4 cross-domain edges at n=1, approaching overparameterization. HEALTH\u2194SPIRITUAL already captures the 8H mechanism. Revisit at M5-D if residuals suggest PSYCHOLOGICAL events cluster more in health-domain antardasha windows than SPIRITUAL events do."
+    }
+  ],
+  "prior_spec_version": "PRIOR_SPEC_v1_0.md v1.1 (NAP.M5.2 APPROVED FROZEN)",
+  "prior_init_at": "M5-D-S2 (2026-05-13)",
+  "prior_type": "FIXED \u2014 degenerate point-mass prior per PRIOR_SPEC \u00a73.2 + \u00a78; NAP.M5.2 confirmed FIXED 2026-05-13",
+  "derivation": "CF.M5C.2 \u2014 status updated to PRIOR_INITIALIZED; no value changes. All 3 active cross-domain edge weights are FIXED per PRIOR_SPEC \u00a73.2 and \u00a78. NAP.M5.2 RESOLVED: FIXED confirmed by native 2026-05-13. CAREER\u2194RELATIONSHIP=0.35; CAREER\u2194SPIRITUAL=0.20; HEALTH\u2194SPIRITUAL=0.25."
+}

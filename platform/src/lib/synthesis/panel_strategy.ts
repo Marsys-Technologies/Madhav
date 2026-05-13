@@ -129,7 +129,7 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
           content: finalAnswer,
         },
       ],
-      maxOutputTokens: 8192,
+      maxOutputTokens: 65536,
       onFinish: async ({
         finishReason,
         usage,

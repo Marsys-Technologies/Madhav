@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-12T16:13:06.880Z",
+  "generated_at": "2026-05-13T00:00:00.000Z",
   "generator_version": "1.0",
-  "entry_count": 68,
+  "entry_count": 75,
   "fingerprint": "6013107d6218ba251abc34c3b59a26a27bf3454b70ce8bf42ddd473aa82adcb7",
   "entries": [
     {
@@ -1024,6 +1024,211 @@
       "interface_version": "1.0",
       "fingerprint": "f6891c9a2813a1e7c94c4d8eed6ba39d577575218109dddc0a29fec182f61f07",
       "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "DBN_TOPOLOGY_v1_0",
+      "path": "06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md",
+      "version": "1.0",
+      "status": "DRAFT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-B-S1",
+      "notes": "DBN topology first draft. DRAFT status until NAP.M5.1 native approval gate. Pre-registration timestamp = commit of M5-B-S1. Held-out partition sacrosanct until M5-D."
+    },
+    {
+      "canonical_id": "CPT_NATAL_TO_DOMAIN",
+      "path": "06_LEARNING_LAYER/dbn/cpt/natal_to_domain.json",
+      "version": "scaffold_M5-B-S1",
+      "status": "UNFITTED_SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-B-S1",
+      "notes": "P(domain_activation | natal_signal). 44 entries. All fitted_value=null; M5-D fitting required."
+    },
+    {
+      "canonical_id": "CPT_DASHA_TO_DOMAIN",
+      "path": "06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json",
+      "version": "scaffold_M5-B-S1",
+      "status": "UNFITTED_SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-B-S1",
+      "notes": "P(domain_state | dasha_state). 81 entries (9 MD × 9 AD). All fitted_value=null; M5-D fitting required."
+    },
+    {
+      "canonical_id": "CPT_PERSISTENCE",
+      "path": "06_LEARNING_LAYER/dbn/cpt/persistence.json",
+      "version": "scaffold_M5-B-S1",
+      "status": "UNFITTED_SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-B-S1",
+      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains × 9 transitions). Symmetric priors; per-domain differentiation in M5-D."
+    },
+    {
+      "canonical_id": "CPT_CROSS_DOMAIN",
+      "path": "06_LEARNING_LAYER/dbn/cpt/cross_domain.json",
+      "version": "scaffold_M5-B-S1",
+      "status": "UNFITTED_SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-B-S1",
+      "notes": "Cross-domain conditional edges at same time-slice t. 3 active edges + 1 deferred. All fitted_value=null; M5-D fitting required."
+    },
+    {
+      "canonical_id": "CPT_OBSERVATION",
+      "path": "06_LEARNING_LAYER/dbn/cpt/observation.json",
+      "version": "scaffold_M5-B-S1",
+      "status": "UNFITTED_SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-B-S1",
+      "notes": "P(EVENT_OCCURRED | domain_state). 4 entries (one per domain). Symmetric priors; per-domain differentiation in M5-D."
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_lel_query",
+      "tool_name": "lel_query",
+      "tool_description": "Retrieves ground-truth life events from LEL — recorded dates categories chart states",
+      "description": "Queries life_events table — 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "start_date": { "type": "string", "description": "YYYY-MM-DD lower bound" },
+          "end_date": { "type": "string", "description": "YYYY-MM-DD upper bound" },
+          "category": { "type": "string", "description": "relationship|career|health|family|spiritual|travel|finance|education|residential|creative|loss|other" },
+          "significance": { "type": "string", "description": "major|moderate|minor" }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "LEL",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": ["sql"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-A",
+      "notes": "Direct life_events table retrieval. Use instead of timeline_query when the query is about known historical events, not future projections. Always preferred for predictive queries to prevent fabricating event dates."
+    },
+    {
+      "canonical_id": "M5_D_CLOSE",
+      "path": "06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md",
+      "version": "1.0",
+      "status": "CLOSED",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-D-S5",
+      "notes": "M5-D sub-phase sealing artifact. IS.8(b)-class RT PASS 8/8. DBN fit: mean_lift=1.145, beat_fraction=5/5. Sealed 2026-05-13."
+    },
+    {
+      "canonical_id": "LL8_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "ACTIVE",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-E-S1",
+      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD→ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in §3.2b."
+    },
+    {
+      "canonical_id": "LL8_PARAM_REGISTER",
+      "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/parameter_register.json",
+      "version": "1.0",
+      "status": "LIVE",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-E-S1",
+      "notes": "LL.8 Bayesian update parameter register (active). update_count=0; initialized 2026-05-14. Supersedes parameter_register_stub.json."
+    },
+    {
+      "canonical_id": "LL9_SPEC",
+      "path": "06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md",
+      "version": "1.0",
+      "status": "SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-A-S1",
+      "notes": "LL.9 Counterfactual Learning from Misses specification. SCAFFOLD status; activates at M6 open."
+    },
+    {
+      "canonical_id": "LL9_MISS_REGISTRY",
+      "path": "06_LEARNING_LAYER/miss_registry/miss_registry_stub.json",
+      "version": "1.0",
+      "status": "SCAFFOLD",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-A-S1",
+      "notes": "LL.9 miss registry stub. Dormant until M6 open; no entries expected during M5."
+    },
+    {
+      "canonical_id": "M5_CLOSE",
+      "path": "06_LEARNING_LAYER/M5_CLOSE_v1_0.md",
+      "version": "1.0",
+      "status": "CLOSED",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "M5-E-S2",
+      "notes": "M5 macro-phase sealing artifact. IS.8(b) PASS 5/5. Full AC ledger, LL table, PPL checkpoint, NAP registry, carry-forwards, topology risk register. NAP.M5.4 APPROVED. Successor: M6 INCOMING."
     }
   ]
 }

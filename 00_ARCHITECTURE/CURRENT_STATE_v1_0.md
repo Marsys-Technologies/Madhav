@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 4.2
+version: 5.3
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,306 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.3 (2026-05-14, M5-E-S2):
+    **M5 MACRO-PHASE CLOSED. IS.8(b) PASS 5/5. M5_CLOSE_v1_0.md SEALED. M6 INCOMING. NAP.M5.4 APPROVED.**
+    Key outcomes: (1) AC.M5E.1 PASS — IS.8(b) macro-phase-close red-team PASS 5/5 axes: RT.M5.1
+    factual accuracy PASS (0 fabricated computations); RT.M5.2 layer separation PASS (L1/L6 boundaries
+    maintained throughout M5); RT.M5.3 derivation ledger PASS (all claims traceable to LEL events /
+    dbn_params); RT.M5.4 mirror discipline PASS (1 LOW F.RT.M5.4.MP4.1 self-resolving at S2 close —
+    .geminirules §C item #5 phase pointer stale, resolved by MP.4 update this session); RT.M5.5 scope
+    discipline PASS (no pre-building for M6; all must_not_touch respected across M5). 0 CRITICAL / 0 HIGH
+    / 0 MEDIUM / 1 LOW (self-resolving). M5 close gate CLEARED.
+    (2) AC.M5E.2 PASS — PPL volume checkpoint: 20 predictions (gate ≥20 SATISFIED); 4 CONFIRMED
+    outcomes (PRED.015–018); 5 retroactive blind predictions (ppl_retroactive_m5d_v1_0.json; AC.M5D.4);
+    held-out PASS mean_lift=1.145 beat_fraction=5/5; M6 gate SATISFIED.
+    (3) AC.M5E.3 PASS — M5_CLOSE_v1_0.md authored at 06_LEARNING_LAYER/M5_CLOSE_v1_0.md. §0 session arc
+    (14 sessions); §1 full AC ledger (M5-A 14/14 + M5-B 6/7 + M5-C 6/6 + M5-D 7/8 + M5-E 6/6 = 39 PASS
+    3 DEFERRED 0 FAIL); §2 IS.8(b) RT record; §3 LL activation table (LL.1 PRODUCTION through LL.9
+    SCAFFOLD); §4 PPL checkpoint; §5 NAP registry (NAP.M5.0–5 all APPROVED); §6 carry-forwards
+    (CF.M5.1–9); §7 topology risk register (AC.M5B.6 CLOSED); §8 seal block.
+    (4) NAP.M5.4 APPROVED (pre-authorized per M5-E execution brief).
+    (5) active_macro_phase M5 → M6 INCOMING. PHASE_M5_PLAN_v1_0.md SUPERSEDED-AS-COMPLETE.
+    (6) MP.1+MP.2+MP.4 mirrors propagated (M5-E-S2 SESSION CLOSE).
+    red_team_counter: 0 (IS.8(b) macro-phase-close cadence DISCHARGED; resets per ONGOING_HYGIENE_POLICIES §G).
+    active_phase_plan_sub_phase: M5 MACRO-PHASE CLOSED. M6 INCOMING.
+    last_session_id → M5-E-S2. next_session_objective → M6-A-S1 (M6 plan authoring + first execution).
+    file_updated_at → 2026-05-14T12:00:00+05:30. file_updated_by_session → M5-E-S2.
+  - v5.2 (2026-05-14, M5-E-S1):
+    **M5-E-S1 CLOSED. CF.M5D.1+2 ADDRESSED. LL.8 ACTIVE. LL.9 SCAFFOLD CONFIRMED. CAPABILITY_MANIFEST UPDATED.**
+    Key outcomes: (1) CF.M5D.1 CLOSED — Bayesian posterior framing implemented in
+    platform/src/lib/prompts/templates/predictive.ts (v2.0→v3.0). DBN POSTERIOR CONTEXT
+    block added (domain-probability CI notation rules, [CALIBRATION_REQUIRED] flag for
+    non-DBN claims, n=1 caveat). §CALIBRATION mandatory block added (T1 full disclosure:
+    n=37 training, mean_lift=1.145, beat_fraction=5/5, 90% HDI 300k MC samples).
+    (2) CF.M5D.2 CLOSED — LL.8 ACTIVE: LL8_SPEC_v1_0.md v1.0→v1.1 upgraded SCAFFOLD→ACTIVE.
+    All 3 activation conditions confirmed (dbn_params PASS, held-out PASS, NAP.M5.3 APPROVED).
+    Conjugate Beta update protocol added (§3.2b). parameter_register.json initialized
+    (update_count=0). §6 Activation Status section authored.
+    (3) LL.9 SCAFFOLD confirmed — LL9_SPEC_v1_0.md already at SCAFFOLD status from M5-A-S1;
+    no change required.
+    (4) Carry-forward dispositions recorded:
+      CF.M5D.1 CLOSED (S1.1); CF.M5D.2 CLOSED (S1.2); CF.M5D.3 DEFERRED to M6 (non-blocking;
+      no 7-day prod window as of 2026-05-14); CF.M5D.4 (AC.M5B.6) — disposition: author risk
+      register entry within M5_CLOSE §7 carry-forwards (not resolvable as separate file in S1
+      may_touch scope without touching frozen topology); CF.M5D.5 (CF.M5C.5 Gemini ratification)
+      FINAL_NOT_REACHABLE_M5E — Gemini not accessible in this execution context; surrogate-
+      disclosure extended; CF.M5D.6 (KR.M4A.RT.LOW.1) LOW cosmetic — carry to M6 hygiene.
+    (5) CAPABILITY_MANIFEST.json updated: M5_D_CLOSE, LL8_SPEC (ACTIVE v1.1), LL8_PARAM_REGISTER
+    (LIVE), LL9_SPEC (SCAFFOLD), LL9_MISS_REGISTRY (SCAFFOLD) — 5 new entries added.
+    red_team_counter: 0 (unchanged; M5-E-S1 is substantive but IS.8(b) fires at M5-E-S2 macro-phase-
+    close, not per-session; ONGOING_HYGIENE_POLICIES §G: red_team_counter increments only for
+    IS.8(a) every-third cadence; M5-E-S1 is NOT an IS.8(a) trigger session).
+    active_phase_plan_sub_phase: M5-E OPEN (S1 CLOSED 2026-05-14; S2 next: IS.8(b) macro-phase-close RT + M5_CLOSE).
+    last_session_id → M5-E-S1. next_session_objective → M5-E-S2 (IS.8(b) macro-phase-close RT + M5_CLOSE_v1_0.md + CURRENT_STATE M5→M6).
+    file_updated_at → 2026-05-14T00:00:00+05:30. file_updated_by_session → M5-E-S1.
+  - v5.1 (2026-05-13, M5-D-S5):
+    **M5-D SUB-PHASE CLOSED. AC.M5D.6 COMPLETE. IS.8(b)-class RT PASS 8/8. M5-E INCOMING.**
+    Key outcomes: (1) AC.M5D.6 COMPLETE — M5_D_CLOSE_v1_0.md authored at
+    06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md. Full sealing artifact: §1 scope + session arc
+    (5 sessions S1–S5); §2 AC ledger (AC.M5D.1–6 PASS, AC.M5D.7 DEFERRED non-blocking,
+    AC.M5D.8 COMPLETE; two phase-plan ACs deferred to M5-E: Bayesian posterior framing +
+    LL.8 activation); §3 IS.8(b)-class in-document red-team PASS 8/8 axes (RT.M5D.1
+    held-out sacrosanctness, RT.M5D.2 tolerance pre-declaration, RT.M5D.3 PPL blinding
+    R.M5.7, RT.M5D.4 B.10 no-fabrication, RT.M5D.5 B.3 derivation ledger, RT.M5D.6
+    mirror discipline, RT.M5D.7 versioning, RT.M5D.8 scope compliance — 0 CRITICAL/HIGH/
+    MEDIUM/LOW); §4 NAP registry (NAP.M5.0/1/2/3 APPROVED; NAP.M5.4 PENDING M5-E);
+    §5 carry-forwards (Bayesian framing, LL.8 activation, AC.M5D.7, AC.M5B.6 risk register,
+    CF.M5C.5 Gemini ratification, KR.M4A.RT.LOW.1); §6 seal (DBN fit outcome: mean_lift=1.145,
+    total_LLR=0.655, beat_fraction=5/5).
+    (2) M5-D sub-phase CLOSED. Successor: M5-E — M5 Close. M5-E scope: IS.8(b) macro-phase-
+    close red-team; Bayesian posterior framing in synthesis outputs; LL.8 scaffold→active;
+    PPL volume checkpoint; M5_CLOSE_v1_0.md sealing artifact; CURRENT_STATE flip M5→M6.
+    red_team_counter: 0 (unchanged; sub-phase-close class does NOT increment per
+    ONGOING_HYGIENE_POLICIES §G; IS.8(b) cadence DISCHARGED).
+    active_phase_plan_sub_phase: M5-D CLOSED (2026-05-13) → M5-E INCOMING.
+    last_session_id → M5-D-S5. next_session_objective → M5-E-S1 (Bayesian posterior framing
+    in synthesis outputs; LL.8 activation first cycle; AC.M5B.6 topology risk register;
+    IS.8(b) macro-phase-close red-team; M5_CLOSE_v1_0.md; CURRENT_STATE flip M5→M6).
+    file_updated_at → 2026-05-13T00:00:00+05:30. file_updated_by_session → M5-D-S5.
+  - v5.0 (2026-05-13, M5-D-S4):
+    **M5-D-S4 CLOSED. IS.8(a) PASS (8/8). AC.M5D.4 COMPLETE. AC.M5D.5 COMPLETE.**
+    Key outcomes: (1) IS.8(a) red-team DISCHARGED — 8-axis PASS. Axes: AC.M5D.3 verdict
+    validity (tolerance declarations legitimate; Saturn CAREER marginal lift accurately reflects
+    well-mixed posterior from 9 training periods); held-out sacrosanctness (all 9 excluded from
+    CF.M5C.3 training, blind protocol maintained); NAP.M5.3 CI policy completeness (persistence
+    CPT gap is by-design — not a reporting-layer concern); M5-D-S3 scope compliance (all 6
+    modified files within declared may_touch); B.10 no-fabrication (all predictions are
+    arithmetic consequences of fitted parameters); mirror obligations (MP.1+MP.2 same-session);
+    versioning discipline (all new artifacts carry proper frontmatter); M5-D sub-phase integrity
+    (no scope drift; AD-level CPT limitation correctly documented). Counter 2→3→0.
+    (2) AC.M5D.4 COMPLETE — ppl_retroactive_m5d_v1_0.json produced. 5 retroactive blind
+    predictions for domain-mapped held-out events. Format per NAP.M5.3 (90% HDI asymmetric;
+    marginal MC mixture; 300k samples seed=42). Key predictions: Mercury CAREER p=0.537
+    [90%HDI: 0.018–0.947] (3 events: EVT.2017, EVT.2019, EVT.2024); Saturn CAREER p=0.483
+    [90%HDI: 0.013–0.944] (EVT.2008); Mercury RELATIONSHIP p=0.351 [90%HDI: 0.008–0.914]
+    (EVT.2022). Wide marginal HDI is epistemically correct (state-assignment uncertainty);
+    component HDIs more interpretively useful: CAREER ELEVATED Beta(18,3)=[0.717–0.958].
+    Astrological rationale documented for each prediction. AD-level limitation noted
+    (Phase 10 target).
+    (3) AC.M5D.5 COMPLETE — domain_activation_timeline_v1_0.json produced. 23-period
+    training timeline with hard E-step state assignments for all 5 domains. Key findings:
+    Jupiter MD (5 periods) ALL NORMAL — purely prior-anchored; Saturn MD CAREER ELEVATED
+    5/9 (55.6%); Mercury MD CAREER ELEVATED 6/9 (66.7%); 7 multi-domain ELEVATED periods;
+    DSH.V.015 (Mercury-Mercury) = only PSYCHOLOGICAL ELEVATED period (n=1);
+    DSH.V.023 (Mercury-Saturn) = only SPIRITUAL ELEVATED period (n=1); 0 SUPPRESSED periods
+    in any domain (suppressed threshold never triggered); internal consistency: CAREER
+    ELEVATED 11/23 = 0.4783 exactly matches AC.M5D.3 null model base rate.
+    red_team_counter: 2→3→0 (IS.8(a) FIRED and DISCHARGED; reset to 0).
+    active_phase_plan_sub_phase: M5-D OPEN (AC.M5D.3/4/5+NAP.M5.3 closed; AC.M5D.6 M5-D
+    close artifact remains; AC.M5D.7/8 deferred).
+    last_session_id → M5-D-S4. next_session_objective → M5-D-S5 (AC.M5D.6 M5-D sub-phase
+    sealing artifact; remaining deferred items: AC.M5B.6 topology risk register; CF.M5C.5
+    Gemini ratification attempt).
+    file_updated_at → 2026-05-13T00:00:00+05:30. file_updated_by_session → M5-D-S4.
+  - v4.9 (2026-05-13, M5-D-S3):
+    **M5-D-S3 CLOSED. AC.M5D.3 PASS. NAP.M5.3 APPROVED. held_out_validation_v1_0.json PRODUCED.**
+    Key outcomes: (1) AC.M5D.3 COMPLETE — held-out validation PASS. 9 held-out events scored;
+    5 domain-mapped (4 CAREER, 1 RELATIONSHIP); 4 skipped (loss/other — no DBN domain).
+    All three declared tolerances met: mean_lift_ratio=1.145 > 1.05; total_LLR=0.655 > 0;
+    beat_fraction=5/5=1.00 ≥ 0.60. Weakest lift: EVT.2008.06.09.01 CAREER/Saturn (1.010 —
+    Saturn is dominant MD with well-mixed domain state posterior). Strongest lift:
+    EVT.2022.01.03.01 RELATIONSHIP/Mercury (1.345). Artifact: held_out_validation_v1_0.json
+    at 06_LEARNING_LAYER/dbn/. Tolerance gap in PRIOR_SPEC §9 declared and filled at M5-D-S3.
+    (2) NAP.M5.3 APPROVED — CI reporting policy for DBN predictions. Key rules: CI.1 default
+    90% HDI (not ±); CI.2 asymmetric format [lo – hi]; CI.4 small-n caveat triggers at
+    n_successes=1 (SPIRITUAL/PSYCHOLOGICAL ELEVATED) or post_alpha+post_beta<12 or SUPPRESSED;
+    disclosure tiers T1 (summary) / T2 (research) / T3 (technical). Reference table of 90% HDI
+    values for all 5 domain-state combinations included (§8). Policy: NAP_M5_3_CI_REPORTING_POLICY_v1_0.md.
+    (3) red_team_counter: 1→2 (M5-D-S3 substantive — validation + NAP). IS.8(a) fires at counter=3.
+    active_phase_plan_sub_phase: M5-D OPEN (AC.M5D.3+NAP.M5.3 closed; AC.M5D.4–8 remain).
+    last_session_id → M5-D-S3. next_session_objective → M5-D-S4 (AC.M5D.4 PPL retroactive
+    predictions for held-out events; AC.M5D.5 domain activation timeline; IS.8(a) fires at counter=3).
+    file_updated_at → 2026-05-13T00:00:00+05:30. file_updated_by_session → M5-D-S3.
+  - v4.8 (2026-05-13, M5-D-S2):
+    **M5-D-S2 CLOSED. CF.M5C.2/3/4 COMPLETE. AC.M5D.2 PASS. DBN PARAMS FITTED.**
+    Key outcomes: (1) CF.M5C.2 COMPLETE — All 5 CPT JSON scaffold files populated with
+    PRIOR_SPEC v1.1 frozen priors. dasha_to_domain.json (81 entries × 5 domains),
+    persistence.json (45 entries), observation.json (5 domain entries), natal_to_domain.json
+    (44 entries FIXED), cross_domain.json (3 edges FIXED) — all status PRIOR_INITIALIZED.
+    30 initial_value corrections applied to persistence.json to match PRIOR_SPEC v1.1
+    means (ELEVATED→ELEVATED: 0.55→0.40, NORMAL→NORMAL: 0.65→0.55, etc.).
+    (2) CF.M5C.3 COMPLETE — Hard E-step conjugate Bayesian update on 37 training events
+    across 23 antardasha periods (DSH.V.001–023). All 9 held-out events excluded
+    (sacrosanct rule maintained). State assignment: ELEVATED if ≥1 domain event in period;
+    SUPPRESSED if MD prior P(E)≤0.22 and no event (threshold never triggered — 0 SUPPRESSED
+    periods in training); NORMAL otherwise. Fitted CPT files: dasha_to_domain.json (3 active
+    MDs updated: Jupiter 5p, Saturn 9p, Mercury 9p; 6 passive MDs retain priors);
+    persistence.json (all 45 entries have posterior_value + n_transitions);
+    observation.json (all 5 domain × 3 state Beta posteriors updated).
+    dbn_params_v1_0.json PRODUCED at 06_LEARNING_LAYER/dbn/dbn_params_v1_0.json —
+    AC.M5D.2 STATUS: PASS. Key posteriors: CAREER ELEVATED Beta(18,3) post_mean=0.857
+    (11/11 periods had events); RELATIONSHIP ELEVATED Beta(13,3) post_mean=0.812;
+    HEALTH ELEVATED Beta(11,3) post_mean=0.786; SPIRITUAL/PSYCHOLOGICAL ELEVATED
+    Beta(8,3) post_mean=0.727 (n=1 each — degeneracy expected). NORMAL state:
+    all 5 domains sharply pulled down (0 events in NORMAL periods → 0.062–0.091).
+    SUPPRESSED: 0 periods observed → retains pure prior 0.050 across all domains.
+    (3) CF.M5C.4 COMPLETE — Per-domain posterior differentiation documented in
+    observation.json (updated description + cf_m5c4 flag) and dbn_params_v1_0.json
+    (posterior_differentiation_analysis block). Key findings: ELEVATED spread 0.1298
+    (prior spread 0.000); NORMAL spread 0.0284; CAREER ranks #1 ELEVATED (LL.4
+    hypothesis CONFIRMED); SPIRITUAL=PSYCHOLOGICAL degenerate at n=1 (expected; resolves
+    at M5-E calibration); 0 SUPPRESSED periods → SUPPRESSED prior-anchored.
+    red_team_counter: 0→1 (M5-D-S2 substantive session — DBN fitting + posterior docs).
+    active_phase_plan_sub_phase: M5-D OPEN (continued). last_session_id → M5-D-S2.
+    next_session_objective → M5-D-S3 (AC.M5D.3 held-out validation + NAP.M5.3
+    confidence-interval reporting policy for M5-D close).
+    file_updated_at → 2026-05-13T29:00:00+05:30. file_updated_by_session → M5-D-S2.
+  - v4.7 (2026-05-13, M5-D-S1):
+    **M5-D-S1 CLOSED. CF.M5C.1 COMPLETE. LL8 EMBEDDING REFIT GATE CLEARED. IS.8(a) PASS.**
+    Key outcomes: (1) CF.M5C.1 COMPLETE — LL8 Embedding Refit 3-run stability gate CLEARED.
+    REFIT_GATE_v1_0.md status=PASS/CLEARED; NAP.M5.3 input artifact produced.
+    All §4 criteria PASS: §4.1 hash stability (all 30 hashes identical across 3 runs);
+    §4.2 top-1 retrieval pass rate 30/30 in each run (100%); §4.2 top-1 consistency
+    identical across all 3 runs; §4.3 cosine matrix delta 0.00000000 (perfectly deterministic).
+    Model: text-multilingual-embedding-002 (768-dim). Corpus: msr_signals Postgres table
+    (claim_text + classical_basis) for 24 production signals; natal_to_domain.json
+    derivation text fallback for 6 composite signals (CTR.*, CVG.*, RPT.DSH.01).
+    (2) Three bugs identified and corrected in refit.py before gate-qualifying run:
+    RC1 (§4.2 7/30 — humanized-ID query methodology defect → self-retrieval fix);
+    RC2 (§4.1 hash instability 6 fallback signals — set() non-determinism → sorted(set()));
+    RC3 (§4.3 delta 0.01635 — downstream consequence of RC2, self-corrected). Fourth bug
+    (chunks scope parameter) independently fixed by Claude Code executor.
+    (3) IS.8(a) DISCHARGED — counter 2→3→0. 8-axis red-team PASS: refit gate verdict
+    validity; RC1/RC2/RC3 bug classification (methodology not embedding); corpus source
+    correctness (msr_signals vs GCS); signal ID source correctness (ll1_weights_promoted
+    vs natal_to_domain); LL8.O1/O2/O3 resolution documentation completeness; session scope
+    compliance; artifact versioning discipline; mirror obligations compliance.
+    (4) stability_report.md + REFIT_GATE_v1_0.md authored with corrected STABLE/PASS verdicts
+    (overwriting Claude Code's intermediate UNSTABLE/FAIL artifacts). CF.M5C.2 (CPT scaffold
+    population via Bayesian fitting) UNBLOCKED.
+    red_team_counter: 2→3→0 (IS.8(a) fired, discharged at M5-D-S1; reset to 0).
+    active_phase_plan_sub_phase: M5-D INCOMING → M5-D OPEN (LL8 refit gate CLEARED;
+    CPT fitting unblocked). last_session_id → M5-D-S1.
+    next_session_objective → M5-D-S2 (CF.M5C.2 CPT scaffold population).
+    file_updated_at → 2026-05-13T27:30:00+05:30. file_updated_by_session → M5-D-S1.
+  - v4.6 (2026-05-13, M5-C-S2):
+    **M5-C-S2 CLOSED. NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5-C CLOSED.**
+    Key outcomes: (1) NAP.M5.2 APPROVED — native phrase "I will go with all your
+    recommendations" (2026-05-13). All four §11 open items resolved:
+    §11.1 Option C APPROVED — Dirichlet(2.4, 2.1, 1.5) Σα=6 LOW/diffuse;
+    means 0.40/0.35/0.25 unchanged; prior data-dominant after ~6 training transitions.
+    §11.2 CONFIRMED — Beta(0.5, 9.5) mean=0.05 kept.
+    §11.3 CONFIRMED — cross-domain edges FIXED (no M5-D update).
+    §11.4 RESOLVED — 8 SPR.* + 2 PSY.* training events; Ketu MD 0 training events;
+    priors purely classical — validated.
+    (2) PRIOR_SPEC_v1_0.md v1.0 DRAFT → v1.1 APPROVED: §6.4 ELEVATED row updated
+    (α_total 10→6, MED→LOW); §5.3/§5.4 SUPPRESSED annotation resolved; §8 cross-domain
+    note updated; §11 all 4 items flipped RESOLVED; §12 NAP.M5.2 block populated;
+    footer updated. Priors FROZEN.
+    (3) M5_C_CLOSE_v1_0.md authored — AC.M5C.1-6 all PASS; two-pass review status
+    documented; carry-forwards to M5-D enumerated; M5-D entry gate declared.
+    (4) M5-C CLOSED. M5-D INCOMING. M5-D entry gate: PRIOR_SPEC frozen ✓;
+    embedding_refit scaffold committed ✓; M5-C sealing artifact committed (pending
+    this commit); CURRENT_STATE updated (this update); SESSION_LOG M5-C-S2 entry
+    (pending).
+    red_team_counter: 1→2 (M5-C-S2 substantive session — NAP.M5.2 + prior freeze +
+    M5-C close). active_phase_plan_sub_phase: M5-C CLOSED → M5-D INCOMING.
+    last_session_id → M5-C-S2. next_session_objective → M5-D-S1.
+    file_updated_at → 2026-05-13T25:59:00+05:30. file_updated_by_session → M5-C-S2.
+  - v4.5 (2026-05-13, M5-C-S1):
+    **M5-C-S1 CLOSED. PRIOR_SPEC_v1_0.md AUTHORED. AC.M5C.1/2/3/4 PASS. NAP.M5.2 PENDING.**
+    Key outcomes: (1) PRIOR_SPEC_v1_0.md (DRAFT, v1.0) authored in full —
+    Bayesian prior specification for all fitted DBN parameters. §4 domain base
+    state priors (5 Dirichlet, α_total=10 MED): CAREER/HEALTH P(E)=0.30,
+    RELATIONSHIP P(E)=0.25, SPIRITUAL/PSYCHOLOGICAL P(E)=0.20 (revised from
+    topology scaffold 0.25 — classical reasoning: Ishta Devata activation rare;
+    Ketu 8H episodic). §5 observation model priors (3 Beta, uniform across
+    5 domains): P(EVT|ELEVATED)=Beta(7,3) mean=0.70 MED; P(EVT|NORMAL)=Beta(2,8)
+    mean=0.20 MED; P(EVT|SUPPRESSED)=Beta(0.5,9.5) mean=0.05 LOW.
+    §6 persistence matrix priors (3 Dirichlet per row): ELEVATED row revised
+    0.55→0.40 (most consequential revision — classical reasoning averages ~25
+    months elevation at antardasha unit). §7 dasha-to-domain priors (9 MD × 5
+    domains = 45 Dirichlet priors; Mercury MD CAREER highest at P(E)=0.55 HIGH;
+    Ketu MD SPIRITUAL/PSYCHOLOGICAL both 0.55 HIGH; Venus/Ketu forward-looking).
+    (2) §9 Bayesian discipline audit PASS — all parameters traced to classical
+    sources; empirical Bayes initializations disclosed; held-out partition NOT
+    consulted. (3) §10 two-pass review conducted (R.LL1TPA.1 surrogate Gemini
+    + Claude critique): 6 findings P1-P6; CF.P1 (Ketu MD joint P=0.30 acceptable
+    under conditional independence). (4) §11 open items for NAP.M5.2: §11.1
+    ELEVATED persistence 0.40 vs 0.55 vs Option C (diffuse α_total=6; recommended
+    by session); §11.2 SUPPRESSED observation 0.05 vs 0.02 (session recommends
+    0.05); §11.3 cross-domain edges fixed vs soft (session recommends fixed);
+    §11.4 SPR.*/PSY.* event count validation (mechanical — deferred to M5-C-S2).
+    (5) AC.M5C.4 COMPLETE: embedding_refit/ scaffold at
+    06_LEARNING_LAYER/dbn/embedding_refit/ — LL8_EMBEDDING_REFIT_SPEC_v1_0.md
+    + refit_procedure.md (3-run stability test procedure) + run_logs/ stub.
+    red_team_counter: 0→1 (M5-C-S1 substantive session — PRIOR_SPEC authoring
+    + embedding_refit scaffold). Active sub-phase: M5-B CLOSED → M5-C OPEN (in
+    flight; NAP.M5.2 PENDING). last_session_id → M5-C-S1.
+    next_session_objective → M5-C-S2 (NAP.M5.2 resolution + M5-C close).
+    file_updated_at → 2026-05-13T24:59:00+05:30. file_updated_by_session → M5-C-S1.
+  - v4.4 (2026-05-13, M5-B-S2):
+    **M5-B-S2 CLOSED. IS.8(a) PASS. NAP.M5.1 FORMALLY FROZEN. AC.M5B.3/AC.M5B.7 PASS.**
+    Key outcomes: (1) IS.8(a) red-team discharged — 4-axis PASS (B.10 no-fabrication;
+    held-out sacrosanctness; LL.2 methodology integrity; scope compliance); counter 3→0.
+    (2) U2 implemented: SPIRITUAL_PSYCHOLOGICAL → SPIRITUAL + PSYCHOLOGICAL (5th domain)
+    across DBN_TOPOLOGY_v1_0.md (v1.0 DRAFT → v1.1 APPROVED) + all 5 CPT scaffolds
+    (persistence 36→45 entries; observation 4→5; natal 43→45; dasha 81×4→81×5;
+    cross_domain SPIRITUAL renamed + HEALTH_PSYCHOLOGICAL deferred edge added).
+    (3) NAP.M5.1 formally frozen: native trigger phrase "I approve" (2026-05-13).
+    Topology locked. nap_gate_status=APPROVED.
+    (4) EDGE-01 SIG.MSR.402→402b substituted in ll2_edge_weights_v1_0.json.
+    Co-occurrence re-check: MSR.402b absent from records (temporal engine predates
+    authorship); structural equivalence confirmed; promotion_eligible=true
+    (APPROVED_CONDITIONAL pending temporal engine refresh).
+    (5) AC.M5B.3 PASS: R.LL3.1 (production register domain summary updated);
+    R.LL3.2 (LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED flag default OFF + msr_sql.ts logic);
+    R.LL3.3 (LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED flag default ON + disclaimer injection).
+    0 src/ TS errors.
+    (6) AC.M5B.7 PASS: planner recall=0.9829 (n=46) > 0.97 target.
+    AC.IV.7 DEFERRED to M5-D (requires 7-day prod window).
+    red_team_counter: 3→0. last_session_id → M5-B-S2.
+    active_phase_plan_sub_phase: M5-B CLOSED → M5-C INCOMING.
+    file_updated_at → 2026-05-13T23:59:00+05:30. file_updated_by_session → M5-B-S2.
+  - v4.3 (2026-05-13, M5-B-NAP-S1):
+    **NAP.M5.0 APPROVED + NAP.M5.1 APPROVED IN PRINCIPLE.** Cowork NAP review session.
+    Key outcomes: (1) NAP.M5.0 APPROVED with caveat — prediction engine emission gated behind
+    two-layer flag (MARSYS_FLAG_PREDICTION_ENGINE_ENABLED global + per-chart
+    prediction_engine_enabled boolean); internal PPL calibration continues regardless; portal
+    UI emission suppressed until native enables per chart; implementation item PE.1 deferred to
+    portal session. (2) NAP.M5.1 APPROVED in principle — U1 (0.20 confirmed), U3 (LL.2 campaign
+    CLOSED: 3 approved EDGE-04/06/08, 1 conditional EDGE-01, 4 rejected), U2 (SPIRITUAL_PSYCHOLOGICAL
+    → 5th domain split confirmed) — topology frozen pending U2 implementation in M5-B-S2. (3) LL.2
+    campaign fully resolved: ll2_promotion_campaign_v1_0.md status CLOSED; ll2_edge_weights JSON
+    updated with final decisions. (4) SIG.MSR.145 label corrected in MSR_v3_0.md — "Parivartana
+    Exchange" voided; relabeled "Saturn-10L One-Way Dispositorship Chain in Venus's Sign."
+    red_team_counter: 2 → 3 (IS.8(a) FIRES — M5-B-S2 MUST include red-team pass).
+    last_session_id → M5-B-NAP-S1. active_phase_plan_sub_phase remains M5-B OPEN (U2 amendment
+    pending). next_session_objective → M5-B-S2.
+    file_updated_at → 2026-05-13T23:00:00+05:30. file_updated_by_session → M5-B-NAP-S1.
+  - v4.2 (2026-05-13, M5-B-S1):
+    **M5-B OPEN.** DBN topology first draft authored: DBN_TOPOLOGY_v1_0.md (DRAFT,
+    pre-registration committed). 5 CPT scaffold JSON files created (natal_to_domain,
+    dasha_to_domain, persistence, cross_domain, observation — all UNFITTED_SCAFFOLD,
+    fitted_values=null). CAPABILITY_MANIFEST updated: 6 new entries (DBN_TOPOLOGY +
+    5 CPTs); entry_count 68 → 74. LL.2 per-edge campaign DEFERRED (Outcome B —
+    no native approval received in session). Surrogate two-pass review conducted
+    (6 findings, 3 unresolved items U1-U3 for NAP.M5.1). Held-out partition
+    sacrosanctness maintained — 9 events BLINDED in antardasha table; topology
+    committed before outcomes seen. Mirror MP.1+MP.2 updated.
+    red_team_counter: 1 → 2 (M5-B-S1 substantive session; DBN topology authoring).
+    active_phase_plan_sub_phase M5-B OPEN (in flight).
+    `file_updated_at` → 2026-05-13. `file_updated_by_session` → M5-B-S1.
   - v4.1 (2026-05-13, M5-A-S1):
     **M5-A CLOSED.** All 14 AC items discharged (AC.M5A.1–AC.M5A.14). Key
     deliverables: LL.8+LL.9 scaffold (dbn/ll8_bayesian_update/, miss_registry/);
@@ -2565,7 +2865,7 @@ changelog:
       last_session_id → Phase_14G_Lockdown_Verification; last_session_* block populated.
       active_phase_plan_sub_phase updated: Phase 14 SEALED — Lockdown Verification complete.
       red_team_counter unchanged (Phase 14G is parallel platform work — does not increment).
-      next_session_objective: Madhav_M2A_Exec_15 (B.9) or Phase 11B (legacy deletion).
+      next_session_objective: M5-D-S3 (AC.M5D.3 held-out validation — apply fitted DBN to 9 held-out LEL events; NAP.M5.3 confidence-interval reporting policy draft)
       Deliverables:
         verification_artifacts/PHASE_14G/ produced: schema_snapshot.sql, data_audit.json,
           tool_registry.json, schema_validator.txt, drift_detector.txt, mirror_enforcer.txt,
@@ -2876,9 +3176,9 @@ current_state:
   # ------------------------------------------------------------------
   # Macro-phase position (per MACRO_PLAN_v2_0.md §"Ten macro-phase arc")
   # ------------------------------------------------------------------
-  active_macro_phase: M5                       # M4 CLOSED 2026-05-02 at M4-D-S1; M5 INCOMING
-  active_macro_phase_title: "Probabilistic Engine — DBN topology + signal-embedding refit + CW.PPL volume gate"
-  active_macro_phase_status: active
+  active_macro_phase: M6                       # M5 CLOSED 2026-05-14 at M5-E-S2; M6 INCOMING
+  active_macro_phase_title: "M6 — INCOMING (title TBD at M6-A-S1 plan-authoring session per MACRO_PLAN §M6)"
+  active_macro_phase_status: incoming
     # One of: active | paused_governance_rebuild | paused_native_hold | closed | incoming
     # M5 ACTIVE — PHASE_M5_PLAN_v1_0.md authored 2026-05-13 at Cowork-M5-S1-PLAN-AUTHORING.
     # M5-A is the active sub-phase. M4 CLOSED 2026-05-02 at M4-D-S1.
@@ -2915,22 +3215,37 @@ current_state:
   #   MACRO_PLAN §M3 into a PHASE_C_PLAN_v1_0.md or drive M3 directly from MACRO_PLAN.)
   # ------------------------------------------------------------------
   active_phase_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
-    # PHASE_M5_PLAN_v1_0.md v1.0 authored 2026-05-13 at Cowork-M5-S1-PLAN-AUTHORING.
-    # Five sub-phases: M5-A (Substrate + Entry Cleanup), M5-B (DBN Topology),
-    # M5-C (Prior Specification), M5-D (DBN Fit + Validation), M5-E (M5 Close).
-    # Envelope 20–35 sessions. PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED).
-  active_phase_plan_version: "1.0"
+    # PHASE_M5_PLAN_v1_0.md v1.1 SUPERSEDED-AS-COMPLETE (M5 CLOSED 2026-05-14 at M5-E-S2).
+    # M6 phase plan: TBD — first M6 session (M6-A-S1) authors PHASE_M6_PLAN_v1_0.md.
+    # PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED 2026-05-02).
+  active_phase_plan_version: "1.1 SUPERSEDED-AS-COMPLETE"
   active_phase_plan_sub_phase: >
-    M5-B INCOMING — DBN Topology. M5-A CLOSED 2026-05-13 at M5-A-S1.
-    M5-A all 14 ACs discharged. Key carry-forwards to M5-B:
-    - LL.2 per-edge campaign (ll2_promotion_campaign_v1_0.md) — native sign-off pending
-    - NAP.M5.0 PPL cadence decision — pending native approval at Cowork-M5-S3
-    - JH export window (JH_EXPORT_SCHEDULE_v1_0.md) — pending native confirmation
-    - OPEN_ITEM.P1.1 (MSR.145 CDLM expansion) — M5 CDLM expansion
-    - AC.IV.6 recall gap (0.9355) — re-run after LL.3 fixes in M5-B
-    - AC.IV.7 latency telemetry — re-check after 7-day prod traffic
-    PPL volume at M5-A close: 20 predictions (4 retroactive CONFIRMED added).
-    M5-B scope: DBN topology nodes/edges/CPT structure per PHASE_M5_PLAN_v1_0.md §3 M5-B.
+    M5 MACRO-PHASE CLOSED (2026-05-14 at M5-E-S2; sealing artifact 06_LEARNING_LAYER/M5_CLOSE_v1_0.md;
+    IS.8(b) PASS 5/5; NAP.M5.4 APPROVED). M6 INCOMING — phase plan TBD at M6-A-S1.
+    M5-E-S1 deliverables: predictive.ts v3.0 Bayesian posterior framing (CF.M5D.1 CLOSED);
+    LL.8 ACTIVE (LL8_SPEC_v1_0.md v1.1; parameter_register.json initialized; CF.M5D.2 CLOSED);
+    LL.9 SCAFFOLD confirmed; carry-forwards CF.M5D.1-6 dispositioned; CAPABILITY_MANIFEST updated.
+    M5-E-S2 scope: IS.8(b) macro-phase-close RT (5 axes); PPL volume checkpoint; M5_CLOSE_v1_0.md;
+    CURRENT_STATE flip M5→M6; NAP.M5.4 APPROVED (pre-authorized).
+    M5-D CLOSED (2026-05-13, M5-D-S5; sealing artifact M5_D_CLOSE_v1_0.md; IS.8(b)-class RT PASS 8/8).
+    M5-D CLOSED (2026-05-13, M5-D-S5). M5-C CLOSED (2026-05-13, M5-C-S2; sealing artifact: 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md).
+    M5-D entry: CF.M5C.1 COMPLETE — REFIT_GATE_v1_0.md STABLE/CLEARED (30/30/30 top-1 pass,
+    hash-stable, matrix delta 0.00000000). M5-C CLOSED (2026-05-13, M5-C-S2; sealing artifact: 06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md).
+    M5-C closure: NAP.M5.2 APPROVED; PRIOR_SPEC_v1_0.md v1.1 APPROVED (priors FROZEN);
+    AC.M5C.1-6 all PASS; embedding_refit scaffold committed at 19a5972.
+    M5-B CLOSED (2026-05-13, M5-B-S2).
+    M5-B closure deliverables: DBN_TOPOLOGY_v1_0.md v1.1 APPROVED (5 domains; topology frozen);
+    all 5 CPT scaffolds updated for 5-domain topology (UNFITTED_SCAFFOLD status; fitted_values=null);
+    NAP.M5.1 FORMALLY FROZEN (native trigger phrase "I approve" 2026-05-13);
+    LL.2 campaign CLOSED (3 approved, 1 conditional EDGE-01, 4 rejected; EDGE-01 402b
+    substituted); IS.8(a) PASS (counter reset 3→0);
+    R.LL3.1/.2/.3 IMPLEMENTED (platform/src/lib/retrieve/msr_sql.ts + feature_flags.ts);
+    AC.M5B.3 PASS; AC.M5B.7 PASS (recall=0.9829); AC.IV.7 DEFERRED to M5-D.
+    Open M5-B ACs deferred: AC.M5B.2 (Gemini two-pass — R.LL1TPA.1 FINAL_NOT_REACHABLE;
+    surrogate disclosure maintained); AC.M5B.4 (LL.2 per-edge campaign — CLOSED per LL.2
+    campaign doc; formal AC credit deferred to M5-C given LL.2 campaign doc = AC.M5B.4 object);
+    AC.M5B.6 (risk register — deferred to M5-C).
+    PPL volume: 20 predictions. M5-A CLOSED 2026-05-13. PHASE_M5_PLAN_v1_0.md v1.1 active.
     PHASE_M5_PLAN_v1_0.md v1.1 active. M4 MACRO-PHASE CLOSED 2026-05-02.
     v1.0 NEW CLOSED. NAP.M4.7 verdict APPROVED (pre-decided per execution
     brief; AC.D1.6 hard stop BYPASSED). IS.8(b) macro-phase-close red-team
@@ -3238,10 +3553,25 @@ current_state:
   # ------------------------------------------------------------------
   # Red-team counter (ONGOING_HYGIENE_POLICIES §G addition at Step 12)
   # ------------------------------------------------------------------
-  red_team_counter: 1
+  red_team_counter: 0
+    # M5-D-S4 (2026-05-13) — counter 2→3→0. IS.8(a) FIRED and DISCHARGED. 8-axis PASS.
+    # AC.M5D.3 verdict validity; held-out sacrosanctness; NAP.M5.3 completeness; scope compliance;
+    # B.10 no-fabrication; mirror obligations; versioning discipline; M5-D sub-phase integrity.
+    # Next IS.8(a) fires at counter=3 (three substantive sessions hence — approximately M5-E-S2/S3).
+    # M5-D-S3 (2026-05-13) — counter 1→2. M5-D-S3 is substantive (AC.M5D.3 validation + NAP.M5.3 approval).
+    # Refit gate verdict validity; RC1/RC2/RC3 classification; corpus source; signal ID source;
+    # LL8.O1/O2/O3 resolution; scope compliance; versioning discipline; mirror obligations.
+    # M5-C-S2 (2026-05-13) — counter 1→2. M5-C-S2 is substantive (NAP.M5.2 approval;
+    # PRIOR_SPEC v1.1 freeze; §11.4 mechanical validation; M5_C_CLOSE authoring; session close).
+    # (IS.8(a) fire at counter=3 occurred at M5-D-S1, not M5-C-S2 as anticipated.)
+    # M5-C-S1 (2026-05-13) — counter 0→1. M5-C-S1 is substantive (PRIOR_SPEC
+    # authoring; embedding_refit scaffold; two-pass review; discipline audit).
+    # M5-B-S2 (2026-05-13) — counter 3→0. IS.8(a) DISCHARGED: 4-axis PASS
+    # (B.10 no-fabrication; held-out sacrosanctness; LL.2 methodology integrity;
+    # scope compliance).
     # M5-A-S1 (2026-05-13) — counter 0 → 1. M5-A-S1 is a substantive session
     # (14 scope items; LL.8+LL.9 scaffold; CF.LL7.1; mirrors; MSR; LL.2; PPL;
-    # LEL enrichment; DIS.009; eval scaffold). Next IS.8(a) cadence fires at counter=3.
+    # LEL enrichment; DIS.009; eval scaffold).
     # M4-D-S1 (2026-05-02) — counter 0 → 1 → 0. Macro-phase close-class
     # substantive session sealing the M4 macro-phase. Counter increments 0 → 1
     # (M4-D-S1 substantive close-class per ONGOING_HYGIENE_POLICIES §G;
@@ -3463,7 +3793,42 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-A-S1
+  last_session_id: M5-E-S2                     # M5 macro-phase CLOSED; M5-E-S1 preserved in audit trail
+    # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
+    # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
+    # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
+    # === Predecessor M5-D-S5 preserved for audit ===
+    # M5-D-S5 (2026-05-13). AC.M5D.6 COMPLETE (M5_D_CLOSE_v1_0.md). M5-D CLOSED.
+    # IS.8(b)-class in-document RT PASS 8/8 axes. 0 CRITICAL/HIGH/MEDIUM/LOW.
+    # M5-E INCOMING. red_team_counter: 0 (sub-phase-close class; no increment per ONGOING_HYGIENE_POLICIES §G).
+    # === Predecessor M5-D-S4 preserved for audit ===
+    # M5-D-S4 (2026-05-13). IS.8(a) PASS 8/8. AC.M5D.4 COMPLETE (ppl_retroactive_m5d_v1_0.json).
+    # AC.M5D.5 COMPLETE (domain_activation_timeline_v1_0.json). red_team_counter: 2→3→0.
+    # === Predecessor M5-D-S3 preserved for audit ===
+    # M5-D-S3 (2026-05-13). AC.M5D.3 PASS. NAP.M5.3 APPROVED. red_team_counter: 1→2.
+    # === Predecessor M5-D-S2 preserved for audit ===
+    # M5-D-S2 (2026-05-13). CF.M5C.2/3/4 COMPLETE. AC.M5D.2 PASS. dbn_params_v1_0.json PRODUCED.
+    # === Predecessor M5-D-S1 preserved for audit ===
+    # M5-D-S1 (2026-05-13). CF.M5C.1 COMPLETE. LL8 Embedding Refit gate CLEARED (STABLE).
+    # REFIT_GATE_v1_0.md authored (PASS/CLEARED). stability_report.md authored (STABLE).
+    # IS.8(a) DISCHARGED — 8-axis PASS. red_team_counter: 2→3→0.
+    # refit.py bugs RC1/RC2/RC3 corrected. M5-D OPEN. CF.M5C.2 unblocked.
+    # === Predecessor M5-C-S2 preserved for audit ===
+    # M5-C-S2 (2026-05-13). NAP.M5.2 APPROVED. PRIOR_SPEC v1.1 FROZEN. M5-C CLOSED.
+    # AC.M5C.5 PASS (NAP.M5.2 resolved). AC.M5C.6 PASS (M5-C close + CURRENT_STATE
+    # → M5-D INCOMING). §11.4 mechanical validation COMPLETE (8 SPR.* + 2 PSY.*;
+    # Ketu MD 0 training events → purely classical). M5_C_CLOSE_v1_0.md authored.
+    # red_team_counter: 1→2. M5-C CLOSED. M5-D INCOMING.
+    # === Predecessor M5-C-S1 preserved for audit ===
+    # M5-C-S1 (2026-05-13). PRIOR_SPEC_v1_0.md AUTHORED (DRAFT, NAP.M5.2 PENDING).
+    # AC.M5C.1/2/3/4 PASS. Embedding_refit scaffold COMPLETE.
+    # === Predecessor M5-B-S2 preserved for audit ===
+    # M5-B-S2 (2026-05-13). IS.8(a) PASS. U2 IMPLEMENTED. NAP.M5.1 FROZEN.
+    # EDGE-01 substituted (402→402b). AC.M5B.3 PASS (R.LL3.1/.2/.3).
+    # AC.M5B.7 PASS (recall=0.9829). M5-B CLOSED. M5-C INCOMING.
+    # Surrogate two-pass: 6 findings, 3 unresolved (U1-U3 for NAP.M5.1).
+    # See SESSION_LOG M5-B-S1 entry for full close block. M5-B continues (OPEN).
+    # === Predecessor M5-A-S1 preserved for audit ===
     # M5-A-S1 (2026-05-13). M5-A scope complete — all 14 ACs discharged. See
     # SESSION_LOG M5-A-S1 entry for full close block. M5-A CLOSED. M5-B INCOMING.
     # === Predecessor Cowork-M5-S1-PLAN-AUTHORING-2026-05-13 preserved for audit ===
@@ -4266,15 +4631,17 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    M5-B-S1 — execute M5-B scope per PHASE_M5_PLAN_v1_0.md §3 M5-B (DBN Topology).
-    Priority: (1) Native sign-off on LL.2 per-edge campaign (NAP for ll2_promotion_campaign);
-    (2) NAP.M5.0 cadence decision; (3) JH export window confirmation; (4) DBN topology
-    design (nodes, edges, CPT schema); (5) AC.IV.6 recall gap re-run after LL.3 fixes;
-    (6) AC.IV.7 latency telemetry re-check (7-day window). Carry-forwards from M5-A:
-    OPEN_ITEM.P1.1 (MSR.145 CDLM expansion), LL.2 batch approval pending native.
-    PPL volume at M5-B entry: 20 (M6 gate ≥20 retroactive — target met by M5-C).
-    PHASE_M5_PLAN_v1_0.md authored 2026-05-13. M5 is ACTIVE. M5-A is the first
-    substantive sub-phase. All pre-M5 gates cleared (adb61fb).
+    M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
+    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
+    Entry gate: M5 MACRO-PHASE CLOSED ✓ (this update 2026-05-14); M5_CLOSE_v1_0.md sealed ✓;
+    IS.8(b) PASS 5/5 ✓; NAP.M5.4 APPROVED ✓; red_team_counter = 0 ✓.
+    M6-A-S1 scope: Author PHASE_M6_PLAN_v1_0.md (analogue of PHASE_M5_PLAN); declare M6 sub-phases
+    and AC ledger; address M6 carry-forwards (CF.M5.1–9, priority CF.M5.6 first live LL.8 update);
+    CURRENT_STATE M6 status = active; SESSION_LOG M6-A-S1 entry; mirror sync MP.1+MP.2.
+    red_team_counter: 0 entering M6 (IS.8(b) discharged at M5-E-S2). Next IS.8(a) fires at counter=3.
+    Priority carry-forwards entering M6: CF.M5.6 (first live LL.8 update — HIGH); CF.M5.1 (calibration
+    UI — MEDIUM); CF.M5.4 (answer:eval integration — MEDIUM); CF.M5.7 (first LL.9 entry — MEDIUM).
+    M5-D CLOSED 2026-05-13. DBN fit outcome: mean_lift=1.145, beat_fraction=5/5 PASS.
     PPL volume gate (NOT YET SATISFIED — 16 predictions; M5-S1 scope must
     propose cadence to close gap); native-approved DBN topology (M5 scope —
     not pre-built per MACRO_PLAN §Scope Boundary); native-approved prior
@@ -5041,8 +5408,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-13T09:30:00+05:30
-  file_updated_by_session: Pre-M5-Final-Autonomous-2026-05-13
+  file_updated_at: 2026-05-14T12:00:00+05:30
+  file_updated_by_session: M5-E-S2
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
