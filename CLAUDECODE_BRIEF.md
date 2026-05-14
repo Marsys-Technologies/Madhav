@@ -1,31 +1,34 @@
 ---
 status: OPEN
-session_id: AIOPS_CO_1
-phase: CO.1
-phase_name: "Chat lifecycle state machine + useChatLifecycle hook"
-next_session: AIOPS_CO_2
+session_id: AIOPS_CO_2
+phase: CO.2
+phase_name: "Input panel cleanup + per-message model capsules (Bug 3.1)"
+next_session: AIOPS_CO_3
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_3_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CO_1
-## AIOps Phase 3, Step 1 — State machine + event subscription
+# CLAUDECODE_BRIEF — AIOPS_CO_2
+## AIOps Phase 3, Step 2 — Bug 3.1 fix
 
 ---
 
 ## §0 — Executor orientation
 
-CO.1 introduces the single source of truth for chat session state, driven
-entirely by Phase 2's `ModelInteractionEvent` stream. Replaces ad-hoc
-state management in `ConsumeChat.tsx` + `StreamingAnswer.tsx`.
+CO.2 fixes Bug 3.1 — model names appearing in the input panel area and
+breaking alignment when a query is triggered. The fix has two parts:
 
-After CO.1 closes, every UI surface (reasoning panel, tool calls, status
-indicator, final answer) is positioned in a stable DOM slot, populated as
-typed events arrive. This is the foundation for fixing Bug 3.3 (CO.3) and
-all subsequent CO sub-phases.
+  1. **Remove model names from the input panel.** The current input area
+     (composer + TierPicker / stack selector) crams the active model's name
+     into the same row, breaking horizontal alignment when long names land.
+     Strip that out. The stack selector stays; the model display goes.
 
-Behind feature flag `CONSUME_UI_V2_ENABLED` (default false). Flag-off
-behavior is byte-identical to today.
+  2. **Add per-message model capsules at the end of each response.** Same
+     information, better location. Capsule shows: model_id + cost + latency.
+     Implemented by extending `PostAnswerProvenance.tsx` (or replacing it
+     with a new `MessageMetadata.tsx` if cleaner).
+
+All edits behind `CONSUME_UI_V2_ENABLED` flag (CO.1 deliverable).
 
 ---
 
@@ -33,16 +36,14 @@ behavior is byte-identical to today.
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_3/AIOPS_PHASE_3_MASTER_PLAN_v1_0.md
-3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md (CO.0 deliverable; §4 state machine)
-4. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (CO.0 deliverable)
-5. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-6. platform/src/lib/adapters/types.ts (ModelInteractionEvent)
-7. platform/src/components/consume/ConsumeChat.tsx (existing state management)
-8. platform/src/components/consume/StreamingAnswer.tsx
-9. platform/src/components/consume/LiveReasoningCard.tsx
-10. platform/src/app/api/chat/consume/route.ts (SSE producer; verify event shape)
-11. platform/src/lib/config/feature_flags.ts (add CONSUME_UI_V2_ENABLED)
+2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (CO.0 — components 1, 2, 7)
+3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md (CO.0 — Mistral pattern reference)
+4. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+5. platform/src/lib/hooks/useChatLifecycle.ts (CO.1 — snapshot.modelMeta is the data source)
+6. platform/src/components/consume/lifecycle/MetadataBadge.tsx (CO.1 — placeholder; evolve here)
+7. platform/src/components/consume/ConsumeChat.tsx (input area location)
+8. platform/src/components/consume/TierPicker.tsx (stack selector — keep, but verify alignment)
+9. platform/src/components/consume/PostAnswerProvenance.tsx (current model attribution location)
 ```
 
 ---
@@ -51,119 +52,71 @@ behavior is byte-identical to today.
 
 ### may_touch
 ```
-platform/src/lib/hooks/useChatLifecycle.ts                # NEW
-platform/src/lib/hooks/__tests__/useChatLifecycle.test.ts # NEW
-platform/src/components/consume/lifecycle/**              # NEW dir for state-machine UI primitives
-platform/src/components/consume/ConsumeChat.tsx           # refactor to use the hook
-platform/src/components/consume/StreamingAnswer.tsx       # refactor; remove ad-hoc state
-platform/src/components/consume/__tests__/**              # add new tests
-platform/src/lib/config/feature_flags.ts                  # add CONSUME_UI_V2_ENABLED
-platform/src/app/api/chat/consume/route.ts                # only if SSE shape needs tightening for typed events
+platform/src/components/consume/ConsumeChat.tsx                # input panel cleanup
+platform/src/components/consume/TierPicker.tsx                 # alignment verification only
+platform/src/components/consume/PostAnswerProvenance.tsx       # evolve for new capsule shape
+platform/src/components/consume/lifecycle/MetadataBadge.tsx    # finalize design
+platform/src/components/consume/__tests__/**                   # tests
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- platform/src/lib/adapters/**  (Phase 2 sealed)
-- platform/src/lib/synthesis/**  (Phase 2 territory)
-- platform/src/lib/models/**     (Phase 1 + 2)
-- platform/src/lib/components/observatory/**  (sealed)
-- platform/src/components/consume/LiveReasoningCard.tsx  (CO.3 territory)
-- platform/src/components/consume/AnswerView.tsx          (legacy renderer — preserve for forward-only)
-- platform/src/components/chat/ConversationSidebar.tsx   (CO.4 territory)
-- platform/src/components/consume/TierPicker.tsx         (CO.2 territory)
+- LiveReasoningCard, StreamingAnswer reasoning logic — CO.3
+- ConversationSidebar — CO.4
+- Visual design tokens (colors, typography) — CO.5
+- platform/src/lib/adapters/**, synthesis/**, models/**
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Feature flag
+### 3.1 — Remove model names from input panel
 
-Add to `feature_flags.ts`:
-```ts
-| 'CONSUME_UI_V2_ENABLED'
+In `ConsumeChat.tsx`, locate where the active model name is rendered inside
+the input panel layout (typically near or inside `TierPicker`). Remove the
+rendering. The stack selector stays — only the per-model display goes.
+
+Verify alignment in all states:
+- Empty composer
+- Typing (composer expanding)
+- Submitted (composer disabled, awaiting response)
+- Streaming (composer disabled, response building)
+- Complete (composer ready for next message)
+
+In each state, the input panel row should have stable height and the stack
+selector + send button should not shift.
+
+### 3.2 — Per-message metadata capsule
+
+Extend `MetadataBadge.tsx` (CO.1 placeholder) to display:
+
 ```
-In `DEFAULT_FLAGS`: `CONSUME_UI_V2_ENABLED: false`.
-Flag-off → consume UI behaves identically to today (legacy components mount).
-
-### 3.2 — State machine types
-
-`platform/src/lib/hooks/useChatLifecycle.ts`:
-
-```ts
-export type ChatLifecycleState =
-  | 'idle'
-  | 'queued'
-  | 'planning'
-  | 'retrieving'
-  | 'reasoning'
-  | 'tool_calling'
-  | 'composing'
-  | 'complete'
-  | 'error'
-  | 'cancelled'
-
-export interface ChatLifecycleSnapshot {
-  state: ChatLifecycleState
-  reasoningText: string       // accumulated reasoning_delta events
-  toolCalls: ToolCallRecord[] // chronological tool_call + tool_result pairs
-  finalText: string           // accumulated text_delta events
-  modelMeta: { modelId: string; cost?: number; latencyMs?: number; usage?: any } | null
-  error?: { message: string; code?: string }
-}
-
-export interface UseChatLifecycleOptions {
-  stream: ReadableStream<ModelInteractionEvent> | null
-}
-
-export function useChatLifecycle(opts: UseChatLifecycleOptions): ChatLifecycleSnapshot
+[ Gemini 2.5 Pro · $0.012 · 4.2s ]
 ```
 
-The hook subscribes to the event stream and produces a snapshot React can
-render. Implementation uses `useReducer` for state transitions; the reducer
-is exported separately for unit testing.
+Three pieces, separated by a thin divider character. Information sourced
+from `useChatLifecycle().modelMeta` which is populated from the `finish`
+event's `interaction.usage`.
 
-### 3.3 — Stable DOM slots
+Per CO.0 spec §X (per-message metadata badge): the capsule sits at the END
+of the assistant message, flush right or right-aligned. Click-to-expand
+reveals full token counts + provider request_id (for audit/debugging).
 
-`platform/src/components/consume/lifecycle/`:
+Reuse Observatory's existing badge/capsule visual treatment if available —
+do not introduce new visual primitives in CO.2 (that's CO.5 territory).
 
-New sub-components, each with a stable position in the answer container:
-- `StatusPip.tsx` — inline pulse showing current state (queued/planning/retrieving/composing)
-- `ReasoningSlot.tsx` — anchored slot for reasoning text (filled by CO.3)
-- `ToolCallChronology.tsx` — collapsible accordion (filled by CO.3)
-- `FinalAnswerSlot.tsx` — main response area
-- `MetadataBadge.tsx` — model+cost+latency capsule (positioned at end of message; CO.2 evolves)
+### 3.3 — Legacy compatibility
 
-The slot order is fixed:
-```
-<UserMessage />
-<StatusPip />              {/* visible during processing; hides at 'complete' */}
-<ReasoningSlot />          {/* present iff model.quirks.reasoning_via !== 'none' */}
-<ToolCallChronology />     {/* present iff intermediate.tool_call events emitted */}
-<FinalAnswerSlot />        {/* always present */}
-<MetadataBadge />          {/* present at 'complete' */}
-```
+Old messages (rendered via `AnswerView.tsx` legacy renderer) keep their
+existing model attribution. The new capsule appears only on new messages
+that flow through `useChatLifecycle`. Forward-only commitment from CO.0.
 
-This is the structural fix for Bug 3.3 — every slot exists from submission;
-content streams into it. No layout shift.
+### 3.4 — Tests
 
-### 3.4 — Refactor ConsumeChat + StreamingAnswer
-
-- Replace state derivations in `ConsumeChat.tsx` with `useChatLifecycle(stream)` subscription.
-- Replace ad-hoc rendering in `StreamingAnswer.tsx` with the slot composition above.
-- Behind `CONSUME_UI_V2_ENABLED`: if flag is off, render the OLD components (preserve them).
-- The new component tree mounts only when flag is on.
-
-### 3.5 — Tests
-
-`useChatLifecycle.test.ts`:
-- State transition table — for every (state, event) → (new state, side effects) pair, assert correctness.
-- Reasoning accumulation across multiple `reasoning_delta` events.
-- Tool call chronology preservation (order).
-- Final text accumulation.
-- Error path.
-- ≥25 cases.
-
-Component tests for the lifecycle/ primitives — ≥8 cases (mount, render, slot visibility, model-aware hiding).
+- Input panel alignment: snapshot tests for the 5 states above.
+- MetadataBadge: render with sample modelMeta, assert text content.
+- Click-to-expand on the capsule reveals token counts.
+- ≥12 cases.
 
 ---
 
@@ -171,14 +124,14 @@ Component tests for the lifecycle/ primitives — ≥8 cases (mount, render, slo
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CO1.1 | `useChatLifecycle.ts` exists; exports the hook + types | grep |
-| AC.CO1.2 | State machine has 10 states + transitions for all 7 ModelInteractionEvent types | reducer test |
-| AC.CO1.3 | Lifecycle slot components all exist | `ls lifecycle/` ≥ 5 |
-| AC.CO1.4 | Feature flag CONSUME_UI_V2_ENABLED declared, default false | grep |
-| AC.CO1.5 | With flag off, ConsumeChat + StreamingAnswer render identically to pre-CO.1 main | snapshot test |
-| AC.CO1.6 | Reducer tests: ≥25 cases pass | test count |
-| AC.CO1.7 | typecheck + lint clean | exit 0 |
-| AC.CO1.8 | Scope-violation grep | SCOPE_OK |
+| AC.CO2.1 | No model name renders in input panel area | grep + UI test |
+| AC.CO2.2 | Stack selector + send button alignment stable across all 5 input states | snapshot tests |
+| AC.CO2.3 | MetadataBadge renders model + cost + latency for new messages | render test |
+| AC.CO2.4 | Capsule click-to-expand reveals token counts + request_id | UI test |
+| AC.CO2.5 | Old messages render unchanged (forward-only) | snapshot |
+| AC.CO2.6 | typecheck + lint clean | exit 0 |
+| AC.CO2.7 | ≥12 new tests pass | test count |
+| AC.CO2.8 | Scope-violation grep | SCOPE_OK |
 
 ---
 
@@ -186,29 +139,28 @@ Component tests for the lifecycle/ primitives — ≥8 cases (mount, render, slo
 
 Commit:
 ```
-feat(aiops-CO.1): chat lifecycle state machine + useChatLifecycle hook
+feat(aiops-CO.2): fix Bug 3.1 — input panel cleanup + per-message capsules
 
-- useChatLifecycle: ReadableStream<ModelInteractionEvent> → ChatLifecycleSnapshot
-- 10 states (idle, queued, planning, retrieving, reasoning, tool_calling,
-  composing, complete, error, cancelled) driven by Phase 2 events
-- Lifecycle slot components: StatusPip, ReasoningSlot, ToolCallChronology,
-  FinalAnswerSlot, MetadataBadge — anchored DOM positions from submission
-- ConsumeChat + StreamingAnswer refactored to subscribe to the hook
-- Behind feature flag CONSUME_UI_V2_ENABLED (default false; flag-off identical to today)
-- 25+ reducer tests covering all (state, event) transitions
+- Removed model name display from input panel area (was breaking alignment)
+- Verified stack selector + send button alignment in all 5 input states
+- MetadataBadge now shows [ model_id · cost · latency ] at end of each
+  assistant message; click-to-expand reveals token counts + request_id
+- Data source: useChatLifecycle().modelMeta (Phase 2 finish event)
+- Old messages unchanged (forward-only commitment from CO.0)
+- 12+ new tests
 
 AC summary: 8/8 PASS
 ```
 
-Rotate `CLAUDECODE_BRIEF.md` → `PHASE_CO_2_BRIEF.md`.
+Rotate → CO.3.
 
 ---
 
 ## §6 — BAIL OUT
 
-- The current consume route doesn't emit events conforming to ModelInteractionEvent — the SSE shape changed since Phase 2's design assumed.
-- Refactoring ConsumeChat pulls in >5 unrelated component changes (scope creep).
+- The model name in the input panel turns out to be a deeply-coupled piece of state used by other components (not just display).
+- TierPicker has its own model display logic that's hard to disentangle without rewriting the component (CO.5 territory).
 
 ---
 
-*End of PHASE_CO_1_BRIEF.md*
+*End of PHASE_CO_2_BRIEF.md*
