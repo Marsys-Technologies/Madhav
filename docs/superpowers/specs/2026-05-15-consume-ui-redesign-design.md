@@ -152,8 +152,7 @@ ConsumeLayout (fixed inset-0 z-50)
 
 > **Trace button placement (LOCKED):** Trace does NOT appear in the toolbar row. It is passed via the `headerActions` prop and renders in ConsumeHeader's right slot — visible only when `activeTier === 'super_admin'`. This matches locked behavior #2.
 
-```
-```
+
 
 **`--composer-h` CSS variable**: measured via ResizeObserver on the composer zone div (same mechanism already in ConsumeChat). Initial value `160px` retained as fallback.
 
