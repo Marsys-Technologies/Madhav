@@ -23,9 +23,9 @@ interface Props {
  * on composing. Hidden for client tier by default.
  */
 export function ToolCallChronology({
-  state: _state,
+  state: _,
   toolCalls,
-  audienceTier = 'client',
+  audienceTier = 'super_admin',
   className,
 }: Props) {
   const defaultExpanded = audienceTier === 'super_admin' || audienceTier === 'acharya_reviewer'
