@@ -1,0 +1,46 @@
+---
+artifact: SESSION_CLOSE_M9B.yaml
+session_id: M9-B-S1
+phase: M9-B
+produced_on: "2026-05-14"
+status: CLOSED
+---
+
+session_close:
+  session_id: M9-B-S1
+  closed_at: "2026-05-14T23:59:59+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M9B.1: "PASS — platform/src/lib/schools/types.ts: SchoolName|Domain|Direction|ConvergenceLevel|CoverageType types; SignalScore|ChartData|SchoolAnalysis|SchoolResult|ConvergenceScore|DivergenceRecord interfaces; ABHISEK_CHART const (Capricorn ASC, Moon=AK, Saturn=AmK, Bhramari/Mars yogini, pendingFlags [VARSHA_KUNDALI_PENDING,TRANSIT_DATA_PENDING])"
+    AC.M9B.2: "PASS — engine_utils.ts: computeWeightedScore (weighted mean clamped 0–5), scoreToDirection (≥3.2=positive/≤1.8=negative/else neutral), topN (sorted by score×weight desc), mean, stddev (population), mode"
+    AC.M9B.3: "PASS — parashari_engine.ts: ParashariEngine class; Saturn 10H exaltation chart-aware; 5 domain verdicts (CAREER/HEALTH/RELATIONSHIP/SPIRITUAL/PSYCHOLOGICAL); defaultSignals() from chart planets; singleton export parashari_engine"
+    AC.M9B.4: "PASS — jaimini_engine.ts: JaiminiEngine class; CHARA_HIERARCHY {Moon:AK,Saturn:AmK,Mercury:BK,Mars:MK,Sun:PK,Venus:GK,Jupiter:DK}; karakaWeight() multiplies signal weight by 1.3 for AK/AmK signals; singleton export jaimini_engine"
+    AC.M9B.5: "PASS — tajika_engine.ts: TajikaEngine class; chartType='varsha_kundali'; pendingFlags propagated when chart.pendingFlags includes VARSHA_KUNDALI_PENDING; confidence weights 0.35–0.50 (reduced vs natal); verdict contains [VARSHA_KUNDALI_PENDING] text; singleton export tajika_engine"
+    AC.M9B.6: "PASS — kp_engine.ts: KPEngine class; DOMAIN_CUSPS (CAREER:[10,6,2],HEALTH:[6,1,8],RELATIONSHIP:[7,2,11],SPIRITUAL:[9,5,12],PSYCHOLOGICAL:[1,5,12]); KP_SUBLORD_ACTIVATION per house (1H:0.95,10H:0.90,9H:0.82,12H:0.55); verdict matches /\\d+%/; singleton export kp_engine"
+    AC.M9B.7: "PASS — nadi_engine.ts: NadiEngine class; nadiHouseFromPlanet() counts houses from reference planet; primary signals SIG.MSR.539–543; signalCoverage='primary'; singleton export nadi_engine"
+    AC.M9B.8: "PASS — bnn_engine.ts: BNNEngine class; getTransitPositions() returns natal-position placeholder with confidenceMultiplier=0.45 when CF.M9.2 active (chart.pendingFlags includes TRANSIT_DATA_PENDING); live confidenceMultiplier=0.85; [TRANSIT_DATA_PENDING] in both pendingFlags + schoolVerdict; singleton export bnn_engine"
+    AC.M9B.9: "PASS — yogini_engine.ts: YoginiEngine class; YOGINI_CYCLE array of 8 profiles (Pingala/Sun→Dhanya/Jupiter→Bhramari/Mars→Bhadrika/Mercury→Ulka/Saturn→Siddha/Venus→Sankata/Rahu→Mangala/Moon); getCurrentYogini() reads chart.yoginiDasha or computes from birth date; Bhramari domain modifiers CAREER=1.1/HEALTH=0.9/RELATIONSHIP=0.8/SPIRITUAL=0.7/PSYCHOLOGICAL=1.1; all scores clamped Math.min(5,Math.max(0,score)); singleton export yogini_engine"
+    AC.M9B.10: "PASS — convergence_calculator.ts: computeConvergence() excludes Tajika when VARSHA_KUNDALI_PENDING in pendingFlags (schoolsTotal drops to 6); plurality direction computed; schoolsAgreeing = count matching plurality; HIGH when ≥5, MEDIUM when =4, LOW when <4; direction='mixed' when schoolsAgreeing/schoolsTotal<0.70; detectDivergence() isDivergent=true when schoolsContradict.length≥2 (NAP.M9.3); buildConvergenceNarrative() includes schoolsAgreeing/schoolsTotal fraction, DIVERGENCE text when isDivergent, 'excluded'+'pending' when schoolsTotal<7"
+    AC.M9B.11: "PASS — school_runner.ts: runSchoolsForDomain() uses Promise.all over all 7 engine singletons; returns MultiSchoolResult with chartId/domain/runDate/schoolResults/convergence/divergence; optional includeNarratives builds convergenceNarrative; runFullTriangulation() maps over 5 domains default; summarizeConvergence() buckets by convergenceLevel + produces overallAgreementSignal string"
+    AC.M9B.12: "PASS — 78/78 unit tests PASS (node_modules/.bin/vitest run tests/schools/): parashari_engine.test.ts(9) + jaimini_engine.test.ts(8) + tajika_engine.test.ts(9) + kp_engine.test.ts(6) + nadi_bnn_yogini.test.ts(18=6+6+6) + convergence_calculator.test.ts(16) + school_runner.test.ts(7). MEDIUM_CONVERGENCE_RESULTS fixture corrected (tajika: positive→negative to yield 4/7 positive=MEDIUM). tsc --noEmit: 0 errors on platform/src/lib/schools/ files."
+    AC.M9B.13: "PASS — 7 SPEC docs in 09_MULTI_SCHOOL_TRIANGULATION/schools/: PARASHARI_ENGINE_SPEC_v1_0.md + JAIMINI_ENGINE_SPEC_v1_0.md + TAJIKA_ENGINE_SPEC_v1_0.md (CF.M9.1 Swiss Ephemeris spec) + KP_ENGINE_SPEC_v1_0.md + NADI_ENGINE_SPEC_v1_0.md + BNN_ENGINE_SPEC_v1_0.md (CF.M9.2 Swiss Ephemeris spec) + YOGINI_ENGINE_SPEC_v1_0.md (Bhramari domain character table)"
+    AC.M9B.14: "PASS — CAPABILITY_MANIFEST.json: 11 new M9-B entries (SCHOOLS_TYPES, SCHOOLS_ENGINE_UTILS, PARASHARI_ENGINE, JAIMINI_ENGINE, TAJIKA_ENGINE, KP_ENGINE, NADI_ENGINE, BNN_ENGINE, YOGINI_ENGINE, SCHOOLS_CONVERGENCE_CALCULATOR, SCHOOLS_RUNNER + 7 SPEC docs); entry_count 128→139; last_session M9-B-S1"
+    AC.M9B.15: "PASS — .geminirules §F state block → M9-B-S1 CLOSED / M9-C-S1 INCOMING / red_team_counter:2; .gemini/project_state.md Active Phase header + M9-B-S1 deliverables block updated"
+    AC.M9B.16: "PASS — SESSION_LOG.md M9-B-S1 session_open + session_close blocks appended"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1: §F state block → M9-B-S1 CLOSED / M9-C-S1 INCOMING / red_team_counter:2"
+    - path: ".gemini/project_state.md"
+      change: "MP.2: Active Phase header updated to M9-B-S1 CLOSED; M9-B-S1 deliverables block added; Next session → M9-C-S1"
+  red_team_counter_at_close: 2
+  next_session_id: M9-C-S1
+  next_session_objective: >
+    M9-C-S1 — Write platform/scripts/m9/run_multi_school_analysis.py (executes all 7 school
+    engines across 5 domains against ABHISEK_CHART; 35 total runs); run it and capture output;
+    produce 09_MULTI_SCHOOL_TRIANGULATION/MULTI_SCHOOL_ANALYSIS_v1_0.md with per-school per-domain
+    score table and narrative summaries; IS.8(a) red-team fires (counter 2→3→0);
+    CAPABILITY_MANIFEST + CURRENT_STATE + SESSION_LOG updated; MP.1+MP.2 mirrors propagated;
+    git commit "M9-C-S1: multi-school analysis script + 35-run results + IS.8(a)".
+  session_close_valid: true

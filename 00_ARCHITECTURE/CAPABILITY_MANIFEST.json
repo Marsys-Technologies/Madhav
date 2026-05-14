@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T23:59:30+05:30",
+  "generated_at": "2026-05-14T16:09:09Z",
   "generator_version": "1.0",
-  "entry_count": 128,
+  "entry_count": 139,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1897,7 +1897,111 @@
       ],
       "notes": "Tool 28 stub; full impl at M9-D-S1; queries convergence_scores",
       "produced_during": "M9-A-S1 2026-05-14"
+    },
+    {
+      "canonical_id": "SCHOOLS_TYPES",
+      "path": "platform/src/lib/schools/types.ts",
+      "type": "typescript_module",
+      "description": "M9 school engine type definitions: SchoolAnalysis, SchoolResult, ConvergenceScore, ChartData, ABHISEK_CHART",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "SCHOOLS_CONVERGENCE_CALCULATOR",
+      "path": "platform/src/lib/schools/convergence_calculator.ts",
+      "type": "typescript_module",
+      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() \u2014 NAP.M9.2+NAP.M9.3",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "SCHOOLS_RUNNER",
+      "path": "platform/src/lib/schools/school_runner.ts",
+      "type": "typescript_module",
+      "description": "runSchoolsForDomain() + runFullTriangulation() \u2014 orchestrates all 7 engines in parallel",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "M9B_UNIT_TESTS",
+      "path": "platform/tests/schools/",
+      "type": "test_suite",
+      "description": "78 unit tests across 7 school engines + convergence_calculator + school_runner; all passing",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "PARASHARI_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/parashari/PARASHARI_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "JAIMINI_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/jaimini/JAIMINI_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "TAJIKA_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/tajika/TAJIKA_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "KP_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/kp/KP_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "NADI_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/nadi/NADI_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "BNN_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/bnn/BNN_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "canonical_id": "YOGINI_ENGINE_SPEC",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/schools/yogini/YOGINI_ENGINE_SPEC_v1_0.md",
+      "type": "spec_document",
+      "version": "1.0",
+      "status": "CURRENT",
+      "produced_during": "M9-B-S1",
+      "produced_on": "2026-05-14"
     }
   ],
-  "last_updated_by": "M9-A-S1"
+  "last_updated_by": "M9-A-S1",
+  "last_session": "M9-B-S1"
 }
