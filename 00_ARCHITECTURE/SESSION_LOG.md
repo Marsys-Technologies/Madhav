@@ -23182,3 +23182,61 @@ session_close:
       change: "MP.2 mirror update (M8-B-S1 closed state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-C-S1
+  cowork_thread_name: "MARSYS-M8-C-S1 | Tier 2 Ingestion | Saravali + Uttara Kalamrita + Jaimini Sutra"
+  opened_at: "2026-05-14T15:26:00+05:30"
+  macro_phase: M8
+  sub_phase: M8-C
+  phase_plan: PHASE_M8_PLAN_v1_0.md
+  scope_declaration:
+    may_touch:
+      - "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "06_LEARNING_LAYER/**"
+      - "platform/src/**"
+  handshake_valid: true
+  red_team_due: false
+
+session_body:
+  work_completed:
+    - "ingest_saravali.py: dual-source strategy (saravaliofkalyanavarmasanthanamr.astrology_202003_28_Z + KalyanaVarmasSaravali_201707); 796 chunks, 100% embedded; gs://madhav-marsys-sources/L8/classical_texts/tier2/saravali_chunks.jsonl"
+    - "ingest_uttara_kalamrita.py: uttkalamrita-kalidas-ps-sastri (373KB djvu.txt); 239 chunks, 100% embedded; tier2/uttara_kalamrita_chunks.jsonl"
+    - "ingest_jaimini_sutra.py: Jaiminisutras1955EditionByBSRao (277KB djvu.txt); 181 chunks, 100% embedded; tier2/jaimini_sutra_chunks.jsonl"
+    - "DB verified: all 5 texts (tier1 + tier2) with 100% embedding coverage"
+  decisions:
+    - "Saravali single source yields 393 chunks (< 400 AC threshold); dual-source strategy added to find_all_sources(); combined 2 verified identifiers for 796 chunks"
+    - "Uttara Kalamrita: 239 chunks exceeds 200 AC threshold from single 373KB source"
+    - "Jaimini Sutra: 181 chunks exceeds 150 AC threshold from 1955 B.S. Rao edition"
+
+session_close:
+  session_id: M8-C-S1
+  closed_at: "2026-05-14T15:40:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8C.1: "PASS — all three scripts complete; idempotent; exit 0"
+    AC.M8C.2: "PASS — Saravali: 796 chunks (>>400 threshold); 100% embedded"
+    AC.M8C.3: "PASS — Uttara Kalamrita: 239 chunks (>>200 threshold); 100% embedded"
+    AC.M8C.4: "PASS — Jaimini Sutra: 181 chunks (>>150 threshold); 100% embedded"
+    AC.M8C.5: "PASS — all three uploaded to GCS L8/classical_texts/tier2/"
+    AC.M8C.6: "PASS — SESSION_LOG M8-C-S1 appended; CAPABILITY_MANIFEST updated"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1+MP.4 mirror update (M8-C-S1 closed; M8-D INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-C-S1 closed state block)"
+  session_close_valid: true
+```

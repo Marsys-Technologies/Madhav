@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T15:25:00+05:30",
+  "generated_at": "2026-05-14T15:40:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 90,
+  "entry_count": 93,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1378,6 +1378,33 @@
       "status": "CURRENT",
       "description": "Shared ingestion utils: chunk_text, clean_html, embed_batch (dynamic batching; 8k approx token budget; 15-chunk cap), db_upsert_text, db_bulk_insert_chunks, db_update_embeddings, gcs_upload_jsonl",
       "produced_during": "M8-B-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_saravali",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_saravali.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Saravali ingestion; dual-source strategy; 796 chunks; 100% embedded",
+      "produced_during": "M8-C-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_uttara_kalamrita",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_uttara_kalamrita.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Uttara Kalamrita ingestion; 239 chunks; 100% embedded",
+      "produced_during": "M8-C-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_jaimini_sutra",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_jaimini_sutra.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Jaimini Sutra ingestion; Jaiminisutras1955EditionByBSRao; 181 chunks; 100% embedded",
+      "produced_during": "M8-C-S1"
     }
   ]
 }

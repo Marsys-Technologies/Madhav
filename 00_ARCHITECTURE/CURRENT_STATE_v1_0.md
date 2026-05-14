@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.5
+version: 5.6
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.6 (2026-05-14, M8-C-S1):
+    **M8-C-S1 CLOSED. TIER 2 INGESTION COMPLETE.**
+    Key outcomes: (1) AC.M8C.1 PASS — all 3 scripts complete; idempotent; exit 0. (2) AC.M8C.2 PASS — Saravali: 796 chunks 100% embedded (dual-source: saravaliofkalyanavarmasanthanamr + KalyanaVarmasSaravali_201707; tier2/saravali_chunks.jsonl). (3) AC.M8C.3 PASS — Uttara Kalamrita: 239 chunks 100% embedded; tier2/uttara_kalamrita_chunks.jsonl. (4) AC.M8C.4 PASS — Jaimini Sutra: 181 chunks 100% embedded; tier2/jaimini_sutra_chunks.jsonl. (5) AC.M8C.5 PASS — all 3 uploaded to GCS tier2/. (6) AC.M8C.6 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated. DB state: 5 texts (2 tier1 + 3 tier2), all embeddings 100%.
+    red_team_counter: 3 (incremented; M8-C-S1 substantive; IS.8(a) due at counter=3 — firing this close).
+    active_phase_plan_sub_phase: M8-C CLOSED. M8-D-S1 INCOMING.
+    last_session_id: M8-C-S1. next_session_objective: M8-D-S1 (Tier 3 ingestion — 5 texts).
+    file_updated_at: 2026-05-14T15:40:00+05:30. file_updated_by_session: M8-C-S1.
   - v5.5 (2026-05-14, M8-B-S1):
     **M8-B-S1 CLOSED. TIER 1 INGESTION COMPLETE.**
     Key outcomes: (1) AC.M8B.1 PASS — ingest_bphs.py complete; idempotent; exits 0. (2) AC.M8B.2 PASS — BPHS: 1032 chunks in DB, 100% embedded (768-dim); gs://madhav-marsys-sources/L8/classical_texts/tier1/bphs_chunks.jsonl uploaded. (3) AC.M8B.3 PASS — ingest_phaladeepika.py complete; idempotent; exits 0. (4) AC.M8B.4 PASS — Phaladeepika: 926 chunks in DB, 100% embedded; source upgraded to in.ernet.dli.2015.406048 (1.37MB djvu.txt). (5) AC.M8B.5 PASS — both texts uploaded to GCS tier1/. (6) AC.M8B.6 PASS — classical_texts rows: tier=1 for both; chunk_count=1032+926. (7) AC.M8B.7 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated. Critical fixes: (a) embed_batch() token budget reduced from 18k to 8k approx (real Vertex tokens are 1.5-1.8x len//4); hard cap 15 chunks/batch added. (b) db_update_embeddings() added to ingest_utils.py for idempotent embedding population on existing rows.
