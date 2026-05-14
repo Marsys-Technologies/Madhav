@@ -24033,3 +24033,96 @@ session_close:
       change: "MP.2: Active Phase header M9-D-S1 CLOSED; deliverables block with convergence metrics + pipeline integration"
   session_close_valid: true
 ```
+
+---
+
+## Session M9-E-S1
+
+```yaml
+session_open:
+  session_id: M9-E-S1
+  opened_at: "2026-05-14"
+  phase: M9-E
+  objective: "IS.8(b) macro-phase-close red-team (RT.M9.1–RT.M9.5); disagreement register (school_disagreement_register.json + SCHOOL_DISAGREEMENT_REGISTER_v1_0.md); convergence stability verification; M9_CLOSE_v1_0.md sealing artifact; CLAUDECODE_BRIEF archival; CURRENT_STATE v5.15→v5.16; CAPABILITY_MANIFEST 156→160; mirror updates MP.1+MP.2"
+  prior_session: M9-D-S1
+  red_team_due: true
+  red_team_type: "IS.8(b) macro-phase-close"
+  may_touch:
+    - "platform/scripts/m9/**"
+    - "09_MULTI_SCHOOL_TRIANGULATION/**"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "00_ARCHITECTURE/SESSION_CLOSE_M9E.yaml"
+    - "00_ARCHITECTURE/briefs/**"
+    - "CLAUDECODE_BRIEF.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  must_not_touch:
+    - "01_FACTS_LAYER/**"
+    - "platform/src/lib/schools/**"
+    - "09_MULTI_SCHOOL_TRIANGULATION/*_analysis.json"
+    - "00_ARCHITECTURE/PHASE_M9_PLAN_v1_0.md"
+    - "10_LLM_ACHARYA_INTERFACE/**"
+
+session_body:
+  key_decisions:
+    - "IS.8(b) fired: RT.M9.1–RT.M9.5 all PASS. 0 CRITICAL; 0 HIGH; 0 MEDIUM red-team findings."
+    - "Disagreement taxonomy: temporal_scope(3), magnitude_divergence(3), confidence_reduction(2), method_divergence(1), tradition_specificity(1) — 10 rows total, 0 genuine chart contradictions."
+    - "All 10 disagreements classified CONCURRENT, DEFERRED, or TEMPORAL_COMPLEMENT — consistent with M9-C finding of 0 isDivergent domains."
+    - "build_disagreement_register.py: magnitude threshold 0.50, BNN confidence threshold 0.20, Tajika temporal scope includes CAREER+SPIRITUAL+PSYCHOLOGICAL."
+    - "Convergence stability: compute_convergence.py re-run byte-identical to M9-D output (all 5 domains × 6 key fields)."
+    - "CLAUDECODE_BRIEF.md: status NOT_COMPLETE → COMPLETE; archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M9_v1_0.md."
+    - "M9 macro-phase CLOSED. CF.M9.1 (VARSHA_KUNDALI_PENDING) + CF.M9.2 (TRANSIT_DATA_PENDING) carry forward to M10."
+  ac_progress:
+    AC.M9E.1: "PASS — 10 disagreement rows in school_disagreement_register.json; 5 classes"
+    AC.M9E.2: "PASS — SCHOOL_DISAGREEMENT_REGISTER_v1_0.md: 10 worked examples DIS.M9.001–DIS.M9.010"
+    AC.M9E.3: "PASS (DEFERRED) — JSON written to 09_MULTI_SCHOOL_TRIANGULATION/disagreements/; GCS deferred"
+    AC.M9E.4: "PASS — convergence stability byte-identical re-run"
+    AC.M9E.5: "PASS — IS.8(b) red-team PASS 5/5"
+    AC.M9E.6: "PASS — M9_CLOSE_v1_0.md §0–§8 complete"
+    AC.M9E.7: "PASS — CURRENT_STATE v5.15→v5.16"
+    AC.M9E.8: "PASS — SESSION_LOG M9-E-S1 appended"
+    AC.M9E.9: "PASS — CAPABILITY_MANIFEST 156→160"
+    AC.M9E.10: "PASS — MP.1+MP.2 mirrors updated"
+    AC.M9E.11: "PASS — CLAUDECODE_BRIEF.md status COMPLETE; archived"
+    AC.M9E.12: "PASS — MACRO_PLAN §M9 exit criteria a–d in M9_CLOSE §7"
+
+session_close:
+  session_id: M9-E-S1
+  closed_at: "2026-05-14T23:59:59+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M9E.1: "PASS — 10 disagreement rows in school_disagreement_register.json; 5 classes: temporal_scope(3), magnitude_divergence(3), confidence_reduction(2), method_divergence(1), tradition_specificity(1); all fields populated"
+    AC.M9E.2: "PASS — SCHOOL_DISAGREEMENT_REGISTER_v1_0.md: 10 worked examples DIS.M9.001–DIS.M9.010; §1–§4 complete"
+    AC.M9E.3: "PASS (DEFERRED) — school_disagreement_register.json at 09_MULTI_SCHOOL_TRIANGULATION/disagreements/; GCS L9/convergence/ deferred"
+    AC.M9E.4: "PASS — compute_convergence.py re-run byte-identical all 5 domains × 6 fields"
+    AC.M9E.5: "PASS — IS.8(b) PASS 5/5: RT.M9.1 factual accuracy PASS; RT.M9.2 layer separation PASS; RT.M9.3 derivation ledger PASS; RT.M9.4 mirror discipline PASS; RT.M9.5 scope discipline PASS. 0 CRITICAL; 0 HIGH; 0 MEDIUM."
+    AC.M9E.6: "PASS — M9_CLOSE_v1_0.md at 09_MULTI_SCHOOL_TRIANGULATION/M9_CLOSE_v1_0.md; §0–§8; NAP.M9.5 PRE-AUTHORIZED; m10_entry_condition set"
+    AC.M9E.7: "PASS — CURRENT_STATE v5.15→v5.16: M9 CLOSED / M10 INCOMING; IS.8(b) DISCHARGED; red_team_counter=0"
+    AC.M9E.8: "PASS — SESSION_LOG M9-E-S1 session_open + body + session_close appended"
+    AC.M9E.9: "PASS — CAPABILITY_MANIFEST.json 156→160 entries: M9E_DISAGREEMENT_SCRIPT, M9E_DISAGREEMENT_REGISTER_JSON, M9E_DISAGREEMENT_REGISTER_MD, M9E_M9_CLOSE"
+    AC.M9E.10: "PASS — MP.1 (.geminirules): M9 CLOSED / M10 INCOMING; red_team_counter:0; IS.8(b) DISCHARGED. MP.2 (.gemini/project_state.md): Active Phase M9 CLOSED; M9-E deliverables block added."
+    AC.M9E.11: "PASS — CLAUDECODE_BRIEF.md status: NOT_COMPLETE → COMPLETE; archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M9_v1_0.md"
+    AC.M9E.12: "PASS — MACRO_PLAN §M9 exit criteria a–d documented in M9_CLOSE §7: a=PARTIAL MET (CF.M9.1+CF.M9.2 open), b=MET, c=MET (10 examples), d=MET (CONVERGENCE_FINDINGS §8)"
+  is8b_discharged: true
+  is8b_verdict: "PASS 5/5 — RT.M9.1 factual accuracy PASS; RT.M9.2 layer separation PASS; RT.M9.3 derivation ledger PASS; RT.M9.4 mirror discipline PASS; RT.M9.5 scope discipline PASS. 0 CRITICAL; 0 HIGH; 0 MEDIUM."
+  red_team_counter_at_close: 0
+  headline_finding: "M9 MACRO-PHASE CLOSED. 7 schools operational; 5/5 domains HIGH convergence; 0 isDivergent; 10 disagreement rows (all CONCURRENT/DEFERRED/TEMPORAL_COMPLEMENT); IS.8(b) PASS 5/5; CAPABILITY_MANIFEST 160 entries. CLAUDECODE_BRIEF status=COMPLETE."
+  carry_forwards_at_close:
+    - "CF.M9.1: VARSHA_KUNDALI_PENDING (Tajika) — 2026 Varsha Kundali not yet computed"
+    - "CF.M9.2: TRANSIT_DATA_PENDING (BNN) — live transit positions not yet supplied"
+    - "DB_SEED_DEFERRED — school_analysis_runs + school_signal_coverage + convergence_scores + school_disagreements DB insertions pending proxy access"
+    - "GCS_UPLOAD_DEFERRED — L9/school_analyses/ + L9/convergence/ uploads pending proxy access"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1: §F state block → M9-E-S1 CLOSED / M9 MACRO-PHASE CLOSED / IS.8(b) DISCHARGED / red_team_counter:0 / M10 INCOMING"
+    - path: ".gemini/project_state.md"
+      change: "MP.2: Active Phase M9 CLOSED; M9-E deliverables block added with IS.8(b) PASS summary"
+  m9_arc_complete: true
+  next_session_id: M10-A-S1
+  next_session_objective: "M10-A-S1 — LLM Acharya Interface. Entry condition: M9 CLOSED (MET) AND acharya panel ≥3 recruited. Per MACRO_PLAN §M10: author PHASE_M10_PLAN_v1_0.md at M10-A open."
+  session_close_valid: true
+```

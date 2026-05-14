@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-14T16:09:09Z",
   "generator_version": "1.0",
-  "entry_count": 156,
+  "entry_count": 160,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -2183,9 +2183,53 @@
       "description": "Planner golden set extended: GT.050–052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9E_DISAGREEMENT_SCRIPT",
+      "canonical_id": "M9E_DISAGREEMENT_SCRIPT",
+      "path": "platform/scripts/m9/build_disagreement_register.py",
+      "type": "script",
+      "layer": "L9",
+      "status": "CURRENT",
+      "description": "Python script: loads 7-school JSON outputs; identifies 10 inter-school disagreements (direction + magnitude + temporal + confidence); writes school_disagreement_register.json + SCHOOL_DISAGREEMENT_REGISTER_v1_0.md",
+      "session_id": "M9-E-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9E_DISAGREEMENT_REGISTER_JSON",
+      "canonical_id": "M9E_DISAGREEMENT_REGISTER_JSON",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/disagreements/school_disagreement_register.json",
+      "type": "json",
+      "layer": "L9",
+      "status": "CURRENT",
+      "description": "10 disagreement rows: temporal_scope(3), magnitude_divergence(3), confidence_reduction(2), method_divergence(1), tradition_specificity(1). CONCURRENT/DEFERRED/TEMPORAL_COMPLEMENT verdicts.",
+      "session_id": "M9-E-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9E_DISAGREEMENT_REGISTER_MD",
+      "canonical_id": "M9E_DISAGREEMENT_REGISTER_MD",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/SCHOOL_DISAGREEMENT_REGISTER_v1_0.md",
+      "type": "document",
+      "layer": "L9",
+      "status": "CURRENT",
+      "description": "10 worked examples §2; resolution protocol §3; school-level summary §4. 0 genuine chart contradictions across all 10 disagreements.",
+      "session_id": "M9-E-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9E_M9_CLOSE",
+      "canonical_id": "M9E_M9_CLOSE",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/M9_CLOSE_v1_0.md",
+      "type": "document",
+      "layer": "governance",
+      "status": "CLOSED",
+      "description": "M9 macro-phase sealing artifact: §0 session arc, §1 AC ledger (all sub-phases), §2 IS.8(b) red-team PASS 5/5, §3 MSR evolution, §4 convergence summary, §5 disagreement summary, §6 carry-forwards, §7 exit criteria a–d, §8 seal block.",
+      "session_id": "M9-E-S1",
+      "produced_on": "2026-05-14"
     }
   ],
   "last_updated_by": "M9-A-S1",
-  "last_session": "M9-D-S1",
+  "last_session": "M9-E-S1",
   "last_updated": "2026-05-14"
 }
