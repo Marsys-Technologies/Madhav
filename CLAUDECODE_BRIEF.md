@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: COMPLETE
 session_id: AIOPS_AD_4
 phase: AD.4
 phase_name: "Call-site migration + legacy-path preservation + flag-off equivalence"
