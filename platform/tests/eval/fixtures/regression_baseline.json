@@ -1096,6 +1096,56 @@
     {
       "id": "GT.046",
       "mock_tool_calls": []
+    },
+    {
+      "id": "GT.047",
+      "mock_tool_calls": [
+        {
+          "tool_name": "classical_text_search",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "retrieve BPHS and Phaladeepika passages for Sasha yoga"
+        },
+        {
+          "tool_name": "classical_attribution_lookup",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "resolve MSR signal attributions for Saturn exalted in Kendra"
+        }
+      ]
+    },
+    {
+      "id": "GT.048",
+      "mock_tool_calls": [
+        {
+          "tool_name": "classical_text_search",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "retrieve BPHS passages for Saturn exalted in Kendra"
+        }
+      ]
+    },
+    {
+      "id": "GT.049",
+      "mock_tool_calls": [
+        {
+          "tool_name": "classical_attribution_lookup",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "lookup attributions for Venus-Rahu-7H MSR signal cluster"
+        },
+        {
+          "tool_name": "classical_text_search",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "retrieve broader corpus passages for Venus-Rahu conjunction"
+        }
+      ]
     }
   ]
 }

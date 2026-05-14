@@ -16,7 +16,7 @@ vi.mock('@/lib/models/runtime_config', () => ({ invalidateRuntimeConfigCache: mo
 const MOCK_AUTH = { user: { uid: 'admin1' }, profile: { role: 'super_admin', status: 'active' } }
 
 function makeParams(stack: string, call_type: string, param: string) {
-  return { params: { stack, call_type, param } }
+  return { params: Promise.resolve({ stack, call_type, param }) }
 }
 
 function makePutRequest(body: unknown): Request {

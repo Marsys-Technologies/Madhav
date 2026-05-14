@@ -25,7 +25,7 @@ vi.mock('@/lib/models/registry', async () => {
 const MOCK_AUTH = { user: { uid: 'admin1' }, profile: { role: 'super_admin', status: 'active' } }
 
 function makeParams(stack: string, call_type: string) {
-  return { params: { stack, call_type } }
+  return { params: Promise.resolve({ stack, call_type }) }
 }
 
 function makePutRequest(body: unknown): Request {
