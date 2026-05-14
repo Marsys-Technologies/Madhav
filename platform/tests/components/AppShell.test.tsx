@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent } from '@testing-library/react'
 import { AppShell } from '@/components/shared/AppShell'
 
 // AppShellRail uses Next.js navigation hooks and Firebase — mock at module level.
@@ -101,5 +101,55 @@ describe('AppShell', () => {
     )
     const trigger = getByRole('button', { name: 'User menu' })
     expect(trigger.textContent).toBe('A')
+  })
+
+  it('nav items have aria-label in collapsed state', () => {
+    const { getByRole } = render(
+      <AppShell user={BASE_USER} profile={BASE_PROFILE} />
+    )
+    expect(getByRole('link', { name: 'Roster' })).toBeTruthy()
+    expect(getByRole('link', { name: 'Cockpit' })).toBeTruthy()
+    expect(getByRole('link', { name: 'Audit' })).toBeTruthy()
+  })
+
+  it('shows nav labels when sidebar is hovered', () => {
+    const { getByRole, getByText } = render(
+      <AppShell user={BASE_USER} profile={BASE_PROFILE} />
+    )
+    const nav = getByRole('navigation', { name: 'Primary navigation' })
+    fireEvent.mouseEnter(nav)
+    expect(getByText('Roster')).toBeTruthy()
+    expect(getByText('Cockpit')).toBeTruthy()
+  })
+
+  it('hides nav labels after sidebar hover ends', () => {
+    const { getByRole, queryByText } = render(
+      <AppShell user={BASE_USER} profile={BASE_PROFILE} />
+    )
+    const nav = getByRole('navigation', { name: 'Primary navigation' })
+    fireEvent.mouseEnter(nav)
+    fireEvent.mouseLeave(nav)
+    expect(queryByText('Roster')).toBeNull()
+  })
+
+  it('shows full Performance label when expanded', () => {
+    const { getByRole, getByText } = render(
+      <AppShell user={BASE_USER} profile={BASE_PROFILE} />
+    )
+    const nav = getByRole('navigation', { name: 'Primary navigation' })
+    fireEvent.mouseEnter(nav)
+    expect(getByText('Performance')).toBeTruthy()
+  })
+
+  it('shows username in avatar row when expanded', () => {
+    const { getByRole, getByText } = render(
+      <AppShell
+        user={{ uid: 'u1', email: 'test@example.com', name: 'Abhisek' }}
+        profile={BASE_PROFILE}
+      />
+    )
+    const nav = getByRole('navigation', { name: 'Primary navigation' })
+    fireEvent.mouseEnter(nav)
+    expect(getByText('Abhisek')).toBeTruthy()
   })
 })
