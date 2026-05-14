@@ -23376,3 +23376,71 @@ session_close:
       change: "MP.2 mirror update (M8-E-S1 closed state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-F-S1
+  cowork_thread_name: "MARSYS-M8-F-S1 | Nadi+BNN Ingestion | MSR v4.0 (543 signals)"
+  opened_at: "2026-05-14T18:45:00+05:30"
+  macro_phase: M8
+  sub_phase: M8-F
+  active_phase_plan: PHASE_M8_PLAN_v1_0.md
+  session_objective: "Ingest Nadi + BNN tier-4 texts; extract predictive signals via Gemini; expand MSR to v4_0 with net-new Nadi/BNN signals; update governance artifacts"
+  may_touch:
+    - "08_CLASSICAL_CROSS_REFERENCE/**"
+    - "platform/migrations/056_*"
+    - "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  must_not_touch:
+    - "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+    - "platform/src/**"
+    - "01_FACTS_LAYER/**"
+  red_team_due: false
+  red_team_counter_at_open: 1
+
+session_body:
+  work_completed:
+    - "Applied migration 056_classical_tier4.sql: ALTER TABLE classical_texts CHECK constraint to allow tier IN (1,2,3,4)"
+    - "Authored + ran ingest_bhrigu_nandi_nadi.py: 391 chunks, 100% embedded, GCS L8/classical_texts/nadi_bnn/bhrigu_nandi_nadi_chunks.jsonl"
+    - "Authored + ran ingest_chandra_kala_nadi.py: 658 chunks, 100% embedded, GCS L8/classical_texts/nadi_bnn/chandra_kala_nadi_chunks.jsonl. Procurement gap resolved via archive.org advanced search API (identifiers: in.ernet.dli.2015.489053, j-90370-r-santhanam-deva-keralam-chandra-kala-nadi-2004-vol-3)"
+    - "Authored + ran ingest_dhruva_nadi_sampler.py: 150 chunks, 100% embedded, GCS L8/classical_texts/nadi_bnn/dhruva_nadi_sampler_chunks.jsonl. Procurement resolved via satyajatakamdhruvanadiramans.k.astrology_202003_357_T identifier (455KB djvu.txt)"
+    - "Authored + ran run_nadi_signal_extraction.py: Gemini 2.5-flash extraction; MAX_TOKENS issue fixed (max_output_tokens=8192, SAMPLE_EVERY=15, MAX_CHUNKS_PER_TEXT=30)"
+    - "BNN_SIGNAL_EXTRACTION_v1_0.md: 107 signals from Bhrigu Nandi Nadi, all high-confidence ≥0.60"
+    - "NADI_SIGNAL_EXTRACTION_v1_0.md: 4 signals from Chandra Kala Nadi (2) + Dhruva Nadi (2)"
+    - "MSR_EXPANSION_PROPOSAL_v1_0.md: 29 net-new signals proposed (SIG.MSR.515–543); dedup argument documented; AC.M8F.5 PASS declared"
+    - "MSR_v4_0.md authored: copy of MSR_v3_0.md with updated frontmatter (v4_0, 543 signals) + §VII Nadi + BNN (29 signals)"
+    - "MSR_v4_0.md uploaded to GCS: gs://madhav-marsys-sources/L2_5/MSR_v4_0.md"
+    - "CAPABILITY_MANIFEST.json updated: MSR entry v4_0/543; 8 new entries (ingest scripts ×3, run_nadi_signal_extraction, BNN extraction, Nadi extraction, MSR expansion proposal); entry_count 104→112"
+  key_decisions:
+    - "Dedup criterion: BNN sequential transit analysis (Jupiter contacts Rahu first, then Saturn) is structurally distinct from Parashari yoga framework — all 29 signals pass dedup"
+    - "Nadi/BNN signals are §VII of MSR, not a new registry — they extend the unified MSR corpus"
+    - "Dhruva Nadi classified as tier=4 sampler (lenient threshold 100 chunks) with 150 chunks — PASS"
+
+session_close:
+  session_id: M8-F-S1
+  closed_at: "2026-05-14T21:00:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8F.1: "PASS — migration 056_classical_tier4.sql applied; tier=4 constraint; 3 new Nadi/BNN texts"
+    AC.M8F.2: "PASS — BNN ingestion: 391 chunks, 100% embedded, GCS uploaded"
+    AC.M8F.3: "PASS — Chandra Kala Nadi: 658 chunks, 100% embedded, GCS uploaded"
+    AC.M8F.4: "PASS — Dhruva Nadi sampler: 150 chunks, 100% embedded, GCS uploaded"
+    AC.M8F.5: "PASS — 29 net-new signals (SIG.MSR.515–543); dedup confirmed; 29 >> 15 threshold"
+    AC.M8F.6: "PASS — MSR_v4_0.md authored (543 signals); §VII Nadi + BNN complete; GCS uploaded"
+    AC.M8F.7: "PASS — CAPABILITY_MANIFEST updated: MSR→v4_0; 8 new entries; entry_count 104→112"
+    AC.M8F.8: "PASS — SESSION_LOG M8-F-S1 appended"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 mirror update (M8-F-S1 closed; M8-G INCOMING; MSR v4_0 published)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-F-S1 closed state block)"
+  session_close_valid: true
+```

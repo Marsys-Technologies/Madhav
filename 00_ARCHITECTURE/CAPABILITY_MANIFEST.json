@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T18:30:00+05:30",
+  "generated_at": "2026-05-14T21:00:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 104,
+  "entry_count": 112,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -159,8 +159,8 @@
     },
     {
       "canonical_id": "MSR",
-      "path": "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md",
-      "version": "3.1",
+      "path": "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
+      "version": "4.0",
       "status": "CURRENT",
       "layer": "L2.5",
       "expose_to_chat": true,
@@ -168,7 +168,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "182fb3843b063d56919be4b22ca66ce5c26709a7593f5dad17c44281a45456a7",
+      "fingerprint": "m8f-s1-msr-v4-543signals",
       "native_id": "abhisek",
       "preferred_for": [
         "factual",
@@ -1532,6 +1532,97 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
       "note": "Classical claim inventory: per-text confirms/contradicts/partial/extends/silent counts; interpretation section"
+    },
+    {
+      "canonical_id": "INGEST_BHRIGU_NANDI_NADI",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_bhrigu_nandi_nadi.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["script"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "Ingestion script for Bhrigu Nandi Nadi tier-4 text; 391 chunks 100% embedded"
+    },
+    {
+      "canonical_id": "INGEST_CHANDRA_KALA_NADI",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_chandra_kala_nadi.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["script"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "Ingestion script for Chandra Kala Nadi tier-4 text; 658 chunks 100% embedded"
+    },
+    {
+      "canonical_id": "INGEST_DHRUVA_NADI_SAMPLER",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_dhruva_nadi_sampler.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["script"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "Ingestion script for Dhruva Nadi sampler tier-4 text; 150 chunks 100% embedded"
+    },
+    {
+      "canonical_id": "RUN_NADI_SIGNAL_EXTRACTION",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/run_nadi_signal_extraction.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["script"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "Gemini 2.5-flash extraction script; 107 BNN + 4 Nadi signals extracted"
+    },
+    {
+      "canonical_id": "BNN_SIGNAL_EXTRACTION",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/BNN_SIGNAL_EXTRACTION_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence ≥0.60"
+    },
+    {
+      "canonical_id": "NADI_SIGNAL_EXTRACTION",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/NADI_SIGNAL_EXTRACTION_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "4 Nadi signals from Chandra Kala Nadi (2) + Dhruva Nadi (2)"
+    },
+    {
+      "canonical_id": "MSR_EXPANSION_PROPOSAL",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/MSR_EXPANSION_PROPOSAL_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-F-S1",
+      "note": "29 net-new signal proposal SIG.MSR.515–543; dedup argument vs existing 514; AC.M8F.5 PASS"
     }
   ]
 }

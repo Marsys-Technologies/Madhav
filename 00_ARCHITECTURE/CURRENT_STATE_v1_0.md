@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.8
+version: 5.9
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.9 (2026-05-14, M8-F-S1):
+    **M8-F-S1 CLOSED. NADI + BNN INGESTION + MSR EXPANSION COMPLETE. MSR v4_0 PUBLISHED: 543 SIGNALS.**
+    Key outcomes: (1) AC.M8F.1 PASS — migration 056_classical_tier4.sql applied; tier=4 CHECK constraint; 3 new Nadi/BNN texts in classical_texts. (2) AC.M8F.2 PASS — BNN ingestion: 391 chunks, 100% embedded, GCS uploaded. (3) AC.M8F.3 PASS — Chandra Kala Nadi ingestion: 658 chunks, 100% embedded, GCS uploaded. (4) AC.M8F.4 PASS — Dhruva Nadi sampler ingestion: 150 chunks, 100% embedded, GCS uploaded. Total Nadi/BNN: 1199 chunks. (5) AC.M8F.5 PASS — 29 net-new signals (SIG.MSR.515–543): 25 BNN + 2 CKN + 1 DHR + 1 cross; dedup confirmed vs existing 514 via trigger-mechanism distinctiveness (BNN sequential transit analysis vs Parashari yoga). (6) AC.M8F.6 PASS — MSR_v4_0.md authored; 543 signals total; §VII Nadi + BNN appended; GCS uploaded to gs://madhav-marsys-sources/L2_5/MSR_v4_0.md. (7) AC.M8F.7 PASS — CAPABILITY_MANIFEST updated: MSR entry promoted to v4_0/543; 8 new entries added (entry_count 104→112). (8) AC.M8F.8 PASS — SESSION_LOG M8-F-S1 appended. Extraction used: Gemini 2.5-flash max_output_tokens=8192 (resolved MAX_TOKENS issue from thinking model); SAMPLE_EVERY=15, MAX_CHUNKS_PER_TEXT=30; 107 BNN + 4 Nadi signals extracted, 29 promoted after dedup.
+    red_team_counter: 2 (M8-F-S1 substantive; IS.8(a) fires at 3 — next IS.8(a) at M8-G-S1 close or M8-H-S1 which is the macro-phase close red-team IS.8(b)).
+    active_phase_plan_sub_phase: M8-F CLOSED. M8-G-S1 INCOMING.
+    last_session_id: M8-F-S1. next_session_objective: M8-G-S1 (Query pipeline integration — wire tools 25+26 into compose_bundle; classical_grounding plan type; disclosure filter; 10 integration tests).
+    file_updated_at: 2026-05-14T21:00:00+05:30. file_updated_by_session: M8-F-S1.
   - v5.8 (2026-05-14, M8-E-S1):
     **M8-E-S1 CLOSED. ATTRIBUTION ENGINE COMPLETE. 420 ATTRIBUTION RECORDS IN DB.**
     Key outcomes: (1) AC.M8E.1 PASS — classical_text_search.ts fully implemented (STUB→CURRENT); 10 unit tests pass (≥8 required). (2) AC.M8E.2 PASS — classical_attribution_lookup.ts fully implemented (STUB→CURRENT); 7 unit tests pass (≥6 required). (3) AC.M8E.3 PASS — 420 rows in classical_attributions table (>>400 threshold); confirms: 21, contradicts: 8, extends: 10, partial: 64, silent: 317. (4) AC.M8E.4 PASS — CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json + .md written to 08_CLASSICAL_CROSS_REFERENCE/. (5) AC.M8E.5 PASS — FINDINGS_M5_CROSS_REF_v1_0.md + FINDINGS_CLASSICAL_CLAIM_v1_0.md written. (6) AC.M8E.6 PASS — run_attribution_pass.py + run_attribution_pass_v2.py + build_registry_from_db.py finalized in corpus/ingestion/scripts/. (7) AC.M8E.7 PASS — CAPABILITY_MANIFEST updated: 2 STUB entries promoted to CURRENT (tools 25+26), 6 new entries added (entry_count 98→104). (8) AC.M8E.8 PASS — SESSION_LOG M8-E-S1 appended. Attribution engine used: Vertex AI text-embedding-004 (768-dim) for signal embeddings, Gemini 2.5-flash (asia-south1) as judge; 4 parallel workers with per-signal fresh DB connections resolved timeout issues; batched judge JSON-truncation issue resolved by single-chunk calls at max_output_tokens=8192.
