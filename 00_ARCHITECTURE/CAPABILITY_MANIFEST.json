@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T21:00:00+05:30",
+  "generated_at": "2026-05-14T23:00:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 112,
+  "entry_count": 117,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1623,6 +1623,71 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
       "note": "29 net-new signal proposal SIG.MSR.515–543; dedup argument vs existing 514; AC.M8F.5 PASS"
+    },
+    {
+      "canonical_id": "CLASSICAL_TEXT_SEARCH_TOOL",
+      "path": "platform/src/lib/retrieve/classical_text_search_tool.ts",
+      "version": "1.0.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["typescript"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-G-S1",
+      "note": "RetrievalTool wrapper for classical_text_search (Tool 25); registered in RETRIEVAL_TOOLS; AC.M8G.1 PASS"
+    },
+    {
+      "canonical_id": "CLASSICAL_ATTRIBUTION_LOOKUP_TOOL",
+      "path": "platform/src/lib/retrieve/classical_attribution_lookup_tool.ts",
+      "version": "1.0.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["typescript"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-G-S1",
+      "note": "RetrievalTool wrapper for classical_attribution_lookup (Tool 26); registered in RETRIEVAL_TOOLS; AC.M8G.2 PASS"
+    },
+    {
+      "canonical_id": "CLASSICAL_DISCLOSURE_FILTER",
+      "path": "platform/src/lib/retrieve/classical_disclosure_filter.ts",
+      "version": "1.0.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["typescript"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-G-S1",
+      "note": "applyClassicalDisclosureFilter() + formatClassicalCitationForSynthesis(); NAP.M8.2 enforcement; AC.M8G.5 PASS"
+    },
+    {
+      "canonical_id": "CLASSICAL_PIPELINE_INTEGRATION_TEST",
+      "path": "platform/tests/classical/classical_pipeline_integration.test.ts",
+      "version": "1.0.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["typescript"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-G-S1",
+      "note": "11 integration tests; all passing; AC.M8G.6 PASS (tsc 0 errors on M8-G files)"
+    },
+    {
+      "canonical_id": "PLANNER_GOLDEN_SET_M8G",
+      "path": "platform/tests/eval/planner_golden_set.json",
+      "version": "1.3",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["json"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-G-S1",
+      "note": "GT.047–GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
     }
   ]
 }

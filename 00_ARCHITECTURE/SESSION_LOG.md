@@ -23444,3 +23444,90 @@ session_close:
       change: "MP.2 mirror update (M8-F-S1 closed state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-G-S1
+  opened_at: "2026-05-14T22:00:00+05:30"
+  phase: M8-G
+  cowork_thread_name: "M8-G-S1 — Classical Pipeline Integration"
+  may_touch:
+    - "platform/src/lib/retrieve/classical_*.ts"
+    - "platform/src/lib/retrieve/index.ts"
+    - "platform/src/lib/retrieve/types.ts"
+    - "platform/src/lib/router/types.ts"
+    - "platform/src/lib/router/retrieval_capability_spec.ts"
+    - "platform/src/lib/pipeline/types.ts"
+    - "platform/src/lib/bundle/types.ts"
+    - "platform/src/lib/prompts/types.ts"
+    - "platform/src/lib/jyotish/domain_labels.ts"
+    - "platform/src/lib/consume/class_suggestions.ts"
+    - "platform/src/app/api/chat/consume/route.ts"
+    - "platform/tests/classical/**"
+    - "platform/tests/eval/planner_golden_set.json"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  must_not_touch:
+    - "01_FACTS_LAYER/**"
+    - "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+    - "platform/src/lib/tools/classical_text_search.ts"
+    - "platform/src/lib/tools/classical_attribution_lookup.ts"
+  red_team_due: false
+
+session_body:
+  objective: "Wire classical tools 25+26 into the query pipeline as RetrievalTool implementations; add classical_grounding query_class; disclosure filter; integration tests."
+  ac_targets:
+    - AC.M8G.1: "classical_text_search_tool.ts RetrievalTool wrapper"
+    - AC.M8G.2: "classical_attribution_lookup_tool.ts RetrievalTool wrapper"
+    - AC.M8G.3: "≥3 classical_grounding golden query entries"
+    - AC.M8G.4: "classical_grounding query_class in all 6+ type definition sites"
+    - AC.M8G.5: "classical_disclosure_filter.ts with public_redacted redaction"
+    - AC.M8G.6: "≥10 integration tests; tsc 0 errors on M8-G files"
+    - AC.M8G.7: "CAPABILITY_MANIFEST updated for M8-G artifacts (entry_count 112→117)"
+    - AC.M8G.8: "SESSION_LOG M8-G-S1 appended"
+  key_outputs:
+    - "platform/src/lib/retrieve/classical_text_search_tool.ts (NEW)"
+    - "platform/src/lib/retrieve/classical_attribution_lookup_tool.ts (NEW)"
+    - "platform/src/lib/retrieve/classical_disclosure_filter.ts (NEW)"
+    - "platform/tests/classical/classical_pipeline_integration.test.ts (NEW — 11 tests)"
+    - "platform/tests/eval/planner_golden_set.json (GT.047–GT.049 classical_grounding added)"
+    - "platform/src/lib/retrieve/index.ts (RETRIEVAL_TOOLS extended to 24 tools)"
+    - "platform/src/lib/retrieve/types.ts (classical_grounding added)"
+    - "platform/src/lib/router/types.ts (classical_grounding + sidecar param objects)"
+    - "platform/src/lib/router/retrieval_capability_spec.ts (20 entries)"
+    - "platform/src/lib/pipeline/types.ts (QueryClassEnum + PipelinePlanInputJsonSchema)"
+    - "platform/src/lib/bundle/types.ts (QueryClass union)"
+    - "platform/src/lib/prompts/types.ts (QueryClass union)"
+    - "platform/src/lib/jyotish/domain_labels.ts (QueryClass union + QUERY_CLASS_LABELS)"
+    - "platform/src/lib/consume/class_suggestions.ts (classical_grounding suggestions)"
+    - "platform/src/app/api/chat/consume/route.ts (LegacyQueryPlanShape + toolStepType)"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json (5 new entries; entry_count 112→117)"
+  test_results: "28/28 tests passing in tests/classical/ (3 files); tsc 0 errors on M8-G files (pre-existing admin/aiops + deleted-module errors unchanged)"
+
+session_close:
+  session_id: M8-G-S1
+  closed_at: "2026-05-14T23:30:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8G.1: "PASS — classical_text_search_tool.ts implemented + registered in RETRIEVAL_TOOLS"
+    AC.M8G.2: "PASS — classical_attribution_lookup_tool.ts implemented + registered in RETRIEVAL_TOOLS"
+    AC.M8G.3: "PASS — GT.047–GT.049 classical_grounding golden entries (49 total in golden set)"
+    AC.M8G.4: "PASS — classical_grounding in all 6+ QueryClass definition sites; LegacyQueryPlanShape + class_suggestions updated"
+    AC.M8G.5: "PASS — classical_disclosure_filter.ts; public_redacted verse redaction; formatClassicalCitationForSynthesis()"
+    AC.M8G.6: "PASS — 28/28 tests passing; tsc 0 M8-G errors (3 pre-existing unrelated errors unchanged)"
+    AC.M8G.7: "PASS — CAPABILITY_MANIFEST 5 new entries; entry_count 112→117"
+    AC.M8G.8: "PASS — SESSION_LOG M8-G-S1 appended"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 mirror update (M8-G-S1 closed; M8-H INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-G-S1 closed state block)"
+  session_close_valid: true
+```
