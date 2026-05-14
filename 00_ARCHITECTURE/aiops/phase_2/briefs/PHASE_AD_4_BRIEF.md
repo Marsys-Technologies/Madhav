@@ -52,16 +52,20 @@ gate is green, AD.5 flips the flag.
 
 ### may_touch
 ```
-platform/src/lib/adapters/legacy_runAdapter.ts # NEW — wraps existing streamText path
-platform/src/lib/synthesis/**                  # migrate
-platform/src/app/api/chat/consume/**           # migrate
-platform/src/lib/aiops/probe/**                # migrate
-platform/scripts/aiops/**                      # migrate
-platform/scripts/eval/**                       # migrate
-platform/scripts/checkpoint/**                 # migrate
-platform/src/lib/models/resolver.ts            # thin deepseekProviderOptions / googleProviderOptions to pass-through wrappers
-platform/src/lib/synthesis/think_block_filter.ts # DELETE
-platform/src/lib/adapters/__tests__/equivalence/* # NEW
+platform/src/lib/adapters/**                       # legacy_runAdapter + equivalence tests
+platform/src/lib/synthesis/**                       # migrate single_model_strategy, panel/*, think_block_filter deletion
+platform/src/app/api/chat/**                        # consume + build routes (build/route.ts uses streamText for SSE)
+platform/src/app/api/consume/**                     # suggestions/context/route.ts uses generateText
+platform/src/app/api/performance/**                 # judge/route.ts uses generateText
+platform/src/lib/aiops/probe/**                     # probe runner
+platform/src/lib/checkpoints/**                     # checkpoint_4_5/5_5/8_5.ts (corrected — original brief said scripts/)
+platform/src/lib/conversations/**                   # title.ts
+platform/src/lib/pipeline/**                        # pipeline_planner, planner_context_builder
+platform/src/lib/models/resolver.ts                 # thin deepseekProviderOptions/googleProviderOptions to legacy passthrough
+platform/src/lib/models/health.ts                   # migrate to runAdapter
+platform/scripts/aiops/**                           # cutover_smoke, probe_health_cron migrations
+platform/scripts/eval/**                            # any eval entrypoints
+00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md  # NEW inventory file authored at §3.1
 CLAUDECODE_BRIEF.md
 ```
 
@@ -138,6 +142,32 @@ const interaction = await runAdapter({
 })
 // Use interaction.reasoning, interaction.finalText directly — no more <think> parsing
 ```
+
+### Three adapter entry points — choose per call site type:
+
+| Call site pattern | Entry point | Why |
+|---|---|---|
+| `generateText({ ... })` — single-shot non-streaming, with or without tools | `runAdapter(req)` | Collects the stream into a `ModelInteraction`. Synchronous-feeling API. |
+| `streamText({ ... })` — single-shot streaming consumed by custom event handlers (not AI SDK UI) | `streamAdapter(req)` | Returns `ReadableStream<ModelInteractionEvent>` with typed events. |
+| `streamText({ ... })` — agentic loop with `stopWhen: stepCountIs(N)`, OR streaming response piped via `result.toUIMessageStreamResponse()` to SSE | `streamAdapterRaw(req)` → `{ result, meta }` | Returns the AI SDK `StreamTextResult` directly. Caller uses `.toUIMessageStreamResponse()` (SSE) or reads `.fullStream` (custom multi-step handling). Provider quirks still applied by the adapter. |
+
+#### Per-site migration pattern map:
+
+| Call site | Entry point | Key options to pass |
+|---|---|---|
+| `synthesis/single_model_strategy.ts` (multi-step + audit) | `streamAdapterRaw` | `multiStep: { maxSteps: 5 }`, `smoothStream: true`, `onStepFinish`, `onFinish` |
+| `synthesis/panel_strategy.ts` (panel verbatim passthrough) | `streamAdapterRaw` | `multiStep` as needed; caller pipes `result` to its own consumer |
+| `synthesis/panel/member_runner.ts` (single panel member) | `runAdapter` | tools, temperature |
+| `synthesis/panel/adjudicator.ts` (final adjudication) | `runAdapter` | tools (if any), responseSchema (if structured output) |
+| `pipeline/pipeline_planner.ts` (tool-choice required) | `runAdapter` | `tools`, `toolChoice: 'required'` (or `{ type: 'tool', toolName }`) |
+| `pipeline/planner_context_builder.ts` (single generateText for context) | `runAdapter` | no special options |
+| `app/api/chat/consume/route.ts` (SSE pipe) | `streamAdapterRaw` | `multiStep` (synthesis under it), `onStepFinish`, `onFinish` for audit; then `return result.toUIMessageStreamResponse()` |
+| `app/api/chat/build/route.ts` (SSE pipe) | `streamAdapterRaw` | same SSE pattern |
+| `aiops/probe/runner.ts` | `runAdapter` | minimal — single call, no tools |
+| `checkpoints/checkpoint_{4_5,5_5,8_5}.ts` | `runAdapter` | minimal |
+| `conversations/title.ts` | `runAdapter` | minimal |
+| `models/health.ts` | `runAdapter` | minimal |
+| `scripts/retrieval/test_classify.ts` | `runAdapter` | as needed |
 
 Migrate in this order (low-risk first):
 1. `platform/src/lib/aiops/probe/runner.ts`
