@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.2",
-  "description": "Golden test set for the MARSYS-JIS query planner. 29 labeled query → expected_tool_plan pairs across 6 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) — the 8 primary tools the LLM-first planner is allowed to call. Extended at BHISMA-W2-S-D close (2026-05-03) to satisfy the brief's predictive≥5 + edge_case≥5 floor (added GT.026 dasha-timing predictive; GT.027 empty-query, GT.028 single-punctuation, GT.029 overloaded-holistic edge cases).",
+  "description": "Golden test set for the MARSYS-JIS query planner. 52 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools.",
   "native_context": {
     "name": "Abhisek Mohanty",
     "birth_date": "1984-02-05",
@@ -19,7 +19,8 @@
     "factual": 3,
     "discovery": 3,
     "cross_domain": 3,
-    "deferred": 1
+    "deferred": 1,
+    "multi_school_triangulation": 3
   },
   "available_tools": [
     "remedial_codex_query",
@@ -29,7 +30,11 @@
     "resonance_register",
     "cluster_atlas",
     "cgm_graph_walk",
-    "vector_search"
+    "vector_search",
+    "classical_text_search",
+    "classical_attribution_lookup",
+    "multi_school_signal_lookup",
+    "convergence_score_lookup"
   ],
   "field_notes": {
     "query_class": "One of the QueryPlan enum values (factual | interpretive | predictive | cross_domain | discovery | holistic | remedial | cross_native).",
@@ -747,10 +752,22 @@
       "query": "What is my lagna?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["msr_sql"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["cgm_graph_walk", "cluster_atlas", "resonance_register", "vector_search"],
-      "required_asset_ids": ["FORENSIC", "CGM"],
+      "expected_tools": [
+        "msr_sql"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "cgm_graph_walk",
+        "cluster_atlas",
+        "resonance_register",
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
       "notes": "R-FACT: single chart-lookup — one msr_sql call, no synthesis_guidance, no discovery register. expected_output_shape: single_answer."
     },
     {
@@ -758,10 +775,21 @@
       "query": "Which house is Jupiter placed in?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["msr_sql"],
-      "required_tools": ["msr_sql"],
-      "forbidden_tools": ["vector_search", "pattern_register", "cgm_graph_walk"],
-      "required_asset_ids": ["FORENSIC", "CGM"],
+      "expected_tools": [
+        "msr_sql"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
       "notes": "R-FACT: positional chart lookup — one msr_sql call sufficient. No interpretation layer needed."
     },
     {
@@ -769,10 +797,21 @@
       "query": "What gemstone does the Marakacharya prescribe for Venus?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["remedial_codex_query"],
-      "required_tools": ["remedial_codex_query"],
-      "forbidden_tools": ["msr_sql", "vector_search", "pattern_register"],
-      "required_asset_ids": ["FORENSIC", "CGM"],
+      "expected_tools": [
+        "remedial_codex_query"
+      ],
+      "required_tools": [
+        "remedial_codex_query"
+      ],
+      "forbidden_tools": [
+        "msr_sql",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
       "notes": "R-FACT codex-lookup branch: remedial codex query, not chart analysis. No msr_sql needed."
     },
     {
@@ -780,10 +819,25 @@
       "query": "What's the most interesting or unusual thing about my chart?",
       "query_class": "discovery",
       "category": "discovery",
-      "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas"],
-      "required_tools": ["pattern_register", "contradiction_register"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas"
+      ],
+      "required_tools": [
+        "pattern_register",
+        "contradiction_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R-DISC: open-ended discovery — all four L2.5 registers. No domain anchor so msr_sql is not added. Open exploration language triggers all four registers."
     },
     {
@@ -791,10 +845,26 @@
       "query": "Surprise me — what patterns in my chart haven't I asked about yet?",
       "query_class": "discovery",
       "category": "discovery",
-      "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas"],
-      "required_tools": ["pattern_register", "cluster_atlas"],
-      "forbidden_tools": ["remedial_codex_query", "msr_sql"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas"
+      ],
+      "required_tools": [
+        "pattern_register",
+        "cluster_atlas"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "msr_sql"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R-DISC: classic discovery trigger ('surprise me', 'patterns'). No domain signal — msr_sql explicitly forbidden. All four L2.5 registers required."
     },
     {
@@ -802,10 +872,26 @@
       "query": "What stands out in my career domain that I might be overlooking?",
       "query_class": "discovery",
       "category": "discovery",
-      "expected_tools": ["pattern_register", "contradiction_register", "resonance_register", "cluster_atlas", "msr_sql"],
-      "required_tools": ["pattern_register", "msr_sql"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "pattern_register",
+        "contradiction_register",
+        "resonance_register",
+        "cluster_atlas",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "pattern_register",
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R-DISC with domain anchor: discovery query naming 'career' domain — msr_sql added at priority 3 per R-DISC exception rule. All four L2.5 registers remain required."
     },
     {
@@ -813,10 +899,23 @@
       "query": "How does my Mars affect both my career and my relationships?",
       "query_class": "cross_domain",
       "category": "cross_domain",
-      "expected_tools": ["msr_sql", "vector_search"],
-      "required_tools": ["msr_sql", "vector_search"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R-CDOM: two named domains (career, relationships) — msr_sql + vector_search x2 (one per domain). No explicit interaction language so cgm_graph_walk not required."
     },
     {
@@ -824,10 +923,25 @@
       "query": "What is the relationship between my spiritual growth and financial stability in my chart?",
       "query_class": "cross_domain",
       "category": "cross_domain",
-      "expected_tools": ["msr_sql", "vector_search", "cgm_graph_walk"],
-      "required_tools": ["msr_sql", "vector_search"],
-      "forbidden_tools": ["remedial_codex_query", "pattern_register"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "msr_sql",
+        "vector_search",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "vector_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R-CDOM: two named domains + 'relationship between' interaction language — cgm_graph_walk added at priority 2 per R-CDOM. vector_search fires once per domain."
     },
     {
@@ -835,10 +949,25 @@
       "query": "Tell me how career, health, and relationships are connected in my chart.",
       "query_class": "cross_domain",
       "category": "cross_domain",
-      "expected_tools": ["msr_sql", "vector_search", "cgm_graph_walk"],
-      "required_tools": ["msr_sql", "cgm_graph_walk"],
-      "forbidden_tools": ["remedial_codex_query", "pattern_register"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "msr_sql",
+        "vector_search",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "cgm_graph_walk"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R-CDOM: three named domains + 'connected' interaction language — cgm_graph_walk required per explicit interaction trigger. msr_sql + vector_search fire per domain."
     },
     {
@@ -846,11 +975,26 @@
       "query": "Will there be any significant lunar eclipses affecting me in the next 3 months?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["vector_search", "cgm_graph_walk"],
-      "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
-      "required_plan_fields": ["time_window"],
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "cgm_graph_walk"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ],
+      "required_plan_fields": [
+        "time_window"
+      ],
       "notes": "R-TW1: eclipse keyword in predictive query — time_window must be populated with 90-day forward window. planets: ['Moon']. R7c transit ban: vector_search forbidden. required_plan_fields asserts time_window presence in emitted plan."
     },
     {
@@ -858,11 +1002,27 @@
       "query": "What can I expect during my Mercury antardasha from 2025 to 2027?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["vector_search", "remedial_codex_query"],
-      "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
-      "required_plan_fields": ["time_window", "dasha_context_required"],
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ],
+      "required_plan_fields": [
+        "time_window",
+        "dasha_context_required"
+      ],
       "notes": "R-TW2: named antardasha (Mercury) + explicit date range (2025–2027) — time_window: {start: '2025-01-01', end: '2027-12-31'}, dasha_context_required: true. required_plan_fields asserts both fields populated."
     },
     {
@@ -870,11 +1030,29 @@
       "query": "Map out the architectural role of my Atmakaraka and Amatyakaraka across all major yogas.",
       "query_class": "holistic",
       "category": "holistic",
-      "expected_tools": ["msr_sql", "cgm_graph_walk", "cluster_atlas", "pattern_register"],
-      "required_tools": ["msr_sql", "cgm_graph_walk"],
-      "forbidden_tools": ["remedial_codex_query", "resonance_register"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
-      "required_plan_fields": ["graph_seed_hints"],
+      "expected_tools": [
+        "msr_sql",
+        "cgm_graph_walk",
+        "cluster_atlas",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "cgm_graph_walk"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
+      "required_plan_fields": [
+        "graph_seed_hints"
+      ],
       "notes": "R-GSH: explicit AK/AmK + yoga mapping — graph_seed_hints must be populated with KRK.* and YOG.* namespace node IDs. required_plan_fields asserts graph_seed_hints presence."
     },
     {
@@ -882,11 +1060,27 @@
       "query": "How do Lakshmi Yoga and Sasha Yoga interact with my current Mercury mahadasha?",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "pattern_register", "cgm_graph_walk"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["remedial_codex_query", "resonance_register"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN"],
-      "required_plan_fields": ["graph_seed_hints"],
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN"
+      ],
+      "required_plan_fields": [
+        "graph_seed_hints"
+      ],
       "notes": "R-GSH: named yogas (Lakshmi Yoga, Sasha Yoga) + named dasha lord (Mercury mahadasha) — graph_seed_hints should include YOG.LAKSHMI, YOG.SASHA, DSH.MD.MERCURY. required_plan_fields asserts graph_seed_hints non-empty."
     },
     {
@@ -894,10 +1088,23 @@
       "query": "When is the most favorable window for career advancement in the next 2 years?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["vector_search", "cgm_graph_walk"],
-      "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "cgm_graph_walk"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ],
       "notes": "R7a: predictive with temporal window — pattern_register required. No transit language so R7c transit ban does not apply; vector_search forbidden regardless (no domain document signal in a timing query)."
     },
     {
@@ -905,10 +1112,23 @@
       "query": "Will my health improve after my Saturn mahadasha ends in 2027?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["msr_sql", "pattern_register"],
-      "required_tools": ["msr_sql", "pattern_register"],
-      "forbidden_tools": ["vector_search", "remedial_codex_query"],
-      "required_asset_ids": ["FORENSIC", "CGM", "LEL"],
+      "expected_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "pattern_register"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL"
+      ],
       "notes": "Mahadasha-end event + health domain + year-anchored → time_window encouraged but not required (year implicit, not explicit range). No remedial prescription asked — remedial_codex_query forbidden."
     },
     {
@@ -916,10 +1136,26 @@
       "query": "Give me an overview of the arc of my life across all major domains.",
       "query_class": "holistic",
       "category": "holistic",
-      "expected_tools": ["msr_sql", "cgm_graph_walk", "cluster_atlas", "pattern_register"],
-      "required_tools": ["msr_sql", "cgm_graph_walk"],
-      "forbidden_tools": ["remedial_codex_query", "resonance_register"],
-      "required_asset_ids": ["FORENSIC", "CGM", "UCN", "CDLM"],
+      "expected_tools": [
+        "msr_sql",
+        "cgm_graph_walk",
+        "cluster_atlas",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "cgm_graph_walk"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "UCN",
+        "CDLM"
+      ],
       "notes": "R14a amended trigger: 'arc of my life' is a new trigger phrase added in QP-S1 for cgm_graph_walk. Variant of GT.017 ('Give me a comprehensive overview of my life path') using synonym phrasing to verify R14a trigger list breadth."
     },
     {
@@ -938,10 +1174,20 @@
       "query": "Which classical texts support the Sasha Mahapurusha Yoga in my chart?",
       "query_class": "classical_grounding",
       "category": "classical_grounding",
-      "expected_tools": ["classical_text_search", "classical_attribution_lookup"],
-      "required_tools": ["classical_text_search"],
-      "forbidden_tools": ["remedial_codex_query", "resonance_register"],
-      "required_asset_ids": ["FORENSIC"],
+      "expected_tools": [
+        "classical_text_search",
+        "classical_attribution_lookup"
+      ],
+      "required_tools": [
+        "classical_text_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "resonance_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
       "notes": "M8-G-S1 classical_grounding golden entry 1. Saturn exalted in Libra (Kendra from Aries lagna) forms Sasha yoga — classical_text_search retrieves BPHS + Phaladeepika passages; classical_attribution_lookup resolves MSR signal attributions. No remedial prescription asked."
     },
     {
@@ -949,10 +1195,19 @@
       "query": "What does BPHS say about Saturn exalted in a Kendra house?",
       "query_class": "classical_grounding",
       "category": "classical_grounding",
-      "expected_tools": ["classical_text_search"],
-      "required_tools": ["classical_text_search"],
-      "forbidden_tools": ["remedial_codex_query", "cgm_graph_walk"],
-      "required_asset_ids": ["FORENSIC"],
+      "expected_tools": [
+        "classical_text_search"
+      ],
+      "required_tools": [
+        "classical_text_search"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query",
+        "cgm_graph_walk"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
       "notes": "M8-G-S1 classical_grounding golden entry 2. Text-keyed direct lookup — schools filter should prefer 'parashari'; classical_text_search with explicit text_key='bphs' or schools=['parashari']. Attribution lookup optional but not required."
     },
     {
@@ -960,11 +1215,83 @@
       "query": "Find classical attributions for the MSR signals around Venus–Rahu conjunction in the 7th house.",
       "query_class": "classical_grounding",
       "category": "classical_grounding",
-      "expected_tools": ["classical_attribution_lookup", "classical_text_search"],
-      "required_tools": ["classical_attribution_lookup"],
-      "forbidden_tools": ["remedial_codex_query"],
-      "required_asset_ids": ["FORENSIC", "MSR"],
+      "expected_tools": [
+        "classical_attribution_lookup",
+        "classical_text_search"
+      ],
+      "required_tools": [
+        "classical_attribution_lookup"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR"
+      ],
       "notes": "M8-G-S1 classical_grounding golden entry 3. Signal-first lookup — planner must resolve relevant MSR signal IDs (Venus-Rahu-7H cluster) and pass them to classical_attribution_lookup. Secondarily classical_text_search for broader corpus passage retrieval."
+    },
+    {
+      "id": "GT.050",
+      "query": "How do all 7 Jyotish schools read my career prospects?",
+      "query_class": "multi_school_triangulation",
+      "category": "multi_school_triangulation",
+      "expected_tools": [
+        "multi_school_signal_lookup",
+        "convergence_score_lookup"
+      ],
+      "required_tools": [
+        "multi_school_signal_lookup",
+        "convergence_score_lookup"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR"
+      ],
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 1. Planner must call both tools: multi_school_signal_lookup for CAREER topic coverage by school, convergence_score_lookup for CAREER convergence metrics. Expected domains=['CAREER']."
+    },
+    {
+      "id": "GT.051",
+      "query": "Where do Parashari, Jaimini, and KP agree on my relationship domain? Show me the convergence metrics.",
+      "query_class": "multi_school_triangulation",
+      "category": "multi_school_triangulation",
+      "expected_tools": [
+        "multi_school_signal_lookup",
+        "convergence_score_lookup"
+      ],
+      "required_tools": [
+        "convergence_score_lookup"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR"
+      ],
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 2. Schools filter=[parashari, jaimini, kp]. Domain=RELATIONSHIP. convergence_score_lookup is required; multi_school_signal_lookup optional but expected."
+    },
+    {
+      "id": "GT.052",
+      "query": "What is the inter-school convergence score for my spiritual domain? Are there any divergent schools?",
+      "query_class": "multi_school_triangulation",
+      "category": "multi_school_triangulation",
+      "expected_tools": [
+        "convergence_score_lookup"
+      ],
+      "required_tools": [
+        "convergence_score_lookup"
+      ],
+      "forbidden_tools": [
+        "remedial_codex_query"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 3. Domain=SPIRITUAL only. Planner must call convergence_score_lookup. Answer should surface Yogini divergence (neutral vs positive consensus) and is_divergent=false."
     }
   ],
   "_schema_version": "1.2"

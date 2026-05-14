@@ -367,6 +367,7 @@ export async function POST(request: Request) {
       | 'remedial'
       | 'cross_native'
       | 'classical_grounding'
+      | 'multi_school_triangulation'
     domains: string[]
     forward_looking: boolean
     audience_tier:

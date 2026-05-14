@@ -53,6 +53,11 @@ export const CLASS_SUGGESTIONS: Record<QueryClass, string[]> = {
     'What does BPHS say about Saturn exalted in Libra in the 10th house?',
     'Find classical attributions for the Venus–Rahu conjunction interpretation.',
   ],
+  multi_school_triangulation: [
+    'How do all 7 Jyotish schools read my career prospects?',
+    'Where do Parashari, Jaimini, and KP agree on my relationship domain?',
+    'What is the inter-school convergence score for my spiritual domain?',
+  ],
 }
 
 export const CLASS_TAB_ORDER: QueryClass[] = [

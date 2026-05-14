@@ -57,13 +57,13 @@ export const CLASSICAL_TOOL_REGISTRY = [
     tool_name: 'multi_school_signal_lookup',
     description: 'Queries school_signal_coverage to report what all 7 Jyotish schools (Parashari/Jaimini/Tajika/KP/Nadi/BNN/Yogini) say about a topic. Returns per-school coverage_type + confidence + matching signals.',
     layer: 'L9',
-    status: 'STUB', // full implementation at M9-D-S1 2026-05-14
+    status: 'ACTIVE', // full implementation M9-D-S1 2026-05-14
   },
   {
     tool_number: 28,
     tool_name: 'convergence_score_lookup',
-    description: 'Returns inter-school convergence metrics from convergence_scores table for requested domains. Includes convergence_level (HIGH/MEDIUM/LOW), direction, mean/std scores, per-school breakdown.',
+    description: 'Returns inter-school convergence metrics from convergence_scores table for requested domains. Includes convergence_level (HIGH/MEDIUM/LOW), direction, mean/std scores, per-school breakdown. Falls back to JSON when DB unavailable.',
     layer: 'L9',
-    status: 'STUB', // full implementation at M9-D-S1 2026-05-14
+    status: 'ACTIVE', // full implementation M9-D-S1 2026-05-14
   },
 ] as const

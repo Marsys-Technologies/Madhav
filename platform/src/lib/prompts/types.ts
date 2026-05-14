@@ -8,6 +8,7 @@ export type QueryClass =
   | 'remedial'
   | 'cross_native'
   | 'classical_grounding'
+  | 'multi_school_triangulation'
 
 export type AudienceTier = 'super_admin' | 'acharya_reviewer' | 'client' | 'public_redacted'
 

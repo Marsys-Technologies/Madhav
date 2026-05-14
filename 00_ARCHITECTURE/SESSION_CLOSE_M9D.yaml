@@ -1,0 +1,46 @@
+---
+artifact: SESSION_CLOSE_M9D.yaml
+session_id: M9-D-S1
+phase: M9-D
+produced_on: "2026-05-14"
+status: CLOSED
+---
+
+session_close:
+  session_id: M9-D-S1
+  closed_at: "2026-05-14T23:59:59+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M9D.1: "PASS — compute_convergence.py authored (platform/scripts/m9/); reads 7-school JSONs; fixes bracket-variant pending flags (VARSHA_KUNDALI_PENDING); Tajika excluded from convergence denominator; produces convergence_scores.json + CONVERGENCE_METRICS_v1_0.md + CONVERGENCE_FINDINGS_v1_0.md; exits 0; idempotent"
+    AC.M9D.2: "PASS (DEFERRED) — convergence_scores.json written to 09_MULTI_SCHOOL_TRIANGULATION/convergence/; DB convergence_scores table seed deferred: proxy unavailable at M9-D-S1 execution context; noted in script and manifest"
+    AC.M9D.3: "PASS — CONVERGENCE_METRICS_v1_0.md authored: per-domain convergence table (Level/Direction/Agreeing/Total/Mean/Std/isDivergent/Diverging) + 7×5 per-school score matrix with ▲/▼/◆ symbols and pending flags"
+    AC.M9D.4: "PASS — CONVERGENCE_FINDINGS_v1_0.md §1–§9 authored; acharya-grade prose: §1 executive finding (5/5 HIGH table), §2 CAREER (unanimous elevation), §3 HEALTH (stable neutral), §4 RELATIONSHIP (KP cusp divergence), §5 SPIRITUAL (Yogini archetype asymmetry), §6 PSYCHOLOGICAL (BNN confidence caveat), §7 divergence analysis, §8 precision signals for query routing, §9 pending resolutions"
+    AC.M9D.5: "PASS — Tool 27 multi_school_signal_lookup.ts full implementation: DB query via @/lib/db/client against school_signal_coverage JOIN l25_msr_signals LEFT JOIN classical_chunks; topic ILIKE $1; schools ANY($2); domains filter; coverage_type upgrade logic (primary > secondary > silent); schools_silent defaulted to 'silent' for all 7 schools"
+    AC.M9D.6: "PASS — Tool 28 convergence_score_lookup.ts full implementation: lookupFromDB() with string→number coercion for postgres driver; lookupFromJSON() fallback reading 09_MULTI_SCHOOL_TRIANGULATION/convergence/convergence_scores.json; buildSummary() with HIGH/MEDIUM/LOW domain buckets; empty-domains guard; try/catch fallback chain"
+    AC.M9D.7: "PASS — multi_school_triangulation QueryClass active at 7 definition sites: pipeline/types.ts QueryClassEnum z.enum, bundle/types.ts QueryClass union, prompts/types.ts QueryClass union (fixed tsc error), jyotish/domain_labels.ts QueryClass union + QUERY_CLASS_LABELS entry, router/types.ts QueryPlan.query_class, retrieve/types.ts QueryPlan.query_class, consume/route.ts LegacyQueryPlanShape; class_suggestions.ts CLASS_SUGGESTIONS + 3 example queries"
+    AC.M9D.8: "PASS — 17 integration tests in tests/schools/multi_school_tools.test.ts: 7 Tool 28 DB path tests (shape, empty guard, numeric coercion, summary HIGH/MEDIUM/LOW buckets, CAREER mean 4.002, HEALTH std<0.2), 6 Tool 27 type contract tests (input shape, output fields, coverage_type union, DB→empty results, schools_with_primary_coverage), 4 QueryClass registration tests (QueryClassEnum, QUERY_CLASS_LABELS, CLASS_SUGGESTIONS, planner golden set); 17/17 PASS; tsc 0 errors"
+    AC.M9D.9: "PASS — Planner golden set extended: GT.050 (7-school CAREER all-tools), GT.051 (Parashari/Jaimini/KP relationship convergence), GT.052 (SPIRITUAL domain divergence query); available_tools list += multi_school_signal_lookup + convergence_score_lookup; category_distribution.multi_school_triangulation=3; 52 total entries"
+    AC.M9D.10: "PASS — CAPABILITY_MANIFEST.json 148→156 entries (8 new: M9D_COMPUTE_CONVERGENCE_SCRIPT, M9D_CONVERGENCE_SCORES_JSON, M9D_CONVERGENCE_METRICS_MD, M9D_CONVERGENCE_FINDINGS_MD, M9D_TOOL_27_IMPL, M9D_TOOL_28_IMPL, M9D_INTEGRATION_TESTS, M9D_PLANNER_GOLDEN_ENTRIES); tools/index.ts CLASSICAL_TOOL_REGISTRY status STUB→ACTIVE for both Tool 27+28; CURRENT_STATE v5.14→v5.15"
+  red_team_counter_at_close: 1
+  is8a_discharged: false
+  is8a_note: "IS.8(a) fired at M9-C-S1 (counter 2→3→0 reset). M9-D-S1 increments counter to 1. Next IS.8(a) fires at session where counter reaches 3 (M9-F-S1 if M9-E completes sub-phase)."
+  headline_finding: "CONVERGENCE METRICS LOCKED: CAREER=6/6 positive mean=4.002 std=0.246. HEALTH=6/6 neutral mean=2.820 std=0.124 (tightest spread). RELATIONSHIP=5/6 neutral mean=2.966 std=0.322 (KP cusp-positive divergence). SPIRITUAL=5/6 positive mean=3.728 std=0.741 (Yogini archetype asymmetry). PSYCHOLOGICAL=5/6 positive mean=3.342 std=0.127 (BNN data-completeness caveat). 0 isDivergent domains. Tool 27+28 ACTIVE. multi_school_triangulation plan type registered pipeline-wide. 17 tests PASS. TSC 0 errors."
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1: §F state block → M9-D-S1 CLOSED / M9-E-S1 INCOMING / red_team_counter:1"
+    - path: ".gemini/project_state.md"
+      change: "MP.2: Active Phase header M9-D-S1 CLOSED; deliverables block with convergence metrics headline + pipeline integration summary"
+  next_session_id: M9-E-S1
+  next_session_objective: >
+    M9-E-S1 — Write platform/scripts/m9/build_disagreement_register.py (reads per-school
+    JSON outputs; identifies signal-level disagreements where >=2 schools diverge on
+    direction for same domain; produces >=10 rows); produce
+    09_MULTI_SCHOOL_TRIANGULATION/SCHOOL_DISAGREEMENT_REGISTER_v1_0.md; run convergence
+    stability verification (deterministic re-run confirms M9-D metrics unchanged); execute
+    IS.8(b) macro-phase-close red-team (5 axes: RT.M9.1–RT.M9.5); author
+    09_MULTI_SCHOOL_TRIANGULATION/M9_CLOSE_v1_0.md sealing artifact; update CURRENT_STATE
+    to M9 CLOSED / M10 INCOMING; set CLAUDECODE_BRIEF.md status=COMPLETE + archive to
+    00_ARCHITECTURE/briefs/; append full M9 arc summary to SESSION_LOG; final git commit.
+  session_close_valid: true

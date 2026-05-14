@@ -50,8 +50,9 @@ export const QueryClassEnum = z.enum([
   'discovery',     // open-ended exploration — what's interesting / what stands out
   'holistic',      // comprehensive overview, all-domain synthesis, chart-wide themes
   'remedial',      // prescriptions: gemstones, mantras, rituals, propitiation
-  'cross_native',        // comparative analysis across multiple birth charts
-  'classical_grounding', // classical text source verification + citation (M8)
+  'cross_native',              // comparative analysis across multiple birth charts
+  'classical_grounding',       // classical text source verification + citation (M8)
+  'multi_school_triangulation', // inter-school convergence analysis across 7 Jyotish schools (M9)
 ])
 
 export type QueryClass = z.infer<typeof QueryClassEnum>

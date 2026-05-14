@@ -26,11 +26,19 @@ _Last updated: 2026-05-14 at M9-A-S1 (**M9 MACRO-PHASE OPEN — Multi-School Tri
 - **L4 Discovery impact:** **None.** Phase O lives at the platform observability layer. Gemini L4 Discovery work continues unaffected.
 - **Phase-O+1 follow-ups (logged, not blocking):** pg-cursor migration of `queryUsageForExportStream()` for true SQL streaming; MAD-based parallel anomaly detector; DNS-rebinding defence on `validateWebhookUrl()`; cost-per-quality rubric wiring once Learning Layer is in place.
 
-## Active Phase: M9 — OPEN (M9-C-S1 CLOSED 2026-05-14; M9-D-S1 INCOMING)
+## Active Phase: M9 — OPEN (M9-D-S1 CLOSED 2026-05-14; M9-E-S1 INCOMING)
 
-**M9 MACRO-PHASE OPEN — Multi-School Triangulation.** M8 CLOSED 2026-05-14 at M8-H-S1. `PHASE_M9_PLAN_v1_0.md` v1.0 CURRENT. M9-A-S1 + M9-B-S1 + M9-C-S1 all CLOSED 2026-05-14.
+**M9 MACRO-PHASE OPEN — Multi-School Triangulation.** M8 CLOSED 2026-05-14 at M8-H-S1. `PHASE_M9_PLAN_v1_0.md` v1.0 CURRENT. M9-A-S1 + M9-B-S1 + M9-C-S1 + M9-D-S1 all CLOSED 2026-05-14.
 
 **M9-C-S1 (2026-05-14) deliverables COMPLETE — 35-RUN ANALYSIS + ALL 5 DOMAINS HIGH CONVERGENCE + IS.8(a) PASS:** run_multi_school_analysis.py executed (35 runs, 7 schools × 5 domains, exits 0). MULTI_SCHOOL_ANALYSIS_v1_0.md §1–§11 authored (executive summary, per-school verdicts, cross-school matrix, domain convergence analysis, deferred items). 7 school JSON files written to 09_MULTI_SCHOOL_TRIANGULATION/. DB insertion + GCS upload DEFERRED (proxy unavailable). HEADLINE: 5/5 domains HIGH convergence (6/6 effective schools): CAREER=6/6 positive mean=4.002; HEALTH=6/6 neutral mean=2.820; RELATIONSHIP=5/6 neutral mean=2.966; SPIRITUAL=5/6 positive mean=3.728; PSYCHOLOGICAL=5/6 positive mean=3.342. 0 isDivergent domains. IS.8(a) PASS 5/5 axes (no fabricated scores; convergence formula fidelity; pending flag propagation; layer separation; no Anthropic API). 0 CRITICAL/HIGH/MEDIUM. CAPABILITY_MANIFEST 139→148. red_team_counter: 2→3→0 (IS.8(a) DISCHARGED).
+
+**M9-D-S1 (2026-05-14) deliverables COMPLETE — CONVERGENCE METRICS LOCKED + TOOL 27+28 ACTIVE + PIPELINE INTEGRATION + 17 TESTS PASS:**
+- `compute_convergence.py`: reads 7-school JSONs; CAREER 6/6 positive mean=4.002; HEALTH 6/6 neutral mean=2.820; RELATIONSHIP 5/6 neutral; SPIRITUAL 5/6 positive; PSYCHOLOGICAL 5/6 positive; 0 isDivergent
+- `CONVERGENCE_METRICS_v1_0.md` + `CONVERGENCE_FINDINGS_v1_0.md` §1–§9 (acharya-grade narrative)
+- Tool 27 + Tool 28 full implementations replacing M9-A stubs; tools/index.ts STUB→ACTIVE
+- `multi_school_triangulation` QueryClass at 8 definition sites + class_suggestions.ts
+- GT.050–052 planner golden entries; 52 total; CAPABILITY_MANIFEST 156 entries
+- 17 integration tests PASS; tsc 0 errors; red_team_counter: 1
 
 **M9-B-S1 (2026-05-14) deliverables COMPLETE — 7 SCHOOL ENGINES + CONVERGENCE CALCULATOR + 78 UNIT TESTS:** types.ts + engine_utils.ts + 7 engine files (parashari/jaimini/tajika/kp/nadi/bnn/yogini) + convergence_calculator.ts + school_runner.ts. 78/78 vitest PASS. 7 SPEC docs. CAPABILITY_MANIFEST 128→139. red_team_counter: 1→2.
 

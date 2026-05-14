@@ -1,0 +1,290 @@
+{
+  "schema_version": "1.0",
+  "session_id": "M9-D-S1",
+  "produced_on": "2026-05-14",
+  "convergence_formula": {
+    "HIGH": ">= 5 effective schools agree direction",
+    "MEDIUM": "4 effective schools agree direction",
+    "LOW": "< 4 effective schools agree direction",
+    "isDivergent": ">= 2 schools contradict plurality direction"
+  },
+  "schools_total_effective": 6,
+  "schools_excluded": [
+    "tajika (CF.M9.1 VARSHA_KUNDALI_PENDING)"
+  ],
+  "scores": [
+    {
+      "domain": "CAREER",
+      "schools_total": 6,
+      "schools_agreeing": 6,
+      "convergence_level": "HIGH",
+      "direction": "positive",
+      "mean_domain_score": 4.0017,
+      "std_domain_score": 0.2463,
+      "is_divergent": false,
+      "schools_diverging": [],
+      "schools_contradicting": [],
+      "schools_excluded": [
+        "tajika"
+      ],
+      "per_school_scores": {
+        "parashari": 4.308,
+        "jaimini": 4.161,
+        "tajika": 3.254,
+        "kp": 4.12,
+        "nadi": 4.02,
+        "bnn": 3.544,
+        "yogini": 3.857
+      },
+      "per_school_directions": {
+        "parashari": "positive",
+        "jaimini": "positive",
+        "tajika": "positive",
+        "kp": "positive",
+        "nadi": "positive",
+        "bnn": "positive",
+        "yogini": "positive"
+      },
+      "per_school_pending_flags": {
+        "parashari": [],
+        "jaimini": [],
+        "tajika": [
+          "[VARSHA_KUNDALI_PENDING]"
+        ],
+        "kp": [],
+        "nadi": [],
+        "bnn": [
+          "[TRANSIT_DATA_PENDING]"
+        ],
+        "yogini": []
+      },
+      "computed_at": "2026-05-14T16:33:59.120794+00:00",
+      "run_date": "2026-05-14",
+      "pending_notes": [
+        "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
+        "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+      ],
+      "convergence_narrative": "CAREER: HIGH convergence \u2014 6/6 effective schools read POSITIVE (mean=4.002). CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6) CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+    },
+    {
+      "domain": "HEALTH",
+      "schools_total": 6,
+      "schools_agreeing": 6,
+      "convergence_level": "HIGH",
+      "direction": "neutral",
+      "mean_domain_score": 2.8203,
+      "std_domain_score": 0.1237,
+      "is_divergent": false,
+      "schools_diverging": [],
+      "schools_contradicting": [],
+      "schools_excluded": [
+        "tajika"
+      ],
+      "per_school_scores": {
+        "parashari": 2.81,
+        "jaimini": 2.966,
+        "tajika": 2.67,
+        "kp": 2.875,
+        "nadi": 2.939,
+        "bnn": 2.72,
+        "yogini": 2.612
+      },
+      "per_school_directions": {
+        "parashari": "neutral",
+        "jaimini": "neutral",
+        "tajika": "neutral",
+        "kp": "neutral",
+        "nadi": "neutral",
+        "bnn": "neutral",
+        "yogini": "neutral"
+      },
+      "per_school_pending_flags": {
+        "parashari": [],
+        "jaimini": [],
+        "tajika": [
+          "[VARSHA_KUNDALI_PENDING]"
+        ],
+        "kp": [],
+        "nadi": [],
+        "bnn": [
+          "[TRANSIT_DATA_PENDING]"
+        ],
+        "yogini": []
+      },
+      "computed_at": "2026-05-14T16:33:59.120968+00:00",
+      "run_date": "2026-05-14",
+      "pending_notes": [
+        "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
+        "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+      ],
+      "convergence_narrative": "HEALTH: HIGH convergence \u2014 6/6 effective schools read NEUTRAL (mean=2.820). CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6) CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+    },
+    {
+      "domain": "RELATIONSHIP",
+      "schools_total": 6,
+      "schools_agreeing": 5,
+      "convergence_level": "HIGH",
+      "direction": "neutral",
+      "mean_domain_score": 2.9665,
+      "std_domain_score": 0.3222,
+      "is_divergent": false,
+      "schools_diverging": [
+        "kp"
+      ],
+      "schools_contradicting": [
+        "kp"
+      ],
+      "schools_excluded": [
+        "tajika"
+      ],
+      "per_school_scores": {
+        "parashari": 3.117,
+        "jaimini": 3.037,
+        "tajika": 2.904,
+        "kp": 3.284,
+        "nadi": 3.047,
+        "bnn": 3.042,
+        "yogini": 2.272
+      },
+      "per_school_directions": {
+        "parashari": "neutral",
+        "jaimini": "neutral",
+        "tajika": "neutral",
+        "kp": "positive",
+        "nadi": "neutral",
+        "bnn": "neutral",
+        "yogini": "neutral"
+      },
+      "per_school_pending_flags": {
+        "parashari": [],
+        "jaimini": [],
+        "tajika": [
+          "[VARSHA_KUNDALI_PENDING]"
+        ],
+        "kp": [],
+        "nadi": [],
+        "bnn": [
+          "[TRANSIT_DATA_PENDING]"
+        ],
+        "yogini": []
+      },
+      "computed_at": "2026-05-14T16:33:59.120990+00:00",
+      "run_date": "2026-05-14",
+      "pending_notes": [
+        "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
+        "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+      ],
+      "convergence_narrative": "RELATIONSHIP: HIGH convergence \u2014 5/6 effective schools read NEUTRAL (mean=2.966). Diverging: kp (non-plurality direction). CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6) CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+    },
+    {
+      "domain": "SPIRITUAL",
+      "schools_total": 6,
+      "schools_agreeing": 5,
+      "convergence_level": "HIGH",
+      "direction": "positive",
+      "mean_domain_score": 3.7283,
+      "std_domain_score": 0.741,
+      "is_divergent": false,
+      "schools_diverging": [
+        "yogini"
+      ],
+      "schools_contradicting": [],
+      "schools_excluded": [
+        "tajika"
+      ],
+      "per_school_scores": {
+        "parashari": 4.241,
+        "jaimini": 4.046,
+        "tajika": 3.548,
+        "kp": 4.04,
+        "nadi": 4.244,
+        "bnn": 3.672,
+        "yogini": 2.127
+      },
+      "per_school_directions": {
+        "parashari": "positive",
+        "jaimini": "positive",
+        "tajika": "positive",
+        "kp": "positive",
+        "nadi": "positive",
+        "bnn": "positive",
+        "yogini": "neutral"
+      },
+      "per_school_pending_flags": {
+        "parashari": [],
+        "jaimini": [],
+        "tajika": [
+          "[VARSHA_KUNDALI_PENDING]"
+        ],
+        "kp": [],
+        "nadi": [],
+        "bnn": [
+          "[TRANSIT_DATA_PENDING]"
+        ],
+        "yogini": []
+      },
+      "computed_at": "2026-05-14T16:33:59.121009+00:00",
+      "run_date": "2026-05-14",
+      "pending_notes": [
+        "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
+        "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+      ],
+      "convergence_narrative": "SPIRITUAL: HIGH convergence \u2014 5/6 effective schools read POSITIVE (mean=3.728). Diverging: yogini (non-plurality direction). CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6) CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+    },
+    {
+      "domain": "PSYCHOLOGICAL",
+      "schools_total": 6,
+      "schools_agreeing": 5,
+      "convergence_level": "HIGH",
+      "direction": "positive",
+      "mean_domain_score": 3.342,
+      "std_domain_score": 0.1272,
+      "is_divergent": false,
+      "schools_diverging": [
+        "bnn"
+      ],
+      "schools_contradicting": [],
+      "schools_excluded": [
+        "tajika"
+      ],
+      "per_school_scores": {
+        "parashari": 3.378,
+        "jaimini": 3.528,
+        "tajika": 2.942,
+        "kp": 3.355,
+        "nadi": 3.348,
+        "bnn": 3.095,
+        "yogini": 3.348
+      },
+      "per_school_directions": {
+        "parashari": "positive",
+        "jaimini": "positive",
+        "tajika": "neutral",
+        "kp": "positive",
+        "nadi": "positive",
+        "bnn": "neutral",
+        "yogini": "positive"
+      },
+      "per_school_pending_flags": {
+        "parashari": [],
+        "jaimini": [],
+        "tajika": [
+          "[VARSHA_KUNDALI_PENDING]"
+        ],
+        "kp": [],
+        "nadi": [],
+        "bnn": [
+          "[TRANSIT_DATA_PENDING]"
+        ],
+        "yogini": []
+      },
+      "computed_at": "2026-05-14T16:33:59.121024+00:00",
+      "run_date": "2026-05-14",
+      "pending_notes": [
+        "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
+        "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+      ],
+      "convergence_narrative": "PSYCHOLOGICAL: HIGH convergence \u2014 5/6 effective schools read POSITIVE (mean=3.342). Diverging: bnn (non-plurality direction). CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6) CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
+    }
+  ]
+}
