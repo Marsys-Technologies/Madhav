@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T15:56:00+05:30",
+  "generated_at": "2026-05-14T18:30:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 98,
+  "entry_count": 104,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1319,8 +1319,8 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_classical_text_search",
       "path": "platform/src/lib/tools/classical_text_search.ts",
-      "version": "1.0-stub",
-      "status": "STUB",
+      "version": "1.0",
+      "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": true,
       "representations": [
@@ -1332,13 +1332,14 @@
       "tool_number": 25,
       "tool_description": "Semantic search over classical Jyotish text corpus (pgvector cosine similarity). Returns top-K chunks with chapter, verse_range, confidence_baseline.",
       "produced_during": "M8-A-S1",
-      "note": "STUB \u2014 full impl in M8-E-S1"
+      "updated_during": "M8-E-S1",
+      "note": "Full impl M8-E-S1: Vertex AI text-embedding-004 (768-dim) + pgvector cosine; GoogleAuth ADC; 10 unit tests PASS"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_classical_attribution_lookup",
       "path": "platform/src/lib/tools/classical_attribution_lookup.ts",
-      "version": "1.0-stub",
-      "status": "STUB",
+      "version": "1.0",
+      "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": true,
       "representations": [
@@ -1350,7 +1351,8 @@
       "tool_number": 26,
       "tool_description": "Structured lookup: MSR signal_ids \u2192 classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
       "produced_during": "M8-A-S1",
-      "note": "STUB \u2014 full impl in M8-E-S1"
+      "updated_during": "M8-E-S1",
+      "note": "Full impl M8-E-S1: JOIN classical_attributions\u2192classical_chunks\u2192classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_bphs",
@@ -1450,6 +1452,86 @@
       "status": "CURRENT",
       "description": "Brihat Samhita ingestion; V. Subrahmanya Sastri; 757 chunks; 98.4% embedded",
       "produced_during": "M8-D-S1"
+    },
+    {
+      "id": "ATTRIBUTION_SCRIPT_run_attribution_pass",
+      "type": "ATTRIBUTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/run_attribution_pass.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["python"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-E-S1",
+      "note": "Full attribution pass: Vertex AI text-embedding-004 × 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge → classical_attributions table"
+    },
+    {
+      "id": "ATTRIBUTION_SCRIPT_build_registry_from_db",
+      "type": "ATTRIBUTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/build_registry_from_db.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["python"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-E-S1",
+      "note": "Reads classical_attributions table → produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM"
+    },
+    {
+      "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["json"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-E-S1",
+      "note": "Machine-readable attribution registry: 420 records (407+ rows); coverage_by_tier + attribution_type_summary + per-signal attributions"
+    },
+    {
+      "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY_MD",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-E-S1",
+      "note": "Narrative companion to CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json; type/tier breakdowns + sample records"
+    },
+    {
+      "canonical_id": "FINDINGS_M5_CROSS_REF",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/FINDINGS_M5_CROSS_REF_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-E-S1",
+      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal × text × verse breakdown"
+    },
+    {
+      "canonical_id": "FINDINGS_CLASSICAL_CLAIM",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/FINDINGS_CLASSICAL_CLAIM_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-E-S1",
+      "note": "Classical claim inventory: per-text confirms/contradicts/partial/extends/silent counts; interpretation section"
     }
   ]
 }

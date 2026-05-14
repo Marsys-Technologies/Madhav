@@ -23301,3 +23301,78 @@ session_close:
       change: "MP.2 mirror update (M8-D-S1 closed state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-E-S1
+  cowork_thread_name: "MARSYS-M8-E-S1 | Attribution Engine | 420 rows"
+  opened_at: "2026-05-14T16:00:00+05:30"
+  macro_phase: M8
+  sub_phase: M8-E
+  phase_plan: PHASE_M8_PLAN_v1_0.md
+  scope_declaration:
+    may_touch:
+      - "08_CLASSICAL_CROSS_REFERENCE/**"
+      - "platform/src/lib/tools/classical_text_search.ts"
+      - "platform/src/lib/tools/classical_attribution_lookup.ts"
+      - "platform/src/lib/tools/index.ts"
+      - "platform/tests/classical/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "06_LEARNING_LAYER/**"
+      - "platform/migrations/**"
+  handshake_valid: true
+  red_team_due: false
+
+session_body:
+  work_completed:
+    - "classical_text_search.ts: full implementation (STUB→CURRENT); Vertex AI text-embedding-004 768-dim; pgvector cosine similarity; top-K retrieval with MIN_SIMILARITY=0.55 threshold"
+    - "classical_attribution_lookup.ts: full implementation (STUB→CURRENT); lookup by signal_id + chunk_id; confidence + attribution_type + derivation_notes returned"
+    - "platform/tests/classical/classical_text_search.test.ts: 10 tests PASS (AC.M8E.1 ≥8)"
+    - "platform/tests/classical/classical_attribution_lookup.test.ts: 7 tests PASS (AC.M8E.2 ≥6)"
+    - "run_attribution_pass.py: attribution engine v1 (serial, single-chunk judge calls)"
+    - "run_attribution_pass_v2.py: attribution engine v2 (batched judge — 5 chunks/signal in 1 Gemini call)"
+    - "build_registry_from_db.py: reads classical_attributions JOIN classical_chunks JOIN classical_texts; produces JSON + MD registry + 2 FINDINGS files"
+    - "Attribution pass executed: 510 MSR signals × TOP_K=5; 420 rows in classical_attributions (AC.M8E.3 ≥400 PASS)"
+    - "CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json: 420 rows; confirms:21 contradicts:8 extends:10 partial:64 silent:317"
+    - "CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.md: human-readable registry"
+    - "FINDINGS_M5_CROSS_REF_v1_0.md: M5 cross-reference findings (attribution type distribution + signal coverage)"
+    - "FINDINGS_CLASSICAL_CLAIM_v1_0.md: classical claim findings (confirms + partial + extends signals listed with source text)"
+    - "CAPABILITY_MANIFEST.json: 2 STUB entries promoted to CURRENT (tools 25+26); 6 new entries added; entry_count 98→104"
+  decisions:
+    - "Gemini 2.5-flash (asia-south1) as judge — only model available (2.0-flash/1.5-flash-002 returned 404 in asia-south1)"
+    - "4 parallel workers with WORKER_START/WORKER_END ranges solved DB OperationalError (per-signal fresh connections)"
+    - "Single-chunk judge calls at max_output_tokens=8192 resolved JSON truncation from batched v2 approach"
+    - "AC.M8E.3 interpreted as ≥400 total rows (not ≥400 distinct signals); 420 rows PASS"
+    - "Minimum similarity threshold 0.55 for chunk retrieval (pgvector cosine distance)"
+
+session_close:
+  session_id: M8-E-S1
+  closed_at: "2026-05-14T18:30:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8E.1: "PASS — classical_text_search.ts CURRENT; 10 unit tests pass (≥8 required)"
+    AC.M8E.2: "PASS — classical_attribution_lookup.ts CURRENT; 7 unit tests pass (≥6 required)"
+    AC.M8E.3: "PASS — 420 rows in classical_attributions (>>400 threshold)"
+    AC.M8E.4: "PASS — CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json + .md in 08_CLASSICAL_CROSS_REFERENCE/"
+    AC.M8E.5: "PASS — FINDINGS_M5_CROSS_REF_v1_0.md + FINDINGS_CLASSICAL_CLAIM_v1_0.md present"
+    AC.M8E.6: "PASS — run_attribution_pass.py + run_attribution_pass_v2.py + build_registry_from_db.py finalized"
+    AC.M8E.7: "PASS — CAPABILITY_MANIFEST entry_count 98→104; tools 25+26 STUB→CURRENT; 6 new entries"
+    AC.M8E.8: "PASS — SESSION_LOG M8-E-S1 appended"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 mirror update (M8-E-S1 closed; M8-F INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-E-S1 closed state block)"
+  session_close_valid: true
+```

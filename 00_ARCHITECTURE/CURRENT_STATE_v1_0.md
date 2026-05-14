@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.7
+version: 5.8
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.8 (2026-05-14, M8-E-S1):
+    **M8-E-S1 CLOSED. ATTRIBUTION ENGINE COMPLETE. 420 ATTRIBUTION RECORDS IN DB.**
+    Key outcomes: (1) AC.M8E.1 PASS — classical_text_search.ts fully implemented (STUB→CURRENT); 10 unit tests pass (≥8 required). (2) AC.M8E.2 PASS — classical_attribution_lookup.ts fully implemented (STUB→CURRENT); 7 unit tests pass (≥6 required). (3) AC.M8E.3 PASS — 420 rows in classical_attributions table (>>400 threshold); confirms: 21, contradicts: 8, extends: 10, partial: 64, silent: 317. (4) AC.M8E.4 PASS — CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json + .md written to 08_CLASSICAL_CROSS_REFERENCE/. (5) AC.M8E.5 PASS — FINDINGS_M5_CROSS_REF_v1_0.md + FINDINGS_CLASSICAL_CLAIM_v1_0.md written. (6) AC.M8E.6 PASS — run_attribution_pass.py + run_attribution_pass_v2.py + build_registry_from_db.py finalized in corpus/ingestion/scripts/. (7) AC.M8E.7 PASS — CAPABILITY_MANIFEST updated: 2 STUB entries promoted to CURRENT (tools 25+26), 6 new entries added (entry_count 98→104). (8) AC.M8E.8 PASS — SESSION_LOG M8-E-S1 appended. Attribution engine used: Vertex AI text-embedding-004 (768-dim) for signal embeddings, Gemini 2.5-flash (asia-south1) as judge; 4 parallel workers with per-signal fresh DB connections resolved timeout issues; batched judge JSON-truncation issue resolved by single-chunk calls at max_output_tokens=8192.
+    red_team_counter: 1 (M8-E-S1 substantive; IS.8(a) previously fired at M8-C-S1 close and reset; this is session 2 of 3 before next IS.8(a)).
+    active_phase_plan_sub_phase: M8-E CLOSED. M8-F-S1 INCOMING.
+    last_session_id: M8-E-S1. next_session_objective: M8-F-S1 (Nadi + BNN ingestion — Nadi Nadi Nadi + Brighu Nandi Nadi sources; expand MSR if signals < 514 active; wire classical citation into query pipeline).
+    file_updated_at: 2026-05-14T18:30:00+05:30. file_updated_by_session: M8-E-S1.
   - v5.7 (2026-05-14, M8-D-S1):
     **M8-D-S1 CLOSED. TIER 3 INGESTION COMPLETE. ALL 10 TEXTS LOADED.**
     Key outcomes: (1) AC.M8D.1 PASS — all 5 scripts complete; idempotent; exit 0. (2) AC.M8D.2 PASS — Prashna Marga: 758 chunks 100% embedded. (3) AC.M8D.3 PASS — Hora Sara: 295 chunks 100% embedded. (4) AC.M8D.4 PASS — KP Vols 1-4: 1646 chunks 100% embedded. (5) AC.M8D.5 PASS — Brihat Jataka: 520 chunks 100% embedded. (6) AC.M8D.6 PASS — Brihat Samhita: 757 chunks 98.4% embedded (>>95% threshold; 12 chunks in 1 batch exceeded 20k Vertex limit). (7) AC.M8D.7 PASS — all 5 uploaded to GCS tier3/. (8) AC.M8D.8 PASS — total 7150 chunks across 10 texts (>>3200 threshold). (9) AC.M8D.9 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated.
@@ -5436,8 +5443,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-14T12:00:00+05:30
-  file_updated_by_session: M5-E-S2
+  file_updated_at: 2026-05-14T18:30:00+05:30
+  file_updated_by_session: M8-E-S1
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

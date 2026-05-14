@@ -27,13 +27,13 @@ export const CLASSICAL_TOOL_REGISTRY = [
     tool_name: 'classical_text_search',
     description: 'Semantic search over classical Jyotish text corpus using pgvector cosine similarity. Returns top-K chunks from Tier 1/2/3 texts with chapter, verse_range, and confidence baseline.',
     layer: 'L8',
-    status: 'STUB_M8A', // → ACTIVE after M8-E-S1
+    status: 'ACTIVE', // implemented M8-E-S1 2026-05-14
   },
   {
     tool_number: 26,
     tool_name: 'classical_attribution_lookup',
     description: 'Structured lookup of MSR signal attributions in classical_attributions JOIN classical_chunks JOIN classical_texts. Returns all attributions grouped by text for given signal IDs.',
     layer: 'L8',
-    status: 'STUB_M8A', // → ACTIVE after M8-E-S1
+    status: 'ACTIVE', // implemented M8-E-S1 2026-05-14
   },
 ] as const
