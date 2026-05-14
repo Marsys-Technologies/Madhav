@@ -64,6 +64,7 @@ import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 function toolStepType(toolName: string): TraceStep['step_type'] {
   if (toolName === 'vector_search') return 'vector'
   if (['msr_sql', 'query_msr_aggregate'].includes(toolName)) return 'sql'
+  if (['classical_text_search', 'classical_attribution_lookup'].includes(toolName)) return 'sql'
   return 'gcs'
 }
 
@@ -365,6 +366,7 @@ export async function POST(request: Request) {
       | 'holistic'
       | 'remedial'
       | 'cross_native'
+      | 'classical_grounding'
     domains: string[]
     forward_looking: boolean
     audience_tier:

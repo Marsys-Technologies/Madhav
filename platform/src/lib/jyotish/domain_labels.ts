@@ -26,6 +26,7 @@ export type QueryClass =
   | 'holistic'
   | 'remedial'
   | 'cross_native'
+  | 'classical_grounding'
 
 export const QUERY_CLASS_LABELS: Record<QueryClass, string> = {
   factual: 'Factual',
@@ -36,6 +37,7 @@ export const QUERY_CLASS_LABELS: Record<QueryClass, string> = {
   holistic: 'Holistic',
   remedial: 'Remedial',
   cross_native: 'Cross-Native',
+  classical_grounding: 'Classical Grounding',
 }
 
 /**

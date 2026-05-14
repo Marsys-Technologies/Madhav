@@ -48,6 +48,11 @@ export const CLASS_SUGGESTIONS: Record<QueryClass, string[]> = {
   cross_native: [
     'How does my chart compare with my partner\'s across the 7th house?',
   ],
+  classical_grounding: [
+    'Which classical texts support the Sasha Mahapurusha Yoga in my chart?',
+    'What does BPHS say about Saturn exalted in Libra in the 10th house?',
+    'Find classical attributions for the Venus–Rahu conjunction interpretation.',
+  ],
 }
 
 export const CLASS_TAB_ORDER: QueryClass[] = [

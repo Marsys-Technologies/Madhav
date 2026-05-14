@@ -1,0 +1,3 @@
+# Per-run ingestion logs — GCS is canonical; do not commit logs
+*
+!.gitignore

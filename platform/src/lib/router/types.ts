@@ -15,6 +15,7 @@ export interface QueryPlan {
     | 'holistic'
     | 'remedial'
     | 'cross_native'
+    | 'classical_grounding'
   domains: string[]
   forward_looking: boolean
   audience_tier:
@@ -67,6 +68,13 @@ export interface QueryPlan {
   domain_report_query?: { domains?: string[]; keyword?: string }
   remedial_codex_query?: { planet?: string; practice_type?: string }
   timeline_query?: { dasha_name?: string }
+  // M8-G classical tools sidecar params
+  classical_text_search?: { query?: string; schools?: string[]; tier_max?: number; limit?: number }
+  classical_attribution_lookup?: {
+    signal_ids?: string[]
+    attribution_type?: 'confirms' | 'contradicts' | 'partial' | 'extends' | 'silent'
+    confidence_tier?: 'HIGH' | 'MEDIUM' | 'LOW'
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
