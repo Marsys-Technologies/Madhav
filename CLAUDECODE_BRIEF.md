@@ -1,35 +1,31 @@
 ---
 status: OPEN
-session_id: AIOPS_CO_0
-phase: CO.0
-phase_name: "UX research + design spec authoring"
-next_session: AIOPS_CO_1
+session_id: AIOPS_CO_1
+phase: CO.1
+phase_name: "Chat lifecycle state machine + useChatLifecycle hook"
+next_session: AIOPS_CO_2
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_3_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CO_0
-## AIOps Phase 3, Step 0 — Research + Design Doc
+# CLAUDECODE_BRIEF — AIOPS_CO_1
+## AIOps Phase 3, Step 1 — State machine + event subscription
 
 ---
 
 ## §0 — Executor orientation
 
-CO.0 is design-document-only. No code, no production changes. Produces
-two artifacts that govern the seven subsequent sub-phases:
+CO.1 introduces the single source of truth for chat session state, driven
+entirely by Phase 2's `ModelInteractionEvent` stream. Replaces ad-hoc
+state management in `ConsumeChat.tsx` + `StreamingAnswer.tsx`.
 
-  1. `00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md` — explicit pattern
-     adoption decisions distilled from 8–10 best-in-class chat UIs.
-  2. `00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md` — target state
-     per component (input panel, reasoning slot, sidebar, message bubble,
-     scroll behavior, etc.) referenced by CO.1 onward.
+After CO.1 closes, every UI surface (reasoning panel, tool calls, status
+indicator, final answer) is positioned in a stable DOM slot, populated as
+typed events arrive. This is the foundation for fixing Bug 3.3 (CO.3) and
+all subsequent CO sub-phases.
 
-Master plan: `00_ARCHITECTURE/aiops/phase_3/AIOPS_PHASE_3_MASTER_PLAN_v1_0.md`
-Execution rules: `00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md` (reused)
-
-YOU MUST NOT modify any code in this phase. Only docs.
-YOU MUST NOT call any LLM provider (no model-driven research — use your
-training knowledge of these public UIs).
+Behind feature flag `CONSUME_UI_V2_ENABLED` (default false). Flag-off
+behavior is byte-identical to today.
 
 ---
 
@@ -37,17 +33,16 @@ training knowledge of these public UIs).
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_3/AIOPS_PHASE_3_MASTER_PLAN_v1_0.md (full)
-3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-4. platform/src/lib/adapters/types.ts (Phase 2 shipped contract — read ModelInteractionEvent fully)
-5. platform/src/components/consume/ConsumeChat.tsx
-6. platform/src/components/consume/StreamingAnswer.tsx
-7. platform/src/components/consume/LiveReasoningCard.tsx
-8. platform/src/components/consume/AnswerView.tsx
-9. platform/src/components/consume/PostAnswerProvenance.tsx
-10. platform/src/components/chat/ConversationSidebar.tsx
-11. platform/src/components/consume/TierPicker.tsx
-12. platform/src/app/api/chat/consume/route.ts (the SSE producer)
+2. 00_ARCHITECTURE/aiops/phase_3/AIOPS_PHASE_3_MASTER_PLAN_v1_0.md
+3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md (CO.0 deliverable; §4 state machine)
+4. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (CO.0 deliverable)
+5. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+6. platform/src/lib/adapters/types.ts (ModelInteractionEvent)
+7. platform/src/components/consume/ConsumeChat.tsx (existing state management)
+8. platform/src/components/consume/StreamingAnswer.tsx
+9. platform/src/components/consume/LiveReasoningCard.tsx
+10. platform/src/app/api/chat/consume/route.ts (SSE producer; verify event shape)
+11. platform/src/lib/config/feature_flags.ts (add CONSUME_UI_V2_ENABLED)
 ```
 
 ---
@@ -56,96 +51,119 @@ training knowledge of these public UIs).
 
 ### may_touch
 ```
-00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md       # NEW
-00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md   # NEW
+platform/src/lib/hooks/useChatLifecycle.ts                # NEW
+platform/src/lib/hooks/__tests__/useChatLifecycle.test.ts # NEW
+platform/src/components/consume/lifecycle/**              # NEW dir for state-machine UI primitives
+platform/src/components/consume/ConsumeChat.tsx           # refactor to use the hook
+platform/src/components/consume/StreamingAnswer.tsx       # refactor; remove ad-hoc state
+platform/src/components/consume/__tests__/**              # add new tests
+platform/src/lib/config/feature_flags.ts                  # add CONSUME_UI_V2_ENABLED
+platform/src/app/api/chat/consume/route.ts                # only if SSE shape needs tightening for typed events
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- Any code (platform/src/**, platform/scripts/**)
-- 01_FACTS_LAYER/**, 025_HOLISTIC_SYNTHESIS/**, 06_LEARNING_LAYER/**
-- Phase 2 sealed artifacts (00_ARCHITECTURE/aiops/phase_2/**)
+- platform/src/lib/adapters/**  (Phase 2 sealed)
+- platform/src/lib/synthesis/**  (Phase 2 territory)
+- platform/src/lib/models/**     (Phase 1 + 2)
+- platform/src/lib/components/observatory/**  (sealed)
+- platform/src/components/consume/LiveReasoningCard.tsx  (CO.3 territory)
+- platform/src/components/consume/AnswerView.tsx          (legacy renderer — preserve for forward-only)
+- platform/src/components/chat/ConversationSidebar.tsx   (CO.4 territory)
+- platform/src/components/consume/TierPicker.tsx         (CO.2 territory)
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — UX_RESEARCH_v1_0.md
+### 3.1 — Feature flag
 
-Author with the following sections:
-
-**§1 — Reference set.** Patterns from these 8 products, each in 2–4 sentences
-covering what's worth borrowing:
-- ChatGPT (o1/o3/GPT-5 reasoning UI)
-- Claude.ai (artifact pattern, minimal status pulse)
-- Gemini 2.5 (thinking indicator + collapsible reasoning)
-- Perplexity (progressive status: searching → reading → composing)
-- Cursor / Aider (tool-call chronology + apply-edits)
-- Mistral Le Chat (per-message model badge)
-- Phind (model picker placement + source chips)
-- DeepSeek Chat (reasoning between query and response)
-
-**§2 — Pattern adoption matrix.** Explicit Adopt / Adapt / Reject per pattern,
-with one-line rationale. Examples:
-- Stable reasoning slot from submission → ADOPT (ChatGPT pattern; fixes Bug 3.3)
-- Inline progressive status → ADAPT (Perplexity pattern, with our pipeline stages)
-- Per-message model badge → ADOPT (Mistral pattern; fixes Bug 3.1's capsule requirement)
-- Slash command palette → REJECT (Q7 — deferred to Phase 3+1)
-- Voice input → REJECT (Q7)
-- Multimodal input → REJECT (Q7)
-- Inline artifacts (Claude-style) → REJECT (separate scope; defer)
-
-**§3 — Visual aesthetic anchor.** Single reference choice with rationale.
-Recommend Claude.ai (closest to existing Madhav dark-theme + reading-focused
-content). Note typography scale (target 5–6 sizes max), color discipline
-(no new tokens), motion language (150ms micro, 250ms standard, 400ms entry/exit).
-
-**§4 — State machine source.** The Phase 2 `ModelInteractionEvent` stream is
-the authoritative event source. The chat lifecycle states map 1:1 to event
-types:
+Add to `feature_flags.ts`:
+```ts
+| 'CONSUME_UI_V2_ENABLED'
 ```
-event 'status: queued'      → state 'queued'
-event 'status: planning'    → state 'planning'
-event 'status: retrieving'  → state 'retrieving'
-event 'status: reasoning'   → state 'reasoning'
-event 'reasoning_delta'     → (stay in 'reasoning', append text)
-event 'status: tool_calling'→ state 'tool_calling'
-event 'tool_call'           → (append to chronology)
-event 'tool_result'         → (append to chronology)
-event 'status: composing'   → state 'composing'
-event 'text_delta'          → (stay in 'composing', append text)
-event 'status: complete'    → state 'complete'
-event 'finish'              → (capture interaction; commit to history)
-event 'error'               → state 'error'
+In `DEFAULT_FLAGS`: `CONSUME_UI_V2_ENABLED: false`.
+Flag-off → consume UI behaves identically to today (legacy components mount).
+
+### 3.2 — State machine types
+
+`platform/src/lib/hooks/useChatLifecycle.ts`:
+
+```ts
+export type ChatLifecycleState =
+  | 'idle'
+  | 'queued'
+  | 'planning'
+  | 'retrieving'
+  | 'reasoning'
+  | 'tool_calling'
+  | 'composing'
+  | 'complete'
+  | 'error'
+  | 'cancelled'
+
+export interface ChatLifecycleSnapshot {
+  state: ChatLifecycleState
+  reasoningText: string       // accumulated reasoning_delta events
+  toolCalls: ToolCallRecord[] // chronological tool_call + tool_result pairs
+  finalText: string           // accumulated text_delta events
+  modelMeta: { modelId: string; cost?: number; latencyMs?: number; usage?: any } | null
+  error?: { message: string; code?: string }
+}
+
+export interface UseChatLifecycleOptions {
+  stream: ReadableStream<ModelInteractionEvent> | null
+}
+
+export function useChatLifecycle(opts: UseChatLifecycleOptions): ChatLifecycleSnapshot
 ```
 
-**§5 — Forward-only commitment.** Old assistant messages render with the
-existing AnswerView component (legacy path). New messages use the new
-event-driven components. No migration of historical chat data.
+The hook subscribes to the event stream and produces a snapshot React can
+render. Implementation uses `useReducer` for state transitions; the reducer
+is exported separately for unit testing.
 
-### 3.2 — CONSUME_UI_SPEC_v1_0.md
+### 3.3 — Stable DOM slots
 
-Author with one section per component target state. For each, capture:
-- Current behavior (1–2 sentences)
-- Target behavior (1–2 sentences)
-- Implementing sub-phase (CO.N)
-- Files implicated
+`platform/src/components/consume/lifecycle/`:
 
-Components to cover:
-1. **Input panel** (CO.2) — TierPicker + composer; remove model name display
-2. **Stack selector** (CO.2) — repositioned, consistent alignment under all states
-3. **Sidebar** (CO.4) — ConversationSidebar; hover-expand/collapse, click-pin, mobile overlay
-4. **Reasoning slot** (CO.3) — LiveReasoningCard refactored; anchored DOM position from submission
-5. **Tool calls panel** (CO.3) — new component; collapsible chronology of tool_call + tool_result events
-6. **Status indicator** (CO.1, CO.3) — inline progressive status driven by `status: <state>` events
-7. **Per-message metadata badge** (CO.2) — PostAnswerProvenance evolved; model + cost + latency capsules
-8. **Message bubble** (CO.5) — visual treatment; typography, spacing, color
-9. **Scroll behavior** (CO.6) — anchoring rules during streaming (ChatGPT semantics)
-10. **Focus management** (CO.6) — submit → assistant area; Esc → input; Cmd+K → input
+New sub-components, each with a stable position in the answer container:
+- `StatusPip.tsx` — inline pulse showing current state (queued/planning/retrieving/composing)
+- `ReasoningSlot.tsx` — anchored slot for reasoning text (filled by CO.3)
+- `ToolCallChronology.tsx` — collapsible accordion (filled by CO.3)
+- `FinalAnswerSlot.tsx` — main response area
+- `MetadataBadge.tsx` — model+cost+latency capsule (positioned at end of message; CO.2 evolves)
 
-Add a §X — Design tokens audit subsection summarizing the current Tailwind
-tokens in use across consume/ components, flagging any hardcoded hex values
-that need replacement with tokens during CO.5.
+The slot order is fixed:
+```
+<UserMessage />
+<StatusPip />              {/* visible during processing; hides at 'complete' */}
+<ReasoningSlot />          {/* present iff model.quirks.reasoning_via !== 'none' */}
+<ToolCallChronology />     {/* present iff intermediate.tool_call events emitted */}
+<FinalAnswerSlot />        {/* always present */}
+<MetadataBadge />          {/* present at 'complete' */}
+```
+
+This is the structural fix for Bug 3.3 — every slot exists from submission;
+content streams into it. No layout shift.
+
+### 3.4 — Refactor ConsumeChat + StreamingAnswer
+
+- Replace state derivations in `ConsumeChat.tsx` with `useChatLifecycle(stream)` subscription.
+- Replace ad-hoc rendering in `StreamingAnswer.tsx` with the slot composition above.
+- Behind `CONSUME_UI_V2_ENABLED`: if flag is off, render the OLD components (preserve them).
+- The new component tree mounts only when flag is on.
+
+### 3.5 — Tests
+
+`useChatLifecycle.test.ts`:
+- State transition table — for every (state, event) → (new state, side effects) pair, assert correctness.
+- Reasoning accumulation across multiple `reasoning_delta` events.
+- Tool call chronology preservation (order).
+- Final text accumulation.
+- Error path.
+- ≥25 cases.
+
+Component tests for the lifecycle/ primitives — ≥8 cases (mount, render, slot visibility, model-aware hiding).
 
 ---
 
@@ -153,43 +171,44 @@ that need replacement with tokens during CO.5.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CO0.1 | `UX_RESEARCH_v1_0.md` exists with §1–§5 populated | grep section headers |
-| AC.CO0.2 | Pattern adoption matrix has explicit Adopt/Adapt/Reject for ≥15 patterns | count |
-| AC.CO0.3 | Reject set includes slash commands, voice, multimodal, inline artifacts (per Q7) | grep |
-| AC.CO0.4 | State machine in §4 maps to Phase 2's actual ModelInteractionEvent type union | cross-reference |
-| AC.CO0.5 | `CONSUME_UI_SPEC_v1_0.md` exists with ≥10 component target-state entries | count |
-| AC.CO0.6 | Every entry names its implementing sub-phase (CO.1–CO.6) | grep |
-| AC.CO0.7 | Design tokens audit identifies ≥3 hardcoded values flagged for CO.5 cleanup | grep |
-| AC.CO0.8 | Scope-violation grep | SCOPE_OK |
+| AC.CO1.1 | `useChatLifecycle.ts` exists; exports the hook + types | grep |
+| AC.CO1.2 | State machine has 10 states + transitions for all 7 ModelInteractionEvent types | reducer test |
+| AC.CO1.3 | Lifecycle slot components all exist | `ls lifecycle/` ≥ 5 |
+| AC.CO1.4 | Feature flag CONSUME_UI_V2_ENABLED declared, default false | grep |
+| AC.CO1.5 | With flag off, ConsumeChat + StreamingAnswer render identically to pre-CO.1 main | snapshot test |
+| AC.CO1.6 | Reducer tests: ≥25 cases pass | test count |
+| AC.CO1.7 | typecheck + lint clean | exit 0 |
+| AC.CO1.8 | Scope-violation grep | SCOPE_OK |
 
 ---
 
 ## §5 — Session close
 
-Standard procedure. Commit message:
+Commit:
 ```
-docs(aiops-CO.0): UX research + consume UI spec
+feat(aiops-CO.1): chat lifecycle state machine + useChatLifecycle hook
 
-- UX_RESEARCH_v1_0.md: 8-product reference set, ≥15-pattern adoption matrix,
-  Claude.ai aesthetic anchor, state machine mapped to ModelInteractionEvent.
-- CONSUME_UI_SPEC_v1_0.md: ≥10 component target states, each named for its
-  implementing CO.N sub-phase, design tokens audit flagging hardcoded values
-  for CO.5 cleanup.
-- Q7 reject set captured: slash commands, voice, multimodal, inline artifacts.
-- Forward-only commitment: old messages render with legacy AnswerView.
+- useChatLifecycle: ReadableStream<ModelInteractionEvent> → ChatLifecycleSnapshot
+- 10 states (idle, queued, planning, retrieving, reasoning, tool_calling,
+  composing, complete, error, cancelled) driven by Phase 2 events
+- Lifecycle slot components: StatusPip, ReasoningSlot, ToolCallChronology,
+  FinalAnswerSlot, MetadataBadge — anchored DOM positions from submission
+- ConsumeChat + StreamingAnswer refactored to subscribe to the hook
+- Behind feature flag CONSUME_UI_V2_ENABLED (default false; flag-off identical to today)
+- 25+ reducer tests covering all (state, event) transitions
 
 AC summary: 8/8 PASS
 ```
 
-Rotate `CLAUDECODE_BRIEF.md` → `PHASE_CO_1_BRIEF.md`.
+Rotate `CLAUDECODE_BRIEF.md` → `PHASE_CO_2_BRIEF.md`.
 
 ---
 
-## §6 — BAIL OUT triggers
+## §6 — BAIL OUT
 
-- The Phase 2 ModelInteractionEvent type isn't where expected (the cross-reference in §4 fails to map cleanly).
-- The consume components have evolved since Phase 2 shipped (new components added that aren't in mandatory reads list).
+- The current consume route doesn't emit events conforming to ModelInteractionEvent — the SSE shape changed since Phase 2's design assumed.
+- Refactoring ConsumeChat pulls in >5 unrelated component changes (scope creep).
 
 ---
 
-*End of PHASE_CO_0_BRIEF.md*
+*End of PHASE_CO_1_BRIEF.md*
