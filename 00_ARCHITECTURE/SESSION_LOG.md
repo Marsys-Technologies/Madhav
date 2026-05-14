@@ -23122,3 +23122,63 @@ session_close:
       change: "MP.2 mirror update (M8-A-S1; M8 OPEN state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-B-S1
+  cowork_thread_name: "MARSYS-M8-B-S1 | Tier 1 Ingestion | BPHS + Phaladeepika"
+  opened_at: "2026-05-14T14:40:00+05:30"
+  macro_phase: M8
+  sub_phase: M8-B
+  phase_plan: PHASE_M8_PLAN_v1_0.md
+  scope_declaration:
+    may_touch:
+      - "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "06_LEARNING_LAYER/**"
+      - "platform/src/**"
+  handshake_valid: true
+  red_team_due: false
+
+session_body:
+  work_completed:
+    - "Fixed embed_batch() token budget: len//4 approximation underestimates actual Vertex AI tokens by 1.5-1.8x; reduced max_tokens_per_request default from 18000 to 8000 and added max_chunks_per_batch=15 hard cap"
+    - "Added db_update_embeddings() to ingest_utils.py: batch UPDATE for existing chunks with NULL embeddings (ON CONFLICT DO NOTHING cannot update embeddings for pre-existing rows)"
+    - "BPHS ingestion: 1032 chunks, 100% embedded (768-dim), GCS uploaded to gs://madhav-marsys-sources/L8/classical_texts/tier1/bphs_chunks.jsonl"
+    - "Phaladeepika: upgraded archive.org source from 355KB identifier to in.ernet.dli.2015.406048 (1.37MB djvu.txt); 926 chunks, 100% embedded, GCS uploaded to tier1/phaladeepika_chunks.jsonl"
+    - "DB verified: both rows in classical_texts (tier=1, chunk_count updated); all embeddings NOT NULL"
+  decisions:
+    - "Token approximation safety margin: real Vertex AI tokens are 1.5-1.8x len//4 for Sanskrit/English OCR text; set budget to 8000 approx (~14-16k actual) with 15-chunk hard cap"
+    - "db_update_embeddings() pattern required for idempotent re-runs: ON CONFLICT DO NOTHING preserves existing rows but cannot update embeddings; separate UPDATE pass is the correct approach"
+    - "Phaladeepika source upgrade: first identifier ('Phaladeepika' at 355KB) produced only 176 chunks < 300 threshold; in.ernet.dli.2015.406048 (1.37MB) produces 926 chunks"
+
+session_close:
+  session_id: M8-B-S1
+  closed_at: "2026-05-14T15:25:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8B.1: "PASS — ingest_bphs.py complete; idempotent; exits 0"
+    AC.M8B.2: "PASS — BPHS: 1032 chunks, 100% embedded (>>800 threshold; >>95% embedding threshold)"
+    AC.M8B.3: "PASS — ingest_phaladeepika.py complete; idempotent; exits 0"
+    AC.M8B.4: "PASS — Phaladeepika: 926 chunks, 100% embedded (>>300 threshold; >>95% embedding threshold)"
+    AC.M8B.5: "PASS — Both texts uploaded to GCS L8/classical_texts/tier1/ (bphs_chunks.jsonl + phaladeepika_chunks.jsonl)"
+    AC.M8B.6: "PASS — classical_texts rows: tier=1 for both; chunk_count=1032 (BPHS) + 926 (Phaladeepika)"
+    AC.M8B.7: "PASS — SESSION_LOG M8-B-S1 appended; CAPABILITY_MANIFEST updated with ingest scripts"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1+MP.4 mirror update (M8-B-S1 closed; M8-C INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-B-S1 closed state block)"
+  session_close_valid: true
+```

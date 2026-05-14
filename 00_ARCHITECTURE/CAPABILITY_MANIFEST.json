@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T00:00:00.000Z",
+  "generated_at": "2026-05-14T15:25:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 87,
+  "entry_count": 90,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1351,6 +1351,33 @@
       "tool_description": "Structured lookup: MSR signal_ids \u2192 classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
       "produced_during": "M8-A-S1",
       "note": "STUB \u2014 full impl in M8-E-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_bphs",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_bphs.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "BPHS ingestion script; archive.org djvu.txt source; 1032 chunks; 100% embedded",
+      "produced_during": "M8-B-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_phaladeepika",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_phaladeepika.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Phaladeepika ingestion script; archive.org in.ernet.dli.2015.406048 source; 926 chunks; 100% embedded",
+      "produced_during": "M8-B-S1"
+    },
+    {
+      "id": "INGESTION_UTILS_ingest_utils",
+      "type": "INGESTION_UTILS",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_utils.py",
+      "version": "1.1",
+      "status": "CURRENT",
+      "description": "Shared ingestion utils: chunk_text, clean_html, embed_batch (dynamic batching; 8k approx token budget; 15-chunk cap), db_upsert_text, db_bulk_insert_chunks, db_update_embeddings, gcs_upload_jsonl",
+      "produced_during": "M8-B-S1"
     }
   ]
 }
