@@ -12,7 +12,10 @@ import {
   ArrowLeft,
   Search,
   X,
+  Pin,
+  PinOff,
 } from 'lucide-react'
+import { useSidebarState } from '@/lib/hooks/useSidebarState'
 import {
   isToday,
   isYesterday,
@@ -90,6 +93,7 @@ export function ConversationSidebar({
   onNavigate,
 }: Props) {
   const router = useRouter()
+  const sidebar = useSidebarState()
   const [query, setQuery] = useState('')
   const [renameTarget, setRenameTarget] = useState<{ id: string; current: string } | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -144,48 +148,88 @@ export function ConversationSidebar({
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground">
+    <div
+      className={cn(
+        'flex h-full flex-col bg-sidebar text-sidebar-foreground',
+        'transition-[width] duration-200 ease-out overflow-hidden',
+        sidebar.isMobile
+          ? sidebar.state === 'mobile-open'
+            ? 'fixed inset-0 z-50 w-full'
+            : 'hidden'
+          : sidebar.isExpanded
+            ? 'w-64'
+            : 'w-14',
+      )}
+      onMouseEnter={sidebar.onMouseEnter}
+      onMouseLeave={sidebar.onMouseLeave}
+      data-sidebar-state={sidebar.state}
+    >
       <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground',
+            !sidebar.isExpanded && !sidebar.isMobile && 'justify-center',
+          )}
         >
-          <ArrowLeft className="size-3.5" />
-          <span>Dashboard</span>
+          <ArrowLeft className="size-3.5 shrink-0" />
+          {(sidebar.isExpanded || sidebar.isMobile) && <span>Dashboard</span>}
         </Link>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close sidebar"
-            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:hidden"
-          >
-            <PanelLeft className="size-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {/* Pin button — desktop only */}
+          {!sidebar.isMobile && (
+            <button
+              type="button"
+              onClick={sidebar.onPinToggle}
+              aria-label={sidebar.state === 'pinned-expanded' ? 'Unpin sidebar' : 'Pin sidebar'}
+              aria-pressed={sidebar.state === 'pinned-expanded'}
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-sidebar-accent hover:text-foreground"
+            >
+              {sidebar.state === 'pinned-expanded'
+                ? <PinOff className="size-3" />
+                : <Pin className="size-3" />
+              }
+            </button>
+          )}
+          {/* Close button — mobile only */}
+          {(onClose || sidebar.isMobile) && (
+            <button
+              type="button"
+              onClick={sidebar.isMobile ? sidebar.onMobileToggle : onClose}
+              aria-label="Close sidebar"
+              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:hidden"
+            >
+              <PanelLeft className="size-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {chartName}
-      </div>
+      {(sidebar.isExpanded || sidebar.isMobile) && (
+        <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {chartName}
+        </div>
+      )}
 
       <div className="px-3 pb-2 pt-1">
         <button
           type="button"
           onClick={() => router.push(`/clients/${chartId}/consume`)}
           className={cn(
-            'w-full inline-flex items-center justify-center gap-2 rounded-lg',
+            'w-full inline-flex items-center gap-2 rounded-lg',
             'border border-[var(--brand-gold-hairline)] bg-[var(--brand-charcoal)]/50',
             'px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-cream)]',
             'transition hover:border-[var(--brand-gold)] hover:bg-[var(--brand-charcoal)]/70 hover:text-[var(--brand-gold-light)]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]'
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]',
+            sidebar.isExpanded || sidebar.isMobile ? 'justify-center' : 'justify-center px-2',
           )}
         >
-          <Plus className="size-4" />
-          New conversation
+          <Plus className="size-4 shrink-0" />
+          {(sidebar.isExpanded || sidebar.isMobile) && <span>New conversation</span>}
         </button>
       </div>
 
+      {(sidebar.isExpanded || sidebar.isMobile) && (
       <div className="px-3 pb-2">
         <div className="relative">
           <Search
@@ -212,6 +256,7 @@ export function ConversationSidebar({
           )}
         </div>
       </div>
+      )}
 
       <ScrollArea className="flex-1">
         <div className="px-2 pb-4">
@@ -249,8 +294,13 @@ export function ConversationSidebar({
       </ScrollArea>
 
       <div className="mt-auto border-t border-sidebar-border px-2 py-2">
-        <div className="flex items-center justify-between gap-1 px-1">
-          <span className="text-[11px] text-muted-foreground">MARSYS-JIS</span>
+        <div className={cn(
+          'flex items-center gap-1 px-1',
+          sidebar.isExpanded || sidebar.isMobile ? 'justify-between' : 'justify-center',
+        )}>
+          {(sidebar.isExpanded || sidebar.isMobile) && (
+            <span className="text-[11px] text-muted-foreground">MARSYS-JIS</span>
+          )}
           <ThemeToggle />
         </div>
       </div>
