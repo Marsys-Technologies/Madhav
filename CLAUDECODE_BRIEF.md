@@ -1,23 +1,34 @@
 ---
 status: OPEN
-session_id: AIOPS_CO_4
-phase: CO.4
-phase_name: "Sidebar UX — hover-expand / click-pin (Bug 3.2)"
-next_session: AIOPS_CO_5
+session_id: AIOPS_CO_5
+phase: CO.5
+phase_name: "Visual design pass — typography, spacing, color, motion"
+next_session: AIOPS_CO_6
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_3_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CO_4
-## AIOps Phase 3, Step 4 — Sidebar hover-expand + click-pin (Bug 3.2)
+# CLAUDECODE_BRIEF — AIOPS_CO_5
+## AIOps Phase 3, Step 5 — Visual design pass
 
 ---
 
 ## §0 — Executor orientation
 
-CO.4 fixes Bug 3.2 — left side panel doesn't auto-expand on hover or
-collapse on mouse-out. Target behavior: hover to expand, mouse-out to
-collapse, click to pin (locks in expanded state). Mobile fallback: tap-to-open as an overlay.
+CO.5 is the visual polish pass. Per native Q7: best-in-class visual
+experience is IN SCOPE. Anchor reference: Claude.ai aesthetic (closest to
+existing Madhav dark-theme + reading-focused content per CO.0 UX research).
+
+Five axes:
+  1. Typography scale audit + consolidation
+  2. Spacing rhythm (4/8 px grid)
+  3. Color palette discipline (no new tokens; audit hardcoded hex values)
+  4. Motion language (150 / 250 / 400 ms tiers)
+  5. Component library audit + consolidation
+
+This is JUDGMENT WORK. The brief specifies the targets; the executor makes
+tasteful decisions within them. Bail if a choice feels arbitrary — surface
+it for native review.
 
 Behind `CONSUME_UI_V2_ENABLED`.
 
@@ -27,12 +38,13 @@ Behind `CONSUME_UI_V2_ENABLED`.
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (component 3 — sidebar)
-3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-4. platform/src/components/chat/ConversationSidebar.tsx (target component)
-5. platform/src/components/consume/ConversationHistoryDrawer.tsx (existing drawer pattern)
-6. platform/src/components/shared/AppShell.tsx (parent layout — verify no conflict)
-7. platform/src/lib/utils.ts (cn() class helper)
+2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (component 8 — message bubble; design tokens audit)
+3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md (§3 visual aesthetic anchor)
+4. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+5. platform/tailwind.config.ts (or .js — design tokens source)
+6. platform/src/styles/globals.css (or wherever CSS variables live)
+7. platform/src/components/consume/**  (all components to audit + polish)
+8. Reference: Anthropic brand-guidelines skill — `00_ARCHITECTURE` may have an existing brand audit pattern from Phase 1 CP.4 (CP4_BRAND_AUDIT.md)
 ```
 
 ---
@@ -41,97 +53,102 @@ Behind `CONSUME_UI_V2_ENABLED`.
 
 ### may_touch
 ```
-platform/src/components/chat/ConversationSidebar.tsx     # primary refactor
-platform/src/components/consume/ConsumeChat.tsx           # parent layout hook-up if needed
-platform/src/components/chat/__tests__/**                 # tests
-platform/src/lib/hooks/useSidebarState.ts                 # NEW small hook for pin state
+platform/src/components/consume/**                       # visual treatment
+platform/src/components/chat/**                          # if shared chat primitives need updates
+platform/src/components/shared/**                        # if shared primitives surface in consume UI
+platform/src/styles/**                                    # design tokens + globals
+platform/tailwind.config.*                                # only to ADD new safelist entries; not to add new colors
+00_ARCHITECTURE/aiops/phase_3/CO5_VISUAL_AUDIT.md         # NEW report
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- ConsumeChat content area (CO.1/CO.2/CO.3 sealed)
-- StreamingAnswer, lifecycle/* (CO.1/CO.3 sealed)
-- AppShell parent navigation (separate concern)
-- adapters/, synthesis/
+- adapters/, synthesis/, models/  (Phase 1 + 2 sealed)
+- API routes (no functional changes in CO.5)
+- Behavioral logic (CO.6 territory)
+- New colors or fonts — anything not already in tailwind tokens
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Sidebar state machine
+### 3.1 — Typography audit + consolidation
 
-`platform/src/lib/hooks/useSidebarState.ts`:
+Walk every `text-*`, `font-*`, `leading-*`, `tracking-*` class in
+consume/, chat/, shared/. Compile into a table.
 
-```ts
-export type SidebarState =
-  | 'collapsed'        // narrow rail; only icons visible
-  | 'hover-expanded'   // expanded due to mouse hover; will collapse on mouse-out
-  | 'pinned-expanded'  // user clicked pin; stays expanded
-  | 'mobile-closed'    // overlay closed
-  | 'mobile-open'      // overlay open (full-width slide-in)
+Target: ≤ 6 distinct text sizes used across the consume surface. If more,
+identify which to consolidate. Common scale: `text-xs`, `text-sm`,
+`text-base`, `text-lg`, `text-xl`, `text-2xl`.
 
-export function useSidebarState(): {
-  state: SidebarState
-  isMobile: boolean
-  onMouseEnter: () => void
-  onMouseLeave: () => void
-  onPinToggle: () => void
-  onMobileToggle: () => void
-}
-```
+Font weights: ≤ 3 (normal, medium, semibold).
 
-State transitions:
-- Desktop (≥ 640px):
-  - `collapsed` + mouseEnter → `hover-expanded`
-  - `hover-expanded` + mouseLeave → `collapsed`
-  - any state + pinToggle → `pinned-expanded`
-  - `pinned-expanded` + pinToggle → `collapsed`
-- Mobile (< 640px):
-  - `mobile-closed` + mobileToggle → `mobile-open`
-  - `mobile-open` + mobileToggle → `mobile-closed`
-  - hover events are ignored on mobile
+Author findings + decisions in `CO5_VISUAL_AUDIT.md` §1.
 
-The pin state persists in `localStorage` so it survives page refresh.
+### 3.2 — Spacing rhythm
 
-### 3.2 — Sidebar component
+Walk `p-*`, `m-*`, `gap-*`, `space-*` usage. Verify all values align with
+4/8 px grid (Tailwind's default).
 
-`ConversationSidebar.tsx` refactor:
+Flag any arbitrary values (`p-[13px]` etc.) and either justify or replace
+with the nearest grid value.
 
-- Read state from `useSidebarState()`.
-- Wire `onMouseEnter` / `onMouseLeave` to the sidebar's outermost div.
-- Wire `onPinToggle` to a small pin icon (top of sidebar; corner).
-- Apply Tailwind classes per state:
-  - `collapsed`: `w-14` (narrow rail; icons only)
-  - `hover-expanded` / `pinned-expanded`: `w-64` (full width)
-  - `mobile-open`: `fixed inset-0 w-full z-50` (overlay)
-- Transition: `transition-[width] duration-200 ease-out`.
-- Pin icon: filled when pinned, outlined when not.
-- Conversation list, action buttons, etc. — preserve existing content.
+Author findings in `CO5_VISUAL_AUDIT.md` §2.
 
-### 3.3 — Layout impact
+### 3.3 — Color discipline
 
-When sidebar expands, the chat area should NOT shift right. The sidebar
-should overlay the chat content (z-index above) OR the chat area should
-have stable margin (the chat width is sized for the collapsed sidebar
-width, and hover-expansion overlays). Pick whichever the existing layout
-already uses; favor "overlay on hover, push on pin" for best UX.
+Walk every hex color literal in consume/, chat/, shared/. Each one:
+- If it matches a Tailwind token (semantic or palette), replace inline hex
+  with the token class.
+- If it's a token equivalent (e.g., `#ef4444` = `red-500`), replace.
+- If it has no token equivalent, FLAG it for native review — do NOT
+  introduce a new token in CO.5.
 
-### 3.4 — Mobile breakpoint
+Look at the CP.4 brand audit pattern (Phase 1) for the reference approach.
+Reuse if a similar audit doc exists.
 
-At viewport < 640px:
-- Sidebar collapses to mobile-closed state.
-- A hamburger button in the chat header opens it as a full-screen overlay.
-- Tap outside the sidebar (overlay backdrop) closes it.
-- Hover transitions are disabled (no hover on touch devices).
+Author findings in `CO5_VISUAL_AUDIT.md` §3.
 
-### 3.5 — Tests
+### 3.4 — Motion language
 
-- State machine: every transition tested.
-- Hover open/close timing (assume instant; no debounce).
-- Pin persistence: localStorage write/read.
-- Mobile breakpoint: viewport at 639/640/641 px boundary.
-- Accessibility: keyboard `Tab` reaches pin button; `Enter` toggles.
-- ≥15 cases.
+Three duration tiers:
+- 150ms — micro-interactions (hover, focus, toggle)
+- 250ms — standard transitions (sidebar expand, panel open)
+- 400ms — entry/exit (message bubble appear, modal open)
+
+Walk all `transition-*` and `duration-*` classes. Consolidate to these
+three tiers. Easing: `ease-out` for entries, `ease-in-out` for transitions,
+no spring physics in v1.
+
+Author findings in `CO5_VISUAL_AUDIT.md` §4.
+
+### 3.5 — Component library audit
+
+Identify duplicate UI primitives in consume/ and adjacent dirs. Examples:
+- Multiple button styles (consolidate to 2-3: primary, secondary, ghost)
+- Multiple card patterns (consolidate)
+- Multiple badge/chip styles (likely consolidated already; verify)
+
+For each duplicate found, pick ONE keeper and migrate the others to use
+it. If a duplicate has a justified difference (e.g., audit-specific badge
+vs. message-metadata badge), document the difference.
+
+Author findings in `CO5_VISUAL_AUDIT.md` §5.
+
+### 3.6 — Side-by-side screenshots
+
+Take before/after screenshots of:
+- `/consume` empty state
+- `/consume` mid-stream (a reasoning model query)
+- `/consume` completed message with metadata badge
+- Sidebar collapsed + expanded
+- Per-message capsule expanded
+
+Save under `00_ARCHITECTURE/aiops/phase_3/CO5_SCREENSHOTS/` (gitignored
+after review).
+
+Acceptance: after-screenshots match Claude.ai's polish bar — no obvious
+inconsistencies, no jarring color jumps, no typographic chaos.
 
 ---
 
@@ -139,15 +156,15 @@ At viewport < 640px:
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CO4.1 | useSidebarState hook exists with 5 states + 4 actions | grep |
-| AC.CO4.2 | Hover transitions work at ≥640px viewport | UI test |
-| AC.CO4.3 | Click-to-pin locks expanded state; reload preserves it | localStorage test |
-| AC.CO4.4 | Mobile (< 640px) shows hamburger + overlay; no hover | UI test |
-| AC.CO4.5 | Sidebar transition is smooth (200ms, no jank) | manual + commented test |
-| AC.CO4.6 | Keyboard navigation reaches pin button via Tab | a11y test |
-| AC.CO4.7 | typecheck + lint clean | exit 0 |
-| AC.CO4.8 | ≥15 new tests | count |
-| AC.CO4.9 | Scope-violation grep | SCOPE_OK |
+| AC.CO5.1 | `CO5_VISUAL_AUDIT.md` exists with §1–§5 populated | grep |
+| AC.CO5.2 | Typography scale ≤ 6 sizes documented + enforced | audit |
+| AC.CO5.3 | Spacing values on 4/8 px grid | grep arbitrary values; 0 unflagged |
+| AC.CO5.4 | All hex literals either token-replaced or flagged for native review | grep + audit |
+| AC.CO5.5 | Motion durations consolidated to 150/250/400ms tiers | grep |
+| AC.CO5.6 | No new colors or fonts introduced | brand audit |
+| AC.CO5.7 | Side-by-side screenshots captured (≥5 views) | file count |
+| AC.CO5.8 | typecheck + lint + full test suite green | exit 0 |
+| AC.CO5.9 | Scope-violation grep | SCOPE_OK |
 
 ---
 
@@ -155,27 +172,32 @@ At viewport < 640px:
 
 Commit:
 ```
-feat(aiops-CO.4): fix Bug 3.2 — sidebar hover-expand + click-pin
+feat(aiops-CO.5): visual design pass — typography, spacing, color, motion
 
-- useSidebarState hook: 5-state machine (collapsed, hover-expanded,
-  pinned-expanded, mobile-closed, mobile-open)
-- Hover open/close on desktop; pin state persists via localStorage
-- Mobile (< 640px) falls back to hamburger + full-screen overlay
-- 200ms width transition; no layout shift in chat area
-- 15+ tests covering state machine, persistence, mobile breakpoint, a11y
+- Typography consolidated to 6 sizes + 3 weights (CO5_VISUAL_AUDIT §1)
+- Spacing values verified on 4/8 px grid (§2)
+- Color discipline: hex literals replaced with tokens; N hardcoded values
+  flagged for native review (§3)
+- Motion language: 150 / 250 / 400 ms tiers consolidated (§4)
+- Component library: M duplicates consolidated; remaining differences
+  documented with rationale (§5)
+- Side-by-side screenshots in CO5_SCREENSHOTS/ confirm polish bar
 
 AC summary: 9/9 PASS
 ```
 
-Rotate → CO.5.
+Rotate → CO.6.
 
 ---
 
 ## §6 — BAIL OUT
 
-- ConversationSidebar is rendered inside a parent layout that fights the new state machine (e.g., parent forces width via grid columns).
-- localStorage is not available (test environment quirk); falls back to in-memory but tests need an env shim.
+- A hex literal has no token equivalent AND removing it would degrade UX
+  (e.g., specific health-pip green). Flag for native review; bail.
+- Component consolidation requires changes that ripple beyond consume/
+  (e.g., the button primitive is used by Observatory too).
+- Screenshot tooling unavailable in this environment.
 
 ---
 
-*End of PHASE_CO_4_BRIEF.md*
+*End of PHASE_CO_5_BRIEF.md*
