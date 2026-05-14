@@ -754,7 +754,7 @@ export function ConsumeChat({
             </div>
           </div>
           {!lelContextEnabled && (
-            <div className="mx-4 mb-2 flex items-center gap-2 rounded-md bg-[oklch(0.11_0.010_70)] px-3 py-2 text-xs text-[#fce29a]/85 ring-1 ring-[var(--brand-gold)]/15">
+            <div className="mx-4 mb-2 flex items-center gap-2 rounded-md bg-[var(--brand-charcoal)] px-3 py-2 text-xs text-[var(--brand-gold-cream)]/85 ring-1 ring-[var(--brand-gold)]/15">
               <Info className="h-3.5 w-3.5 text-[var(--brand-gold)]/70" />
               <span>Life events excluded from this query.</span>
             </div>

@@ -151,7 +151,7 @@ export function ConversationSidebar({
     <div
       className={cn(
         'flex h-full flex-col bg-sidebar text-sidebar-foreground',
-        'transition-[width] duration-200 ease-out overflow-hidden',
+        'transition-[width] duration-[250ms] ease-out overflow-hidden',
         sidebar.isMobile
           ? sidebar.state === 'mobile-open'
             ? 'fixed inset-0 z-50 w-full'
@@ -335,7 +335,7 @@ export function ConversationSidebar({
 
       {/* Delete confirmation dialog */}
       <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <DialogContent className="border-[oklch(0.5_0.18_25)]/40 bg-[var(--brand-charcoal)]/95 backdrop-blur-md">
+        <DialogContent className="border-destructive/40 bg-[var(--brand-charcoal)]/95 backdrop-blur-md">
           <DialogHeader>
             <DialogTitle className="font-serif text-[var(--brand-cream)]">Delete conversation?</DialogTitle>
             <DialogDescription className="text-[var(--brand-cream)]/60">
