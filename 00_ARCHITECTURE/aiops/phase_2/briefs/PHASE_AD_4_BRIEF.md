@@ -52,16 +52,20 @@ gate is green, AD.5 flips the flag.
 
 ### may_touch
 ```
-platform/src/lib/adapters/legacy_runAdapter.ts # NEW — wraps existing streamText path
-platform/src/lib/synthesis/**                  # migrate
-platform/src/app/api/chat/consume/**           # migrate
-platform/src/lib/aiops/probe/**                # migrate
-platform/scripts/aiops/**                      # migrate
-platform/scripts/eval/**                       # migrate
-platform/scripts/checkpoint/**                 # migrate
-platform/src/lib/models/resolver.ts            # thin deepseekProviderOptions / googleProviderOptions to pass-through wrappers
-platform/src/lib/synthesis/think_block_filter.ts # DELETE
-platform/src/lib/adapters/__tests__/equivalence/* # NEW
+platform/src/lib/adapters/**                       # legacy_runAdapter + equivalence tests
+platform/src/lib/synthesis/**                       # migrate single_model_strategy, panel/*, think_block_filter deletion
+platform/src/app/api/chat/**                        # consume + build routes (build/route.ts uses streamText for SSE)
+platform/src/app/api/consume/**                     # suggestions/context/route.ts uses generateText
+platform/src/app/api/performance/**                 # judge/route.ts uses generateText
+platform/src/lib/aiops/probe/**                     # probe runner
+platform/src/lib/checkpoints/**                     # checkpoint_4_5/5_5/8_5.ts (corrected — original brief said scripts/)
+platform/src/lib/conversations/**                   # title.ts
+platform/src/lib/pipeline/**                        # pipeline_planner, planner_context_builder
+platform/src/lib/models/resolver.ts                 # thin deepseekProviderOptions/googleProviderOptions to legacy passthrough
+platform/src/lib/models/health.ts                   # migrate to runAdapter
+platform/scripts/aiops/**                           # cutover_smoke, probe_health_cron migrations
+platform/scripts/eval/**                            # any eval entrypoints
+00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md  # NEW inventory file authored at §3.1
 CLAUDECODE_BRIEF.md
 ```
 
