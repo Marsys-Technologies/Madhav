@@ -1,27 +1,30 @@
 ---
 status: OPEN
-session_id: AIOPS_AD_1
-phase: AD.1
-phase_name: "ProviderQuirks registry extension"
-next_session: AIOPS_AD_2
+session_id: AIOPS_AD_2
+phase: AD.2
+phase_name: "Dispatcher + non-streaming wrapper + base adapter contract"
+next_session: AIOPS_AD_3
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_2_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_AD_1
-## AIOps Phase 2, Step 1 — Add ProviderQuirks metadata to every model
+# CLAUDECODE_BRIEF — AIOPS_AD_2
+## AIOps Phase 2, Step 2 — Dispatcher + runAdapter / streamAdapter
 
 ---
 
 ## §0 — Executor orientation
 
-AD.1 extends `ModelMeta` with the `quirks: ProviderQuirks` field, then
-populates every entry in the `MODELS` array. The `quirks` shape is data, not
-code — adding a new model in Phase 2 onward means editing one entry, not
-five files. This phase is high-volume mechanical work with rigorous testing.
+AD.2 wires up the public surface — `runAdapter()` and `streamAdapter()` —
+that call sites will use in AD.4. The provider-specific adapters
+themselves are still stubs from AD.0; this phase implements the *plumbing*
+that routes a `QueryRequest` to the right adapter and assembles a
+`ModelInteraction` from the event stream.
 
-Master plan §3 has the full `ProviderQuirks` taxonomy. Master plan §6 has
-per-provider example shapes.
+After AD.2, calling `streamAdapter(req)` from a test should successfully
+route to the right provider stub (which throws "not implemented" —
+that's AD.3 work). The dispatcher + non-streaming wrapper are
+testable in isolation.
 
 ---
 
@@ -29,16 +32,13 @@ per-provider example shapes.
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_2/AIOPS_PHASE_2_MASTER_PLAN_v1_0.md §3, §6
+2. 00_ARCHITECTURE/aiops/phase_2/AIOPS_PHASE_2_MASTER_PLAN_v1_0.md §4, §5, §7
 3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-4. platform/src/lib/models/registry.ts (existing MODELS array — every entry)
-5. platform/src/lib/adapters/types.ts (from AD.0)
-6. Provider docs (skim, not exhaustive):
-   - Anthropic prompt-caching headers
-   - Gemini safety + thinking config
-   - DeepSeek thinking mode toggle
-   - OpenAI structured outputs (json_schema)
-   - NIM OpenAI-compat catalog quirks
+4. platform/src/lib/adapters/types.ts (from AD.0)
+5. platform/src/lib/adapters/dispatcher.ts (from AD.0)
+6. platform/src/lib/models/registry.ts (now has quirks per AD.1)
+7. platform/src/lib/models/runtime_config.ts (Phase 1 — getEffectiveModel)
+8. platform/src/lib/models/resolver.ts (resolveModel — DO NOT MODIFY yet)
 ```
 
 ---
@@ -47,232 +47,184 @@ per-provider example shapes.
 
 ### may_touch
 ```
-platform/src/lib/models/registry.ts           # extend ModelMeta + populate all entries
-platform/src/lib/adapters/types.ts            # add ProviderQuirks type if not already there
-platform/src/lib/adapters/__tests__/quirks.test.ts  # NEW exhaustive tests
+platform/src/lib/adapters/index.ts            # export runAdapter, streamAdapter
+platform/src/lib/adapters/run_adapter.ts      # NEW — non-streaming wrapper
+platform/src/lib/adapters/stream_adapter.ts   # NEW — streaming entry + collector
+platform/src/lib/adapters/event_collector.ts  # NEW — folds events into ModelInteraction
+platform/src/lib/adapters/__tests__/*         # NEW dispatcher + collector tests
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- Everything outside `may_touch`.
-- Specifically: do NOT delete `reasoningMode` from ModelMeta yet — it stays as a redundant duplicate of `quirks.reasoning_via` until AD.4 migrates consumers.
+- Provider adapter implementations (AD.3 territory).
+- Call sites (AD.4 territory).
+- Anything outside lib/adapters/ except what's already in may_touch list above.
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Move ProviderQuirks type into adapters/types.ts (if needed)
+### 3.1 — streamAdapter
 
-Per master plan §3, `ProviderQuirks` lives in `lib/adapters/types.ts`.
-Ensure it's exported and import it from `registry.ts`.
-
-### 3.2 — Extend ModelMeta
-
-In `platform/src/lib/models/registry.ts`:
+`platform/src/lib/adapters/stream_adapter.ts`:
 
 ```ts
-import type { ProviderQuirks } from '@/lib/adapters/types'
+import 'server-only'
+import type { QueryRequest, ModelInteractionEvent } from './types'
+import { adapterFor } from './dispatcher'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
+import { getModelMeta } from '@/lib/models/registry'
 
-export interface ModelMeta {
-  // ... existing fields ...
-  quirks: ProviderQuirks    // NEW — required field
+export function streamAdapter(req: QueryRequest): ReadableStream<ModelInteractionEvent> {
+  const modelId = resolveModelId(req)
+  const meta = getModelMeta(modelId)
+  if (!meta) {
+    throw new Error(`streamAdapter: unknown model ${modelId}`)
+  }
+  const adapter = adapterFor(meta.provider)
+  return adapter.stream(req, meta)
+}
+
+function resolveModelId(req: QueryRequest): string {
+  if (req.modelOverride) return req.modelOverride.modelId
+  // For now, do a synchronous fallback to registry default; AD.4 will thread
+  // async getEffectiveModel through the call sites.
+  // SYNCHRONOUS PATH FOR AD.2 — replaced with Promise<string> in AD.4.
+  // ...
 }
 ```
 
-The field is REQUIRED (not optional). Every entry must specify it or
-compile fails.
+Note the synchronous-resolution shortcut: AD.2 doesn't yet integrate with
+async `getEffectiveModel`. That migration happens in AD.4. Document this in
+a comment and make the test fixtures use `modelOverride` to avoid the
+resolution path.
 
-### 3.3 — Populate quirks on every MODELS entry
+### 3.2 — runAdapter (non-streaming wrapper)
 
-The `MODELS` array contains every registered model. For each, add a `quirks`
-field. Use the per-provider templates below.
-
-**Anthropic models (haiku-4-5, sonnet-4-6, opus-4-7):**
+`platform/src/lib/adapters/run_adapter.ts`:
 
 ```ts
-quirks: {
-  reasoning_via: 'none',
-  streaming_required: false,
-  tool_use_format: 'anthropic',
-  structured_output_format: 'json_schema',
-  cache_strategy: 'explicit_headers',
-  system_prompt_shape: 'system_block_array',
+import 'server-only'
+import type { QueryRequest, ModelInteraction } from './types'
+import { streamAdapter } from './stream_adapter'
+import { collectInteraction } from './event_collector'
+
+export async function runAdapter(req: QueryRequest): Promise<ModelInteraction> {
+  const stream = streamAdapter(req)
+  return collectInteraction(stream)
 }
 ```
 
-**Gemini models (2.5-flash-lite, 2.5-flash, 2.5-pro):**
+### 3.3 — Event collector
+
+`platform/src/lib/adapters/event_collector.ts`:
 
 ```ts
-quirks: {
-  reasoning_via: 'native',  // 2.5 models emit type:'reasoning' UIMessage parts
-  streaming_required: false,
-  tool_use_format: 'gemini',
-  structured_output_format: 'gemini_response_schema',
-  cache_strategy: 'context_caching',
-  system_prompt_shape: 'system_message',
-  request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+import type {
+  ModelInteractionEvent,
+  ModelInteraction,
+  IntermediateEvent,
+} from './types'
+
+export async function collectInteraction(
+  stream: ReadableStream<ModelInteractionEvent>,
+): Promise<ModelInteraction> {
+  const reader = stream.getReader()
+  let reasoningText = ''
+  let reasoningTokens = 0
+  let finalText: string | undefined
+  let finalStructured: unknown | undefined
+  const intermediate: IntermediateEvent[] = []
+  let finishedInteraction: ModelInteraction | undefined
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    switch (value.type) {
+      case 'reasoning_delta':
+        reasoningText += value.text
+        break
+      case 'text_delta':
+        finalText = (finalText ?? '') + value.text
+        break
+      case 'tool_call':
+      case 'tool_result':
+      case 'status':
+        intermediate.push({ type: value.type as IntermediateEvent['type'], ts: value.ts, payload: value })
+        break
+      case 'finish':
+        finishedInteraction = value.interaction
+        break
+      case 'error':
+        throw new Error(value.error.message)
+    }
+  }
+
+  if (!finishedInteraction) {
+    throw new Error('collectInteraction: stream ended without finish event')
+  }
+
+  // Merge collected text/reasoning with the finish event's interaction
+  // (the adapter is expected to populate everything in the finish event,
+  // but we double-check here for resilience):
+  return {
+    ...finishedInteraction,
+    reasoning: reasoningText ? { text: reasoningText, tokens: reasoningTokens } : finishedInteraction.reasoning,
+    intermediate,
+    finalText: finalText ?? finishedInteraction.finalText,
+    finalStructured: finalStructured ?? finishedInteraction.finalStructured,
+  }
 }
 ```
 
-**DeepSeek models:**
+### 3.4 — Public exports
 
-For `deepseek-v4-pro`:
-```ts
-quirks: {
-  reasoning_via: 'markers',  // <think>...</think> blocks
-  streaming_required: false,
-  tool_use_format: 'openai',
-  structured_output_format: 'json_object',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-  request_transforms: { thinking_mode: 'toggle' },
-}
-```
-
-For `deepseek-chat` and `deepseek-v4-flash` (non-thinking):
-```ts
-quirks: {
-  reasoning_via: 'none',
-  streaming_required: false,
-  tool_use_format: 'openai',
-  structured_output_format: 'json_object',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-}
-```
-
-For `deepseek-reasoner` (deprecated alias — V4 Pro thinking):
-```ts
-quirks: {
-  reasoning_via: 'markers',
-  streaming_required: false,
-  tool_use_format: 'none',  // rejects tool_choice — confirmed in nvidia.ts
-  structured_output_format: 'none',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-}
-```
-
-**OpenAI models (gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini):**
+`platform/src/lib/adapters/index.ts` (replace AD.0 placeholder):
 
 ```ts
-quirks: {
-  reasoning_via: 'none',  // future o-series will be 'native'
-  streaming_required: false,
-  tool_use_format: 'openai',
-  structured_output_format: 'json_schema',
-  cache_strategy: 'automatic',  // OpenAI handles caching automatically
-  system_prompt_shape: 'system_message',
-}
+export type {
+  QueryRequest,
+  ModelInteraction,
+  ModelInteractionEvent,
+  IntermediateEvent,
+  ToolDefinition,
+  ProviderQuirks,
+} from './types'
+
+export { runAdapter } from './run_adapter'
+export { streamAdapter } from './stream_adapter'
+export { adapterFor } from './dispatcher'
 ```
-
-**NVIDIA NIM models:**
-
-For Nemotron variants (`nvidia/nemotron-3-super-120b-a12b`, `nvidia/llama-3.3-nemotron-super-49b-v1`, `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`):
-```ts
-quirks: {
-  reasoning_via: 'none',  // Nemotron does not surface reasoning today
-  streaming_required: true,  // NIM managed catalog requires stream:true
-  tool_use_format: 'openai',  // most variants — verify per-model in tests
-  structured_output_format: 'json_object',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-}
-```
-
-For DeepSeek-on-NIM (`deepseek-ai/deepseek-v4-pro` — currently unavailable but registered):
-```ts
-quirks: {
-  reasoning_via: 'markers',  // same <think> behavior as direct DeepSeek
-  streaming_required: true,
-  tool_use_format: 'openai',
-  structured_output_format: 'json_object',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-  request_transforms: { thinking_mode: 'toggle' },
-}
-```
-
-For Kimi K2 (`moonshotai/kimi-k2-instruct`):
-```ts
-quirks: {
-  reasoning_via: 'none',
-  streaming_required: true,
-  tool_use_format: 'openai',
-  structured_output_format: 'json_object',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-}
-```
-
-For Mistral Large 3 on NIM (`mistralai/mistral-large-3-675b-instruct-2512`):
-```ts
-quirks: {
-  reasoning_via: 'none',
-  streaming_required: true,
-  tool_use_format: 'none',  // tool-use capability unverified per registry comment
-  structured_output_format: 'none',
-  cache_strategy: 'none',
-  system_prompt_shape: 'system_message',
-}
-```
-
-For deprecated/EOL NIM models (`qwen/qwen3-235b-a22b`, `meta/llama-3.1-8b-instruct`, `nvidia/llama-3.1-nemotron-ultra-253b-v1`): populate with sensible defaults; they're not actively routed.
-
-### 3.4 — Cross-check tool_use_format with reality
-
-For models where `tool_use_format: 'openai'`, verify the model actually
-supports tool_choice by checking NIM's `COMPAT_ERROR_PATTERNS` in
-`platform/src/lib/models/nvidia.ts`. If a model has been known to reject
-tool_choice (e.g., `deepseek-reasoner`), set `tool_use_format: 'none'`.
 
 ### 3.5 — Tests
 
-`platform/src/lib/adapters/__tests__/quirks.test.ts`:
+Two new test files:
 
-```ts
-import { describe, test, expect } from 'vitest'
-import { MODELS } from '@/lib/models/registry'
-import type { ProviderQuirks } from '@/lib/adapters/types'
+`platform/src/lib/adapters/__tests__/dispatcher.test.ts`:
+- Provider routing: for each of 5 providers + every model, verify `adapterFor` returns the right adapter.
+- 132 cases (6 stacks × 11 call types × 2 roles) parametrized via the same matrix used in cutover_smoke; assert correct adapter for each.
+- Edge: MARSYS stack with mixed-provider routing dispatches per-model, not per-stack.
 
-describe('ProviderQuirks coverage', () => {
-  test('every model in registry has a quirks field', () => {
-    for (const m of MODELS) {
-      expect(m.quirks).toBeDefined()
-    }
-  })
+`platform/src/lib/adapters/__tests__/event_collector.test.ts`:
+- Stream with only `text_delta` + `finish` → ModelInteraction.finalText populated.
+- Stream with `reasoning_delta` events → reasoning text accumulates correctly.
+- Stream with interleaved `tool_call` + `tool_result` → intermediate array preserves order.
+- Stream with `error` event → throws.
+- Stream without `finish` event → throws.
+- ≥15 cases total.
 
-  test('reasoning_via is consistent with reasoningMode', () => {
-    for (const m of MODELS) {
-      expect(m.quirks.reasoning_via).toBe(m.reasoningMode)
-    }
-  })
+Both test files use a **mock provider adapter** that emits a scripted event
+stream. No real LLM calls in unit tests.
 
-  test('all required quirks fields are populated', () => {
-    const required: (keyof ProviderQuirks)[] = [
-      'reasoning_via', 'streaming_required',
-      'tool_use_format', 'structured_output_format',
-      'cache_strategy', 'system_prompt_shape',
-    ]
-    for (const m of MODELS) {
-      for (const f of required) {
-        expect(m.quirks[f]).toBeDefined()
-      }
-    }
-  })
+### 3.6 — Smoke
 
-  // Per-provider sanity:
-  test('all Gemini models use gemini tool_use_format', () => { ... })
-  test('all Anthropic models use system_block_array', () => { ... })
-  test('all NIM models have streaming_required=true', () => { ... })
-  test('only V4 Pro DeepSeek has thinking_mode in request_transforms', () => { ... })
-  test('Gemini 2.5 models have safety_filter set to block_none', () => { ... })
-  test('OpenAI cache_strategy is "automatic" universally', () => { ... })
-  test('every model with reasoning_via != "none" can be enumerated', () => { ... })
-})
+```bash
+npm --prefix platform run typecheck 2>&1 | tail -5
+npm --prefix platform run lint 2>&1 | tail -5
+npm --prefix platform run test -- --run platform/src/lib/adapters/
 ```
 
-≥30 test cases total. Parametrize where possible.
+All three must pass.
 
 ---
 
@@ -280,14 +232,14 @@ describe('ProviderQuirks coverage', () => {
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.AD1.1 | ModelMeta has `quirks: ProviderQuirks` field | grep + type |
-| AC.AD1.2 | Every MODELS entry has quirks populated | parametrized test on `MODELS.length` matches |
-| AC.AD1.3 | reasoning_via consistent with reasoningMode | parametrized test |
-| AC.AD1.4 | All 6 required quirks subfields set on every entry | parametrized test |
-| AC.AD1.5 | Per-provider sanity tests pass | ≥6 test cases |
-| AC.AD1.6 | Total new tests | ≥30 |
-| AC.AD1.7 | typecheck + lint + full test suite green | exit 0 each |
-| AC.AD1.8 | Scope-violation grep | SCOPE_OK |
+| AC.AD2.1 | streamAdapter exported from index | grep |
+| AC.AD2.2 | runAdapter exported from index | grep |
+| AC.AD2.3 | adapterFor exported (re-exported from dispatcher) | grep |
+| AC.AD2.4 | Dispatcher tests parametrize over 5 providers + every model | test count ≥ 30 |
+| AC.AD2.5 | Event collector tests cover all 7 event types | ≥15 cases |
+| AC.AD2.6 | Stream-without-finish raises clear error | test asserts |
+| AC.AD2.7 | typecheck + lint + full test suite green | exit 0 each |
+| AC.AD2.8 | scope-violation grep | SCOPE_OK |
 
 ---
 
@@ -295,26 +247,27 @@ describe('ProviderQuirks coverage', () => {
 
 Final commit:
 ```
-feat(aiops-AD.1): ProviderQuirks metadata on every model
+feat(aiops-AD.2): dispatcher + runAdapter/streamAdapter + event collector
 
-- ModelMeta extended with quirks: ProviderQuirks (required field)
-- All N MODELS entries populated with per-provider quirks
-- reasoning_via verified consistent with existing reasoningMode field
-- 30+ tests covering coverage, consistency, per-provider sanity
-- reasoningMode field preserved (redundant duplicate) until AD.4 migrates consumers
+- streamAdapter: looks up model meta, dispatches to provider adapter
+- runAdapter: async wrapper that collects the stream into ModelInteraction
+- collectInteraction: folds events into final shape; preserves intermediate order
+- dispatcher_test parametrizes across all 5 providers + every model
+- event_collector_test covers all 7 event types + error edges
+- 45+ new tests; full suite green
 
 AC summary: 8/8 PASS
 ```
 
-Rotate brief → AD.2.
+Rotate brief → AD.3.
 
 ---
 
 ## §7 — BAIL OUT triggers
 
-- A model's tool_use_format is genuinely ambiguous (e.g., new NIM model with no prior compat data); bail and let native confirm.
-- Type extension causes a typecheck cascade — investigate, but if more than 5 unrelated files break, bail.
+- The async vs sync resolution shortcut in §3.1 doesn't compile cleanly — investigate, but if it pulls in unrelated refactoring, bail.
+- The event collector's resilience logic conflicts with how providers will emit (some emit final text in `finish` instead of as deltas); this is a real ambiguity — bail and let native shape the contract.
 
 ---
 
-*End of PHASE_AD_1_BRIEF.md*
+*End of PHASE_AD_2_BRIEF.md*

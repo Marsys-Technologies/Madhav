@@ -3,6 +3,23 @@ import type { CallType, ModelStack, Provider } from '@/lib/models/registry'
 
 export type { JSONSchema7 as JSONSchema }
 
+export interface ProviderQuirks {
+  /** How chain-of-thought reasoning surfaces in model output. */
+  reasoning_via: 'markers' | 'native' | 'none'
+  /** Whether the provider requires stream:true on every request. */
+  streaming_required: boolean
+  /** The tool-calling wire format this provider accepts. */
+  tool_use_format: 'openai' | 'anthropic' | 'gemini' | 'none'
+  /** The structured output format this provider supports. */
+  structured_output_format: 'json_schema' | 'json_object' | 'gemini_response_schema' | 'none'
+  /** How prompt caching is activated for this provider. */
+  cache_strategy: 'automatic' | 'explicit_headers' | 'context_caching' | 'none'
+  /** Where the system prompt is placed in the request. */
+  system_prompt_shape: 'inline' | 'system_message' | 'system_block_array'
+  /** Provider-specific request transform hints keyed by purpose. */
+  request_transforms?: Record<string, unknown>
+}
+
 export interface QueryRequest {
   callType: CallType
   stack?: ModelStack

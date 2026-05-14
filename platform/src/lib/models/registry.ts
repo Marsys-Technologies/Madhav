@@ -41,6 +41,9 @@
  * See CallType for the full taxonomy.
  */
 
+import type { ProviderQuirks } from '@/lib/adapters/types'
+export type { ProviderQuirks }
+
 export type Provider = 'anthropic' | 'google' | 'deepseek' | 'openai' | 'nvidia'
 export type Capability = 'tool-use' | 'prompt-caching'
 export type SpeedTier = 'fast' | 'balanced' | 'deep'
@@ -104,6 +107,8 @@ export interface ModelMeta {
    * prompt and how StreamingAnswer routes reasoning content to LiveReasoningCard.
    */
   reasoningMode: ReasoningMode
+  /** Provider-specific behavior metadata. Drives the Adapter Layer (AD.1+). */
+  quirks: ProviderQuirks
 }
 
 /**
@@ -127,6 +132,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 1.00,
     costPer1MOutput: 5.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'anthropic',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'explicit_headers',
+      system_prompt_shape: 'system_block_array',
+    },
   },
   {
     id: 'claude-sonnet-4-6',
@@ -141,6 +154,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 3.00,
     costPer1MOutput: 15.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'anthropic',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'explicit_headers',
+      system_prompt_shape: 'system_block_array',
+    },
   },
   {
     id: 'claude-opus-4-7',
@@ -155,6 +176,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 15.00,
     costPer1MOutput: 75.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'anthropic',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'explicit_headers',
+      system_prompt_shape: 'system_block_array',
+    },
   },
 
   // ── Google — Gemini ─────────────────────────────────────────────────────────
@@ -177,6 +206,15 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.015,
     costPer1MOutput: 0.06,
     reasoningMode: 'native',  // Gemini thinking arrives via SDK type:'reasoning' parts
+    quirks: {
+      reasoning_via: 'native',
+      streaming_required: false,
+      tool_use_format: 'gemini',
+      structured_output_format: 'gemini_response_schema',
+      cache_strategy: 'context_caching',
+      system_prompt_shape: 'system_message',
+      request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+    },
   },
   {
     id: 'gemini-2.5-flash',
@@ -192,6 +230,15 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.075,
     costPer1MOutput: 0.30,
     reasoningMode: 'native',  // Gemini thinking arrives via SDK type:'reasoning' parts
+    quirks: {
+      reasoning_via: 'native',
+      streaming_required: false,
+      tool_use_format: 'gemini',
+      structured_output_format: 'gemini_response_schema',
+      cache_strategy: 'context_caching',
+      system_prompt_shape: 'system_message',
+      request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+    },
   },
   {
     id: 'gemini-2.5-pro',
@@ -207,6 +254,15 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 1.25,       // $1.25 up to 200K input; $2.50 above 200K
     costPer1MOutput: 10.00,
     reasoningMode: 'native',  // Gemini thinking arrives via SDK type:'reasoning' parts
+    quirks: {
+      reasoning_via: 'native',
+      streaming_required: false,
+      tool_use_format: 'gemini',
+      structured_output_format: 'gemini_response_schema',
+      cache_strategy: 'context_caching',
+      system_prompt_shape: 'system_message',
+      request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+    },
   },
 
 
@@ -236,6 +292,15 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 1.74,   // post-promo (promo at $0.44 until 2026-05-31)
     costPer1MOutput: 3.48,
     reasoningMode: 'none',  // reasoning via native <think>…</think> blocks (extractReasoningTrace); marker GATE not needed
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+      request_transforms: { thinking_mode: 'toggle' },
+    },
   },
   {
     // DeepSeek Stack worker + planner + context_assembly model.
@@ -253,6 +318,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.14,
     costPer1MOutput: 0.28,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
   // ── DeepSeek legacy aliases (DEPRECATED — retire 2026-07-24) ─────────────
   // deepseek-chat now routes to deepseek-v4-flash (non-thinking) on DeepSeek's API.
@@ -272,6 +345,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.14,   // now routes to V4 Flash pricing
     costPer1MOutput: 0.28,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     id: 'deepseek-reasoner',
@@ -286,6 +367,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 1.74,   // now routes to V4 Pro pricing
     costPer1MOutput: 3.48,
     reasoningMode: 'none',  // deprecated alias for V4 Pro; reasoning via native <think> blocks, not markers
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'none',  // rejects tool_choice — confirmed behavior
+      structured_output_format: 'none',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
 
   // ── OpenAI — GPT ────────────────────────────────────────────────────────────
@@ -312,6 +401,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 2.00,
     costPer1MOutput: 8.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'automatic',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     // GPT Stack planner_deep + planner_fast + context_assembly model.
@@ -329,6 +426,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.40,
     costPer1MOutput: 1.60,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'automatic',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     // GPT Stack worker model. 1M context at $0.05/$0.20 — cheapest OpenAI model.
@@ -345,6 +450,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.05,
     costPer1MOutput: 0.20,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'automatic',
+      system_prompt_shape: 'system_message',
+    },
   },
   // ── OpenAI legacy models (pre-GPT-4.1 era, 128K context) ───────────────────
   // Not part of the GPT stack routing; retained for backward compat with
@@ -362,6 +475,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.15,
     costPer1MOutput: 0.60,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'automatic',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     id: 'gpt-4o',
@@ -376,6 +497,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 2.50,
     costPer1MOutput: 10.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: false,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_schema',
+      cache_strategy: 'automatic',
+      system_prompt_shape: 'system_message',
+    },
   },
 
   // ── NVIDIA NIM — full model stack ────────────────────────────────────────────
@@ -441,6 +570,15 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+      request_transforms: { thinking_mode: 'toggle' },
+    },
   },
   {
     // DEPRECATED 2026-05-02 — smoke test: ❌ HTTP 404 (not found on NIM free tier).
@@ -457,6 +595,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     // Dual-use: user-selectable synthesis AND parallel orchestration (Wave 2).
@@ -474,6 +620,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
 
   {
@@ -494,6 +648,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',  // NIM reasoning format unverified; no marker gate until tested
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
 
   {
@@ -515,6 +677,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'none',  // tool-use capability unverified per registry comment
+      structured_output_format: 'none',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
 
   // — Internal planner-only models —
@@ -535,6 +705,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     // NIM SYNTHESIS PRIMARY (2026-05-03) + CONTEXT ASSEMBLY MODEL.
@@ -557,6 +735,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     // DEPRECATED 2026-05-02 — smoke test: ⚠️ HTTP 410 Gone.
@@ -574,6 +760,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'openai',
+      structured_output_format: 'json_object',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
   {
     // DEGRADED 2026-05-03 — smoke test: ⏱ TIMEOUT (was ✅ HTTP 200 on 2026-05-02).
@@ -592,6 +786,14 @@ export const MODELS: ModelMeta[] = [
     costPer1MInput: 0.00,
     costPer1MOutput: 0.00,
     reasoningMode: 'none',
+    quirks: {
+      reasoning_via: 'none',
+      streaming_required: true,
+      tool_use_format: 'none',
+      structured_output_format: 'none',
+      cache_strategy: 'none',
+      system_prompt_shape: 'system_message',
+    },
   },
 ]
 
