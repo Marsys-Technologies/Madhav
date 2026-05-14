@@ -1,34 +1,32 @@
 ---
 status: OPEN
-session_id: AIOPS_CO_5
-phase: CO.5
-phase_name: "Visual design pass — typography, spacing, color, motion"
-next_session: AIOPS_CO_6
+session_id: AIOPS_CO_6
+phase: CO.6
+phase_name: "Behavioral polish — scroll, focus, keyboard, a11y, edge states"
+next_session: AIOPS_CO_7
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_3_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CO_5
-## AIOps Phase 3, Step 5 — Visual design pass
+# CLAUDECODE_BRIEF — AIOPS_CO_6
+## AIOps Phase 3, Step 6 — Behavioral polish
 
 ---
 
 ## §0 — Executor orientation
 
-CO.5 is the visual polish pass. Per native Q7: best-in-class visual
-experience is IN SCOPE. Anchor reference: Claude.ai aesthetic (closest to
-existing Madhav dark-theme + reading-focused content per CO.0 UX research).
+CO.6 is the behavioral polish pass. Per native Q7: best-in-class
+behavioral experience is IN SCOPE. Anchor reference: ChatGPT
+(scroll anchoring + smooth transitions); Claude.ai (focus management).
 
-Five axes:
-  1. Typography scale audit + consolidation
-  2. Spacing rhythm (4/8 px grid)
-  3. Color palette discipline (no new tokens; audit hardcoded hex values)
-  4. Motion language (150 / 250 / 400 ms tiers)
-  5. Component library audit + consolidation
-
-This is JUDGMENT WORK. The brief specifies the targets; the executor makes
-tasteful decisions within them. Bail if a choice feels arbitrary — surface
-it for native review.
+Seven targets:
+  1. Scroll anchoring during streaming
+  2. Focus management (submit → assistant area; Esc → input; Cmd+K → input)
+  3. Keyboard shortcuts
+  4. Mid-stream interrupts ("Stop generating")
+  5. Error / empty / loading states
+  6. Accessibility (WCAG 2.1 AA)
+  7. Mobile responsiveness
 
 Behind `CONSUME_UI_V2_ENABLED`.
 
@@ -38,13 +36,14 @@ Behind `CONSUME_UI_V2_ENABLED`.
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (component 8 — message bubble; design tokens audit)
-3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md (§3 visual aesthetic anchor)
+2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (components 9, 10)
+3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md
 4. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-5. platform/tailwind.config.ts (or .js — design tokens source)
-6. platform/src/styles/globals.css (or wherever CSS variables live)
-7. platform/src/components/consume/**  (all components to audit + polish)
-8. Reference: Anthropic brand-guidelines skill — `00_ARCHITECTURE` may have an existing brand audit pattern from Phase 1 CP.4 (CP4_BRAND_AUDIT.md)
+5. design:accessibility-review skill SKILL.md (if available — see Phase 1's CP.4 for example)
+6. All consume/ components after CO.1–CO.5 deliverables
+7. platform/src/components/consume/EmptyState.tsx
+8. platform/src/components/consume/SharedConsumeError.tsx
+9. platform/src/components/consume/ValidatorFailureView.tsx (existing error surface)
 ```
 
 ---
@@ -53,102 +52,92 @@ Behind `CONSUME_UI_V2_ENABLED`.
 
 ### may_touch
 ```
-platform/src/components/consume/**                       # visual treatment
-platform/src/components/chat/**                          # if shared chat primitives need updates
-platform/src/components/shared/**                        # if shared primitives surface in consume UI
-platform/src/styles/**                                    # design tokens + globals
-platform/tailwind.config.*                                # only to ADD new safelist entries; not to add new colors
-00_ARCHITECTURE/aiops/phase_3/CO5_VISUAL_AUDIT.md         # NEW report
+platform/src/components/consume/**                      # behavioral wiring
+platform/src/lib/hooks/useScrollAnchor.ts                # NEW
+platform/src/lib/hooks/useKeyboardShortcuts.ts           # NEW
+platform/src/components/consume/__tests__/**             # a11y + behavior tests
+00_ARCHITECTURE/aiops/phase_3/CO6_A11Y_AUDIT.md          # NEW report
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- adapters/, synthesis/, models/  (Phase 1 + 2 sealed)
-- API routes (no functional changes in CO.5)
-- Behavioral logic (CO.6 territory)
-- New colors or fonts — anything not already in tailwind tokens
+- adapters/, synthesis/, models/  (Phase 1+2 sealed)
+- API routes
+- Visual design tokens (CO.5 sealed)
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Typography audit + consolidation
+### 3.1 — Scroll anchoring
 
-Walk every `text-*`, `font-*`, `leading-*`, `tracking-*` class in
-consume/, chat/, shared/. Compile into a table.
+`useScrollAnchor.ts`:
+- If user is scrolled to the bottom (within 100px) AND new content arrives,
+  auto-scroll to follow.
+- If user has scrolled up (> 100px from bottom), do NOT auto-scroll.
+- On new user message submit, always scroll to bottom.
+- Mimics ChatGPT precisely.
 
-Target: ≤ 6 distinct text sizes used across the consume surface. If more,
-identify which to consolidate. Common scale: `text-xs`, `text-sm`,
-`text-base`, `text-lg`, `text-xl`, `text-2xl`.
+Wire to ConsumeChat's scroll container.
 
-Font weights: ≤ 3 (normal, medium, semibold).
+### 3.2 — Focus management
 
-Author findings + decisions in `CO5_VISUAL_AUDIT.md` §1.
+- Submit query → focus moves to the assistant message area (specifically the
+  first reasoning or status indicator that mounts).
+- Esc → focus returns to composer; collapses any expanded panels.
+- Cmd+K → focus composer from anywhere.
+- Tab through interactive elements: composer → send → stack picker → 
+  history button → sidebar → message metadata expand → next message.
 
-### 3.2 — Spacing rhythm
+### 3.3 — Keyboard shortcuts
 
-Walk `p-*`, `m-*`, `gap-*`, `space-*` usage. Verify all values align with
-4/8 px grid (Tailwind's default).
+`useKeyboardShortcuts.ts`:
+- `Cmd/Ctrl+Enter` — submit (likely exists; verify)
+- `Esc` — collapse panels + return focus
+- `Cmd/Ctrl+K` — focus composer
+- `Cmd/Ctrl+/` — show shortcuts help overlay (small modal)
 
-Flag any arbitrary values (`p-[13px]` etc.) and either justify or replace
-with the nearest grid value.
+### 3.4 — Mid-stream interrupts
 
-Author findings in `CO5_VISUAL_AUDIT.md` §2.
+While `lifecycle.state` is anything other than `complete | idle | error`:
+- Show a "Stop generating" button near the message.
+- Clicking it cancels the SSE stream (AbortController) and transitions the
+  lifecycle to `cancelled`.
+- In cancelled state, show partial output + a "Regenerate" button.
 
-### 3.3 — Color discipline
+### 3.5 — Error / empty / loading states
 
-Walk every hex color literal in consume/, chat/, shared/. Each one:
-- If it matches a Tailwind token (semantic or palette), replace inline hex
-  with the token class.
-- If it's a token equivalent (e.g., `#ef4444` = `red-500`), replace.
-- If it has no token equivalent, FLAG it for native review — do NOT
-  introduce a new token in CO.5.
+- `EmptyState`: keep existing but verify with new visual treatment.
+- Error from adapter: surface via `ValidatorFailureView` or `SharedConsumeError` depending on error class. Include "Try again" button.
+- Loading skeletons for the initial message-list fetch (sidebar conversation history).
 
-Look at the CP.4 brand audit pattern (Phase 1) for the reference approach.
-Reuse if a similar audit doc exists.
+### 3.6 — A11y (WCAG 2.1 AA)
 
-Author findings in `CO5_VISUAL_AUDIT.md` §3.
+Run accessibility audit using the design:accessibility-review skill pattern (see Phase 1 CP.4):
+- Color contrast: every text vs background ≥ 4.5:1 (body), ≥ 3:1 (large text).
+- Keyboard nav: every interactive element reachable via Tab; visible focus ring.
+- ARIA: dropdowns, modals, tab strips, status indicators all have appropriate ARIA roles + states.
+- Touch targets ≥ 44×44 px.
+- Screen reader: `aria-live="polite"` on the status indicator and reasoning slot.
+- Semantic HTML throughout.
 
-### 3.4 — Motion language
+Author findings in `CO6_A11Y_AUDIT.md`. Acceptance: `OUTSTANDING: 0`.
 
-Three duration tiers:
-- 150ms — micro-interactions (hover, focus, toggle)
-- 250ms — standard transitions (sidebar expand, panel open)
-- 400ms — entry/exit (message bubble appear, modal open)
+### 3.7 — Mobile (< 640px)
 
-Walk all `transition-*` and `duration-*` classes. Consolidate to these
-three tiers. Easing: `ease-out` for entries, `ease-in-out` for transitions,
-no spring physics in v1.
+- Sidebar collapses to overlay (CO.4 already wired).
+- Composer sticks to bottom of viewport.
+- Reasoning slot collapses to a one-line summary by default; tap to expand.
+- Tool call chronology shows one card at a time (carousel-style) instead of stacked.
+- Touch targets ≥ 44 px throughout.
 
-Author findings in `CO5_VISUAL_AUDIT.md` §4.
+### 3.8 — Tests
 
-### 3.5 — Component library audit
-
-Identify duplicate UI primitives in consume/ and adjacent dirs. Examples:
-- Multiple button styles (consolidate to 2-3: primary, secondary, ghost)
-- Multiple card patterns (consolidate)
-- Multiple badge/chip styles (likely consolidated already; verify)
-
-For each duplicate found, pick ONE keeper and migrate the others to use
-it. If a duplicate has a justified difference (e.g., audit-specific badge
-vs. message-metadata badge), document the difference.
-
-Author findings in `CO5_VISUAL_AUDIT.md` §5.
-
-### 3.6 — Side-by-side screenshots
-
-Take before/after screenshots of:
-- `/consume` empty state
-- `/consume` mid-stream (a reasoning model query)
-- `/consume` completed message with metadata badge
-- Sidebar collapsed + expanded
-- Per-message capsule expanded
-
-Save under `00_ARCHITECTURE/aiops/phase_3/CO5_SCREENSHOTS/` (gitignored
-after review).
-
-Acceptance: after-screenshots match Claude.ai's polish bar — no obvious
-inconsistencies, no jarring color jumps, no typographic chaos.
+- Scroll anchoring: simulate user scroll position; assert auto-follow behavior.
+- Keyboard shortcuts: simulate key events; assert focus/state changes.
+- Stop-generating: cancel mid-stream; lifecycle transitions to cancelled.
+- A11y assertions in component tests for every interactive element.
+- ≥25 cases.
 
 ---
 
@@ -156,15 +145,16 @@ inconsistencies, no jarring color jumps, no typographic chaos.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CO5.1 | `CO5_VISUAL_AUDIT.md` exists with §1–§5 populated | grep |
-| AC.CO5.2 | Typography scale ≤ 6 sizes documented + enforced | audit |
-| AC.CO5.3 | Spacing values on 4/8 px grid | grep arbitrary values; 0 unflagged |
-| AC.CO5.4 | All hex literals either token-replaced or flagged for native review | grep + audit |
-| AC.CO5.5 | Motion durations consolidated to 150/250/400ms tiers | grep |
-| AC.CO5.6 | No new colors or fonts introduced | brand audit |
-| AC.CO5.7 | Side-by-side screenshots captured (≥5 views) | file count |
-| AC.CO5.8 | typecheck + lint + full test suite green | exit 0 |
-| AC.CO5.9 | Scope-violation grep | SCOPE_OK |
+| AC.CO6.1 | useScrollAnchor mimics ChatGPT pattern correctly | scroll-pos tests |
+| AC.CO6.2 | Focus management covers submit/esc/cmd-k/tab paths | a11y tests |
+| AC.CO6.3 | 4 keyboard shortcuts work + help modal shows | UI tests |
+| AC.CO6.4 | Mid-stream "Stop generating" cancels + leaves regenerate option | UI test |
+| AC.CO6.5 | CO6_A11Y_AUDIT.md shows OUTSTANDING: 0 | grep |
+| AC.CO6.6 | CLS < 0.05 during normal interaction (re-measured post-CO.5) | manual + doc |
+| AC.CO6.7 | Mobile (< 640px) viewport tests pass | parametrized test |
+| AC.CO6.8 | typecheck + lint + full suite green | exit 0 |
+| AC.CO6.9 | ≥25 new tests | count |
+| AC.CO6.10 | Scope-violation grep | SCOPE_OK |
 
 ---
 
@@ -172,32 +162,29 @@ inconsistencies, no jarring color jumps, no typographic chaos.
 
 Commit:
 ```
-feat(aiops-CO.5): visual design pass — typography, spacing, color, motion
+feat(aiops-CO.6): behavioral polish — scroll, focus, keyboard, a11y, edges
 
-- Typography consolidated to 6 sizes + 3 weights (CO5_VISUAL_AUDIT §1)
-- Spacing values verified on 4/8 px grid (§2)
-- Color discipline: hex literals replaced with tokens; N hardcoded values
-  flagged for native review (§3)
-- Motion language: 150 / 250 / 400 ms tiers consolidated (§4)
-- Component library: M duplicates consolidated; remaining differences
-  documented with rationale (§5)
-- Side-by-side screenshots in CO5_SCREENSHOTS/ confirm polish bar
+- useScrollAnchor: ChatGPT-style follow-at-bottom; no auto-scroll when scrolled up
+- useKeyboardShortcuts: Cmd+Enter submit, Esc collapse, Cmd+K focus, Cmd+/ help
+- Focus management: submit → assistant area; Esc → composer; Tab order audited
+- Mid-stream Stop generating button + cancelled-state regenerate
+- Error/empty/loading states polished
+- A11y WCAG 2.1 AA: CO6_A11Y_AUDIT.md OUTSTANDING: 0
+- Mobile (< 640px) viewport: composer-sticky, reasoning-collapse, 44px targets
+- 25+ new tests; CLS < 0.05 verified
 
-AC summary: 9/9 PASS
+AC summary: 10/10 PASS
 ```
 
-Rotate → CO.6.
+Rotate → CO.7.
 
 ---
 
 ## §6 — BAIL OUT
 
-- A hex literal has no token equivalent AND removing it would degrade UX
-  (e.g., specific health-pip green). Flag for native review; bail.
-- Component consolidation requires changes that ripple beyond consume/
-  (e.g., the button primitive is used by Observatory too).
-- Screenshot tooling unavailable in this environment.
+- A11y issue with no clean fix (e.g., contrast requires a new color token; CO.5 should have handled it).
+- Mobile viewport tests reveal a fundamental layout issue requiring a bigger refactor.
 
 ---
 
-*End of PHASE_CO_5_BRIEF.md*
+*End of PHASE_CO_6_BRIEF.md*
