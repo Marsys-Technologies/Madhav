@@ -123,11 +123,12 @@ describe('AppShell', () => {
   })
 
   it('hides nav labels after sidebar hover ends', () => {
-    const { getByRole, queryByText } = render(
+    const { getByRole, getByText, queryByText } = render(
       <AppShell user={BASE_USER} profile={BASE_PROFILE} />
     )
     const nav = getByRole('navigation', { name: 'Primary navigation' })
     fireEvent.mouseEnter(nav)
+    expect(getByText('Roster')).toBeTruthy()  // confirm labels appeared
     fireEvent.mouseLeave(nav)
     expect(queryByText('Roster')).toBeNull()
   })
