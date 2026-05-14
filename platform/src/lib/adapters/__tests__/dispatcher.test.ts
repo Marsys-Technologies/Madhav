@@ -1,4 +1,17 @@
-import { describe, test, expect } from 'vitest'
+import { describe, test, expect, vi } from 'vitest'
+
+// Provider adapter files use server-only imports; mock the guard and SDKs for unit tests
+vi.mock('server-only', () => ({}))
+vi.mock('ai', () => ({ streamText: vi.fn() }))
+vi.mock('@ai-sdk/anthropic', () => ({ anthropic: vi.fn() }))
+vi.mock('@ai-sdk/google', () => ({ google: vi.fn() }))
+vi.mock('@ai-sdk/deepseek', () => ({ deepseek: vi.fn() }))
+vi.mock('@ai-sdk/openai', () => ({ openai: vi.fn(), createOpenAI: vi.fn(() => ({ chat: vi.fn() })) }))
+vi.mock('@/lib/models/nvidia', () => ({
+  isNimCompatibilityError: vi.fn(() => false),
+  PlannerCompatibilityError: class extends Error {},
+}))
+
 import { adapterFor } from '../dispatcher'
 import { MODELS, STACK_ROUTING, type ModelStack, type CallType } from '@/lib/models/registry'
 
