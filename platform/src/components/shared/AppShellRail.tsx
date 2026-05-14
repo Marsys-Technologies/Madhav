@@ -63,9 +63,13 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
       aria-label="Primary navigation"
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
+      onFocus={() => setExpanded(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setExpanded(false)
+      }}
       className={cn(
-        'absolute inset-y-0 left-0 z-50 hidden flex-col items-center border-r border-sidebar-border bg-sidebar py-3 md:flex',
-        'overflow-hidden transition-all duration-150 ease-in-out',
+        'absolute inset-y-0 left-0 z-50 hidden flex-col items-start border-r border-sidebar-border bg-sidebar py-3 md:flex',
+        'overflow-hidden transition-[width] duration-150 ease-in-out',
         expanded ? 'w-44' : 'w-14'
       )}
     >
