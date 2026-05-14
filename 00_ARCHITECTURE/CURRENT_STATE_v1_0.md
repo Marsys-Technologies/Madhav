@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.3
+version: 5.4
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.4 (2026-05-14, M8-A-S1):
+    **M8 MACRO-PHASE OPENED. M6 TIME-GATED PARALLEL. M8-A-S1 CLOSED.**
+    Key outcomes: (1) AC.M8A.1 PASS — 08_CLASSICAL_CROSS_REFERENCE/ scaffold created (corpus/ingestion/scripts, corpus/ingestion/logs, corpus/raw, attributions/findings, nadi_bnn, quality). (2) AC.M8A.2 PASS — DB migrations 053 (classical_texts), 054 (classical_chunks + ivfflat embedding index), 055 (classical_attributions + generated confidence_tier) applied to amjis DB; all 3 tables verified via \dt. Note: plan specified 046-048 but those are occupied by aiops migrations; used 053-055. (3) AC.M8A.3 PASS — GCS_LAYOUT_v1_0.md L8 prefix block added (tier1/tier2/tier3/nadi_bnn/registries paths). (4) AC.M8A.4 PASS — PROCUREMENT_MAP_v1_0.md present: all 14 texts listed with source URLs and fallbacks. (5) AC.M8A.5 PASS — classical_text_search.ts + classical_attribution_lookup.ts stubs created at platform/src/lib/tools/. (6) AC.M8A.6 PASS — platform/src/lib/tools/index.ts created; CLASSICAL_TOOL_REGISTRY with tools 25+26. (7) AC.M8A.7 PASS — M6 CLAUDECODE_BRIEF archived to git history; M8 brief active at root. (8) AC.M8A.8 PASS — CAPABILITY_MANIFEST.json 81→87 entries: PHASE_M8_PLAN, 08_CLASSICAL_CROSS_REFERENCE, PROCUREMENT_MAP, GCS_LAYOUT v1.1, RETRIEVAL_TOOL_classical_text_search (tool 25), RETRIEVAL_TOOL_classical_attribution_lookup (tool 26). (9) AC.M8A.9 PASS — active_macro_phase: M8 OPEN / M6 TIME-GATED PARALLEL. (10) AC.M8A.10 PASS — SESSION_LOG M8-A-S1 appended. (11) AC.M8A.11 PASS — MP.1 (.geminirules §C #5 + §F) + MP.2 (.gemini/project_state.md header) propagated.
+    red_team_counter: 1 (incremented at M8-A-S1; macro-phase-open session is substantive).
+    active_phase_plan_sub_phase: M8-A CLOSED. M8-B-S1 INCOMING.
+    last_session_id: M8-A-S1. next_session_objective: M8-B-S1 (Tier 1 ingestion — BPHS + Phaladeepika).
+    file_updated_at: 2026-05-14T00:00:00+05:30. file_updated_by_session: M8-A-S1.
   - v5.3 (2026-05-14, M5-E-S2):
     **M5 MACRO-PHASE CLOSED. IS.8(b) PASS 5/5. M5_CLOSE_v1_0.md SEALED. M6 INCOMING. NAP.M5.4 APPROVED.**
     Key outcomes: (1) AC.M5E.1 PASS — IS.8(b) macro-phase-close red-team PASS 5/5 axes: RT.M5.1

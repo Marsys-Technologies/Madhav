@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-05-13T00:00:00.000Z",
+  "generated_at": "2026-05-14T00:00:00.000Z",
   "generator_version": "1.0",
-  "entry_count": 75,
-  "fingerprint": "6013107d6218ba251abc34c3b59a26a27bf3454b70ce8bf42ddd473aa82adcb7",
+  "entry_count": 87,
+  "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1071,7 +1071,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state | dasha_state). 81 entries (9 MD × 9 AD). All fitted_value=null; M5-D fitting required."
+      "notes": "P(domain_state | dasha_state). 81 entries (9 MD \u00d7 9 AD). All fitted_value=null; M5-D fitting required."
     },
     {
       "canonical_id": "CPT_PERSISTENCE",
@@ -1087,7 +1087,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains × 9 transitions). Symmetric priors; per-domain differentiation in M5-D."
+      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains \u00d7 9 transitions). Symmetric priors; per-domain differentiation in M5-D."
     },
     {
       "canonical_id": "CPT_CROSS_DOMAIN",
@@ -1124,22 +1124,36 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_lel_query",
       "tool_name": "lel_query",
-      "tool_description": "Retrieves ground-truth life events from LEL — recorded dates categories chart states",
-      "description": "Queries life_events table — 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "tool_description": "Retrieves ground-truth life events from LEL \u2014 recorded dates categories chart states",
+      "description": "Queries life_events table \u2014 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
       "query_schema": {
         "type": "object",
         "properties": {
-          "start_date": { "type": "string", "description": "YYYY-MM-DD lower bound" },
-          "end_date": { "type": "string", "description": "YYYY-MM-DD upper bound" },
-          "category": { "type": "string", "description": "relationship|career|health|family|spiritual|travel|finance|education|residential|creative|loss|other" },
-          "significance": { "type": "string", "description": "major|moderate|minor" }
+          "start_date": {
+            "type": "string",
+            "description": "YYYY-MM-DD lower bound"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "YYYY-MM-DD upper bound"
+          },
+          "category": {
+            "type": "string",
+            "description": "relationship|career|health|family|spiritual|travel|finance|education|residential|creative|loss|other"
+          },
+          "significance": {
+            "type": "string",
+            "description": "major|moderate|minor"
+          }
         }
       },
       "token_cost_hint": "low",
       "linked_data_asset_id": "LEL",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
@@ -1153,7 +1167,9 @@
       "status": "CLOSED",
       "layer": "L6",
       "expose_to_chat": false,
-      "representations": ["file"],
+      "representations": [
+        "file"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
@@ -1167,12 +1183,14 @@
       "status": "ACTIVE",
       "layer": "L6",
       "expose_to_chat": false,
-      "representations": ["file"],
+      "representations": [
+        "file"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S1",
-      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD→ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in §3.2b."
+      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD\u2192ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in \u00a73.2b."
     },
     {
       "canonical_id": "LL8_PARAM_REGISTER",
@@ -1181,7 +1199,9 @@
       "status": "LIVE",
       "layer": "L6",
       "expose_to_chat": false,
-      "representations": ["file"],
+      "representations": [
+        "file"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
@@ -1195,7 +1215,9 @@
       "status": "SCAFFOLD",
       "layer": "L6",
       "expose_to_chat": false,
-      "representations": ["file"],
+      "representations": [
+        "file"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
@@ -1209,7 +1231,9 @@
       "status": "SCAFFOLD",
       "layer": "L6",
       "expose_to_chat": false,
-      "representations": ["file"],
+      "representations": [
+        "file"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
@@ -1223,12 +1247,110 @@
       "status": "CLOSED",
       "layer": "L6",
       "expose_to_chat": false,
-      "representations": ["file"],
+      "representations": [
+        "file"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S2",
       "notes": "M5 macro-phase sealing artifact. IS.8(b) PASS 5/5. Full AC ledger, LL table, PPL checkpoint, NAP registry, carry-forwards, topology risk register. NAP.M5.4 APPROVED. Successor: M6 INCOMING."
+    },
+    {
+      "canonical_id": "PHASE_M8_PLAN",
+      "path": "00_ARCHITECTURE/PHASE_M8_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-A-S1",
+      "note": "M8 phase plan \u2014 governs all M8 sessions"
+    },
+    {
+      "canonical_id": "08_CLASSICAL_CROSS_REFERENCE",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": [
+        "folder"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-A-S1",
+      "note": "M8 classical corpus + attribution layer root folder"
+    },
+    {
+      "canonical_id": "PROCUREMENT_MAP",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/PROCUREMENT_MAP_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-A-S1",
+      "note": "14-text tier list with source URLs; procurement gap log"
+    },
+    {
+      "canonical_id": "GCS_LAYOUT",
+      "path": "00_ARCHITECTURE/GCS_LAYOUT_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-A-S1",
+      "note": "v1.1 \u2014 L8 prefix block added for M8 classical corpus"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_classical_text_search",
+      "path": "platform/src/lib/tools/classical_text_search.ts",
+      "version": "1.0-stub",
+      "status": "STUB",
+      "layer": "L8",
+      "expose_to_chat": true,
+      "representations": [
+        "typescript"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "tool_name": "classical_text_search",
+      "tool_number": 25,
+      "tool_description": "Semantic search over classical Jyotish text corpus (pgvector cosine similarity). Returns top-K chunks with chapter, verse_range, confidence_baseline.",
+      "produced_during": "M8-A-S1",
+      "note": "STUB \u2014 full impl in M8-E-S1"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_classical_attribution_lookup",
+      "path": "platform/src/lib/tools/classical_attribution_lookup.ts",
+      "version": "1.0-stub",
+      "status": "STUB",
+      "layer": "L8",
+      "expose_to_chat": true,
+      "representations": [
+        "typescript"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "tool_name": "classical_attribution_lookup",
+      "tool_number": 26,
+      "tool_description": "Structured lookup: MSR signal_ids \u2192 classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
+      "produced_during": "M8-A-S1",
+      "note": "STUB \u2014 full impl in M8-E-S1"
     }
   ]
 }

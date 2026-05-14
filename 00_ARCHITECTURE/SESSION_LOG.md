@@ -23040,3 +23040,85 @@ session_close:
       change: "MP.2 mirror update (M5-E-S2 close; M5 CLOSED; M6 INCOMING)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-A-S1
+  phase: M8-A — Foundation + Infrastructure
+  date: 2026-05-14
+  predecessor_session: M5-E-S2
+  active_macro_phase: M8 OPEN (M6 TIME-GATED PARALLEL)
+  active_sub_phase: M8-A
+  red_team_counter_at_open: 0
+  scope_declaration:
+    may_touch: [08_CLASSICAL_CROSS_REFERENCE/**, 00_ARCHITECTURE/GCS_LAYOUT_v1_0.md, 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, 00_ARCHITECTURE/SESSION_LOG.md, platform/migrations/053-055, platform/src/lib/tools/classical_*.ts, platform/src/lib/tools/index.ts, .geminirules, .gemini/project_state.md, CLAUDECODE_BRIEF.md]
+    must_not_touch: [01_FACTS_LAYER/**, 025_HOLISTIC_SYNTHESIS/**, 06_LEARNING_LAYER/PREDICTION_LEDGER/**, platform/migrations/001-052]
+
+session_body:
+  summary: >
+    M8-A-S1: Foundation + Infrastructure session for M8 Classical Text Cross-Reference macro-phase.
+    M6 CLAUDECODE_BRIEF archived to git history; M8 brief now active at root.
+    08_CLASSICAL_CROSS_REFERENCE/ scaffold created (all subdirs per §3.4 plan).
+    DB migrations 053-055 applied (classical_texts, classical_chunks with ivfflat embedding index,
+    classical_attributions with generated confidence_tier). All 3 tables verified via psql \dt.
+    Note: plan specified migrations 046-048 but aiops occupied those numbers; used 053-055.
+    GCS_LAYOUT_v1_0.md amended in-place with L8/ prefix block (tier1/tier2/tier3/nadi_bnn/registries).
+    PROCUREMENT_MAP_v1_0.md: all 14 texts listed with source URLs and fallbacks.
+    Tool stubs: classical_text_search.ts (tool 25) + classical_attribution_lookup.ts (tool 26) created.
+    platform/src/lib/tools/index.ts: CLASSICAL_TOOL_REGISTRY with tools 25+26.
+    CAPABILITY_MANIFEST.json 81→87 entries. CURRENT_STATE v5.3→v5.4.
+    Mirrors: .geminirules §C #5 + §F updated (MP.1+MP.4). .gemini/project_state.md header updated (MP.2).
+  acceptance_criteria:
+    AC.M8A.1: PASS — scaffold created
+    AC.M8A.2: PASS — migrations 053-055 applied; tables verified
+    AC.M8A.3: PASS — GCS_LAYOUT L8 block added
+    AC.M8A.4: PASS — PROCUREMENT_MAP_v1_0.md present (14 texts)
+    AC.M8A.5: PASS — tool stubs created
+    AC.M8A.6: PASS — index.ts tool registry (tools 25+26)
+    AC.M8A.7: PASS — M6 brief archived to git history
+    AC.M8A.8: PASS — CAPABILITY_MANIFEST 87 entries
+    AC.M8A.9: PASS — CURRENT_STATE v5.4 (M8 OPEN / M6 TIME-GATED PARALLEL)
+    AC.M8A.10: PASS — SESSION_LOG appended (this entry)
+    AC.M8A.11: PASS — MP.1+MP.2+MP.4 mirrors propagated
+
+session_close:
+  session_id: M8-A-S1
+  all_acs_pass: true
+  red_team_counter_at_close: 1
+  current_state_updated: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 §C item #5 phase pointer: M8 OPEN / M6 TIME-GATED. MP.4 §F state block: M8-A-S1 CLOSED."
+    - path: ".gemini/project_state.md"
+      change: "MP.2 header: M8-A-S1 close state appended."
+  artifacts_modified:
+    - path: "08_CLASSICAL_CROSS_REFERENCE/"
+      change: "NEW — M8 scaffold (README, PROCUREMENT_MAP, corpus/, attributions/, nadi_bnn/, quality/)"
+    - path: "platform/migrations/053_classical_texts.sql"
+      change: "NEW — classical_texts table migration"
+    - path: "platform/migrations/054_classical_chunks.sql"
+      change: "NEW — classical_chunks + ivfflat embedding index migration"
+    - path: "platform/migrations/055_classical_attributions.sql"
+      change: "NEW — classical_attributions + confidence_tier generated column migration"
+    - path: "platform/src/lib/tools/classical_text_search.ts"
+      change: "NEW — tool 25 stub (full impl in M8-E-S1)"
+    - path: "platform/src/lib/tools/classical_attribution_lookup.ts"
+      change: "NEW — tool 26 stub (full impl in M8-E-S1)"
+    - path: "platform/src/lib/tools/index.ts"
+      change: "NEW — CLASSICAL_TOOL_REGISTRY (tools 25+26)"
+    - path: "00_ARCHITECTURE/GCS_LAYOUT_v1_0.md"
+      change: "L8/ prefix block added (M8-A-S1)"
+    - path: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      change: "81→87 entries: PHASE_M8_PLAN + 08_CLASSICAL_CROSS_REFERENCE + PROCUREMENT_MAP + GCS_LAYOUT v1.1 + tools 25+26"
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      change: "v5.3→v5.4; M8 OPEN / M6 TIME-GATED PARALLEL; M8-A-S1 CLOSED"
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      change: "M8-A-S1 entry appended"
+    - path: ".geminirules"
+      change: "MP.1+MP.4 mirror update (M8-A-S1; M8 OPEN; §C item #5 + §F updated)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-A-S1; M8 OPEN state block)"
+  session_close_valid: true
+```
