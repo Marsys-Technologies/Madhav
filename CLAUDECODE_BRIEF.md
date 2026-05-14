@@ -1,34 +1,40 @@
 ---
 status: OPEN
-session_id: AIOPS_CO_2
-phase: CO.2
-phase_name: "Input panel cleanup + per-message model capsules (Bug 3.1)"
-next_session: AIOPS_CO_3
+session_id: AIOPS_CO_3
+phase: CO.3
+phase_name: "Reasoning slot + tool-call chronology (Bug 3.3 + Bug 3.4)"
+next_session: AIOPS_CO_4
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_3_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CO_2
-## AIOps Phase 3, Step 2 — Bug 3.1 fix
+# CLAUDECODE_BRIEF — AIOPS_CO_3
+## AIOps Phase 3, Step 3 — Reasoning + intermediate display
 
 ---
 
 ## §0 — Executor orientation
 
-CO.2 fixes Bug 3.1 — model names appearing in the input panel area and
-breaking alignment when a query is triggered. The fix has two parts:
+CO.3 fixes Bugs 3.3 and 3.4:
 
-  1. **Remove model names from the input panel.** The current input area
-     (composer + TierPicker / stack selector) crams the active model's name
-     into the same row, breaking horizontal alignment when long names land.
-     Strip that out. The stack selector stays; the model display goes.
+**Bug 3.3** — Reasoning panel renders at the top of the chat during streaming
+then snaps to between query+response when the response arrives. Layout
+flicker. ROOT CAUSE: the reasoning panel's parent container doesn't have a
+stable DOM position from the moment of query submission. CO.1's
+`ReasoningSlot` introduced the anchored slot; CO.3 wires real content
+into it.
 
-  2. **Add per-message model capsules at the end of each response.** Same
-     information, better location. Capsule shows: model_id + cost + latency.
-     Implemented by extending `PostAnswerProvenance.tsx` (or replacing it
-     with a new `MessageMetadata.tsx` if cleaner).
+**Bug 3.4** — Reasoning shows for some queries, absent for others,
+inconsistently. ROOT CAUSE: previous behavior depended on substring-matching
+DeepSeek's `<think>` blocks; now the Phase 2 adapter emits typed
+`reasoning_delta` events, and `model.quirks.reasoning_via` reliably
+indicates whether reasoning is expected. CO.3 makes the panel
+**model-aware**: present iff `reasoning_via !== 'none'`.
 
-All edits behind `CONSUME_UI_V2_ENABLED` flag (CO.1 deliverable).
+Plus: the `tool_call` + `tool_result` chronology from the event stream
+populates the `ToolCallChronology` slot (CO.1 placeholder).
+
+Behind `CONSUME_UI_V2_ENABLED`.
 
 ---
 
@@ -36,14 +42,14 @@ All edits behind `CONSUME_UI_V2_ENABLED` flag (CO.1 deliverable).
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (CO.0 — components 1, 2, 7)
-3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md (CO.0 — Mistral pattern reference)
-4. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-5. platform/src/lib/hooks/useChatLifecycle.ts (CO.1 — snapshot.modelMeta is the data source)
-6. platform/src/components/consume/lifecycle/MetadataBadge.tsx (CO.1 — placeholder; evolve here)
-7. platform/src/components/consume/ConsumeChat.tsx (input area location)
-8. platform/src/components/consume/TierPicker.tsx (stack selector — keep, but verify alignment)
-9. platform/src/components/consume/PostAnswerProvenance.tsx (current model attribution location)
+2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (components 4, 5)
+3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+4. platform/src/lib/adapters/types.ts (reasoning_delta, tool_call, tool_result event types)
+5. platform/src/lib/models/registry.ts (ProviderQuirks.reasoning_via)
+6. platform/src/lib/hooks/useChatLifecycle.ts (snapshot.reasoningText, snapshot.toolCalls)
+7. platform/src/components/consume/lifecycle/ReasoningSlot.tsx (CO.1 placeholder; populate here)
+8. platform/src/components/consume/lifecycle/ToolCallChronology.tsx (CO.1 placeholder; populate here)
+9. platform/src/components/consume/LiveReasoningCard.tsx (legacy — replaced by ReasoningSlot in v2)
 ```
 
 ---
@@ -52,71 +58,113 @@ All edits behind `CONSUME_UI_V2_ENABLED` flag (CO.1 deliverable).
 
 ### may_touch
 ```
-platform/src/components/consume/ConsumeChat.tsx                # input panel cleanup
-platform/src/components/consume/TierPicker.tsx                 # alignment verification only
-platform/src/components/consume/PostAnswerProvenance.tsx       # evolve for new capsule shape
-platform/src/components/consume/lifecycle/MetadataBadge.tsx    # finalize design
-platform/src/components/consume/__tests__/**                   # tests
+platform/src/components/consume/lifecycle/ReasoningSlot.tsx        # fill in real impl
+platform/src/components/consume/lifecycle/ToolCallChronology.tsx   # fill in real impl
+platform/src/components/consume/StreamingAnswer.tsx                # wire slots per model.quirks
+platform/src/components/consume/LiveReasoningCard.tsx              # mark legacy; preserve for flag-off
+platform/src/components/consume/__tests__/**                       # tests
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- LiveReasoningCard, StreamingAnswer reasoning logic — CO.3
-- ConversationSidebar — CO.4
-- Visual design tokens (colors, typography) — CO.5
-- platform/src/lib/adapters/**, synthesis/**, models/**
+- useChatLifecycle.ts (CO.1 sealed)
+- AnswerView.tsx (legacy)
+- ConsumeChat.tsx parent layout (CO.1/CO.2 sealed)
+- adapters/, synthesis/, models/registry.ts
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Remove model names from input panel
+### 3.1 — ReasoningSlot
 
-In `ConsumeChat.tsx`, locate where the active model name is rendered inside
-the input panel layout (typically near or inside `TierPicker`). Remove the
-rendering. The stack selector stays — only the per-model display goes.
-
-Verify alignment in all states:
-- Empty composer
-- Typing (composer expanding)
-- Submitted (composer disabled, awaiting response)
-- Streaming (composer disabled, response building)
-- Complete (composer ready for next message)
-
-In each state, the input panel row should have stable height and the stack
-selector + send button should not shift.
-
-### 3.2 — Per-message metadata capsule
-
-Extend `MetadataBadge.tsx` (CO.1 placeholder) to display:
-
-```
-[ Gemini 2.5 Pro · $0.012 · 4.2s ]
+`ReasoningSlot.tsx` props:
+```ts
+interface ReasoningSlotProps {
+  reasoningText: string         // from useChatLifecycle().reasoningText
+  isStreaming: boolean          // true while state === 'reasoning'
+  modelId: string               // for ProviderQuirks lookup
+  collapsedByDefault?: boolean  // default false during streaming, true after composing
+}
 ```
 
-Three pieces, separated by a thin divider character. Information sourced
-from `useChatLifecycle().modelMeta` which is populated from the `finish`
-event's `interaction.usage`.
+Behavior:
+1. Look up `getModelMeta(modelId).quirks.reasoning_via`.
+2. If `'none'` → render nothing. Slot collapses to zero height.
+3. If `'native'` or `'markers'` → render an expandable card:
+   - Header: "Thinking..." while streaming; "Thought for Ns" after composing.
+   - Body: scrollable, markdown-rendered reasoningText.
+   - Collapsed by default after streaming completes; click to expand.
 
-Per CO.0 spec §X (per-message metadata badge): the capsule sits at the END
-of the assistant message, flush right or right-aligned. Click-to-expand
-reveals full token counts + provider request_id (for audit/debugging).
+Crucially: when `reasoning_via !== 'none'`, the slot renders an EMPTY
+placeholder from the moment the query is submitted. No layout shift when
+content streams in.
 
-Reuse Observatory's existing badge/capsule visual treatment if available —
-do not introduce new visual primitives in CO.2 (that's CO.5 territory).
+### 3.2 — ToolCallChronology
 
-### 3.3 — Legacy compatibility
+`ToolCallChronology.tsx` props:
+```ts
+interface ToolCallChronologyProps {
+  toolCalls: ToolCallRecord[]   // chronological from useChatLifecycle
+}
+```
 
-Old messages (rendered via `AnswerView.tsx` legacy renderer) keep their
-existing model attribution. The new capsule appears only on new messages
-that flow through `useChatLifecycle`. Forward-only commitment from CO.0.
+Renders as collapsible cards in chronological order. Each card shows:
+- Tool name
+- Arguments (collapsed by default, expandable)
+- Result (collapsed by default, expandable)
 
-### 3.4 — Tests
+Empty array → render nothing (zero-height collapse). When the first
+`tool_call` event arrives, the slot expands with the card.
 
-- Input panel alignment: snapshot tests for the 5 states above.
-- MetadataBadge: render with sample modelMeta, assert text content.
-- Click-to-expand on the capsule reveals token counts.
-- ≥12 cases.
+### 3.3 — Wire slots in StreamingAnswer
+
+Update `StreamingAnswer.tsx`:
+```tsx
+const lifecycle = useChatLifecycle(...)
+const meta = getModelMeta(lifecycle.modelMeta?.modelId ?? '')
+
+return (
+  <div className="message">
+    <UserMessage ... />
+    <StatusPip state={lifecycle.state} />
+    {meta?.quirks.reasoning_via !== 'none' && (
+      <ReasoningSlot
+        reasoningText={lifecycle.reasoningText}
+        isStreaming={lifecycle.state === 'reasoning'}
+        modelId={meta?.id ?? ''}
+        collapsedByDefault={lifecycle.state === 'complete'}
+      />
+    )}
+    {lifecycle.toolCalls.length > 0 && (
+      <ToolCallChronology toolCalls={lifecycle.toolCalls} />
+    )}
+    <FinalAnswerSlot text={lifecycle.finalText} />
+    <MetadataBadge meta={lifecycle.modelMeta} />
+  </div>
+)
+```
+
+The conditional rendering for ReasoningSlot uses the model's quirks —
+this is the fix for Bug 3.4 (model-aware).
+
+### 3.4 — CLS verification
+
+Use the existing dev-tools workflow or a manual measurement:
+1. Load `/consume`, submit a query that triggers a reasoning model.
+2. Open Performance tab, measure CLS during the streaming response.
+3. CLS should be < 0.05 (essentially zero).
+
+Document the measurement in a comment in the test file.
+
+### 3.5 — Tests
+
+- ReasoningSlot renders empty for `reasoning_via: 'none'` models.
+- ReasoningSlot renders progressively as `reasoningText` accumulates.
+- ToolCallChronology renders cards in order; nested expand state preserved.
+- Snapshot tests for the full StreamingAnswer with mock streams covering: reasoning-only, tool-call-only, both, neither.
+- CLS regression test (or documented manual measurement).
+- ≥15 cases.
 
 ---
 
@@ -124,14 +172,16 @@ that flow through `useChatLifecycle`. Forward-only commitment from CO.0.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CO2.1 | No model name renders in input panel area | grep + UI test |
-| AC.CO2.2 | Stack selector + send button alignment stable across all 5 input states | snapshot tests |
-| AC.CO2.3 | MetadataBadge renders model + cost + latency for new messages | render test |
-| AC.CO2.4 | Capsule click-to-expand reveals token counts + request_id | UI test |
-| AC.CO2.5 | Old messages render unchanged (forward-only) | snapshot |
-| AC.CO2.6 | typecheck + lint clean | exit 0 |
-| AC.CO2.7 | ≥12 new tests pass | test count |
-| AC.CO2.8 | Scope-violation grep | SCOPE_OK |
+| AC.CO3.1 | ReasoningSlot renders nothing for `reasoning_via: 'none'` | parametrized test |
+| AC.CO3.2 | ReasoningSlot has stable DOM position from submission (no layout shift) | UI test asserting parent container height stable |
+| AC.CO3.3 | ReasoningSlot reasoning text accumulates from `reasoning_delta` events | snapshot |
+| AC.CO3.4 | ReasoningSlot collapses to "Thought for Ns" after composing | snapshot |
+| AC.CO3.5 | ToolCallChronology renders chronological cards | render test |
+| AC.CO3.6 | StreamingAnswer wiring respects model.quirks.reasoning_via | parametrized |
+| AC.CO3.7 | CLS < 0.05 measured during a typical streaming response | manual + documented |
+| AC.CO3.8 | LiveReasoningCard preserved for flag-off path | grep + render test |
+| AC.CO3.9 | typecheck + lint clean | exit 0 |
+| AC.CO3.10 | Scope-violation grep | SCOPE_OK |
 
 ---
 
@@ -139,28 +189,37 @@ that flow through `useChatLifecycle`. Forward-only commitment from CO.0.
 
 Commit:
 ```
-feat(aiops-CO.2): fix Bug 3.1 — input panel cleanup + per-message capsules
+feat(aiops-CO.3): fix Bugs 3.3 + 3.4 — reasoning slot + tool chronology
 
-- Removed model name display from input panel area (was breaking alignment)
-- Verified stack selector + send button alignment in all 5 input states
-- MetadataBadge now shows [ model_id · cost · latency ] at end of each
-  assistant message; click-to-expand reveals token counts + request_id
-- Data source: useChatLifecycle().modelMeta (Phase 2 finish event)
-- Old messages unchanged (forward-only commitment from CO.0)
-- 12+ new tests
+Bug 3.3 (reasoning placement flicker):
+- ReasoningSlot rendered in stable DOM position from the moment of query
+  submission. Empty placeholder mounts immediately; content streams in via
+  reasoning_delta events. No layout shift (CLS < 0.05 verified).
 
-AC summary: 8/8 PASS
+Bug 3.4 (reasoning inconsistency):
+- ReasoningSlot is model-aware via ProviderQuirks.reasoning_via:
+  - 'native' / 'markers' → slot present
+  - 'none' → slot absent (no false-empty panels)
+
+ToolCallChronology:
+- Renders tool_call + tool_result events as chronological collapsible cards.
+- Empty array → zero-height; first tool_call expands the slot.
+
+LiveReasoningCard preserved for flag-off path (forward-only commitment).
+15+ new tests; full suite green.
+
+AC summary: 10/10 PASS
 ```
 
-Rotate → CO.3.
+Rotate → CO.4.
 
 ---
 
 ## §6 — BAIL OUT
 
-- The model name in the input panel turns out to be a deeply-coupled piece of state used by other components (not just display).
-- TierPicker has its own model display logic that's hard to disentangle without rewriting the component (CO.5 territory).
+- `useChatLifecycle()` doesn't expose `reasoningText` or `toolCalls` the way CO.1 said it would (contract mismatch).
+- ProviderQuirks data not accessible from the consume component path without a deep refactor.
 
 ---
 
-*End of PHASE_CO_2_BRIEF.md*
+*End of PHASE_CO_3_BRIEF.md*
