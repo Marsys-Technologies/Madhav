@@ -1,3 +1,8 @@
-// Re-export of the Observatory page so /aiops/observatory renders identically
-// to /observatory. The original route is preserved as a bookmark alias.
-export { default } from '@/app/(super-admin)/observatory/page'
+// /aiops/observatory is a permanent redirect to /observatory, which is the
+// canonical full-featured Observatory route (with ObservatorySubNav and
+// the AIOps tab strip applied via observatory/layout.tsx).
+import { redirect } from 'next/navigation'
+
+export default function AiopsObservatoryRedirect(): never {
+  redirect('/observatory')
+}

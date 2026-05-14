@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const TABS = [
   { label: 'Control Panel', href: '/aiops/control' },
-  { label: 'Observatory', href: '/aiops/observatory' },
+  { label: 'Observatory', href: '/observatory' },
 ] as const
 
 export function AiopsTabs() {
