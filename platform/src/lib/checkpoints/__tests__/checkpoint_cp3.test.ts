@@ -12,15 +12,12 @@ vi.mock('fs', () => ({
     readFileSync: vi.fn(() => 'Query: {{query}}\nPlan: {{query_plan_json}}\nAlternatives: {{discarded_alternatives}}\nClass: {{query_class}}\nAssets: {{bundle_assets}}\nSignals: {{signals_preview}}\nValidators: {{validator_results_json}}\nSynthesis: {{synthesized_text}}'),
   },
 }))
-vi.mock('@/lib/models/resolver', () => ({
-  resolveModel: vi.fn(() => ({ id: 'mock-model', provider: 'mock' })),
-}))
 vi.mock('@/lib/telemetry/index', () => ({
   telemetry: { recordMetric: vi.fn(), recordLatency: vi.fn(), recordError: vi.fn() },
 }))
 
-const mockGenerateText = vi.fn()
-vi.mock('ai', () => ({ generateText: (...args: unknown[]) => mockGenerateText(...args) }))
+const mockRunAdapter = vi.fn()
+vi.mock('@/lib/adapters', () => ({ runAdapter: (...args: unknown[]) => mockRunAdapter(...args) }))
 
 const mockGetFlag = vi.fn()
 vi.mock('@/lib/config/index', () => ({ getFlag: (...args: unknown[]) => mockGetFlag(...args) }))
@@ -93,8 +90,11 @@ beforeEach(() => {
     return false
   })
   mockGetEffectiveModel.mockResolvedValue('resolved-model-id')
-  mockGenerateText.mockResolvedValue({
-    text: JSON.stringify({ verdict: 'pass', confidence: 0.9, reasoning: 'ok' }),
+  mockRunAdapter.mockResolvedValue({
+    finalText: JSON.stringify({ verdict: 'pass', confidence: 0.9, reasoning: 'ok' }),
+    usage: { inputTokens: 0, outputTokens: 0 },
+    finishReason: 'stop',
+    intermediate: [],
   })
 })
 
@@ -106,11 +106,11 @@ describe('checkpoint_4_5 CP.3 integration', () => {
     expect(mockGetEffectiveModel).toHaveBeenCalledWith('marsys', 'checkpoint_4_5', 'primary')
   })
 
-  it('passes resolved model ID to resolveModel', async () => {
+  it('passes resolved model ID to runAdapter', async () => {
     mockGetEffectiveModel.mockResolvedValue('gemini-flash-lite-test')
     await runCheckpoint4_5(makeInput45())
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('gemini-flash-lite-test')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('gemini-flash-lite-test')
   })
 
   it('skips getEffectiveModel when checkpoint is disabled', async () => {
@@ -122,14 +122,14 @@ describe('checkpoint_4_5 CP.3 integration', () => {
   it('uses DB override when flag is on (propagated through mock)', async () => {
     mockGetEffectiveModel.mockResolvedValue('db-override-model-4-5')
     await runCheckpoint4_5(makeInput45())
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('db-override-model-4-5')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('db-override-model-4-5')
   })
 
-  it('passes resolved model to generateText call', async () => {
+  it('passes resolved model to runAdapter call', async () => {
     mockGetEffectiveModel.mockResolvedValue('resolved-checkpoint-4-5')
     await runCheckpoint4_5(makeInput45())
-    const callArg = mockGenerateText.mock.calls[0]?.[0]
+    const callArg = mockRunAdapter.mock.calls[0]?.[0]
     expect(callArg).toBeDefined()
   })
 })
@@ -142,11 +142,11 @@ describe('checkpoint_5_5 CP.3 integration', () => {
     expect(mockGetEffectiveModel).toHaveBeenCalledWith('marsys', 'checkpoint_5_5', 'primary')
   })
 
-  it('passes resolved model ID to resolveModel', async () => {
+  it('passes resolved model ID to runAdapter', async () => {
     mockGetEffectiveModel.mockResolvedValue('gemini-flash-lite-test-5-5')
     await runCheckpoint5_5(makeInput55())
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('gemini-flash-lite-test-5-5')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('gemini-flash-lite-test-5-5')
   })
 
   it('skips getEffectiveModel when checkpoint_5_5 is disabled', async () => {
@@ -158,13 +158,13 @@ describe('checkpoint_5_5 CP.3 integration', () => {
   it('uses DB override when flag is on (propagated through mock)', async () => {
     mockGetEffectiveModel.mockResolvedValue('db-override-model-5-5')
     await runCheckpoint5_5(makeInput55())
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('db-override-model-5-5')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('db-override-model-5-5')
   })
 
-  it('passes resolved model to generateText call', async () => {
+  it('passes resolved model to runAdapter call', async () => {
     await runCheckpoint5_5(makeInput55())
-    const callArg = mockGenerateText.mock.calls[0]?.[0]
+    const callArg = mockRunAdapter.mock.calls[0]?.[0]
     expect(callArg).toBeDefined()
   })
 })
@@ -177,11 +177,11 @@ describe('checkpoint_8_5 CP.3 integration', () => {
     expect(mockGetEffectiveModel).toHaveBeenCalledWith('marsys', 'checkpoint_8_5', 'primary')
   })
 
-  it('passes resolved model ID to resolveModel', async () => {
+  it('passes resolved model ID to runAdapter', async () => {
     mockGetEffectiveModel.mockResolvedValue('gemini-flash-lite-test-8-5')
     await runCheckpoint8_5(makeInput85())
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('gemini-flash-lite-test-8-5')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('gemini-flash-lite-test-8-5')
   })
 
   it('skips getEffectiveModel when checkpoint_8_5 is disabled', async () => {
@@ -193,13 +193,13 @@ describe('checkpoint_8_5 CP.3 integration', () => {
   it('uses DB override when flag is on (propagated through mock)', async () => {
     mockGetEffectiveModel.mockResolvedValue('db-override-model-8-5')
     await runCheckpoint8_5(makeInput85())
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('db-override-model-8-5')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('db-override-model-8-5')
   })
 
-  it('passes resolved model to generateText call', async () => {
+  it('passes resolved model to runAdapter call', async () => {
     await runCheckpoint8_5(makeInput85())
-    const callArg = mockGenerateText.mock.calls[0]?.[0]
+    const callArg = mockRunAdapter.mock.calls[0]?.[0]
     expect(callArg).toBeDefined()
   })
 })

@@ -1,5 +1,4 @@
 import {
-  streamText,
   stepCountIs,
   convertToModelMessages,
   createIdGenerator,
@@ -30,7 +29,6 @@ import {
   type ModelStack,
 } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
-import { resolveModel, googleProviderOptions, deepseekProviderOptions } from '@/lib/models/resolver'
 import { configService } from '@/lib/config/index'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'

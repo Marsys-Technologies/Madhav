@@ -46,6 +46,9 @@ export const adapterNim: Adapter = {
       stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
       experimental_transform: req.smoothStream ? smoothStream() : undefined,
       onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+      onFinish: req.rawOnFinish as ((result: unknown) => Promise<void> | void) | undefined,
+      // NIM: always maxRetries:0 — nimFetch enforces its own 30 s abort; SDK retries triple the hang.
+      maxRetries: 0,
     }
   },
 

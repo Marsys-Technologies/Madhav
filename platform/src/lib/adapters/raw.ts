@@ -4,6 +4,8 @@ import type { QueryRequest } from './types'
 import type { ModelMeta } from '@/lib/models/registry'
 import { getModelMeta, DEFAULT_STACK_ID, DEFAULT_MODEL_ID, STACK_ROUTING } from '@/lib/models/registry'
 import { adapterFor } from './dispatcher'
+import { streamAdapterRawLegacy } from './legacy_runAdapter'
+import { getFlag } from '@/lib/config/index'
 
 export interface RawAdapterResult {
   /** AI SDK StreamTextResult — caller can use .toUIMessageStreamResponse(), .fullStream, etc. */
@@ -21,11 +23,18 @@ export interface RawAdapterResult {
  * SSE piping to consume/route, or by reading result.fullStream for custom
  * event handling in synthesis's stopWhen loop).
  *
- * The adapter's provider-quirk transforms (DeepSeek thinking, Gemini
- * safety, Anthropic system blocks, NIM stream:true, etc.) are still
- * applied — the caller never has to touch providerOptions directly.
+ * With ADAPTERS_ENABLED=false (default): delegates to streamAdapterRawLegacy,
+ * which replicates the old streamText+providerOptions pattern exactly.
+ * With ADAPTERS_ENABLED=true: uses the provider adapter's prepareRequest.
  */
 export function streamAdapterRaw(req: QueryRequest): RawAdapterResult {
+  if (!getFlag('ADAPTERS_ENABLED')) {
+    return streamAdapterRawLegacy(req)
+  }
+  return streamAdapterRawNew(req)
+}
+
+function streamAdapterRawNew(req: QueryRequest): RawAdapterResult {
   const modelId = req.modelOverride?.modelId ?? resolveModelForCallType(req)
   const meta = getModelMeta(modelId)
   if (!meta) throw new Error(`streamAdapterRaw: unknown model ${modelId}`)

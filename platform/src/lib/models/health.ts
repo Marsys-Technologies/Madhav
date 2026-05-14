@@ -13,8 +13,7 @@
  *   GET /api/admin/model-health?refresh=true  // re-pings all FAMILY_WORKERs
  */
 import 'server-only'
-import { generateText } from 'ai'
-import { resolveModel } from './resolver'
+import { runAdapter } from '@/lib/adapters'
 import { FAMILY_WORKER } from './registry'
 import { PipelineError } from '@/lib/router/errors'
 
@@ -62,10 +61,11 @@ export function getAllHealthStatuses(): ModelHealthEntry[] {
  */
 export async function checkWorkerHealth(modelId: string): Promise<ModelHealthEntry> {
   try {
-    const model = resolveModel(modelId)
-    await generateText({
-      model,
-      prompt: 'Reply with the single word: ok',
+    await runAdapter({
+      callType: 'worker',
+      modelOverride: { modelId },
+      systemPrompt: '',
+      messages: [{ role: 'user', content: 'Reply with the single word: ok' }],
       maxOutputTokens: 5,
     })
     const entry: ModelHealthEntry = {

@@ -13,6 +13,8 @@ export interface StreamTextOptions {
   stopWhen?: unknown
   experimental_transform?: unknown
   onStepFinish?: (step: unknown) => Promise<void> | void
+  onFinish?: (result: unknown) => Promise<void> | void
+  maxRetries?: number
 }
 
 export interface Adapter {

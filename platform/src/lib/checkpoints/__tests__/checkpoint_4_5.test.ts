@@ -8,15 +8,12 @@ vi.mock('fs', () => ({
     ),
   },
 }))
-vi.mock('@/lib/models/resolver', () => ({
-  resolveModel: vi.fn(() => ({ id: 'claude-haiku-4-5', provider: 'anthropic' })),
-}))
 vi.mock('@/lib/models/runtime_config', () => ({
   getEffectiveModel: vi.fn().mockResolvedValue('claude-haiku-4-5'),
 }))
 
-const mockGenerateText = vi.fn()
-vi.mock('ai', () => ({ generateText: (...args: unknown[]) => mockGenerateText(...args) }))
+const mockRunAdapter = vi.fn()
+vi.mock('@/lib/adapters', () => ({ runAdapter: (...args: unknown[]) => mockRunAdapter(...args) }))
 
 const mockGetFlag = vi.fn()
 vi.mock('@/lib/config/index', () => ({ getFlag: (...args: unknown[]) => mockGetFlag(...args) }))
@@ -56,8 +53,11 @@ function makeInput(overrides: Partial<Checkpoint45Input> = {}): Checkpoint45Inpu
 }
 
 function mockLLMResponse(verdict: string, confidence = 0.9, reasoning = 'ok') {
-  mockGenerateText.mockResolvedValue({
-    text: JSON.stringify({ verdict, confidence, reasoning }),
+  mockRunAdapter.mockResolvedValue({
+    finalText: JSON.stringify({ verdict, confidence, reasoning }),
+    usage: { inputTokens: 0, outputTokens: 0 },
+    finishReason: 'stop',
+    intermediate: [],
   })
 }
 
@@ -75,7 +75,7 @@ describe('checkpoint_4_5 — flag OFF', () => {
     const result = await runCheckpoint4_5(makeInput())
     expect(result.skipped).toBe(true)
     expect(result.verdict).toBe('pass')
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
 
@@ -102,28 +102,31 @@ describe('checkpoint_4_5 — pass verdict', () => {
     expect(result.latency_ms).toBeGreaterThanOrEqual(0)
   })
 
-  it('calls generateText with a prompt containing the query', async () => {
+  it('calls runAdapter with a prompt containing the query', async () => {
     mockLLMResponse('pass')
     await runCheckpoint4_5(makeInput())
-    const callArgs = mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }
+    const callArgs = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
     expect(callArgs.messages[0].content).toContain('Saturn in the 10th house')
   })
 
   it('includes discarded alternatives in the prompt', async () => {
     mockLLMResponse('pass')
     await runCheckpoint4_5(makeInput({ discarded_alternatives: ['transit_sun', 'progressed_sun'] }))
-    const callArgs = mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }
+    const callArgs = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
     expect(callArgs.messages[0].content).toContain('transit_sun')
   })
 
   it('attaches suggested_revision when LLM provides one', async () => {
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({
         verdict: 'warn',
         confidence: 0.7,
         reasoning: 'Ambiguity detected',
         suggested_revision: { query_class: 'predictive' },
       }),
+      usage: { inputTokens: 0, outputTokens: 0 },
+      finishReason: 'stop',
+      intermediate: [],
     })
     const result = await runCheckpoint4_5(makeInput())
     expect(result.suggested_revision).toEqual({ query_class: 'predictive' })
@@ -183,23 +186,26 @@ describe('checkpoint_4_5 — parse failure', () => {
   })
 
   it('defaults to pass when LLM returns invalid JSON', async () => {
-    mockGenerateText.mockResolvedValue({ text: 'not json at all' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'not json at all', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     const result = await runCheckpoint4_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('parse failed')
   })
 
   it('defaults to pass when LLM returns JSON with wrong schema', async () => {
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({ foo: 'bar', baz: 123 }),
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({ foo: 'bar', baz: 123 }),
+      usage: { inputTokens: 0, outputTokens: 0 },
+      finishReason: 'stop',
+      intermediate: [],
     })
     const result = await runCheckpoint4_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('schema invalid')
   })
 
-  it('defaults to pass when generateText throws', async () => {
-    mockGenerateText.mockRejectedValue(new Error('network timeout'))
+  it('defaults to pass when runAdapter throws', async () => {
+    mockRunAdapter.mockRejectedValue(new Error('network timeout'))
     const result = await runCheckpoint4_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('Checkpoint error')

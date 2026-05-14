@@ -9,9 +9,8 @@
  * gating happens at the surrounding consume page.
  */
 
-import { generateText } from 'ai'
+import { runAdapter } from '@/lib/adapters'
 import { getServerUser } from '@/lib/firebase/server'
-import { resolveModel } from '@/lib/models/resolver'
 import { TITLE_MODEL_ID } from '@/lib/models/registry'
 import { res } from '@/lib/errors'
 
@@ -53,14 +52,14 @@ export async function GET(request: Request) {
   // Flash call that varies wording within a fixed pool, keyed by date.
   let suggestions: string[]
   try {
-    const completion = await generateText({
-      model: resolveModel(TITLE_MODEL_ID),
-      system:
-        'You suggest 5 evocative one-sentence questions a native might ask their Jyotish chart today. Return exactly 5 lines, each a question, no numbering, no preface, no trailing punctuation beyond a question mark.',
-      prompt: `Today is ${todayUtc()}. Suggest 5 questions that frame a Jyotish chart inquiry without naming any planet or dasha by name (those are the native's surprise).`,
+    const interaction = await runAdapter({
+      callType: 'worker',
+      modelOverride: { modelId: TITLE_MODEL_ID },
+      systemPrompt: 'You suggest 5 evocative one-sentence questions a native might ask their Jyotish chart today. Return exactly 5 lines, each a question, no numbering, no preface, no trailing punctuation beyond a question mark.',
+      messages: [{ role: 'user', content: `Today is ${todayUtc()}. Suggest 5 questions that frame a Jyotish chart inquiry without naming any planet or dasha by name (those are the native's surprise).` }],
       maxOutputTokens: 250,
     })
-    suggestions = completion.text
+    suggestions = (interaction.finalText ?? '')
       .split('\n')
       .map(l => l.replace(/^[-*\d.\s]+/, '').trim())
       .filter(l => l.length > 0)

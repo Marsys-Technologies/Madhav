@@ -17,6 +17,8 @@ vi.mock('ai', () => ({
   stepCountIs: vi.fn((n: number) => ({ __stepCountIs: n })),
   smoothStream: vi.fn(),
   jsonSchema: vi.fn((s: unknown) => ({ __jsonSchema: s })),
+  extractReasoningMiddleware: vi.fn(() => ({})),
+  wrapLanguageModel: vi.fn((m: unknown) => m),
 }))
 vi.mock('@ai-sdk/anthropic', () => ({ anthropic: vi.fn(() => ({ id: 'claude-model' })) }))
 vi.mock('@ai-sdk/deepseek', () => ({ deepseek: vi.fn(() => ({ id: 'deepseek-model' })) }))
@@ -128,7 +130,7 @@ describe('streamAdapterRaw — result and meta shape', () => {
   test('throws if getModelMeta returns null (unknown model)', () => {
     mockGetModelMeta.mockReturnValue(null)
     expect(() => streamAdapterRaw(makeReq({ modelOverride: { modelId: 'nonexistent-model' } }))).toThrow(
-      'streamAdapterRaw: unknown model nonexistent-model',
+      'unknown model nonexistent-model',
     )
   })
 

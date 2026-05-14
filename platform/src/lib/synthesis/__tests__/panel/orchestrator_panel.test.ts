@@ -19,6 +19,7 @@ vi.mock('@/lib/models/resolver', () => ({
   resolveWorkerModel: vi.fn((id: string) => id ?? 'claude-haiku-4-5'),
   supportsStreaming: vi.fn(() => true),
   googleProviderOptions: vi.fn(() => null),
+  deepseekProviderOptions: vi.fn(() => undefined),
 }))
 
 // ── AI SDK ─────────────────────────────────────────────────────────────────────
@@ -34,6 +35,11 @@ vi.mock('ai', () => ({
 // ── Models registry ────────────────────────────────────────────────────────────
 vi.mock('@/lib/models/registry', () => ({
   supports: vi.fn().mockReturnValue(true),
+  getReasoningMode: vi.fn(() => 'none'),
+  MODELS: [],
+  DEFAULT_STACK_ID: 'anthropic',
+  DEFAULT_MODEL_ID: 'claude-sonnet-4-6',
+  STACK_ROUTING: {},
   getModelMeta: vi.fn((id: string) => ({
     id,
     label: 'Test',
@@ -41,6 +47,8 @@ vi.mock('@/lib/models/registry', () => ({
     speedTier: 'fast',
     maxOutputTokens: 64000,
     capabilities: ['tool-use', 'prompt-caching'],
+    costPer1MInput: 3.0,
+    costPer1MOutput: 15.0,
   })),
 }))
 

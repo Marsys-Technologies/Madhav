@@ -13,9 +13,8 @@
 
 import 'server-only'
 
-import { generateText } from 'ai'
+import { runAdapter } from '@/lib/adapters'
 import { z } from 'zod'
-import { resolveModel } from '@/lib/models/resolver'
 import { telemetry } from '@/lib/telemetry/index'
 import { recordAiSdkCall } from '@/lib/llm/observability/observe_ai_sdk'
 import { selectAdjudicator, DEFAULT_PANEL_SLATE, ADJUDICATOR_CANDIDATE_POOL } from './default_slate'
@@ -85,11 +84,13 @@ export async function adjudicate(
   )
 
   const callStartedAt = new Date(started)
-  const callPromise = generateText({
-    model: resolveModel(adjConfig.model_id),
+  const callPromise = runAdapter({
+    callType: 'synthesis',
+    modelOverride: { modelId: adjConfig.model_id },
+    systemPrompt: '',
     messages: [{ role: 'user', content: prompt }],
     maxOutputTokens: 65536,
-  }).then(r => {
+  }).then(interaction => {
     recordAiSdkCall({
       pipeline_stage: 'audit',
       model_id: adjConfig.model_id,
@@ -97,12 +98,12 @@ export async function adjudicate(
       prompt_id: `${request.query_plan.query_plan_id}:panel:adjudicator`,
       user_id: 'native',
       parameters: { model: adjConfig.model_id, role: 'adjudicator' },
-      usage: r.usage,
+      usage: { inputTokens: interaction.usage.inputTokens, outputTokens: interaction.usage.outputTokens },
       status: 'success',
       started_at: callStartedAt,
       finished_at: new Date(),
     })
-    return r.text
+    return interaction.finalText ?? ''
   })
 
   const raw = await Promise.race([callPromise, timeoutPromise])

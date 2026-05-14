@@ -8,15 +8,12 @@ vi.mock('fs', () => ({
     ),
   },
 }))
-vi.mock('@/lib/models/resolver', () => ({
-  resolveModel: vi.fn(() => ({ id: 'claude-haiku-4-5', provider: 'anthropic' })),
-}))
 vi.mock('@/lib/models/runtime_config', () => ({
   getEffectiveModel: vi.fn().mockResolvedValue('claude-haiku-4-5'),
 }))
 
-const mockGenerateText = vi.fn()
-vi.mock('ai', () => ({ generateText: (...args: unknown[]) => mockGenerateText(...args) }))
+const mockRunAdapter = vi.fn()
+vi.mock('@/lib/adapters', () => ({ runAdapter: (...args: unknown[]) => mockRunAdapter(...args) }))
 
 const mockGetFlag = vi.fn()
 vi.mock('@/lib/config/index', () => ({ getFlag: (...args: unknown[]) => mockGetFlag(...args) }))
@@ -101,8 +98,11 @@ function makeInput(overrides: Partial<Checkpoint55Input> = {}): Checkpoint55Inpu
 }
 
 function mockLLMResponse(verdict: string, confidence = 0.9, reasoning = 'ok') {
-  mockGenerateText.mockResolvedValue({
-    text: JSON.stringify({ verdict, confidence, reasoning }),
+  mockRunAdapter.mockResolvedValue({
+    finalText: JSON.stringify({ verdict, confidence, reasoning }),
+    usage: { inputTokens: 0, outputTokens: 0 },
+    finishReason: 'stop',
+    intermediate: [],
   })
 }
 
@@ -118,7 +118,7 @@ describe('checkpoint_5_5 — flag OFF', () => {
     const result = await runCheckpoint5_5(makeInput())
     expect(result.skipped).toBe(true)
     expect(result.verdict).toBe('pass')
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
 
@@ -142,7 +142,7 @@ describe('checkpoint_5_5 — pass verdict', () => {
   it('includes bundle asset info in the prompt', async () => {
     mockLLMResponse('pass')
     await runCheckpoint5_5(makeInput())
-    const prompt = (mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
+    const prompt = (mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
     expect(prompt).toContain('FORENSIC')
     expect(prompt).toContain('floor')
   })
@@ -150,14 +150,14 @@ describe('checkpoint_5_5 — pass verdict', () => {
   it('includes signal_id in signals preview', async () => {
     mockLLMResponse('pass')
     await runCheckpoint5_5(makeInput())
-    const prompt = (mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
+    const prompt = (mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
     expect(prompt).toContain('MSR-0042')
   })
 
   it('includes query class in prompt', async () => {
     mockLLMResponse('pass')
     await runCheckpoint5_5(makeInput())
-    const prompt = (mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
+    const prompt = (mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
     expect(prompt).toContain('cross_domain')
   })
 })
@@ -170,13 +170,16 @@ describe('checkpoint_5_5 — warn verdict', () => {
   })
 
   it('returns warn with missing_signal_hints', async () => {
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({
         verdict: 'warn',
         confidence: 0.6,
         reasoning: 'Relationship signals absent',
         missing_signal_hints: ['relationship domain signals', 'Venus placement signals'],
       }),
+      usage: { inputTokens: 0, outputTokens: 0 },
+      finishReason: 'stop',
+      intermediate: [],
     })
     const result = await runCheckpoint5_5(makeInput())
     expect(result.verdict).toBe('warn')
@@ -242,14 +245,14 @@ describe('checkpoint_5_5 — parse failure', () => {
   })
 
   it('defaults to pass on invalid JSON', async () => {
-    mockGenerateText.mockResolvedValue({ text: 'not json' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'not json', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     const result = await runCheckpoint5_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('parse failed')
   })
 
-  it('defaults to pass when generateText throws', async () => {
-    mockGenerateText.mockRejectedValue(new Error('timeout'))
+  it('defaults to pass when runAdapter throws', async () => {
+    mockRunAdapter.mockRejectedValue(new Error('timeout'))
     const result = await runCheckpoint5_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('Checkpoint error')

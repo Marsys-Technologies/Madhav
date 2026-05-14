@@ -95,6 +95,27 @@ export interface QueryRequest {
    * Synthesis path uses this for end-of-call audit event capture.
    */
   onFinish?: (interaction: ModelInteraction) => Promise<void> | void
+
+  /**
+   * Raw AI SDK onFinish callback. Passed directly to streamText.onFinish
+   * via prepareRequest. Receives the raw AI SDK finish payload rather than
+   * a translated ModelInteraction.
+   *
+   * Used by streamAdapterRaw call sites (single_model_strategy, panel_strategy)
+   * that need to attach their existing onFinish logic without type translation.
+   */
+  rawOnFinish?: (result: {
+    finishReason: string
+    usage?: { inputTokens?: number; outputTokens?: number }
+    text?: string
+  }) => Promise<void> | void
+
+  /**
+   * When true, sets maxRetries: 0 on the underlying streamText call so the
+   * AI SDK does not retry on error. Use when the caller owns its own retry
+   * loop (e.g. pipeline_planner.ts).
+   */
+  disableSdkRetry?: boolean
 }
 
 export interface ToolDefinition {

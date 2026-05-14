@@ -58,6 +58,8 @@ export const adapterGemini: Adapter = {
       stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
       experimental_transform: req.smoothStream ? smoothStream() : undefined,
       onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+      onFinish: req.rawOnFinish as ((result: unknown) => Promise<void> | void) | undefined,
+      ...(req.disableSdkRetry && { maxRetries: 0 }),
     }
   },
 

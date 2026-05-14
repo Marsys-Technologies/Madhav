@@ -14,8 +14,7 @@
  * (B.10: do not fabricate token counts).
  */
 
-import { generateText } from 'ai'
-import { resolveModel } from '@/lib/models/resolver'
+import { runAdapter } from '@/lib/adapters'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
@@ -82,13 +81,15 @@ async function summarizeHistory(
   let usage: { inputTokens?: number; outputTokens?: number } | undefined
   let errorCode: string | null = null
   try {
-    const result = await generateText({
-      model: resolveModel(workerModelId),
+    const interaction = await runAdapter({
+      callType: 'worker',
+      modelOverride: { modelId: workerModelId },
+      systemPrompt: '',
       messages: [{ role: 'user', content: prompt }],
       maxOutputTokens: SUMMARY_TARGET_TOKENS,
     })
-    text = result.text
-    usage = result.usage
+    text = interaction.finalText ?? ''
+    usage = { inputTokens: interaction.usage.inputTokens, outputTokens: interaction.usage.outputTokens }
   } catch (err) {
     errorCode = err instanceof Error ? err.message : String(err)
     throw err

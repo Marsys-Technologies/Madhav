@@ -1,9 +1,8 @@
 import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
-import { generateText } from 'ai'
+import { runAdapter } from '@/lib/adapters'
 
 import { query } from '@/lib/db/client'
-import { resolveModel } from '@/lib/models/resolver'
 import { guardPerformanceRoute } from '../_guard'
 import { buildJudgePrompt, parseJudgeResponse } from '@/lib/performance/judge_prompt'
 
@@ -80,12 +79,14 @@ export async function POST(request: Request) {
       let verdict: 'correct' | 'wrong' | 'ambiguous'
       let reasoning: string
       try {
-        const result = await generateText({
-          model: resolveModel(JUDGE_MODEL),
+        const interaction = await runAdapter({
+          callType: 'worker',
+          modelOverride: { modelId: JUDGE_MODEL },
+          systemPrompt: '',
           messages: [{ role: 'user', content: prompt }],
           maxOutputTokens: 256,
         })
-        const parsed = parseJudgeResponse(result.text ?? '')
+        const parsed = parseJudgeResponse(interaction.finalText ?? '')
         if (parsed) {
           verdict = parsed.verdict
           reasoning = parsed.reasoning
