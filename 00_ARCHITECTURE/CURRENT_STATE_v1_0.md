@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.6
+version: 5.7
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.7 (2026-05-14, M8-D-S1):
+    **M8-D-S1 CLOSED. TIER 3 INGESTION COMPLETE. ALL 10 TEXTS LOADED.**
+    Key outcomes: (1) AC.M8D.1 PASS — all 5 scripts complete; idempotent; exit 0. (2) AC.M8D.2 PASS — Prashna Marga: 758 chunks 100% embedded. (3) AC.M8D.3 PASS — Hora Sara: 295 chunks 100% embedded. (4) AC.M8D.4 PASS — KP Vols 1-4: 1646 chunks 100% embedded. (5) AC.M8D.5 PASS — Brihat Jataka: 520 chunks 100% embedded. (6) AC.M8D.6 PASS — Brihat Samhita: 757 chunks 98.4% embedded (>>95% threshold; 12 chunks in 1 batch exceeded 20k Vertex limit). (7) AC.M8D.7 PASS — all 5 uploaded to GCS tier3/. (8) AC.M8D.8 PASS — total 7150 chunks across 10 texts (>>3200 threshold). (9) AC.M8D.9 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated.
+    red_team_counter: 0 (IS.8(a) fired at M8-C-S1 close; reset; M8-D-S1 is post-reset session 1).
+    active_phase_plan_sub_phase: M8-D CLOSED. M8-E-S1 INCOMING.
+    last_session_id: M8-D-S1. next_session_objective: M8-E-S1 (Attribution engine + classical_text_search.ts + classical_attribution_lookup.ts full impl + run_attribution_pass.py for 514 MSR signals + CLASSICAL_ATTRIBUTION_REGISTRY).
+    file_updated_at: 2026-05-14T15:56:00+05:30. file_updated_by_session: M8-D-S1.
   - v5.6 (2026-05-14, M8-C-S1):
     **M8-C-S1 CLOSED. TIER 2 INGESTION COMPLETE.**
     Key outcomes: (1) AC.M8C.1 PASS — all 3 scripts complete; idempotent; exit 0. (2) AC.M8C.2 PASS — Saravali: 796 chunks 100% embedded (dual-source: saravaliofkalyanavarmasanthanamr + KalyanaVarmasSaravali_201707; tier2/saravali_chunks.jsonl). (3) AC.M8C.3 PASS — Uttara Kalamrita: 239 chunks 100% embedded; tier2/uttara_kalamrita_chunks.jsonl. (4) AC.M8C.4 PASS — Jaimini Sutra: 181 chunks 100% embedded; tier2/jaimini_sutra_chunks.jsonl. (5) AC.M8C.5 PASS — all 3 uploaded to GCS tier2/. (6) AC.M8C.6 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated. DB state: 5 texts (2 tier1 + 3 tier2), all embeddings 100%.

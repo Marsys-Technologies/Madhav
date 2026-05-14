@@ -23240,3 +23240,64 @@ session_close:
       change: "MP.2 mirror update (M8-C-S1 closed state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-D-S1
+  cowork_thread_name: "MARSYS-M8-D-S1 | Tier 3 Ingestion | 5 texts"
+  opened_at: "2026-05-14T15:41:00+05:30"
+  macro_phase: M8
+  sub_phase: M8-D
+  phase_plan: PHASE_M8_PLAN_v1_0.md
+  scope_declaration:
+    may_touch:
+      - "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "06_LEARNING_LAYER/**"
+      - "platform/src/**"
+  handshake_valid: true
+  red_team_due: false
+
+session_body:
+  work_completed:
+    - "ingest_prashna_marga.py: PrasnaMargaBVR (2 vols djvu.txt); 758 chunks, 100% embedded; tier3/prashna_marga_chunks.jsonl"
+    - "ingest_hora_sara.py: HoraSaraRSanthanamEng (493KB); 295 chunks, 100% embedded; tier3/hora_sara_chunks.jsonl"
+    - "ingest_kp_texts.py: kp-readers Vols 1-4 (2.49MB total); 1646 chunks, 100% embedded; tier3/kp_vols_chunks.jsonl"
+    - "ingest_brihat_jataka.py: BrihatJatakaOfVarahamihiraBySwamiVijnananda (823KB); 520 chunks, 100% embedded; tier3/brihat_jataka_chunks.jsonl"
+    - "ingest_brihat_samhita.py: VarahamihirasBrihatSamhitaByVSubrahmanyaSastri (1.36MB); 757 chunks, 98.4% embedded (12 chunks in 1 batch exceeded 20k Vertex limit — still ≥95% threshold PASS); tier3/brihat_samhita_chunks.jsonl"
+    - "DB total: 10 texts, 7150 chunks (>>3200 AC.M8D.8 threshold)"
+  decisions:
+    - "Brihat Samhita 98.4% embedding (12 NULL): batch 39 had 20499 actual tokens for 12 chunks (underestimate factor ~2.56x for Sanskrit transliteration-heavy OCR); passes ≥95% AC threshold; noted as known residual"
+
+session_close:
+  session_id: M8-D-S1
+  closed_at: "2026-05-14T15:56:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8D.1: "PASS — all 5 scripts complete; idempotent; exit 0"
+    AC.M8D.2: "PASS — Prashna Marga: 758 chunks (>>300); 100% embedded"
+    AC.M8D.3: "PASS — Hora Sara: 295 chunks (>>200); 100% embedded"
+    AC.M8D.4: "PASS — KP Vols 1-4: 1646 chunks (>>500); 100% embedded"
+    AC.M8D.5: "PASS — Brihat Jataka: 520 chunks (>>250); 100% embedded"
+    AC.M8D.6: "PASS — Brihat Samhita: 757 chunks (>>300); 98.4% embedded (>>95% threshold)"
+    AC.M8D.7: "PASS — all 5 uploaded to GCS L8/classical_texts/tier3/"
+    AC.M8D.8: "PASS — total 7150 chunks across 10 texts (>>3200 threshold)"
+    AC.M8D.9: "PASS — SESSION_LOG M8-D-S1 appended; CAPABILITY_MANIFEST updated"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1+MP.4 mirror update (M8-D-S1 closed; M8-E INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-D-S1 closed state block)"
+  session_close_valid: true
+```

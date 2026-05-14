@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T15:40:00+05:30",
+  "generated_at": "2026-05-14T15:56:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 93,
+  "entry_count": 98,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1405,6 +1405,51 @@
       "status": "CURRENT",
       "description": "Jaimini Sutra ingestion; Jaiminisutras1955EditionByBSRao; 181 chunks; 100% embedded",
       "produced_during": "M8-C-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_prashna_marga",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_prashna_marga.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Prashna Marga ingestion; PrasnaMargaBVR 2-vol; 758 chunks; 100% embedded",
+      "produced_during": "M8-D-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_hora_sara",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_hora_sara.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Hora Sara ingestion; HoraSaraRSanthanamEng; 295 chunks; 100% embedded",
+      "produced_during": "M8-D-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_kp_texts",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_kp_texts.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "KP Readers Vols 1-4 ingestion; kp-readers; 1646 chunks; 100% embedded",
+      "produced_during": "M8-D-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_brihat_jataka",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_brihat_jataka.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Brihat Jataka ingestion; Swami Vijnananda; 520 chunks; 100% embedded",
+      "produced_during": "M8-D-S1"
+    },
+    {
+      "id": "INGESTION_SCRIPT_ingest_brihat_samhita",
+      "type": "INGESTION_SCRIPT",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_brihat_samhita.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "description": "Brihat Samhita ingestion; V. Subrahmanya Sastri; 757 chunks; 98.4% embedded",
+      "produced_during": "M8-D-S1"
     }
   ]
 }
