@@ -1,7 +1,7 @@
 # Consume Module UI Redesign — Design Spec
 
 **Date:** 2026-05-15  
-**Status:** Approved  
+**Status:** Approved — awaiting implementation (prescriptive, not yet applied to code)  
 **Scope:** Consume chat interface — layout fix + full shell redesign  
 
 ---
@@ -27,12 +27,27 @@ Additionally, the UI modernisation work done in AIOps Phase 3 (CO.5/CO.6) target
 
 ## 3. Root Fix
 
-`platform/src/app/clients/[id]/consume/layout.tsx` wraps its children in a `position: fixed; inset: 0; z-index: 50` div. This creates a full-viewport overlay that visually replaces AppShell for the consume route without:
+`platform/src/app/clients/[id]/consume/layout.tsx` wraps the `ZoneRoot` itself in a `position: fixed; inset: 0; z-index: 50` div. This creates a full-viewport overlay that visually replaces AppShell for the consume route without:
 - touching `clients/[id]/layout.tsx` (auth + DB queries stay there)
 - restructuring routes or creating route groups
 - duplicating auth checks
 
 AppShell still renders underneath (preserved for accessibility), but ConsumeShell owns the full viewport.
+
+**Critical implementation note — stacking context safety:** The fixed div must be the *outermost* element in the layout, wrapping ZoneRoot rather than being a child inside it. The current `layout.tsx` uses `ZoneRoot` with `display: contents`, which means any fixed element placed *inside* it would be treated as a child of AppShell's `<main>`. If any ancestor element in AppShell ever applies `transform`, `filter`, `will-change`, or `contain: paint`, it would create a new stacking context that traps `position: fixed` and breaks the overlay. The correct structure is:
+
+```tsx
+// consume/layout.tsx — correct
+export default function ConsumeLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-background">
+      <ZoneRoot zone="ink" style={{ height: '100%' }}>
+        {children}
+      </ZoneRoot>
+    </div>
+  )
+}
+```
 
 **Before (broken):**
 ```
@@ -65,8 +80,8 @@ ConsumeLayout (fixed inset-0 z-50)
 
 | File | Purpose |
 |---|---|
-| `platform/src/components/consume/ConsumeShell.tsx` | Full-screen shell — replaces ChatShell for the consume route. Accepts same prop surface as ChatShell: `sidebar`, `children`, `rightPanel`, `headerTitle`, `headerMeta`, `headerActions`, `conversationId`, `onRenameConversation`. |
-| `platform/src/components/consume/ConsumeRail.tsx` | 44px icon rail with hover-expand overlay panel. Renders existing `ConversationSidebar` inside the panel. |
+| `platform/src/components/consume/ConsumeShell.tsx` | Full-screen shell — replaces ChatShell for the consume route. Full prop surface: `children`, `rightPanel`, `rightPanelLabel`, `rightPanelBadge`, `headerTitle`, `headerMeta`, `headerActions`, `conversationId`, `onRenameConversation`. Collapse state (`desktopSidebarCollapsed`, `mobileSidebarOpen`, the three toggle callbacks) is removed from the prop surface — ConsumeRail owns its own panel-open state internally. |
+| `platform/src/components/consume/ConsumeRail.tsx` | 44px icon rail with hover-expand overlay panel. Renders existing `ConversationSidebar` inside the panel. Exposes an imperative `open()` / `close()` handle (or a controlled `panelOpen` + `onPanelOpenChange` prop) so the ConsumeHeader hamburger button can toggle the panel. |
 
 ### 4.2 Files Modified
 
@@ -84,7 +99,8 @@ ConsumeLayout (fixed inset-0 z-50)
 - `platform/src/components/chat/ChatShell.tsx` — used by build/ and other routes
 - `platform/src/components/chat/Composer.tsx` — **LOCKED** per `platform/AGENTS.md`
 - `platform/src/components/chat/ConversationSidebar.tsx` — rendered inside ConsumeRail panel; all rename/delete/search logic preserved
-- All 20 other consume sub-components (StreamingAnswer, LiveReasoningCard, TraceDrawer, ReportLibrary, ReportReader, CorrectionNotice, OutOfDomainBanner, PostAnswerProvenance, ConversationHistoryDrawer, ValidatorFailureView, TierPicker, lifecycle/*, etc.)
+- All other consume sub-components (StreamingAnswer, LiveReasoningCard, TraceDrawer, ReportLibrary, ReportReader, CorrectionNotice, OutOfDomainBanner, PostAnswerProvenance, ConversationHistoryDrawer, ValidatorFailureView, TierPicker, lifecycle/*, **ShortcutsDialog**, **CommandPalette**, etc.)
+  - **Note on CommandPalette `toggle-sidebar` command:** the existing command calls `setDesktopSidebarCollapsed`. Because ConsumeRail now owns panel state internally, this command handler in `ConsumeChat.tsx` must be updated to call the ConsumeRail toggle instead (via the `onPanelOpenChange` prop or ref). The command label and hotkey (`⌘B`) remain unchanged.
 
 ---
 
@@ -104,7 +120,7 @@ ConsumeLayout (fixed inset-0 z-50)
 └─ User avatar (26px circle, initials)
 ```
 
-**Hover panel** — `position: absolute; left: 44px; top: 0; bottom: 0; width: 240px; z-19`:
+**Hover panel** — `position: absolute; left: 44px; top: 0; bottom: 0; width: 240px; z-[19]` (arbitrary value — `z-19` is not a Tailwind v4 scale class):
 - Backdrop: `#0b0804`, `box-shadow: 4px 0 32px rgba(0,0,0,0.7)`
 - Header: chart name + meta (birth date · place)
 - New Conversation button: gold-border card, `+ New Conversation`
@@ -129,9 +145,14 @@ ConsumeLayout (fixed inset-0 z-50)
     └─ Composer zone (shrink-0, border-t)
         ├─ [slot: error banner]
         ├─ [slot: archived branch notice]
-        ├─ Toolbar row: ModelStylePicker | LEL toggle | Panel checkbox | Trace
+        ├─ Toolbar row: ModelStylePicker | LEL toggle | Panel checkbox
         ├─ [slot: LEL-off notice]
         └─ Composer (existing, untouched)
+```
+
+> **Trace button placement (LOCKED):** Trace does NOT appear in the toolbar row. It is passed via the `headerActions` prop and renders in ConsumeHeader's right slot — visible only when `activeTier === 'super_admin'`. This matches locked behavior #2.
+
+```
 ```
 
 **`--composer-h` CSS variable**: measured via ResizeObserver on the composer zone div (same mechanism already in ConsumeChat). Initial value `160px` retained as fallback.
@@ -168,7 +189,24 @@ ConsumeLayout (fixed inset-0 z-50)
 
 ---
 
-## 6. Visual Design Tokens (additions to globals.css)
+## 6. Z-Index Stack
+
+
+| Layer | Value | Element |
+|---|---|---|
+| AppShell (hidden behind) | — | `h-[100dvh]` under overlay |
+| Consume overlay root | `z-50` | `fixed inset-0` in `consume/layout.tsx` |
+| ConsumeRail | `z-20` | `position: relative` within overlay |
+| ConsumeRail hover panel | `z-19` | `position: absolute; left: 44px` |
+| ScrollToBottomButton | `z-20` | `absolute`, within scroll area |
+| Radix Sheet portals (TraceDrawer, ConversationHistoryDrawer, right panel) | `z-50` via Radix portal to `<body>` — renders above all in-tree z-index |
+| CommandPalette, ShortcutsDialog | `z-50` via Radix portal |
+
+> Radix portal-based components (`Sheet`, `Dialog`) always render at the body root, outside the consume overlay tree entirely. No z-index conflict with ConsumeRail panel.
+
+---
+
+## 7. Visual Design Tokens (additions to globals.css)
 
 ```css
 /* ConsumeRail hover panel transition */
@@ -197,19 +235,19 @@ ConsumeLayout (fixed inset-0 z-50)
 
 ---
 
-## 7. Locked Behaviors (preserved verbatim)
+## 8. Locked Behaviors (preserved verbatim)
 
 Per `platform/AGENTS.md`:
 
 | # | Behavior | How preserved |
 |---|---|---|
-| 1 | Sidebar default-collapsed | ConsumeRail starts in icon-only mode (no hover panel open) on fresh load |
-| 2 | Trace button in header | ConsumeShell's `headerActions` slot — Trace button passed there, not in toolbar |
+| 1 | Sidebar default-collapsed | ConsumeRail `panelOpen` initialises to `false` — icon-only on fresh load. **Note:** `AGENTS.md` documents the canonical value as `desktopSidebarCollapsed = useState(true)` (collapsed = `true`). The live code regressed to `useState(false)`. ConsumeRail inverts the polarity: `panelOpen = false` means the panel is *closed* (i.e. collapsed) — semantically identical to `desktopSidebarCollapsed = true`. `panelOpen = false` on load is the correct canonical behaviour. The old `desktopSidebarCollapsed` state in `ConsumeChat.tsx` is removed entirely. |
+| 2 | Trace button in header | Passed via `headerActions` prop to ConsumeShell → renders in ConsumeHeader right slot. Not in composer toolbar row. |
 | 3 | Composer fixed-size textarea | `Composer.tsx` untouched; only outer wrapping card restyled |
 
 ---
 
-## 8. Implementation Order
+## 9. Implementation Order
 
 1. **`consume/layout.tsx`** — `fixed inset-0 z-50` wrapper. Immediately unblocks layout. Verify in browser before continuing.
 2. **`ConsumeRail.tsx`** — icon rail + hover expand + ConversationSidebar inside panel.
@@ -222,7 +260,7 @@ Per `platform/AGENTS.md`:
 
 ---
 
-## 9. Test Plan
+## 10. Test Plan
 
 ### Layout contract
 - Chat fills full viewport; AppShell rail + breadcrumb invisible
@@ -264,7 +302,7 @@ Per `platform/AGENTS.md`:
 
 ---
 
-## 10. Known Risks + Mitigations
+## 11. Known Risks + Mitigations
 
 | Risk | Mitigation |
 |---|---|
