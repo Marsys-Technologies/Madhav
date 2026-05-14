@@ -77,7 +77,7 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
       <Link
         href="/dashboard"
         aria-label="MARSYS-JIS — go to Roster"
-        className="mb-4 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_6px_var(--brand-gold)]"
+        className="mb-4 w-full px-3 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_6px_var(--brand-gold)]"
       >
         <Sigil size={28} />
       </Link>
