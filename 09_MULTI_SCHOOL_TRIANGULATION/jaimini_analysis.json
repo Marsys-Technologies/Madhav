@@ -1,0 +1,152 @@
+{
+  "school": "jaimini",
+  "runDate": "2026-05-14",
+  "results": [
+    {
+      "school": "jaimini",
+      "domain": "CAREER",
+      "domainScore": 4.161,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.041",
+          "signalName": "AK Moon \u00d7 AmK Saturn \u2014 career royalty axis",
+          "score": 4.5,
+          "weight": 1.2349999999999999,
+          "attributionRef": "Jaimini Sutras \u00a72.1"
+        },
+        {
+          "signalId": "SIG.MSR.089",
+          "signalName": "AmK Saturn 10H \u2014 executive amatyakaraka",
+          "score": 4.2,
+          "weight": 1.1700000000000002
+        },
+        {
+          "signalId": "SIG.MSR.103",
+          "signalName": "BK Mercury 1H \u2014 intelligence applied to career",
+          "score": 3.6,
+          "weight": 0.8250000000000001
+        }
+      ],
+      "schoolVerdict": "Jaimini: exceptionally strong career signal via the AK Moon \u00d7 AmK Saturn raja yoga axis. In Jaimini's Chara Karaka system, the Atmakaraka (Moon) and Amatyakaraka (Saturn) forming a supportive configuration is the highest indicator of career distinction. Saturn as AmK in the 10H of Capricorn, its own sign and exaltation, is the textbook Jaimini career peak marker.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "jaimini",
+      "domain": "HEALTH",
+      "domainScore": 2.966,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.201",
+          "signalName": "AK Moon 9H \u2014 vitality through dharmic frame",
+          "score": 3.2,
+          "weight": 1.04
+        },
+        {
+          "signalId": "SIG.MSR.198",
+          "signalName": "MK Mars 4H \u2014 physical strength from matrikaraka",
+          "score": 3.0,
+          "weight": 0.792
+        },
+        {
+          "signalId": "SIG.MSR.215",
+          "signalName": "DK Jupiter 12H loss \u2014 constitutional sensitivity",
+          "score": 2.6,
+          "weight": 0.735
+        }
+      ],
+      "schoolVerdict": "Jaimini reads moderate constitutional health. The AK Moon in 9H indicates vitality expressed through dharmic orientation; the DK Jupiter in 12H introduces a loss signature. Jaimini's Chara Karaka read suggests that health is a domain requiring attentiveness \u2014 particularly around the darakaraka Jupiter's placement in the 12H.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "jaimini",
+      "domain": "RELATIONSHIP",
+      "domainScore": 3.037,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.302",
+          "signalName": "GK Venus 2H \u2014 gnatikaraka in family house",
+          "score": 3.3,
+          "weight": 0.8400000000000001
+        },
+        {
+          "signalId": "SIG.MSR.289",
+          "signalName": "AK Moon \u00d7 7H \u2014 soul partner indicator",
+          "score": 3.0,
+          "weight": 0.9099999999999999
+        },
+        {
+          "signalId": "SIG.MSR.315",
+          "signalName": "DK Jupiter 12H \u2014 darakaraka in loss house",
+          "score": 2.8,
+          "weight": 0.7875000000000001
+        }
+      ],
+      "schoolVerdict": "Jaimini reads strong relationship indicators via the Darakaraka Jupiter (12H) and Gnatikaraka Venus (2H). Jaimini's partnership methodology centres on DK placement \u2014 Jupiter as DK in 12H suggests a spiritually-oriented or unconventional bond. The GK Venus in 2H adds family-value alignment to the partnership profile.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "jaimini",
+      "domain": "SPIRITUAL",
+      "domainScore": 4.046,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.401",
+          "signalName": "AK Moon \u2014 soul-level spiritual orientation",
+          "score": 4.3,
+          "weight": 1.1700000000000002
+        },
+        {
+          "signalId": "SIG.MSR.398",
+          "signalName": "AmK Saturn dharma \u2014 disciplined spiritual work",
+          "score": 3.8,
+          "weight": 1.04
+        },
+        {
+          "signalId": "SIG.MSR.412",
+          "signalName": "DK Jupiter 12H \u2014 moksha through darakaraka loss",
+          "score": 4.0,
+          "weight": 0.8925
+        }
+      ],
+      "schoolVerdict": "Jaimini reads exceptionally strong spiritual orientation. The AK Moon as Atmakaraka defines the soul's primary direction \u2014 Moon in the 9H dharma house is a powerful Jaimini spiritual indicator. The Karakamsa (D9 position of AK Moon) will refine this reading further when the D9 confirmation arrives via JH export.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "jaimini",
+      "domain": "PSYCHOLOGICAL",
+      "domainScore": 3.528,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.451",
+          "signalName": "AK Moon \u2014 soul mind composition",
+          "score": 3.8,
+          "weight": 1.105
+        },
+        {
+          "signalId": "SIG.MSR.462",
+          "signalName": "AmK Saturn \u2014 amatyakaraka discipline structure",
+          "score": 3.5,
+          "weight": 1.04
+        },
+        {
+          "signalId": "SIG.MSR.478",
+          "signalName": "BK Mercury \u2014 mental faculty karaka",
+          "score": 3.2,
+          "weight": 0.8250000000000001
+        }
+      ],
+      "schoolVerdict": "Jaimini reads a strong psychological profile dominated by the AK Moon (soul disposition) and AmK Saturn (working-mind orientation). The BK Mercury adds intellectual bandwidth. Jaimini's framework reads this as a soul constituted for deep intellectual-emotional integration, with Saturn providing the disciplining frame.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    }
+  ]
+}

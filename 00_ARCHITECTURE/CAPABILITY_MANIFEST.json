@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-14T16:09:09Z",
   "generator_version": "1.0",
-  "entry_count": 139,
+  "entry_count": 148,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -2000,8 +2000,104 @@
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
       "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9C_RUNNER_SCRIPT",
+      "name": "run_multi_school_analysis.py",
+      "path": "platform/scripts/m9/run_multi_school_analysis.py",
+      "type": "script",
+      "layer": "L9",
+      "status": "CURRENT",
+      "description": "M9-C: Executes all 7 school engines \u00d7 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9C_MULTI_SCHOOL_ANALYSIS",
+      "name": "MULTI_SCHOOL_ANALYSIS_v1_0.md",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/MULTI_SCHOOL_ANALYSIS_v1_0.md",
+      "type": "analysis_document",
+      "layer": "L9",
+      "status": "CURRENT",
+      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; \u00a71-\u00a711 authored; acharya-grade verdicts per school per domain",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14",
+      "key_finding": "5/5 domains HIGH convergence (6/6 effective schools); CAREER+SPIRITUAL+PSYCHOLOGICAL positive; HEALTH+RELATIONSHIP neutral"
+    },
+    {
+      "id": "M9C_PARASHARI_JSON",
+      "name": "parashari_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/parashari_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9C_JAIMINI_JSON",
+      "name": "jaimini_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/jaimini_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9C_TAJIKA_JSON",
+      "name": "tajika_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/tajika_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14",
+      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] \u2014 reduced confidence 0.35-0.50"
+    },
+    {
+      "id": "M9C_KP_JSON",
+      "name": "kp_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/kp_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9C_NADI_JSON",
+      "name": "nadi_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/nadi_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14"
+    },
+    {
+      "id": "M9C_BNN_JSON",
+      "name": "bnn_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/bnn_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14",
+      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] \u2014 reduced confidence 0.45"
+    },
+    {
+      "id": "M9C_YOGINI_JSON",
+      "name": "yogini_analysis.json",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/yogini_analysis.json",
+      "type": "analysis_data",
+      "layer": "L9",
+      "status": "CURRENT",
+      "produced_during": "M9-C-S1",
+      "produced_on": "2026-05-14"
     }
   ],
   "last_updated_by": "M9-A-S1",
-  "last_session": "M9-B-S1"
+  "last_session": "M9-C-S1",
+  "last_updated": "2026-05-14"
 }

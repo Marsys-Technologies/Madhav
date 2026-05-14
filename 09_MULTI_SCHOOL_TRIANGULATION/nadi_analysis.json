@@ -1,0 +1,152 @@
+{
+  "school": "nadi",
+  "runDate": "2026-05-14",
+  "results": [
+    {
+      "school": "nadi",
+      "domain": "CAREER",
+      "domainScore": 4.02,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.539",
+          "signalName": "Nadi: Saturn in 10H (career house direct)",
+          "score": 4.5,
+          "weight": 0.88,
+          "attributionRef": "Nadi \u00a7Career"
+        },
+        {
+          "signalId": "SIG.MSR.540",
+          "signalName": "Nadi: Mercury from Saturn 1H \u2014 intelligence in career",
+          "score": 4.0,
+          "weight": 0.82
+        },
+        {
+          "signalId": "SIG.MSR.541",
+          "signalName": "Nadi: Jupiter from Saturn 3H \u2014 professional expansion",
+          "score": 3.5,
+          "weight": 0.78
+        }
+      ],
+      "schoolVerdict": "Nadi: strong career signature \u2014 Saturn occupying the 10H is the Nadi system's primary career indicator for Abhisek. Nadi reads house occupancy and inter-house counting from each planet to map the life's primary channels. Saturn's exalted 10H position with Mercury in the 1H creates a Nadi career chain of the highest order.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "nadi",
+      "domain": "HEALTH",
+      "domainScore": 2.939,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.541",
+          "signalName": "Nadi: Jupiter from Moon 4H \u2014 constitutional grace",
+          "score": 3.2,
+          "weight": 0.78
+        },
+        {
+          "signalId": "SIG.MSR.539",
+          "signalName": "Nadi: Moon in 9H \u2014 body-mind link",
+          "score": 3.0,
+          "weight": 0.82
+        },
+        {
+          "signalId": "SIG.MSR.540",
+          "signalName": "Nadi: Mars from Moon 8H \u2014 body inflammation indicator",
+          "score": 2.6,
+          "weight": 0.75
+        }
+      ],
+      "schoolVerdict": "Nadi: moderate health reading. The Nadi system traces health through the Moon's house position (9H Virgo) and the planets that aspect or count from the Moon. Mars counting 8H from the Moon introduces acute health events; Jupiter from the Moon in 4H provides constitutional grace.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "nadi",
+      "domain": "RELATIONSHIP",
+      "domainScore": 3.047,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.542",
+          "signalName": "Nadi: Venus from Moon \u2014 partner indicator",
+          "score": 3.3,
+          "weight": 0.85
+        },
+        {
+          "signalId": "SIG.MSR.543",
+          "signalName": "Nadi: Jupiter from Venus 11H \u2014 partner fulfilment",
+          "score": 3.0,
+          "weight": 0.78
+        },
+        {
+          "signalId": "SIG.MSR.539",
+          "signalName": "Nadi: Saturn from Venus \u2014 relationship Saturn restraint",
+          "score": 2.8,
+          "weight": 0.72
+        }
+      ],
+      "schoolVerdict": "Nadi: clear relationship indicators. The Nadi system reads partnership through Venus's planetary chain \u2014 Venus in 2H Aquarius connects to the Moon in 9H (6H from Venus = health of relationship), Jupiter in 12H (11H from Venus = fulfilment). The Nadi read is nuanced: delayed but genuine partner bond.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "nadi",
+      "domain": "SPIRITUAL",
+      "domainScore": 4.244,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.539",
+          "signalName": "Nadi: Ketu in 12H \u2014 moksha in Nadi frame",
+          "score": 4.6,
+          "weight": 0.9
+        },
+        {
+          "signalId": "SIG.MSR.542",
+          "signalName": "Nadi: Jupiter from Ketu \u2014 dharma teacher indicator",
+          "score": 4.2,
+          "weight": 0.85
+        },
+        {
+          "signalId": "SIG.MSR.543",
+          "signalName": "Nadi: Moon from Ketu 10H \u2014 visible dharmic path",
+          "score": 3.9,
+          "weight": 0.82
+        }
+      ],
+      "schoolVerdict": "Nadi: strong spiritual signal \u2014 Ketu in the 12H is Nadi's most direct moksha indicator. In the Nadi tradition, Ketu's house position determines the liberation-channel: 12H Ketu = liberation through dissolution of identity, typically via ascetic or meditative practice. Jupiter counting from Ketu adds the guru principle to the liberation path.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "nadi",
+      "domain": "PSYCHOLOGICAL",
+      "domainScore": 3.348,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.539",
+          "signalName": "Nadi: Mercury from Moon \u2014 mental faculty in Nadi",
+          "score": 3.7,
+          "weight": 0.85
+        },
+        {
+          "signalId": "SIG.MSR.540",
+          "signalName": "Nadi: Saturn from Moon \u2014 discipline overlay",
+          "score": 3.3,
+          "weight": 0.8
+        },
+        {
+          "signalId": "SIG.MSR.541",
+          "signalName": "Nadi: Rahu from Mercury \u2014 mental disruption-expansion",
+          "score": 3.0,
+          "weight": 0.75
+        }
+      ],
+      "schoolVerdict": "Nadi: clear psychological structure read. Mercury in 1H (self-as-intellect), Saturn as the lagna lord (discipline-first orientation), and Rahu in 6H (ambition-through-competition) form Nadi's psychological chain. The Moon-Mercury count reveals that the mind houses the intellect as its primary operative mode.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    }
+  ]
+}

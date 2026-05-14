@@ -23832,3 +23832,116 @@ session_close:
       change: "MP.2: M9-B-S1 deliverables block; Active Phase M9-B CLOSED / M9-C-S1 INCOMING"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M9-C-S1
+  opened_at: "2026-05-14T00:02:00+05:30"
+  cowork_thread_name: "Madhav_M9C_S1_MultiSchoolAnalysis"
+  macro_phase: M9
+  sub_phase: M9-C
+  phase_plan: PHASE_M9_PLAN_v1_0.md
+  red_team_counter_at_open: 2
+  red_team_due: true  # IS.8(a) fires this session (counter 2→3→0)
+  scope:
+    may_touch:
+      - "platform/scripts/m9/run_multi_school_analysis.py"
+      - "09_MULTI_SCHOOL_TRIANGULATION/MULTI_SCHOOL_ANALYSIS_v1_0.md"
+      - "09_MULTI_SCHOOL_TRIANGULATION/*_analysis.json"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/SESSION_CLOSE_M9C.yaml"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+      - "platform/src/lib/schools/**"
+      - "platform/scripts/m9/compute_convergence.py"
+      - "platform/scripts/m9/build_disagreement_register.py"
+      - "platform/supabase/migrations/**"
+      - "06_LEARNING_LAYER/**"
+      - "08_CLASSICAL_CROSS_REFERENCE/**"
+  objective: "M9-C: run_multi_school_analysis.py; execute 35 runs (7 schools × 5 domains); MULTI_SCHOOL_ANALYSIS_v1_0.md §1–§11; 7 school JSON files; IS.8(a) red-team (counter 2→3→0)."
+  ac_targets:
+    - AC.M9C.1: "run_multi_school_analysis.py present; idempotent; exits 0"
+    - AC.M9C.2: "35 school_analysis_runs defined (DB insertion deferred: proxy unavailable)"
+    - AC.M9C.3: "7 school JSON files written to 09_MULTI_SCHOOL_TRIANGULATION/; GCS deferred"
+    - AC.M9C.4: "MULTI_SCHOOL_ANALYSIS_v1_0.md §1–§11 authored; acharya-grade prose"
+    - AC.M9C.5: "[VARSHA_KUNDALI_PENDING] and [TRANSIT_DATA_PENDING] flags present and propagated"
+    - AC.M9C.6: "SESSION_LOG M9-C-S1 appended; CURRENT_STATE v5.14; IS.8(a) DISCHARGED"
+  key_outputs:
+    - "platform/scripts/m9/run_multi_school_analysis.py (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/MULTI_SCHOOL_ANALYSIS_v1_0.md (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/parashari_analysis.json (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/jaimini_analysis.json (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/tajika_analysis.json (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/kp_analysis.json (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/nadi_analysis.json (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/bnn_analysis.json (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/yogini_analysis.json (NEW)"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json (MODIFIED — 139→148 entries)"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.14)"
+    - "00_ARCHITECTURE/SESSION_CLOSE_M9C.yaml (NEW)"
+    - ".geminirules (MODIFIED — M9-C-S1 state)"
+    - ".gemini/project_state.md (MODIFIED — M9-C-S1 deliverables)"
+
+session_body:
+  headline_finding: >
+    5/5 domains HIGH convergence. CAREER: 6/6 positive (mean 4.002/5.0).
+    HEALTH: 6/6 neutral (mean 2.820/5.0). RELATIONSHIP: 5/6 neutral (KP diverges positive; mean 2.966/5.0).
+    SPIRITUAL: 5/6 positive (Yogini diverges neutral; mean 3.728/5.0).
+    PSYCHOLOGICAL: 5/6 positive (BNN diverges neutral; mean 3.342/5.0).
+    0 isDivergent domains (no domain reaches ≥2 schools contradicting plurality).
+  is8a_red_team:
+    session: M9-C-S1
+    cadence: IS.8(a) every-third (counter 2→3 fires; resets to 0)
+    verdict: "PASS 5/5 axes; 0 CRITICAL; 0 HIGH; 0 MEDIUM"
+    axes:
+      RT.M9C.1:
+        axis: "No fabricated scores — all engine output deterministic from chart constants"
+        finding: "PASS — Python script computes scores from fixed chart data (ABHISEK_CHART dict); no LLM inference in scoring path; all signal weights/scores traceable to TypeScript engine constants"
+        severity: null
+      RT.M9C.2:
+        axis: "Convergence formula fidelity (NAP.M9.2: HIGH≥5/7; NAP.M9.3: divergence≥2)"
+        finding: "PASS — computeConvergence() correctly excludes Tajika when VARSHA_KUNDALI_PENDING; schoolsTotal=6 (not 7); HIGH fires at schoolsAgreeing≥5 of 6 effective schools; no isDivergent domain despite BNN neutral on PSYCHOLOGICAL and Yogini neutral on SPIRITUAL (only 1 contradictor each, below threshold of 2)"
+        severity: null
+      RT.M9C.3:
+        axis: "Pending flag propagation (CF.M9.1 + CF.M9.2 correctly surfaced)"
+        finding: "PASS — Tajika: VARSHA_KUNDALI_PENDING in pendingFlags + verdict text; confidence 0.35–0.50; Tajika excluded from convergence count. BNN: TRANSIT_DATA_PENDING in pendingFlags + verdict text; confidence 0.45×; BNN included in convergence count as a full but low-precision school (correct per NAP.M9.3 spec)"
+        severity: null
+      RT.M9C.4:
+        axis: "Layer separation — no L1 facts invented (B.1 + B.10)"
+        finding: "PASS — ABHISEK_CHART constants in Python script are derived from FORENSIC_ASTROLOGICAL_DATA_v8_0.md (Capricorn ASC, Saturn Libra 10H exalted, Moon Virgo 9H, etc.); no new planetary positions computed; [EXTERNAL_COMPUTATION_REQUIRED] blocks in engine specs where Swiss Ephemeris needed; no fabrication"
+        severity: null
+      RT.M9C.5:
+        axis: "No Anthropic/Claude API in M9 analysis code (LLM stack constraint)"
+        finding: "PASS — run_multi_school_analysis.py is pure Python computation; no API calls; no subprocess to LLM; verdicts are template strings derived from deterministic score thresholds; stack constraint respected"
+        severity: null
+    counter_after_fire: 0
+
+session_close:
+  session_id: M9-C-S1
+  closed_at: "2026-05-14T23:59:59+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M9C.1: "PASS — run_multi_school_analysis.py present at platform/scripts/m9/; idempotent (os.makedirs exist_ok=True); exits 0"
+    AC.M9C.2: "PASS (DEFERRED) — 35 analysis runs executed and written to JSON; DB insertion script structure present; insertion deferred (proxy unavailable at M9-C-S1); noted in frontmatter"
+    AC.M9C.3: "PASS (DEFERRED) — 7 per-school JSON files written to 09_MULTI_SCHOOL_TRIANGULATION/; GCS upload deferred (proxy unavailable); noted in frontmatter"
+    AC.M9C.4: "PASS — MULTI_SCHOOL_ANALYSIS_v1_0.md §1 (executive summary + convergence overview + key findings) + §2–§8 (per-school sections with philosophy, score table, per-domain verdicts) + §9 (cross-school matrix with direction symbols + scores) + §10 (domain convergence analysis with divergence detection) + §11 (deferred items) all authored; acharya-grade prose throughout"
+    AC.M9C.5: "PASS — [VARSHA_KUNDALI_PENDING] in Tajika pendingFlags + verdict text + frontmatter; [TRANSIT_DATA_PENDING] in BNN pendingFlags + verdict text + frontmatter; Tajika excluded from convergence (schoolsTotal=6); BNN included at reduced confidence (0.45×)"
+    AC.M9C.6: "PASS — SESSION_LOG M9-C-S1 appended; CURRENT_STATE v5.14; IS.8(a) PASS 5/5; counter 2→3→0"
+  is8a_discharged: true
+  red_team_counter_at_close: 0
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1: §F state block → M9-C-S1 CLOSED / M9-D-S1 INCOMING / red_team_counter:0 (IS.8(a) discharged)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2: Active Phase header M9-C-S1 CLOSED; deliverables + headline finding + IS.8(a) PASS added"
+  session_close_valid: true
+```

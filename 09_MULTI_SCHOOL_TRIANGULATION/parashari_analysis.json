@@ -1,0 +1,154 @@
+{
+  "school": "parashari",
+  "runDate": "2026-05-14",
+  "results": [
+    {
+      "school": "parashari",
+      "domain": "CAREER",
+      "domainScore": 4.308,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.041",
+          "signalName": "Saturn 10H exalted yoga",
+          "score": 4.8,
+          "weight": 0.95,
+          "attributionRef": "BPHS \u00a724"
+        },
+        {
+          "signalId": "SIG.MSR.089",
+          "signalName": "Mercury-Saturn Capricorn conjunction",
+          "score": 4.2,
+          "weight": 0.8,
+          "attributionRef": "Phaladeepika \u00a712"
+        },
+        {
+          "signalId": "SIG.MSR.103",
+          "signalName": "Lagna lord in own sign career strength",
+          "score": 3.8,
+          "weight": 0.75,
+          "attributionRef": "BPHS \u00a717"
+        }
+      ],
+      "schoolVerdict": "Parashari framework reads a exceptional career trajectory anchored by Saturn 10H exalted yoga. Saturn exalted in the 10th house is the dominant yoga \u2014 Capricorn rising with Saturn as lagna lord in 10H constitutes a raja yoga of high order. The Mercury-Saturn conjunction in Lagna adds intellectual authority to executive capacity.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "parashari",
+      "domain": "HEALTH",
+      "domainScore": 2.81,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.198",
+          "signalName": "Mars 4H \u2014 energy constitution moderate",
+          "score": 3.1,
+          "weight": 0.72
+        },
+        {
+          "signalId": "SIG.MSR.201",
+          "signalName": "Moon 9H virgo \u2014 digestive sensitivity",
+          "score": 2.8,
+          "weight": 0.7
+        },
+        {
+          "signalId": "SIG.MSR.215",
+          "signalName": "Jupiter 12H loss house constitutional",
+          "score": 2.5,
+          "weight": 0.65
+        }
+      ],
+      "schoolVerdict": "Parashari reads moderate constitutional vitality with Moon in Virgo 9th house indicating a sensitive digestive system and tendency toward analytical health anxiety. Jupiter in 12H introduces occasional lethargy. Mars in 4H sustains physical drive above baseline.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "parashari",
+      "domain": "RELATIONSHIP",
+      "domainScore": 3.117,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.302",
+          "signalName": "Venus 2H Aquarius \u2014 partner values",
+          "score": 3.4,
+          "weight": 0.78
+        },
+        {
+          "signalId": "SIG.MSR.315",
+          "signalName": "Jupiter darakaraka 12H \u2014 spiritual partner",
+          "score": 3.0,
+          "weight": 0.68
+        },
+        {
+          "signalId": "SIG.MSR.289",
+          "signalName": "7H lord \u2014 partnership house analysis",
+          "score": 2.9,
+          "weight": 0.65
+        }
+      ],
+      "schoolVerdict": "Parashari reads strong partnership potential via Venus in Aquarius 2H \u2014 values-aligned, intellectually driven partnerships. Jupiter as darakaraka in 12H points toward spiritual or unconventional bond; Saturn as lagna lord delays but rewards.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "parashari",
+      "domain": "SPIRITUAL",
+      "domainScore": 4.241,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.401",
+          "signalName": "Ketu 12H moksha placement",
+          "score": 4.5,
+          "weight": 0.9
+        },
+        {
+          "signalId": "SIG.MSR.412",
+          "signalName": "Moon 9H \u2014 dharmic inclination",
+          "score": 4.2,
+          "weight": 0.85
+        },
+        {
+          "signalId": "SIG.MSR.398",
+          "signalName": "Jupiter-Ketu 12H spiritual loss-of-self",
+          "score": 4.0,
+          "weight": 0.82
+        }
+      ],
+      "schoolVerdict": "Parashari reads exceptional spiritual orientation: Ketu in 12H is a moksha karaka in its natural house, the strongest classical indicator of liberation-orientation. Moon in 9H (dharma house) with the Guru-Ketu axis intensifies the inclination toward inner-directed practice.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "parashari",
+      "domain": "PSYCHOLOGICAL",
+      "domainScore": 3.378,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.451",
+          "signalName": "Moon-Mercury opposition \u2014 analytical mind",
+          "score": 3.6,
+          "weight": 0.8
+        },
+        {
+          "signalId": "SIG.MSR.462",
+          "signalName": "Saturn Lagna lord \u2014 seriousness + discipline",
+          "score": 3.4,
+          "weight": 0.75
+        },
+        {
+          "signalId": "SIG.MSR.478",
+          "signalName": "Rahu 6H \u2014 competitive ambition driver",
+          "score": 3.1,
+          "weight": 0.7
+        }
+      ],
+      "schoolVerdict": "Parashari reads a strong psychological profile structured around the Moon-Mercury axis and Saturn's Capricorn discipline. The opposition between Moon 9H (Virgo) and Mercury 1H (Capricorn) produces an analytical mind that can over-examine emotion. Rahu 6H drives competitive sublimation.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    }
+  ]
+}

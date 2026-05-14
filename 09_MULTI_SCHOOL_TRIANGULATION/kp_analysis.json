@@ -1,0 +1,152 @@
+{
+  "school": "kp",
+  "runDate": "2026-05-14",
+  "results": [
+    {
+      "school": "kp",
+      "domain": "CAREER",
+      "domainScore": 4.12,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.041",
+          "signalName": "KP: 10H sub-lord (Saturn) activates CAREER (84%)",
+          "score": 4.6,
+          "weight": 0.8433333333333334,
+          "attributionRef": "KP Paddhati Vol.2"
+        },
+        {
+          "signalId": "SIG.MSR.089",
+          "signalName": "KP: 6H sub-lord supports CAREER (service)",
+          "score": 4.0,
+          "weight": 0.7758666666666667
+        },
+        {
+          "signalId": "SIG.MSR.103",
+          "signalName": "KP: 2H (income) sub-lord \u2014 financial career link",
+          "score": 3.7,
+          "weight": 0.7421333333333334
+        }
+      ],
+      "schoolVerdict": "KP: strongly activated career potential \u2014 84% sub-lord activation across 10H, 6H, 2H. In KP Paddhati, Saturn as the 10H sub-lord in its own sign (Capricorn) and exaltation (Libra) creates a double-strong career indicator. The 10H sub-lord activation at 84% is the KP metric for career fructification readiness.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "kp",
+      "domain": "HEALTH",
+      "domainScore": 2.875,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.201",
+          "signalName": "KP: 6H disease-house sub-lord (82%)",
+          "score": 2.9,
+          "weight": 0.8166666666666668
+        },
+        {
+          "signalId": "SIG.MSR.215",
+          "signalName": "KP: 1H vitality sub-lord",
+          "score": 3.2,
+          "weight": 0.7350000000000001
+        },
+        {
+          "signalId": "SIG.MSR.198",
+          "signalName": "KP: 8H longevity sub-lord",
+          "score": 2.5,
+          "weight": 0.6941666666666667
+        }
+      ],
+      "schoolVerdict": "KP: moderately active health via 6H, 1H, 8H sub-lords (82% activation). The 6H sub-lord (disease) and 1H sub-lord (vitality) are the primary KP health indicators. The 8H sub-lord at reduced weight (65%) reflects the lower activation of the longevity house.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "kp",
+      "domain": "RELATIONSHIP",
+      "domainScore": 3.284,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.302",
+          "signalName": "KP: 7H sub-lord (partner house) (84%)",
+          "score": 3.6,
+          "weight": 0.8433333333333334
+        },
+        {
+          "signalId": "SIG.MSR.315",
+          "signalName": "KP: 2H family sub-lord",
+          "score": 3.2,
+          "weight": 0.7421333333333334
+        },
+        {
+          "signalId": "SIG.MSR.289",
+          "signalName": "KP: 11H gains sub-lord \u2014 relationship fulfilment",
+          "score": 3.0,
+          "weight": 0.7168333333333333
+        }
+      ],
+      "schoolVerdict": "KP: activated relationship potential via 7H, 2H, 11H sub-lords (84% activation). The 7H sub-lord is the primary partner indicator in KP; the 2H (family) and 11H (fulfilment) support the complete relationship picture. KP reads activated partnership fructification at this configuration.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "kp",
+      "domain": "SPIRITUAL",
+      "domainScore": 4.04,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.401",
+          "signalName": "KP: 9H dharma sub-lord (73%)",
+          "score": 4.2,
+          "weight": 0.73
+        },
+        {
+          "signalId": "SIG.MSR.398",
+          "signalName": "KP: 12H moksha sub-lord",
+          "score": 4.0,
+          "weight": 0.6424
+        },
+        {
+          "signalId": "SIG.MSR.412",
+          "signalName": "KP: 5H past-life merit sub-lord",
+          "score": 3.9,
+          "weight": 0.657
+        }
+      ],
+      "schoolVerdict": "KP: strongly activated spiritual potential via 9H, 5H, 12H sub-lords (73% activation). The 9H (dharma), 5H (past-life merit), and 12H (moksha) are KP's spiritual cluster. All three are active with the 12H sub-lord at 55% \u2014 KP reads spiritual practice as a current-life priority.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    },
+    {
+      "school": "kp",
+      "domain": "PSYCHOLOGICAL",
+      "domainScore": 3.355,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.451",
+          "signalName": "KP: 1H self/mind sub-lord (77%)",
+          "score": 3.7,
+          "weight": 0.7733333333333333
+        },
+        {
+          "signalId": "SIG.MSR.462",
+          "signalName": "KP: 5H intelligence sub-lord",
+          "score": 3.4,
+          "weight": 0.696
+        },
+        {
+          "signalId": "SIG.MSR.478",
+          "signalName": "KP: 12H subconscious sub-lord",
+          "score": 2.9,
+          "weight": 0.6573333333333333
+        }
+      ],
+      "schoolVerdict": "KP: activated psychological profile via 1H, 5H, 12H (77% activation). The 1H (identity/mind), 5H (intelligence/creativity), and 12H (subconscious/isolation) form KP's psychological cluster. The 12H sub-lord at 55% adds depth to the inner-life reading.",
+      "signalCoverage": "primary",
+      "pendingFlags": []
+    }
+  ]
+}

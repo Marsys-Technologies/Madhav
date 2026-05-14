@@ -1,0 +1,162 @@
+{
+  "school": "tajika",
+  "runDate": "2026-05-14",
+  "results": [
+    {
+      "school": "tajika",
+      "domain": "CAREER",
+      "domainScore": 3.254,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.561",
+          "signalName": "Tajika: Ithasala of Varshesha \u2014 career flow indicator",
+          "score": 3.5,
+          "weight": 0.45,
+          "attributionRef": "Tajika Neelakanthi \u00a73"
+        },
+        {
+          "signalId": "SIG.MSR.566",
+          "signalName": "Tajika: Sahama of Career (10H Sahama)",
+          "score": 3.2,
+          "weight": 0.4
+        },
+        {
+          "signalId": "SIG.MSR.571",
+          "signalName": "Tajika: Muntha progression \u2014 annual career stage",
+          "score": 3.0,
+          "weight": 0.35
+        }
+      ],
+      "schoolVerdict": "Tajika: indicative annual reading for CAREER via Varsha Kundali methodology. [VARSHA_KUNDALI_PENDING] \u2014 full Tajika precision requires the 2026 Varsha Kundali (solar return ~Jan 25 2026, Bhubaneswar) computed via Swiss Ephemeris. Current scoring uses natal chart proxies with reduced confidence weights (0.35\u20130.50). The Tajika framework reads annual trends through Ithasala/Ishrafa aspect patterns, Sahama (Arabic parts) positions, Varshesha (annual lord), and Muntha progression. Domain score 3.25/5.0 should be treated as directional, not precise.",
+      "signalCoverage": "secondary",
+      "pendingFlags": [
+        "[VARSHA_KUNDALI_PENDING]"
+      ]
+    },
+    {
+      "school": "tajika",
+      "domain": "HEALTH",
+      "domainScore": 2.67,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.563",
+          "signalName": "Tajika: Health Sahama \u2014 annual constitution",
+          "score": 2.8,
+          "weight": 0.42
+        },
+        {
+          "signalId": "SIG.MSR.564",
+          "signalName": "Tajika: Ishrafa reading \u2014 health separation",
+          "score": 2.5,
+          "weight": 0.38
+        },
+        {
+          "signalId": "SIG.MSR.562",
+          "signalName": "Tajika: Nakta \u2014 health by proxy",
+          "score": 2.7,
+          "weight": 0.35
+        }
+      ],
+      "schoolVerdict": "Tajika: tentative annual reading for HEALTH via Varsha Kundali methodology. [VARSHA_KUNDALI_PENDING] \u2014 full Tajika precision requires the 2026 Varsha Kundali (solar return ~Jan 25 2026, Bhubaneswar) computed via Swiss Ephemeris. Current scoring uses natal chart proxies with reduced confidence weights (0.35\u20130.50). The Tajika framework reads annual trends through Ithasala/Ishrafa aspect patterns, Sahama (Arabic parts) positions, Varshesha (annual lord), and Muntha progression. Domain score 2.67/5.0 should be treated as directional, not precise.",
+      "signalCoverage": "secondary",
+      "pendingFlags": [
+        "[VARSHA_KUNDALI_PENDING]"
+      ]
+    },
+    {
+      "school": "tajika",
+      "domain": "RELATIONSHIP",
+      "domainScore": 2.904,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.567",
+          "signalName": "Tajika: 7H Sahama \u2014 annual partnership",
+          "score": 3.0,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.568",
+          "signalName": "Tajika: Kambula \u2014 relationship sustenance",
+          "score": 2.8,
+          "weight": 0.4
+        },
+        {
+          "signalId": "SIG.MSR.559",
+          "signalName": "Tajika: Varsha Lagna \u2014 annual rising",
+          "score": 2.9,
+          "weight": 0.38
+        }
+      ],
+      "schoolVerdict": "Tajika: tentative annual reading for RELATIONSHIP via Varsha Kundali methodology. [VARSHA_KUNDALI_PENDING] \u2014 full Tajika precision requires the 2026 Varsha Kundali (solar return ~Jan 25 2026, Bhubaneswar) computed via Swiss Ephemeris. Current scoring uses natal chart proxies with reduced confidence weights (0.35\u20130.50). The Tajika framework reads annual trends through Ithasala/Ishrafa aspect patterns, Sahama (Arabic parts) positions, Varshesha (annual lord), and Muntha progression. Domain score 2.90/5.0 should be treated as directional, not precise.",
+      "signalCoverage": "secondary",
+      "pendingFlags": [
+        "[VARSHA_KUNDALI_PENDING]"
+      ]
+    },
+    {
+      "school": "tajika",
+      "domain": "SPIRITUAL",
+      "domainScore": 3.548,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.573",
+          "signalName": "Tajika: 12H Sahama \u2014 annual moksha indicator",
+          "score": 3.8,
+          "weight": 0.5
+        },
+        {
+          "signalId": "SIG.MSR.570",
+          "signalName": "Tajika: Ithasala of 9H \u2014 dharma flow",
+          "score": 3.5,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.560",
+          "signalName": "Tajika: Varshesha in spiritual house",
+          "score": 3.3,
+          "weight": 0.42
+        }
+      ],
+      "schoolVerdict": "Tajika: indicative annual reading for SPIRITUAL via Varsha Kundali methodology. [VARSHA_KUNDALI_PENDING] \u2014 full Tajika precision requires the 2026 Varsha Kundali (solar return ~Jan 25 2026, Bhubaneswar) computed via Swiss Ephemeris. Current scoring uses natal chart proxies with reduced confidence weights (0.35\u20130.50). The Tajika framework reads annual trends through Ithasala/Ishrafa aspect patterns, Sahama (Arabic parts) positions, Varshesha (annual lord), and Muntha progression. Domain score 3.55/5.0 should be treated as directional, not precise.",
+      "signalCoverage": "secondary",
+      "pendingFlags": [
+        "[VARSHA_KUNDALI_PENDING]"
+      ]
+    },
+    {
+      "school": "tajika",
+      "domain": "PSYCHOLOGICAL",
+      "domainScore": 2.942,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.569",
+          "signalName": "Tajika: 1H Sahama \u2014 annual self-image",
+          "score": 3.1,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.572",
+          "signalName": "Tajika: Moon-Sahama \u2014 emotional annual",
+          "score": 2.9,
+          "weight": 0.4
+        },
+        {
+          "signalId": "SIG.MSR.565",
+          "signalName": "Tajika: Muntha psychological coloring",
+          "score": 2.8,
+          "weight": 0.38
+        }
+      ],
+      "schoolVerdict": "Tajika: tentative annual reading for PSYCHOLOGICAL via Varsha Kundali methodology. [VARSHA_KUNDALI_PENDING] \u2014 full Tajika precision requires the 2026 Varsha Kundali (solar return ~Jan 25 2026, Bhubaneswar) computed via Swiss Ephemeris. Current scoring uses natal chart proxies with reduced confidence weights (0.35\u20130.50). The Tajika framework reads annual trends through Ithasala/Ishrafa aspect patterns, Sahama (Arabic parts) positions, Varshesha (annual lord), and Muntha progression. Domain score 2.94/5.0 should be treated as directional, not precise.",
+      "signalCoverage": "secondary",
+      "pendingFlags": [
+        "[VARSHA_KUNDALI_PENDING]"
+      ]
+    }
+  ]
+}

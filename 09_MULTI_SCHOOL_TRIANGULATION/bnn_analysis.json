@@ -1,0 +1,162 @@
+{
+  "school": "bnn",
+  "runDate": "2026-05-14",
+  "results": [
+    {
+      "school": "bnn",
+      "domain": "CAREER",
+      "domainScore": 3.544,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.515",
+          "signalName": "BNN: Jupiter sagittarius contacts 10H planet",
+          "score": 3.8,
+          "weight": 0.45,
+          "attributionRef": "BNN \u00a74.2"
+        },
+        {
+          "signalId": "SIG.MSR.516",
+          "signalName": "BNN: Saturn libra then activates career chain",
+          "score": 3.5,
+          "weight": 0.41400000000000003
+        },
+        {
+          "signalId": "SIG.MSR.517",
+          "signalName": "BNN: Jupiter-Saturn karmic sequence \u2014 professional elevation",
+          "score": 3.3,
+          "weight": 0.396
+        }
+      ],
+      "schoolVerdict": "BNN reads active career transit chains. [TRANSIT_DATA_PENDING] The sequential Jupiter\u2192Saturn transit through career-relevant houses is BNN's operative mechanism: Jupiter expands the domain; Saturn then consolidates the gain. With Jupiter in sagittarius and Saturn in libra, the career chain is in active phase. Pending exact transit positions for full precision.",
+      "signalCoverage": "primary",
+      "pendingFlags": [
+        "[TRANSIT_DATA_PENDING]"
+      ]
+    },
+    {
+      "school": "bnn",
+      "domain": "HEALTH",
+      "domainScore": 2.72,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.524",
+          "signalName": "BNN: Jupiter transit 6H \u2014 constitutional support year",
+          "score": 3.0,
+          "weight": 0.405
+        },
+        {
+          "signalId": "SIG.MSR.523",
+          "signalName": "BNN: Saturn transit over natal Moon \u2014 mind-body stress",
+          "score": 2.4,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.525",
+          "signalName": "BNN: Sequential transit 1H vitality check",
+          "score": 2.8,
+          "weight": 0.3825
+        }
+      ],
+      "schoolVerdict": "BNN reads moderate health via sequential transit analysis. [TRANSIT_DATA_PENDING] Saturn transit over the Moon activates mind-body stress events; Jupiter transit through 6H provides constitutional support. The BNN sequential read requires exact transit positions for timing precision.",
+      "signalCoverage": "primary",
+      "pendingFlags": [
+        "[TRANSIT_DATA_PENDING]"
+      ]
+    },
+    {
+      "school": "bnn",
+      "domain": "RELATIONSHIP",
+      "domainScore": 3.042,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.528",
+          "signalName": "BNN: Jupiter contacts 7H \u2014 partner-zone activation",
+          "score": 3.2,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.529",
+          "signalName": "BNN: Saturn stabilizes 2H \u2014 family structure",
+          "score": 3.0,
+          "weight": 0.396
+        },
+        {
+          "signalId": "SIG.MSR.530",
+          "signalName": "BNN: Sequential Venus contact \u2014 relationship timing",
+          "score": 2.9,
+          "weight": 0.3825
+        }
+      ],
+      "schoolVerdict": "BNN reads moderate relationship via transit-chain analysis. [TRANSIT_DATA_PENDING] Jupiter activating the 7H followed by Saturn stabilizing the 2H family house is BNN's relationship signature for this period.",
+      "signalCoverage": "primary",
+      "pendingFlags": [
+        "[TRANSIT_DATA_PENDING]"
+      ]
+    },
+    {
+      "school": "bnn",
+      "domain": "SPIRITUAL",
+      "domainScore": 3.672,
+      "direction": "positive",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.533",
+          "signalName": "BNN: Jupiter contacts Ketu \u2014 spiritual liberation transit",
+          "score": 3.8,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.535",
+          "signalName": "BNN: Jupiter-Ketu sequential \u2014 moksha timing indicator",
+          "score": 3.7,
+          "weight": 0.41400000000000003
+        },
+        {
+          "signalId": "SIG.MSR.534",
+          "signalName": "BNN: Saturn over 9H \u2014 disciplined dharmic practice",
+          "score": 3.5,
+          "weight": 0.405
+        }
+      ],
+      "schoolVerdict": "BNN reads active spiritual transit: Jupiter contacting natal Ketu initiates liberation momentum; Saturn following through the 9H consolidates disciplined practice. This is BNN's strongest reading \u2014 Ketu contacts by Jupiter are high-precision moksha indicators in the BNN tradition. [TRANSIT_DATA_PENDING]",
+      "signalCoverage": "primary",
+      "pendingFlags": [
+        "[TRANSIT_DATA_PENDING]"
+      ]
+    },
+    {
+      "school": "bnn",
+      "domain": "PSYCHOLOGICAL",
+      "domainScore": 3.095,
+      "direction": "neutral",
+      "topSignals": [
+        {
+          "signalId": "SIG.MSR.536",
+          "signalName": "BNN: Jupiter contacts Moon \u2014 emotional expansion phase",
+          "score": 3.4,
+          "weight": 0.405
+        },
+        {
+          "signalId": "SIG.MSR.538",
+          "signalName": "BNN: Saturn transit 4H \u2014 psychological restructuring",
+          "score": 2.9,
+          "weight": 0.45
+        },
+        {
+          "signalId": "SIG.MSR.537",
+          "signalName": "BNN: Sequential mind-planet contact \u2014 cognitive shift",
+          "score": 3.0,
+          "weight": 0.3825
+        }
+      ],
+      "schoolVerdict": "BNN reads moderate psychological transit: Saturn through 4H restructures the inner home; Jupiter contacting the Moon expands emotional capacity. Sequential mind-planet contacts are BNN's psychological-layer signature. Pending transit data limits precision. [TRANSIT_DATA_PENDING]",
+      "signalCoverage": "primary",
+      "pendingFlags": [
+        "[TRANSIT_DATA_PENDING]"
+      ]
+    }
+  ]
+}
