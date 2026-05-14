@@ -3,13 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // ── Module mocks ──────────────────────────────────────────────────────────────
 vi.mock('server-only', () => ({}))
 
-vi.mock('@/lib/models/resolver', () => ({
-  resolveModel: vi.fn((id: string) => ({ id, provider: 'deepseek' })),
-}))
-
-const mockGenerateText = vi.fn()
-vi.mock('ai', () => ({
-  generateText: (...args: unknown[]) => mockGenerateText(...args),
+const mockRunAdapter = vi.fn()
+vi.mock('@/lib/adapters', () => ({
+  runAdapter: (...args: unknown[]) => mockRunAdapter(...args),
 }))
 
 vi.mock('@/lib/telemetry/index', () => ({
@@ -34,7 +30,6 @@ import {
   assertNoModelNamesInPrompt,
 } from '../../panel/adjudicator'
 import { loadAdjudicatorPrompt } from '../../panel/prompt_loader'
-import { resolveModel } from '@/lib/models/resolver'
 import type { PanelMemberConfig, PanelMemberOutput } from '../../panel/types'
 import type { SynthesisRequest } from '../../types'
 
@@ -110,13 +105,13 @@ beforeEach(() => {
 
 describe('adjudicate — family exclusion', () => {
   it('resolves the adjudicator model from the deepseek family when slate is anthropic+openai+google', async () => {
-    mockGenerateText.mockResolvedValue({ text: makeValidAdjudicatorJson() })
+    mockRunAdapter.mockResolvedValue({ finalText: makeValidAdjudicatorJson(), usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     await adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers)
 
-    // resolveModel should have been called with a deepseek model id
-    const resolveModelMock = vi.mocked(resolveModel)
-    expect(resolveModelMock).toHaveBeenCalledWith('deepseek-chat')
+    // runAdapter should have been called with the deepseek adjudicator model
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('deepseek-chat')
   })
 })
 
@@ -217,7 +212,7 @@ describe('assertNoModelNamesInPrompt', () => {
 
 describe('adjudicate — synthesis result', () => {
   it('returns final_answer, divergence_summary, member_alignment, adjudicator_model_id', async () => {
-    mockGenerateText.mockResolvedValue({ text: makeValidAdjudicatorJson() })
+    mockRunAdapter.mockResolvedValue({ finalText: makeValidAdjudicatorJson(), usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     const result = await adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers)
 
@@ -232,7 +227,7 @@ describe('adjudicate — synthesis result', () => {
       divergence_summary: { has_divergence: true, divergence_count: 1, summary_text: 'Member 3 interpreted differently.' },
       member_alignment: { 'Member 1': 'aligned', 'Member 2': 'partial', 'Member 3': 'dissent' },
     })
-    mockGenerateText.mockResolvedValue({ text: json })
+    mockRunAdapter.mockResolvedValue({ finalText: json, usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     const result = await adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers)
 
@@ -247,7 +242,7 @@ describe('adjudicate — synthesis result', () => {
 describe('adjudicate — JSON parse error fallback', () => {
   it('returns raw text as final_answer when response is not JSON', async () => {
     const rawText = 'The 7th house is about partnerships and balance in life.'
-    mockGenerateText.mockResolvedValue({ text: rawText })
+    mockRunAdapter.mockResolvedValue({ finalText: rawText, usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     const result = await adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers)
 
@@ -259,7 +254,7 @@ describe('adjudicate — JSON parse error fallback', () => {
 
   it('strips markdown fences and parses JSON successfully', async () => {
     const json = makeValidAdjudicatorJson()
-    mockGenerateText.mockResolvedValue({ text: `\`\`\`json\n${json}\n\`\`\`` })
+    mockRunAdapter.mockResolvedValue({ finalText: `\`\`\`json\n${json}\n\`\`\``, usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     const result = await adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers)
 
@@ -271,7 +266,7 @@ describe('adjudicate — JSON parse error fallback', () => {
 
 describe('adjudicate — error propagation', () => {
   it('propagates error when generateText rejects', async () => {
-    mockGenerateText.mockRejectedValue(new Error('LLM API failure'))
+    mockRunAdapter.mockRejectedValue(new Error('LLM API failure'))
 
     await expect(
       adjudicate(threeSuccessOutputs, fakeSynthesisRequest, threeMembers),

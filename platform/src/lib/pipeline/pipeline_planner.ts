@@ -18,14 +18,14 @@
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { generateText, jsonSchema, tool } from 'ai'
+import { runAdapter } from '@/lib/adapters'
+import type { ToolDefinition } from '@/lib/adapters'
 import {
   PipelinePlanSchema,
   PipelinePlanInputJsonSchema,
   PipelinePlannerError,
   type PipelinePlan,
 } from './types'
-import { resolveModel, googleProviderOptions } from '@/lib/models/resolver'
 import {
   compressManifest,
   compressedManifestToString,
@@ -213,7 +213,14 @@ export async function callPipelinePlanner(
   })
 
   const start = Date.now()
-  let result
+  const plannerTools: ToolDefinition[] = [
+    {
+      name: 'submit_plan',
+      description: 'Submit the planned tool calls for the native query. Call this exactly once with the full plan; do not emit prose.',
+      parameters: PipelinePlanInputJsonSchema,
+    },
+  ]
+  let interaction: Awaited<ReturnType<typeof runAdapter>> | undefined
   let lastErr: unknown
   let activeModelId = plannerModelId
   let fallbackWasUsed = false
@@ -223,23 +230,15 @@ export async function callPipelinePlanner(
       : plannerModelId
     fallbackWasUsed = activeModelId !== plannerModelId
     try {
-      result = await generateText({
-        model: resolveModel(activeModelId),
-        system: getSystemPrompt(),
+      interaction = await runAdapter({
+        callType: 'planner_fast',
+        modelOverride: { modelId: activeModelId },
+        systemPrompt: getSystemPrompt(),
         messages: [{ role: 'user', content: userMessage }],
         temperature: 0,
-        maxRetries: 0,
-        tools: {
-          submit_plan: tool({
-            description:
-              'Submit the planned tool calls for the native query. Call this exactly once with the full plan; do not emit prose.',
-            inputSchema: jsonSchema<PipelinePlan>(PipelinePlanInputJsonSchema),
-          }),
-        },
+        tools: plannerTools,
         toolChoice: 'required',
-        ...(googleProviderOptions(activeModelId) && {
-          providerOptions: googleProviderOptions(activeModelId),
-        }),
+        disableSdkRetry: true,
       })
       break
     } catch (err) {
@@ -299,7 +298,7 @@ export async function callPipelinePlanner(
       )
     }
   }
-  if (!result) {
+  if (!interaction) {
     if (queryId) {
       void writeLlmCallLog({
         query_id: queryId,
@@ -350,13 +349,13 @@ export async function callPipelinePlanner(
       call_stage: 'planner',
       model_id: activeModelId,
       provider: resolveProvider(activeModelId),
-      input_tokens: result.usage?.inputTokens ?? null,
-      output_tokens: result.usage?.outputTokens ?? null,
+      input_tokens: interaction!.usage.inputTokens ?? null,
+      output_tokens: interaction!.usage.outputTokens ?? null,
       reasoning_tokens: null,
       latency_ms,
       cost_usd: computeCostUsd(getModelPricingSync(activeModelId), {
-        input_tokens: result.usage?.inputTokens ?? null,
-        output_tokens: result.usage?.outputTokens ?? null,
+        input_tokens: interaction!.usage.inputTokens ?? null,
+        output_tokens: interaction!.usage.outputTokens ?? null,
       }),
       fallback_used: fallbackWasUsed,
       error_code: null,
@@ -369,8 +368,8 @@ export async function callPipelinePlanner(
     const obsStartedAt = new Date(start)
     const obsFinishedAt = new Date(start + latency_ms)
     const obsUsage: TokenUsage = {
-      input_tokens: result.usage?.inputTokens ?? 0,
-      output_tokens: result.usage?.outputTokens ?? 0,
+      input_tokens: interaction!.usage.inputTokens ?? 0,
+      output_tokens: interaction!.usage.outputTokens ?? 0,
       cache_read_tokens: 0,
       cache_write_tokens: 0,
       reasoning_tokens: 0,
@@ -411,9 +410,12 @@ export async function callPipelinePlanner(
     })()
   }
 
-  const submitCall = result.toolCalls.find(tc => tc.toolName === 'submit_plan')
-  if (!submitCall) {
-    const errMsg = `LLM planner did not produce a submit_plan tool call (toolCalls=${result.toolCalls.length}, finishReason=${result.finishReason})`
+  const submitCallEvent = interaction!.intermediate.find(
+    e => e.type === 'tool_call' && (e.payload as { name: string }).name === 'submit_plan',
+  )
+  if (!submitCallEvent) {
+    const toolCallCount = interaction!.intermediate.filter(e => e.type === 'tool_call').length
+    const errMsg = `LLM planner did not produce a submit_plan tool call (toolCalls=${toolCallCount}, finishReason=${interaction!.finishReason})`
     emitTrace?.({
       event: 'step_error',
       query_id: stepQueryId,
@@ -432,7 +434,7 @@ export async function callPipelinePlanner(
     })
     throw new PipelinePlannerError(errMsg)
   }
-  const parsed = PipelinePlanSchema.safeParse(submitCall.input)
+  const parsed = PipelinePlanSchema.safeParse((submitCallEvent.payload as { args: unknown }).args)
   if (!parsed.success) {
     const errMsg = `LLM planner returned schema-invalid output: ${parsed.error.message}`
     emitTrace?.({

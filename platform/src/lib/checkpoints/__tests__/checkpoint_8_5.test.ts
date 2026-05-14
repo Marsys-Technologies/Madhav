@@ -8,15 +8,12 @@ vi.mock('fs', () => ({
     ),
   },
 }))
-vi.mock('@/lib/models/resolver', () => ({
-  resolveModel: vi.fn(() => ({ id: 'claude-sonnet-4-6', provider: 'anthropic' })),
-}))
 vi.mock('@/lib/models/runtime_config', () => ({
   getEffectiveModel: vi.fn().mockResolvedValue('claude-sonnet-4-6'),
 }))
 
-const mockGenerateText = vi.fn()
-vi.mock('ai', () => ({ generateText: (...args: unknown[]) => mockGenerateText(...args) }))
+const mockRunAdapter = vi.fn()
+vi.mock('@/lib/adapters', () => ({ runAdapter: (...args: unknown[]) => mockRunAdapter(...args) }))
 
 const mockGetFlag = vi.fn()
 vi.mock('@/lib/config/index', () => ({ getFlag: (...args: unknown[]) => mockGetFlag(...args) }))
@@ -47,13 +44,16 @@ function makeInput(overrides: Partial<Checkpoint85Input> = {}): Checkpoint85Inpu
 }
 
 function mockLLMPass(extras?: Partial<{ prediction: StructuredPrediction }>) {
-  mockGenerateText.mockResolvedValue({
-    text: JSON.stringify({
+  mockRunAdapter.mockResolvedValue({
+    finalText: JSON.stringify({
       verdict: 'pass',
       confidence: 0.92,
       reasoning: 'Synthesis is substantive',
       ...extras,
     }),
+    usage: { inputTokens: 0, outputTokens: 0 },
+    finishReason: 'stop',
+    intermediate: [],
   })
 }
 
@@ -69,7 +69,7 @@ describe('checkpoint_8_5 — flag OFF', () => {
     const result = await runCheckpoint8_5(makeInput())
     expect(result.skipped).toBe(true)
     expect(result.verdict).toBe('pass')
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
 
@@ -92,14 +92,14 @@ describe('checkpoint_8_5 — pass verdict', () => {
   it('includes synthesized text in the prompt', async () => {
     mockLLMPass()
     await runCheckpoint8_5(makeInput())
-    const prompt = (mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
+    const prompt = (mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
     expect(prompt).toContain('Saturn in the 10th house')
   })
 
   it('includes validator results in the prompt', async () => {
     mockLLMPass()
     await runCheckpoint8_5(makeInput())
-    const prompt = (mockGenerateText.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
+    const prompt = (mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }).messages[0].content
     expect(prompt).toContain('p1_layer_separation')
     expect(prompt).toContain('pass')
   })
@@ -107,9 +107,8 @@ describe('checkpoint_8_5 — pass verdict', () => {
   it('uses claude-sonnet-4-6 as checkpoint model', async () => {
     mockLLMPass()
     await runCheckpoint8_5(makeInput())
-    // resolveModel is called with sonnet model id
-    const { resolveModel } = await import('@/lib/models/resolver')
-    expect(resolveModel).toHaveBeenCalledWith('claude-sonnet-4-6')
+    const callArg = mockRunAdapter.mock.calls[0][0] as { modelOverride: { modelId: string } }
+    expect(callArg.modelOverride.modelId).toBe('claude-sonnet-4-6')
   })
 })
 
@@ -121,8 +120,9 @@ describe('checkpoint_8_5 — warn verdict', () => {
   })
 
   it('returns warn without throwing', async () => {
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({ verdict: 'warn', confidence: 0.65, reasoning: 'Excessive hedging' }),
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({ verdict: 'warn', confidence: 0.65, reasoning: 'Excessive hedging' }),
+      usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [],
     })
     const result = await runCheckpoint8_5(makeInput())
     expect(result.verdict).toBe('warn')
@@ -134,8 +134,9 @@ describe('checkpoint_8_5 — warn verdict', () => {
 describe('checkpoint_8_5 — halt verdict', () => {
   it('returns halt (not throw) when FAIL_HARD=false', async () => {
     mockGetFlag.mockImplementation((flag: string) => flag === 'CHECKPOINT_8_5_ENABLED')
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({ verdict: 'halt', confidence: 0.95, reasoning: 'Empty shell' }),
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({ verdict: 'halt', confidence: 0.95, reasoning: 'Empty shell' }),
+      usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [],
     })
     const result = await runCheckpoint8_5(makeInput())
     expect(result.verdict).toBe('halt')
@@ -145,8 +146,9 @@ describe('checkpoint_8_5 — halt verdict', () => {
     mockGetFlag.mockImplementation((flag: string) =>
       flag === 'CHECKPOINT_8_5_ENABLED' || flag === 'CHECKPOINT_8_5_FAIL_HARD'
     )
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({ verdict: 'halt', confidence: 0.95, reasoning: 'Empty shell' }),
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({ verdict: 'halt', confidence: 0.95, reasoning: 'Empty shell' }),
+      usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [],
     })
     await expect(runCheckpoint8_5(makeInput())).rejects.toThrow(CheckpointHaltError)
   })
@@ -197,8 +199,8 @@ describe('checkpoint_8_5 — prediction extraction', () => {
       flag === 'CHECKPOINT_8_5_ENABLED' || flag === 'CHECKPOINT_8_5_PREDICTION_EXTRACT'
     )
     // outcome field should be rejected by Zod schema (strict schema strips it)
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({
         verdict: 'pass',
         confidence: 0.9,
         reasoning: 'ok',
@@ -207,6 +209,7 @@ describe('checkpoint_8_5 — prediction extraction', () => {
           outcome: 'prediction came true', // must be stripped
         },
       }),
+      usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [],
     })
     const result = await runCheckpoint8_5(makeInput({ query_class: 'predictive' }))
     // prediction is present but outcome field is NOT in the typed result
@@ -218,8 +221,8 @@ describe('checkpoint_8_5 — prediction extraction', () => {
     mockGetFlag.mockImplementation((flag: string) =>
       flag === 'CHECKPOINT_8_5_ENABLED' || flag === 'CHECKPOINT_8_5_PREDICTION_EXTRACT'
     )
-    mockGenerateText.mockResolvedValue({
-      text: JSON.stringify({
+    mockRunAdapter.mockResolvedValue({
+      finalText: JSON.stringify({
         verdict: 'pass',
         confidence: 0.9,
         reasoning: 'ok',
@@ -228,6 +231,7 @@ describe('checkpoint_8_5 — prediction extraction', () => {
           prediction_text: 'Some claim',
         },
       }),
+      usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [],
     })
     // Zod safeParse on the outer schema should succeed but inner prediction validation fails
     // The outer schema uses .optional() so a bad prediction is stripped
@@ -244,7 +248,7 @@ describe('checkpoint_8_5 — sub-flag interactions', () => {
     mockGetFlag.mockImplementation((flag: string) => flag === 'CHECKPOINT_8_5_PREDICTION_EXTRACT')
     const result = await runCheckpoint8_5(makeInput())
     expect(result.skipped).toBe(true)
-    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockRunAdapter).not.toHaveBeenCalled()
   })
 })
 
@@ -256,14 +260,14 @@ describe('checkpoint_8_5 — parse failure', () => {
   })
 
   it('defaults to pass on invalid JSON', async () => {
-    mockGenerateText.mockResolvedValue({ text: '{ broken json' })
+    mockRunAdapter.mockResolvedValue({ finalText: '{ broken json', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     const result = await runCheckpoint8_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('parse failed')
   })
 
-  it('defaults to pass when generateText rejects', async () => {
-    mockGenerateText.mockRejectedValue(new Error('model overloaded'))
+  it('defaults to pass when runAdapter rejects', async () => {
+    mockRunAdapter.mockRejectedValue(new Error('model overloaded'))
     const result = await runCheckpoint8_5(makeInput())
     expect(result.verdict).toBe('pass')
     expect(result.reasoning).toContain('Checkpoint error')

@@ -16,7 +16,8 @@
 
 import 'server-only'
 
-import { streamText, stepCountIs, smoothStream, tool } from 'ai'
+import { stepCountIs, smoothStream, tool } from 'ai'
+import { streamBuildRaw } from '@/lib/adapters'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceChunkItem } from '@/lib/trace/types'
 import type { ModelMessage, ToolSet } from 'ai'
@@ -25,7 +26,18 @@ import { z } from 'zod'
 import { resolveModel, googleProviderOptions, deepseekProviderOptions } from '@/lib/models/resolver'
 import { getModelMeta, getReasoningMode, supports } from '@/lib/models/registry'
 import { REASONING_NARRATION_GATE } from '@/lib/prompts/templates/shared'
-import { stripThinkBlocks, extractReasoningTrace } from './think_block_filter'
+function stripThinkBlocks(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>\s*/gi, '').trimStart()
+}
+function extractReasoningTrace(text: string): { reasoning: string; answer: string } {
+  const blocks: string[] = []
+  const re = /<think>([\s\S]*?)<\/think>/gi
+  let match: RegExpExecArray | null
+  while ((match = re.exec(text)) !== null) {
+    blocks.push(match[1].trim())
+  }
+  return { reasoning: blocks.join('\n\n'), answer: stripThinkBlocks(text) }
+}
 import { getDefaultRegistry } from '@/lib/prompts/index'
 import { renderTemplate } from '@/lib/prompts/types'
 import { getTool } from '@/lib/retrieve/index'
@@ -409,7 +421,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // already pre-injected via FUB-2/FUB-3 — tools are unnecessary here.
     const synthesisTools = isThinkingModeSynthesis ? undefined : toolsForModel
 
-    const result = streamText({
+    const result = streamBuildRaw({
       model: resolveModel(selected_model_id),
       messages: modelMessages,
       tools: synthesisTools,

@@ -5,10 +5,9 @@
  * path; the title is a side-effect that fires after the response is sent).
  */
 
-import { generateText } from 'ai'
+import { runAdapter } from '@/lib/adapters'
 import type { UIMessage } from 'ai'
 import { TITLE_MODEL_ID } from '@/lib/models/registry'
-import { resolveModel } from '@/lib/models/resolver'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
@@ -40,15 +39,15 @@ export async function generateConversationTitle(
   let usage: { inputTokens?: number; outputTokens?: number } | undefined
   let errorCode: string | null = null
   try {
-    const result = await generateText({
-      model: resolveModel(TITLE_MODEL_ID),
-      system:
-        'Summarize the user question as a concise 3-6 word chat title. No quotes, no trailing punctuation, Title Case.',
-      prompt: text.slice(0, 500),
+    const interaction = await runAdapter({
+      callType: 'worker',
+      modelOverride: { modelId: TITLE_MODEL_ID },
+      systemPrompt: 'Summarize the user question as a concise 3-6 word chat title. No quotes, no trailing punctuation, Title Case.',
+      messages: [{ role: 'user', content: text.slice(0, 500) }],
       maxOutputTokens: 40,
     })
-    usage = result.usage
-    const cleaned = result.text.replace(/^["']|["']$/g, '').trim().slice(0, 80)
+    usage = { inputTokens: interaction.usage.inputTokens, outputTokens: interaction.usage.outputTokens }
+    const cleaned = (interaction.finalText ?? '').replace(/^["']|["']$/g, '').trim().slice(0, 80)
     return cleaned || fallbackTitle(text)
   } catch (err) {
     errorCode = err instanceof Error ? err.message : String(err)

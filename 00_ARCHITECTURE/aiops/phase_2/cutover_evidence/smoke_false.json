@@ -1,0 +1,11 @@
+{
+  "ran_at": "2026-05-14T13:23:11.862Z",
+  "flag_state": "false",
+  "mode": "equivalence_suite",
+  "suite_file": "src/lib/adapters/__tests__/equivalence/runtime_equivalence.test.ts",
+  "total": 48,
+  "pass": 48,
+  "fail": 0,
+  "failed_tests": [],
+  "exit_code": 0
+}

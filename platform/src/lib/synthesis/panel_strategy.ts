@@ -16,9 +16,7 @@
 
 import 'server-only'
 
-import { streamText } from 'ai'
-
-import { resolveModel } from '@/lib/models/resolver'
+import { streamAdapterRaw } from '@/lib/adapters'
 import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
 
@@ -117,20 +115,13 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
     const finalAnswer = adjudication.final_answer
     const passthroughStartedAt = new Date()
 
-    const result = streamText({
-      model: resolveModel(passthroughModel),
-      messages: [
-        {
-          role: 'system',
-          content: 'Output the following text verbatim, do not modify it:',
-        },
-        {
-          role: 'user',
-          content: finalAnswer,
-        },
-      ],
+    const rawResult = streamAdapterRaw({
+      callType: 'synthesis',
+      modelOverride: { modelId: passthroughModel },
+      systemPrompt: 'Output the following text verbatim, do not modify it:',
+      messages: [{ role: 'user', content: finalAnswer }],
       maxOutputTokens: 65536,
-      onFinish: async ({
+      rawOnFinish: async ({
         finishReason,
         usage,
         text,
@@ -192,6 +183,6 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
     // Suppress unused variable warning for query (used by member runner via request)
     void query
 
-    return { result, metadata }
+    return { result: rawResult.result, metadata }
   }
 }

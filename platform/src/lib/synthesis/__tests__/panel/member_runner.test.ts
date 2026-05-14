@@ -3,13 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // ── Module mocks (must be before any imports) ─────────────────────────────────
 vi.mock('server-only', () => ({}))
 
-vi.mock('@/lib/models/resolver', () => ({
-  resolveModel: vi.fn(() => ({ id: 'test-model', provider: 'anthropic' })),
-}))
-
-const mockGenerateText = vi.fn()
-vi.mock('ai', () => ({
-  generateText: (...args: unknown[]) => mockGenerateText(...args),
+const mockRunAdapter = vi.fn()
+vi.mock('@/lib/adapters', () => ({
+  runAdapter: (...args: unknown[]) => mockRunAdapter(...args),
 }))
 
 vi.mock('@/lib/config/index', () => ({
@@ -103,7 +99,7 @@ beforeEach(() => {
 describe('runPanelMembers — happy path', () => {
   it('returns member_outputs with status success for all 3 members', async () => {
     letConcurrentRetryExecute()
-    mockGenerateText.mockResolvedValue({ text: 'member answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'member answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     mockGetFlag.mockReturnValue(false)
 
     const { member_outputs, degrade_notice } = await runPanelMembers(
@@ -121,7 +117,7 @@ describe('runPanelMembers — happy path', () => {
 
   it('attaches correct provider_family and model_id to each output', async () => {
     letConcurrentRetryExecute()
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     mockGetFlag.mockReturnValue(false)
 
     const { member_outputs } = await runPanelMembers(fakeSynthesisRequest, threeMembers)
@@ -134,7 +130,7 @@ describe('runPanelMembers — happy path', () => {
 
   it('records telemetry for members_attempted and members_succeeded', async () => {
     letConcurrentRetryExecute()
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     mockGetFlag.mockReturnValue(false)
 
     await runPanelMembers(fakeSynthesisRequest, threeMembers)
@@ -156,7 +152,7 @@ describe('runPanelMembers — one member fails, PANEL_DEGRADE_2_OF_3=false', () 
         return factory(new AbortController().signal)
       },
     )
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     await expect(
       runPanelMembers(fakeSynthesisRequest, threeMembers),
@@ -174,7 +170,7 @@ describe('runPanelMembers — one member fails, PANEL_DEGRADE_2_OF_3=false', () 
         return factory(new AbortController().signal)
       },
     )
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     const err = await runPanelMembers(fakeSynthesisRequest, threeMembers).catch(e => e)
     expect(err).toBeInstanceOf(PanelDegradedError)
@@ -194,7 +190,7 @@ describe('runPanelMembers — one member fails, PANEL_DEGRADE_2_OF_3=true', () =
         return factory(new AbortController().signal)
       },
     )
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     const { member_outputs, degrade_notice } = await runPanelMembers(
       fakeSynthesisRequest,
@@ -218,7 +214,7 @@ describe('runPanelMembers — one member fails, PANEL_DEGRADE_2_OF_3=true', () =
         return factory(new AbortController().signal)
       },
     )
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     await runPanelMembers(fakeSynthesisRequest, threeMembers)
 
@@ -247,7 +243,7 @@ describe('runPanelMembers — all members fail', () => {
         return factory(new AbortController().signal)
       },
     )
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
 
     await expect(
       runPanelMembers(fakeSynthesisRequest, threeMembers),
@@ -267,7 +263,7 @@ describe('runPanelMembers — all members fail', () => {
 describe('runPanelMembers — concurrent retry wiring', () => {
   it('passes RETRY_ATTEMPTS=3 to concurrentRetry for each member', async () => {
     letConcurrentRetryExecute()
-    mockGenerateText.mockResolvedValue({ text: 'answer' })
+    mockRunAdapter.mockResolvedValue({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     mockGetFlag.mockReturnValue(false)
 
     await runPanelMembers(fakeSynthesisRequest, threeMembers)
@@ -299,13 +295,13 @@ describe('runPanelMembers — timeout', () => {
     // Member 0: times out (generateText never resolves for first call)
     // Members 1 & 2: succeed immediately
     let memberCallCount = 0
-    mockGenerateText.mockImplementation(() => {
+    mockRunAdapter.mockImplementation(() => {
       memberCallCount++
       if (memberCallCount === 1) {
         // Never resolves — simulate timeout
         return new Promise(() => {})
       }
-      return Promise.resolve({ text: 'answer' })
+      return Promise.resolve({ finalText: 'answer', usage: { inputTokens: 0, outputTokens: 0 }, finishReason: 'stop', intermediate: [] })
     })
 
     const runPromise = runPanelMembers(fakeSynthesisRequest, threeMembers)

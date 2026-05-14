@@ -17,9 +17,8 @@ import 'server-only'
 
 import fs from 'fs'
 import path from 'path'
-import { generateText } from 'ai'
+import { runAdapter } from '@/lib/adapters'
 
-import { resolveModel } from '@/lib/models/resolver'
 import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
@@ -66,8 +65,10 @@ export async function runCheckpoint4_5(input: Checkpoint45Input): Promise<Checkp
     const prompt = buildPrompt(input)
     const checkpointModel = await getEffectiveModel('marsys', 'checkpoint_4_5', 'primary')
 
-    const { text } = await generateText({
-      model: resolveModel(checkpointModel),
+    const { finalText: text = '' } = await runAdapter({
+      callType: 'checkpoint_4_5',
+      modelOverride: { modelId: checkpointModel },
+      systemPrompt: '',
       messages: [{ role: 'user', content: prompt }],
       maxOutputTokens: 512,
     })

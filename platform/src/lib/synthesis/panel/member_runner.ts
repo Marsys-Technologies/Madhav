@@ -15,8 +15,7 @@
 
 import 'server-only'
 
-import { generateText } from 'ai'
-import { resolveModel } from '@/lib/models/resolver'
+import { runAdapter } from '@/lib/adapters'
 import { getFlag } from '@/lib/config/index'
 import { telemetry } from '@/lib/telemetry/index'
 import { concurrentRetry } from './concurrent_retry'
@@ -117,11 +116,13 @@ async function runSingleMember(
       )
 
       const callStartedAt = new Date()
-      const callPromise = generateText({
-        model: resolveModel(config.model_id),
+      const callPromise = runAdapter({
+        callType: 'synthesis',
+        modelOverride: { modelId: config.model_id },
+        systemPrompt: '',
         messages: [{ role: 'user', content: prompt }],
         maxOutputTokens: 65536,
-      }).then(r => {
+      }).then(interaction => {
         recordAiSdkCall({
           pipeline_stage: 'compose',
           model_id: config.model_id,
@@ -129,12 +130,12 @@ async function runSingleMember(
           prompt_id: `${request.query_plan.query_plan_id}:panel:member_${idx}`,
           user_id: 'native',
           parameters: { model: config.model_id, role: `panel_member_${idx}` },
-          usage: r.usage,
+          usage: { inputTokens: interaction.usage.inputTokens, outputTokens: interaction.usage.outputTokens },
           status: 'success',
           started_at: callStartedAt,
           finished_at: new Date(),
         })
-        return r.text
+        return interaction.finalText ?? ''
       })
 
       return Promise.race([callPromise, timeoutPromise])

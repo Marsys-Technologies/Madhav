@@ -2,43 +2,38 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-const { mockGenerateText, mockResolveModel, mockGetEffectiveModel } = vi.hoisted(() => ({
-  mockGenerateText:     vi.fn(),
-  mockResolveModel:     vi.fn(),
+const { mockRunAdapter, mockGetEffectiveModel } = vi.hoisted(() => ({
+  mockRunAdapter:       vi.fn(),
   mockGetEffectiveModel: vi.fn(),
 }))
 
-vi.mock('ai', () => ({ generateText: mockGenerateText }))
-vi.mock('@/lib/models/resolver', () => ({ resolveModel: mockResolveModel }))
+vi.mock('@/lib/adapters', () => ({ runAdapter: mockRunAdapter }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: mockGetEffectiveModel }))
-vi.mock('@/lib/models/registry', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/models/registry')>('@/lib/models/registry')
-  return {
-    ...actual,
-    DEFAULT_STACK_ID: 'gemini',
-    STACK_ROUTING: {
-      gemini: {
-        synthesis: { primary: 'gemini-2.5-pro', fallback: 'gemini-2.0-flash' },
-      },
+const mockGetModelMeta = vi.fn().mockReturnValue({ costPer1MInput: 1.25, costPer1MOutput: 5.0 })
+vi.mock('@/lib/models/registry', () => ({
+  DEFAULT_STACK_ID: 'gemini',
+  DEFAULT_MODEL_ID: 'gemini-2.5-pro',
+  STACK_ROUTING: {
+    gemini: {
+      synthesis: { primary: 'gemini-2.5-pro', fallback: 'gemini-2.0-flash' },
     },
-    getModelMeta: vi.fn().mockReturnValue({ costPer1MInput: 1.25, costPer1MOutput: 5.0 }),
-  }
-})
-
-const MOCK_MODEL = { _type: 'mock-model' }
+  },
+  getModelMeta: (...args: unknown[]) => mockGetModelMeta(...args),
+}))
 
 describe('runProbe', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockResolveModel.mockReturnValue(MOCK_MODEL)
     mockGetEffectiveModel.mockResolvedValue('gemini-2.5-pro')
+    mockGetModelMeta.mockReturnValue({ costPer1MInput: 1.25, costPer1MOutput: 5.0 })
   })
 
   it('returns pass status on successful model call', async () => {
-    mockGenerateText.mockResolvedValueOnce({
-      text: 'Mars in the 7th house indicates partnerships.',
+    mockRunAdapter.mockResolvedValueOnce({
+      finalText: 'Mars in the 7th house indicates partnerships.',
       finishReason: 'stop',
       usage: { inputTokens: 50, outputTokens: 20 },
+      intermediate: [],
     })
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary' })
@@ -51,14 +46,14 @@ describe('runProbe', () => {
 
   it('truncates output_text to 300 chars', async () => {
     const longText = 'a'.repeat(400)
-    mockGenerateText.mockResolvedValueOnce({ text: longText, finishReason: 'length', usage: {} })
+    mockRunAdapter.mockResolvedValueOnce({ finalText: longText, finishReason: 'length', usage: { inputTokens: 0, outputTokens: 0 }, intermediate: [] })
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary' })
     expect(result.output_text.length).toBe(300)
   })
 
   it('returns fail on unknown model_override', async () => {
-    mockResolveModel.mockImplementationOnce(() => { throw new Error('Unknown model id: bad-model') })
+    mockGetModelMeta.mockReturnValueOnce(null)
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary', modelOverride: 'bad-model' })
     expect(result.status).toBe('fail')
@@ -67,14 +62,14 @@ describe('runProbe', () => {
 
   it('returns timeout on AbortError', async () => {
     const abortErr = Object.assign(new Error('Aborted'), { name: 'AbortError' })
-    mockGenerateText.mockRejectedValueOnce(abortErr)
+    mockRunAdapter.mockRejectedValueOnce(abortErr)
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary' })
     expect(result.status).toBe('timeout')
   })
 
   it('returns fail on network error', async () => {
-    mockGenerateText.mockRejectedValueOnce(new Error('network fail'))
+    mockRunAdapter.mockRejectedValueOnce(new Error('network fail'))
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary' })
     expect(result.status).toBe('fail')
@@ -82,14 +77,14 @@ describe('runProbe', () => {
   })
 
   it('uses modelOverride when provided', async () => {
-    mockGenerateText.mockResolvedValueOnce({ text: 'ok', finishReason: 'stop', usage: {} })
+    mockRunAdapter.mockResolvedValueOnce({ finalText: 'ok', finishReason: 'stop', usage: { inputTokens: 0, outputTokens: 0 }, intermediate: [] })
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary', modelOverride: 'gemini-custom' })
     expect(result.model_id).toBe('gemini-custom')
   })
 
   it('computes cost_usd from model metadata', async () => {
-    mockGenerateText.mockResolvedValueOnce({ text: 'ok', finishReason: 'stop', usage: { inputTokens: 1000, outputTokens: 200 } })
+    mockRunAdapter.mockResolvedValueOnce({ finalText: 'ok', finishReason: 'stop', usage: { inputTokens: 1000, outputTokens: 200 }, intermediate: [] })
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'synthesis', role: 'primary' })
     // 1000 * 1.25/1M + 200 * 5.0/1M = 0.00125 + 0.001 = 0.00225
@@ -97,7 +92,7 @@ describe('runProbe', () => {
   })
 
   it('returns correct call_type and role in result', async () => {
-    mockGenerateText.mockResolvedValueOnce({ text: 'plan', finishReason: 'stop', usage: {} })
+    mockRunAdapter.mockResolvedValueOnce({ finalText: 'plan', finishReason: 'stop', usage: { inputTokens: 0, outputTokens: 0 }, intermediate: [] })
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'planner_fast', role: 'fallback' })
     expect(result.call_type).toBe('planner_fast')
@@ -105,7 +100,7 @@ describe('runProbe', () => {
   })
 
   it('returns latency_ms > 0', async () => {
-    mockGenerateText.mockResolvedValueOnce({ text: 'ok', finishReason: 'stop', usage: {} })
+    mockRunAdapter.mockResolvedValueOnce({ finalText: 'ok', finishReason: 'stop', usage: { inputTokens: 0, outputTokens: 0 }, intermediate: [] })
     const { runProbe } = await import('../runner')
     const result = await runProbe({ stack: 'gemini', callType: 'worker', role: 'primary' })
     expect(result.latency_ms).toBeGreaterThanOrEqual(0)
