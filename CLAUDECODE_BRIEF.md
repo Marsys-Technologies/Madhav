@@ -1,11 +1,82 @@
 ---
-status: OPEN
+status: HALTED
 session_id: AIOPS_AD_4
 phase: AD.4
 phase_name: "Call-site migration + legacy-path preservation + flag-off equivalence"
 next_session: AIOPS_AD_5
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_2_MASTER_PLAN_v1_0
+bail_out:
+  phase: AD.4
+  reason: "AC.AD4.2 unreachable — 10 call-site files need migration but are absent from may_touch"
+  last_completed_step: "§3.1 Inventory call sites (completed); §3.2+ blocked"
+  attempted_remediations: []
+  suggested_native_action: |
+    Extend may_touch in the AD.4 brief to include the 10 missing files listed below,
+    then re-open with status: OPEN. Alternatively, scope AC.AD4.2 to only the files
+    that ARE in may_touch (synthesis/**, consume/**, aiops/probe/**, scripts/**),
+    and add a second pass (AD.4b) for the remaining files.
+
+    Missing may_touch entries (10 files with actual streamText/generateText calls):
+
+      platform/src/app/api/chat/build/route.ts
+        (may_touch covers chat/consume/** only — build/ is excluded)
+
+      platform/src/app/api/consume/suggestions/context/route.ts
+        (not mentioned in may_touch; has generateText call at line 56)
+
+      platform/src/app/api/performance/judge/route.ts
+        (not mentioned in may_touch; has generateText call at line 83)
+
+      platform/src/lib/checkpoints/checkpoint_4_5.ts
+      platform/src/lib/checkpoints/checkpoint_5_5.ts
+      platform/src/lib/checkpoints/checkpoint_8_5.ts
+        (brief lists scripts/checkpoint/** but migration targets are in src/lib/checkpoints/**,
+        a different directory — both need to be in may_touch)
+
+      platform/src/lib/conversations/title.ts
+        (not mentioned anywhere in the brief; has generateText call)
+
+      platform/src/lib/models/health.ts
+        (per-site map says "models/health.ts → runAdapter" but src/lib/models/** not in may_touch)
+
+      platform/src/lib/pipeline/pipeline_planner.ts
+      platform/src/lib/pipeline/planner_context_builder.ts
+        (per-site map targets these but src/lib/pipeline/** not in may_touch)
+
+    Files already in may_touch that DO have call sites (these can be migrated once scope is fixed):
+      platform/src/lib/synthesis/single_model_strategy.ts
+      platform/src/lib/synthesis/panel_strategy.ts
+      platform/src/lib/synthesis/panel/member_runner.ts
+      platform/src/lib/synthesis/panel/adjudicator.ts
+      platform/src/app/api/chat/consume/route.ts
+      platform/src/lib/aiops/probe/runner.ts (if it has call sites — grep shows it may not)
+
+  stack_trace_or_logs: |
+    Inventory grep result (actual call sites with streamText/generateText, excluding
+    adapters/, tests, comments, and type-only files):
+
+    src/app/api/chat/build/route.ts           (streamText at line 91)
+    src/app/api/consume/suggestions/context/route.ts  (generateText at line 56)
+    src/app/api/performance/judge/route.ts    (generateText at line 83)
+    src/lib/checkpoints/checkpoint_4_5.ts     (generateText at line 69)
+    src/lib/checkpoints/checkpoint_5_5.ts     (generateText at line 92)
+    src/lib/checkpoints/checkpoint_8_5.ts     (generateText at line 83)
+    src/lib/conversations/title.ts            (generateText)
+    src/lib/models/health.ts                  (generateText at line 66)
+    src/lib/pipeline/pipeline_planner.ts      (generateText at line 226)
+    src/lib/pipeline/planner_context_builder.ts  (generateText at line 85)
+    src/lib/synthesis/panel/adjudicator.ts    (generateText at line 88) — IN may_touch
+    src/lib/synthesis/panel/member_runner.ts  (generateText at line 120) — IN may_touch
+    src/lib/synthesis/panel_strategy.ts       (streamText at line 120) — IN may_touch
+    src/lib/synthesis/single_model_strategy.ts (streamText at line 412) — IN may_touch
+    src/app/api/chat/consume/route.ts         (streamText import) — IN may_touch
+
+    No call sites found in platform/scripts/ (those scripts appear to already use runAdapter
+    or have no LLM calls).
+
+    AD.3.5 deliverables are all committed and working (ef9669c). Branch state is clean.
+    No partial AD.4 work was attempted; no files were modified in this bail-out.
 ---
 
 # CLAUDECODE_BRIEF — AIOPS_AD_4
