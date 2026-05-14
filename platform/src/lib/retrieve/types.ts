@@ -15,6 +15,7 @@ export interface QueryPlan {
     | 'holistic'
     | 'remedial'
     | 'cross_native'
+    | 'classical_grounding'
   domains: string[]
   forward_looking: boolean
   audience_tier: 'super_admin' | 'acharya_reviewer' | 'client' | 'public_redacted'

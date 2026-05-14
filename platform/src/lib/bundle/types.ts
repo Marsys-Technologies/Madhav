@@ -14,6 +14,7 @@ export type QueryClass =
   | 'holistic'
   | 'remedial'
   | 'cross_native'
+  | 'classical_grounding'
 
 export type AudienceTier = 'super_admin' | 'acharya_reviewer' | 'client' | 'public_redacted'
 

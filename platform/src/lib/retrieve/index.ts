@@ -48,6 +48,10 @@ import * as queryVarshaphala from './query_varshaphala'
 // M5-A — LEL ground-truth life events (fixes LEL retrieval gap)
 import * as lelQuery from './lel_query'
 
+// M8-G — classical corpus tools (tools 25+26)
+import * as classicalTextSearchTool from './classical_text_search_tool'
+import * as classicalAttributionLookupTool from './classical_attribution_lookup_tool'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -74,6 +78,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryKpRulingPlanets.tool,
   queryVarshaphala.tool,
   lelQuery.tool,
+  classicalTextSearchTool.tool,
+  classicalAttributionLookupTool.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

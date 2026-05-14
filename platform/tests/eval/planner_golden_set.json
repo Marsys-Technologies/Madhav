@@ -932,6 +932,39 @@
       "forbidden_tools": [],
       "required_asset_ids": [],
       "notes": "No native-2 data exists. Deferred to M5 per GAP-7. This entry holds the cross_native class slot to satisfy all-8-classes coverage in the header. Smoke runner skips entries with empty expected_tools via degenerate-entry guard."
+    },
+    {
+      "id": "GT.047",
+      "query": "Which classical texts support the Sasha Mahapurusha Yoga in my chart?",
+      "query_class": "classical_grounding",
+      "category": "classical_grounding",
+      "expected_tools": ["classical_text_search", "classical_attribution_lookup"],
+      "required_tools": ["classical_text_search"],
+      "forbidden_tools": ["remedial_codex_query", "resonance_register"],
+      "required_asset_ids": ["FORENSIC"],
+      "notes": "M8-G-S1 classical_grounding golden entry 1. Saturn exalted in Libra (Kendra from Aries lagna) forms Sasha yoga — classical_text_search retrieves BPHS + Phaladeepika passages; classical_attribution_lookup resolves MSR signal attributions. No remedial prescription asked."
+    },
+    {
+      "id": "GT.048",
+      "query": "What does BPHS say about Saturn exalted in a Kendra house?",
+      "query_class": "classical_grounding",
+      "category": "classical_grounding",
+      "expected_tools": ["classical_text_search"],
+      "required_tools": ["classical_text_search"],
+      "forbidden_tools": ["remedial_codex_query", "cgm_graph_walk"],
+      "required_asset_ids": ["FORENSIC"],
+      "notes": "M8-G-S1 classical_grounding golden entry 2. Text-keyed direct lookup — schools filter should prefer 'parashari'; classical_text_search with explicit text_key='bphs' or schools=['parashari']. Attribution lookup optional but not required."
+    },
+    {
+      "id": "GT.049",
+      "query": "Find classical attributions for the MSR signals around Venus–Rahu conjunction in the 7th house.",
+      "query_class": "classical_grounding",
+      "category": "classical_grounding",
+      "expected_tools": ["classical_attribution_lookup", "classical_text_search"],
+      "required_tools": ["classical_attribution_lookup"],
+      "forbidden_tools": ["remedial_codex_query"],
+      "required_asset_ids": ["FORENSIC", "MSR"],
+      "notes": "M8-G-S1 classical_grounding golden entry 3. Signal-first lookup — planner must resolve relevant MSR signal IDs (Venus-Rahu-7H cluster) and pass them to classical_attribution_lookup. Secondarily classical_text_search for broader corpus passage retrieval."
     }
   ],
   "_schema_version": "1.2"

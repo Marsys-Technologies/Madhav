@@ -69,17 +69,39 @@ gs://madhav-marsys-sources/
 │   ├── RM_v2_0.md                                   ← canonical_id: RM
 │   ├── CGM_v9_0.md                                  ← canonical_id: CGM
 │   └── RED_TEAM_L2_5_v1_0.md
-└── L3/
-    └── registers/
-        ├── PATTERN_REGISTER_v1_0.json
-        ├── PATTERN_REGISTER_v1_0.md                 ← companion narrative
-        ├── RESONANCE_REGISTER_v1_0.json
-        ├── RESONANCE_REGISTER_v1_0.md               ← companion narrative
-        ├── CONTRADICTION_REGISTER_v1_0.json
-        ├── CONTRADICTION_REGISTER_v1_0.md           ← companion narrative
-        ├── CLUSTER_ATLAS_v1_0.json
-        ├── CLUSTER_ATLAS_v1_0.md                    ← companion narrative
-        └── INDEX.json
+├── L3/
+│   └── registers/
+│       ├── PATTERN_REGISTER_v1_0.json
+│       ├── PATTERN_REGISTER_v1_0.md                 ← companion narrative
+│       ├── RESONANCE_REGISTER_v1_0.json
+│       ├── RESONANCE_REGISTER_v1_0.md               ← companion narrative
+│       ├── CONTRADICTION_REGISTER_v1_0.json
+│       ├── CONTRADICTION_REGISTER_v1_0.md           ← companion narrative
+│       ├── CLUSTER_ATLAS_v1_0.json
+│       ├── CLUSTER_ATLAS_v1_0.md                    ← companion narrative
+│       └── INDEX.json
+└── L8/                                              ← L8 added at M8-A-S1 (2026-05-14)
+    ├── classical_texts/
+    │   ├── tier1/
+    │   │   ├── bphs_chunks.jsonl                    ← BPHS (Brihat Parashara Hora Shastra)
+    │   │   └── phaladeepika_chunks.jsonl
+    │   ├── tier2/
+    │   │   ├── saravali_chunks.jsonl
+    │   │   ├── uttara_kalamrita_chunks.jsonl
+    │   │   └── jaimini_sutra_chunks.jsonl
+    │   └── tier3/
+    │       ├── prashna_marga_chunks.jsonl
+    │       ├── hora_sara_chunks.jsonl
+    │       ├── kp_vols_chunks.jsonl
+    │       ├── brihat_jataka_chunks.jsonl
+    │       └── brihat_samhita_chunks.jsonl
+    ├── nadi_bnn/
+    │   ├── bhrigu_nandi_nadi_chunks.jsonl
+    │   ├── chandra_kala_nadi_chunks.jsonl
+    │   └── dhruva_nadi_sampler_chunks.jsonl
+    └── registries/
+        ├── CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.md
+        └── CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json
 ```
 
 **Notes:**

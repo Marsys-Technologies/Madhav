@@ -373,6 +373,63 @@ const timeline_query: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// M8-G — Classical corpus tools (tools 25 + 26)
+// ────────────────────────────────────────────────────────────────────────────
+
+const classical_text_search: RetrievalCapabilityEntry = {
+  tool_name: 'classical_text_search',
+  description:
+    'Semantic search over the classical Jyotish text corpus — BPHS, Phaladeepika, Saravali, ' +
+    'Uttara Kalamrita, Jaimini Sutra, and 5 Tier-3 texts (10 texts, ~7150 chunks). Returns ' +
+    'top-K relevant passage chunks with chapter, verse reference, and confidence baseline. ' +
+    'Use when the query requires classical textual authority, source verse citation, or ' +
+    'cross-tradition validation of astrological principles. Triggers query_class=classical_grounding.',
+  data_surface:
+    'L8 — tables classical_chunks JOIN classical_texts. ' +
+    'Fields: text_key, title, author, tradition, school, tier, chapter, verse_range, content, ' +
+    'attribution_baseline_confidence, similarity (1 − cosine_distance from pgvector).',
+  supported_params:
+    '{ query?: string (default: user query); schools?: string[] (e.g. ["parashari","jaimini","bnn"]); ' +
+    'tier_max?: number (1=mandatory, 2=high, 3=standard, 4=nadi/bnn); limit?: number (default 5, max 20) }',
+  optimal_patterns: [
+    'Classical source for Saturn: {query:"Saturn exalted Libra yoga", tier_max:2, limit:5}',
+    'BPHS only: {schools:["parashari"], limit:8}',
+    'Nadi/BNN search: {schools:["bnn","nadi"], limit:5}',
+    'Classical grounding for career: {query:"tenth house profession Saturn karma", limit:8}',
+    'Verse cross-check: {query:"Rahu seventh house partnership", tier_max:3, limit:10}',
+  ],
+  cost_tier: 'high',
+  requires_temporal: false,
+}
+
+const classical_attribution_lookup: RetrievalCapabilityEntry = {
+  tool_name: 'classical_attribution_lookup',
+  description:
+    'Structured lookup of MSR signal attributions in the classical_attributions table. ' +
+    'For given MSR signal IDs (SIG.MSR.NNN), returns which classical texts confirm, contradict, ' +
+    'extend, or are silent on each signal, with chapter, verse_range, confidence tier, and ' +
+    'translation cross-check status. Use when the query requires classical authority for specific ' +
+    'MSR signals or to show the user which texts support/refute a given astrological claim.',
+  data_surface:
+    'L8 — table classical_attributions JOIN classical_chunks JOIN classical_texts. ' +
+    'Fields: msr_signal_id, text_key, title, author, chapter, verse_range, content, ' +
+    'attribution_type (confirms/contradicts/partial/extends/silent), confidence, confidence_tier ' +
+    '(HIGH/MEDIUM/LOW), derivation_notes, translation_cross_checked.',
+  supported_params:
+    '{ signal_ids: string[] (required, e.g. ["SIG.MSR.001","SIG.MSR.042"]); ' +
+    'attribution_type?: "confirms"|"contradicts"|"partial"|"extends"|"silent"; ' +
+    'confidence_tier?: "HIGH"|"MEDIUM"|"LOW" }',
+  optimal_patterns: [
+    'All attributions for a signal: {signal_ids:["SIG.MSR.001"]}',
+    'Only confirmations: {signal_ids:["SIG.MSR.042"], attribution_type:"confirms"}',
+    'High-confidence citations only: {signal_ids:["SIG.MSR.001","SIG.MSR.042"], confidence_tier:"HIGH"}',
+    'Check classical basis: {signal_ids:["SIG.MSR.100","SIG.MSR.200","SIG.MSR.300"]}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -395,6 +452,8 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   domain_report_query,
   remedial_codex_query,
   timeline_query,
+  classical_text_search,
+  classical_attribution_lookup,
 ] as const
 
 /**

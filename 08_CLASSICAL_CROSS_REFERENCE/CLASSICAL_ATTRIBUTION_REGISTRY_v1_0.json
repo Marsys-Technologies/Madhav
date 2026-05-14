@@ -1,0 +1,4224 @@
+{
+  "artifact": "CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json",
+  "version": "1.0",
+  "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY",
+  "status": "CURRENT",
+  "layer": "L8",
+  "generated_at": "2026-05-14T11:53:34Z",
+  "total_signals": 514,
+  "total_attributions": 420,
+  "coverage_by_tier": {
+    "HIGH": 279,
+    "LOW": 115,
+    "MEDIUM": 26
+  },
+  "attribution_type_summary": {
+    "confirms": 21,
+    "silent": 317,
+    "partial": 64,
+    "extends": 10,
+    "contradicts": 8
+  },
+  "attributions": [
+    {
+      "signal_id": "SIG.MSR.001",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage states that 'Shani in exaltation... will give benefic results, even if it is the lagna,' confirming the benefic nature of an exalted Saturn in a Kendra, which is a key condition for Sasha Mahapurusha Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.002",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes dasa results of Venus in various Rashi signs, but does not address Neecha Bhanga, D9 placements, or Vargottama, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.002",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general Raja Yoga principles involving Saturn and Jupiter in the ninth house but does not mention Neecha Bhanga, Venus, Mercury, or the D9 chart, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.002",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage is a table of contents listing general topics like 'Effects of Venus in Various Signs' but does not discuss the specific principles of debilitation, its cancellation (Neecha Bhanga), or the formation of Raja Yogas."
+    },
+    {
+      "signal_id": "SIG.MSR.002",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage mentions Venus being 'in fall in rasi/amsa,' which acknowledges the debilitation of Venus in D9, a core component of the MSR signal, but it does not discuss the cancellation of debilitation (Neecha Bhanga) or the resulting Raja Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.002",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage generally discusses the importance of 'favourable yogas,' which includes Neecha Bhanga Raja Yoga, but provides no specific details about debilitation, D9 charts, or cancellation mechanisms relevant to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.003",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage lists general topics like planetary effects in signs and houses, and two-planet conjunctions, but does not mention Neecha Bhanga Raja Yoga, divisional charts (D9), or the specific mechanism of debilitation cancellation."
+    },
+    {
+      "signal_id": "SIG.MSR.003",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Raja Yogas involving Saturn in the D1 chart but is silent on Neecha Bhanga, the D9 chart, the specific sign of Aries, or the Sun's role in cancellation, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.003",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly mentions planets in 'fall' or 'neecha navamsas' (debilitated in D9), confirming the foundational element of the MSR signal, but it does not discuss the cancellation of debilitation (Bhanga) or the formation of Raja Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.003",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms that debilitated planets can form Raja Yogas, which is the essence of Neecha Bhanga Raja Yoga, even if the specific cancellation condition mentioned in the MSR signal is not detailed here."
+    },
+    {
+      "signal_id": "SIG.MSR.003",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage mentions planets 'in fall in rasi/amsa' (debilitation in divisional charts) and Saturn in the Ascendant, which are components of the MSR signal, but it does not describe the Neecha Bhanga Raja Yoga or its cancellation."
+    },
+    {
+      "signal_id": "SIG.MSR.004",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the general strength of the 10th/11th houses and the conjunction of Amatya Karaka with the Atma Karaka's dispositor, which does not directly relate to the Atmakaraka's specific placement in the 11th house or its Karakamsa sign."
+    },
+    {
+      "signal_id": "SIG.MSR.004",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes general characteristics of the Moon based on its nakshatra placement, which is unrelated to the Atmakaraka, its house/sign placement, or the Karakamsa."
+    },
+    {
+      "signal_id": "SIG.MSR.004",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms the foundational concept of Atmakaraka and emphasizes the precise calculations necessary to determine it, which are prerequisites for the MSR signal's information, though it does not interpret the specific placement."
+    },
+    {
+      "signal_id": "SIG.MSR.004",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the nature of the husband based on the descending Navamsa (Lagna Navamsa), which is a different concept from the Atmakaraka and its Karakamsa (AK's sign in D9)."
+    },
+    {
+      "signal_id": "SIG.MSR.004",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses rules related to the Atmakaraka sign and explicitly mentions Karakamsa, providing a condition for royal circles, thus partially relating to the MSR signal's core concepts."
+    },
+    {
+      "signal_id": "SIG.MSR.005",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage strongly describes various ways to gain 'Foreign Income' and connections with foreigners, aligning with the 'Foreign Income' aspect of the signal and the general significations of the 12th house, but does not explicitly mention the specific planetary placement (Moon-AK Chalit-12) or the profession 'Architecture'."
+    },
+    {
+      "signal_id": "SIG.MSR.006",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Mercury's effects in specific signs (Taurus, Libra, Aries, Scorpio) on character and spiritual inclination, but does not address the D9 chart, the 12th house, a Gemini stellium, or the Vargottama status of Mercury."
+    },
+    {
+      "signal_id": "SIG.MSR.006",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly states that a planet in the 12th house (specifically mentioning Arudhra, a Rahu star, within Gemini) can give an 'increase in income instead of loss,' directly confirming the potential for positive outcomes from the D9 12H Gemini Stellium involving Rahu and its dispositor Mercury."
+    },
+    {
+      "signal_id": "SIG.MSR.006",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Mercury's general characteristics and effects in specific signs (Virgo, Capricorn, Aquarius) but does not address the D9 chart, the 12th house, a Gemini stellium, the planets Moon, Jupiter, Rahu, or the concept of Vargottama Mercury as a dispositor, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.006",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.75,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage directly links the 12th house and Gemini with overseas travel and enjoyment for 'Gemini borns,' which aligns with the general themes of a D9 12H Gemini stellium, though it does not specify D9 or the exact planets."
+    },
+    {
+      "signal_id": "SIG.MSR.006",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage defines the 12th house as 'expenditure,' which is a fundamental signification relevant to the D9 12H mentioned in the MSR signal, but it does not address the specific planets, stellium, or D9 chart itself."
+    },
+    {
+      "signal_id": "SIG.MSR.007",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Kalpa-druma, Hari, Ham, and Brahma yogas, but makes no mention of Saraswati Yoga or the specific planetary combination of Jupiter, Venus, and Mercury in Kendra/Trikona."
+    },
+    {
+      "signal_id": "SIG.MSR.007",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the effects of the Moon in specific Nakshatras and general Raja Yogas, which is unrelated to the planetary combination of Jupiter, Venus, and Mercury forming Saraswati Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.007",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes the effects of Vasi Yoga caused by individual planets, which is a different yoga and concept from the Saraswati Yoga described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.007",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses conditions for kingship or asceticism involving Saturn, Jupiter, Moon, and the Ascendant, but does not mention the specific combination of Jupiter, Venus, and Mercury for Saraswati Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.007",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage does not mention Saraswati Yoga by name, nor does it describe the specific planetary combination (Jupiter, Venus, Mercury in Kendra/Trikona) for any yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.008",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes Kalanidhi and Kalpadruma yogas, not Lakshmi Yoga, and does not mention the specific planetary combinations (9L Jupiter in own-sign, Venus strong in 9H) outlined in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.008",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses various Raja Yogas involving the 9th and 10th lords and Jupiter, but does not describe the specific Lakshmi Yoga combination of 9L Jupiter in own sign with Venus strong in the 9th house."
+    },
+    {
+      "signal_id": "SIG.MSR.008",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage defines trines (including the 9th house) as Lakshmi sthanas and highlights the 9th house and its lord as sources of splendor and divine status, conceptually supporting the basis of Lakshmi Yoga involving the 9th house, though not detailing the specific planetary combination."
+    },
+    {
+      "signal_id": "SIG.MSR.008",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The classical passage discusses wealth and uses the 9th house lord in the Indu Lagna calculation, and mentions strong benefics, but does not describe the specific Lakshmi Yoga configuration of 9L Jupiter in own-sign with Venus strong in 9H."
+    },
+    {
+      "signal_id": "SIG.MSR.008",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage mentions the 9th lord, Venus (Shukra), the 9th house, and a general 'Dhana yoga,' but does not explicitly describe the specific conditions of the Lakshmi Yoga outlined in the MSR signal, and contains contradictory statements regarding the 9th lord's placement."
+    },
+    {
+      "signal_id": "SIG.MSR.009",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the positive effects of a strong Mercury (implied by 'exaltation or otherwise', which Vargottama and Yogi status fulfill) during its Mahadasha, directly aligning with the MSR signal's implications for a powerful and benefic Mercury as the MD Lord and Chart Operational Spine."
+    },
+    {
+      "signal_id": "SIG.MSR.009",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses specific KP interpretations of planetary combinations and house rulerships, which are unrelated to the concepts of Mercury being Vargottama, a Yogi planet, or forming a 'Chart Operational Spine' as an MD Lord."
+    },
+    {
+      "signal_id": "SIG.MSR.009",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the Sun's governance over the physical spinal cord and associated qualities, not Mercury's astrological conditions (Vargottama, MD Lord, Yogi) or its role as a chart's operational spine."
+    },
+    {
+      "signal_id": "SIG.MSR.009",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details specific significations of Mercury, such as an interest in science, medicine, and hygiene, and the capacity to be a good nurse, which would be prominent manifestations if Mercury were a strong, central planet forming the chart's operational spine, as implied by the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.009",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details the operational results of Mercury as MD Lord across various sub-periods, implicitly supporting its role as a chart operational spine and showing outcomes consistent with a Yogi planet, though it does not mention Vargottama."
+    },
+    {
+      "signal_id": "SIG.MSR.010",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Mars's role as a Yogakaraka for various Lagnas and its placement in the 10th house, which is unrelated to Rahu in the 2nd house for wealth."
+    },
+    {
+      "signal_id": "SIG.MSR.010",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the 5th lord's placement in various houses and does not mention Rahu, the 2nd house specifically for Rahu, or wealth through unconventional channels."
+    },
+    {
+      "signal_id": "SIG.MSR.010",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Rahu's general significations (jails, profession in 10th house) and other planetary combinations, but does not address Rahu in the 2nd house, wealth, Taurus, or unconventional channels."
+    },
+    {
+      "signal_id": "SIG.MSR.010",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly states 'Wealthy person' and provides a vast, diverse list of modern professions, which, combined with Rahu's nature, illustrates and extends the concept of wealth derived through unconventional or varied channels."
+    },
+    {
+      "signal_id": "SIG.MSR.010",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text describes Rahu in the 2nd house, in a specific combination, leading to financial loss through government penalties, directly contradicting the MSR signal's implication of wealth gain."
+    },
+    {
+      "signal_id": "SIG.MSR.011",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Dvadasamsha calculations and planetary aspects to Kendras, which is unrelated to the definition or formation of Anapha Yoga or the specific planetary configuration of Sun and Mercury in the 12th from the Moon."
+    },
+    {
+      "signal_id": "SIG.MSR.011",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses various benefic planetary placements and yogas, but it does not mention Anapha Yoga or the specific planetary configuration of Sun and Mercury in the 12th from the Moon."
+    },
+    {
+      "signal_id": "SIG.MSR.011",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses various planetary placements and their effects but makes no mention of Anapha Yoga or the specific configuration of planets in the 12th house from the Moon."
+    },
+    {
+      "signal_id": "SIG.MSR.011",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the effects of Anapha Yoga, acknowledging the yoga's existence, but does not provide its astrological definition to confirm or contradict the MSR signal's specific planetary configuration."
+    },
+    {
+      "signal_id": "SIG.MSR.011",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage generally discusses the importance of yogas arising from the Moon's angles, which includes Anapha Yoga, but does not define Anapha Yoga or the specific planetary combination."
+    },
+    {
+      "signal_id": "SIG.MSR.012",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses planetary rulership over Dhatus and Tridoshas, which is unrelated to the concept of planetary strength (Shadbala) or ranking of planets by strength."
+    },
+    {
+      "signal_id": "SIG.MSR.012",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses effects of Venus based on sign placement and conjunctions, but does not mention Shadbala or planetary strength ranking."
+    },
+    {
+      "signal_id": "SIG.MSR.012",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the loss of life periods based on planetary placement and nature, not the calculation or ranking of planetary aggregate strength (Shadbala)."
+    },
+    {
+      "signal_id": "SIG.MSR.012",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes various conditions (debilitation, inimical house, combustion) that make a planet weak and inauspicious, which are factors contributing to a planet's overall aggregate strength (Shadbala), but it does not explicitly mention 'Shadbala' or 'aggregate strength' as a single metric."
+    },
+    {
+      "signal_id": "SIG.MSR.012",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes negative outcomes when Venus is weak (debilitated, combust, or in malefic houses), which aligns with the general implications of Venus being the weakest planet by aggregate strength, though it doesn't explicitly mention Shadbala."
+    },
+    {
+      "signal_id": "SIG.MSR.013",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage details Dasha calculations (Pratyantar Dasas) and does not mention or discuss Sade Sati, its definition, or its effects, making it irrelevant to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.013",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the effects of the Antardasa of the Moon in the Dasa of Saturn, which is a different astrological concept (planetary periods) from the Sade Sati transit (Saturn's transit relative to the Natal Moon) mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.013",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Dasa/Antardasa effects of various planetary combinations, not the principles or effects of Sade Sati or Saturn's transit from the Natal Moon."
+    },
+    {
+      "signal_id": "SIG.MSR.013",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage details Dasa/Antardasa calculations and does not contain any information or doctrine related to Sade Sati, its effects, or its transits, making it irrelevant to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.013",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage does not describe Saturn's transit in the 12th house from the Natal Moon, which is the specific astrological configuration of the MSR signal's Sade Sati description."
+    },
+    {
+      "signal_id": "SIG.MSR.014",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage directly confirms the significance of Sun and Mercury in the 10th house for career, aligning with the MSR signal's planetary placements and their general implication for career focus."
+    },
+    {
+      "signal_id": "SIG.MSR.014",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly states that Mercury in Saturn's sign (Makara/Capricorn) leads to being 'honoured by kings' and 'learned in sciences and laws,' directly supporting the career-focused implications of Mercury in 10H Capricorn within a 'Career-Density Stellium' and its association with public recognition and expertise."
+    },
+    {
+      "signal_id": "SIG.MSR.014",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms the significance of planets in the 10th house (Sun, Mercury) for career determination, aligning with the MSR signal's 'Career-Density Stellium' and its focus on the 10th house."
+    },
+    {
+      "signal_id": "SIG.MSR.014",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage extensively details the 10th house's importance for occupation, rank, honour, and public recognition, directly confirming the MSR signal's emphasis on career and status."
+    },
+    {
+      "signal_id": "SIG.MSR.014",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage provides a detailed method for interpreting specific professional outcomes based on planetary rulerships of Navamsas, which extends the general concept of a career-focused stellium by offering a framework for understanding the nature of such a career."
+    },
+    {
+      "signal_id": "SIG.MSR.015",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage discusses various Raja Yogas and wealth-giving combinations, but none of them involve a Mars and Saturn conjunction, especially not in the 7th house, nor do they mention the specific conditions of exaltation for these planets as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.015",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes Raja Yogas formed through planetary aspects to specific Lagnas or occupation/aspect in Shadvargas, which is a different mechanism than the Mars-Saturn conjunction in a specific house/sign mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.015",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage defines Raja Yogas as 'certain combinations of planets,' which partially supports the MSR signal's description of a specific planetary conjunction forming a Raja Yoga, though it doesn't detail this specific combination or its 'hidden' nature."
+    },
+    {
+      "signal_id": "SIG.MSR.015",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms that planetary conjunctions form yogas and their strength depends on the orb, which is a critical component of the MSR signal's 'conjunction' and 'Raja Yoga' aspects, but does not specify the planets, exaltation, or house/sign."
+    },
+    {
+      "signal_id": "SIG.MSR.015",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms Raja Yoga formation through conjunctions of angular and trinal lords, aligning with the signal's description of a conjunction forming a Raja Yoga, and mentions dignity as enhancing such yogas."
+    },
+    {
+      "signal_id": "SIG.MSR.017",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The MSR signal identifies CVG.02 as a specific yoga involving Jupiter as the 9th lord in its own dharma, but the provided classical passage (related to CVG.02 and Dhana Yogas) describes Kalanidhi and Kalpadruma Yogas, which are formed by different planetary combinations."
+    },
+    {
+      "signal_id": "SIG.MSR.017",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage directly links the 9th lord to earning 'splendour' and 'divine status' (a form of wealth), and mentions trines (Lakshmi sthaanas) which are wealth houses, confirming the signal's components."
+    },
+    {
+      "signal_id": "SIG.MSR.017",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details the Indu Lagna calculation, which uses the 9th lord from Lagna and Moon to determine wealth, thus extending the concept of a 9th Lord-based wealth chain (Dharma-Wealth Chain) mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.017",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly states Jupiter is the 'Chief Governor for Money' and 'greater fortune' (Wealth Chain), and links Jupiter with the 9th house to fortune and meritorious deeds (Own Dharma), directly confirming the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.017",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly mentions a 'strong Dhana yoga' involving the lords of the 9th and 10th houses, with Guru (Jupiter) being one of these lords, directly relating to the 'Wealth Chain' and '9L' aspects of the MSR signal, though not specifically stating Jupiter *is* 9L in a general sense."
+    },
+    {
+      "signal_id": "SIG.MSR.018",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general significations of the Moon and the 10th house but does not mention Moon as Atmakaraka, foreign income chains, or the specific CVG.03 concept."
+    },
+    {
+      "signal_id": "SIG.MSR.018",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Gochara reckoning from the Moon sign and Ashtakavarga, but does not mention Atmakaraka (AK) or foreign income, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.018",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage describes acquiring money through spiritual/religious means during Moon's Dasa, which can be a component of foreign income, especially for a Moon AK, though it does not explicitly mention 'foreign' sources."
+    },
+    {
+      "signal_id": "SIG.MSR.018",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage states that Moon in Virgo during its Dasa leads to foreign travel, which supports the 'Foreign' aspect and Moon's role in the MSR signal, but does not specify Moon as Atmakaraka or explicitly foreign income."
+    },
+    {
+      "signal_id": "SIG.MSR.018",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage mentions earning money based on the strength of the planet owning the Amsa (relevant to Jaimini's Karakamsa and AK), and Moon's general capacity for success, but does not specifically link Moon AK to foreign income."
+    },
+    {
+      "signal_id": "SIG.MSR.020",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes Sasa Yoga, a Mahapurusha Yoga formed by Saturn, directly confirming the 'MPY' aspect of the signal and providing details about its effects and Saturn's positive attributes."
+    },
+    {
+      "signal_id": "SIG.MSR.020",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage extends the MSR signal by detailing how a powerful Saturn (implied by exaltation, Shadbala, and MPY) can lead to a path of asceticism or initiation, focusing on its aspects and relationship with the Moon's sign ruler."
+    },
+    {
+      "signal_id": "SIG.MSR.020",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the KP methodology for interpreting a planet's results based on its house occupation and constellation lord, which is relevant to understanding the 'Saturn 7H Exalted' component of the MSR signal, but does not address Shadbala, MPY, or Yogini."
+    },
+    {
+      "signal_id": "SIG.MSR.020",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage discusses the calculation of 'Graha Pinda,' a measure of planetary strength, which is conceptually related to 'Shadbala' mentioned in the MSR signal, and Saturn is explicitly listed as a planet, but other elements like exaltation, house, and dasha systems are not mentioned."
+    },
+    {
+      "signal_id": "SIG.MSR.020",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage generally mentions Saturn as one of the Dasa lords, which aligns with the MSR signal's reference to Saturn as an MD/PD/AD Lord, but it does not address Saturn's exaltation, house placement, Shadbala, or Yogini Dasha."
+    },
+    {
+      "signal_id": "SIG.MSR.021",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly mentions 'strong Dhana yoga' and discusses the significance of the 9th lord in relation to wealth, directly supporting the MSR signal's components of Jupiter in 9H (a trine), Lakshmi Member, and 9L."
+    },
+    {
+      "signal_id": "SIG.MSR.021",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage explicitly states that 'The sign is not very important' and 'The role of the sign occupied by the planet is not so important, as that of the constellation,' which directly contradicts the MSR signal's emphasis on 'Own-Sign' as a key descriptor of planetary strength."
+    },
+    {
+      "signal_id": "SIG.MSR.021",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms Jupiter's placement in the 9th house and its association with travel, but it contradicts Jupiter being the 9th Lord and does not address other aspects like 'Own-Sign', 'Lakshmi Member', or 'MPY Near-Miss'."
+    },
+    {
+      "signal_id": "SIG.MSR.021",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The classical text associates specific celestial entities (Akasa Gandharvas) with Jupiter's own signs (Sagittarius and Pisces), which are a core component of the MSR signal, thereby extending the understanding of the 'Own-Sign' aspect with a specific classical association."
+    },
+    {
+      "signal_id": "SIG.MSR.021",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: ValueError"
+    },
+    {
+      "signal_id": "SIG.MSR.022",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the fundamental principle that planetary aspects and conjunctions modify the effects of Rasis, which is essential for interpreting the specific lagnas and sahams listed in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.022",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the effects of Atmakaraka in Navamsa on dangers and health, which is unrelated to the specific combination of Upapada Lagna, Arudha Padas, Hora Lagna, and Vivaha Saham mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.022",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The MSR signal describes specific astrological points (lagnas, arudhas, saham) and house placements, while the classical passage details the effects of planetary Dasa periods, making them distinct topics."
+    },
+    {
+      "signal_id": "SIG.MSR.022",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details Jaimini Karakas and their associated lagnas, providing the foundational context for the Jaimini elements (UL, A5, A11) present in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.022",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage details Dasa/Antardasa calculations, which is unrelated to the interpretive astrological points (Upapada Lagna, Arudha Padas, Hora Lagna, Vivaha Saham) mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.023",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the number and strength of planets and their influence on asceticism, but does not mention planetary aspects (drishti), Bhrigu Bindu, or Muntha, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.023",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses yogas and the effects of the Moon in specific nakshatras (Aswini, Bharani), but does not contain any information regarding planetary aspects (Graha Drishti) which is the core of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.023",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses types of relationships between planetary lords for Raja Yoga formation (conjunction, mutual angular, mutual trinal placement), not the specific rules or nature of planetary aspects (drishti) like the 7th or 5th aspects mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.023",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses various yogas (Hari, Ham, Brahma) and specific chart interpretations, but does not describe the rules or mechanics of planetary aspects (drishti) like the 7th or 5th aspects, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.023",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explains the general effects of malefic (Mars/Saturn) and benefic (Jupiter) planetary combinations, and that mixed influences lead to mixed results, which is relevant to the MSR signal's triple-aspect involving both types of planets, even though the passage focuses on conjunctions rather than aspects."
+    },
+    {
+      "signal_id": "SIG.MSR.024",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses remedial measures for 'troubling planets' and their nature (benefic/malefic) but does not address whether Saturn is the most beneficial phala planet."
+    },
+    {
+      "signal_id": "SIG.MSR.024",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes Saturn's influence leading to asceticism under specific conditions, which is a particular spiritual outcome, but it does not make a general statement about Saturn being the 'most beneficial phala planet' in a chart, nor does it evaluate Saturn's overall beneficence in the broader sense implied by the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.024",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes highly beneficial outcomes during Saturn's dasa, supporting the idea that Saturn can be a beneficial phala planet, though it does not explicitly state it is the *most* beneficial."
+    },
+    {
+      "signal_id": "SIG.MSR.024",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage explicitly states that Saturn's influence causes harm, unfavourable effects, distress, and suffering, which directly contradicts the MSR signal's claim of Saturn being the most beneficial phala planet."
+    },
+    {
+      "signal_id": "SIG.MSR.024",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage states that 'Saturn's strength is essential for good longevity,' directly supporting the idea of Saturn being a beneficial phala planet, though it does not explicitly claim Saturn is the 'most beneficial' or cover all 'phala'."
+    },
+    {
+      "signal_id": "SIG.MSR.025",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses expiatory rites for warding off portents, which is unrelated to the conceptual tension between classical and operational interpretations of a Dharma Devata."
+    },
+    {
+      "signal_id": "SIG.MSR.025",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the strength of Rasis and their lords based on planetary aspects, which is unrelated to the concept of Dharma Devata or Ishta Devata mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.025",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses astrological conditions for an individual's initiation into a holy order and types of ascetics, which does not address the tension between classical and operational forms of Dharma Devata."
+    },
+    {
+      "signal_id": "SIG.MSR.025",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the assignment of Brahma, Siva, and Vishnu as presiding deities over Akshavedamsas, a foundational concept for understanding how deities are associated with astrological divisions, which is relevant to the broader topic of Dharma Devata mentioned in the MSR signal, though it doesn't address the specific 'tension' or forms of Vishnu."
+    },
+    {
+      "signal_id": "SIG.MSR.025",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details the astrological determination of a native's worshipped deity (Ishta Devata/Dharma Devata), which is the foundational concept for the MSR signal, but does not address the specific 'tension' or the named deities Venkateswara and Jagannath."
+    },
+    {
+      "signal_id": "SIG.MSR.026",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes the calculation of Digbala (directional strength), which is distinct from Uccha Bala (exaltation strength) mentioned in the MSR signal, making it irrelevant to the signal's core concept."
+    },
+    {
+      "signal_id": "SIG.MSR.026",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms that Uccha Bala is a component of Sthaana Bala (positional strength) and that net Sthaana Bala is derived from summing multiple strengths, which aligns with the concept of overall positional weakness despite a specific dignity strength."
+    },
+    {
+      "signal_id": "SIG.MSR.026",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explains that a planet's total strength (Shadbala) is a sum of six components, implying that strength in one component (like Uccha Bala, part of Sthana Bala/Sapta Varga) does not guarantee overall strength if other components are weak, thus confirming the concept of 'positional weakness amid dignity strength'."
+    },
+    {
+      "signal_id": "SIG.MSR.026",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes the calculation of Cheshta Bala, which is a different type of planetary strength than the Uccha Bala and positional weakness mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.026",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage defines Uccha Bala as a component of Sthaana Bala, providing the foundational concept for the MSR signal's reference to Jupiter's Uccha Bala, but does not detail the specific ranking or the interplay of weakness amid dignity."
+    },
+    {
+      "signal_id": "SIG.MSR.027",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes effects of planets in specific houses but does not discuss the concept of Bhava Chalit or the shifting of a planet's house position between Rashi and Chalit charts."
+    },
+    {
+      "signal_id": "SIG.MSR.027",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the effects of the Sun in various houses but does not mention Bhava Chalit, house drift, or the distinction between Rashi and Chalit charts for planetary placement, which is the core of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.027",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details the profound significations of the 12th house (bhava), providing the interpretive context and extending the understanding of the implications when the Moon drifts into the 12th house in the Chalit system as described by the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.027",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the calculation of house cusps (e.g., '9» house extends from 5 40' Cancer to 8 40' Leo'), which is the underlying principle that causes planets to appear in different houses in a Chalit chart compared to a Rashi chart, thus partially supporting the concept of 'house drift'."
+    },
+    {
+      "signal_id": "SIG.MSR.027",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the implications of Moon being in the 12th house, which is the result of the house drift described in the MSR signal, particularly regarding changes related to the father."
+    },
+    {
+      "signal_id": "SIG.MSR.028",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Ashtakavarga calculations for Mercury, which is unrelated to the ambiguity of Mercury's house placement in Rashi vs. Chalit systems or cusp proximity."
+    },
+    {
+      "signal_id": "SIG.MSR.028",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage details Dasa/Antardasa/Pratyantar Dasa calculations and does not discuss Rashi vs. Chalit chart ambiguity, house placement, or cusp proximity."
+    },
+    {
+      "signal_id": "SIG.MSR.028",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses interpretations of planetary placements (Mercury ruling 4th, 10th lord in 6th) but does not address the methodological ambiguity of house placement between Rashi and Chalit systems due to cusp proximity, which is the core of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.028",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The KP text explicitly provides both planetary positions and 'CUSPAL POSITIONS OF TWELVE BHAVAS,' which is the foundational data structure and methodology for analyzing and resolving Rashi/Chalit ambiguities concerning house placement and cusp proximity."
+    },
+    {
+      "signal_id": "SIG.MSR.028",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the effects of Mercury in various house placements and during its Dasa but does not address the ambiguity in determining Mercury's house placement between Rashi and Chalit systems due to cusp proximity."
+    },
+    {
+      "signal_id": "SIG.MSR.029",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Sandhyas (twilight periods) and a calculation related to birth time adjustments, which is unrelated to Sthana Bala or planetary strength, making it irrelevant to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.029",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage provides an introduction to Uttara Kalamrita and its scope but does not discuss Sthana Bala or its arithmetic components for the Sun."
+    },
+    {
+      "signal_id": "SIG.MSR.029",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage details the arithmetic calculation of 'Rasi Pinda' and 'Graha Pinda' using 'Ekadhipatya Shodhana,' which are specific methods for assessing planetary strength, directly confirming the concept of 'Sthana Bala Arithmetic Resolved' as hinted by the source."
+    },
+    {
+      "signal_id": "SIG.MSR.029",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses planetary period calculations and adjustments (Mandala, years, months, days, ghatis) rather than Sthana Bala components or its arithmetic."
+    },
+    {
+      "signal_id": "SIG.MSR.029",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage describes an arithmetic method for calculating Pinda Sadhana from Ashtakavarga, which is a form of positional strength calculation, thus partially confirming the concept of 'arithmetic resolved' for planetary positional strength, though not specifically Sthana Bala."
+    },
+    {
+      "signal_id": "SIG.MSR.030",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses planetary positions and aspects, including Saturn's retrogradation, but does not mention Sade Sati or any inconsistencies related to its timing."
+    },
+    {
+      "signal_id": "SIG.MSR.030",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses birth and impregnation timing based on ascendants and sign strengths, which is entirely unrelated to Sade Sati timing or Saturn's ephemeris."
+    },
+    {
+      "signal_id": "SIG.MSR.030",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage provides definitions of various astrological terms and general planetary influences, including a mention of Saturn, but it does not discuss Sade Sati, its timing, phases, or any inconsistencies related to its calculation, which is the focus of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.030",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses Dasa systems and their calculations (e.g., Vimsottari Dasa, Ketu Dasa), not Sade Sati or Saturn's ephemeris, making it irrelevant to the signal's topic."
+    },
+    {
+      "signal_id": "SIG.MSR.030",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "extends",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage emphasizes the critical role of precise time calculations and the use of ephemeris for applying 'Saura mana durations' to the calendar, providing the foundational context for understanding and addressing inconsistencies in planetary timing like those related to Sade Sati."
+    },
+    {
+      "signal_id": "SIG.MSR.031",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the effects of Rahu's Avasthas (states) at birth, which is unrelated to Jaimini aspects from Rahu to other planets."
+    },
+    {
+      "signal_id": "SIG.MSR.031",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Lagna lord aspects for Rajayogas and planetary counts for imprisonment, not Rahu's Jaimini aspects on multiple planets as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.031",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes effects of Rahu's conjunctions/associations with Sun and Mars in a Parashari context, but does not address Rahu's Jaimini Rashi Drishti (aspects) on any planets, nor does it mention Mercury or Saturn, making it irrelevant to the specific MSR signal's mechanism."
+    },
+    {
+      "signal_id": "SIG.MSR.032",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "This passage discusses the primary reference point for house counting (Lagna) and does not touch upon Bhavabala, Ashtakavarga, or the paradox of house strength."
+    },
+    {
+      "signal_id": "SIG.MSR.032",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "This passage discusses yogas and planets in their own houses, which is a general concept of strength, but it does not mention Bhavabala, Ashtakavarga, or the specific paradox of conflicting house strengths."
+    },
+    {
+      "signal_id": "SIG.MSR.032",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "This passage directly discusses Ashtakavarga, which is one of the two systems (SAV) mentioned in the MSR signal, but it does not address Bhavabala or the paradox of conflicting strengths."
+    },
+    {
+      "signal_id": "SIG.MSR.032",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "This passage discusses judging effects based on the power of houses and their rulers, which is a general principle underlying house strength evaluation, but it does not mention Bhavabala, Ashtakavarga, or the specific paradox."
+    },
+    {
+      "signal_id": "SIG.MSR.032",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "This passage mentions the 7th house and discusses situations where a Karaka planet's placement in a house leads to unexpected results, which vaguely touches upon the idea of a paradox, but it does not refer to Bhavabala or Ashtakavarga."
+    },
+    {
+      "signal_id": "SIG.MSR.033",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage introduces BPHS Chapter 27, which is explicitly mentioned in the hint as the source for 'Bhavabala', a key component of the MSR signal, though it does not discuss specific house rankings or SAV."
+    },
+    {
+      "signal_id": "SIG.MSR.034",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.2,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage defines the 10th house (Dasama Kendra House) and its lord, which is a component of the MSR signal, but does not mention Sun, Mercury, Arudha Lagna, or the 'density loop-closure' or 'triple concentration' aspects."
+    },
+    {
+      "signal_id": "SIG.MSR.034",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.0,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage discusses Ashtakavarga benefic points for various planets, including the 10th house, but does not mention Sun-Mercury conjunction, Arudha Lagna, or the specific concentration/loop-closure concept."
+    },
+    {
+      "signal_id": "SIG.MSR.034",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.0,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage presents a table of planetary positions for a specific chart, including Sun and Mercury, but does not discuss their conjunction, the 10th house, Arudha Lagna, or any concentration/loop-closure concept."
+    },
+    {
+      "signal_id": "SIG.MSR.034",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.0,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage discusses Ashtakavarga benefic points for Sun and Moon, including the 10th house, but does not mention Sun-Mercury conjunction, Arudha Lagna, or the specific concentration/loop-closure concept."
+    },
+    {
+      "signal_id": "SIG.MSR.034",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.0,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage discusses Ashtakavarga benefic points for Mars and Mercury, including the 10th house, but does not mention Sun-Mercury conjunction, Arudha Lagna, or the specific concentration/loop-closure concept."
+    },
+    {
+      "signal_id": "SIG.MSR.035",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage, from the hinted Saravali text, defines multiple Yogas based on planetary distribution, directly supporting the 'Yoga Stack' aspect of the MSR signal, though not specifically focusing on Mercury or 'operational' outcomes."
+    },
+    {
+      "signal_id": "SIG.MSR.035",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage discusses the results and influences of yogas and mentions 'Budha' (Mercury) in the context of a specific yoga's formation, partially aligning with the 'Mercury Operational Yoga Stack' concept."
+    },
+    {
+      "signal_id": "SIG.MSR.035",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage lists various Yogas, including 'Sarada' which is a component of Saraswati Yoga, a combination often involving Mercury, thus partially aligning with 'Mercury Operational Yoga Stack' by confirming the existence of such yogas."
+    },
+    {
+      "signal_id": "SIG.MSR.035",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.1,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage discusses the structure of the text and the representation of Goddess Sarasvati, but does not mention planetary yogas, Mercury, or any operational or convergence concepts."
+    },
+    {
+      "signal_id": "SIG.MSR.035",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.0,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage discusses the effects of Mars and general astrological interpretations of planetary placements, without mentioning Mercury, specific yogas, or the modern concepts of 'operational stack' or 'six-layer convergence'."
+    },
+    {
+      "signal_id": "SIG.MSR.036",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general predictive astrology and Dasha periods related to retirement, but does not mention specific aspects, their orbs, or the MD-Handover Bridge timing technique."
+    },
+    {
+      "signal_id": "SIG.MSR.037",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "Continues the 'Pinda' calculations (RasiPinda, Grahmana of Saturn) from Ashtakavarga, directly supporting the 'Pinda' component of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.037",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "Directly mentions 'Pinda Sadhana' within the 'Ashtakavarga Scheme', a key component of the MSR signal, which would apply to Saturn's strength."
+    },
+    {
+      "signal_id": "SIG.MSR.037",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "Describes 'Ekadhipatya Shodhana' calculations involving Saturn, which is a preliminary step for 'Pinda Sadhana' mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.037",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "Discusses Saturn's aspects and placements (decanate, navamsa), which aligns with a potential interpretation of 'AD' (Aspects/Drushti) for Saturn's structural activation."
+    },
+    {
+      "signal_id": "SIG.MSR.037",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "Discusses 'Saturn's period' (Dasha), which aligns with a potential interpretation of 'AD' (Avasthas/Dasha) for Saturn's structural activation, especially given the modern KP context."
+    },
+    {
+      "signal_id": "SIG.MSR.038",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses principles of angular lordship, yogakaraka planets, and the nature of lords of angles and trines. It does not mention planetary exaltations or the specific planets/signs in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.038",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary significators for various houses (3, 9, 12) and their stars, not planetary exaltations or the specific planets/signs mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.038",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes various significations and professions associated with planets like Mercury, Uranus, and Saturn. It does not discuss planetary exaltations or the specific signs mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.038",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly states 'Scorpio / Vrischika is the exaltation sign of Rahu' and 'Sagittarius-Dhanus is the sign of exaltation of Kethu' or 'Aquarius is the sign of exaltation of Kethu'. These specific exaltation signs for Rahu and Ketu directly contradict the MSR signal's Rahu (Taurus) and Ketu (Scorpio) exaltations. While it generally mentions Rahu and Ketu are strong when exalted, the specific signs are contradictory."
+    },
+    {
+      "signal_id": "SIG.MSR.038",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage discusses the general effects of Rahu being in its sign of exaltation ('Should Rahu be in his sign of exaltation, etc. there will be... great happiness'). This partially supports the concept of Rahu's exaltation being significant, but it does not specify Taurus as Rahu's exaltation sign, nor does it mention Ketu or Saturn's exaltation."
+    },
+    {
+      "signal_id": "SIG.MSR.039",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.039",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.039",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.039",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.039",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.040",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.040",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.040",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.040",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed"
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The MSR signal discusses the D27 Lagna in Pisces as the D1 12th house and a Moksha house, while the classical text passage exclusively describes the significations of the D1 second house."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage introduces the twelve signs and houses generally but does not discuss divisional charts (D27) or the specific interpretation of Lagna in relation to the Moksha house."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage lists various yogas from BPHS Ch.7 but does not mention divisional charts (D27, D1), specific house placements like the 12th house, or the concept of 'Moksha House' in relation to divisional chart lagna."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage introduces the concept of the twelve Bhavas (houses) but does not discuss specific house significations, divisional charts, or the concept of a 'Moksha House' as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses the significations of the second house, while the MSR signal is about the D27 Lagna in Pisces corresponding to the D1 12th house and its relation to Moksha, with no thematic overlap."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage lists various yogas from BPHS Ch.7 and does not discuss divisional charts (D27), specific signs for lagna or houses, or the concept of a 'Strength-Chart Lagna' as a 'Natal Moksha House'."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text discusses Atmakaraka in Navamsa (D9) and is from Chapter 33, which is unrelated to the D27 Lagna (Bhamsa) and BPHS Ch.7 Sl.37–38 mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses the timing of death (Maraka Dasas, malefics, 2nd and 7th houses) and does not mention D27, Bhamsa, Lagna, Pisces, D1 12th house, or Moksha, which are the core elements of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text discusses the effects of Atmakaraka in Navamsa (D9), while the MSR signal is about the interpretation of D27 Lagna, making the passage silent on the specific MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.041",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses timing of death and weakest planets from Prashna Marga, which is unrelated to the D27 Bhamsa chart, its Lagna, or its interpretation as a Moksha house as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes Pratyantar Dasa calculations, which is unrelated to the interpretation of Saturn's placement in the D60 chart or its karmic implications."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses general timing of evils, effects of malefic planets, and the application of rasi results to Dwadasamsa and Navamsa, but does not mention D60, Saturn, Lagna, or the concept of past karma or discipline."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage discusses Dasa calculations and Nakshatras, not the D60 chart (Shashtyamsa) or the interpretation of Saturn in Lagna within it, making it silent on the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text discusses Saturn's placement in the natal chart and its aspects or conjunctions with other planets, but does not mention the D60 chart, Saturn specifically at Lagna in D60, or the karmic interpretation of 'Saturn-Discipline'."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage is a table of contents for BPHS Vol. 2, mentioning Dasa systems and general planetary effects, but does not provide specific interpretive details for Saturn in D60 Lagna or its karmic implications, despite the source citing 'Shashtyamsa D60'."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general effects of birth in various amsas (like Dwadasamsa and Navamsa) and malefic periods, but does not specifically mention D60 (Shashtyamsa), Saturn's placement in D60 Lagna, or the concept of past karma and discipline."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses Dasa calculations and Nakshatras, but makes no mention of D60 (Shashtyamsa), Saturn, Lagna, or the concept of 'Past-Karma Primary Thread' as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Dasa systems and their general effects, but does not mention the D60 chart, Saturn's placement in its Lagna, or the concept of past-karma and Saturn-discipline."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage details Pratyantar Dasas within various Antardasas, which is a timing technique, while the MSR signal refers to the interpretation of Saturn's placement in the D60 chart for past karma, a different astrological concept."
+    },
+    {
+      "signal_id": "SIG.MSR.042",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.4,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage mentions Saturn in an angle (which includes Lagna) and its general effects, but does not specify the D60 chart or explicitly link the placement to 'Past-Karma Primary Thread' or 'Saturn-Discipline'."
+    },
+    {
+      "signal_id": "SIG.MSR.043",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses deities for Sun in Pisces, relevant to the D20 context, but assigns 'Gandharva and Yakshi damsels' as the deity, directly contradicting the 'Vishnu-Affinity' in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.043",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage lists various yogas but does not mention D20, D40, Sun in Pisces, Vishnu-Affinity, or cross-divisional patterns, which are key elements of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.043",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage directly links the Sun in Pisces to Vishnu as a deity, confirming a key interpretive component of the MSR signal, though it does not detail the D20/D40 divisional charts or the cross-divisional pattern itself."
+    },
+    {
+      "signal_id": "SIG.MSR.043",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage lists various Yogas and does not discuss D20, D40, Sun-Pisces, Vishnu-Affinity, or cross-divisional patterns, despite the MSR signal citing BPHS Ch.7 for D20."
+    },
+    {
+      "signal_id": "SIG.MSR.044",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text discusses the effects of Mercury's planetary placement in a specific house and ascendant, not the retrodictive density or empirical validation of Mercury Mahadasha periods."
+    },
+    {
+      "signal_id": "SIG.MSR.044",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text describes the Ashtakavarga system for Mercury, detailing Rekhaprada houses, which is a different astrological calculation method and does not discuss Mahadashas, retrodictive density, or empirical validation as mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.044",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text describes rules for Mercury's Ashtakavarga, which is a different astrological calculation system, and does not discuss the retrodictive density or empirical validation of Mercury Mahadasha periods as stated in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes general Drekkana characteristics and specific Drekkana types (e.g., for Mithuna) but does not mention Jupiter, Cancer, or the concept of Dharma vitality."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general effects of Jupiter's Yuga and a 60-year cycle from Brihat Samhita, while the MSR signal refers to a specific placement of Jupiter exalted in Cancer in the D3 chart, attributed to BPHS Ch.7 Sl.15. There is no specific overlap in content or source."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses the effects of Rahu's conjunctions with other planets and does not mention Jupiter, Cancer, exaltation, or the Drekkana varga."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses the effects of Rahu's conjunctions with other planets (Ketu, Venus, Sun, Moon) and does not mention Jupiter, Cancer, exaltation, Dharma, or Drekkana in the context of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the effects of Jupiter's Yuga cycle over different years but does not mention Jupiter's exaltation, its placement in Cancer, the Drekkana (D3) chart, or the concept of 'Dharma Vitality Peak' as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Drekkana (D3) but does not mention Jupiter, Cancer, or the concept of Dharma vitality peak."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided Brihat Jataka text (not BPHS as indicated by the MSR source) defines Drekkana types and general characteristics, including the first Drekkana of Cancer, but does not mention Jupiter, exaltation, or 'Dharma Vitality Peak' in relation to Cancer D3, thus remaining silent on the MSR signal's specific interpretation."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the form of the 1st Drekkana of Cancer ('Karka'), which directly relates to the 'Cancer D3' component of the MSR signal. However, it does not mention Jupiter, its exaltation, or the 'Dharma Vitality Peak' aspect of the signal."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage mentions 'Karkafe' (Cancer) and 'Drekkana' (specifically the 1st Drekkana of Cancer), but the MSR signal refers to the 3rd Drekkana of Cancer and does not mention Jupiter or 'Dharma Vitality Peak'."
+    },
+    {
+      "signal_id": "SIG.MSR.069",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The passage defines Drekkana types, including the first Drekkana of Cancer (Karka) as quadruped, and lists general characteristics associated with Drekkana, but does not mention Jupiter, exaltation, or the specific 'Dharma Vitality Peak' interpretation."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses Mars and its effects, but does not mention the Sun, Shadbala, or planetary strength rankings, making it silent on the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the effects of Mars, its fortification, and its influence on career and personality, without mentioning the Sun, Shadbala, or planetary strength."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary aspects, house lords, and yogakaraka planets' effects on wealth and status, but does not mention Shadbala, the Sun's strength, or its sign placement, which are the core elements of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses a planet's ability to give results based on its placement relative to its own sign (6th, 8th, 12th), not its overall Shadbala strength or its placement in an enemy sign, which is the focus of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary aspects and house lords (Shani, Guru) related to wealth and status, but makes no mention of the Sun, Shadbala, planetary strength ranking, or planets in enemy signs, which are the core elements of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage states that a planet in an inimical house is inauspicious or loses potency, which contradicts the MSR signal's claim that the Sun has high strength despite being in an enemy sign."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage mentions planetary strength and friendly/inimical aspects as factors influencing results, but it does not explicitly state that high overall planetary strength (Shadbala) can override the negative effects of a planet being in an enemy sign."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "contradicts",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage states that a planet in an enemy's camp loses auspicious potency and becomes malefic, which contradicts the MSR signal's assertion of the Sun having highest strength despite being in an enemy sign."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage mentions planetary strength and friendly/inimical aspects as factors influencing results, but it does not explicitly describe how high overall planetary strength (like Shadbala Rank 1) can override or mitigate the negative effects of a planet being in an enemy sign, which is the core assertion of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.070",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes a specific condition for a planet to lose strength based on its position relative to its own sign, which is distinct from the MSR signal's focus on overall Shadbala strength of the Sun despite being in an enemy sign. It does not mention Shadbala, the Sun, or directly address the 'enemy sign' concept in relation to overall strength."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes Saturn's physical characteristics and age but does not discuss Shadbala, planetary strength, or the Pinda Paradox mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes Saturn's physical characteristics and nature but does not discuss its strength, Shadbala, or the Pinda Paradox."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Shadbala components and Saturn's strength but does not rank Saturn as second strongest or explain the 'Pinda Paradox'."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses rules for calculating Bhava strength, including a reduction for bhavas occupied by Saturn, and general aspectual strength (a component of Shadbala), but it does not provide information about Saturn's overall Shadbala rank or its relative strength compared to other planets."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses bhava strength and planetary influence on it, but does not mention Shadbala calculations for Saturn or the concept of a 'Pinda Paradox'."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage explicitly lists multiple conditions under which Saturn is strong, directly supporting the MSR signal's assertion of Saturn's strength."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage confirms Saturn's 'extreme strength' and its mixed effects (long life and miseries), which aligns with the 'Pinda Paradox' aspect of the signal, and mentions 'Shadbala Pinda,' but it does not explicitly state Saturn's rank as second strongest."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses 'Yoga Pinda' for death prediction, which is distinct from the 'Pinda' components of Shadbala, and does not address Saturn's strength ranking or any 'Pinda Paradox' in relation to Shadbala."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage details multiple conditions under which Saturn is strong, supporting the premise of its high strength, but does not mention Shadbala, its specific rank, or the 'Pinda Paradox'."
+    },
+    {
+      "signal_id": "SIG.MSR.071",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage describes the calculation and application of 'Yoga Pinda' for timing death, which is a type of 'Pinda' calculation mentioned in the MSR signal, though it does not directly discuss Saturn's strength or any 'Pinda Paradox'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Hora lords and yogas related to mental illness, but does not mention Mars or its 'dramatic-activation potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Hora lords and yogas related to mental instability involving Moon, Mercury, and Venus, but does not mention Mars or its 'dramatic-activation potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage describes the calculation of 'Ekadhipatya Shodananka Chakra' for Rasis, which is a numerical method and does not discuss Mars's specific nature, 'Shuddha Pinda,' or 'dramatic-activation potential' as mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes Mars's influence in terms of cutting, removal, and causing acute health issues like spinal problems and appendicitis, all of which align with 'dramatic activation potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary defeat, combustion, and its effects on spiritual initiation, without mentioning Mars or its 'dramatic-activation potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes numerous active, ambitious, and sometimes intense qualities and professions (e.g., surgeon, military, adventurous) traditionally associated with Mars, supporting its 'Maximum Dramatic-Activation Potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "confirms",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The KP text describes Mars's role in 'cutting,' 'removal,' and its association with physical ailments like 'spines affected' and 'appendicitis,' which are strong, impactful, and potentially sudden events, confirming its 'dramatic-activation potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage lists mental qualities like 'ambitious, aspiring, adventurous' and professions such as 'Surgeon, military, defence department, building contractor, sports materials' which directly align with Mars' energy, drive, and activation potential, but also includes many unrelated attributes."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.7,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage describes a calculation involving 'Ekadhipatya Shodananka Chakra' and 'Ekadhipatya Corrected' numbers for planets and Rasis, which may be a component of Pinda calculations. However, it does not explicitly mention 'Shuddha Pinda,' rank Mars as 1, or discuss its 'dramatic-activation potential.' The 'Ekadhipatya Corrected' value for Mars (MRS) is given as 0 in this specific calculation, which does not directly support a 'Rank 1' claim for Mars."
+    },
+    {
+      "signal_id": "SIG.MSR.072",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.2,
+      "confidence_tier": "LOW",
+      "derivation_notes": "The classical passage discusses general planetary strength, weakness, and effects on spiritual desire and initiation, but does not mention Mars or its specific 'dramatic-activation potential'."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided Hora Sara passage discusses Lagnadhi Yoga and general planetary effects but does not mention Malavya Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage discusses Vajra, Yavah, Kamala, and Yapi yogas, but makes no mention of Malavya Yoga or its planetary conditions involving Venus and Kendra houses."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage is a table of contents from Saravali and does not contain the specific definition or conditions for Malavya Yoga, nor does it discuss its presence or absence."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage from Hora Sara discusses Lagnadhi Yoga and does not mention Malavya Yoga or its planetary conditions (Venus in own/exalted sign in a Kendra)."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided passage is a table of contents from Saravali and does not contain any specific information or discussion about Malavya Yoga or its formation conditions."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage discusses Vajra, Yavah, Kamala, and Yapi Yogas, but makes no mention of Malavya Yoga, Venus, Kendra, or exaltation, which are the core components of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage from Saravali does not mention Malavya Yoga or its specific planetary conditions (Venus in own/exalted sign in a Kendra house)."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the effects of Venus in the 4th house (a Kendra) and its lordship, but does not mention the specific condition of Venus being in its own or exalted sign, which is crucial for Malavya Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Venus in the 4th house as lord of the 9th or 10th, but does not specify if Venus is in its own or exalted sign, which is the defining condition for Malavya Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.119",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage mentions Venus in the Ascendant (a Kendra house), which is one of the conditions for Malavya Yoga, but it does not specify the 'own/exalted' condition for Venus or name the yoga itself."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses yogas involving the Moon with Mercury, Ketu, and Rahu, but makes no mention of the Sun, Sun-Moon angular separation, or lunar phases in relation to the Sun."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage describes the effects of Vasi Yoga, which involves the Sun and other planets (excluding the Moon) in the 12th house from the Sun, and does not mention the Sun-Moon 30° apart relationship or Sukla Paksha Waning context."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided passage from Hora Sara discusses Lagnadhi Yoga and the effects of benefics and malefics in certain houses, but it does not mention Surya-Chandra Yoga, the angular separation of the Sun and Moon, or the concept of Sukla Paksha."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes Adhiyoga based on benefics from the Moon, but does not mention Sun-Moon angular separation or specific lunar phases like 30° apart in Sukla Paksha waning context."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses conjunctions and eclipses of the Moon with Mercury, Ketu, and Rahu, but does not mention the angular relationship between the Sun and Moon, specifically the 30° apart aspect or the Sukla Paksha Waning context."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "saravali",
+      "chapter": "File 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage describes the effects of Vasi Yoga caused by various planets and does not mention Surya-Chandra Yoga, Sun-Moon angular separation, or Sukla Paksha waning context."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes Adhiyoga, formed by benefics in specific houses from the Moon, and does not mention the Sun-Moon angular separation or phase described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided passage from Hora Sara discusses Lagnadhi Yoga and the effects of benefics and malefics in certain houses, but it does not mention Surya-Chandra Yoga, the angular separation of the Sun and Moon, or lunar phases."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage lists various yogas (e.g., Sudha, Amrita, Poornachandra) with associated degree ranges, which are likely related to lunar phases or tithis. However, it does not explicitly mention a 'Sun-Moon 30° Apart' angular separation or the 'Sukla Paksha Waning Context' as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.120",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage defines various Sun-Moon phase yogas (e.g., Sudha, Amrita, Poornachandra) with specific degree ranges, confirming the general concept of phase-based yogas, but it does not explicitly mention a 30° Sun-Moon separation."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text describes the concentration of 4 or more planets in a single sign, which is a different condition from the MSR signal's focus on five planets concentrated in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary decanates and the orb/proximity required for yoga formation and effect realization, not the specific configuration of five planets concentrated in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text describes Adhiyoga based on benefics in the 6th, 7th, or 8th houses, which is a different planetary configuration than five planets concentrated in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the effects of weak planets and Maha Purusha Yogas, but does not mention 'Panchadhyayi Yoga' or the concentration of five planets in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text describes the concentration of 4 or more planets in a *single* sign for Pravrajya Yoga, which is a different condition than the MSR signal of five planets concentrated in *two* signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general conditions for yoga formation and strength (orb, planetary motion, degrees of separation, sign types, decanates) but does not describe or refer to a yoga involving five planets concentrated in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes Adhiyoga based on benefic planets in specific houses, which is distinct from the MSR signal's focus on five planets concentrated in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the impact of planetary strength and weakness on the results of Yogas, specifically Maha Purusha Yogas, and does not mention the concentration of five planets in two signs."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The Brihat Jataka passage discusses the effects of concentrations of 4, 5, 6, or 7 planets, confirming the general concept of multi-planet concentrations, including five planets, but does not specify the number of signs or the particular signs mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.121",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.6,
+      "confidence_tier": "MEDIUM",
+      "derivation_notes": "The passage mentions the concentration of 'four, five, six or seven planets' and their effects, which aligns with the 'five planets' aspect of the MSR signal's multi-planet concentration, but it does not specify the 'two signs' condition or the name 'Panchadhyayi Yoga'."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes a case study related to a person's pension issues and provides a horoscope, but it does not discuss the formation, components, or effects of Akhanda Samrajya Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses KP principles for foreign travel and timing of events, which is unrelated to the Akhanda Samrajya Yoga described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided passage discusses retirement and service from a KP perspective, mentioning planetary positions but not the 'Akhanda Samrajya Yoga' or its specific conditions involving Jupiter as lord of 2/5/11 and a strong Kendra lord, which is the subject of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary placements and their professional implications in the KP system, but does not mention Akhanda Samrajya Yoga, Jupiter's specific house lordships (2/5/11), or the strength of Kendra lords."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Krishnamurti Padhdhati (KP) principles, Rahu, and foreign travel, with no mention of Akhanda Samrajya Yoga or the specific planetary conditions involving Jupiter and Kendra lords as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses retirement and house significations in the context of Krishnamurti Padhdhati (KP) astrology, and does not mention 'Akhanda Samrajya Yoga' or its specific planetary conditions as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes a case study using Krishnamurti Padhdhati (KP) principles to analyze a pension delay, and does not mention or discuss Akhanda Samrajya Yoga or its specific planetary conditions (Jupiter as lord of 2/5/11 + Kendra Lord Strong)."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary placements (Saturn, Moon, Jupiter) and their implications for career and transfers, but it does not mention Akhanda Samrajya Yoga, Jupiter's lordship of houses 2, 5, or 11, or the strength of Kendra lords in relation to this specific yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes general positive effects of Jupiter on income and status within the KP system, which are consistent with the *outcomes* of a powerful yoga. However, it does not mention Akhanda Samrajya Yoga by name or describe its specific formation conditions (Jupiter as Lord of 2/5/11 + Kendra Lord Strong), making it silent on the core aspect of the MSR signal. The passage is also from KP, not the classical source Phaladeepika cited for the yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.122",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes general positive effects of Jupiter (increased income, improved status) but does not mention the specific formation rules of Akhanda Samrajya Yoga, such as Jupiter's lordship of houses 2, 5, or 11, or the strength of a Kendra lord. Furthermore, the passage is from a different text (KP) than the classical source cited for the yoga (Phaladeepika)."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage from Hora Sara describes Dama, Pasa, Kedara, and Sula Yogas, but does not mention 'Dur Yoga' or the specific planetary combination of Lagna Lord in an enemy sign and 6th from Lagna Lord (Mars)."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage describes positive effects of a well-placed Sun in a specific Dasa/Antardasa and does not mention 'Dur Yoga' or the specific planetary conditions related to the Lagna Lord as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided Hora Sara passage discusses Musala, Nala, Mala, and Sarpa Yogas, none of which relate to the definition of Dur Yoga given in the MSR signal (Lagna Lord in enemy sign + 6th from Lagna Lord (Mars))."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses the effects of Sun's Antardasa in Mercury's Dasa, focusing on positive outcomes based on Sun's strength and aspects, and does not mention 'Dur Yoga' or the specific planetary configurations (Lagna Lord in enemy sign, Mars 6th from Lagna Lord) described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text discusses maraka (death-causing) periods related to Rasi Dasas and the lord of the 6th from a Dasa Rasi, which is a different topic from the MSR signal's 'Dur Yoga' involving the Lagna Lord in an enemy sign and the 6th from the Lagna Lord."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes a Rajayoga for the Lagna Lord, specifically stating the Lagna Lord should 'not be in inimical house', which is the opposite of the MSR signal's 'Lagna Lord in Enemy Sign', and does not mention the 6th house condition or Saravali Ch.34."
+    },
+    {
+      "signal_id": "SIG.MSR.123",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes a Rajayoga (Sarva Bhauma Yoga) where the Lagna Lord is not in an inimical house, which is distinct from the MSR signal's Dur Yoga involving the Lagna Lord in an enemy sign and Mars."
+    },
+    {
+      "signal_id": "SIG.MSR.124",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses various planetary placements relative to the Lagna and other houses, including the Moon's placement in the 11th house, but it does not mention any planets in the 2nd or 12th houses from the Moon, which is the criteria for Durudhura Yoga."
+    },
+    {
+      "signal_id": "SIG.MSR.124",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage mentions 'the twelfth house from the Moon' but does not discuss Durudhura Yoga, its definition, or the presence/absence of planets in both the 2nd and 12th houses from the Moon."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the method of chart erection and the definition of the Ascendant/Lagna in a Western context, but it does not discuss planetary aspects on the Lagna, which is the central theme of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes effects of Jupiter's conjunctions with other planets, not triple aspects on Lagna, thus it is silent on the MSR signal's specific configuration."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes general planetary aspect rules based on sign types, but does not mention specific planets, aspect degrees (60v, 45v), their malefic/benefic nature, or their specific impact on Lagna as detailed in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses conjunctions of Venus with Saturn or Mars in various houses, while the MSR signal describes specific aspects from Saturn, Mars, and Jupiter on Lagna with varga strengths, making the two distinct in their astrological focus."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text discusses conjunctions of Jupiter with other planets and their general effects, not the specific triple aspect of Saturn, Mars, and Jupiter on Lagna as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage enumerates planetary combinations present in the Ascendant or other houses, focusing on the count of such combinations, rather than discussing specific triple aspects to the Lagna with varga strengths and benefic/malefic nature as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the method of chart erection and the representation of the ascendant (Lagna) in Western astrology, but it does not discuss planetary aspects to the Lagna or their interpretive significance, which is the focus of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "partial",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage enumerates combinations of multiple planets affecting the ascendant, thus acknowledging the possibility of a 'Triple Aspect on Lagna'. However, it does not delve into the specific nature (malefic/benefic) or strength (varga) of these aspects as detailed in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes general sign-based aspect rules (movable, fixed, common signs) but does not mention the specific '60v' or '45v' aspect types, nor their associated benefic/malefic qualities, as detailed in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.169",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.8,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses the conjunction of Venus and Saturn in Lagna or other houses, while the MSR signal describes a triple aspect of Saturn, Mars, and Jupiter on Lagna, making the passage silent on the specific MSR configuration."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage is a personal testimonial about the accuracy of KP predictions for life events and does not discuss any specific astrological configurations, planetary aspects, or the concept of an isolated Atmakaraka as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses KP principles, specific planetary placements, and aspects, but does not mention the Atmakaraka, its isolation, or the absence of Parashari Graha Drishti on any planet, let alone Moon in 11H Aquarius."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the classification of Moon's Dasa based on its phase and does not mention Atmakaraka, Parashari Graha Drishti, or planetary isolation."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary strength based on decanates and yoga formation based on orb and relative speeds, none of which relate to planetary aspects (drishti) or the concept of an isolated Atmakaraka."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage discusses specific conjunctions and obstructions of the Moon (Mercury-Moon, Ketu-Moon, Rahu-Moon) and their mundane effects, but it does not mention planetary aspects (drishti) or the concept of an Atmakaraka, which are central to the MSR signal's claim of an 'Isolated Atmakaraka' due to zero Parashari Graha Drishti."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes effects of specific conjunctions/afflictions to the Moon (Mercury, Ketu, Rahu) but does not mention the Atmakaraka, Parashari Graha Drishti, or the concept of an isolated significator due to lack of aspects."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage is a personal testimonial about the accuracy of astrological predictions, but it does not discuss any specific astrological concepts, planetary placements, aspects, or yogas mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Moon's placement and aspects in a general KP context but does not address Moon as Atmakaraka, its specific placement in 11H Aquarius, or the concept of zero Parashari drishti leading to an isolated Atmakaraka."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary strength based on sign/decanate and the formation of yogas based on orb and relative motion, which are distinct concepts from Parashari Graha Drishti and the isolation of an Atmakaraka."
+    },
+    {
+      "signal_id": "SIG.MSR.171",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the classification of Moon's Dasa based on its waxing/waning phase, which is unrelated to the Atmakaraka, planetary aspects, or isolation mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses general aspects for Rasi strength from its lord, Jupiter, or Mercury, but is silent on Rahu's quadruple aspect or the specific rules for fixed sign aspects movable signs as referenced by the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses planetary conjunctions and their effects in the Parashari system, which is unrelated to Jaimini Rashi Drishti or Rahu's quadruple aspect."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage is from Uttara Kalamrita (Parashari system) and lists topics related to Rahu's dasha, placement, and nature, but does not mention Jaimini Rashi Drishti or sign aspects for Rahu, which is the core of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The Uttara Kalamrita passage discusses planetary yogas, orbs, and decanates, which are Parashari concepts, and does not mention Jaimini Rashi Drishti or the specific rules for sign aspects in the Jaimini system, which is the focus of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage from Uttara Kalamrita discusses Rahu and Ketu's general effects, dasha, and placements within a Parashari framework, but it does not mention Jaimini Rashi Drishti or specific Jaimini aspect rules for Rahu as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage from Hora Sara discusses planetary conjunctions in bhavas (houses) and their general effects within the Parashari system, which is distinct from Jaimini Rashi Drishti and Rahu's specific aspect rules."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The MSR signal describes Jaimini Rashi Drishti and Rahu's quadruple aspect, while the Uttara Kalamrita passage discusses planetary yogas based on degrees, orbs, and decanates within the Parashari system, making it unrelated to the Jaimini concept."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical text passage discusses moral character, vicious habits, and a yoga involving Ketu and Karakamsa, but it does not describe or confirm the rules for Jaimini Rashi Drishti or Rahu's quadruple aspect from fixed signs, which is the subject of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses the strength of a Rasi based on aspects from its lord, Jupiter, or Mercury, but does not mention Rahu, fixed signs, or the specific Jaimini Rashi Drishti rules (1.1.26-29) relevant to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.172",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The provided classical text passage discusses moral character, vices, and a rule involving Ketu and Karakamsa. It does not describe the mechanism of Jaimini Rashi Drishti, Rahu's quadruple aspect, or the specific aspect rules for fixed signs as stated in the MSR signal, which cites Jaimini Sutras 1.1.26-29 (not present in this excerpt)."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes the effects of Moon in Libra according to Parashari astrology (Brihat Jataka) and does not discuss Jaimini Rashi Drishti, Mars, Saturn, Rahu, or Atmakaraka."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes the nature of the spouse based on Parashari Navamsa analysis of the 7th house, which is a different astrological system and technique from Jaimini Rashi Drishti involving specific malefic planets and Atmakaraka as described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The MSR signal describes Jaimini Rashi Drishti (sign aspects) and cites Jaimini Sutras, while the passage discusses planetary effects based on decanates and conjunctions based on orb from Uttara Kalamrita (Parashari), which are different concepts."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses factors for a Rasi's strength based on planetary aspects and conjunctions, not the specific rules of Jaimini Rashi Drishti (sign aspects) that the MSR signal is applying."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage describes the general effects of Moon in Libra according to Brihat Jataka (Parashari), while the MSR signal details a specific Jaimini Rashi Drishti involving Mars and Saturn in Libra, aspects, and other planetary significations, none of which are mentioned in the passage."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 1.0,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The classical passage describes husband's nature based on the descendant's sign or Navamsa in the Parashari system, which is unrelated to Jaimini Rashi Drishti, Atmakaraka, or specific planetary conjunctions mentioned in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The Hora Sara passage is from the Parashari system and discusses general effects of malefic conjunctions, but does not mention Jaimini Rashi Drishti, specific sign aspects, or Jaimini concepts like Atmakaraka, which are central to the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage from Uttara Kalamrita discusses planetary strength based on decanate and conjunction orb, not Jaimini Rashi Drishti or sign aspects, which is the core of the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.173",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.9,
+      "confidence_tier": "HIGH",
+      "derivation_notes": "The passage discusses Rasi strength based on aspects from its lord, Jupiter, or Mercury, and refers to different sutras (13, 14) and a quote from Brihat Jataka, which is unrelated to Jaimini Rashi Drishti rules or the specific planetary configurations described in the MSR signal."
+    },
+    {
+      "signal_id": "SIG.MSR.201",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.201",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.201",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.201",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.201",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.202",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.202",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.202",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.202",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.202",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.203",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.203",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.203",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.203",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.203",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.204",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.204",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.204",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.204",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.204",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.205",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.205",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.205",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.205",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.205",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.206",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.206",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.206",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.206",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.206",
+      "text_key": "brihat_samhita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.208",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.208",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.208",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.208",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.208",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.209",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.209",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.209",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.209",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.209",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.210",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.210",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.210",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.210",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.210",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.211",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.211",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.211",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.211",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.211",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.212",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.212",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.212",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.212",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.212",
+      "text_key": "jaimini_sutra",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.213",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.213",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.213",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.213",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.213",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.214",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.214",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.214",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.214",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.214",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.215",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.215",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.215",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.215",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.215",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 4",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.216",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.216",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.216",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.216",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.216",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.217",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.217",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.217",
+      "text_key": "hora_sara",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.217",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.217",
+      "text_key": "kp_texts",
+      "chapter": "KP Vol. 3",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.218",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.218",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.218",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.218",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.218",
+      "text_key": "brihat_jataka",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.219",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.219",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.219",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.219",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.219",
+      "text_key": "bphs",
+      "chapter": "Vol. 2",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.220",
+      "text_key": "bphs",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.220",
+      "text_key": "prashna_marga",
+      "chapter": "Vol. 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.220",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    },
+    {
+      "signal_id": "SIG.MSR.221",
+      "text_key": "uttara_kalamrita",
+      "chapter": "File 1",
+      "verse_range": null,
+      "attribution_type": "silent",
+      "confidence": 0.3,
+      "confidence_tier": "LOW",
+      "derivation_notes": "Judge failed: NotFound"
+    }
+  ]
+}

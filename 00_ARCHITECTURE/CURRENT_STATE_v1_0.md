@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.3
+version: 5.11
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,65 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.11 (2026-05-14, M8-H-S1):
+    **M8 MACRO-PHASE CLOSED. M9 INCOMING. IS.8(a)+(b) RED-TEAM PASS 5/5.**
+    Key outcomes: (1) AC.M8H.1 PASS — TRANSLATION_CROSS_CHECK_v1_0.md: 8 non-English texts; 0 SIGNIFICANT_VARIANCE; 0 confidence downgrades applied. (2) AC.M8H.2 PASS — ACHARYA_REVIEW_SAMPLE_v1_0.md: 20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL finding (S1: Jupiter 9H × Indu Lagna); 4 annotation-level observations. (3) AC.M8H.3 PASS — IS.8(a)+IS.8(b) red-team 5/5 axes PASS; 0 CRITICAL; 0 HIGH; 0 MEDIUM. IS.8(b) macro-phase-close cadence DISCHARGED. (4) AC.M8H.4 PASS — M8_CLOSE_v1_0.md sealing artifact authored at 08_CLASSICAL_CROSS_REFERENCE/. (5) AC.M8H.5 PASS — CURRENT_STATE updated to M8 CLOSED / M9 INCOMING; red_team_counter=0. (6) AC.M8H.6 PASS — SESSION_LOG M8-H-S1 appended. (7) AC.M8H.7 PASS — CAPABILITY_MANIFEST: 4 new M8-H entries + CLAUDECODE_BRIEF_M8 entry; entry_count 117→121. (8) AC.M8H.8 PASS — MP.1+MP.2 mirrors propagated. (9) AC.M8H.9 PASS — CLAUDECODE_BRIEF.md archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M8_v1_0.md; root CLAUDECODE_BRIEF.md status=COMPLETE. (10) AC.M8H.10 PASS — M8 exit criteria a–e all MET in M8_CLOSE §6.
+    M8 corpus statistics at close: 11 texts; 8349 chunks; 420 attribution rows (76 signals attributed); 543 MSR signals (v4.0); 24 retrieval tools; 28 integration tests passing.
+    Carry-forwards: CF.M8.1 (Brihat Samhita 12 chunks not embedded — Vertex 20k limit); CF.M8.2 (Jaimini DIS.010/011 N3-deferred); CF.M8.3–4 (acharya annotation precision); CF.M8.5 (Saravali `contradicts` review); CF.M8.6 (attribution coverage expansion — 76/543 attributed); CF.M8.7 (PipelinePlanInputJsonSchema NIM-compat — classical_grounding not in §5 JSON schema yet).
+    red_team_counter: 0 (IS.8(b) DISCHARGED; IS.8(a) also consumed; both fire and reset at macro-phase-close).
+    active_phase_plan_sub_phase: M8 CLOSED. M9 INCOMING — first M9 session must author PHASE_M9_PLAN_v1_0.md before execution.
+    last_session_id: M8-H-S1. next_session_objective: M9-A-S1 — author PHASE_M9_PLAN_v1_0.md; confirm M9 scope with native; then execute M9 per plan.
+    file_updated_at: 2026-05-14T23:59:00+05:30. file_updated_by_session: M8-H-S1.
+  - v5.10 (2026-05-14, M8-G-S1):
+    **M8-G-S1 CLOSED. QUERY PIPELINE INTEGRATION COMPLETE. 28 INTEGRATION TESTS PASSING.**
+    Key outcomes: (1) AC.M8G.1 PASS — classical_text_search_tool.ts RetrievalTool wrapper implemented; registered in RETRIEVAL_TOOLS (24 tools total). (2) AC.M8G.2 PASS — classical_attribution_lookup_tool.ts RetrievalTool wrapper implemented; registered in RETRIEVAL_TOOLS. (3) AC.M8G.3 PASS — GT.047–GT.049 classical_grounding golden entries added to planner_golden_set.json (49 total). (4) AC.M8G.4 PASS — classical_grounding query_class added to all 6 definition sites: pipeline/types.ts QueryClassEnum (Zod), bundle/types.ts, prompts/types.ts, jyotish/domain_labels.ts (+ QUERY_CLASS_LABELS entry), router/types.ts, retrieve/types.ts; LegacyQueryPlanShape in consume/route.ts updated; class_suggestions.ts updated. (5) AC.M8G.5 PASS — classical_disclosure_filter.ts authored; applyClassicalDisclosureFilter() + formatClassicalCitationForSynthesis(); NAP.M8.2 enforcement (public_redacted verse redaction). (6) AC.M8G.6 PASS — 28 integration tests passing (tests/classical/ 3 files); tsc 0 errors on M8-G files (pre-existing admin/aiops + deleted-module errors unchanged). (7) AC.M8G.7 PASS — CAPABILITY_MANIFEST updated: 5 new M8-G entries added (entry_count 112→117). (8) AC.M8G.8 PASS — SESSION_LOG M8-G-S1 appended.
+    Additional: retrieval_capability_spec.ts updated with classical_text_search + classical_attribution_lookup entries (20 entries total); consume/route.ts toolStepType() updated to route classical tools as 'sql'.
+    red_team_counter: 3 (IS.8(a) threshold reached — IS.8(a) red-team DUE at M8-H-S1; IS.8(b) macro-phase close red-team also fires at M8-H-S1).
+    active_phase_plan_sub_phase: M8-G CLOSED. M8-H-S1 INCOMING.
+    last_session_id: M8-G-S1. next_session_objective: M8-H-S1 (Translation cross-check for 8 non-English texts; Acharya review sample 20 findings 4×5 domains; IS.8(a)+IS.8(b) 5-axis red-team; M8_CLOSE_v1_0.md sealing artifact; CURRENT_STATE M8→M9 transition).
+    file_updated_at: 2026-05-14T23:30:00+05:30. file_updated_by_session: M8-G-S1.
+  - v5.9 (2026-05-14, M8-F-S1):
+    **M8-F-S1 CLOSED. NADI + BNN INGESTION + MSR EXPANSION COMPLETE. MSR v4_0 PUBLISHED: 543 SIGNALS.**
+    Key outcomes: (1) AC.M8F.1 PASS — migration 056_classical_tier4.sql applied; tier=4 CHECK constraint; 3 new Nadi/BNN texts in classical_texts. (2) AC.M8F.2 PASS — BNN ingestion: 391 chunks, 100% embedded, GCS uploaded. (3) AC.M8F.3 PASS — Chandra Kala Nadi ingestion: 658 chunks, 100% embedded, GCS uploaded. (4) AC.M8F.4 PASS — Dhruva Nadi sampler ingestion: 150 chunks, 100% embedded, GCS uploaded. Total Nadi/BNN: 1199 chunks. (5) AC.M8F.5 PASS — 29 net-new signals (SIG.MSR.515–543): 25 BNN + 2 CKN + 1 DHR + 1 cross; dedup confirmed vs existing 514 via trigger-mechanism distinctiveness (BNN sequential transit analysis vs Parashari yoga). (6) AC.M8F.6 PASS — MSR_v4_0.md authored; 543 signals total; §VII Nadi + BNN appended; GCS uploaded to gs://madhav-marsys-sources/L2_5/MSR_v4_0.md. (7) AC.M8F.7 PASS — CAPABILITY_MANIFEST updated: MSR entry promoted to v4_0/543; 8 new entries added (entry_count 104→112). (8) AC.M8F.8 PASS — SESSION_LOG M8-F-S1 appended. Extraction used: Gemini 2.5-flash max_output_tokens=8192 (resolved MAX_TOKENS issue from thinking model); SAMPLE_EVERY=15, MAX_CHUNKS_PER_TEXT=30; 107 BNN + 4 Nadi signals extracted, 29 promoted after dedup.
+    red_team_counter: 2 (M8-F-S1 substantive; IS.8(a) fires at 3 — next IS.8(a) at M8-G-S1 close or M8-H-S1 which is the macro-phase close red-team IS.8(b)).
+    active_phase_plan_sub_phase: M8-F CLOSED. M8-G-S1 INCOMING.
+    last_session_id: M8-F-S1. next_session_objective: M8-G-S1 (Query pipeline integration — wire tools 25+26 into compose_bundle; classical_grounding plan type; disclosure filter; 10 integration tests).
+    file_updated_at: 2026-05-14T21:00:00+05:30. file_updated_by_session: M8-F-S1.
+  - v5.8 (2026-05-14, M8-E-S1):
+    **M8-E-S1 CLOSED. ATTRIBUTION ENGINE COMPLETE. 420 ATTRIBUTION RECORDS IN DB.**
+    Key outcomes: (1) AC.M8E.1 PASS — classical_text_search.ts fully implemented (STUB→CURRENT); 10 unit tests pass (≥8 required). (2) AC.M8E.2 PASS — classical_attribution_lookup.ts fully implemented (STUB→CURRENT); 7 unit tests pass (≥6 required). (3) AC.M8E.3 PASS — 420 rows in classical_attributions table (>>400 threshold); confirms: 21, contradicts: 8, extends: 10, partial: 64, silent: 317. (4) AC.M8E.4 PASS — CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json + .md written to 08_CLASSICAL_CROSS_REFERENCE/. (5) AC.M8E.5 PASS — FINDINGS_M5_CROSS_REF_v1_0.md + FINDINGS_CLASSICAL_CLAIM_v1_0.md written. (6) AC.M8E.6 PASS — run_attribution_pass.py + run_attribution_pass_v2.py + build_registry_from_db.py finalized in corpus/ingestion/scripts/. (7) AC.M8E.7 PASS — CAPABILITY_MANIFEST updated: 2 STUB entries promoted to CURRENT (tools 25+26), 6 new entries added (entry_count 98→104). (8) AC.M8E.8 PASS — SESSION_LOG M8-E-S1 appended. Attribution engine used: Vertex AI text-embedding-004 (768-dim) for signal embeddings, Gemini 2.5-flash (asia-south1) as judge; 4 parallel workers with per-signal fresh DB connections resolved timeout issues; batched judge JSON-truncation issue resolved by single-chunk calls at max_output_tokens=8192.
+    red_team_counter: 1 (M8-E-S1 substantive; IS.8(a) previously fired at M8-C-S1 close and reset; this is session 2 of 3 before next IS.8(a)).
+    active_phase_plan_sub_phase: M8-E CLOSED. M8-F-S1 INCOMING.
+    last_session_id: M8-E-S1. next_session_objective: M8-F-S1 (Nadi + BNN ingestion — Nadi Nadi Nadi + Brighu Nandi Nadi sources; expand MSR if signals < 514 active; wire classical citation into query pipeline).
+    file_updated_at: 2026-05-14T18:30:00+05:30. file_updated_by_session: M8-E-S1.
+  - v5.7 (2026-05-14, M8-D-S1):
+    **M8-D-S1 CLOSED. TIER 3 INGESTION COMPLETE. ALL 10 TEXTS LOADED.**
+    Key outcomes: (1) AC.M8D.1 PASS — all 5 scripts complete; idempotent; exit 0. (2) AC.M8D.2 PASS — Prashna Marga: 758 chunks 100% embedded. (3) AC.M8D.3 PASS — Hora Sara: 295 chunks 100% embedded. (4) AC.M8D.4 PASS — KP Vols 1-4: 1646 chunks 100% embedded. (5) AC.M8D.5 PASS — Brihat Jataka: 520 chunks 100% embedded. (6) AC.M8D.6 PASS — Brihat Samhita: 757 chunks 98.4% embedded (>>95% threshold; 12 chunks in 1 batch exceeded 20k Vertex limit). (7) AC.M8D.7 PASS — all 5 uploaded to GCS tier3/. (8) AC.M8D.8 PASS — total 7150 chunks across 10 texts (>>3200 threshold). (9) AC.M8D.9 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated.
+    red_team_counter: 0 (IS.8(a) fired at M8-C-S1 close; reset; M8-D-S1 is post-reset session 1).
+    active_phase_plan_sub_phase: M8-D CLOSED. M8-E-S1 INCOMING.
+    last_session_id: M8-D-S1. next_session_objective: M8-E-S1 (Attribution engine + classical_text_search.ts + classical_attribution_lookup.ts full impl + run_attribution_pass.py for 514 MSR signals + CLASSICAL_ATTRIBUTION_REGISTRY).
+    file_updated_at: 2026-05-14T15:56:00+05:30. file_updated_by_session: M8-D-S1.
+  - v5.6 (2026-05-14, M8-C-S1):
+    **M8-C-S1 CLOSED. TIER 2 INGESTION COMPLETE.**
+    Key outcomes: (1) AC.M8C.1 PASS — all 3 scripts complete; idempotent; exit 0. (2) AC.M8C.2 PASS — Saravali: 796 chunks 100% embedded (dual-source: saravaliofkalyanavarmasanthanamr + KalyanaVarmasSaravali_201707; tier2/saravali_chunks.jsonl). (3) AC.M8C.3 PASS — Uttara Kalamrita: 239 chunks 100% embedded; tier2/uttara_kalamrita_chunks.jsonl. (4) AC.M8C.4 PASS — Jaimini Sutra: 181 chunks 100% embedded; tier2/jaimini_sutra_chunks.jsonl. (5) AC.M8C.5 PASS — all 3 uploaded to GCS tier2/. (6) AC.M8C.6 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated. DB state: 5 texts (2 tier1 + 3 tier2), all embeddings 100%.
+    red_team_counter: 3 (incremented; M8-C-S1 substantive; IS.8(a) due at counter=3 — firing this close).
+    active_phase_plan_sub_phase: M8-C CLOSED. M8-D-S1 INCOMING.
+    last_session_id: M8-C-S1. next_session_objective: M8-D-S1 (Tier 3 ingestion — 5 texts).
+    file_updated_at: 2026-05-14T15:40:00+05:30. file_updated_by_session: M8-C-S1.
+  - v5.5 (2026-05-14, M8-B-S1):
+    **M8-B-S1 CLOSED. TIER 1 INGESTION COMPLETE.**
+    Key outcomes: (1) AC.M8B.1 PASS — ingest_bphs.py complete; idempotent; exits 0. (2) AC.M8B.2 PASS — BPHS: 1032 chunks in DB, 100% embedded (768-dim); gs://madhav-marsys-sources/L8/classical_texts/tier1/bphs_chunks.jsonl uploaded. (3) AC.M8B.3 PASS — ingest_phaladeepika.py complete; idempotent; exits 0. (4) AC.M8B.4 PASS — Phaladeepika: 926 chunks in DB, 100% embedded; source upgraded to in.ernet.dli.2015.406048 (1.37MB djvu.txt). (5) AC.M8B.5 PASS — both texts uploaded to GCS tier1/. (6) AC.M8B.6 PASS — classical_texts rows: tier=1 for both; chunk_count=1032+926. (7) AC.M8B.7 PASS — SESSION_LOG + CAPABILITY_MANIFEST updated. Critical fixes: (a) embed_batch() token budget reduced from 18k to 8k approx (real Vertex tokens are 1.5-1.8x len//4); hard cap 15 chunks/batch added. (b) db_update_embeddings() added to ingest_utils.py for idempotent embedding population on existing rows.
+    red_team_counter: 2 (incremented; M8-B-S1 is substantive).
+    active_phase_plan_sub_phase: M8-B CLOSED. M8-C-S1 INCOMING.
+    last_session_id: M8-B-S1. next_session_objective: M8-C-S1 (Tier 2 ingestion — Saravali + Uttara Kalamrita + Jaimini Sutra).
+    file_updated_at: 2026-05-14T15:25:00+05:30. file_updated_by_session: M8-B-S1.
+  - v5.4 (2026-05-14, M8-A-S1):
+    **M8 MACRO-PHASE OPENED. M6 TIME-GATED PARALLEL. M8-A-S1 CLOSED.**
+    Key outcomes: (1) AC.M8A.1 PASS — 08_CLASSICAL_CROSS_REFERENCE/ scaffold created (corpus/ingestion/scripts, corpus/ingestion/logs, corpus/raw, attributions/findings, nadi_bnn, quality). (2) AC.M8A.2 PASS — DB migrations 053 (classical_texts), 054 (classical_chunks + ivfflat embedding index), 055 (classical_attributions + generated confidence_tier) applied to amjis DB; all 3 tables verified via \dt. Note: plan specified 046-048 but those are occupied by aiops migrations; used 053-055. (3) AC.M8A.3 PASS — GCS_LAYOUT_v1_0.md L8 prefix block added (tier1/tier2/tier3/nadi_bnn/registries paths). (4) AC.M8A.4 PASS — PROCUREMENT_MAP_v1_0.md present: all 14 texts listed with source URLs and fallbacks. (5) AC.M8A.5 PASS — classical_text_search.ts + classical_attribution_lookup.ts stubs created at platform/src/lib/tools/. (6) AC.M8A.6 PASS — platform/src/lib/tools/index.ts created; CLASSICAL_TOOL_REGISTRY with tools 25+26. (7) AC.M8A.7 PASS — M6 CLAUDECODE_BRIEF archived to git history; M8 brief active at root. (8) AC.M8A.8 PASS — CAPABILITY_MANIFEST.json 81→87 entries: PHASE_M8_PLAN, 08_CLASSICAL_CROSS_REFERENCE, PROCUREMENT_MAP, GCS_LAYOUT v1.1, RETRIEVAL_TOOL_classical_text_search (tool 25), RETRIEVAL_TOOL_classical_attribution_lookup (tool 26). (9) AC.M8A.9 PASS — active_macro_phase: M8 OPEN / M6 TIME-GATED PARALLEL. (10) AC.M8A.10 PASS — SESSION_LOG M8-A-S1 appended. (11) AC.M8A.11 PASS — MP.1 (.geminirules §C #5 + §F) + MP.2 (.gemini/project_state.md header) propagated.
+    red_team_counter: 1 (incremented at M8-A-S1; macro-phase-open session is substantive).
+    active_phase_plan_sub_phase: M8-A CLOSED. M8-B-S1 INCOMING.
+    last_session_id: M8-A-S1. next_session_objective: M8-B-S1 (Tier 1 ingestion — BPHS + Phaladeepika).
+    file_updated_at: 2026-05-14T00:00:00+05:30. file_updated_by_session: M8-A-S1.
   - v5.3 (2026-05-14, M5-E-S2):
     **M5 MACRO-PHASE CLOSED. IS.8(b) PASS 5/5. M5_CLOSE_v1_0.md SEALED. M6 INCOMING. NAP.M5.4 APPROVED.**
     Key outcomes: (1) AC.M5E.1 PASS — IS.8(b) macro-phase-close red-team PASS 5/5 axes: RT.M5.1
@@ -5408,8 +5467,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-14T12:00:00+05:30
-  file_updated_by_session: M5-E-S2
+  file_updated_at: 2026-05-14T18:30:00+05:30
+  file_updated_by_session: M8-E-S1
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
