@@ -80,6 +80,9 @@ export type FeatureFlag =
   // AIOps Phase 2 — Adapter Layer. Default OFF through AD.4; flip in AD.5
   // after stack-smoke parity confirms behavior is unchanged. Env: ADAPTERS_ENABLED.
   | 'ADAPTERS_ENABLED'
+  // AIOps Phase 3 — Consume UI Overhaul. Default OFF through CO.6; flip in CO.7
+  // after 48h engagement metric watch. Env: MARSYS_FLAG_CONSUME_UI_V2_ENABLED.
+  | 'CONSUME_UI_V2_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -135,6 +138,8 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED: true,
   // AIOps Phase 2 — default OFF through AD.4; flip in AD.5.
   ADAPTERS_ENABLED: false,
+  // AIOps Phase 3 — default OFF through CO.6; flip in CO.7 after metric watch.
+  CONSUME_UI_V2_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

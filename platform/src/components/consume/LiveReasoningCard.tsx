@@ -1,7 +1,9 @@
 'use client'
 
 /**
- * LiveReasoningCard — Gate III.
+ * LiveReasoningCard — Gate III. LEGACY (AIOps Phase 3 CO.3).
+ * Preserved for CONSUME_UI_V2_ENABLED=false (flag-OFF) path.
+ * Superseded by ReasoningSlot in the flag-ON path. Do not delete.
  *
  * The ambient, collapsible reasoning surface that sits above the streaming
  * answer for each in-flight assistant turn.
