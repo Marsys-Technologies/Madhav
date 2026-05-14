@@ -77,6 +77,9 @@ export type FeatureFlag =
   // psychological, financial, family) with an explicit n=0 disclaimer in invocation_params,
   // so the synthesizer does not treat absence-of-weight as absence-of-signal. Default ON.
   | 'LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED'
+  // AIOps Phase 2 — Adapter Layer. Default OFF through AD.4; flip in AD.5
+  // after stack-smoke parity confirms behavior is unchanged. Env: ADAPTERS_ENABLED.
+  | 'ADAPTERS_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -130,6 +133,8 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // M5-B LL.3 R.LL3.3 — Zero-LL.1-weight domain disclaimer. Default ON.
   // Override via MARSYS_FLAG_LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED=false.
   LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED: true,
+  // AIOps Phase 2 — default OFF through AD.4; flip in AD.5.
+  ADAPTERS_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
