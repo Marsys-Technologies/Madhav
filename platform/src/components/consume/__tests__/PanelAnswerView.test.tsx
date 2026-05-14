@@ -7,30 +7,24 @@ import type { DivergenceSummary, PanelResult, MemberAlignment } from '@/lib/synt
 import type { DivergenceClassification, DivergenceInstance } from '@/lib/synthesis/panel/divergence_detector'
 
 // ── Mock lucide-react ───────────────────────────────────────────────────────────
+// Use importOriginal so transitive deps (sheet.tsx, etc.) get their icons too.
+// Override only the icons the tests assert on with testid-bearing spans.
 
-vi.mock('lucide-react', () => ({
-  ChevronDown: ({ className }: { className?: string }) => (
-    <span data-testid="chevron-down" className={className} />
-  ),
-  ChevronUp: ({ className }: { className?: string }) => (
-    <span data-testid="chevron-up" className={className} />
-  ),
-  AlertTriangle: ({ className }: { className?: string }) => (
-    <span data-testid="alert-triangle" className={className} />
-  ),
-  // Icons used by ConsumeChat and other deps
-  Plus: () => <span />,
-  PanelLeft: () => <span />,
-  FileText: () => <span />,
-  Keyboard: () => <span />,
-  Gauge: () => <span />,
-  Zap: () => <span />,
-  Sparkles: () => <span />,
-  FileQuestion: () => <span />,
-  BookOpenText: () => <span />,
-  User: () => <span />,
-  RotateCcw: () => <span />,
-}))
+vi.mock('lucide-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('lucide-react')>()
+  return {
+    ...actual,
+    ChevronDown: ({ className }: { className?: string }) => (
+      <span data-testid="chevron-down" className={className} />
+    ),
+    ChevronUp: ({ className }: { className?: string }) => (
+      <span data-testid="chevron-up" className={className} />
+    ),
+    AlertTriangle: ({ className }: { className?: string }) => (
+      <span data-testid="alert-triangle" className={className} />
+    ),
+  }
+})
 
 // ── Mock ConsumeChat dependencies ───────────────────────────────────────────────
 
@@ -97,6 +91,8 @@ vi.mock('@/hooks/useBranches', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn() })),
+  useSearchParams: vi.fn(() => ({ get: vi.fn(() => null) })),
+  usePathname: vi.fn(() => '/consume'),
 }))
 
 vi.mock('@/components/chat/ChatShell', () => ({
@@ -178,6 +174,7 @@ vi.mock('@/lib/ui/validator-error', () => ({
 vi.mock('@/lib/models/registry', () => ({
   MODELS: [],
   PROVIDER_LABEL: {},
+  stackPicker: vi.fn(() => []),
 }))
 
 // ── Test fixtures ───────────────────────────────────────────────────────────────
@@ -483,37 +480,39 @@ describe('ConsumeChat — panel checkbox', () => {
     vi.clearAllMocks()
   })
 
+  // The panel-opt-in checkbox has id="panel-opt-in" and is visually hidden
+  // (sr-only); its parent <label> carries the aria-label. Query by role.
   it('checkbox is hidden when panelModeEnabled=false', () => {
     render(<ConsumeChat {...baseChatProps} panelModeEnabled={false} />)
-    expect(screen.queryByLabelText(/panel mode/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { hidden: true })).not.toBeInTheDocument()
   })
 
   it('checkbox is hidden when panelModeEnabled is not provided (defaults false)', () => {
     render(<ConsumeChat {...baseChatProps} />)
-    expect(screen.queryByLabelText(/panel mode/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { hidden: true })).not.toBeInTheDocument()
   })
 
   it('checkbox is visible when panelModeEnabled=true', () => {
     render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
-    expect(screen.getByLabelText(/panel mode/i)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { hidden: true })).toBeInTheDocument()
   })
 
   it('checkbox is initially unchecked', () => {
     render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
-    const checkbox = screen.getByLabelText(/panel mode/i) as HTMLInputElement
+    const checkbox = screen.getByRole('checkbox', { hidden: true }) as HTMLInputElement
     expect(checkbox.checked).toBe(false)
   })
 
   it('checkbox can be checked by the user', () => {
     render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
-    const checkbox = screen.getByLabelText(/panel mode/i) as HTMLInputElement
+    const checkbox = screen.getByRole('checkbox', { hidden: true }) as HTMLInputElement
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(true)
   })
 
   it('checkbox auto-resets to unchecked after submit', () => {
     render(<ConsumeChat {...baseChatProps} panelModeEnabled={true} />)
-    const checkbox = screen.getByLabelText(/panel mode/i) as HTMLInputElement
+    const checkbox = screen.getByRole('checkbox', { hidden: true }) as HTMLInputElement
     // Check the box
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(true)

@@ -119,7 +119,7 @@ describe('Gate II — synthetic end-to-end trace assembly', () => {
       audit_event_id: 'ae-gate2-smoke',
       audit_event_version: 1,
       disclosure_tier: 'super_admin',
-      validator_verdict: 'PASS',
+      audit_status: 'ok',
       b10_compliant: true,
       b11_compliant: true,
     }

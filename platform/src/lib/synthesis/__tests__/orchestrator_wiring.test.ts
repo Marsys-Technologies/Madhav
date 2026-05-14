@@ -14,6 +14,7 @@ vi.mock('@/lib/models/resolver', () => ({
   resolveWorkerModel: vi.fn((id: string) => id ?? 'claude-haiku-4-5'),
   supportsStreaming: vi.fn(() => true),
   googleProviderOptions: vi.fn(() => null),
+  deepseekProviderOptions: vi.fn(() => null),
 }))
 
 const mockStreamText = vi.fn()
@@ -27,6 +28,7 @@ vi.mock('ai', () => ({
 
 vi.mock('@/lib/models/registry', () => ({
   supports: vi.fn().mockReturnValue(true),
+  MODELS: [],
   getModelMeta: vi.fn((id: string) => ({
     id,
     label: 'Test',
@@ -35,6 +37,7 @@ vi.mock('@/lib/models/registry', () => ({
     maxOutputTokens: 64000,
     capabilities: ['tool-use', 'prompt-caching'],
   })),
+  getReasoningMode: vi.fn(() => 'none'),
 }))
 
 vi.mock('@/lib/retrieve/index', () => ({

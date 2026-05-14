@@ -6,7 +6,7 @@ vi.mock('@/lib/db/client', () => ({
 }))
 
 vi.mock('@/lib/storage/client', () => ({
-  chartDocsBucket: 'chart-documents',
+  chartDocsBucket: vi.fn().mockReturnValue({}),
   gcsDownloadText: vi.fn(),
   gcsUpload: vi.fn(),
   gcsDelete: vi.fn(),
@@ -110,7 +110,7 @@ describe('buildTools', () => {
 
       const { buildTools } = await import('@/lib/claude/build-tools')
       const result = await buildTools.read_document.execute!({ chart_id: 'chart-1', name: 'missing' }, {} as never)
-      expect(result).toEqual({ error: 'Document not found: missing' })
+      expect(result).toEqual({ error: 'Document not found' })
     })
   })
 

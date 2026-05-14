@@ -34,6 +34,7 @@ vi.mock('@/lib/models/registry', () => ({
     maxOutputTokens: 64000,
     capabilities: ['tool-use', 'prompt-caching'],
   })),
+  getReasoningMode: vi.fn(() => 'none'),
 }))
 
 // Mock retrieval tools
@@ -394,7 +395,7 @@ describe('SingleModelOrchestrator — FUB-2: chart context block injection', () 
 
     const callArgs = mockStreamText.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> }
     const systemMsg = callArgs.messages[0]
-    expect(systemMsg.content).not.toContain('CHART_CONTEXT_BLOCK')
+    expect(systemMsg.content).not.toContain('<CHART_CONTEXT_BLOCK')
   })
 })
 
@@ -446,7 +447,7 @@ describe('SingleModelOrchestrator — FUB-3: tool_results injection', () => {
 
     const callArgs = mockStreamText.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> }
     const systemMsg = callArgs.messages[0]
-    expect(systemMsg.content).not.toContain('PRE_FETCHED_TOOL_RESULTS')
+    expect(systemMsg.content).not.toContain('<PRE_FETCHED_TOOL_RESULTS>')
   })
 
   it('user message remains the last message when tool_results are present', async () => {

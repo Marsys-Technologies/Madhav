@@ -190,7 +190,12 @@
           "reason": "facts"
         }
       ],
-      "bundle_summary": "3 assets · 3 tools"
+      "bundle_summary": "3 assets · 3 tools",
+      "compose_bundle": {
+        "latency_ms": 50,
+        "result": "3 assets · 3 tools"
+      },
+      "plan_per_tool": null
     },
     "retrieval": [
       {
@@ -251,7 +256,7 @@
     },
     "audit": {
       "audit_event_id": "ae-gate2-smoke",
-      "audit_event_version": 1,
+      "audit_warnings": null,
       "disclosure_tier": "super_admin",
       "validator_verdict": "PASS",
       "b10_compliant": true,

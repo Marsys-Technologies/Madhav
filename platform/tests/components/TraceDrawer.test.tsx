@@ -11,6 +11,19 @@ vi.mock('@/components/trace/TracePanel', () => ({
   TracePanel: () => null,
 }))
 
+// Mock useTraceStream — avoids EventSource which isn't defined in jsdom
+vi.mock('@/hooks/useTraceStream', () => ({
+  useTraceStream: vi.fn(() => ({
+    steps: [],
+    done: false,
+    error: null,
+    planningActive: false,
+    planningModel: null,
+    toolsSelected: [],
+    queryIntentSummary: null,
+  })),
+}))
+
 // Mock Sheet components (base-ui) — stub to keep tests DOM-based
 vi.mock('@/components/ui/sheet', () => ({
   Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>

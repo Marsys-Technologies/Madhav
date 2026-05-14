@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LogPredictionAction } from '@/components/consume/LogPredictionAction'
 
@@ -56,9 +56,9 @@ describe('LogPredictionAction', () => {
   it('shows error when submitted without falsifier', async () => {
     render(<LogPredictionAction answerText={TEXT_WITH_PREDICTION} />)
     await userEvent.click(screen.getByText(/log prediction/i))
-    const submitBtns = screen.getAllByRole('button')
-    const submitBtn = submitBtns.find(b => b.textContent === 'Log prediction')
-    if (submitBtn) await userEvent.click(submitBtn)
+    const dialogContent = screen.getByTestId('dialog-content')
+    const submitBtn = within(dialogContent).getByRole('button', { name: /log prediction/i })
+    await userEvent.click(submitBtn)
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeDefined()
     })
@@ -75,9 +75,9 @@ describe('LogPredictionAction', () => {
     await userEvent.click(screen.getByText(/log prediction/i))
     const textarea = screen.getByPlaceholderText(/what observation would refute/i)
     await userEvent.type(textarea, 'No promotion received by December 2026')
-    const submitBtns = screen.getAllByRole('button')
-    const submitBtn = submitBtns.find(b => b.textContent === 'Log prediction')
-    if (submitBtn) await userEvent.click(submitBtn)
+    const dialogContent = screen.getByTestId('dialog-content')
+    const submitBtn = within(dialogContent).getByRole('button', { name: /log prediction/i })
+    await userEvent.click(submitBtn)
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/lel', expect.objectContaining({ method: 'POST' }))

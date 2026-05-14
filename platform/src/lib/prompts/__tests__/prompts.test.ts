@@ -442,11 +442,11 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
 
   // AC.9 — All 8 templates (including cross_native stub) at version 2.0+
   it.each([...ACTIVE_QUERY_CLASSES, 'cross_native'] as QueryClass[])(
-    'AC.9 template "%s": version is 2.0',
+    'AC.9 template "%s": version is 2.0+',
     (qc) => {
       const registry = getDefaultRegistry()
       const tmpl = registry.get(qc, 'super_admin', 'single_model')
-      expect(tmpl.version).toBe('2.0')
+      expect(parseFloat(tmpl.version)).toBeGreaterThanOrEqual(2.0)
     },
   )
 

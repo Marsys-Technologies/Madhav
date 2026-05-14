@@ -3,12 +3,12 @@ import { filesystemAdapter } from '../filesystem'
 
 describe('filesystemAdapter', () => {
   it('reads a known file', async () => {
-    const content = await filesystemAdapter.readFile('platform/package.json')
+    const content = await filesystemAdapter.readFile('package.json')
     expect(content).toContain('"name"')
   })
 
   it('fileExists returns true for known file', async () => {
-    expect(await filesystemAdapter.fileExists('platform/package.json')).toBe(true)
+    expect(await filesystemAdapter.fileExists('package.json')).toBe(true)
   })
 
   it('fileExists returns false for missing file', async () => {
@@ -20,13 +20,13 @@ describe('filesystemAdapter', () => {
   })
 
   it('listFiles returns an array of strings', async () => {
-    const files = await filesystemAdapter.listFiles('platform/src/lib/storage')
+    const files = await filesystemAdapter.listFiles('src/lib/storage')
     expect(Array.isArray(files)).toBe(true)
     expect(files.length).toBeGreaterThan(0)
   })
 
   it('listFiles filters by pattern', async () => {
-    const files = await filesystemAdapter.listFiles('platform/src/lib/storage', { pattern: '*.ts' })
+    const files = await filesystemAdapter.listFiles('src/lib/storage', { pattern: '*.ts' })
     expect(files.every((f) => f.endsWith('.ts'))).toBe(true)
   })
 })
