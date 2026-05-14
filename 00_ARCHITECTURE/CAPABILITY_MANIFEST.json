@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T23:00:00+05:30",
+  "generated_at": "2026-05-14T23:59:00+05:30",
   "generator_version": "1.0",
-  "entry_count": 117,
+  "entry_count": 121,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -1688,6 +1688,58 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
       "note": "GT.047–GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
+    },
+    {
+      "canonical_id": "TRANSLATION_CROSS_CHECK",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/TRANSLATION_CROSS_CHECK_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-H-S1",
+      "note": "8 non-English texts cross-checked; 0 SIGNIFICANT_VARIANCE; 0 confidence downgrades; AC.M8H.1 PASS"
+    },
+    {
+      "canonical_id": "ACHARYA_REVIEW_SAMPLE",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/ACHARYA_REVIEW_SAMPLE_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-H-S1",
+      "note": "20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS"
+    },
+    {
+      "canonical_id": "M8_CLOSE",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/M8_CLOSE_v1_0.md",
+      "version": "1.0",
+      "status": "CLOSED",
+      "layer": "L8",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-H-S1",
+      "note": "M8 macro-phase sealing artifact; IS.8(a)+(b) red-team PASS 5/5; all exit criteria MET; AC.M8H.3+4 PASS"
+    },
+    {
+      "canonical_id": "CLAUDECODE_BRIEF_M8",
+      "path": "00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M8_v1_0.md",
+      "version": "1.0",
+      "status": "ARCHIVED",
+      "layer": "L0",
+      "expose_to_chat": false,
+      "representations": ["markdown"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "produced_during": "M8-H-S1",
+      "note": "M8 CLAUDECODE_BRIEF archived at M8 close; AC.M8H.9 PASS"
     }
   ]
 }

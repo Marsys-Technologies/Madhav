@@ -23531,3 +23531,76 @@ session_close:
       change: "MP.2 mirror update (M8-G-S1 closed state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M8-H-S1
+  opened_at: "2026-05-14T23:00:00+05:30"
+  phase: M8-H
+  cowork_thread_name: "M8-H-S1 — Quality Gate + Red-Team + M8 Close"
+  may_touch:
+    - "08_CLASSICAL_CROSS_REFERENCE/**"
+    - "00_ARCHITECTURE/briefs/**"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "CLAUDECODE_BRIEF.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  must_not_touch:
+    - "01_FACTS_LAYER/**"
+    - "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+    - "platform/src/**"
+    - "06_LEARNING_LAYER/**"
+  red_team_due: true
+
+session_body:
+  objective: "Translation cross-check for 8 non-English texts. Acharya-grade review of 20 attribution findings. IS.8(a)+IS.8(b) red-team. M8_CLOSE_v1_0.md sealing artifact. M8→M9 CURRENT_STATE transition. CLAUDECODE_BRIEF archival."
+  ac_targets:
+    - AC.M8H.1: "TRANSLATION_CROSS_CHECK_v1_0.md — 8 texts; 0 SIGNIFICANT_VARIANCE"
+    - AC.M8H.2: "ACHARYA_REVIEW_SAMPLE_v1_0.md — 20 findings (4×5 domains)"
+    - AC.M8H.3: "IS.8(a)+(b) red-team — 5/5 axes PASS"
+    - AC.M8H.4: "M8_CLOSE_v1_0.md authored"
+    - AC.M8H.5: "CURRENT_STATE v5.11 — M8 CLOSED / M9 INCOMING; red_team_counter=0"
+    - AC.M8H.6: "SESSION_LOG M8-H-S1 appended"
+    - AC.M8H.7: "CAPABILITY_MANIFEST entry_count 117→121"
+    - AC.M8H.8: "MP.1+MP.2 mirrors propagated"
+    - AC.M8H.9: "CLAUDECODE_BRIEF.md archived + status=COMPLETE"
+    - AC.M8H.10: "M8 exit criteria a–e documented as MET in M8_CLOSE §6"
+  key_outputs:
+    - "08_CLASSICAL_CROSS_REFERENCE/TRANSLATION_CROSS_CHECK_v1_0.md (NEW)"
+    - "08_CLASSICAL_CROSS_REFERENCE/ACHARYA_REVIEW_SAMPLE_v1_0.md (NEW)"
+    - "08_CLASSICAL_CROSS_REFERENCE/M8_CLOSE_v1_0.md (NEW — sealing artifact)"
+    - "00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M8_v1_0.md (ARCHIVED)"
+    - "CLAUDECODE_BRIEF.md (status=COMPLETE)"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json (entry_count 117→121)"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.11 — M8 CLOSED / M9 INCOMING)"
+  m8_full_arc_summary: "M8 Classical Text Cross-Reference macro-phase completed in 8 sessions on 2026-05-14. Total: 11 texts ingested (8349 chunks); 420 attribution rows (76/543 signals attributed); MSR v4.0 (543 signals, +29 Nadi/BNN §VII); 2 new RetrievalTool wrappers wired into pipeline; classical_grounding query_class added to all definition sites; 28/28 integration tests passing; IS.8(b) red-team PASS 5/5; 0 CRITICAL/HIGH findings. Acharya-grade quality: 0 fabrications, 0 invented verses, 0 translation SIGNIFICANT_VARIANCE, 1 ABOVE_ACHARYA_LEVEL finding."
+  red_team_result: "IS.8(a)+(b) PASS 5/5 axes; RT.M8.1–5 all PASS; 0 CRITICAL; 0 HIGH; 0 MEDIUM. red_team_counter reset to 0."
+
+session_close:
+  session_id: M8-H-S1
+  closed_at: "2026-05-14T23:59:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M8H.1: "PASS — TRANSLATION_CROSS_CHECK_v1_0.md; 8 texts checked; 0 SIGNIFICANT_VARIANCE; 0 downgrades"
+    AC.M8H.2: "PASS — ACHARYA_REVIEW_SAMPLE_v1_0.md; 20 findings; 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1)"
+    AC.M8H.3: "PASS — IS.8(a)+(b) red-team 5/5 axes PASS; 0 CRITICAL; 0 HIGH; 0 MEDIUM"
+    AC.M8H.4: "PASS — M8_CLOSE_v1_0.md authored at 08_CLASSICAL_CROSS_REFERENCE/"
+    AC.M8H.5: "PASS — CURRENT_STATE v5.11; M8 CLOSED / M9 INCOMING; red_team_counter=0"
+    AC.M8H.6: "PASS — SESSION_LOG M8-H-S1 appended"
+    AC.M8H.7: "PASS — CAPABILITY_MANIFEST 4 new M8-H entries + CLAUDECODE_BRIEF_M8; entry_count 117→121"
+    AC.M8H.8: "PASS — MP.1+MP.2 mirrors propagated to M8-CLOSED state"
+    AC.M8H.9: "PASS — CLAUDECODE_BRIEF.md status=COMPLETE; archived to briefs/CLAUDECODE_BRIEF_M8_v1_0.md"
+    AC.M8H.10: "PASS — M8 exit criteria a–e all MET in M8_CLOSE §6"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1 mirror update (M8-H-S1 closed; M8 MACRO-PHASE CLOSED; M9 INCOMING)"
+    - path: ".gemini/project_state.md"
+      change: "MP.2 mirror update (M8-H-S1 closed; M8 CLOSED state block)"
+  session_close_valid: true
+```

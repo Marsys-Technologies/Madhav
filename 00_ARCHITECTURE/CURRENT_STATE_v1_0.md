@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.10
+version: 5.11
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.11 (2026-05-14, M8-H-S1):
+    **M8 MACRO-PHASE CLOSED. M9 INCOMING. IS.8(a)+(b) RED-TEAM PASS 5/5.**
+    Key outcomes: (1) AC.M8H.1 PASS — TRANSLATION_CROSS_CHECK_v1_0.md: 8 non-English texts; 0 SIGNIFICANT_VARIANCE; 0 confidence downgrades applied. (2) AC.M8H.2 PASS — ACHARYA_REVIEW_SAMPLE_v1_0.md: 20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL finding (S1: Jupiter 9H × Indu Lagna); 4 annotation-level observations. (3) AC.M8H.3 PASS — IS.8(a)+IS.8(b) red-team 5/5 axes PASS; 0 CRITICAL; 0 HIGH; 0 MEDIUM. IS.8(b) macro-phase-close cadence DISCHARGED. (4) AC.M8H.4 PASS — M8_CLOSE_v1_0.md sealing artifact authored at 08_CLASSICAL_CROSS_REFERENCE/. (5) AC.M8H.5 PASS — CURRENT_STATE updated to M8 CLOSED / M9 INCOMING; red_team_counter=0. (6) AC.M8H.6 PASS — SESSION_LOG M8-H-S1 appended. (7) AC.M8H.7 PASS — CAPABILITY_MANIFEST: 4 new M8-H entries + CLAUDECODE_BRIEF_M8 entry; entry_count 117→121. (8) AC.M8H.8 PASS — MP.1+MP.2 mirrors propagated. (9) AC.M8H.9 PASS — CLAUDECODE_BRIEF.md archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M8_v1_0.md; root CLAUDECODE_BRIEF.md status=COMPLETE. (10) AC.M8H.10 PASS — M8 exit criteria a–e all MET in M8_CLOSE §6.
+    M8 corpus statistics at close: 11 texts; 8349 chunks; 420 attribution rows (76 signals attributed); 543 MSR signals (v4.0); 24 retrieval tools; 28 integration tests passing.
+    Carry-forwards: CF.M8.1 (Brihat Samhita 12 chunks not embedded — Vertex 20k limit); CF.M8.2 (Jaimini DIS.010/011 N3-deferred); CF.M8.3–4 (acharya annotation precision); CF.M8.5 (Saravali `contradicts` review); CF.M8.6 (attribution coverage expansion — 76/543 attributed); CF.M8.7 (PipelinePlanInputJsonSchema NIM-compat — classical_grounding not in §5 JSON schema yet).
+    red_team_counter: 0 (IS.8(b) DISCHARGED; IS.8(a) also consumed; both fire and reset at macro-phase-close).
+    active_phase_plan_sub_phase: M8 CLOSED. M9 INCOMING — first M9 session must author PHASE_M9_PLAN_v1_0.md before execution.
+    last_session_id: M8-H-S1. next_session_objective: M9-A-S1 — author PHASE_M9_PLAN_v1_0.md; confirm M9 scope with native; then execute M9 per plan.
+    file_updated_at: 2026-05-14T23:59:00+05:30. file_updated_by_session: M8-H-S1.
   - v5.10 (2026-05-14, M8-G-S1):
     **M8-G-S1 CLOSED. QUERY PIPELINE INTEGRATION COMPLETE. 28 INTEGRATION TESTS PASSING.**
     Key outcomes: (1) AC.M8G.1 PASS — classical_text_search_tool.ts RetrievalTool wrapper implemented; registered in RETRIEVAL_TOOLS (24 tools total). (2) AC.M8G.2 PASS — classical_attribution_lookup_tool.ts RetrievalTool wrapper implemented; registered in RETRIEVAL_TOOLS. (3) AC.M8G.3 PASS — GT.047–GT.049 classical_grounding golden entries added to planner_golden_set.json (49 total). (4) AC.M8G.4 PASS — classical_grounding query_class added to all 6 definition sites: pipeline/types.ts QueryClassEnum (Zod), bundle/types.ts, prompts/types.ts, jyotish/domain_labels.ts (+ QUERY_CLASS_LABELS entry), router/types.ts, retrieve/types.ts; LegacyQueryPlanShape in consume/route.ts updated; class_suggestions.ts updated. (5) AC.M8G.5 PASS — classical_disclosure_filter.ts authored; applyClassicalDisclosureFilter() + formatClassicalCitationForSynthesis(); NAP.M8.2 enforcement (public_redacted verse redaction). (6) AC.M8G.6 PASS — 28 integration tests passing (tests/classical/ 3 files); tsc 0 errors on M8-G files (pre-existing admin/aiops + deleted-module errors unchanged). (7) AC.M8G.7 PASS — CAPABILITY_MANIFEST updated: 5 new M8-G entries added (entry_count 112→117). (8) AC.M8G.8 PASS — SESSION_LOG M8-G-S1 appended.
