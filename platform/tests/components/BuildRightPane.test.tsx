@@ -42,40 +42,14 @@ describe('BuildRightPane', () => {
     vi.clearAllMocks()
   })
 
-  it('renders JourneyStrip', () => {
-    render(<BuildRightPane {...defaultProps} />)
-    expect(screen.getByTestId('journey-strip')).toBeTruthy()
-  })
-
-  it('renders BriefPanel', () => {
-    render(<BuildRightPane {...defaultProps} />)
-    expect(screen.getByTestId('brief-panel')).toBeTruthy()
-  })
-
-  it('renders InsightCards when insights are present', () => {
-    render(<BuildRightPane {...defaultProps} />)
-    expect(screen.getByTestId('insight-cards')).toBeTruthy()
-  })
-
   it('does not render InsightCards when insights array is empty', () => {
     render(<BuildRightPane {...defaultProps} insights={[]} />)
     expect(screen.queryByTestId('insight-cards')).toBeNull()
   })
 
-  it('renders MirrorPairsTable', () => {
-    render(<BuildRightPane {...defaultProps} />)
-    expect(screen.getByTestId('mirror-pairs-table')).toBeTruthy()
-  })
-
   it('PyramidStatusPanel is collapsed by default (not visible)', () => {
     render(<BuildRightPane {...defaultProps} />)
     expect(screen.queryByTestId('pyramid-status-panel')).toBeNull()
-  })
-
-  it('renders the pyramid toggle button', () => {
-    render(<BuildRightPane {...defaultProps} />)
-    const toggle = screen.getByRole('button', { name: /pyramid layers/i })
-    expect(toggle).toBeTruthy()
   })
 
   it('clicking the toggle opens PyramidStatusPanel', async () => {

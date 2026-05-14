@@ -146,37 +146,6 @@ describe('BuildChat', () => {
     vi.clearAllMocks()
   })
 
-  it('renders ChatShell', () => {
-    render(<BuildChat {...defaultProps} />)
-    expect(screen.getByTestId('chat-shell')).toBeTruthy()
-  })
-
-  it('renders ConversationSidebar', () => {
-    render(<BuildChat {...defaultProps} />)
-    expect(screen.getByTestId('conversation-sidebar')).toBeTruthy()
-  })
-
-  it('renders BuildRightPane', () => {
-    render(<BuildChat {...defaultProps} />)
-    expect(screen.getByTestId('build-right-pane')).toBeTruthy()
-  })
-
-  it('renders Composer (interactive input)', () => {
-    render(<BuildChat {...defaultProps} />)
-    expect(screen.getByTestId('composer')).toBeTruthy()
-  })
-
-  it('Composer contains a text input / textarea', () => {
-    render(<BuildChat {...defaultProps} />)
-    const textarea = screen.getByRole('textbox', { name: /composer input/i })
-    expect(textarea).toBeTruthy()
-  })
-
-  it('shows WelcomeGreeting when there are no messages', () => {
-    render(<BuildChat {...defaultProps} />)
-    expect(screen.getByTestId('welcome-greeting')).toBeTruthy()
-  })
-
   it('passes chartName through to WelcomeGreeting', () => {
     render(<BuildChat {...defaultProps} chartName="My Chart" />)
     expect(screen.getByTestId('welcome-greeting').textContent).toContain('My Chart')

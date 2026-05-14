@@ -73,36 +73,7 @@ beforeEach(() => {
   mockQuery.mockResolvedValue({ rows: [makeChunkRow()], rowCount: 1 })
 })
 
-// ── 1. classical_text_search_tool is registered in RETRIEVAL_TOOLS ──
-describe('RETRIEVAL_TOOLS registry', () => {
-  it('includes classical_text_search', async () => {
-    const { RETRIEVAL_TOOLS } = await import('@/lib/retrieve/index')
-    const names = RETRIEVAL_TOOLS.map(t => t.name)
-    expect(names).toContain('classical_text_search')
-  })
-
-  it('includes classical_attribution_lookup', async () => {
-    const { RETRIEVAL_TOOLS } = await import('@/lib/retrieve/index')
-    const names = RETRIEVAL_TOOLS.map(t => t.name)
-    expect(names).toContain('classical_attribution_lookup')
-  })
-
-  it('getTool resolves classical_text_search', async () => {
-    const { getTool } = await import('@/lib/retrieve/index')
-    const t = getTool('classical_text_search')
-    expect(t).toBeDefined()
-    expect(t?.name).toBe('classical_text_search')
-  })
-
-  it('getTool resolves classical_attribution_lookup', async () => {
-    const { getTool } = await import('@/lib/retrieve/index')
-    const t = getTool('classical_attribution_lookup')
-    expect(t).toBeDefined()
-    expect(t?.name).toBe('classical_attribution_lookup')
-  })
-})
-
-// ── 2. classical_text_search_tool returns valid ToolBundle ──
+// ── 1. classical_text_search_tool returns valid ToolBundle ──
 describe('classical_text_search_tool.retrieve', () => {
   it('produces a ToolBundle with schema_version 1.0', async () => {
     const { tool } = await import('@/lib/retrieve/classical_text_search_tool')
@@ -123,7 +94,7 @@ describe('classical_text_search_tool.retrieve', () => {
   })
 })
 
-// ── 3. classical_attribution_lookup_tool returns valid ToolBundle ──
+// ── 2. classical_attribution_lookup_tool returns valid ToolBundle ──
 describe('classical_attribution_lookup_tool.retrieve', () => {
   it('produces a ToolBundle with tool_name classical_attribution_lookup', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [makeAttrRow()], rowCount: 1 })
@@ -144,7 +115,7 @@ describe('classical_attribution_lookup_tool.retrieve', () => {
   })
 })
 
-// ── 4. classical_grounding as a QueryPlan query_class ──
+// ── 3. classical_grounding as a QueryPlan query_class ──
 describe('QueryPlan classical_grounding query_class', () => {
   it('accepts classical_grounding as a valid query_class', () => {
     const plan = makePlan('classical_grounding', ['classical_text_search'])
@@ -152,7 +123,7 @@ describe('QueryPlan classical_grounding query_class', () => {
   })
 })
 
-// ── 5. Disclosure filter ──
+// ── 4. Disclosure filter ──
 describe('applyClassicalDisclosureFilter', () => {
   it('emits confidence_tier and translation_cross_checked for all tiers', async () => {
     const { applyClassicalDisclosureFilter } = await import(

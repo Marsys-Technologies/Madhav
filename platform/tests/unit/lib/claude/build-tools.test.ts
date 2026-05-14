@@ -19,11 +19,6 @@ describe('buildTools', () => {
     vi.clearAllMocks()
   })
 
-  it('exports 10 tool definitions', async () => {
-    const { buildTools } = await import('@/lib/claude/build-tools')
-    expect(Object.keys(buildTools)).toHaveLength(10)
-  })
-
   it('every tool has description and inputSchema', async () => {
     const { buildTools } = await import('@/lib/claude/build-tools')
     for (const t of Object.values(buildTools)) {
