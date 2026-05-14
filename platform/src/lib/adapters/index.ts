@@ -4,8 +4,9 @@ export type {
   ModelInteractionEvent,
   IntermediateEvent,
   ToolDefinition,
+  ProviderQuirks,
 } from './types'
 
+export { runAdapter } from './run_adapter'
+export { streamAdapter } from './stream_adapter'
 export { adapterFor } from './dispatcher'
-
-// runAdapter and streamAdapter are exported in AD.2 once the dispatcher is wired.
