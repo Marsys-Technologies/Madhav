@@ -1,28 +1,27 @@
 ---
-status: COMPLETE
-session_id: AIOPS_AD_4
-phase: AD.4
-phase_name: "Call-site migration + legacy-path preservation + flag-off equivalence"
-next_session: AIOPS_AD_5
+status: OPEN
+session_id: AIOPS_AD_5
+phase: AD.5
+phase_name: "Cutover smoke + flag flip + native acceptance"
+next_session: AIOPS_PHASE_2_COMPLETE
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_2_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_AD_4
-## AIOps Phase 2, Step 4 — Migrate every call site to runAdapter / streamAdapter
+# CLAUDECODE_BRIEF — AIOPS_AD_5
+## AIOps Phase 2, Step 5 — Cutover and acceptance
 
 ---
 
 ## §0 — Executor orientation
 
-AD.4 migrates every direct `streamText` / `generateText` call to use
-`runAdapter` / `streamAdapter`. Behind the flag `ADAPTERS_ENABLED` (default
-false), the legacy path is preserved in `legacy_runAdapter.ts` and the
-call sites short-circuit to it. With the flag on, the new path is active.
+AD.5 is the cutover. Equivalence is verified in AD.4. This session runs
+the full cutover smoke, edits `deploy.yml` to set `ADAPTERS_ENABLED=true`,
+commits, pushes, waits for production deploy, verifies the new revision
+has the flag on, and prepares the native acceptance handoff.
 
-The win condition: 35+ flag-off equivalence tests pass byte-identically
-between legacy and new paths (the same pattern Phase 1 used). Once that
-gate is green, AD.5 flips the flag.
+Same playbook as Phase 1's CP.5. The native does the final review + merge
+to main.
 
 ---
 
@@ -30,20 +29,13 @@ gate is green, AD.5 flips the flag.
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_2/AIOPS_PHASE_2_MASTER_PLAN_v1_0.md §8
+2. 00_ARCHITECTURE/aiops/phase_2/AIOPS_PHASE_2_MASTER_PLAN_v1_0.md §10, §11, §12, §13
 3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-4. platform/src/lib/adapters/ (AD.0-AD.3 deliverables)
-5. platform/src/lib/synthesis/single_model_strategy.ts
-6. platform/src/lib/synthesis/panel/member_runner.ts
-7. platform/src/lib/synthesis/panel/adjudicator.ts
-8. platform/src/lib/synthesis/orchestrator.ts
-9. platform/src/app/api/chat/consume/route.ts
-10. platform/src/lib/aiops/probe/runner.ts (Phase 1 probe runner)
-11. platform/scripts/aiops/cutover_smoke.ts (Phase 1)
-12. platform/scripts/aiops/probe_health_cron.ts (Phase 1)
-13. platform/scripts/eval/* — every eval entrypoint
-14. platform/scripts/checkpoint/* — every checkpoint script
-15. platform/src/lib/synthesis/think_block_filter.ts (will be DELETED at end of AD.4)
+4. 00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md
+5. platform/scripts/aiops/cutover_smoke.ts (now adapter-routed)
+6. .github/workflows/deploy.yml — current state
+7. Phase 1's CP5_NATIVE_ACCEPTANCE.md (template — produce analogous AD5_NATIVE_ACCEPTANCE.md)
+8. Phase 1's CP5_CUTOVER_REPORT_v1_0.md (template)
 ```
 
 ---
@@ -52,174 +44,112 @@ gate is green, AD.5 flips the flag.
 
 ### may_touch
 ```
-platform/src/lib/adapters/**                       # legacy_runAdapter + equivalence tests
-platform/src/lib/synthesis/**                       # migrate single_model_strategy, panel/*, think_block_filter deletion
-platform/src/app/api/chat/**                        # consume + build routes (build/route.ts uses streamText for SSE)
-platform/src/app/api/consume/**                     # suggestions/context/route.ts uses generateText
-platform/src/app/api/performance/**                 # judge/route.ts uses generateText
-platform/src/lib/aiops/probe/**                     # probe runner
-platform/src/lib/checkpoints/**                     # checkpoint_4_5/5_5/8_5.ts (corrected — original brief said scripts/)
-platform/src/lib/conversations/**                   # title.ts
-platform/src/lib/pipeline/**                        # pipeline_planner, planner_context_builder
-platform/src/lib/models/resolver.ts                 # thin deepseekProviderOptions/googleProviderOptions to legacy passthrough
-platform/src/lib/models/health.ts                   # migrate to runAdapter
-platform/scripts/aiops/**                           # cutover_smoke, probe_health_cron migrations
-platform/scripts/eval/**                            # any eval entrypoints
-00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md  # NEW inventory file authored at §3.1
+.github/workflows/deploy.yml                          # add ADAPTERS_ENABLED=true to env_vars
+platform/scripts/aiops/cutover_smoke_adapters.ts       # NEW — Phase 2-specific smoke
+00_ARCHITECTURE/aiops/phase_2/AD5_CUTOVER_REPORT_v1_0.md  # NEW
+00_ARCHITECTURE/aiops/phase_2/AD5_NATIVE_ACCEPTANCE.md    # NEW
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- platform/src/components/consume/** — Phase 3
-- platform/src/lib/components/observatory/** — sealed
-- platform/src/lib/llm/providers/*_observed.ts — adapters CALL these; observed wrappers unchanged
+- Everything outside may_touch.
+- Do NOT push the branch to main; this brief stops at "ready for merge".
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Inventory call sites
+### 3.1 — Cutover smoke for the adapter
 
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/madhav-phase-2-tmp
-grep -rn "streamText\|generateText" platform/src platform/scripts | grep -v __tests__
+Author `platform/scripts/aiops/cutover_smoke_adapters.ts`:
+
+For every model that has a populated quirks field, invoke
+`streamAdapter` with a small canonical prompt and collect the resulting
+`ModelInteraction`. Report per-model:
+- pass/fail
+- latency
+- reasoning emitted (Y/N)
+- finalText present (Y/N)
+- usage tokens recorded
+
+Compare two runs: `ADAPTERS_ENABLED=false` vs `ADAPTERS_ENABLED=true`. For
+non-Anthropic models, results must MATCH within tolerance (text lengths
+should match exactly via deterministic mocked SDKs, OR by using seeded
+prompts that produce stable outputs).
+
+### 3.2 — Edit deploy.yml
+
+Add to the `env_vars:` block of the deploy-web job:
+
+```yaml
+            ADAPTERS_ENABLED=true
 ```
 
-Capture the full list in `00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md`.
+Insert after `AIOPS_OVERRIDES_ENABLED=true` if that line still exists,
+otherwise after `NODE_ENV=production`.
 
-### 3.2 — Author legacy_runAdapter
+Note: the AIOPS_OVERRIDES_ENABLED line was removed in commit 887e11a
+(Phase 1 flag removal). Verify before editing.
 
-`platform/src/lib/adapters/legacy_runAdapter.ts`:
+### 3.3 — Pre-deploy verification
 
-A drop-in replacement for `runAdapter` that uses the existing `streamText`
-+ provider-options pattern. When `ADAPTERS_ENABLED=false`, this is what
-runs. Implementation copies the logic from current call sites (DeepSeek
-thinking, Gemini safety + thinking, etc.) into one function. After AD.5
-flip stabilizes for 2 weeks, this file gets deleted (per flag-removal PR).
+Run the smoke script both flag states locally, save results to evidence
+directory `00_ARCHITECTURE/aiops/phase_2/cutover_evidence/`.
 
-### 3.3 — Wire the flag
+### 3.4 — Commit + push
 
-`platform/src/lib/adapters/run_adapter.ts` (already exists from AD.2):
+```
+ops(aiops-Phase-2): enable ADAPTERS_ENABLED in production
 
-```ts
-import { isFeatureFlagEnabled } from '@/lib/config/feature_flags'
-import { runAdapterNew } from './run_adapter_new'  // the AD.2 + AD.3 implementation
-import { runAdapterLegacy } from './legacy_runAdapter'
+AIOps Phase 2 (Adapter Layer) is now active in production. The adapter
+contract `runAdapter` / `streamAdapter` routes every LLM call through
+provider-specific normalization, emitting typed ModelInteractionEvent
+streams that Phase 3 (Consume UI Overhaul) will consume.
 
-export async function runAdapter(req: QueryRequest): Promise<ModelInteraction> {
-  if (isFeatureFlagEnabled('ADAPTERS_ENABLED')) {
-    return runAdapterNew(req)
-  }
-  return runAdapterLegacy(req)
-}
+Code:
+- 5 provider adapters (anthropic, deepseek, gemini, openai, nim)
+- ProviderQuirks metadata on every model in registry
+- Call-site migration: N sites in platform/src + platform/scripts
+- think_block_filter.ts retired (logic moved into adapter_deepseek)
+- 35+ flag-off equivalence tests passed in AD.4
+- Cutover smoke: parity confirmed both flag states
+
+Rollback (no code revert needed):
+  gcloud run services update amjis-web --region asia-south1 \
+    --remove-env-vars ADAPTERS_ENABLED
+
+Flag removal PR scheduled 2 weeks post-flip.
 ```
 
-Same pattern for `streamAdapter`.
+### 3.5 — Wait for deploy, verify
 
-### 3.4 — Migrate call sites
+Same as Phase 1's CP.5:
+- Poll deploy-web job until success.
+- Confirm new revision has ADAPTERS_ENABLED=true via gcloud describe.
+- (Note: same deploy-cloudrun@v2 merge-not-replace behavior — adding a NEW env var works via the deploy; only REMOVING needs the supplementary gcloud command.)
 
-For each call site (mechanical):
+### 3.6 — Produce reports
 
-**Before:**
-```ts
-const meta = getModelMeta(modelId)
-const model = resolveModel(modelId)
-const providerOpts = { ...deepseekProviderOptions(modelId, 'synthesis'), ...googleProviderOptions(modelId) }
-const result = await streamText({ model, system, messages, providerOptions: providerOpts, maxOutputTokens, temperature, tools })
-// ... custom <think> parsing via think_block_filter ...
-```
+Author `AD5_CUTOVER_REPORT_v1_0.md` populated with live smoke numbers.
+Author `AD5_NATIVE_ACCEPTANCE.md` with a 12-item checklist.
 
-**After:**
-```ts
-const interaction = await runAdapter({
-  callType: 'synthesis',
-  systemPrompt: system,
-  messages,
-  tools,
-  maxOutputTokens,
-  temperature,
-  reasoning: 'auto',
-})
-// Use interaction.reasoning, interaction.finalText directly — no more <think> parsing
-```
+### 3.7 — Flip CLAUDECODE_BRIEF to COMPLETE
 
-### Three adapter entry points — choose per call site type:
+```yaml
+---
+status: COMPLETE
+session_id: AIOPS_AD_5
+completed_at: <ISO>
+next_native_action: >
+  Review AD5_NATIVE_ACCEPTANCE.md and complete the checklist; merge
+  feature/aiops-phase-2-adapters to main when satisfied. Set
+  ADAPTERS_ENABLED=true confirmed on production revision <revision-name>.
+---
 
-| Call site pattern | Entry point | Why |
-|---|---|---|
-| `generateText({ ... })` — single-shot non-streaming, with or without tools | `runAdapter(req)` | Collects the stream into a `ModelInteraction`. Synchronous-feeling API. |
-| `streamText({ ... })` — single-shot streaming consumed by custom event handlers (not AI SDK UI) | `streamAdapter(req)` | Returns `ReadableStream<ModelInteractionEvent>` with typed events. |
-| `streamText({ ... })` — agentic loop with `stopWhen: stepCountIs(N)`, OR streaming response piped via `result.toUIMessageStreamResponse()` to SSE | `streamAdapterRaw(req)` → `{ result, meta }` | Returns the AI SDK `StreamTextResult` directly. Caller uses `.toUIMessageStreamResponse()` (SSE) or reads `.fullStream` (custom multi-step handling). Provider quirks still applied by the adapter. |
+# AIOps Phase 2 — COMPLETE
 
-#### Per-site migration pattern map:
-
-| Call site | Entry point | Key options to pass |
-|---|---|---|
-| `synthesis/single_model_strategy.ts` (multi-step + audit) | `streamAdapterRaw` | `multiStep: { maxSteps: 5 }`, `smoothStream: true`, `onStepFinish`, `onFinish` |
-| `synthesis/panel_strategy.ts` (panel verbatim passthrough) | `streamAdapterRaw` | `multiStep` as needed; caller pipes `result` to its own consumer |
-| `synthesis/panel/member_runner.ts` (single panel member) | `runAdapter` | tools, temperature |
-| `synthesis/panel/adjudicator.ts` (final adjudication) | `runAdapter` | tools (if any), responseSchema (if structured output) |
-| `pipeline/pipeline_planner.ts` (tool-choice required) | `runAdapter` | `tools`, `toolChoice: 'required'` (or `{ type: 'tool', toolName }`) |
-| `pipeline/planner_context_builder.ts` (single generateText for context) | `runAdapter` | no special options |
-| `app/api/chat/consume/route.ts` (SSE pipe) | `streamAdapterRaw` | `multiStep` (synthesis under it), `onStepFinish`, `onFinish` for audit; then `return result.toUIMessageStreamResponse()` |
-| `app/api/chat/build/route.ts` (SSE pipe) | `streamAdapterRaw` | same SSE pattern |
-| `aiops/probe/runner.ts` | `runAdapter` | minimal — single call, no tools |
-| `checkpoints/checkpoint_{4_5,5_5,8_5}.ts` | `runAdapter` | minimal |
-| `conversations/title.ts` | `runAdapter` | minimal |
-| `models/health.ts` | `runAdapter` | minimal |
-| `scripts/retrieval/test_classify.ts` | `runAdapter` | as needed |
-
-Migrate in this order (low-risk first):
-1. `platform/src/lib/aiops/probe/runner.ts`
-2. `platform/scripts/aiops/cutover_smoke.ts`
-3. `platform/scripts/aiops/probe_health_cron.ts`
-4. `platform/scripts/eval/*`
-5. `platform/scripts/checkpoint/*`
-6. `platform/src/lib/synthesis/single_model_strategy.ts`
-7. `platform/src/lib/synthesis/panel/member_runner.ts`
-8. `platform/src/lib/synthesis/panel/adjudicator.ts`
-9. `platform/src/lib/synthesis/orchestrator.ts`
-10. `platform/src/app/api/chat/consume/route.ts`
-
-After each, run that area's tests. Don't continue to next site until tests
-pass.
-
-### 3.5 — Thin resolver.ts
-
-`platform/src/lib/models/resolver.ts`:
-- `resolveModel(id)` → keeps as-is (ID → LanguageModel). Some non-adapter
-  consumers might still use it (rare; document).
-- `deepseekProviderOptions(...)` → keep but mark deprecated. Used only by
-  `legacy_runAdapter.ts` until flag removal.
-- `googleProviderOptions(...)` → same.
-
-### 3.6 — Delete think_block_filter.ts
-
-After step 3.4 confirms no caller uses it. Run:
-```bash
-grep -r "think_block_filter" platform/src platform/scripts
-```
-Should return 0 hits. Then `git rm platform/src/lib/synthesis/think_block_filter.ts`
-and its test file.
-
-### 3.7 — Flag-off equivalence tests
-
-`platform/src/lib/adapters/__tests__/equivalence/runtime_equivalence.test.ts`:
-
-Parametrize across (stack × call_type × representative_prompt). For each:
-- Run with `ADAPTERS_ENABLED=false` → legacy path → capture ModelInteraction.
-- Run with `ADAPTERS_ENABLED=true` → new path → capture ModelInteraction.
-- Assert: `modelId`, `finalText`, `reasoning?.text`, `finishReason`, `usage.inputTokens`, `usage.outputTokens` MATCH.
-
-Use mocked SDK calls so the test is deterministic. ≥35 parametrized cases.
-
-### 3.8 — Smoke
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/madhav-phase-2-tmp
-npm --prefix platform run typecheck 2>&1 | tail -5
-npm --prefix platform run lint 2>&1 | tail -5
-npm --prefix platform run test -- --run 2>&1 | tail -10
+All six phases AD.0 → AD.5 closed. Adapter layer is live in production.
+Native acceptance pending per 00_ARCHITECTURE/aiops/phase_2/AD5_NATIVE_ACCEPTANCE.md.
 ```
 
 ---
@@ -228,44 +158,50 @@ npm --prefix platform run test -- --run 2>&1 | tail -10
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.AD4.1 | Call-site inventory file exists | `test -f 00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md` |
-| AC.AD4.2 | All inventoried sites migrated to runAdapter/streamAdapter | grep `streamText\\|generateText` in platform/src + scripts excluding tests + adapters/ + legacy returns 0 hits |
-| AC.AD4.3 | legacy_runAdapter.ts exists and is the flag-off path | grep + integration test |
-| AC.AD4.4 | think_block_filter.ts deleted | `! test -f platform/src/lib/synthesis/think_block_filter.ts` |
-| AC.AD4.5 | Equivalence tests parametrize ≥35 cases | `npm run test -- equivalence` ≥35 |
-| AC.AD4.6 | Every equivalence case passes | exit 0 |
-| AC.AD4.7 | typecheck + lint + full suite green | exit 0 each |
-| AC.AD4.8 | scope-violation grep | SCOPE_OK |
+| AC.AD5.1 | cutover_smoke_adapters.ts exists + runs both flag states | exit 0 each |
+| AC.AD5.2 | Parity confirmed (non-Anthropic models match) | assertion |
+| AC.AD5.3 | deploy.yml has ADAPTERS_ENABLED=true | grep |
+| AC.AD5.4 | Cutover report exists with all sections populated | grep section markers |
+| AC.AD5.5 | Native acceptance checklist exists | grep `[ ]` count ≥ 12 |
+| AC.AD5.6 | git push succeeded | log shows new commit on origin/main |
+| AC.AD5.7 | New Cloud Run revision has ADAPTERS_ENABLED=true | gcloud describe |
+| AC.AD5.8 | CLAUDECODE_BRIEF status: COMPLETE | grep |
+| AC.AD5.9 | Branch ahead of main by 6 phase commits | `git rev-list --count main..HEAD` ≥ 6 |
+| AC.AD5.10 | Full test suite green | exit 0 |
+| AC.AD5.11 | Madhav worktree unchanged | snapshot check |
 
 ---
 
 ## §5 — Session close
 
-Final commit:
+Same pattern as Phase 1 CP.5. Print the final report:
+
 ```
-feat(aiops-AD.4): migrate all call sites to runAdapter / streamAdapter
+═══════════════════════════════════════════════════════════════
+AIOps PHASE 2 (Adapter Layer) — code-complete in production.
 
-- N call sites in platform/src + platform/scripts migrated (inventory in AD4_CALL_SITES_INVENTORY.md)
-- legacy_runAdapter.ts preserves the old streamText+providerOptions path for flag-off behavior
-- ADAPTERS_ENABLED flag controls which path runs; default still false through this commit
-- think_block_filter.ts deleted (replaced by adapter_deepseek's MarkerBuffer)
-- resolver.ts deepseekProviderOptions / googleProviderOptions marked deprecated; used only by legacy path
-- 35+ equivalence tests assert byte-identical behavior flag-on vs flag-off
-- Full suite green
+Production revision: <amjis-web-NNN-xxx>
+Service URL:         https://amjis-web-qm256lasva-el.a.run.app
+Flag state:          ADAPTERS_ENABLED=true
+Cutover smoke:       <pass>/<total> parity ✓
 
-AC summary: 8/8 PASS
+Branch: feature/aiops-phase-2-adapters NOT pushed to GitHub.
+Native action: review AD5_NATIVE_ACCEPTANCE.md and merge.
+
+Ready for Phase 3 (Consume UI Overhaul) scoping refinement based on
+the actual adapter contract shipped in this branch.
+═══════════════════════════════════════════════════════════════
 ```
-
-Rotate brief → AD.5.
 
 ---
 
-## §7 — BAIL OUT triggers
+## §6 — BAIL OUT triggers
 
-- Any equivalence test fails — the new path diverges from legacy. Investigate. Do NOT continue to AD.5 until parity.
-- A call site requires deep refactoring that pulls in >5 unrelated files — bail and have native scope the change separately.
-- Panel mode interaction with the new adapter produces unexpected ordering — bail.
+- Parity smoke fails on non-Anthropic models — DO NOT push the flag.
+- Production deploy job fails — investigate.
+- New revision does not show ADAPTERS_ENABLED on env vars list — investigate.
 
 ---
 
-*End of PHASE_AD_4_BRIEF.md*
+*End of PHASE_AD_5_BRIEF.md*
+*End of AIOps Phase 2 brief arc.*
