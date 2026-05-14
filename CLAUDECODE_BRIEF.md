@@ -2,267 +2,408 @@
 artifact: CLAUDECODE_BRIEF.md
 status: NOT_COMPLETE
 executor: VS Code Claude Code Extension (anti-gravity) — dangerously-skip-permissions
-session_id_prefix: M6
-active_phase: M6-A
+session_id_prefix: M8
+active_phase: M8-A
 authored_at: 2026-05-14
-authored_by: Cowork-M6-WORKTREE-SETUP
-worktree_branch: feature/m6-prospective-testing
-governing_macro_phase: M6 — Prospective Testing
+authored_by: Cowork-M8-PLAN-AUTHORING
+worktree_branch: feature/m8-classical-cross-reference
+governing_macro_phase: M8 — Classical Text Cross-Reference
 predecessor_close: 06_LEARNING_LAYER/M5_CLOSE_v1_0.md (M5 CLOSED 2026-05-14)
-nap_gates:
-  - NAP.M6.0: phase plan approval — PENDING native review after M6-A
-  - NAP.M6.1: prediction batch review before windows sealed — PENDING native review after M6-B
+m6_status: TIME-GATED PARALLEL — brief archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M6_v1_0.md
+nap_gates: ALL PRE-AUTHORIZED (NAP.M8.0–NAP.M8.4 in PHASE_M8_PLAN_v1_0.md §frontmatter)
+execution_mode: fully_autonomous_sequential
 ---
 
-# CLAUDECODE_BRIEF — M6 Prospective Testing
+# CLAUDECODE_BRIEF — M8 Classical Text Cross-Reference
 
-## §0 — Mandatory reading order (before any tool call)
+## §0 — Mandatory reading order (before any tool call, every session)
 
-Read in this order at every session open:
+Read in this order at session open:
 1. CLAUDE.md (root)
-2. 00_ARCHITECTURE/CURRENT_STATE_v1_0.md §changelog v5.3 (M5 closed; M6 INCOMING)
-3. 06_LEARNING_LAYER/M5_CLOSE_v1_0.md §6 carry-forwards (CF.M5.1–CF.M5.9) + §8 seal block
-4. 00_ARCHITECTURE/MACRO_PLAN_v2_0.md §M6 (scope, exit state, risks a–d, time-gated note)
-5. 00_ARCHITECTURE/MACRO_PLAN_v2_0.md §CW.PPL (prediction ledger workstream)
-6. 06_LEARNING_LAYER/dbn/LL8_SPEC_v1_0.md (LL.8 ACTIVE; conjugate Beta protocol)
-7. 06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md (LL.9 SCAFFOLD; activation conditions)
-8. 06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl (current 20 predictions)
-9. 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §C.1–C.6 + §K
-10. 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md + SESSION_CLOSE_TEMPLATE_v1_0.md
-11. 00_ARCHITECTURE/ROOT_FILE_POLICY.md (before creating any file)
-12. This file (governs session scope and ACs)
-
-Do NOT read held-out LEL partition entries during M6-A.
+2. 00_ARCHITECTURE/CURRENT_STATE_v1_0.md §changelog (M5 CLOSED 2026-05-14; M8 OPEN)
+3. 00_ARCHITECTURE/PHASE_M8_PLAN_v1_0.md (full plan — governs all ACs and scope)
+4. 00_ARCHITECTURE/MACRO_PLAN_v2_0.md §M8 (scope, exit criteria, risk register)
+5. 00_ARCHITECTURE/GCS_LAYOUT_v1_0.md (MANDATORY before any gs:// URI is written)
+6. 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §C.1–C.6 + §K
+7. 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md + SESSION_CLOSE_TEMPLATE_v1_0.md
+8. 00_ARCHITECTURE/ROOT_FILE_POLICY.md (before creating any file)
+9. This file (governs execution mode and session sequence)
 
 ## §1 — Execution strategy
 
-Sessions run sequentially with --dangerously-skip-permissions.
-Each session closes (SESSION_LOG appended, CURRENT_STATE updated) before the next opens.
+ALL sessions run sequentially with --dangerously-skip-permissions. No pauses between sessions.
+All NAP gates (NAP.M8.0 through NAP.M8.4) are PRE-AUTHORIZED in PHASE_M8_PLAN_v1_0.md §frontmatter.
+The executor does NOT halt for permission prompts, NAP confirmation, or inter-session pauses.
 
-NAP gates are mandatory pauses. At each gate, set status field in this file's frontmatter
-to the gate value and HALT. The user resumes by setting status back to NOT_COMPLETE.
+Each session:
+  1. Emits SESSION_OPEN artifact per SESSION_OPEN_TEMPLATE_v1_0.md
+  2. Executes all deliverables for that session to PASS on every AC
+  3. Runs schema_validator.py at session close
+  4. Appends SESSION_LOG.md
+  5. Updates CURRENT_STATE_v1_0.md
+  6. Emits SESSION_CLOSE artifact per SESSION_CLOSE_TEMPLATE_v1_0.md
+  7. Commits (git commit -m "M8-X-S1: <summary>")
+  8. Immediately opens the next session
 
-Session sequence:
-  M6-A-S1 → plan + scaffold + carry-forwards → HALT (status: AWAITING_NAP_M6_0)
-  [native approves PHASE_M6_PLAN_v1_0.md → sets status: NOT_COMPLETE]
-  M6-B-S1 → prediction batch draft (CAREER + HEALTH; ≥12 predictions)
-  M6-B-S2 → prediction batch draft (RELATIONSHIP + SPIRITUAL + PSYCHOLOGICAL; ≥13 predictions)
-            → HALT (status: AWAITING_NAP_M6_1)
-  [native reviews predictions before windows sealed → sets status: NOT_COMPLETE]
-  M6-C-S1 → scoring engine + LL.9 activation
-  M6-C-S2 → answer:eval integration + calibration drift monitor + IS.8(a) check
+Session sequence (execute all in one continuous run):
+  M8-A-S1 → M8-B-S1 → M8-C-S1 → M8-D-S1 → M8-E-S1 → M8-F-S1 → M8-G-S1 → M8-H-S1
 
-## §2 — M6-A scope (ACTIVE)
+## §2 — M8-A-S1 (Foundation + Infrastructure)
 
-### M6-A-S1 deliverables
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-A for full deliverables and ACs.
 
-ITEM 1: PHASE_M6_PLAN_v1_0.md
-Author at 00_ARCHITECTURE/PHASE_M6_PLAN_v1_0.md.
-Sub-phases: M6-A (infrastructure), M6-B (prediction emission), M6-C (scoring engine),
-M6-D (ongoing scoring cycles — time-gated; scaffold only), M6-E (M6 close — time-gated).
-Each sub-phase must contain: scope, ACs, may_touch, must_not_touch, NAP registry rows.
-Risk register: reproduce MACRO_PLAN §M6 risks a–d with project-specific mitigations.
-Note explicitly: M6 is TIME-GATED (exit bar ≥50 scored windows requires elapsed calendar
-time; phase cannot be compressed). M6-D and M6-E open only as windows close.
-LLM stack: Gemini → DeepSeek → NIM. No Anthropic/Claude API per standing constraint.
+**Key actions in order:**
 
-ITEM 2: 07_PROSPECTIVE_TESTING/ scaffold
-Create directory structure:
-  07_PROSPECTIVE_TESTING/
-    README.md            ← purpose, path, link to PHASE_M6_PLAN
-    scoring/
-      scoring_protocol_v1_0.md   ← rubric: CONFIRMED/FALSIFIED/PARTIAL/AMBIGUOUS verdicts
-                                    + tie-break rules + window-drift prohibition
-      windows/                    ← empty; one JSON written here at each window close
-    predictions/
-      README.md                   ← pointers to prediction_ledger.jsonl + scored/
-      scored/                     ← predictions moved here after window closes
-    counterfactual/
-      README.md                   ← LL.9 mirror; links to miss_registry
-    calibration/
-      drift_log.jsonl             ← baseline entry written at M6-C-S1; empty for now
-      README.md
+STEP 1: Archive M6 CLAUDECODE_BRIEF
+  git mv 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M6_v1_0.md 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M6_v1_0.md 2>/dev/null || true
+  cp CLAUDECODE_BRIEF.md 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M6_v1_0.md
+  # Note: The M6 brief is already at CLAUDECODE_BRIEF.md root — we are REPLACING it with M8.
+  # Do NOT git mv the current CLAUDECODE_BRIEF.md; it IS already the M8 brief.
+  # Just write a copy of the OLD M6 content to briefs/ — but it was already overwritten by
+  # this M8 brief. The M6 brief content is archived in git history. Log in SESSION_LOG:
+  # "M6 CLAUDECODE_BRIEF archived to git history; M8 brief now active at root."
 
-ITEM 3: Carry-forward dispositions
-CF.M5.6 (HIGH — LL.8 first live update):
-  Read 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md header to find LEL version and last entry date.
-  If any LEL training event was added after 2026-05-14 (M5 close date): apply conjugate Beta
-  update per LL8_SPEC_v1_0.md §3.2b and update parameter_register.json.
-  If no new events: write to SESSION_LOG "CF.M5.6 queued — LL.8 update fires on next LEL entry."
+STEP 2: Create 08_CLASSICAL_CROSS_REFERENCE/ folder scaffold
+  mkdir -p 08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/{scripts,logs}
+  mkdir -p 08_CLASSICAL_CROSS_REFERENCE/corpus/raw
+  mkdir -p 08_CLASSICAL_CROSS_REFERENCE/attributions/findings
+  mkdir -p 08_CLASSICAL_CROSS_REFERENCE/nadi_bnn
+  mkdir -p 08_CLASSICAL_CROSS_REFERENCE/quality
+  Write README.md, PROCUREMENT_MAP_v1_0.md per PHASE_M8_PLAN_v1_0.md §2.
+  Add .gitignore to corpus/raw/ and corpus/ingestion/logs/ (raw/logs are GCS-canonical).
 
-CF.M5.1 (MEDIUM — calibration UI):
-  Confirm MARSYS_FLAG_PREDICTION_ENGINE_ENABLED is still OFF (check platform/lib/feature_flags.ts
-  or equivalent). Document PE.1 (per-chart prediction toggle) as a carry-forward into M6.
+STEP 3: DB migrations
+  Write platform/supabase/migrations/046_classical_texts.sql
+  Write platform/supabase/migrations/047_classical_chunks.sql
+  Write platform/supabase/migrations/048_classical_attributions.sql
+  Exact DDL: see PHASE_M8_PLAN_v1_0.md §3.2.
+  Apply migrations against Cloud SQL via start_db_proxy.sh (at platform/scripts/start_db_proxy.sh,
+  port 5433) then psql -p 5433 -U postgres -d madhav_jis -f <migration>.
 
-CF.M5.3 (LOW — cosmetic commit):
-  Run: git log --oneline | head -20 and check if commit 0793719 malformed root tree is visible.
-  If fixable surgically (e.g., git rm --cached of stray file), fix it. If complex, document
-  "CF.M5.3 deferred — requires interactive rebase beyond autonomous scope" in SESSION_LOG.
+STEP 4: Extend GCS_LAYOUT_v1_0.md
+  Read 00_ARCHITECTURE/GCS_LAYOUT_v1_0.md.
+  Amend in-place: add L8/ block after the L3/ block as specified in PHASE_M8_PLAN_v1_0.md §3.1.
+  Note at top of amendment: "L8 added at M8-A-S1 (2026-05-14)."
 
-CF.M5.8 (LOW — AC.IV.7 latency):
-  Note in SESSION_LOG: "CF.M5.8 disposition — AC.IV.7 latency re-evaluation deferred to
-  M6 hygiene pass after 7-day production window (non-blocking per M5_CLOSE §6)."
+STEP 5: Tool stubs
+  Write platform/lib/tools/classical_text_search.ts (stub with type signatures; TODO impl)
+  Write platform/lib/tools/classical_attribution_lookup.ts (stub with type signatures; TODO impl)
+  Register both in platform/lib/tools/index.ts as tools 25 + 26.
 
-CF.M5.9 (LOW — LEL gap audit):
-  Note in SESSION_LOG: "CF.M5.9 — 5 source-backed LEL events deferred from M4A carry into M6.
-  Will address during M6-B when LEL is in scope for prediction emission context."
+STEP 6: ingest_utils.py
+  Write 08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_utils.py
+  Must contain: chunk_text(text, max_tokens=500, overlap=80), clean_html(raw), embed_batch(chunks),
+  db_upsert_text(metadata), db_bulk_insert_chunks(rows), gcs_upload_jsonl(chunks, gcs_path).
+  LLM for embedding: Vertex AI text-embedding-004 via google-cloud-aiplatform SDK.
 
-ITEM 4: Mirror propagation MP.1 + MP.2 + MP.4
-.geminirules §F state block: update to M6 INCOMING / M6-A-S1 OPEN
-.geminirules §C item #5: update phase plan pointer to PHASE_M6_PLAN_v1_0.md (M6)
-.gemini/project_state.md Active Phase block: update to M6; add M6-A-S1 deliverables section
+STEP 7: CAPABILITY_MANIFEST.json update
+  Add entries: PHASE_M8_PLAN, 08_CLASSICAL_CROSS_REFERENCE, PROCUREMENT_MAP, GCS_LAYOUT (bump version).
 
-ITEM 5: CURRENT_STATE + SESSION_LOG
-Update CURRENT_STATE_v1_0.md: active_macro_phase=M6 OPEN; active_sub_phase=M6-A-S1 CLOSED;
-next_session=M6 AWAITING NAP.M6.0; red_team_counter unchanged.
-Append SESSION_LOG.md full M6-A-S1 entry (open + body + close).
+STEP 8: Mirror propagation (MP.1 + MP.2 + MP.4)
+  .geminirules §F state block → M8 OPEN / M8-A-S1 COMPLETE
+  .geminirules §C item #5 → phase plan pointer: PHASE_M8_PLAN_v1_0.md (M8)
+  .gemini/project_state.md → M8 active; M8-A-S1 deliverables section
 
-### M6-A acceptance criteria
+STEP 9: CURRENT_STATE update
+  active_macro_phase: M8 OPEN (M5 CLOSED 2026-05-14; M6 TIME-GATED PARALLEL)
+  active_sub_phase: M8-A-S1 CLOSED / M8-B-S1 INCOMING
+  red_team_counter: increment by 1
 
-[ ] AC.M6A.1 — PHASE_M6_PLAN_v1_0.md present; M6-A through M6-E sub-phases with ACs
-[ ] AC.M6A.2 — 07_PROSPECTIVE_TESTING/ scaffold created; scoring_protocol_v1_0.md present
-[ ] AC.M6A.3 — CF.M5.6 disposed: LL.8 update applied OR queued-pending entry documented
-[ ] AC.M6A.4 — CF.M5.1 confirmed: PE.1 carry-forward noted; flag confirmed OFF
-[ ] AC.M6A.5 — CF.M5.3 / CF.M5.8 / CF.M5.9 dispositioned in SESSION_LOG
-[ ] AC.M6A.6 — MP.1 + MP.2 + MP.4 mirrors propagated to M6 state
-[ ] AC.M6A.7 — CURRENT_STATE updated; SESSION_LOG M6-A-S1 appended
-[ ] AC.M6A.8 — CAPABILITY_MANIFEST.json updated: PHASE_M6_PLAN + 07_PROSPECTIVE_TESTING entries
-[ ] AC.M6A.9 — CLAUDECODE_BRIEF.md status set to AWAITING_NAP_M6_0 (HALT)
+STEP 10: SESSION_LOG append + SESSION_CLOSE emit + git commit
 
-## §3 — M6-B scope (LOCKED until NAP.M6.0 cleared)
+Acceptance: AC.M8A.1–AC.M8A.11 all PASS.
 
-### M6-B-S1 + M6-B-S2 deliverables
+## §3 — M8-B-S1 (Tier 1 Ingestion: BPHS + Phaladeepika)
 
-Emit ≥25 new forward predictions; push total prediction_ledger.jsonl to ≥45 entries.
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-B.
 
-Prediction rules (INVIOLABLE — Learning Layer discipline #4):
-  - Each prediction is written BEFORE any LEL held-out outcome for that window period is read
-  - Windows are PROSPECTIVE: window_close_date ≥ 2026-09-01 minimum (3-month horizon)
-  - Once submitted for NAP.M6.1 review, window_open_date and window_close_date NEVER change
-  - dbn_params_ref must cite dbn_params_v1_0.json
-  - 90% HDI computed via Monte Carlo (300k samples, seed=42) per NAP.M5.3 CI policy
-  - Every prediction carries falsifier_condition: a single unambiguous sentence that, if true
-    at window_close_date, renders the prediction CONFIRMED; if false, FALSIFIED
+Before writing any gs:// URI: re-read GCS_LAYOUT_v1_0.md §L8 block (just added in M8-A-S1).
 
-Domain coverage targets (minimum per domain):
-  CAREER: ≥5 predictions
-  HEALTH: ≥5 predictions
-  RELATIONSHIP: ≥5 predictions
-  SPIRITUAL: ≥5 predictions
-  PSYCHOLOGICAL: ≥5 predictions
+Write and execute:
+  08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_bphs.py
+  08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_phaladeepika.py
 
-Session split:
-  M6-B-S1: CAREER + HEALTH batches (≥12 predictions drafted, NOT yet sealed)
-  M6-B-S2: RELATIONSHIP + SPIRITUAL + PSYCHOLOGICAL batches (≥13 predictions drafted)
-           Then: HALT with status=AWAITING_NAP_M6_1
-           Present a readable summary of all ≥25 predictions for native review
-           Predictions become immovable ONLY after native approves (status reset to NOT_COMPLETE)
+Each script must:
+  - Accept --dry-run flag (fetches but does not write to DB/GCS)
+  - Log progress to stderr; final summary to stdout: {"text_key": "...", "chunks_inserted": N, "embeddings_ok": N}
+  - Be idempotent: use ON CONFLICT DO NOTHING / ON CONFLICT DO UPDATE for DB inserts
+  - After run: upload JSONL to gs://madhav-marsys-sources/L8/classical_texts/tier1/<text_key>_chunks.jsonl
 
-### M6-B acceptance criteria
+Primary fetch targets:
+  BPHS: https://archive.org/download/BrihatParasaraHoraSastra/ (R. Santhanam 2-vol PDF)
+        fallback: https://www.sacred-texts.com/astro/bph/index.htm
+  Phaladeepika: https://archive.org/search?query=phaladeepika+jyotish (Sitaram Jha edition)
+                fallback: search archive.org for alternate scan
 
-[ ] AC.M6B.1 — ≥25 new predictions in prediction_ledger.jsonl; total ≥45
-[ ] AC.M6B.2 — All 5 DBN domains covered; ≥5 per domain
-[ ] AC.M6B.3 — Every prediction: window_open, window_close, falsifier, domain, dasha_lord,
-               dbn_params_ref, 90%_HDI (asymmetric), n=1 caveat field
-[ ] AC.M6B.4 — NAP.M6.1 APPROVED by native (windows sealed)
-[ ] AC.M6B.5 — CURRENT_STATE updated; SESSION_LOG appended; CAPABILITY_MANIFEST updated
+Verify after execution:
+  SELECT t.title, t.chunk_count, count(c.id) as actual_chunks,
+         sum(case when c.embedding is not null then 1 else 0 end) as embedded
+  FROM classical_texts t LEFT JOIN classical_chunks c ON c.text_id = t.id
+  WHERE t.tier = 1 GROUP BY t.id, t.title, t.chunk_count;
 
-## §4 — M6-C scope (LOCKED until NAP.M6.1 cleared)
+If source unavailable (HTTP 404/403 after retries):
+  Log "PROCUREMENT_GAP: <text_key> source unreachable at <url>; recording in PROCUREMENT_MAP_v1_0.md."
+  Update PROCUREMENT_MAP_v1_0.md with gap note.
+  Minimum viable: BPHS must succeed (highest attribution demand). If BPHS unavailable, HALT and
+  set CLAUDECODE_BRIEF.md status = BLOCKED_PROCUREMENT and report to native.
 
-### M6-C-S1 + M6-C-S2 deliverables
+Acceptance: AC.M8B.1–AC.M8B.7 all PASS.
 
-ITEM 1: Automated scoring engine
-  platform/scripts/scoring/score_predictions.py
-  - Input: prediction_ledger.jsonl + LEL (for any window_close_date already past)
-  - Verdict assignment per scoring_protocol_v1_0.md (CONFIRMED/FALSIFIED/PARTIAL/AMBIGUOUS)
-  - Output: JSON file per scored prediction in 07_PROSPECTIVE_TESTING/scoring/windows/
-  - Reproducibility requirement: deterministic (same input → same output on re-run)
-  - LLM for ambiguous verdicts: Gemini flash via existing API stack — NOT Anthropic
-  - Unit tests: ≥10 test cases (mock predictions + mock LEL events); all pass
+## §4 — M8-C-S1 (Tier 2 Ingestion)
 
-ITEM 2: LL.9 activation
-  Update 06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md: status SCAFFOLD → ACTIVE
-  (activation condition: "scoring engine exists and is capable of generating FALSIFIED verdicts")
-  Write first miss_registry entry:
-    If any predictions already have elapsed windows AND verdict=FALSIFIED: full entry
-    Otherwise: sentinel entry documenting "0 misses at M6-C-S1; miss registry active and ready"
-  Update 06_LEARNING_LAYER/miss_registry/miss_registry_stub.json to miss_registry_v1_0.json
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-C.
 
-ITEM 3: answer:eval production integration (CF.M5.4)
-  The DeepSeek-based eval harness was scaffolded at M5-A-S1 at platform/scripts/eval/.
-  Read that scaffold and integrate it so it can be run as:
-    npm run eval:answer  (or equivalent)
-  against production chat responses. Rubric: B.11 (Whole-Chart-Read), citation completeness,
-  calibration statements present, B.10 (no fabricated computation).
-  LLM: DeepSeek — not Anthropic.
+Write and execute:
+  ingest_saravali.py, ingest_uttara_kalamrita.py, ingest_jaimini_sutra.py
 
-ITEM 4: Calibration drift baseline
-  Write to 07_PROSPECTIVE_TESTING/calibration/drift_log.jsonl:
-  {
-    "entry_date": "2026-05-14",
-    "session_id": "M6-C-S1",
-    "baseline": true,
-    "mean_lift": 1.145,
-    "beat_fraction": "5/5",
-    "total_predictions": <count from ledger>,
-    "scored_predictions": <count with outcomes>,
-    "tolerance_threshold": 1.05,
-    "drift_flag": false,
-    "source": "M5-D held-out validation + dbn_params_v1_0.json"
-  }
+Primary fetch targets:
+  Saravali: https://archive.org/search?query=saravali+kalyanvarma (R. Santhanam translation)
+  Uttara Kalamrita: https://archive.org/search?query=uttara+kalamrita
+  Jaimini Sutra: https://www.sacred-texts.com/astro/jas/index.htm
+                 fallback: archive.org Iranganti Rangacharya edition
 
-ITEM 5: IS.8(a) red-team check
-  Read ONGOING_HYGIENE_POLICIES_v1_0.md §G for red_team_counter logic.
-  Read CURRENT_STATE_v1_0.md for current counter value.
-  If counter = 3 at M6-C-S2 open: run IS.8(a) five-axis red team and record results.
-  If counter < 3: note "IS.8(a) not due; counter = N" in SESSION_LOG.
+Upload to: gs://madhav-marsys-sources/L8/classical_texts/tier2/
 
-### M6-C acceptance criteria
+Acceptance: AC.M8C.1–AC.M8C.6 all PASS.
 
-[ ] AC.M6C.1 — score_predictions.py present; deterministic; ≥10 unit tests passing
-[ ] AC.M6C.2 — LL.9 SCAFFOLD → ACTIVE; miss_registry_v1_0.json present; first entry written
-[ ] AC.M6C.3 — answer:eval harness runnable via npm script; DeepSeek-backed; rubric covers B.11+B.10
-[ ] AC.M6C.4 — drift_log.jsonl baseline entry written
-[ ] AC.M6C.5 — IS.8(a) discharged or counter documented
-[ ] AC.M6C.6 — CURRENT_STATE updated; SESSION_LOG appended; CAPABILITY_MANIFEST updated; mirrors propagated
+## §5 — M8-D-S1 (Tier 3 Ingestion)
 
-## §5 — may_touch / must_not_touch (all M6-A/B/C)
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-D.
 
-may_touch:
-  00_ARCHITECTURE/PHASE_M6_PLAN_v1_0.md
-  00_ARCHITECTURE/CURRENT_STATE_v1_0.md
-  00_ARCHITECTURE/SESSION_LOG.md
-  00_ARCHITECTURE/CAPABILITY_MANIFEST.json
-  07_PROSPECTIVE_TESTING/**
-  06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl
-  06_LEARNING_LAYER/miss_registry/**
-  06_LEARNING_LAYER/dbn/ll8_bayesian_update/**
-  platform/scripts/scoring/**
-  platform/scripts/eval/**
-  platform/lib/feature_flags.ts (read-only verify; no writes)
-  .geminirules
-  .gemini/project_state.md
-  CLAUDECODE_BRIEF.md (status field only)
+Write and execute:
+  ingest_prashna_marga.py, ingest_hora_sara.py, ingest_kp_texts.py,
+  ingest_brihat_jataka.py, ingest_brihat_samhita.py
 
-must_not_touch:
-  01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_*.md
-  01_FACTS_LAYER/LIFE_EVENT_LOG_*.md (read-only for dasha context; no new entries in M6-A)
-  06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md
-  06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md
-  06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/**
-  025_HOLISTIC_SYNTHESIS/**
-  platform/src/**
+Primary fetch targets:
+  Prashna Marga: archive.org B.V. Raman edition
+  Hora Sara: archive.org R. Santhanam edition
+  KP texts (Vols 1–4): kpastrology.com or archive.org (Krishnamurti Padhdhati series)
+  Brihat Jataka: https://www.sacred-texts.com/astro/bj/index.htm
+  Brihat Samhita: https://www.sacred-texts.com/astro/bsam/index.htm
+                  fallback: archive.org M.R. Bhat edition
 
-## §6 — LLM stack constraint
+Upload to: gs://madhav-marsys-sources/L8/classical_texts/tier3/
 
-NO Anthropic/Claude API calls in any code written during M6.
+After all tier-3 scripts run, verify total:
+  SELECT count(*) FROM classical_chunks; -- must be ≥3200
+
+Acceptance: AC.M8D.1–AC.M8D.9 all PASS.
+
+## §6 — M8-E-S1 (Attribution Engine)
+
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-E.
+
+STEP 1: Implement classical_text_search.ts (full implementation, not stub)
+STEP 2: Implement classical_attribution_lookup.ts (full implementation)
+STEP 3: Write unit tests (≥8 for search; ≥6 for lookup) in platform/tests/classical/
+STEP 4: Run attribution pass
+  Write platform/scripts/m8/run_attribution_pass.py:
+    - Load MSR signal list from 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md (parse signal IDs + names)
+    - For each signal: call classical_text_search (via direct DB/Vertex AI, not HTTP)
+    - For top-5 chunks: prompt Gemini Pro to assign attribution_type + confidence (0.000–1.000)
+    - Batch INSERT into classical_attributions
+    - Log progress every 50 signals
+    - Estimated runtime: ~2–4 hours for 514 signals; run in background if needed
+  
+  LLM judge prompt (use exactly):
+  """
+  You are a classical Jyotish scholar. Given the following MSR signal and a classical text excerpt,
+  assign:
+  - attribution_type: one of [confirms, contradicts, partial, extends, silent]
+    confirms = text explicitly supports this signal's predictive claim
+    contradicts = text explicitly denies or contradicts this signal
+    partial = text partially supports with qualifications
+    extends = text goes beyond the signal, adding nuance
+    silent = text does not address this signal
+  - confidence: float 0.000–1.000 (your certainty in this attribution)
+  - derivation_notes: 1–2 sentences explaining your reasoning
+  
+  MSR Signal: {signal_id} — {signal_name} ({signal_domain})
+  Classical Text: {text_title} by {author}, {chapter}, verse {verse_range}
+  Excerpt: {content}
+  
+  Respond in JSON: {"attribution_type": "...", "confidence": 0.XX, "derivation_notes": "..."}
+  """
+
+STEP 5: Run M5 cross-reference pass
+  Write platform/scripts/m8/run_m5_crossref.py:
+    - Load dbn_params_v1_0.json (from 06_LEARNING_LAYER/dbn/)
+    - For each of 5 domains: identify top-10 signals by weight
+    - For each top-10 signal: call classical_attribution_lookup
+    - Classify: HOLDS (≥1 HIGH confidence 'confirms') / FAILS (≥1 HIGH 'contradicts') /
+                PARTIAL / SILENT
+    - Write FINDINGS_M5_CROSS_REF_v1_0.md + FINDINGS_CLASSICAL_CLAIM_v1_0.md
+
+STEP 6: Generate CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json + .md
+  Run platform/scripts/m8/generate_registry.py:
+    SELECT all classical_attributions with chunk + text metadata → serialize to JSON schema
+    in PHASE_M8_PLAN_v1_0.md §3.3; write companion .md narrative.
+
+STEP 7: Upload registries to GCS L8/registries/
+
+Acceptance: AC.M8E.1–AC.M8E.8 all PASS.
+
+## §7 — M8-F-S1 (Nadi + BNN + MSR Expansion)
+
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-F.
+
+STEP 1: Ingest Nadi/BNN texts
+  Write and execute:
+    ingest_bhrigu_nandi_nadi.py (R.G. Rao translation; archive.org)
+    ingest_chandra_kala_nadi.py (R. Santhanam; archive.org)
+    ingest_dhruva_nadi_sampler.py (partial; archive.org)
+  Upload to: gs://madhav-marsys-sources/L8/nadi_bnn/
+
+STEP 2: Signal extraction pass
+  Write platform/scripts/m8/run_nadi_signal_extraction.py:
+    - Query classical_chunks WHERE text_id IN (nadi/bnn text IDs)
+    - Chunk batches of 10 → Gemini Pro: extract predictive signals
+    - LLM prompt: identify distinct predictive rules (if <condition>, then <predicted_outcome>)
+    - Collect all candidates; deduplicate against MSR_v3_0.md (cosine similarity ≥0.85 = duplicate)
+    - Write NADI_SIGNAL_EXTRACTION_v1_0.md + BNN_SIGNAL_EXTRACTION_v1_0.md
+
+STEP 3: MSR expansion
+  Write platform/scripts/m8/generate_msr_expansion.py:
+    - Filter: extraction_confidence ≥0.60 AND not duplicate → new signal candidates
+    - Assign IDs MSR.515 onward
+    - Write MSR_EXPANSION_PROPOSAL_v1_0.md (≥15 net-new signals)
+    - Author MSR_v4_0.md: copy MSR_v3_0.md content + append §Nadi + BNN Signals section
+    - Upload to gs://madhav-marsys-sources/L2_5/MSR_v4_0.md
+    - Update CAPABILITY_MANIFEST.json: MSR entry → v4_0, signal_count updated
+
+Acceptance: AC.M8F.1–AC.M8F.8 all PASS.
+
+## §8 — M8-G-S1 (Pipeline Integration)
+
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-G.
+
+Before writing any pipeline code, read:
+  platform/lib/pipeline/tool_fetch.ts (understand existing dispatch pattern)
+  platform/lib/pipeline/compose_bundle.ts (understand bundle structure)
+  platform/lib/disclosure/disclosure_filter.ts (understand tier pattern)
+  platform/lib/planner/query_plan_types.ts (understand plan type enum)
+
+STEP 1: Add classical_grounding plan type to query_plan_types.ts
+STEP 2: Register tools 25+26 in tool_fetch.ts dispatch
+STEP 3: Add classical attribution block to compose_bundle.ts
+STEP 4: Add classical-literature tier to disclosure_filter.ts
+STEP 5: Update synthesis prompt template to include classical citation block
+STEP 6: Write integration tests (≥10) in platform/tests/classical/classical_integration.test.ts
+STEP 7: Run tsc — 0 errors required before commit
+
+Planner golden set update:
+  Read the golden set file (platform/tests/planner/golden_set.json or equivalent).
+  Add ≥3 examples of classical_grounding plan type queries (e.g., "What does BPHS say about
+  Rahu in the 7th house?", "Classical attribution for my Atmakaraka placement").
+
+Acceptance: AC.M8G.1–AC.M8G.7 all PASS.
+
+## §9 — M8-H-S1 (Quality Gate + Red-Team + Close)
+
+Reference: PHASE_M8_PLAN_v1_0.md §4 M8-H.
+
+STEP 1: Translation cross-check
+  For each of the 8 non-English source texts (BPHS, Phaladeepika, Saravali, Uttara Kalamrita,
+  Jaimini Sutra, Hora Sara, Brihat Jataka, Brihat Samhita):
+    - Identify 2–3 HIGH-confidence 'confirms' attribution verses
+    - Fetch a second English translation of the same verse from archive.org
+    - LLM judge (Gemini Pro): CONSISTENT / MINOR_VARIANCE / SIGNIFICANT_VARIANCE
+    - SIGNIFICANT_VARIANCE → UPDATE classical_attributions SET confidence = confidence - 0.15
+      WHERE chunk_id = <chunk> AND confidence - 0.15 >= 0.0
+  Write TRANSLATION_CROSS_CHECK_v1_0.md: table of texts × verses × verdict × action.
+
+STEP 2: 20-finding acharya-grade sample
+  For each of 5 life domains: SELECT 4 HIGH-confidence 'confirms' or 'contradicts' attributions
+  whose MSR signal_id is in the top-10 by domain weight (from dbn_params_v1_0.json).
+  For each: write finding entry in ACHARYA_REVIEW_SAMPLE_v1_0.md:
+    signal → text_title → chapter → verse → content → attribution_type → confidence_tier →
+    self_assessment: "An independent acharya would [agree/disagree/need more context] because..."
+
+STEP 3: IS.8(b) red-team (5 axes)
+  Run each axis; record verdict (PASS/FAIL) + evidence:
+  RT.M8.1 — Spot-check 10 random classical_attributions: verify chunk_id resolves to real row
+             in classical_chunks; verify content is actual Sanskrit commentary, not LLM invention.
+             PASS if 10/10 resolve and content is non-fabricated.
+  RT.M8.2 — Verify FINDINGS_M5_CROSS_REF_v1_0.md: every cited signal_id is present in MSR_v3_0.md.
+             Verify no L1 facts (FORENSIC data) appear in 08_CLASSICAL_CROSS_REFERENCE/ directly.
+             PASS if all signal_ids valid and no L1 cross-contamination.
+  RT.M8.3 — Verify 5 random entries in CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json have:
+             signal_id + chunk_id + confidence + derivation_notes all non-null.
+             PASS if 5/5 complete.
+  RT.M8.4 — Verify .geminirules §F + §C reflect M8 CLOSED state (will be written after this step).
+             Verify MP.2 (.gemini/project_state.md) reflects M8 close.
+             PASS if both current.
+  RT.M8.5 — Verify 09_MULTI_SCHOOL_TRIANGULATION/ does NOT exist (no M9 pre-building).
+             Verify platform/supabase/migrations/ has no files above 048_*.
+             PASS if both true.
+
+  Any FAIL → log in SESSION_LOG as RT finding; attempt surgical fix in same session;
+  re-run axis. If still FAIL after fix: set CLAUDECODE_BRIEF.md status = REDTEAM_FAIL and HALT.
+
+STEP 4: Author M8_CLOSE_v1_0.md
+  Path: 08_CLASSICAL_CROSS_REFERENCE/M8_CLOSE_v1_0.md
+  Sections:
+    §0 Session arc (table: session_id, date, key outcome)
+    §1 AC ledger: all M8-A through M8-H ACs with PASS/FAIL/DEFERRED status
+    §2 IS.8(b) red-team record: 5 axes with verdicts
+    §3 MSR expansion summary: signal_count before (514) / after / net-new; MSR_v4_0.md path
+    §4 Corpus statistics: texts ingested (count), total chunks, total attributions,
+        coverage (signals attributed / 514), HIGH/MEDIUM/LOW breakdown
+    §5 Carry-forwards (CF.M8.1–N): any DEFERRED ACs or open items
+    §6 Exit criteria verification:
+        a) All listed corpora indexed: [MET/PARTIAL — specify gaps]
+        b) Classical-claim holds/fails findings: [MET]
+        c) Attribution confidence tags: [MET]
+        d) Translation cross-check: [MET]
+        e) MSR Nadi + BNN expansion: [MET]
+    §7 Seal block:
+        M8_CLOSE_STATUS: CLOSED
+        closed_at: <ISO8601>
+        closed_by_session: M8-H-S1
+        nap_gate: NAP.M8.4 PRE-AUTHORIZED (Cowork-M8-PLAN-AUTHORING 2026-05-14)
+        m9_entry_condition: M8 CLOSED AND MSR Nadi+BNN expansion COMPLETE → M9 ENTRY CLEARED
+
+STEP 5: CURRENT_STATE + mirrors
+  active_macro_phase: M8 CLOSED / M9 INCOMING
+  red_team_counter: 0 (IS.8(b) macro-phase-close cadence DISCHARGED)
+  next_session: M9-A-S1 (author PHASE_M9_PLAN first)
+  Propagate to .geminirules + .gemini/project_state.md (MP.1 + MP.2 + MP.4)
+
+STEP 6: SESSION_LOG append (full M8 arc summary in M8-H-S1 body)
+STEP 7: Archive this brief
+  cp CLAUDECODE_BRIEF.md 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M8_v1_0.md
+
+STEP 8: Final commit
+  git add -A
+  git commit -m "M8-H-S1: M8 macro-phase CLOSED — classical cross-reference complete; MSR v4.0; IS.8(b) PASS"
+
+Acceptance: AC.M8H.1–AC.M8H.10 all PASS. Status → COMPLETE.
+
+---
+
+## §10 — may_touch / must_not_touch
+
+See PHASE_M8_PLAN_v1_0.md §5 for the full authoritative lists. Summary:
+
+may_touch: 08_CLASSICAL_CROSS_REFERENCE/**, 00_ARCHITECTURE/ (governance files only),
+  025_HOLISTIC_SYNTHESIS/MSR_v4_0.md (NEW file), platform/supabase/migrations/046–048,
+  platform/lib/tools/classical_*.ts, platform/lib/tools/index.ts,
+  platform/lib/pipeline/tool_fetch.ts + compose_bundle.ts + disclosure_filter.ts,
+  platform/lib/planner/query_plan_types.ts, platform/tests/classical/**,
+  platform/scripts/m8/**, .geminirules, .gemini/project_state.md, CLAUDECODE_BRIEF.md
+
+must_not_touch: 01_FACTS_LAYER/**, 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md (read-only),
+  025_HOLISTIC_SYNTHESIS/UCN*.md + CDLM*.md + RM*.md + CGM*.md,
+  06_LEARNING_LAYER/PREDICTION_LEDGER/**, 06_LEARNING_LAYER/dbn/**,
+  07_PROSPECTIVE_TESTING/**, platform/supabase/migrations/001–045,
+  09_MULTI_SCHOOL_TRIANGULATION/**, platform/src/** (except tool files in may_touch)
+
+---
+
+## §11 — LLM Stack Constraint
+
+NO Anthropic/Claude API in any M8 code.
 Stack: Gemini → DeepSeek → NIM.
-Non-critical tasks: flash-tier models.
-Critical evaluation (scoring, eval harness): Gemini Pro or DeepSeek v4.
-Flag any hardcoded Anthropic model strings before writing them.
-
-## §7 — Session-open handshake
-
-Every M6 session emits SESSION_OPEN artifact per SESSION_OPEN_TEMPLATE_v1_0.md
-before any tool call. Session IDs: M6-A-S1, M6-B-S1, M6-B-S2, M6-C-S1, M6-C-S2.
-cowork_thread_name must match handshake session_id field.
+  Ingestion / non-critical: gemini-2.5-flash-lite
+  Attribution judge / signal extraction (critical): gemini-2.5-pro or deepseek-v4-pro
+  Embedding: Vertex AI text-embedding-004 (768-dim)
