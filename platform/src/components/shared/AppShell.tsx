@@ -21,8 +21,11 @@ export function AppShell({ children, user, profile, breadcrumb = [] }: AppShellP
       >
         Skip to main content
       </a>
-      {/* Desktop sidebar rail — hidden on mobile */}
-      <AppShellRail user={user} profile={profile} />
+      {/* Desktop sidebar rail — hidden on mobile. relative+w-14 gives the absolute rail a containing block. */}
+      <div className="relative hidden w-14 shrink-0 md:block">
+        <div className="h-full w-14" /> {/* spacer — holds the gutter height while rail is absolute */}
+        <AppShellRail user={user} profile={profile} />
+      </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <AppShellBreadcrumb
           segments={breadcrumb}
