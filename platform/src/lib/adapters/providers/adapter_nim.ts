@@ -1,7 +1,7 @@
 import 'server-only'
-import { streamText } from 'ai'
+import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import type { Adapter } from './base'
+import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
 import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../types'
 import { MarkerBuffer } from '../buffer'
@@ -20,6 +20,35 @@ function getNimModel(modelId: string) {
 export const adapterNim: Adapter = {
   providerId: 'nvidia',
 
+  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+    const tools =
+      req.tools?.length
+        ? Object.fromEntries(
+            req.tools.map(t => [
+              t.name,
+              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+            ]),
+          )
+        : undefined
+
+    if (req.toolChoice !== undefined && meta.quirks.tool_use_format === 'none') {
+      throw new Error(`adapterNim: toolChoice not supported by model ${meta.id} (tool_use_format=none)`)
+    }
+
+    return {
+      model: getNimModel(meta.id),
+      system: req.systemPrompt,
+      messages: req.messages,
+      maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
+      temperature: req.temperature,
+      tools,
+      toolChoice: req.toolChoice as unknown,
+      stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
+      experimental_transform: req.smoothStream ? smoothStream() : undefined,
+      onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+    }
+  },
+
   stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent> {
     return new ReadableStream({
       async start(controller) {
@@ -36,14 +65,10 @@ export const adapterNim: Adapter = {
         const buffer = usesMarkers ? new MarkerBuffer('<think>', '</think>') : null
 
         try {
+          const options = adapterNim.prepareRequest(req, meta)
           // NIM requires streaming — streamText always uses streaming mode
-          const result = streamText({
-            model: getNimModel(meta.id),
-            system: req.systemPrompt,
-            messages: req.messages,
-            maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
-            temperature: req.temperature,
-          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = streamText(options as any)
 
           let reasoningStarted = false
           let composing = false
@@ -120,25 +145,26 @@ export const adapterNim: Adapter = {
           }
 
           controller.enqueue({ type: 'status', ts: ts(), status: 'complete' })
-          controller.enqueue({
-            type: 'finish',
-            ts: ts(),
-            interaction: {
-              modelId: meta.id,
-              provider: meta.provider,
-              intermediate: [],
-              finishReason,
-              usage: {
-                inputTokens,
-                outputTokens,
-                costUsd: computeCost(meta, inputTokens, outputTokens),
-                latencyMs: ts() - startTime,
-              },
-              providerMeta: {
-                raw: reasoning_unclosed ? { reasoning_unclosed: true } : undefined,
-              },
+          const interaction: ModelInteraction = {
+            modelId: meta.id,
+            provider: meta.provider,
+            intermediate: [],
+            finishReason,
+            usage: {
+              inputTokens,
+              outputTokens,
+              costUsd: computeCost(meta, inputTokens, outputTokens),
+              latencyMs: ts() - startTime,
             },
-          })
+            providerMeta: {
+              raw: reasoning_unclosed ? { reasoning_unclosed: true } : undefined,
+            },
+          }
+          controller.enqueue({ type: 'finish', ts: ts(), interaction })
+
+          if (req.onFinish) {
+            await req.onFinish(interaction)
+          }
         } catch (err) {
           // Classify NIM compatibility errors (deterministic rejections of toolChoice / response_format)
           const classified = isNimCompatibilityError(err)

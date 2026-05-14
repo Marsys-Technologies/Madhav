@@ -1,76 +1,49 @@
 ---
 status: OPEN
-session_id: AIOPS_AD_3_5
-phase: AD.3.5
-phase_name: "Adapter capability extension — multi-step, toolChoice, smoothStream, callbacks, raw entry point"
-next_session: AIOPS_AD_4
+session_id: AIOPS_AD_4
+phase: AD.4
+phase_name: "Call-site migration + legacy-path preservation + flag-off equivalence"
+next_session: AIOPS_AD_5
 authored_at: 2026-05-14
-authored_by: AIOPS_PHASE_2_MASTER_PLAN_v1_0 (remediation after AD.4 HALTED at d83e792)
-predecessor: PHASE_AD_3_BRIEF.md (committed f92f898)
-remediates: PHASE_AD_4_BRIEF.md (HALTED at d83e792 — AC.AD4.2 unreachable with AD.3 adapter shape)
+authored_by: AIOPS_PHASE_2_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_AD_3_5
-## AIOps Phase 2, Step 3.5 — Adapter capability extension
+# CLAUDECODE_BRIEF — AIOPS_AD_4
+## AIOps Phase 2, Step 4 — Migrate every call site to runAdapter / streamAdapter
 
 ---
 
 ## §0 — Executor orientation
 
-You are executing AD.3.5, a remediation sub-phase inserted between AD.3 and
-AD.4 to address the architectural boundary surfaced by the AD.4 BAIL OUT
-at commit `d83e792`. The bail-out documented that several call sites cannot
-migrate to the adapter as designed in AD.0/AD.2/AD.3 because they need:
+AD.4 migrates every direct `streamText` / `generateText` call to use
+`runAdapter` / `streamAdapter`. Behind the flag `ADAPTERS_ENABLED` (default
+false), the legacy path is preserved in `legacy_runAdapter.ts` and the
+call sites short-circuit to it. With the flag on, the new path is active.
 
-  1. **Multi-step tool use** (`stopWhen: stepCountIs(N)` + `onStepFinish`).
-     Used by: `synthesis/single_model_strategy.ts`, `synthesis/panel_strategy.ts`,
-     `synthesis/panel/member_runner.ts`, `synthesis/panel/adjudicator.ts`.
-  2. **Tool choice** forcing (`toolChoice: 'required' | { type: 'tool', toolName }`).
-     Used by: `pipeline/pipeline_planner.ts`.
-  3. **Text-delta smoothing** (`smoothStream`).
-     Used by: `synthesis/single_model_strategy.ts`.
-  4. **Per-call audit callback** at stream end (`onFinish({ usage, ... })`).
-     Used by: `synthesis/single_model_strategy.ts`.
-  5. **Direct `StreamTextResult` access** for `.toUIMessageStreamResponse()`
-     SSE piping to the HTTP response.
-     Used by: `app/api/chat/consume/route.ts`, `app/api/chat/build/route.ts`.
-
-AD.3.5 extends the adapter to support all five, and updates AD.4's brief
-with the per-call-site migration pattern. After AD.3.5 closes, AD.4 becomes
-achievable as originally specified.
-
-The /Users/Dev/Vibe-Coding/Apps/Madhav worktree (M5 branch) is never touched.
-
-YOU MUST NOT call any LLM provider during this session.
-YOU MUST NOT migrate any call site in this session (that's AD.4's job).
-YOU MUST NOT proceed past any FAIL — bail per §8.
+The win condition: 35+ flag-off equivalence tests pass byte-identically
+between legacy and new paths (the same pattern Phase 1 used). Once that
+gate is green, AD.5 flips the flag.
 
 ---
 
 ## §1 — Mandatory reads
 
 ```
-1.  CLAUDE.md
-2.  00_ARCHITECTURE/aiops/phase_2/AIOPS_PHASE_2_MASTER_PLAN_v1_0.md §4 (QueryRequest shape), §6 (per-adapter spec)
-3.  00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-4.  Current adapter implementations (AD.3 deliverables — DO NOT REWRITE; only EXTEND):
-       platform/src/lib/adapters/types.ts
-       platform/src/lib/adapters/providers/adapter_anthropic.ts
-       platform/src/lib/adapters/providers/adapter_deepseek.ts
-       platform/src/lib/adapters/providers/adapter_gemini.ts
-       platform/src/lib/adapters/providers/adapter_openai.ts
-       platform/src/lib/adapters/providers/adapter_nim.ts
-       platform/src/lib/adapters/providers/base.ts
-       platform/src/lib/adapters/run_adapter.ts
-       platform/src/lib/adapters/stream_adapter.ts
-       platform/src/lib/adapters/event_collector.ts
-       platform/src/lib/adapters/dispatcher.ts
-5.  Call site samples to validate the design works (read but do NOT migrate):
-       platform/src/lib/synthesis/single_model_strategy.ts (lines 380–470)
-       platform/src/app/api/chat/consume/route.ts
-       platform/src/lib/pipeline/pipeline_planner.ts (lines 200–260)
-6.  AI SDK 4.x documentation for: streamText return type (StreamTextResult), stopWhen, smoothStream, onStepFinish, onFinish, toolChoice
-7.  HALTED CLAUDECODE_BRIEF.md (the `bail_out` block has the precise inventory)
+1. CLAUDE.md
+2. 00_ARCHITECTURE/aiops/phase_2/AIOPS_PHASE_2_MASTER_PLAN_v1_0.md §8
+3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+4. platform/src/lib/adapters/ (AD.0-AD.3.5 deliverables — including new streamAdapterRaw, prepareRequest, new QueryRequest fields)
+5. platform/src/lib/synthesis/single_model_strategy.ts
+6. platform/src/lib/synthesis/panel/member_runner.ts
+7. platform/src/lib/synthesis/panel/adjudicator.ts
+8. platform/src/lib/synthesis/orchestrator.ts
+9. platform/src/app/api/chat/consume/route.ts
+10. platform/src/lib/aiops/probe/runner.ts (Phase 1 probe runner)
+11. platform/scripts/aiops/cutover_smoke.ts (Phase 1)
+12. platform/scripts/aiops/probe_health_cron.ts (Phase 1)
+13. platform/scripts/eval/* — every eval entrypoint
+14. platform/scripts/checkpoint/* — every checkpoint script
+15. platform/src/lib/synthesis/think_block_filter.ts (will be DELETED at end of AD.4)
 ```
 
 ---
@@ -79,242 +52,93 @@ YOU MUST NOT proceed past any FAIL — bail per §8.
 
 ### may_touch
 ```
-platform/src/lib/adapters/types.ts                 # extend QueryRequest
-platform/src/lib/adapters/providers/*.ts           # extend stream() to honor new fields; expose prepareRequest()
-platform/src/lib/adapters/providers/base.ts        # update Adapter interface (add prepareRequest)
-platform/src/lib/adapters/raw.ts                   # NEW — streamAdapterRaw entry point
-platform/src/lib/adapters/index.ts                 # export streamAdapterRaw
-platform/src/lib/adapters/__tests__/**             # add tests for the new capabilities
-00_ARCHITECTURE/aiops/phase_2/briefs/PHASE_AD_4_BRIEF.md  # patch §3.4 migration table at session close
-CLAUDECODE_BRIEF.md                                # rotate to AD.4 at session close
+platform/src/lib/adapters/legacy_runAdapter.ts # NEW — wraps existing streamText path
+platform/src/lib/synthesis/**                  # migrate
+platform/src/app/api/chat/consume/**           # migrate
+platform/src/lib/aiops/probe/**                # migrate
+platform/scripts/aiops/**                      # migrate
+platform/scripts/eval/**                       # migrate
+platform/scripts/checkpoint/**                 # migrate
+platform/src/lib/models/resolver.ts            # thin deepseekProviderOptions / googleProviderOptions to pass-through wrappers
+platform/src/lib/synthesis/think_block_filter.ts # DELETE
+platform/src/lib/adapters/__tests__/equivalence/* # NEW
+CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-```
-platform/src/lib/synthesis/**                      # AD.4 territory
-platform/src/app/api/chat/**                       # AD.4 territory
-platform/src/lib/pipeline/**                       # AD.4 territory
-platform/src/lib/aiops/**                          # AD.4 territory
-platform/src/lib/components/**                     # Phase 3 territory
-platform/src/lib/models/registry.ts                # AD.1 territory — DO NOT MODIFY
-platform/src/lib/llm/providers/*_observed.ts       # adapters call these; do not modify
-01_FACTS_LAYER/**
-025_HOLISTIC_SYNTHESIS/**
-06_LEARNING_LAYER/**
-```
+- platform/src/components/consume/** — Phase 3
+- platform/src/lib/components/observatory/** — sealed
+- platform/src/lib/llm/providers/*_observed.ts — adapters CALL these; observed wrappers unchanged
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Extend QueryRequest
+### 3.1 — Inventory call sites
 
-Edit `platform/src/lib/adapters/types.ts`. Add the following fields to
-`QueryRequest` (all optional, additive — no breaking changes to AD.0–AD.3
-callers):
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/madhav-phase-2-tmp
+grep -rn "streamText\|generateText" platform/src platform/scripts | grep -v __tests__
+```
+
+Capture the full list in `00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md`.
+
+### 3.2 — Author legacy_runAdapter
+
+`platform/src/lib/adapters/legacy_runAdapter.ts`:
+
+A drop-in replacement for `runAdapter` that uses the existing `streamText`
++ provider-options pattern. When `ADAPTERS_ENABLED=false`, this is what
+runs. Implementation copies the logic from current call sites (DeepSeek
+thinking, Gemini safety + thinking, etc.) into one function. After AD.5
+flip stabilizes for 2 weeks, this file gets deleted (per flag-removal PR).
+
+### 3.3 — Wire the flag
+
+`platform/src/lib/adapters/run_adapter.ts` (already exists from AD.2):
 
 ```ts
-export interface QueryRequest {
-  // ... all existing fields preserved ...
+import { isFeatureFlagEnabled } from '@/lib/config/feature_flags'
+import { runAdapterNew } from './run_adapter_new'  // the AD.2 + AD.3 implementation
+import { runAdapterLegacy } from './legacy_runAdapter'
 
-  /**
-   * Multi-step agentic loop. When set, the adapter calls streamText with
-   * stopWhen: stepCountIs(maxSteps). Each tool round-trip emits a
-   * tool_call event followed by a tool_result event; intermediate text
-   * deltas emit between rounds as the model interleaves reasoning with
-   * tool calls.
-   *
-   * Used by synthesis/single_model_strategy.ts and the panel_strategy +
-   * panel/member_runner + panel/adjudicator agentic loops.
-   */
-  multiStep?: {
-    maxSteps: number
+export async function runAdapter(req: QueryRequest): Promise<ModelInteraction> {
+  if (isFeatureFlagEnabled('ADAPTERS_ENABLED')) {
+    return runAdapterNew(req)
   }
-
-  /**
-   * Tool choice forcing. Passed through to streamText.toolChoice.
-   * Provider-specific shape is handled by the adapter's prepareRequest.
-   *
-   * Used by pipeline/pipeline_planner.ts.
-   */
-  toolChoice?: 'auto' | 'none' | 'required' | { type: 'tool'; toolName: string }
-
-  /**
-   * Enable AI SDK text-delta smoothing. Passed through to streamText
-   * experimental_transform: smoothStream(). Makes streamed text feel more
-   * natural in real-time UIs.
-   *
-   * Used by synthesis/single_model_strategy.ts.
-   */
-  smoothStream?: boolean
-
-  /**
-   * Per-step callback for multi-step loops. Adapter wires this to
-   * streamText.onStepFinish. Called after each tool round-trip with
-   * step-level usage and metadata.
-   *
-   * Synthesis path uses this for per-step audit event capture.
-   */
-  onStepFinish?: (step: {
-    text: string
-    toolCalls: unknown[]
-    toolResults: unknown[]
-    usage: { inputTokens: number; outputTokens: number; totalTokens: number }
-    finishReason: string
-    stepType: string
-  }) => Promise<void> | void
-
-  /**
-   * Final callback called once at stream end with the assembled
-   * ModelInteraction. Adapter wires this AFTER the finish event is
-   * emitted on the stream.
-   *
-   * Synthesis path uses this for end-of-call audit event capture.
-   */
-  onFinish?: (interaction: ModelInteraction) => Promise<void> | void
+  return runAdapterLegacy(req)
 }
 ```
 
-All five fields are optional. Existing callers (probe/runner.ts,
-checkpoints/*.ts, etc.) need no changes — they'll continue to work because
-they don't set these fields.
+Same pattern for `streamAdapter`.
 
-### 3.2 — Refactor each provider adapter
+### 3.4 — Migrate call sites
 
-Goal: extract a `prepareRequest(req, meta)` method on each adapter that
-returns the streamText options object. The existing `stream()` method
-continues to work — it calls `prepareRequest` internally to build options.
-This refactor enables a new `streamAdapterRaw` entry point (§3.3) that
-needs access to the same streamText options to construct a raw call.
+For each call site (mechanical):
 
-In `platform/src/lib/adapters/providers/base.ts`, extend the Adapter
-interface:
-
+**Before:**
 ```ts
-import type { StreamTextResult } from 'ai'
-import type { ModelMeta } from '@/lib/models/registry'
-import type { QueryRequest, ModelInteractionEvent } from '../types'
-
-export interface StreamTextOptions {
-  model: unknown  // LanguageModel from ai
-  system?: string
-  messages: unknown[]
-  tools?: unknown
-  toolChoice?: unknown
-  providerOptions?: Record<string, unknown>
-  maxOutputTokens?: number
-  temperature?: number
-  stopWhen?: unknown
-  experimental_transform?: unknown
-  onStepFinish?: (step: unknown) => Promise<void> | void
-  onFinish?: (info: unknown) => Promise<void> | void
-}
-
-export interface Adapter {
-  readonly providerId: string
-
-  /** Build the streamText options object for this provider + request. */
-  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions
-
-  /** Stream the model's response as ModelInteractionEvents (existing AD.3 behavior). */
-  stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent>
-}
+const meta = getModelMeta(modelId)
+const model = resolveModel(modelId)
+const providerOpts = { ...deepseekProviderOptions(modelId, 'synthesis'), ...googleProviderOptions(modelId) }
+const result = await streamText({ model, system, messages, providerOptions: providerOpts, maxOutputTokens, temperature, tools })
+// ... custom <think> parsing via think_block_filter ...
 ```
 
-For each of the 5 adapters (anthropic, deepseek, gemini, openai, nim):
-
-1. **Extract the existing streamText options-building code into a new
-   `prepareRequest(req, meta)` method.** The method returns the
-   `StreamTextOptions` object — model, system, messages, providerOptions,
-   maxOutputTokens, temperature, tools.
-
-2. **Extend `prepareRequest` to honor the new fields:**
-   - `req.multiStep` → set `stopWhen: stepCountIs(req.multiStep.maxSteps)`. Import `stepCountIs` from `ai`.
-   - `req.toolChoice` → set `toolChoice` per the provider's tool_use_format quirks:
-     - `'openai'` / `'nim'`: pass through directly
-     - `'anthropic'`: map `'required'` → `{ type: 'any' }`, etc. (per Anthropic Messages API)
-     - `'gemini'`: map per Google's toolConfig
-     - `'none'` providers: throw error if toolChoice provided
-   - `req.smoothStream` → set `experimental_transform: smoothStream()`. Import from `ai`.
-   - `req.onStepFinish` → wire as `onStepFinish` callback. Type-cast as needed.
-   - `req.onFinish` → store on a side-channel for the adapter's stream() to invoke after emitting the `finish` event. (Not passed directly to streamText — the adapter calls it after collecting the ModelInteraction so the callback receives the typed `ModelInteraction`, not AI SDK's raw `onFinish` arg.)
-
-3. **Update the existing `stream()` method to use `prepareRequest`:** instead of inlining the options-building, call `prepareRequest(req, meta)` to get the options object, then pass to streamText. Preserves all AD.3 behavior.
-
-4. **Update `stream()` to honor the new fields where applicable in the event stream:**
-   - For `multiStep`: emit `tool_call` + `tool_result` events as they arrive (existing logic from AD.3 may already do this via `fullStream`; verify).
-   - For `onStepFinish`: the AI SDK invokes the callback during streamText execution; nothing for the adapter to do beyond passing it through in §2.
-   - For `onFinish`: after the `finish` event is enqueued on the stream, call `req.onFinish(interaction)` if provided. Await before closing the controller.
-
-### 3.3 — New entry point: `streamAdapterRaw`
-
-Create `platform/src/lib/adapters/raw.ts`:
-
+**After:**
 ```ts
-import 'server-only'
-import { streamText, type StreamTextResult } from 'ai'
-import type { QueryRequest } from './types'
-import type { ModelMeta } from '@/lib/models/registry'
-import { getModelMeta } from '@/lib/models/registry'
-import { resolveModel } from '@/lib/models/resolver'
-import { adapterFor } from './dispatcher'
-
-export interface RawAdapterResult {
-  /** AI SDK StreamTextResult — caller can use .toUIMessageStreamResponse(), .fullStream, etc. */
-  result: StreamTextResult<any, any>
-  /** Model meta for cost/usage attribution. */
-  meta: ModelMeta
-}
-
-/**
- * Low-level adapter entry point. Builds provider-correct streamText options
- * for the requested call type + model, invokes streamText, and returns the
- * AI SDK result directly to the caller. The caller is responsible for
- * consuming the result (e.g., via result.toUIMessageStreamResponse() for
- * SSE piping to consume/route, or by reading result.fullStream for custom
- * event handling in synthesis's stopWhen loop).
- *
- * The adapter's provider-quirk transforms (DeepSeek thinking, Gemini
- * safety, Anthropic system blocks, NIM stream:true, etc.) are still
- * applied — the caller never has to touch providerOptions directly.
- */
-export function streamAdapterRaw(req: QueryRequest): RawAdapterResult {
-  const modelId = req.modelOverride?.modelId
-    ?? resolveModelForCallType(req.callType, req.stack)
-  const meta = getModelMeta(modelId)
-  if (!meta) throw new Error(`streamAdapterRaw: unknown model ${modelId}`)
-
-  const adapter = adapterFor(meta.provider)
-  const options = adapter.prepareRequest(req, meta)
-
-  const result = streamText({
-    ...options,
-    model: resolveModel(meta.id),  // ensure model is resolved with the right SDK
-  } as Parameters<typeof streamText>[0])
-
-  return { result, meta }
-}
-
-// (resolveModelForCallType is the same helper used by streamAdapter — extract to shared util if not already)
+const interaction = await runAdapter({
+  callType: 'synthesis',
+  systemPrompt: system,
+  messages,
+  tools,
+  maxOutputTokens,
+  temperature,
+  reasoning: 'auto',
+})
+// Use interaction.reasoning, interaction.finalText directly — no more <think> parsing
 ```
 
-Export from `platform/src/lib/adapters/index.ts`:
-
-```ts
-export { streamAdapterRaw } from './raw'
-export type { RawAdapterResult } from './raw'
-```
-
-### 3.4 — Patch AD.4 brief
-
-At session close (§7), update `00_ARCHITECTURE/aiops/phase_2/briefs/PHASE_AD_4_BRIEF.md`
-§3.4 to replace the single-pattern migration example with the three-entry-point
-table below. The patch must be additive — don't delete other sections.
-
-Replacement content for AD.4 §3.4 (insert after the existing "Migration is
-mechanical" paragraph, before "Migrate in this order"):
-
-```markdown
 ### Three adapter entry points — choose per call site type:
 
 | Call site pattern | Entry point | Why |
@@ -340,22 +164,59 @@ mechanical" paragraph, before "Migrate in this order"):
 | `conversations/title.ts` | `runAdapter` | minimal |
 | `models/health.ts` | `runAdapter` | minimal |
 | `scripts/retrieval/test_classify.ts` | `runAdapter` | as needed |
+
+Migrate in this order (low-risk first):
+1. `platform/src/lib/aiops/probe/runner.ts`
+2. `platform/scripts/aiops/cutover_smoke.ts`
+3. `platform/scripts/aiops/probe_health_cron.ts`
+4. `platform/scripts/eval/*`
+5. `platform/scripts/checkpoint/*`
+6. `platform/src/lib/synthesis/single_model_strategy.ts`
+7. `platform/src/lib/synthesis/panel/member_runner.ts`
+8. `platform/src/lib/synthesis/panel/adjudicator.ts`
+9. `platform/src/lib/synthesis/orchestrator.ts`
+10. `platform/src/app/api/chat/consume/route.ts`
+
+After each, run that area's tests. Don't continue to next site until tests
+pass.
+
+### 3.5 — Thin resolver.ts
+
+`platform/src/lib/models/resolver.ts`:
+- `resolveModel(id)` → keeps as-is (ID → LanguageModel). Some non-adapter
+  consumers might still use it (rare; document).
+- `deepseekProviderOptions(...)` → keep but mark deprecated. Used only by
+  `legacy_runAdapter.ts` until flag removal.
+- `googleProviderOptions(...)` → same.
+
+### 3.6 — Delete think_block_filter.ts
+
+After step 3.4 confirms no caller uses it. Run:
+```bash
+grep -r "think_block_filter" platform/src platform/scripts
 ```
+Should return 0 hits. Then `git rm platform/src/lib/synthesis/think_block_filter.ts`
+and its test file.
 
-This table goes into AD.4's brief as part of the AD.3.5 session-close work.
+### 3.7 — Flag-off equivalence tests
 
-### 3.5 — Tests
+`platform/src/lib/adapters/__tests__/equivalence/runtime_equivalence.test.ts`:
 
-Add tests under `platform/src/lib/adapters/__tests__/`:
+Parametrize across (stack × call_type × representative_prompt). For each:
+- Run with `ADAPTERS_ENABLED=false` → legacy path → capture ModelInteraction.
+- Run with `ADAPTERS_ENABLED=true` → new path → capture ModelInteraction.
+- Assert: `modelId`, `finalText`, `reasoning?.text`, `finishReason`, `usage.inputTokens`, `usage.outputTokens` MATCH.
 
-- `multi_step.test.ts` — multi-step tool use round-trip
-- `tool_choice.test.ts` — toolChoice per provider mapping
-- `smooth_stream.test.ts` — smoothStream passthrough
-- `callbacks.test.ts` — onStepFinish + onFinish wiring
-- `raw_entry.test.ts` — streamAdapterRaw returns the expected shape
-- `equivalence.test.ts` — verify that for a call with NONE of the new fields set, behavior is identical to AD.3 (regression guard for the existing 260-test suite)
+Use mocked SDK calls so the test is deterministic. ≥35 parametrized cases.
 
-Minimum new tests: ≥40.
+### 3.8 — Smoke
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/madhav-phase-2-tmp
+npm --prefix platform run typecheck 2>&1 | tail -5
+npm --prefix platform run lint 2>&1 | tail -5
+npm --prefix platform run test -- --run 2>&1 | tail -10
+```
 
 ---
 
@@ -363,98 +224,44 @@ Minimum new tests: ≥40.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.AD3.5.1 | QueryRequest has 5 new optional fields (multiStep, toolChoice, smoothStream, onStepFinish, onFinish) | grep |
-| AC.AD3.5.2 | All 5 adapter implementations expose `prepareRequest(req, meta)` | grep per file |
-| AC.AD3.5.3 | `prepareRequest` honors all new fields | parametrized tests pass |
-| AC.AD3.5.4 | `streamAdapterRaw` exists and exports `{ result, meta }` shape | grep + types |
-| AC.AD3.5.5 | New tests added (≥40) | test count |
-| AC.AD3.5.6 | AD.3 regression: 260 existing tests still pass | full suite |
-| AC.AD3.5.7 | AD.4 brief §3.4 patched with three-entry-points table | grep |
-| AC.AD3.5.8 | typecheck + lint clean | exit 0 each |
-| AC.AD3.5.9 | scope-violation grep | SCOPE_OK |
+| AC.AD4.1 | Call-site inventory file exists | `test -f 00_ARCHITECTURE/aiops/phase_2/AD4_CALL_SITES_INVENTORY.md` |
+| AC.AD4.2 | All inventoried sites migrated to runAdapter/streamAdapter | grep `streamText\\|generateText` in platform/src + scripts excluding tests + adapters/ + legacy returns 0 hits |
+| AC.AD4.3 | legacy_runAdapter.ts exists and is the flag-off path | grep + integration test |
+| AC.AD4.4 | think_block_filter.ts deleted | `! test -f platform/src/lib/synthesis/think_block_filter.ts` |
+| AC.AD4.5 | Equivalence tests parametrize ≥35 cases | `npm run test -- equivalence` ≥35 |
+| AC.AD4.6 | Every equivalence case passes | exit 0 |
+| AC.AD4.7 | typecheck + lint + full suite green | exit 0 each |
+| AC.AD4.8 | scope-violation grep | SCOPE_OK |
 
 ---
 
-## §5 — Test minimums
+## §5 — Session close
 
-- multi_step.test.ts: ≥8 cases (per provider × stop conditions × tool round-trips)
-- tool_choice.test.ts: ≥10 cases (per provider × choice variants × validation)
-- smooth_stream.test.ts: ≥4 cases (on/off × providers that support it)
-- callbacks.test.ts: ≥8 cases (onStepFinish wiring + onFinish wiring + cancellation behavior + async)
-- raw_entry.test.ts: ≥6 cases (per provider returns correct shape; provider quirks applied)
-- equivalence.test.ts: ≥10 parametrized cases asserting AD.3-shaped requests produce identical streams
+Final commit:
+```
+feat(aiops-AD.4): migrate all call sites to runAdapter / streamAdapter
 
-Total ≥ 46.
+- N call sites in platform/src + platform/scripts migrated (inventory in AD4_CALL_SITES_INVENTORY.md)
+- legacy_runAdapter.ts preserves the old streamText+providerOptions path for flag-off behavior
+- ADAPTERS_ENABLED flag controls which path runs; default still false through this commit
+- think_block_filter.ts deleted (replaced by adapter_deepseek's MarkerBuffer)
+- resolver.ts deepseekProviderOptions / googleProviderOptions marked deprecated; used only by legacy path
+- 35+ equivalence tests assert byte-identical behavior flag-on vs flag-off
+- Full suite green
 
----
+AC summary: 8/8 PASS
+```
 
-## §6 — Session close (rotation to AD.4)
-
-Standard procedure per AIOPS_EXECUTION_RULES §R4 + §R5:
-
-1. Final commit message:
-   ```
-   feat(aiops-AD.3.5): adapter capability extension — multi-step, toolChoice, smoothStream, callbacks, streamAdapterRaw
-
-   Extends the adapter contract to cover the call-site patterns AD.4 needs:
-
-   - QueryRequest gains 5 optional fields:
-     multiStep, toolChoice, smoothStream, onStepFinish, onFinish.
-   - Each provider adapter (anthropic, deepseek, gemini, openai, nim) exposes
-     prepareRequest(req, meta) that builds the streamText options object,
-     honoring all new fields with provider-correct quirks.
-   - New entry point streamAdapterRaw(req) returns { result, meta } where
-     result is the AI SDK StreamTextResult — for callers piping
-     toUIMessageStreamResponse() to SSE or running multi-step loops over
-     result.fullStream.
-   - AD.4 brief §3.4 patched with the three-entry-points migration table.
-   - 46+ new tests; AD.3's 260 tests still pass.
-
-   AC summary: 9/9 PASS
-   ```
-
-2. Update `00_ARCHITECTURE/aiops/phase_2/briefs/PHASE_AD_4_BRIEF.md` with
-   the patch from §3.4 above (insert before the existing "Migrate in this
-   order" list).
-
-3. Rotate `CLAUDECODE_BRIEF.md`: copy the patched PHASE_AD_4_BRIEF.md
-   contents (with `status: OPEN` at the top) into the root
-   `CLAUDECODE_BRIEF.md`.
-
-4. Commit the rotation:
-   ```
-   chore(aiops): rotate brief — AIOPS_AD_4 ready (post-3.5)
-   ```
-
-5. Report: `[AIOPS-CLOSE] phase=AD.3.5 status=CLOSED next_phase=AD.4`
+Rotate brief → AD.5.
 
 ---
 
-## §7 — BAIL OUT triggers (AD.3.5 specific)
+## §7 — BAIL OUT triggers
 
-- The AI SDK version pinned in `platform/package.json` doesn't expose
-  `smoothStream` or `stepCountIs` — bail and let native upgrade the SDK
-  first.
-- A provider's tool_choice format isn't documented or our `quirks`
-  metadata is wrong (e.g., we say `tool_use_format: 'anthropic'` but the
-  Anthropic API has changed) — bail and let native verify.
-- The `prepareRequest` refactor causes a regression in any of AD.3's 260
-  tests that can't be fixed by mechanical re-wiring (i.e., the refactor
-  reveals a hidden contract mismatch) — bail and let native investigate.
+- Any equivalence test fails — the new path diverges from legacy. Investigate. Do NOT continue to AD.5 until parity.
+- A call site requires deep refactoring that pulls in >5 unrelated files — bail and have native scope the change separately.
+- Panel mode interaction with the new adapter produces unexpected ordering — bail.
 
 ---
 
-## §8 — Hard constraints
-
-  - Additive only. Every change to QueryRequest is a new optional field.
-    AD.3's existing callers (probe, etc.) must continue to work unchanged.
-  - No call site migration in this session. AD.4 does that.
-  - Provider-quirk metadata (`quirks` field on each ModelMeta from AD.1)
-    is the source of truth for per-provider transforms. Don't hardcode
-    new switch statements; consult quirks.
-  - LLM stack discipline: Gemini → DeepSeek → NIM. No Anthropic API calls
-    during execution.
-
-Begin with §3.1.
-
-*End of PHASE_AD_3_5_BRIEF.md*
+*End of PHASE_AD_4_BRIEF.md*

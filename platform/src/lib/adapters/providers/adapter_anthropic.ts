@@ -1,12 +1,47 @@
 import 'server-only'
-import { streamText } from 'ai'
+import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import type { Adapter } from './base'
+import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
 import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../types'
 
 export const adapterAnthropic: Adapter = {
   providerId: 'anthropic',
+
+  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+    const providerOptions =
+      meta.quirks.cache_strategy === 'explicit_headers'
+        ? { anthropic: { cacheControl: { type: 'ephemeral' as const } } }
+        : undefined
+
+    const tools =
+      req.tools?.length
+        ? Object.fromEntries(
+            req.tools.map(t => [
+              t.name,
+              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+            ]),
+          )
+        : undefined
+
+    if (req.toolChoice !== undefined && meta.quirks.tool_use_format === 'none') {
+      throw new Error(`adapterAnthropic: toolChoice not supported by model ${meta.id} (tool_use_format=none)`)
+    }
+
+    return {
+      model: anthropic(meta.id),
+      system: req.systemPrompt,
+      messages: req.messages,
+      providerOptions,
+      maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
+      temperature: req.temperature,
+      tools,
+      toolChoice: req.toolChoice as unknown,
+      stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
+      experimental_transform: req.smoothStream ? smoothStream() : undefined,
+      onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+    }
+  },
 
   stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent> {
     return new ReadableStream({
@@ -21,21 +56,10 @@ export const adapterAnthropic: Adapter = {
 
         controller.enqueue({ type: 'status', ts: ts(), status: 'queued' })
 
-        // When using explicit_headers cache strategy, pass cache_control on system
-        const providerOptions =
-          meta.quirks.cache_strategy === 'explicit_headers'
-            ? { anthropic: { cacheControl: { type: 'ephemeral' as const } } }
-            : undefined
-
         try {
-          const result = streamText({
-            model: anthropic(meta.id),
-            system: req.systemPrompt,
-            messages: req.messages,
-            providerOptions,
-            maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
-            temperature: req.temperature,
-          })
+          const options = adapterAnthropic.prepareRequest(req, meta)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = streamText(options as any)
 
           let composing = false
 
@@ -77,25 +101,26 @@ export const adapterAnthropic: Adapter = {
           }
 
           controller.enqueue({ type: 'status', ts: ts(), status: 'complete' })
-          controller.enqueue({
-            type: 'finish',
-            ts: ts(),
-            interaction: {
-              modelId: meta.id,
-              provider: meta.provider,
-              intermediate: [],
-              finishReason,
-              usage: {
-                inputTokens,
-                outputTokens,
-                cacheReadTokens,
-                cacheWriteTokens,
-                costUsd: computeCost(meta, inputTokens, outputTokens),
-                latencyMs: ts() - startTime,
-              },
-              providerMeta: {},
+          const interaction: ModelInteraction = {
+            modelId: meta.id,
+            provider: meta.provider,
+            intermediate: [],
+            finishReason,
+            usage: {
+              inputTokens,
+              outputTokens,
+              cacheReadTokens,
+              cacheWriteTokens,
+              costUsd: computeCost(meta, inputTokens, outputTokens),
+              latencyMs: ts() - startTime,
             },
-          })
+            providerMeta: {},
+          }
+          controller.enqueue({ type: 'finish', ts: ts(), interaction })
+
+          if (req.onFinish) {
+            await req.onFinish(interaction)
+          }
         } catch (err) {
           controller.enqueue({
             type: 'error',

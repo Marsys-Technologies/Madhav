@@ -1,7 +1,7 @@
 import 'server-only'
-import { streamText } from 'ai'
+import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { google } from '@ai-sdk/google'
-import type { Adapter } from './base'
+import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
 import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../types'
 
@@ -16,6 +16,51 @@ const SAFETY_BLOCK_NONE = [
 export const adapterGemini: Adapter = {
   providerId: 'google',
 
+  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+    const thinkingBudget =
+      req.reasoning !== 'disable'
+        ? (meta.quirks.request_transforms?.thinking_budget as number | undefined) ?? 32768
+        : 0
+
+    const googleOptions: Record<string, unknown> = {
+      safetySettings: SAFETY_BLOCK_NONE,
+      thinkingConfig: { thinkingBudget },
+    }
+
+    if (req.responseSchema) {
+      googleOptions['responseSchema'] = req.responseSchema
+    }
+
+    const tools =
+      req.tools?.length
+        ? Object.fromEntries(
+            req.tools.map(t => [
+              t.name,
+              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+            ]),
+          )
+        : undefined
+
+    if (req.toolChoice !== undefined && meta.quirks.tool_use_format === 'none') {
+      throw new Error(`adapterGemini: toolChoice not supported by model ${meta.id} (tool_use_format=none)`)
+    }
+
+    return {
+      model: google(meta.id),
+      system: req.systemPrompt,
+      messages: req.messages,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      providerOptions: { google: googleOptions } as any,
+      maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
+      temperature: req.temperature,
+      tools,
+      toolChoice: req.toolChoice as unknown,
+      stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
+      experimental_transform: req.smoothStream ? smoothStream() : undefined,
+      onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+    }
+  },
+
   stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent> {
     return new ReadableStream({
       async start(controller) {
@@ -29,30 +74,10 @@ export const adapterGemini: Adapter = {
 
         controller.enqueue({ type: 'status', ts: ts(), status: 'queued' })
 
-        const thinkingBudget =
-          req.reasoning !== 'disable'
-            ? (meta.quirks.request_transforms?.thinking_budget as number | undefined) ?? 32768
-            : 0
-
-        const googleOptions: Record<string, unknown> = {
-          safetySettings: SAFETY_BLOCK_NONE,
-          thinkingConfig: { thinkingBudget },
-        }
-
-        if (req.responseSchema) {
-          googleOptions['responseSchema'] = req.responseSchema
-        }
-
         try {
-          const result = streamText({
-            model: google(meta.id),
-            system: req.systemPrompt,
-            messages: req.messages,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            providerOptions: { google: googleOptions } as any,
-            maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
-            temperature: req.temperature,
-          })
+          const options = adapterGemini.prepareRequest(req, meta)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = streamText(options as any)
 
           let reasoningStarted = false
           let composing = false
@@ -103,25 +128,26 @@ export const adapterGemini: Adapter = {
           }
 
           controller.enqueue({ type: 'status', ts: ts(), status: 'complete' })
-          controller.enqueue({
-            type: 'finish',
-            ts: ts(),
-            interaction: {
-              modelId: meta.id,
-              provider: meta.provider,
-              intermediate: [],
-              finishReason,
-              usage: {
-                inputTokens,
-                outputTokens,
-                cacheReadTokens,
-                cacheWriteTokens,
-                costUsd: computeCost(meta, inputTokens, outputTokens),
-                latencyMs: ts() - startTime,
-              },
-              providerMeta: {},
+          const interaction: ModelInteraction = {
+            modelId: meta.id,
+            provider: meta.provider,
+            intermediate: [],
+            finishReason,
+            usage: {
+              inputTokens,
+              outputTokens,
+              cacheReadTokens,
+              cacheWriteTokens,
+              costUsd: computeCost(meta, inputTokens, outputTokens),
+              latencyMs: ts() - startTime,
             },
-          })
+            providerMeta: {},
+          }
+          controller.enqueue({ type: 'finish', ts: ts(), interaction })
+
+          if (req.onFinish) {
+            await req.onFinish(interaction)
+          }
         } catch (err) {
           controller.enqueue({
             type: 'error',

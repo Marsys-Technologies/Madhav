@@ -1,13 +1,52 @@
 import 'server-only'
-import { streamText } from 'ai'
+import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { deepseek } from '@ai-sdk/deepseek'
-import type { Adapter } from './base'
+import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
 import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../types'
 import { MarkerBuffer } from '../buffer'
 
 export const adapterDeepseek: Adapter = {
   providerId: 'deepseek',
+
+  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+    const wantsThinking =
+      req.reasoning !== 'disable' &&
+      meta.quirks.request_transforms?.thinking_mode === 'toggle'
+
+    const providerOptions = wantsThinking
+      ? { deepseek: { thinking: { type: 'enabled' as const } } }
+      : undefined
+
+    const tools =
+      req.tools?.length
+        ? Object.fromEntries(
+            req.tools.map(t => [
+              t.name,
+              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+            ]),
+          )
+        : undefined
+
+    if (req.toolChoice !== undefined && meta.quirks.tool_use_format === 'none') {
+      throw new Error(`adapterDeepseek: toolChoice not supported by model ${meta.id} (tool_use_format=none)`)
+    }
+
+    return {
+      model: deepseek(meta.id),
+      system: req.systemPrompt,
+      messages: req.messages,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      providerOptions: providerOptions as any,
+      maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
+      temperature: req.temperature,
+      tools,
+      toolChoice: req.toolChoice as unknown,
+      stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
+      experimental_transform: req.smoothStream ? smoothStream() : undefined,
+      onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+    }
+  },
 
   stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent> {
     return new ReadableStream({
@@ -24,24 +63,10 @@ export const adapterDeepseek: Adapter = {
 
         controller.enqueue({ type: 'status', ts: ts(), status: 'queued' })
 
-        const wantsThinking =
-          req.reasoning !== 'disable' &&
-          meta.quirks.request_transforms?.thinking_mode === 'toggle'
-
-        const providerOptions = wantsThinking
-          ? { deepseek: { thinking: { type: 'enabled' as const } } }
-          : undefined
-
         try {
-          const result = streamText({
-            model: deepseek(meta.id),
-            system: req.systemPrompt,
-            messages: req.messages,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            providerOptions: providerOptions as any,
-            maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
-            temperature: req.temperature,
-          })
+          const options = adapterDeepseek.prepareRequest(req, meta)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = streamText(options as any)
 
           let reasoningStarted = false
           let composing = false
@@ -65,7 +90,6 @@ export const adapterDeepseek: Adapter = {
                 controller.enqueue({ type: 'text_delta', ts: ts(), text: out.text })
               }
             } else if (part.type === 'reasoning-delta') {
-              // Native reasoning part — emit if model exposes reasoning
               if (meta.quirks.reasoning_via !== 'none') {
                 if (!reasoningStarted) {
                   controller.enqueue({ type: 'status', ts: ts(), status: 'reasoning' })
@@ -120,28 +144,29 @@ export const adapterDeepseek: Adapter = {
           }
 
           controller.enqueue({ type: 'status', ts: ts(), status: 'complete' })
-          controller.enqueue({
-            type: 'finish',
-            ts: ts(),
-            interaction: {
-              modelId: meta.id,
-              provider: meta.provider,
-              intermediate: [],
-              finishReason,
-              usage: {
-                inputTokens,
-                outputTokens,
-                reasoningTokens: reasoningTokens || undefined,
-                cacheReadTokens,
-                cacheWriteTokens,
-                costUsd: computeCost(meta, inputTokens, outputTokens),
-                latencyMs: ts() - startTime,
-              },
-              providerMeta: {
-                raw: reasoning_unclosed ? { reasoning_unclosed: true } : undefined,
-              },
+          const interaction: ModelInteraction = {
+            modelId: meta.id,
+            provider: meta.provider,
+            intermediate: [],
+            finishReason,
+            usage: {
+              inputTokens,
+              outputTokens,
+              reasoningTokens: reasoningTokens || undefined,
+              cacheReadTokens,
+              cacheWriteTokens,
+              costUsd: computeCost(meta, inputTokens, outputTokens),
+              latencyMs: ts() - startTime,
             },
-          })
+            providerMeta: {
+              raw: reasoning_unclosed ? { reasoning_unclosed: true } : undefined,
+            },
+          }
+          controller.enqueue({ type: 'finish', ts: ts(), interaction })
+
+          if (req.onFinish) {
+            await req.onFinish(interaction)
+          }
         } catch (err) {
           controller.enqueue({
             type: 'error',

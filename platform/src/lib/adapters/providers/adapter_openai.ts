@@ -1,12 +1,58 @@
 import 'server-only'
-import { streamText } from 'ai'
+import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import type { Adapter } from './base'
+import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
 import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../types'
 
 export const adapterOpenai: Adapter = {
   providerId: 'openai',
+
+  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+    // Structured output via json_schema when responseSchema is present
+    const providerOptions =
+      req.responseSchema && meta.quirks.structured_output_format === 'json_schema'
+        ? {
+            openai: {
+              response_format: {
+                type: 'json_schema' as const,
+                json_schema: { name: 'response', schema: req.responseSchema, strict: true },
+              },
+            },
+          }
+        : undefined
+
+    const tools =
+      req.tools?.length
+        ? Object.fromEntries(
+            req.tools.map(t => [
+              t.name,
+              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+            ]),
+          )
+        : undefined
+
+    if (req.toolChoice !== undefined && meta.quirks.tool_use_format === 'none') {
+      throw new Error(`adapterOpenai: toolChoice not supported by model ${meta.id} (tool_use_format=none)`)
+    }
+
+    // TODO: Future o-series models may have reasoning_via: 'native' — extend here when added to registry.
+
+    return {
+      model: openai(meta.id),
+      system: req.systemPrompt,
+      messages: req.messages,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      providerOptions: providerOptions as any,
+      maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
+      temperature: req.temperature,
+      tools,
+      toolChoice: req.toolChoice as unknown,
+      stopWhen: req.multiStep ? stepCountIs(req.multiStep.maxSteps) : undefined,
+      experimental_transform: req.smoothStream ? smoothStream() : undefined,
+      onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
+    }
+  },
 
   stream(req: QueryRequest, meta: ModelMeta): ReadableStream<ModelInteractionEvent> {
     return new ReadableStream({
@@ -20,31 +66,10 @@ export const adapterOpenai: Adapter = {
 
         controller.enqueue({ type: 'status', ts: ts(), status: 'queued' })
 
-        // Structured output via json_schema when responseSchema is present
-        const providerOptions =
-          req.responseSchema && meta.quirks.structured_output_format === 'json_schema'
-            ? {
-                openai: {
-                  response_format: {
-                    type: 'json_schema' as const,
-                    json_schema: { name: 'response', schema: req.responseSchema, strict: true },
-                  },
-                },
-              }
-            : undefined
-
-        // TODO: Future o-series models may have reasoning_via: 'native' — extend here when added to registry.
-
         try {
-          const result = streamText({
-            model: openai(meta.id),
-            system: req.systemPrompt,
-            messages: req.messages,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            providerOptions: providerOptions as any,
-            maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
-            temperature: req.temperature,
-          })
+          const options = adapterOpenai.prepareRequest(req, meta)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = streamText(options as any)
 
           let composing = false
 
@@ -83,24 +108,25 @@ export const adapterOpenai: Adapter = {
           }
 
           controller.enqueue({ type: 'status', ts: ts(), status: 'complete' })
-          controller.enqueue({
-            type: 'finish',
-            ts: ts(),
-            interaction: {
-              modelId: meta.id,
-              provider: meta.provider,
-              intermediate: [],
-              finishReason,
-              usage: {
-                inputTokens,
-                outputTokens,
-                cacheReadTokens,
-                costUsd: computeCost(meta, inputTokens, outputTokens),
-                latencyMs: ts() - startTime,
-              },
-              providerMeta: {},
+          const interaction: ModelInteraction = {
+            modelId: meta.id,
+            provider: meta.provider,
+            intermediate: [],
+            finishReason,
+            usage: {
+              inputTokens,
+              outputTokens,
+              cacheReadTokens,
+              costUsd: computeCost(meta, inputTokens, outputTokens),
+              latencyMs: ts() - startTime,
             },
-          })
+            providerMeta: {},
+          }
+          controller.enqueue({ type: 'finish', ts: ts(), interaction })
+
+          if (req.onFinish) {
+            await req.onFinish(interaction)
+          }
         } catch (err) {
           controller.enqueue({
             type: 'error',

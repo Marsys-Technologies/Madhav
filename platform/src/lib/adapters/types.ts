@@ -39,6 +39,62 @@ export interface QueryRequest {
   traceId?: string
   userId?: string
   parentEventId?: string
+
+  /**
+   * Multi-step agentic loop. When set, the adapter calls streamText with
+   * stopWhen: stepCountIs(maxSteps). Each tool round-trip emits a
+   * tool_call event followed by a tool_result event; intermediate text
+   * deltas emit between rounds as the model interleaves reasoning with
+   * tool calls.
+   *
+   * Used by synthesis/single_model_strategy.ts and the panel_strategy +
+   * panel/member_runner + panel/adjudicator agentic loops.
+   */
+  multiStep?: {
+    maxSteps: number
+  }
+
+  /**
+   * Tool choice forcing. Passed through to streamText.toolChoice.
+   * Provider-specific shape is handled by the adapter's prepareRequest.
+   *
+   * Used by pipeline/pipeline_planner.ts.
+   */
+  toolChoice?: 'auto' | 'none' | 'required' | { type: 'tool'; toolName: string }
+
+  /**
+   * Enable AI SDK text-delta smoothing. Passed through to streamText
+   * experimental_transform: smoothStream(). Makes streamed text feel more
+   * natural in real-time UIs.
+   *
+   * Used by synthesis/single_model_strategy.ts.
+   */
+  smoothStream?: boolean
+
+  /**
+   * Per-step callback for multi-step loops. Adapter wires this to
+   * streamText.onStepFinish. Called after each tool round-trip with
+   * step-level usage and metadata.
+   *
+   * Synthesis path uses this for per-step audit event capture.
+   */
+  onStepFinish?: (step: {
+    text: string
+    toolCalls: unknown[]
+    toolResults: unknown[]
+    usage: { inputTokens: number; outputTokens: number; totalTokens: number }
+    finishReason: string
+    stepType: string
+  }) => Promise<void> | void
+
+  /**
+   * Final callback called once at stream end with the assembled
+   * ModelInteraction. Adapter wires this AFTER the finish event is
+   * emitted on the stream.
+   *
+   * Synthesis path uses this for end-of-call audit event capture.
+   */
+  onFinish?: (interaction: ModelInteraction) => Promise<void> | void
 }
 
 export interface ToolDefinition {

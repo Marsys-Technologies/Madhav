@@ -9,4 +9,6 @@ export type {
 
 export { runAdapter } from './run_adapter'
 export { streamAdapter } from './stream_adapter'
+export { streamAdapterRaw } from './raw'
+export type { RawAdapterResult } from './raw'
 export { adapterFor } from './dispatcher'
