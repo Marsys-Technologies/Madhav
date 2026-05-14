@@ -40,10 +40,9 @@ function makeInput45(): Checkpoint45Input {
       query_text: 'Test query',
       query_class: 'factual',
       domains: [],
-      tool_calls: [],
       total_token_budget: 1000,
       is_multi_domain: false,
-    },
+    } as unknown as import('@/lib/router/types').QueryPlan,
   }
 }
 
@@ -55,10 +54,9 @@ function makeInput55(): Checkpoint55Input {
       query_text: 'Test query',
       query_class: 'factual',
       domains: [],
-      tool_calls: [],
       total_token_budget: 1000,
       is_multi_domain: false,
-    },
+    } as unknown as import('@/lib/router/types').QueryPlan,
     bundle: {
       bundle_id: 'bundle-001',
       query_plan_reference: 'plan-001',

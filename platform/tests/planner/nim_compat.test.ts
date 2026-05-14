@@ -4,7 +4,7 @@
  * Tests error classification, retry guard, and PlanInputJsonSchema validation.
  * No API calls, no mocking of external services needed — pure unit tests.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
