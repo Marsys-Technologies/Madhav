@@ -63,6 +63,13 @@ import { StreamingAnswer } from './StreamingAnswer'
 import { ValidatorFailureView } from './ValidatorFailureView'
 import { parseValidatorError } from '@/lib/ui/validator-error'
 import type { AudienceTier } from '@/lib/prompts/types'
+// AIOps Phase 3 — CO.1: lifecycle slot components (flag-ON path only)
+import { StatusPip } from './lifecycle/StatusPip'
+import { ReasoningSlot } from './lifecycle/ReasoningSlot'
+import { ToolCallChronology } from './lifecycle/ToolCallChronology'
+import { FinalAnswerSlot } from './lifecycle/FinalAnswerSlot'
+import { MetadataBadge } from './lifecycle/MetadataBadge'
+import { useChatLifecycle } from '@/lib/hooks/useChatLifecycle'
 
 const REPORT_VIEW_KEY = 'marsys.consume.reportView'
 
@@ -85,6 +92,8 @@ interface Props {
   initialMessages?: UIMessage[]
   panelModeEnabled?: boolean
   audienceTier?: AudienceTier
+  /** AIOps Phase 3: enables the new lifecycle-slot UI. Default false through CO.6. */
+  consumeUiV2Enabled?: boolean
 }
 
 export function ConsumeChat({
@@ -97,6 +106,7 @@ export function ConsumeChat({
   initialMessages,
   panelModeEnabled = false,
   audienceTier: initialAudienceTier = 'client',
+  consumeUiV2Enabled = false,
 }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -417,6 +427,10 @@ export function ConsumeChat({
     }`
   }, [displayMessages])
 
+  // AIOps Phase 3 — CO.1: useChatLifecycle hook (flag-ON path).
+  // stream=null in CO.1; CO.2/CO.3 wire the actual ModelInteractionEvent stream.
+  const lifecycleSnapshot = useChatLifecycle({ stream: null })
+
   const lastMessage = displayMessages[displayMessages.length - 1]
   const showPendingAssistant =
     session.isStreaming &&
@@ -530,24 +544,49 @@ export function ConsumeChat({
                       <ContextUsageCue usage={contextUsage} />
                     </div>
                   )}
-                  {session.isStreaming && (
-                    <LiveReasoningCard reasoningSteps={reasoningSteps} isStreaming />
-                  )}
-                  <StreamingAnswer
-                    messages={displayMessages}
-                    isStreaming={session.isStreaming && !branches.isViewingArchived}
-                    onStop={session.stop}
-                    onRegenerate={branches.isViewingArchived ? undefined : handleRegenerate}
-                    ratings={ratings}
-                    onRate={branches.isViewingArchived ? undefined : rate}
-                    onMarkers={handleMarkers}
-                  />
-                  {showPendingAssistant && <PendingAssistantBubble />}
-                  {/* Gate III: after-answer provenance pills */}
-                  {!session.isStreaming && provenance && (
-                    <div className="mx-auto w-full max-w-4xl px-4 pb-4">
-                      <PostAnswerProvenance provenance={provenance} />
-                    </div>
+                  {consumeUiV2Enabled ? (
+                    // AIOps Phase 3 — CO.1: lifecycle slot structure (flag-ON).
+                    // CO.1: slots are positioned; CO.2/CO.3 populate via event stream.
+                    <>
+                      <StatusPip state={lifecycleSnapshot.state} />
+                      <ReasoningSlot
+                        state={lifecycleSnapshot.state}
+                        reasoningText={lifecycleSnapshot.reasoningText}
+                      />
+                      <ToolCallChronology
+                        state={lifecycleSnapshot.state}
+                        toolCalls={lifecycleSnapshot.toolCalls}
+                        audienceTier={activeTier as 'super_admin' | 'acharya_reviewer' | 'client' | 'public_redacted'}
+                      />
+                      <FinalAnswerSlot
+                        state={lifecycleSnapshot.state}
+                        finalText={lifecycleSnapshot.finalText}
+                      />
+                      <MetadataBadge modelMeta={lifecycleSnapshot.modelMeta} />
+                    </>
+                  ) : (
+                    // Flag-OFF: legacy path — byte-identical to pre-CO.1 behavior.
+                    <>
+                      {session.isStreaming && (
+                        <LiveReasoningCard reasoningSteps={reasoningSteps} isStreaming />
+                      )}
+                      <StreamingAnswer
+                        messages={displayMessages}
+                        isStreaming={session.isStreaming && !branches.isViewingArchived}
+                        onStop={session.stop}
+                        onRegenerate={branches.isViewingArchived ? undefined : handleRegenerate}
+                        ratings={ratings}
+                        onRate={branches.isViewingArchived ? undefined : rate}
+                        onMarkers={handleMarkers}
+                      />
+                      {showPendingAssistant && <PendingAssistantBubble />}
+                      {/* Gate III: after-answer provenance pills */}
+                      {!session.isStreaming && provenance && (
+                        <div className="mx-auto w-full max-w-4xl px-4 pb-4">
+                          <PostAnswerProvenance provenance={provenance} />
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
