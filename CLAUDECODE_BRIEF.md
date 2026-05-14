@@ -1,34 +1,34 @@
 ---
 status: OPEN
-session_id: AIOPS_CO_6
-phase: CO.6
-phase_name: "Behavioral polish — scroll, focus, keyboard, a11y, edge states"
-next_session: AIOPS_CO_7
+session_id: AIOPS_CO_7
+phase: CO.7
+phase_name: "Cutover — flag flip + 48h watch + native acceptance"
+next_session: AIOPS_PHASE_3_COMPLETE
 authored_at: 2026-05-14
 authored_by: AIOPS_PHASE_3_MASTER_PLAN_v1_0
 ---
 
-# CLAUDECODE_BRIEF — AIOPS_CO_6
-## AIOps Phase 3, Step 6 — Behavioral polish
+# CLAUDECODE_BRIEF — AIOPS_CO_7
+## AIOps Phase 3, Step 7 — Cutover
 
 ---
 
 ## §0 — Executor orientation
 
-CO.6 is the behavioral polish pass. Per native Q7: best-in-class
-behavioral experience is IN SCOPE. Anchor reference: ChatGPT
-(scroll anchoring + smooth transitions); Claude.ai (focus management).
+CO.7 cuts over the consume UI to v2. Same playbook as Phase 1 CP.5 and
+Phase 2 AD.5:
 
-Seven targets:
-  1. Scroll anchoring during streaming
-  2. Focus management (submit → assistant area; Esc → input; Cmd+K → input)
-  3. Keyboard shortcuts
-  4. Mid-stream interrupts ("Stop generating")
-  5. Error / empty / loading states
-  6. Accessibility (WCAG 2.1 AA)
-  7. Mobile responsiveness
+  1. Author cutover smoke (visual regression diff against pre-CO baseline,
+     plus a manual viewing checklist).
+  2. Edit `.github/workflows/deploy.yml` to add
+     `CONSUME_UI_V2_ENABLED=true` to deploy-web env_vars.
+  3. Commit + push → triggers GitHub Actions deploy.
+  4. Wait for deploy, verify new revision has the env var.
+  5. Author CO7_NATIVE_ACCEPTANCE.md + CO7_CUTOVER_REPORT_v1_0.md.
+  6. Flip CLAUDECODE_BRIEF.md to status: COMPLETE.
 
-Behind `CONSUME_UI_V2_ENABLED`.
+After CO.7 closes, Phase 3 is code-complete and native does the final
+review + branch merge.
 
 ---
 
@@ -36,14 +36,12 @@ Behind `CONSUME_UI_V2_ENABLED`.
 
 ```
 1. CLAUDE.md
-2. 00_ARCHITECTURE/aiops/phase_3/CONSUME_UI_SPEC_v1_0.md (components 9, 10)
-3. 00_ARCHITECTURE/aiops/phase_3/UX_RESEARCH_v1_0.md
-4. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
-5. design:accessibility-review skill SKILL.md (if available — see Phase 1's CP.4 for example)
-6. All consume/ components after CO.1–CO.5 deliverables
-7. platform/src/components/consume/EmptyState.tsx
-8. platform/src/components/consume/SharedConsumeError.tsx
-9. platform/src/components/consume/ValidatorFailureView.tsx (existing error surface)
+2. 00_ARCHITECTURE/aiops/phase_3/AIOPS_PHASE_3_MASTER_PLAN_v1_0.md §10, §11
+3. 00_ARCHITECTURE/aiops/AIOPS_EXECUTION_RULES_v1_0.md
+4. 00_ARCHITECTURE/aiops/phase_2/AD5_NATIVE_ACCEPTANCE.md (template)
+5. 00_ARCHITECTURE/aiops/phase_2/AD5_CUTOVER_REPORT_v1_0.md (template)
+6. Phase 1's CP5_NATIVE_ACCEPTANCE.md (template; what a UI-focused checklist looks like)
+7. CO5_VISUAL_AUDIT.md and CO6_A11Y_AUDIT.md (CO.5 + CO.6 deliverables)
 ```
 
 ---
@@ -52,92 +50,127 @@ Behind `CONSUME_UI_V2_ENABLED`.
 
 ### may_touch
 ```
-platform/src/components/consume/**                      # behavioral wiring
-platform/src/lib/hooks/useScrollAnchor.ts                # NEW
-platform/src/lib/hooks/useKeyboardShortcuts.ts           # NEW
-platform/src/components/consume/__tests__/**             # a11y + behavior tests
-00_ARCHITECTURE/aiops/phase_3/CO6_A11Y_AUDIT.md          # NEW report
+.github/workflows/deploy.yml                              # add CONSUME_UI_V2_ENABLED=true
+platform/scripts/aiops/consume_ui_cutover_check.ts        # NEW — small smoke runner
+00_ARCHITECTURE/aiops/phase_3/CO7_CUTOVER_REPORT_v1_0.md  # NEW
+00_ARCHITECTURE/aiops/phase_3/CO7_NATIVE_ACCEPTANCE.md    # NEW
 CLAUDECODE_BRIEF.md
 ```
 
 ### must_not_touch
-- adapters/, synthesis/, models/  (Phase 1+2 sealed)
-- API routes
-- Visual design tokens (CO.5 sealed)
+- All consume/ component code (sealed after CO.6)
+- adapters/, synthesis/, models/
+- Anything outside may_touch
 
 ---
 
 ## §3 — Work plan
 
-### 3.1 — Scroll anchoring
+### 3.1 — Pre-deploy verification
 
-`useScrollAnchor.ts`:
-- If user is scrolled to the bottom (within 100px) AND new content arrives,
-  auto-scroll to follow.
-- If user has scrolled up (> 100px from bottom), do NOT auto-scroll.
-- On new user message submit, always scroll to bottom.
-- Mimics ChatGPT precisely.
+```bash
+cd platform
+npm run typecheck                            # exit 0 (or known-residual only)
+npm run lint                                  # exit 0
+npm run test -- --run                        # full suite; no new regressions vs CO.6 baseline
+```
 
-Wire to ConsumeChat's scroll container.
+If any new regressions vs CO.6 close, BAIL OUT.
 
-### 3.2 — Focus management
+### 3.2 — Consume UI cutover smoke
 
-- Submit query → focus moves to the assistant message area (specifically the
-  first reasoning or status indicator that mounts).
-- Esc → focus returns to composer; collapses any expanded panels.
-- Cmd+K → focus composer from anywhere.
-- Tab through interactive elements: composer → send → stack picker → 
-  history button → sidebar → message metadata expand → next message.
+`platform/scripts/aiops/consume_ui_cutover_check.ts`:
 
-### 3.3 — Keyboard shortcuts
+A small runner that:
+- Authenticates a super-admin session (via mint_session_cookie helper).
+- Hits `/consume` and verifies the new component tree mounts (flag-aware).
+- Captures DOM structure assertions (e.g., #lifecycle-status-pip exists,
+  #lifecycle-reasoning-slot exists when reasoning model is active).
+- Runs in CI-like environment without a real browser; uses fetch + JSDOM
+  if needed.
 
-`useKeyboardShortcuts.ts`:
-- `Cmd/Ctrl+Enter` — submit (likely exists; verify)
-- `Esc` — collapse panels + return focus
-- `Cmd/Ctrl+K` — focus composer
-- `Cmd/Ctrl+/` — show shortcuts help overlay (small modal)
+Run twice — `CONSUME_UI_V2_ENABLED=false` vs `=true` — and confirm:
+- Flag-off: legacy components render (StreamingAnswer old path, LiveReasoningCard).
+- Flag-on: new components render (lifecycle/* slots).
 
-### 3.4 — Mid-stream interrupts
+Save evidence to `00_ARCHITECTURE/aiops/phase_3/consume_ui_cutover_evidence/`.
 
-While `lifecycle.state` is anything other than `complete | idle | error`:
-- Show a "Stop generating" button near the message.
-- Clicking it cancels the SSE stream (AbortController) and transitions the
-  lifecycle to `cancelled`.
-- In cancelled state, show partial output + a "Regenerate" button.
+### 3.3 — Edit deploy.yml
 
-### 3.5 — Error / empty / loading states
+Add to deploy-web env_vars block, after `ADAPTERS_ENABLED=true`:
 
-- `EmptyState`: keep existing but verify with new visual treatment.
-- Error from adapter: surface via `ValidatorFailureView` or `SharedConsumeError` depending on error class. Include "Try again" button.
-- Loading skeletons for the initial message-list fetch (sidebar conversation history).
+```yaml
+            CONSUME_UI_V2_ENABLED=true
+```
 
-### 3.6 — A11y (WCAG 2.1 AA)
+Use the same Python substitution pattern as Phase 1 / Phase 2.
 
-Run accessibility audit using the design:accessibility-review skill pattern (see Phase 1 CP.4):
-- Color contrast: every text vs background ≥ 4.5:1 (body), ≥ 3:1 (large text).
-- Keyboard nav: every interactive element reachable via Tab; visible focus ring.
-- ARIA: dropdowns, modals, tab strips, status indicators all have appropriate ARIA roles + states.
-- Touch targets ≥ 44×44 px.
-- Screen reader: `aria-live="polite"` on the status indicator and reasoning slot.
-- Semantic HTML throughout.
+### 3.4 — Commit + push
 
-Author findings in `CO6_A11Y_AUDIT.md`. Acceptance: `OUTSTANDING: 0`.
+```
+ops(aiops-Phase-3): enable CONSUME_UI_V2_ENABLED in production
 
-### 3.7 — Mobile (< 640px)
+AIOps Phase 3 (Consume UI Overhaul) is now active in production. The
+event-driven consume UI replaces the ad-hoc state management; reasoning
+slot anchored from submission (Bug 3.3 fix); model-aware reasoning visibility
+(Bug 3.4 fix); input panel cleanup (Bug 3.1 fix); sidebar hover-expand
+(Bug 3.2 fix); visual design pass (CO.5); behavioral polish (CO.6).
 
-- Sidebar collapses to overlay (CO.4 already wired).
-- Composer sticks to bottom of viewport.
-- Reasoning slot collapses to a one-line summary by default; tap to expand.
-- Tool call chronology shows one card at a time (carousel-style) instead of stacked.
-- Touch targets ≥ 44 px throughout.
+Rollback (no code revert): gcloud run services update amjis-web \
+  --region asia-south1 --remove-env-vars CONSUME_UI_V2_ENABLED
+```
 
-### 3.8 — Tests
+Push to main.
 
-- Scroll anchoring: simulate user scroll position; assert auto-follow behavior.
-- Keyboard shortcuts: simulate key events; assert focus/state changes.
-- Stop-generating: cancel mid-stream; lifecycle transitions to cancelled.
-- A11y assertions in component tests for every interactive element.
-- ≥25 cases.
+### 3.5 — Wait for deploy + verify
+
+Standard pattern. Poll deploy-web job (same as AD.5). Confirm new revision
+has CONSUME_UI_V2_ENABLED=true via gcloud describe.
+
+### 3.6 — CO7_CUTOVER_REPORT
+
+Standard report shape (mirror AD5_CUTOVER_REPORT):
+- §1 cutover smoke flag-on vs flag-off results
+- §2 visual regression evidence (screenshots before/after key views)
+- §3 bug-fix verification (Bugs 3.1, 3.2, 3.3, 3.4 each have a programmatic check)
+- §4 a11y audit summary (referencing CO6_A11Y_AUDIT.md)
+- §5 outstanding risks (none if all CO sub-phases closed clean)
+
+### 3.7 — CO7_NATIVE_ACCEPTANCE
+
+12-item checklist mirroring CP5_NATIVE_ACCEPTANCE shape, including:
+1. Visit `/consume`; submit a reasoning model query; confirm Bug 3.3 fix
+2. Visit `/consume`; confirm input panel alignment + per-message capsules (Bug 3.1)
+3. Hover sidebar; verify expand/collapse + click-pin (Bug 3.2)
+4. Send a non-reasoning query (NIM Nemotron); verify reasoning slot absent (Bug 3.4)
+5. CLS measurement < 0.05 in browser DevTools
+6. Mobile viewport (Chrome DevTools 375×667): sidebar overlay, composer sticky, no horizontal scroll
+7. Keyboard shortcuts: Cmd+K, Esc, Cmd+/ verified
+8. Mid-stream Stop generating works
+9. Flag-off equivalence: set `CONSUME_UI_V2_ENABLED=false`; confirm legacy components render
+10. CO6_A11Y_AUDIT.md OUTSTANDING: 0
+11. CO5_VISUAL_AUDIT.md confirms typography ≤ 6 sizes, motion tiers consolidated
+12. No /consume regressions in Cloud Run / Observatory cost+latency for 1 hour post-flip
+
+### 3.8 — Flip CLAUDECODE_BRIEF.md
+
+```yaml
+---
+status: COMPLETE
+session_id: AIOPS_CO_7
+completed_at: <ISO>
+next_native_action: >
+  Review CO7_NATIVE_ACCEPTANCE.md (12-item checklist). When satisfied,
+  merge feature/aiops-phase-3-consume-ui to main. Set ADAPTERS_ENABLED
+  + CONSUME_UI_V2_ENABLED flag-removal PRs for 2 weeks post-merge.
+---
+
+# AIOps Phase 3 — COMPLETE
+
+8 sub-phases CO.0 → CO.7 closed. Consume UI overhaul live in production
+behind CONSUME_UI_V2_ENABLED=true. Native acceptance pending per
+CO7_NATIVE_ACCEPTANCE.md.
+```
 
 ---
 
@@ -145,46 +178,53 @@ Author findings in `CO6_A11Y_AUDIT.md`. Acceptance: `OUTSTANDING: 0`.
 
 | AC | Check | Pass |
 |---|---|---|
-| AC.CO6.1 | useScrollAnchor mimics ChatGPT pattern correctly | scroll-pos tests |
-| AC.CO6.2 | Focus management covers submit/esc/cmd-k/tab paths | a11y tests |
-| AC.CO6.3 | 4 keyboard shortcuts work + help modal shows | UI tests |
-| AC.CO6.4 | Mid-stream "Stop generating" cancels + leaves regenerate option | UI test |
-| AC.CO6.5 | CO6_A11Y_AUDIT.md shows OUTSTANDING: 0 | grep |
-| AC.CO6.6 | CLS < 0.05 during normal interaction (re-measured post-CO.5) | manual + doc |
-| AC.CO6.7 | Mobile (< 640px) viewport tests pass | parametrized test |
-| AC.CO6.8 | typecheck + lint + full suite green | exit 0 |
-| AC.CO6.9 | ≥25 new tests | count |
-| AC.CO6.10 | Scope-violation grep | SCOPE_OK |
+| AC.CO7.1 | consume_ui_cutover_check.ts exists + passes both flag states | exit 0 |
+| AC.CO7.2 | deploy.yml has CONSUME_UI_V2_ENABLED=true | grep |
+| AC.CO7.3 | git push to main succeeded | log |
+| AC.CO7.4 | New Cloud Run revision has the env var | gcloud describe |
+| AC.CO7.5 | CO7_CUTOVER_REPORT_v1_0.md exists with §1–§5 populated | grep |
+| AC.CO7.6 | CO7_NATIVE_ACCEPTANCE.md exists with 12-item checklist | grep `[ ]` count |
+| AC.CO7.7 | CLAUDECODE_BRIEF.md status: COMPLETE | grep |
+| AC.CO7.8 | Branch ≥ 8 phase commits ahead of main (CO.0 through CO.7) | rev-list |
+| AC.CO7.9 | Madhav worktree unchanged | snapshot check |
+| AC.CO7.10 | Full test suite + typecheck green | exit 0 each |
 
 ---
 
 ## §5 — Session close
 
-Commit:
+Standard. Print final report:
+
 ```
-feat(aiops-CO.6): behavioral polish — scroll, focus, keyboard, a11y, edges
+═══════════════════════════════════════════════════════════════
+AIOps Phase 3 (Consume UI Overhaul) — code-complete in production.
 
-- useScrollAnchor: ChatGPT-style follow-at-bottom; no auto-scroll when scrolled up
-- useKeyboardShortcuts: Cmd+Enter submit, Esc collapse, Cmd+K focus, Cmd+/ help
-- Focus management: submit → assistant area; Esc → composer; Tab order audited
-- Mid-stream Stop generating button + cancelled-state regenerate
-- Error/empty/loading states polished
-- A11y WCAG 2.1 AA: CO6_A11Y_AUDIT.md OUTSTANDING: 0
-- Mobile (< 640px) viewport: composer-sticky, reasoning-collapse, 44px targets
-- 25+ new tests; CLS < 0.05 verified
+Production revision: <amjis-web-NNN-xxx>
+Service URL:         https://amjis-web-qm256lasva-el.a.run.app
+Flag state:          CONSUME_UI_V2_ENABLED=true
+4 named bugs fixed:  3.1 (input panel), 3.2 (sidebar), 3.3 (reasoning
+                     placement), 3.4 (reasoning consistency)
+Visual + behavioral: 2 audits with OUTSTANDING: 0
 
-AC summary: 10/10 PASS
+Branch: feature/aiops-phase-3-consume-ui NOT pushed.
+Native action: review CO7_NATIVE_ACCEPTANCE.md and merge.
+
+AIOps trilogy complete:
+  Phase 1 — Control Panel (live, all stacks functional)
+  Phase 2 — Adapter Layer (live, 246a85b merge)
+  Phase 3 — Consume UI Overhaul (this branch, awaiting merge)
+═══════════════════════════════════════════════════════════════
 ```
-
-Rotate → CO.7.
 
 ---
 
 ## §6 — BAIL OUT
 
-- A11y issue with no clean fix (e.g., contrast requires a new color token; CO.5 should have handled it).
-- Mobile viewport tests reveal a fundamental layout issue requiring a bigger refactor.
+- Cutover smoke fails on flag-on path (new components don't mount correctly).
+- A11y audit reveals an issue that CO.6 should have caught — bug in audit; native investigates.
+- Deploy push rejected for unrelated reasons (branch protection, etc.).
 
 ---
 
-*End of PHASE_CO_6_BRIEF.md*
+*End of PHASE_CO_7_BRIEF.md*
+*End of AIOps Phase 3 brief arc.*
