@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { StatusPip } from '../lifecycle/StatusPip'
@@ -192,6 +192,120 @@ describe('MetadataBadge', () => {
       />,
     )
     expect(screen.getByText('2.5s')).toBeDefined()
+  })
+})
+
+// ── MetadataBadge CO.2: click-to-expand + requestId (AC.CO2.3, AC.CO2.4) ──────
+
+describe('MetadataBadge CO.2 — expanded token breakdown', () => {
+  const FULL_META = {
+    modelId: 'gemini-2.5-pro',
+    cost: 0.012,
+    latencyMs: 4200,
+    requestId: 'req-abc-123',
+    usage: {
+      inputTokens: 1500,
+      outputTokens: 300,
+      reasoningTokens: 50,
+      cacheReadTokens: 200,
+      cacheWriteTokens: 100,
+    },
+  }
+
+  it('does not show token breakdown before clicking', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    expect(screen.queryByText('Input tokens')).toBeNull()
+    expect(screen.queryByText('req-abc-123')).toBeNull()
+  })
+
+  it('shows input token count after clicking expand', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    const btn = screen.getByRole('button', { name: /Model metadata/i })
+    fireEvent.click(btn)
+    expect(screen.getByText('Input tokens')).toBeDefined()
+    expect(screen.getByText('1,500')).toBeDefined()
+  })
+
+  it('shows output token count after clicking expand', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.getByText('Output tokens')).toBeDefined()
+    expect(screen.getByText('300')).toBeDefined()
+  })
+
+  it('shows reasoning tokens when > 0', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.getByText('Reasoning tokens')).toBeDefined()
+    expect(screen.getByText('50')).toBeDefined()
+  })
+
+  it('shows cache read tokens when > 0', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.getByText('Cache read')).toBeDefined()
+    expect(screen.getByText('200')).toBeDefined()
+  })
+
+  it('shows cache write tokens when > 0', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.getByText('Cache write')).toBeDefined()
+    expect(screen.getByText('100')).toBeDefined()
+  })
+
+  it('shows requestId in expanded view (AC.CO2.4)', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.getByText('Request ID')).toBeDefined()
+    expect(screen.getByText('req-abc-123')).toBeDefined()
+  })
+
+  it('toggles collapse on second click', () => {
+    render(<MetadataBadge modelMeta={FULL_META} />)
+    const btn = screen.getByRole('button', { name: /Model metadata/i })
+    fireEvent.click(btn)
+    expect(screen.getByText('Input tokens')).toBeDefined()
+    fireEvent.click(btn)
+    expect(screen.queryByText('Input tokens')).toBeNull()
+  })
+
+  it('omits reasoning tokens row when 0', () => {
+    render(
+      <MetadataBadge
+        modelMeta={{ ...FULL_META, usage: { ...FULL_META.usage, reasoningTokens: 0 } }}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.queryByText('Reasoning tokens')).toBeNull()
+  })
+
+  it('omits requestId row when not provided', () => {
+    const { modelId, cost, latencyMs, usage } = FULL_META
+    render(<MetadataBadge modelMeta={{ modelId, cost, latencyMs, usage }} />)
+    fireEvent.click(screen.getByRole('button', { name: /Model metadata/i }))
+    expect(screen.queryByText('Request ID')).toBeNull()
+  })
+})
+
+// ── Source-level guard: AC.CO2.1 (input panel cleanup) ────────────────────────
+
+describe('AC.CO2.1 — model name removed from input panel for flag-ON', () => {
+  it('lastAssistantMeta span is conditional on !consumeUiV2Enabled', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('!consumeUiV2Enabled && lastAssistantMeta')
+  })
+
+  it('ModelStylePicker (stack selector) is always rendered regardless of flag', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('ModelStylePicker')
+    expect(src).toContain('TierPicker')
   })
 })
 

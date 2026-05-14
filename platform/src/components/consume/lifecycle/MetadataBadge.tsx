@@ -40,6 +40,7 @@ export function MetadataBadge({ modelMeta, className }: Props) {
     cacheReadTokens?: number
     cacheWriteTokens?: number
   } | undefined
+  const requestId = modelMeta.requestId
 
   return (
     <div className={cn('mx-auto w-full max-w-4xl px-4 pb-2', className)}>
@@ -70,37 +71,43 @@ export function MetadataBadge({ modelMeta, className }: Props) {
         )}
       </button>
 
-      {expanded && usage && (
+      {expanded && (usage || requestId) && (
         <div className="mt-1.5 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] font-mono">
-            {usage.inputTokens !== undefined && (
+            {usage?.inputTokens !== undefined && (
               <>
                 <dt className="text-muted-foreground/60">Input tokens</dt>
                 <dd className="text-muted-foreground">{usage.inputTokens.toLocaleString()}</dd>
               </>
             )}
-            {usage.outputTokens !== undefined && (
+            {usage?.outputTokens !== undefined && (
               <>
                 <dt className="text-muted-foreground/60">Output tokens</dt>
                 <dd className="text-muted-foreground">{usage.outputTokens.toLocaleString()}</dd>
               </>
             )}
-            {usage.reasoningTokens !== undefined && usage.reasoningTokens > 0 && (
+            {usage?.reasoningTokens !== undefined && usage.reasoningTokens > 0 && (
               <>
                 <dt className="text-muted-foreground/60">Reasoning tokens</dt>
                 <dd className="text-muted-foreground">{usage.reasoningTokens.toLocaleString()}</dd>
               </>
             )}
-            {usage.cacheReadTokens !== undefined && usage.cacheReadTokens > 0 && (
+            {usage?.cacheReadTokens !== undefined && usage.cacheReadTokens > 0 && (
               <>
                 <dt className="text-muted-foreground/60">Cache read</dt>
                 <dd className="text-muted-foreground">{usage.cacheReadTokens.toLocaleString()}</dd>
               </>
             )}
-            {usage.cacheWriteTokens !== undefined && usage.cacheWriteTokens > 0 && (
+            {usage?.cacheWriteTokens !== undefined && usage.cacheWriteTokens > 0 && (
               <>
                 <dt className="text-muted-foreground/60">Cache write</dt>
                 <dd className="text-muted-foreground">{usage.cacheWriteTokens.toLocaleString()}</dd>
+              </>
+            )}
+            {requestId && (
+              <>
+                <dt className="text-muted-foreground/60">Request ID</dt>
+                <dd className="text-muted-foreground truncate" title={requestId}>{requestId}</dd>
               </>
             )}
           </dl>

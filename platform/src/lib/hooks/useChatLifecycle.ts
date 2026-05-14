@@ -39,6 +39,7 @@ export interface ChatLifecycleSnapshot {
     cost?: number
     latencyMs?: number
     usage?: unknown
+    requestId?: string
   } | null
   error?: { message: string; code?: string }
 }
@@ -108,6 +109,7 @@ export function chatLifecycleReducer(
           cost: action.interaction.usage.costUsd,
           latencyMs: action.interaction.usage.latencyMs,
           usage: action.interaction.usage,
+          requestId: action.interaction.providerMeta.requestId,
         },
       }
 

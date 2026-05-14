@@ -674,7 +674,7 @@ export function ConsumeChat({
                 onStyleChange={setStyle}
                 disabled={session.isStreaming || branches.isViewingArchived}
               />
-              {lastAssistantMeta && (
+              {!consumeUiV2Enabled && lastAssistantMeta && (
                 <span className="text-[10px] text-brand-gold/40 font-mono ml-1 hidden sm:inline">
                   {lastAssistantMeta}
                 </span>
