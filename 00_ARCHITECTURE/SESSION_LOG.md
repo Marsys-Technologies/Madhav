@@ -23604,3 +23604,109 @@ session_close:
       change: "MP.2 mirror update (M8-H-S1 closed; M8 CLOSED state block)"
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: M9-A-S1
+  opened_at: "2026-05-14T00:00:00+05:30"
+  cowork_thread_name: "Madhav_M9A_S1_CoverageAudit"
+  macro_phase: M9
+  sub_phase: M9-A
+  phase_plan: PHASE_M9_PLAN_v1_0.md
+  red_team_counter_at_open: 0
+  scope:
+    may_touch:
+      - "09_MULTI_SCHOOL_TRIANGULATION/**"
+      - "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
+      - "platform/supabase/migrations/057_*.sql"
+      - "platform/supabase/migrations/058_*.sql"
+      - "platform/supabase/migrations/059_*.sql"
+      - "platform/supabase/migrations/060_*.sql"
+      - "platform/src/lib/tools/multi_school_signal_lookup.ts"
+      - "platform/src/lib/tools/convergence_score_lookup.ts"
+      - "platform/src/lib/tools/index.ts"
+      - "platform/scripts/m9/**"
+      - "00_ARCHITECTURE/GCS_LAYOUT_v1_0.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - ".geminirules"
+      - ".gemini/project_state.md"
+      - "00_ARCHITECTURE/SESSION_LOG_M9A_OPEN.yaml"
+    must_not_touch:
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+      - "platform/src/lib/schools/**"
+      - "platform/scripts/m9/run_multi_school_analysis.py"
+      - "platform/scripts/m9/compute_convergence.py"
+      - "platform/scripts/m9/build_disagreement_register.py"
+      - "06_LEARNING_LAYER/**"
+      - "08_CLASSICAL_CROSS_REFERENCE/**"
+  objective: "M9-A: School coverage audit (573 MSR signals × 7 schools); Yogini signal extraction (SIG.MSR.544–558); Tajika signal extraction (SIG.MSR.559–573); MSR v5.0; Tool 27+28 stubs; DB migrations 057–060; GCS L9/ layout; CAPABILITY_MANIFEST 121→128."
+  ac_targets:
+    - AC.M9A.1: "DB migrations 057–060 authored (school_signal_coverage, school_analysis_runs, convergence_scores, school_disagreements)"
+    - AC.M9A.2: "09_MULTI_SCHOOL_TRIANGULATION/ folder + README.md"
+    - AC.M9A.3: "SCHOOL_COVERAGE_AUDIT_v1_0.md — 4,011 classifications (573 × 7 schools)"
+    - AC.M9A.4: "YOGINI_SIGNAL_EXTRACTION_v1_0.md — 15 signals SIG.MSR.544–558"
+    - AC.M9A.5: "TAJIKA_SIGNAL_EXTRACTION_v1_0.md — 15 signals SIG.MSR.559–573"
+    - AC.M9A.6: "MSR_v5_0.md — 573 signals (§VIII Yogini + §IX Tajika appended)"
+    - AC.M9A.7: "Tool 27+28 stubs registered in CLASSICAL_TOOL_REGISTRY"
+    - AC.M9A.8: "GCS_LAYOUT_v1_0.md v1.1 — L9/ prefix added"
+    - AC.M9A.9: "CAPABILITY_MANIFEST entry_count 121→128"
+    - AC.M9A.10: "MP.1+MP.2 mirrors propagated"
+    - AC.M9A.11: "SESSION_LOG M9-A-S1 appended"
+  key_outputs:
+    - "platform/supabase/migrations/057_school_signal_coverage.sql (NEW)"
+    - "platform/supabase/migrations/058_school_analysis_runs.sql (NEW)"
+    - "platform/supabase/migrations/059_convergence_scores.sql (NEW)"
+    - "platform/supabase/migrations/060_school_disagreements.sql (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/README.md (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/SCHOOL_COVERAGE_AUDIT_v1_0.md (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/YOGINI_SIGNAL_EXTRACTION_v1_0.md (NEW)"
+    - "09_MULTI_SCHOOL_TRIANGULATION/TAJIKA_SIGNAL_EXTRACTION_v1_0.md (NEW)"
+    - "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md (NEW — 573 signals)"
+    - "platform/src/lib/tools/multi_school_signal_lookup.ts (NEW — Tool 27 STUB)"
+    - "platform/src/lib/tools/convergence_score_lookup.ts (NEW — Tool 28 STUB)"
+    - "platform/src/lib/tools/index.ts (MODIFIED — Tools 27+28 registered)"
+    - "platform/scripts/m9/run_coverage_audit.py (NEW)"
+    - "platform/scripts/m9/extract_yogini_signals.py (NEW)"
+    - "platform/scripts/m9/extract_tajika_signals.py (NEW)"
+    - "00_ARCHITECTURE/GCS_LAYOUT_v1_0.md (MODIFIED — L9/ block added)"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json (MODIFIED — 121→128 entries)"
+    - "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md (MODIFIED — MSR entry v5_0/573)"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.12 — M9-A-S1 CLOSED)"
+    - ".geminirules (MODIFIED — §C item #5 + §F state block → M9-A-S1)"
+    - ".gemini/project_state.md (MODIFIED — Active Phase M9 OPEN block)"
+  carry_forwards:
+    - "CF.M9.1: [VARSHA_KUNDALI_PENDING] — Tajika 2026 Varsha Kundali requires Swiss Ephemeris solar return ~Jan 25 2026 Bhubaneswar"
+    - "CF.M9.2: [TRANSIT_DATA_PENDING] — BNN 2026-05-14 transit positions requires Swiss Ephemeris"
+    - "DB insertion deferred (proxy unavailable at M9-A-S1 execution context)"
+
+session_close:
+  session_id: M9-A-S1
+  closed_at: "2026-05-14T23:59:59+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.M9A.1: "PASS — migrations 057–060 authored; DDL complete with CHECKs, indexes, GENERATED col"
+    AC.M9A.2: "PASS — 09_MULTI_SCHOOL_TRIANGULATION/ + README.md created with 7 schools table, convergence protocol, CF documentation"
+    AC.M9A.3: "PASS — SCHOOL_COVERAGE_AUDIT_v1_0.md: 4,011 classifications; heuristic method documented; verification SQL included; DB insertion deferred"
+    AC.M9A.4: "PASS — YOGINI_SIGNAL_EXTRACTION_v1_0.md: 15 signals SIG.MSR.544–558; all 8 Yoginis; Bhramari/Mars active 0.27 yrs"
+    AC.M9A.5: "PASS — TAJIKA_SIGNAL_EXTRACTION_v1_0.md: 15 signals SIG.MSR.559–573; solar_return_scope:true; [VARSHA_KUNDALI_PENDING] documented"
+    AC.M9A.6: "PASS — MSR_v5_0.md 573 signals; CANONICAL_ARTIFACTS MSR entry updated v5_0/573; signal_count:573 frontmatter"
+    AC.M9A.7: "PASS — Tool 27 multi_school_signal_lookup.ts STUB; Tool 28 convergence_score_lookup.ts STUB; both in CLASSICAL_TOOL_REGISTRY layer L9 status STUB"
+    AC.M9A.8: "PASS — GCS_LAYOUT_v1_0.md v1.1: L9/school_analyses/ (7 JSON files) + L9/convergence/ (2 JSON files)"
+    AC.M9A.9: "PASS — CAPABILITY_MANIFEST.json: MSR→v5_0, GCS_LAYOUT→v1.1, +8 new entries; entry_count 121→128"
+    AC.M9A.10: "PASS — .geminirules §C item #5 → PHASE_M9_PLAN_v1_0.md; §F → M9-A-S1 state; .gemini/project_state.md → M9 OPEN active section"
+    AC.M9A.11: "PASS — SESSION_LOG M9-A-S1 appended"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1: §C item #5 PHASE_M8_PLAN→PHASE_M9_PLAN; §F state block → M9-A-S1 CLOSED / M9-B-S1 INCOMING / red_team_counter:1"
+    - path: ".gemini/project_state.md"
+      change: "MP.2: Active Phase section M6-INCOMING→M9-OPEN; M9-A-S1 deliverables block added; header updated to M9-A-S1"
+  session_close_valid: true
+```

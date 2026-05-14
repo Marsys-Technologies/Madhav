@@ -104,12 +104,29 @@ gs://madhav-marsys-sources/
         └── CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json
 ```
 
+    └── L9/                                              ← L9 added at M9-A-S1 (2026-05-14)
+        ├── school_analyses/
+        │   ├── parashari_analysis.json
+        │   ├── jaimini_analysis.json
+        │   ├── tajika_analysis.json
+        │   ├── kp_analysis.json
+        │   ├── nadi_analysis.json
+        │   ├── bnn_analysis.json
+        │   └── yogini_analysis.json
+        └── convergence/
+            ├── convergence_scores.json
+            └── school_disagreement_register.json
+```
+
+*(L2_5/ also receives MSR_v5_0.md at M9-A-S1 close: `gs://madhav-marsys-sources/L2_5/MSR_v5_0.md`)*
+
 **Notes:**
 - `L1/ephemeris/` paths are reserved; files don't exist locally yet (coverage gaps). The sync script skips non-existent files.
 - L3 `.md` companion files exist on disk alongside `.json` registry entries; both are included in the sync per this layout.
 - L2 (`02_ANALYTICAL_LAYER/`) is formally archived — NOT included in this bucket. Archived per Phase 14F.
 - L4 does not exist (single-native; federated discovery is M3+ work).
 - L5 (`06_LEARNING_LAYER/`) is not included in this bucket in Phase 14A. Learning Layer sync scope is a separate decision.
+- L9 (`09_MULTI_SCHOOL_TRIANGULATION/`) added at M9-A-S1 (2026-05-14) — multi-school analysis JSON outputs and convergence metrics.
 
 ---
 

@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-14T23:59:00+05:30",
+  "generated_at": "2026-05-14T23:59:30+05:30",
   "generator_version": "1.0",
-  "entry_count": 121,
+  "entry_count": 128,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -159,8 +159,8 @@
     },
     {
       "canonical_id": "MSR",
-      "path": "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
-      "version": "4.0",
+      "path": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
+      "version": "5.0",
       "status": "CURRENT",
       "layer": "L2.5",
       "expose_to_chat": true,
@@ -175,7 +175,11 @@
         "interpretive",
         "cross_domain"
       ],
-      "cost_weight": 0.9
+      "cost_weight": 0.9,
+      "signal_count": 573,
+      "predecessor": "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
+      "updated_at": "2026-05-14",
+      "updated_by": "M9-A-S1"
     },
     {
       "canonical_id": "RED_TEAM_L2_5_v1_0",
@@ -1314,7 +1318,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "v1.1 \u2014 L8 prefix block added for M8 classical corpus"
+      "note": "v1.1 \u2014 L8 prefix block added for M8 classical corpus",
+      "updated_at": "2026-05-14",
+      "updated_by": "M9-A-S1",
+      "notes": "L9/ prefix added at M9-A-S1"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_classical_text_search",
@@ -1461,11 +1468,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["python"],
+      "representations": [
+        "python"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Full attribution pass: Vertex AI text-embedding-004 × 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge → classical_attributions table"
+      "note": "Full attribution pass: Vertex AI text-embedding-004 \u00d7 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge \u2192 classical_attributions table"
     },
     {
       "id": "ATTRIBUTION_SCRIPT_build_registry_from_db",
@@ -1475,11 +1484,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["python"],
+      "representations": [
+        "python"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Reads classical_attributions table → produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM"
+      "note": "Reads classical_attributions table \u2192 produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM"
     },
     {
       "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY",
@@ -1488,7 +1499,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["json"],
+      "representations": [
+        "json"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
@@ -1501,7 +1514,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
@@ -1514,11 +1529,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal × text × verse breakdown"
+      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal \u00d7 text \u00d7 verse breakdown"
     },
     {
       "canonical_id": "FINDINGS_CLASSICAL_CLAIM",
@@ -1527,7 +1544,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
@@ -1540,7 +1559,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["script"],
+      "representations": [
+        "script"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
@@ -1553,7 +1574,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["script"],
+      "representations": [
+        "script"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
@@ -1566,7 +1589,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["script"],
+      "representations": [
+        "script"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
@@ -1579,7 +1604,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["script"],
+      "representations": [
+        "script"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
@@ -1592,11 +1619,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence ≥0.60"
+      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence \u22650.60"
     },
     {
       "canonical_id": "NADI_SIGNAL_EXTRACTION",
@@ -1605,7 +1634,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
@@ -1618,11 +1649,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "29 net-new signal proposal SIG.MSR.515–543; dedup argument vs existing 514; AC.M8F.5 PASS"
+      "note": "29 net-new signal proposal SIG.MSR.515\u2013543; dedup argument vs existing 514; AC.M8F.5 PASS"
     },
     {
       "canonical_id": "CLASSICAL_TEXT_SEARCH_TOOL",
@@ -1631,7 +1664,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
@@ -1644,7 +1679,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
@@ -1657,7 +1694,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
@@ -1670,7 +1709,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
@@ -1683,11 +1724,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["json"],
+      "representations": [
+        "json"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "GT.047–GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
+      "note": "GT.047\u2013GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
     },
     {
       "canonical_id": "TRANSLATION_CROSS_CHECK",
@@ -1696,7 +1739,9 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
@@ -1709,11 +1754,13 @@
       "status": "CURRENT",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS"
+      "note": "20 findings (4\u00d75 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS"
     },
     {
       "canonical_id": "M8_CLOSE",
@@ -1722,7 +1769,9 @@
       "status": "CLOSED",
       "layer": "L8",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
@@ -1735,11 +1784,120 @@
       "status": "ARCHIVED",
       "layer": "L0",
       "expose_to_chat": false,
-      "representations": ["markdown"],
+      "representations": [
+        "markdown"
+      ],
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
       "note": "M8 CLAUDECODE_BRIEF archived at M8 close; AC.M8H.9 PASS"
+    },
+    {
+      "canonical_id": "PHASE_M9_PLAN",
+      "path": "00_ARCHITECTURE/PHASE_M9_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "notes": "M9 multi-school triangulation plan; 5 sub-sessions M9-A through M9-E",
+      "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14"
+    },
+    {
+      "canonical_id": "09_MULTI_SCHOOL_TRIANGULATION",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L9",
+      "expose_to_chat": false,
+      "representations": [
+        "folder"
+      ],
+      "interface_version": "1.0",
+      "notes": "M9 multi-school triangulation layer; 7 schools \u00d7 5 domains \u00d7 543+ signals",
+      "produced_during": "M9-A-S1 2026-05-14"
+    },
+    {
+      "canonical_id": "SCHOOL_COVERAGE_AUDIT",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/SCHOOL_COVERAGE_AUDIT_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L9",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "notes": "Per-school signal coverage classification: 573 signals \u00d7 7 schools = 4011 rows",
+      "produced_during": "M9-A-S1 2026-05-14"
+    },
+    {
+      "canonical_id": "YOGINI_SIGNAL_EXTRACTION",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/YOGINI_SIGNAL_EXTRACTION_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L9",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "notes": "15 Yogini signals SIG.MSR.544\u2013558; current Yogini: Bhramari (Mars; active)",
+      "produced_during": "M9-A-S1 2026-05-14"
+    },
+    {
+      "canonical_id": "TAJIKA_SIGNAL_EXTRACTION",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/TAJIKA_SIGNAL_EXTRACTION_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L9",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "notes": "15 Tajika signals SIG.MSR.559\u2013573; solar_return_scope: true; CF.M9.1 pending",
+      "produced_during": "M9-A-S1 2026-05-14"
+    },
+    {
+      "canonical_id": "CLAUDECODE_BRIEF_M9",
+      "path": "CLAUDECODE_BRIEF.md",
+      "version": "1.0",
+      "status": "ACTIVE",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "notes": "Active M9 brief; all 5 sessions (M9-A through M9-E); all NAP gates pre-authorized",
+      "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14"
+    },
+    {
+      "canonical_id": "TOOL_27_MULTI_SCHOOL_SIGNAL_LOOKUP",
+      "path": "platform/src/lib/tools/multi_school_signal_lookup.ts",
+      "version": "0.1-stub",
+      "status": "STUB",
+      "layer": "L9",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "notes": "Tool 27 stub; full impl at M9-D-S1; queries school_signal_coverage",
+      "produced_during": "M9-A-S1 2026-05-14"
+    },
+    {
+      "canonical_id": "TOOL_28_CONVERGENCE_SCORE_LOOKUP",
+      "path": "platform/src/lib/tools/convergence_score_lookup.ts",
+      "version": "0.1-stub",
+      "status": "STUB",
+      "layer": "L9",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "notes": "Tool 28 stub; full impl at M9-D-S1; queries convergence_scores",
+      "produced_during": "M9-A-S1 2026-05-14"
     }
-  ]
+  ],
+  "last_updated_by": "M9-A-S1"
 }

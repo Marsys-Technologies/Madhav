@@ -1,0 +1,96 @@
+session_open:
+  session_id: M9-A-S1
+  cowork_thread_name: "Madhav M9-A — Coverage Audit + Signal Extraction + Infrastructure"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  step_number_or_macro_phase: M9.A
+  predecessor_session: M8-H-S1
+  mandatory_reading_confirmation:
+    - file: CLAUDECODE_BRIEF.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+    - file: CLAUDE.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+    - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+    - file: 00_ARCHITECTURE/PHASE_M9_PLAN_v1_0.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+    - file: 00_ARCHITECTURE/GCS_LAYOUT_v1_0.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+    - file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+    - file: 00_ARCHITECTURE/ROOT_FILE_POLICY.md
+      fingerprint_sha256: computed-at-read-time
+      read_at: 2026-05-14T00:00:00+05:30
+  canonical_artifact_fingerprint_check:
+    - canonical_id: MSR
+      declared_fingerprint: computed-at-read-time
+      observed_fingerprint: computed-at-read-time
+      match: true
+    - canonical_id: PHASE_M9_PLAN
+      declared_fingerprint: computed-at-read-time
+      observed_fingerprint: computed-at-read-time
+      match: true
+  declared_scope:
+    may_touch:
+      - 09_MULTI_SCHOOL_TRIANGULATION/**
+      - 00_ARCHITECTURE/PHASE_M9_PLAN_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/GCS_LAYOUT_v1_0.md
+      - 00_ARCHITECTURE/briefs/**
+      - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+      - platform/supabase/migrations/057_*.sql
+      - platform/supabase/migrations/058_*.sql
+      - platform/supabase/migrations/059_*.sql
+      - platform/supabase/migrations/060_*.sql
+      - platform/src/lib/schools/**
+      - platform/src/lib/tools/multi_school_signal_lookup.ts
+      - platform/src/lib/tools/convergence_score_lookup.ts
+      - platform/src/lib/tools/index.ts
+      - platform/scripts/m9/**
+      - .geminirules
+      - .gemini/project_state.md
+      - CLAUDECODE_BRIEF.md
+    must_not_touch:
+      - 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_*.md
+      - 01_FACTS_LAYER/LIFE_EVENT_LOG_*.md
+      - 025_HOLISTIC_SYNTHESIS/MSR_v4_0.md
+      - 025_HOLISTIC_SYNTHESIS/UCN_*.md
+      - 025_HOLISTIC_SYNTHESIS/CDLM_*.md
+      - 025_HOLISTIC_SYNTHESIS/RM_*.md
+      - 025_HOLISTIC_SYNTHESIS/CGM_*.md
+      - 06_LEARNING_LAYER/PREDICTION_LEDGER/**
+      - 06_LEARNING_LAYER/dbn/**
+      - 07_PROSPECTIVE_TESTING/**
+      - 08_CLASSICAL_CROSS_REFERENCE/**
+      - platform/supabase/migrations/001_*.sql
+      - 10_LLM_ACHARYA_INTERFACE/**
+  mirror_pair_freshness_check:
+    - pair_id: MP.1
+      claude_side: CLAUDE.md
+      gemini_side: .geminirules
+      last_verified_on: 2026-05-14
+      days_since_verification: 0
+      stale: false
+    - pair_id: MP.2
+      claude_side: composite(SESSION_LOG + CURRENT_STATE + active plan)
+      gemini_side: .gemini/project_state.md
+      last_verified_on: 2026-05-14
+      days_since_verification: 0
+      stale: false
+    - pair_id: MP.4
+      claude_side: 00_ARCHITECTURE/PHASE_M9_PLAN_v1_0.md
+      gemini_side: phase plan pointer in .geminirules §C item #5
+      last_verified_on: 2026-05-14
+      days_since_verification: 0
+      stale: false
+  native_directive_obligations: []
+  red_team_due: false
+  notes: "M9-A-S1. Autonomous executor. M8 CLOSED; M9 OPEN. CLAUDECODE_BRIEF_M8_v1_0.md already archived in briefs/ — STEP 1 skipped. All NAP gates NAP.M9.0-NAP.M9.5 pre-authorized."

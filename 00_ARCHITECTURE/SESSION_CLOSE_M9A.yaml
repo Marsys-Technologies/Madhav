@@ -1,0 +1,39 @@
+---
+session_id: M9-A-S1
+closed_at: "2026-05-14T23:59:59+05:30"
+macro_phase: M9
+sub_phase: M9-A
+all_acs_pass: true
+ac_ledger:
+  AC.M9A.1: "PASS — DB migrations 057–060 authored with proper CHECKs, GENERATED col, UNIQUE constraints, indexes"
+  AC.M9A.2: "PASS — 09_MULTI_SCHOOL_TRIANGULATION/ folder + README.md (7 schools table, convergence protocol)"
+  AC.M9A.3: "PASS — SCHOOL_COVERAGE_AUDIT_v1_0.md: 4,011 classifications (573 × 7 schools); Parashari 89.7% primary"
+  AC.M9A.4: "PASS — YOGINI_SIGNAL_EXTRACTION_v1_0.md: 15 signals SIG.MSR.544–558; Bhramari/Mars active"
+  AC.M9A.5: "PASS — TAJIKA_SIGNAL_EXTRACTION_v1_0.md: 15 signals SIG.MSR.559–573; [VARSHA_KUNDALI_PENDING]"
+  AC.M9A.6: "PASS — MSR_v5_0.md 573 signals; CANONICAL_ARTIFACTS entry updated"
+  AC.M9A.7: "PASS — Tool 27+28 stubs; CLASSICAL_TOOL_REGISTRY layer L9 status STUB"
+  AC.M9A.8: "PASS — GCS_LAYOUT_v1_0.md v1.1 L9/ block"
+  AC.M9A.9: "PASS — CAPABILITY_MANIFEST 121→128 entries"
+  AC.M9A.10: "PASS — MP.1+MP.2 mirrors propagated"
+  AC.M9A.11: "PASS — SESSION_LOG M9-A-S1 appended"
+current_state_updated: true
+session_log_appended: true
+red_team_counter: 1
+next_session_id: M9-B-S1
+next_session_objective: >
+  M9-B-S1: platform/src/lib/schools/types.ts (SchoolAnalysis, SchoolResult, ConvergenceReport interfaces);
+  7 school engine files (parashari_engine.ts through yogini_engine.ts);
+  convergence_calculator.ts (HIGH≥5/7, MEDIUM=4/7, LOW<4/7 formula + disagreement detection);
+  school_runner.ts (orchestrates all 7 engines in parallel);
+  ≥6 unit tests per engine; ≥10 unit tests for convergence_calculator;
+  tsc 0 errors on new files; SESSION_LOG + CURRENT_STATE + mirrors + git commit.
+mirror_updates_propagated:
+  - path: ".geminirules"
+    change: "§C item #5 → PHASE_M9_PLAN_v1_0.md; §F → M9-A-S1 state block"
+  - path: ".gemini/project_state.md"
+    change: "Active Phase M6-INCOMING→M9-OPEN; M9-A-S1 deliverables block"
+carry_forwards_open:
+  - "CF.M9.1: [VARSHA_KUNDALI_PENDING] — Tajika 2026 Varsha Kundali via Swiss Ephemeris"
+  - "CF.M9.2: [TRANSIT_DATA_PENDING] — BNN 2026-05-14 transit positions via Swiss Ephemeris"
+  - "DB insertion for school_signal_coverage (4,011 rows) deferred to first DB-proxy-online session"
+session_close_valid: true
