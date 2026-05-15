@@ -8,7 +8,7 @@ interface Options {
   chartId: string
   conversationId?: string
   initialMessages?: UIMessage[]
-  onConversationCreated?: (id: string) => void
+  onConversationCreated?: (id: string, messages: UIMessage[]) => void
   stack?: string
   style?: string
 }
@@ -25,6 +25,9 @@ export function useChatSession({
   // queryId for the most recent pipeline query (set as soon as start-part metadata arrives)
   const [currentQueryId, setCurrentQueryId] = useState<string | undefined>(undefined)
   const lastSeenQueryId = useRef<string | undefined>(undefined)
+  // Track current messages synchronously (updated during render) so onFinish can
+  // capture them before the useChat id changes and recreates the store.
+  const messagesRef = useRef<UIMessage[]>(initialMessages ?? [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -55,10 +58,13 @@ export function useChatSession({
           )
         }
         setPersistedId(newId)
-        onConversationCreated?.(newId)
+        onConversationCreated?.(newId, messagesRef.current)
       }
     },
   })
+
+  // Keep messagesRef current so onFinish captures the latest messages.
+  messagesRef.current = chat.messages
 
   // Watch messages in real-time: the 'start' stream part populates assistant message
   // metadata immediately, well before synthesis begins — so queryId is available

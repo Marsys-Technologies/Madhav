@@ -213,7 +213,7 @@ export const MODELS: ModelMeta[] = [
       structured_output_format: 'gemini_response_schema',
       cache_strategy: 'context_caching',
       system_prompt_shape: 'system_message',
-      request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+      request_transforms: { safety_filter: 'block_none', thinking_budget: 24576 },
     },
   },
   {
@@ -237,7 +237,7 @@ export const MODELS: ModelMeta[] = [
       structured_output_format: 'gemini_response_schema',
       cache_strategy: 'context_caching',
       system_prompt_shape: 'system_message',
-      request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+      request_transforms: { safety_filter: 'block_none', thinking_budget: 24576 },
     },
   },
   {
@@ -261,7 +261,7 @@ export const MODELS: ModelMeta[] = [
       structured_output_format: 'gemini_response_schema',
       cache_strategy: 'context_caching',
       system_prompt_shape: 'system_message',
-      request_transforms: { safety_filter: 'block_none', thinking_budget: 32768 },
+      request_transforms: { safety_filter: 'block_none', thinking_budget: 24576 },
     },
   },
 
@@ -1177,7 +1177,7 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
     },
     planner_fast: {
       primary:  'gemini-2.5-flash',                         // 1M ctx, fast + cheap
-      fallback: 'gemini-2.5-flash-lite',                    // $0.015, ultra-cheap (replaced gemini-2.0-flash-lite 2026-05-03)
+      fallback: 'gemini-2.5-flash-lite',                    // $0.015, ultra-cheap
     },
     context_assembly: {
       primary:  'gemini-2.5-flash',                         // 1M ctx, cost-efficient

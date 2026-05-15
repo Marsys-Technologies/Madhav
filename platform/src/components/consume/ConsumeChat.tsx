@@ -113,6 +113,12 @@ export function ConsumeChat({
   const composerRef = useRef<ComposerHandle>(null)
   const composerEl = useRef<HTMLDivElement>(null)
 
+  // Bridge in-memory messages across the 'new' → persisted-UUID id change so the
+  // conversation doesn't go blank if the server-side DB write hasn't landed yet
+  // when the soft-navigation server component runs loadConversationMessages.
+  const lastCreatedIdRef = useRef<string | null>(null)
+  const createdMessagesRef = useRef<UIMessage[] | null>(null)
+
   const [conversations, setConversations] = useState(initialConversations)
   const [panelOptIn, setPanelOptIn] = useState(false)
   const [traceDrawerOpen, setTraceDrawerOpen] = useState(false)
@@ -164,13 +170,24 @@ export function ConsumeChat({
 
   const { stack, style, setStack, setStyle } = useChatPreferences(chartId)
 
+  // When navigating to the just-created conversation URL, prefer the in-memory
+  // messages over whatever the server component fetched — the server-side
+  // onFinish/replaceConversationMessages may not have committed before the
+  // soft-navigation server component ran loadConversationMessages.
+  const effectiveInitialMessages =
+    currentConversationId && currentConversationId === lastCreatedIdRef.current
+      ? (createdMessagesRef.current ?? initialMessages)
+      : initialMessages
+
   const session = useChatSession({
     chartId,
     conversationId: currentConversationId,
-    initialMessages,
+    initialMessages: effectiveInitialMessages,
     stack,
     style,
-    onConversationCreated: id => {
+    onConversationCreated: (id, messages) => {
+      lastCreatedIdRef.current = id
+      createdMessagesRef.current = messages
       router.replace(`/clients/${chartId}/consume/${id}`, { scroll: false })
       setConversations(prev => [
         {
@@ -381,14 +398,24 @@ export function ConsumeChat({
     messageId: string | null
   }) => {
     setActiveAssistantId(prev => prev === m.messageId ? prev : m.messageId)
-    setReasoningSteps(prev => prev === m.reasoning ? prev : m.reasoning)
-    setSanskritTerms(prev => prev === m.sanskrit ? prev : m.sanskrit)
+    // AI SDK v6 deep-clones arrays on every token; guard against spurious
+    // re-renders when both are empty (the common no-reasoning-markers case).
+    setReasoningSteps(prev =>
+      prev === m.reasoning || (prev.length === 0 && m.reasoning.length === 0) ? prev : m.reasoning
+    )
+    setSanskritTerms(prev =>
+      prev === m.sanskrit || (prev.length === 0 && m.sanskrit.length === 0) ? prev : m.sanskrit
+    )
     if (m.correction) setCorrection(prev => prev === m.correction ? prev : m.correction)
     if (m.outOfDomain) setOutOfDomain(prev => prev === m.outOfDomain ? prev : m.outOfDomain)
   }, [])
 
   // Gate III: read context_usage / provenance / conversation_title from the
   // latest assistant message metadata.
+  // AI SDK v6 deep-clones message objects on every streaming token, so
+  // message.metadata is a new reference each render even when content is
+  // unchanged. All three setters use functional updaters with content-equality
+  // guards to break the re-render loop that would otherwise result.
   useEffect(() => {
     const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')
     const meta = (msg?.metadata ?? {}) as Record<string, unknown>
@@ -396,16 +423,29 @@ export function ConsumeChat({
     const prov = meta.provenance as ProvenanceEvent | undefined
     const newTitle = meta.conversation_title as string | undefined
     const newConversationId = meta.conversationId as string | undefined
-    // Sync state from streamed message metadata — this is the
-    // external-system case (the assistant message's metadata payload arrives
-    // over SSE), which is what the rule explicitly permits.
     /* eslint-disable react-hooks/set-state-in-effect */
-    if (usage) setContextUsage(usage)
-    if (prov) setProvenance(prov)
-    if (newTitle && newConversationId) {
-      setConversations(prev =>
-        prev.map(c => (c.id === newConversationId ? { ...c, title: newTitle } : c)),
+    if (usage) {
+      setContextUsage(prev =>
+        prev?.prior_turns_used === usage.prior_turns_used &&
+        prev?.reason === usage.reason &&
+        prev?.mode === usage.mode
+          ? prev
+          : usage
       )
+    }
+    if (prov) {
+      setProvenance(prev =>
+        prev === prov || JSON.stringify(prev) === JSON.stringify(prov) ? prev : prov
+      )
+    }
+    if (newTitle && newConversationId) {
+      setConversations(prev => {
+        const existing = prev.find(c => c.id === newConversationId)
+        // Bail out if conversation not in list yet (arrives via onConversationCreated
+        // only after streaming ends), or if title is already current.
+        if (!existing || existing.title === newTitle) return prev
+        return prev.map(c => (c.id === newConversationId ? { ...c, title: newTitle } : c))
+      })
     }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [displayMessages])

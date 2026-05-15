@@ -19,7 +19,7 @@ export const adapterGemini: Adapter = {
   prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
     const thinkingBudget =
       req.reasoning !== 'disable'
-        ? (meta.quirks.request_transforms?.thinking_budget as number | undefined) ?? 32768
+        ? (meta.quirks.request_transforms?.thinking_budget as number | undefined) ?? 24576
         : 0
 
     const googleOptions: Record<string, unknown> = {
@@ -36,7 +36,7 @@ export const adapterGemini: Adapter = {
         ? Object.fromEntries(
             req.tools.map(t => [
               t.name,
-              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+              { description: t.description, inputSchema: jsonSchema(t.parameters as Record<string, unknown>) },
             ]),
           )
         : undefined

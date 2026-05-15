@@ -434,7 +434,8 @@ export async function callPipelinePlanner(
     })
     throw new PipelinePlannerError(errMsg)
   }
-  const parsed = PipelinePlanSchema.safeParse((submitCallEvent.payload as { args: unknown }).args)
+  const rawPlannerArgs = (submitCallEvent.payload as { args: unknown }).args
+  const parsed = PipelinePlanSchema.safeParse(rawPlannerArgs)
   if (!parsed.success) {
     const errMsg = `LLM planner returned schema-invalid output: ${parsed.error.message}`
     emitTrace?.({

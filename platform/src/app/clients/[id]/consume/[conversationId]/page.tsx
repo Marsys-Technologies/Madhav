@@ -53,6 +53,7 @@ export default async function ConsumeConversationPage({
   const chartMeta = [chart.birth_date, chart.birth_place].filter(Boolean).join(' · ')
 
   const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
+  const consumeUiV2Enabled = configService.getFlag('CONSUME_UI_V2_ENABLED')
   const audienceTier: AudienceTier = isSuperAdmin ? 'super_admin' : 'client'
 
   return (
@@ -72,6 +73,7 @@ export default async function ConsumeConversationPage({
       currentConversationId={conversationId}
       initialMessages={messages}
       panelModeEnabled={panelModeEnabled}
+      consumeUiV2Enabled={consumeUiV2Enabled}
       audienceTier={audienceTier}
     />
   )

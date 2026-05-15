@@ -299,6 +299,8 @@ export const PipelinePlanInputJsonSchema: JSONSchema7 = {
         'holistic',
         'remedial',
         'cross_native',
+        'classical_grounding',
+        'multi_school_triangulation',
       ],
     },
     query_intent_summary: { type: 'string' },

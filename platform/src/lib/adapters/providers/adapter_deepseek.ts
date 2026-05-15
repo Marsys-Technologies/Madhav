@@ -23,7 +23,7 @@ export const adapterDeepseek: Adapter = {
         ? Object.fromEntries(
             req.tools.map(t => [
               t.name,
-              { description: t.description, parameters: jsonSchema(t.parameters as Record<string, unknown>) },
+              { description: t.description, inputSchema: jsonSchema(t.parameters as Record<string, unknown>) },
             ]),
           )
         : undefined

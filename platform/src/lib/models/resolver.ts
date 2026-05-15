@@ -162,9 +162,7 @@ export function googleProviderOptions(modelId: string):
         { category: 'HARM_CATEGORY_CIVIC_INTEGRITY',   threshold: 'BLOCK_NONE' },
       ],
       thinkingConfig: {
-        // Restored to model-max: 32 768 is the Gemini 2.5 ceiling for thinkingBudget.
-        // Full CoT depth enabled; latency may increase for complex queries.
-        thinkingBudget: 32_768,
+        thinkingBudget: 24576,
       },
     },
   }

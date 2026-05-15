@@ -1146,6 +1146,56 @@
           "reason": "retrieve broader corpus passages for Venus-Rahu conjunction"
         }
       ]
+    },
+    {
+      "id": "GT.050",
+      "mock_tool_calls": [
+        {
+          "tool_name": "multi_school_signal_lookup",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "retrieve all-school career signals"
+        },
+        {
+          "tool_name": "convergence_score_lookup",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 1,
+          "reason": "compute cross-school convergence for CAREER"
+        }
+      ]
+    },
+    {
+      "id": "GT.051",
+      "mock_tool_calls": [
+        {
+          "tool_name": "convergence_score_lookup",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "convergence score for RELATIONSHIP domain across Parashari, Jaimini, KP"
+        },
+        {
+          "tool_name": "multi_school_signal_lookup",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "retrieve school-specific relationship signals"
+        }
+      ]
+    },
+    {
+      "id": "GT.052",
+      "mock_tool_calls": [
+        {
+          "tool_name": "convergence_score_lookup",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "inter-school convergence for SPIRITUAL domain including divergent-school detection"
+        }
+      ]
     }
   ]
 }
