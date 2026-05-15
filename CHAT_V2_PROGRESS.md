@@ -19,12 +19,12 @@ This document is updated by every Claude Code executor session. It is the canoni
 | β | 10 (β1-β10) | 0 | not started |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **2** | **6.25%** |
+| **Total** | **32** | **3** | **9.4%** |
 
-**Current work item**: α1
-**Last commit**: (α0 — see below)
-**Last session**: S2 (2026-05-16)
-**Sessions consumed**: 2
+**Current work item**: α2
+**Last commit**: 658b7fe (α1)
+**Last session**: S3 (2026-05-16)
+**Sessions consumed**: 3
 
 ---
 
@@ -49,6 +49,34 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Per-work-item log
 
 <!-- Executor appends entries below this line. Most recent at bottom. Use the format from CLAUDECODE_BRIEF.md §C. -->
+
+### α1 — Test scaffolding
+- **Completed**: 2026-05-16 (Session 3)
+- **Commit(s)**: 658b7fe
+- **Files touched**:
+  - `.github/workflows/chat-v2-ci.yml` (updated stages 1-7 — real assertions, --config wiring)
+  - `platform/playwright.config.ts` (updated — added 5 browser/device projects)
+  - `platform/package.json` (chat-v2:* scripts updated to use --config)
+  - `platform/package-lock.json` (@axe-core/playwright@4.11.3 added)
+  - `platform/src/lib/fixtures/fixture_mode_adapter.ts` (new — server-side fixture loader)
+  - `platform/tests/e2e/chat-v2/playwright.config.ts` (new — chat-v2 specific config)
+  - `platform/tests/e2e/chat-v2/global-setup.ts` (new — fixture mode wiring)
+  - `platform/tests/e2e/chat-v2/__visuals__/.gitkeep` (new)
+  - `platform/tests/e2e/chat-v2/a11y/axe.spec.ts` (new — axe-core WCAG 2.1 AA baseline)
+  - `platform/tests/e2e/chat-v2/perf/web-vitals.spec.ts` (new — TTFB/FCP/LCP/INP/CLS)
+  - `platform/tests/e2e/chat-v2/perf/streaming.spec.ts` (new — TTFT/frame/memory/scroll)
+  - `platform/tests/unit/chat-v2/fixture_mode_adapter.test.ts` (new — 13 unit tests)
+- **Tests added**: 13 unit tests (fixture_mode_adapter) + 4 E2E a11y tests + 4 E2E web-vitals tests + 4 E2E streaming tests = 25 total
+- **Acceptance criteria**: PASS
+  - All 4 baseline test scripts runnable (chat-v2:e2e, chat-v2:visual, chat-v2:a11y, chat-v2:perf) ✓
+  - CI stages 1-7 active with real assertions ✓
+  - fixture_mode_adapter unit tests: 13/13 pass ✓
+  - tsc --noEmit: 0 errors ✓
+  - YAML lints clean ✓
+- **Blockers**: none
+- **Notes for Cowork**: E2E tests (axe/perf/streaming) are gated on `MARSYS_SUPER_ADMIN_SESSION` — they skip gracefully in CI without auth. Structural smoke tests run without auth. SOFT gates on perf/a11y until γ8.
+
+---
 
 ### α0 — assistant-ui fit-spike
 - **Completed**: 2026-05-16 (Session 2)
@@ -99,13 +127,12 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After α0 (2026-05-16)
-- **Last completed**: α0 — assistant-ui fit-spike (verdict: GREEN)
-- **Next**: α1 — **AWAITING NATIVE REVIEW** of `CHAT_V2_α0_SPIKE_REPORT.md` before resumption
-- **State**: clean (α0 committed)
-- **Reason for stop**: Hard gate discharged (α0 per CLAUDECODE_BRIEF §S.2: "Stop if... hard gate just discharged (α0)")
-- **For next executor session**: Native reads `00_ARCHITECTURE/chat_v2_briefs/CHAT_V2_α0_SPIKE_REPORT.md`. Verdict is GREEN — no architectural pivot needed. When native approves continuation: open this worktree, CLAUDECODE_BRIEF.md will show `current_work_item: α1`. Begin α1 per §A.α1.
-- **α0 verdict summary**: GREEN. assistant-ui v0.14.5 + AI SDK 6.x integration confirmed viable. 4 minor findings (F.1–F.4), all addressed inline. No blockers for α1.
+### After α1 (2026-05-16)
+- **Last completed**: α1 — Test scaffolding (commit 658b7fe)
+- **Next**: α2 — streamdown swap (replace react-markdown with streamdown)
+- **State**: clean
+- **Reason for stop**: Session continuing to α2 (no hard gate discharged)
+- **For next executor session**: Begin α2 per CLAUDECODE_BRIEF.md §A.α2. Key context: streamdown may not be in npm — check first with `npm list streamdown`. If not installed, run `npm install streamdown`. The swap is in `platform/src/components/chat/MarkdownContent.tsx` + `StreamingMarkdown.tsx`. Grep for `react-markdown` usages outside MarkdownContent first to decide whether to remove or keep the dep.
 
 ---
 
