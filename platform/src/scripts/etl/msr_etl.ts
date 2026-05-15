@@ -7,7 +7,7 @@ async function main(): Promise<void> {
     const client = getStorageClient()
 
     // Step 1: Read MSR file
-    const content = await client.readFile('025_HOLISTIC_SYNTHESIS/MSR_v3_0.md')
+    const content = await client.readFile('025_HOLISTIC_SYNTHESIS/MSR_v5_0.md')
 
     // Step 2: Parse signals
     const signals = parseMsrSignals(content)
