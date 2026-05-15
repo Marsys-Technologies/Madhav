@@ -58,6 +58,12 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
     user.name?.[0] ?? user.email?.[0] ?? 'U'
   ).toUpperCase()
 
+  const roleLabel: Record<string, string> = {
+    super_admin: 'Super Admin',
+    admin: 'Admin',
+    client: 'Client',
+  }
+
   return (
     <nav
       aria-label="Primary navigation"
@@ -124,8 +130,13 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
             {userInitial}
           </span>
           {expanded && (
-            <span className="truncate text-xs">
-              {user.name ?? user.email}
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-[11px] font-medium leading-tight">
+                {user.name ?? user.email}
+              </span>
+              <span className="truncate text-[10px] leading-tight" style={{ color: 'rgba(212,175,55,0.45)' }}>
+                {roleLabel[profile.role] ?? profile.role}
+              </span>
             </span>
           )}
         </DropdownMenuTrigger>
