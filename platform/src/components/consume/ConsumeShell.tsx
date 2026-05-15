@@ -75,8 +75,10 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   }))
 
   useEffect(() => {
-    setTitleDraft(headerTitle ?? '')
-  }, [headerTitle])
+    if (!editing) {
+      setTitleDraft(headerTitle ?? '')
+    }
+  }, [headerTitle, editing])
 
   useEffect(() => {
     if (editing) inputRef.current?.focus()
@@ -88,8 +90,12 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
         .requestIdleCallback
     const run = () => { getHighlighter().catch(() => {}) }
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
     if (ric) ric(run)
-    else setTimeout(run, 200)
+    else timeoutId = setTimeout(run, 200)
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
   }, [])
 
   function saveTitle() {
@@ -148,8 +154,13 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
                 type="button"
                 onDoubleClick={() => conversationId && onRenameConversation && setEditing(true)}
                 className="flex min-w-0 flex-col items-start text-left"
+                aria-label={headerTitle ? `Conversation title: ${headerTitle}. Double-click to rename.` : 'Untitled conversation'}
               >
-                <span className="truncate text-sm font-medium text-foreground leading-tight">
+                <span
+                  role="heading"
+                  aria-level={1}
+                  className="truncate text-sm font-medium text-foreground leading-tight"
+                >
                   {headerTitle}
                 </span>
                 {headerMeta && (
