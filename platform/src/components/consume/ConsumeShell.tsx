@@ -1,14 +1,15 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
-import { PanelLeft } from 'lucide-react'
+import Link from 'next/link'
+import { PanelLeft, ArrowLeft } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
 import { cn } from '@/lib/utils'
@@ -55,8 +56,6 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
     headerTitle,
     headerMeta,
     headerActions,
-    conversationId,
-    onRenameConversation,
     chartId,
     chartName,
     conversations,
@@ -68,24 +67,19 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
 ) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(headerTitle ?? '')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [mounted, setMounted] = useState(false)
 
-  useImperativeHandle(ref, () => ({
-    togglePanel: () => setSidebarOpen(o => !o),
-    toggleRightPanel: () => setRightOpen(o => !o),
-  }))
+  useEffect(() => { setMounted(true) }, [])
 
+  // Close sidebar on Escape
   useEffect(() => {
-    if (!editing) {
-      setTitleDraft(headerTitle ?? '')
+    if (!sidebarOpen) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSidebarOpen(false)
     }
-  }, [headerTitle, editing])
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [sidebarOpen])
 
   // Warm Shiki highlighter on idle
   useEffect(() => {
@@ -96,72 +90,93 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     if (ric) ric(run)
     else timeoutId = setTimeout(run, 200)
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
+    return () => { if (timeoutId) clearTimeout(timeoutId) }
   }, [])
 
-  function saveTitle() {
-    const trimmed = titleDraft.trim()
-    setEditing(false)
-    if (!trimmed || trimmed === headerTitle || !conversationId || !onRenameConversation) return
-    onRenameConversation(conversationId, trimmed).catch(() => {
-      setTitleDraft(headerTitle ?? '')
-    })
-  }
+  useImperativeHandle(ref, () => ({
+    togglePanel: () => setSidebarOpen(o => !o),
+    toggleRightPanel: () => setRightOpen(o => !o),
+  }))
+
+  const iconBtn = cn(
+    'flex size-8 items-center justify-center rounded-md',
+    'text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)]',
+    'transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.06)]',
+    'hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]'
+  )
+
+  const sidebarOverlay = (
+    <>
+      {/* Backdrop — fade only; no layout shift */}
+      <div
+        className={cn(
+          'fixed inset-0 z-[59] bg-black/25 transition-opacity duration-200',
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden
+      />
+      {/* Slide-over panel — translate off-screen when closed; extra 2px hides border-r */}
+      <div
+        className={cn(
+          'fixed inset-y-0 left-0 z-[60] w-72 overflow-hidden',
+          'bg-[#0b0804] border-r border-[rgba(var(--brand-gold-rgb),0.12)]',
+          'transition-[translate] duration-200 ease-out',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+2px)]'
+        )}
+      >
+        <ConversationSidebar
+          simple
+          chartId={chartId}
+          chartName={chartName}
+          conversations={conversations}
+          currentConversationId={currentConversationId}
+          onRenamed={onConversationRenamed}
+          onDeleted={onConversationDeleted}
+          onClose={() => setSidebarOpen(false)}
+          onNavigate={() => setSidebarOpen(false)}
+        />
+      </div>
+    </>
+  )
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Header — 48px */}
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-3">
+      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-2">
+        {/* Conversations sidebar toggle */}
         <button
           type="button"
           onClick={() => setSidebarOpen(o => !o)}
-          aria-label="Toggle sidebar"
-          className="flex size-7 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]"
+          aria-label="Toggle conversations"
+          aria-expanded={sidebarOpen}
+          className={iconBtn}
         >
           <PanelLeft className="size-4" />
         </button>
 
-        <div className="min-w-0 flex-1">
-          {editing ? (
-            <input
-              ref={inputRef}
-              value={titleDraft}
-              onChange={e => setTitleDraft(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={e => {
-                if (e.key === 'Enter') saveTitle()
-                if (e.key === 'Escape') {
-                  setEditing(false)
-                  setTitleDraft(headerTitle ?? '')
-                }
-              }}
-              className="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-            />
-          ) : (
-            <button
-              type="button"
-              onDoubleClick={() => conversationId && onRenameConversation && setEditing(true)}
-              className="flex min-w-0 flex-col items-start text-left"
-              aria-label={headerTitle ? `Conversation title: ${headerTitle}. Double-click to rename.` : 'Untitled conversation'}
-            >
-              <span
-                role="heading"
-                aria-level={1}
-                className="truncate text-sm font-medium text-foreground leading-tight"
-              >
-                {headerTitle}
-              </span>
-              {headerMeta && (
-                <span className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.4)] leading-none mt-0.5">
-                  {headerMeta}
-                </span>
-              )}
-            </button>
+        {/* Back to dashboard */}
+        <Link href="/dashboard" aria-label="Back to dashboard" className={iconBtn}>
+          <ArrowLeft className="size-4" />
+        </Link>
+
+        {/* Title + meta */}
+        <div className="min-w-0 flex-1 px-1.5">
+          <span
+            role="heading"
+            aria-level={1}
+            className="truncate text-sm font-medium text-foreground leading-tight block"
+          >
+            {headerTitle}
+          </span>
+          {headerMeta && (
+            <span className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.4)] leading-none block mt-0.5">
+              {headerMeta}
+            </span>
           )}
         </div>
 
+        {/* Right-side actions (History, Trace, etc.) */}
         {headerActions && (
           <div className="flex shrink-0 items-center gap-1">
             {headerActions}
@@ -172,38 +187,8 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
       {/* Scroll area + composer — passed as children */}
       {children}
 
-      {/* ── Left sidebar (Gemini-style slide-over) ── */}
-
-      {/* Backdrop — fades with sidebar; click outside closes */}
-      <div
-        className={cn(
-          'fixed inset-0 z-[59] bg-black/20 transition-opacity duration-200',
-          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        )}
-        onClick={() => setSidebarOpen(false)}
-        aria-hidden
-      />
-
-      {/* Panel — overflow-hidden clips ConversationSidebar; extra 2px in closed
-          translate ensures the border-r is fully off-screen (not at x=0) */}
-      <div
-        className={cn(
-          'fixed inset-y-0 left-0 z-[60] w-[280px] overflow-hidden',
-          'border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[#0b0804]',
-          'transition-[translate] duration-200 ease-out',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+2px)]'
-        )}
-      >
-        <ConversationSidebar
-          chartId={chartId}
-          chartName={chartName}
-          conversations={conversations}
-          currentConversationId={currentConversationId}
-          onRenamed={onConversationRenamed}
-          onDeleted={onConversationDeleted}
-          onClose={() => setSidebarOpen(false)}
-        />
-      </div>
+      {/* Sidebar overlay — portaled to body after mount to escape any stacking context */}
+      {mounted ? createPortal(sidebarOverlay, document.body) : null}
 
       {/* Right panel (Reports) — Sheet via portal */}
       {rightPanel && (

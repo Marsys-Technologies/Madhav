@@ -62,6 +62,11 @@ interface Props {
   onNavigate?: () => void
   /** Hide the bottom MARSYS-JIS + ThemeToggle footer (used by ConsumeRail). */
   hideFooter?: boolean
+  /**
+   * Simple/slide-over mode: renders as w-full h-full with no auto-expand
+   * rail behaviour. Hides the dashboard link and pin controls.
+   */
+  simple?: boolean
 }
 
 function groupByDate(conversations: ConversationRow[]) {
@@ -94,6 +99,7 @@ export function ConversationSidebar({
   onClose,
   onNavigate,
   hideFooter = false,
+  simple = false,
 }: Props) {
   const router = useRouter()
   const sidebar = useSidebarState()
@@ -150,9 +156,10 @@ export function ConversationSidebar({
     }
   }
 
-  return (
-    <div
-      className={cn(
+  // simple mode: flat full-size container, no auto-expand rail
+  const outerCn = simple
+    ? 'flex h-full flex-col bg-sidebar text-sidebar-foreground'
+    : cn(
         'flex h-full flex-col bg-sidebar text-sidebar-foreground',
         'transition-[width] duration-[250ms] ease-out overflow-hidden',
         sidebar.isMobile
@@ -162,25 +169,35 @@ export function ConversationSidebar({
           : sidebar.isExpanded
             ? 'w-64'
             : 'w-14',
-      )}
-      onMouseEnter={sidebar.onMouseEnter}
-      onMouseLeave={sidebar.onMouseLeave}
-      data-sidebar-state={sidebar.state}
+      )
+
+  const showExpanded = simple || sidebar.isExpanded || sidebar.isMobile
+
+  return (
+    <div
+      className={outerCn}
+      onMouseEnter={simple ? undefined : sidebar.onMouseEnter}
+      onMouseLeave={simple ? undefined : sidebar.onMouseLeave}
+      data-sidebar-state={simple ? 'simple' : sidebar.state}
     >
       <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-        <Link
-          href="/dashboard"
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground',
-            !sidebar.isExpanded && !sidebar.isMobile && 'justify-center',
-          )}
-        >
-          <ArrowLeft className="size-3.5 shrink-0" />
-          {(sidebar.isExpanded || sidebar.isMobile) && <span>Dashboard</span>}
-        </Link>
-        <div className="flex items-center gap-1">
-          {/* Pin button — desktop only */}
-          {!sidebar.isMobile && (
+        {/* Dashboard link — hidden in simple mode (back arrow is in ConsumeShell header) */}
+        {!simple && (
+          <Link
+            href="/dashboard"
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground',
+              !sidebar.isExpanded && !sidebar.isMobile && 'justify-center',
+            )}
+          >
+            <ArrowLeft className="size-3.5 shrink-0" />
+            {(sidebar.isExpanded || sidebar.isMobile) && <span>Dashboard</span>}
+          </Link>
+        )}
+
+        <div className={cn('flex items-center gap-1', simple && 'ml-auto')}>
+          {/* Pin button — desktop only, non-simple mode */}
+          {!simple && !sidebar.isMobile && (
             <button
               type="button"
               onClick={sidebar.onPinToggle}
@@ -194,21 +211,24 @@ export function ConversationSidebar({
               }
             </button>
           )}
-          {/* Close button — mobile only */}
-          {(onClose || sidebar.isMobile) && (
+          {/* Close button — simple mode always shows it; non-simple mobile-only */}
+          {(simple || onClose || sidebar.isMobile) && (
             <button
               type="button"
-              onClick={sidebar.isMobile ? sidebar.onMobileToggle : onClose}
+              onClick={simple ? onClose : (sidebar.isMobile ? sidebar.onMobileToggle : onClose)}
               aria-label="Close sidebar"
-              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:hidden"
+              className={cn(
+                'inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground',
+                !simple && 'md:hidden'
+              )}
             >
-              <PanelLeft className="size-3.5" />
+              <X className="size-4" />
             </button>
           )}
         </div>
       </div>
 
-      {(sidebar.isExpanded || sidebar.isMobile) && (
+      {showExpanded && (
         <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {chartName}
         </div>
@@ -224,15 +244,15 @@ export function ConversationSidebar({
             'px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-cream)]',
             'transition hover:border-[var(--brand-gold)] hover:bg-[var(--brand-charcoal)]/70 hover:text-[var(--brand-gold-light)]',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]',
-            sidebar.isExpanded || sidebar.isMobile ? 'justify-center' : 'justify-center px-2',
+            showExpanded ? 'justify-center' : 'justify-center px-2',
           )}
         >
           <Plus className="size-4 shrink-0" />
-          {(sidebar.isExpanded || sidebar.isMobile) && <span>New conversation</span>}
+          {showExpanded && <span>New conversation</span>}
         </button>
       </div>
 
-      {(sidebar.isExpanded || sidebar.isMobile) && (
+      {showExpanded && (
       <div className="px-3 pb-2">
         <div className="relative">
           <Search
@@ -300,9 +320,9 @@ export function ConversationSidebar({
         <div className="mt-auto border-t border-sidebar-border px-2 py-2">
           <div className={cn(
             'flex items-center gap-1 px-1',
-            sidebar.isExpanded || sidebar.isMobile ? 'justify-between' : 'justify-center',
+            showExpanded ? 'justify-between' : 'justify-center',
           )}>
-            {(sidebar.isExpanded || sidebar.isMobile) && (
+            {showExpanded && (
               <span className="text-[11px] text-muted-foreground">MARSYS-JIS</span>
             )}
             <ThemeToggle />
