@@ -25,9 +25,9 @@ export function ConsumeOverlayPortal({ children }: { children: ReactNode }) {
     <div
       className="fixed inset-0 z-50"
       style={{
-        backgroundColor: '#0f0c07',
+        backgroundColor: '#0d0a05',
         backgroundImage:
-          'radial-gradient(ellipse at 15% 80%, rgba(212,175,55,0.13) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(180,120,40,0.09) 0%, transparent 52%)',
+          'radial-gradient(ellipse at 18% 85%, rgba(212,175,55,0.22) 0%, transparent 50%), radial-gradient(ellipse at 82% 10%, rgba(180,120,40,0.16) 0%, transparent 48%)',
       }}
     >
       <ZoneRoot zone="ink" style={{ height: '100%' }}>

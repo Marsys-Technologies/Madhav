@@ -26,7 +26,7 @@ export function EmptyState({ chartName, className }: Props) {
         className
       )}
     >
-      <p className="text-center text-3xl font-normal leading-snug text-foreground/90">
+      <p className="font-serif text-center text-[2rem] font-normal leading-snug text-foreground/85">
         {firstName ? `Hi ${firstName},` : 'Hi,'}
         <br />
         What&rsquo;s on your mind?

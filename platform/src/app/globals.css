@@ -173,7 +173,13 @@ body {
   --primary-foreground: var(--brand-ink);
   /* Gold-tinted borders throughout the consume surface */
   --border: color-mix(in oklch, var(--brand-gold) 20%, transparent);
-  --sidebar-border: color-mix(in oklch, var(--brand-gold) 24%, transparent);
+  /* Sidebar: deep ink — much darker than generic dark-mode sidebar grey */
+  --sidebar: oklch(0.06 0.008 68);
+  --sidebar-foreground: oklch(0.86 0.04 82);
+  --sidebar-accent: oklch(0.11 0.010 70);
+  --sidebar-accent-foreground: oklch(0.92 0.05 84);
+  --sidebar-border: color-mix(in oklch, var(--brand-gold) 14%, transparent);
+  --muted-foreground: oklch(0.58 0.025 80);
   background: radial-gradient(
     ellipse at top,
     oklch(0.10 0.012 70) 0%,

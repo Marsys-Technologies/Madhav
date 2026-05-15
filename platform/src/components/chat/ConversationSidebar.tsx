@@ -229,8 +229,14 @@ export function ConversationSidebar({
       </div>
 
       {showExpanded && (
-        <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          {chartName}
+        <div className="px-4 pb-3 pt-1">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[rgba(var(--brand-gold-rgb),0.38)]">
+            Chart
+          </p>
+          <p className="mt-0.5 truncate font-serif text-[15px] font-medium leading-tight text-[color-mix(in_oklch,var(--brand-gold-cream)_85%,transparent)]">
+            {chartName}
+          </p>
+          <div className="mt-2 h-px bg-[rgba(var(--brand-gold-rgb),0.12)]" />
         </div>
       )}
 
@@ -317,16 +323,8 @@ export function ConversationSidebar({
       </ScrollArea>
 
       {!hideFooter && (
-        <div className="mt-auto border-t border-sidebar-border px-2 py-2">
-          <div className={cn(
-            'flex items-center gap-1 px-1',
-            showExpanded ? 'justify-between' : 'justify-center',
-          )}>
-            {showExpanded && (
-              <span className="text-[11px] text-muted-foreground">MARSYS-JIS</span>
-            )}
-            <ThemeToggle />
-          </div>
+        <div className="mt-auto border-t border-sidebar-border px-3 py-3 flex justify-center">
+          <ThemeToggle />
         </div>
       )}
 

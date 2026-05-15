@@ -37,8 +37,6 @@ import { ContextUsageCue } from './ContextUsageCue'
 import { OutOfDomainBanner } from './OutOfDomainBanner'
 import { PostAnswerProvenance } from './PostAnswerProvenance'
 import { EmptyState } from './EmptyState'
-import { ConversationHistoryDrawer } from './ConversationHistoryDrawer'
-import { ConversationHistoryButton } from './ConversationHistoryButton'
 import type {
   ReasoningStepEvent,
   SanskritTerm,
@@ -129,7 +127,6 @@ export function ConsumeChat({
   const [sanskritTerms, setSanskritTerms] = useState<SanskritTerm[]>([])
   const [contextUsage, setContextUsage] = useState<ContextUsageEvent | null>(null)
   const [provenance, setProvenance] = useState<ProvenanceEvent | null>(null)
-  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false)
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -502,10 +499,6 @@ export function ConsumeChat({
         headerMeta={chartMeta}
         headerActions={
           <div className="flex items-center gap-1">
-            <ConversationHistoryButton
-              onClick={() => setHistoryDrawerOpen(true)}
-              count={conversations.length}
-            />
             <ShareButton conversationId={session.conversationId} />
             {/* LOCKED: Trace in header, not toolbar (AGENTS.md lock #2) */}
             {activeTier === 'super_admin' && (
@@ -810,18 +803,6 @@ export function ConsumeChat({
         queryId={session.currentQueryId ?? null}
         open={traceDrawerOpen && activeTier === 'super_admin'}
         onOpenChange={setTraceDrawerOpen}
-      />
-      {/* Gate III: conversation history overlay drawer */}
-      <ConversationHistoryDrawer
-        chartId={chartId}
-        open={historyDrawerOpen}
-        onOpenChange={setHistoryDrawerOpen}
-        initialConversations={conversations.map(c => ({
-          id: c.id,
-          title: c.title,
-          created_at: c.created_at,
-        }))}
-        currentConversationId={currentConversationId}
       />
     </div>
   )

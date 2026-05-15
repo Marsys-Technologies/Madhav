@@ -165,12 +165,12 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
           <span
             role="heading"
             aria-level={1}
-            className="truncate text-sm font-medium text-foreground leading-tight block"
+            className="truncate font-serif text-[15px] font-medium text-foreground leading-tight block"
           >
             {headerTitle}
           </span>
           {headerMeta && (
-            <span className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.4)] leading-none block mt-0.5">
+            <span className="truncate text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] leading-none block mt-0.5">
               {headerMeta}
             </span>
           )}
