@@ -19,7 +19,6 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { runAdapter } from '@/lib/adapters'
-import type { ToolDefinition } from '@/lib/adapters'
 import {
   PipelinePlanSchema,
   PipelinePlanInputJsonSchema,
@@ -213,13 +212,6 @@ export async function callPipelinePlanner(
   })
 
   const start = Date.now()
-  const plannerTools: ToolDefinition[] = [
-    {
-      name: 'submit_plan',
-      description: 'Submit the planned tool calls for the native query. Call this exactly once with the full plan; do not emit prose.',
-      parameters: PipelinePlanInputJsonSchema,
-    },
-  ]
   let interaction: Awaited<ReturnType<typeof runAdapter>> | undefined
   let lastErr: unknown
   let activeModelId = plannerModelId
@@ -236,10 +228,9 @@ export async function callPipelinePlanner(
         systemPrompt: getSystemPrompt(),
         messages: [{ role: 'user', content: userMessage }],
         temperature: 0,
-        tools: plannerTools,
-        toolChoice: 'required',
         disableSdkRetry: true,
         reasoning: 'disable',
+        responseSchema: PipelinePlanInputJsonSchema,
       })
       break
     } catch (err) {
@@ -411,12 +402,9 @@ export async function callPipelinePlanner(
     })()
   }
 
-  const submitCallEvent = interaction!.intermediate.find(
-    e => e.type === 'tool_call' && (e.payload as { name: string }).name === 'submit_plan',
-  )
-  if (!submitCallEvent) {
-    const toolCallCount = interaction!.intermediate.filter(e => e.type === 'tool_call').length
-    const errMsg = `LLM planner did not produce a submit_plan tool call (toolCalls=${toolCallCount}, finishReason=${interaction!.finishReason})`
+  const rawText = interaction!.finalText ?? ''
+  if (!rawText.trim()) {
+    const errMsg = `LLM planner returned no text output (finishReason=${interaction!.finishReason})`
     emitTrace?.({
       event: 'step_error',
       query_id: stepQueryId,
@@ -435,8 +423,31 @@ export async function callPipelinePlanner(
     })
     throw new PipelinePlannerError(errMsg)
   }
-  const rawPlannerArgs = (submitCallEvent.payload as { args: unknown }).args
-  console.error('[planner-debug] rawPlannerArgs type=%s value=%s', typeof rawPlannerArgs, JSON.stringify(rawPlannerArgs)?.slice(0, 800))
+  // Strip optional ```json ... ``` fences that some models wrap output in.
+  const jsonText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+  let rawPlannerArgs: unknown
+  try {
+    rawPlannerArgs = JSON.parse(jsonText)
+  } catch (parseErr) {
+    const errMsg = `LLM planner returned non-JSON text output: ${String(parseErr)}`
+    emitTrace?.({
+      event: 'step_error',
+      query_id: stepQueryId,
+      step: {
+        query_id: stepQueryId,
+        step_seq: 0,
+        step_name: 'llm_planner',
+        step_type: 'llm',
+        status: 'error',
+        started_at: plannerStepStart,
+        completed_at: new Date().toISOString(),
+        latency_ms: Date.now() - plannerStartMs,
+        data_summary: { model: activeModelId, planner_active: false, error_reason: errMsg },
+        payload: { error_message: errMsg, raw_text: rawText.slice(0, 200) },
+      },
+    })
+    throw new PipelinePlannerError(errMsg, parseErr)
+  }
   const parsed = PipelinePlanSchema.safeParse(rawPlannerArgs)
   if (!parsed.success) {
     const errMsg = `LLM planner returned schema-invalid output: ${parsed.error.message}`
