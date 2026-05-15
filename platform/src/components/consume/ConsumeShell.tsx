@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { PanelLeft } from 'lucide-react'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { ConsumeRail } from './ConsumeRail'
 import { getHighlighter } from '@/lib/shiki'
 
@@ -42,6 +43,7 @@ interface Props {
 
 export interface ConsumeShellHandle {
   togglePanel: () => void
+  toggleRightPanel: () => void
 }
 
 export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function ConsumeShell(
@@ -66,12 +68,14 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
 ) {
   // LOCKED: panelOpen = false → sidebar starts collapsed (spec §8 lock #1)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [rightOpen, setRightOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(headerTitle ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useImperativeHandle(ref, () => ({
     togglePanel: () => setPanelOpen(o => !o),
+    toggleRightPanel: () => setRightOpen(o => !o),
   }))
 
   useEffect(() => {
@@ -112,6 +116,7 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
       <ConsumeRail
         panelOpen={panelOpen}
         onPanelOpenChange={setPanelOpen}
+        onOpenReportsPanel={() => setRightOpen(true)}
         chartId={chartId}
         chartName={chartName}
         conversations={conversations}
@@ -183,8 +188,17 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
         {children}
       </div>
 
-      {/* Right panel (Reports) — Sheet via Radix portal, caller manages open state */}
-      {rightPanel}
+      {/* Right panel (Reports) — Sheet via Radix portal */}
+      {rightPanel && (
+        <Sheet open={rightOpen} onOpenChange={setRightOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">
+            <SheetTitle className="sr-only">
+              {rightPanelLabel}{typeof rightPanelBadge === 'number' ? ` (${rightPanelBadge})` : ''}
+            </SheetTitle>
+            {rightPanel}
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   )
 })

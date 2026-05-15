@@ -19,6 +19,7 @@ interface ConversationRow {
 interface Props {
   panelOpen: boolean
   onPanelOpenChange: (open: boolean) => void
+  onOpenReportsPanel?: () => void
   chartId: string
   chartName: string
   conversations: ConversationRow[]
@@ -30,6 +31,7 @@ interface Props {
 export function ConsumeRail({
   panelOpen,
   onPanelOpenChange,
+  onOpenReportsPanel,
   chartId,
   chartName,
   conversations,
@@ -87,7 +89,7 @@ export function ConsumeRail({
       label: 'Reports',
       href: `/clients/${chartId}/consume`,
       active: false,
-      onClick: () => onPanelOpenChange(!panelOpen),
+      onClick: () => onOpenReportsPanel?.(),
     },
     {
       icon: Clock,
