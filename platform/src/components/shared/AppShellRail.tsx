@@ -89,9 +89,19 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
       <Link
         href="/dashboard"
         aria-label="MARSYS-JIS — go to Roster"
-        className="mb-4 w-full px-3"
+        className="mb-4 flex w-full items-center gap-2.5 px-3"
       >
-        <Logo size="sm" />
+        <Logo size="sm" className="shrink-0" />
+        {expanded && (
+          <span className="flex min-w-0 flex-col items-start">
+            <span className="truncate text-[13px] font-semibold leading-tight tracking-wide" style={{ color: 'var(--brand-gold-cream)' }}>
+              MARSYS
+            </span>
+            <span className="truncate text-[10px] font-medium leading-tight tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.55)' }}>
+              JIS
+            </span>
+          </span>
+        )}
       </Link>
 
       {/* Nav links */}
