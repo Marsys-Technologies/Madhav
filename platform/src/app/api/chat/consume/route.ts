@@ -679,7 +679,7 @@ export async function POST(request: Request) {
     context_assembly_seq: contextAssemblySeq,
     synthesis_seq: synthesisSeq,
     // BUG-2: callback fires from single_model_strategy onFinish before onAuditEvent.
-    onValidatorResults: (r) => { validatorResultsHolder.push(...r) },
+    onValidatorResults: (r: ValidationResult[]) => { validatorResultsHolder.push(...r) },
     synthesis_guidance: plan.synthesis_guidance,
     abortSignal: request.signal,
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
