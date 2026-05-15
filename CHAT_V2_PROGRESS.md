@@ -52,7 +52,7 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 ### α0 — assistant-ui fit-spike
 - **Completed**: 2026-05-16 (Session 2)
-- **Commit(s)**: (pending — see below)
+- **Commit(s)**: 8727632
 - **Files touched**:
   - `platform/src/app/dev/layout.tsx` (new — super-admin gate for /dev/* routes)
   - `platform/src/app/dev/chat-spike/page.tsx` (new — spike page with AssistantRuntimeProvider)
