@@ -180,11 +180,8 @@ body {
   --sidebar-accent-foreground: oklch(0.92 0.05 84);
   --sidebar-border: color-mix(in oklch, var(--brand-gold) 14%, transparent);
   --muted-foreground: oklch(0.58 0.025 80);
-  background: radial-gradient(
-    ellipse at top,
-    oklch(0.10 0.012 70) 0%,
-    oklch(0.04 0.005 70) 100%
-  );
+  /* No background here — ConsumeOverlayPortal owns the canvas gradient.
+     Setting one here would paint over the portal's gold radial gradient. */
 }
 
 /* Right-side border mirrors the sidebar's left border, completing the gold frame
