@@ -3,7 +3,7 @@
 import type { UIMessage } from 'ai'
 import { useCallback, useMemo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { AssistantSigil } from '@/components/brand/AssistantSigil'
+import { cn } from '@/lib/utils'
 import { StreamingMarkdown } from './StreamingMarkdown'
 import { ToolCallCard } from './ToolCallCard'
 import { StreamingDots } from './StreamingDots'
@@ -88,13 +88,28 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
       initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="group/message mx-auto w-full max-w-4xl px-4"
+      className="group/message mx-auto w-full max-w-3xl px-6"
     >
-      <div className="flex gap-4">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[rgba(var(--brand-gold-rgb),0.35)] bg-muted text-[var(--brand-gold)] shadow-sm">
-          <AssistantSigil size={18} />
+      <div className="flex items-start gap-3.5">
+        <div
+          className={cn(
+            'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-bold',
+            'bg-gradient-to-br from-[var(--brand-gold)] to-[oklch(0.65_0.15_70)]',
+            'text-[oklch(0.08_0.010_70)]',
+            isStreaming && isLast && 'animate-[avatar-pulse_1.5s_ease-in-out_infinite]'
+          )}
+          style={{
+            boxShadow: isStreaming && isLast
+              ? undefined
+              : '0 0 8px rgba(var(--brand-gold-rgb), 0.2)',
+          }}
+        >
+          ✦
         </div>
-        <div className="min-w-0 flex-1 pt-0.5">
+        <div className="min-w-0 flex-1">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.5)]">
+            MARSYS
+          </p>
           {!hasAnyContent && isStreaming && isLast && (
             <div className="py-2">
               <StreamingDots />
