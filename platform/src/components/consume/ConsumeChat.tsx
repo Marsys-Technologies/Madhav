@@ -393,16 +393,24 @@ export function ConsumeChat({
     messageId: string | null
   }) => {
     setActiveAssistantId(prev => prev === m.messageId ? prev : m.messageId)
-    // AI SDK v6 deep-clones arrays on every token; guard against spurious
-    // re-renders when both are empty (the common no-reasoning-markers case).
+    // Use count-based equality instead of reference equality.
+    // parseMarkers() creates new array objects on EVERY streaming token even
+    // when no new markers were added, so `prev === m.reasoning` always fails
+    // mid-stream and triggers a spurious re-render on every token. Marker
+    // arrays only grow monotonically within a turn — equal counts mean nothing
+    // changed, so we can bail out cheaply and stop the re-render cascade.
     setReasoningSteps(prev =>
-      prev === m.reasoning || (prev.length === 0 && m.reasoning.length === 0) ? prev : m.reasoning
+      prev.length === m.reasoning.length ? prev : m.reasoning
     )
     setSanskritTerms(prev =>
-      prev === m.sanskrit || (prev.length === 0 && m.sanskrit.length === 0) ? prev : m.sanskrit
+      prev.length === m.sanskrit.length ? prev : m.sanskrit
     )
-    if (m.correction) setCorrection(prev => prev === m.correction ? prev : m.correction)
-    if (m.outOfDomain) setOutOfDomain(prev => prev === m.outOfDomain ? prev : m.outOfDomain)
+    if (m.correction) setCorrection(prev =>
+      prev === m.correction || JSON.stringify(prev) === JSON.stringify(m.correction) ? prev : m.correction
+    )
+    if (m.outOfDomain) setOutOfDomain(prev =>
+      prev === m.outOfDomain || JSON.stringify(prev) === JSON.stringify(m.outOfDomain) ? prev : m.outOfDomain
+    )
   }, [])
 
   // Gate III: read context_usage / provenance / conversation_title from the
