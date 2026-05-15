@@ -407,12 +407,12 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
         ? 0
         : 0.3
 
-    // NIM retry guard — the AI SDK retries failed requests up to 3 times by
-    // default (AI_RetryError). For NVIDIA NIM this triples the hang window:
-    // 3 × 30 s headers-timeout = 90 s of silence before an error surfaces.
-    // Set maxRetries: 0 so the first timeout/error reaches the caller
-    // immediately. The nimFetch wrapper in nvidia.ts already enforces a 30 s
-    // hard abort on headers, so combined the worst-case NIM hang is ~30 s.
+    // Synthesis retry guard — AI SDK retries failed requests up to 3 times by
+    // default (AI_RetryError). For synthesis, QG6.1 wires fallback at the route
+    // level; SDK-level retries only triple the hang window without benefit.
+    // Set maxRetries: 0 across all synthesis providers so failures surface
+    // immediately and the route-level fallback can activate.
+    // (Previously NIM-only; extended to all providers per QG7.2 fix.)
     const isNvidiaSynthesis = modelMeta?.provider === 'nvidia'
 
     // DeepSeek V4 Pro thinking=enabled + tools + tool_choice:none is an
@@ -438,7 +438,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       temperature: synthesisTemperature,
       experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
       ...(abortSignal && { abortSignal }),
-      ...(isNvidiaSynthesis && { maxRetries: 0 }),
+      maxRetries: 0,
       // Google-specific: disable safety filters (Jyotish content triggers
       // DANGEROUS_CONTENT mid-stream) + cap thinking budget (avoids 30-90s
       // hang before first visible token). See resolver.googleProviderOptions.
