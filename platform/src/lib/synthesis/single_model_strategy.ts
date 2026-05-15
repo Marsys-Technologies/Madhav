@@ -98,6 +98,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       cache,
       conversation_id,
       onAuditEvent,
+      abortSignal,
     } = request
 
     const started_at = new Date().toISOString()
@@ -436,6 +437,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       maxOutputTokens: effectiveMaxTokens,
       temperature: synthesisTemperature,
       experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
+      ...(abortSignal && { abortSignal }),
       ...(isNvidiaSynthesis && { maxRetries: 0 }),
       // Google-specific: disable safety filters (Jyotish content triggers
       // DANGEROUS_CONTENT mid-stream) + cap thinking budget (avoids 30-90s

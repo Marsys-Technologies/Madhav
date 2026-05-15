@@ -678,6 +678,7 @@ export async function POST(request: Request) {
     // BUG-2: callback fires from single_model_strategy onFinish before onAuditEvent.
     onValidatorResults: (r) => { validatorResultsHolder.push(...r) },
     synthesis_guidance: plan.synthesis_guidance,
+    abortSignal: request.signal,
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,
