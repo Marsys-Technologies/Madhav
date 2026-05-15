@@ -94,10 +94,10 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         <Logo size="sm" className="shrink-0" />
         {expanded && (
           <span className="flex min-w-0 flex-col items-start">
-            <span className="truncate text-[13px] font-semibold leading-tight tracking-wide" style={{ color: 'var(--brand-gold-cream)' }}>
+            <span className="truncate font-serif text-[14px] font-medium leading-tight" style={{ color: 'var(--brand-gold-cream)' }}>
               MARSYS
             </span>
-            <span className="truncate text-[10px] font-medium leading-tight tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.55)' }}>
+            <span className="truncate font-serif text-[10px] leading-tight tracking-[0.10em]" style={{ color: 'rgba(212,175,55,0.55)' }}>
               JIS
             </span>
           </span>
