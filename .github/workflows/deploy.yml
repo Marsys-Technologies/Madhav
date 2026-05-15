@@ -93,6 +93,7 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:latest
             DB_PASSWORD=amjis-db-password:latest
+            OPENAI_API_KEY=openai-api-key:latest
             ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:latest
             DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:latest
