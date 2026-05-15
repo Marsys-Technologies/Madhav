@@ -395,10 +395,14 @@ body {
 .dark .bt-status-active   { color: var(--brand-gold); }
 .dark .bt-status-blocked  { color: var(--status-halt); }
 
-/* Page-entry ascend — translate-y + fade over 200 ms for layout <main> children. */
+/* Page-entry ascend — opacity-only fade over 200 ms for layout <main> children.
+   transform-based animation was removed because `transform: translateY(0)` (held
+   by animation-fill-mode: both) creates a containing block for position: fixed
+   descendants — which trapped the consume route's full-viewport overlay inside
+   <main>, causing the AppShell rail to leak on the left. */
 @keyframes page-ascend {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .page-ascend {
@@ -706,9 +710,10 @@ body {
 
 /* ── Consume UI Redesign additions (2026-05-15) ─────────────────────── */
 
-/* ConsumeRail hover-panel slide transition */
+/* ConsumeRail hover-panel slide transition — include both `transform` (Tailwind v3
+   syntax) and `translate` (Tailwind v4 syntax) so either generator path animates. */
 .consume-rail-panel {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease, translate 0.15s ease;
 }
 
 /* Scrollbar inside consume shell scroll area */
