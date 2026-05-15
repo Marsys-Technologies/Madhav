@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { MessageSquare, FileText, Clock, LayoutDashboard } from 'lucide-react'
@@ -66,6 +66,13 @@ export function ConsumeRail({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [panelOpen, onPanelOpenChange])
 
+  // Cleanup: clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
+  }, [])
+
   const isConsume = pathname?.includes('/consume') ?? false
 
   const navItems = [
@@ -118,7 +125,7 @@ export function ConsumeRail({
                 'relative flex size-8 items-center justify-center rounded-[7px] transition-colors',
                 item.active
                   ? 'bg-[rgba(var(--brand-gold-rgb),0.12)] text-[var(--brand-gold)]'
-                  : 'text-[var(--brand-gold-cream)]/40 hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[var(--brand-gold-cream)]/80'
+                  : 'text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]'
               )}
             >
               {item.active && (
@@ -144,7 +151,7 @@ export function ConsumeRail({
 
       {/* User avatar — bottom of rail */}
       <div
-        className="mb-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--brand-gold-rgb),0.15)] text-[9px] font-bold uppercase text-[var(--brand-gold)]/70"
+        className="mb-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--brand-gold-rgb),0.15)] text-[9px] font-bold uppercase text-[rgba(var(--brand-gold-rgb),0.7)]"
         aria-label="User"
       >
         U
