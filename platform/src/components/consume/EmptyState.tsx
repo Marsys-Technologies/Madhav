@@ -48,7 +48,7 @@ export function EmptyState({ chartId, chartName, onPick, className }: Props) {
   }, [tab, chartId, moments])
 
   return (
-    <div className={cn('mx-auto w-full max-w-3xl px-4 py-12', className)}>
+    <div className={cn('mx-auto w-full max-w-2xl px-4 py-12', className)}>
       <header className="mb-8 text-center">
         <h1 className="text-xl font-medium text-foreground">
           {chartName ? `Welcome, ${chartName}.` : 'Welcome.'}
@@ -73,7 +73,7 @@ export function EmptyState({ chartId, chartName, onPick, className }: Props) {
               'px-4 py-2 text-sm transition-colors',
               tab === t.id
                 ? 'border-b-2 border-[var(--brand-gold)] text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
             {t.label}
@@ -145,7 +145,7 @@ function SuggestionButton({ text, onPick }: { text: string; onPick: (t: string) 
     <button
       type="button"
       onClick={() => onPick(text)}
-      className="w-full rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-left text-xs text-foreground/90 transition-colors hover:border-[var(--brand-gold)]/40 hover:bg-muted/40"
+      className="w-full rounded-md border border-border bg-muted/20 px-3 py-2 text-left text-xs text-foreground/90 transition-colors hover:border-[rgba(var(--brand-gold-rgb),0.4)] hover:bg-[rgba(var(--brand-gold-rgb),0.05)]"
     >
       {text}
     </button>
