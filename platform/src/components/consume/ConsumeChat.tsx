@@ -689,7 +689,7 @@ export function ConsumeChat({
           )
         })()}
 
-        <div ref={composerEl} className="relative shrink-0 border-t border-border/60 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60 pb-[env(safe-area-inset-bottom)]">
+        <div ref={composerEl} className="relative shrink-0 bg-transparent pb-[env(safe-area-inset-bottom)]">
           {branches.isViewingArchived && (
             <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 pt-2">
               <p className="text-xs text-muted-foreground">

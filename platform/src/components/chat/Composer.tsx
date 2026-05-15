@@ -141,9 +141,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={cn(
-          'relative flex flex-col rounded-3xl border border-border/70 bg-background shadow-sm transition-all duration-200',
-          isFocused && 'border-ring/60 shadow-md ring-2 ring-[var(--brand-gold)]/40',
-          isDragOver && 'border-ring/80 bg-ring/5 ring-4 ring-[var(--brand-gold)]/30 shadow-lg',
+          'relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200',
+          isFocused && 'border-[rgba(var(--brand-gold-rgb),0.75)] shadow-[0_0_0_3px_rgba(var(--brand-gold-rgb),0.15)]',
+          isDragOver && 'border-[rgba(var(--brand-gold-rgb),0.90)] ring-4 ring-[var(--brand-gold)]/20 shadow-lg',
           disabled && 'opacity-60'
         )}
       >

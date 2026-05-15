@@ -143,7 +143,7 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* Header — 48px */}
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-2">
+      <header className="flex h-12 shrink-0 items-center gap-1 px-2">
         {/* Conversations sidebar toggle */}
         <button
           type="button"
