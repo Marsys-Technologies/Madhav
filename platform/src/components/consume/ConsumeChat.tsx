@@ -20,8 +20,7 @@ import {
   List,
 } from 'lucide-react'
 import { stackPicker, getModelMeta, PROVIDER_LABEL } from '@/lib/models/registry'
-import { ChatShell } from '@/components/chat/ChatShell'
-import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
+import { ConsumeShell, type ConsumeShellHandle } from './ConsumeShell'
 import { PendingAssistantBubble } from '@/components/chat/PendingAssistantBubble'
 import { Composer, type ComposerHandle } from '@/components/chat/Composer'
 // WelcomeGreeting retired in favor of Gate III EmptyState; kept import-free.
@@ -112,6 +111,7 @@ export function ConsumeChat({
   const searchParams = useSearchParams()
   const composerRef = useRef<ComposerHandle>(null)
   const composerEl = useRef<HTMLDivElement>(null)
+  const consumeShellRef = useRef<ConsumeShellHandle>(null)
 
   // Bridge in-memory messages across the 'new' → persisted-UUID id change so the
   // conversation doesn't go blank if the server-side DB write hasn't landed yet
@@ -133,8 +133,6 @@ export function ConsumeChat({
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null)
   const [lelContextEnabled, setLelContextEnabled] = useState(true)
 
@@ -270,7 +268,7 @@ export function ConsumeChat({
   useHotkeys({
     onPalette: () => setPaletteOpen(o => !o),
     onNewChat: () => router.push(`/clients/${chartId}/consume`),
-    onToggleSidebar: () => setDesktopSidebarCollapsed(c => !c),
+    onToggleSidebar: () => consumeShellRef.current?.togglePanel(),
     onShortcutsHelp: () => setShortcutsOpen(true),
     onEscape: () => {
       if (session.isStreaming) session.stop()
@@ -299,11 +297,11 @@ export function ConsumeChat({
       },
       {
         id: 'toggle-sidebar',
-        label: desktopSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar',
+        label: 'Toggle sidebar',
         hint: '⌘B',
         icon: PanelLeft,
         section: 'View',
-        run: () => setDesktopSidebarCollapsed(c => !c),
+        run: () => consumeShellRef.current?.togglePanel(),
       },
       {
         id: 'toggle-reports',
@@ -361,7 +359,7 @@ export function ConsumeChat({
         run: () => setStyle('client'),
       },
     ]
-  }, [chartId, router, desktopSidebarCollapsed, setStack, setStyle, handleReportViewChange])
+  }, [chartId, router, setStack, setStyle, handleReportViewChange])
 
   useEffect(() => {
     if (!session.isStreaming) composerRef.current?.focus()
@@ -477,20 +475,6 @@ export function ConsumeChat({
     !branches.isViewingArchived &&
     lastMessage?.role === 'user'
 
-  const sidebar = (
-    <ConversationSidebar
-      chartId={chartId}
-      chartName={chartName}
-      conversations={conversations}
-      currentConversationId={currentConversationId}
-      onClose={() => setMobileSidebarOpen(false)}
-      onRenamed={(id, title) =>
-        setConversations(prev => prev.map(c => (c.id === id ? { ...c, title } : c)))
-      }
-      onDeleted={id => setConversations(prev => prev.filter(c => c.id !== id))}
-    />
-  )
-
   const rightPanel =
     selectedDomain == null ? (
       <ReportLibrary
@@ -508,9 +492,9 @@ export function ConsumeChat({
     )
 
   return (
-    <div className="consume-shell flex h-full flex-1 min-h-0 flex-col">
-      <ChatShell
-        sidebar={sidebar}
+    <div className="consume-shell h-full flex flex-col">
+      <ConsumeShell
+        ref={consumeShellRef}
         rightPanel={rightPanel}
         rightPanelLabel="Reports"
         rightPanelBadge={reports.length}
@@ -523,15 +507,37 @@ export function ConsumeChat({
               count={conversations.length}
             />
             <ShareButton conversationId={session.conversationId} />
+            {/* LOCKED: Trace in header, not toolbar (AGENTS.md lock #2) */}
+            {activeTier === 'super_admin' && (
+              <button
+                type="button"
+                onClick={() => setTraceDrawerOpen(o => !o)}
+                className={[
+                  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                  traceDrawerOpen
+                    ? 'border-[rgba(var(--status-warn-rgb),0.6)] bg-[var(--status-warn-bg)] text-[var(--status-warn)]'
+                    : 'border-border text-muted-foreground hover:border-[rgba(var(--status-warn-rgb),0.4)] hover:bg-[var(--status-warn-bg)] hover:text-[var(--status-warn)]',
+                ].join(' ')}
+                aria-label="Toggle query trace drawer"
+              >
+                <Zap className="h-3 w-3" />
+                Trace
+              </button>
+            )}
           </div>
         }
-        desktopSidebarCollapsed={desktopSidebarCollapsed}
-        mobileSidebarOpen={mobileSidebarOpen}
-        onToggleDesktopSidebar={() => setDesktopSidebarCollapsed(c => !c)}
-        onToggleMobileSidebar={() => setMobileSidebarOpen(o => !o)}
-        setMobileSidebarOpen={setMobileSidebarOpen}
         conversationId={session.conversationId}
         onRenameConversation={handleRenameConversation}
+        chartId={chartId}
+        chartName={chartName}
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onConversationRenamed={(id, title) =>
+          setConversations(prev => prev.map(c => (c.id === id ? { ...c, title } : c)))
+        }
+        onConversationDeleted={id =>
+          setConversations(prev => prev.filter(c => c.id !== id))
+        }
       >
         <div
           ref={scrollRef}
@@ -772,23 +778,6 @@ export function ConsumeChat({
                   </label>
                 )}
 
-                {/* Trace — opens drawer instead of inline panel */}
-                {activeTier === 'super_admin' && (
-                  <button
-                    type="button"
-                    onClick={() => setTraceDrawerOpen(o => !o)}
-                    className={[
-                      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                      traceDrawerOpen
-                        ? 'border-[rgba(var(--status-warn-rgb),0.6)] bg-[var(--status-warn-bg)] text-[var(--status-warn)] hover:bg-[var(--status-warn-bg)]'
-                        : 'border-border text-muted-foreground hover:border-[rgba(var(--status-warn-rgb),0.4)] hover:bg-[var(--status-warn-bg)] hover:text-[var(--status-warn)]',
-                    ].join(' ')}
-                    aria-label="Toggle query trace drawer"
-                  >
-                    <Zap className="h-3 w-3" />
-                    Trace
-                  </button>
-                )}
                 </>
               )}
             </div>
@@ -812,7 +801,7 @@ export function ConsumeChat({
             attachmentsReady={attachmentsApi.canSend}
           />
         </div>
-      </ChatShell>
+      </ConsumeShell>
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
 
