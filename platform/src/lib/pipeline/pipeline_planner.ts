@@ -443,7 +443,7 @@ export async function callPipelinePlanner(
         completed_at: new Date().toISOString(),
         latency_ms: Date.now() - plannerStartMs,
         data_summary: { model: activeModelId, planner_active: false, error_reason: errMsg },
-        payload: { error_message: errMsg, raw_text: rawText.slice(0, 200) },
+        payload: { error_message: errMsg },
       },
     })
     throw new PipelinePlannerError(errMsg, parseErr)
