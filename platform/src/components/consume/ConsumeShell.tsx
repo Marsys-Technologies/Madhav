@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { PanelLeft } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
-import { ConsumeRail } from './ConsumeRail'
+import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
 import { getHighlighter } from '@/lib/shiki'
 
 interface ConversationRow {
@@ -32,7 +32,6 @@ interface Props {
   headerActions?: ReactNode
   conversationId?: string
   onRenameConversation?: (id: string, title: string) => Promise<void>
-  // Rail / sidebar data
   chartId: string
   chartName: string
   conversations: ConversationRow[]
@@ -66,24 +65,14 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   },
   ref
 ) {
-  // Rail and conversation panel are auto-hide overlays — neither occupies
-  // layout space. Default: both hidden. Trigger via left-edge hover or
-  // hamburger button. Conversation panel opens on rail hover (group-hover).
-  const [railVisible, setRailVisible] = useState(false)
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(headerTitle ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useImperativeHandle(ref, () => ({
-    togglePanel: () => {
-      setRailVisible(v => {
-        const next = !v
-        if (!next) setPanelOpen(false)
-        return next
-      })
-    },
+    togglePanel: () => setSidebarOpen(o => !o),
     toggleRightPanel: () => setRightOpen(o => !o),
   }))
 
@@ -121,102 +110,88 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      {/* Main column — always full viewport width */}
-      <div className="flex h-full w-full flex-col overflow-hidden">
-        {/* ConsumeHeader — 48px */}
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[rgba(var(--brand-gold-rgb),0.08)] bg-[oklch(0.08_0.010_70)] px-3">
-          <button
-            type="button"
-            onClick={() => {
-              setRailVisible(v => {
-                const next = !v
-                if (!next) setPanelOpen(false)
-                return next
-              })
-            }}
-            aria-label="Toggle sidebar"
-            className="flex size-7 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]"
-          >
-            <PanelLeft className="size-4" />
-          </button>
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* Header — 48px */}
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[rgba(var(--brand-gold-rgb),0.08)] px-3">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(o => !o)}
+          aria-label="Toggle sidebar"
+          className="flex size-7 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]"
+        >
+          <PanelLeft className="size-4" />
+        </button>
 
-          <div className="min-w-0 flex-1">
-            {editing ? (
-              <input
-                ref={inputRef}
-                value={titleDraft}
-                onChange={e => setTitleDraft(e.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') saveTitle()
-                  if (e.key === 'Escape') {
-                    setEditing(false)
-                    setTitleDraft(headerTitle ?? '')
-                  }
-                }}
-                className="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-              />
-            ) : (
-              <button
-                type="button"
-                onDoubleClick={() => conversationId && onRenameConversation && setEditing(true)}
-                className="flex min-w-0 flex-col items-start text-left"
-                aria-label={headerTitle ? `Conversation title: ${headerTitle}. Double-click to rename.` : 'Untitled conversation'}
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveTitle()
+                if (e.key === 'Escape') {
+                  setEditing(false)
+                  setTitleDraft(headerTitle ?? '')
+                }
+              }}
+              className="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              onDoubleClick={() => conversationId && onRenameConversation && setEditing(true)}
+              className="flex min-w-0 flex-col items-start text-left"
+              aria-label={headerTitle ? `Conversation title: ${headerTitle}. Double-click to rename.` : 'Untitled conversation'}
+            >
+              <span
+                role="heading"
+                aria-level={1}
+                className="truncate text-sm font-medium text-foreground leading-tight"
               >
-                <span
-                  role="heading"
-                  aria-level={1}
-                  className="truncate text-sm font-medium text-foreground leading-tight"
-                >
-                  {headerTitle}
+                {headerTitle}
+              </span>
+              {headerMeta && (
+                <span className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.4)] leading-none mt-0.5">
+                  {headerMeta}
                 </span>
-                {headerMeta && (
-                  <span className="truncate text-[9px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.4)] leading-none mt-0.5">
-                    {headerMeta}
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-
-          {headerActions && (
-            <div className="flex shrink-0 items-center gap-1">
-              {headerActions}
-            </div>
+              )}
+            </button>
           )}
-        </header>
+        </div>
 
-        {/* Scroll area + composer — passed as children */}
-        {children}
-      </div>
+        {headerActions && (
+          <div className="flex shrink-0 items-center gap-1">
+            {headerActions}
+          </div>
+        )}
+      </header>
 
-      {/* Left-edge hover trigger — invisible, 8px wide, reveals rail.
-          Disabled while rail is visible so we don't double-fire. */}
-      {!railVisible && (
-        <div
-          className="absolute left-0 top-12 z-30 h-[calc(100%-3rem)] w-2"
-          onMouseEnter={() => setRailVisible(true)}
-          aria-hidden
-        />
-      )}
+      {/* Scroll area + composer — passed as children */}
+      {children}
 
-      {/* ConsumeRail — absolute overlay, slides in from left when railVisible */}
-      <ConsumeRail
-        visible={railVisible}
-        onVisibleChange={setRailVisible}
-        panelOpen={panelOpen}
-        onPanelOpenChange={setPanelOpen}
-        onOpenReportsPanel={() => setRightOpen(true)}
-        chartId={chartId}
-        chartName={chartName}
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onConversationRenamed={onConversationRenamed}
-        onConversationDeleted={onConversationDeleted}
-      />
+      {/* Left sidebar — Gemini-style slide-over Sheet */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="w-[280px] p-0 border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[#0b0804]"
+        >
+          <SheetTitle className="sr-only">Conversations</SheetTitle>
+          <ConversationSidebar
+            chartId={chartId}
+            chartName={chartName}
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            onRenamed={onConversationRenamed}
+            onDeleted={onConversationDeleted}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
 
-      {/* Right panel (Reports) — Sheet via Radix portal */}
+      {/* Right panel (Reports) */}
       {rightPanel && (
         <Sheet open={rightOpen} onOpenChange={setRightOpen}>
           <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">
