@@ -228,17 +228,6 @@ export function ConversationSidebar({
         </div>
       </div>
 
-      {showExpanded && (
-        <div className="px-4 pb-3 pt-1">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[rgba(var(--brand-gold-rgb),0.38)]">
-            Chart
-          </p>
-          <p className="mt-0.5 truncate font-serif text-[15px] font-medium leading-tight text-[color-mix(in_oklch,var(--brand-gold-cream)_85%,transparent)]">
-            {chartName}
-          </p>
-          <div className="mt-2 h-px bg-[rgba(var(--brand-gold-rgb),0.12)]" />
-        </div>
-      )}
 
       <div className="px-3 pb-2 pt-1">
         <button
