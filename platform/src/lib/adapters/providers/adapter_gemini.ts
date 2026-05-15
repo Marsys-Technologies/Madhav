@@ -27,9 +27,9 @@ export const adapterGemini: Adapter = {
       thinkingConfig: { thinkingBudget },
     }
 
-    if (req.responseSchema) {
-      googleOptions['responseSchema'] = req.responseSchema
-    }
+    // responseSchema is passed via responseFormat so AI SDK wires responseMimeType
+    // ('application/json') and responseSchema into generationConfig for us.
+    // Setting it only in providerOptions.google is ignored by @ai-sdk/google v6.
 
     const tools =
       req.tools?.length
@@ -51,6 +51,10 @@ export const adapterGemini: Adapter = {
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       providerOptions: { google: googleOptions } as any,
+      ...(req.responseSchema && {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        responseFormat: { type: 'json', schema: req.responseSchema } as any,
+      }),
       maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
       temperature: req.temperature,
       tools,

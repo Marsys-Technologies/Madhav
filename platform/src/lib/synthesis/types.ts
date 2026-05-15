@@ -79,6 +79,9 @@ export interface SynthesisRequest {
    *  When present, single_model_strategy appends it to the system prompt as a
    *  separator + guidance block. Absent for trivial factual queries. */
   synthesis_guidance?: string
+  /** PIV HIGH.QG6.2: forwarded from the incoming HTTP request so that a client
+   *  SSE disconnect cancels the upstream LLM call, stopping token billing. */
+  abortSignal?: AbortSignal
 }
 
 export interface SynthesisMetadata {

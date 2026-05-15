@@ -135,13 +135,21 @@ export async function POST(request: Request) {
     return res.badRequest('chartId and messages are required')
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(chartId)) {
+    return res.badRequest('INVALID_CHART_ID: chartId must be a valid UUID')
+  }
+
   // Resolve synthesis model from stack. Stack takes precedence over the legacy
   // `model` field. Unknown/missing stacks fall back to the default NIM stack.
   const VALID_STACKS = Object.keys(STACK_ROUTING) as ModelStack[]
   const selectedStack: ModelStack = VALID_STACKS.includes(body.stack as ModelStack)
     ? (body.stack as ModelStack)
     : DEFAULT_STACK_ID
-  const stackSynthPrimary = await getEffectiveModel(selectedStack, 'synthesis', 'primary', request)
+  const [stackSynthPrimary, stackSynthFallback] = await Promise.all([
+    getEffectiveModel(selectedStack, 'synthesis', 'primary', request),
+    getEffectiveModel(selectedStack, 'synthesis', 'fallback', request),
+  ])
   // Backward-compat: if the legacy `model` field is a known model ID AND no
   // stack was sent (old client), honour it directly so sessions mid-upgrade
   // don't silently switch models on the user.
@@ -650,7 +658,7 @@ export async function POST(request: Request) {
       }
 
   const orchestrator = createOrchestrator({ panel_opt_in: panelOptIn })
-  const { result, methodologyBlockHolder } = await orchestrator.synthesize({
+  const synthesisRequest = {
     query: queryText,
     query_plan: queryPlan,
     bundle,
@@ -671,8 +679,9 @@ export async function POST(request: Request) {
     context_assembly_seq: contextAssemblySeq,
     synthesis_seq: synthesisSeq,
     // BUG-2: callback fires from single_model_strategy onFinish before onAuditEvent.
-    onValidatorResults: (r) => { validatorResultsHolder.push(...r) },
+    onValidatorResults: (r: ValidationResult[]) => { validatorResultsHolder.push(...r) },
     synthesis_guidance: plan.synthesis_guidance,
+    abortSignal: request.signal,
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,
@@ -682,6 +691,14 @@ export async function POST(request: Request) {
       validator_results: validatorResultsHolder,
       disclosure_tier: audienceTier,
     }),
+  }
+  let { result, methodologyBlockHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+    // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
+    // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
+    const fallbackId = stackSynthFallback
+    if (!fallbackId || fallbackId === modelId) throw primaryErr
+    console.warn('[synthesis][fallback] primary=%s failed; retrying with fallback=%s err=%s', modelId, fallbackId, primaryErr instanceof Error ? primaryErr.message : String(primaryErr))
+    return orchestrator.synthesize({ ...synthesisRequest, selected_model_id: fallbackId })
   })
 
   result.consumeStream()

@@ -41,7 +41,11 @@ jobs:
           mkdir -p platform/00_ARCHITECTURE
           cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json
           cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
+          cp 00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md
+          cp 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
           cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
+          cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
+          cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -89,6 +93,7 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:latest
             DB_PASSWORD=amjis-db-password:latest
+            OPENAI_API_KEY=openai-api-key:latest
             ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:latest
             DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:latest

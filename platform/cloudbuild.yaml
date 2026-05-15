@@ -9,7 +9,10 @@ steps:
         cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json
         cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
         cp 00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md
+        cp 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
         cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
+        cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
+        cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
 
   - name: 'gcr.io/cloud-builders/docker'
     args:

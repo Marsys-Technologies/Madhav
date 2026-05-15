@@ -67,6 +67,22 @@ export async function runProbe(opts: ProbeOptions): Promise<ProbeResult> {
       ? (input_tokens * meta.costPer1MInput + output_tokens * meta.costPer1MOutput) / 1_000_000
       : null
 
+    // Empty output with zero tokens indicates auth failure (e.g. missing API key)
+    // rather than a genuine pass — the provider returned 200 with no content.
+    if (output_text === '' && (output_tokens === null || output_tokens === 0)) {
+      return {
+        ...base,
+        status:        'fail',
+        latency_ms,
+        input_tokens,
+        output_tokens,
+        output_text,
+        finish_reason,
+        cost_usd:      null,
+        error:         'empty_output_likely_auth_failure',
+      }
+    }
+
     return { ...base, status: 'pass', latency_ms, input_tokens, output_tokens, output_text, finish_reason, cost_usd }
   } catch (err: unknown) {
     const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message.includes('abort'))
