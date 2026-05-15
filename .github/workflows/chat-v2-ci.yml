@@ -68,20 +68,15 @@ jobs:
             src/lib/persistence \
             src/lib/ppl \
             src/lib/citations \
+            src/lib/fixtures \
             --max-warnings 0 2>/dev/null \
-            || echo "STAGE-1-LINT no-op (no chat-v2 sources yet at PA1)"
+            || echo "STAGE-1-LINT no-op (paths not fully populated yet)"
 
       - name: TypeScript check
-        run: |
-          npx tsc --noEmit --skipLibCheck 2>&1 | grep -v "tests/" || echo "tsc clean"
+        run: npx tsc --noEmit --skipLibCheck
 
       - name: Unit tests — chat-v2
-        run: |
-          if [ -d "tests/unit/chat-v2" ] && find tests/unit/chat-v2 -name "*.test.ts" -o -name "*.test.tsx" | grep -q .; then
-            npx vitest run tests/unit/chat-v2
-          else
-            echo "STAGE-1-UNIT no-op (no chat-v2 unit tests at PA1)"
-          fi
+        run: npx vitest run tests/unit/chat-v2
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 — Component + integration tests
@@ -105,18 +100,18 @@ jobs:
 
       - name: Component tests — chat-v2
         run: |
-          if [ -d "tests/components/chat-v2" ] && find tests/components/chat-v2 -name "*.test.tsx" | grep -q .; then
+          if find tests/components/chat-v2 -name "*.test.tsx" 2>/dev/null | grep -q .; then
             npx vitest run tests/components/chat-v2
           else
-            echo "STAGE-2-COMPONENT no-op (no-op until alpha1)"
+            echo "STAGE-2-COMPONENT no-op (no component tests yet — populates at α7+)"
           fi
 
       - name: Integration tests — chat-v2
         run: |
-          if [ -d "tests/integration/chat-v2" ] && find tests/integration/chat-v2 -name "*.test.ts" | grep -q .; then
+          if find tests/integration/chat-v2 -name "*.test.ts" 2>/dev/null | grep -q .; then
             npx vitest run tests/integration/chat-v2
           else
-            echo "STAGE-2-INTEGRATION no-op (no-op until alpha1)"
+            echo "STAGE-2-INTEGRATION no-op (no integration tests yet — populates at α3+)"
           fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -143,12 +138,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: E2E tests — chat-v2 (Chromium)
-        run: |
-          if [ -d "tests/e2e/chat-v2" ] && find tests/e2e/chat-v2 -name "*.spec.ts" | grep -q .; then
-            npx playwright test tests/e2e/chat-v2 --project=chromium --reporter=github
-          else
-            echo "STAGE-3-E2E no-op (no chat-v2 E2E tests at PA1)"
-          fi
+        run: npx playwright test tests/e2e/chat-v2 --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
           MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
@@ -214,12 +204,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Visual regression — chat-v2
-        run: |
-          if find tests/e2e/chat-v2 -name "*.spec.ts" -path "*visuals*" | grep -q .; then
-            npx playwright test tests/e2e/chat-v2 --grep "@visual" --project=chromium --reporter=github
-          else
-            echo "STAGE-5-VISUAL no-op (no visual baselines until alpha1)"
-          fi
+        run: npx playwright test --config=tests/e2e/chat-v2/playwright.config.ts --grep "@visual" --project=chromium --reporter=github || echo "STAGE-5-VISUAL no visual specs yet (baselines added incrementally per work item)"
         env:
           MARSYS_FIXTURE_MODE: 'true'
           MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
@@ -248,14 +233,9 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: a11y — axe-core audit
-        # continue-on-error until gamma8 hard-gates this
+        # SOFT gate (continue-on-error) until γ8 flips it HARD
         continue-on-error: true
-        run: |
-          if [ -f "tests/e2e/chat-v2/a11y/axe.spec.ts" ]; then
-            npx playwright test tests/e2e/chat-v2/a11y/axe.spec.ts --project=chromium --reporter=github
-          else
-            echo "STAGE-6-A11Y no-op (no axe spec until alpha1)"
-          fi
+        run: npx playwright test tests/e2e/chat-v2/a11y/axe.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
           MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
@@ -284,26 +264,16 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Streaming perf tests
-        # SOFT gate until gamma activates hard gating
+        # SOFT gate until γ activates hard gating
         continue-on-error: true
-        run: |
-          if [ -f "tests/e2e/chat-v2/perf/streaming.spec.ts" ]; then
-            npx playwright test tests/e2e/chat-v2/perf/streaming.spec.ts --project=chromium --reporter=github
-          else
-            echo "STAGE-7-PERF no-op (no streaming perf spec until alpha1)"
-          fi
+        run: npx playwright test tests/e2e/chat-v2/perf/streaming.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
           MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
       - name: Web Vitals budget assertions
         continue-on-error: true
-        run: |
-          if [ -f "tests/e2e/chat-v2/perf/web_vitals.spec.ts" ]; then
-            npx playwright test tests/e2e/chat-v2/perf/web_vitals.spec.ts --project=chromium --reporter=github
-          else
-            echo "STAGE-7-WEBVITALS no-op (no web vitals spec until alpha1)"
-          fi
+        run: npx playwright test tests/e2e/chat-v2/perf/web-vitals.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
           MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
