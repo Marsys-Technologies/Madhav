@@ -1,0 +1,26 @@
+{
+  "_fixture_status": "TODO-record",
+  "_description": "6000-token Anthropic thinking-model response with code blocks, KaTeX math, inline citations, reasoning, and tool calls. Replace with real recorded response from §M manual intervention.",
+  "_record_command": "MARSYS_FIXTURE_RECORD=true MARSYS_FIXTURE_PATH=platform/tests/fixtures/chat-v2/spike/anthropic_thinking_6k.json npm run dev",
+  "id": "msg_01PLACEHOLDER000000000000",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "Let me reason through this carefully. The question asks about the relationship between Rahu in the 7th house and partnerships. First, I should consider...\n\n[TODO-record: replace with ~2000 tokens of authentic reasoning from claude-3-7-sonnet thinking model]"
+    },
+    {
+      "type": "text",
+      "text": "## Analysis of Rahu in the 7th House\n\nRahu occupying the 7th bhava creates a distinctive signature in the native's partnership sector. The following analysis integrates multiple classical layers:\n\n### Primary Effects\n\nThe placement indicates **karmic intensity** in the domain of partnerships. Per Parashara Hora Shastra (BPHS 24.14), Rahu in the 7th may produce:\n\n1. Unusual or cross-cultural partnerships [^1]\n2. Delays or unconventional timing in marriage [^2]\n3. Strong attraction to partners from foreign backgrounds [^3]\n\n### Mathematical Relationships\n\nThe Rahu-Ketu axis creates a nodal opposition across the 1st-7th axis. The angular displacement can be expressed as:\n\n$$\\Delta_{\\text{nodal}} = \\text{Rahu}_{7H} - \\text{Ketu}_{1H} = 180°$$\n\nThe mean motion of the nodes is approximately $-0.053°/\\text{day}$ (retrograde), giving:\n\n$$T_{\\text{full-cycle}} = \\frac{360°}{0.053°/\\text{day}} \\approx 6793 \\text{ days} \\approx 18.6 \\text{ years}$$\n\n### Code: Swiss Ephemeris Verification\n\n```python\nimport swisseph as swe\n\ndef compute_rahu_position(jd: float) -> float:\n    \"\"\"Compute Rahu's true node position for a given Julian Day.\"\"\"\n    # SE_TRUE_NODE = 11; SE_NODBIT_MEAN = 1\n    result = swe.calc_ut(jd, swe.TRUE_NODE)\n    # Rahu = True Node; Ketu = Rahu + 180\n    rahu_lon = result[0][0]\n    return rahu_lon\n\n# For native's birth: 1984-02-05 05:13 UT\njd_birth = swe.julday(1984, 2, 5, 5.217)\nrahu_lon = compute_rahu_position(jd_birth)\nprint(f\"Rahu longitude: {rahu_lon:.4f}°\")\n```\n\n### Tool Call Results\n\nThe retrieval pipeline surfaced three MSR signals cross-referencing this placement:\n\n- **MSR.R.127**: Rahu 7H confirmed by Swiss Ephemeris at 23°14' Gemini (tropical) / 29°02' Taurus (sidereal Lahiri)\n- **MSR.R.089**: Cross-correlation with natal Venus (7th lord in 4th) strengthens the karmic weight\n- **MSR.R.203**: Dasha timeline: Rahu MD (2009-2027) activates this placement systemically\n\n[TODO-record: replace this entire text block with authentic ~4000-token response]\n\n### Summary\n\nRahu in 7th represents a high-signal area for this native. The synthesis across BPHS, Jaimini, and Krishnamurti paddhati layers converges on the karmic-partnership theme. [^4]\n\n---\n\n**Sources:**\n\n[^1]: FORENSIC §3.2.1, MSR signal R.127\n[^2]: BPHS Chapter 24, shloka 14-16 (classical source)\n[^3]: UCN §2.4 cross-domain linkage CL.47\n[^4]: CDLM §5.1, convergence score 0.87"
+    }
+  ],
+  "model": "claude-3-7-sonnet-20250219",
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 4821,
+    "output_tokens": 6024,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 4500
+  }
+}

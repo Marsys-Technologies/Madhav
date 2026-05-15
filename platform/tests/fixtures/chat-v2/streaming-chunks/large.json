@@ -1,0 +1,9 @@
+{
+  "_fixture_status": "scaffold",
+  "_description": "~500-character-per-chunk stream variant (batched / low-latency provider).",
+  "chunks": [
+    {"type": "text-delta", "textDelta": "## Large Chunk Response\n\nThis fixture simulates a provider that buffers tokens into large chunks before flushing. Each chunk here is approximately 500 characters. The renderer must handle this correctly without re-parsing the entire accumulated string on each chunk.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n```typescript\nconst result = await streamText({\n  model: anthropic('claude-opus-4-7'),\n  messages: history,\n});\n```\n"},
+    {"type": "text-delta", "textDelta": "\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\n$$\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}$$\n\nThe above is the Basel problem, solved by Euler in 1734. This large chunk contains a complete block-math expression that must render atomically without flicker.\n\n| Column A | Column B | Column C |\n|---|---|---|\n| Row 1 | Value | $x^2$ |\n| Row 2 | Value | $y^2$ |\n"},
+    {"type": "finish", "finishReason": "stop", "usage": {"promptTokens": 80, "completionTokens": 312}}
+  ]
+}

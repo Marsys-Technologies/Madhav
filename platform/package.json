@@ -28,7 +28,15 @@
     "answer:eval": "npx tsx scripts/answer_eval.ts",
     "embedding:freshness": "npx tsx --conditions=react-server scripts/retrieval/embedding_freshness_check.ts",
     "aiops:health": "tsx scripts/aiops/probe_health_cron.ts",
-    "aiops:cutover-smoke": "tsx scripts/aiops/cutover_smoke.ts"
+    "aiops:cutover-smoke": "tsx scripts/aiops/cutover_smoke.ts",
+    "chat-v2:test": "vitest run tests/unit/chat-v2 tests/components/chat-v2 tests/integration/chat-v2 2>/dev/null; npx playwright test tests/e2e/chat-v2 --project=chromium",
+    "chat-v2:unit": "vitest run tests/unit/chat-v2",
+    "chat-v2:component": "vitest run tests/components/chat-v2",
+    "chat-v2:integration": "vitest run tests/integration/chat-v2",
+    "chat-v2:e2e": "playwright test tests/e2e/chat-v2",
+    "chat-v2:visual": "playwright test tests/e2e/chat-v2/__visuals__",
+    "chat-v2:a11y": "playwright test tests/e2e/chat-v2/a11y",
+    "chat-v2:perf": "playwright test tests/e2e/chat-v2/perf"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",

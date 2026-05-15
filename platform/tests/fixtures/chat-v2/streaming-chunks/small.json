@@ -1,0 +1,12 @@
+{
+  "_fixture_status": "scaffold",
+  "_description": "~50-character-per-chunk stream variant (typical fast provider pace).",
+  "chunks": [
+    {"type": "text-delta", "textDelta": "Here is a multi-paragraph response with **bold** and"},
+    {"type": "text-delta", "textDelta": " *italic* formatting, plus a code snippet:\n\n```python\n"},
+    {"type": "text-delta", "textDelta": "def hello():\n    print('world')\n```\n\nAnd a math formula:"},
+    {"type": "text-delta", "textDelta": " $E = mc^2$ inline, followed by block math:\n\n$$\\int_0^\\infty"},
+    {"type": "text-delta", "textDelta": " e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$\n\nFinal sentence."},
+    {"type": "finish", "finishReason": "stop", "usage": {"promptTokens": 50, "completionTokens": 89}}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "_fixture_status": "scaffold",
+  "_description": "1-character-per-chunk stream variant for testing render correctness under maximum backpressure.",
+  "chunks": [
+    {"type": "text-delta", "textDelta": "H"},
+    {"type": "text-delta", "textDelta": "e"},
+    {"type": "text-delta", "textDelta": "l"},
+    {"type": "text-delta", "textDelta": "l"},
+    {"type": "text-delta", "textDelta": "o"},
+    {"type": "text-delta", "textDelta": " "},
+    {"type": "text-delta", "textDelta": "w"},
+    {"type": "text-delta", "textDelta": "o"},
+    {"type": "text-delta", "textDelta": "r"},
+    {"type": "text-delta", "textDelta": "l"},
+    {"type": "text-delta", "textDelta": "d"},
+    {"type": "finish", "finishReason": "stop", "usage": {"promptTokens": 10, "completionTokens": 11}}
+  ]
+}

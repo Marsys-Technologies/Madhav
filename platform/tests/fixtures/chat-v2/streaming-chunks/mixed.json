@@ -1,0 +1,16 @@
+{
+  "_fixture_status": "scaffold",
+  "_description": "Mixed chunk sizes simulating provider-quirk irregular flushing (e.g. Gemini batching reasoning tokens differently from text tokens).",
+  "chunks": [
+    {"type": "reasoning-delta", "reasoningDelta": "Let me think about "},
+    {"type": "reasoning-delta", "reasoningDelta": "this carefully. The question involves"},
+    {"type": "reasoning-delta", "reasoningDelta": " multiple layers of analysis requiring synthesis across classical texts and modern ephemeris data. I should first establish the foundational fact from L1, then layer the L2.5 signals."},
+    {"type": "text-delta", "textDelta": "## "},
+    {"type": "text-delta", "textDelta": "Analysis\n\nBased on the chart"},
+    {"type": "text-delta", "textDelta": " data, the primary indicator is **Rahu**"},
+    {"type": "text-delta", "textDelta": " in the 7th bhava.\n\nKey formula:\n\n$$\\text{Vimshottari period} = "},
+    {"type": "text-delta", "textDelta": "\\frac{\\text{dasha years} \\times \\text{antardasha fraction}}{120}$$\n\nCode:\n```python\n# Dasha calculation\n"},
+    {"type": "text-delta", "textDelta": "import swisseph as swe\nrahu_dasha = 18  # years\n```\n\nConclusion: [^1]\n\n[^1]: FORENSIC §3.2"},
+    {"type": "finish", "finishReason": "stop", "usage": {"promptTokens": 120, "completionTokens": 198}}
+  ]
+}
