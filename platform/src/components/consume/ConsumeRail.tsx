@@ -26,6 +26,8 @@ interface ConversationRow {
 }
 
 interface Props {
+  visible: boolean
+  onVisibleChange: (visible: boolean) => void
   panelOpen: boolean
   onPanelOpenChange: (open: boolean) => void
   onOpenReportsPanel?: () => void
@@ -38,6 +40,8 @@ interface Props {
 }
 
 export function ConsumeRail({
+  visible,
+  onVisibleChange,
   panelOpen,
   onPanelOpenChange,
   onOpenReportsPanel,
@@ -49,8 +53,7 @@ export function ConsumeRail({
   onConversationDeleted,
 }: Props) {
   const pathname = usePathname()
-  const panelRef = useRef<HTMLDivElement>(null)
-  const railRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
   // Theme cycling (light → dark → system → light)
   const { theme, setTheme } = useTheme()
@@ -65,19 +68,17 @@ export function ConsumeRail({
     setTheme(next)
   }
 
-  // Close controlled panel on click-outside (rail and panel excluded)
+  // Close on click-outside when visible
   useEffect(() => {
-    if (!panelOpen) return
+    if (!visible) return
     function handleClick(e: MouseEvent) {
-      if (
-        panelRef.current?.contains(e.target as Node) ||
-        railRef.current?.contains(e.target as Node)
-      ) return
+      if (wrapperRef.current?.contains(e.target as Node)) return
+      onVisibleChange(false)
       onPanelOpenChange(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [panelOpen, onPanelOpenChange])
+  }, [visible, onVisibleChange, onPanelOpenChange])
 
   const isConsume = pathname?.includes('/consume') ?? false
 
@@ -110,9 +111,20 @@ export function ConsumeRail({
   ]
 
   return (
-    <div ref={railRef} className="group relative z-20 h-full w-11 shrink-0">
-      {/* Rail icon strip */}
-      <div className="flex h-full w-full flex-col items-center border-r border-[rgba(var(--brand-gold-rgb),0.08)] bg-[oklch(0.07_0.010_70)] py-3">
+    <div
+      ref={wrapperRef}
+      className={cn(
+        'group absolute left-0 top-0 z-30 h-full transition-[translate] duration-200 ease-out',
+        visible ? 'translate-x-0' : '-translate-x-full'
+      )}
+      onMouseLeave={() => {
+        // Cursor left both rail and panel — close everything
+        onVisibleChange(false)
+        onPanelOpenChange(false)
+      }}
+    >
+      {/* Rail icon strip (44px) */}
+      <div className="relative z-20 flex h-full w-11 shrink-0 flex-col items-center border-r border-[rgba(var(--brand-gold-rgb),0.08)] bg-[oklch(0.07_0.010_70)] py-3">
         {/* Logo */}
         <div className="mb-4 flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--brand-gold)] to-[oklch(0.65_0.15_70)] text-[13px] font-bold text-[oklch(0.08_0.010_70)] shadow-[0_0_12px_rgba(var(--brand-gold-rgb),0.3)]">
           M
@@ -164,20 +176,15 @@ export function ConsumeRail({
         </button>
       </div>
 
-      {/* Hover-expand panel — CSS-only via group-hover, no JS timers.
-          The panel is a descendant of the .group rail wrapper, so hovering
-          ANYWHERE within the combined rail+panel area keeps .group:hover true. */}
+      {/* Conversation panel — slides out on hover, controlled by panelOpen for ⌘B */}
       <div
-        ref={panelRef}
         className={cn(
           'consume-rail-panel absolute left-11 top-0 h-full w-[280px] overflow-hidden',
           'border-r border-[rgba(var(--brand-gold-rgb),0.08)]',
           'bg-[#0b0804] shadow-[4px_0_32px_rgba(0,0,0,0.7)]',
-          // Controlled open state (via ⌘B or programmatic toggle)
           panelOpen
             ? 'opacity-100 translate-x-0 pointer-events-auto'
             : 'opacity-0 -translate-x-2 pointer-events-none',
-          // Hover override — group-hover wins when hovering rail or panel
           'group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto'
         )}
         style={{ zIndex: 19 }}
@@ -189,7 +196,10 @@ export function ConsumeRail({
           currentConversationId={currentConversationId}
           onRenamed={onConversationRenamed}
           onDeleted={onConversationDeleted}
-          onClose={() => onPanelOpenChange(false)}
+          onClose={() => {
+            onPanelOpenChange(false)
+            onVisibleChange(false)
+          }}
           hideFooter
         />
       </div>

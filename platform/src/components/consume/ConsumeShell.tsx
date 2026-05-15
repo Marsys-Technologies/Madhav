@@ -66,7 +66,10 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   },
   ref
 ) {
-  // LOCKED: panelOpen = false → sidebar starts collapsed (spec §8 lock #1)
+  // Rail and conversation panel are auto-hide overlays — neither occupies
+  // layout space. Default: both hidden. Trigger via left-edge hover or
+  // hamburger button. Conversation panel opens on rail hover (group-hover).
+  const [railVisible, setRailVisible] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -74,7 +77,13 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   const inputRef = useRef<HTMLInputElement>(null)
 
   useImperativeHandle(ref, () => ({
-    togglePanel: () => setPanelOpen(o => !o),
+    togglePanel: () => {
+      setRailVisible(v => {
+        const next = !v
+        if (!next) setPanelOpen(false)
+        return next
+      })
+    },
     toggleRightPanel: () => setRightOpen(o => !o),
   }))
 
@@ -88,7 +97,7 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
     if (editing) inputRef.current?.focus()
   }, [editing])
 
-  // Warm Shiki highlighter on idle (same as ChatShell)
+  // Warm Shiki highlighter on idle
   useEffect(() => {
     const ric =
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
@@ -112,26 +121,20 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      <ConsumeRail
-        panelOpen={panelOpen}
-        onPanelOpenChange={setPanelOpen}
-        onOpenReportsPanel={() => setRightOpen(true)}
-        chartId={chartId}
-        chartName={chartName}
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onConversationRenamed={onConversationRenamed}
-        onConversationDeleted={onConversationDeleted}
-      />
-
-      {/* Main column */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden">
+      {/* Main column — always full viewport width */}
+      <div className="flex h-full w-full flex-col overflow-hidden">
         {/* ConsumeHeader — 48px */}
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[rgba(var(--brand-gold-rgb),0.08)] bg-[oklch(0.08_0.010_70)] px-3">
           <button
             type="button"
-            onClick={() => setPanelOpen(o => !o)}
+            onClick={() => {
+              setRailVisible(v => {
+                const next = !v
+                if (!next) setPanelOpen(false)
+                return next
+              })
+            }}
             aria-label="Toggle sidebar"
             className="flex size-7 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]"
           >
@@ -187,6 +190,31 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
         {/* Scroll area + composer — passed as children */}
         {children}
       </div>
+
+      {/* Left-edge hover trigger — invisible, 8px wide, reveals rail.
+          Disabled while rail is visible so we don't double-fire. */}
+      {!railVisible && (
+        <div
+          className="absolute left-0 top-12 z-30 h-[calc(100%-3rem)] w-2"
+          onMouseEnter={() => setRailVisible(true)}
+          aria-hidden
+        />
+      )}
+
+      {/* ConsumeRail — absolute overlay, slides in from left when railVisible */}
+      <ConsumeRail
+        visible={railVisible}
+        onVisibleChange={setRailVisible}
+        panelOpen={panelOpen}
+        onPanelOpenChange={setPanelOpen}
+        onOpenReportsPanel={() => setRightOpen(true)}
+        chartId={chartId}
+        chartName={chartName}
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onConversationRenamed={onConversationRenamed}
+        onConversationDeleted={onConversationDeleted}
+      />
 
       {/* Right panel (Reports) — Sheet via Radix portal */}
       {rightPanel && (
