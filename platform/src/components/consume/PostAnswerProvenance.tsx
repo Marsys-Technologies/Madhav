@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ProvenanceEvent } from '@/types/sse_events'
 import { ProvenanceDrawer, type ProvenanceTab } from './ProvenanceDrawer'
@@ -13,10 +14,12 @@ interface Props {
 /**
  * PostAnswerProvenance — Gate III §9.
  *
- * Compact pill cluster below the answer: [N models] · [N sources] · [N signals].
+ * Collapsed "Details" toggle by default. Click to expand inline pill cluster:
+ * [N models] · [N sources] · [N signals] · [Technical].
  * Click any pill → opens ProvenanceDrawer focused on the matching tab.
  */
 export function PostAnswerProvenance({ provenance, className }: Props) {
+  const [expanded, setExpanded] = useState(false)
   const [openTab, setOpenTab] = useState<ProvenanceTab | null>(null)
 
   const counts = useMemo(() => {
@@ -34,43 +37,61 @@ export function PostAnswerProvenance({ provenance, className }: Props) {
 
   return (
     <>
-      <div className={cn('mt-3 flex flex-wrap items-center gap-2', className)}>
+      <span className={cn('inline-flex items-center gap-1.5 flex-wrap', className)}>
         <button
           type="button"
-          onClick={() => setOpenTab('astrological')}
+          onClick={() => setExpanded(e => !e)}
           className={pillClass}
-          aria-label="Open provenance — models"
+          aria-expanded={expanded}
+          aria-label="Toggle provenance details"
         >
-          <span className="font-mono">{counts.models}</span>
-          <span>models</span>
+          <span>Details</span>
+          {expanded ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
         </button>
-        <button
-          type="button"
-          onClick={() => setOpenTab('astrological')}
-          className={pillClass}
-          aria-label="Open provenance — sources"
-        >
-          <span className="font-mono">{counts.sources}</span>
-          <span>sources</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpenTab('astrological')}
-          className={pillClass}
-          aria-label="Open provenance — signals"
-        >
-          <span className="font-mono">{counts.signals}</span>
-          <span>signals</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpenTab('technical')}
-          className={cn(pillClass, 'opacity-70')}
-          aria-label="Open technical telemetry"
-        >
-          <span>Technical</span>
-        </button>
-      </div>
+        {expanded && (
+          <>
+            <button
+              type="button"
+              onClick={() => setOpenTab('astrological')}
+              className={pillClass}
+              aria-label="Open provenance — models"
+            >
+              <span className="font-mono">{counts.models}</span>
+              <span>models</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenTab('astrological')}
+              className={pillClass}
+              aria-label="Open provenance — sources"
+            >
+              <span className="font-mono">{counts.sources}</span>
+              <span>sources</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenTab('astrological')}
+              className={pillClass}
+              aria-label="Open provenance — signals"
+            >
+              <span className="font-mono">{counts.signals}</span>
+              <span>signals</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenTab('technical')}
+              className={cn(pillClass, 'opacity-70')}
+              aria-label="Open technical telemetry"
+            >
+              <span>Technical</span>
+            </button>
+          </>
+        )}
+      </span>
       <ProvenanceDrawer
         provenance={provenance}
         open={openTab !== null}

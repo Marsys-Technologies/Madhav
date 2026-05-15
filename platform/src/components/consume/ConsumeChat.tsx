@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, startTransition, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { UIMessage } from 'ai'
 import {
@@ -19,9 +19,8 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react'
-import { stackPicker, getModelMeta, PROVIDER_LABEL } from '@/lib/models/registry'
+import { stackPicker } from '@/lib/models/registry'
 import { ConsumeShell, type ConsumeShellHandle } from './ConsumeShell'
-import { PendingAssistantBubble } from '@/components/chat/PendingAssistantBubble'
 import { Composer, type ComposerHandle } from '@/components/chat/Composer'
 // WelcomeGreeting retired in favor of Gate III EmptyState; kept import-free.
 import { ScrollToBottomButton } from '@/components/chat/ScrollToBottomButton'
@@ -183,7 +182,7 @@ export function ConsumeChat({
     onConversationCreated: (id, messages) => {
       lastCreatedIdRef.current = id
       createdMessagesRef.current = messages
-      router.replace(`/clients/${chartId}/consume/${id}`, { scroll: false })
+      window.history.replaceState(null, '', `/clients/${chartId}/consume/${id}`)
       setConversations(prev => [
         {
           id,
@@ -393,24 +392,30 @@ export function ConsumeChat({
     messageId: string | null
   }) => {
     setActiveAssistantId(prev => prev === m.messageId ? prev : m.messageId)
-    // Use count-based equality instead of reference equality.
-    // parseMarkers() creates new array objects on EVERY streaming token even
-    // when no new markers were added, so `prev === m.reasoning` always fails
-    // mid-stream and triggers a spurious re-render on every token. Marker
-    // arrays only grow monotonically within a turn — equal counts mean nothing
-    // changed, so we can bail out cheaply and stop the re-render cascade.
-    setReasoningSteps(prev =>
-      prev.length === m.reasoning.length ? prev : m.reasoning
-    )
-    setSanskritTerms(prev =>
-      prev.length === m.sanskrit.length ? prev : m.sanskrit
-    )
-    if (m.correction) setCorrection(prev =>
-      prev === m.correction || JSON.stringify(prev) === JSON.stringify(m.correction) ? prev : m.correction
-    )
-    if (m.outOfDomain) setOutOfDomain(prev =>
-      prev === m.outOfDomain || JSON.stringify(prev) === JSON.stringify(m.outOfDomain) ? prev : m.outOfDomain
-    )
+    // startTransition marks these marker state updates as low-priority so React
+    // can batch/defer them. Gemini native reasoning streams at ~100 tokens/sec;
+    // without this, each token fires a synchronous re-render that stacks up past
+    // React's 25-render limit and throws "Maximum update depth exceeded".
+    startTransition(() => {
+      // Use count-based equality instead of reference equality.
+      // parseMarkers() creates new array objects on EVERY streaming token even
+      // when no new markers were added, so `prev === m.reasoning` always fails
+      // mid-stream and triggers a spurious re-render on every token. Marker
+      // arrays only grow monotonically within a turn — equal counts mean nothing
+      // changed, so we can bail out cheaply and stop the re-render cascade.
+      setReasoningSteps(prev =>
+        prev.length === m.reasoning.length ? prev : m.reasoning
+      )
+      setSanskritTerms(prev =>
+        prev.length === m.sanskrit.length ? prev : m.sanskrit
+      )
+      if (m.correction) setCorrection(prev =>
+        prev === m.correction || JSON.stringify(prev) === JSON.stringify(m.correction) ? prev : m.correction
+      )
+      if (m.outOfDomain) setOutOfDomain(prev =>
+        prev === m.outOfDomain || JSON.stringify(prev) === JSON.stringify(m.outOfDomain) ? prev : m.outOfDomain
+      )
+    })
   }, [])
 
   // Gate III: read context_usage / provenance / conversation_title from the
@@ -474,32 +479,9 @@ export function ConsumeChat({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [gateIIIMetaKey])
 
-  const lastAssistantMeta = useMemo(() => {
-    const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')
-    const meta = msg?.metadata as Record<string, unknown> | undefined
-    if (!meta) return null
-    const modelId = meta.model as string | undefined
-    const stackLabel = meta.stack as string | undefined
-    if (!modelId) return stackLabel ?? null
-    const synthesisM = getModelMeta(modelId)
-    if (!synthesisM) return stackLabel ?? null
-    const plannerId = (meta.planning_model_id as string | null | undefined) ?? null
-    const plannerLatencyMs = (meta.planning_latency_ms as number | null | undefined) ?? null
-    const plannerM = plannerId ? getModelMeta(plannerId) : null
-    return `${synthesisM.label} · ${PROVIDER_LABEL[synthesisM.provider]}${
-      plannerM ? `  •  Planner: ${plannerM.label}${plannerLatencyMs ? ` (${(plannerLatencyMs / 1000).toFixed(1)}s)` : ''}` : ''
-    }`
-  }, [displayMessages])
-
   // AIOps Phase 3 — CO.1: useChatLifecycle hook (flag-ON path).
   // stream=null in CO.1; CO.2/CO.3 wire the actual ModelInteractionEvent stream.
   const lifecycleSnapshot = useChatLifecycle({ stream: null })
-
-  const lastMessage = displayMessages[displayMessages.length - 1]
-  const showPendingAssistant =
-    session.isStreaming &&
-    !branches.isViewingArchived &&
-    lastMessage?.role === 'user'
 
   const rightPanel =
     selectedDomain == null ? (
@@ -607,11 +589,6 @@ export function ConsumeChat({
                       <CorrectionNotice correction={correction} />
                     </div>
                   )}
-                  {contextUsage && session.isStreaming && (
-                    <div className="mx-auto w-full max-w-4xl px-4 pt-2">
-                      <ContextUsageCue usage={contextUsage} />
-                    </div>
-                  )}
                   {consumeUiV2Enabled ? (
                     // AIOps Phase 3 — CO.1: lifecycle slot structure (flag-ON).
                     // CO.1: slots are positioned; CO.2/CO.3 populate via event stream.
@@ -633,11 +610,12 @@ export function ConsumeChat({
                       <MetadataBadge modelMeta={lifecycleSnapshot.modelMeta} />
                     </>
                   ) : (
-                    // Flag-OFF: legacy path — byte-identical to pre-CO.1 behavior.
+                    // Flag-OFF: legacy path.
+                    // StreamingAnswer renders all turns; LiveReasoningCard sits below
+                    // it during streaming so "Thinking…" appears after the user bubble
+                    // (not above it). ContextUsageCue + PostAnswerProvenance are shown
+                    // together in a single flex row only after streaming ends.
                     <>
-                      {session.isStreaming && (
-                        <LiveReasoningCard reasoningSteps={reasoningSteps} isStreaming />
-                      )}
                       <StreamingAnswer
                         messages={displayMessages}
                         isStreaming={session.isStreaming && !branches.isViewingArchived}
@@ -647,11 +625,13 @@ export function ConsumeChat({
                         onRate={branches.isViewingArchived ? undefined : rate}
                         onMarkers={handleMarkers}
                       />
-                      {showPendingAssistant && <PendingAssistantBubble />}
-                      {/* Gate III: after-answer provenance pills */}
-                      {!session.isStreaming && provenance && (
-                        <div className="mx-auto w-full max-w-4xl px-4 pb-4">
-                          <PostAnswerProvenance provenance={provenance} />
+                      {session.isStreaming && (
+                        <LiveReasoningCard reasoningSteps={reasoningSteps} isStreaming />
+                      )}
+                      {!session.isStreaming && (contextUsage || provenance) && (
+                        <div className="mx-auto w-full max-w-4xl px-4 pt-1 pb-4 flex flex-wrap items-center gap-2">
+                          {contextUsage && <ContextUsageCue usage={contextUsage} />}
+                          {provenance && <PostAnswerProvenance provenance={provenance} />}
                         </div>
                       )}
                     </>
@@ -742,11 +722,6 @@ export function ConsumeChat({
                 onStyleChange={setStyle}
                 disabled={session.isStreaming || branches.isViewingArchived}
               />
-              {!consumeUiV2Enabled && lastAssistantMeta && (
-                <span className="text-[10px] text-brand-gold/40 font-mono ml-1 hidden sm:inline">
-                  {lastAssistantMeta}
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-1.5">
               <button

@@ -56,63 +56,56 @@ export function LiveReasoningCard({
         className,
       )}
     >
-      <div
-        className={cn(
-          'rounded-md border border-border/60 bg-muted/30 px-3 py-2',
-          'transition-colors',
-        )}
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        className="flex w-full items-center gap-2 text-left"
+        aria-expanded={expanded}
+        aria-controls="live-reasoning-list"
+        disabled={reasoningSteps.length === 0}
       >
-        <button
-          type="button"
-          onClick={() => setExpanded(e => !e)}
-          className="flex w-full items-center gap-2 text-left"
-          aria-expanded={expanded}
-          aria-controls="live-reasoning-list"
-          disabled={reasoningSteps.length === 0}
-        >
-          <span
-            className={cn(
-              'inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-gold)]/70',
-              isStreaming && 'animate-pulse',
-            )}
-            aria-hidden="true"
-          />
-          <span className="flex-1 truncate text-xs text-muted-foreground">
-            {displayText}
-          </span>
-          {reasoningSteps.length > 0 && (
-            <span className="shrink-0 text-muted-foreground/70">
-              {expanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </span>
+        <span
+          className={cn(
+            'inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-gold)]/70',
+            isStreaming && 'animate-pulse',
           )}
-        </button>
-        {expanded && reasoningSteps.length > 0 && (
-          <ul
-            id="live-reasoning-list"
-            aria-labelledby="live-reasoning-list"
-            className="mt-2 space-y-1 border-t border-border/40 pt-2"
-          >
-            {reasoningSteps.map((step, i) => (
-              <li
-                key={`${step.timestamp}-${i}`}
-                className={cn(
-                  'flex items-baseline gap-2 text-[11px] text-muted-foreground/90',
-                  step.phase === 'synthesis' && 'pl-2',
-                )}
-              >
-                <span className="font-mono text-[9px] text-muted-foreground/50 shrink-0">
-                  {step.phase === 'pipeline' ? '◇' : '◆'}
-                </span>
-                <span className="leading-tight">{step.text}</span>
-              </li>
-            ))}
-          </ul>
+          aria-hidden="true"
+        />
+        <span className="flex-1 truncate text-xs text-muted-foreground/70">
+          {displayText}
+        </span>
+        {reasoningSteps.length > 0 && (
+          <span className="shrink-0 text-muted-foreground/70">
+            {expanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+          </span>
         )}
-      </div>
+      </button>
+      {expanded && reasoningSteps.length > 0 && (
+        <ul
+          id="live-reasoning-list"
+          aria-labelledby="live-reasoning-list"
+          className="mt-2 space-y-1 border-t border-border/40 pt-2"
+        >
+          {reasoningSteps.map((step, i) => (
+            <li
+              key={`${step.timestamp}-${i}`}
+              className={cn(
+                'flex items-baseline gap-2 text-[11px] text-muted-foreground/90',
+                step.phase === 'synthesis' && 'pl-2',
+              )}
+            >
+              <span className="font-mono text-[9px] text-muted-foreground/50 shrink-0">
+                {step.phase === 'pipeline' ? '◇' : '◆'}
+              </span>
+              <span className="leading-tight">{step.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

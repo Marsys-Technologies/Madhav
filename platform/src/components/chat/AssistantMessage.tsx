@@ -138,11 +138,11 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
               const reasoning = (part as { text: string }).text
               if (!reasoning) return null
               return (
-                <details key={idx} className="my-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                <details key={idx} className="my-2 text-xs">
+                  <summary className="cursor-pointer select-none text-muted-foreground/60 hover:text-muted-foreground/90 py-0.5">
                     Reasoning
                   </summary>
-                  <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{reasoning}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground/70 pl-3 border-l border-border/30">{reasoning}</p>
                 </details>
               )
             }

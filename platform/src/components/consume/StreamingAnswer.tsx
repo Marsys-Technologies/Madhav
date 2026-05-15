@@ -4,7 +4,6 @@ import { useMemo, useEffect } from 'react'
 import type { UIMessage } from 'ai'
 import { isReasoningUIPart } from 'ai'
 import { StreamingMarkdown } from '@/components/chat/StreamingMarkdown'
-import { StreamingDots } from '@/components/chat/StreamingDots'
 import { AssistantMessage } from '@/components/chat/AssistantMessage'
 import { MessageErrorBoundary } from '@/components/chat/MessageErrorBoundary'
 import type { Rating } from '@/hooks/useFeedback'
@@ -111,6 +110,12 @@ export function StreamingAnswer({
   // For 'native' models, substitute the SDK-extracted reasoning steps in place
   // of the empty marker-parsed array (the gate was stripped from their prompt).
   // For 'markers' models, use the marker-parsed array as before.
+  //
+  // Use nativeReasoningSteps.length (a primitive) instead of nativeReasoningSteps
+  // (an array) as the dep. The array is a new reference on every streaming token;
+  // using it would fire this effect on every token, feeding rapid state updates
+  // into ConsumeChat.handleMarkers and triggering the re-render cascade.
+  const nativeStepsLen = nativeReasoningSteps.length
   useEffect(() => {
     if (!onMarkers) return
     onMarkers({
@@ -120,7 +125,8 @@ export function StreamingAnswer({
       outOfDomain: parsed.outOfDomain,
       messageId: lastAssistant?.id ?? null,
     })
-  }, [parsed, lastAssistant?.id, nativeReasoningSteps, reasoningMode, onMarkers])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed, lastAssistant?.id, nativeStepsLen, reasoningMode, onMarkers])
 
   if (messages.length === 0) return null
 
@@ -135,8 +141,9 @@ export function StreamingAnswer({
             <div key={message.id} className="mx-auto w-full max-w-4xl flex justify-end px-4 py-2">
               <div
                 className={cn(
-                  'max-w-[75%] rounded-2xl border border-border/80 bg-muted/50 px-4 py-2.5',
-                  'bt-body text-foreground'
+                  'max-w-[75%] rounded-2xl px-4 py-2.5',
+                  'bt-body text-foreground/90',
+                  'bg-[rgba(255,255,255,0.06)] backdrop-blur-sm ring-1 ring-white/5',
                 )}
               >
                 {textContent}
@@ -150,15 +157,14 @@ export function StreamingAnswer({
           const visible = idx === lastAssistantIdx ? parsed.visibleText : parseMarkers(textContent).visibleText
 
           if (isCurrentlyStreaming) {
+            // When there's no visible text yet, return an invisible placeholder.
+            // LiveReasoningCard (rendered below StreamingAnswer in ConsumeChat)
+            // owns the "Thinking…" state — rendering StreamingDots here would
+            // produce duplicate dots above the reasoning card.
+            if (!visible) return <div key={message.id} aria-hidden />
             return (
               <div key={message.id} className="mx-auto w-full max-w-4xl px-4 py-2">
-                {visible ? (
-                  <StreamingMarkdown isStreaming>
-                    {visible}
-                  </StreamingMarkdown>
-                ) : (
-                  <StreamingDots />
-                )}
+                <StreamingMarkdown isStreaming>{visible}</StreamingMarkdown>
               </div>
             )
           }
