@@ -135,6 +135,11 @@ export async function POST(request: Request) {
     return res.badRequest('chartId and messages are required')
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_RE.test(chartId)) {
+    return res.badRequest('INVALID_CHART_ID: chartId must be a valid UUID')
+  }
+
   // Resolve synthesis model from stack. Stack takes precedence over the legacy
   // `model` field. Unknown/missing stacks fall back to the default NIM stack.
   const VALID_STACKS = Object.keys(STACK_ROUTING) as ModelStack[]
