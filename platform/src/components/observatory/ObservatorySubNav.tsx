@@ -43,7 +43,12 @@ export function ObservatorySubNav() {
   return (
     <nav
       aria-label="Observatory navigation"
-      className="hidden w-52 shrink-0 flex-col gap-3 border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[var(--brand-charcoal,oklch(0.10_0.012_70))] py-4 md:flex"
+      className="hidden w-52 shrink-0 flex-col gap-3 border-r border-[rgba(var(--brand-gold-rgb),0.12)] py-4 md:flex"
+      style={{
+        background: 'oklch(0.07 0.010 68 / 0.70)',
+        backdropFilter: 'blur(16px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+      }}
     >
       {/* Back to Roster */}
       <Link

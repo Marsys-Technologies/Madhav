@@ -73,7 +73,9 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         expanded ? 'w-44' : 'w-14'
       )}
       style={{
-        background: 'linear-gradient(180deg, oklch(0.055 0.008 68) 0%, oklch(0.038 0.005 68) 100%)',
+        background: 'oklch(0.05 0.008 68 / 0.72)',
+        backdropFilter: 'blur(16px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(140%)',
         borderRightColor: 'color-mix(in oklch, var(--brand-gold) 14%, transparent)',
       }}
     >

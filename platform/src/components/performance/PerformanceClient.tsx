@@ -92,17 +92,23 @@ export function PerformanceClient() {
   const unjudgedN = k?.pipeline_correctness.plan_accuracy_consume_unjudged_n ?? 0
 
   return (
-    <div className="space-y-4 p-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-3">
+    <div className="aiops-shell min-h-full space-y-6 p-6">
+      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-4" style={{ borderColor: 'rgba(var(--brand-gold-rgb),0.15)' }}>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Performance Command Center</h1>
-          <p className="text-xs text-muted-foreground">
-            Super-admin · Gate I · {kpisQ.isFetching ? 'updating…' : 'live'}
+          <h1 className="bt-display" style={{ color: 'var(--brand-gold-cream)' }}>Performance Command Center</h1>
+          <p className="bt-label mt-1">
+            Super-admin · Gate I ·{' '}
+            {kpisQ.isFetching
+              ? 'updating…'
+              : <span style={{ color: 'var(--status-success)' }}>live</span>}
           </p>
         </div>
         <button
           onClick={onRefresh}
-          className="rounded border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted/40"
+          className="rounded border px-3 py-1.5 text-xs font-medium transition-colors"
+          style={{ borderColor: 'rgba(212,175,55,0.35)', color: 'var(--brand-gold)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,175,55,0.08)')}
+          onMouseLeave={e => (e.currentTarget.style.background = '')}
         >
           Refresh now
         </button>
@@ -118,14 +124,16 @@ export function PerformanceClient() {
             setPage(1)
           }}
         />
-        <div className="flex items-center gap-1 text-xs">
-          <span className="text-muted-foreground">Source:</span>
+        <div className="flex items-center gap-1">
+          <span className="bt-label mr-1">Source:</span>
           {(['all', 'consume', 'eval'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setSource(s)}
-              className={`rounded-full px-3 py-1 ${
-                source === s ? 'bg-foreground text-background' : 'bg-muted hover:bg-muted/70'
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                source === s
+                  ? 'border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.12)] text-[var(--brand-gold)]'
+                  : 'border-transparent text-muted-foreground hover:bg-[rgba(212,175,55,0.06)] hover:text-[var(--brand-gold)]'
               }`}
             >
               {s}
@@ -134,7 +142,7 @@ export function PerformanceClient() {
         </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <KpiTile
           bundle="pipeline_correctness"
           title="Pipeline correctness"
@@ -152,7 +160,10 @@ export function PerformanceClient() {
             unjudgedN > 0 ? (
               <button
                 onClick={() => setJudgeOpen(true)}
-                className="rounded border px-2 py-1 text-xs hover:bg-muted/40"
+                className="rounded border px-2 py-1 text-xs transition-colors"
+                style={{ borderColor: 'rgba(212,175,55,0.30)', color: 'var(--brand-gold)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,175,55,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.background = '')}
               >
                 Run judge on {unjudgedN} unjudged →
               </button>
@@ -207,8 +218,8 @@ export function PerformanceClient() {
         />
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold">Query log</h2>
+      <section className="space-y-3">
+        <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Query log</h2>
         <QueryLogTable
           rows={queriesQ.data?.rows ?? []}
           total={queriesQ.data?.total ?? 0}

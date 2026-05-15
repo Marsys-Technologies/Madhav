@@ -45,19 +45,18 @@ export function TimeWindowPicker({ value, customRange, onChange }: Props) {
   const [customStart, setCustomStart] = React.useState(customRange?.start.slice(0, 10) ?? '')
   const [customEnd, setCustomEnd] = React.useState(customRange?.end.slice(0, 10) ?? '')
 
+  const btnClass = (active: boolean) =>
+    `rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+      active
+        ? 'border-[rgba(212,175,55,0.40)] bg-[rgba(212,175,55,0.12)] text-[var(--brand-gold)]'
+        : 'border-transparent text-muted-foreground hover:bg-[rgba(212,175,55,0.06)] hover:text-[var(--brand-gold)]'
+    }`
+
   return (
-    <div className="flex flex-wrap items-center gap-2 py-2">
-      <span className="text-sm text-muted-foreground">Window:</span>
+    <div className="flex flex-wrap items-center gap-1.5 py-1">
+      <span className="bt-label mr-1">Window:</span>
       {PRESETS.map((p) => (
-        <button
-          key={p.id}
-          onClick={() => onChange(p.id)}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-            value === p.id
-              ? 'bg-foreground text-background'
-              : 'bg-muted text-foreground hover:bg-muted/70'
-          }`}
-        >
+        <button key={p.id} onClick={() => onChange(p.id)} className={btnClass(value === p.id)}>
           {p.label}
         </button>
       ))}
@@ -70,9 +69,7 @@ export function TimeWindowPicker({ value, customRange, onChange }: Props) {
             })
           }
         }}
-        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-          value === 'custom' ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70'
-        }`}
+        className={btnClass(value === 'custom')}
       >
         Custom
       </button>
@@ -82,14 +79,25 @@ export function TimeWindowPicker({ value, customRange, onChange }: Props) {
             type="date"
             value={customStart}
             onChange={(e) => setCustomStart(e.target.value)}
-            className="rounded border bg-background px-2 py-1"
+            className="rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1"
+            style={{
+              borderColor: 'rgba(212,175,55,0.25)',
+              background: 'var(--input)',
+              color: 'var(--brand-gold-cream)',
+              outline: 'none',
+            }}
           />
-          <span>→</span>
+          <span className="text-muted-foreground">→</span>
           <input
             type="date"
             value={customEnd}
             onChange={(e) => setCustomEnd(e.target.value)}
-            className="rounded border bg-background px-2 py-1"
+            className="rounded border px-2 py-1 text-xs focus:outline-none"
+            style={{
+              borderColor: 'rgba(212,175,55,0.25)',
+              background: 'var(--input)',
+              color: 'var(--brand-gold-cream)',
+            }}
           />
         </span>
       )}
