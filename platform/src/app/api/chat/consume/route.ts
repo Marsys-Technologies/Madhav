@@ -146,7 +146,10 @@ export async function POST(request: Request) {
   const selectedStack: ModelStack = VALID_STACKS.includes(body.stack as ModelStack)
     ? (body.stack as ModelStack)
     : DEFAULT_STACK_ID
-  const stackSynthPrimary = await getEffectiveModel(selectedStack, 'synthesis', 'primary', request)
+  const [stackSynthPrimary, stackSynthFallback] = await Promise.all([
+    getEffectiveModel(selectedStack, 'synthesis', 'primary', request),
+    getEffectiveModel(selectedStack, 'synthesis', 'fallback', request),
+  ])
   // Backward-compat: if the legacy `model` field is a known model ID AND no
   // stack was sent (old client), honour it directly so sessions mid-upgrade
   // don't silently switch models on the user.
@@ -655,7 +658,7 @@ export async function POST(request: Request) {
       }
 
   const orchestrator = createOrchestrator({ panel_opt_in: panelOptIn })
-  const { result, methodologyBlockHolder } = await orchestrator.synthesize({
+  const synthesisRequest = {
     query: queryText,
     query_plan: queryPlan,
     bundle,
@@ -688,6 +691,14 @@ export async function POST(request: Request) {
       validator_results: validatorResultsHolder,
       disclosure_tier: audienceTier,
     }),
+  }
+  let { result, methodologyBlockHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+    // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
+    // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
+    const fallbackId = stackSynthFallback
+    if (!fallbackId || fallbackId === modelId) throw primaryErr
+    console.warn('[synthesis][fallback] primary=%s failed; retrying with fallback=%s err=%s', modelId, fallbackId, primaryErr instanceof Error ? primaryErr.message : String(primaryErr))
+    return orchestrator.synthesize({ ...synthesisRequest, selected_model_id: fallbackId })
   })
 
   result.consumeStream()
