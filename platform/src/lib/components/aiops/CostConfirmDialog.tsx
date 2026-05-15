@@ -1,6 +1,7 @@
 'use client'
 
 import type { ModelStack } from '@/lib/models/registry'
+import { STACK_DISPLAY } from './displayNames'
 
 // Stacks that always require confirmation (per standing native rule)
 const ALWAYS_CONFIRM: ModelStack[] = ['anthropic']
@@ -39,8 +40,14 @@ export function CostConfirmDialog({ targetStack, onConfirm, onCancel }: CostConf
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-xl">
         <h3 className="text-sm font-semibold text-foreground">
-          Switch to {targetStack.toUpperCase()} stack?
+          Set {STACK_DISPLAY[targetStack]} as system default?
         </h3>
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          This affects background jobs that don&apos;t pick a stack themselves
+          (health probes, scheduled tasks, internal pipelines). Live chat queries
+          continue to use whatever the user selects in the composer.
+        </p>
 
         {isAnthropicBanned && (
           <p className="mt-2 rounded bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-400">
@@ -66,7 +73,7 @@ export function CostConfirmDialog({ targetStack, onConfirm, onCancel }: CostConf
             onClick={onConfirm}
             className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
           >
-            Confirm switch
+            Set as default
           </button>
         </div>
       </div>

@@ -30,7 +30,7 @@ export function ConsumeOverlayPortal({ children }: { children: ReactNode }) {
            upward-rising warm gradient. Ellipse extends past the bottom edge
            (110% y) so it fans out evenly across the full width. */
         backgroundImage:
-          'radial-gradient(ellipse 150% 90% at 50% 110%, rgba(212,175,55,0.40) 0%, rgba(190,130,35,0.22) 30%, rgba(140,90,20,0.08) 55%, transparent 72%)',
+          'radial-gradient(ellipse 180% 100% at 30% 115%, rgba(212,175,55,0.55) 0%, rgba(190,130,35,0.28) 25%, rgba(140,90,20,0.10) 50%, transparent 68%)',
       }}
     >
       <ZoneRoot zone="ink" style={{ height: '100%' }}>

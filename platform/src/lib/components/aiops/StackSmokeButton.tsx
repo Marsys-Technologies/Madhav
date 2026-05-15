@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import type { ModelStack } from '@/lib/models/registry'
 import type { ProbeResult } from '@/lib/aiops/probe/types'
+import { STACK_DISPLAY, CALL_TYPE_DISPLAY, ROLE_DISPLAY, displayOf } from './displayNames'
+import type { CallType } from '@/lib/models/registry'
 
 interface SmokeResponse {
   stack:    ModelStack
@@ -43,7 +45,7 @@ export function StackSmokeButton({ stack }: StackSmokeButtonProps) {
         disabled={running}
         className="rounded border border-border px-3 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
       >
-        {running ? 'Running smoke test…' : `Run ${stack.toUpperCase()} smoke test`}
+        {running ? 'Running smoke test…' : `Run ${STACK_DISPLAY[stack]} smoke test`}
       </button>
 
       {error && (
@@ -67,8 +69,8 @@ export function StackSmokeButton({ stack }: StackSmokeButtonProps) {
                     : 'border-red-500/30 bg-red-500/5 text-red-700',
                 ].join(' ')}
               >
-                <p className="truncate font-mono">{r.call_type}</p>
-                <p className="text-muted-foreground">{r.role} · {r.status}</p>
+                <p className="truncate">{displayOf(CALL_TYPE_DISPLAY, r.call_type as CallType)}</p>
+                <p className="text-muted-foreground">{ROLE_DISPLAY[r.role as 'primary' | 'fallback'] ?? r.role} · {r.status}</p>
               </div>
             ))}
           </div>

@@ -407,17 +407,38 @@ export function ConsumeChat({
 
   // Gate III: read context_usage / provenance / conversation_title from the
   // latest assistant message metadata.
+  //
   // AI SDK v6 deep-clones message objects on every streaming token, so
-  // message.metadata is a new reference each render even when content is
-  // unchanged. All three setters use functional updaters with content-equality
-  // guards to break the re-render loop that would otherwise result.
-  useEffect(() => {
+  // `displayMessages` is a new array reference on every render — even when
+  // metadata content hasn't changed. Using [displayMessages] as the dep would
+  // fire this effect on every render and, combined with the subsequent setState
+  // calls, produces "Maximum update depth exceeded" during/after streaming.
+  //
+  // Fix: derive a stable JSON key from only the four fields this effect reads.
+  // The key changes only when content changes; the effect runs only then.
+  // Functional updaters with field-equality guards are kept as a second safety
+  // net for the case where the key changes (e.g. conversationId updates) while
+  // one of the other fields stays the same.
+  const gateIIIMetaKey = useMemo(() => {
     const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')
     const meta = (msg?.metadata ?? {}) as Record<string, unknown>
-    const usage = meta.context_usage as ContextUsageEvent | undefined
-    const prov = meta.provenance as ProvenanceEvent | undefined
-    const newTitle = meta.conversation_title as string | undefined
-    const newConversationId = meta.conversationId as string | undefined
+    return JSON.stringify({
+      cu: meta.context_usage ?? null,
+      pv: meta.provenance ?? null,
+      title: meta.conversation_title ?? null,
+      cid: meta.conversationId ?? null,
+    })
+  }, [displayMessages])
+
+  useEffect(() => {
+    const { cu: usage, pv: prov, title: newTitle, cid: newConversationId } = JSON.parse(
+      gateIIIMetaKey
+    ) as {
+      cu: ContextUsageEvent | null
+      pv: ProvenanceEvent | null
+      title: string | null
+      cid: string | null
+    }
     /* eslint-disable react-hooks/set-state-in-effect */
     if (usage) {
       setContextUsage(prev =>
@@ -430,7 +451,7 @@ export function ConsumeChat({
     }
     if (prov) {
       setProvenance(prev =>
-        prev === prov || JSON.stringify(prev) === JSON.stringify(prov) ? prev : prov
+        JSON.stringify(prev) === JSON.stringify(prov) ? prev : prov
       )
     }
     if (newTitle && newConversationId) {
@@ -443,7 +464,7 @@ export function ConsumeChat({
       })
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [displayMessages])
+  }, [gateIIIMetaKey])
 
   const lastAssistantMeta = useMemo(() => {
     const msg = [...displayMessages].reverse().find(m => m.role === 'assistant')

@@ -6,6 +6,9 @@ import { CALL_TYPE_SPECS } from '@/lib/aiops/specs/call_type_specs'
 import { ModelDropdown } from './ModelDropdown'
 import { TestProbeInline } from './TestProbeInline'
 import { ParamOverrideRow } from './ParamOverrideRow'
+import { useDirtyRows, dirtyKey } from './DirtyRowsContext'
+import { InfoTooltip } from './InfoTooltip'
+import { CALL_TYPE_DISPLAY } from './displayNames'
 
 type ParamName = 'max_output_tokens' | 'temperature' | 'thinkingBudget' | 'timeout_ms'
 
@@ -39,10 +42,16 @@ export function InteractiveCallTypeRow({ stack, callType, initialPrimary, initia
   const [routing, setRouting] = useState<RoutingState>({ primary: initialPrimary, fallback: initialFallback })
   const [params,  setParams]  = useState<ParamValues>(DEFAULT_PARAMS)
   const [saving,  setSaving]  = useState(false)
+  const { isDirty, markDirty } = useDirtyRows()
 
   const spec = CALL_TYPE_SPECS[callType]
 
-  async function saveRouting(updated: Partial<RoutingState>) {
+  const rowDirty =
+    isDirty(dirtyKey(stack, callType, 'primary')) ||
+    isDirty(dirtyKey(stack, callType, 'fallback')) ||
+    isDirty(dirtyKey(stack, callType, 'param'))
+
+  async function saveRouting(updated: Partial<RoutingState>, changedRole: 'primary' | 'fallback') {
     const next = { ...routing, ...updated }
     setRouting(next)
     setSaving(true)
@@ -52,46 +61,80 @@ export function InteractiveCallTypeRow({ stack, callType, initialPrimary, initia
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ primary_model: next.primary, fallback_model: next.fallback }),
       })
+      markDirty(dirtyKey(stack, callType, changedRole))
     } catch { /* silently fail — state already updated optimistically */ }
     setSaving(false)
   }
 
   function handleParamUpdate(paramName: ParamName, value: number | string | null) {
     setParams(p => ({ ...p, [paramName]: { ...p[paramName], current: value } }))
+    markDirty(dirtyKey(stack, callType, 'param', paramName))
   }
 
   return (
-    <div className="border-b border-border py-3 last:border-0">
-      <div className="grid grid-cols-[160px_1fr_1fr_auto] items-start gap-x-3">
+    <div
+      className={[
+        'border-b border-border py-3 last:border-0 transition-shadow',
+        rowDirty ? 'aiops-row-dirty pl-3 -ml-1' : '',
+      ].join(' ')}
+    >
+      <div className="grid grid-cols-[140px_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-x-4">
         {/* Label */}
         <div>
-          <p className="text-sm font-medium text-foreground">{callType}</p>
-          {spec.notes && <p className="mt-0.5 text-xs text-muted-foreground">{spec.notes}</p>}
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-foreground">{CALL_TYPE_DISPLAY[callType] ?? callType}</p>
+            {spec.notes && (
+              <InfoTooltip text={spec.notes} ariaLabel={`About ${CALL_TYPE_DISPLAY[callType] ?? callType}`} />
+            )}
+            {rowDirty && (
+              <span
+                aria-label="Unsaved this session"
+                title="Changed this session — propagating"
+                className="inline-block size-1.5 rounded-full"
+                style={{ background: 'var(--brand-gold)', boxShadow: '0 0 6px var(--brand-gold)' }}
+              />
+            )}
+          </div>
           {saving && <span className="text-[10px] text-muted-foreground">saving…</span>}
         </div>
 
-        {/* Primary */}
-        <div>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Primary</span>
+        {/* Primary — slightly elevated surface */}
+        <div className="rounded-md bg-[rgba(var(--brand-gold-rgb),0.04)] p-1.5">
+          <span className="flex items-center gap-1">
+            <span
+              className="bt-label bt-label-upper"
+              style={{ color: 'var(--brand-gold)' }}
+            >
+              Primary
+            </span>
+            {spec.notes && (
+              <InfoTooltip text={spec.notes} ariaLabel="Primary requirements" />
+            )}
+          </span>
           <ModelDropdown
             stack={stack}
             callType={callType}
             role="primary"
             value={routing.primary}
-            onChange={v => saveRouting({ primary: v })}
+            onChange={v => saveRouting({ primary: v }, 'primary')}
           />
           <TestProbeInline stack={stack} callType={callType} role="primary" />
         </div>
 
-        {/* Fallback */}
-        <div>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Fallback</span>
+        {/* Fallback — muted */}
+        <div className="p-1.5">
+          <span className="flex items-center gap-1">
+            <span className="bt-label bt-label-upper">Fallback</span>
+            {spec.notes && (
+              <InfoTooltip text={spec.notes} ariaLabel="Fallback requirements" />
+            )}
+          </span>
           <ModelDropdown
             stack={stack}
             callType={callType}
             role="fallback"
             value={routing.fallback}
-            onChange={v => saveRouting({ fallback: v })}
+            onChange={v => saveRouting({ fallback: v }, 'fallback')}
           />
           <TestProbeInline stack={stack} callType={callType} role="fallback" />
         </div>

@@ -1,101 +1,101 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import type { ModelStack } from '@/lib/models/registry'
 import { stackPicker } from '@/lib/models/registry'
-import { shouldShowCostDialog, CostConfirmDialog } from './CostConfirmDialog'
-
-const MARSYS_CARD = {
-  stack:                  'marsys' as ModelStack,
-  label:                  'MARSYS Stack',
-  synthesisModelId:       'gemini-2.5-pro',
-  synthesisContextWindow: 2_000_000,
-  isDefault:              false,
-}
+import { STACK_DISPLAY } from './displayNames'
 
 interface StackPickerCardsProps {
-  activeStack:  ModelStack
-  onStackChange?: (newStack: ModelStack) => void
+  viewingStack: ModelStack
 }
 
-export function StackPickerCards({ activeStack, onStackChange }: StackPickerCardsProps) {
-  const [active,  setActive]  = useState<ModelStack>(activeStack)
-  const [pending, setPending] = useState<ModelStack | null>(null)
-  const [saving,  setSaving]  = useState(false)
+interface HealthCounts {
+  green: number
+  red:   number
+  amber: number
+  dim:   number
+  total: number
+}
 
-  const cards = [...stackPicker(), MARSYS_CARD]
+type HealthSummaryResponse = Partial<Record<ModelStack, HealthCounts>>
 
-  function requestSwitch(stack: ModelStack) {
-    if (stack === active) return
-    if (shouldShowCostDialog(stack)) {
-      setPending(stack)
-    } else {
-      commitSwitch(stack)
-    }
-  }
+export function StackPickerCards({ viewingStack }: StackPickerCardsProps) {
+  const [health, setHealth]       = useState<HealthSummaryResponse | null>(null)
+  const [, startTransition]       = useTransition()
+  const router                    = useRouter()
+  const pathname                  = usePathname()
+  const searchParams              = useSearchParams()
 
-  async function commitSwitch(stack: ModelStack) {
-    setPending(null)
-    setSaving(true)
-    try {
-      await fetch('/api/admin/aiops/stack', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active_stack: stack }),
-      })
-      setActive(stack)
-      onStackChange?.(stack)
-    } catch { /* silently fail */ }
-    setSaving(false)
+  const stacks = stackPicker()
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/aiops/health/summary')
+      .then(r => r.ok ? r.json() as Promise<HealthSummaryResponse> : null)
+      .then(data => { if (!cancelled && data) setHealth(data) })
+      .catch(() => null)
+    return () => { cancelled = true }
+  }, [])
+
+  function viewStack(stack: ModelStack) {
+    if (stack === viewingStack) return
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
+    params.set('stack', stack)
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false })
+    })
   }
 
   return (
-    <>
-      {pending && (
-        <CostConfirmDialog
-          targetStack={pending}
-          onConfirm={() => commitSwitch(pending)}
-          onCancel={() => setPending(null)}
-        />
-      )}
+    <div className="flex flex-wrap gap-2">
+      {stacks.map(card => {
+        const isViewing = card.stack === viewingStack
+        const counts    = health?.[card.stack]
+        return (
+          <button
+            key={card.stack}
+            type="button"
+            onClick={() => viewStack(card.stack)}
+            aria-pressed={isViewing}
+            aria-label={`View ${STACK_DISPLAY[card.stack]} pipeline`}
+            className={[
+              'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all',
+              isViewing
+                ? 'border-[var(--brand-gold)] bg-[rgba(var(--brand-gold-rgb),0.12)] text-[var(--brand-gold)]'
+                : 'cursor-pointer border-border text-muted-foreground hover:border-[rgba(var(--brand-gold-rgb),0.35)] hover:text-foreground',
+            ].join(' ')}
+          >
+            <span>{STACK_DISPLAY[card.stack]}</span>
+            <HealthPip counts={counts} active={isViewing} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {cards.map(card => {
-          const isActive = card.stack === active
-          return (
-            <button
-              key={card.stack}
-              type="button"
-              disabled={saving}
-              onClick={() => requestSwitch(card.stack)}
-              className={[
-                'rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed',
-                isActive
-                  ? 'border-primary bg-primary/10 ring-1 ring-primary'
-                  : 'border-border bg-card hover:border-muted-foreground/40 cursor-pointer',
-              ].join(' ')}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {card.stack.toUpperCase()}
-                </span>
-                {isActive && (
-                  <span className="rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-                    ACTIVE
-                  </span>
-                )}
-              </div>
-              <p className="mt-1 text-sm font-medium text-foreground">{card.label}</p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">{card.synthesisModelId}</p>
-              {card.synthesisContextWindow && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {(card.synthesisContextWindow / 1_000_000).toFixed(0)}M ctx
-                </p>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </>
+function HealthPip({ counts, active }: { counts: HealthCounts | undefined; active: boolean }) {
+  if (!counts || counts.total === 0) {
+    return <span className="text-[10px] opacity-50">—</span>
+  }
+
+  let color = 'var(--muted-foreground)'
+  if (counts.red > 0)        color = 'var(--status-halt)'
+  else if (counts.amber > 0) color = 'var(--status-warn)'
+  else if (counts.green > 0) color = 'var(--status-success)'
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px]"
+      title={`${counts.green} pass · ${counts.amber} stale · ${counts.red} fail · ${counts.dim} never_probed`}
+    >
+      <span
+        aria-hidden
+        className="inline-block size-1.5 rounded-full"
+        style={{ background: color, boxShadow: active ? `0 0 5px ${color}` : undefined }}
+      />
+      <span className="tabular-nums">{counts.green}/{counts.total}</span>
+    </span>
   )
 }

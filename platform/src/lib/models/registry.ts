@@ -699,6 +699,7 @@ export const MODELS: ModelMeta[] = [
     label: 'Nemotron Super 49B',
     hint: 'Deep planner — 49B successor to Nemotron Ultra, confirmed live on NIM free tier (internal only)',
     speedTier: 'balanced',
+    maxInputTokens: 131_072,
     maxOutputTokens: 32_768,
     capabilities: ['tool-use'],
     role: 'planner',

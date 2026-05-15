@@ -68,22 +68,26 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setExpanded(false)
       }}
       className={cn(
-        'absolute inset-y-0 left-0 z-50 hidden flex-col items-start border-r border-sidebar-border bg-sidebar py-3 md:flex',
+        'absolute inset-y-0 left-0 z-50 hidden flex-col items-start border-r py-3 md:flex',
         'overflow-hidden transition-[width] duration-150 ease-in-out',
         expanded ? 'w-44' : 'w-14'
       )}
+      style={{
+        background: 'linear-gradient(180deg, oklch(0.055 0.008 68) 0%, oklch(0.038 0.005 68) 100%)',
+        borderRightColor: 'color-mix(in oklch, var(--brand-gold) 14%, transparent)',
+      }}
     >
       {/* Sigil — links to Roster */}
       <Link
         href="/dashboard"
         aria-label="MARSYS-JIS — go to Roster"
-        className="mb-4 w-full px-3 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_6px_var(--brand-gold)]"
+        className="mb-4 w-full px-3 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_8px_var(--brand-gold)]"
       >
         <Sigil size={28} />
       </Link>
 
       {/* Nav links */}
-      <div className="flex flex-1 flex-col items-center gap-1">
+      <div className="flex flex-1 flex-col gap-0.5 w-full px-2">
         {visibleItems.map(({ href, label, icon: Icon }) => {
           const isActive = href === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
@@ -94,26 +98,27 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
               href={href}
               aria-label={label}
               className={cn(
-                'flex h-11 w-full items-center gap-3 rounded px-3 text-xs font-medium transition-colors',
+                'flex h-10 w-full items-center gap-3 rounded-md px-2 text-xs font-medium transition-colors',
                 isActive
-                  ? 'bg-[rgba(212,175,55,0.12)] border border-[rgba(212,175,55,0.22)] text-[#d4af37]'
-                  : 'text-[rgba(212,175,55,0.28)] hover:bg-[rgba(212,175,55,0.08)] hover:text-[#d4af37]'
+                  ? 'bg-[rgba(212,175,55,0.14)] border border-[rgba(212,175,55,0.28)] text-[var(--brand-gold)]'
+                  : 'border border-transparent text-[rgba(212,175,55,0.55)] hover:bg-[rgba(212,175,55,0.08)] hover:text-[var(--brand-gold)]'
               )}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
-              {expanded && <span className="truncate">{label}</span>}
+              {expanded && <span className="truncate tracking-wide">{label}</span>}
             </Link>
           )
         })}
       </div>
 
       {/* Avatar + sign-out */}
+      <div className="w-full px-2">
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="User menu"
-          className="flex h-11 w-full items-center gap-3 rounded-full border border-[rgba(212,175,55,0.25)] bg-[rgba(212,175,55,0.07)] px-3 text-xs font-medium text-[rgba(212,175,55,0.6)] transition-colors hover:bg-[rgba(212,175,55,0.12)]"
+          className="flex h-10 w-full items-center gap-3 rounded-md border border-[rgba(212,175,55,0.20)] bg-[rgba(212,175,55,0.06)] px-2 text-xs font-medium text-[rgba(212,175,55,0.70)] transition-colors hover:border-[rgba(212,175,55,0.35)] hover:bg-[rgba(212,175,55,0.12)] hover:text-[var(--brand-gold)]"
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-center leading-7">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 ring-[rgba(212,175,55,0.35)] text-center text-[11px] font-semibold leading-7">
             {userInitial}
           </span>
           {expanded && (
@@ -130,6 +135,8 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
           <DropdownMenuItem onClick={handleSignOut}>Sign out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </nav>
+
   )
 }

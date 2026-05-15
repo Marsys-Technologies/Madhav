@@ -3,7 +3,8 @@ import { STACK_ROUTING, type ModelStack, type CallType } from '@/lib/models/regi
 import { StackPickerCards } from '@/lib/components/aiops/StackPickerCards'
 import { InteractiveCallTypeRow } from '@/lib/components/aiops/InteractiveCallTypeRow'
 import { StackSmokeButton } from '@/lib/components/aiops/StackSmokeButton'
-import { AuditRail } from '@/lib/components/aiops/AuditRail'
+import { DirtyRowsProvider } from '@/lib/components/aiops/DirtyRowsContext'
+import { STACK_DISPLAY } from '@/lib/components/aiops/displayNames'
 import { query } from '@/lib/db/client'
 import type { LlmStackConfigRow, LlmStackRoutingOverrideRow } from '@/lib/db/schema/aiops'
 
@@ -60,84 +61,90 @@ export default async function AiopsControlPage({
   const displayStack = urlStack ?? active_stack
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">AIOps Control Panel</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Live configuration — changes take effect within 60s (runtime_config cache TTL).
-      </p>
+    <div className="aiops-shell p-6">
+      <DirtyRowsProvider>
+        <header className="mb-6">
+          <h1 className="bt-display" style={{ color: 'var(--brand-gold-cream)' }}>AIOps Control Panel</h1>
+        </header>
 
-      {fromObservatory && (
-        <div className="mt-3 flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          Came from Observatory —{' '}
-          <Link href="/observatory" className="underline hover:text-foreground">back to /observatory</Link>
-        </div>
-      )}
-
-      {/* Stack picker */}
-      <section className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Stack
-        </h2>
-        <StackPickerCards activeStack={displayStack} />
-      </section>
-
-      <div className="mt-8 flex gap-6">
-        <div className="min-w-0 flex-1">
-          {/* Pipeline call types */}
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Pipeline — {displayStack} stack
-            </h2>
-            <div className="rounded-lg border border-border bg-card px-4">
-              {PIPELINE_CALL_TYPES.map(ct => {
-                const { primary, fallback } = getRouting(displayStack, ct, routingIdx)
-                return (
-                  <InteractiveCallTypeRow
-                    key={ct}
-                    stack={displayStack}
-                    callType={ct}
-                    initialPrimary={primary}
-                    initialFallback={fallback}
-                  />
-                )
-              })}
-            </div>
-            <StackSmokeButton stack={displayStack} />
-          </section>
-
-          {/* Quality & Verification — cross-stack */}
-          <section className="mt-6">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Quality & Verification (cross-stack)
-            </h2>
-            <div className="rounded-lg border border-border bg-card px-4">
-              {QUALITY_CALL_TYPES.map(ct => {
-                const { primary, fallback } = getRouting('marsys', ct, routingIdx)
-                return (
-                  <InteractiveCallTypeRow
-                    key={ct}
-                    stack="marsys"
-                    callType={ct}
-                    initialPrimary={primary}
-                    initialFallback={fallback}
-                  />
-                )
-              })}
-            </div>
-          </section>
-        </div>
-
-        {/* Right rail */}
-        <aside className="w-64 shrink-0">
-          <AuditRail />
-          <div className="mt-4 rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground">Health Status</h3>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Health probes start in CP.4.
-            </p>
+        {fromObservatory && (
+          <div className="mb-6 flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+            Came from Observatory —{' '}
+            <Link href="/observatory" className="underline hover:text-foreground">back to /observatory</Link>
           </div>
-        </aside>
-      </div>
+        )}
+
+        <div className="max-w-[1080px] space-y-8">
+
+          {/* ── Section 1: Stack Configuration ── */}
+          <section className="rounded-lg border border-border">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="bt-heading" style={{ color: 'var(--brand-gold-cream)' }}>
+                Stack Configuration
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Select a stack to view and edit its pipeline routing. Live queries always use the stack chosen in the composer.
+              </p>
+            </div>
+
+            <div className="px-5 py-5">
+              <StackPickerCards viewingStack={displayStack} />
+
+              <div className="mt-6">
+                <p className="bt-label bt-label-upper mb-3">
+                  Pipeline —{' '}
+                  <span style={{ color: 'var(--brand-gold)' }}>{STACK_DISPLAY[displayStack]}</span>
+                </p>
+                <div className="rounded-lg border border-border bg-card px-4">
+                  {PIPELINE_CALL_TYPES.map(ct => {
+                    const { primary, fallback } = getRouting(displayStack, ct, routingIdx)
+                    return (
+                      <InteractiveCallTypeRow
+                        key={`${displayStack}:${ct}`}
+                        stack={displayStack}
+                        callType={ct}
+                        initialPrimary={primary}
+                        initialFallback={fallback}
+                      />
+                    )
+                  })}
+                </div>
+                <StackSmokeButton stack={displayStack} />
+              </div>
+            </div>
+          </section>
+
+          {/* ── Section 2: System Configuration ── */}
+          <section className="rounded-lg border border-border">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="bt-heading" style={{ color: 'var(--brand-gold-cream)' }}>
+                System Configuration
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cross-stack quality and verification models — shared across all stacks.
+              </p>
+            </div>
+
+            <div className="px-5 py-5">
+              <div className="rounded-lg border border-border bg-card px-4">
+                {QUALITY_CALL_TYPES.map(ct => {
+                  const { primary, fallback } = getRouting('marsys', ct, routingIdx)
+                  return (
+                    <InteractiveCallTypeRow
+                      key={ct}
+                      stack="marsys"
+                      callType={ct}
+                      initialPrimary={primary}
+                      initialFallback={fallback}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </DirtyRowsProvider>
     </div>
   )
 }

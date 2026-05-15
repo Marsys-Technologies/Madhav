@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import type { CallType, ModelStack } from '@/lib/models/registry'
+import { PARAM_DISPLAY } from './displayNames'
 
 const PARAM_NAMES = ['max_output_tokens', 'temperature', 'thinkingBudget', 'timeout_ms'] as const
 type ParamName = typeof PARAM_NAMES[number]
@@ -52,7 +53,7 @@ export function ParamOverrideRow({ stack, callType, paramValues, onUpdate }: Par
         onClick={() => setExpanded(e => !e)}
         className="text-[10px] text-muted-foreground hover:text-foreground"
       >
-        {expanded ? '▲ Hide params' : '▼ Advanced params'}
+        {expanded ? '▲ Hide advanced' : '▼ Advanced'}
       </button>
 
       {expanded && (
@@ -62,7 +63,7 @@ export function ParamOverrideRow({ stack, callType, paramValues, onUpdate }: Par
             const isOverridden = pv.current !== null
             return (
               <div key={paramName} className="mb-2 flex items-center gap-2 last:mb-0">
-                <span className="w-36 shrink-0 text-[10px] font-mono text-muted-foreground">{paramName}</span>
+                <span className="w-36 shrink-0 text-[11px] text-muted-foreground">{PARAM_DISPLAY[paramName]}</span>
                 <span className="w-16 shrink-0 text-[10px] text-muted-foreground">
                   {isOverridden ? String(pv.current) : `(${String(pv.default)})`}
                 </span>

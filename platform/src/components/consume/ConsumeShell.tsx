@@ -107,11 +107,11 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
 
   const sidebarOverlay = (
     <>
-      {/* Backdrop — fade only; no layout shift */}
+      {/* Click-away catch — transparent so gradient shows through unobstructed */}
       <div
         className={cn(
-          'fixed inset-0 z-[59] bg-black/25 transition-opacity duration-200',
-          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          'fixed inset-0 z-[59] transition-[pointer-events] duration-200',
+          sidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
         )}
         onClick={() => setSidebarOpen(false)}
         aria-hidden
@@ -120,12 +120,12 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
       <div
         className={cn(
           'fixed inset-y-0 left-0 z-[60] w-72 overflow-hidden',
-          'border-r border-[rgba(var(--brand-gold-rgb),0.14)]',
+          'border-r border-[rgba(var(--brand-gold-rgb),0.18)]',
           'backdrop-blur-xl',
           'transition-[translate] duration-200 ease-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+2px)]'
         )}
-        style={{ backgroundColor: 'rgba(10,8,3,0.78)' }}
+        style={{ backgroundColor: 'rgba(10,7,2,0.30)' }}
       >
         <ConversationSidebar
           simple
