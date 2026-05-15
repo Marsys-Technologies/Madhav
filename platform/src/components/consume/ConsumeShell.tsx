@@ -120,10 +120,12 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
       <div
         className={cn(
           'fixed inset-y-0 left-0 z-[60] w-72 overflow-hidden',
-          'bg-[#0b0804] border-r border-[rgba(var(--brand-gold-rgb),0.12)]',
+          'border-r border-[rgba(var(--brand-gold-rgb),0.14)]',
+          'backdrop-blur-xl',
           'transition-[translate] duration-200 ease-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+2px)]'
         )}
+        style={{ backgroundColor: 'rgba(10,8,3,0.78)' }}
       >
         <ConversationSidebar
           simple

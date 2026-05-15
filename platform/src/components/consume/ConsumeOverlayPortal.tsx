@@ -25,15 +25,12 @@ export function ConsumeOverlayPortal({ children }: { children: ReactNode }) {
     <div
       className="fixed inset-0 z-50"
       style={{
-        backgroundColor: '#0a0803',
-        backgroundImage: [
-          /* bottom-left warm gold pool — primary Gemini-style glow */
-          'radial-gradient(ellipse 70% 55% at 8% 92%, rgba(212,175,55,0.42) 0%, rgba(180,120,30,0.20) 35%, transparent 65%)',
-          /* top-right amber accent */
-          'radial-gradient(ellipse 55% 45% at 90% 6%, rgba(190,130,40,0.28) 0%, rgba(160,100,20,0.10) 40%, transparent 65%)',
-          /* centre warm haze to unify */
-          'radial-gradient(ellipse 80% 50% at 45% 60%, rgba(160,100,20,0.08) 0%, transparent 70%)',
-        ].join(', '),
+        backgroundColor: '#0f0c06',
+        /* Single bottom-up glow centred below the page — mirrors Gemini's
+           upward-rising warm gradient. Ellipse extends past the bottom edge
+           (110% y) so it fans out evenly across the full width. */
+        backgroundImage:
+          'radial-gradient(ellipse 150% 90% at 50% 110%, rgba(212,175,55,0.40) 0%, rgba(190,130,35,0.22) 30%, rgba(140,90,20,0.08) 55%, transparent 72%)',
       }}
     >
       <ZoneRoot zone="ink" style={{ height: '100%' }}>

@@ -158,7 +158,7 @@ export function ConversationSidebar({
 
   // simple mode: flat full-size container, no auto-expand rail
   const outerCn = simple
-    ? 'flex h-full flex-col bg-sidebar text-sidebar-foreground'
+    ? 'flex h-full flex-col bg-transparent text-sidebar-foreground'
     : cn(
         'flex h-full flex-col bg-sidebar text-sidebar-foreground',
         'transition-[width] duration-[250ms] ease-out overflow-hidden',
