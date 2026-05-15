@@ -37,6 +37,38 @@ const PANCHA_MP_CLIQUE = new Set([
 ])
 const PANCHA_MP_CONSOLIDATED_ID = 'PANCHA_MP_CLIQUE_CONSOLIDATED'
 
+// LL.1 production weights — inlined from
+// 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/production/ll1_weights_promoted_v1_0.json
+// (30 signals, NAP.M4.5 approved 2026-05-02). Signals absent from this map default to 1.0.
+// Includes both SIG.MSR.* signal_id matches and SIG.0N prior_id→signal_id resolutions.
+const LL1_PRODUCTION_WEIGHTS = new Map<string, number>([
+  ['SIG.MSR.001', 1.0],     // prior_id SIG.01
+  ['SIG.MSR.009', 1.0],     // prior_id SIG.09
+  ['SIG.MSR.010', 1.0],     // prior_id SIG.10
+  ['SIG.MSR.012', 1.0],     // prior_id SIG.12
+  ['SIG.MSR.013', 1.0],     // prior_id SIG.13 + direct
+  ['SIG.MSR.015', 1.0],     // prior_id SIG.15
+  ['SIG.MSR.030', 1.0],
+  ['SIG.MSR.118', 0.4545],
+  ['SIG.MSR.119', 0.4545],
+  ['SIG.MSR.143', 0.4545],
+  ['SIG.MSR.145', 0.9091],
+  ['SIG.MSR.163', 1.0],
+  ['SIG.MSR.170', 1.0],
+  ['SIG.MSR.198', 1.0],
+  ['SIG.MSR.229', 1.0],
+  ['SIG.MSR.251', 1.0],
+  ['SIG.MSR.278', 1.0],
+  ['SIG.MSR.291', 1.0],
+  ['SIG.MSR.295', 1.0],
+  ['SIG.MSR.297', 1.0],
+  ['SIG.MSR.300', 1.0],
+  ['SIG.MSR.301', 1.0],
+  ['SIG.MSR.391', 1.0],
+  ['SIG.MSR.402', 0.7273],
+  ['SIG.MSR.476', 1.0],
+])
+
 // LL.3 R.LL3.3 — Domains with zero LL.1 calibration weight at M5-B open.
 // When retrieving these domains, signals are ranked by MSR-native confidence ×
 // significance only (not LL.1 calibrated). Surface this as an explicit disclaimer
@@ -167,6 +199,16 @@ async function retrieveImpl(
     significance: Number(signal.significance),
     signal_id: signal.signal_id,
   }))
+
+  // LL.1 calibration — re-rank by confidence × significance × ll1_weight (QG3.2 fix).
+  // SQL returns ORDER BY (confidence × significance) DESC; apply LL.1 multiplier post-fetch.
+  // Signals absent from the production register default to weight=1.0 (neutral).
+  results = results.sort((a, b) => {
+    const wA = a.signal_id != null ? (LL1_PRODUCTION_WEIGHTS.get(a.signal_id) ?? 1.0) : 1.0
+    const wB = b.signal_id != null ? (LL1_PRODUCTION_WEIGHTS.get(b.signal_id) ?? 1.0) : 1.0
+    return ((b.confidence ?? 0) * (b.significance ?? 0) * wB) -
+           ((a.confidence ?? 0) * (a.significance ?? 0) * wA)
+  })
 
   // LL.3 R.LL3.2 — Pancha-MP cluster-modifier (M5-B 2026-05-13).
   // When flag is ON and ≥2 Pancha-MP clique members appear in results, consolidate
