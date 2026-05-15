@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut as firebaseSignOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase/client'
-import { Sigil } from '@/components/brand/Sigil'
+import { Logo } from '@/components/brand/Logo'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,13 +85,13 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         borderRightColor: 'color-mix(in oklch, var(--brand-gold) 14%, transparent)',
       }}
     >
-      {/* Sigil — links to Roster */}
+      {/* Logo — links to Roster */}
       <Link
         href="/dashboard"
         aria-label="MARSYS-JIS — go to Roster"
-        className="mb-4 w-full px-3 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_8px_var(--brand-gold)]"
+        className="mb-4 w-full px-3"
       >
-        <Sigil size={28} />
+        <Logo size="sm" />
       </Link>
 
       {/* Nav links */}
@@ -130,9 +130,9 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
             {userInitial}
           </span>
           {expanded && (
-            <span className="flex min-w-0 flex-col">
+            <span className="flex min-w-0 flex-col items-start">
               <span className="truncate text-[11px] font-medium leading-tight">
-                {user.name ?? user.email}
+                {user.name?.split(' ')[0] ?? user.email?.split('@')[0]}
               </span>
               <span className="truncate text-[10px] leading-tight" style={{ color: 'rgba(212,175,55,0.45)' }}>
                 {roleLabel[profile.role] ?? profile.role}
