@@ -184,13 +184,14 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
         aria-hidden
       />
 
-      {/* Panel — full-width translate so no pixel bleeds after close */}
+      {/* Panel — overflow-hidden clips ConversationSidebar; extra 2px in closed
+          translate ensures the border-r is fully off-screen (not at x=0) */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-[60] w-[280px]',
+          'fixed inset-y-0 left-0 z-[60] w-[280px] overflow-hidden',
           'border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[#0b0804]',
           'transition-[translate] duration-200 ease-out',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+2px)]'
         )}
       >
         <ConversationSidebar

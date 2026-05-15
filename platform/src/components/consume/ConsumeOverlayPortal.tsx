@@ -8,7 +8,11 @@ import { ZoneRoot } from '@/components/shared/ZoneRoot'
  * Renders the consume route's full-viewport overlay as a portal to <body>,
  * escaping any ancestor stacking context or containing block (e.g. AppShell's
  * page-ascend animation). Before mount, renders inline as a fallback so SSR
- * has content and the user doesn't see a blank flash.
+ * has content.
+ *
+ * The consume layout injects `animation:none!important` on #main-content so
+ * that <main> never starts at opacity:0 (which would form a stacking context
+ * below z-50, trapping the inline overlay below the AppShellRail).
  */
 export function ConsumeOverlayPortal({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false)
@@ -17,31 +21,21 @@ export function ConsumeOverlayPortal({ children }: { children: ReactNode }) {
     setMounted(true)
   }, [])
 
-  const overlayStyle = {
-    backgroundColor: '#0f0c07',
-    backgroundImage:
-      'radial-gradient(ellipse at 15% 80%, rgba(212,175,55,0.13) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(180,120,40,0.09) 0%, transparent 52%)',
-  }
-
-  // Before portal mounts, render inline so SSR has content.
-  // The `consume-overlay-inline` class lets the CSS :has() rule suppress
-  // page-ascend's opacity-0 start on <main>, preventing AppShell from flashing through.
-  if (!mounted) {
-    return (
-      <div className="consume-overlay-inline fixed inset-0 z-50" style={overlayStyle}>
-        <ZoneRoot zone="ink" style={{ height: '100%' }}>
-          {children}
-        </ZoneRoot>
-      </div>
-    )
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-50" style={overlayStyle}>
+  const content = (
+    <div
+      className="fixed inset-0 z-50"
+      style={{
+        backgroundColor: '#0f0c07',
+        backgroundImage:
+          'radial-gradient(ellipse at 15% 80%, rgba(212,175,55,0.13) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(180,120,40,0.09) 0%, transparent 52%)',
+      }}
+    >
       <ZoneRoot zone="ink" style={{ height: '100%' }}>
         {children}
       </ZoneRoot>
-    </div>,
-    document.body
+    </div>
   )
+
+  if (!mounted) return content
+  return createPortal(content, document.body)
 }
