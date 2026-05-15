@@ -107,9 +107,6 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
           ✦
         </div>
         <div className="min-w-0 flex-1">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[rgba(var(--brand-gold-rgb),0.5)]">
-            MARSYS
-          </p>
           {!hasAnyContent && isStreaming && isLast && (
             <div className="py-2">
               <StreamingDots />

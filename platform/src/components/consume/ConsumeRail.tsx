@@ -1,9 +1,18 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, FileText, Clock, LayoutDashboard } from 'lucide-react'
+import {
+  MessageSquare,
+  FileText,
+  Clock,
+  LayoutDashboard,
+  Sun,
+  Moon,
+  Monitor,
+} from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
 
@@ -42,19 +51,21 @@ export function ConsumeRail({
   const pathname = usePathname()
   const panelRef = useRef<HTMLDivElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Debounced close — prevents panel from snapping shut when cursor
-  // crosses the gap between rail and panel on hover.
-  function openPanel() {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-    onPanelOpenChange(true)
-  }
-  function scheduleClose() {
-    closeTimerRef.current = setTimeout(() => onPanelOpenChange(false), 80)
+  // Theme cycling (light → dark → system → light)
+  const { theme, setTheme } = useTheme()
+  const [themeMounted, setThemeMounted] = useState(false)
+  useEffect(() => { setThemeMounted(true) }, [])
+  const currentTheme = themeMounted ? (theme ?? 'system') : 'system'
+  const ThemeIcon =
+    currentTheme === 'light' ? Sun : currentTheme === 'dark' ? Moon : Monitor
+  function cycleTheme() {
+    const next =
+      currentTheme === 'light' ? 'dark' : currentTheme === 'dark' ? 'system' : 'light'
+    setTheme(next)
   }
 
-  // Close panel on click-outside (both rail and panel excluded)
+  // Close controlled panel on click-outside (rail and panel excluded)
   useEffect(() => {
     if (!panelOpen) return
     function handleClick(e: MouseEvent) {
@@ -67,13 +78,6 @@ export function ConsumeRail({
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [panelOpen, onPanelOpenChange])
-
-  // Cleanup: clear timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-    }
-  }, [])
 
   const isConsume = pathname?.includes('/consume') ?? false
 
@@ -106,70 +110,75 @@ export function ConsumeRail({
   ]
 
   return (
-    <div
-      ref={railRef}
-      className="relative z-20 flex h-full w-11 shrink-0 flex-col items-center border-r border-[rgba(var(--brand-gold-rgb),0.08)] bg-[oklch(0.07_0.010_70)] py-3"
-      onMouseEnter={openPanel}
-      onMouseLeave={scheduleClose}
-    >
-      {/* Logo */}
-      <div className="mb-4 flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--brand-gold)] to-[oklch(0.65_0.15_70)] text-[13px] font-bold text-[oklch(0.08_0.010_70)] shadow-[0_0_12px_rgba(var(--brand-gold-rgb),0.3)]">
-        M
-      </div>
+    <div ref={railRef} className="group relative z-20 h-full w-11 shrink-0">
+      {/* Rail icon strip */}
+      <div className="flex h-full w-full flex-col items-center border-r border-[rgba(var(--brand-gold-rgb),0.08)] bg-[oklch(0.07_0.010_70)] py-3">
+        {/* Logo */}
+        <div className="mb-4 flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--brand-gold)] to-[oklch(0.65_0.15_70)] text-[13px] font-bold text-[oklch(0.08_0.010_70)] shadow-[0_0_12px_rgba(var(--brand-gold-rgb),0.3)]">
+          M
+        </div>
 
-      {/* Nav items */}
-      <nav className="flex flex-1 flex-col items-center gap-1">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const content = (
-            <span
-              className={cn(
-                'relative flex size-8 items-center justify-center rounded-[7px] transition-colors',
-                item.active
-                  ? 'bg-[rgba(var(--brand-gold-rgb),0.12)] text-[var(--brand-gold)]'
-                  : 'text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]'
-              )}
-            >
-              {item.active && (
-                <span className="absolute -left-[11px] h-4 w-[3px] rounded-r-full bg-[var(--brand-gold)]" />
-              )}
-              <Icon className="size-4" />
-            </span>
-          )
-          if (item.onClick) {
-            return (
-              <button key={item.label} type="button" onClick={item.onClick} aria-label={item.label}>
-                {content}
-              </button>
+        {/* Nav items */}
+        <nav className="flex flex-1 flex-col items-center gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const content = (
+              <span
+                className={cn(
+                  'relative flex size-8 items-center justify-center rounded-[7px] transition-colors',
+                  item.active
+                    ? 'bg-[rgba(var(--brand-gold-rgb),0.12)] text-[var(--brand-gold)]'
+                    : 'text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]'
+                )}
+              >
+                {item.active && (
+                  <span className="absolute -left-[11px] h-4 w-[3px] rounded-r-full bg-[var(--brand-gold)]" />
+                )}
+                <Icon className="size-4" />
+              </span>
             )
-          }
-          return (
-            <Link key={item.label} href={item.href} aria-label={item.label}>
-              {content}
-            </Link>
-          )
-        })}
-      </nav>
+            if (item.onClick) {
+              return (
+                <button key={item.label} type="button" onClick={item.onClick} aria-label={item.label}>
+                  {content}
+                </button>
+              )
+            }
+            return (
+              <Link key={item.label} href={item.href} aria-label={item.label}>
+                {content}
+              </Link>
+            )
+          })}
+        </nav>
 
-      {/* User avatar — bottom of rail */}
-      <div
-        className="mb-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--brand-gold-rgb),0.15)] text-[9px] font-bold uppercase text-[rgba(var(--brand-gold-rgb),0.7)]"
-        aria-label="User"
-      >
-        U
+        {/* Theme toggle — bottom of rail */}
+        <button
+          type="button"
+          onClick={cycleTheme}
+          aria-label={`Theme: ${currentTheme}. Click to cycle.`}
+          title={`Theme: ${currentTheme}`}
+          className="flex size-8 items-center justify-center rounded-[7px] text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] transition-colors hover:bg-[rgba(var(--brand-gold-rgb),0.06)] hover:text-[color-mix(in_oklch,var(--brand-gold-cream)_80%,transparent)]"
+        >
+          <ThemeIcon className="size-4" />
+        </button>
       </div>
 
-      {/* Hover-expand panel — uses debounced open/close so cursor can
-          move from rail to panel without the panel snapping shut */}
+      {/* Hover-expand panel — CSS-only via group-hover, no JS timers.
+          The panel is a descendant of the .group rail wrapper, so hovering
+          ANYWHERE within the combined rail+panel area keeps .group:hover true. */}
       <div
         ref={panelRef}
-        onMouseEnter={openPanel}
-        onMouseLeave={scheduleClose}
         className={cn(
-          'consume-rail-panel absolute left-11 top-0 h-full w-60 overflow-hidden',
+          'consume-rail-panel absolute left-11 top-0 h-full w-[280px] overflow-hidden',
           'border-r border-[rgba(var(--brand-gold-rgb),0.08)]',
           'bg-[#0b0804] shadow-[4px_0_32px_rgba(0,0,0,0.7)]',
-          panelOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-2 pointer-events-none'
+          // Controlled open state (via ⌘B or programmatic toggle)
+          panelOpen
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
+            : 'opacity-0 -translate-x-2 pointer-events-none',
+          // Hover override — group-hover wins when hovering rail or panel
+          'group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto'
         )}
         style={{ zIndex: 19 }}
       >
@@ -181,6 +190,7 @@ export function ConsumeRail({
           onRenamed={onConversationRenamed}
           onDeleted={onConversationDeleted}
           onClose={() => onPanelOpenChange(false)}
+          hideFooter
         />
       </div>
     </div>

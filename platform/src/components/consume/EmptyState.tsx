@@ -13,10 +13,14 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   CLASS_SUGGESTIONS,
-  CLASS_TAB_ORDER,
   classLabel,
 } from '@/lib/consume/class_suggestions'
 import type { QueryClass } from '@/lib/jyotish/domain_labels'
+
+// Curated short list for the welcome screen — full class explorer is the
+// full CLASS_TAB_ORDER from class_suggestions.ts; we surface only these
+// here to avoid overwhelming the user on first load.
+const VISIBLE_CLASSES: QueryClass[] = ['factual', 'predictive', 'holistic']
 
 interface Props {
   chartId: string
@@ -83,7 +87,7 @@ export function EmptyState({ chartId, chartName, onPick, className }: Props) {
 
       {tab === 'type' ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          {CLASS_TAB_ORDER.map(c => (
+          {VISIBLE_CLASSES.map(c => (
             <ClassGroup key={c} c={c} onPick={onPick} />
           ))}
         </div>
@@ -130,7 +134,7 @@ function ClassGroup({ c, onPick }: { c: QueryClass; onPick: (t: string) => void 
         {classLabel(c)}
       </h2>
       <ul className="space-y-1">
-        {queries.slice(0, 3).map(q => (
+        {queries.slice(0, 2).map(q => (
           <li key={q}>
             <SuggestionButton text={q} onPick={onPick} />
           </li>

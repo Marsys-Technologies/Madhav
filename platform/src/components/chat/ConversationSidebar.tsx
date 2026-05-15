@@ -60,6 +60,8 @@ interface Props {
   onDeleted?: (id: string) => void
   onClose?: () => void
   onNavigate?: () => void
+  /** Hide the bottom MARSYS-JIS + ThemeToggle footer (used by ConsumeRail). */
+  hideFooter?: boolean
 }
 
 function groupByDate(conversations: ConversationRow[]) {
@@ -91,6 +93,7 @@ export function ConversationSidebar({
   onDeleted,
   onClose,
   onNavigate,
+  hideFooter = false,
 }: Props) {
   const router = useRouter()
   const sidebar = useSidebarState()
@@ -293,17 +296,19 @@ export function ConversationSidebar({
         </div>
       </ScrollArea>
 
-      <div className="mt-auto border-t border-sidebar-border px-2 py-2">
-        <div className={cn(
-          'flex items-center gap-1 px-1',
-          sidebar.isExpanded || sidebar.isMobile ? 'justify-between' : 'justify-center',
-        )}>
-          {(sidebar.isExpanded || sidebar.isMobile) && (
-            <span className="text-[11px] text-muted-foreground">MARSYS-JIS</span>
-          )}
-          <ThemeToggle />
+      {!hideFooter && (
+        <div className="mt-auto border-t border-sidebar-border px-2 py-2">
+          <div className={cn(
+            'flex items-center gap-1 px-1',
+            sidebar.isExpanded || sidebar.isMobile ? 'justify-between' : 'justify-center',
+          )}>
+            {(sidebar.isExpanded || sidebar.isMobile) && (
+              <span className="text-[11px] text-muted-foreground">MARSYS-JIS</span>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rename dialog */}
       <Dialog open={renameTarget !== null} onOpenChange={(o) => !o && setRenameTarget(null)}>
