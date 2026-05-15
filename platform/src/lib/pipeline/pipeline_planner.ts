@@ -239,6 +239,7 @@ export async function callPipelinePlanner(
         tools: plannerTools,
         toolChoice: 'required',
         disableSdkRetry: true,
+        reasoning: 'disable',
       })
       break
     } catch (err) {
@@ -435,6 +436,7 @@ export async function callPipelinePlanner(
     throw new PipelinePlannerError(errMsg)
   }
   const rawPlannerArgs = (submitCallEvent.payload as { args: unknown }).args
+  console.error('[planner-debug] rawPlannerArgs type=%s value=%s', typeof rawPlannerArgs, JSON.stringify(rawPlannerArgs)?.slice(0, 800))
   const parsed = PipelinePlanSchema.safeParse(rawPlannerArgs)
   if (!parsed.success) {
     const errMsg = `LLM planner returned schema-invalid output: ${parsed.error.message}`
