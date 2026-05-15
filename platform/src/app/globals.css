@@ -620,3 +620,111 @@ body {
   -webkit-backdrop-filter: blur(8px) saturate(120%);
   border: 1px solid color-mix(in oklch, var(--brand-gold) 14%, transparent);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   AIOps shell — Modern Dark Pro reskin for /aiops/control.
+   Same token-repointing pattern as .consume-shell + .obs-shell. Mounted on
+   the Control Panel page root so descendants pick up gold/charcoal without
+   per-component class edits. Uses a soft vertical gradient (not radial) to
+   stay legible behind a dense config table.
+   ────────────────────────────────────────────────────────────────────────── */
+.aiops-shell {
+  --background: var(--brand-charcoal);
+  --foreground: var(--brand-gold-cream);
+  --accent: rgba(var(--brand-gold-rgb), 0.10);
+  --accent-foreground: var(--brand-gold-cream);
+  --ring: var(--brand-gold);
+  --primary: var(--brand-gold);
+  --primary-foreground: var(--brand-ink);
+  --border: color-mix(in oklch, var(--brand-gold) 14%, transparent);
+  --card: oklch(0.115 0.012 70);
+  --card-foreground: var(--brand-gold-cream);
+  --popover: oklch(0.13 0.012 70);
+  --popover-foreground: var(--brand-gold-cream);
+  --muted: oklch(0.155 0.010 70);
+  --muted-foreground: oklch(0.74 0.020 75);
+  --input: oklch(0.16 0.010 70);
+  background:
+    linear-gradient(
+      180deg,
+      oklch(0.13 0.018 70) 0%,
+      oklch(0.09 0.010 70) 60%,
+      oklch(0.07 0.006 70) 100%
+    );
+  color: var(--brand-gold-cream);
+  min-height: 100%;
+}
+
+/* Sticky pipeline section header — slight backdrop blur so dense rows
+   read clean as they scroll under the label. */
+.aiops-section-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in oklch, var(--brand-charcoal) 88%, transparent);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  border-bottom: 1px solid color-mix(in oklch, var(--brand-gold) 12%, transparent);
+}
+
+/* Active stack card — solid gold left edge + inner glow. Replaces the
+   thin ring used by the default scheme. Applied alongside the standard
+   border so the card retains its hairline on the other three sides. */
+.aiops-card-active {
+  border-left: 3px solid var(--brand-gold);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--brand-gold) 24%, transparent),
+    inset 0 0 40px color-mix(in oklch, var(--brand-gold) 8%, transparent),
+    0 8px 24px -12px color-mix(in oklch, var(--brand-gold) 22%, transparent);
+}
+
+/* Dirty-row indicator — gold left edge + small dot. Applied to call-type
+   rows after a successful PUT in the current session. Cleared on refresh. */
+.aiops-row-dirty {
+  position: relative;
+  box-shadow: inset 2px 0 0 var(--brand-gold);
+}
+.aiops-row-dirty::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 1.05rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--brand-gold);
+  box-shadow: 0 0 8px color-mix(in oklch, var(--brand-gold) 50%, transparent);
+}
+
+/* Gold pill segmented control — used by the AIOps tabs in the new skin.
+   Active tab fills with brand gold, inactive uses muted-foreground. */
+.aiops-tab-active {
+  background: var(--brand-gold);
+  color: var(--brand-ink);
+  border-color: color-mix(in oklch, var(--brand-gold) 60%, transparent);
+}
+
+/* ── Consume UI Redesign additions (2026-05-15) ─────────────────────── */
+
+/* ConsumeRail hover-panel slide transition */
+.consume-rail-panel {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Scrollbar inside consume shell scroll area */
+.consume-shell .scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--brand-gold-rgb), 0.12) transparent;
+}
+
+/* Composer card focus-within ring */
+.consume-composer-card:focus-within {
+  border-color: rgba(var(--brand-gold-rgb), 0.4);
+  box-shadow: 0 0 0 3px rgba(var(--brand-gold-rgb), 0.08);
+}
+
+/* AI avatar streaming pulse — referenced as animate-[avatar-pulse_...] in JSX */
+@keyframes avatar-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(var(--brand-gold-rgb), 0.2); }
+  50%       { box-shadow: 0 0 20px rgba(var(--brand-gold-rgb), 0.5); }
+}
