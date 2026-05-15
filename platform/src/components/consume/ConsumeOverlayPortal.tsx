@@ -17,21 +17,31 @@ export function ConsumeOverlayPortal({ children }: { children: ReactNode }) {
     setMounted(true)
   }, [])
 
-  const content = (
-    <div
-      className="fixed inset-0 z-50"
-      style={{
-        backgroundColor: '#0f0c07',
-        backgroundImage:
-          'radial-gradient(ellipse at 15% 80%, rgba(212,175,55,0.13) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(180,120,40,0.09) 0%, transparent 52%)',
-      }}
-    >
+  const overlayStyle = {
+    backgroundColor: '#0f0c07',
+    backgroundImage:
+      'radial-gradient(ellipse at 15% 80%, rgba(212,175,55,0.13) 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, rgba(180,120,40,0.09) 0%, transparent 52%)',
+  }
+
+  // Before portal mounts, render inline so SSR has content.
+  // The `consume-overlay-inline` class lets the CSS :has() rule suppress
+  // page-ascend's opacity-0 start on <main>, preventing AppShell from flashing through.
+  if (!mounted) {
+    return (
+      <div className="consume-overlay-inline fixed inset-0 z-50" style={overlayStyle}>
+        <ZoneRoot zone="ink" style={{ height: '100%' }}>
+          {children}
+        </ZoneRoot>
+      </div>
+    )
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50" style={overlayStyle}>
       <ZoneRoot zone="ink" style={{ height: '100%' }}>
         {children}
       </ZoneRoot>
-    </div>
+    </div>,
+    document.body
   )
-
-  if (!mounted) return content
-  return createPortal(content, document.body)
 }

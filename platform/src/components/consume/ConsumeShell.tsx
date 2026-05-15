@@ -11,6 +11,7 @@ import {
 import { PanelLeft } from 'lucide-react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar'
+import { cn } from '@/lib/utils'
 import { getHighlighter } from '@/lib/shiki'
 
 interface ConversationRow {
@@ -171,27 +172,39 @@ export const ConsumeShell = forwardRef<ConsumeShellHandle, Props>(function Consu
       {/* Scroll area + composer — passed as children */}
       {children}
 
-      {/* Left sidebar — Gemini-style slide-over Sheet */}
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent
-          side="left"
-          showCloseButton={false}
-          className="w-[280px] p-0 border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[#0b0804]"
-        >
-          <SheetTitle className="sr-only">Conversations</SheetTitle>
-          <ConversationSidebar
-            chartId={chartId}
-            chartName={chartName}
-            conversations={conversations}
-            currentConversationId={currentConversationId}
-            onRenamed={onConversationRenamed}
-            onDeleted={onConversationDeleted}
-            onClose={() => setSidebarOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
+      {/* ── Left sidebar (Gemini-style slide-over) ── */}
 
-      {/* Right panel (Reports) */}
+      {/* Backdrop — fades with sidebar; click outside closes */}
+      <div
+        className={cn(
+          'fixed inset-0 z-[59] bg-black/20 transition-opacity duration-200',
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden
+      />
+
+      {/* Panel — full-width translate so no pixel bleeds after close */}
+      <div
+        className={cn(
+          'fixed inset-y-0 left-0 z-[60] w-[280px]',
+          'border-r border-[rgba(var(--brand-gold-rgb),0.12)] bg-[#0b0804]',
+          'transition-[translate] duration-200 ease-out',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <ConversationSidebar
+          chartId={chartId}
+          chartName={chartName}
+          conversations={conversations}
+          currentConversationId={currentConversationId}
+          onRenamed={onConversationRenamed}
+          onDeleted={onConversationDeleted}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </div>
+
+      {/* Right panel (Reports) — Sheet via portal */}
       {rightPanel && (
         <Sheet open={rightOpen} onOpenChange={setRightOpen}>
           <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">

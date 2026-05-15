@@ -409,6 +409,13 @@ body {
   animation: page-ascend 200ms ease-out both;
 }
 
+/* When the consume overlay is rendering inline inside <main> (pre-portal-mount),
+   suppress the page-ascend opacity fade so the AppShell background doesn't
+   flash through the briefly-transparent main element. */
+main:has(.consume-overlay-inline) {
+  animation: none;
+}
+
 /* Mandala slow clockwise drift — 240 s full rotation. Paused by prefers-reduced-motion. */
 @keyframes mandala-spin {
   from { transform: rotate(0deg); }
