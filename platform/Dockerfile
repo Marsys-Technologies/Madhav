@@ -46,6 +46,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/00_ARCHITECTURE ./00_ARCHITECTURE
 # cluster_atlas, contradiction_register retrieval tools at query time.
 # Without this, those 4 tools throw ENOENT silently and return null bundles.
 COPY --from=builder --chown=nextjs:nodejs /app/035_DISCOVERY_LAYER ./035_DISCOVERY_LAYER
+# L1 facts + L2.5 holistic synthesis corpus — bundle_hydrator floor assets
+# (FORENSIC, CGM) and optional assets (UCN, CDLM, RM, LEL) read at query time.
+COPY --from=builder --chown=nextjs:nodejs /app/01_FACTS_LAYER ./01_FACTS_LAYER
+COPY --from=builder --chown=nextjs:nodejs /app/025_HOLISTIC_SYNTHESIS ./025_HOLISTIC_SYNTHESIS
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
