@@ -27,6 +27,58 @@ const BUDGETS = {
   MEMORY_GROWTH_MB: 50,   // heap growth during one stream
 }
 
+test.describe('α2 — streamdown render correctness', () => {
+  test.skip(
+    !process.env.MARSYS_SUPER_ADMIN_SESSION,
+    'Skipped: MARSYS_SUPER_ADMIN_SESSION not set',
+  )
+
+  test('streamdown renders incomplete fences without crash', async ({ page }) => {
+    await page.goto(SPIKE_URL)
+    await page.getByTestId('chat-spike-root').waitFor({ state: 'visible' })
+
+    // The spike fixture contains a mid-stream incomplete code fence; verify no
+    // React "Maximum update depth exceeded" error appears in the console.
+    const errors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text())
+    })
+
+    const input = page.getByTestId('composer-input')
+    await input.fill('stream code fence test')
+    await page.getByTestId('send-btn').click()
+    await page.getByTestId('send-btn').waitFor({ state: 'visible', timeout: STREAM_TIMEOUT })
+
+    const depthErrors = errors.filter((e) => e.includes('Maximum update depth'))
+    expect(depthErrors, `Unexpected React depth errors: ${depthErrors.join('; ')}`).toHaveLength(0)
+  })
+
+  test('visual baseline — streaming-in-progress chat state', async ({ page }) => {
+    test.skip(!process.env.MARSYS_UPDATE_VISUALS, 'Skipped: MARSYS_UPDATE_VISUALS not set')
+
+    await page.goto(SPIKE_URL)
+    await page.getByTestId('chat-spike-root').waitFor({ state: 'visible' })
+
+    const input = page.getByTestId('composer-input')
+    await input.fill(TEST_PROMPT)
+    await page.getByTestId('send-btn').click()
+
+    // Capture mid-stream (after abort button appears = streaming)
+    await page.getByTestId('abort-btn').waitFor({ state: 'visible', timeout: 5000 })
+    await page.waitForTimeout(800)
+
+    await expect(page).toHaveScreenshot('streamdown-mid-stream.png', {
+      maxDiffPixels: 200,
+    })
+
+    await page.getByTestId('send-btn').waitFor({ state: 'visible', timeout: STREAM_TIMEOUT })
+
+    await expect(page).toHaveScreenshot('streamdown-complete.png', {
+      maxDiffPixels: 200,
+    })
+  })
+})
+
 test.describe('Streaming performance — chat-v2 spike', () => {
   test.skip(
     !process.env.MARSYS_SUPER_ADMIN_SESSION,
