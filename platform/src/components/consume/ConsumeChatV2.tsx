@@ -34,7 +34,9 @@ import { ReasoningProgress } from '../chat/ReasoningProgress'
 import { PredictionLogModal } from '../chat/PredictionLogModal'
 import { ValidatorFailureBand } from '../chat/ValidatorFailureBand'
 import { ValidatorFooterChip } from '../chat/ValidatorFooterChip'
-import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart } from '@/lib/streams/data_parts'
+import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart, StagePart, ToolPart } from '@/lib/streams/data_parts'
+import { StageStepper } from '../chat-v2/StageStepper'
+import { ToolCallCard } from '../chat-v2/ToolCallCard'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -388,6 +390,39 @@ function V2Message() {
     return entry ? (entry as { type: string; data: { status?: string; issues?: string[] } }).data : null
   }, [dataParts])
 
+  // O3: compute isStreaming for stage/tool gating
+  const isStreaming = message.status?.type === 'running'
+
+  // O3: extract stage parts (latest per stage name — stage can transition running→done)
+  const stageHistory = useMemo(() => {
+    const map = new Map<string, StagePart>()
+    for (const d of dataParts) {
+      if (
+        typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-stage'
+      ) {
+        const entry = d as { type: string; data: StagePart }
+        map.set(entry.data.stage, entry.data)
+      }
+    }
+    return Array.from(map.values())
+  }, [dataParts])
+
+  // O3: extract tool parts (latest per tool name)
+  const toolHistory = useMemo(() => {
+    const map = new Map<string, ToolPart>()
+    for (const d of dataParts) {
+      if (
+        typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-tool'
+      ) {
+        const entry = d as { type: string; data: ToolPart }
+        map.set(entry.data.name, entry.data)
+      }
+    }
+    return Array.from(map.values())
+  }, [dataParts])
+
   // γ3: extract prediction candidates from data parts
   const predictionCandidates = useMemo(() => {
     return dataParts
@@ -465,6 +500,20 @@ function V2Message() {
               isSuperAdmin={isSuperAdmin}
               onOpenDetails={() => setDetailsOpen(true)}
             />
+          )}
+
+          {/* O3: stage stepper — linear pipeline progress above streaming text */}
+          {isStreaming && stageHistory.length > 0 && (
+            <StageStepper stages={stageHistory} />
+          )}
+
+          {/* O3: tool call cards — per-tool fetch status */}
+          {isStreaming && toolHistory.length > 0 && (
+            <div className="flex flex-col gap-1 py-1" data-testid="v2-tool-cards">
+              {toolHistory.map((tool) => (
+                <ToolCallCard key={tool.name} tool={tool} />
+              ))}
+            </div>
           )}
 
           <MessagePrimitive.Parts
