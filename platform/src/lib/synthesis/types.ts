@@ -82,6 +82,12 @@ export interface SynthesisRequest {
   /** PIV HIGH.QG6.2: forwarded from the incoming HTTP request so that a client
    *  SSE disconnect cancels the upstream LLM call, stopping token billing. */
   abortSignal?: AbortSignal
+  /** β5: extra content parts (images, PDF text) appended to the user query message.
+   *  When present, the user turn content becomes an array instead of a plain string. */
+  attachment_parts?: Array<
+    | { type: 'image'; image: string; mimeType: string }
+    | { type: 'text'; text: string }
+  >
 }
 
 export interface SynthesisMetadata {

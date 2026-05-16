@@ -101,6 +101,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       conversation_id,
       onAuditEvent,
       abortSignal,
+      attachment_parts,
     } = request
 
     const started_at = new Date().toISOString()
@@ -346,10 +347,17 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
           content: renderedPrompt,
         }
 
+    // β5: when attachments are present, make the user content a parts array so
+    // image data is forwarded to providers that support vision (Anthropic, Google, OpenAI).
+    const userContent: string | Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType: string }> =
+      attachment_parts?.length
+        ? [{ type: 'text', text: query }, ...attachment_parts]
+        : query
+
     const modelMessages: ModelMessage[] = [
       systemMessage,
       ...historyMessages,
-      { role: 'user', content: query },
+      { role: 'user', content: userContent },
     ]
 
     const modelMeta = getModelMeta(selected_model_id)

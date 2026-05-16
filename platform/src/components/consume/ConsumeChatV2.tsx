@@ -4,6 +4,7 @@
  * ConsumeChatV2 — assistant-ui shell for MARSYS chat.
  *
  * β2: conversation list sidebar + write-through restore on mount.
+ * β5: multi-modal file attachments (image + PDF) via upload → token flow.
  * Flag gate: only rendered when MARSYS_FLAG_CHAT_V2_ENABLED=true.
  */
 
@@ -24,6 +25,22 @@ import type { ConsumeChatProps } from './ConsumeChatLegacy'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
+
+// ─── Upload / attachment types ────────────────────────────────────────────────
+
+export interface AttachedFile {
+  /** UUID token returned by /api/uploads/sign and stored by /api/uploads/store */
+  token: string
+  filename: string
+  contentType: string
+  size: number
+  /** Object URL for local preview (revoked on unmount) */
+  previewUrl: string | null
+  status: 'uploading' | 'ready' | 'error'
+  errorMsg?: string
+}
+
+const ACCEPT_TYPES = 'image/jpeg,image/png,image/gif,image/webp,application/pdf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -332,6 +349,184 @@ function V2Message() {
   )
 }
 
+// ─── Attachment context (shared between Composer + V2ChatRuntime) ────────────
+
+interface AttachmentContextValue {
+  attachments: AttachedFile[]
+  addAttachment: (file: File) => void
+  removeAttachment: (token: string) => void
+  clearAttachments: () => void
+}
+const AttachmentCtx = createContext<AttachmentContextValue>({
+  attachments: [],
+  addAttachment: () => {},
+  removeAttachment: () => {},
+  clearAttachments: () => {},
+})
+
+function useAttachmentManager() {
+  const [attachments, setAttachments] = useState<AttachedFile[]>([])
+  const previewUrls = useRef<string[]>([])
+
+  // Revoke object URLs on unmount
+  useEffect(() => {
+    return () => {
+      for (const url of previewUrls.current) URL.revokeObjectURL(url)
+    }
+  }, [])
+
+  const addAttachment = useCallback(async (file: File) => {
+    const tempToken = `pending-${crypto.randomUUID()}`
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    if (previewUrl) previewUrls.current.push(previewUrl)
+
+    const pending: AttachedFile = {
+      token: tempToken,
+      filename: file.name,
+      contentType: file.type,
+      size: file.size,
+      previewUrl,
+      status: 'uploading',
+    }
+    setAttachments(prev => [...prev, pending])
+
+    try {
+      // Step 1: get upload token + URL
+      const signRes = await fetch('/api/uploads/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
+      })
+      if (!signRes.ok) {
+        const err = await signRes.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error ?? `Sign failed: ${signRes.status}`)
+      }
+      const { token, uploadUrl } = await signRes.json() as { token: string; uploadUrl: string }
+
+      // Step 2: upload bytes
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+          'x-filename': encodeURIComponent(file.name),
+        },
+        body: file,
+      })
+      if (!putRes.ok) {
+        const err = await putRes.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error ?? `Upload failed: ${putRes.status}`)
+      }
+
+      // Replace pending entry with real token
+      setAttachments(prev =>
+        prev.map(a =>
+          a.token === tempToken
+            ? { ...a, token, status: 'ready' }
+            : a,
+        ),
+      )
+    } catch (e) {
+      setAttachments(prev =>
+        prev.map(a =>
+          a.token === tempToken
+            ? { ...a, status: 'error', errorMsg: e instanceof Error ? e.message : 'Upload failed' }
+            : a,
+        ),
+      )
+    }
+  }, [])
+
+  const removeAttachment = useCallback((token: string) => {
+    setAttachments(prev => {
+      const entry = prev.find(a => a.token === token)
+      if (entry?.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+      return prev.filter(a => a.token !== token)
+    })
+  }, [])
+
+  const clearAttachments = useCallback(() => {
+    setAttachments(prev => {
+      for (const a of prev) if (a.previewUrl) URL.revokeObjectURL(a.previewUrl)
+      return []
+    })
+  }, [])
+
+  return { attachments, addAttachment, removeAttachment, clearAttachments }
+}
+
+// ─── Attachment strip (above composer) ───────────────────────────────────────
+
+function AttachmentStrip({
+  attachments,
+  onRemove,
+}: {
+  attachments: AttachedFile[]
+  onRemove: (token: string) => void
+}) {
+  if (attachments.length === 0) return null
+  return (
+    <div
+      className="mx-auto max-w-3xl flex flex-wrap gap-2 pb-2"
+      data-testid="v2-attachment-strip"
+    >
+      {attachments.map((a) => (
+        <div
+          key={a.token}
+          className={`relative flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs ${
+            a.status === 'error'
+              ? 'border-red-500/40 bg-red-900/20 text-red-400'
+              : a.status === 'uploading'
+                ? 'border-zinc-700 bg-zinc-800/60 text-zinc-400 animate-pulse'
+                : 'border-zinc-700 bg-zinc-800 text-zinc-300'
+          }`}
+          data-testid={`v2-attachment-${a.token}`}
+        >
+          {a.previewUrl ? (
+            // Image thumbnail
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={a.previewUrl}
+              alt={a.filename}
+              className="h-8 w-8 rounded object-cover shrink-0"
+              data-testid="v2-attachment-preview-img"
+            />
+          ) : (
+            // PDF icon
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded bg-zinc-700 shrink-0 text-[9px] font-bold text-zinc-400"
+              data-testid="v2-attachment-pdf-icon"
+            >
+              PDF
+            </div>
+          )}
+          <div className="flex flex-col min-w-0">
+            <span className="truncate max-w-[120px]" title={a.filename}>
+              {a.filename}
+            </span>
+            {a.status === 'error' && (
+              <span className="text-[10px] text-red-400 truncate max-w-[120px]">
+                {a.errorMsg}
+              </span>
+            )}
+            {a.status === 'uploading' && (
+              <span className="text-[10px] text-zinc-500">Uploading…</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => onRemove(a.token)}
+            className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors shrink-0"
+            title="Remove attachment"
+            data-testid={`v2-attachment-remove-${a.token}`}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
 function V2Composer() {
@@ -340,8 +535,11 @@ function V2Composer() {
   const [isRunning, setIsRunning] = useState(false)
   const [interruptToast, setInterruptToast] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
   const pendingResubmit = useRef(false)
+
+  const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
@@ -369,8 +567,35 @@ function V2Composer() {
     runtime.cancelRun()
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    for (const f of files) addAttachment(f)
+    // Reset input so the same file can be re-selected after removal
+    e.target.value = ''
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files)
+    for (const f of files) addAttachment(f)
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+  }
+
+  // Handle paste (images only — paste event carries DataTransfer items)
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = Array.from(e.clipboardData.items)
+    const imageItems = items.filter(i => i.kind === 'file' && i.type.startsWith('image/'))
+    for (const item of imageItems) {
+      const file = item.getAsFile()
+      if (file) addAttachment(file)
+    }
+  }
+
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} onDrop={handleDrop} onDragOver={handleDragOver}>
       <ComposerPrimitive.Root
         className="border-t border-zinc-800 bg-zinc-950 px-4 py-3"
         data-testid="v2-composer"
@@ -384,12 +609,40 @@ function V2Composer() {
             Cancelled — sending new query
           </div>
         )}
+
+        {/* β5: attachment strip above the input */}
+        <AttachmentStrip attachments={attachments} onRemove={removeAttachment} />
+
         <div className="mx-auto max-w-3xl flex items-end gap-3">
+          {/* β5: hidden file input + attach button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPT_TYPES}
+            multiple
+            className="sr-only"
+            aria-label="Attach file"
+            onChange={handleFileChange}
+            data-testid="v2-file-input"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            title="Attach image or PDF"
+            data-testid="v2-attach-btn"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <path d="M13.5 9.5L7.5 15.5a4 4 0 0 1-5.66-5.66L9.18 2.5a2.5 2.5 0 0 1 3.54 3.54L6.5 11.9A1 1 0 0 1 5.09 10.5l5.5-5.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
           <ComposerPrimitive.Input
             className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
             placeholder="Ask about the chart…"
             rows={3}
             data-testid="v2-composer-input"
+            onPaste={handlePaste}
           />
           <div className="flex flex-col gap-2 pb-0.5">
             {isRunning ? (
@@ -578,7 +831,7 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
-  // β4: Pinned citations state — list of CitationPart objects that have been pinned by the user.
+  // β4: Pinned citations state
   const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
   const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
 
@@ -595,29 +848,49 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
 
   const citationCtxValue = useMemo(() => ({ onPin: handlePin }), [handlePin])
 
+  // β5: attachment manager — tokens injected into each request body
+  const attachmentManager = useAttachmentManager()
+  const attachmentsRef = useRef(attachmentManager.attachments)
+  attachmentsRef.current = attachmentManager.attachments
+
   const runtime = useChatRuntime({
     transport: new DefaultChatTransport({
       api: '/api/chat/consume',
-      body: () => ({
-        chartId: chartIdRef.current,
-        ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
-      }),
+      body: () => {
+        // β5: include ready attachment tokens in the request body, then clear
+        const readyAttachments = attachmentsRef.current
+          .filter(a => a.status === 'ready')
+          .map(a => ({ token: a.token, filename: a.filename, contentType: a.contentType }))
+
+        if (readyAttachments.length > 0) {
+          // Clear after capturing so the next message starts fresh
+          attachmentManager.clearAttachments()
+        }
+
+        return {
+          chartId: chartIdRef.current,
+          ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
+          ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+        }
+      },
     }),
     messages: initialMessages,
   })
 
   return (
     <CitationCtx.Provider value={citationCtxValue}>
-      <AssistantRuntimeProvider runtime={runtime}>
-        <div className="flex h-full overflow-hidden">
-          <V2Thread />
-          <CitationSidePanel
-            citations={pinnedCitations}
-            pinned={pinnedSet}
-            onUnpin={handleUnpin}
-          />
-        </div>
-      </AssistantRuntimeProvider>
+      <AttachmentCtx.Provider value={attachmentManager}>
+        <AssistantRuntimeProvider runtime={runtime}>
+          <div className="flex h-full overflow-hidden">
+            <V2Thread />
+            <CitationSidePanel
+              citations={pinnedCitations}
+              pinned={pinnedSet}
+              onUnpin={handleUnpin}
+            />
+          </div>
+        </AssistantRuntimeProvider>
+      </AttachmentCtx.Provider>
     </CitationCtx.Provider>
   )
 }

@@ -62,6 +62,8 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
+import { extractPdf } from '@/lib/multimodal/pdf_extractor'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
 
@@ -106,6 +108,12 @@ export const maxDuration = 120
 
 const ALLOWED_STYLES: ConsumeStyle[] = ['acharya', 'brief', 'client']
 
+interface AttachmentRef {
+  token: string
+  filename: string
+  contentType: string
+}
+
 interface RequestBody {
   chartId?: string
   conversationId?: string
@@ -117,6 +125,34 @@ interface RequestBody {
   style?: string
   panel_opt_in?: boolean
   lel_context_enabled?: boolean
+  /** β5: file attachment tokens from the upload flow */
+  attachments?: AttachmentRef[]
+}
+
+// β5: Resolve attachment tokens to ModelMessage-compatible parts.
+// Returns extra parts to append to the last user ModelMessage.
+async function resolveAttachments(
+  attachments: AttachmentRef[],
+): Promise<Array<{ type: 'image'; image: string; mimeType: string } | { type: 'text'; text: string }>> {
+  const parts: Array<{ type: 'image'; image: string; mimeType: string } | { type: 'text'; text: string }> = []
+
+  for (const att of attachments) {
+    const entry = fakeGcsRetrieve(att.token)
+    if (!entry) {
+      // Token expired or not found — silently skip (file already noted in client)
+      continue
+    }
+
+    if (att.contentType === 'application/pdf') {
+      const result = await extractPdf(att.filename, entry.bytes)
+      parts.push({ type: 'text', text: `[Attached PDF: ${att.filename}]\n\n${result.text}` })
+    } else if (att.contentType.startsWith('image/')) {
+      const base64 = entry.bytes.toString('base64')
+      parts.push({ type: 'image', image: `data:${att.contentType};base64,${base64}`, mimeType: att.contentType })
+    }
+  }
+
+  return parts
 }
 
 export async function POST(request: Request) {
@@ -234,6 +270,11 @@ export async function POST(request: Request) {
   try {
   const lastUserMessage = messages.filter(m => m.role === 'user').at(-1)
   const queryText = (lastUserMessage?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
+
+  // β5: resolve attachment tokens → model-ready parts
+  const attachmentParts = body.attachments?.length
+    ? await resolveAttachments(body.attachments)
+    : []
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
 
@@ -706,6 +747,8 @@ export async function POST(request: Request) {
     panel_opt_in: panelOptIn,
     context_assembly_seq: contextAssemblySeq,
     synthesis_seq: synthesisSeq,
+    // β5: resolved attachment parts (images as base64 data URLs, PDFs as text)
+    ...(attachmentParts.length > 0 ? { attachment_parts: attachmentParts } : {}),
     // BUG-2: callback fires from single_model_strategy onFinish before onAuditEvent.
     onValidatorResults: (r: ValidationResult[]) => { validatorResultsHolder.push(...r) },
     synthesis_guidance: plan.synthesis_guidance,
