@@ -15,6 +15,10 @@ export default defineConfig({
     ],
   },
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      // server-only throws in vitest (jsdom env); redirect to a no-op stub.
+      'server-only': path.resolve(__dirname, './src/__mocks__/server-only.ts'),
+    },
   },
 })

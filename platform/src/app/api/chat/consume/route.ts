@@ -45,6 +45,7 @@ import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
 import { validateCitations } from '@/lib/synthesis/citation_check'
+import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
 import { createAuditConsumer } from '@/lib/audit/consumer'
 import { traceEmitter } from '@/lib/trace/emitter'
@@ -706,12 +707,29 @@ export async function POST(request: Request) {
   // 2 pairs = 4 prior messages; +1 to include current user message which is
   // then dropped below.
   const historyMessageCap = ptrUsedPairs * 2 + 1
-  const trimmedConversationHistory = await convertToModelMessages(
-    messages
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .slice(-historyMessageCap)
-      .slice(0, -1) // drop current user message (appended via `query`)
-  )
+
+  // β8: when HISTORY_COMPRESSION_ENABLED, take the full prior history and let
+  // compressHistory decide whether to summarize based on the token budget.
+  // Flag OFF: use the existing planner-guided hard cap (unchanged behavior).
+  let trimmedConversationHistory: import('ai').ModelMessage[]
+  if (configService.getFlag('HISTORY_COMPRESSION_ENABLED')) {
+    const allPriorMessages = await convertToModelMessages(
+      messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(0, -1), // drop current user message
+    )
+    trimmedConversationHistory = await compressHistory(
+      allPriorMessages,
+      finalConversationId,
+    )
+  } else {
+    trimmedConversationHistory = await convertToModelMessages(
+      messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-historyMessageCap)
+        .slice(0, -1), // drop current user message (appended via `query`)
+    )
+  }
 
   const contextUsageMeta: ContextUsageEvent = ptr
     ? {

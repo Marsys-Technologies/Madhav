@@ -180,11 +180,14 @@ describe('AbortController abort propagation logic', () => {
     expect(collected).toEqual([1, 2])
   })
 
-  it('optional chaining on undefined signal does not throw', () => {
-    const signal: AbortSignal | undefined = undefined
-    expect(() => {
-      const aborted = signal?.aborted
-      void aborted
-    }).not.toThrow()
+  it('optional chaining on absent signal does not throw', () => {
+    function maybeAborted(signal?: AbortSignal): boolean {
+      return signal?.aborted ?? false
+    }
+    expect(maybeAborted(undefined)).toBe(false)
+    const c = new AbortController()
+    expect(maybeAborted(c.signal)).toBe(false)
+    c.abort()
+    expect(maybeAborted(c.signal)).toBe(true)
   })
 })
