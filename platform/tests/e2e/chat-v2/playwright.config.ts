@@ -10,6 +10,11 @@
  * so they do not call real provider APIs.
  */
 import { defineConfig, devices } from '@playwright/test'
+import path from 'path'
+
+// storageState.json is written by global-setup when MARSYS_SUPER_ADMIN_SESSION is set.
+// Always reference the path; Playwright reads it per-test after global-setup runs.
+const STORAGE_STATE_PATH = path.join(__dirname, 'storageState.json')
 
 export default defineConfig({
   testDir: '.',
@@ -39,6 +44,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
     video: 'off',
+    // storageState.json is written by global-setup when MARSYS_SUPER_ADMIN_SESSION is set.
+    // Empty-cookie file written when session absent — no-op but keeps Playwright happy.
+    storageState: STORAGE_STATE_PATH,
   },
   timeout: 30_000,
   expect: {

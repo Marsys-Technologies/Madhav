@@ -51,3 +51,4 @@ verification/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+storageState.json
