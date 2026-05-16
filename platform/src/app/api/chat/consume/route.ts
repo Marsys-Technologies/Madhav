@@ -799,7 +799,7 @@ export async function POST(request: Request) {
       disclosure_tier: audienceTier,
     }),
   }
-  let { result, methodologyBlockHolder, panelStageEvents } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+  let { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
     // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
     // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
     const fallbackId = stackSynthFallback
@@ -1041,6 +1041,31 @@ export async function POST(request: Request) {
 
       // Emit trace done sentinel so SSE endpoint closes the stream
       emit({ event: 'done', query_id: queryId })
+      try {
+        // O1: emit cost data part so PerMessageDetailsDrawer populates during the live session.
+        const synthUsage = usageHolder?.value
+        if (synthUsage) {
+          const pricing = getModelPricingSync(modelId)
+          const dollars = computeCostUsd(pricing, {
+            input_tokens: synthUsage.inputTokens ?? 0,
+            output_tokens: synthUsage.outputTokens ?? 0,
+            cache_read_tokens: synthUsage.cacheReadInputTokens ?? 0,
+            cache_write_tokens: synthUsage.cacheCreationInputTokens ?? 0,
+          }) ?? 0
+          writer.write({
+            type: 'data-cost',
+            data: costPart({
+              model: modelId,
+              input_tokens: synthUsage.inputTokens ?? 0,
+              output_tokens: synthUsage.outputTokens ?? 0,
+              dollars,
+              ms: Date.now() - synthesisStart,
+            }),
+          })
+        }
+      } catch (err) {
+        console.error('[consume:v2] cost data part error', err)
+      }
       try {
         // O9: assemble metadata that populates the PerMessageDetailsDrawer after reload.
         // Structured as { custom: {...} } to match the shape PerMessageDetailsDrawer reads.
