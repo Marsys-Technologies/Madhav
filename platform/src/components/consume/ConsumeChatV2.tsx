@@ -825,9 +825,10 @@ function V2Composer() {
             onClick={() => fileInputRef.current?.click()}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
             title="Attach image or PDF"
+            aria-label="Attach image or PDF file"
             data-testid="v2-attach-btn"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden="true">
               <path d="M13.5 9.5L7.5 15.5a4 4 0 0 1-5.66-5.66L9.18 2.5a2.5 2.5 0 0 1 3.54 3.54L6.5 11.9A1 1 0 0 1 5.09 10.5l5.5-5.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
@@ -838,6 +839,8 @@ function V2Composer() {
             rows={3}
             data-testid="v2-composer-input"
             onPaste={handlePaste}
+            aria-label="Message input"
+            aria-multiline="true"
           />
           <div className="flex flex-col gap-2 pb-0.5">
             {isRunning ? (
@@ -847,9 +850,10 @@ function V2Composer() {
                     type="button"
                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
                     title="Stop generation"
+                    aria-label="Stop generating response"
                     data-testid="v2-abort-btn"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                       <rect x="4" y="4" width="8" height="8" rx="1" />
                     </svg>
                   </button>
@@ -859,9 +863,10 @@ function V2Composer() {
                   onClick={handleInterruptSend}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 text-white hover:bg-indigo-600 transition-colors"
                   title="Cancel and send new query"
+                  aria-label="Cancel current response and send new query"
                   data-testid="v2-interrupt-send-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                     <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -871,9 +876,10 @@ function V2Composer() {
                 <button
                   type="submit"
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+                  aria-label="Send message"
                   data-testid="v2-send-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
                     <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -940,9 +946,16 @@ function V2Thread() {
       className="flex h-full flex-col"
       data-testid="v2-thread-root"
     >
+      {/* γ8: live region announces new assistant messages to screen readers */}
       <ThreadPrimitive.Viewport
         className="flex-1 overflow-y-auto scroll-smooth py-4"
         data-testid="v2-thread-viewport"
+        // γ8: role=log is the semantic landmark for a chat message log.
+        // aria-live=polite ensures new messages are announced without interrupting.
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+        aria-label="Conversation messages"
       >
         <ThreadPrimitive.Empty>
           <div
@@ -961,8 +974,9 @@ function V2Thread() {
             type="button"
             className="fixed bottom-24 right-6 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
             data-testid="v2-scroll-to-bottom"
+            aria-label="Scroll to bottom"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
               <path d="M8 12L2 6h12l-6 6z" />
             </svg>
           </button>
