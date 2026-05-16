@@ -18,7 +18,7 @@
  */
 
 export type StepType = 'deterministic' | 'llm' | 'sql' | 'vector' | 'gcs'
-export type StepStatus = 'pending' | 'running' | 'done' | 'error'
+export type StepStatus = 'pending' | 'running' | 'done' | 'error' | 'cancelled'
 
 /** A single retrieved chunk or signal row, with layer classification */
 export interface TraceChunkItem {

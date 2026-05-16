@@ -294,6 +294,27 @@ export async function POST(request: Request) {
 
   const queryId = preAllocatedQueryId
 
+  // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.
+  request.signal.addEventListener('abort', () => {
+    traceEmitter.emitStep({
+      event: 'step_done',
+      query_id: queryId,
+      step: {
+        query_id: queryId,
+        conversation_id: finalConversationId ?? undefined,
+        step_seq: nextSeq(),
+        step_name: 'cancelled',
+        step_type: 'deterministic',
+        status: 'cancelled',
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        latency_ms: 0,
+        data_summary: {},
+        payload: {},
+      },
+    })
+  }, { once: true })
+
   // Budget arbitration — proportional trim p3 → p2 → p1 with floor on p1.
   const arbitrated = arbitrateBudgets(
     plan.tool_calls.map(tc => ({

@@ -299,56 +299,103 @@ function V2Composer() {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
+  const [interruptToast, setInterruptToast] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isRunningRef = useRef(false)
+  const pendingResubmit = useRef(false)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
-      setIsRunning(runtime.getState().isRunning)
+      const running = runtime.getState().isRunning
+      const wasRunning = isRunningRef.current
+      isRunningRef.current = running
+      setIsRunning(running)
+
+      // β3: When run ends with a pending interrupt-send, resubmit after 300ms.
+      if (wasRunning && !running && pendingResubmit.current) {
+        pendingResubmit.current = false
+        setTimeout(() => {
+          setInterruptToast(false)
+          const form = containerRef.current?.querySelector('form')
+          form?.requestSubmit()
+        }, 300)
+      }
     })
     return unsub
   }, [runtime])
 
+  function handleInterruptSend() {
+    pendingResubmit.current = true
+    setInterruptToast(true)
+    runtime.cancelRun()
+  }
+
   return (
-    <ComposerPrimitive.Root
-      className="border-t border-zinc-800 bg-zinc-950 px-4 py-3"
-      data-testid="v2-composer"
-    >
-      <div className="mx-auto max-w-3xl flex items-end gap-3">
-        <ComposerPrimitive.Input
-          className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
-          placeholder="Ask about the chart…"
-          rows={3}
-          data-testid="v2-composer-input"
-        />
-        <div className="flex flex-col gap-2 pb-0.5">
-          {isRunning ? (
-            <ComposerPrimitive.Cancel asChild>
-              <button
-                type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
-                title="Stop generation"
-                data-testid="v2-abort-btn"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                  <rect x="4" y="4" width="8" height="8" rx="1" />
-                </svg>
-              </button>
-            </ComposerPrimitive.Cancel>
-          ) : (
-            <ComposerPrimitive.Send asChild>
-              <button
-                type="submit"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
-                data-testid="v2-send-btn"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                  <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </ComposerPrimitive.Send>
-          )}
+    <div ref={containerRef}>
+      <ComposerPrimitive.Root
+        className="border-t border-zinc-800 bg-zinc-950 px-4 py-3"
+        data-testid="v2-composer"
+      >
+        {interruptToast && (
+          <div
+            className="mb-2 text-center text-xs text-amber-400"
+            data-testid="v2-interrupt-toast"
+            aria-live="polite"
+          >
+            Cancelled — sending new query
+          </div>
+        )}
+        <div className="mx-auto max-w-3xl flex items-end gap-3">
+          <ComposerPrimitive.Input
+            className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+            placeholder="Ask about the chart…"
+            rows={3}
+            data-testid="v2-composer-input"
+          />
+          <div className="flex flex-col gap-2 pb-0.5">
+            {isRunning ? (
+              <>
+                <ComposerPrimitive.Cancel asChild>
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
+                    title="Stop generation"
+                    data-testid="v2-abort-btn"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                      <rect x="4" y="4" width="8" height="8" rx="1" />
+                    </svg>
+                  </button>
+                </ComposerPrimitive.Cancel>
+                <button
+                  type="button"
+                  onClick={handleInterruptSend}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 text-white hover:bg-indigo-600 transition-colors"
+                  title="Cancel and send new query"
+                  data-testid="v2-interrupt-send-btn"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                    <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <ComposerPrimitive.Send asChild>
+                <button
+                  type="submit"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+                  data-testid="v2-send-btn"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                    <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </ComposerPrimitive.Send>
+            )}
+          </div>
         </div>
-      </div>
-    </ComposerPrimitive.Root>
+      </ComposerPrimitive.Root>
+    </div>
   )
 }
 

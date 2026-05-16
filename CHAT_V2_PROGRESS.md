@@ -16,15 +16,15 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 1 | in progress (β2 ✓) |
+| β | 10 (β1-β10) | 3 | in progress (β2 ✓, β1 ✓, β3 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **9** | **28.1%** |
+| **Total** | **32** | **10** | **31.3%** |
 
-**Current work item**: β1
-**Last commit**: feat(chat-v2/β2) 5670755
-**Last session**: S7 (2026-05-16)
-**Sessions consumed**: 7
+**Current work item**: β4
+**Last commit**: feat(chat-v2/β3) (pending)
+**Last session**: S8 (2026-05-16)
+**Sessions consumed**: 8
 
 ---
 
@@ -303,6 +303,55 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 ---
 
+### β1 — Edit & regenerate via assistant-ui primitives
+- **Completed**: 2026-05-16 (Session 7)
+- **Commit(s)**: 3d00c46
+- **Files touched**:
+  - `platform/src/app/api/chat/consume/regenerate/route.ts` (new — branch truncation endpoint)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (ActionBar + BranchPicker added)
+  - `platform/tests/unit/chat-v2/regenerate_route.test.ts` (new — 6 tests)
+  - `platform/tests/unit/chat-v2/edit_regenerate_ui.test.ts` (new — 10 structural tests)
+- **Tests added**: 16 (6 route + 10 structural UI)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - All 16 new tests pass ✓
+  - ActionBarPrimitive.Edit (user messages): edit-in-place via assistant-ui internal state ✓
+  - ActionBarPrimitive.Reload (assistant messages): regenerate via normal transport ✓
+  - ActionBarPrimitive.Copy: copy response ✓
+  - BranchPickerPrimitive: hideWhenSingleBranch, Next/Previous/Number/Count ✓
+  - ActionBarPrimitive.Root: hideWhenRunning + autohide="not-last" ✓
+  - regenerate route: resolves access, finds parent, deletes messages after branch ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: β1 re-ordered after β2 (schema dependency). The `regenerate/route.ts` handles DB truncation; the actual LLM synthesis goes through the normal consume endpoint (client re-submits truncated history). This matches the assistant-ui model where the transport receives whatever messages the runtime has in state.
+
+---
+
+### β3 — Mid-stream interrupt semantics (cancel-and-replace)
+- **Completed**: 2026-05-16 (Session 8)
+- **Commit(s)**: pending
+- **Files touched**:
+  - `platform/src/lib/trace/types.ts` (`'cancelled'` added to `StepStatus` union)
+  - `platform/src/app/api/chat/consume/route.ts` (abort sentinel — writes cancelled trace step when client disconnects)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (V2Composer: interrupt-send button, 300ms resubmit, toast)
+  - `platform/src/components/chat/MID_STREAM_BEHAVIOR.md` (new — contract doc)
+  - `platform/tests/unit/chat-v2/mid_stream_interrupt.test.ts` (new — 12 tests)
+- **Tests added**: 12 (7 UI structural + 4 route abort checks + 1 type audit)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 80/80 unit/chat-v2 tests pass ✓
+  - v2-interrupt-send-btn renders when isRunning ✓
+  - v2-interrupt-toast shows "Cancelled — sending new query" ✓
+  - pendingResubmit ref drives the 300ms resubmit cycle ✓
+  - runtime.cancelRun() called on interrupt ✓
+  - Abort listener registered with `{ once: true }` on request.signal ✓
+  - Cancelled step written with status='cancelled' and step_name='cancelled' ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: The interrupt-send uses `containerRef.current?.querySelector('form')?.requestSubmit()` to trigger the ComposerPrimitive.Root form after the 300ms window — this preserves the composer's internal input state between the cancel and resubmit. The abort sentinel on the server fires when the SSE fetch is cancelled by the client; it uses the `{ once: true }` flag to avoid double-writes on reconnect. StepStatus 'cancelled' is a new union member — the assembler returns null for its stage (correct: cancelled queries don't have a meaningful stage grouping).
+
+---
+
 ## Phase β re-order note (Session 7, 2026-05-16)
 
 Phase β re-order: β2 executed before β1 due to schema dependency; brief sequence resumes at β3.
@@ -315,14 +364,11 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After Phase α (2026-05-16, S6) — HARD STOP for native review
-- **Last completed**: Phase α complete — all 8 work items (PA1, α0–α7) done; phase exit gate DISCHARGED
-- **Next**: β2 — Conversation persistence (re-ordered before β1 due to schema dependency)
-- **State**: clean (after milestone commit)
-- **Reason for stop**: HARD GATE — Phase α exit discharged. Awaiting native review before β phase.
-- **For next executor session**:
-  - Begin β2 (NOT β1) per re-order above
-  - β2 creates 055_conversations.sql (includes parent_message_id column)
+### After β3 (2026-05-16, S8)
+- **Last completed**: β3 — Mid-stream interrupt semantics
+- **Next**: β4 — Inline numbered citations + side panel
+- **State**: clean (after β3 commit)
+- **For next executor session**: Begin β4 per CLAUDECODE_BRIEF.md §B β4 scope
   - β1 follows β2 so it can use the schema
   - VISUAL BASELINES DEFERRED: before γ exit, run `MARSYS_UPDATE_VISUALS=true npx playwright test` against running dev server
 
