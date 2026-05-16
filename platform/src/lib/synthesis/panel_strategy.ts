@@ -121,6 +121,7 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
       systemPrompt: 'Output the following text verbatim, do not modify it:',
       messages: [{ role: 'user', content: finalAnswer }],
       maxOutputTokens: 65536,
+      ...(request.abortSignal && { abortSignal: request.abortSignal }),
       rawOnFinish: async ({
         finishReason,
         usage,

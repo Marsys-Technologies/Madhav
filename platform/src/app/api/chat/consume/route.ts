@@ -599,6 +599,7 @@ export async function POST(request: Request) {
 
   const toolResults = await Promise.all(
     toolsAuthorized.map(async (toolName: string, idx: number) => {
+      if (request.signal.aborted) return null
       const t = getTool(toolName)
       if (!t) return null
       const toolStart = Date.now()

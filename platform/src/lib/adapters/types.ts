@@ -116,6 +116,13 @@ export interface QueryRequest {
    * loop (e.g. pipeline_planner.ts).
    */
   disableSdkRetry?: boolean
+
+  /**
+   * β7: forwarded from the incoming HTTP request so that a client disconnect
+   * cancels the upstream LLM call through the full adapter stack (tool fetches,
+   * panel passthrough, and all provider for-await loops).
+   */
+  abortSignal?: AbortSignal
 }
 
 export interface ToolDefinition {

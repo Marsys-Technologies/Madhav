@@ -49,6 +49,7 @@ export const adapterNim: Adapter = {
       onFinish: req.rawOnFinish as ((result: unknown) => Promise<void> | void) | undefined,
       // NIM: always maxRetries:0 — nimFetch enforces its own 30 s abort; SDK retries triple the hang.
       maxRetries: 0,
+      ...(req.abortSignal && { abortSignal: req.abortSignal }),
     }
   },
 
@@ -78,6 +79,7 @@ export const adapterNim: Adapter = {
           let reasoning_unclosed = false
 
           for await (const part of result.fullStream) {
+            if (req.abortSignal?.aborted) break
             if (part.type === 'text-delta') {
               if (buffer) {
                 const out = buffer.feed(part.text)
