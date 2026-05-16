@@ -16,15 +16,15 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 5 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓) |
+| β | 10 (β1-β10) | 6 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓, β6 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **14** | **43.75%** |
+| **Total** | **32** | **15** | **46.875%** |
 
-**Current work item**: β6
-**Last commit**: feat(chat-v2/β5) 912f9ae
-**Last session**: S9 (2026-05-16)
-**Sessions consumed**: 9
+**Current work item**: β7
+**Last commit**: feat(chat-v2/β6) 866586d
+**Last session**: S10 (2026-05-16)
+**Sessions consumed**: 10
 
 ---
 
@@ -388,6 +388,31 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 ---
 
+### β6 — Per-message metadata reveal
+- **Completed**: 2026-05-16 (Session 10)
+- **Commit(s)**: 866586d
+- **Files touched**:
+  - `platform/src/components/chat/PerMessageDetailsDrawer.tsx` (new — slide-in drawer for single assistant message details)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (Details ⓘ button in assistant action bar; detailsOpen/citationCount state; onCitationCount callback wired into V2AssistantText)
+  - `platform/tests/unit/chat-v2/per_message_details.test.ts` (new — 29 structural tests)
+- **Tests added**: 29 structural source-shape tests (drawer exports, data-testids, metadata path, ConsumeChatV2 wiring, format helpers)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 174/174 unit/chat-v2 tests pass ✓
+  - PerMessageDetailsDrawer: uses useMessage() from @assistant-ui/react ✓
+  - Reads messageMetadata fields from message.metadata.custom (model, stack, query_class, style, disclosure_tier, queryId, planning_latency_ms) ✓
+  - Reads data parts from message.metadata.unstable_data (data-cost, data-citation-gate) ✓
+  - data-testids: v2-details-drawer, v2-details-close, v2-details-backdrop, v2-details-trace-link, v2-details-citation-gate ✓
+  - Sections: Model, Tokens (input/output/reasoning/total), Latency, Cost (USD 5dp), Validators (citation gate colored), Context (disclosure tier + citation count), Observability (queryId prefix + trace link) ✓
+  - Escape key closes; aria-modal="true"; role="dialog" ✓
+  - Trace URL format: /observatory/trace/[queryId] ✓
+  - ConsumeChatV2: v2-details-btn, setDetailsOpen(true/false), onCitationCount, citationCount prop ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: Commit message text was accidentally set to β4's description (cosmetic only — content is β6). The drawer reads `message.metadata.unstable_data` (not `message.content`) for data writer parts — this is the correct assistant-ui API for data chunks emitted via `writer.write({type:'data-cost',...})`. queryId slice(0,8) used for display; full queryId used for trace link.
+
+---
+
 ### β5 — Multi-modal input (image + PDF)
 - **Completed**: 2026-05-16 (Session 9)
 - **Commit(s)**: 912f9ae
@@ -428,15 +453,15 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After β5 (2026-05-16, S9)
-- **Last completed**: β5 — Multi-modal input (image + PDF)
-- **Next**: β6 — Per-message metadata reveal
-- **State**: clean (after β5 commit 912f9ae)
-- **For next executor session**: Begin β6 per CLAUDECODE_BRIEF.md §B β6 scope
-  - Create PerMessageDetailsDrawer.tsx
-  - Wire into ConsumeChatV2.tsx via message action menu "Show details"
-  - Use messageMetadata from onFinish callback as data source
-  - Fields: model, tokens, latency, validators, disclosure tier, citation count, cost, panel members, observability trace link
+### After β6 (2026-05-16, S10)
+- **Last completed**: β6 — Per-message metadata reveal (commit 866586d)
+- **Next**: β7 — Abort propagation completion
+- **State**: clean
+- **For next executor session**: Begin β7 per CLAUDECODE_BRIEF.md §B β7 scope
+  - Pass request.signal through tool fetches, panel passthrough, and adapter inner loops
+  - Add chaos tests verifying abort propagation terminates synthesis mid-flight
+  - Key files: single_model_strategy.ts, tool_fetcher.ts, panel adapter, consume route
+  - 174/174 chat-v2 unit tests currently passing
 
 ---
 
