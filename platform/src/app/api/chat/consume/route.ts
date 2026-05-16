@@ -1042,10 +1042,30 @@ export async function POST(request: Request) {
       // Emit trace done sentinel so SSE endpoint closes the stream
       emit({ event: 'done', query_id: queryId })
       try {
+        // O9: assemble metadata that populates the PerMessageDetailsDrawer after reload.
+        // Structured as { custom: {...} } to match the shape PerMessageDetailsDrawer reads.
+        const lastAssistantMetadata: Record<string, unknown> = {
+          custom: {
+            model: modelId,
+            queryId,
+            planning_model_id: plannerModelId,
+            planning_latency_ms: plannerLatencyMs,
+            disclosure_tier: audienceTier,
+            query_class: plan.query_class,
+            stack: selectedStack,
+            style,
+            pipeline: 'v2',
+            conversationId: finalConversationId,
+            provenance: provenanceHolder.value,
+            methodology_block: methodologyBlockHolder?.value ?? null,
+          },
+        }
+
         // Write-through persistence: upsert all messages into conversation_messages.
         const writeResult = await writeConversationMessages({
           conversationId: finalConversationId,
           messages: finalMessages,
+          lastAssistantMetadata,
         })
         if (writeResult.verified) {
           writer.write({
