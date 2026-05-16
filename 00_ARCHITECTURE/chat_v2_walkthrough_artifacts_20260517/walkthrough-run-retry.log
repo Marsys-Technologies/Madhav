@@ -1,0 +1,36 @@
+
+Running 3 tests using 1 worker
+
+  ✘  1 [chromium] › tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:146:7 › Walkthrough W1–W15 — default provider (Gemini) › W3 — Details drawer shows non-dash model, tokens, cost immediately after query (2.1m)
+  ✓  2 [chromium] › tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:207:7 › Walkthrough W1–W15 — default provider (Gemini) › W5 — Regenerate removes old assistant turn; new stream begins (2.3m)
+  ✓  3 [chromium] › tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:507:7 › Walkthrough W1–W15 — default provider (Gemini) › W14 (BONUS) — Sidebar conversation switching loads correct thread (1.2m)
+
+
+  1) [chromium] › tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:146:7 › Walkthrough W1–W15 — default provider (Gemini) › W3 — Details drawer shows non-dash model, tokens, cost immediately after query 
+
+    TimeoutError: locator.waitFor: Timeout 120000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('v2-abort-btn') to be hidden[22m
+    [2m    243 × locator resolved to visible <button type="button" title="Stop generation" data-testid="v2-abort-btn" aria-label="Stop generating response" class="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors">…</button>[22m
+
+
+      73 |   const abortVisible = await page.getByTestId('v2-abort-btn').isVisible().catch(() => false)
+      74 |   if (abortVisible) {
+    > 75 |     await page.getByTestId('v2-abort-btn').waitFor({ state: 'hidden', timeout: 120_000 })
+         |                                            ^
+      76 |   }
+      77 | }
+      78 |
+        at waitForStreamComplete (/Users/Dev/Vibe-Coding/Apps/Madhav/platform/tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:75:44)
+        at /Users/Dev/Vibe-Coding/Apps/Madhav/platform/tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:154:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/chat-v2-walkthrough-compre-0d231-ost-immediately-after-query-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/chat-v2-walkthrough-compre-0d231-ost-immediately-after-query-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/e2e/chat-v2/walkthrough-comprehensive.spec.ts:146:7 › Walkthrough W1–W15 — default provider (Gemini) › W3 — Details drawer shows non-dash model, tokens, cost immediately after query 
+  2 passed (5.5m)
+RETRY_EXIT: 

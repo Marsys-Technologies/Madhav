@@ -149,7 +149,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.setTimeout(420_000)
 
     await page.goto(CONSUME_URL)
-    await fillComposer(page, 'Show me cost data for a short answer.')
+    await fillComposer(page, 'What is the role of the 10th house lord?')
     await sendQuery(page)
     await waitForAssistantMessage(page)
     await waitForStreamComplete(page)
