@@ -16,13 +16,13 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 6 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓, β6 ✓) |
+| β | 10 (β1-β10) | 7 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓, β6 ✓, β7 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **15** | **46.875%** |
+| **Total** | **32** | **16** | **50%** |
 
-**Current work item**: β7
-**Last commit**: feat(chat-v2/β6) 866586d
+**Current work item**: β8
+**Last commit**: feat(chat-v2/β7) 429e518
 **Last session**: S10 (2026-05-16)
 **Sessions consumed**: 10
 
@@ -388,6 +388,38 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 ---
 
+### β7 — Abort propagation completion
+- **Completed**: 2026-05-16 (Session 10)
+- **Commit(s)**: 429e518
+- **Files touched**:
+  - `platform/src/lib/adapters/types.ts` (added `abortSignal?: AbortSignal` to `QueryRequest`)
+  - `platform/src/lib/adapters/providers/base.ts` (added `abortSignal?: AbortSignal` to `StreamTextOptions`)
+  - `platform/src/lib/adapters/providers/adapter_anthropic.ts` (prepareRequest forwards signal; stream() loop checks aborted)
+  - `platform/src/lib/adapters/providers/adapter_gemini.ts` (same)
+  - `platform/src/lib/adapters/providers/adapter_openai.ts` (same)
+  - `platform/src/lib/adapters/providers/adapter_deepseek.ts` (same)
+  - `platform/src/lib/adapters/providers/adapter_nim.ts` (same)
+  - `platform/src/lib/synthesis/panel_strategy.ts` (passthrough streamAdapterRaw call gets abortSignal)
+  - `platform/src/lib/synthesis/panel/member_runner.ts` (runAdapter call gets abortSignal)
+  - `platform/src/app/api/chat/consume/route.ts` (early-exit guard in tool fetch mapper)
+  - `platform/tests/unit/chat-v2/abort_propagation.test.ts` (new — 21 tests)
+- **Tests added**: 21 (5 type/field structural, 10 adapter source-shape, 6 unit logic for abort mechanics)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 195/195 unit/chat-v2 tests pass ✓
+  - QueryRequest.abortSignal declared in adapters/types.ts ✓
+  - StreamTextOptions.abortSignal declared in base.ts ✓
+  - All 5 adapters: prepareRequest forwards abortSignal via spread ✓
+  - All 5 adapters: stream() for-await loop checks req.abortSignal?.aborted and breaks ✓
+  - panel_strategy: passthrough streamAdapterRaw gets abortSignal from SynthesisRequest ✓
+  - panel/member_runner: runAdapter gets abortSignal from SynthesisRequest ✓
+  - route.ts: tool fetch mapper exits early with null when request.signal.aborted ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: `SynthesisRequest.abortSignal` was already declared (PIV HIGH.QG6.2); `single_model_strategy` already forwarded it to `streamBuildRaw`. This work item completes the propagation through the adapter layer (both `streamAdapterRaw` / `prepareRequest` path and `streamAdapter` / `stream()` path), the panel member runner, and adds early-exit in the tool fetch `Promise.all`. The abort guard `req.abortSignal?.aborted` in `stream()` is a belt-and-suspenders check: the AI SDK's `abortSignal` option on `streamText` already terminates the `for await` loop via an `AbortError` thrown at the next iteration; the guard catches the pre-aborted case before any chunk is emitted.
+
+---
+
 ### β6 — Per-message metadata reveal
 - **Completed**: 2026-05-16 (Session 10)
 - **Commit(s)**: 866586d
@@ -453,15 +485,16 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After β6 (2026-05-16, S10)
-- **Last completed**: β6 — Per-message metadata reveal (commit 866586d)
-- **Next**: β7 — Abort propagation completion
-- **State**: clean
-- **For next executor session**: Begin β7 per CLAUDECODE_BRIEF.md §B β7 scope
-  - Pass request.signal through tool fetches, panel passthrough, and adapter inner loops
-  - Add chaos tests verifying abort propagation terminates synthesis mid-flight
-  - Key files: single_model_strategy.ts, tool_fetcher.ts, panel adapter, consume route
-  - 174/174 chat-v2 unit tests currently passing
+### After β7 (2026-05-16, S10)
+- **Last completed**: β7 — Abort propagation completion (commit 429e518)
+- **Next**: β8 — Sliding-window history summarization
+- **State**: clean (195/195 tests passing)
+- **For next executor session**: Begin β8 per CLAUDECODE_BRIEF.md §B β8 scope
+  - Create `platform/src/lib/synthesis/history_compression.ts` — summarizer with Haiku call + cache
+  - Add `MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED` to feature_flags.ts (default false)
+  - Replace `historyMessageCap` truncation in route.ts with compression call
+  - Write 12 unit + 4 integration tests covering short/long/boundary/cache
+  - Key constraint: compression runs only when conversation tokens > 32k; recent 4 turns are always preserved verbatim
 
 ---
 
