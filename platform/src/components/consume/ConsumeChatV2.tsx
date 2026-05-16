@@ -23,6 +23,7 @@ import {
   useMessage,
 } from '@assistant-ui/react'
 import type { ConsumeChatProps } from './ConsumeChatLegacy'
+import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
@@ -258,16 +259,25 @@ interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => 
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const { onPin } = useContext(CitationCtx)
-  const rendered = useMemo(() => {
+  const message = useMessage()
+  const isStreaming = message.status?.type === 'running'
+
+  // Count citation chips for drawer badge. Inline JSX citation rendering is
+  // handled by the data-citation parts path (O3 fix); here we only count.
+  useMemo(() => {
     const parts = renderWithCitations(text, onPin)
     const count = parts.filter(p => typeof p !== 'string').length
     onCitationCount?.(count)
-    return parts
   }, [text, onPin, onCitationCount])
+
   return (
-    <p className="whitespace-pre-wrap font-sans text-sm text-zinc-200 leading-relaxed" data-testid="v2-message-text">
-      {rendered}
-    </p>
+    <MarkdownContent
+      streaming={isStreaming}
+      className="text-sm text-zinc-200"
+      data-testid="v2-message-text"
+    >
+      {text}
+    </MarkdownContent>
   )
 }
 
