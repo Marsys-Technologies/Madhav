@@ -3,8 +3,11 @@ import {
   convertToModelMessages,
   createIdGenerator,
   smoothStream,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
+import { stagePart, toolPart, costPart, citationGatePart, persistencePart } from '@/lib/streams/data_parts'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -481,6 +484,7 @@ export async function POST(request: Request) {
 
   const composeStart = Date.now()
   const bundle = await hydrateBundle(plan, manifest)
+  const composeBundleMs = Date.now() - composeStart
   // Step 2 — hydrate bundle
   traceEmitter.emitStep({
     event: 'step_done',
@@ -503,6 +507,8 @@ export async function POST(request: Request) {
   })
 
   const cache = createToolCache()
+  interface ToolEvent { name: string; status: 'done' | 'error'; ms: number; ok_count: number; err_count: number }
+  const toolEventLog: ToolEvent[] = []
   const toolFetchWallStart = Date.now()
   // UQE-9: pre-allocate one seq per tool BEFORE the parallel emissions so
   // the running event and the eventual done/error event for the same logical
@@ -553,6 +559,7 @@ export async function POST(request: Request) {
             payload: buildToolPayload(toolName, result),
           },
         })
+        toolEventLog.push({ name: toolName, status: 'done', ms: Date.now() - toolStart, ok_count: result.results.length, err_count: 0 })
         return result
       } catch (err) {
         traceEmitter.emitStep({
@@ -573,11 +580,13 @@ export async function POST(request: Request) {
             payload: {},
           },
         })
+        toolEventLog.push({ name: toolName, status: 'error', ms: Date.now() - toolStart, ok_count: 0, err_count: 1 })
         return null
       }
     })
   )
   const validToolResults = toolResults.filter((r): r is NonNullable<typeof r> => r !== null)
+  const toolFetchMs = Date.now() - toolFetchWallStart
 
   const bundleValidations = await runAll(bundle, 'bundle', { query_plan: queryPlan, bundle, manifest_fingerprint: manifest.fingerprint })
   const bundleSummary = summarize(bundleValidations)
@@ -701,8 +710,6 @@ export async function POST(request: Request) {
     return orchestrator.synthesize({ ...synthesisRequest, selected_model_id: fallbackId })
   })
 
-  result.consumeStream()
-
   // ── Gate III: title for first turn (eager so it lands in start metadata)
   let gateIIITitle: string | null = null
   if (isFirstTurn) {
@@ -744,53 +751,65 @@ export async function POST(request: Request) {
     })
   }
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
-    messageMetadata: ({ part }: { part: { type: string } }) => {
-      if (part.type === 'start' && isFirstTurn) {
-        return {
-          conversationId: finalConversationId,
-          model: modelId,
-          stack: selectedStack,
-          style,
-          disclosure_tier: audienceTier,
-          pipeline: 'v2',
-          queryId,
-          planning_model_id: plannerModelId,
-          planning_latency_ms: plannerLatencyMs,
-          // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
-          planner_active: true,
-          // Gate III additions
-          query_class: plan.query_class,
-          context_usage: contextUsageMeta,
-          conversation_title: gateIIITitle ?? undefined,
-        }
+  const uiStream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      writer.write({ type: 'data-stage', data: stagePart('classify', 'done', plannerLatencyMs) })
+      writer.write({ type: 'data-stage', data: stagePart('compose_bundle', 'done', composeBundleMs) })
+      for (const evt of toolEventLog) {
+        writer.write({
+          type: 'data-tool',
+          data: { type: 'tool', name: evt.name, status: evt.status, ms: evt.ms, ok_count: evt.ok_count, err_count: evt.err_count },
+        })
       }
-      if (part.type === 'start') {
-        return {
-          model: modelId,
-          stack: selectedStack,
-          style,
-          disclosure_tier: audienceTier,
-          pipeline: 'v2',
-          queryId,
-          planning_model_id: plannerModelId,
-          planning_latency_ms: plannerLatencyMs,
-          planner_active: true,
-          query_class: plan.query_class,
-          context_usage: contextUsageMeta,
-        }
-      }
-      if (part.type === 'finish') {
-        finishGuard()
-        return {
-          methodology_block: methodologyBlockHolder?.value ?? null,
-          provenance: provenanceHolder.value,
-        }
-      }
-    },
-    onFinish: async ({ messages: finalMessages }: { messages: UIMessage[] }) => {
+      writer.write({ type: 'data-stage', data: stagePart('tool_fetch', 'done', toolFetchMs) })
+      writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
+      writer.merge(result.toUIMessageStream({
+        originalMessages: messages,
+        generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+        messageMetadata: ({ part }: { part: { type: string } }) => {
+          if (part.type === 'start' && isFirstTurn) {
+            return {
+              conversationId: finalConversationId,
+              model: modelId,
+              stack: selectedStack,
+              style,
+              disclosure_tier: audienceTier,
+              pipeline: 'v2',
+              queryId,
+              planning_model_id: plannerModelId,
+              planning_latency_ms: plannerLatencyMs,
+              // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
+              planner_active: true,
+              // Gate III additions
+              query_class: plan.query_class,
+              context_usage: contextUsageMeta,
+              conversation_title: gateIIITitle ?? undefined,
+            }
+          }
+          if (part.type === 'start') {
+            return {
+              model: modelId,
+              stack: selectedStack,
+              style,
+              disclosure_tier: audienceTier,
+              pipeline: 'v2',
+              queryId,
+              planning_model_id: plannerModelId,
+              planning_latency_ms: plannerLatencyMs,
+              planner_active: true,
+              query_class: plan.query_class,
+              context_usage: contextUsageMeta,
+            }
+          }
+          if (part.type === 'finish') {
+            finishGuard()
+            return {
+              methodology_block: methodologyBlockHolder?.value ?? null,
+              provenance: provenanceHolder.value,
+            }
+          }
+        },
+        onFinish: async ({ messages: finalMessages }: { messages: UIMessage[] }) => {
       // ── W2-EVAL-A: Layer-2 citation gate (post-synthesis) ─────────────
       // Cross-reference SIG.MSR.NNN ids in the assistant's final text against
       // the assembled context (bundle + tool results). Suspected training-data
@@ -960,6 +979,8 @@ export async function POST(request: Request) {
       }
       // Note: deferredGateError pattern removed — see citation_gate block above.
       // Citation gate errors are logged and traced but never thrown post-stream.
+        },
+      }))
     },
     onError: (error: unknown) => {
       const msg = error instanceof Error ? error.message : String(error)
@@ -976,6 +997,7 @@ export async function POST(request: Request) {
       return msg
     },
   })
+  return createUIMessageStreamResponse({ stream: uiStream })
 } catch (pipelineError) {
   const msg = pipelineError instanceof Error ? pipelineError.message : String(pipelineError)
   console.error('[consume:v2] pre-stream error:', msg)
