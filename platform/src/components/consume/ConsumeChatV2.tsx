@@ -31,6 +31,8 @@ import { PanelConfidenceRibbon } from '../chat/PanelConfidenceRibbon'
 import { PanelDissentTabs } from '../chat/PanelDissentTabs'
 import { ReasoningProgress } from '../chat/ReasoningProgress'
 import { PredictionLogModal } from '../chat/PredictionLogModal'
+import { ValidatorFailureBand } from '../chat/ValidatorFailureBand'
+import { ValidatorFooterChip } from '../chat/ValidatorFooterChip'
 import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart } from '@/lib/streams/data_parts'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
@@ -312,6 +314,16 @@ function V2Message() {
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
 
+  // γ4: extract citation gate status from data parts
+  const citationGate = useMemo(() => {
+    const entry = dataParts.find(
+      (d): d is { type: string; data: { status?: string; issues?: string[] } } =>
+        typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-citation-gate',
+    )
+    return entry ? (entry as { type: string; data: { status?: string; issues?: string[] } }).data : null
+  }, [dataParts])
+
   // γ3: extract prediction candidates from data parts
   const predictionCandidates = useMemo(() => {
     return dataParts
@@ -382,6 +394,15 @@ function V2Message() {
             />
           )}
 
+          {/* γ4: validator hard-fail band (above message body) */}
+          {citationGate?.status === 'fail' && (
+            <ValidatorFailureBand
+              issues={citationGate.issues ?? []}
+              isSuperAdmin={isSuperAdmin}
+              onOpenDetails={() => setDetailsOpen(true)}
+            />
+          )}
+
           <MessagePrimitive.Parts
             components={{
               // γ2: ReasoningProgress with live token count + elapsed timer + auto-collapse >2k tokens
@@ -390,6 +411,15 @@ function V2Message() {
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
+
+          {/* γ4: validator soft-fail chip (below message body) */}
+          {citationGate?.status === 'warn' && (
+            <ValidatorFooterChip
+              issues={citationGate.issues ?? []}
+              isSuperAdmin={isSuperAdmin}
+              onOpenDetails={() => setDetailsOpen(true)}
+            />
+          )}
 
           {/* γ1: panel dissent tabs (collapsible, gated on toggle) */}
           {isPanel && showDissent && panelMembers.length > 0 && (
