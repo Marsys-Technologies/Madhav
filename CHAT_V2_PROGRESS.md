@@ -16,13 +16,13 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 7 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓, β6 ✓, β7 ✓) |
+| β | 10 (β1-β10) | 8 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓, β6 ✓, β7 ✓, β8 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **16** | **50%** |
+| **Total** | **32** | **17** | **53.125%** |
 
-**Current work item**: β8
-**Last commit**: feat(chat-v2/β7) 429e518
+**Current work item**: β9
+**Last commit**: feat(chat-v2/β8) 6a7603b
 **Last session**: S10 (2026-05-16)
 **Sessions consumed**: 10
 
@@ -388,6 +388,36 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 ---
 
+### β8 — Sliding-window history summarization
+- **Completed**: 2026-05-16 (Session 10)
+- **Commit(s)**: 6a7603b
+- **Files touched**:
+  - `platform/src/lib/config/feature_flags.ts` (added HISTORY_COMPRESSION_ENABLED, default false)
+  - `platform/src/lib/synthesis/history_compression.ts` (new — estimateTokens, splitHistory, makeCacheKey, compressHistory)
+  - `platform/src/lib/synthesis/__tests__/history_compression.test.ts` (new — 16 tests)
+  - `platform/src/app/api/chat/consume/route.ts` (import compressHistory; flag-gated sliding-window path)
+  - `platform/src/__mocks__/server-only.ts` (new — vitest stub so server-only modules can be unit-tested)
+  - `platform/vitest.config.ts` (added server-only alias pointing at stub)
+  - `platform/tests/unit/chat-v2/abort_propagation.test.ts` (fixed optional-chaining TypeScript test)
+- **Tests added**: 16 (5 estimateTokens unit + 4 splitHistory unit + 3 makeCacheKey unit + 4 compressHistory integration with injected summarizer)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 211/211 unit + synthesis tests pass ✓
+  - HISTORY_COMPRESSION_ENABLED flag declared (default false) ✓
+  - estimateTokens: 1 token ≈ 4 chars, sums across messages ✓
+  - splitHistory: head + tail reconstruction equals original, exact boundary correct ✓
+  - makeCacheKey: encodes conversationId:tailStart ✓
+  - compressHistory: no-op under token budget; compresses over budget ✓
+  - Compression cached by (conversationId, tailStart) — second call with same key skips summarizer ✓
+  - Different conversation IDs produce separate cache entries ✓
+  - Route: flag-off uses existing planner-guided historyMessageCap truncation (unchanged) ✓
+  - Route: flag-on takes full prior history and runs compressHistory ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: The `server-only` vitest alias (`src/__mocks__/server-only.ts`) is a no-op stub that allows unit tests to import modules marked `import 'server-only'` without a Next.js runtime. This is the idiomatic approach (used by many Next.js projects). The cache is module-level (in-process Map); it survives hot-reloads but not process restarts. The `tailSize` default of 4 pairs means the most recent 8 messages (4 user + 4 assistant turns) are always verbatim regardless of how old the conversation is. The `tokenBudget` default of 32k is a soft gate — actual token counts vary by model.
+
+---
+
 ### β7 — Abort propagation completion
 - **Completed**: 2026-05-16 (Session 10)
 - **Commit(s)**: 429e518
@@ -485,16 +515,18 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After β7 (2026-05-16, S10)
-- **Last completed**: β7 — Abort propagation completion (commit 429e518)
-- **Next**: β8 — Sliding-window history summarization
-- **State**: clean (195/195 tests passing)
-- **For next executor session**: Begin β8 per CLAUDECODE_BRIEF.md §B β8 scope
-  - Create `platform/src/lib/synthesis/history_compression.ts` — summarizer with Haiku call + cache
-  - Add `MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED` to feature_flags.ts (default false)
-  - Replace `historyMessageCap` truncation in route.ts with compression call
-  - Write 12 unit + 4 integration tests covering short/long/boundary/cache
-  - Key constraint: compression runs only when conversation tokens > 32k; recent 4 turns are always preserved verbatim
+### After β8 (2026-05-16, S10)
+- **Last completed**: β8 — Sliding-window history summarization (commit 6a7603b)
+- **Next**: β9 — Honest panel streaming
+- **State**: clean (211/211 tests passing)
+- **For next executor session**: Begin β9 per CLAUDECODE_BRIEF.md §B β9 scope
+  - Remove `PASSTHROUGH_MODEL = 'claude-haiku-4-5'` constant from panel_strategy.ts
+  - Restructure: panel members fire in parallel as before; adjudicator is a real streamText call
+  - Adjudicator's stream IS the user-visible stream; merge it into createUIMessageStream writer
+  - Emit `stage: 'panel:member:N'` data parts for each member's status + adjudicator status
+  - Create adjudicator prompt: `platform/src/lib/synthesis/prompts/adjudicator_prompt_v1.ts`
+  - Key files: panel_strategy.ts, panel/adjudicator.ts, route.ts
+  - 211/211 tests currently passing
 
 ---
 
