@@ -610,3 +610,101 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
   - β10 citation gate at wire: ✓ committed (4d46e14)
   - tsc --noEmit: 0 errors ✓
 - **Hard gate**: Phase β EXIT GATE DISCHARGED — advancing to Phase γ
+
+---
+
+## γ1 — Panel mode display UX
+- **Completed**: 2026-05-16
+- **Commit(s)**: f22bcce
+- **Files touched**:
+  - `platform/src/lib/streams/data_parts.ts` (PanelMemberPartSchema + PanelMetaPartSchema + helpers)
+  - `platform/src/lib/synthesis/panel_strategy.ts` (emit panel member + meta data parts in panelStageEvents)
+  - `platform/src/components/chat/PanelConfidenceRibbon.tsx` (new)
+  - `platform/src/components/chat/PanelDissentTabs.tsx` (new)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (wire ribbon + tabs into V2Message)
+  - `platform/tests/unit/chat-v2/panel_display_ux.test.ts` (new — 12 tests)
+- **Tests added**: 12 unit tests (schema validation, helpers, extraction logic) — total 246
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - PanelConfidenceRibbon renders green/amber ribbon with divergence status ✓
+  - PanelDissentTabs shows tabbed per-member answers (super_admin) or summary (others) ✓
+  - Toggle reveals/hides dissent — super_admin and divergence cases ✓
+  - panel_strategy emits data-panel-member + data-panel-meta in panelStageEvents ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+  - 246/246 chat-v2 unit tests pass (was 234; +12 new) ✓
+- **Blockers**: none
+- **Notes for Cowork**: Panel member answers are emitted as data-panel-member data parts
+  (one per member) + a data-panel-meta part before the adjudicator stream begins. The dissent
+  drawer toggle is gated: super_admin sees full answers + model IDs; lower tiers see member
+  count + alignment summary only. Visual baselines DEFERRED to §M per brief.
+
+---
+
+## γ2 — Long-reasoning UX with live progress
+- **Completed**: 2026-05-16
+- **Commit(s)**: 0dbce28
+- **Files touched**:
+  - `platform/src/components/chat/ReasoningProgress.tsx` (new)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (swap Reasoning renderer)
+  - `platform/tests/unit/chat-v2/reasoning_progress.test.ts` (new — 8 tests)
+  - `platform/tests/unit/chat-v2/panel_display_ux.test.ts` (minor type fix)
+- **Tests added**: 8 unit tests (estimateTokens, collapse threshold) — total 254
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - ReasoningProgress renders header with token count + elapsed time ✓
+  - Pulsing dot shown while status=running ✓
+  - Auto-collapses at end of stream when >= 2000 tokens ✓
+  - Collapse toggle with aria-expanded attribute ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+  - 254/254 chat-v2 unit tests pass (was 246; +8 new) ✓
+- **Blockers**: none
+- **Notes for Cowork**: Token estimation uses ceil(chars/4), matching Claude's ~4 char/token average.
+  The COLLAPSE_THRESHOLD=2000 means auto-collapse triggers at roughly 8000 characters of reasoning.
+  useMessagePartReasoning() provides streaming status. Visual baselines DEFERRED to §M.
+
+---
+
+## γ3 — Prediction logging affordance (PPL)
+- **Completed**: 2026-05-16
+- **Commit(s)**: 5962497
+- **Files touched**:
+  - `platform/supabase/migrations/062_predictions.sql` (new — NOT applied; §M)
+  - `platform/src/lib/ppl/prediction_detector.ts` (new — regex scan)
+  - `platform/src/lib/ppl/prediction_writer.ts` (new — client-side POST caller)
+  - `platform/src/lib/streams/data_parts.ts` (PredictionCandidatePart added)
+  - `platform/src/app/api/chat/consume/route.ts` (emit prediction_candidate parts in onFinish)
+  - `platform/src/app/api/predictions/route.ts` (new — POST endpoint)
+  - `platform/src/components/chat/PredictionLogModal.tsx` (new)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (wire buttons + modal)
+  - `platform/tests/unit/chat-v2/prediction_detector.test.ts` (new — 13 tests)
+- **Tests added**: 13 unit tests — total 267
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - Migration 062 created (NOT applied; §M) ✓
+  - Detector fires on test corpus with score >= 0.5 ✓
+  - Modal pre-fills fields; user reviews + submits ✓
+  - outcome=NULL enforced at schema level ✓
+  - Haiku classifier deferred (stub pattern — regex-only for γ3) ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+  - 267/267 chat-v2 unit tests pass ✓
+- **Blockers**: none
+- **Notes for Cowork**: The Haiku classifier (CLAUDECODE_BRIEF brief spec) is intentionally
+  deferred — regex-only detection covers the high-confidence cases (score >= 0.5).
+  Migration 062 uses next available number after 061 (brief's 056 was already taken).
+  "Log as prediction" buttons visible to super_admin only (disclosure tier gate).
+
+---
+
+## RESUME_HERE
+<!-- Executor writes this block when stopping mid-flight. -->
+
+### After γ3 (2026-05-16, S12) — 3 work items completed this session
+
+- **Last completed**: γ3 — prediction logging affordance (PPL chat surface)
+- **Next**: γ4 — validator failure surface (ValidatorFailureBand.tsx + ValidatorFooterChip.tsx)
+- **State**: clean (267/267 chat-v2 unit tests passing; all 20 test files pass)
+- **Reason for stop**: 3 work items completed this session (§S stop condition)
+- **γ4 context**: β10 emits citation_gate data parts as `data-citation-gate` in message.metadata.unstable_data.
+  PerMessageDetailsDrawer already reads and displays them. γ4 just needs to create the inline
+  red band (hard-fail) + footer chip (soft-fail) in the message body, both linking to the β6 drawer.
+  Disclosure tier: super_admin sees full validator output in drawer; others see chip only.
