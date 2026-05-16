@@ -56,6 +56,7 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { checkB11Compliance } from './b11_guard'
+import { CITATION_APPENDIX } from './prompts/synthesis_prompt_v2'
 import { getMaxRetries } from './provider_quirks'
 import type { Provider } from '@/lib/models/registry'
 
@@ -332,6 +333,12 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // Phase 3 — planner-emitted synthesis guidance (replaces context_assembler).
     if (request.synthesis_guidance && request.synthesis_guidance.trim().length > 0) {
       renderedPrompt += `\n\n---\n\nSYNTHESIS GUIDANCE (from planner):\n${request.synthesis_guidance.trim()}`
+    }
+
+    // O5: when Chat V2 is active, append citation format instructions so the model
+    // emits SIG.MSR.NNN references that the V2 renderer converts to numbered badges.
+    if (getFlag('CHAT_V2_ENABLED')) {
+      renderedPrompt += CITATION_APPENDIX
     }
 
     const systemMessage: ModelMessage = supports(selected_model_id, 'prompt-caching')
