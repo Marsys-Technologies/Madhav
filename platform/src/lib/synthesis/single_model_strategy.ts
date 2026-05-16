@@ -303,10 +303,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
 
     // All registry models use the standard calling convention: system message
     // + history + user turn. Prompt-caching header is added for Anthropic models.
-    const historyMessages: ModelMessage[] = conversation_history.map(m => ({
-      role: m.role,
-      content: m.content,
-    }))
+    const historyMessages: ModelMessage[] = conversation_history
 
     // ── B.11 Whole-Chart-Read guard ───────────────────────────────────────────
     // Check that the assembled context contains the required L2.5 layers before

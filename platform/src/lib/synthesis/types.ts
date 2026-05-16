@@ -9,7 +9,7 @@ import type { ToolBundle } from '@/lib/retrieve/types'
 import type { RequestScopedToolCache } from '@/lib/cache/index'
 import type { AudienceTier, StyleSuffix } from '@/lib/prompts/types'
 import type { ValidationResult } from '@/lib/validators/types'
-import type { StreamTextResult, ToolSet } from 'ai'
+import type { StreamTextResult, ToolSet, ModelMessage } from 'ai'
 import type {
   Checkpoint45Result,
   Checkpoint55Result,
@@ -49,7 +49,7 @@ export interface SynthesisRequest {
   query_plan: QueryPlan
   bundle: Bundle
   tool_results: ToolBundle[]
-  conversation_history: Array<{ role: 'user' | 'assistant'; content: string }>
+  conversation_history: ModelMessage[]
   selected_model_id: string
   style: StyleSuffix
   audience_tier: AudienceTier

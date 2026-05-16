@@ -232,7 +232,7 @@ export async function POST(request: Request) {
 
   try {
   const lastUserMessage = messages.filter(m => m.role === 'user').at(-1)
-  const queryText = extractText(lastUserMessage?.parts ?? [])
+  const queryText = (lastUserMessage?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
 
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
     .slice(-2)
     .map(m => ({
       role: m.role as 'user' | 'assistant',
-      content: extractText(m.parts ?? []),
+      content: (m.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim(),
     }))
     .filter(m => m.content.length > 0)
 
@@ -642,15 +642,12 @@ export async function POST(request: Request) {
   // 2 pairs = 4 prior messages; +1 to include current user message which is
   // then dropped below.
   const historyMessageCap = ptrUsedPairs * 2 + 1
-  const trimmedConversationHistory = messages
-    .filter(m => m.role === 'user' || m.role === 'assistant')
-    .slice(-historyMessageCap)
-    .slice(0, -1) // drop current user message (appended via `query`)
-    .map(m => ({
-      role: m.role as 'user' | 'assistant',
-      content: extractText(m.parts ?? []),
-    }))
-    .filter(m => m.content.length > 0)
+  const trimmedConversationHistory = await convertToModelMessages(
+    messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .slice(-historyMessageCap)
+      .slice(0, -1) // drop current user message (appended via `query`)
+  )
 
   const contextUsageMeta: ContextUsageEvent = ptr
     ? {
@@ -822,7 +819,7 @@ export async function POST(request: Request) {
       // causing "failed to pipe response" not a clean stream error.
       try {
         const assistantMsg = finalMessages.filter((m) => m.role === 'assistant').at(-1)
-        const outputText = extractText(assistantMsg?.parts ?? [])
+        const outputText = (assistantMsg?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
         const assembledContextJson = JSON.stringify({
           bundle,
           tool_results: validToolResults,
@@ -965,7 +962,7 @@ export async function POST(request: Request) {
             mode: 'blind',
             chart_id: chartId,
             conversation_id: conversationId,
-            query: extractText(messages[messages.length - 1]?.parts ?? []),
+            query: (messages[messages.length - 1]?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim(),
             outcome: null,
             confidence: null,
             horizon: null,
@@ -1006,6 +1003,3 @@ export async function POST(request: Request) {
 }
 
 
-function extractText(parts: Array<{ type: string; text?: string }>): string {
-  return parts.filter(p => p.type === 'text').map(p => p.text ?? '').join(' ').trim()
-}
