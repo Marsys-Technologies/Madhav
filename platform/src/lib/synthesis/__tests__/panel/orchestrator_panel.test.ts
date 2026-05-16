@@ -158,22 +158,16 @@ vi.mock('@/lib/synthesis/panel/member_runner', () => ({
   }),
 }))
 
+// β9: panel adjudicator now uses streamAdjudicate (streaming) instead of adjudicate (JSON).
 vi.mock('@/lib/synthesis/panel/adjudicator', () => ({
-  adjudicate: vi.fn().mockResolvedValue({
-    final_answer: 'Synthesized answer',
-    divergence_summary: {
-      has_divergence: false,
-      divergence_count: 0,
-      summary_text: '',
-    },
-    member_alignment: {
-      member_1: 'aligned',
-      member_2: 'aligned',
-      member_3: 'aligned',
-    },
-    adjudicator_model_id: 'deepseek-chat',
-    latency_ms: 200,
-  }),
+  streamAdjudicate: vi.fn(),
+  anonymizePanelOutputs: vi.fn().mockImplementation(
+    (outputs: Array<{ status: string; answer?: string; latency_ms: number }>) =>
+      outputs
+        .filter(o => o.status === 'success' && o.answer)
+        .map((o, i) => ({ member_label: `Member ${i + 1}`, answer: o.answer!, latency_ms: o.latency_ms }))
+  ),
+  assertNoModelNamesInPrompt: vi.fn(),
 }))
 
 vi.mock('@/lib/synthesis/panel/divergence_detector', () => ({
@@ -219,6 +213,7 @@ import { createOrchestrator } from '../../orchestrator'
 import { SingleModelOrchestrator } from '../../single_model_strategy'
 import { PanelModeOrchestrator } from '../../panel_strategy'
 import type { SynthesisRequest } from '../../types'
+import { streamAdjudicate as mockStreamAdjudicate } from '@/lib/synthesis/panel/adjudicator'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -394,23 +389,37 @@ describe('panel path — audit event shape', () => {
     mockGetFlag.mockImplementation((flag: string) => flag === 'PANEL_MODE_ENABLED')
   })
 
-  it('emits synthesis_complete event_type', async () => {
-    const onAuditEvent = vi.fn()
-
-    let capturedOnFinish: ((args: {
+  // Helper: set up streamAdjudicate mock that captures rawOnFinish and returns a mock result.
+  function setupStreamAdjudicateMock() {
+    let capturedRawOnFinish: ((args: {
       finishReason: string
       usage?: { inputTokens?: number; outputTokens?: number }
       text?: string
-    }) => void) | undefined
+    }) => Promise<void> | void) | undefined
 
-    mockStreamText.mockImplementation((args: { onFinish?: (e: unknown) => void }) => {
-      capturedOnFinish = args.onFinish as typeof capturedOnFinish
-      return makeMockStreamResult()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockStreamAdjudicate as any).mockImplementation((_outputs: any, _req: any, _slate: any, rawOnFinish: any) => {
+      capturedRawOnFinish = rawOnFinish
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        result: makeMockStreamResult() as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        meta: {} as any,
+        adjudicator_model_id: 'deepseek-chat',
+        startedAt: new Date(),
+      }
     })
+
+    return { getCaptured: () => capturedRawOnFinish }
+  }
+
+  it('emits synthesis_complete event_type', async () => {
+    const onAuditEvent = vi.fn()
+    const { getCaptured } = setupStreamAdjudicateMock()
 
     const orch = createOrchestrator({ panel_opt_in: true })
     await orch.synthesize(makeSynthesisRequest({ onAuditEvent }))
-    await capturedOnFinish?.({ finishReason: 'stop', text: 'Synthesized answer' })
+    await getCaptured()?.({ finishReason: 'stop', text: 'Synthesized answer' })
 
     expect(onAuditEvent).toHaveBeenCalledOnce()
     const event = onAuditEvent.mock.calls[0][0]
@@ -419,21 +428,11 @@ describe('panel path — audit event shape', () => {
 
   it('panel payload EXISTS in panel audit event', async () => {
     const onAuditEvent = vi.fn()
-
-    let capturedOnFinish: ((args: {
-      finishReason: string
-      usage?: { inputTokens?: number; outputTokens?: number }
-      text?: string
-    }) => void) | undefined
-
-    mockStreamText.mockImplementation((args: { onFinish?: (e: unknown) => void }) => {
-      capturedOnFinish = args.onFinish as typeof capturedOnFinish
-      return makeMockStreamResult()
-    })
+    const { getCaptured } = setupStreamAdjudicateMock()
 
     const orch = createOrchestrator({ panel_opt_in: true })
     await orch.synthesize(makeSynthesisRequest({ onAuditEvent }))
-    await capturedOnFinish?.({ finishReason: 'stop', text: 'Synthesized answer' })
+    await getCaptured()?.({ finishReason: 'stop', text: 'Synthesized answer' })
 
     const event = onAuditEvent.mock.calls[0][0]
     expect(event.panel).toBeDefined()
@@ -446,21 +445,12 @@ describe('panel path — audit event shape', () => {
   })
 
   it('synthesizer_model_id reflects panel:adjudicator pattern', async () => {
-    let capturedOnFinish: ((args: {
-      finishReason: string
-      usage?: { inputTokens?: number; outputTokens?: number }
-      text?: string
-    }) => void) | undefined
-
     const onAuditEvent = vi.fn()
-    mockStreamText.mockImplementation((args: { onFinish?: (e: unknown) => void }) => {
-      capturedOnFinish = args.onFinish as typeof capturedOnFinish
-      return makeMockStreamResult()
-    })
+    const { getCaptured } = setupStreamAdjudicateMock()
 
     const orch = createOrchestrator({ panel_opt_in: true })
     const { metadata } = await orch.synthesize(makeSynthesisRequest({ onAuditEvent }))
-    await capturedOnFinish?.({ finishReason: 'stop', text: 'Synthesized answer' })
+    await getCaptured()?.({ finishReason: 'stop', text: 'Synthesized answer' })
 
     expect(metadata.synthesizer_model_id).toBe('panel:deepseek-chat')
 

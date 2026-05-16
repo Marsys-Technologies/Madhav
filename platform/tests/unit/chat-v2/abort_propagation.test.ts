@@ -25,6 +25,7 @@ const openai = src('src/lib/adapters/providers/adapter_openai.ts')
 const deepseek = src('src/lib/adapters/providers/adapter_deepseek.ts')
 const nim = src('src/lib/adapters/providers/adapter_nim.ts')
 const panel = src('src/lib/synthesis/panel_strategy.ts')
+const adjudicator = src('src/lib/synthesis/panel/adjudicator.ts')
 const memberRunner = src('src/lib/synthesis/panel/member_runner.ts')
 const route = src('src/app/api/chat/consume/route.ts')
 
@@ -98,9 +99,16 @@ describe('adapter stream() — for-await abort guard', () => {
 // ─── Panel path ───────────────────────────────────────────────────────────────
 
 describe('panel_strategy — abortSignal propagation', () => {
-  it('passthrough streamAdapterRaw call includes abortSignal', () => {
-    expect(panel).toContain('request.abortSignal')
-    expect(panel).toContain('abortSignal: request.abortSignal')
+  it('passes request (with abortSignal) to streamAdjudicate', () => {
+    // β9: panel_strategy passes the full request to streamAdjudicate, which forwards
+    // abortSignal to streamAdapterRaw. Verify the call site passes `request`.
+    expect(panel).toContain('streamAdjudicate')
+    expect(panel).toContain('request,')
+  })
+
+  it('adjudicator.ts forwards abortSignal to streamAdapterRaw', () => {
+    expect(adjudicator).toContain('request.abortSignal')
+    expect(adjudicator).toContain('abortSignal: request.abortSignal')
   })
 })
 

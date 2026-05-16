@@ -13,12 +13,14 @@
 
 import 'server-only'
 
-import { runAdapter } from '@/lib/adapters'
+import { runAdapter, streamAdapterRaw } from '@/lib/adapters'
+import type { RawAdapterResult } from '@/lib/adapters'
 import { z } from 'zod'
 import { telemetry } from '@/lib/telemetry/index'
 import { recordAiSdkCall } from '@/lib/llm/observability/observe_ai_sdk'
 import { selectAdjudicator, DEFAULT_PANEL_SLATE, ADJUDICATOR_CANDIDATE_POOL } from './default_slate'
 import { loadAdjudicatorPrompt } from './prompt_loader'
+import { buildAdjudicatorStreamPrompt } from '../prompts/adjudicator_prompt_v1'
 import type { PanelMemberConfig, PanelMemberOutput, AnonymizedMemberOutput, AdjudicationResult, DivergenceSummary, MemberAlignment } from './types'
 import type { SynthesisRequest } from '../types'
 
@@ -169,6 +171,74 @@ function parseAdjudicatorOutput(
     adjudicator_model_id,
     latency_ms,
   }
+}
+
+// ── Streaming adjudicator (β9) ─────────────────────────────────────────────────
+
+export interface StreamAdjudicateResult extends RawAdapterResult {
+  adjudicator_model_id: string
+  startedAt: Date
+}
+
+/**
+ * β9: streaming variant of the adjudicator. Returns a StreamTextResult whose
+ * stream IS the user-visible response. The adjudicator model is selected by
+ * the same family-exclusion rule as the non-streaming path.
+ *
+ * Unlike adjudicate(), this does NOT parse structured JSON — it streams plain
+ * markdown prose directly. Divergence classification and member alignment are
+ * therefore not available on this path; the audit event records null for those
+ * fields unless they are computed elsewhere.
+ */
+export function streamAdjudicate(
+  memberOutputs: PanelMemberOutput[],
+  request: SynthesisRequest,
+  memberSlate: PanelMemberConfig[] = DEFAULT_PANEL_SLATE,
+  rawOnFinish?: (result: { finishReason: string; usage?: { inputTokens?: number; outputTokens?: number }; text?: string }) => Promise<void> | void,
+): StreamAdjudicateResult {
+  const adjConfig = selectAdjudicator(memberSlate, ADJUDICATOR_CANDIDATE_POOL)
+  const anonymized = anonymizePanelOutputs(memberOutputs)
+  if (anonymized.length < 2) {
+    throw new Error(
+      `Streaming adjudicator requires ≥2 anonymized member outputs; got ${anonymized.length}`,
+    )
+  }
+
+  const { systemPrompt, userPrompt } = buildAdjudicatorStreamPrompt(anonymized, request)
+  assertNoModelNamesInPrompt(userPrompt, memberOutputs)
+
+  const startedAt = new Date()
+  telemetry.recordMetric('panel', 'stream_adjudicator_start', 1, { model: adjConfig.model_id })
+
+  const rawResult = streamAdapterRaw({
+    callType: 'synthesis',
+    modelOverride: { modelId: adjConfig.model_id },
+    systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+    maxOutputTokens: 65536,
+    smoothStream: true,
+    ...(request.abortSignal && { abortSignal: request.abortSignal }),
+    rawOnFinish: async ({ finishReason, usage, text }) => {
+      telemetry.recordMetric('panel', 'stream_adjudicator_finish', 1, { finishReason })
+      telemetry.recordCost('panel', adjConfig.model_id, usage?.inputTokens ?? 0, usage?.outputTokens ?? 0, 0)
+      recordAiSdkCall({
+        pipeline_stage: 'audit',
+        model_id: adjConfig.model_id,
+        conversation_id: request.conversation_id ?? request.query_plan.query_plan_id,
+        prompt_id: `${request.query_plan.query_plan_id}:panel:stream_adjudicator`,
+        user_id: 'native',
+        parameters: { model: adjConfig.model_id, role: 'stream_adjudicator' },
+        usage,
+        status: finishReason === 'error' ? 'error' : 'success',
+        error_code: finishReason === 'error' ? finishReason : null,
+        started_at: startedAt,
+        finished_at: new Date(),
+      })
+      await rawOnFinish?.({ finishReason, usage, text })
+    },
+  })
+
+  return { ...rawResult, adjudicator_model_id: adjConfig.model_id, startedAt }
 }
 
 // ── Anonymization verification ─────────────────────────────────────────────────

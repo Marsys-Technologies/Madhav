@@ -160,6 +160,10 @@ export interface SynthesisResult {
   /** Mutable container populated synchronously in streamText.onFinish — allows the outer
    *  onFinish in the route to read synthesis token counts for observatory telemetry. */
   usageHolder?: { value: SynthesisUsage | null }
+  /** β9 — Panel mode: pre-computed stage/tool data parts to emit before merging the
+   *  adjudicator stream. The route's execute block replays these via writer.write() so
+   *  the UI sees panel:member:N running/done events before the adjudicator stream begins. */
+  panelStageEvents?: Array<{ type: string; data: unknown }>
 }
 
 export interface SynthesisOrchestrator {

@@ -782,7 +782,7 @@ export async function POST(request: Request) {
       disclosure_tier: audienceTier,
     }),
   }
-  let { result, methodologyBlockHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+  let { result, methodologyBlockHolder, panelStageEvents } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
     // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
     // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
     const fallbackId = stackSynthFallback
@@ -843,7 +843,16 @@ export async function POST(request: Request) {
         })
       }
       writer.write({ type: 'data-stage', data: stagePart('tool_fetch', 'done', toolFetchMs) })
-      writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
+      // β9: panel mode emits member stage events before the adjudicator stream.
+      // Single-model path leaves panelStageEvents undefined; the check is a no-op.
+      if (panelStageEvents && panelStageEvents.length > 0) {
+        for (const evt of panelStageEvents) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          writer.write(evt as any)
+        }
+      } else {
+        writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
+      }
       writer.merge(result.toUIMessageStream({
         originalMessages: messages,
         generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
