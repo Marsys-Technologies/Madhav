@@ -25,6 +25,7 @@ import type { ConsumeChatProps } from './ConsumeChatLegacy'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
+import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -238,9 +239,16 @@ function renderWithCitations(
   return parts
 }
 
-function V2AssistantText({ text }: { text: string }) {
+interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
+
+function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const { onPin } = useContext(CitationCtx)
-  const rendered = useMemo(() => renderWithCitations(text, onPin), [text, onPin])
+  const rendered = useMemo(() => {
+    const parts = renderWithCitations(text, onPin)
+    const count = parts.filter(p => typeof p !== 'string').length
+    onCitationCount?.(count)
+    return parts
+  }, [text, onPin, onCitationCount])
   return (
     <p className="whitespace-pre-wrap font-sans text-sm text-zinc-200 leading-relaxed" data-testid="v2-message-text">
       {rendered}
@@ -251,6 +259,15 @@ function V2AssistantText({ text }: { text: string }) {
 // ─── Message ─────────────────────────────────────────────────────────────────
 
 function V2Message() {
+  // β6: details drawer state lives per-message (mounted inside MessagePrimitive.Root
+  // so useMessage() is valid for the PerMessageDetailsDrawer).
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [citationCount, setCitationCount] = useState(0)
+
+  const handleCitationCount = useCallback((n: number) => {
+    setCitationCount(n)
+  }, [])
+
   return (
     <MessagePrimitive.Root
       className="group flex w-full max-w-3xl mx-auto flex-col gap-1 px-4 py-3"
@@ -302,11 +319,11 @@ function V2Message() {
                   {props.text}
                 </div>
               ),
-              Text: V2AssistantText,
+              Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
 
-          {/* Reload (regenerate) action + branch picker for assistant messages */}
+          {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
@@ -328,6 +345,21 @@ function V2Message() {
                   </svg>
                 </button>
               </ActionBarPrimitive.Reload>
+
+              {/* β6: Show details drawer */}
+              <button
+                type="button"
+                onClick={() => setDetailsOpen(true)}
+                className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                title="Show message details"
+                data-testid="v2-details-btn"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
+                  <circle cx="8" cy="8" r="6" />
+                  <path d="M8 7v4M8 5h.01" strokeLinecap="round" />
+                </svg>
+              </button>
+
               <ActionBarPrimitive.Copy asChild>
                 <button
                   type="button"
@@ -344,6 +376,13 @@ function V2Message() {
             </ActionBarPrimitive.Root>
           </div>
         </div>
+
+        {/* β6: Details drawer — rendered inside MessagePrimitive.Root so useMessage() works */}
+        <PerMessageDetailsDrawer
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          citationCount={citationCount}
+        />
       </MessagePrimitive.If>
     </MessagePrimitive.Root>
   )
