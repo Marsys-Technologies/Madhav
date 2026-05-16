@@ -29,7 +29,7 @@ import { recordAiSdkCall } from '@/lib/llm/observability/observe_ai_sdk'
 import { runPanelMembers } from './panel/member_runner'
 import { streamAdjudicate } from './panel/adjudicator'
 import { DEFAULT_PANEL_SLATE } from './panel/default_slate'
-import { stagePart } from '@/lib/streams/data_parts'
+import { stagePart, panelMemberPart, panelMetaPart } from '@/lib/streams/data_parts'
 
 import type {
   SynthesisRequest,
@@ -82,6 +82,22 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
       })
     }
 
+    // γ1: panel member answer data parts (one per member, carries full answer text)
+    // These land in message.metadata.unstable_data for the dissent drawer.
+    for (const output of member_outputs) {
+      panelStageEvents.push({
+        type: 'data-panel-member',
+        data: panelMemberPart({
+          member_index: output.member_index,
+          model_id: output.model_id,
+          provider_family: output.provider_family,
+          status: output.status,
+          answer: output.answer,
+          latency_ms: output.latency_ms,
+        }),
+      })
+    }
+
     // adjudicator running event
     panelStageEvents.push({ type: 'data-stage', data: stagePart('panel:adjudicator', 'running') })
 
@@ -89,6 +105,15 @@ export class PanelModeOrchestrator implements SynthesisOrchestrator {
     // β9: the streaming adjudicator outputs plain prose, not JSON.  We compute a
     // lightweight divergence estimate from member outputs alone.
     const hasDivergence = estimateDivergence(member_outputs)
+
+    // γ1: panel meta data part (confidence ribbon)
+    panelStageEvents.push({
+      type: 'data-panel-meta',
+      data: panelMetaPart({
+        member_count: member_outputs.length,
+        has_divergence: hasDivergence,
+      }),
+    })
 
     const metadata: SynthesisMetadata = {
       synthesis_prompt_version: '2.0',

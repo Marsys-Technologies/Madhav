@@ -20,12 +20,16 @@ import {
   ActionBarPrimitive,
   BranchPickerPrimitive,
   useThreadRuntime,
+  useMessage,
 } from '@assistant-ui/react'
 import type { ConsumeChatProps } from './ConsumeChatLegacy'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
 import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
+import { PanelConfidenceRibbon } from '../chat/PanelConfidenceRibbon'
+import { PanelDissentTabs } from '../chat/PanelDissentTabs'
+import type { PanelMemberPart, PanelMetaPart } from '@/lib/streams/data_parts'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -256,6 +260,37 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   )
 }
 
+// ─── Panel data extraction helpers ───────────────────────────────────────────
+
+function usePanelData(dataParts: ReadonlyArray<unknown>) {
+  const panelMembers = useMemo(() => {
+    const parts: PanelMemberPart[] = []
+    for (const d of dataParts) {
+      if (
+        typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-panel-member'
+      ) {
+        const entry = d as { type: string; data: unknown }
+        parts.push(entry.data as PanelMemberPart)
+      }
+    }
+    // Sort by member_index for stable tab order
+    parts.sort((a, b) => a.member_index - b.member_index)
+    return parts
+  }, [dataParts])
+
+  const panelMeta = useMemo((): PanelMetaPart | null => {
+    const entry = dataParts.find(
+      (d): d is { type: string; data: PanelMetaPart } =>
+        typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-panel-meta',
+    )
+    return entry ? (entry as { type: string; data: PanelMetaPart }).data : null
+  }, [dataParts])
+
+  return { panelMembers, panelMeta, isPanel: panelMeta !== null }
+}
+
 // ─── Message ─────────────────────────────────────────────────────────────────
 
 function V2Message() {
@@ -263,6 +298,14 @@ function V2Message() {
   // so useMessage() is valid for the PerMessageDetailsDrawer).
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [citationCount, setCitationCount] = useState(0)
+  const [showDissent, setShowDissent] = useState(false)
+
+  // γ1: panel data from message metadata
+  const message = useMessage()
+  const dataParts = (message.metadata?.unstable_data ?? []) as ReadonlyArray<unknown>
+  const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
+  const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
+  const isSuperAdmin = meta.disclosure_tier === 'super_admin'
 
   const handleCitationCount = useCallback((n: number) => {
     setCitationCount(n)
@@ -311,6 +354,17 @@ function V2Message() {
 
       <MessagePrimitive.If assistant>
         <div className="flex flex-col gap-2 w-full" data-testid="v2-assistant-message">
+          {/* γ1: panel confidence ribbon (only for panel-mode messages) */}
+          {isPanel && panelMeta && (
+            <PanelConfidenceRibbon
+              memberCount={panelMeta.member_count}
+              hasDivergence={panelMeta.has_divergence}
+              showDissent={showDissent}
+              onToggleDissent={() => setShowDissent((s) => !s)}
+              isSuperAdmin={isSuperAdmin}
+            />
+          )}
+
           <MessagePrimitive.Parts
             components={{
               // F.2: props.text for reasoning (not props.reasoning)
@@ -322,6 +376,14 @@ function V2Message() {
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
+
+          {/* γ1: panel dissent tabs (collapsible, gated on toggle) */}
+          {isPanel && showDissent && panelMembers.length > 0 && (
+            <PanelDissentTabs
+              members={panelMembers}
+              isSuperAdmin={isSuperAdmin}
+            />
+          )}
 
           {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

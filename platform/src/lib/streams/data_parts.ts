@@ -107,6 +107,34 @@ export const PersistencePartSchema = z.object({
 
 export type PersistencePart = z.infer<typeof PersistencePartSchema>
 
+// ── Panel member part (γ1) ────────────────────────────────────────────────
+// One part per panel member, emitted after runPanelMembers completes (before
+// adjudicator stream). Carries the member's full answer for the dissent drawer.
+
+export const PanelMemberPartSchema = z.object({
+  type: z.literal('panel_member'),
+  member_index: z.number().int().nonnegative(),
+  model_id: z.string(),
+  provider_family: z.string(),
+  status: z.enum(['success', 'failed']),
+  answer: z.string().optional(),
+  latency_ms: z.number().nonnegative(),
+})
+
+export type PanelMemberPart = z.infer<typeof PanelMemberPartSchema>
+
+// ── Panel meta part (γ1) ─────────────────────────────────────────────────
+// Single part carrying overall panel metadata for the confidence ribbon.
+
+export const PanelMetaPartSchema = z.object({
+  type: z.literal('panel_meta'),
+  member_count: z.number().int().positive(),
+  has_divergence: z.boolean(),
+  adjudicator_model_id: z.string().optional(),
+})
+
+export type PanelMetaPart = z.infer<typeof PanelMetaPartSchema>
+
 // ── Union ─────────────────────────────────────────────────────────────────
 
 export const DataPartSchema = z.discriminatedUnion('type', [
@@ -117,6 +145,8 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   CitationGatePartSchema,
   CitationPartSchema,
   PersistencePartSchema,
+  PanelMemberPartSchema,
+  PanelMetaPartSchema,
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
@@ -157,5 +187,15 @@ export const citationPart = (args: Omit<CitationPart, 'type'>): CitationPart => 
 
 export const persistencePart = (args: Omit<PersistencePart, 'type'>): PersistencePart => ({
   type: 'persistence',
+  ...args,
+})
+
+export const panelMemberPart = (args: Omit<PanelMemberPart, 'type'>): PanelMemberPart => ({
+  type: 'panel_member',
+  ...args,
+})
+
+export const panelMetaPart = (args: Omit<PanelMetaPart, 'type'>): PanelMetaPart => ({
+  type: 'panel_meta',
   ...args,
 })
