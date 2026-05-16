@@ -267,11 +267,14 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
 
   // Count citation chips for drawer badge. Inline JSX citation rendering is
   // handled by the data-citation parts path (O3 fix); here we only count.
-  useMemo(() => {
+  const citationCount = useMemo(() => {
     const parts = renderWithCitations(text, onPin)
-    const count = parts.filter(p => typeof p !== 'string').length
-    onCitationCount?.(count)
-  }, [text, onPin, onCitationCount])
+    return parts.filter(p => typeof p !== 'string').length
+  }, [text, onPin])
+
+  useEffect(() => {
+    onCitationCount?.(citationCount)
+  }, [citationCount, onCitationCount])
 
   return (
     <MarkdownContent
