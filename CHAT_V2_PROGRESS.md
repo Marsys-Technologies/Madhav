@@ -1067,3 +1067,17 @@ Native: PR is at https://github.com/amonty84/Madhav/pull/20. After CI green + fi
 - **Acceptance criteria**: PASS — all §4 verification queries green on both local Docker + production
 - **Blockers**: none — Phase B (post-migration verification) is discharged by this session's §2.D queries
 - **Notes for Cowork**: No staging environment exists (CHAT_V2_STAGING_INVESTIGATION.md). Docker Postgres 15 container used as local staging equivalent per operator Option A authorization. Runbook §6 updated with full sign-off and deviation notes.
+
+---
+
+## Remediation log
+
+<!-- Per-item entries appended by each executor session. Format: ### <ID> — <description> / Status / Commit / PR / Files / Tests / Notes -->
+
+## Remediation — Deferred items
+
+<!-- Items that could not execute due to missing environment (creds, bucket, staging revision). Include re-unblock recipe. -->
+
+## Remediation — Operator follow-up
+
+<!-- Actions that require operator (not executor) to complete after this session closes. -->
