@@ -17,14 +17,16 @@ This document is updated by every Claude Code executor session. It is the canoni
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
 | β | 10 (β1-β10) + exit gate | 11 | **complete** |
-| γ | 10 (γ1-γ10) | 0 | not started |
+| γ | 10 (γ1-γ10) + exit gate | 11 | **complete** |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **21** | **65.6%** |
+| **Total** | **32** | **29** | **90.6%** |
 
-**Current work item**: γ1
-**Last commit**: milestone(chat-v2/β) — see below
-**Last session**: S11 (2026-05-16)
-**Sessions consumed**: 11
+**Current work item**: PM1
+**Last commit**: milestone(chat-v2/γ) 95e21a8
+**Last session**: S14 (2026-05-16)
+**Sessions consumed**: 14
+
+> *Metadata reconciliation note (Cowork, 2026-05-16):* S14 advanced brief frontmatter to `status: COMPLETE / completed_work_items: 32`. That was over-advanced — γ exit closes the implementation phases but PM1-PM3 (red-team, evidence pack, sealing artifact) remain. Frontmatter corrected to `status: ACTIVE / current_phase: pre_merge / current_work_item: PM1 / completed_work_items: 29`. This status table reconciled to match. The γ7/γ8/γ9/γ10 per-work-item entries are missing from the log below — the next executor session (PM1) should reconstruct them from commits 1efd876, 7bc5153, a6aeeba, 8f0dad6 before proceeding with PM1.
 
 ---
 
@@ -33,7 +35,7 @@ This document is updated by every Claude Code executor session. It is the canoni
 - [x] α0 — assistant-ui fit-spike (verdict: **GREEN** — 2026-05-16)
 - [x] Phase α exit gate — **DISCHARGED 2026-05-16** (unit:93, component:16, integration:11, E2E:34; visual:DEFERRED)
 - [x] Phase β exit gate — **DISCHARGED 2026-05-16** (unit:234, component:130+, integration:522, E2E:27+, visual spec:59 authored)
-- [ ] Phase γ exit gate
+- [x] Phase γ exit gate — **DISCHARGED 2026-05-16** (commit 95e21a8; 389/389 unit tests green; tsc clean; γ10 regression check: `grep streamBuildRaw|legacy_runAdapter platform/src` → 0 results)
 - [ ] PM1 — red-team 5/5 PASS
 - [ ] PM2 — master gate evidence pack
 - [ ] PM3 — sealing artifact drafted
@@ -776,3 +778,136 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
   Client uses sessionStorage to remember query_id + last_event_seq. On reconnect, calls
   resume endpoint and replays suffix as UIMessage stream. Chaos tests: clean disconnect,
   dirty disconnect, network partition.
+
+---
+
+## γ7 — Stream resume after disconnect
+- **Completed**: 2026-05-16 (Session 14)
+- **Commit(s)**: 1efd876
+- **Files touched**:
+  - `platform/src/app/api/chat/consume/resume/route.ts` (new — GET resume endpoint)
+  - `platform/src/app/api/chat/consume/route.ts` (CHAT_V2_ENABLED gate: create writer, pass onTextDelta, clear on finish)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (V2StreamResumeTracker — sessionStorage tracking + mount-time resume check)
+  - `platform/src/lib/persistence/pending_streams_writer.ts` (new — createPendingStreamWriter; debounced 100ms accumulator)
+  - `platform/src/lib/synthesis/single_model_strategy.ts` (wire onChunk → onTextDelta)
+  - `platform/src/lib/synthesis/types.ts` (onTextDelta callback on SynthesisRequest)
+  - `platform/supabase/migrations/063_pending_streams.sql` (new — NOT applied; §M)
+  - `platform/tests/unit/chat-v2/stream_resume.test.ts` (new — 14 tests)
+- **Tests added**: 14 (writer debounce, accumulation, clear, chaos scenarios)
+- **Acceptance criteria**: PASS
+  - Migration 063 created (NOT applied; §M) ✓
+  - createPendingStreamWriter: debounced 100ms, accumulates text deltas via onTextDelta callback ✓
+  - Resume endpoint GET /api/chat/consume/resume?query_id=&since_chars= returns partial suffix ✓
+  - V2StreamResumeTracker saves queryId+receivedChars to sessionStorage while streaming ✓
+  - Mount-time resume check restores partial assistant message on reconnect ✓
+  - tsc --noEmit: 0 errors ✓
+- **Blockers**: none
+- **MANUAL_INTERVENTION_REQUIRED**: §M.3 — Apply migration 063_pending_streams.sql to staging then production. §M.4 — Provision Cloud Scheduler pending-streams-reaper job (every 5 min DELETE WHERE expires_at < now()).
+- **Notes for Cowork**: Migration uses sequence number 063 (brief specified 057, but 057-062 were already taken). Writer wired via SynthesisRequest.onTextDelta callback rather than patching the adapter stream directly. Resume returns suffix from `since_chars` position as partial JSON. 483 lines added across 8 files.
+
+---
+
+## γ8 — Accessibility — WCAG 2.1 AA compliance
+- **Completed**: 2026-05-16 (Session 14)
+- **Commit(s)**: 7bc5153
+- **Files touched**:
+  - `00_ARCHITECTURE/CHAT_V2_A11Y_REPORT.md` (new — WCAG 2.1 AA compliance report documenting landmarks, accessible names, focus management, deferred manual passes)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (aria-label on icon buttons, aria-hidden on SVGs, role=log + aria-live=polite + aria-atomic=false on thread viewport, aria-label + aria-multiline on composer input)
+  - `platform/tests/e2e/chat-v2/a11y/axe.spec.ts` (8 new tests: 7 source-inspection no-auth + 1 runtime axe scan auth-gated HARD)
+- **Tests added**: 8 (7 source-inspection — no auth; 1 runtime axe-core scan — auth-gated, now HARD gate not soft)
+- **Acceptance criteria**: PASS
+  - role=log + aria-live=polite + aria-atomic=false + aria-label on ThreadPrimitive.Viewport live region ✓
+  - role=dialog + aria-modal + tabIndex=-1 + Escape handler + focus-on-open on PerMessageDetailsDrawer (β6) ✓
+  - aria-label on all icon-only buttons: send, stop, cancel-send, attach, scroll-to-bottom, details-close ✓
+  - aria-hidden="true" on all decorative SVG icons ✓
+  - aria-label="Message input" + aria-multiline="true" on ComposerPrimitive.Input ✓
+  - Programmatic axe-core tests authored (HARD gate) ✓
+  - CHAT_V2_A11Y_REPORT.md authored ✓
+  - tsc --noEmit: 0 errors ✓
+- **Blockers**: none
+- **MANUAL_INTERVENTION_REQUIRED**: §M.8 — Manual screen-reader testing: NVDA + Firefox (Windows), VoiceOver + Safari (macOS), VoiceOver + Safari (iOS). DEFERRED-§M per brief — programmatic axe-core is in scope; physical assistive tech requires hardware not present in dev environment.
+- **Notes for Cowork**: 206 lines added across 3 files. No functional regressions to ConsumeChatLegacy (aria changes isolated to ConsumeChatV2). Runtime axe scan test is now HARD (not soft) per γ8 acceptance criteria.
+
+---
+
+## γ9 — Mobile responsive layout
+- **Completed**: 2026-05-16 (Session 14)
+- **Commit(s)**: a6aeeba
+- **Files touched**:
+  - `platform/src/app/layout.tsx` (viewportFit=cover in Next.js viewport export — iOS safe area support)
+  - `platform/src/components/chat/CitationSidePanel.tsx` (fixed bottom-0 inset-x-0 max-h-[45vh] on mobile; md:static side panel on desktop)
+  - `platform/src/components/chat/ReasoningProgress.tsx` (default collapsed on mobile — window.innerWidth < 768)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (h-dvh, mobile sidebar overlay + backdrop + z-40, mobile hamburger md:hidden, text-base md:text-sm on composer input, h-11 w-11 md:h-10 md:w-10 touch targets, safe-area-inset-bottom on composer)
+  - `platform/tests/e2e/chat-v2/__visuals__/mobile.spec.ts` (new — 15 mobile E2E tests + 4 visual baselines)
+- **Tests added**: 15 mobile E2E (10 source-inspection + 5 runtime at 375px/768px) + 4 visual baselines (capture DEFERRED-§M)
+- **Acceptance criteria**: PASS
+  - h-dvh (dynamic viewport height) on root — retractable browser toolbar accounted ✓
+  - viewportFit=cover in viewport export — iOS safe area insets wired ✓
+  - Mobile sidebar: hidden from flow when collapsed; fixed overlay + backdrop + z-40 when open ✓
+  - Mobile hamburger (md:hidden) in header ✓
+  - Composer input text-base md:text-sm — ≥16px on mobile prevents iOS auto-zoom ✓
+  - Primary buttons h-11 w-11 md:h-10 md:w-10 — 44px touch targets on mobile ✓
+  - safe-area-inset-bottom on composer outer div — iOS home indicator clearance ✓
+  - CitationSidePanel: bottom sheet (max-h-[45vh]) on mobile; side panel on desktop ✓
+  - ReasoningProgress: collapsed by default on mobile ✓
+  - 15 mobile tests authored ✓
+  - tsc --noEmit: 0 errors ✓
+- **Blockers**: none
+- **MANUAL_INTERVENTION_REQUIRED**: §M.9 — Physical-device spot-check: iPhone Safari + Android Chrome. DEFERRED-§M per brief — Playwright mobile viewport profiles cover programmatic surface; physical device testing requires hardware.
+- **Notes for Cowork**: 260 lines added, 22 removed across 5 files. Visual baseline capture (4 baselines in mobile.spec.ts) requires MARSYS_UPDATE_VISUALS=true + running dev server — DEFERRED-§M.
+
+---
+
+## γ10 — Adapter consolidation (delete streamBuildRaw + legacy_runAdapter)
+- **Completed**: 2026-05-16 (Session 14)
+- **Commit(s)**: 8f0dad6
+- **Files touched**:
+  - `platform/src/app/api/chat/build/route.ts` (replace streamBuildRaw import with streamText from 'ai')
+  - `platform/src/lib/adapters/build_bridge.ts` (**DELETED** — was `streamText(options as any)` + re-exports)
+  - `platform/src/lib/adapters/index.ts` (remove build_bridge re-export line)
+  - `platform/src/lib/adapters/legacy_runAdapter.ts` (**DELETED** — dead code since ADAPTERS_ENABLED defaulted true at AD.5)
+  - `platform/src/lib/adapters/raw.ts` (remove flag check + legacy import; streamAdapterRaw always via provider adapter)
+  - `platform/src/lib/adapters/run_adapter.ts` (remove ADAPTERS_ENABLED flag check + runAdapterLegacy import)
+  - `platform/src/lib/config/feature_flags.ts` (remove ADAPTERS_ENABLED flag declaration and default — no remaining call sites)
+  - `platform/src/lib/models/resolver.ts` (update stale @deprecated comments on resolveModel + provider option functions)
+  - `platform/src/lib/synthesis/single_model_strategy.ts` (replace streamBuildRaw call with streamText from 'ai')
+  - `platform/src/lib/synthesis/__tests__/retry_policy.test.ts` (remove ADAPTERS_ENABLED reference)
+  - `platform/tests/equivalence/runtime_equivalence.test.ts` (**DELETED** — tested now-deleted legacy adapter paths)
+  - `platform/tests/unit/chat-v2/feature_flags.test.ts` (remove ADAPTERS_ENABLED assertion)
+- **Tests added**: 0 (deletion + consolidation refactor; 389 existing tests verify correctness of unified path)
+- **Acceptance criteria**: PASS
+  - `grep -r "streamBuildRaw|legacy_runAdapter" platform/src` → **0 results** ✓
+  - tsc --noEmit: 0 errors ✓
+  - 389/389 unit tests green ✓
+  - build_bridge.ts and legacy_runAdapter.ts deleted ✓
+  - ADAPTERS_ENABLED removed from feature_flags.ts ✓
+  - Single streaming path through streamText / streamAdapterRaw confirmed ✓
+- **Blockers**: none
+- **Notes for Cowork**: 683 lines deleted across 12 files (17 added, 700 removed net). streamBuildRaw was a trivial wrapper around `streamText(options as any)` — replaced with direct 'ai' import. ADAPTERS_ENABLED defaulted true since AD.5; removing the flag eliminates all dead flag-off code. The consolidation means `streamText` (from 'ai') is now the single source of synthesis streaming truth.
+
+---
+
+### Phase γ — EXIT GATE (2026-05-16, S14)
+- **Commit**: 95e21a8 `milestone(chat-v2/γ): phase gamma complete — domain & polish`
+- **Gate criteria**:
+  - Unit ≥300: **389 PASS** (32 test files; all γ1–γ10 coverage complete)
+  - tsc --noEmit: **0 errors** ✓
+  - grep streamBuildRaw|legacy_runAdapter platform/src: **0 results** ✓
+  - CHAT_V2_A11Y_REPORT.md: **authored** ✓
+  - Mobile test suite: **mobile.spec.ts** — 15 tests + 4 visual baselines authored ✓
+  - E2E authored: axe.spec.ts (8), mobile.spec.ts (15), validator_failure_surface.spec.ts (5) — auth-gated tests skip without session
+  - Visual baseline capture: **DEFERRED-§M** (requires MARSYS_UPDATE_VISUALS=true + running dev server)
+  - All γ1–γ10 commits on feature/chat-v2-bigbang ✓
+- **Hard gate**: Phase γ EXIT GATE DISCHARGED — advancing to Pre-merge (PM1)
+
+---
+
+## RESUME_HERE
+<!-- Current executor position — PM session open -->
+
+### Pre-merge phase begins (2026-05-16, current session)
+
+- **Last completed**: Phase γ exit gate (95e21a8) + γ7-γ10 governance backfill
+- **Next**: PM1 — Red-team pass (5 probes: P.1 prompt injection user input, P.2 prompt injection PDF, P.3 mid-stream 429 retry-after, P.4 auth bypass conversation routes, P.5 stream resume token forgery)
+- **State**: clean after backfill commit (32 test files, 389 unit tests passing)
+- **Reason for stop**: N/A — continuing to PM1
