@@ -15,14 +15,14 @@ This document is updated by every Claude Code executor session. It is the canoni
 | Phase | Items | Completed | Status |
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
-| α | 8 (α0-α7) | 3 | in progress |
+| α | 8 (α0-α7) | 4 | in progress |
 | β | 10 (β1-β10) | 0 | not started |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **5** | **15.6%** |
+| **Total** | **32** | **6** | **18.75%** |
 
-**Current work item**: α4
-**Last commit**: da34225 (α3)
+**Current work item**: α5
+**Last commit**: 5ed1522 (α4)
 **Last session**: S5 (2026-05-16)
 **Sessions consumed**: 5
 
@@ -49,6 +49,26 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Per-work-item log
 
 <!-- Executor appends entries below this line. Most recent at bottom. Use the format from CLAUDECODE_BRIEF.md §C. -->
+
+### α4 — UIMessage end-to-end
+- **Completed**: 2026-05-16 (Session 5)
+- **Commit(s)**: 5ed1522
+- **Files touched**:
+  - `platform/src/lib/synthesis/types.ts` (SynthesisRequest.conversation_history → ModelMessage[])
+  - `platform/src/lib/synthesis/single_model_strategy.ts` (remove .map() flatten; conversation_history used directly)
+  - `platform/src/app/api/chat/consume/route.ts` (convertToModelMessages for synthesis history; extractText inlined × 4; function deleted)
+  - `platform/tests/unit/chat-v2/history_building.test.ts` (new — 6 unit tests)
+- **Tests added**: 6 unit tests (text/reasoning survival, ordering, slicing window, empty array, type compatibility)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 210/210 unit + synthesis tests pass ✓
+  - grep extractText platform/src/app/api/ returns 0 matches ✓ (UI component helpers are separate)
+  - convertToModelMessages preserves reasoning parts ✓
+  - SynthesisRequest.conversation_history typed as ModelMessage[] ✓
+- **Blockers**: none
+- **Notes for Cowork**: `extractText` remains in `AssistantMessage.tsx` and `StreamingAnswer.tsx` as local UI rendering helpers (not synthesis pipeline). Planner history still uses inline text extraction since callPipelinePlanner expects `{role: string, content: string}[]`.
+
+---
 
 ### α3 — data parts emission
 - **Completed**: 2026-05-16 (Session 5)
@@ -171,12 +191,12 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After α3 (2026-05-16)
-- **Last completed**: α3 — data parts emission (commit da34225)
-- **Next**: α4 — UIMessage end-to-end (eliminate extractText string-flattening)
+### After α4 (2026-05-16)
+- **Last completed**: α4 — UIMessage end-to-end (commit 5ed1522)
+- **Next**: α5 — Retry policy right-sized
 - **State**: clean
-- **Reason for stop**: Continuing to α4
-- **For next executor session**: Begin α4 per CLAUDECODE_BRIEF.md §A.α4. Delete `extractText` from route.ts; replace planner-history and synthesis-history rebuilds with `convertToModelMessages(messages.slice(-N))`; update `single_model_strategy.ts` + `panel_strategy.ts` to accept `ModelMessage[]` directly; verify `adapters/types.ts`. Add ~6 unit tests + 2 integration tests.
+- **Reason for stop**: Continuing to α5
+- **For next executor session**: Begin α5 per CLAUDECODE_BRIEF.md §A.α5. Create `platform/src/lib/synthesis/provider_quirks.ts` with per-provider retry table; replace `maxRetries: 0` in single_model_strategy.ts with provider-aware value; add tests.
 
 ---
 
