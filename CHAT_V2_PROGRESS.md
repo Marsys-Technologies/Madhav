@@ -15,16 +15,16 @@ This document is updated by every Claude Code executor session. It is the canoni
 | Phase | Items | Completed | Status |
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
-| α | 8 (α0-α7) | 1 | in progress |
+| α | 8 (α0-α7) | 2 | in progress |
 | β | 10 (β1-β10) | 0 | not started |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **3** | **9.4%** |
+| **Total** | **32** | **4** | **12.5%** |
 
-**Current work item**: α2
-**Last commit**: 658b7fe (α1)
-**Last session**: S3 (2026-05-16)
-**Sessions consumed**: 3
+**Current work item**: α3
+**Last commit**: 12902b0 (α2)
+**Last session**: S4 (2026-05-16)
+**Sessions consumed**: 4
 
 ---
 
@@ -49,6 +49,29 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Per-work-item log
 
 <!-- Executor appends entries below this line. Most recent at bottom. Use the format from CLAUDECODE_BRIEF.md §C. -->
+
+### α2 — streamdown swap
+- **Completed**: 2026-05-16 (Session 4)
+- **Commit(s)**: 12902b0
+- **Files touched**:
+  - `platform/src/components/chat/MarkdownContent.tsx` (swapped ReactMarkdown → Streamdown; deleted closeUnclosedFences; added isAnimating prop)
+  - `platform/src/app/globals.css` (@source directive for streamdown Tailwind classes)
+  - `platform/tests/e2e/chat-v2/perf/streaming.spec.ts` (added α2 render-correctness + visual baseline tests)
+  - `platform/tests/unit/streaming/streamdown_render.test.ts` (new — 12 unit tests)
+  - `platform/package.json` + `platform/package-lock.json` (streamdown@2.5.0 added)
+- **Tests added**: 12 unit tests (ARIA attrs, CSS class wiring, Streamdown prop passthrough, incomplete fence/math/table pass-through) + 1 E2E test (no React depth errors) + 2 visual baselines (gated on MARSYS_UPDATE_VISUALS)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 72/72 unit tests pass ✓
+  - closeUnclosedFences deleted; Streamdown handles unterminated blocks natively ✓
+  - remarkGfm/remarkMath/rehypeKatex plugins preserved ✓
+  - All custom component overrides (p, a, h1-h6, code, pre, table, etc.) unchanged ✓
+  - isAnimating={streaming} passed to Streamdown ✓
+  - Flag-off (legacy ConsumeChat) unaffected — MarkdownContent is internal ✓
+- **Blockers**: none
+- **Notes for Cowork**: streamdown@2.5.0 supports the full react-markdown API (components, remarkPlugins, rehypePlugins) so the swap is seamless. Visual baselines (2) require MARSYS_UPDATE_VISUALS=true + running dev server to capture; not committed as images. react-markdown dep kept in package.json in case other consumers exist (grep confirmed isolated to MarkdownContent only, but removal is safe for α3 cleanup if desired).
+
+---
 
 ### α1 — Test scaffolding
 - **Completed**: 2026-05-16 (Session 3)
@@ -127,12 +150,12 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After α1 (2026-05-16)
-- **Last completed**: α1 — Test scaffolding (commit 658b7fe)
-- **Next**: α2 — streamdown swap (replace react-markdown with streamdown)
+### After α2 (2026-05-16)
+- **Last completed**: α2 — streamdown swap (commit 12902b0)
+- **Next**: α3 — data parts emission from route
 - **State**: clean
-- **Reason for stop**: Session continuing to α2 (no hard gate discharged)
-- **For next executor session**: Begin α2 per CLAUDECODE_BRIEF.md §A.α2. Key context: streamdown may not be in npm — check first with `npm list streamdown`. If not installed, run `npm install streamdown`. The swap is in `platform/src/components/chat/MarkdownContent.tsx` + `StreamingMarkdown.tsx`. Grep for `react-markdown` usages outside MarkdownContent first to decide whether to remove or keep the dep.
+- **Reason for stop**: Continuing to α3
+- **For next executor session**: Begin α3 per CLAUDECODE_BRIEF.md §A.α3. Key context: create `platform/src/lib/streams/data_parts.ts` with Zod schemas for StagePart/ToolPart/CostPart/ObservabilityPart/CitationGatePart/PersistencePart. Then wire `dataStream.writeData(...)` calls into the consume route + single_model_strategy. Schema unit tests + 3 integration tests verifying the route emits expected data parts.
 
 ---
 
