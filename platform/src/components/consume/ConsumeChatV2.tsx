@@ -29,6 +29,7 @@ import type { CitationPart } from '@/lib/citations/citation_data_part'
 import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
 import { PanelConfidenceRibbon } from '../chat/PanelConfidenceRibbon'
 import { PanelDissentTabs } from '../chat/PanelDissentTabs'
+import { ReasoningProgress } from '../chat/ReasoningProgress'
 import type { PanelMemberPart, PanelMetaPart } from '@/lib/streams/data_parts'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
@@ -367,12 +368,9 @@ function V2Message() {
 
           <MessagePrimitive.Parts
             components={{
-              // F.2: props.text for reasoning (not props.reasoning)
-              Reasoning: (props) => (
-                <div className="rounded-lg border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-xs font-mono text-zinc-400 whitespace-pre-wrap">
-                  {props.text}
-                </div>
-              ),
+              // γ2: ReasoningProgress with live token count + elapsed timer + auto-collapse >2k tokens
+              // F.2: props.text is the accumulated reasoning text (flat prop, not props.reasoning)
+              Reasoning: (props) => <ReasoningProgress text={props.text} />,
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />

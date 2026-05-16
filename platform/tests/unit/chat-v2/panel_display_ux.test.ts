@@ -178,7 +178,7 @@ describe('extractPanelData', () => {
     expect((panelMembers[0] as { member_index: number }).member_index).toBe(0)
     expect((panelMembers[1] as { member_index: number }).member_index).toBe(1)
     expect((panelMembers[2] as { member_index: number }).member_index).toBe(2)
-    expect((panelMeta as { has_divergence: boolean }).has_divergence).toBe(true)
+    expect((panelMeta as unknown as { has_divergence: boolean }).has_divergence).toBe(true)
   })
 
   it('handles failed member alongside successful members', () => {
@@ -189,6 +189,6 @@ describe('extractPanelData', () => {
     ]
     const { panelMembers } = extractPanelData(parts)
     expect(panelMembers).toHaveLength(2)
-    expect((panelMembers[1] as { status: string }).status).toBe('failed')
+    expect((panelMembers[1] as unknown as { status: string }).status).toBe('failed')
   })
 })
