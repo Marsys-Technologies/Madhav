@@ -18,13 +18,13 @@ This document is updated by every Claude Code executor session. It is the canoni
 | α | 8 (α0-α7) | 8 | **complete** |
 | β | 10 (β1-β10) + exit gate | 11 | **complete** |
 | γ | 10 (γ1-γ10) + exit gate | 11 | **complete** |
-| Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **29** | **90.6%** |
+| Pre-merge | 3 (PM1-PM3) + exit | 4 | **complete** |
+| **Total** | **32** | **32** | **100%** ✓ |
 
-**Current work item**: PM1
-**Last commit**: milestone(chat-v2/γ) 95e21a8
-**Last session**: S14 (2026-05-16)
-**Sessions consumed**: 14
+**Current work item**: COMPLETE
+**Last commit**: PM3 (this session)
+**Last session**: PM (2026-05-16)
+**Sessions consumed**: ~15
 
 > *Metadata reconciliation note (Cowork, 2026-05-16):* S14 advanced brief frontmatter to `status: COMPLETE / completed_work_items: 32`. That was over-advanced — γ exit closes the implementation phases but PM1-PM3 (red-team, evidence pack, sealing artifact) remain. Frontmatter corrected to `status: ACTIVE / current_phase: pre_merge / current_work_item: PM1 / completed_work_items: 29`. This status table reconciled to match. The γ7/γ8/γ9/γ10 per-work-item entries are missing from the log below — the next executor session (PM1) should reconstruct them from commits 1efd876, 7bc5153, a6aeeba, 8f0dad6 before proceeding with PM1.
 
@@ -908,6 +908,85 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 ### Pre-merge phase begins (2026-05-16, current session)
 
 - **Last completed**: Phase γ exit gate (95e21a8) + γ7-γ10 governance backfill
-- **Next**: PM1 — Red-team pass (5 probes: P.1 prompt injection user input, P.2 prompt injection PDF, P.3 mid-stream 429 retry-after, P.4 auth bypass conversation routes, P.5 stream resume token forgery)
-- **State**: clean after backfill commit (32 test files, 389 unit tests passing)
-- **Reason for stop**: N/A — continuing to PM1
+- **Next**: §M manual intervention (native action required)
+- **State**: COMPLETE — PM3 committed; CLAUDECODE_BRIEF.md status: COMPLETE
+- **HARD STOP**: Workstream autonomous execution complete. 32/32 work items shipped. Native: open §M of CLAUDECODE_BRIEF.md for the manual intervention checklist.
+
+---
+
+## PM2 — Master gate evidence pack
+- **Completed**: 2026-05-16 (current session)
+- **Commit(s)**: 2760598
+- **Files touched**:
+  - `00_ARCHITECTURE/CHAT_V2_MASTER_GATE_EVIDENCE_v1_0.md` (new — 411 lines, all 28 criteria mapped)
+- **Tests added**: 0 (this is verification, not implementation)
+- **Acceptance criteria**: PASS
+  - All 28 §10 criteria mapped to evidence or DEFERRED-§M ✓
+  - No MASTER_GATE_GAP emitted ✓
+  - CI state documented: tsc 0 errors, 563/563 unit+synthesis tests pass ✓
+  - Criteria discharged with evidence: 3, 5, 7, 13, 15, 23, 27, 28 ✓
+  - Criteria partial-discharge + DEFERRED-§M: 1, 2, 4, 6, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20, 22, 26 ✓
+  - Criteria DEFERRED-§M only: 21, 24, 25 ✓
+- **Blockers**: none
+- **Notes for Cowork**: P.5 security fix (user_id in pending_streams) was the most significant finding. All §M deferrals are the documented manual items in CLAUDECODE_BRIEF.md §M (load tests, physical device, screen-reader, provider fixtures, GCS provisioning, migration application, native acceptance walkthrough, native sign-off).
+
+---
+
+## PM3 — Sealing artifact
+- **Completed**: 2026-05-16 (current session)
+- **Commit(s)**: pending (see below)
+- **Files touched**:
+  - `00_ARCHITECTURE/CHAT_V2_CLOSE_v1_0.md` (new — workstream sealing artifact)
+  - `CLAUDECODE_BRIEF.md` (frontmatter: status → COMPLETE, completed_work_items → 32, current_work_item → COMPLETE)
+  - `CHAT_V2_PROGRESS.md` (this file — final entries + workstream completion block)
+- **Tests added**: 0 (sealing artifact, not implementation)
+- **Acceptance criteria**: PASS
+  - CHAT_V2_CLOSE_v1_0.md authored per SESSION_CLOSE_TEMPLATE_v1_0.md schema ✓
+  - Workstream summary: 32 work items, 50 commits, 165 files, 22376 insertions, 2101 deletions ✓
+  - §M manual intervention checklist reproduced in sealing artifact §4 ✓
+  - Items deferred to v2 listed (§3) ✓
+  - closed_by: pending_native_signoff ✓
+  - CLAUDECODE_BRIEF.md frontmatter advanced: status COMPLETE, completed_work_items 32 ✓
+- **Blockers**: none
+- **Notes for Cowork**: Sealing artifact complete. Autonomous execution is over. Native must complete all §M items before merge.
+
+---
+
+## WORKSTREAM COMPLETE
+
+### Hard gates discharged ✓
+
+- [x] PM1 — red-team 5/5 PASS (159872b)
+- [x] PM2 — master gate evidence pack (2760598)
+- [x] PM3 — sealing artifact drafted (this commit)
+
+### Final status
+
+**32/32 work items shipped. Workstream autonomous execution complete. HALT.**
+
+Native: open `CLAUDECODE_BRIEF.md §M` for the manual intervention checklist. After §M items discharge, update `CHAT_V2_CLOSE_v1_0.md` `closed_by` field and merge `feature/chat-v2-bigbang` to `main`.
+
+---
+
+## PM1 — Red-team pass — 5/5 PROBES PASS
+- **Completed**: 2026-05-16 (current session)
+- **Commit(s)**: 159872b
+- **Files touched**:
+  - `00_ARCHITECTURE/CHAT_V2_RED_TEAM_v1_0.md` (new — red-team report, verdict 5/5 PASS)
+  - `platform/supabase/migrations/063_pending_streams.sql` (add user_id column — P.5 fix)
+  - `platform/src/lib/persistence/pending_streams_writer.ts` (accept + store userId — P.5 fix)
+  - `platform/src/app/api/chat/consume/route.ts` (pass user.uid to pending_streams_writer — P.5 fix)
+  - `platform/src/app/api/chat/consume/resume/route.ts` (add user_id=$2 ownership check — P.5 fix)
+  - `platform/tests/unit/chat-v2/stream_resume.test.ts` (update callers for new 3-arg signature)
+  - `platform/tests/unit/chat-v2/red_team.test.ts` (new — 15 probe tests, 5/5 PASS)
+- **Tests added**: 15 (5 probe groups × 2-4 tests each; all 15 pass)
+- **Acceptance criteria**: PASS
+  - P.1 PASS — Prompt injection user input: system prompt server-only; user content in user role only ✓
+  - P.2 PASS — Prompt injection PDF text: sanitizeFilename strips newlines; PDF text in user role ✓
+  - P.3 PASS — Mid-stream 429 Retry-After: providerQuirks maxRetries≥1; QG6.1 fallback fires; user-visible error ✓
+  - P.4 PASS — Auth bypass: 401 for anonymous; 404 for cross-user (information hiding) ✓
+  - P.5 PASS (after fix) — Stream resume token forgery: VULNERABILITY FIXED — user_id column + WHERE user_id=$2 check added ✓
+  - 563/563 unit tests pass (tests/unit/ + synthesis/__tests__/) ✓
+  - tsc --noEmit: 0 errors ✓
+- **Blockers**: none
+- **Notes for Cowork**: P.5 vulnerability was real and straightforward to fix. The pending_streams table lacked a user_id column entirely; the resume endpoint had no ownership check. Any authenticated user who knew another user's query_id UUID could read their partial synthesis output. Fix: user_id stored at write time; SELECT enforces user_id match. Migration 063 updated (NOT yet applied; §M.3).
