@@ -43,6 +43,34 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 ---
 
+## §M.15 — Flag flip executed + 7-day watch started
+
+- **Flipped**: 2026-05-16T14:29:43Z
+- **Revision**: amjis-web-00128-f9r
+- **PR**: #21 (squash-merged at 705beb3)
+- **Watch start**: 2026-05-16
+- **Watch end**: 2026-05-23
+- **§M.16 + §M.17 due**: 2026-05-23
+- **Status**: WATCH IN PROGRESS
+
+### Watch signals
+- p95 query latency on /api/chat/consume (Observatory dashboard)
+- 5xx error rate on /api/chat/consume + /api/conversations/*
+- Streaming completion rate
+- Per-query cost trends
+- User-reported issues
+
+### Rollback
+One-line PR flipping MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflows/deploy.yml → new Cloud Run revision auto-deploys with legacy path. Instant kill switch; no code revert needed.
+
+### Outstanding §M items
+- §M.4 — pending-streams-reaper Cloud Scheduler job (deferred; recommend within 24-48h)
+- §M.5 — chat-v2-synthetic-monitor (optional; defer or wire via existing alerting infra)
+- §M.16 — flag default flip + flag removal + ConsumeChatLegacy.tsx deletion (after clean 7-day watch)
+- §M.17 — CLAUDE.md §E mark as CLOSED (bundled with §M.16)
+
+---
+
 ## Active blockers
 
 (None at §M.3 completion.)
