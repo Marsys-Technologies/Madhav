@@ -16,15 +16,15 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 4 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓) |
+| β | 10 (β1-β10) | 5 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **11** | **34.4%** |
+| **Total** | **32** | **14** | **43.75%** |
 
-**Current work item**: β5
-**Last commit**: feat(chat-v2/β4) 6535c69
-**Last session**: S8 (2026-05-16)
-**Sessions consumed**: 8
+**Current work item**: β6
+**Last commit**: feat(chat-v2/β5) 912f9ae
+**Last session**: S9 (2026-05-16)
+**Sessions consumed**: 9
 
 ---
 
@@ -388,17 +388,55 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 ---
 
+### β5 — Multi-modal input (image + PDF)
+- **Completed**: 2026-05-16 (Session 9)
+- **Commit(s)**: 912f9ae
+- **Files touched**:
+  - `platform/src/lib/multimodal/upload_validator.ts` (new — MIME, size, magic-byte, filename sanitisation)
+  - `platform/src/lib/multimodal/pdf_extractor.ts` (new — fixture extractor + Vertex AI stub)
+  - `platform/src/lib/multimodal/fake_gcs_store.ts` (new — in-process dev store)
+  - `platform/src/app/api/uploads/sign/route.ts` (new — token issuer)
+  - `platform/src/app/api/uploads/store/[token]/route.ts` (new — PUT store + GET retrieve)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (AttachmentCtx + useAttachmentManager + AttachmentStrip + file picker in V2Composer)
+  - `platform/src/app/api/chat/consume/route.ts` (resolveAttachments + attachment_parts wiring)
+  - `platform/src/lib/synthesis/types.ts` (attachment_parts optional field on SynthesisRequest)
+  - `platform/src/lib/synthesis/single_model_strategy.ts` (user content array when attachment_parts present)
+  - `platform/tests/unit/chat-v2/upload_validator.test.ts` (new — 25 tests)
+  - `platform/tests/unit/chat-v2/multimodal_routes.test.ts` (new — 9 tests)
+  - `platform/tests/unit/chat-v2/multimodal_ui.test.ts` (new — 17 tests)
+- **Tests added**: 51 (25 security/validator + 9 fake-gcs + 4 pdf-extractor + 13 UI/contract)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 145/145 unit/chat-v2 tests pass (was 94 before β5) ✓
+  - 51 new tests all green ✓
+  - XSS filename, path traversal, polyglot, magic-byte all blocked ✓
+  - SVG/HTML/JS/ZIP MIME types blocked ✓
+  - Upload flow: sign → store → token → resolve → attachment_parts ✓
+  - Images pass as base64 data-URL parts to synthesis ✓
+  - PDFs pass as fixture text (Vertex AI stub) ✓
+  - Composer: attach button, drag-drop, paste-from-clipboard, strip preview ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **MANUAL_INTERVENTION_REQUIRED**:
+  - §M.1: Provision real GCS buckets (marsys-chat-uploads-{env}); set GCS_BUCKET_NAME + GOOGLE_APPLICATION_CREDENTIALS to activate signed URL path
+  - §M.PDF: Set GOOGLE_CLOUD_PROJECT + GOOGLE_APPLICATION_CREDENTIALS for Vertex AI Document Understanding (PDF full extraction; marked TODO(γ) in pdf_extractor.ts)
+- **Notes for Cowork**: Migration 056_chat_uploads.sql NOT created — the brief's pre-flight check confirms no DB migration is needed for upload tokens (signed URL + in-memory fake-gcs; no rows persisted). The fake_gcs_store module is a Map in the Node.js process — data survives hot-reloads but not process restarts. For β6 proceed with per-message metadata reveal.
+
+---
+
 ## RESUME_HERE
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After β4 (2026-05-16, S8)
-- **Last completed**: β4 — Inline numbered citations + side panel
-- **Next**: β5 — Multi-modal input (image + PDF)
-- **State**: clean (after β4 commit)
-- **For next executor session**: Begin β5 per CLAUDECODE_BRIEF.md §B β5 scope
-  - β1 follows β2 so it can use the schema
-  - VISUAL BASELINES DEFERRED: before γ exit, run `MARSYS_UPDATE_VISUALS=true npx playwright test` against running dev server
+### After β5 (2026-05-16, S9)
+- **Last completed**: β5 — Multi-modal input (image + PDF)
+- **Next**: β6 — Per-message metadata reveal
+- **State**: clean (after β5 commit 912f9ae)
+- **For next executor session**: Begin β6 per CLAUDECODE_BRIEF.md §B β6 scope
+  - Create PerMessageDetailsDrawer.tsx
+  - Wire into ConsumeChatV2.tsx via message action menu "Show details"
+  - Use messageMetadata from onFinish callback as data source
+  - Fields: model, tokens, latency, validators, disclosure tier, citation count, cost, panel members, observability trace link
 
 ---
 
