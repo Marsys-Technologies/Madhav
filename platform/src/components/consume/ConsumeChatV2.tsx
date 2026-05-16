@@ -790,7 +790,12 @@ function V2Composer() {
   }
 
   return (
-    <div ref={containerRef} onDrop={handleDrop} onDragOver={handleDragOver}>
+    <div
+      ref={containerRef}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       <ComposerPrimitive.Root
         className="border-t border-zinc-800 bg-zinc-950 px-4 py-3"
         data-testid="v2-composer"
@@ -823,7 +828,7 @@ function V2Composer() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="flex h-11 w-11 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
             title="Attach image or PDF"
             aria-label="Attach image or PDF file"
             data-testid="v2-attach-btn"
@@ -834,7 +839,7 @@ function V2Composer() {
           </button>
 
           <ComposerPrimitive.Input
-            className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
+            className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base md:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
             placeholder="Ask about the chart…"
             rows={3}
             data-testid="v2-composer-input"
@@ -848,7 +853,7 @@ function V2Composer() {
                 <ComposerPrimitive.Cancel asChild>
                   <button
                     type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
+                    className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
                     title="Stop generation"
                     aria-label="Stop generating response"
                     data-testid="v2-abort-btn"
@@ -861,7 +866,7 @@ function V2Composer() {
                 <button
                   type="button"
                   onClick={handleInterruptSend}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 text-white hover:bg-indigo-600 transition-colors"
+                  className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-indigo-700 text-white hover:bg-indigo-600 transition-colors"
                   title="Cancel and send new query"
                   aria-label="Cancel current response and send new query"
                   data-testid="v2-interrupt-send-btn"
@@ -875,7 +880,7 @@ function V2Composer() {
               <ComposerPrimitive.Send asChild>
                 <button
                   type="submit"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+                  className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
                   aria-label="Send message"
                   data-testid="v2-send-btn"
                 >
@@ -1074,31 +1079,64 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   return (
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
     <div
-      className="flex h-screen bg-zinc-950 text-zinc-100"
+      className="relative flex h-dvh bg-zinc-950 text-zinc-100"
       data-testid="consume-chat-v2-root"
     >
-      <ConversationSidebar
-        chartId={chartId}
-        activeId={activeConversationId}
-        onSelect={handleSelectConversation}
-        onNew={handleNewConversation}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((c) => !c)}
-      />
+      {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
+      {!sidebarCollapsed && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          onClick={() => setSidebarCollapsed(true)}
+          aria-hidden="true"
+          data-testid="v2-mobile-sidebar-backdrop"
+        />
+      )}
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      {/* Sidebar wrapper:
+          collapsed=true  → hidden on mobile (md: shows the w-10 strip)
+          collapsed=false → fixed overlay on mobile (md: in-flow) */}
+      <div
+        className={
+          sidebarCollapsed
+            ? 'hidden md:flex'
+            : 'fixed inset-y-0 left-0 z-40 flex md:relative md:inset-auto'
+        }
+      >
+        <ConversationSidebar
+          chartId={chartId}
+          activeId={activeConversationId}
+          onSelect={handleSelectConversation}
+          onNew={handleNewConversation}
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((c) => !c)}
+        />
+      </div>
+
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <header
-          className="flex items-center gap-3 border-b border-zinc-800 px-6 py-3 shrink-0"
+          className="flex items-center gap-3 border-b border-zinc-800 px-4 md:px-6 py-3 shrink-0"
           data-testid="v2-header"
         >
+          {/* Mobile-only hamburger to open sidebar */}
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(false)}
+            className="flex md:hidden h-8 w-8 min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            aria-label="Open conversations"
+            data-testid="v2-mobile-sidebar-open"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+              <path d="M2 4h12M2 8h7M2 12h9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+            </svg>
+          </button>
           <span className="text-xs font-mono text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded border border-violet-400/20">
             V2
           </span>
-          <h1 className="text-sm font-semibold text-zinc-100" data-testid="v2-chart-name">
+          <h1 className="text-sm font-semibold text-zinc-100 truncate" data-testid="v2-chart-name">
             {chartName}
           </h1>
           {chartMeta && (
-            <span className="text-xs text-zinc-500" data-testid="v2-chart-meta">
+            <span className="hidden sm:block text-xs text-zinc-500 truncate" data-testid="v2-chart-meta">
               {chartMeta}
             </span>
           )}

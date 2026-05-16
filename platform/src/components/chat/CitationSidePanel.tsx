@@ -20,7 +20,12 @@ export function CitationSidePanel({ citations, pinned, onUnpin }: CitationSidePa
 
   return (
     <aside
-      className="flex w-64 shrink-0 flex-col gap-2 border-l border-zinc-800 bg-zinc-950 p-3"
+      className="
+        fixed bottom-0 inset-x-0 z-30 max-h-[45vh] overflow-y-auto
+        md:static md:max-h-none md:w-64 md:shrink-0 md:overflow-y-auto
+        flex flex-col gap-2
+        border-t md:border-t-0 md:border-l border-zinc-800 bg-zinc-950 p-3
+      "
       data-testid="v2-citation-panel"
       aria-label="Pinned citations"
     >

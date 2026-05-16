@@ -37,9 +37,15 @@ export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProg
   const isLong = tokenCount >= COLLAPSE_THRESHOLD
 
   // Collapsed state: starts expanded if short, starts collapsed if long.
-  // Once the stream ends and the text is long, collapse if still at default.
+  // On mobile viewports (<768px), defaults to collapsed regardless of length.
   const [collapsed, setCollapsed] = useState(false)
   const hasAutoCollapsed = useRef(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setCollapsed(true)
+    }
+  }, [])
   const wasStreaming = useRef(isStreaming)
 
   // Auto-collapse at end of stream if text is long (only fires once)
