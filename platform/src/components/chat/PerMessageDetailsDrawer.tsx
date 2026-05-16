@@ -98,6 +98,13 @@ export function PerMessageDetailsDrawer({
   )
   const gate = gateEntry?.data as { status?: string; issues?: string[] } | undefined
 
+  // γ5: observability data part carries query_id (primary source); fall back to metadata.custom.queryId
+  const obsEntry = dataParts.find(
+    (d): d is { type: 'data-observability'; data: Record<string, unknown> } =>
+      typeof d === 'object' && d !== null && (d as Record<string, unknown>).type === 'data-observability',
+  )
+  const obsQueryId = (obsEntry?.data as { query_id?: string } | undefined)?.query_id
+
   // ── Format helpers ────────────────────────────────────────────────────────
   const fmt = (n: number | undefined) => n != null ? n.toLocaleString() : '—'
   const fmtMs = (n: number | undefined) => n != null ? `${n.toLocaleString()} ms` : '—'
@@ -106,7 +113,7 @@ export function PerMessageDetailsDrawer({
   const totalTokens =
     (cost?.input_tokens ?? 0) + (cost?.output_tokens ?? 0)
 
-  const queryId = meta.queryId as string | undefined
+  const queryId = obsQueryId ?? (meta.queryId as string | undefined)
   const traceUrl = queryId ? `/observatory/trace/${queryId}` : null
 
   return (
@@ -217,7 +224,6 @@ export function PerMessageDetailsDrawer({
                   >
                     View trace →
                   </a>
-                  <span className="ml-2 text-[10px] text-zinc-600">(γ5 — Observatory)</span>
                 </div>
               ) : null}
             </Section>
