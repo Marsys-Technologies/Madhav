@@ -695,16 +695,84 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 ---
 
+## γ4 — Validator failure surface
+- **Completed**: 2026-05-16 (Session 13)
+- **Commit(s)**: dce23f7
+- **Files touched**:
+  - `platform/src/components/chat/ValidatorFailureBand.tsx` (new — hard-fail red band)
+  - `platform/src/components/chat/ValidatorFooterChip.tsx` (new — soft-fail amber chip)
+  - `platform/src/components/chat/__tests__/ValidatorFailureSurface.test.tsx` (new — 12 component tests)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (wired ValidatorFailureBand + ValidatorFooterChip)
+  - `platform/tests/unit/chat-v2/validator_failure_surface.test.ts` (new — 20 unit tests)
+  - `platform/tests/e2e/chat-v2/validator_failure_surface.spec.ts` (new — 5 E2E specs, skip-gated)
+- **Tests added**: 32 (20 unit + 12 component); E2E spec skipped until MARSYS_FIXTURE_MODE available
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - Hard-fail (status=fail) → ValidatorFailureBand above message body ✓
+  - Soft-fail (status=warn) → ValidatorFooterChip below message body ✓
+  - Both "Details" buttons open PerMessageDetailsDrawer ✓
+  - Disclosure tier: super_admin sees full issue list; others see generic summary ✓
+  - 287/287 chat-v2 unit tests pass ✓
+- **Blockers**: none
+- **Notes for Cowork**: Visual baselines for the two new components deferred to §M
+  (DEFERRED-§M pattern). E2E spec is present but skipped until fixture provider records
+  are available (also §M). Both components fully covered by component tests.
+
+---
+
+## γ5 — Observability deep-link
+- **Completed**: 2026-05-16 (Session 13)
+- **Commit(s)**: a73f61a (included in γ6 commit b64a493)
+- **Files touched**:
+  - `platform/src/components/chat/PerMessageDetailsDrawer.tsx` (reads query_id from data-observability part; fallback to metadata.custom.queryId; removed γ5-stub comment)
+  - `platform/tests/unit/chat-v2/observability_deeplink.test.ts` (new — 14 tests)
+- **Tests added**: 14 unit tests
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - query_id read from data-observability data part (primary, α3) ✓
+  - Fallback to metadata.custom.queryId ✓
+  - Link opens /observatory/trace/[query_id] in new tab ✓
+  - "View trace →" link present with data-testid ✓
+- **Blockers**: none
+- **Notes for Cowork**: E2E skipped until MARSYS_FIXTURE_MODE available. The Observatory route at /observatory/trace/[query_id] is assumed to exist from Phase O.
+
+---
+
+## γ6 — Per-message cost visibility
+- **Completed**: 2026-05-16 (Session 13)
+- **Commit(s)**: b64a493
+- **Files touched**:
+  - `platform/src/lib/config/feature_flags.ts` (added COST_VISIBILITY_FOR_USERS flag, default false)
+  - `platform/src/components/consume/ConsumeChatLegacy.tsx` (added costVisibilityEnabled prop to ConsumeChatProps)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (added CostVisibilityCtx + provider; reads flag from prop; V2Message reads context; passes to drawer)
+  - `platform/src/components/chat/PerMessageDetailsDrawer.tsx` (added costVisible prop; showCost gate; isSuperAdmin from disclosure_tier)
+  - `platform/src/app/clients/[id]/consume/page.tsx` (reads COST_VISIBILITY_FOR_USERS flag; passes to ConsumeChat)
+  - `platform/src/app/clients/[id]/consume/[conversationId]/page.tsx` (same)
+  - `platform/tests/unit/chat-v2/cost_visibility.test.ts` (new — 13 tests)
+- **Tests added**: 13 unit tests
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - super_admin always sees cost (isSuperAdmin=true → showCost=true regardless of flag) ✓
+  - Non-admin sees cost only when COST_VISIBILITY_FOR_USERS=true ✓
+  - COST_VISIBILITY_FOR_USERS defaults to false in DEFAULT_FLAGS ✓
+  - CostVisibilityCtx threads flag without prop-drilling through message tree ✓
+  - 314/314 chat-v2 unit tests pass ✓
+- **Blockers**: none
+- **Notes for Cowork**: Flag default false — flip MARSYS_FLAG_COST_VISIBILITY_FOR_USERS=true in env to expose cost to all users.
+
+---
+
 ## RESUME_HERE
 <!-- Executor writes this block when stopping mid-flight. -->
 
-### After γ3 (2026-05-16, S12) — 3 work items completed this session
+### After γ6 (2026-05-16, S13) — 3 work items completed this session (γ4, γ5, γ6)
 
-- **Last completed**: γ3 — prediction logging affordance (PPL chat surface)
-- **Next**: γ4 — validator failure surface (ValidatorFailureBand.tsx + ValidatorFooterChip.tsx)
-- **State**: clean (267/267 chat-v2 unit tests passing; all 20 test files pass)
+- **Last completed**: γ6 — per-message cost visibility
+- **Next**: γ7 — stream resume after disconnect (heaviest γ item)
+- **State**: clean (314 unit tests passing; 23 test files)
 - **Reason for stop**: 3 work items completed this session (§S stop condition)
-- **γ4 context**: β10 emits citation_gate data parts as `data-citation-gate` in message.metadata.unstable_data.
-  PerMessageDetailsDrawer already reads and displays them. γ4 just needs to create the inline
-  red band (hard-fail) + footer chip (soft-fail) in the message body, both linking to the β6 drawer.
-  Disclosure tier: super_admin sees full validator output in drawer; others see chip only.
+- **γ7 context**: Create migration 057_pending_streams.sql (NOT apply). Debounced writer
+  (100ms) to pending_streams on every chunk. Resume endpoint GET /api/chat/consume/resume?query_id=&since_seq=.
+  Client uses sessionStorage to remember query_id + last_event_seq. On reconnect, calls
+  resume endpoint and replays suffix as UIMessage stream. Chaos tests: clean disconnect,
+  dirty disconnect, network partition.
