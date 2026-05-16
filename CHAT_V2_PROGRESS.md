@@ -36,15 +36,16 @@ This document is updated by every Claude Code executor session. It is the canoni
 - [x] Phase α exit gate — **DISCHARGED 2026-05-16** (unit:93, component:16, integration:11, E2E:34; visual:DEFERRED)
 - [x] Phase β exit gate — **DISCHARGED 2026-05-16** (unit:234, component:130+, integration:522, E2E:27+, visual spec:59 authored)
 - [x] Phase γ exit gate — **DISCHARGED 2026-05-16** (commit 95e21a8; 389/389 unit tests green; tsc clean; γ10 regression check: `grep streamBuildRaw|legacy_runAdapter platform/src` → 0 results)
-- [ ] PM1 — red-team 5/5 PASS
-- [ ] PM2 — master gate evidence pack
-- [ ] PM3 — sealing artifact drafted
+- [x] PM1 — red-team 5/5 PASS (**DISCHARGED 2026-05-16**, `CHAT_V2_RED_TEAM_v1_0.md`)
+- [x] PM2 — master gate evidence pack (**DISCHARGED 2026-05-16**, `CHAT_V2_MASTER_GATE_EVIDENCE_v1_0.md`)
+- [x] PM3 — sealing artifact drafted (**DISCHARGED 2026-05-16**, `CHAT_V2_CLOSE_v1_0.md`, awaiting native signoff)
+- [x] §M.3 — migrations applied (Docker-local + production via Cloud SQL Auth Proxy, 2026-05-16T09:35Z)
 
 ---
 
 ## Active blockers
 
-(None at branch cut.)
+(None at §M.3 completion.)
 
 ---
 
@@ -990,3 +991,23 @@ Native: open `CLAUDECODE_BRIEF.md §M` for the manual intervention checklist. Af
   - tsc --noEmit: 0 errors ✓
 - **Blockers**: none
 - **Notes for Cowork**: P.5 vulnerability was real and straightforward to fix. The pending_streams table lacked a user_id column entirely; the resume endpoint had no ownership check. Any authenticated user who knew another user's query_id UUID could read their partial synthesis output. Fix: user_id stored at write time; SELECT enforces user_id match. Migration 063 updated (NOT yet applied; §M.3).
+
+---
+
+### §M.3 — Docker-local verification + production apply (2026-05-16T09:40Z)
+- **Completed**: 2026-05-16T09:40+05:30
+- **Commit(s)**: b1f535b (runbook), + post-verification commit pending
+- **Files touched**:
+  - `00_ARCHITECTURE/CHAT_V2_MIGRATION_RUNBOOK.md` (authored + §6 sign-off populated)
+  - `platform/supabase/migrations/_local_baseline_stub.sql` (Docker-local test scaffold — NOT committed to migration history)
+- **Migrations applied**:
+  - 061_conversations_v2.sql — PROD APPLIED (conversation_messages created, trigger active, conversations extended)
+  - 062_predictions.sql — PROD APPLIED (adapted: query_trace_steps FK + RLS removed; app-layer integrity)
+  - 063_pending_streams.sql — PROD APPLIED (P.5 fix: user_id NOT NULL confirmed on production)
+- **Deviations documented**:
+  1. RLS policies removed from conversation_messages + predictions — production Cloud SQL has no `auth` schema
+  2. predictions.query_id FK to query_trace_steps removed — query_trace_steps.query_id is not unique (multiple steps per query)
+  Both deviations consistent with production's existing app-layer-auth pattern (conversations table also has no RLS)
+- **Acceptance criteria**: PASS — all §4 verification queries green on both local Docker + production
+- **Blockers**: none — Phase B (post-migration verification) is discharged by this session's §2.D queries
+- **Notes for Cowork**: No staging environment exists (CHAT_V2_STAGING_INVESTIGATION.md). Docker Postgres 15 container used as local staging equivalent per operator Option A authorization. Runbook §6 updated with full sign-off and deviation notes.
