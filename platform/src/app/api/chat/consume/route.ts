@@ -7,7 +7,8 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, citationGatePart, persistencePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, citationGatePart, citationPart, persistencePart } from '@/lib/streams/data_parts'
+import { extractCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -982,6 +983,28 @@ export async function POST(request: Request) {
             }),
           })
         }
+        // β4: Emit citation data parts — scan the last assistant message for SIG.MSR.NNN.
+        const lastAssistantText = finalMessages
+          .filter(m => m.role === 'assistant')
+          .at(-1)
+          ?.parts
+          .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+          .map(p => p.text)
+          .join('') ?? ''
+        if (lastAssistantText) {
+          for (const c of extractCitations(lastAssistantText)) {
+            writer.write({
+              type: 'data-citation',
+              data: citationPart({
+                index: c.index,
+                signal_id: c.signal_id,
+                layer: c.layer,
+                snippet: c.snippet,
+              }),
+            })
+          }
+        }
+
         if (isFirstTurn && !gateIIITitle) {
           // Gate III: only runs if eager pre-stream title generation failed.
           generateConversationTitle(finalMessages, {

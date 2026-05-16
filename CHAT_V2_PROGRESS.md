@@ -16,13 +16,13 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 3 | in progress (β2 ✓, β1 ✓, β3 ✓) |
+| β | 10 (β1-β10) | 4 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **10** | **31.3%** |
+| **Total** | **32** | **11** | **34.4%** |
 
-**Current work item**: β4
-**Last commit**: feat(chat-v2/β3) (pending)
+**Current work item**: β5
+**Last commit**: feat(chat-v2/β4) (pending)
 **Last session**: S8 (2026-05-16)
 **Sessions consumed**: 8
 
@@ -327,9 +327,37 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 ---
 
-### β3 — Mid-stream interrupt semantics (cancel-and-replace)
+### β4 — Inline numbered citations + side panel
 - **Completed**: 2026-05-16 (Session 8)
 - **Commit(s)**: pending
+- **Files touched**:
+  - `platform/src/lib/citations/citation_data_part.ts` (new — CitationPart schema, extractCitations, buildCitationIndex)
+  - `platform/src/lib/synthesis/prompts/synthesis_prompt_v2.ts` (new — forked prompt with citation appendix)
+  - `platform/src/lib/streams/data_parts.ts` (CitationPartSchema + citationPart helper added to union)
+  - `platform/src/app/api/chat/consume/route.ts` (import extractCitations + emit data-citation parts in onFinish)
+  - `platform/src/components/chat/NumberedCitation.tsx` (new — inline [N] badge + hover tooltip)
+  - `platform/src/components/chat/CitationSidePanel.tsx` (new — pinned citations panel)
+  - `platform/src/components/trace/step_detail/RetrievalDetail.tsx` (added 'cancelled' to status color map)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (CitationCtx, V2AssistantText renderer, CitationSidePanel wiring)
+  - `platform/tests/unit/chat-v2/citation_ui.test.ts` (new — 14 tests)
+- **Tests added**: 14 (3 extractCitations unit, 2 buildCitationIndex unit, 6 structural UI, 2 route audit, 2 data_parts audit)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 94/94 unit/chat-v2 tests pass ✓
+  - NumberedCitation: [N] badge with v2-citation-badge, hover tooltip (v2-citation-tooltip), onPin callback ✓
+  - CitationSidePanel: v2-citation-panel, v2-citation-panel-item, v2-citation-unpin ✓
+  - ConsumeChatV2: CitationCtx context, V2AssistantText replaces inline Text renderer ✓
+  - Route: emits data-citation parts in onFinish for each unique SIG.MSR.NNN ✓
+  - extractCitations: deduplicates, preserves order, guards against 4-digit sequences ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: The citation index is built from text at render time in V2AssistantText (no external data part needed for numbering — rendering is self-contained). Pinned citations are stored in V2ChatRuntime state as CitationPart objects. The CitationSidePanel receives only the pinned subset. synthesis_prompt_v2.ts explicitly tells the model to keep using SIG.MSR.NNN format (not [^N]) so the citation gate check remains valid.
+
+---
+
+### β3 — Mid-stream interrupt semantics (cancel-and-replace)
+- **Completed**: 2026-05-16 (Session 8)
+- **Commit(s)**: 35d5c44
 - **Files touched**:
   - `platform/src/lib/trace/types.ts` (`'cancelled'` added to `StepStatus` union)
   - `platform/src/app/api/chat/consume/route.ts` (abort sentinel — writes cancelled trace step when client disconnects)
@@ -364,11 +392,11 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After β3 (2026-05-16, S8)
-- **Last completed**: β3 — Mid-stream interrupt semantics
-- **Next**: β4 — Inline numbered citations + side panel
-- **State**: clean (after β3 commit)
-- **For next executor session**: Begin β4 per CLAUDECODE_BRIEF.md §B β4 scope
+### After β4 (2026-05-16, S8)
+- **Last completed**: β4 — Inline numbered citations + side panel
+- **Next**: β5 — Multi-modal input (image + PDF)
+- **State**: clean (after β4 commit)
+- **For next executor session**: Begin β5 per CLAUDECODE_BRIEF.md §B β5 scope
   - β1 follows β2 so it can use the schema
   - VISUAL BASELINES DEFERRED: before γ exit, run `MARSYS_UPDATE_VISUALS=true npx playwright test` against running dev server
 

@@ -84,6 +84,18 @@ export const CitationGatePartSchema = z.object({
 
 export type CitationGatePart = z.infer<typeof CitationGatePartSchema>
 
+// ── Citation part (β4) ────────────────────────────────────────────────────
+
+export const CitationPartSchema = z.object({
+  type: z.literal('citation'),
+  index: z.number().int().positive(),
+  signal_id: z.string(),
+  layer: z.enum(['L1', 'L2.5']).default('L2.5'),
+  snippet: z.string().default(''),
+})
+
+export type CitationPart = z.infer<typeof CitationPartSchema>
+
 // ── Persistence part ──────────────────────────────────────────────────────
 
 export const PersistencePartSchema = z.object({
@@ -103,6 +115,7 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   CostPartSchema,
   ObservabilityPartSchema,
   CitationGatePartSchema,
+  CitationPartSchema,
   PersistencePartSchema,
 ])
 
@@ -134,6 +147,11 @@ export const observabilityPart = (args: Omit<ObservabilityPart, 'type'>): Observ
 
 export const citationGatePart = (args: Omit<CitationGatePart, 'type'>): CitationGatePart => ({
   type: 'citation_gate',
+  ...args,
+})
+
+export const citationPart = (args: Omit<CitationPart, 'type'>): CitationPart => ({
+  type: 'citation',
   ...args,
 })
 

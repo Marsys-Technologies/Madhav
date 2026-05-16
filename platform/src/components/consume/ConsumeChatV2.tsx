@@ -7,7 +7,7 @@
  * Flag gate: only rendered when MARSYS_FLAG_CHAT_V2_ENABLED=true.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
@@ -21,6 +21,9 @@ import {
   useThreadRuntime,
 } from '@assistant-ui/react'
 import type { ConsumeChatProps } from './ConsumeChatLegacy'
+import { NumberedCitation } from '../chat/NumberedCitation'
+import { CitationSidePanel } from '../chat/CitationSidePanel'
+import type { CitationPart } from '@/lib/citations/citation_data_part'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,6 +188,49 @@ function V2BranchPicker() {
   )
 }
 
+// ─── Citation context ─────────────────────────────────────────────────────────
+
+interface CitationContextValue {
+  onPin: (n: number, signalId: string) => void
+}
+const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
+
+function renderWithCitations(
+  text: string,
+  onPin: (n: number, signalId: string) => void,
+): (string | React.ReactElement)[] {
+  const pattern = /SIG\.MSR\.\d{3}(?!\d)/g
+  const parts: (string | React.ReactElement)[] = []
+  const seen: string[] = []
+  function getN(id: string): number {
+    const i = seen.indexOf(id)
+    if (i >= 0) return i + 1
+    seen.push(id)
+    return seen.length
+  }
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
+    const sigId = match[0]
+    const n = getN(sigId)
+    parts.push(<NumberedCitation key={`${sigId}-${match.index}`} n={n} signalId={sigId} onPin={onPin} />)
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+  return parts
+}
+
+function V2AssistantText({ text }: { text: string }) {
+  const { onPin } = useContext(CitationCtx)
+  const rendered = useMemo(() => renderWithCitations(text, onPin), [text, onPin])
+  return (
+    <p className="whitespace-pre-wrap font-sans text-sm text-zinc-200 leading-relaxed" data-testid="v2-message-text">
+      {rendered}
+    </p>
+  )
+}
+
 // ─── Message ─────────────────────────────────────────────────────────────────
 
 function V2Message() {
@@ -239,14 +285,7 @@ function V2Message() {
                   {props.text}
                 </div>
               ),
-              Text: (props) => (
-                <p
-                  className="whitespace-pre-wrap font-sans text-sm text-zinc-200 leading-relaxed"
-                  data-testid="v2-message-text"
-                >
-                  {props.text}
-                </p>
-              ),
+              Text: V2AssistantText,
             }}
           />
 
@@ -539,6 +578,23 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
+  // β4: Pinned citations state — list of CitationPart objects that have been pinned by the user.
+  const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
+  const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
+
+  const handlePin = useCallback((n: number, signalId: string) => {
+    setPinnedCitations(prev => {
+      if (prev.some(c => c.index === n)) return prev
+      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer: 'L2.5' as const, snippet: '' }]
+    })
+  }, [])
+
+  const handleUnpin = useCallback((n: number) => {
+    setPinnedCitations(prev => prev.filter(c => c.index !== n))
+  }, [])
+
+  const citationCtxValue = useMemo(() => ({ onPin: handlePin }), [handlePin])
+
   const runtime = useChatRuntime({
     transport: new DefaultChatTransport({
       api: '/api/chat/consume',
@@ -551,8 +607,17 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
   })
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <V2Thread />
-    </AssistantRuntimeProvider>
+    <CitationCtx.Provider value={citationCtxValue}>
+      <AssistantRuntimeProvider runtime={runtime}>
+        <div className="flex h-full overflow-hidden">
+          <V2Thread />
+          <CitationSidePanel
+            citations={pinnedCitations}
+            pinned={pinnedSet}
+            onUnpin={handleUnpin}
+          />
+        </div>
+      </AssistantRuntimeProvider>
+    </CitationCtx.Provider>
   )
 }
