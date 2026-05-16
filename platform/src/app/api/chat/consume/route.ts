@@ -305,6 +305,12 @@ export async function POST(request: Request) {
   let stepSeq = 0
   const nextSeq = () => ++stepSeq
 
+  // Inject user_id into every trace step so /api/predictions ownership check works (O4 fix).
+  const emit = (event: Parameters<typeof traceEmitter.emitStep>[0]) => {
+    if (event.step) event.step.user_id = user.uid
+    traceEmitter.emitStep(event)
+  }
+
   const plannerStartedAt = Date.now()
   let plan: PipelinePlan
   try {
@@ -313,7 +319,7 @@ export async function POST(request: Request) {
       plannerHistory,
       plannerModelId,
       chartId,
-      (event) => traceEmitter.emitStep(event),
+      emit,
       preAllocatedQueryId,
       plannerFallbackModelId,
     )
@@ -348,7 +354,7 @@ export async function POST(request: Request) {
 
   // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.
   request.signal.addEventListener('abort', () => {
-    traceEmitter.emitStep({
+    emit({
       event: 'step_done',
       query_id: queryId,
       step: {
@@ -517,7 +523,7 @@ export async function POST(request: Request) {
 
   // Step 1 — emit plan trace step (step_name 'classify' preserved for trace UI compat)
   const classifyStart = plannerStartedAt
-  traceEmitter.emitStep({
+  emit({
     event: 'step_done',
     query_id: queryId,
     step: {
@@ -559,7 +565,7 @@ export async function POST(request: Request) {
   const bundle = await hydrateBundle(plan, manifest)
   const composeBundleMs = Date.now() - composeStart
   // Step 2 — hydrate bundle
-  traceEmitter.emitStep({
+  emit({
     event: 'step_done',
     query_id: queryId,
     step: {
@@ -589,7 +595,7 @@ export async function POST(request: Request) {
   const toolSeqs: number[] = toolsAuthorized.map(() => nextSeq())
   // Steps 3…N — emit 'running' for all tools simultaneously (they fire in parallel)
   toolsAuthorized.forEach((toolName: string, idx: number) => {
-    traceEmitter.emitStep({
+    emit({
       event: 'step_start',
       query_id: queryId,
       step: {
@@ -615,7 +621,7 @@ export async function POST(request: Request) {
       const toolStart = Date.now()
       try {
         const result = await executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName))
-        traceEmitter.emitStep({
+        emit({
           event: 'step_done',
           query_id: queryId,
           step: {
@@ -636,7 +642,7 @@ export async function POST(request: Request) {
         toolEventLog.push({ name: toolName, status: 'done', ms: Date.now() - toolStart, ok_count: result.results.length, err_count: 0 })
         return result
       } catch (err) {
-        traceEmitter.emitStep({
+        emit({
           event: 'step_error',
           query_id: queryId,
           step: {
@@ -686,7 +692,7 @@ export async function POST(request: Request) {
   const contextAssemblySeq = nextSeq()
   const synthesisSeq = nextSeq()
   const synthesisStart = Date.now()
-  traceEmitter.emitStep({
+  emit({
     event: 'step_start',
     query_id: queryId,
     step: {
@@ -951,7 +957,7 @@ export async function POST(request: Request) {
         }
 
         if (citationValidation.gateResult === 'WARN') {
-          traceEmitter.emitStep({
+          emit({
             event: 'step_done',
             query_id: queryId,
             step: {
@@ -1011,7 +1017,7 @@ export async function POST(request: Request) {
             `[consume:v2] citation_gate_l2 HARD_BLOCK (non-throwing) ` +
             `query_id=${queryId} reason="${citationValidation.gateReason}"`
           )
-          traceEmitter.emitStep({
+          emit({
             event: 'step_done',
             query_id: queryId,
             step: {
@@ -1034,7 +1040,7 @@ export async function POST(request: Request) {
       }
 
       // Emit trace done sentinel so SSE endpoint closes the stream
-      traceEmitter.emitStep({ event: 'done', query_id: queryId })
+      emit({ event: 'done', query_id: queryId })
       try {
         // Write-through persistence: upsert all messages into conversation_messages.
         const writeResult = await writeConversationMessages({
