@@ -14,13 +14,14 @@ import type { TraceStep, TraceHistoryRow } from './types'
 export async function writeTraceStep(step: TraceStep): Promise<void> {
   await query(
     `INSERT INTO public.query_trace_steps
-       (query_id, conversation_id, step_seq, step_name, step_type, status,
+       (query_id, conversation_id, user_id, step_seq, step_name, step_type, status,
         started_at, completed_at, latency_ms, parallel_group, data_summary, payload)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb)
      ON CONFLICT DO NOTHING`,
     [
       step.query_id,
       step.conversation_id ?? null,
+      step.user_id ?? null,
       step.step_seq,
       step.step_name,
       step.step_type,

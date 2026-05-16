@@ -153,6 +153,7 @@ export interface TracePayload {
 export interface TraceStep {
   query_id: string
   conversation_id?: string
+  user_id?: string
   step_seq: number
   step_name: string
   step_type: StepType
