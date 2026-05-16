@@ -15,16 +15,16 @@ This document is updated by every Claude Code executor session. It is the canoni
 | Phase | Items | Completed | Status |
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
-| α | 8 (α0-α7) | 4 | in progress |
+| α | 8 (α0-α7) | 6 | in progress |
 | β | 10 (β1-β10) | 0 | not started |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **6** | **18.75%** |
+| **Total** | **32** | **8** | **25%** |
 
-**Current work item**: α5
-**Last commit**: 5ed1522 (α4)
-**Last session**: S5 (2026-05-16)
-**Sessions consumed**: 5
+**Current work item**: α7
+**Last commit**: 15fe278 (α6)
+**Last session**: S6 (2026-05-16)
+**Sessions consumed**: 6
 
 ---
 
@@ -49,6 +49,49 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Per-work-item log
 
 <!-- Executor appends entries below this line. Most recent at bottom. Use the format from CLAUDECODE_BRIEF.md §C. -->
+
+### α6 — Feature-flag reconciliation
+- **Completed**: 2026-05-16 (Session 5)
+- **Commit(s)**: 15fe278
+- **Files touched**:
+  - `platform/src/lib/config/feature_flags.ts` (flipped ADAPTERS_ENABLED + CONSUME_UI_V2_ENABLED to true; added CHAT_V2_ENABLED default false)
+  - `.github/workflows/deploy.yml` (added MARSYS_FLAG_CHAT_V2_ENABLED=false)
+  - `platform/.env.local.example` (documented new flag)
+  - `00_ARCHITECTURE/CHAT_V2_FLAG_RECONCILIATION_v1_0.md` (new — audit trail for the divergence fix)
+  - `platform/tests/unit/chat-v2/feature_flags.test.ts` (new — 4 unit tests)
+- **Tests added**: 4 unit tests (new flag exists, defaults correct, env override works, all flags type-safe)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 228/228 unit tests pass ✓
+  - ADAPTERS_ENABLED + CONSUME_UI_V2_ENABLED defaults now true (matching prod deploy.yml) ✓
+  - CHAT_V2_ENABLED default false (dark-launched until phase α exit) ✓
+  - deploy.yml has MARSYS_FLAG_CHAT_V2_ENABLED=false ✓
+  - FLAG_RECONCILIATION audit doc created ✓
+- **Blockers**: none
+- **Notes for Cowork**: Both ADAPTERS_ENABLED and CONSUME_UI_V2_ENABLED were default false in feature_flags.ts but true in deploy.yml (production). Local dev was diverged from prod. α6 flips the defaults to match prod, so local npm run dev now behaves identically to production for these flags.
+
+---
+
+### α5 — Retry policy right-sized
+- **Completed**: 2026-05-16 (Session 5)
+- **Commit(s)**: da0d702
+- **Files touched**:
+  - `platform/src/lib/synthesis/provider_quirks.ts` (new — per-provider retry table)
+  - `platform/src/lib/synthesis/single_model_strategy.ts` (replace maxRetries:0 with getMaxRetries(provider))
+  - `platform/src/lib/synthesis/__tests__/provider_quirks.test.ts` (new — 6 unit tests)
+  - `platform/src/lib/synthesis/__tests__/retry_policy.test.ts` (new — 8 chaos/wiring tests)
+- **Tests added**: 6 unit tests (table completeness, nvidia=0, retrying providers≥1) + 8 chaos tests (transient 503, persistent 503→fallback, 4xx not retried)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 224/224 unit + synthesis tests pass ✓
+  - anthropic/google/openai/deepseek: maxRetries=1; nvidia/nim: maxRetries=0 ✓
+  - Chaos: transient 503 retried once then succeeds ✓
+  - Chaos: persistent 503 retried once then QG6.1 fallback fires ✓
+  - Chaos: 4xx NOT retried (single attempt only) ✓
+- **Blockers**: none
+- **Notes for Cowork**: NIM adapter has its own retry logic in the adapter layer, so maxRetries=0 at the SDK level is intentional. All other providers benefit from 1 SDK-level retry before the QG6.1 fallback mechanism fires.
+
+---
 
 ### α4 — UIMessage end-to-end
 - **Completed**: 2026-05-16 (Session 5)
@@ -191,12 +234,12 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After α4 (2026-05-16)
-- **Last completed**: α4 — UIMessage end-to-end (commit 5ed1522)
-- **Next**: α5 — Retry policy right-sized
-- **State**: clean
-- **Reason for stop**: Continuing to α5
-- **For next executor session**: Begin α5 per CLAUDECODE_BRIEF.md §A.α5. Create `platform/src/lib/synthesis/provider_quirks.ts` with per-provider retry table; replace `maxRetries: 0` in single_model_strategy.ts with provider-aware value; add tests.
+### After α6 (2026-05-16, S6)
+- **Last completed**: α6 — Feature-flag reconciliation (commit 15fe278)
+- **Next**: α7 — Master flag wiring
+- **State**: clean (after this tracker commit)
+- **Reason for stop**: Resuming — executing α7 this session
+- **For next executor session**: α7 complete; run Phase α exit gate. Check cumulative test counts (unit ≥80, component ≥15, integration ≥10, E2E ≥10, visual ≥20). Commit milestone. HARD STOP for native review.
 
 ---
 
