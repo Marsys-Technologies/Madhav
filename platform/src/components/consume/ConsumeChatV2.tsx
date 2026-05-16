@@ -16,6 +16,8 @@ import {
   ThreadPrimitive,
   MessagePrimitive,
   ComposerPrimitive,
+  ActionBarPrimitive,
+  BranchPickerPrimitive,
   useThreadRuntime,
 } from '@assistant-ui/react'
 import type { ConsumeChatProps } from './ConsumeChatLegacy'
@@ -147,6 +149,42 @@ function ConversationSidebar({
   )
 }
 
+// ─── Branch picker (inline navigation between alternates) ────────────────────
+
+function V2BranchPicker() {
+  return (
+    <BranchPickerPrimitive.Root
+      hideWhenSingleBranch
+      className="flex items-center gap-1 text-xs text-zinc-500"
+      data-testid="v2-branch-picker"
+    >
+      <BranchPickerPrimitive.Previous asChild>
+        <button
+          type="button"
+          className="h-5 w-5 flex items-center justify-center rounded hover:bg-zinc-800 hover:text-zinc-300 transition-colors disabled:opacity-30"
+          title="Previous branch"
+          data-testid="v2-branch-prev"
+        >
+          ‹
+        </button>
+      </BranchPickerPrimitive.Previous>
+      <span>
+        <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
+      </span>
+      <BranchPickerPrimitive.Next asChild>
+        <button
+          type="button"
+          className="h-5 w-5 flex items-center justify-center rounded hover:bg-zinc-800 hover:text-zinc-300 transition-colors disabled:opacity-30"
+          title="Next branch"
+          data-testid="v2-branch-next"
+        >
+          ›
+        </button>
+      </BranchPickerPrimitive.Next>
+    </BranchPickerPrimitive.Root>
+  )
+}
+
 // ─── Message ─────────────────────────────────────────────────────────────────
 
 function V2Message() {
@@ -156,13 +194,37 @@ function V2Message() {
       data-testid="v2-message"
     >
       <MessagePrimitive.If user>
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-1">
           <div
             className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm text-white max-w-[70%]"
             data-testid="v2-user-message"
           >
             {/* F.2: flat props — renderer receives {text,...} directly, not a nested part object */}
             <MessagePrimitive.Parts components={{ Text: (props) => <span>{props.text}</span> }} />
+          </div>
+
+          {/* Edit action + branch picker for user messages */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <V2BranchPicker />
+            <ActionBarPrimitive.Root
+              hideWhenRunning
+              autohide="not-last"
+              className="flex gap-1"
+              data-testid="v2-user-action-bar"
+            >
+              <ActionBarPrimitive.Edit asChild>
+                <button
+                  type="button"
+                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  title="Edit message"
+                  data-testid="v2-edit-btn"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                    <path d="M11.5 2.5a1.414 1.414 0 0 1 2 2L5 13H2v-3L11.5 2.5z" />
+                  </svg>
+                </button>
+              </ActionBarPrimitive.Edit>
+            </ActionBarPrimitive.Root>
           </div>
         </div>
       </MessagePrimitive.If>
@@ -187,6 +249,44 @@ function V2Message() {
               ),
             }}
           />
+
+          {/* Reload (regenerate) action + branch picker for assistant messages */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <V2BranchPicker />
+            <ActionBarPrimitive.Root
+              hideWhenRunning
+              autohide="not-last"
+              className="flex gap-1"
+              data-testid="v2-assistant-action-bar"
+            >
+              <ActionBarPrimitive.Reload asChild>
+                <button
+                  type="button"
+                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  title="Regenerate response"
+                  data-testid="v2-regenerate-btn"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
+                    <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
+                    <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </ActionBarPrimitive.Reload>
+              <ActionBarPrimitive.Copy asChild>
+                <button
+                  type="button"
+                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  title="Copy response"
+                  data-testid="v2-copy-btn"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                    <rect x="5" y="5" width="8" height="9" rx="1" />
+                    <path d="M3 2h7a1 1 0 0 1 1 1v1H3V2z" />
+                  </svg>
+                </button>
+              </ActionBarPrimitive.Copy>
+            </ActionBarPrimitive.Root>
+          </div>
         </div>
       </MessagePrimitive.If>
     </MessagePrimitive.Root>

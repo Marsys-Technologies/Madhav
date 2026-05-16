@@ -16,15 +16,15 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 0 | not started |
+| β | 10 (β1-β10) | 1 | in progress (β2 ✓) |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
 | **Total** | **32** | **9** | **28.1%** |
 
 **Current work item**: β1
-**Last commit**: milestone(chat-v2/α) (phase alpha complete)
-**Last session**: S6 (2026-05-16)
-**Sessions consumed**: 6
+**Last commit**: feat(chat-v2/β2) 5670755
+**Last session**: S7 (2026-05-16)
+**Sessions consumed**: 7
 
 ---
 
@@ -269,6 +269,37 @@ This document is updated by every Claude Code executor session. It is the canoni
   - npm run chat-v2:test script added ✓
 - **Blockers**: none
 - **Notes for Cowork**: PA1 complete. All fixture placeholders marked `_fixture_status: TODO-record` or `scaffold`. Real fixtures to be recorded in §M manual intervention.
+
+---
+
+### β2 — Conversation persistence with write-through + restore + list
+- **Completed**: 2026-05-16 (Session 7)
+- **Commit(s)**: 5670755
+- **Files touched**:
+  - `platform/supabase/migrations/061_conversations_v2.sql` (new — adds updated_at/archived_at to conversations; creates conversation_messages with parent_message_id)
+  - `platform/src/lib/persistence/conversation_writer.ts` (new — write-through, read-after-write, restore, archive)
+  - `platform/src/app/api/conversations/route.ts` (POST added; GET gains includeArchived param)
+  - `platform/src/app/api/conversations/[id]/route.ts` (DELETE changed to soft-delete)
+  - `platform/src/app/api/conversations/[id]/messages/route.ts` (new — restore endpoint)
+  - `platform/src/lib/conversations.ts` (archived_at column, updated_at in queries, includeArchived filter)
+  - `platform/src/app/api/chat/consume/route.ts` (write-through replaces fire-and-forget; persistence data part emitted)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (sidebar + restore + V2ChatRuntime isolate)
+  - `platform/tests/unit/chat-v2/conversation_writer.test.ts` (new — 9 unit tests)
+  - `platform/tests/unit/chat-v2/persistence_routes.test.ts` (new — 9 integration tests)
+- **Tests added**: 18 (9 unit + 9 integration); all pre-existing failures unchanged (15 pre-existing)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 2464/2479 tests pass (18 new β2 tests; 15 pre-existing failures unchanged) ✓
+  - Migration created (NOT applied — §M manual intervention) ✓
+  - Write-through with read-after-write verification ✓
+  - Soft-delete (archived_at) replaces hard DELETE ✓
+  - ConsumeChatV2 sidebar with conversation list, select, new, collapse ✓
+  - Restore on conversation select via /api/conversations/[id]/messages ✓
+  - persistence data part emitted (ok/error) from consume route ✓
+  - parent_message_id column in migration (β1 schema dependency met) ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: Migration 061 uses `gen_random_uuid()` (requires pgcrypto on Postgres <13; on >=13 it's built-in). The `conversation_messages` table includes RLS policy gated on `conversations.user_id = auth.uid()::text`. Migration uses `UPSERT ON CONFLICT (id)` for idempotency on reconnect/retry. writer.merge data-part emission works because writer is still open when onFinish fires (execute hasn't returned yet). Re-order note: β2 executed before β1; brief frontmatter now shows β1 as next.
 
 ---
 
