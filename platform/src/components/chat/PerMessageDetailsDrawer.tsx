@@ -12,7 +12,7 @@
  *   - prop: citationCount (passed from the V2AssistantText renderer)
  */
 
-import { useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 import { useMessage } from '@assistant-ui/react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,12 +42,15 @@ interface PerMessageDetailsDrawerProps {
   open: boolean
   onClose: () => void
   citationCount?: number
+  /** γ6: show cost section for non-admin users. Super-admin always sees cost. */
+  costVisible?: boolean
 }
 
 export function PerMessageDetailsDrawer({
   open,
   onClose,
   citationCount,
+  costVisible = false,
 }: PerMessageDetailsDrawerProps) {
   const message = useMessage()
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -113,6 +116,9 @@ export function PerMessageDetailsDrawer({
   const totalTokens =
     (cost?.input_tokens ?? 0) + (cost?.output_tokens ?? 0)
 
+  const isSuperAdmin = (meta.disclosure_tier as string | undefined) === 'super_admin'
+  const showCost = isSuperAdmin || costVisible
+
   const queryId = obsQueryId ?? (meta.queryId as string | undefined)
   const traceUrl = queryId ? `/observatory/trace/${queryId}` : null
 
@@ -174,9 +180,11 @@ export function PerMessageDetailsDrawer({
             <MetaRow label="Planning" value={fmtMs(meta.planning_latency_ms as number)} />
           </Section>
 
-          <Section title="Cost">
-            <MetaRow label="USD" value={fmtUsd(cost?.dollars)} />
-          </Section>
+          {showCost && (
+            <Section title="Cost">
+              <MetaRow label="USD" value={fmtUsd(cost?.dollars)} />
+            </Section>
+          )}
 
           <Section title="Validators">
             <MetaRow

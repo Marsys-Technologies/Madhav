@@ -214,6 +214,10 @@ function V2BranchPicker() {
   )
 }
 
+// ─── Cost visibility context (γ6) ────────────────────────────────────────────
+
+const CostVisibilityCtx = createContext<boolean>(false)
+
 // ─── Citation context ─────────────────────────────────────────────────────────
 
 interface CitationContextValue {
@@ -313,6 +317,9 @@ function V2Message() {
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
+
+  // γ6: cost visibility from context (super_admin always sees cost regardless)
+  const costVisible = useContext(CostVisibilityCtx)
 
   // γ4: extract citation gate status from data parts
   const citationGate = useMemo(() => {
@@ -515,6 +522,7 @@ function V2Message() {
           open={detailsOpen}
           onClose={() => setDetailsOpen(false)}
           citationCount={citationCount}
+          costVisible={costVisible}
         />
 
         {/* γ3: prediction log modal */}
@@ -926,7 +934,7 @@ function V2Thread() {
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  * Accepts the same props as ConsumeChatLegacy for API compatibility.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
@@ -960,6 +968,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta }: ConsumeChatProp
   }, [])
 
   return (
+    <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
     <div
       className="flex h-screen bg-zinc-950 text-zinc-100"
       data-testid="consume-chat-v2-root"
@@ -1001,6 +1010,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta }: ConsumeChatProp
         </main>
       </div>
     </div>
+    </CostVisibilityCtx.Provider>
   )
 }
 

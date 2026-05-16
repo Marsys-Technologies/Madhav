@@ -55,6 +55,7 @@ export default async function ConsumeConversationPage({
   const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
   const consumeUiV2Enabled = configService.getFlag('CONSUME_UI_V2_ENABLED')
   const chatV2Enabled = configService.getFlag('CHAT_V2_ENABLED')
+  const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
   const audienceTier: AudienceTier = isSuperAdmin ? 'super_admin' : 'client'
 
   return (
@@ -76,6 +77,7 @@ export default async function ConsumeConversationPage({
       panelModeEnabled={panelModeEnabled}
       consumeUiV2Enabled={consumeUiV2Enabled}
       chatV2Enabled={chatV2Enabled}
+      costVisibilityEnabled={costVisibilityEnabled}
       audienceTier={audienceTier}
     />
   )

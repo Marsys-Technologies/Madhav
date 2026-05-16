@@ -90,6 +90,10 @@ export type FeatureFlag =
   // When ON, conversations > 32k estimated tokens have their oldest turns compressed
   // via a Haiku call before being passed to synthesis. Env: MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED.
   | 'HISTORY_COMPRESSION_ENABLED'
+  // γ6 — Per-message cost visibility for non-admin users. Default false.
+  // Super-admin always sees cost; this flag gates it for lower tiers.
+  // Env: MARSYS_FLAG_COST_VISIBILITY_FOR_USERS.
+  | 'COST_VISIBILITY_FOR_USERS'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -151,6 +155,8 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   CHAT_V2_ENABLED: false,
   // β8 — Sliding-window history summarization. Default false until γ exit gate.
   HISTORY_COMPRESSION_ENABLED: false,
+  // γ6 — Cost visibility for non-admin users. Default false.
+  COST_VISIBILITY_FOR_USERS: false,
 }
 
 // Numeric config keys (read via configService.getValue)
