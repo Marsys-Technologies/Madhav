@@ -961,11 +961,19 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 - [x] PM2 — master gate evidence pack (2760598)
 - [x] PM3 — sealing artifact drafted (this commit)
 
+### §M coordination discharged ✓ (2026-05-16)
+
+- [x] §M.3 — Migrations applied: Docker-local + production Cloud SQL (b1f535b + 282754f); deviations documented in `CHAT_V2_MIGRATION_RUNBOOK.md §6`
+- [x] §M.10 — Native acceptance walkthrough: PASS (Abhisek Mohanty, 2026-05-16); 11 areas PASS; criteria 4 + 6 discharged; artifact: `CHAT_V2_ACCEPTANCE_WALKTHROUGH_v1_0.md` (291ea3c)
+- [x] §M.11 — Playwright E2E run: 20/20 PASS (Chromium; 96 auth-gated skipped by design); artifact: `CHAT_V2_STAGING_E2E_REPORT.md` (36601dd)
+- [x] §M.12 — Sealing artifact signed by native (dc8db31): `closed_by: native (Abhisek Mohanty)`, `closed_at: 2026-05-16T11:00+05:30`
+- [x] §M.13 — PR created: **https://github.com/amonty84/Madhav/pull/20** — `feature/chat-v2-bigbang` → `main`
+
 ### Final status
 
-**32/32 work items shipped. Workstream autonomous execution complete. HALT.**
+**32/32 work items shipped. §M coordination complete. PR open. HALT at PR gate.**
 
-Native: open `CLAUDECODE_BRIEF.md §M` for the manual intervention checklist. After §M items discharge, update `CHAT_V2_CLOSE_v1_0.md` `closed_by` field and merge `feature/chat-v2-bigbang` to `main`.
+Native: PR is at https://github.com/amonty84/Madhav/pull/20. After CI green + final native review, merge per §M.14. Then follow §M.15–§M.17 post-merge sequence.
 
 ---
 
