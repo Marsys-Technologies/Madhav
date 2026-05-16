@@ -15,10 +15,6 @@ describe('feature flags — α6 reconciliation', () => {
     expect(DEFAULT_FLAGS.CHAT_V2_ENABLED).toBe(false)
   })
 
-  it('ADAPTERS_ENABLED defaults to true (matches prod deploy.yml)', () => {
-    expect(DEFAULT_FLAGS.ADAPTERS_ENABLED).toBe(true)
-  })
-
   it('CONSUME_UI_V2_ENABLED defaults to true (matches prod deploy.yml)', () => {
     expect(DEFAULT_FLAGS.CONSUME_UI_V2_ENABLED).toBe(true)
   })

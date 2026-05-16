@@ -68,7 +68,7 @@ describe('retry policy — table values', () => {
 describe('retry policy — streamText maxRetries wiring', () => {
   it('passes synthesisMaxRetries derived from provider quirks to streamText', async () => {
     // We test the logic directly: given a provider, what maxRetries does
-    // single_model_strategy compute and pass to streamBuildRaw?
+    // single_model_strategy compute and pass to streamText?
     // We verify it by reading from the quirks table (same as the strategy does).
     const providers: Provider[] = ['anthropic', 'google', 'openai', 'deepseek', 'nvidia']
     for (const p of providers) {

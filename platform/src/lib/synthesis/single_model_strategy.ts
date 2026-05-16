@@ -16,8 +16,7 @@
 
 import 'server-only'
 
-import { stepCountIs, smoothStream, tool } from 'ai'
-import { streamBuildRaw } from '@/lib/adapters'
+import { streamText, stepCountIs, smoothStream, tool } from 'ai'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceChunkItem } from '@/lib/trace/types'
 import type { ModelMessage, ToolSet } from 'ai'
@@ -429,7 +428,8 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // already pre-injected via FUB-2/FUB-3 — tools are unnecessary here.
     const synthesisTools = isThinkingModeSynthesis ? undefined : toolsForModel
 
-    const result = streamBuildRaw({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = streamText({
       model: resolveModel(selected_model_id),
       messages: modelMessages,
       tools: synthesisTools,
