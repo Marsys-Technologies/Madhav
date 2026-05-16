@@ -1135,3 +1135,47 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 - Files touched: platform/src/app/api/admin/cron/reap-pending-streams/route.ts, platform/tests/integration/chat-v2/pending_streams_reaper.test.ts
 - Tests added: 3 (pending_streams_reaper.test.ts — auth 401, delete + count, POST export)
 - Notes: Auth via MARSYS_CRON_SECRET bearer token. Returns { reaped: N }. Cloud Scheduler recipe in Operator follow-up section.
+
+### C.1 — Full Playwright run (Chromium)
+- Status: COMPLETE (executor-side; auth-gated tests pending operator MARSYS_SUPER_ADMIN_SESSION)
+- PR: (bundled in C.7)
+- Files touched: 00_ARCHITECTURE/CHAT_V2_STAGING_E2E_REPORT_v2_0.md (authored)
+- Results: Chromium 20 pass / 109 skip / 0 fail; Firefox 19/96/0; WebKit 19/96/0; mobile 19/96/0 each
+- Notes: v2.0 report supersedes §M.11 v1.0. Auth-gated run requires MARSYS_SUPER_ADMIN_SESSION (see report §6).
+
+### C.2 — Visual baselines
+- Status: DEFERRED
+- Reason: MARSYS_SUPER_ADMIN_SESSION unset; MARSYS_UPDATE_VISUALS=true requires auth for most tests.
+- Re-unblock: Set MARSYS_SUPER_ADMIN_SESSION, then run MARSYS_UPDATE_VISUALS=true playwright test __visuals__/ per CHAT_V2_STAGING_E2E_REPORT_v2_0.md §7.
+
+### C.3 — Cross-browser (Firefox + WebKit)
+- Status: COMPLETE
+- Results: Firefox 19/96/0; WebKit 19/96/0; no browser-specific failures.
+- Notes: Both browsers match Chromium behavior on non-auth tests. Auth-gated tests skip in all browsers by design.
+
+### C.4 — Lighthouse (conditional)
+- Status: DEFERRED
+- Reason: No staging-tagged Cloud Run revision reachable without gcloud creds.
+- Re-unblock: Set GOOGLE_APPLICATION_CREDENTIALS, verify amjis-web revision, run Lighthouse CI per remediation plan §6.C.4.
+
+### C.5 — Mobile profiles
+- Status: COMPLETE
+- Results: Mobile Safari 375 19/96/0; iPad Safari 768 19/96/0. No viewport-specific failures.
+
+### C.6 — Manual a11y (operator work)
+- Status: DEFERRED — operator action required
+- Artifact: 00_ARCHITECTURE/CHAT_V2_A11Y_REPORT_v2_0.md (§2 operator fill sections created)
+- Action: Fill NVDA + VoiceOver desktop + VoiceOver iOS sections in CHAT_V2_A11Y_REPORT_v2_0.md.
+
+### C.7 — Feature reachability spec (13 cases)
+- Status: COMPLETE (spec authored; 13/13 skip without auth — 0 failures; auth-gated run pending)
+- Commit: (see below)
+- PR: (see below)
+- Files touched: platform/tests/e2e/chat-v2/feature-reachability.spec.ts
+- Tests added: 13 E2E cases covering O1–O10 + regenerate + PPL + image + PDF
+- Notes: All 13 skip gracefully without MARSYS_SUPER_ADMIN_SESSION. Zero failures across Chromium/Firefox/WebKit/mobile.
+
+### C.8 — Acceptance walkthrough v2.0 (operator work)
+- Status: DEFERRED — operator action required
+- Artifact: 00_ARCHITECTURE/CHAT_V2_ACCEPTANCE_WALKTHROUGH_v2_0.md (verification matrix §3 created)
+- Action: Complete §3 matrix against each O1–O10 finding; sign off §4.
