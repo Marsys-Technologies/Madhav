@@ -14,6 +14,19 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: '.',
   globalSetup: './global-setup',
+  // Auto-start Next.js dev server when no server is already running.
+  // CI: always starts fresh (reuseExistingServer=false).
+  // Local: reuses operator's running server.
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    env: {
+      MARSYS_FIXTURE_MODE: 'true',
+      MARSYS_FLAG_CHAT_V2_ENABLED: 'true',
+    },
+  },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     screenshot: 'only-on-failure',
