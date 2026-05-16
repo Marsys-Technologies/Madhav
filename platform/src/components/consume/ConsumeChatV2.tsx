@@ -30,7 +30,8 @@ import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
 import { PanelConfidenceRibbon } from '../chat/PanelConfidenceRibbon'
 import { PanelDissentTabs } from '../chat/PanelDissentTabs'
 import { ReasoningProgress } from '../chat/ReasoningProgress'
-import type { PanelMemberPart, PanelMetaPart } from '@/lib/streams/data_parts'
+import { PredictionLogModal } from '../chat/PredictionLogModal'
+import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart } from '@/lib/streams/data_parts'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -300,6 +301,9 @@ function V2Message() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [citationCount, setCitationCount] = useState(0)
   const [showDissent, setShowDissent] = useState(false)
+  // γ3: prediction log modal state
+  const [predModalOpen, setPredModalOpen] = useState(false)
+  const [activePredCandidate, setActivePredCandidate] = useState<PredictionCandidatePart | null>(null)
 
   // γ1: panel data from message metadata
   const message = useMessage()
@@ -307,6 +311,18 @@ function V2Message() {
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
+
+  // γ3: extract prediction candidates from data parts
+  const predictionCandidates = useMemo(() => {
+    return dataParts
+      .filter(
+        (d): d is { type: string; data: PredictionCandidatePart } =>
+          typeof d === 'object' && d !== null &&
+          (d as Record<string, unknown>).type === 'data-prediction-candidate',
+      )
+      .map(d => d.data)
+      .sort((a, b) => b.score - a.score)
+  }, [dataParts])
 
   const handleCitationCount = useCallback((n: number) => {
     setCitationCount(n)
@@ -383,6 +399,33 @@ function V2Message() {
             />
           )}
 
+          {/* γ3: prediction candidate affordances (end-of-message, super_admin only) */}
+          {isSuperAdmin && predictionCandidates.length > 0 && (
+            <div
+              className="flex flex-wrap gap-2 pt-1"
+              data-testid="v2-prediction-candidates"
+            >
+              {predictionCandidates.slice(0, 3).map((candidate, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setActivePredCandidate(candidate)
+                    setPredModalOpen(true)
+                  }}
+                  className="flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-900/20 px-2.5 py-0.5 text-[10px] text-violet-300 hover:bg-violet-900/40 transition-colors"
+                  title={candidate.text}
+                  data-testid={`v2-log-prediction-${i}`}
+                >
+                  📋 Log as prediction
+                  {candidate.horizon && (
+                    <span className="opacity-70">{candidate.horizon}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
@@ -443,6 +486,21 @@ function V2Message() {
           onClose={() => setDetailsOpen(false)}
           citationCount={citationCount}
         />
+
+        {/* γ3: prediction log modal */}
+        {activePredCandidate && (
+          <PredictionLogModal
+            open={predModalOpen}
+            onClose={() => {
+              setPredModalOpen(false)
+              setActivePredCandidate(null)
+            }}
+            queryId={(meta.queryId as string) ?? ''}
+            conversationId={null}
+            predictionText={activePredCandidate.text}
+            horizon={activePredCandidate.horizon}
+          />
+        )}
       </MessagePrimitive.If>
     </MessagePrimitive.Root>
   )

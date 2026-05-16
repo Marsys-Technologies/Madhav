@@ -123,6 +123,20 @@ export const PanelMemberPartSchema = z.object({
 
 export type PanelMemberPart = z.infer<typeof PanelMemberPartSchema>
 
+// ── Prediction candidate part (γ3) ───────────────────────────────────────
+// Emitted in route's onFinish after regex detection runs. NOT inline with stream.
+// One part per candidate. Client renders "Log as prediction" affordance.
+
+export const PredictionCandidatePartSchema = z.object({
+  type: z.literal('prediction_candidate'),
+  text: z.string().min(1),
+  offset: z.number().int().nonnegative(),
+  score: z.number().min(0).max(1),
+  horizon: z.string().nullable(),
+})
+
+export type PredictionCandidatePart = z.infer<typeof PredictionCandidatePartSchema>
+
 // ── Panel meta part (γ1) ─────────────────────────────────────────────────
 // Single part carrying overall panel metadata for the confidence ribbon.
 
@@ -147,6 +161,7 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   PersistencePartSchema,
   PanelMemberPartSchema,
   PanelMetaPartSchema,
+  PredictionCandidatePartSchema,
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
@@ -187,6 +202,11 @@ export const citationPart = (args: Omit<CitationPart, 'type'>): CitationPart => 
 
 export const persistencePart = (args: Omit<PersistencePart, 'type'>): PersistencePart => ({
   type: 'persistence',
+  ...args,
+})
+
+export const predictionCandidatePart = (args: Omit<PredictionCandidatePart, 'type'>): PredictionCandidatePart => ({
+  type: 'prediction_candidate',
   ...args,
 })
 

@@ -7,7 +7,8 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, citationGatePart, citationPart, persistencePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart } from '@/lib/streams/data_parts'
+import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
@@ -1067,6 +1068,25 @@ export async function POST(request: Request) {
                 signal_id: c.signal_id,
                 layer: c.layer,
                 snippet: c.snippet,
+              }),
+            })
+          }
+        }
+
+        // γ3: PPL — detect time-indexed prediction candidates in the final answer.
+        // Runs sync (regex-only) in onFinish — does NOT block the user stream.
+        // Only emit candidates with score >= 0.5 (high-confidence regex hits).
+        if (lastAssistantText) {
+          const predictionCandidates = detectPredictionCandidates(lastAssistantText)
+            .filter(c => c.score >= 0.5)
+          for (const candidate of predictionCandidates) {
+            writer.write({
+              type: 'data-prediction-candidate',
+              data: predictionCandidatePart({
+                text: candidate.text,
+                offset: candidate.offset,
+                score: candidate.score,
+                horizon: candidate.horizon,
               }),
             })
           }
