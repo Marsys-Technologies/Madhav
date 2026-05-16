@@ -45,3 +45,9 @@ verification/
 
 # CI-staged governance files (copied from repo root during docker build; not committed)
 /00_ARCHITECTURE/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
