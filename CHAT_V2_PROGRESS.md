@@ -71,6 +71,26 @@ One-line PR flipping MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workfl
 
 ---
 
+### §M.15 — Worktree + branch cleanup complete (2026-05-16)
+
+- **Completed**: 2026-05-16
+- **Executed by**: Claude Code executor session (resumed from halted B.3 step)
+
+**Steps executed:**
+
+- **B.3-PRE** — Verified all porcelain entries in `/Users/Dev/Vibe-Coding/Apps/Madhav-chat-v2` were ` D` (unstaged-delete only). `sort -u` returned exactly `D` — no `M`, `A`, `??`, `R`, or `U` entries. No real uncommitted content.
+- **B.3** — `git worktree remove --force /Users/Dev/Vibe-Coding/Apps/Madhav-chat-v2` — succeeded. chat-v2 worktree directory and metadata entry removed.
+- **B.4** — `git branch -D feature/chat-v2-bigbang` — local branch deleted (was 9bacd90). Remote delete completed (branch already absent or auto-deleted by PR #20 merge).
+- **B.5** — `git worktree prune` — stale metadata pruned.
+- **B.6** — Positive verification: `git worktree list` shows exactly two entries — `main` (d83269c) and `marsys-m6-prospective` (22f64c6, `feature/m6-prospective-testing`). `git status --short` inside marsys-m6-prospective confirms 10 modified tracked files + 7+ untracked files intact. No accidental wipe.
+
+**Post-state:**
+- Worktree list: `main` + `marsys-m6-prospective` only. chat-v2 entry GONE. ✓
+- `feature/chat-v2-bigbang` branch: deleted locally and remotely. ✓
+- `marsys-m6-prospective` worktree: intact with expected working changes. ✓
+
+---
+
 ## Active blockers
 
 (None at §M.3 completion.)
