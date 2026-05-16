@@ -22,7 +22,7 @@ This document is updated by every Claude Code executor session. It is the canoni
 | **Total** | **32** | **11** | **34.4%** |
 
 **Current work item**: β5
-**Last commit**: feat(chat-v2/β4) (pending)
+**Last commit**: feat(chat-v2/β4) 6535c69
 **Last session**: S8 (2026-05-16)
 **Sessions consumed**: 8
 
@@ -329,7 +329,7 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 ### β4 — Inline numbered citations + side panel
 - **Completed**: 2026-05-16 (Session 8)
-- **Commit(s)**: pending
+- **Commit(s)**: 6535c69
 - **Files touched**:
   - `platform/src/lib/citations/citation_data_part.ts` (new — CitationPart schema, extractCitations, buildCitationIndex)
   - `platform/src/lib/synthesis/prompts/synthesis_prompt_v2.ts` (new — forked prompt with citation appendix)
