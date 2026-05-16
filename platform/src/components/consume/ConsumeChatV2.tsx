@@ -886,6 +886,52 @@ function V2Composer() {
   )
 }
 
+// ─── γ7: Stream-resume tracker ────────────────────────────────────────────────
+// Mounted inside AssistantRuntimeProvider so it can use useThreadRuntime().
+// Saves queryId + received char count to sessionStorage while a stream is live;
+// clears the entry when the stream ends normally.
+
+function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; conversationId: string | null }) {
+  const runtime = useThreadRuntime()
+  const conversationIdRef = useRef(conversationId)
+  conversationIdRef.current = conversationId
+
+  useEffect(() => {
+    const key = pendingStreamKey(chartId)
+    const unsub = runtime.subscribe(() => {
+      const state = runtime.getState()
+      const isRunning = state.isRunning
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lastMsg = (state as any).messages?.at?.(-1) as UIMessage | undefined
+
+      if (isRunning && lastMsg?.role === 'assistant') {
+        const meta = lastMsg.metadata as Record<string, unknown> | undefined
+        const custom = meta?.custom as Record<string, unknown> | undefined
+        const queryId = custom?.queryId as string | undefined
+        if (queryId) {
+          const text = lastMsg.parts
+            .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+            .map(p => p.text)
+            .join('')
+          const entry: PendingStreamEntry = {
+            queryId,
+            conversationId: conversationIdRef.current,
+            receivedChars: text.length,
+          }
+          try { sessionStorage.setItem(key, JSON.stringify(entry)) } catch { /* SSR/private */ }
+        }
+      }
+
+      if (!isRunning) {
+        try { sessionStorage.removeItem(key) } catch { /* SSR/private */ }
+      }
+    })
+    return unsub
+  }, [runtime, chartId])
+
+  return null
+}
+
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
 function V2Thread() {
@@ -942,6 +988,50 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
 
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
+
+  // γ7: On mount, check sessionStorage for an in-progress stream from a prior page load.
+  // If found, call the resume endpoint and restore the partial message.
+  useEffect(() => {
+    const key = pendingStreamKey(chartId)
+    let entry: PendingStreamEntry | null = null
+    try {
+      const raw = sessionStorage.getItem(key)
+      if (raw) entry = JSON.parse(raw) as PendingStreamEntry
+    } catch { /* SSR/private-mode */ }
+
+    if (!entry?.queryId) return
+
+    const { queryId, receivedChars } = entry
+    const params = new URLSearchParams({ query_id: queryId })
+    if (receivedChars > 0) params.set('since_chars', String(receivedChars))
+
+    fetch(`/api/chat/consume/resume?${params}`)
+      .then(async (r) => {
+        if (r.status === 404 || r.status === 204) {
+          // Stream completed + β2 persisted, or nothing to resume. Fall through
+          // to normal conversation restore. Clear the stale sessionStorage entry.
+          try { sessionStorage.removeItem(key) } catch { /* ok */ }
+          return
+        }
+        if (!r.ok) return
+        const data = await r.json() as { text: string; query_id: string }
+        if (!data.text) return
+        // Reconstruct the partial response as a UIMessage so the runtime renders it.
+        const recoveredMsg: UIMessage = {
+          id: `resumed-${data.query_id.slice(0, 8)}`,
+          role: 'assistant',
+          parts: [{ type: 'text', text: `${data.text}\n\n_(Stream interrupted — showing recovered partial response.)_` }],
+          metadata: { custom: { queryId: data.query_id, recovered: true } },
+        }
+        setInitialMessages([recoveredMsg])
+        setRestoredKey((k) => k + 1)
+        try { sessionStorage.removeItem(key) } catch { /* ok */ }
+      })
+      .catch(() => {
+        try { sessionStorage.removeItem(key) } catch { /* ok */ }
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartId]) // Mount only — chartId is stable within a page load
 
   // Restore conversation messages on conversation switch.
   const handleSelectConversation = useCallback(async (id: string) => {
@@ -1022,6 +1112,18 @@ interface V2ChatRuntimeProps {
   initialMessages: UIMessage[] | undefined
 }
 
+// ─── γ7: Session-storage key for stream-resume ───────────────────────────────
+
+function pendingStreamKey(chartId: string) {
+  return `v2_pending_${chartId}`
+}
+
+interface PendingStreamEntry {
+  queryId: string
+  conversationId: string | null
+  receivedChars: number
+}
+
 function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRuntimeProps) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
@@ -1074,10 +1176,13 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
     messages: initialMessages,
   })
 
+
   return (
     <CitationCtx.Provider value={citationCtxValue}>
       <AttachmentCtx.Provider value={attachmentManager}>
         <AssistantRuntimeProvider runtime={runtime}>
+          {/* γ7: track session-storage pending-stream entry for stream-resume */}
+          <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
           <div className="flex h-full overflow-hidden">
             <V2Thread />
             <CitationSidePanel

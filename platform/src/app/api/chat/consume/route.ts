@@ -20,6 +20,7 @@ import {
   updateConversationTitle,
 } from '@/lib/conversations'
 import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
+import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
 import { assembleProvenance, type ToolBundleLike } from '@/lib/consume/provenance_assembler'
 import type { ContextUsageEvent, ContextUsageMode, ProvenanceEvent } from '@/types/sse_events'
@@ -337,6 +338,13 @@ export async function POST(request: Request) {
   plan.planning_latency_ms = plannerLatencyMs
 
   const queryId = preAllocatedQueryId
+
+  // γ7: Create per-request pending stream writer for stream-resume.
+  // Only wired when CHAT_V2_ENABLED (the V2 runtime will read from sessionStorage).
+  const chatV2Enabled = configService.getFlag('CHAT_V2_ENABLED')
+  const pendingStreamWriter = chatV2Enabled
+    ? createPendingStreamWriter(queryId, finalConversationId)
+    : null
 
   // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.
   request.signal.addEventListener('abort', () => {
@@ -773,6 +781,8 @@ export async function POST(request: Request) {
     onValidatorResults: (r: ValidationResult[]) => { validatorResultsHolder.push(...r) },
     synthesis_guidance: plan.synthesis_guidance,
     abortSignal: request.signal,
+    // γ7: wire text-delta accumulator for stream-resume (pending_streams).
+    ...(pendingStreamWriter && { onTextDelta: (d: string) => pendingStreamWriter.onTextDelta(d) }),
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,
@@ -854,6 +864,9 @@ export async function POST(request: Request) {
       } else {
         writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
       }
+      // γ7: bump event seq for each pre-stream data-part block (stage/tool events).
+      // The seq is used by the resume endpoint to skip already-received events.
+      pendingStreamWriter?.onEvent()
       writer.merge(result.toUIMessageStream({
         originalMessages: messages,
         generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
@@ -1105,6 +1118,10 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[consume:v2] persistence failed', err)
       }
+      // γ7: Clear pending stream now that β2 persistence has written the full
+      // conversation. On next reload the client will restore from conversation_messages
+      // rather than pending_streams. Failure is non-fatal (TTL will expire the row).
+      if (pendingStreamWriter) { void pendingStreamWriter.clear() }
       if (!lelContextEnabled) {
         try {
           const fs = await import('fs/promises')

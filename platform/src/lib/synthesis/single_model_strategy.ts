@@ -102,6 +102,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       onAuditEvent,
       abortSignal,
       attachment_parts,
+      onTextDelta,
     } = request
 
     const started_at = new Date().toISOString()
@@ -445,6 +446,15 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
       ...(abortSignal && { abortSignal }),
       maxRetries: synthesisMaxRetries,
+      // γ7: accumulate text deltas for stream-resume (pending_streams table).
+      // onTextDelta is only wired when CHAT_V2_ENABLED=true (route.ts).
+      ...(onTextDelta && {
+        onChunk: ({ chunk }: { chunk: { type: string; textDelta?: string } }) => {
+          if (chunk.type === 'text-delta' && chunk.textDelta) {
+            onTextDelta(chunk.textDelta)
+          }
+        },
+      }),
       // Google-specific: disable safety filters (Jyotish content triggers
       // DANGEROUS_CONTENT mid-stream) + cap thinking budget (avoids 30-90s
       // hang before first visible token). See resolver.googleProviderOptions.
