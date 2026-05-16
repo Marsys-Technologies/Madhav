@@ -64,6 +64,7 @@ export const adapterGemini: Adapter = {
       onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
       onFinish: req.rawOnFinish as ((result: unknown) => Promise<void> | void) | undefined,
       ...(req.disableSdkRetry && { maxRetries: 0 }),
+      ...(req.abortSignal && { abortSignal: req.abortSignal }),
     }
   },
 
@@ -89,6 +90,7 @@ export const adapterGemini: Adapter = {
           let composing = false
 
           for await (const part of result.fullStream) {
+            if (req.abortSignal?.aborted) break
             if (part.type === 'text-delta') {
               if (!composing) {
                 controller.enqueue({ type: 'status', ts: ts(), status: 'composing' })

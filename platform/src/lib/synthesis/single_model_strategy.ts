@@ -16,8 +16,7 @@
 
 import 'server-only'
 
-import { stepCountIs, smoothStream, tool } from 'ai'
-import { streamBuildRaw } from '@/lib/adapters'
+import { streamText, stepCountIs, smoothStream, tool } from 'ai'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceChunkItem } from '@/lib/trace/types'
 import type { ModelMessage, ToolSet } from 'ai'
@@ -57,6 +56,8 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { checkB11Compliance } from './b11_guard'
+import { getMaxRetries } from './provider_quirks'
+import type { Provider } from '@/lib/models/registry'
 
 import type {
   SynthesisRequest,
@@ -99,6 +100,8 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       conversation_id,
       onAuditEvent,
       abortSignal,
+      attachment_parts,
+      onTextDelta,
     } = request
 
     const started_at = new Date().toISOString()
@@ -303,10 +306,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
 
     // All registry models use the standard calling convention: system message
     // + history + user turn. Prompt-caching header is added for Anthropic models.
-    const historyMessages: ModelMessage[] = conversation_history.map(m => ({
-      role: m.role,
-      content: m.content,
-    }))
+    const historyMessages: ModelMessage[] = conversation_history
 
     // ── B.11 Whole-Chart-Read guard ───────────────────────────────────────────
     // Check that the assembled context contains the required L2.5 layers before
@@ -347,10 +347,17 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
           content: renderedPrompt,
         }
 
+    // β5: when attachments are present, make the user content a parts array so
+    // image data is forwarded to providers that support vision (Anthropic, Google, OpenAI).
+    const userContent: string | Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType: string }> =
+      attachment_parts?.length
+        ? [{ type: 'text', text: query }, ...attachment_parts]
+        : query
+
     const modelMessages: ModelMessage[] = [
       systemMessage,
       ...historyMessages,
-      { role: 'user', content: query },
+      { role: 'user', content: userContent },
     ]
 
     const modelMeta = getModelMeta(selected_model_id)
@@ -407,12 +414,11 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
         ? 0
         : 0.3
 
-    // Synthesis retry guard — AI SDK retries failed requests up to 3 times by
-    // default (AI_RetryError). For synthesis, QG6.1 wires fallback at the route
-    // level; SDK-level retries only triple the hang window without benefit.
-    // Set maxRetries: 0 across all synthesis providers so failures surface
-    // immediately and the route-level fallback can activate.
-    // (Previously NIM-only; extended to all providers per QG7.2 fix.)
+    // Synthesis retry guard — bounded per-provider (α5 policy).
+    // NIM uses maxRetries: 0 (adapter has its own logic); all other providers
+    // allow 1 SDK-level retry on transient network/5xx before the route-level
+    // QG6.1 fallback activates. Persistent failures surface after 1 retry.
+    const synthesisMaxRetries = getMaxRetries((modelMeta?.provider ?? 'anthropic') as Provider)
     const isNvidiaSynthesis = modelMeta?.provider === 'nvidia'
 
     // DeepSeek V4 Pro thinking=enabled + tools + tool_choice:none is an
@@ -422,7 +428,8 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // already pre-injected via FUB-2/FUB-3 — tools are unnecessary here.
     const synthesisTools = isThinkingModeSynthesis ? undefined : toolsForModel
 
-    const result = streamBuildRaw({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = streamText({
       model: resolveModel(selected_model_id),
       messages: modelMessages,
       tools: synthesisTools,
@@ -438,7 +445,16 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       temperature: synthesisTemperature,
       experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
       ...(abortSignal && { abortSignal }),
-      maxRetries: 0,
+      maxRetries: synthesisMaxRetries,
+      // γ7: accumulate text deltas for stream-resume (pending_streams table).
+      // onTextDelta is only wired when CHAT_V2_ENABLED=true (route.ts).
+      ...(onTextDelta && {
+        onChunk: ({ chunk }: { chunk: { type: string; textDelta?: string } }) => {
+          if (chunk.type === 'text-delta' && chunk.textDelta) {
+            onTextDelta(chunk.textDelta)
+          }
+        },
+      }),
       // Google-specific: disable safety filters (Jyotish content triggers
       // DANGEROUS_CONTENT mid-stream) + cap thinking budget (avoids 30-90s
       // hang before first visible token). See resolver.googleProviderOptions.

@@ -24,9 +24,9 @@ const R1_REASONING_MIDDLEWARE = extractReasoningMiddleware({ tagName: 'think' })
  * The o-series convention (folded system prompt, no temperature, no streaming)
  * has been removed — o1/o3/o4-mini are no longer in the registry.
  *
- * @deprecated New code should use runAdapter / streamAdapter from \@/lib/adapters.
- * Provider resolution is now encapsulated inside the adapter layer.
- * Remaining call sites: legacy_runAdapter.ts, single_model_strategy.ts (streamBuildRaw path).
+ * Used by single_model_strategy.ts (synthesis) which assembles its own
+ * ModelMessage[] and calls streamText directly (not via the adapter layer,
+ * which expects a QueryRequest).
  */
 export function resolveModel(id: string): LanguageModel {
   const meta = getModelMeta(id)
@@ -89,8 +89,7 @@ export function resolveWorkerModel(synthesisModelId: string): string {
  * SDK note: @ai-sdk/deepseek ≥2.0.x exposes thinking via
  * providerOptions.deepseek.thinking.type ('enabled' | 'disabled').
  *
- * @deprecated Adapter layer (adapter_deepseek.ts) handles thinking-mode config
- * internally. Remaining call site: single_model_strategy.ts (streamBuildRaw path).
+ * Used by single_model_strategy.ts (synthesis) for direct streamText calls.
  */
 export function deepseekProviderOptions(
   modelId: string,
@@ -115,8 +114,7 @@ export function deepseekProviderOptions(
 /**
  * Google-specific safety + thinking config for streamText `providerOptions`.
  *
- * @deprecated Adapter layer (adapter_gemini.ts) handles safety + thinking config
- * internally. Remaining call site: single_model_strategy.ts (streamBuildRaw path).
+ * Used by single_model_strategy.ts (synthesis) for direct streamText calls.
  *
  * **Why this is necessary for MARSYS-JIS:**
  *

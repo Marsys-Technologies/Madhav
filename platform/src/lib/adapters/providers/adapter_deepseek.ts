@@ -47,6 +47,7 @@ export const adapterDeepseek: Adapter = {
       onStepFinish: req.onStepFinish as ((step: unknown) => Promise<void> | void) | undefined,
       onFinish: req.rawOnFinish as ((result: unknown) => Promise<void> | void) | undefined,
       ...(req.disableSdkRetry && { maxRetries: 0 }),
+      ...(req.abortSignal && { abortSignal: req.abortSignal }),
     }
   },
 
@@ -75,6 +76,7 @@ export const adapterDeepseek: Adapter = {
           let reasoning_unclosed = false
 
           for await (const part of result.fullStream) {
+            if (req.abortSignal?.aborted) break
             if (part.type === 'text-delta') {
               const out = buffer.feed(part.text)
               if (out.reasoning && meta.quirks.reasoning_via !== 'none') {

@@ -3,8 +3,13 @@ import {
   convertToModelMessages,
   createIdGenerator,
   smoothStream,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
+import { stagePart, toolPart, costPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart } from '@/lib/streams/data_parts'
+import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
+import { extractCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -12,9 +17,10 @@ import { consumeSystemPrompt, type ConsumeStyle } from '@/lib/claude/system-prom
 import {
   getConversation,
   insertConversationWithId,
-  replaceConversationMessages,
   updateConversationTitle,
 } from '@/lib/conversations'
+import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
+import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
 import { assembleProvenance, type ToolBundleLike } from '@/lib/consume/provenance_assembler'
 import type { ContextUsageEvent, ContextUsageMode, ProvenanceEvent } from '@/types/sse_events'
@@ -40,7 +46,8 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
-import { validateCitations } from '@/lib/synthesis/citation_check'
+import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
+import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
 import { createAuditConsumer } from '@/lib/audit/consumer'
 import { traceEmitter } from '@/lib/trace/emitter'
@@ -58,6 +65,8 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
+import { extractPdf } from '@/lib/multimodal/pdf_extractor'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
 
@@ -102,6 +111,12 @@ export const maxDuration = 120
 
 const ALLOWED_STYLES: ConsumeStyle[] = ['acharya', 'brief', 'client']
 
+interface AttachmentRef {
+  token: string
+  filename: string
+  contentType: string
+}
+
 interface RequestBody {
   chartId?: string
   conversationId?: string
@@ -113,6 +128,34 @@ interface RequestBody {
   style?: string
   panel_opt_in?: boolean
   lel_context_enabled?: boolean
+  /** β5: file attachment tokens from the upload flow */
+  attachments?: AttachmentRef[]
+}
+
+// β5: Resolve attachment tokens to ModelMessage-compatible parts.
+// Returns extra parts to append to the last user ModelMessage.
+async function resolveAttachments(
+  attachments: AttachmentRef[],
+): Promise<Array<{ type: 'image'; image: string; mimeType: string } | { type: 'text'; text: string }>> {
+  const parts: Array<{ type: 'image'; image: string; mimeType: string } | { type: 'text'; text: string }> = []
+
+  for (const att of attachments) {
+    const entry = fakeGcsRetrieve(att.token)
+    if (!entry) {
+      // Token expired or not found — silently skip (file already noted in client)
+      continue
+    }
+
+    if (att.contentType === 'application/pdf') {
+      const result = await extractPdf(att.filename, entry.bytes)
+      parts.push({ type: 'text', text: `[Attached PDF: ${att.filename}]\n\n${result.text}` })
+    } else if (att.contentType.startsWith('image/')) {
+      const base64 = entry.bytes.toString('base64')
+      parts.push({ type: 'image', image: `data:${att.contentType};base64,${base64}`, mimeType: att.contentType })
+    }
+  }
+
+  return parts
 }
 
 export async function POST(request: Request) {
@@ -229,7 +272,12 @@ export async function POST(request: Request) {
 
   try {
   const lastUserMessage = messages.filter(m => m.role === 'user').at(-1)
-  const queryText = extractText(lastUserMessage?.parts ?? [])
+  const queryText = (lastUserMessage?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
+
+  // β5: resolve attachment tokens → model-ready parts
+  const attachmentParts = body.attachments?.length
+    ? await resolveAttachments(body.attachments)
+    : []
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
 
@@ -242,7 +290,7 @@ export async function POST(request: Request) {
     .slice(-2)
     .map(m => ({
       role: m.role as 'user' | 'assistant',
-      content: extractText(m.parts ?? []),
+      content: (m.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim(),
     }))
     .filter(m => m.content.length > 0)
 
@@ -290,6 +338,34 @@ export async function POST(request: Request) {
   plan.planning_latency_ms = plannerLatencyMs
 
   const queryId = preAllocatedQueryId
+
+  // γ7: Create per-request pending stream writer for stream-resume.
+  // Only wired when CHAT_V2_ENABLED (the V2 runtime will read from sessionStorage).
+  const chatV2Enabled = configService.getFlag('CHAT_V2_ENABLED')
+  const pendingStreamWriter = chatV2Enabled
+    ? createPendingStreamWriter(queryId, finalConversationId, user.uid)
+    : null
+
+  // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.
+  request.signal.addEventListener('abort', () => {
+    traceEmitter.emitStep({
+      event: 'step_done',
+      query_id: queryId,
+      step: {
+        query_id: queryId,
+        conversation_id: finalConversationId ?? undefined,
+        step_seq: nextSeq(),
+        step_name: 'cancelled',
+        step_type: 'deterministic',
+        status: 'cancelled',
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        latency_ms: 0,
+        data_summary: {},
+        payload: {},
+      },
+    })
+  }, { once: true })
 
   // Budget arbitration — proportional trim p3 → p2 → p1 with floor on p1.
   const arbitrated = arbitrateBudgets(
@@ -481,6 +557,7 @@ export async function POST(request: Request) {
 
   const composeStart = Date.now()
   const bundle = await hydrateBundle(plan, manifest)
+  const composeBundleMs = Date.now() - composeStart
   // Step 2 — hydrate bundle
   traceEmitter.emitStep({
     event: 'step_done',
@@ -503,6 +580,8 @@ export async function POST(request: Request) {
   })
 
   const cache = createToolCache()
+  interface ToolEvent { name: string; status: 'done' | 'error'; ms: number; ok_count: number; err_count: number }
+  const toolEventLog: ToolEvent[] = []
   const toolFetchWallStart = Date.now()
   // UQE-9: pre-allocate one seq per tool BEFORE the parallel emissions so
   // the running event and the eventual done/error event for the same logical
@@ -530,6 +609,7 @@ export async function POST(request: Request) {
 
   const toolResults = await Promise.all(
     toolsAuthorized.map(async (toolName: string, idx: number) => {
+      if (request.signal.aborted) return null
       const t = getTool(toolName)
       if (!t) return null
       const toolStart = Date.now()
@@ -553,6 +633,7 @@ export async function POST(request: Request) {
             payload: buildToolPayload(toolName, result),
           },
         })
+        toolEventLog.push({ name: toolName, status: 'done', ms: Date.now() - toolStart, ok_count: result.results.length, err_count: 0 })
         return result
       } catch (err) {
         traceEmitter.emitStep({
@@ -573,11 +654,13 @@ export async function POST(request: Request) {
             payload: {},
           },
         })
+        toolEventLog.push({ name: toolName, status: 'error', ms: Date.now() - toolStart, ok_count: 0, err_count: 1 })
         return null
       }
     })
   )
   const validToolResults = toolResults.filter((r): r is NonNullable<typeof r> => r !== null)
+  const toolFetchMs = Date.now() - toolFetchWallStart
 
   const bundleValidations = await runAll(bundle, 'bundle', { query_plan: queryPlan, bundle, manifest_fingerprint: manifest.fingerprint })
   const bundleSummary = summarize(bundleValidations)
@@ -633,15 +716,29 @@ export async function POST(request: Request) {
   // 2 pairs = 4 prior messages; +1 to include current user message which is
   // then dropped below.
   const historyMessageCap = ptrUsedPairs * 2 + 1
-  const trimmedConversationHistory = messages
-    .filter(m => m.role === 'user' || m.role === 'assistant')
-    .slice(-historyMessageCap)
-    .slice(0, -1) // drop current user message (appended via `query`)
-    .map(m => ({
-      role: m.role as 'user' | 'assistant',
-      content: extractText(m.parts ?? []),
-    }))
-    .filter(m => m.content.length > 0)
+
+  // β8: when HISTORY_COMPRESSION_ENABLED, take the full prior history and let
+  // compressHistory decide whether to summarize based on the token budget.
+  // Flag OFF: use the existing planner-guided hard cap (unchanged behavior).
+  let trimmedConversationHistory: import('ai').ModelMessage[]
+  if (configService.getFlag('HISTORY_COMPRESSION_ENABLED')) {
+    const allPriorMessages = await convertToModelMessages(
+      messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(0, -1), // drop current user message
+    )
+    trimmedConversationHistory = await compressHistory(
+      allPriorMessages,
+      finalConversationId,
+    )
+  } else {
+    trimmedConversationHistory = await convertToModelMessages(
+      messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-historyMessageCap)
+        .slice(0, -1), // drop current user message (appended via `query`)
+    )
+  }
 
   const contextUsageMeta: ContextUsageEvent = ptr
     ? {
@@ -678,10 +775,14 @@ export async function POST(request: Request) {
     panel_opt_in: panelOptIn,
     context_assembly_seq: contextAssemblySeq,
     synthesis_seq: synthesisSeq,
+    // β5: resolved attachment parts (images as base64 data URLs, PDFs as text)
+    ...(attachmentParts.length > 0 ? { attachment_parts: attachmentParts } : {}),
     // BUG-2: callback fires from single_model_strategy onFinish before onAuditEvent.
     onValidatorResults: (r: ValidationResult[]) => { validatorResultsHolder.push(...r) },
     synthesis_guidance: plan.synthesis_guidance,
     abortSignal: request.signal,
+    // γ7: wire text-delta accumulator for stream-resume (pending_streams).
+    ...(pendingStreamWriter && { onTextDelta: (d: string) => pendingStreamWriter.onTextDelta(d) }),
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,
@@ -692,7 +793,7 @@ export async function POST(request: Request) {
       disclosure_tier: audienceTier,
     }),
   }
-  let { result, methodologyBlockHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+  let { result, methodologyBlockHolder, panelStageEvents } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
     // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
     // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
     const fallbackId = stackSynthFallback
@@ -700,8 +801,6 @@ export async function POST(request: Request) {
     console.warn('[synthesis][fallback] primary=%s failed; retrying with fallback=%s err=%s', modelId, fallbackId, primaryErr instanceof Error ? primaryErr.message : String(primaryErr))
     return orchestrator.synthesize({ ...synthesisRequest, selected_model_id: fallbackId })
   })
-
-  result.consumeStream()
 
   // ── Gate III: title for first turn (eager so it lands in start metadata)
   let gateIIITitle: string | null = null
@@ -744,84 +843,114 @@ export async function POST(request: Request) {
     })
   }
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
-    messageMetadata: ({ part }: { part: { type: string } }) => {
-      if (part.type === 'start' && isFirstTurn) {
-        return {
-          conversationId: finalConversationId,
-          model: modelId,
-          stack: selectedStack,
-          style,
-          disclosure_tier: audienceTier,
-          pipeline: 'v2',
-          queryId,
-          planning_model_id: plannerModelId,
-          planning_latency_ms: plannerLatencyMs,
-          // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
-          planner_active: true,
-          // Gate III additions
-          query_class: plan.query_class,
-          context_usage: contextUsageMeta,
-          conversation_title: gateIIITitle ?? undefined,
-        }
+  const uiStream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      writer.write({ type: 'data-stage', data: stagePart('classify', 'done', plannerLatencyMs) })
+      writer.write({ type: 'data-stage', data: stagePart('compose_bundle', 'done', composeBundleMs) })
+      for (const evt of toolEventLog) {
+        writer.write({
+          type: 'data-tool',
+          data: { type: 'tool', name: evt.name, status: evt.status, ms: evt.ms, ok_count: evt.ok_count, err_count: evt.err_count },
+        })
       }
-      if (part.type === 'start') {
-        return {
-          model: modelId,
-          stack: selectedStack,
-          style,
-          disclosure_tier: audienceTier,
-          pipeline: 'v2',
-          queryId,
-          planning_model_id: plannerModelId,
-          planning_latency_ms: plannerLatencyMs,
-          planner_active: true,
-          query_class: plan.query_class,
-          context_usage: contextUsageMeta,
+      writer.write({ type: 'data-stage', data: stagePart('tool_fetch', 'done', toolFetchMs) })
+      // β9: panel mode emits member stage events before the adjudicator stream.
+      // Single-model path leaves panelStageEvents undefined; the check is a no-op.
+      if (panelStageEvents && panelStageEvents.length > 0) {
+        for (const evt of panelStageEvents) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          writer.write(evt as any)
         }
+      } else {
+        writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
       }
-      if (part.type === 'finish') {
-        finishGuard()
-        return {
-          methodology_block: methodologyBlockHolder?.value ?? null,
-          provenance: provenanceHolder.value,
-        }
-      }
-    },
-    onFinish: async ({ messages: finalMessages }: { messages: UIMessage[] }) => {
-      // ── W2-EVAL-A: Layer-2 citation gate (post-synthesis) ─────────────
+      // γ7: bump event seq for each pre-stream data-part block (stage/tool events).
+      // The seq is used by the resume endpoint to skip already-received events.
+      pendingStreamWriter?.onEvent()
+      writer.merge(result.toUIMessageStream({
+        originalMessages: messages,
+        generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+        messageMetadata: ({ part }: { part: { type: string } }) => {
+          if (part.type === 'start' && isFirstTurn) {
+            return {
+              conversationId: finalConversationId,
+              model: modelId,
+              stack: selectedStack,
+              style,
+              disclosure_tier: audienceTier,
+              pipeline: 'v2',
+              queryId,
+              planning_model_id: plannerModelId,
+              planning_latency_ms: plannerLatencyMs,
+              // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
+              planner_active: true,
+              // Gate III additions
+              query_class: plan.query_class,
+              context_usage: contextUsageMeta,
+              conversation_title: gateIIITitle ?? undefined,
+            }
+          }
+          if (part.type === 'start') {
+            return {
+              model: modelId,
+              stack: selectedStack,
+              style,
+              disclosure_tier: audienceTier,
+              pipeline: 'v2',
+              queryId,
+              planning_model_id: plannerModelId,
+              planning_latency_ms: plannerLatencyMs,
+              planner_active: true,
+              query_class: plan.query_class,
+              context_usage: contextUsageMeta,
+            }
+          }
+          if (part.type === 'finish') {
+            finishGuard()
+            return {
+              methodology_block: methodologyBlockHolder?.value ?? null,
+              provenance: provenanceHolder.value,
+            }
+          }
+        },
+        onFinish: async ({ messages: finalMessages }: { messages: UIMessage[] }) => {
+      // ── β10: Layer-2 citation gate at the wire ────────────────────────
       // Cross-reference SIG.MSR.NNN ids in the assistant's final text against
       // the assembled context (bundle + tool results). Suspected training-data
       // leaks WARN; ungrounded prescriptive answers ERROR (unless override).
-      // Field destination context_assembly_log.verified_citations lands with
-      // W2-SCHEMA; until then we keep the result local and log.
       //
-      // Gate errors are logged + traced but never thrown post-stream.
-      // Throwing inside onFinish propagates into the HTTP pipe machinery,
-      // causing "failed to pipe response" not a clean stream error.
+      // β10 upgrade: the gate now emits citation_gate data parts via writer.write
+      // so the client can render them (γ4 adds the visual layer — β10 just emits).
+      // Gate errors are never thrown post-stream (throwing corrupts the HTTP pipe).
       try {
         const assistantMsg = finalMessages.filter((m) => m.role === 'assistant').at(-1)
-        const outputText = extractText(assistantMsg?.parts ?? [])
+        const outputText = (assistantMsg?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
         const assembledContextJson = JSON.stringify({
           bundle,
           tool_results: validToolResults,
         })
-        const citationCheck = validateCitations(outputText, assembledContextJson, plan.query_class)
         const overrideOn = configService.getFlag('CITATION_GATE_OVERRIDE')
-        const effectiveResult =
-          citationCheck.gate_result === 'ERROR' && overrideOn ? 'WARN' : citationCheck.gate_result
+        const citationValidation = validateCitationsForStream(
+          outputText,
+          assembledContextJson,
+          plan.query_class,
+          overrideOn,
+        )
 
         console.log(
           `[consume:v2] citation_gate_l2 query_id=${queryId} ` +
-            `result=${effectiveResult} layer1=${citationCheck.layer1_count} ` +
-            `verified=${citationCheck.layer2_verified} leaked=${citationCheck.layer2_leaked}` +
-            (overrideOn && citationCheck.gate_result === 'ERROR' ? ' override=on' : '') +
-            ` reason="${citationCheck.gate_reason}"`
+            `result=${citationValidation.gateResult} layer1=${citationValidation.layer1Count} ` +
+            `verified=${citationValidation.layer2Verified} leaked=${citationValidation.layer2Leaked}` +
+            (overrideOn && citationValidation.gateResult === 'WARN' && citationValidation.layer1Count > 0 ? ' override=on' : '') +
+            ` reason="${citationValidation.gateReason}"`
         )
 
-        if (effectiveResult === 'WARN') {
+        // β10: emit citation_gate data part so client can render error band or chip (γ4).
+        if (citationValidation.dataPart) {
+          writer.write({ type: 'data-citation-gate', data: citationValidation.dataPart })
+        }
+
+        if (citationValidation.gateResult === 'WARN') {
           traceEmitter.emitStep({
             event: 'step_done',
             query_id: queryId,
@@ -836,8 +965,8 @@ export async function POST(request: Request) {
               completed_at: new Date().toISOString(),
               latency_ms: 0,
               data_summary: {
-                result: citationCheck.gate_reason,
-                citation_count: citationCheck.layer1_count,
+                result: citationValidation.gateReason,
+                citation_count: citationValidation.layer1Count,
               },
               payload: {},
             },
@@ -845,8 +974,6 @@ export async function POST(request: Request) {
         }
 
         // ── MON-8: context_assembly_log write ──────────────────────────
-        // Per-layer token breakdown grouped from validToolResults by tool_name.
-        // No more LLM context assembler — per-layer counts come from raw bundles.
         const tokensFor = (predicate: (toolName: string) => boolean): number => {
           let chars = 0
           for (const tb of validToolResults) {
@@ -874,23 +1001,15 @@ export async function POST(request: Request) {
           cgm_tokens: tokensFor(n => n === 'cgm_graph_walk'),
           synthesis_model_id: modelId,
           model_max_context: modelMeta.maxInputTokens ?? null,
-          b3_compliant: citationCheck.gate_result === 'PASS',
-          citation_count: citationCheck.layer1_count ?? 0,
-          verified_citations: citationCheck.layer2_verified ?? 0,
+          b3_compliant: citationValidation.gateResult === 'PASS',
+          citation_count: citationValidation.layer1Count ?? 0,
+          verified_citations: citationValidation.layer2Verified ?? 0,
         })
 
-        if (citationCheck.gate_result === 'ERROR' && !overrideOn) {
-          // Do NOT throw — onFinish fires after the HTTP response body is
-          // already being piped. Throwing here propagates into the pipe
-          // machinery, not into a clean stream-error part, causing
-          // "failed to pipe response" on the server and "Network error" on
-          // the client. The user already received the truncated response;
-          // throwing post-hoc neither retracts it nor surfaces a meaningful
-          // message. Instead: hard-block log + trace event for visibility.
-          // If enforcement is needed, gate pre-stream (before synthesis starts).
+        if (citationValidation.gateResult === 'ERROR') {
           console.error(
             `[consume:v2] citation_gate_l2 HARD_BLOCK (non-throwing) ` +
-            `query_id=${queryId} reason="${citationCheck.gate_reason}"`
+            `query_id=${queryId} reason="${citationValidation.gateReason}"`
           )
           traceEmitter.emitStep({
             event: 'step_done',
@@ -905,7 +1024,7 @@ export async function POST(request: Request) {
               started_at: new Date().toISOString(),
               completed_at: new Date().toISOString(),
               latency_ms: 0,
-              data_summary: { result: citationCheck.gate_reason, citation_count: citationCheck.layer1_count },
+              data_summary: { result: citationValidation.gateReason, citation_count: citationValidation.layer1Count },
               payload: {},
             },
           })
@@ -917,10 +1036,75 @@ export async function POST(request: Request) {
       // Emit trace done sentinel so SSE endpoint closes the stream
       traceEmitter.emitStep({ event: 'done', query_id: queryId })
       try {
-        await replaceConversationMessages({
+        // Write-through persistence: upsert all messages into conversation_messages.
+        const writeResult = await writeConversationMessages({
           conversationId: finalConversationId,
           messages: finalMessages,
         })
+        if (writeResult.verified) {
+          writer.write({
+            type: 'data-persistence',
+            data: persistencePart({
+              conversation_id: finalConversationId,
+              message_id: writeResult.messageIds.at(-1) ?? '',
+              status: 'ok',
+            }),
+          })
+        } else {
+          console.warn('[consume:v2] persistence read-after-write mismatch', {
+            conversationId: finalConversationId,
+            written: writeResult.messageIds.length,
+          })
+          writer.write({
+            type: 'data-persistence',
+            data: persistencePart({
+              conversation_id: finalConversationId,
+              message_id: writeResult.messageIds.at(-1) ?? '',
+              status: 'error',
+            }),
+          })
+        }
+        // β4: Emit citation data parts — scan the last assistant message for SIG.MSR.NNN.
+        const lastAssistantText = finalMessages
+          .filter(m => m.role === 'assistant')
+          .at(-1)
+          ?.parts
+          .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+          .map(p => p.text)
+          .join('') ?? ''
+        if (lastAssistantText) {
+          for (const c of extractCitations(lastAssistantText)) {
+            writer.write({
+              type: 'data-citation',
+              data: citationPart({
+                index: c.index,
+                signal_id: c.signal_id,
+                layer: c.layer,
+                snippet: c.snippet,
+              }),
+            })
+          }
+        }
+
+        // γ3: PPL — detect time-indexed prediction candidates in the final answer.
+        // Runs sync (regex-only) in onFinish — does NOT block the user stream.
+        // Only emit candidates with score >= 0.5 (high-confidence regex hits).
+        if (lastAssistantText) {
+          const predictionCandidates = detectPredictionCandidates(lastAssistantText)
+            .filter(c => c.score >= 0.5)
+          for (const candidate of predictionCandidates) {
+            writer.write({
+              type: 'data-prediction-candidate',
+              data: predictionCandidatePart({
+                text: candidate.text,
+                offset: candidate.offset,
+                score: candidate.score,
+                horizon: candidate.horizon,
+              }),
+            })
+          }
+        }
+
         if (isFirstTurn && !gateIIITitle) {
           // Gate III: only runs if eager pre-stream title generation failed.
           generateConversationTitle(finalMessages, {
@@ -934,6 +1118,10 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[consume:v2] persistence failed', err)
       }
+      // γ7: Clear pending stream now that β2 persistence has written the full
+      // conversation. On next reload the client will restore from conversation_messages
+      // rather than pending_streams. Failure is non-fatal (TTL will expire the row).
+      if (pendingStreamWriter) { void pendingStreamWriter.clear() }
       if (!lelContextEnabled) {
         try {
           const fs = await import('fs/promises')
@@ -946,7 +1134,7 @@ export async function POST(request: Request) {
             mode: 'blind',
             chart_id: chartId,
             conversation_id: conversationId,
-            query: extractText(messages[messages.length - 1]?.parts ?? []),
+            query: (messages[messages.length - 1]?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim(),
             outcome: null,
             confidence: null,
             horizon: null,
@@ -960,6 +1148,8 @@ export async function POST(request: Request) {
       }
       // Note: deferredGateError pattern removed — see citation_gate block above.
       // Citation gate errors are logged and traced but never thrown post-stream.
+        },
+      }))
     },
     onError: (error: unknown) => {
       const msg = error instanceof Error ? error.message : String(error)
@@ -976,6 +1166,7 @@ export async function POST(request: Request) {
       return msg
     },
   })
+  return createUIMessageStreamResponse({ stream: uiStream })
 } catch (pipelineError) {
   const msg = pipelineError instanceof Error ? pipelineError.message : String(pipelineError)
   console.error('[consume:v2] pre-stream error:', msg)
@@ -984,6 +1175,3 @@ export async function POST(request: Request) {
 }
 
 
-function extractText(parts: Array<{ type: string; text?: string }>): string {
-  return parts.filter(p => p.type === 'text').map(p => p.text ?? '').join(' ').trim()
-}

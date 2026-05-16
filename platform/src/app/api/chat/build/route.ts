@@ -1,5 +1,4 @@
-import { stepCountIs, createIdGenerator, convertToModelMessages } from 'ai'
-import { streamBuildRaw } from '@/lib/adapters'
+import { streamText, stepCountIs, createIdGenerator, convertToModelMessages } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
@@ -89,7 +88,8 @@ export async function POST(request: Request) {
 
   const finalConversationId = conversationId
 
-  const result = streamBuildRaw({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),

@@ -289,19 +289,22 @@ describe('MetadataBadge CO.2 — expanded token breakdown', () => {
 })
 
 // ── Source-level guard: AC.CO2.1 (input panel cleanup) ────────────────────────
+// After α7: legacy content lives in ConsumeChatLegacy.tsx; ConsumeChat.tsx is the thin switch.
 
 describe('AC.CO2.1 — model name removed from input panel for flag-ON', () => {
-  it('lastAssistantMeta span is conditional on !consumeUiV2Enabled', () => {
+  it('consumeUiV2Enabled ternary controls lifecycle-slot vs legacy-path in legacy file', () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx'),
       'utf8',
     )
-    expect(src).toContain('!consumeUiV2Enabled && lastAssistantMeta')
+    // consumeUiV2Enabled branches into lifecycle slot (true) vs legacy path (false)
+    expect(src).toContain('consumeUiV2Enabled ?')
+    expect(src).toContain('Flag-OFF: legacy path')
   })
 
-  it('ModelStylePicker (stack selector) is always rendered regardless of flag', () => {
+  it('ModelStylePicker (stack selector) is always rendered in legacy file', () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx'),
       'utf8',
     )
     expect(src).toContain('ModelStylePicker')
@@ -310,26 +313,36 @@ describe('AC.CO2.1 — model name removed from input panel for flag-ON', () => {
 })
 
 // ── Source-level guard: AC.CO1.5 ──────────────────────────────────────────────
+// After α7: legacy content lives in ConsumeChatLegacy.tsx; ConsumeChat.tsx is the thin switch.
 
 describe('AC.CO1.5 — flag-off path preserves legacy components', () => {
-  it('ConsumeChat.tsx references legacy LiveReasoningCard in flag-off branch', () => {
+  it('ConsumeChatLegacy.tsx contains legacy LiveReasoningCard (flag-off path)', () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx'),
       'utf8',
     )
     expect(src).toContain('LiveReasoningCard')
     expect(src).toContain('StreamingAnswer')
-    expect(src).toContain('Flag-OFF: legacy path')
   })
 
-  it('ConsumeChat.tsx references lifecycle slot components in flag-on branch', () => {
+  it('ConsumeChatLegacy.tsx contains lifecycle slot components (flag-on branch within legacy)', () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx'),
       'utf8',
     )
     expect(src).toContain('StatusPip')
     expect(src).toContain('ReasoningSlot')
     expect(src).toContain('FinalAnswerSlot')
     expect(src).toContain('useChatLifecycle')
+  })
+
+  it('ConsumeChat.tsx thin switch delegates to ConsumeChatLegacy and ConsumeChatV2', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '..', 'ConsumeChat.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('ConsumeChatLegacy')
+    expect(src).toContain('ConsumeChatV2')
+    expect(src).toContain('chatV2Enabled')
   })
 })

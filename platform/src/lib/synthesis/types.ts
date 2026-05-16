@@ -9,7 +9,7 @@ import type { ToolBundle } from '@/lib/retrieve/types'
 import type { RequestScopedToolCache } from '@/lib/cache/index'
 import type { AudienceTier, StyleSuffix } from '@/lib/prompts/types'
 import type { ValidationResult } from '@/lib/validators/types'
-import type { StreamTextResult, ToolSet } from 'ai'
+import type { StreamTextResult, ToolSet, ModelMessage } from 'ai'
 import type {
   Checkpoint45Result,
   Checkpoint55Result,
@@ -49,7 +49,7 @@ export interface SynthesisRequest {
   query_plan: QueryPlan
   bundle: Bundle
   tool_results: ToolBundle[]
-  conversation_history: Array<{ role: 'user' | 'assistant'; content: string }>
+  conversation_history: ModelMessage[]
   selected_model_id: string
   style: StyleSuffix
   audience_tier: AudienceTier
@@ -82,6 +82,16 @@ export interface SynthesisRequest {
   /** PIV HIGH.QG6.2: forwarded from the incoming HTTP request so that a client
    *  SSE disconnect cancels the upstream LLM call, stopping token billing. */
   abortSignal?: AbortSignal
+  /** β5: extra content parts (images, PDF text) appended to the user query message.
+   *  When present, the user turn content becomes an array instead of a plain string. */
+  attachment_parts?: Array<
+    | { type: 'image'; image: string; mimeType: string }
+    | { type: 'text'; text: string }
+  >
+  /** γ7: called on each text-delta from the synthesis stream for stream-resume
+   *  accumulation (pending_streams table). Non-blocking — failures are swallowed
+   *  inside createPendingStreamWriter. Only wired when CHAT_V2_ENABLED=true. */
+  onTextDelta?: (delta: string) => void
 }
 
 export interface SynthesisMetadata {
@@ -154,6 +164,10 @@ export interface SynthesisResult {
   /** Mutable container populated synchronously in streamText.onFinish — allows the outer
    *  onFinish in the route to read synthesis token counts for observatory telemetry. */
   usageHolder?: { value: SynthesisUsage | null }
+  /** β9 — Panel mode: pre-computed stage/tool data parts to emit before merging the
+   *  adjudicator stream. The route's execute block replays these via writer.write() so
+   *  the UI sees panel:member:N running/done events before the adjudicator stream begins. */
+  panelStageEvents?: Array<{ type: string; data: unknown }>
 }
 
 export interface SynthesisOrchestrator {

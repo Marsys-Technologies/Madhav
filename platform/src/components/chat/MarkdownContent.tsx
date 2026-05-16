@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useMemo } from 'react'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import { Streamdown, type Components } from 'streamdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -12,12 +12,6 @@ interface Props {
   children: string
   className?: string
   streaming?: boolean
-}
-
-function closeUnclosedFences(raw: string): string {
-  const matches = raw.match(/```/g)
-  const count = matches ? matches.length : 0
-  return count % 2 === 1 ? raw + '\n```' : raw
 }
 
 function extractLang(className: string | undefined): string | undefined {
@@ -103,7 +97,6 @@ const MARKDOWN_COMPONENTS = (isStreaming: boolean): Components => ({
 })
 
 function MarkdownContentImpl({ children, className, streaming = false }: Props) {
-  const safeMarkdown = useMemo(() => closeUnclosedFences(children), [children])
   const components = useMemo(() => MARKDOWN_COMPONENTS(streaming), [streaming])
 
   return (
@@ -119,13 +112,14 @@ function MarkdownContentImpl({ children, className, streaming = false }: Props) 
       )}
       style={streaming ? { contain: 'style' } : undefined}
     >
-      <ReactMarkdown
+      <Streamdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={components}
+        isAnimating={streaming}
       >
-        {safeMarkdown}
-      </ReactMarkdown>
+        {children}
+      </Streamdown>
     </div>
   )
 }

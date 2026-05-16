@@ -122,6 +122,7 @@ async function runSingleMember(
         systemPrompt: '',
         messages: [{ role: 'user', content: prompt }],
         maxOutputTokens: 65536,
+        ...(request.abortSignal && { abortSignal: request.abortSignal }),
       }).then(interaction => {
         recordAiSdkCall({
           pipeline_stage: 'compose',

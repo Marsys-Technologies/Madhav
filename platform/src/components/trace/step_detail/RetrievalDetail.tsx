@@ -35,6 +35,7 @@ function StatusPill({ status }: { status: RetrievalSubToolRun['status'] }) {
     running: 'bg-zinc-700/30 text-zinc-300',
     pending: 'bg-zinc-700/20 text-zinc-500',
     error: 'bg-amber-400/10 text-amber-400',
+    cancelled: 'bg-zinc-700/20 text-zinc-600',
   }
   return (
     <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide ${map[status]}`}>

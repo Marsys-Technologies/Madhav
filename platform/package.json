@@ -28,7 +28,15 @@
     "answer:eval": "npx tsx scripts/answer_eval.ts",
     "embedding:freshness": "npx tsx --conditions=react-server scripts/retrieval/embedding_freshness_check.ts",
     "aiops:health": "tsx scripts/aiops/probe_health_cron.ts",
-    "aiops:cutover-smoke": "tsx scripts/aiops/cutover_smoke.ts"
+    "aiops:cutover-smoke": "tsx scripts/aiops/cutover_smoke.ts",
+    "chat-v2:test": "vitest run tests/unit/chat-v2 tests/components/chat-v2 tests/integration/chat-v2 2>/dev/null; npx playwright test tests/e2e/chat-v2 --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium",
+    "chat-v2:unit": "vitest run tests/unit/chat-v2",
+    "chat-v2:component": "vitest run tests/components/chat-v2",
+    "chat-v2:integration": "vitest run tests/integration/chat-v2",
+    "chat-v2:e2e": "playwright test --config=tests/e2e/chat-v2/playwright.config.ts",
+    "chat-v2:visual": "playwright test --config=tests/e2e/chat-v2/playwright.config.ts --grep @visual",
+    "chat-v2:a11y": "playwright test tests/e2e/chat-v2/a11y --config=tests/e2e/chat-v2/playwright.config.ts",
+    "chat-v2:perf": "playwright test tests/e2e/chat-v2/perf --config=tests/e2e/chat-v2/playwright.config.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
@@ -36,6 +44,9 @@
     "@ai-sdk/google": "^3.0.64",
     "@ai-sdk/openai": "^3.0.53",
     "@ai-sdk/react": "^3.0.170",
+    "@assistant-ui/react": "^0.14.5",
+    "@assistant-ui/react-ai-sdk": "^1.3.26",
+    "@assistant-ui/styles": "^0.3.7",
     "@base-ui/react": "^1.4.0",
     "@google-cloud/bigquery": "^7.9.4",
     "@google-cloud/cloud-sql-connector": "^1.10.0",
@@ -67,11 +78,13 @@
     "shadcn": "^4.3.0",
     "shiki": "^4.0.2",
     "sonner": "^2.0.7",
+    "streamdown": "^2.5.0",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.4.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",

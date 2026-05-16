@@ -11,18 +11,30 @@ export interface ConversationSummary {
   title: string | null
   created_at: string
   updated_at: string | null
+  archived_at: string | null
 }
 
 export async function listConversations(params: {
   chartId: string
   userId: string
   module: ConversationModule
+  includeArchived?: boolean
 }): Promise<ConversationSummary[]> {
+  const { includeArchived = false } = params
+  const archiveClause = includeArchived ? '' : 'AND archived_at IS NULL'
   const { rows } = await query(
-    'SELECT id, chart_id, user_id, module, title, created_at FROM conversations WHERE chart_id=$1 AND user_id=$2 AND module=$3 ORDER BY created_at DESC LIMIT 100',
+    `SELECT id, chart_id, user_id, module, title, created_at, updated_at, archived_at
+     FROM conversations
+     WHERE chart_id=$1 AND user_id=$2 AND module=$3 ${archiveClause}
+     ORDER BY COALESCE(updated_at, created_at) DESC
+     LIMIT 100`,
     [params.chartId, params.userId, params.module]
   )
-  return rows.map(row => ({ ...(row as ConversationSummary), module: row.module as ConversationModule, updated_at: row.created_at as string }))
+  return rows.map(row => ({
+    ...(row as ConversationSummary),
+    module: row.module as ConversationModule,
+    updated_at: (row.updated_at ?? row.created_at) as string,
+  }))
 }
 
 export async function createConversation(params: {
@@ -57,13 +69,18 @@ export async function getConversation(params: {
   isSuperAdmin: boolean
 }): Promise<ConversationSummary | null> {
   const { rows } = await query(
-    'SELECT id, chart_id, user_id, module, title, created_at FROM conversations WHERE id=$1',
+    'SELECT id, chart_id, user_id, module, title, created_at, updated_at, archived_at FROM conversations WHERE id=$1',
     [params.id]
   )
   const data = rows[0] ?? null
   if (!data) return null
   if (!params.isSuperAdmin && data.user_id !== params.userId) return null
-  return { ...(data as ConversationSummary), module: data.module as ConversationModule, updated_at: data.created_at as string }
+  return {
+    ...(data as ConversationSummary),
+    module: data.module as ConversationModule,
+    updated_at: (data.updated_at ?? data.created_at) as string,
+    archived_at: data.archived_at ?? null,
+  }
 }
 
 export async function loadConversationMessages(conversationId: string): Promise<UIMessage[]> {

@@ -17,7 +17,8 @@ import * as path from 'node:path'
  *      on/off, asserting the rendered DOM matches the brand palette.
  */
 
-const consumeChatPath = path.resolve(__dirname, '..', 'ConsumeChat.tsx')
+// After α7, ConsumeChat.tsx is a thin switch; legacy content (including LEL toggle) is in ConsumeChatLegacy.tsx
+const consumeChatPath = path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx')
 const source = fs.readFileSync(consumeChatPath, 'utf8')
 
 function extractLelButtonBlock(src: string): string {
