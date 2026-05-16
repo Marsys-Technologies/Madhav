@@ -44,7 +44,7 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
-import { validateCitations } from '@/lib/synthesis/citation_check'
+import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
 import { createAuditConsumer } from '@/lib/audit/consumer'
@@ -900,16 +900,14 @@ export async function POST(request: Request) {
           }
         },
         onFinish: async ({ messages: finalMessages }: { messages: UIMessage[] }) => {
-      // ── W2-EVAL-A: Layer-2 citation gate (post-synthesis) ─────────────
+      // ── β10: Layer-2 citation gate at the wire ────────────────────────
       // Cross-reference SIG.MSR.NNN ids in the assistant's final text against
       // the assembled context (bundle + tool results). Suspected training-data
       // leaks WARN; ungrounded prescriptive answers ERROR (unless override).
-      // Field destination context_assembly_log.verified_citations lands with
-      // W2-SCHEMA; until then we keep the result local and log.
       //
-      // Gate errors are logged + traced but never thrown post-stream.
-      // Throwing inside onFinish propagates into the HTTP pipe machinery,
-      // causing "failed to pipe response" not a clean stream error.
+      // β10 upgrade: the gate now emits citation_gate data parts via writer.write
+      // so the client can render them (γ4 adds the visual layer — β10 just emits).
+      // Gate errors are never thrown post-stream (throwing corrupts the HTTP pipe).
       try {
         const assistantMsg = finalMessages.filter((m) => m.role === 'assistant').at(-1)
         const outputText = (assistantMsg?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
@@ -917,20 +915,28 @@ export async function POST(request: Request) {
           bundle,
           tool_results: validToolResults,
         })
-        const citationCheck = validateCitations(outputText, assembledContextJson, plan.query_class)
         const overrideOn = configService.getFlag('CITATION_GATE_OVERRIDE')
-        const effectiveResult =
-          citationCheck.gate_result === 'ERROR' && overrideOn ? 'WARN' : citationCheck.gate_result
+        const citationValidation = validateCitationsForStream(
+          outputText,
+          assembledContextJson,
+          plan.query_class,
+          overrideOn,
+        )
 
         console.log(
           `[consume:v2] citation_gate_l2 query_id=${queryId} ` +
-            `result=${effectiveResult} layer1=${citationCheck.layer1_count} ` +
-            `verified=${citationCheck.layer2_verified} leaked=${citationCheck.layer2_leaked}` +
-            (overrideOn && citationCheck.gate_result === 'ERROR' ? ' override=on' : '') +
-            ` reason="${citationCheck.gate_reason}"`
+            `result=${citationValidation.gateResult} layer1=${citationValidation.layer1Count} ` +
+            `verified=${citationValidation.layer2Verified} leaked=${citationValidation.layer2Leaked}` +
+            (overrideOn && citationValidation.gateResult === 'WARN' && citationValidation.layer1Count > 0 ? ' override=on' : '') +
+            ` reason="${citationValidation.gateReason}"`
         )
 
-        if (effectiveResult === 'WARN') {
+        // β10: emit citation_gate data part so client can render error band or chip (γ4).
+        if (citationValidation.dataPart) {
+          writer.write({ type: 'data-citation-gate', data: citationValidation.dataPart })
+        }
+
+        if (citationValidation.gateResult === 'WARN') {
           traceEmitter.emitStep({
             event: 'step_done',
             query_id: queryId,
@@ -945,8 +951,8 @@ export async function POST(request: Request) {
               completed_at: new Date().toISOString(),
               latency_ms: 0,
               data_summary: {
-                result: citationCheck.gate_reason,
-                citation_count: citationCheck.layer1_count,
+                result: citationValidation.gateReason,
+                citation_count: citationValidation.layer1Count,
               },
               payload: {},
             },
@@ -954,8 +960,6 @@ export async function POST(request: Request) {
         }
 
         // ── MON-8: context_assembly_log write ──────────────────────────
-        // Per-layer token breakdown grouped from validToolResults by tool_name.
-        // No more LLM context assembler — per-layer counts come from raw bundles.
         const tokensFor = (predicate: (toolName: string) => boolean): number => {
           let chars = 0
           for (const tb of validToolResults) {
@@ -983,23 +987,15 @@ export async function POST(request: Request) {
           cgm_tokens: tokensFor(n => n === 'cgm_graph_walk'),
           synthesis_model_id: modelId,
           model_max_context: modelMeta.maxInputTokens ?? null,
-          b3_compliant: citationCheck.gate_result === 'PASS',
-          citation_count: citationCheck.layer1_count ?? 0,
-          verified_citations: citationCheck.layer2_verified ?? 0,
+          b3_compliant: citationValidation.gateResult === 'PASS',
+          citation_count: citationValidation.layer1Count ?? 0,
+          verified_citations: citationValidation.layer2Verified ?? 0,
         })
 
-        if (citationCheck.gate_result === 'ERROR' && !overrideOn) {
-          // Do NOT throw — onFinish fires after the HTTP response body is
-          // already being piped. Throwing here propagates into the pipe
-          // machinery, not into a clean stream-error part, causing
-          // "failed to pipe response" on the server and "Network error" on
-          // the client. The user already received the truncated response;
-          // throwing post-hoc neither retracts it nor surfaces a meaningful
-          // message. Instead: hard-block log + trace event for visibility.
-          // If enforcement is needed, gate pre-stream (before synthesis starts).
+        if (citationValidation.gateResult === 'ERROR') {
           console.error(
             `[consume:v2] citation_gate_l2 HARD_BLOCK (non-throwing) ` +
-            `query_id=${queryId} reason="${citationCheck.gate_reason}"`
+            `query_id=${queryId} reason="${citationValidation.gateReason}"`
           )
           traceEmitter.emitStep({
             event: 'step_done',
@@ -1014,7 +1010,7 @@ export async function POST(request: Request) {
               started_at: new Date().toISOString(),
               completed_at: new Date().toISOString(),
               latency_ms: 0,
-              data_summary: { result: citationCheck.gate_reason, citation_count: citationCheck.layer1_count },
+              data_summary: { result: citationValidation.gateReason, citation_count: citationValidation.layer1Count },
               payload: {},
             },
           })
