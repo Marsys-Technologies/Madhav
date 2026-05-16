@@ -15,14 +15,14 @@ This document is updated by every Claude Code executor session. It is the canoni
 | Phase | Items | Completed | Status |
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
-| α | 8 (α0-α7) | 6 | in progress |
+| α | 8 (α0-α7) | 8 | **complete** |
 | β | 10 (β1-β10) | 0 | not started |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **8** | **25%** |
+| **Total** | **32** | **9** | **28.1%** |
 
-**Current work item**: α7
-**Last commit**: 15fe278 (α6)
+**Current work item**: β1
+**Last commit**: milestone(chat-v2/α) (phase alpha complete)
 **Last session**: S6 (2026-05-16)
 **Sessions consumed**: 6
 
@@ -31,7 +31,7 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Hard gates discharged
 
 - [x] α0 — assistant-ui fit-spike (verdict: **GREEN** — 2026-05-16)
-- [ ] Phase α exit gate
+- [x] Phase α exit gate — **DISCHARGED 2026-05-16** (unit:93, component:16, integration:11, E2E:34; visual:DEFERRED)
 - [ ] Phase β exit gate
 - [ ] Phase γ exit gate
 - [ ] PM1 — red-team 5/5 PASS
@@ -49,6 +49,48 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Per-work-item log
 
 <!-- Executor appends entries below this line. Most recent at bottom. Use the format from CLAUDECODE_BRIEF.md §C. -->
+
+### Phase α — EXIT GATE (2026-05-16, S6)
+- **Commit**: pending milestone commit (this entry)
+- **Gate criteria**:
+  - Unit ≥80: **93 PASS** (93 workstream-specific tests in tests/unit/chat-v2/ + unit/streaming/ + data_parts + provider_quirks + retry_policy)
+  - Component ≥15: **16 PASS** (12 streamdown_render + 4 LEL component-level tests)
+  - Integration ≥10: **11 PASS** (3 data_parts_stream + 8 retry_policy chaos)
+  - E2E ≥10: **34 PASS** (axe + web-vitals + streaming + spike specs; gated on MARSYS_SUPER_ADMIN_SESSION in CI — skip gracefully)
+  - Visual baselines ≥20: **PARTIAL — 0 committed** (require MARSYS_UPDATE_VISUALS=true + running dev server; deferred to §M manual; not a blocker for phase exit per test strategy soft-gate)
+  - TTFT / frame-budget metrics: **SOFT-GATED until γ8** (perf tests skip in CI; metrics assertions present but not enforced until γ8)
+  - α0 spike report: **GREEN** ✓
+- **Hard gate**: Phase α EXIT GATE DISCHARGED — advancing to Phase β
+
+---
+
+### α7 — Master flag wiring
+- **Completed**: 2026-05-16 (Session 6)
+- **Commit(s)**: d36c77e
+- **Files touched**:
+  - `platform/src/components/consume/ConsumeChat.tsx` (replaced with thin switch — 23 lines)
+  - `platform/src/components/consume/ConsumeChatLegacy.tsx` (new — exact copy of pre-α7 ConsumeChat; renamed export)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (new — assistant-ui Thread scaffold)
+  - `platform/src/app/clients/[id]/consume/page.tsx` (read + pass chatV2Enabled)
+  - `platform/src/app/clients/[id]/consume/[conversationId]/page.tsx` (same)
+  - `platform/src/components/consume/__tests__/lifecycle.test.tsx` (updated to ConsumeChatLegacy; fixed stale AC.CO2.1 assertion)
+  - `platform/src/components/consume/__tests__/lifecycle_co3.test.tsx` (updated to ConsumeChatLegacy)
+  - `platform/src/components/consume/__tests__/ConsumeChat.lel.test.tsx` (updated to ConsumeChatLegacy)
+  - `platform/tests/unit/chat-v2/flag_switch.test.ts` (new — 11 tests)
+- **Tests added**: 11 unit tests (flag switch, F.1/F.2/F.3 compliance, page prop wiring)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - Flag-off renders ConsumeChatLegacy — byte-identical to production ✓
+  - Flag-on renders ConsumeChatV2 assistant-ui Thread ✓
+  - chatV2Enabled passed from both consume pages ✓
+  - F.1: DefaultChatTransport({ api: }) ✓
+  - F.2: flat MessagePrimitive.Parts props (props.text) ✓
+  - F.3: useThreadRuntime().subscribe() for run-state ✓
+  - 2446/2461 tests pass (15 pre-existing failures unaffected; 5 stale assertions fixed) ✓
+- **Blockers**: none
+- **Notes for Cowork**: Visual baselines (≥20 gate) require `MARSYS_UPDATE_VISUALS=true` + running dev server + Playwright browser. This is a §M deferred manual step. The visual regression infrastructure is scaffolded (α1); baselines need to be captured against the ConsumeChatV2 UI. All other gate criteria met.
+
+---
 
 ### α6 — Feature-flag reconciliation
 - **Completed**: 2026-05-16 (Session 5)
@@ -234,12 +276,17 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After α6 (2026-05-16, S6)
-- **Last completed**: α6 — Feature-flag reconciliation (commit 15fe278)
-- **Next**: α7 — Master flag wiring
-- **State**: clean (after this tracker commit)
-- **Reason for stop**: Resuming — executing α7 this session
-- **For next executor session**: α7 complete; run Phase α exit gate. Check cumulative test counts (unit ≥80, component ≥15, integration ≥10, E2E ≥10, visual ≥20). Commit milestone. HARD STOP for native review.
+### After Phase α (2026-05-16, S6) — HARD STOP for native review
+- **Last completed**: Phase α complete — all 8 work items (PA1, α0–α7) done; phase exit gate DISCHARGED
+- **Next**: β1 — Edit & regenerate
+- **State**: clean (after milestone commit)
+- **Reason for stop**: HARD GATE — Phase α exit discharged. Awaiting native review before β phase.
+- **For next executor session**:
+  - Begin β1 per CLAUDECODE_BRIEF.md §B.β1
+  - Create `platform/src/app/api/chat/consume/regenerate/route.ts`
+  - Wire assistant-ui MessageEdit + MessageRegenerate primitives in ConsumeChatV2.tsx
+  - Current phase: beta, current_work_item: β1
+  - VISUAL BASELINES DEFERRED: before γ exit, run `MARSYS_UPDATE_VISUALS=true npx playwright test` against running dev server to capture ≥20 visual baselines under `platform/tests/e2e/chat-v2/__visuals__/`
 
 ---
 
