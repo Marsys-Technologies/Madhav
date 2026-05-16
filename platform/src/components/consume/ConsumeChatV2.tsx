@@ -218,6 +218,9 @@ function V2BranchPicker() {
 
 const CostVisibilityCtx = createContext<boolean>(false)
 
+// ─── Conversation ID context (B.3: threads conversationId into V2Message for regenerate) ──
+const ConversationIdCtx = createContext<string | null>(null)
+
 // ─── Citation context ─────────────────────────────────────────────────────────
 
 interface CitationContextValue {
@@ -297,6 +300,50 @@ function usePanelData(dataParts: ReadonlyArray<unknown>) {
   }, [dataParts])
 
   return { panelMembers, panelMeta, isPanel: panelMeta !== null }
+}
+
+// ─── Regenerate button (B.3 fix) ─────────────────────────────────────────────
+// Calls /api/chat/consume/regenerate to truncate conversation_messages before
+// letting assistant-ui reload — prevents dead turns accumulating on regenerate.
+
+function V2RegenerateButton() {
+  const message = useMessage()
+  const runtime = useThreadRuntime()
+  const conversationId = useContext(ConversationIdCtx)
+
+  // Fire truncation before assistant-ui's Reload handler executes.
+  // Slot merges onClick handlers: child fires first, then Reload's handler.
+  // Truncation is intentionally fire-and-forget: fast DB DELETE; synthesis
+  // won't finish before truncation completes.
+  const handleClick = useCallback(() => {
+    if (!conversationId) return
+    const messages = runtime.getState().messages
+    const myIndex = messages.findIndex((m) => m.id === message.id)
+    const parentId = myIndex > 0 ? messages[myIndex - 1].id : null
+    if (!parentId) return
+    void fetch('/api/chat/consume/regenerate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversationId, parent_message_id: parentId }),
+    }).catch(() => {})
+  }, [message.id, runtime, conversationId])
+
+  return (
+    <ActionBarPrimitive.Reload asChild>
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+        title="Regenerate response"
+        data-testid="v2-regenerate-btn"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3" aria-hidden="true">
+          <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
+          <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </ActionBarPrimitive.Reload>
+  )
 }
 
 // ─── Message ─────────────────────────────────────────────────────────────────
@@ -472,19 +519,7 @@ function V2Message() {
               className="flex gap-1"
               data-testid="v2-assistant-action-bar"
             >
-              <ActionBarPrimitive.Reload asChild>
-                <button
-                  type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
-                  title="Regenerate response"
-                  data-testid="v2-regenerate-btn"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
-                    <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
-                    <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </ActionBarPrimitive.Reload>
+              <V2RegenerateButton />
 
               {/* β6: Show details drawer */}
               <button
@@ -1230,6 +1265,7 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
 
 
   return (
+    <ConversationIdCtx.Provider value={conversationId}>
     <CitationCtx.Provider value={citationCtxValue}>
       <AttachmentCtx.Provider value={attachmentManager}>
         <AssistantRuntimeProvider runtime={runtime}>
@@ -1246,5 +1282,6 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
         </AssistantRuntimeProvider>
       </AttachmentCtx.Provider>
     </CitationCtx.Provider>
+    </ConversationIdCtx.Provider>
   )
 }
