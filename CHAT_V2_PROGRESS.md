@@ -272,21 +272,28 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 ---
 
+## Phase β re-order note (Session 7, 2026-05-16)
+
+Phase β re-order: β2 executed before β1 due to schema dependency; brief sequence resumes at β3.
+
+(β1's regenerate endpoint depends on `conversation_messages.parent_message_id` column and the `conversations`/`conversation_messages` tables created in β2. Execution order: β2 → β1 → β3 → ... → β10 → phase β exit gate. CLAUDECODE_BRIEF.md frontmatter advanced to β2 at session open.)
+
+---
+
 ## RESUME_HERE
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
 ### After Phase α (2026-05-16, S6) — HARD STOP for native review
 - **Last completed**: Phase α complete — all 8 work items (PA1, α0–α7) done; phase exit gate DISCHARGED
-- **Next**: β1 — Edit & regenerate
+- **Next**: β2 — Conversation persistence (re-ordered before β1 due to schema dependency)
 - **State**: clean (after milestone commit)
 - **Reason for stop**: HARD GATE — Phase α exit discharged. Awaiting native review before β phase.
 - **For next executor session**:
-  - Begin β1 per CLAUDECODE_BRIEF.md §B.β1
-  - Create `platform/src/app/api/chat/consume/regenerate/route.ts`
-  - Wire assistant-ui MessageEdit + MessageRegenerate primitives in ConsumeChatV2.tsx
-  - Current phase: beta, current_work_item: β1
-  - VISUAL BASELINES DEFERRED: before γ exit, run `MARSYS_UPDATE_VISUALS=true npx playwright test` against running dev server to capture ≥20 visual baselines under `platform/tests/e2e/chat-v2/__visuals__/`
+  - Begin β2 (NOT β1) per re-order above
+  - β2 creates 055_conversations.sql (includes parent_message_id column)
+  - β1 follows β2 so it can use the schema
+  - VISUAL BASELINES DEFERRED: before γ exit, run `MARSYS_UPDATE_VISUALS=true npx playwright test` against running dev server
 
 ---
 

@@ -15,9 +15,9 @@ import { consumeSystemPrompt, type ConsumeStyle } from '@/lib/claude/system-prom
 import {
   getConversation,
   insertConversationWithId,
-  replaceConversationMessages,
   updateConversationTitle,
 } from '@/lib/conversations'
+import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
 import { assembleProvenance, type ToolBundleLike } from '@/lib/consume/provenance_assembler'
 import type { ContextUsageEvent, ContextUsageMode, ProvenanceEvent } from '@/types/sse_events'
@@ -933,10 +933,34 @@ export async function POST(request: Request) {
       // Emit trace done sentinel so SSE endpoint closes the stream
       traceEmitter.emitStep({ event: 'done', query_id: queryId })
       try {
-        await replaceConversationMessages({
+        // Write-through persistence: upsert all messages into conversation_messages.
+        const writeResult = await writeConversationMessages({
           conversationId: finalConversationId,
           messages: finalMessages,
         })
+        if (writeResult.verified) {
+          writer.write({
+            type: 'data-persistence',
+            data: persistencePart({
+              conversation_id: finalConversationId,
+              message_id: writeResult.messageIds.at(-1) ?? '',
+              status: 'ok',
+            }),
+          })
+        } else {
+          console.warn('[consume:v2] persistence read-after-write mismatch', {
+            conversationId: finalConversationId,
+            written: writeResult.messageIds.length,
+          })
+          writer.write({
+            type: 'data-persistence',
+            data: persistencePart({
+              conversation_id: finalConversationId,
+              message_id: writeResult.messageIds.at(-1) ?? '',
+              status: 'error',
+            }),
+          })
+        }
         if (isFirstTurn && !gateIIITitle) {
           // Gate III: only runs if eager pre-stream title generation failed.
           generateConversationTitle(finalMessages, {

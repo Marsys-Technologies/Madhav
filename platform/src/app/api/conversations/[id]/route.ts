@@ -1,11 +1,11 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import {
-  deleteConversation,
   getConversation,
   loadConversationMessages,
   updateConversationTitle,
 } from '@/lib/conversations'
+import { archiveConversation } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
 
 async function resolveAccess(userId: string) {
@@ -72,7 +72,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
 
-    await deleteConversation(id)
+    // Soft delete: set archived_at. The conversation row and its messages are preserved.
+    await archiveConversation(id)
     return Response.json({ ok: true })
   } catch {
     return res.dbError()
