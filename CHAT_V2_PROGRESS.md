@@ -1179,3 +1179,20 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 - Status: DEFERRED — operator action required
 - Artifact: 00_ARCHITECTURE/CHAT_V2_ACCEPTANCE_WALKTHROUGH_v2_0.md (verification matrix §3 created)
 - Action: Complete §3 matrix against each O1–O10 finding; sign off §4.
+
+### D.1 — Master flag re-flip PR
+- Status: OPEN — awaiting operator final review
+- PR: #35 https://github.com/amonty84/Madhav/pull/35
+- Branch: fix/chat-v2/D1-reflip-master-flag-post-remediation
+- Commit: d6d1184
+- Notes: DO NOT auto-merge. Single-line diff (false→true). Operator must review deferred items and sign off before merging.
+
+---
+
+## Remediation — Status
+
+- Phase A: COMPLETE (PR #23 merged)
+- Phase B: 10/12 items COMPLETE; deferred: B.10 (Vertex/O7 — no creds), B.11 (GCS/O8 — no creds)
+- Phase C: 5/8 items COMPLETE; deferred: C.2 (visual baselines — needs auth), C.4 (Lighthouse — no staging revision), C.6 (a11y manual — operator), C.8 (acceptance walkthrough — operator)
+- Phase D.1: PR #35 OPEN — https://github.com/amonty84/Madhav/pull/35
+- Phase D.2/D.3: scheduled per D.1 merge timestamp (~7 days after merge)
