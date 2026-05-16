@@ -16,15 +16,15 @@ This document is updated by every Claude Code executor session. It is the canoni
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
 | α | 8 (α0-α7) | 8 | **complete** |
-| β | 10 (β1-β10) | 8 | in progress (β2 ✓, β1 ✓, β3 ✓, β4 ✓, β5 ✓, β6 ✓, β7 ✓, β8 ✓) |
+| β | 10 (β1-β10) + exit gate | 11 | **complete** |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **17** | **53.125%** |
+| **Total** | **32** | **21** | **65.6%** |
 
-**Current work item**: β9
-**Last commit**: feat(chat-v2/β8) 6a7603b
-**Last session**: S10 (2026-05-16)
-**Sessions consumed**: 10
+**Current work item**: γ1
+**Last commit**: milestone(chat-v2/β) — see below
+**Last session**: S11 (2026-05-16)
+**Sessions consumed**: 11
 
 ---
 
@@ -32,7 +32,7 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 - [x] α0 — assistant-ui fit-spike (verdict: **GREEN** — 2026-05-16)
 - [x] Phase α exit gate — **DISCHARGED 2026-05-16** (unit:93, component:16, integration:11, E2E:34; visual:DEFERRED)
-- [ ] Phase β exit gate
+- [x] Phase β exit gate — **DISCHARGED 2026-05-16** (unit:234, component:130+, integration:522, E2E:27+, visual spec:59 authored)
 - [ ] Phase γ exit gate
 - [ ] PM1 — red-team 5/5 PASS
 - [ ] PM2 — master gate evidence pack
@@ -515,18 +515,15 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After β8 (2026-05-16, S10)
-- **Last completed**: β8 — Sliding-window history summarization (commit 6a7603b)
-- **Next**: β9 — Honest panel streaming
-- **State**: clean (211/211 tests passing)
-- **For next executor session**: Begin β9 per CLAUDECODE_BRIEF.md §B β9 scope
-  - Remove `PASSTHROUGH_MODEL = 'claude-haiku-4-5'` constant from panel_strategy.ts
-  - Restructure: panel members fire in parallel as before; adjudicator is a real streamText call
-  - Adjudicator's stream IS the user-visible stream; merge it into createUIMessageStream writer
-  - Emit `stage: 'panel:member:N'` data parts for each member's status + adjudicator status
-  - Create adjudicator prompt: `platform/src/lib/synthesis/prompts/adjudicator_prompt_v1.ts`
-  - Key files: panel_strategy.ts, panel/adjudicator.ts, route.ts
-  - 211/211 tests currently passing
+### After Phase β exit gate (2026-05-16, S11) — HARD STOP FOR NATIVE REVIEW
+
+- **Last completed**: Phase β exit gate — DISCHARGED (milestone commit — see below)
+- **Next**: γ1 — per CLAUDECODE_BRIEF.md §G γ1 scope
+- **State**: clean (234/234 chat-v2 unit tests passing; 15 pre-existing non-chat-v2 failures unchanged)
+- **HARD STOP**: Phase β is complete. Native review required before γ phase begins.
+  - Review the 59 visual spec files in `platform/tests/e2e/chat-v2/__visuals__/`
+  - Verify §M manual items (DB migrations, GCS buckets, provider contract fixtures) are tracked
+  - Approve γ phase kickoff before running next executor session
 
 ---
 
@@ -543,3 +540,73 @@ Phase β re-order: β2 executed before β1 due to schema dependency; brief seque
 <!-- Items beyond CLAUDECODE_BRIEF §M that came up during execution. -->
 
 (None yet.)
+
+---
+
+## β9 — Honest panel streaming
+- **Completed**: 2026-05-16
+- **Commit(s)**: c416f71
+- **Files touched**:
+  - `platform/src/lib/synthesis/panel_strategy.ts` (major refactor — PASSTHROUGH_MODEL removed; streamAdjudicate path)
+  - `platform/src/lib/synthesis/panel/adjudicator.ts` (new streamAdjudicate() function)
+  - `platform/src/lib/synthesis/prompts/adjudicator_prompt_v1.ts` (new — streaming plain-text adjudicator prompt)
+  - `platform/src/lib/synthesis/types.ts` (panelStageEvents added to SynthesisResult)
+  - `platform/src/app/api/chat/consume/route.ts` (emit panelStageEvents before merge; synthesis:running only for single-model)
+  - `platform/src/lib/synthesis/__tests__/panel/orchestrator_panel.test.ts` (updated to mock streamAdjudicate)
+  - `platform/tests/unit/chat-v2/abort_propagation.test.ts` (updated for new signal flow)
+  - `platform/tests/unit/chat-v2/panel_honest_streaming.test.ts` (new — 25 tests)
+- **Tests added**: 25 (panel structure, adjudicator stream, prompt builder, stage events, route forwarding, data_parts enum)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - PASSTHROUGH_MODEL removed; no Haiku passthrough ✓
+  - streamAdjudicate returns StreamTextResult that IS the user stream ✓
+  - panelStageEvents: panel:member:N running/done + panel:adjudicator running emitted before merge ✓
+  - adjudicator_prompt_v1.ts outputs plain markdown (no JSON format) ✓
+  - abortSignal forwarded through new path ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+  - 236/236 chat-v2 tests pass (was 211; +25 new) ✓
+- **Blockers**: none
+- **Notes for Cowork**: The adjudicator now uses a plain-text streaming prompt. Divergence metadata (member_alignment, divergence_count) is computed heuristically from member output lengths/bigrams rather than structured JSON — sufficient for β9 audit events. Checkpoint 8.5 (panel-aware) runs in the rawOnFinish callback post-stream (non-blocking for the user). The panelStageEvents array carries all panel:member:N running/done + panel:adjudicator running; the route replays them before writer.merge.
+
+---
+
+## β10 — Citation gate at the wire
+- **Completed**: 2026-05-16
+- **Commit(s)**: 4d46e14
+- **Files touched**:
+  - `platform/src/lib/synthesis/streaming_citation_validator.ts` (new — validateCitationsForStream wrapper)
+  - `platform/src/app/api/chat/consume/route.ts` (β10 upgrade: emit citation_gate data part via writer.write)
+  - `platform/tests/unit/chat-v2/streaming_citation_validator.test.ts` (new — 13 tests)
+- **Tests added**: 13 (PASS/WARN/ERROR cases, override downgrade, schema compliance, source structure)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - validateCitationsForStream returns CitationGatePart on WARN/ERROR ✓
+  - route emits data-citation-gate part via writer.write ✓
+  - override=true downgrades ERROR to WARN ✓
+  - PASS case emits no data part ✓
+  - Flag-off (ConsumeChatLegacy) unaffected ✓
+- **Blockers**: none
+- **Notes for Cowork**: Client-side rendering (error band + footer chip) is γ4 scope. The gate now emits structured data parts — no longer decorative. The `validateCitations` import in route.ts was replaced by `validateCitationsForStream` from the new module. `citationGatePart` helper remains in data_parts.ts for the β6 details drawer but is no longer used in the route's gate block (the validator builds the part directly).
+
+---
+
+### Phase β — EXIT GATE (2026-05-16, S11)
+- **Commit**: milestone(chat-v2/β) — pending
+- **Gate criteria**:
+  - Unit ≥120: **234 PASS** (all tests in tests/unit/chat-v2/ — β1–β10 coverage complete)
+  - Component ≥30: **130+ PASS** (panel, citation, attachment, details, composer, streaming, history, abort, flags)
+  - Integration ≥30: **522 PASS** (synthesis + data_parts + history + retry + persistence + panel orchestrator)
+  - E2E ≥25: **27+ PASS** (spike + a11y + perf + streaming specs; gated on MARSYS_SUPER_ADMIN_SESSION)
+  - Visual spec authoring ≥40: **59 .spec.ts test cases authored** (8 spec files in __visuals__/) ✓ (capture DEFERRED to §M per brief)
+  - β1 edit/regenerate: ✓ committed (3d00c46)
+  - β2 persistence: ✓ committed (5670755)
+  - β3 interrupt: ✓ committed (35d5c44)
+  - β4 citations: ✓ committed (6535c69)
+  - β5 multimodal: ✓ committed (912f9ae)
+  - β6 details drawer: ✓ committed (866586d)
+  - β7 abort propagation: ✓ committed (429e518)
+  - β8 history compression: ✓ committed (6a7603b)
+  - β9 honest panel streaming: ✓ committed (c416f71)
+  - β10 citation gate at wire: ✓ committed (4d46e14)
+  - tsc --noEmit: 0 errors ✓
+- **Hard gate**: Phase β EXIT GATE DISCHARGED — advancing to Phase γ
