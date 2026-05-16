@@ -37,6 +37,7 @@ import { ValidatorFooterChip } from '../chat/ValidatorFooterChip'
 import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart, StagePart, ToolPart } from '@/lib/streams/data_parts'
 import { StageStepper } from '../chat-v2/StageStepper'
 import { ToolCallCard } from '../chat-v2/ToolCallCard'
+import { PanelModeToggle, PanelOptInCtx } from '../chat-v2/PanelModeToggle'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -986,6 +987,10 @@ function V2Composer() {
             )}
           </div>
         </div>
+        {/* O2: panel mode toggle — composer-area affordance */}
+        <div className="mx-auto max-w-3xl flex items-center pt-1.5" data-testid="v2-composer-options">
+          <PanelModeToggle />
+        </div>
       </ComposerPrimitive.Root>
     </div>
   )
@@ -1298,6 +1303,21 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
   const attachmentsRef = useRef(attachmentManager.attachments)
   attachmentsRef.current = attachmentManager.attachments
 
+  // O2: panel mode opt-in — persists in sessionStorage per conversation
+  const panelStorageKey = conversationId ? `v2_panel_opt_in_${conversationId}` : 'v2_panel_opt_in_new'
+  const [panelOptIn, setPanelOptInRaw] = useState(() => {
+    try { return sessionStorage.getItem(panelStorageKey) === 'true' } catch { return false }
+  })
+  const panelOptInRef = useRef(panelOptIn)
+  panelOptInRef.current = panelOptIn
+
+  const setPanelOptIn = useCallback((v: boolean) => {
+    setPanelOptInRaw(v)
+    try { sessionStorage.setItem(panelStorageKey, String(v)) } catch { /* SSR/private */ }
+  }, [panelStorageKey])
+
+  const panelOptInCtxValue = useMemo(() => ({ panelOptIn, setPanelOptIn }), [panelOptIn, setPanelOptIn])
+
   const runtime = useChatRuntime({
     transport: new DefaultChatTransport({
       api: '/api/chat/consume',
@@ -1316,6 +1336,7 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
           chartId: chartIdRef.current,
           ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+          ...(panelOptInRef.current ? { panel_opt_in: true } : {}),
         }
       },
     }),
@@ -1324,6 +1345,7 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
 
 
   return (
+    <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
     <CitationCtx.Provider value={citationCtxValue}>
       <AttachmentCtx.Provider value={attachmentManager}>
@@ -1342,5 +1364,6 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
       </AttachmentCtx.Provider>
     </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
+    </PanelOptInCtx.Provider>
   )
 }
