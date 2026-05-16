@@ -15,16 +15,16 @@ This document is updated by every Claude Code executor session. It is the canoni
 | Phase | Items | Completed | Status |
 |---|---|---|---|
 | Pre-α | 1 (PA1) | 1 | complete |
-| α | 8 (α0-α7) | 2 | in progress |
+| α | 8 (α0-α7) | 3 | in progress |
 | β | 10 (β1-β10) | 0 | not started |
 | γ | 10 (γ1-γ10) | 0 | not started |
 | Pre-merge | 3 (PM1-PM3) | 0 | not started |
-| **Total** | **32** | **4** | **12.5%** |
+| **Total** | **32** | **5** | **15.6%** |
 
-**Current work item**: α3
-**Last commit**: 12902b0 (α2)
-**Last session**: S4 (2026-05-16)
-**Sessions consumed**: 4
+**Current work item**: α4
+**Last commit**: da34225 (α3)
+**Last session**: S5 (2026-05-16)
+**Sessions consumed**: 5
 
 ---
 
@@ -49,6 +49,27 @@ This document is updated by every Claude Code executor session. It is the canoni
 ## Per-work-item log
 
 <!-- Executor appends entries below this line. Most recent at bottom. Use the format from CLAUDECODE_BRIEF.md §C. -->
+
+### α3 — data parts emission
+- **Completed**: 2026-05-16 (Session 5)
+- **Commit(s)**: da34225
+- **Files touched**:
+  - `platform/src/lib/streams/data_parts.ts` (new — Zod schemas + helpers for all 6 DataPart variants)
+  - `platform/src/lib/streams/__tests__/data_parts.test.ts` (new — 30 unit tests)
+  - `platform/tests/unit/streaming/data_parts_stream.test.ts` (new — 3 integration tests)
+  - `platform/src/app/api/chat/consume/route.ts` (refactored — createUIMessageStream wrapper emitting stage/tool data parts)
+- **Tests added**: 30 schema unit tests + 3 integration tests (stream emission sequence, tool ok/err counts, DataPartSchema validity)
+- **Acceptance criteria**: PASS
+  - tsc --noEmit: 0 errors ✓
+  - 58/58 streams + chat-v2 unit tests pass ✓
+  - createUIMessageStream wrapper emits classify/compose_bundle/tool_fetch/synthesis data-stage chunks ✓
+  - toolEventLog collects ok_count/err_count per tool during Promise.all ✓
+  - writer.merge(result.toUIMessageStream({...})) preserves messageMetadata + onFinish logic ✓
+  - consumeStream() removed (writer.merge now consumes synthesis stream) ✓
+- **Blockers**: none
+- **Notes for Cowork**: createUIMessageStream stream chunks are raw UIMessageChunk objects (not SSE bytes) in the vitest Node.js env — tests read them directly. The 16 pre-existing test failures in aiops/consume/performance components are unrelated to α3.
+
+---
 
 ### α2 — streamdown swap
 - **Completed**: 2026-05-16 (Session 4)
@@ -150,12 +171,12 @@ This document is updated by every Claude Code executor session. It is the canoni
 
 <!-- Executor writes this block when stopping mid-flight. Native reads it to understand where the next session picks up. -->
 
-### After α2 (2026-05-16)
-- **Last completed**: α2 — streamdown swap (commit 12902b0)
-- **Next**: α3 — data parts emission from route
+### After α3 (2026-05-16)
+- **Last completed**: α3 — data parts emission (commit da34225)
+- **Next**: α4 — UIMessage end-to-end (eliminate extractText string-flattening)
 - **State**: clean
-- **Reason for stop**: Continuing to α3
-- **For next executor session**: Begin α3 per CLAUDECODE_BRIEF.md §A.α3. Key context: create `platform/src/lib/streams/data_parts.ts` with Zod schemas for StagePart/ToolPart/CostPart/ObservabilityPart/CitationGatePart/PersistencePart. Then wire `dataStream.writeData(...)` calls into the consume route + single_model_strategy. Schema unit tests + 3 integration tests verifying the route emits expected data parts.
+- **Reason for stop**: Continuing to α4
+- **For next executor session**: Begin α4 per CLAUDECODE_BRIEF.md §A.α4. Delete `extractText` from route.ts; replace planner-history and synthesis-history rebuilds with `convertToModelMessages(messages.slice(-N))`; update `single_model_strategy.ts` + `panel_strategy.ts` to accept `ModelMessage[]` directly; verify `adapters/types.ts`. Add ~6 unit tests + 2 integration tests.
 
 ---
 
