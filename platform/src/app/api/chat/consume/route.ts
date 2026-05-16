@@ -343,7 +343,7 @@ export async function POST(request: Request) {
   // Only wired when CHAT_V2_ENABLED (the V2 runtime will read from sessionStorage).
   const chatV2Enabled = configService.getFlag('CHAT_V2_ENABLED')
   const pendingStreamWriter = chatV2Enabled
-    ? createPendingStreamWriter(queryId, finalConversationId)
+    ? createPendingStreamWriter(queryId, finalConversationId, user.uid)
     : null
 
   // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.

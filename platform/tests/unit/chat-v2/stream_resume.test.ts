@@ -31,13 +31,13 @@ describe('createPendingStreamWriter', () => {
   })
 
   it('starts with empty text and seq=0', () => {
-    const w = createPendingStreamWriter('q1', 'c1')
+    const w = createPendingStreamWriter('q1', 'c1', 'test-user')
     expect(w.getAccumulatedText()).toBe('')
     expect(w.getEventSeq()).toBe(0)
   })
 
   it('accumulates text deltas', () => {
-    const w = createPendingStreamWriter('q2', 'c1')
+    const w = createPendingStreamWriter('q2', 'c1', 'test-user')
     w.onTextDelta('hello ')
     w.onTextDelta('world')
     expect(w.getAccumulatedText()).toBe('hello world')
@@ -45,7 +45,7 @@ describe('createPendingStreamWriter', () => {
   })
 
   it('increments seq on onEvent without changing text', () => {
-    const w = createPendingStreamWriter('q3', 'c1')
+    const w = createPendingStreamWriter('q3', 'c1', 'test-user')
     w.onEvent()
     w.onEvent()
     expect(w.getAccumulatedText()).toBe('')
@@ -53,7 +53,7 @@ describe('createPendingStreamWriter', () => {
   })
 
   it('debounces DB writes — only one write per burst', async () => {
-    const w = createPendingStreamWriter('q4', 'c1')
+    const w = createPendingStreamWriter('q4', 'c1', 'test-user')
     for (let i = 0; i < 50; i++) w.onTextDelta('x')
     expect(query).not.toHaveBeenCalled()
     // Advance past debounce window
@@ -66,7 +66,7 @@ describe('createPendingStreamWriter', () => {
   })
 
   it('clear() deletes the DB row and stops future writes', async () => {
-    const w = createPendingStreamWriter('q5', 'c1')
+    const w = createPendingStreamWriter('q5', 'c1', 'test-user')
     w.onTextDelta('partial')
     await w.clear()
     vi.clearAllMocks()
@@ -77,7 +77,7 @@ describe('createPendingStreamWriter', () => {
   })
 
   it('clear() upsert SQL references the correct query_id', async () => {
-    const w = createPendingStreamWriter('qdelete-test', 'conv1')
+    const w = createPendingStreamWriter('qdelete-test', 'conv1', 'test-user')
     await w.clear()
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM pending_streams'),
@@ -154,7 +154,7 @@ describe('chaos: clean disconnect (stream completes normally)', () => {
 
 describe('chaos: dirty disconnect (mid-stream, pending_streams has partial text)', () => {
   it('accumulated text grows with each delta call', () => {
-    const w = createPendingStreamWriter('dirty-q', 'dirty-c')
+    const w = createPendingStreamWriter('dirty-q', 'dirty-c', 'test-user')
     const tokens = ['Mars', ' transits', ' the', ' 7th', ' house']
     for (const t of tokens) w.onTextDelta(t)
     expect(w.getAccumulatedText()).toBe('Mars transits the 7th house')
@@ -173,7 +173,7 @@ describe('chaos: dirty disconnect (mid-stream, pending_streams has partial text)
 
 describe('chaos: network partition (disconnect before first chunk)', () => {
   it('writer returns empty accumulated text if no deltas received', () => {
-    const w = createPendingStreamWriter('empty-q', null)
+    const w = createPendingStreamWriter('empty-q', null, 'test-user')
     expect(w.getAccumulatedText()).toBe('')
   })
 

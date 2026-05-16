@@ -30,8 +30,8 @@ export async function GET(request: Request) {
   const result = await query(
     `SELECT accumulated_text, last_event_seq
      FROM pending_streams
-     WHERE query_id = $1 AND expires_at > now()`,
-    [queryId],
+     WHERE query_id = $1 AND user_id = $2 AND expires_at > now()`,
+    [queryId, user.uid],
   )
 
   if (!result.rows.length) {

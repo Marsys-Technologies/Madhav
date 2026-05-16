@@ -10,6 +10,7 @@
 
 CREATE TABLE IF NOT EXISTS pending_streams (
   query_id        TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL DEFAULT '',
   conversation_id TEXT,
   accumulated_text TEXT NOT NULL DEFAULT '',
   last_event_seq  BIGINT NOT NULL DEFAULT 0,

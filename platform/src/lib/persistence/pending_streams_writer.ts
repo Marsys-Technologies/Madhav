@@ -14,7 +14,7 @@ const DEBOUNCE_MS = 100
  * The table row is keyed by query_id (UUID); an existing row is upserted on
  * every debounced flush so reconnect attempts always see the latest text.
  */
-export function createPendingStreamWriter(queryId: string, conversationId: string | null) {
+export function createPendingStreamWriter(queryId: string, conversationId: string | null, userId: string) {
   let accumulatedText = ''
   let eventSeq = 0
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -26,13 +26,13 @@ export function createPendingStreamWriter(queryId: string, conversationId: strin
     const expiresAt = new Date(Date.now() + EXPIRY_MS).toISOString()
     try {
       await query(
-        `INSERT INTO pending_streams (query_id, conversation_id, accumulated_text, last_event_seq, expires_at)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO pending_streams (query_id, user_id, conversation_id, accumulated_text, last_event_seq, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (query_id) DO UPDATE
            SET accumulated_text  = EXCLUDED.accumulated_text,
                last_event_seq    = EXCLUDED.last_event_seq,
                expires_at        = EXCLUDED.expires_at`,
-        [queryId, conversationId, text, seq, expiresAt],
+        [queryId, userId, conversationId, text, seq, expiresAt],
       )
     } catch {
       // Non-fatal: pending stream write failure does not block the response.
