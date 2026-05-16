@@ -23,7 +23,7 @@ interface ReportEntry {
   version: string
 }
 
-const CITATION_APPENDIX = `
+export const CITATION_APPENDIX = `
 
 ---
 CITATION FORMAT (V2 UI):

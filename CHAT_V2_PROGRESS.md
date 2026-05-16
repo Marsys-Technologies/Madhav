@@ -1081,3 +1081,11 @@ Native: PR is at https://github.com/amonty84/Madhav/pull/20. After CI green + fi
 ## Remediation — Operator follow-up
 
 <!-- Actions that require operator (not executor) to complete after this session closes. -->
+
+### B.7 — Metadata persistence (O9)
+- Status: COMPLETE
+- Commit: c9992c0
+- PR: #30 (merged b943340 at 2026-05-16T19:15:41Z)
+- Files touched: platform/src/app/api/chat/consume/route.ts, platform/tests/integration/chat-v2/metadata_persistence.test.ts
+- Tests added: 3 (metadata_persistence.test.ts — route passes metadata, structure shape, writer writes to metadata_json)
+- Notes: conversation_writer.ts already accepted lastAssistantMetadata; only route.ts needed to assemble + pass it. Drawer now populates after reload.
