@@ -1082,6 +1082,26 @@ Native: PR is at https://github.com/amonty84/Madhav/pull/20. After CI green + fi
 
 <!-- Actions that require operator (not executor) to complete after this session closes. -->
 
+### B.12 — Provision Cloud Scheduler for pending-streams reaper
+
+After MARSYS_CRON_SECRET is set in the Cloud Run environment:
+
+```bash
+gcloud scheduler jobs create http pending-streams-reaper \
+  --schedule="*/5 * * * *" \
+  --uri="https://amjis-web-<REVISION>.a.run.app/api/admin/cron/reap-pending-streams" \
+  --http-method=POST \
+  --headers="Authorization=Bearer ${MARSYS_CRON_SECRET}" \
+  --location=asia-south1
+```
+
+Replace `<REVISION>` with the active Cloud Run URL or use the service URL directly.
+
+### B.10 + B.11 — Provision Vertex DU + GCS when creds available
+
+- B.10: Set GOOGLE_APPLICATION_CREDENTIALS (roles/documentai.apiUser), VERTEX_AI_PROJECT_ID, VERTEX_AI_LOCATION, then re-run this prompt.
+- B.11: `gcloud storage buckets create gs://marsys-chat-uploads-prod --location=asia-south1`, set GOOGLE_APPLICATION_CREDENTIALS (roles/storage.objectAdmin), re-run this prompt.
+
 ### B.7 — Metadata persistence (O9)
 - Status: COMPLETE
 - Commit: c9992c0
@@ -1089,3 +1109,29 @@ Native: PR is at https://github.com/amonty84/Madhav/pull/20. After CI green + fi
 - Files touched: platform/src/app/api/chat/consume/route.ts, platform/tests/integration/chat-v2/metadata_persistence.test.ts
 - Tests added: 3 (metadata_persistence.test.ts — route passes metadata, structure shape, writer writes to metadata_json)
 - Notes: conversation_writer.ts already accepted lastAssistantMetadata; only route.ts needed to assemble + pass it. Drawer now populates after reload.
+
+### B.9 — Citation prompt v2 wired (O5)
+- Status: COMPLETE
+- Commit: ae5b546
+- PR: #32 (merged b919c8c)
+- Files touched: platform/src/lib/synthesis/prompts/synthesis_prompt_v2.ts, platform/src/lib/synthesis/single_model_strategy.ts, platform/tests/integration/chat-v2/citation_prompt_v2.test.ts
+- Tests added: 3 (citation_prompt_v2.test.ts)
+- Notes: Exported CITATION_APPENDIX from synthesis_prompt_v2.ts; appended in single_model_strategy when CHAT_V2_ENABLED. Model now instructed to use SIG.MSR.NNN format.
+
+### B.10 — Vertex DU PDFs (O7)
+- Status: DEFERRED
+- Reason: VERTEX_AI_PROJECT_ID, VERTEX_AI_LOCATION, GOOGLE_APPLICATION_CREDENTIALS all unset in executor environment.
+- Re-unblock: Set GOOGLE_APPLICATION_CREDENTIALS pointing to a service account key with roles/documentai.apiUser, set VERTEX_AI_PROJECT_ID + VERTEX_AI_LOCATION, re-run this prompt.
+
+### B.11 — GCS real uploads (O8)
+- Status: DEFERRED
+- Reason: GOOGLE_APPLICATION_CREDENTIALS unset; cannot verify gs://marsys-chat-uploads-prod bucket existence.
+- Re-unblock: Provision bucket + set GOOGLE_APPLICATION_CREDENTIALS with roles/storage.objectAdmin, re-run this prompt.
+
+### B.12 — Pending-streams reaper cron route (§M.4)
+- Status: COMPLETE
+- Commit: (see below)
+- PR: pending
+- Files touched: platform/src/app/api/admin/cron/reap-pending-streams/route.ts, platform/tests/integration/chat-v2/pending_streams_reaper.test.ts
+- Tests added: 3 (pending_streams_reaper.test.ts — auth 401, delete + count, POST export)
+- Notes: Auth via MARSYS_CRON_SECRET bearer token. Returns { reaped: N }. Cloud Scheduler recipe in Operator follow-up section.
