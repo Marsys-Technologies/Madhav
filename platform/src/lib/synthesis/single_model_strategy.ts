@@ -57,6 +57,8 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { checkB11Compliance } from './b11_guard'
+import { getMaxRetries } from './provider_quirks'
+import type { Provider } from '@/lib/models/registry'
 
 import type {
   SynthesisRequest,
@@ -404,12 +406,11 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
         ? 0
         : 0.3
 
-    // Synthesis retry guard — AI SDK retries failed requests up to 3 times by
-    // default (AI_RetryError). For synthesis, QG6.1 wires fallback at the route
-    // level; SDK-level retries only triple the hang window without benefit.
-    // Set maxRetries: 0 across all synthesis providers so failures surface
-    // immediately and the route-level fallback can activate.
-    // (Previously NIM-only; extended to all providers per QG7.2 fix.)
+    // Synthesis retry guard — bounded per-provider (α5 policy).
+    // NIM uses maxRetries: 0 (adapter has its own logic); all other providers
+    // allow 1 SDK-level retry on transient network/5xx before the route-level
+    // QG6.1 fallback activates. Persistent failures surface after 1 retry.
+    const synthesisMaxRetries = getMaxRetries((modelMeta?.provider ?? 'anthropic') as Provider)
     const isNvidiaSynthesis = modelMeta?.provider === 'nvidia'
 
     // DeepSeek V4 Pro thinking=enabled + tools + tool_choice:none is an
@@ -435,7 +436,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       temperature: synthesisTemperature,
       experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
       ...(abortSignal && { abortSignal }),
-      maxRetries: 0,
+      maxRetries: synthesisMaxRetries,
       // Google-specific: disable safety filters (Jyotish content triggers
       // DANGEROUS_CONTENT mid-stream) + cap thinking budget (avoids 30-90s
       // hang before first visible token). See resolver.googleProviderOptions.
