@@ -1287,3 +1287,17 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 
 ### Rollback procedure
 One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflows/deploy.yml → new Cloud Run revision auto-deploys with legacy path. Instant kill switch; no code revert needed.
+
+---
+
+## Chrome Parity log
+
+<!-- Work item entries appended below as each item completes. -->
+
+## Chrome Parity — Deferred items
+
+<!-- Items deferred with reason + unblock recipe appended below. -->
+
+## Chrome Parity — Operator follow-up
+
+<!-- Items requiring operator action appended below. -->
