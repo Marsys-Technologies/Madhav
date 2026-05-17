@@ -155,7 +155,7 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
 // ─── Citation context ─────────────────────────────────────────────────────────
 
 interface CitationContextValue {
-  onPin: (n: number, signalId: string) => void
+  onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
 }
 const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
 
@@ -192,12 +192,40 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
 
+  // C.3: build signal_id → {snippet, layer} map from message.content DataMessageParts.
+  // The route emits data-citation parts via writer.write({ type: 'data-citation', data: {...} }),
+  // which @assistant-ui/react-ai-sdk converts to DataMessagePart { type:'data', name:'citation' }.
+  const citationRichMap = useMemo(() => {
+    const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
+    for (const p of message.content as ReadonlyArray<unknown>) {
+      if (
+        typeof p === 'object' && p !== null &&
+        (p as Record<string, unknown>).type === 'data' &&
+        (p as Record<string, unknown>).name === 'citation'
+      ) {
+        const data = (p as { data: Record<string, unknown> }).data
+        if (typeof data.signal_id === 'string') {
+          result.set(data.signal_id, {
+            snippet: typeof data.snippet === 'string' ? data.snippet : '',
+            layer: (data.layer === 'L1' ? 'L1' : 'L2.5'),
+          })
+        }
+      }
+    }
+    return result
+  }, [message.content])
+
+  const enrichedOnPin = useCallback((n: number, signalId: string) => {
+    const rich = citationRichMap.get(signalId)
+    onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
+  }, [onPin, citationRichMap])
+
   // D.1: extract citation chips (NumberedCitation elements) for footer rendering.
   // MarkdownContent only accepts string children, so chips render below the text.
   const citationChips = useMemo(() => {
-    const parts = renderWithCitations(text, onPin)
+    const parts = renderWithCitations(text, enrichedOnPin)
     return parts.filter((p): p is React.ReactElement => typeof p !== 'string')
-  }, [text, onPin])
+  }, [text, enrichedOnPin])
 
   useEffect(() => {
     onCitationCount?.(citationChips.length)
@@ -1470,10 +1498,10 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
   const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
 
-  const handlePin = useCallback((n: number, signalId: string) => {
+  const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
     setPinnedCitations(prev => {
       if (prev.some(c => c.index === n)) return prev
-      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer: 'L2.5' as const, snippet: '' }]
+      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
     })
   }, [])
 
