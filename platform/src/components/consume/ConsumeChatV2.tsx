@@ -1181,7 +1181,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   return (
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
     <div
-      className="relative flex h-dvh bg-zinc-950 text-zinc-100"
+      className="relative flex h-dvh text-zinc-100"
       data-testid="consume-chat-v2-root"
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
