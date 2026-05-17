@@ -16,7 +16,12 @@ import type { UIMessage } from 'ai'
 import { PanelLeft } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
+import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
+import type { StyleId } from '@/components/chat/ModelStylePicker'
+import { TierPicker } from '@/components/consume/TierPicker'
+import { useChatPreferences } from '@/hooks/useChatPreferences'
 import type { AudienceTier } from '@/lib/prompts/types'
+import type { ModelStack } from '@/lib/models/registry'
 import {
   ThreadPrimitive,
   MessagePrimitive,
@@ -231,6 +236,30 @@ const ConversationIdCtx = createContext<string | null>(null)
 
 // ─── Latest query-id callback context (C.2: V2QueryIdTracker → ConsumeChatV2 header) ──
 const V2QueryIdCb = createContext<((id: string) => void) | null>(null)
+
+// ─── Preferences context (C.3: bottom-bar selectors share state with API body) ──
+interface V2PrefsCtxValue {
+  stack: ModelStack
+  style: StyleId
+  lelEnabled: boolean
+  activeTier: AudienceTier
+  audienceTier: AudienceTier
+  setStack: (s: ModelStack) => void
+  setStyle: (s: StyleId) => void
+  setLelEnabled: (v: boolean) => void
+  setActiveTier: (t: AudienceTier) => void
+}
+const V2PrefsCtx = createContext<V2PrefsCtxValue>({
+  stack: 'gemini-2.5-flash' as ModelStack,
+  style: 'acharya',
+  lelEnabled: true,
+  activeTier: 'client',
+  audienceTier: 'client',
+  setStack: () => {},
+  setStyle: () => {},
+  setLelEnabled: () => {},
+  setActiveTier: () => {},
+})
 
 // ─── Citation context ─────────────────────────────────────────────────────────
 
@@ -1083,6 +1112,44 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
   return null
 }
 
+// ─── C.3: Bottom-bar selectors ───────────────────────────────────────────────
+
+function V2BottomBar() {
+  const { stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled, setActiveTier } =
+    useContext(V2PrefsCtx)
+
+  return (
+    <div
+      className="mx-auto max-w-4xl w-full px-4 py-1 flex flex-wrap items-center gap-2 border-b border-zinc-800"
+      data-testid="v2-bottom-bar"
+    >
+      <ModelStylePicker
+        stack={stack}
+        style={style}
+        onStackChange={setStack}
+        onStyleChange={setStyle}
+      />
+      <button
+        type="button"
+        aria-pressed={lelEnabled}
+        onClick={() => setLelEnabled(!lelEnabled)}
+        className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+          lelEnabled
+            ? 'border-[rgba(var(--brand-gold-rgb),0.35)] text-[rgba(var(--brand-gold-rgb),0.80)] bg-[rgba(var(--brand-gold-rgb),0.06)]'
+            : 'border-zinc-700 text-zinc-500 bg-transparent'
+        }`}
+        data-testid="v2-lel-toggle"
+        title={lelEnabled ? 'Life Events context enabled' : 'Life Events context disabled'}
+      >
+        Life Events: {lelEnabled ? 'On' : 'Off'}
+      </button>
+      {audienceTier === 'super_admin' && (
+        <TierPicker tier={activeTier} onChange={setActiveTier} />
+      )}
+    </div>
+  )
+}
+
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
 function V2Thread() {
@@ -1128,6 +1195,7 @@ function V2Thread() {
         </ThreadPrimitive.ScrollToBottom>
       </ThreadPrimitive.Viewport>
 
+      <V2BottomBar />
       <V2Composer />
     </ThreadPrimitive.Root>
   )
@@ -1146,6 +1214,13 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
+  const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
+  const [activeTier, setActiveTier] = useState<AudienceTier>(audienceTier)
+
+  const prefsCtxValue = useMemo<V2PrefsCtxValue>(() => ({
+    stack, style, lelEnabled, activeTier, audienceTier,
+    setStack, setStyle, setLelEnabled, setActiveTier,
+  }), [stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled])
 
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
@@ -1220,6 +1295,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
 
   return (
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
+    <V2PrefsCtx.Provider value={prefsCtxValue}>
     <div
       className="relative flex h-dvh text-zinc-100"
       data-testid="consume-chat-v2-root"
@@ -1335,6 +1411,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
         </main>
       </div>
     </div>
+    </V2PrefsCtx.Provider>
     </CostVisibilityCtx.Provider>
   )
 }
@@ -1402,6 +1479,14 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages, onQueryId }: 
 
   const panelOptInCtxValue = useMemo(() => ({ panelOptIn, setPanelOptIn }), [panelOptIn, setPanelOptIn])
 
+  const { stack, style, lelEnabled } = useContext(V2PrefsCtx)
+  const stackRef = useRef(stack)
+  stackRef.current = stack
+  const styleRef = useRef(style)
+  styleRef.current = style
+  const lelEnabledRef = useRef(lelEnabled)
+  lelEnabledRef.current = lelEnabled
+
   const runtime = useChatRuntime({
     transport: new DefaultChatTransport({
       api: '/api/chat/consume',
@@ -1421,6 +1506,9 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages, onQueryId }: 
           ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
           ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
           ...(panelOptInRef.current ? { panel_opt_in: true } : {}),
+          stack: stackRef.current,
+          style: styleRef.current,
+          lel_context_enabled: lelEnabledRef.current,
         }
       },
     }),
