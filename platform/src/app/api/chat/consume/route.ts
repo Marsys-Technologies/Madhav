@@ -7,7 +7,8 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart } from '@/lib/streams/data_parts'
+import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
@@ -1146,6 +1147,27 @@ export async function POST(request: Request) {
                 layer: c.layer,
                 snippet: c.snippet,
               }),
+            })
+          }
+        }
+
+        // D.3: emit correction + out-of-domain data parts when synthesis markers present.
+        if (lastAssistantText) {
+          const { correction, outOfDomain } = parseMarkers(lastAssistantText)
+          if (correction) {
+            writer.write({
+              type: 'data-correction',
+              data: correctionPart({
+                original_claim: correction.original_claim,
+                corrected_claim: correction.corrected_claim,
+                classical_source: correction.classical_source,
+              }),
+            })
+          }
+          if (outOfDomain) {
+            writer.write({
+              type: 'data-out-of-domain',
+              data: outOfDomainPart({ reason: outOfDomain.reason }),
             })
           }
         }

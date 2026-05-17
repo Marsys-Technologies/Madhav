@@ -149,6 +149,30 @@ export const PanelMetaPartSchema = z.object({
 
 export type PanelMetaPart = z.infer<typeof PanelMetaPartSchema>
 
+// ── Correction part (D.3) ─────────────────────────────────────────────────
+// Emitted in onFinish when parseMarkers finds a ‹correction› marker in the
+// synthesis output. Drives CorrectionNotice in V2Message.
+
+export const CorrectionPartSchema = z.object({
+  type: z.literal('correction'),
+  original_claim: z.string(),
+  corrected_claim: z.string(),
+  classical_source: z.string().optional(),
+})
+
+export type CorrectionPart = z.infer<typeof CorrectionPartSchema>
+
+// ── Out-of-domain part (D.3) ──────────────────────────────────────────────
+// Emitted in onFinish when parseMarkers finds a ‹out_of_domain› marker.
+// Drives OutOfDomainBanner in V2Message.
+
+export const OutOfDomainPartSchema = z.object({
+  type: z.literal('out_of_domain'),
+  reason: z.string(),
+})
+
+export type OutOfDomainPart = z.infer<typeof OutOfDomainPartSchema>
+
 // ── Union ─────────────────────────────────────────────────────────────────
 
 export const DataPartSchema = z.discriminatedUnion('type', [
@@ -162,6 +186,8 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   PanelMemberPartSchema,
   PanelMetaPartSchema,
   PredictionCandidatePartSchema,
+  CorrectionPartSchema,
+  OutOfDomainPartSchema,
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
@@ -217,5 +243,15 @@ export const panelMemberPart = (args: Omit<PanelMemberPart, 'type'>): PanelMembe
 
 export const panelMetaPart = (args: Omit<PanelMetaPart, 'type'>): PanelMetaPart => ({
   type: 'panel_meta',
+  ...args,
+})
+
+export const correctionPart = (args: Omit<CorrectionPart, 'type'>): CorrectionPart => ({
+  type: 'correction',
+  ...args,
+})
+
+export const outOfDomainPart = (args: Omit<OutOfDomainPart, 'type'>): OutOfDomainPart => ({
+  type: 'out_of_domain',
   ...args,
 })

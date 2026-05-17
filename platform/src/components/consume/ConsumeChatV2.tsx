@@ -56,6 +56,8 @@ import { ToolCallCard } from '../chat-v2/ToolCallCard'
 import { PanelModeToggle, PanelOptInCtx } from '../chat-v2/PanelModeToggle'
 import { ContextUsageCue } from './ContextUsageCue'
 import { PostAnswerProvenance } from './PostAnswerProvenance'
+import { CorrectionNotice } from './CorrectionNotice'
+import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 import { cn } from '@/lib/utils'
 
@@ -412,6 +414,44 @@ function V2Message() {
       .sort((a, b) => b.score - a.score)
   }, [dataParts])
 
+  // D.3: extract correction and out-of-domain from message.content (post-stream DataMessageParts)
+  // and from dataParts (live-stream: message.metadata?.unstable_data).
+  const correction = useMemo(() => {
+    // Post-stream: DataMessagePart { type:'data', name:'correction', data:{...} }
+    for (const p of message.content as ReadonlyArray<unknown>) {
+      if (typeof p === 'object' && p !== null &&
+        (p as Record<string, unknown>).type === 'data' &&
+        (p as Record<string, unknown>).name === 'correction') {
+        return (p as { data: { original_claim: string; corrected_claim: string; classical_source?: string } }).data
+      }
+    }
+    // Live-stream: { type:'data-correction', data:{...} }
+    for (const d of dataParts) {
+      if (typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-correction') {
+        return (d as { data: { original_claim: string; corrected_claim: string; classical_source?: string } }).data
+      }
+    }
+    return null
+  }, [message.content, dataParts])
+
+  const outOfDomain = useMemo(() => {
+    for (const p of message.content as ReadonlyArray<unknown>) {
+      if (typeof p === 'object' && p !== null &&
+        (p as Record<string, unknown>).type === 'data' &&
+        (p as Record<string, unknown>).name === 'out_of_domain') {
+        return (p as { data: { reason: string } }).data
+      }
+    }
+    for (const d of dataParts) {
+      if (typeof d === 'object' && d !== null &&
+        (d as Record<string, unknown>).type === 'data-out-of-domain') {
+        return (d as { data: { reason: string } }).data
+      }
+    }
+    return null
+  }, [message.content, dataParts])
+
   const handleCitationCount = useCallback((n: number) => {
     setCitationCount(n)
   }, [])
@@ -479,6 +519,19 @@ function V2Message() {
               issues={citationGate.issues ?? []}
               isSuperAdmin={isSuperAdmin}
               onOpenDetails={() => setDetailsOpen(true)}
+            />
+          )}
+
+          {/* D.3: out-of-domain banner (above answer) */}
+          {outOfDomain && (
+            <OutOfDomainBanner event={{ type: 'out_of_domain', reason: outOfDomain.reason }} data-testid="v2-out-of-domain-banner" />
+          )}
+
+          {/* D.3: correction notice (above answer) */}
+          {correction && (
+            <CorrectionNotice
+              correction={{ type: 'correction', original_claim: correction.original_claim, corrected_claim: correction.corrected_claim, classical_source: correction.classical_source }}
+              data-testid="v2-correction-notice"
             />
           )}
 
