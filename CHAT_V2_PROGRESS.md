@@ -1671,3 +1671,53 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### E.2 — COMPLETE
 
+## Round 5 — Phase E.3 — Anthropic force-route param
+
+- **Date**: 2026-05-18
+- **PR**: [#71](https://github.com/amonty84/Madhav/pull/71) `fix(chat-v2/r5/E.3): ?provider= URL param + MARSYS_FORCE_PROVIDER env override`
+- **Branch**: `fix/chat-v2-r5/E3-anthropic-force-route`
+- **Change**: Added provider-override block in `route.ts` after `VALID_STACKS` declaration: reads `?provider=` URL search param or `MARSYS_FORCE_PROVIDER` env var (only when `body.stack` is not set); validates against `VALID_STACKS`; falls back to `DEFAULT_STACK_ID`
+- **Tests**: `provider_force_route.test.ts` — 5/5 PASS; 42 chat-v2 files / 446 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: bef8383
+
+### E.3 — COMPLETE
+
+## Round 5 — Phase E.4 — Delete stranded legacy components
+
+- **Date**: 2026-05-18
+- **Audit**: Fresh symbol-based grep shows all four previously-targeted components are imported from within the V1 legacy subsystem — NOT safe to delete:
+  - `MessageActions.tsx` — 2 imports from `AssistantMessage.tsx` + `UserMessage.tsx` (within chat/)
+  - `ThemeToggle.tsx` — 1 import from `ConversationSidebar.tsx` (which has 3 imports from ConsumeShell/ConsumeRail/BuildChat)
+  - `UserMessage.tsx` — 2 imports from `MessageList.tsx` + `VirtualizedMessageList.tsx` (within chat/)
+  - `VirtualizedMessageList.tsx` — 1 import from `AdaptiveMessageList.tsx` (within chat/)
+  - No `chat/` component has zero total imports; V1 path (BuildChat, ConsumeShell, StreamingAnswer) keeps the whole chain live
+- **Decision**: No deletions. V1 components will become zero-import only when the V1 path is retired post-flag-flip.
+- **Status**: AUDIT-ONLY (no PR)
+
+### E.4 — COMPLETE (AUDIT-ONLY)
+
+---
+
+## Round 5 — Phase F — Verification + Re-flip
+
+### F.1 — Comprehensive Playwright walkthrough
+
+- **Status**: BLOCKED — auth-unavailable (auth-unavailable log per operator-approved defaults)
+
+### F.2 — Visual regression baselines
+
+- **Status**: BLOCKED — auth-unavailable (auth-unavailable log per operator-approved defaults)
+
+### F.3 — Operator final visual review
+
+- **Status**: HALT — requires operator to open local dev server with `MARSYS_FLAG_CHAT_V2_ENABLED=true` and walk through all chat-v2 surfaces. See `CHAT_V2_ROUND_5_PLAN_v1_0.md §11 F.3` for checklist.
+
+### F.4 — Re-flip master flag
+
+- **Status**: PENDING — depends on F.3 PASS verdict from operator
+
+---
+
+**Phase A–E executor hand-off complete.** All PRs merged. F.1/F.2 blocked on auth; F.3 is a manual operator gate; F.4 follows F.3 approval.
