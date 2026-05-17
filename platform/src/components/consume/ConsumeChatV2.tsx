@@ -13,7 +13,7 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
@@ -32,6 +32,7 @@ import {
   useMessage,
 } from '@assistant-ui/react'
 import type { ConsumeChatProps } from './ConsumeChatLegacy'
+import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
@@ -931,12 +932,12 @@ function V2Composer() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <ComposerPrimitive.Root
-        className="border-t border-zinc-800 bg-zinc-950 px-4 py-3"
+        className="px-4 pb-3 pt-1"
         data-testid="v2-composer"
       >
         {interruptToast && (
           <div
-            className="mb-2 text-center text-xs text-amber-400"
+            className="mx-auto max-w-4xl mb-2 text-center text-xs text-amber-400"
             data-testid="v2-interrupt-toast"
             aria-live="polite"
           >
@@ -944,89 +945,99 @@ function V2Composer() {
           </div>
         )}
 
-        {/* β5: attachment strip above the input */}
-        <AttachmentStrip attachments={attachments} onRemove={removeAttachment} />
+        {/* β5: hidden file input (inside form, outside pill) */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT_TYPES}
+          multiple
+          className="sr-only"
+          aria-label="Attach file"
+          onChange={handleFileChange}
+          data-testid="v2-file-input"
+        />
 
-        <div className="mx-auto max-w-4xl flex items-end gap-3">
-          {/* β5: hidden file input + attach button */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPT_TYPES}
-            multiple
-            className="sr-only"
-            aria-label="Attach file"
-            onChange={handleFileChange}
-            data-testid="v2-file-input"
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-11 w-11 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            title="Attach image or PDF"
-            aria-label="Attach image or PDF file"
-            data-testid="v2-attach-btn"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden="true">
-              <path d="M13.5 9.5L7.5 15.5a4 4 0 0 1-5.66-5.66L9.18 2.5a2.5 2.5 0 0 1 3.54 3.54L6.5 11.9A1 1 0 0 1 5.09 10.5l5.5-5.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+        {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
+        <div className="mx-auto max-w-4xl">
+          <div className="relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200">
+            {/* β5: attachment strip inside pill top */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-4 pt-3">
+                <AttachmentStrip attachments={attachments} onRemove={removeAttachment} />
+              </div>
+            )}
 
-          <ComposerPrimitive.Input
-            className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base md:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors"
-            placeholder="Ask about the chart…"
-            rows={3}
-            data-testid="v2-composer-input"
-            onPaste={handlePaste}
-            aria-label="Message input"
-            aria-multiline="true"
-          />
-          <div className="flex flex-col gap-2 pb-0.5">
-            {isRunning ? (
-              <>
-                <ComposerPrimitive.Cancel asChild>
-                  <button
-                    type="button"
-                    className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
-                    title="Stop generation"
-                    aria-label="Stop generating response"
-                    data-testid="v2-abort-btn"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                      <rect x="4" y="4" width="8" height="8" rx="1" />
-                    </svg>
-                  </button>
-                </ComposerPrimitive.Cancel>
+            <ComposerPrimitive.Input
+              className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-zinc-100 placeholder-zinc-500 focus:outline-none"
+              placeholder="Ask about the chart…"
+              rows={3}
+              data-testid="v2-composer-input"
+              onPaste={handlePaste}
+              aria-label="Message input"
+              aria-multiline="true"
+            />
+
+            {/* Bottom row inside pill: paperclip + hints | send/stop */}
+            <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-0.5">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={handleInterruptSend}
-                  className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-indigo-700 text-white hover:bg-indigo-600 transition-colors"
-                  title="Cancel and send new query"
-                  aria-label="Cancel current response and send new query"
-                  data-testid="v2-interrupt-send-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all hover:bg-zinc-800 hover:text-zinc-300"
+                  title="Attach image or PDF"
+                  aria-label="Attach image or PDF file"
+                  data-testid="v2-attach-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                    <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <Paperclip className="h-4 w-4" aria-hidden="true" />
                 </button>
-              </>
-            ) : (
-              <ComposerPrimitive.Send asChild>
-                <button
-                  type="submit"
-                  className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
-                  aria-label="Send message"
-                  data-testid="v2-send-btn"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                    <path d="M8 1L15 8L8 15M15 8H1" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </ComposerPrimitive.Send>
-            )}
+                <span className="hidden md:inline pl-1 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                  ↵ Send · ⇧↵ New line
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {isRunning ? (
+                  <>
+                    <ComposerPrimitive.Cancel asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
+                        title="Stop generation"
+                        aria-label="Stop generating response"
+                        data-testid="v2-abort-btn"
+                      >
+                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      </button>
+                    </ComposerPrimitive.Cancel>
+                    <button
+                      type="button"
+                      onClick={handleInterruptSend}
+                      className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-95"
+                      title="Cancel and send new query"
+                      aria-label="Cancel current response and send new query"
+                      data-testid="v2-interrupt-send-btn"
+                    >
+                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </>
+                ) : (
+                  <ComposerPrimitive.Send asChild>
+                    <button
+                      type="submit"
+                      className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+                      aria-label="Send message"
+                      data-testid="v2-send-btn"
+                    >
+                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </ComposerPrimitive.Send>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-        {/* O2: panel mode toggle — composer-area affordance */}
+
+        {/* O2: panel mode toggle — below pill */}
         <div className="mx-auto max-w-4xl flex items-center pt-1.5" data-testid="v2-composer-options">
           <PanelModeToggle />
         </div>
@@ -1152,7 +1163,7 @@ function V2BottomBar() {
 
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
-function V2Thread() {
+function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }) {
   return (
     <ThreadPrimitive.Root
       className="flex h-full flex-col"
@@ -1170,13 +1181,12 @@ function V2Thread() {
         aria-label="Conversation messages"
       >
         <ThreadPrimitive.Empty>
-          <div
-            className="flex h-full flex-col items-center justify-center gap-3 text-center px-4 py-16"
+          <EmptyState
+            chartId={chartId}
+            chartName={chartName}
+            className="h-full"
             data-testid="v2-thread-empty"
-          >
-            <p className="text-sm font-medium text-zinc-200">Ready</p>
-            <p className="text-xs text-zinc-500">Chat V2 — assistant-ui</p>
-          </div>
+          />
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
@@ -1404,6 +1414,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           <V2ChatRuntime
             key={restoredKey}
             chartId={chartId}
+            chartName={chartName}
             conversationId={activeConversationId}
             initialMessages={initialMessages}
             onQueryId={setLatestQueryId}
@@ -1420,6 +1431,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
 
 interface V2ChatRuntimeProps {
   chartId: string
+  chartName: string
   conversationId: string | null
   initialMessages: UIMessage[] | undefined
 }
@@ -1436,7 +1448,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, conversationId, initialMessages, onQueryId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -1528,7 +1540,7 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages, onQueryId }: 
           {/* C.2: surface latest query_id to parent via callback */}
           <V2QueryIdTracker />
           <div className="flex h-full overflow-hidden">
-            <V2Thread />
+            <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
               citations={pinnedCitations}
               pinned={pinnedSet}
