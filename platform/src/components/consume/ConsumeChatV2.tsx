@@ -1195,13 +1195,14 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       )}
 
       {/* Sidebar wrapper:
-          collapsed=true  → hidden on mobile (md: shows the w-10 strip)
-          collapsed=false → fixed overlay on mobile (md: in-flow) */}
+          Always fixed/overlay so it never steals width from the chat column.
+          collapsed=true  → hidden on mobile; fixed thin strip on md+
+          collapsed=false → fixed slide-over on all viewports */}
       <div
         className={
           sidebarCollapsed
-            ? 'hidden md:flex'
-            : 'fixed inset-y-0 left-0 z-40 flex md:relative md:inset-auto'
+            ? 'hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex'
+            : 'fixed inset-y-0 left-0 z-40 flex'
         }
       >
         <ConversationSidebar
