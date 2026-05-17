@@ -329,7 +329,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       >
         {text}
       </MarkdownContent>
-      {citationChips.length > 0 && !isStreaming && (
+      {citationChips.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
           {citationChips}
         </div>
