@@ -1635,3 +1635,16 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### D.2 — DEFERRED
 
+## Round 5 — Phase D.3 — CorrectionNotice + OutOfDomainBanner emission
+
+- **Date**: 2026-05-18
+- **PR**: [#69](https://github.com/amonty84/Madhav/pull/69) `fix(chat-v2/r5/D.3): emit data-correction + data-out-of-domain; subscribe in V2Message`
+- **Branch**: `fix/chat-v2-r5/D3-correction-out-of-domain-emission`
+- **Change**: Added `CorrectionPartSchema` + `OutOfDomainPartSchema` to `data_parts.ts`; imported `parseMarkers` in `route.ts` and emit `data-correction`/`data-out-of-domain` in `onFinish`; imported `CorrectionNotice` + `OutOfDomainBanner` in `ConsumeChatV2.tsx`, read from both `message.content` (post-stream) and `dataParts` (live), render above `MessagePrimitive.Parts`
+- **Tests**: `correction_out_of_domain.test.ts` — 15/15 PASS; 40 chat-v2 files / 429 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: 39044ff
+
+### D.3 — COMPLETE
+
