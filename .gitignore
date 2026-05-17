@@ -54,3 +54,9 @@ platform/scripts/eval/*_stderr.log
 
 # Claude Code local-only settings (personal permission overrides)
 .claude/settings.local.json
+
+# Personal sadhana / spiritual practice notes (not for git)
+/99_PERSONAL_SADHANA/
+
+# Post-merge smoke test scratch space
+/post_merge_smoke/
