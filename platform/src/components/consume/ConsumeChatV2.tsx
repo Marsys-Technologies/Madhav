@@ -13,6 +13,10 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
+import { PanelLeft } from 'lucide-react'
+import { ShareButton } from '@/components/chat/ShareButton'
+import { TraceDrawer } from '@/components/consume/TraceDrawer'
+import type { AudienceTier } from '@/lib/prompts/types'
 import {
   ThreadPrimitive,
   MessagePrimitive,
@@ -224,6 +228,9 @@ const CostVisibilityCtx = createContext<boolean>(false)
 
 // ─── Conversation ID context (B.3: threads conversationId into V2Message for regenerate) ──
 const ConversationIdCtx = createContext<string | null>(null)
+
+// ─── Latest query-id callback context (C.2: V2QueryIdTracker → ConsumeChatV2 header) ──
+const V2QueryIdCb = createContext<((id: string) => void) | null>(null)
 
 // ─── Citation context ─────────────────────────────────────────────────────────
 
@@ -999,6 +1006,37 @@ function V2Composer() {
   )
 }
 
+// ─── C.2: Query-id tracker ────────────────────────────────────────────────────
+// Mounted inside AssistantRuntimeProvider; subscribes to messages and surfaces
+// the most recent query_id into V2QueryIdCtx for the TraceDrawer.
+
+function V2QueryIdTracker() {
+  const runtime = useThreadRuntime()
+  const onQueryId = useContext(V2QueryIdCb)
+
+  useEffect(() => {
+    if (!onQueryId) return
+    const unsub = runtime.subscribe(() => {
+      const state = runtime.getState()
+      const messages = state.messages
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        if (msg.role !== 'assistant') continue
+        const custom = (msg.metadata as { custom?: { queryId?: string } } | undefined)?.custom
+        if (custom?.queryId) { onQueryId(custom.queryId); return }
+        const data = (msg.metadata as unknown as { unstable_data?: ReadonlyArray<unknown> } | undefined)?.unstable_data ?? []
+        for (const part of data) {
+          const p = part as { query_id?: string }
+          if (p.query_id) { onQueryId(p.query_id); return }
+        }
+      }
+    })
+    return unsub
+  }, [runtime, onQueryId])
+
+  return null
+}
+
 // ─── γ7: Stream-resume tracker ────────────────────────────────────────────────
 // Mounted inside AssistantRuntimeProvider so it can use useThreadRuntime().
 // Saves queryId + received char count to sessionStorage while a stream is live;
@@ -1101,11 +1139,13 @@ function V2Thread() {
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  * Accepts the same props as ConsumeChatLegacy for API compatibility.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client' }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [traceOpen, setTraceOpen] = useState(false)
+  const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
 
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
@@ -1220,30 +1260,69 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           className="flex items-center gap-3 border-b border-zinc-800 px-4 md:px-6 py-3 shrink-0"
           data-testid="v2-header"
         >
-          {/* Mobile-only hamburger to open sidebar */}
+              {/* Mobile: open sidebar */}
           <button
             type="button"
             onClick={() => setSidebarCollapsed(false)}
-            className="flex md:hidden h-8 w-8 min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="flex md:hidden h-8 w-8 min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors"
             aria-label="Open conversations"
             data-testid="v2-mobile-sidebar-open"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-              <path d="M2 4h12M2 8h7M2 12h9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-            </svg>
+            <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
-          <span className="text-xs font-mono text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded border border-violet-400/20">
-            V2
-          </span>
-          <h1 className="text-sm font-semibold text-zinc-100 truncate" data-testid="v2-chart-name">
-            {chartName}
-          </h1>
-          {chartMeta && (
-            <span className="hidden sm:block text-xs text-zinc-500 truncate" data-testid="v2-chart-meta">
-              {chartMeta}
+          {/* Desktop: toggle sidebar */}
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(c => !c)}
+            className="hidden md:flex h-8 w-8 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors"
+            aria-label="Toggle conversations"
+            data-testid="v2-desktop-sidebar-toggle"
+          >
+            <PanelLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+
+          {/* Brand title + meta */}
+          <div className="min-w-0 flex-1 px-1.5">
+            <span
+              role="heading"
+              aria-level={1}
+              className="truncate font-serif text-[15px] font-medium text-foreground leading-tight block"
+              data-testid="v2-chart-name"
+            >
+              {chartName}
             </span>
-          )}
+            {chartMeta && (
+              <span
+                className="truncate text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] leading-none block mt-0.5"
+                data-testid="v2-chart-meta"
+              >
+                {chartMeta}
+              </span>
+            )}
+          </div>
+
+          {/* Right-side actions: Share + Trace (super_admin only) */}
+          <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
+            <ShareButton conversationId={activeConversationId ?? undefined} />
+            {audienceTier === 'super_admin' && (
+              <button
+                type="button"
+                onClick={() => setTraceOpen(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-[color-mix(in_oklch,var(--brand-gold-cream)_60%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors"
+                aria-label="View query trace"
+                data-testid="v2-trace-btn"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5" aria-hidden="true">
+                  <circle cx="8" cy="8" r="5" /><path d="M8 5v3l2 2" strokeLinecap="round" />
+                </svg>
+                Trace
+              </button>
+            )}
+          </div>
         </header>
+
+        {/* TraceDrawer — outside header but inside main column */}
+        <TraceDrawer queryId={latestQueryId} open={traceOpen} onOpenChange={setTraceOpen} />
 
         <main className="flex-1 overflow-hidden">
           <V2ChatRuntime
@@ -1251,6 +1330,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             chartId={chartId}
             conversationId={activeConversationId}
             initialMessages={initialMessages}
+            onQueryId={setLatestQueryId}
           />
         </main>
       </div>
@@ -1279,7 +1359,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRuntimeProps) {
+function V2ChatRuntime({ chartId, conversationId, initialMessages, onQueryId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -1349,6 +1429,7 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
 
 
   return (
+    <V2QueryIdCb.Provider value={onQueryId ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
     <CitationCtx.Provider value={citationCtxValue}>
@@ -1356,6 +1437,8 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
+          {/* C.2: surface latest query_id to parent via callback */}
+          <V2QueryIdTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread />
             <CitationSidePanel
@@ -1369,5 +1452,6 @@ function V2ChatRuntime({ chartId, conversationId, initialMessages }: V2ChatRunti
     </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
+    </V2QueryIdCb.Provider>
   )
 }

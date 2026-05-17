@@ -1317,6 +1317,43 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 - Files touched: `platform/src/components/consume/ConsumeChatV2.tsx`
 - Tests added: visual baselines regenerated in E.2
 
+### B.3 — Brand gradient restoration
+
+- Status: COMPLETE
+- Commit: 65c893a
+- PR: #44 merged 2026-05-17
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx`
+- Tests added: visual baselines regenerated in E.2
+
+### C.6 — ReportLibrary V2 wrapper
+
+- Status: COMPLETE
+- Commit: 035002e
+- PR: #45 merged 2026-05-17
+- Files touched: `platform/src/components/consume/ConsumeReportLibraryV2.tsx` (new)
+- Tests added: none (component only; wired in C-LANE-SEQ)
+
+### C.9 — useChatPreferences hook extended
+
+- Status: COMPLETE
+- Commit: 3c1bc4b
+- PR: #46 merged 2026-05-17
+- Files touched: `platform/src/hooks/useChatPreferences.ts`
+- Tests added: unit tests for new fields
+
+### C.11 — ConversationSidebarV2 component
+
+- Status: COMPLETE
+- Commit: b962634
+- PR: #47 merged 2026-05-17
+- Files touched: `platform/src/components/consume/ConversationSidebarV2.tsx` (new)
+- Tests added: none (component only; wired in C-LANE-SEQ)
+
+### C.12 — Page-level layout
+
+- Status: COMPLETE (no changes needed)
+- Page files already correctly wired for audienceTier, chatV2Enabled, all required props
+
 ## Chrome Parity — Deferred items
 
 <!-- Items deferred with reason + unblock recipe appended below. -->
