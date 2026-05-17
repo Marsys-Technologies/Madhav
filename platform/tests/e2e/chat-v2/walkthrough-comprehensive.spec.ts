@@ -50,6 +50,10 @@ async function injectSession(context: import('@playwright/test').BrowserContext)
   }
 }
 
+async function goto(page: Page, url: string) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
+}
+
 // ── Interaction helpers ────────────────────────────────────────────────────
 async function fillComposer(page: Page, text: string) {
   const input = page.getByTestId('v2-composer-input').first()
@@ -100,7 +104,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'What is the significance of Saturn in Jyotish?')
 
     // Capture stage stepper appearance as early as possible after send
@@ -130,7 +134,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Brief answer about Jyotish philosophy.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -146,35 +150,47 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
   // W3 — Details drawer opens; cost fields populated (not dash) ─────────
   test('W3 — Details drawer shows non-dash model, tokens, cost immediately after query', async ({ page }) => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
-    test.setTimeout(420_000)
+    test.setTimeout(900_000)
 
-    await page.goto(CONSUME_URL)
-    await fillComposer(page, 'What is the role of the 10th house lord?')
+    await goto(page, CONSUME_URL)
+    // Short factual query — expected ~30-60s response, avoids 420s timeout
+    await fillComposer(page, 'What is Saturn\'s exaltation sign?')
     await sendQuery(page)
     await waitForAssistantMessage(page)
     await waitForStreamComplete(page)
 
     await openDetailsDrawer(page)
+
+    // Drawer must be visible
     const drawer = page.getByTestId('v2-details-drawer')
+    await expect(drawer).toBeVisible({ timeout: 5_000 })
 
-    // Model name must be non-empty
-    await expect(drawer).toContainText('Model')
-    // Tokens section must be present
-    await expect(drawer).toContainText('Tokens')
-
-    // Check that model field contains a real value (not just the label)
-    const modelField = page.getByTestId('drawer-model')
-    const modelText = await modelField.textContent().catch(() => null)
-    if (modelText) {
-      expect(modelText).toMatch(/gemini|claude|anthropic/i)
-    }
-
-    // Input tokens should be digit-only
+    // Wait for the data-cost part to arrive (emitted AFTER synthesis completes).
+    // During live stream, drawer-input-tokens shows '—' until synthesis finishes.
+    // We use a generous timeout to allow the pipeline to complete.
     const inputTok = page.getByTestId('drawer-input-tokens')
-    const inputTokText = await inputTok.textContent().catch(() => null)
-    if (inputTokText) {
-      expect(inputTokText.trim()).toMatch(/^\d/)
-    }
+    await expect(inputTok).toBeVisible({ timeout: 30_000 })
+    await expect(inputTok).not.toContainText('—', { timeout: 300_000 })
+
+    // Model row: cost.model from data-cost part (available once synthesis completes)
+    const modelField = page.getByTestId('drawer-model')
+    await expect(modelField).toBeVisible({ timeout: 10_000 })
+    await expect(modelField).toContainText(/gemini|claude|anthropic|gpt/i)
+
+    // Input tokens: textContent includes label prefix; just verify a digit is present
+    const inputTokText = await inputTok.textContent()
+    expect(inputTokText).toMatch(/\d/)
+
+    // Output tokens row: testid present + contains a digit
+    const outputTok = page.getByTestId('drawer-output-tokens')
+    await expect(outputTok).toBeVisible({ timeout: 5_000 })
+    const outputTokText = await outputTok.textContent()
+    expect(outputTokText).toMatch(/\d/)
+
+    // Latency row: testid present + contains 'ms' suffix
+    const latency = page.getByTestId('drawer-latency')
+    await expect(latency).toBeVisible({ timeout: 5_000 })
+    await expect(latency).toContainText('ms')
 
     await page.screenshot({ path: 'test-results/chat-v2/w3-details-drawer.png' }).catch(() => null)
   })
@@ -183,7 +199,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
   test('W4 — Panel mode toggle changes state; state restored from sessionStorage after reload', async ({ page }) => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     const toggle = page.getByTestId('v2-panel-mode-toggle').first()
     await expect(toggle).toBeVisible({ timeout: 10_000 })
 
@@ -209,7 +225,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(240_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Initial query for regenerate test.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -237,14 +253,14 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(120_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Persist this metadata please.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
     await waitForStreamComplete(page)
 
     const conversationUrl = page.url()
-    await page.goto(conversationUrl)
+    await goto(page, conversationUrl)
 
     const historyLoaded = await page
       .waitForSelector('[data-testid="v2-assistant-message"]', { timeout: 45_000 })
@@ -274,7 +290,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
       if (r.url().includes('/api/predictions')) predictionResponses.push(r.status())
     })
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'What will happen in my career in 2026?')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -303,7 +319,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Quick query for trace test.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -331,7 +347,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Show Vimshottari dasha periods in a markdown table. Also show a simple LaTeX math formula like $E = mc^2$. And show a python code snippet.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -361,7 +377,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'What does Rahu in the 7th house mean according to MSR signals?')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -398,7 +414,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
 
     // File input for attachment
     const fileInput = page.getByTestId('v2-file-input').first()
@@ -449,7 +465,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
       }
     })
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     const fileInput = page.getByTestId('v2-file-input').first()
     await expect(fileInput).toBeAttached({ timeout: 10_000 })
     await fileInput.setInputFiles(FIXTURE_PNG)
@@ -484,7 +500,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(90_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Write me a very long detailed essay about Jyotish history spanning many centuries.')
     await sendQuery(page)
 
@@ -509,7 +525,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     test.skip(!SESSION, 'Skipped: MARSYS_SUPER_ADMIN_SESSION required')
     test.setTimeout(120_000)
 
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'First conversation marker query.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -579,7 +595,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     })
 
     // Full golden-path navigation
-    await page.goto(CONSUME_URL)
+    await goto(page, CONSUME_URL)
     await fillComposer(page, 'Console error survey query.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
@@ -640,7 +656,7 @@ test.describe('Cross-provider spot-check — Anthropic Sonnet', () => {
     test.skip(!process.env.MARSYS_ANTHROPIC_PROVIDER_ENABLED, 'Skipped: Anthropic provider not force-enabled via MARSYS_ANTHROPIC_PROVIDER_ENABLED')
     test.setTimeout(90_000)
 
-    await page.goto(ANTHROPIC_URL)
+    await goto(page, ANTHROPIC_URL)
     await fillComposer(page, 'Brief question: what is Saturn in Jyotish?')
 
     const stepperPromise = page.waitForSelector('[data-testid="v2-stage-stepper"]', { timeout: 20_000 }).catch(() => null)
@@ -657,14 +673,14 @@ test.describe('Cross-provider spot-check — Anthropic Sonnet', () => {
     test.skip(!process.env.MARSYS_ANTHROPIC_PROVIDER_ENABLED, 'Skipped: Anthropic provider not force-enabled via MARSYS_ANTHROPIC_PROVIDER_ENABLED')
     test.setTimeout(120_000)
 
-    await page.goto(ANTHROPIC_URL)
+    await goto(page, ANTHROPIC_URL)
     await fillComposer(page, 'Persist Anthropic metadata.')
     await sendQuery(page)
     await waitForAssistantMessage(page)
     await waitForStreamComplete(page)
 
     const conversationUrl = page.url()
-    await page.goto(conversationUrl)
+    await goto(page, conversationUrl)
 
     const historyLoaded = await page
       .waitForSelector('[data-testid="v2-assistant-message"]', { timeout: 45_000 })
@@ -685,7 +701,7 @@ test.describe('Cross-provider spot-check — Anthropic Sonnet', () => {
     test.skip(!process.env.MARSYS_ANTHROPIC_PROVIDER_ENABLED, 'Skipped: Anthropic provider not force-enabled via MARSYS_ANTHROPIC_PROVIDER_ENABLED')
     test.setTimeout(90_000)
 
-    await page.goto(ANTHROPIC_URL)
+    await goto(page, ANTHROPIC_URL)
     await fillComposer(page, 'What does Rahu in the 7th mean per MSR signals?')
     await sendQuery(page)
     await waitForAssistantMessage(page)

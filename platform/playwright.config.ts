@@ -5,6 +5,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     screenshot: 'only-on-failure',
+    navigationTimeout: 30_000,
   },
   workers: 1,
   reporter: 'list',

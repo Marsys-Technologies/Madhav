@@ -17,10 +17,13 @@ import { useMessage } from '@assistant-ui/react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
+function MetaRow({ label, value, testid }: { label: string; value: React.ReactNode; testid?: string }) {
   if (value === null || value === undefined || value === '') return null
   return (
-    <div className="flex items-start justify-between gap-4 py-1.5 border-b border-zinc-800/60 last:border-0">
+    <div
+      className="flex items-start justify-between gap-4 py-1.5 border-b border-zinc-800/60 last:border-0"
+      data-testid={testid}
+    >
       <span className="text-xs text-zinc-500 shrink-0">{label}</span>
       <span className="text-xs text-zinc-200 text-right font-mono break-all">{value}</span>
     </div>
@@ -74,18 +77,26 @@ export function PerMessageDetailsDrawer({
 
   if (!open) return null
 
-  // ── Extract metadata.custom (from messageMetadata callback) ───────────────
+  // ── Extract metadata ──────────────────────────────────────────────────────
+  // Reload path: database-persisted metadata_json wraps fields in .custom.
+  // Live stream: messageMetadata callback is ignored by assistant-stream; .custom is always {}.
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
 
-  // ── Extract data parts from metadata.unstable_data ────────────────────────
-  // Data parts written via writer.write({type:'data-cost', data:...}) land here
-  // as objects with shape { type: string; data: unknown }.
-  const dataParts = (message.metadata?.unstable_data ?? []) as ReadonlyArray<unknown>
-
-  const costEntry = dataParts.find(
-    (d): d is { type: 'data-cost'; data: Record<string, unknown> } =>
-      typeof d === 'object' && d !== null && (d as Record<string, unknown>).type === 'data-cost',
+  // ── Extract data parts ────────────────────────────────────────────────────
+  // Live stream path: writer.write({type:'data-cost', data:{...}}) lands in message.content
+  //   as { type:"data", name:"cost", data:{type:"cost", model:..., input_tokens:...} }.
+  //   The "data-X" type maps to name="X" — the "data-" prefix is stripped.
+  // Reload path: no data parts available (content only has text parts).
+  type NamedDataPart = { type: 'data'; name: string; data: Record<string, unknown> }
+  const namedDataParts = ((message.content ?? []) as ReadonlyArray<unknown>).filter(
+    (p): p is NamedDataPart =>
+      typeof p === 'object' &&
+      p !== null &&
+      (p as Record<string, unknown>).type === 'data' &&
+      typeof (p as Record<string, unknown>).name === 'string',
   )
+
+  const costEntry = namedDataParts.find(p => p.name === 'cost')
   const cost = costEntry?.data as {
     model?: string
     input_tokens?: number
@@ -95,17 +106,11 @@ export function PerMessageDetailsDrawer({
     ms?: number
   } | undefined
 
-  const gateEntry = dataParts.find(
-    (d): d is { type: 'data-citation-gate'; data: Record<string, unknown> } =>
-      typeof d === 'object' && d !== null && (d as Record<string, unknown>).type === 'data-citation-gate',
-  )
+  const gateEntry = namedDataParts.find(p => p.name === 'citation-gate')
   const gate = gateEntry?.data as { status?: string; issues?: string[] } | undefined
 
   // γ5: observability data part carries query_id (primary source); fall back to metadata.custom.queryId
-  const obsEntry = dataParts.find(
-    (d): d is { type: 'data-observability'; data: Record<string, unknown> } =>
-      typeof d === 'object' && d !== null && (d as Record<string, unknown>).type === 'data-observability',
-  )
+  const obsEntry = namedDataParts.find(p => p.name === 'observability')
   const obsQueryId = (obsEntry?.data as { query_id?: string } | undefined)?.query_id
 
   // ── Format helpers ────────────────────────────────────────────────────────
@@ -160,29 +165,29 @@ export function PerMessageDetailsDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-4">
 
           <Section title="Model">
-            <MetaRow label="Model ID" value={meta.model as string} />
+            <MetaRow label="Model ID" value={(meta.model as string) || (cost?.model as string)} testid="drawer-model" />
             <MetaRow label="Stack" value={meta.stack as string} />
-            <MetaRow label="Query class" value={meta.query_class as string} />
+            <MetaRow label="Query class" value={meta.query_class as string} testid="drawer-query-class" />
             <MetaRow label="Style" value={meta.style as string} />
           </Section>
 
           <Section title="Tokens">
-            <MetaRow label="Input" value={fmt(cost?.input_tokens)} />
-            <MetaRow label="Output" value={fmt(cost?.output_tokens)} />
+            <MetaRow label="Input" value={fmt(cost?.input_tokens)} testid="drawer-input-tokens" />
+            <MetaRow label="Output" value={fmt(cost?.output_tokens)} testid="drawer-output-tokens" />
             {(cost?.reasoning_tokens ?? 0) > 0 && (
-              <MetaRow label="Reasoning" value={fmt(cost?.reasoning_tokens)} />
+              <MetaRow label="Reasoning" value={fmt(cost?.reasoning_tokens)} testid="drawer-reasoning-tokens" />
             )}
             <MetaRow label="Total" value={fmt(totalTokens || undefined)} />
           </Section>
 
           <Section title="Latency">
-            <MetaRow label="Synthesis" value={fmtMs(cost?.ms)} />
+            <MetaRow label="Synthesis" value={fmtMs(cost?.ms)} testid="drawer-latency" />
             <MetaRow label="Planning" value={fmtMs(meta.planning_latency_ms as number)} />
           </Section>
 
           {showCost && (
             <Section title="Cost">
-              <MetaRow label="USD" value={fmtUsd(cost?.dollars)} />
+              <MetaRow label="USD" value={fmtUsd(cost?.dollars)} testid="drawer-cost" />
             </Section>
           )}
 
@@ -212,7 +217,7 @@ export function PerMessageDetailsDrawer({
           </Section>
 
           <Section title="Context">
-            <MetaRow label="Disclosure tier" value={meta.disclosure_tier as string} />
+            <MetaRow label="Disclosure tier" value={meta.disclosure_tier as string} testid="drawer-disclosure-tier" />
             <MetaRow label="Citations" value={citationCount != null ? String(citationCount) : '—'} />
           </Section>
 
