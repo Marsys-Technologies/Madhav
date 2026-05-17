@@ -51,6 +51,9 @@ import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart, StagePart
 import { StageStepper } from '../chat-v2/StageStepper'
 import { ToolCallCard } from '../chat-v2/ToolCallCard'
 import { PanelModeToggle, PanelOptInCtx } from '../chat-v2/PanelModeToggle'
+import { ContextUsageCue } from './ContextUsageCue'
+import { PostAnswerProvenance } from './PostAnswerProvenance'
+import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -305,25 +308,32 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
 
-  // Count citation chips for drawer badge. Inline JSX citation rendering is
-  // handled by the data-citation parts path (O3 fix); here we only count.
-  const citationCount = useMemo(() => {
+  // D.1: extract citation chips (NumberedCitation elements) for footer rendering.
+  // MarkdownContent only accepts string children, so chips render below the text.
+  const citationChips = useMemo(() => {
     const parts = renderWithCitations(text, onPin)
-    return parts.filter(p => typeof p !== 'string').length
+    return parts.filter((p): p is React.ReactElement => typeof p !== 'string')
   }, [text, onPin])
 
   useEffect(() => {
-    onCitationCount?.(citationCount)
-  }, [citationCount, onCitationCount])
+    onCitationCount?.(citationChips.length)
+  }, [citationChips.length, onCitationCount])
 
   return (
-    <MarkdownContent
-      streaming={isStreaming}
-      className="text-sm text-zinc-200"
-      data-testid="v2-message-text"
-    >
-      {text}
-    </MarkdownContent>
+    <div>
+      <MarkdownContent
+        streaming={isStreaming}
+        className="text-sm text-zinc-200"
+        data-testid="v2-message-text"
+      >
+        {text}
+      </MarkdownContent>
+      {citationChips.length > 0 && !isStreaming && (
+        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
+          {citationChips}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -420,6 +430,11 @@ function V2Message() {
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
+
+  // C.8: extract context_usage (from messageMetadata.start) and provenance (from finish or custom)
+  const rawMeta = message.metadata as Record<string, unknown> | undefined
+  const contextUsage = (rawMeta?.context_usage ?? meta.context_usage) as ContextUsageEvent | undefined ?? null
+  const provenance = (meta.provenance ?? rawMeta?.provenance) as ProvenanceEvent | null ?? null
 
   // γ6: cost visibility from context (super_admin always sees cost regardless)
   const costVisible = useContext(CostVisibilityCtx)
@@ -537,6 +552,9 @@ function V2Message() {
             />
           )}
 
+          {/* C.8: context usage cue — compact chip showing how many prior turns were used */}
+          {contextUsage && <ContextUsageCue usage={contextUsage} />}
+
           {/* γ4: validator hard-fail band (above message body) */}
           {citationGate?.status === 'fail' && (
             <ValidatorFailureBand
@@ -612,6 +630,9 @@ function V2Message() {
               ))}
             </div>
           )}
+
+          {/* C.8: post-answer provenance — model/source/signal counts with drawer */}
+          {provenance && <PostAnswerProvenance provenance={provenance} />}
 
           {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
