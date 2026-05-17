@@ -1529,3 +1529,17 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### B.2 — COMPLETE
 
+## Round 5 — Phase B.3 — F-W3 details drawer live-stream
+
+- **Date**: 2026-05-18
+- **PR**: [#56](https://github.com/amonty84/Madhav/pull/56) `fix(chat-v2/parity/W3): details drawer reads tokens+cost from message.content`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W3-drawer-livestream`
+- **Change**: `PerMessageDetailsDrawer.tsx` — switched data-part extraction from `message.metadata.unstable_data` (live-stream only) to `message.content` DataMessagePart (`{ type: 'data', name, data }` format) — universal path covering both live-stream and reload
+- **Conflict resolved**: `walkthrough-comprehensive.spec.ts` kept HEAD's `collapseSidebar()` helper; docstring in PerMessageDetailsDrawer updated to F-W3 description
+- **Tests**: 34 chat-v2 test files, 391/391 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 1e714dc
+
+### B.3 — COMPLETE
+
