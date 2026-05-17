@@ -7,7 +7,7 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart } from '@/lib/streams/data_parts'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
@@ -1071,6 +1071,11 @@ export async function POST(request: Request) {
             }),
           })
         }
+        // γ5: emit observability part so PerMessageDetailsDrawer "View trace" link has query_id
+        writer.write({
+          type: 'data-observability',
+          data: observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` }),
+        })
       } catch (err) {
         console.error('[consume:v2] cost data part error', err)
       }
