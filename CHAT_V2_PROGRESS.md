@@ -1309,6 +1309,14 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 - Files touched: `platform/src/components/consume/ConsumeChatV2.tsx`, `platform/tests/e2e/chat-v2/sidebar-layout.spec.ts`
 - Tests added: 2 E2E (chat column width check) + 2 visual baselines (sidebar open/closed)
 
+### B.2 — Container max-width parity
+
+- Status: COMPLETE
+- Commit: 381c745
+- PR: #43 merged 2026-05-17
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx`
+- Tests added: visual baselines regenerated in E.2
+
 ## Chrome Parity — Deferred items
 
 <!-- Items deferred with reason + unblock recipe appended below. -->
