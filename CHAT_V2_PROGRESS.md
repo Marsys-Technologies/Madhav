@@ -1471,3 +1471,12 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 _Initialized: 2026-05-17 — Fix wave for W3/W4/W5/W8/W10 failures from F.1 verification incident._
 _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15/15) + F.3 (≤5%) must PASS before F-REFLIP._
 
+## Round 5 — Phase 0 — Merge queue held
+
+- **Date**: 2026-05-17
+- **Action**: disabled auto-merge (already null) + added `needs-visual-review` + `chat-v2-r5` labels on PRs #57, #58, #59; hold-comment posted to each
+- **Labels created**: `needs-visual-review` (#FBCA04), `chat-v2-r5` (#5319E7) — new to repo
+- **Reason**: pre-condition for Round 5 process change (operator visual review gate per CHAT_V2_ROUND_5_PLAN_v1_0.md §7)
+- **PR #56 (F-W3)**: OPEN (not yet merged — plan assumed merged; flagged for Cowork attention; same hold applies)
+- **Next**: Phase A.1 chat column offset fix
+
