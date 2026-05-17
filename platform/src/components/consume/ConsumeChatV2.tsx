@@ -432,7 +432,7 @@ function V2Message() {
           </div>
 
           {/* Edit action + branch picker for user messages */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
               hideWhenRunning
@@ -553,7 +553,7 @@ function V2Message() {
           {provenance && <PostAnswerProvenance provenance={provenance} />}
 
           {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
               hideWhenRunning
