@@ -7,8 +7,8 @@
  * citation count, cost, and a "View trace" stub link for a single assistant message.
  *
  * Data sources:
- *   - message.metadata.custom  → model, stack, style, disclosure_tier, queryId, query_class, latency
- *   - message.content (named data parts) → cost, citation-gate, observability
+ *   - message.metadata.custom  → model, stack, style, disclosure_tier, queryId, query_class, latency (reload path)
+ *   - message.content (DataMessagePart) → data-cost (tokens + dollars), data-citation-gate (result)
  *   - prop: citationCount (passed from the V2AssistantText renderer)
  */
 
@@ -83,21 +83,17 @@ export function PerMessageDetailsDrawer({
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
 
   // ── Extract data parts ────────────────────────────────────────────────────
-  // In assistant-ui (DefaultChatTransport), data parts land in message.metadata.unstable_data
-  // as { type: 'data-{name}', data: {...} } — NOT in message.content.
-  // Reload path: no data parts (content only has text parts).
-  type RawDataPart = { type: string; data: Record<string, unknown> }
-  type NamedDataPart = { name: string; data: Record<string, unknown> }
-  const rawUnstable = (message.metadata?.unstable_data ?? []) as ReadonlyArray<unknown>
-  const namedDataParts: NamedDataPart[] = rawUnstable
-    .filter((p): p is RawDataPart =>
+  // @assistant-ui/react-ai-sdk's convertMessage.js converts writer.write({ type: 'data-cost', ... })
+  // stream chunks into DataMessagePart ({ type: 'data', name: 'cost', data: {...} }) in message.content.
+  type NamedDataPart = { type: 'data'; name: string; data: Record<string, unknown> }
+  const namedDataParts = (message.content as ReadonlyArray<unknown>).filter(
+    (p): p is NamedDataPart =>
       typeof p === 'object' && p !== null &&
-      typeof (p as Record<string, unknown>).type === 'string' &&
-      ((p as Record<string, unknown>).type as string).startsWith('data-') &&
+      (p as Record<string, unknown>).type === 'data' &&
+      typeof (p as Record<string, unknown>).name === 'string' &&
       typeof (p as Record<string, unknown>).data === 'object' &&
       (p as Record<string, unknown>).data !== null,
-    )
-    .map(p => ({ name: p.type.slice(5), data: p.data }))
+  )
 
   const costEntry = namedDataParts.find(p => p.name === 'cost')
   const cost = costEntry?.data as {
