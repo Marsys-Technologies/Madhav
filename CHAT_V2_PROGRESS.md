@@ -1301,6 +1301,14 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 - Tests added: none (config change)
 - Note: `MARSYS_FLAG_CHAT_V2_ENABLED` set to `false`. Users on legacy for duration of Chrome Parity campaign. Re-flip at G.1.
 
+### B.1 — Sidebar mounting fix
+
+- Status: COMPLETE
+- Commit: 5f7b81f
+- PR: #42 merged 2026-05-17
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx`, `platform/tests/e2e/chat-v2/sidebar-layout.spec.ts`
+- Tests added: 2 E2E (chat column width check) + 2 visual baselines (sidebar open/closed)
+
 ## Chrome Parity — Deferred items
 
 <!-- Items deferred with reason + unblock recipe appended below. -->

@@ -445,7 +445,7 @@ function V2Message() {
 
   return (
     <MessagePrimitive.Root
-      className="group flex w-full max-w-3xl mx-auto flex-col gap-1 px-4 py-3"
+      className="group flex w-full max-w-4xl mx-auto flex-col gap-1 px-4 py-3"
       data-testid="v2-message"
     >
       <MessagePrimitive.If user>
@@ -759,7 +759,7 @@ function AttachmentStrip({
   if (attachments.length === 0) return null
   return (
     <div
-      className="mx-auto max-w-3xl flex flex-wrap gap-2 pb-2"
+      className="mx-auto max-w-4xl flex flex-wrap gap-2 pb-2"
       data-testid="v2-attachment-strip"
     >
       {attachments.map((a) => (
@@ -911,7 +911,7 @@ function V2Composer() {
         {/* β5: attachment strip above the input */}
         <AttachmentStrip attachments={attachments} onRemove={removeAttachment} />
 
-        <div className="mx-auto max-w-3xl flex items-end gap-3">
+        <div className="mx-auto max-w-4xl flex items-end gap-3">
           {/* β5: hidden file input + attach button */}
           <input
             ref={fileInputRef}
@@ -991,7 +991,7 @@ function V2Composer() {
           </div>
         </div>
         {/* O2: panel mode toggle — composer-area affordance */}
-        <div className="mx-auto max-w-3xl flex items-center pt-1.5" data-testid="v2-composer-options">
+        <div className="mx-auto max-w-4xl flex items-center pt-1.5" data-testid="v2-composer-options">
           <PanelModeToggle />
         </div>
       </ComposerPrimitive.Root>
