@@ -1354,10 +1354,67 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 - Status: COMPLETE (no changes needed)
 - Page files already correctly wired for audienceTier, chatV2Enabled, all required props
 
+### C.1+C.2 — Brand header + ShareButton + TraceDrawer + queryId tracking
+
+- Status: COMPLETE
+- Commit: 37a2e36
+- PR: #48 merged 2026-05-17
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx` (header redesign, TraceDrawer, V2QueryIdTracker, V2QueryIdCb context)
+
+### C.3 — Bottom-bar selectors (ModelStylePicker + LEL toggle + TierPicker)
+
+- Status: COMPLETE
+- Commit: 0905da1 (PR #49)
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx` (V2BottomBar, V2PrefsCtx, useChatPreferences wire-up, API body)
+
+### C.4+C.5 — Brand composer pill + EmptyState replacement
+
+- Status: COMPLETE
+- Commit: fb022ec (PR #50)
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx` (pill redesign, leading-[1.55], keyboard hints, brand-cta buttons, EmptyState)
+
+### C.7 — CommandPalette + ShortcutsDialog
+
+- Status: COMPLETE
+- Commit: c068b51 (PR #51)
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx` (Cmd-K + ? hotkeys, 3 commands)
+
+### C.8 + D.1 — In-message chrome bundle + NumberedCitation chips
+
+- Status: COMPLETE
+- Commit: ca8a75c (PR #52)
+- Files touched: `platform/src/components/consume/ConsumeChatV2.tsx` (ContextUsageCue, PostAnswerProvenance, citation chips footer)
+- Notes: LiveReasoningCard superseded by ReasoningProgress. CorrectionNotice/OutOfDomainBanner deferred — no V2 data source yet.
+
+### C.10 — Branch-archive viewer
+
+- Status: COMPLETE (no new code needed)
+- Satisfied by existing V2BranchPicker (hideWhenSingleBranch via BranchPickerPrimitive)
+
+### E.1 — Side-by-side capture helper
+
+- Status: COMPLETE
+- Files touched: `platform/tests/e2e/chat-v2/helpers/side-by-side.ts` (new), `platform/tests/e2e/chat-v2/__visuals__/side-by-side/` (dir)
+- 5 scenarios: empty-state, sidebar-open, composer-focused, bottom-bar-visible, header-desktop
+
+### G.1 — Master flag re-flipped true
+
+- Status: COMPLETE (2026-05-17)
+- Files touched: `.github/workflows/deploy.yml` (MARSYS_FLAG_CHAT_V2_ENABLED=false → true)
+- Watch start: 2026-05-17
+- Watch end: 2026-05-24 (7-day)
+- Monitoring: Observatory + Sentry + user reports
+
 ## Chrome Parity — Deferred items
 
-<!-- Items deferred with reason + unblock recipe appended below. -->
+- **CorrectionNotice** / **OutOfDomainBanner**: No V2 data source. The consume route doesn't emit correction/out_of_domain events via data parts. Unblock: add `data-correction` and `data-out-of-domain` data part types to route.ts and data_parts.ts.
+- **E.2 Visual baseline regeneration**: Requires dev server + `MARSYS_UPDATE_VISUALS=true npx playwright test tests/e2e/chat-v2/__visuals__/`. Run after G.1 deploys.
+- **F.1-F.5 Playwright walkthrough / cross-browser / visual diff / Lighthouse / acceptance**: Require live Cloud Run revision. Run after G.2 confirms deploy.
 
 ## Chrome Parity — Operator follow-up
 
-<!-- Items requiring operator action appended below. -->
+- Verify Cloud Run revision deploys with V2 enabled after G.1 flag PR merges (G.2).
+- Run E.2 visual baseline regeneration locally once dev server is up.
+- Run F.1 comprehensive walkthrough spec against flag-on V2.
+- Run F.3 visual side-by-side review using E.1 helper screenshots.
+- 7-day watch ends 2026-05-24 — run G.3 close-out at that point.
