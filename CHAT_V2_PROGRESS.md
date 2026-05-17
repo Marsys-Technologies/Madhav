@@ -1465,3 +1465,9 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 3. W5: Wire regenerate action in V2 thread actions
 4. W8: Wire trace/details button in V2 shell
 5. W10: Verify citation chip rendering in V2 message renderer
+
+## Chrome Parity — Fix Wave log
+
+_Initialized: 2026-05-17 — Fix wave for W3/W4/W5/W8/W10 failures from F.1 verification incident._
+_Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15/15) + F.3 (≤5%) must PASS before F-REFLIP._
+
