@@ -1292,7 +1292,14 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 
 ## Chrome Parity log
 
-<!-- Work item entries appended below as each item completes. -->
+### A.1 — Rollback master flag
+
+- Status: COMPLETE
+- Commit: de84af3
+- PR: #41 merged 2026-05-17
+- Files touched: `.github/workflows/deploy.yml`
+- Tests added: none (config change)
+- Note: `MARSYS_FLAG_CHAT_V2_ENABLED` set to `false`. Users on legacy for duration of Chrome Parity campaign. Re-flip at G.1.
 
 ## Chrome Parity — Deferred items
 
