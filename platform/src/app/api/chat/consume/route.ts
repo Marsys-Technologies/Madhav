@@ -74,6 +74,14 @@ function toolStepType(toolName: string): TraceStep['step_type'] {
   if (toolName === 'vector_search') return 'vector'
   if (['msr_sql', 'query_msr_aggregate'].includes(toolName)) return 'sql'
   if (['classical_text_search', 'classical_attribution_lookup'].includes(toolName)) return 'sql'
+  // L1 substrate tools restored to planner visibility 2026-05-17 — all Postgres-backed.
+  if (
+    ['lel_query', 'query_signal_state', 'query_kp_ruling_planets', 'query_varshaphala'].includes(
+      toolName
+    )
+  ) {
+    return 'sql'
+  }
   return 'gcs'
 }
 

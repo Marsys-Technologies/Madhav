@@ -3,6 +3,13 @@ artifact: PLANNER_PROMPT_v2_0.md
 version: 2.3
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
+planner_blind_fix:
+  - 2026-05-17 v2.0.1 — added R28/R29/R30 for the L1 substrate tools
+    (query_signal_state, query_kp_ruling_planets, query_varshaphala)
+    that were wired to the LLM-first planner but had no inline R-rule,
+    causing them to be visible-but-rarely-selected. Also added four
+    worked examples 4.19–4.22 mirroring the existing R27 lel_query
+    pattern. Content extension only — no version bump beyond 2.0.1.
 gate_iii_amendment:
   - 2026-05-12 Gate III §3.8 PRIOR-TURN RELEVANCE — planner now emits
     prior_turn_relevance: { used, reason, mode }. Mode bias: "independent"
@@ -332,6 +339,76 @@ ASSET BUNDLE RULES (what canonical documents to load):
        name a specific life domain (relationship, career, health, family),
        include lel_query at priority 2 with the appropriate category filter.
        Set params.category to the relevant category value.
+  R28. For PREDICTIVE queries that ask what is currently active, what
+       signals are lit, what's ripening, or what's dormant at a specific
+       date ("what signals are lit right now", "what's ripening for me in
+       2026", "what's dormant at 2027-03-15"), include query_signal_state
+       at priority 1. query_signal_state retrieves date-indexed signal
+       lit/dormant/ripening rows from the signal_states table (migration
+       023, populated by signal_activator.py). For INTERPRETIVE queries
+       that anchor on a specific date (e.g. "interpret my chart as of
+       2026-06-01"), include query_signal_state at priority 2 as a
+       date-anchored supporting tool. Params: chart_id (defaults to native),
+       query_date, end_date, signal_ids, states (subset of ['lit','dormant',
+       'ripening']), dasha_system, limit. DO NOT use query_signal_state for
+       purely historical interpretation of events that already occurred —
+       use lel_query for that. Hypothesis: closes planner-blind gap on
+       date-indexed signal-state queries.
+  R29. For FACTUAL or PREDICTIVE queries that ask about KP (Krishnamurti
+       Paddhati) sub-lords, ruling-planet chains, sub-sub-lords, or
+       nakshatra-sub-lord substrate ("what is my Moon's sub-lord", "KP
+       ruling planets for Mars", "who rules X for me in KP"), include
+       query_kp_ruling_planets at priority 1. For queries where KP is one
+       of multiple schools being asked side-by-side (Parashari + KP +
+       Jaimini), include at priority 2. Data source: kp_sublords table
+       (migration 024), pyswisseph+Lahiri engine substrate. Distinct from
+       kp_query (which reads FORENSIC chart_facts category=kp_*): use
+       kp_query when the query is FORENSIC-anchored on the native; use
+       query_kp_ruling_planets for engine-substrate lookups, non-FORENSIC
+       charts, or forward-looking transit-time KP. Params: chart_id, planet
+       (ILIKE match — accepts partial names), ayanamsha (defaults to
+       'lahiri'). DO NOT add query_kp_ruling_planets when the query names a
+       non-KP school exclusively (Parashari-only, Jaimini-only).
+       Hypothesis: closes planner-blind gap on KP-substrate queries.
+  R30. KEYWORD TRIGGERS — when ANY of these appear in a PREDICTIVE query,
+       R30 fires unconditionally:
+         • "Varshaphala" / "varshaphala" / "Tajika annual" / "Tajika reading"
+         • "annual chart" / "annual reading" / "annual report" / "annual arc"
+         • "solar return" / "year of life" / "year ahead"
+         • Any 4-digit year between 1984 and 2061 (e.g. "2026", "2028", "2030")
+         • "this year" / "next year" / "coming year" / "year-end" / "next 12 months"
+         • Multi-year spans ("2024 to 2028", "from 2024 through 2028",
+           "annual charts from X to Y", "compare my X and Y", "X vs Y")
+         • "year-by-year" / "year over year" / "annually"
+
+       When R30 fires, ALWAYS include query_varshaphala at priority 1.
+
+       R30 IS NOT MUTUALLY EXCLUSIVE WITH R27. When both rules fire (typical
+       for year-specific predictive queries like "What does my 2026
+       Varshaphala say?" or "What's coming up next year?"), include BOTH
+       tools at priority 1 — query_varshaphala for the annual substrate
+       AND lel_query for prior-year LEL calibration. They are CO-SELECTED,
+       not alternatives. Co-selection is illustrated in worked example §4.21.
+
+       Params shape:
+         • Single year named:    { year: <int>, ayanamsha: "lahiri" }
+         • Multi-year span:      { year_start: <int>, year_end: <int> }
+         • "next year" / "this year" / no year named:
+                                 {} — plan.time_window-derived year falls
+                                 through automatically inside the tool
+
+       Data source: varshaphala table (migration 025), pyswisseph+Lahiri
+       Tajika annual charts covering 1984–2061 for the native. Varshesha
+       and Muntha are NOT in the substrate (synthesis-layer responsibilities).
+
+       DO NOT use query_varshaphala for non-annual predictive queries (pure
+       dasha projections, transit-window scans without an annual frame,
+       eclipse queries, sade-sati lookups) — use temporal + lel_query +
+       msr_sql for those instead.
+
+       Hypothesis: closes planner-blind gap on annual/Tajika queries;
+       resolves R27-vs-R30 priority conflict by explicit co-selection
+       language. Validated against GT.062-064.
 
 SYNTHESIS GUIDANCE RULES:
 
@@ -549,12 +626,15 @@ PRIOR-TURN RELEVANCE SELECTION (Gate III, added v2.2):
 
 ## 4. Few-shot examples
 
-Seventeen examples covering all major query classes (4.1–4.11 from v2.0;
+Twenty-two examples covering all major query classes (4.1–4.11 from v2.0;
 4.12–4.17 added in v2.1 gap-closure patch for eclipse/antardasha
 time_window, karaka/yoga graph_seed_hints, discovery, cross_domain, and
-factual classes). Each shown as `{ user_query, expected_plan }`. Every
-expected_plan includes `asset_bundle[]` and `tool_calls[]`;
-`synthesis_guidance` is present except in factual examples.
+factual classes; 4.18 multi-domain lifetime predictive; 4.19–4.22 added
+in v2.0.1 planner-blind fix for query_signal_state, query_kp_ruling_planets,
+query_varshaphala, and a signal_state+lel_query combination example).
+Each shown as `{ user_query, expected_plan }`. Every expected_plan includes
+`asset_bundle[]` and `tool_calls[]`; `synthesis_guidance` is present
+except in factual examples.
 
 **Asset bundle reminder:**
   - FORENSIC + CGM appear in every plan (R21 + R22).
@@ -564,6 +644,12 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
   - RM appears in remedial plans (R25).
   - LEL appears in predictive plans (R26).
   - lel_query appears in tool_calls for all predictive plans (R27) and interpretive plans that name a specific life domain (R27).
+  - query_signal_state appears in tool_calls for date-indexed
+    "what's currently active" predictive queries (R28).
+  - query_kp_ruling_planets appears in tool_calls for KP sub-lord
+    factual or predictive queries (R29).
+  - query_varshaphala appears in tool_calls for annual / Tajika
+    predictive queries (R30).
 
 ### 4.1 Remedial query — recurring-pattern character
 
@@ -1327,6 +1413,177 @@ expected_plan includes `asset_bundle[]` and `tool_calls[]`;
 }
 ```
 
+### 4.19 Predictive query — date-indexed signal state (query_signal_state priority 1)
+
+```json
+{
+  "user_query": "What signals are currently lit or ripening for me in 2026?",
+  "expected_plan": {
+    "query_class": "predictive",
+    "query_intent_summary": "Date-indexed signal state scan for active and ripening signals in 2026.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for signal-state grounding." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map for signal connectivity." },
+      { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for prior signal-activation calibration." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_signal_state",
+        "params": { "query_date": "2026-01-01", "end_date": "2026-12-31", "states": ["lit", "ripening"], "limit": 50 },
+        "token_budget": 800, "priority": 1,
+        "reason": "R28: date-indexed signal state lookup — primary surface for what-is-currently-active queries."
+      },
+      {
+        "tool_name": "lel_query",
+        "params": {},
+        "token_budget": 500, "priority": 1,
+        "reason": "R27: ground-truth recorded events for prior signal-activation calibration."
+      },
+      {
+        "tool_name": "msr_sql",
+        "params": { "forward_looking": true, "limit": 15 },
+        "token_budget": 800, "priority": 1,
+        "reason": "Foundation MSR signals to interpret which signal_ids the state rows reference."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": { "forward_looking": true },
+        "token_budget": 400, "priority": 2,
+        "reason": "R7a: recurring patterns shaping the active-signal landscape across 2026."
+      }
+    ],
+    "synthesis_guidance": "Lead with the highest-confidence lit signal, then surface 2–3 ripening signals with their projected activation windows. Anchor each to the active dasha. Cite the LEL for prior-period analogues.",
+    "time_window": { "start": "2026-01-01", "end": "2026-12-31" },
+    "forward_looking": true,
+    "expected_output_shape": "time_indexed_prediction"
+  }
+}
+```
+
+### 4.20 Factual query — KP sub-lord lookup (query_kp_ruling_planets priority 1)
+
+```json
+{
+  "user_query": "What is the KP sub-lord and sub-sub-lord of my Moon?",
+  "expected_plan": {
+    "query_class": "factual",
+    "query_intent_summary": "KP sub-lord and sub-sub-lord lookup for the native's Moon.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for Moon placement." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural context for Moon connectivity." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_kp_ruling_planets",
+        "params": { "planet": "Moon", "ayanamsha": "lahiri" },
+        "token_budget": 300, "priority": 1,
+        "reason": "R29: KP sub-lord/sub-sub-lord chain — engine-substrate lookup for the named planet."
+      }
+    ],
+    "planets": ["Moon"],
+    "expected_output_shape": "single_answer"
+  }
+}
+```
+
+### 4.21 Predictive query — annual Tajika (query_varshaphala priority 1)
+
+```json
+{
+  "user_query": "How is 2026 going to be for me — give me the annual Tajika read.",
+  "expected_plan": {
+    "query_class": "predictive",
+    "query_intent_summary": "Tajika annual chart projection for the native's 2026 year.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: natal chart facts to anchor the annual return." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map for annual-chart connectivity." },
+      { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for prior-year calibration." },
+      { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for the year's domain expression." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_varshaphala",
+        "params": { "year": 2026, "ayanamsha": "lahiri" },
+        "token_budget": 700, "priority": 1,
+        "reason": "R30: Tajika annual chart for the named year — primary substrate."
+      },
+      {
+        "tool_name": "lel_query",
+        "params": {},
+        "token_budget": 500, "priority": 1,
+        "reason": "R27: prior-year LEL events for annual-arc calibration."
+      },
+      {
+        "tool_name": "msr_sql",
+        "params": { "forward_looking": true, "limit": 12 },
+        "token_budget": 800, "priority": 1,
+        "reason": "MSR foundation signals to interpret the annual return against the natal layer."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": { "forward_looking": true },
+        "token_budget": 400, "priority": 2,
+        "reason": "R7a: recurring patterns shaping the 2026 annual arc."
+      }
+    ],
+    "synthesis_guidance": "Lead with the 2026 Lagna and the strongest annual planet. Identify the dominant domain the year activates. Anchor to the active dasha. Note: Varshesha and Muntha derive at synthesis, not substrate.",
+    "time_window": { "start": "2026-01-01", "end": "2026-12-31" },
+    "forward_looking": true,
+    "dasha_context_required": true,
+    "expected_output_shape": "time_indexed_prediction"
+  }
+}
+```
+
+### 4.22 Predictive query — current career trajectory (query_signal_state + lel_query combined)
+
+```json
+{
+  "user_query": "What's my current career trajectory looking like right now?",
+  "expected_plan": {
+    "query_class": "predictive",
+    "query_intent_summary": "Current career trajectory: active signals plus recorded career events.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: 10H, Saturn, Sun, career-significator placements." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map for career-domain connectivity." },
+      { "asset_id": "LEL",      "priority": 1, "reason": "R26: life event log for career-event ground truth." },
+      { "asset_id": "UCN",      "priority": 2, "reason": "R23: interpretive synthesis for the career-domain reading." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_signal_state",
+        "params": { "states": ["lit", "ripening"], "limit": 30 },
+        "token_budget": 700, "priority": 1,
+        "reason": "R28: current-state signal scan — what is lit or ripening right now."
+      },
+      {
+        "tool_name": "lel_query",
+        "params": { "category": "career" },
+        "token_budget": 600, "priority": 1,
+        "reason": "R27: recorded career events as ground truth — read what has already happened before projecting."
+      },
+      {
+        "tool_name": "msr_sql",
+        "params": { "domains": ["career"], "forward_looking": true },
+        "token_budget": 900, "priority": 1,
+        "reason": "Pull all career-domain signals for trajectory projection."
+      },
+      {
+        "tool_name": "pattern_register",
+        "params": { "domains": ["career"], "forward_looking": true },
+        "token_budget": 400, "priority": 2,
+        "reason": "R7a: recurring career patterns shaping the current trajectory."
+      }
+    ],
+    "synthesis_guidance": "Cross-reference lit signals from query_signal_state against recorded career events from LEL. Lead with the dominant active signal and project the next 12–24 months. Anchor to the active dasha. Cite confidence caveats.",
+    "domains": ["career"],
+    "forward_looking": true,
+    "dasha_context_required": true,
+    "expected_output_shape": "time_indexed_prediction"
+  }
+}
+```
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -1345,3 +1602,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 
 *PLANNER_PROMPT v2.0 · authored 2026-05-11 · produced during Pipeline Transformation Phase 1*
 *Supersedes PLANNER_PROMPT_v1_0.md v1.7 (2026-05-04)*
+*v2.0.1 content extension 2026-05-17 — R28/R29/R30 + examples 4.19–4.22 added for the L1 substrate tools (planner-blind fix)*

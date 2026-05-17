@@ -235,8 +235,14 @@ export type PipelineStage =
   | 'checkpoint_8_5'
 
 /**
- * All 21 retrieval tools registered in the RETRIEVAL_TOOLS manifest (D10).
+ * Retrieval tools registered in the RETRIEVAL_TOOLS manifest (D10).
  * Sub-rows for unfired tools render dimmed in the Retrieval container.
+ *
+ * Updated 2026-05-17: added lel_query (previously omitted alongside the planner-blind
+ * RCS gap — see retrieval_capability_spec.ts header comment). Name retained as
+ * `ALL_21_RETRIEVAL_TOOLS` for callsite compatibility; literal count is now 22.
+ * M8/M9 classical + multi-school tools are intentionally excluded from this list
+ * for now — trace UI sub-row rendering is wired only for the L1/L2.5/L3.5 surfaces.
  */
 export const ALL_21_RETRIEVAL_TOOLS = [
   'msr_sql',
@@ -260,6 +266,7 @@ export const ALL_21_RETRIEVAL_TOOLS = [
   'query_signal_state',
   'query_kp_ruling_planets',
   'query_varshaphala',
+  'lel_query',
 ] as const
 
 export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]

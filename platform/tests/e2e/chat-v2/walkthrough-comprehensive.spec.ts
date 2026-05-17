@@ -81,7 +81,16 @@ async function waitForStreamComplete(page: Page) {
   }
 }
 
+async function collapseSidebar(page: Page) {
+  const collapseBtn = page.getByTestId('v2-sidebar-collapse')
+  if (await collapseBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+    await collapseBtn.click()
+    await page.waitForTimeout(200)
+  }
+}
+
 async function openDetailsDrawer(page: Page) {
+  await collapseSidebar(page)
   await page.getByTestId('v2-assistant-message').last().hover()
   await page.waitForSelector('[data-testid="v2-details-btn"]', { timeout: 5_000 })
   await page.getByTestId('v2-details-btn').last().click()
@@ -396,6 +405,9 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
       const msgText = await assistantMsg.textContent().catch(() => '')
       // Raw format "(F.D1.LAG.01)" should be rendered, not appear as plain text
       // This is a soft check — if chips exist, rendering is working
+
+      // Collapse sidebar (overlay z-40 can intercept pointer events on inline chips)
+      await collapseSidebar(page)
 
       // Hover to check tooltip
       await chips.first().hover()

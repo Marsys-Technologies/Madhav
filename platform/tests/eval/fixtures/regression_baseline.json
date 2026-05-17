@@ -1196,6 +1196,353 @@
           "reason": "inter-school convergence for SPIRITUAL domain including divergent-school detection"
         }
       ]
+    },
+    {
+      "id": "GT.053",
+      "mock_tool_calls": [
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 3000,
+          "priority": 1,
+          "reason": "retrieve career-related life events"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "career and profession signals"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "career pattern archetypes"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "karma-graha linkages for career shifts"
+        }
+      ]
+    },
+    {
+      "id": "GT.054",
+      "mock_tool_calls": [
+        {
+          "tool_name": "temporal",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "upcoming dasha transitions timeline"
+        },
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "past dasha-correlated events for calibration"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "dasha-linked MSR signals"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "pattern archetypes active in upcoming dasha"
+        }
+      ]
+    },
+    {
+      "id": "GT.055",
+      "mock_tool_calls": [
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 3000,
+          "priority": 1,
+          "reason": "marriage and family life events"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "7th/4th house and relationship signals"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "resonance patterns for relationship domain"
+        },
+        {
+          "tool_name": "cgm_graph_walk",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "karma-graha linkages for family and marriage"
+        }
+      ]
+    },
+    {
+      "id": "GT.056",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_signal_state",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "currently active MSR signals"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "signal definitions and metadata"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "active pattern archetypes correlated with lit signals"
+        }
+      ]
+    },
+    {
+      "id": "GT.057",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_signal_state",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "signals ripening over 12-month window"
+        },
+        {
+          "tool_name": "temporal",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "dasha / transit schedule over next 12 months"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "signal definitions for ripening signals"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "pattern archetypes associated with ripening signals"
+        }
+      ]
+    },
+    {
+      "id": "GT.058",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_signal_state",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "state of SIG.MSR.142 during specified period"
+        },
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "2020 career transition event context"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "SIG.MSR.142 definition and co-signals"
+        }
+      ]
+    },
+    {
+      "id": "GT.059",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_kp_ruling_planets",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "KP star-lord and sub-lord chain for each graha"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "KP-correlated MSR signals"
+        }
+      ]
+    },
+    {
+      "id": "GT.060",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_kp_ruling_planets",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "Saturn KP ruling-planet chain"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "Saturn-related MSR signals"
+        },
+        {
+          "tool_name": "kp_query",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "KP cuspal and significator data for Saturn"
+        }
+      ]
+    },
+    {
+      "id": "GT.061",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_kp_ruling_planets",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "KP sub-lords under lahiri vs krishnamurti ayanamsha comparison"
+        }
+      ]
+    },
+    {
+      "id": "GT.062",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_varshaphala",
+          "params": {},
+          "token_budget": 3000,
+          "priority": 1,
+          "reason": "2026 Varshaphala annual chart data"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "MSR signals relevant for 2026"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "pattern archetypes activated in 2026 Varshaphala"
+        },
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 3,
+          "reason": "past annual-chart correlated life events for calibration"
+        }
+      ]
+    },
+    {
+      "id": "GT.063",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_varshaphala",
+          "params": {},
+          "token_budget": 3000,
+          "priority": 1,
+          "reason": "annual chart data for years 2024-2028"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "MSR signals across the 2024-2028 window"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "pattern archetypes for multi-year annual chart comparison"
+        },
+        {
+          "tool_name": "resonance_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "resonance patterns across the comparison period"
+        }
+      ]
+    },
+    {
+      "id": "GT.064",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_varshaphala",
+          "params": {},
+          "token_budget": 3000,
+          "priority": 1,
+          "reason": "next year Varshaphala annual chart"
+        },
+        {
+          "tool_name": "temporal",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "dasha / transit schedule for the coming year"
+        },
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "past events in similar annual chart periods"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 2,
+          "reason": "MSR signals active in the coming year"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 3,
+          "reason": "pattern archetypes for next-year forecast"
+        }
+      ]
     }
   ]
 }

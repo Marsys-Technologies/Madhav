@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.2",
-  "description": "Golden test set for the MARSYS-JIS query planner. 52 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools.",
+  "description": "Golden test set for the MARSYS-JIS query planner. 64 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala.",
   "native_context": {
     "name": "Abhisek Mohanty",
     "birth_date": "1984-02-05",
@@ -12,29 +12,34 @@
   "category_distribution": {
     "remedial": 6,
     "interpretive": 7,
-    "predictive": 9,
+    "predictive": 18,
     "holistic": 6,
     "planetary": 3,
     "edge_case": 5,
-    "factual": 3,
+    "factual": 5,
     "discovery": 3,
     "cross_domain": 3,
     "deferred": 1,
-    "multi_school_triangulation": 3
+    "multi_school_triangulation": 3,
+    "classical_grounding": 3
   },
   "available_tools": [
-    "remedial_codex_query",
-    "msr_sql",
-    "pattern_register",
-    "contradiction_register",
-    "resonance_register",
-    "cluster_atlas",
     "cgm_graph_walk",
-    "vector_search",
-    "classical_text_search",
     "classical_attribution_lookup",
+    "classical_text_search",
+    "cluster_atlas",
+    "contradiction_register",
+    "convergence_score_lookup",
+    "lel_query",
+    "msr_sql",
     "multi_school_signal_lookup",
-    "convergence_score_lookup"
+    "pattern_register",
+    "query_kp_ruling_planets",
+    "query_signal_state",
+    "query_varshaphala",
+    "remedial_codex_query",
+    "resonance_register",
+    "vector_search"
   ],
   "field_notes": {
     "query_class": "One of the QueryPlan enum values (factual | interpretive | predictive | cross_domain | discovery | holistic | remedial | cross_native).",
@@ -1292,6 +1297,300 @@
         "FORENSIC"
       ],
       "notes": "M9-D-S1 multi_school_triangulation golden entry 3. Domain=SPIRITUAL only. Planner must call convergence_score_lookup. Answer should surface Yogini divergence (neutral vs positive consensus) and is_divergent=false."
+    },
+    {
+      "id": "GT.053",
+      "query": "When did major shifts happen in my career?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "lel_query",
+        "msr_sql",
+        "pattern_register",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "lel_query",
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL",
+        "MSR"
+      ],
+      "notes": "2026-05-17 lel_query golden entry 1. Career-arc anchoring on recorded ground truth. lel_query with {category:'career', significance:'major'} returns the recorded career shift dates from LIFE_EVENT_LOG_v1_2 — B.10 discipline forbids fabricating career events from dasha inference when LEL holds the recorded dates. msr_sql supplies the natal 10H/Saturn/Sun signals that contextualize each shift; pattern_register surfaces career-keyed yogas and forward_looking patterns; cgm_graph_walk traces career-concept dependencies. vector_search forbidden — narrative L3 retrieval would dilute the ground-truth anchor."
+    },
+    {
+      "id": "GT.054",
+      "query": "What's the next major dasha transition I should watch for?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "temporal",
+        "lel_query",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "temporal",
+        "lel_query",
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "cluster_atlas"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL",
+        "MSR"
+      ],
+      "notes": "2026-05-17 lel_query golden entry 2. Forward-projection question. temporal supplies the upcoming Vimshottari MD/AD boundary (Mercury MD → Ketu MD at 2027-08-21). lel_query with {significance:'major'} returns prior dasha-boundary correlated events from LEL — these serve as the empirical anchors for what a 'major dasha transition' has historically meant for this native (not generic-classical text inference). msr_sql for Ketu signals + dasha-lord patterns; pattern_register satisfies R7's predictive cross-domain-lens mandate. vector_search/cluster_atlas forbidden — narrative + cluster surfaces are wrong horizon for boundary-event timing."
+    },
+    {
+      "id": "GT.055",
+      "query": "Tell me about my marriage and family history from a chart perspective.",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "lel_query",
+        "msr_sql",
+        "resonance_register",
+        "cgm_graph_walk"
+      ],
+      "required_tools": [
+        "lel_query",
+        "msr_sql",
+        "resonance_register"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM",
+        "LEL",
+        "MSR",
+        "RM"
+      ],
+      "notes": "2026-05-17 lel_query golden entry 3. Relationship + family historical read. lel_query called twice (or with combined filter) for {category:'relationship'} and {category:'family'} — B.10 discipline forbids inferring marriage/family events from natal 7H/4H placements when LEL holds the recorded dates. msr_sql for 7H/4H/Venus/Moon natal signals; resonance_register satisfies R7's cross-domain-lens mandate for relationship/family-domain reads; cgm_graph_walk traces relational-concept dependencies. temporal forbidden — this is a retrospective historical read, not a transit-bound question."
+    },
+    {
+      "id": "GT.056",
+      "query": "What MSR signals are lit for me today?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_signal_state",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "query_signal_state"
+      ],
+      "forbidden_tools": [
+        "classical_text_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR"
+      ],
+      "notes": "2026-05-17 query_signal_state golden entry 1. Live current-state question. query_signal_state with {states:['lit','ripening'], limit:50} surfaces the date-indexed signal_states snapshot for today from the signal_states table (migration 023, populated by temporal signal_activator). msr_sql resolves SIG.MSR.NNN ids to full signal metadata; pattern_register satisfies R7's predictive cross-domain-lens mandate. classical_text_search forbidden — text-corpus retrieval is wrong layer for a 'right now' substrate query."
+    },
+    {
+      "id": "GT.057",
+      "query": "Which signals are ripening over the next 12 months?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_signal_state",
+        "temporal",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "query_signal_state",
+        "temporal"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR"
+      ],
+      "notes": "2026-05-17 query_signal_state golden entry 2. Forward window scan. query_signal_state with {query_date:'2026-05-17', end_date:'2027-05-17', states:['ripening']} surfaces signals that flip from dormant to active over the next 12 months. temporal supplies the dasha + transit context for the window. msr_sql resolves the ripening SIG.MSR.NNN ids; pattern_register satisfies R7's predictive cross-domain-lens mandate. vector_search forbidden — narrative retrieval would dilute a structured state-table scan."
+    },
+    {
+      "id": "GT.058",
+      "query": "Was SIG.MSR.142 active during my 2020 career transition?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_signal_state",
+        "lel_query",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "query_signal_state",
+        "lel_query"
+      ],
+      "forbidden_tools": [
+        "cluster_atlas"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR",
+        "LEL"
+      ],
+      "notes": "2026-05-17 query_signal_state golden entry 3. Cross-anchored historical-state probe. lel_query with {category:'career', start_date:'2020-01-01', end_date:'2020-12-31'} returns the recorded 2020 career-transition event date(s) — providing the anchor date(s) to pass into query_signal_state with {signal_ids:['SIG.MSR.142'], query_date:<event_date>}. msr_sql resolves SIG.MSR.142 metadata. cluster_atlas forbidden — clusters are L2.5 synthesis surfaces and not the right layer for a single-signal historical-state lookup."
+    },
+    {
+      "id": "GT.059",
+      "query": "What is my KP star-lord and sub-lord for each graha?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_kp_ruling_planets",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "query_kp_ruling_planets"
+      ],
+      "forbidden_tools": [
+        "pattern_register",
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 1. Pure factual substrate read. query_kp_ruling_planets with {} (no params) returns the full 9-graha star-lord / sub-lord / sub-sub-lord chain from kp_sublords (migration 024, pyswisseph + lahiri). msr_sql optionally cross-references with FORENSIC §4 chart_facts. pattern_register/vector_search forbidden — no yoga or narrative interpretation asked; this is substrate-table data."
+    },
+    {
+      "id": "GT.060",
+      "query": "Show me Saturn's KP ruling-planet chain.",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_kp_ruling_planets",
+        "msr_sql",
+        "kp_query"
+      ],
+      "required_tools": [
+        "query_kp_ruling_planets",
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 2. Single-planet KP substrate read. query_kp_ruling_planets with {planet:'Saturn'} returns Saturn's star-lord / sub-lord / sub-sub-lord chain from kp_sublords. kp_query reads the FORENSIC §4 authoritative chart_facts values for Saturn — the two coexist (substrate computation + canonical-source value) and the synthesis layer cross-checks per 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md. msr_sql for Saturn natal signal context. pattern_register forbidden — no yoga interpretation asked."
+    },
+    {
+      "id": "GT.061",
+      "query": "Compare my KP sub-lords under lahiri vs krishnamurti ayanamsha.",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_kp_ruling_planets"
+      ],
+      "required_tools": [
+        "query_kp_ruling_planets"
+      ],
+      "forbidden_tools": [
+        "pattern_register",
+        "msr_sql"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 3. Cross-ayanamsha substrate comparison. Planner must emit TWO calls to query_kp_ruling_planets — one {ayanamsha:'lahiri'} and one {ayanamsha:'krishnamurti'} — and synthesis layer diffs the sub-lord chains. Pure substrate question; msr_sql forbidden because MSR signals are ayanamsha-fixed to lahiri (cross-ayanamsha read would mismatch). pattern_register forbidden — no yoga interpretation."
+    },
+    {
+      "id": "GT.062",
+      "query": "What does my 2026 Varshaphala say?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_varshaphala",
+        "msr_sql",
+        "pattern_register",
+        "lel_query"
+      ],
+      "required_tools": [
+        "query_varshaphala",
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR",
+        "LEL"
+      ],
+      "notes": "2026-05-17 query_varshaphala golden entry 1. Tajika annual-chart read. query_varshaphala with {year:2026} returns the Solar Return UTC, Ascendant, and 9-graha sidereal positions for the 2026–2027 solar year (migration 025). msr_sql contextualizes the Varshaphala placements with natal MSR signals. pattern_register surfaces recurring annual yogas (Tajika Ithasala/Isarapha etc., scheduled when synthesis layer needs them). lel_query with {start_date:'2025-02-05', end_date:'2026-02-05'} provides prior-year ground-truth events as calibration. vector_search forbidden — Varshaphala is structured substrate, not narrative."
+    },
+    {
+      "id": "GT.063",
+      "query": "Compare my annual charts from 2024 to 2028.",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_varshaphala",
+        "msr_sql",
+        "pattern_register",
+        "resonance_register"
+      ],
+      "required_tools": [
+        "query_varshaphala",
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR",
+        "RM"
+      ],
+      "notes": "2026-05-17 query_varshaphala golden entry 2. Multi-year Tajika window. query_varshaphala with {year_start:2024, year_end:2028} returns five annual charts in one call (most efficient pattern). msr_sql for natal-signal cross-reference. pattern_register surfaces recurring yoga patterns across the 5-year window. resonance_register satisfies R7's predictive cross-domain-lens mandate — multi-year compare is fundamentally a cross-year resonance question. temporal forbidden — Varshaphala is its own time-engine; transit/dasha overlay would conflate engines."
+    },
+    {
+      "id": "GT.064",
+      "query": "What's coming up for me astrologically next year?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_varshaphala",
+        "temporal",
+        "lel_query",
+        "msr_sql",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "query_varshaphala",
+        "temporal",
+        "lel_query"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "cluster_atlas"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR",
+        "LEL",
+        "CGM"
+      ],
+      "notes": "2026-05-17 query_varshaphala golden entry 3. Open-horizon forward predictive question with no explicit year — exercises the plan.time_window fallback in query_varshaphala (RCS optimal_patterns line 3). Planner emits query_varshaphala with {} or {} + time_window-injected year=2027. temporal supplies the dasha+transit overlay for the next-year window. lel_query with {significance:'major'} grounds the forward read against ground-truth event base-rates. msr_sql for natal-signal context; pattern_register for forward_looking yogas. vector_search/cluster_atlas forbidden — wrong layers for a substrate-heavy annual prediction."
     }
   ],
   "_schema_version": "1.2"

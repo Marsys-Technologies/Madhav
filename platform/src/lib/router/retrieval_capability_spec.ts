@@ -430,6 +430,118 @@ const classical_attribution_lookup: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// M3-B / M3-W3-C2 / M5-A — engine-substrate + LEL ground-truth tools
+// ────────────────────────────────────────────────────────────────────────────
+// These four tools have lived in RETRIEVAL_TOOLS since their respective M-phase
+// commits (M3-W3-C2 parking commit `a37ede8` for the three M3 tools; M5-E
+// `a9a3ccb` for lel_query) but were never propagated into this spec — so the
+// LLM-first planner could not select them. The omission was a clerical
+// oversight at PR-time, not a design choice. (Audit finding F.SYNTH.1 + the
+// planner-blind investigation 2026-05-17.)
+
+const query_signal_state: RetrievalCapabilityEntry = {
+  tool_name: 'query_signal_state',
+  description:
+    'Date-indexed signal state (lit / dormant / ripening) lookup from the signal_states ' +
+    'table. Surfaces which MSR signals are active at a given date or across a date range, ' +
+    'computed by the temporal signal_activator. Use when a query asks what is currently ' +
+    'active, what was active at a past moment, or when the planner needs to filter retrieval ' +
+    'to only signals that are temporally relevant.',
+  data_surface:
+    'L1 — table signal_states (migration 023). Fields: signal_id (SIG.MSR.NNN), query_date, ' +
+    'state in {lit, dormant, ripening}, confidence (0-1), dasha_system, computed_by, ayanamsha. ' +
+    'Returns empty + diagnostic row when signal_activator has not yet been run for the date.',
+  supported_params:
+    '{ chart_id?: string (defaults to native); query_date?: YYYY-MM-DD (defaults to today); ' +
+    'end_date?: YYYY-MM-DD (when set, query_date becomes start); signal_ids?: string[]; ' +
+    'states?: Array<"lit"|"dormant"|"ripening">; dasha_system?: string; limit?: number (default 500, max 500) }',
+  optimal_patterns: [
+    'Current active picture: {states:["lit","ripening"], limit:50}',
+    'Window scan: {query_date:"2026-01-01", end_date:"2026-12-31", states:["lit"]}',
+    'Specific signals at a date: {signal_ids:["SIG.MSR.142","SIG.MSR.207"], query_date:"2026-05-17"}',
+    'Ripening watchlist: {states:["ripening"], dasha_system:"vimshottari", limit:30}',
+  ],
+  cost_tier: 'medium',
+  requires_temporal: true,
+}
+
+const query_kp_ruling_planets: RetrievalCapabilityEntry = {
+  tool_name: 'query_kp_ruling_planets',
+  description:
+    'Engine-computed KP (Krishnamurti Paddhati) ruling-planet table from kp_sublords. Returns ' +
+    'star lord / sub lord / sub-sub lord chain for each of the 9 grahas. Distinct from kp_query ' +
+    '(which reads FORENSIC §4 chart_facts authoritative values); this is the pyswisseph + Lahiri ' +
+    'substrate, useful for non-FORENSIC charts and for forward-looking transit-time KP queries.',
+  data_surface:
+    'L1 — table kp_sublords (migration 024). Fields: chart_id, planet, sidereal_lon, sign, ' +
+    'nakshatra, nakshatra_lord, sub_lord, sub_sub_lord, ayanamsha (lahiri), computed_by. ' +
+    'Cross-check: 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md.',
+  supported_params:
+    '{ chart_id?: string (defaults to native); planet?: string (case-insensitive LIKE match, e.g. "Saturn"); ' +
+    'ayanamsha?: string (defaults to "lahiri") }',
+  optimal_patterns: [
+    'Full graha ruling-planet table: {} (no params)',
+    'Single planet: {planet:"Saturn"}',
+    'Cross-ayanamsha check: {ayanamsha:"krishnamurti"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+const query_varshaphala: RetrievalCapabilityEntry = {
+  tool_name: 'query_varshaphala',
+  description:
+    'Varshaphala (Tajika) annual-chart lookup. Returns the Solar Return UTC, Ascendant, and ' +
+    '9-graha sidereal positions for one year, a year range, or the years implied by plan.time_window. ' +
+    'Engine-computed via pyswisseph + Lahiri; covers 1984-2061 for the native chart. Year-lord ' +
+    '(Varshesha) and Muntha live at the synthesis layer, not here.',
+  data_surface:
+    'L1 — table varshaphala (migration 025). Fields: chart_id, year, solar_return_utc, ' +
+    'ascendant_sidereal, ascendant_sign, planet_positions (JSON map of 9 grahas with ' +
+    'sidereal_lon/sign/nakshatra), ayanamsha, computed_by.',
+  supported_params:
+    '{ chart_id?: string (defaults to native); year?: number (single year, e.g. 2026); ' +
+    'year_start?: number; year_end?: number; ayanamsha?: string (defaults to "lahiri"). ' +
+    'Falls back to plan.time_window when no explicit year is given. }',
+  optimal_patterns: [
+    'Specific year: {year:2026}',
+    'Multi-year window: {year_start:2024, year_end:2028}',
+    'Predictive query without explicit year: {} (uses plan.time_window)',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+const lel_query: RetrievalCapabilityEntry = {
+  tool_name: 'lel_query',
+  description:
+    'Ground-truth life events from LIFE_EVENT_LOG_v1_2 (canonical_id LEL). Returns recorded ' +
+    'event dates, categories, descriptions, significance, and Swiss-Ephemeris chart_state at the ' +
+    'time of each event. This is L1 ground truth — always prefer over timeline_query for KNOWN ' +
+    'historical events. Without this tool, the synthesis model fabricates predictions for events ' +
+    'that have already occurred (e.g. inferring marriage from dasha windows instead of reading the ' +
+    'recorded marriage date).',
+  data_surface:
+    'L1 — table life_events (migration 017). Fields: event_id, event_date, category in {career, ' +
+    'health, family, relationship, spiritual, travel, finance, education, residential, creative, ' +
+    'loss, other}, description, significance in {major, moderate, minor}, chart_state (JSON), ' +
+    'source_section. 36 events at v1.2 / v1.6.',
+  supported_params:
+    '{ start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'category?: "career"|"health"|"family"|"relationship"|"spiritual"|"travel"|"finance"|"education"|"residential"|"creative"|"loss"|"other"; ' +
+    'significance?: "major"|"moderate"|"minor"; limit?: number (default 50, max 50) }',
+  optimal_patterns: [
+    'Career arc anchoring: {category:"career", significance:"major"}',
+    'Relationship/marriage history: {category:"relationship"}',
+    'Decade scan: {start_date:"2010-01-01", end_date:"2020-12-31"}',
+    'All major events: {significance:"major", limit:50}',
+    'Ground-truth validation for a date range: {start_date:"2008-01-01", end_date:"2008-12-31"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -452,6 +564,10 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   domain_report_query,
   remedial_codex_query,
   timeline_query,
+  query_signal_state,
+  query_kp_ruling_planets,
+  query_varshaphala,
+  lel_query,
   classical_text_search,
   classical_attribution_lookup,
 ] as const
