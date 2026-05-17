@@ -1543,3 +1543,29 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### B.3 — COMPLETE
 
+## Round 5 — Phase B.4 — F-W4+F-W8 panel toggle + trace drawer testid
+
+- **Date**: 2026-05-18
+- **PR**: [#59](https://github.com/amonty84/Madhav/pull/59) `fix(chat-v2/parity/W4+W8): panel toggle pointer-events + trace drawer testid`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W4W8-panel-trace`
+- **Change**: W4 panel toggle pointer-events fix + W8 `v2-details-btn` testid wiring in `TraceDrawer.tsx`; collapsed sidebar styling conflict resolved (kept HEAD's A.2 brand-charcoal gradient — `pointer-events-none` already present in both)
+- **Tests**: 34 chat-v2 test files, 391/391 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 2179f92
+
+### B.4 — COMPLETE
+
+## Round 5 — Phase C.1 — Wire ConsumeReportLibraryV2
+
+- **Date**: 2026-05-18
+- **PR**: [#64](https://github.com/amonty84/Madhav/pull/64) `feat(chat-v2/r5/C.1): wire ConsumeReportLibraryV2 into ConsumeChatV2 header`
+- **Branch**: `fix/chat-v2-r5/C1-report-library-wire-in`
+- **Change**: Added `ConsumeReportLibraryV2` import; destructured `reports = []` from props; rendered `<ConsumeReportLibraryV2 reports={reports} />` in `v2-header-actions` before `ShareButton`
+- **Tests**: `report_library_wire.test.ts` — 4/4 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: af138af
+
+### C.1 — COMPLETE
+
