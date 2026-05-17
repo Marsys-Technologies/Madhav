@@ -75,7 +75,7 @@ jobs:
             NODE_ENV=production
             ADAPTERS_ENABLED=true
             CONSUME_UI_V2_ENABLED=true
-            MARSYS_FLAG_CHAT_V2_ENABLED=false
+            MARSYS_FLAG_CHAT_V2_ENABLED=true
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
             DB_NAME=amjis
