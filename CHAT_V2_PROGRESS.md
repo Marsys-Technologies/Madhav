@@ -1418,3 +1418,10 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 - Run F.1 comprehensive walkthrough spec against flag-on V2.
 - Run F.3 visual side-by-side review using E.1 helper screenshots.
 - 7-day watch ends 2026-05-24 — run G.3 close-out at that point.
+
+## Chrome Parity log
+
+### G.2 — Cloud Run revision verified
+- Revision: amjis-web-00173-7kb
+- Deployed: 2026-05-17T10:07:30.749821Z
+- Flag: MARSYS_FLAG_CHAT_V2_ENABLED=true ✓
