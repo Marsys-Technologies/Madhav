@@ -123,12 +123,12 @@ export function ConversationSidebar({
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center w-10 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md shrink-0">
+      <div className="flex flex-col items-center w-10 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md shrink-0 pointer-events-none">
         <button
           type="button"
           onClick={onToggle}
           title="Expand conversation list"
-          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors pointer-events-auto"
           data-testid="v2-sidebar-expand"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -329,7 +329,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       >
         {text}
       </MarkdownContent>
-      {citationChips.length > 0 && !isStreaming && (
+      {citationChips.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
           {citationChips}
         </div>
@@ -1400,7 +1400,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       <div
         className={
           sidebarCollapsed
-            ? 'hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex'
+            ? 'hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:pointer-events-none'
             : 'fixed inset-y-0 left-0 z-40 flex'
         }
       >
