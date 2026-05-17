@@ -1144,9 +1144,11 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 - Notes: v2.0 report supersedes §M.11 v1.0. Auth-gated run requires MARSYS_SUPER_ADMIN_SESSION (see report §6).
 
 ### C.2 — Visual baselines
-- Status: DEFERRED
-- Reason: MARSYS_SUPER_ADMIN_SESSION unset; MARSYS_UPDATE_VISUALS=true requires auth for most tests.
-- Re-unblock: Set MARSYS_SUPER_ADMIN_SESSION, then run MARSYS_UPDATE_VISUALS=true playwright test __visuals__/ per CHAT_V2_STAGING_E2E_REPORT_v2_0.md §7.
+- Status: PARTIAL COMPLETE (2026-05-17)
+- PR: #37 (merged)
+- Results: 27 Chromium-darwin PNGs captured across 9 spec files (70 pass / 5 fail / 4 skip; 1.7 min).
+- Failures: abort-interrupt/attachment-strip/message-actions fixture timeouts; mobile axe (C.6 gap). Non-blocking.
+- Notes: citation-gate + details-drawer guards returned false (elements not visible with fixture payloads). Remaining ≥60 threshold requires fixture data adjustments for conditional guards. storageState.json gitignored per .gitignore.
 
 ### C.3 — Cross-browser (Firefox + WebKit)
 - Status: COMPLETE
@@ -1154,9 +1156,10 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 - Notes: Both browsers match Chromium behavior on non-auth tests. Auth-gated tests skip in all browsers by design.
 
 ### C.4 — Lighthouse (conditional)
-- Status: DEFERRED
-- Reason: No staging-tagged Cloud Run revision reachable without gcloud creds.
-- Re-unblock: Set GOOGLE_APPLICATION_CREDENTIALS, verify amjis-web revision, run Lighthouse CI per remediation plan §6.C.4.
+- Status: COMPLETE (2026-05-17)
+- Target: https://amjis-web-qm256lasva-el.a.run.app/login (staging, active revision amjis-web-00153-hlv)
+- Results: Performance 93 / Accessibility 98 / Best-Practices 100 | FCP 1.3s, LCP 3.1s, TBT 10ms, CLS 0
+- Notes: gcloud authenticated via mail.abhisek.mohanty@gmail.com. Login page used (auth-gated consume not reachable headlessly). Scores meet or exceed Lighthouse CI thresholds.
 
 ### C.5 — Mobile profiles
 - Status: COMPLETE
@@ -1189,10 +1192,62 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 
 ---
 
+## Pre-Merge Verification — Status (2026-05-17)
+
+### Phase A — W3 fix + MetaRow testids
+- Status: COMPLETE (PR #36 merged 2026-05-17)
+- PRs: #36 (fix/chat-v2/W3-testids-and-redesign)
+- Delivered:
+  - PerMessageDetailsDrawer: MetaRow testids (drawer-model, drawer-query-class, drawer-input-tokens, etc.)
+  - Fix data extraction: message.content named data parts (type:"data", name:"cost") not metadata.unstable_data
+  - W3 redesigned: real live-stream O1 verification with short query and 900s timeout
+  - goto() helper with waitUntil:'domcontentloaded' to fix page.goto hang on Next.js streaming SSR
+  - playwright.config.ts: navigationTimeout: 30_000
+- W3 result: PASS (30.5s; verified 3 runs)
+
+### Phase B — Visual baselines
+- Status: PARTIAL COMPLETE (PR #37 merged 2026-05-17)
+- Delivered: 27 Chromium-darwin PNG baselines committed; storageState.json refreshed
+- Gaps: conditional guards in citation-gate + details-drawer prevent capture without fixture data
+
+### Phase C — Cross-provider Anthropic (W1+W6+W10)
+- Status: HALTED — operator gate
+- Blockers:
+  1. MARSYS_ANTHROPIC_PROVIDER_ENABLED not set in executor shell
+  2. ConsumeChatV2 does not read ?model= URL param (useSearchParams not wired; param never reaches request body)
+- To unblock: (a) wire useSearchParams in ConsumeChatV2 to pass ?model= in body(); (b) set MARSYS_ANTHROPIC_PROVIDER_ENABLED=1 when running Playwright
+- Note: ANTHROPIC_API_KEY is present in .env.local; claude-sonnet-4-6 is in registry
+
+### Phase D — Vertex DU gate (B.10)
+- Status: HALTED — operator gate
+- Missing: VERTEX_AI_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (roles/documentai.apiUser)
+- VERTEX_AI_LOCATION=asia-south1 already set
+
+### Phase E — GCS gate (B.11)
+- Status: HALTED — operator gate
+- Missing: GOOGLE_APPLICATION_CREDENTIALS (roles/storage.objectAdmin); bucket gs://marsys-chat-uploads-prod provisioning not verified
+
+### Phase F — Lighthouse CI
+- Status: COMPLETE (2026-05-17)
+- Scores: Performance 93, Accessibility 98, Best-Practices 100
+- Metrics: FCP 1.3s, LCP 3.1s, TBT 10ms, CLS 0
+- Target: staging login page (amjis-web-00153-hlv)
+
+### Phase G — a11y placeholder
+- Status: ALREADY COMPLETE (prior session) — CHAT_V2_A11Y_REPORT_v2_0.md §2 operator fill sections exist
+- C.6 remains DEFERRED pending operator NVDA + VoiceOver testing
+
+### Phase H — Final walkthrough re-run
+- Status: COMPLETE (2026-05-17)
+- Result: **W1–W15: 15/15 PASS (8.4 min, Chromium)**
+- Verification artifact: 00_ARCHITECTURE/CHAT_V2_PREVERGE_VERIFICATION_v1_0.md
+
+---
+
 ## Remediation — Status
 
 - Phase A: COMPLETE (PR #23 merged)
 - Phase B: 10/12 items COMPLETE; deferred: B.10 (Vertex/O7 — no creds), B.11 (GCS/O8 — no creds)
-- Phase C: 5/8 items COMPLETE; deferred: C.2 (visual baselines — needs auth), C.4 (Lighthouse — no staging revision), C.6 (a11y manual — operator), C.8 (acceptance walkthrough — operator)
+- Phase C: 6/8 items COMPLETE; C.2 PARTIAL (27 PNGs); C.4 COMPLETE; deferred: C.6 (a11y manual — operator), C.8 (acceptance walkthrough — operator)
 - Phase D.1: PR #35 OPEN — https://github.com/amonty84/Madhav/pull/35
 - Phase D.2/D.3: scheduled per D.1 merge timestamp (~7 days after merge)
