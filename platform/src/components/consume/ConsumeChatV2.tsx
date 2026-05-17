@@ -13,9 +13,12 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
+import { CommandPalette } from '@/components/chat/CommandPalette'
+import type { Command } from '@/components/chat/CommandPalette'
+import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
 import { TierPicker } from '@/components/consume/TierPicker'
@@ -1232,6 +1235,27 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     setStack, setStyle, setLelEnabled, setActiveTier,
   }), [stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled])
 
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen(o => !o)
+        return
+      }
+      if (!isInput && (e.key === '?' || ((e.metaKey || e.ctrlKey) && e.key === '/'))) {
+        e.preventDefault()
+        setShortcutsOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
 
@@ -1302,6 +1326,33 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     setInitialMessages(undefined)
     setRestoredKey((k) => k + 1)
   }, [])
+
+  const v2Commands = useMemo<Command[]>(() => [
+    {
+      id: 'new-chat',
+      label: 'New conversation',
+      hint: '⌘ ⇧ O',
+      icon: PlusCircle,
+      keywords: 'new chat conversation',
+      run: () => { handleNewConversation(); setPaletteOpen(false) },
+    },
+    {
+      id: 'toggle-sidebar',
+      label: 'Toggle sidebar',
+      hint: '⌘ B',
+      icon: PanelLeft,
+      keywords: 'sidebar conversations toggle',
+      run: () => { setSidebarCollapsed(c => !c); setPaletteOpen(false) },
+    },
+    {
+      id: 'shortcuts',
+      label: 'Show keyboard shortcuts',
+      hint: '⌘ /',
+      icon: Keyboard,
+      keywords: 'shortcuts keyboard help',
+      run: () => { setPaletteOpen(false); setShortcutsOpen(true) },
+    },
+  ], [handleNewConversation])
 
   return (
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
@@ -1422,6 +1473,10 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
         </main>
       </div>
     </div>
+
+    {/* C.7: command palette + shortcuts dialog — mounted at tree top, portalled to body */}
+    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={v2Commands} />
+    <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </V2PrefsCtx.Provider>
     </CostVisibilityCtx.Provider>
   )
