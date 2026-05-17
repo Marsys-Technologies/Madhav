@@ -1478,5 +1478,16 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 - **Labels created**: `needs-visual-review` (#FBCA04), `chat-v2-r5` (#5319E7) — new to repo
 - **Reason**: pre-condition for Round 5 process change (operator visual review gate per CHAT_V2_ROUND_5_PLAN_v1_0.md §7)
 - **PR #56 (F-W3)**: OPEN (not yet merged — plan assumed merged; flagged for Cowork attention; same hold applies)
-- **Next**: Phase A.1 chat column offset fix
+- **Next**: ~~Phase A.1 chat column offset fix~~ → DONE (see Phase A.1 below)
+
+## Round 5 — Phase A.1 — Chat column sidebar offset
+
+- **Date**: 2026-05-17
+- **PR**: [#60](https://github.com/amonty84/Madhav/pull/60) `fix(chat-v2/r5/A.1): chat column sidebar offset (eliminates clipping)`
+- **Branch**: `fix/chat-v2-r5/A1-chat-column-offset`
+- **Change**: `ConsumeChatV2.tsx:1417` — added `md:ml-{10|56}` conditional class + `transition-[margin-left]`
+- **Tests**: vitest 2/2 PASS; Playwright E2E 4/4 PASS (bounding-box + visual baselines)
+- **Visual baselines**: `platform/tests/screenshots/r5/a1-sidebar-{collapsed,expanded}.png`
+- **Status**: AWAITING OPERATOR VISUAL REVIEW → merge via `gh pr merge 60 --squash --delete-branch`
+- **Next**: Phase A.2 (sidebar background color) after A.1 is merged
 
