@@ -20,8 +20,8 @@ const drawerSource = readFileSync(
 // ── Source-level assertions ────────────────────────────────────────────────────
 
 describe('PerMessageDetailsDrawer — γ5 observability source', () => {
-  it('reads query_id from data-observability part', () => {
-    expect(drawerSource).toContain("type === 'data-observability'")
+  it('reads query_id from named observability data part', () => {
+    expect(drawerSource).toContain("p.name === 'observability'")
     expect(drawerSource).toContain('obsQueryId')
   })
 

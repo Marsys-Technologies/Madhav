@@ -30,8 +30,8 @@ describe('PerMessageDetailsDrawer — source shape', () => {
     expect(drawerSource).toContain('metadata?.custom')
   })
 
-  it('reads data parts from metadata.unstable_data', () => {
-    expect(drawerSource).toContain('unstable_data')
+  it('reads data parts from message.content (named data parts)', () => {
+    expect(drawerSource).toContain('message.content')
   })
 
   it('has v2-details-drawer test id', () => {
@@ -146,12 +146,12 @@ describe('metadata extraction logic (pure functions)', () => {
     expect(drawerSource).toContain('ms')
   })
 
-  it('finds cost entry by type data-cost', () => {
-    expect(drawerSource).toContain("type === 'data-cost'")
+  it('finds cost entry by name in named data parts', () => {
+    expect(drawerSource).toContain("p.name === 'cost'")
   })
 
-  it('finds citation gate entry by type data-citation-gate', () => {
-    expect(drawerSource).toContain("type === 'data-citation-gate'")
+  it('finds citation gate entry by name in named data parts', () => {
+    expect(drawerSource).toContain("p.name === 'citation-gate'")
   })
 
   it('uses QueryId prefix slice for display', () => {
