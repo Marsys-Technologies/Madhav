@@ -54,6 +54,7 @@ import { PanelModeToggle, PanelOptInCtx } from '../chat-v2/PanelModeToggle'
 import { ContextUsageCue } from './ContextUsageCue'
 import { PostAnswerProvenance } from './PostAnswerProvenance'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
+import { cn } from '@/lib/utils'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -1413,7 +1414,14 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
         />
       </div>
 
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+      <div
+        data-testid="v2-chat-column"
+        className={cn(
+          "flex flex-col flex-1 overflow-hidden min-w-0",
+          "transition-[margin-left] duration-200 ease-out",
+          sidebarCollapsed ? "md:ml-10" : "md:ml-56"
+        )}
+      >
         <header
           className="flex items-center gap-3 border-b border-zinc-800 px-4 md:px-6 py-3 shrink-0"
           data-testid="v2-header"
