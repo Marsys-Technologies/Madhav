@@ -195,9 +195,18 @@ export async function POST(request: Request) {
   // Resolve synthesis model from stack. Stack takes precedence over the legacy
   // `model` field. Unknown/missing stacks fall back to the default NIM stack.
   const VALID_STACKS = Object.keys(STACK_ROUTING) as ModelStack[]
+  // E.3: provider override — URL param ?provider=<stack> or MARSYS_FORCE_PROVIDER env.
+  // Takes lowest precedence: only applied when the client sent no explicit stack.
+  const providerOverride = (
+    (!body.stack && new URL(request.url).searchParams.get('provider')) ||
+    (!body.stack && process.env.MARSYS_FORCE_PROVIDER) ||
+    null
+  )
   const selectedStack: ModelStack = VALID_STACKS.includes(body.stack as ModelStack)
     ? (body.stack as ModelStack)
-    : DEFAULT_STACK_ID
+    : (providerOverride && VALID_STACKS.includes(providerOverride as ModelStack)
+        ? (providerOverride as ModelStack)
+        : DEFAULT_STACK_ID)
   const [stackSynthPrimary, stackSynthFallback] = await Promise.all([
     getEffectiveModel(selectedStack, 'synthesis', 'primary', request),
     getEffectiveModel(selectedStack, 'synthesis', 'fallback', request),
