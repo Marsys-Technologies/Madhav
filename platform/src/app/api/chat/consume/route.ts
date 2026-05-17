@@ -7,7 +7,7 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart } from '@/lib/streams/data_parts'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
@@ -1189,6 +1189,15 @@ export async function POST(request: Request) {
               }),
             })
           }
+        }
+
+        if (isFirstTurn) {
+          // E.1: signal client to reload sidebar (title is being set — Gate II already
+          // wrote it; Gate III will write it asynchronously after onFinish returns).
+          writer.write({
+            type: 'data-title',
+            data: titlePart({ conversation_id: finalConversationId }),
+          })
         }
 
         if (isFirstTurn && !gateIIITitle) {
