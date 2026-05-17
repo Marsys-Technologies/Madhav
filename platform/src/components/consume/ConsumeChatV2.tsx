@@ -33,6 +33,7 @@ import {
   BranchPickerPrimitive,
   useThreadRuntime,
   useMessage,
+  useMessageRuntime,
 } from '@assistant-ui/react'
 import type { ConsumeChatProps } from './ConsumeChatLegacy'
 import { EmptyState } from './EmptyState'
@@ -245,6 +246,11 @@ const ConversationIdCtx = createContext<string | null>(null)
 // ─── Latest query-id callback context (C.2: V2QueryIdTracker → ConsumeChatV2 header) ──
 const V2QueryIdCb = createContext<((id: string) => void) | null>(null)
 
+// ─── Conversation-id callback context (W5 fix: V2ConversationIdTracker → ConsumeChatV2) ──
+// Reads data-persistence parts to propagate conversation_id after the first turn so that
+// the regenerate button and subsequent request bodies carry the correct conversation ID.
+const V2ConversationIdCb = createContext<((id: string) => void) | null>(null)
+
 // ─── Preferences context (C.3: bottom-bar selectors share state with API body) ──
 interface V2PrefsCtxValue {
   stack: ModelStack
@@ -375,41 +381,47 @@ function usePanelData(dataParts: ReadonlyArray<unknown>) {
 
 function V2RegenerateButton() {
   const message = useMessage()
+  const messageRuntime = useMessageRuntime()
   const runtime = useThreadRuntime()
   const conversationId = useContext(ConversationIdCtx)
 
-  // Fire truncation before assistant-ui's Reload handler executes.
-  // Slot merges onClick handlers: child fires first, then Reload's handler.
-  // Truncation is intentionally fire-and-forget: fast DB DELETE; synthesis
-  // won't finish before truncation completes.
-  const handleClick = useCallback(() => {
-    if (!conversationId) return
+  // Await DB truncation BEFORE triggering assistant-ui reload.
+  // Prior implementation was fire-and-forget which caused a race: synthesis
+  // would start against the un-truncated conversation.
+  // If conversationId is not yet available (first turn before data-persistence lands),
+  // skip truncation and reload directly — the DB doesn't have a persisted turn to truncate.
+  const handleClick = useCallback(async () => {
     const messages = runtime.getState().messages
     const myIndex = messages.findIndex((m) => m.id === message.id)
     const parentId = myIndex > 0 ? messages[myIndex - 1].id : null
     if (!parentId) return
-    void fetch('/api/chat/consume/regenerate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversation_id: conversationId, parent_message_id: parentId }),
-    }).catch(() => {})
-  }, [message.id, runtime, conversationId])
+    if (conversationId) {
+      try {
+        await fetch('/api/chat/consume/regenerate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id: conversationId, parent_message_id: parentId }),
+        })
+      } catch {
+        // Truncation failed — still reload so the UI reflects the new attempt
+      }
+    }
+    messageRuntime.reload()
+  }, [message.id, messageRuntime, runtime, conversationId])
 
   return (
-    <ActionBarPrimitive.Reload asChild>
-      <button
-        type="button"
-        onClick={handleClick}
-        className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
-        title="Regenerate response"
-        data-testid="v2-regenerate-btn"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3" aria-hidden="true">
-          <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
-          <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    </ActionBarPrimitive.Reload>
+    <button
+      type="button"
+      onClick={handleClick}
+      className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+      title="Regenerate response"
+      data-testid="v2-regenerate-btn"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3" aria-hidden="true">
+        <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
+        <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
   )
 }
 
@@ -1102,6 +1114,42 @@ function V2QueryIdTracker() {
   return null
 }
 
+// Reads conversation_id from data-persistence parts in message.content so that
+// subsequent requests and the regenerate button carry the correct conversation ID.
+function V2ConversationIdTracker() {
+  const runtime = useThreadRuntime()
+  const onConversationId = useContext(V2ConversationIdCb)
+
+  useEffect(() => {
+    if (!onConversationId) return
+    const unsub = runtime.subscribe(() => {
+      const state = runtime.getState()
+      const messages = state.messages
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        if (msg.role !== 'assistant') continue
+        const content = (msg.content ?? []) as ReadonlyArray<unknown>
+        for (const part of content) {
+          if (
+            typeof part === 'object' && part !== null &&
+            (part as Record<string, unknown>).type === 'data' &&
+            (part as Record<string, unknown>).name === 'persistence'
+          ) {
+            const data = (part as Record<string, unknown>).data as Record<string, unknown>
+            if (typeof data?.conversation_id === 'string') {
+              onConversationId(data.conversation_id)
+              return
+            }
+          }
+        }
+      }
+    })
+    return unsub
+  }, [runtime, onConversationId])
+
+  return null
+}
+
 // ─── γ7: Stream-resume tracker ────────────────────────────────────────────────
 // Mounted inside AssistantRuntimeProvider so it can use useThreadRuntime().
 // Saves queryId + received char count to sessionStorage while a stream is live;
@@ -1498,6 +1546,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             conversationId={activeConversationId}
             initialMessages={initialMessages}
             onQueryId={setLatestQueryId}
+            onConversationId={setActiveConversationId}
           />
         </main>
       </div>
@@ -1518,6 +1567,7 @@ interface V2ChatRuntimeProps {
   chartName: string
   conversationId: string | null
   initialMessages: UIMessage[] | undefined
+  onConversationId?: (id: string) => void
 }
 
 // ─── γ7: Session-storage key for stream-resume ───────────────────────────────
@@ -1532,7 +1582,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -1614,6 +1664,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
 
   return (
     <V2QueryIdCb.Provider value={onQueryId ?? null}>
+    <V2ConversationIdCb.Provider value={onConversationId ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
     <CitationCtx.Provider value={citationCtxValue}>
@@ -1623,6 +1674,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
           {/* C.2: surface latest query_id to parent via callback */}
           <V2QueryIdTracker />
+          {/* W5 fix: surface conversation_id from data-persistence part to parent */}
+          <V2ConversationIdTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
@@ -1636,6 +1689,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
+    </V2ConversationIdCb.Provider>
     </V2QueryIdCb.Provider>
   )
 }
