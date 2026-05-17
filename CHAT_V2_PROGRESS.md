@@ -1425,3 +1425,43 @@ One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflo
 - Revision: amjis-web-00173-7kb
 - Deployed: 2026-05-17T10:07:30.749821Z
 - Flag: MARSYS_FLAG_CHAT_V2_ENABLED=true ✓
+
+### E.2 — Visual baseline regeneration (PARTIAL)
+- Baselines captured: 27 (< 60 threshold — PARTIAL)
+- 68/79 visual tests passed; 7 partial failures (hover states, a11y aria-label, mobile class drift)
+- Baselines committed: PR #54, merged to main
+
+## Chrome Parity — Incident (2026-05-17)
+
+### F.1 Verification Failure — ROLLBACK INITIATED
+
+**What failed:** F.1 comprehensive walkthrough — 5 of 10 observed W-cases failed before kill
+
+| W-case | Result | Duration | Symptom |
+|--------|--------|----------|---------|
+| W1 | ✓ PASS | 22.5s | Stage stepper + tool cards ✓ |
+| W2 | ✓ PASS | 18.3s | Action bar on hover ✓ |
+| W3 | ✗ FAIL | 27.3m | Details drawer: model/tokens/cost never appeared — timeout x2 |
+| W4 | ✗ FAIL | 30.1s | Panel mode toggle: `v2-panel-toggle` element not found |
+| W5 | ✗ FAIL | 15.3m | Regenerate: old assistant turn not removed — timeout |
+| W6 | ✓ PASS | 52.2s | Drawer persistence after reload ✓ |
+| W7 | ✓ PASS | 57.2s | PPL prediction modal ✓ |
+| W8 | ✗ FAIL | 11.3s | Trace button: `v2-details-btn` not found quickly |
+| W9 | ✓ PASS | 30.9s | Markdown/code/KaTeX rendering ✓ |
+| W10 | ✗ FAIL | 15.5m | Citation chips: `[N]` badges never appeared — timeout |
+
+**Suspected root causes:**
+- W3/W10: Metadata fields (model, tokens, cost, citation chips) not streamed to V2 UI from consume route
+- W4: Panel toggle button (`v2-panel-toggle`) not implemented in V2 ConsumeChat component
+- W5: Regenerate flow not wired in V2 (old turn persists)
+- W8: Trace drawer button (`v2-details-btn`) not rendered in V2
+
+**Rollback action:** Flag flipped `MARSYS_FLAG_CHAT_V2_ENABLED=false` in deploy.yml
+**Rollback PR:** see chore/chat-v2-parity-rollback-unverified branch
+
+**Next steps:** Each failure is a Phase C-extension fix. Do NOT re-flip until:
+1. W3: Verify metadata_json passthrough in ConsumeV2 message renderer
+2. W4: Implement/wire PanelToggle button in V2 shell
+3. W5: Wire regenerate action in V2 thread actions
+4. W8: Wire trace/details button in V2 shell
+5. W10: Verify citation chip rendering in V2 message renderer
