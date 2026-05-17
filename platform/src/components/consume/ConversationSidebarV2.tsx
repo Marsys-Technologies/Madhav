@@ -163,12 +163,12 @@ export function ConversationSidebarV2({
 
   if (collapsed) {
     return (
-      <div className="flex flex-col items-center w-10 border-r border-zinc-800 bg-zinc-950 shrink-0">
+      <div className="flex flex-col items-center w-10 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md shrink-0 pointer-events-none">
         <button
           type="button"
           onClick={onToggle}
           title="Expand conversation list"
-          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors pointer-events-auto"
           data-testid="v2-sidebar-expand"
         >
           {/* Hamburger / list icon */}
@@ -195,8 +195,8 @@ export function ConversationSidebarV2({
 
   return (
     <aside
-      className="flex flex-col w-56 shrink-0 border-r border-zinc-800 bg-zinc-950"
-      data-testid="v2-conversation-sidebar-v2"
+      className="flex flex-col w-56 shrink-0 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md"
+      data-testid="v2-conversation-sidebar"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
