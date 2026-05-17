@@ -1249,5 +1249,41 @@ Replace `<REVISION>` with the active Cloud Run URL or use the service URL direct
 - Phase A: COMPLETE (PR #23 merged)
 - Phase B: 10/12 items COMPLETE; deferred: B.10 (Vertex/O7 — no creds), B.11 (GCS/O8 — no creds)
 - Phase C: 6/8 items COMPLETE; C.2 PARTIAL (27 PNGs); C.4 COMPLETE; deferred: C.6 (a11y manual — operator), C.8 (acceptance walkthrough — operator)
-- Phase D.1: PR #35 OPEN — https://github.com/amonty84/Madhav/pull/35
-- Phase D.2/D.3: scheduled per D.1 merge timestamp (~7 days after merge)
+- Phase D.1: MERGED — PR #35 squash-merged 2026-05-17; revision amjis-web-00156-bj9; MARSYS_FLAG_CHAT_V2_ENABLED=true verified
+- Phase D.2/D.3: scheduled 2026-05-24 (7-day watch end)
+
+---
+
+## D.1 — Merged + post-remediation 7-day watch started
+
+- **Merged**: 27dbae5 (fix(chat-v2/D.1): re-enable master flag post-remediation (#35))
+- **Deployed**: 2026-05-17T07:31:01.427860Z
+- **Revision**: amjis-web-00156-bj9
+- **PR**: #35 (squash-merged via gh pr merge)
+- **Watch start**: 2026-05-17
+- **Watch end**: 2026-05-24
+- **§M.16 + §M.17 due**: 2026-05-24
+- **Flag verified**: MARSYS_FLAG_CHAT_V2_ENABLED=true on revision
+
+### Pre-merge verification context
+- Comprehensive verification campaign (Phases A-H) completed before merge
+- Final walkthrough: W1-W15 + 3 Anthropic spot-checks = 15/15 PASS (plus 3 Anthropic halted on URL param)
+- Lighthouse staging: Perf 93 / A11y 98 / Best Practices 100
+- Manual a11y (NVDA + VoiceOver desktop + VoiceOver iOS): operator verdict PASS (CHAT_V2_A11Y_REPORT_v2_0.md §2)
+- Visual baselines: 27/60 captured (infrastructure in place; remainder during watch)
+
+### Post-merge backlog (γ-scope code TODOs, NOT credentials gaps)
+1. **B.10 Vertex AI Document Understanding implementation** — pdf_extractor.ts:72 returns fixture even with credentials. Document AI SDK call needs to be written. ~1-2 days. Buckets/credentials already provisioned; this is engineering work, not provisioning.
+2. **B.11 GCS retrieval implementation** — route.ts:143 hardcoded to fakeGcsRetrieve(). Real @google-cloud/storage retrieval needs to be written. ~1 day. Buckets gs://madhav-astrology-chat-attachments and gs://madhav-astrology-chart-documents already exist with CORS configured.
+3. **Anthropic cross-provider force-route** — URL param ?provider=anthropic OR MARSYS_FORCE_PROVIDER env override. ~half-day.
+
+### Watch monitoring signals
+- p95 query latency on /api/chat/consume (Observatory dashboard)
+- 5xx error rate on /api/chat/consume + /api/conversations/* + /api/predictions
+- Streaming completion rate
+- Per-query cost trends (Observatory)
+- User-reported issues
+- Console error rate (any "Maximum update depth" or hydration warnings)
+
+### Rollback procedure
+One-line PR setting MARSYS_FLAG_CHAT_V2_ENABLED back to false in .github/workflows/deploy.yml → new Cloud Run revision auto-deploys with legacy path. Instant kill switch; no code revert needed.
