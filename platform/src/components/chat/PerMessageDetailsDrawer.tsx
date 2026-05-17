@@ -8,7 +8,7 @@
  *
  * Data sources:
  *   - message.metadata.custom  → model, stack, style, disclosure_tier, queryId, query_class, latency
- *   - message.metadata.unstable_data → data-cost (tokens + dollars), data-citation-gate (result)
+ *   - message.content (named data parts) → cost, citation-gate, observability
  *   - prop: citationCount (passed from the V2AssistantText renderer)
  */
 
