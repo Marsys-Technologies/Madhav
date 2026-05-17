@@ -1569,3 +1569,40 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### C.1 — COMPLETE
 
+## Round 5 — Phase C.2 — Adopt ConversationSidebarV2
+
+- **Date**: 2026-05-18
+- **PR**: [#65](https://github.com/amonty84/Madhav/pull/65) `fix(chat-v2/r5/C.2): adopt ConversationSidebarV2 — replace inlined sidebar`
+- **Branch**: `fix/chat-v2-r5/C2-sidebar-v2-adoption`
+- **Change**: Removed ~125-line `ConversationSidebar` function + supporting interfaces from `ConsumeChatV2.tsx`; imported `ConversationSidebarV2`; applied A.2 brand-charcoal styling to standalone component; fixed testid to `v2-conversation-sidebar`; fixed `sidebar-background.test.tsx` import path
+- **Tests**: `sidebar_v2_adoption.test.ts` — 5/5 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+
+### C.2 — COMPLETE
+
+## Round 5 — Phase C.3 — Rich data-citation payload
+
+- **Date**: 2026-05-18
+- **PR**: [#66](https://github.com/amonty84/Madhav/pull/66) `fix(chat-v2/r5/C.3): consume rich data-citation payload in V2AssistantText`
+- **Branch**: `fix/chat-v2-r5/C3-citation-rich-payload`
+- **Change**: Extended `CitationContextValue.onPin` signature with `snippet?` + `layer?`; updated `handlePin` to use params; added `citationRichMap` (signal_id → {snippet, layer} from `message.content` DataMessageParts) + `enrichedOnPin` in `V2AssistantText`; wired `renderWithCitations(text, enrichedOnPin)`; widened `markdown_render_v2.test.ts` slice to 2500 chars
+- **Tests**: `citation_rich_payload.test.ts` — 5/5 PASS; 38 chat-v2 files / 410 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+
+### C.3 — COMPLETE
+
+## Round 5 — Phase C.4 — Emit data-observability + trace deep-link
+
+- **Date**: 2026-05-18
+- **PR**: [#67](https://github.com/amonty84/Madhav/pull/67) `fix(chat-v2/r5/C.4): emit data-observability with query_id + trace_url`
+- **Branch**: `fix/chat-v2-r5/C4-observability-emission`
+- **Change**: Added `observabilityPart` to `route.ts` import; emitted `data-observability` in `onFinish` with `query_id: queryId` + `trace_url: /observatory/trace/${queryId}`; `PerMessageDetailsDrawer` already reads the part and renders the trace link (wired in B.3)
+- **Tests**: `observability_emission.test.ts` — 5/5 PASS; 38 chat-v2 files / 410 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: 3004f62
+
+### C.4 — COMPLETE
+
