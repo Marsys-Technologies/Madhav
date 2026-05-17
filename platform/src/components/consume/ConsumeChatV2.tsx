@@ -16,6 +16,7 @@ import type { UIMessage } from 'ai'
 import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
+import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { CommandPalette } from '@/components/chat/CommandPalette'
 import type { Command } from '@/components/chat/CommandPalette'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
@@ -1290,7 +1291,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  * Accepts the same props as ConsumeChatLegacy for API compatibility.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client' }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [] }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
@@ -1517,6 +1518,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
 
           {/* Right-side actions: Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
+            <ConsumeReportLibraryV2 reports={reports} />
             <ShareButton conversationId={activeConversationId ?? undefined} />
             {audienceTier === 'super_admin' && (
               <button
