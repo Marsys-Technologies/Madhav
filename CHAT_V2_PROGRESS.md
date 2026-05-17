@@ -1648,3 +1648,26 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### D.3 — COMPLETE
 
+## Round 5 — Phase E.1 — Sidebar refresh on auto-title
+
+- **Date**: 2026-05-18
+- **PR**: [#70](https://github.com/amonty84/Madhav/pull/70) `fix(chat-v2/r5/E.1): sidebar auto-refresh on title generation via data-title part`
+- **Branch**: `fix/chat-v2-r5/E1-sidebar-refresh-on-title`
+- **Change**: Added `TitlePartSchema` + `titlePart` to `data_parts.ts`; emitted `data-title` in route.ts `onFinish` when `isFirstTurn`; added `reloadTrigger` prop to `ConversationSidebarV2`; added `V2TitleCb` context + `V2TitleTracker` in `ConsumeChatV2`; threaded `onTitle` through `V2ChatRuntime`
+- **Tests**: `sidebar_auto_title_refresh.test.ts` — 12/12 PASS; 41 chat-v2 files / 441 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: b33ade4
+
+### E.1 — COMPLETE
+
+## Round 5 — Phase E.2 — Wire or remove dormant flags
+
+- **Date**: 2026-05-18
+- **Verdict**: Both flags are **properly wired with effective gates** — no code change needed.
+  - `HISTORY_COMPRESSION_ENABLED`: wired in `route.ts:739` — calls `compressHistory` when true. Default `false`. Leave.
+  - `COST_VISIBILITY_FOR_USERS`: wired in consume page.tsx files — passed as prop → `CostVisibilityCtx` → `V2Message.costVisible`. Default `false`. Leave.
+- **Status**: AUDIT-ONLY (no PR)
+
+### E.2 — COMPLETE
+
