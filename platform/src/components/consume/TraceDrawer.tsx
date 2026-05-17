@@ -26,6 +26,7 @@ export function TraceDrawer({ queryId, open, onOpenChange }: Props) {
         side="right"
         showCloseButton={true}
         className="w-[65vw] min-w-[700px] max-w-[1100px] p-0 flex flex-col gap-0 bg-brand-ink border-l border-[rgba(var(--brand-gold-rgb),0.12)]"
+        data-testid="v2-trace-drawer"
       >
         <SheetHeader className="px-4 py-2.5 border-b border-[rgba(var(--brand-gold-rgb),0.12)] bg-[var(--brand-charcoal)] flex-shrink-0">
           <SheetTitle className="text-[13px] font-bold text-brand-gold-cream">
