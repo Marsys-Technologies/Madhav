@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ConversationSidebar } from '@/components/consume/ConsumeChatV2'
+import { ConversationSidebarV2 as ConversationSidebar } from '@/components/consume/ConversationSidebarV2'
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ json: () => Promise.resolve({ conversations: [] }) })))

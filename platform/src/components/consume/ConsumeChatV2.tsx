@@ -17,6 +17,7 @@ import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard } from 'luc
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
+import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
 import { CommandPalette } from '@/components/chat/CommandPalette'
 import type { Command } from '@/components/chat/CommandPalette'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
@@ -75,131 +76,6 @@ export interface AttachedFile {
 const ACCEPT_TYPES = 'image/jpeg,image/png,image/gif,image/webp,application/pdf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ConversationSummary {
-  id: string
-  title: string | null
-  created_at: string
-  updated_at: string | null
-  archived_at: string | null
-}
-
-// ─── Conversation sidebar ─────────────────────────────────────────────────────
-
-interface ConversationSidebarProps {
-  chartId: string
-  activeId: string | null
-  onSelect: (id: string) => void
-  onNew: () => void
-  collapsed: boolean
-  onToggle: () => void
-}
-
-export function ConversationSidebar({
-  chartId,
-  activeId,
-  onSelect,
-  onNew,
-  collapsed,
-  onToggle,
-}: ConversationSidebarProps) {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const reload = useCallback(() => {
-    setLoading(true)
-    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data?.conversations)) {
-          setConversations(data.conversations as ConversationSummary[])
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [chartId])
-
-  useEffect(() => {
-    reload()
-  }, [reload])
-
-  if (collapsed) {
-    return (
-      <div className="flex flex-col items-center w-10 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md shrink-0 pointer-events-none">
-        <button
-          type="button"
-          onClick={onToggle}
-          title="Expand conversation list"
-          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors pointer-events-auto"
-          data-testid="v2-sidebar-expand"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-            <path d="M2 4h12M2 8h7M2 12h9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <aside
-      className="flex flex-col w-56 shrink-0 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md"
-      data-testid="v2-conversation-sidebar"
-    >
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
-        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Conversations</span>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onNew}
-            title="New conversation"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-new-conversation"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
-              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onToggle}
-            title="Collapse"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-sidebar-collapse"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto py-1">
-        {loading && conversations.length === 0 && (
-          <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
-        )}
-        {conversations.map((conv) => (
-          <button
-            key={conv.id}
-            type="button"
-            onClick={() => onSelect(conv.id)}
-            className={`w-full text-left px-3 py-2 text-xs rounded-md transition-colors truncate ${
-              conv.id === activeId
-                ? 'bg-indigo-600/20 text-indigo-300'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-            }`}
-            data-testid={`v2-conversation-item-${conv.id}`}
-          >
-            {conv.title ?? 'Untitled'}
-          </button>
-        ))}
-        {!loading && conversations.length === 0 && (
-          <p className="px-3 py-4 text-xs text-zinc-600 text-center">No conversations yet</p>
-        )}
-      </div>
-    </aside>
-  )
-}
 
 // ─── Branch picker (inline navigation between alternates) ────────────────────
 
@@ -1453,7 +1329,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             : 'fixed inset-y-0 left-0 z-40 flex'
         }
       >
-        <ConversationSidebar
+        <ConversationSidebarV2
           chartId={chartId}
           activeId={activeConversationId}
           onSelect={handleSelectConversation}
