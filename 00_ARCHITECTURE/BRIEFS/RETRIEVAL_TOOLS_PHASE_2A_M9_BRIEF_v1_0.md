@@ -28,8 +28,7 @@ You are Claude Code in Antigravity IDE with `--dangerously-skip-permissions`. Th
 **Prerequisite check (HARD STOP if not met):**
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav
-git checkout analysis/backend-data-pipeline-perf-audit
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-analysis
 git status
 git log --oneline -5
 
@@ -41,10 +40,10 @@ git log --oneline | grep -iE "F\.PIPE\.1|wire 4 planner-blind tools"
 **Acceptance:** clean working tree on `analysis/backend-data-pipeline-perf-audit`, planner-blind fix visible in log. If not, STOP.
 
 **Mandatory reading:**
-1. `/Users/Dev/Vibe-Coding/Apps/Madhav/CLAUDE.md`
-2. `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/RETRIEVAL_TOOLS_PHASE_2_CAMPAIGN_v1_0.md` (campaign frame)
-3. `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/briefs/RETRIEVAL_TOOLS_PHASE_2A_M9_BRIEF_v1_0.md` (this file — full)
-4. `/Users/Dev/Vibe-Coding/Apps/Madhav/09_MULTI_SCHOOL_TRIANGULATION/M9_CLOSE_v1_0.md` §1 (M9 deliverables for context)
+1. `/Users/Dev/Vibe-Coding/Apps/Madhav-analysis/CLAUDE.md`
+2. `/Users/Dev/Vibe-Coding/Apps/Madhav-analysis/00_ARCHITECTURE/RETRIEVAL_TOOLS_PHASE_2_CAMPAIGN_v1_0.md` (campaign frame)
+3. `/Users/Dev/Vibe-Coding/Apps/Madhav-analysis/00_ARCHITECTURE/briefs/RETRIEVAL_TOOLS_PHASE_2A_M9_BRIEF_v1_0.md` (this file — full)
+4. `/Users/Dev/Vibe-Coding/Apps/Madhav-analysis/09_MULTI_SCHOOL_TRIANGULATION/M9_CLOSE_v1_0.md` §1 (M9 deliverables for context)
 
 Then execute §B through §H below in order.
 
@@ -219,10 +218,27 @@ Don't re-run the probe yet — that happens after §F data ship lands.
 
 ## §F — Phase 5: L9 data ship (requires local proxy)
 
-### F.1 — Start the proxy in a separate terminal
+### F.0 — One-time symlink for .env.rag (gitignored, lives in original worktree)
+
+`.env.rag` is gitignored and exists only at `/Users/Dev/Vibe-Coding/Apps/Madhav/.env.rag`
+(the original main worktree). The proxy script resolves `.env.rag` relative to its own
+location, so without a symlink it won't find env vars from `/Madhav-analysis`.
+
+Create the symlink ONCE (idempotent — `ln -sfn` overwrites if already set):
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav
+ln -sfn /Users/Dev/Vibe-Coding/Apps/Madhav/.env.rag /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/.env.rag
+ls -la /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/.env.rag
+# Expected: symlink -> /Users/Dev/Vibe-Coding/Apps/Madhav/.env.rag
+```
+
+If the source file doesn't exist (`/Madhav/.env.rag` missing), STOP and report. The
+Chat V2 worktree may have moved or renamed it.
+
+### F.1 — Start the proxy in a separate terminal (from the analysis worktree)
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-analysis
 bash platform/scripts/start_db_proxy.sh
 # Leave running.
 ```
@@ -230,9 +246,9 @@ bash platform/scripts/start_db_proxy.sh
 ### F.2 — Inspect the M9 scripts
 
 ```bash
-ls /Users/Dev/Vibe-Coding/Apps/Madhav/platform/scripts/m9/
-cat /Users/Dev/Vibe-Coding/Apps/Madhav/platform/scripts/m9/run_multi_school_analysis.py | head -40
-cat /Users/Dev/Vibe-Coding/Apps/Madhav/platform/scripts/m9/compute_convergence.py 2>/dev/null | head -40
+ls /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/platform/scripts/m9/
+cat /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/platform/scripts/m9/run_multi_school_analysis.py | head -40
+cat /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/platform/scripts/m9/compute_convergence.py 2>/dev/null | head -40
 ```
 
 These scripts were authored at M9-C-S1 / M9-D-S1 and noted as "DB seed deferred — proxy unavailable" in the M9 ACs. They contain the actual writes.
@@ -240,7 +256,7 @@ These scripts were authored at M9-C-S1 / M9-D-S1 and noted as "DB seed deferred 
 ### F.3 — Run the M9 analysis + persistence
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav/platform
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/platform
 python3 scripts/m9/run_multi_school_analysis.py --write-db
 ```
 
@@ -259,7 +275,7 @@ If `school_disagreements` needs separate seeding, run `python3 scripts/m9/build_
 ### F.4 — Verify DB rows
 
 ```bash
-PGPASSWORD=$(grep -E "^DB_PASSWORD=" /Users/Dev/Vibe-Coding/Apps/Madhav/.env.rag | cut -d= -f2) \
+PGPASSWORD=$(grep -E "^DB_PASSWORD=" /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/.env.rag | cut -d= -f2) \
   psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis -c "
     SELECT 'school_signal_coverage' as t, count(*) FROM school_signal_coverage
     UNION ALL SELECT 'school_analysis_runs', count(*) FROM school_analysis_runs
@@ -279,7 +295,7 @@ PGPASSWORD=$(grep -E "^DB_PASSWORD=" /Users/Dev/Vibe-Coding/Apps/Madhav/.env.rag
 Per `GCS_LAYOUT_v1_0.md` L9 layout:
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav/platform
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/platform
 
 # 7 per-school analyses
 for school in parashari jaimini tajika kp nadi bnn yogini; do
@@ -312,7 +328,7 @@ Acceptance: 7 JSONs under school_analyses/, 2 JSONs under convergence/.
 ### G.1 — Re-run RCS regression test
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav/platform
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-analysis/platform
 npx tsc --noEmit -p . 2>&1 | tee /tmp/phase2a_tsc.log
 echo "tsc exit: $?"
 
@@ -356,7 +372,7 @@ If §G.1, §G.2, §G.3 are all green, ask Abhisek:
 If approved:
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/Madhav
+cd /Users/Dev/Vibe-Coding/Apps/Madhav-analysis
 git status
 
 git add \
