@@ -1491,3 +1491,41 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 - **Status**: AWAITING OPERATOR VISUAL REVIEW → merge via `gh pr merge 60 --squash --delete-branch`
 - **Next**: Phase A.2 (sidebar background color) after A.1 is merged
 
+## Round 5 — Phase A.2 — Sidebar background gradient
+
+- **Date**: 2026-05-18
+- **PR**: [#63](https://github.com/amonty84/Madhav/pull/63) `fix(chat-v2/r5/A.2): sidebar background — restore brand gradient`
+- **Branch**: `fix/chat-v2-r5/A2-sidebar-background`
+- **Change**: `ConsumeChatV2.tsx` sidebar wrappers — removed hardcoded `bg-zinc-950`; replaced with translucent brand-charcoal + `backdrop-blur-sm` + gold hairline border so ConsumeOverlayPortal gradient shows through
+- **Tests**: vitest unit tests PASS
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: a9af145
+
+### A.2 — COMPLETE
+
+## Round 5 — Phase B.1 — F-W10 citation chips fix
+
+- **Date**: 2026-05-18
+- **PR**: [#57](https://github.com/amonty84/Madhav/pull/57) `fix(chat-v2/parity/F-W10): citation chips always render + collapsed sidebar pointer-events`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W10-citation-chips`
+- **Change**: Citation chip rendering fix (W10) + collapsed sidebar pointer-events-none (side effect of A.2 rebase)
+- **Tests**: vitest component/unit PASS (23 tests, 4 files)
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 6a5c708
+
+### B.1 — COMPLETE
+
+## Round 5 — Phase B.2 — F-W5 regenerate wiring
+
+- **Date**: 2026-05-18
+- **PR**: [#58](https://github.com/amonty84/Madhav/pull/58) `fix(chat-v2/parity/F-W5): conversation-ID tracking + regenerate always fires + sidebar pointer-events`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W5-regenerate-wiring`
+- **Change**: V2RegenerateButton awaits `/api/chat/consume/regenerate` truncation then calls `messageRuntime.reload()` — eliminates race condition. V2ConversationIdTracker extracts conversation_id from data-persistence parts.
+- **Tests**: unit + integration tests updated to match new await-then-reload pattern; vitest 23/23 PASS
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 379066f
+
+### B.2 — COMPLETE
+
