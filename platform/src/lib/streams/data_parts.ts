@@ -149,6 +149,17 @@ export const PanelMetaPartSchema = z.object({
 
 export type PanelMetaPart = z.infer<typeof PanelMetaPartSchema>
 
+// ── Title part (E.1) ─────────────────────────────────────────────────────
+// Emitted on the first turn in onFinish after the conversation is persisted.
+// Client uses it as a reload-sidebar signal (the title is already in the DB).
+
+export const TitlePartSchema = z.object({
+  type: z.literal('title'),
+  conversation_id: z.string().uuid(),
+})
+
+export type TitlePart = z.infer<typeof TitlePartSchema>
+
 // ── Correction part (D.3) ─────────────────────────────────────────────────
 // Emitted in onFinish when parseMarkers finds a ‹correction› marker in the
 // synthesis output. Drives CorrectionNotice in V2Message.
@@ -188,6 +199,7 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   PredictionCandidatePartSchema,
   CorrectionPartSchema,
   OutOfDomainPartSchema,
+  TitlePartSchema,
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
@@ -253,5 +265,10 @@ export const correctionPart = (args: Omit<CorrectionPart, 'type'>): CorrectionPa
 
 export const outOfDomainPart = (args: Omit<OutOfDomainPart, 'type'>): OutOfDomainPart => ({
   type: 'out_of_domain',
+  ...args,
+})
+
+export const titlePart = (args: Omit<TitlePart, 'type'>): TitlePart => ({
+  type: 'title',
   ...args,
 })

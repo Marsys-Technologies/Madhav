@@ -1606,3 +1606,32 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### C.4 — COMPLETE
 
+## Round 5 — Phase C.5 — Action bar always-visible on touch devices
+
+- **Date**: 2026-05-18
+- **PR**: [#68](https://github.com/amonty84/Madhav/pull/68) `fix(chat-v2/r5/C.5): action bar always-visible on touch devices`
+- **Branch**: `fix/chat-v2-r5/C5-action-bar-touch`
+- **Change**: Replaced `opacity-0 group-hover:opacity-100` with `[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100` on both user and assistant action bar divs in `ConsumeChatV2.tsx`
+- **Tests**: `action_bar_touch.test.ts` — 4/4 PASS; 39 chat-v2 files / 414 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: f9da251
+
+### C.5 — COMPLETE
+
+## Round 5 — Phase D.1 — Real GCS retrieval
+
+- **Date**: 2026-05-18
+- **Status**: DEFERRED — no GCS credentials available in this execution environment
+- **Action**: No code change. Log entry only per operator-approved defaults.
+
+### D.1 — DEFERRED
+
+## Round 5 — Phase D.2 — Vertex DU PDF extraction
+
+- **Date**: 2026-05-18
+- **Status**: DEFERRED — no Vertex credentials available in this execution environment
+- **Action**: No code change. Log entry only per operator-approved defaults.
+
+### D.2 — DEFERRED
+

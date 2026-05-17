@@ -30,6 +30,8 @@ export interface ConversationSidebarV2Props {
   onNew: () => void
   collapsed: boolean
   onToggle: () => void
+  /** E.1: increments each time the server signals a title was set; triggers reload. */
+  reloadTrigger?: number
 }
 
 // ─── Date grouping ────────────────────────────────────────────────────────────
@@ -136,6 +138,7 @@ export function ConversationSidebarV2({
   onNew,
   collapsed,
   onToggle,
+  reloadTrigger,
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -156,6 +159,11 @@ export function ConversationSidebarV2({
   useEffect(() => {
     reload()
   }, [reload])
+
+  // E.1: reload when server signals a title was set (fires once on the first turn).
+  useEffect(() => {
+    if (reloadTrigger !== undefined && reloadTrigger > 0) reload()
+  }, [reloadTrigger, reload])
 
   const groups = useMemo(() => groupConversations(conversations), [conversations])
 

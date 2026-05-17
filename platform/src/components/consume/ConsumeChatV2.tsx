@@ -130,6 +130,10 @@ const V2QueryIdCb = createContext<((id: string) => void) | null>(null)
 // the regenerate button and subsequent request bodies carry the correct conversation ID.
 const V2ConversationIdCb = createContext<((id: string) => void) | null>(null)
 
+// ─── Title callback context (E.1: V2TitleTracker → ConsumeChatV2 sidebar reload) ──
+// Fires once on the first turn when a data-title part lands, triggering sidebar refresh.
+const V2TitleCb = createContext<(() => void) | null>(null)
+
 // ─── Preferences context (C.3: bottom-bar selectors share state with API body) ──
 interface V2PrefsCtxValue {
   stack: ModelStack
@@ -1108,6 +1112,37 @@ function V2ConversationIdTracker() {
   return null
 }
 
+// Reads data-title parts from message.content (post-stream) and fires the reload
+// callback once so ConversationSidebarV2 fetches the updated conversation list.
+function V2TitleTracker() {
+  const runtime = useThreadRuntime()
+  const onTitle = useContext(V2TitleCb)
+
+  useEffect(() => {
+    if (!onTitle) return
+    const unsub = runtime.subscribe(() => {
+      const state = runtime.getState()
+      for (const msg of state.messages) {
+        if (msg.role !== 'assistant') continue
+        const content = (msg.content ?? []) as ReadonlyArray<unknown>
+        for (const part of content) {
+          if (
+            typeof part === 'object' && part !== null &&
+            (part as Record<string, unknown>).type === 'data' &&
+            (part as Record<string, unknown>).name === 'title'
+          ) {
+            onTitle()
+            return
+          }
+        }
+      }
+    })
+    return unsub
+  }, [runtime, onTitle])
+
+  return null
+}
+
 // ─── γ7: Stream-resume tracker ────────────────────────────────────────────────
 // Mounted inside AssistantRuntimeProvider so it can use useThreadRuntime().
 // Saves queryId + received char count to sessionStorage while a stream is live;
@@ -1253,6 +1288,8 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
+  const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
@@ -1417,6 +1454,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           onNew={handleNewConversation}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((c) => !c)}
+          reloadTrigger={sidebarReloadTick}
         />
       </div>
 
@@ -1506,6 +1544,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             initialMessages={initialMessages}
             onQueryId={setLatestQueryId}
             onConversationId={setActiveConversationId}
+            onTitle={handleTitleGenerated}
           />
         </main>
       </div>
@@ -1527,6 +1566,7 @@ interface V2ChatRuntimeProps {
   conversationId: string | null
   initialMessages: UIMessage[] | undefined
   onConversationId?: (id: string) => void
+  onTitle?: () => void
 }
 
 // ─── γ7: Session-storage key for stream-resume ───────────────────────────────
@@ -1541,7 +1581,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -1624,6 +1664,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   return (
     <V2QueryIdCb.Provider value={onQueryId ?? null}>
     <V2ConversationIdCb.Provider value={onConversationId ?? null}>
+    <V2TitleCb.Provider value={onTitle ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
     <CitationCtx.Provider value={citationCtxValue}>
@@ -1635,6 +1676,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <V2QueryIdTracker />
           {/* W5 fix: surface conversation_id from data-persistence part to parent */}
           <V2ConversationIdTracker />
+          {/* E.1: trigger sidebar reload when data-title part lands after first turn */}
+          <V2TitleTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
@@ -1648,6 +1691,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
+    </V2TitleCb.Provider>
     </V2ConversationIdCb.Provider>
     </V2QueryIdCb.Provider>
   )
