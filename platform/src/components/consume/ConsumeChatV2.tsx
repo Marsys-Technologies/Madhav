@@ -1180,12 +1180,12 @@ function V2BottomBar() {
 function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }) {
   return (
     <ThreadPrimitive.Root
-      className="flex h-full flex-col"
+      className="flex h-full flex-col flex-1 min-w-0"
       data-testid="v2-thread-root"
     >
       {/* γ8: live region announces new assistant messages to screen readers */}
       <ThreadPrimitive.Viewport
-        className="flex-1 overflow-y-auto scroll-smooth py-4"
+        className="flex flex-col items-center flex-1 overflow-y-auto scroll-smooth py-4"
         data-testid="v2-thread-viewport"
         // γ8: role=log is the semantic landmark for a chat message log.
         // aria-live=polite ensures new messages are announced without interrupting.
@@ -1195,16 +1195,12 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
         aria-label="Conversation messages"
       >
         <ThreadPrimitive.Empty>
-          <div
-            className="mx-auto flex h-full w-full max-w-4xl items-center justify-center px-4"
-            data-testid="v2-thread-empty-wrap"
-          >
-            <EmptyState
-              chartId={chartId}
-              chartName={chartName}
-              data-testid="v2-thread-empty"
-            />
-          </div>
+          <EmptyState
+            chartId={chartId}
+            chartName={chartName}
+            className="max-w-4xl px-4"
+            data-testid="v2-thread-empty"
+          />
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
@@ -1395,7 +1391,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       <div
         className={
           sidebarCollapsed
-            ? 'hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:pointer-events-none'
+            ? 'hidden'
             : 'fixed inset-y-0 left-0 z-40 flex'
         }
       >
