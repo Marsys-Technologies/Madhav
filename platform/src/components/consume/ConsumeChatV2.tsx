@@ -5,7 +5,7 @@
  *
  * β2: conversation list sidebar + write-through restore on mount.
  * β5: multi-modal file attachments (image + PDF) via upload → token flow.
- * Flag gate: only rendered when MARSYS_FLAG_CHAT_V2_ENABLED=true.
+ * Post-§M.16 (2026-05-18): sole chat shell — flag + legacy path removed.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
@@ -37,7 +37,30 @@ import {
   useMessage,
   useMessageRuntime,
 } from '@assistant-ui/react'
-import type { ConsumeChatProps } from './ConsumeChatLegacy'
+interface ConversationRow {
+  id: string
+  title: string | null
+  created_at: string
+  chart_id: string
+  user_id: string
+  module: ConversationModule
+}
+
+export interface ConsumeChatProps {
+  chartId: string
+  chartName: string
+  chartMeta?: string
+  reports: Report[]
+  conversations: ConversationRow[]
+  currentConversationId?: string
+  initialMessages?: UIMessage[]
+  panelModeEnabled?: boolean
+  audienceTier?: AudienceTier
+  /** AIOps Phase 3: enables the new lifecycle-slot UI. Default false through CO.6. */
+  consumeUiV2Enabled?: boolean
+  /** γ6: show per-message cost to non-admin users. Super-admin always sees cost. */
+  costVisibilityEnabled?: boolean
+}
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
@@ -62,6 +85,7 @@ import { CorrectionNotice } from './CorrectionNotice'
 import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 import { cn } from '@/lib/utils'
+import type { Report, ConversationModule } from '@/lib/db/types'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -1187,7 +1211,6 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
 
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
- * Accepts the same props as ConsumeChatLegacy for API compatibility.
  */
 export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [] }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)

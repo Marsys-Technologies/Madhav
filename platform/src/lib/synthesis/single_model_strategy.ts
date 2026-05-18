@@ -335,11 +335,10 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       renderedPrompt += `\n\n---\n\nSYNTHESIS GUIDANCE (from planner):\n${request.synthesis_guidance.trim()}`
     }
 
-    // O5: when Chat V2 is active, append citation format instructions so the model
-    // emits SIG.MSR.NNN references that the V2 renderer converts to numbered badges.
-    if (getFlag('CHAT_V2_ENABLED')) {
-      renderedPrompt += CITATION_APPENDIX
-    }
+    // O5: append citation format instructions so the model emits SIG.MSR.NNN
+    // references that the V2 renderer converts to numbered badges.
+    // Post-§M.16: Chat V2 is the only path; citation appendix is always active.
+    renderedPrompt += CITATION_APPENDIX
 
     const systemMessage: ModelMessage = supports(selected_model_id, 'prompt-caching')
       ? {
@@ -454,7 +453,6 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       ...(abortSignal && { abortSignal }),
       maxRetries: synthesisMaxRetries,
       // γ7: accumulate text deltas for stream-resume (pending_streams table).
-      // onTextDelta is only wired when CHAT_V2_ENABLED=true (route.ts).
       ...(onTextDelta && {
         onChunk: ({ chunk }: { chunk: { type: string; textDelta?: string } }) => {
           if (chunk.type === 'text-delta' && chunk.textDelta) {

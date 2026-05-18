@@ -17,13 +17,13 @@ import * as path from 'node:path'
  *      on/off, asserting the rendered DOM matches the brand palette.
  */
 
-// After α7, ConsumeChat.tsx is a thin switch; legacy content (including LEL toggle) is in ConsumeChatLegacy.tsx
-const consumeChatPath = path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx')
+// Post-§M.16, the LEL toggle lives in ConsumeChatV2.tsx (setLelEnabled).
+const consumeChatPath = path.resolve(__dirname, '..', 'ConsumeChatV2.tsx')
 const source = fs.readFileSync(consumeChatPath, 'utf8')
 
 function extractLelButtonBlock(src: string): string {
   // The LEL toggle button is the first <button onClick={() => setLelContextEnabled(...) }>.
-  const start = src.indexOf('setLelContextEnabled')
+  const start = src.indexOf('setLelEnabled')
   expect(start).toBeGreaterThan(-1)
   // Grab a generous slice forward to cover the className array.
   return src.slice(start, start + 1200)

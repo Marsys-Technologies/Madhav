@@ -1,28 +1,9 @@
 /**
- * ConsumeChat — thin flag switch between legacy and V2 paths.
+ * ConsumeChat — thin re-export of the V2 chat shell.
  *
- * Flag-off (MARSYS_FLAG_CHAT_V2_ENABLED=false, default):
- *   renders ConsumeChatLegacy — byte-identical to pre-α7 production behavior.
- *
- * Flag-on:
- *   renders ConsumeChatV2 — assistant-ui Thread shell (β phase populates full UX).
- *
- * All consumers import from this file; neither Legacy nor V2 is imported directly.
+ * Pre-§M.16 (closed 2026-05-18) this file was a flag-gated switch between
+ * legacy and V2 paths. Post-cutover, V2 is the only path; the legacy file
+ * and feature flag are removed. See §M.16 brief for details.
  */
 
-import { ConsumeChatLegacy, type ConsumeChatProps } from './ConsumeChatLegacy'
-import { ConsumeChatV2 } from './ConsumeChatV2'
-
-export type { ConsumeChatProps }
-
-interface SwitchProps extends ConsumeChatProps {
-  /** Wire MARSYS_FLAG_CHAT_V2_ENABLED here (read by server pages via configService). */
-  chatV2Enabled?: boolean
-}
-
-export function ConsumeChat({ chatV2Enabled, ...props }: SwitchProps) {
-  if (chatV2Enabled) {
-    return <ConsumeChatV2 {...props} />
-  }
-  return <ConsumeChatLegacy {...props} />
-}
+export { ConsumeChatV2 as ConsumeChat, type ConsumeChatProps } from './ConsumeChatV2'

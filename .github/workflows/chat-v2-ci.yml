@@ -141,7 +141,6 @@ jobs:
         run: npx playwright test tests/e2e/chat-v2 --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
           # Firebase vars required for Next.js dev server startup (webServer in playwright.config.ts)
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -179,13 +178,11 @@ jobs:
         run: npx playwright test tests/e2e/chat-v2 --project=firefox --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
       - name: E2E tests — chat-v2 (WebKit)
         run: npx playwright test tests/e2e/chat-v2 --project=webkit --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 5 — Visual regression
@@ -214,7 +211,6 @@ jobs:
         run: npx playwright test --config=tests/e2e/chat-v2/playwright.config.ts --grep "@visual" --project=chromium --reporter=github || echo "STAGE-5-VISUAL no visual specs yet (baselines added incrementally per work item)"
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 6 — Accessibility (axe-core)
@@ -245,7 +241,6 @@ jobs:
         run: npx playwright test tests/e2e/chat-v2/a11y/axe.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 7 — Performance (Lighthouse CI + streaming metrics)
@@ -276,14 +271,12 @@ jobs:
         run: npx playwright test tests/e2e/chat-v2/perf/streaming.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
       - name: Web Vitals budget assertions
         continue-on-error: true
         run: npx playwright test tests/e2e/chat-v2/perf/web-vitals.spec.ts --config=tests/e2e/chat-v2/playwright.config.ts --project=chromium --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 8 — Load / stress (k6)
@@ -413,7 +406,6 @@ jobs:
           fi
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 12 — Mobile Playwright profiles
@@ -444,13 +436,11 @@ jobs:
         run: npx playwright test tests/e2e/chat-v2/mobile --project='Mobile Safari 375' --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
       - name: Mobile tests — 768px iPad
         run: npx playwright test tests/e2e/chat-v2/mobile --project='iPad Safari 768' --reporter=github
         env:
           MARSYS_FIXTURE_MODE: 'true'
-          MARSYS_FLAG_CHAT_V2_ENABLED: 'true'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 13 — Mutation tests (Stryker)
