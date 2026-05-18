@@ -287,7 +287,7 @@ export function formatSummary(aggregate: AggregateResult, results: EvalResult[])
 // ────────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const modelId = process.env.PLANNER_MODEL_ID ?? 'nvidia/llama-3.3-nemotron-super-49b-v1'
+  const modelId = process.env.PLANNER_MODEL_ID ?? 'gemini-2.5-flash'
   const chartId = process.env.CHART_ID ?? 'test-native'
 
   // Lazy import: pulls server-only deps (resolver) only at CLI runtime.

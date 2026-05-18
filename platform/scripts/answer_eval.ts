@@ -25,7 +25,7 @@ import {
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
 const CHART_ID = process.env.CHART_ID ?? 'default'
-const EVAL_STACK = process.env.EVAL_STACK ?? 'nim'
+const EVAL_STACK = process.env.EVAL_STACK ?? 'gemini'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scoring
