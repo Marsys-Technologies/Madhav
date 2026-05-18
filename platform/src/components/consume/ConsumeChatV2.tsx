@@ -810,39 +810,20 @@ function V2Composer() {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
-  const [interruptToast, setInterruptToast] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
-  const pendingResubmit = useRef(false)
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
       const running = runtime.getState().isRunning
-      const wasRunning = isRunningRef.current
       isRunningRef.current = running
       setIsRunning(running)
-
-      // β3: When run ends with a pending interrupt-send, resubmit after 300ms.
-      if (wasRunning && !running && pendingResubmit.current) {
-        pendingResubmit.current = false
-        setTimeout(() => {
-          setInterruptToast(false)
-          const form = containerRef.current?.querySelector('form')
-          form?.requestSubmit()
-        }, 300)
-      }
     })
     return unsub
   }, [runtime])
-
-  function handleInterruptSend() {
-    pendingResubmit.current = true
-    setInterruptToast(true)
-    runtime.cancelRun()
-  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -882,16 +863,6 @@ function V2Composer() {
         className="px-4 pb-3 pt-1"
         data-testid="v2-composer"
       >
-        {interruptToast && (
-          <div
-            className="mx-auto max-w-4xl mb-2 text-center text-xs text-amber-400"
-            data-testid="v2-interrupt-toast"
-            aria-live="polite"
-          >
-            Cancelled — sending new query
-          </div>
-        )}
-
         {/* β5: hidden file input (inside form, outside pill) */}
         <input
           ref={fileInputRef}
@@ -944,29 +915,17 @@ function V2Composer() {
 
               <div className="flex items-center gap-1">
                 {isRunning ? (
-                  <>
-                    <ComposerPrimitive.Cancel asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
-                        title="Stop generation"
-                        aria-label="Stop generating response"
-                        data-testid="v2-abort-btn"
-                      >
-                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
-                      </button>
-                    </ComposerPrimitive.Cancel>
+                  <ComposerPrimitive.Cancel asChild>
                     <button
                       type="button"
-                      onClick={handleInterruptSend}
-                      className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-95"
-                      title="Cancel and send new query"
-                      aria-label="Cancel current response and send new query"
-                      data-testid="v2-interrupt-send-btn"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
+                      title="Stop generation"
+                      aria-label="Stop generating response"
+                      data-testid="v2-abort-btn"
                     >
-                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                      <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                     </button>
-                  </>
+                  </ComposerPrimitive.Cancel>
                 ) : (
                   <ComposerPrimitive.Send asChild>
                     <button
