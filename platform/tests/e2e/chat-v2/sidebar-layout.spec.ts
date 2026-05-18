@@ -38,7 +38,7 @@ test.describe('B.1 — sidebar does not occlude chat column content', () => {
   test('sidebar open: chat column is offset right so content is not clipped', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').waitFor({ state: 'visible', timeout: 15_000 })
 
     await ensureExpanded(page)
 
@@ -52,7 +52,7 @@ test.describe('B.1 — sidebar does not occlude chat column content', () => {
   test('sidebar collapsed: chat column offset matches collapsed strip width', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').waitFor({ state: 'visible', timeout: 15_000 })
 
     await ensureCollapsed(page)
 
@@ -71,16 +71,16 @@ test.describe('B.1 — visual: sidebar open vs closed', () => {
   test('sidebar closed state — desktop baseline', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').waitFor({ state: 'visible', timeout: 15_000 })
     await ensureCollapsed(page)
-    await expect(page.getByTestId('consume-chat-v2-root')).toHaveScreenshot('b1-sidebar-closed-desktop.png')
+    await expect(page.getByTestId('v2-chat-shell')).toHaveScreenshot('b1-sidebar-closed-desktop.png')
   })
 
   test('sidebar open state — desktop baseline', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').waitFor({ state: 'visible', timeout: 15_000 })
     await ensureExpanded(page)
-    await expect(page.getByTestId('consume-chat-v2-root')).toHaveScreenshot('b1-sidebar-open-desktop.png')
+    await expect(page.getByTestId('v2-chat-shell')).toHaveScreenshot('b1-sidebar-open-desktop.png')
   })
 })

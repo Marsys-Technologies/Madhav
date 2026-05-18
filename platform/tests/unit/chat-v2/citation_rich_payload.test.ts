@@ -31,9 +31,10 @@ describe('C.3 — rich data-citation payload consumed', () => {
     expect(pinBlock).not.toContain("snippet: ''")
   })
 
-  it('V2AssistantText builds citationRichMap from message.content', () => {
+  it('V2AssistantText builds citationRichMap from data parts (via useDataParts hook)', () => {
     expect(src).toContain('citationRichMap')
-    expect(src).toContain("name === 'citation'")
+    // R6.1: consolidated to hook — data-citation parts from both sources
+    expect(src).toContain("'data-citation'")
     expect(src).toContain('data.signal_id')
   })
 

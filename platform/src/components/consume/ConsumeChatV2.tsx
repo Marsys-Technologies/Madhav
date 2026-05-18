@@ -51,6 +51,8 @@ import { PredictionLogModal } from '../chat/PredictionLogModal'
 import { ValidatorFailureBand } from '../chat/ValidatorFailureBand'
 import { ValidatorFooterChip } from '../chat/ValidatorFooterChip'
 import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart, StagePart, ToolPart } from '@/lib/streams/data_parts'
+import { useDataParts } from '@/lib/chat-v2/useDataParts'
+import type { NormalizedDataPart } from '@/lib/chat-v2/useDataParts'
 import { StageStepper } from '../chat-v2/StageStepper'
 import { ToolCallCard } from '../chat-v2/ToolCallCard'
 import { PanelModeToggle, PanelOptInCtx } from '../chat-v2/PanelModeToggle'
@@ -197,19 +199,14 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const { onPin } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
+  const dataParts = useDataParts(message)
 
-  // C.3: build signal_id → {snippet, layer} map from message.content DataMessageParts.
-  // The route emits data-citation parts via writer.write({ type: 'data-citation', data: {...} }),
-  // which @assistant-ui/react-ai-sdk converts to DataMessagePart { type:'data', name:'citation' }.
+  // C.3: build signal_id → {snippet, layer} map from data-citation parts (both sources via hook).
   const citationRichMap = useMemo(() => {
     const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
-    for (const p of message.content as ReadonlyArray<unknown>) {
-      if (
-        typeof p === 'object' && p !== null &&
-        (p as Record<string, unknown>).type === 'data' &&
-        (p as Record<string, unknown>).name === 'citation'
-      ) {
-        const data = (p as { data: Record<string, unknown> }).data
+    for (const d of dataParts) {
+      if (d.type === 'data-citation') {
+        const data = d.data as Record<string, unknown>
         if (typeof data.signal_id === 'string') {
           result.set(data.signal_id, {
             snippet: typeof data.snippet === 'string' ? data.snippet : '',
@@ -219,7 +216,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       }
     }
     return result
-  }, [message.content])
+  }, [dataParts])
 
   const enrichedOnPin = useCallback((n: number, signalId: string) => {
     const rich = citationRichMap.get(signalId)
@@ -257,16 +254,12 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
 
 // ─── Panel data extraction helpers ───────────────────────────────────────────
 
-function usePanelData(dataParts: ReadonlyArray<unknown>) {
+function usePanelData(dataParts: ReadonlyArray<NormalizedDataPart>) {
   const panelMembers = useMemo(() => {
     const parts: PanelMemberPart[] = []
     for (const d of dataParts) {
-      if (
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-panel-member'
-      ) {
-        const entry = d as { type: string; data: unknown }
-        parts.push(entry.data as PanelMemberPart)
+      if (d.type === 'data-panel-member') {
+        parts.push(d.data as PanelMemberPart)
       }
     }
     // Sort by member_index for stable tab order
@@ -275,12 +268,8 @@ function usePanelData(dataParts: ReadonlyArray<unknown>) {
   }, [dataParts])
 
   const panelMeta = useMemo((): PanelMetaPart | null => {
-    const entry = dataParts.find(
-      (d): d is { type: string; data: PanelMetaPart } =>
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-panel-meta',
-    )
-    return entry ? (entry as { type: string; data: PanelMetaPart }).data : null
+    const entry = dataParts.find(d => d.type === 'data-panel-meta')
+    return entry ? (entry.data as PanelMetaPart) : null
   }, [dataParts])
 
   return { panelMembers, panelMeta, isPanel: panelMeta !== null }
@@ -348,9 +337,9 @@ function V2Message() {
   const [predModalOpen, setPredModalOpen] = useState(false)
   const [activePredCandidate, setActivePredCandidate] = useState<PredictionCandidatePart | null>(null)
 
-  // γ1: panel data from message metadata
+  // γ1: panel data from message — merged from both stream sources via hook
   const message = useMessage()
-  const dataParts = (message.metadata?.unstable_data ?? []) as ReadonlyArray<unknown>
+  const dataParts = useDataParts(message)
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
@@ -365,12 +354,8 @@ function V2Message() {
 
   // γ4: extract citation gate status from data parts
   const citationGate = useMemo(() => {
-    const entry = dataParts.find(
-      (d): d is { type: string; data: { status?: string; issues?: string[] } } =>
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-citation-gate',
-    )
-    return entry ? (entry as { type: string; data: { status?: string; issues?: string[] } }).data : null
+    const entry = dataParts.find(d => d.type === 'data-citation-gate')
+    return entry ? (entry.data as { status?: string; issues?: string[] }) : null
   }, [dataParts])
 
   // O3: compute isStreaming for stage/tool gating
@@ -380,12 +365,9 @@ function V2Message() {
   const stageHistory = useMemo(() => {
     const map = new Map<string, StagePart>()
     for (const d of dataParts) {
-      if (
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-stage'
-      ) {
-        const entry = d as { type: string; data: StagePart }
-        map.set(entry.data.stage, entry.data)
+      if (d.type === 'data-stage') {
+        const stage = d.data as StagePart
+        map.set(stage.stage, stage)
       }
     }
     return Array.from(map.values())
@@ -395,12 +377,9 @@ function V2Message() {
   const toolHistory = useMemo(() => {
     const map = new Map<string, ToolPart>()
     for (const d of dataParts) {
-      if (
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-tool'
-      ) {
-        const entry = d as { type: string; data: ToolPart }
-        map.set(entry.data.name, entry.data)
+      if (d.type === 'data-tool') {
+        const tool = d.data as ToolPart
+        map.set(tool.name, tool)
       }
     }
     return Array.from(map.values())
@@ -409,52 +388,21 @@ function V2Message() {
   // γ3: extract prediction candidates from data parts
   const predictionCandidates = useMemo(() => {
     return dataParts
-      .filter(
-        (d): d is { type: string; data: PredictionCandidatePart } =>
-          typeof d === 'object' && d !== null &&
-          (d as Record<string, unknown>).type === 'data-prediction-candidate',
-      )
-      .map(d => d.data)
+      .filter(d => d.type === 'data-prediction-candidate')
+      .map(d => d.data as PredictionCandidatePart)
       .sort((a, b) => b.score - a.score)
   }, [dataParts])
 
-  // D.3: extract correction and out-of-domain from message.content (post-stream DataMessageParts)
-  // and from dataParts (live-stream: message.metadata?.unstable_data).
+  // D.3: extract correction and out-of-domain via hook (merges both live-stream + post-stream sources).
   const correction = useMemo(() => {
-    // Post-stream: DataMessagePart { type:'data', name:'correction', data:{...} }
-    for (const p of message.content as ReadonlyArray<unknown>) {
-      if (typeof p === 'object' && p !== null &&
-        (p as Record<string, unknown>).type === 'data' &&
-        (p as Record<string, unknown>).name === 'correction') {
-        return (p as { data: { original_claim: string; corrected_claim: string; classical_source?: string } }).data
-      }
-    }
-    // Live-stream: { type:'data-correction', data:{...} }
-    for (const d of dataParts) {
-      if (typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-correction') {
-        return (d as { data: { original_claim: string; corrected_claim: string; classical_source?: string } }).data
-      }
-    }
-    return null
-  }, [message.content, dataParts])
+    const d = dataParts.find(d => d.type === 'data-correction')
+    return d ? (d.data as { original_claim: string; corrected_claim: string; classical_source?: string }) : null
+  }, [dataParts])
 
   const outOfDomain = useMemo(() => {
-    for (const p of message.content as ReadonlyArray<unknown>) {
-      if (typeof p === 'object' && p !== null &&
-        (p as Record<string, unknown>).type === 'data' &&
-        (p as Record<string, unknown>).name === 'out_of_domain') {
-        return (p as { data: { reason: string } }).data
-      }
-    }
-    for (const d of dataParts) {
-      if (typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-out-of-domain') {
-        return (d as { data: { reason: string } }).data
-      }
-    }
-    return null
-  }, [message.content, dataParts])
+    const d = dataParts.find(d => d.type === 'data-out-of-domain')
+    return d ? (d.data as { reason: string }) : null
+  }, [dataParts])
 
   const handleCitationCount = useCallback((n: number) => {
     setCitationCount(n)
@@ -1424,7 +1372,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <V2PrefsCtx.Provider value={prefsCtxValue}>
     <div
       className="relative flex h-dvh text-zinc-100"
-      data-testid="consume-chat-v2-root"
+      data-testid="v2-chat-shell"
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
       {!sidebarCollapsed && (

@@ -1057,6 +1057,10 @@ export async function POST(request: Request) {
         console.error('[consume:v2] citation gate error', err)
       }
 
+      // Close the synthesis stage state machine — pip transitions from pulsing to static.
+      // synthesisStart captured at L712 before stream merge; duration is observability only.
+      writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - synthesisStart) })
+
       // Emit trace done sentinel so SSE endpoint closes the stream
       emit({ event: 'done', query_id: queryId })
       try {

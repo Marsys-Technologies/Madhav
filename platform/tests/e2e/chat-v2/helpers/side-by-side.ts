@@ -43,7 +43,7 @@ export async function captureSideBySide(
     const url = variant === 'v2' ? `${base}?__chatV2=1` : base
     await page.goto(url, { waitUntil: 'domcontentloaded' })
     const root = variant === 'v2'
-      ? page.getByTestId('consume-chat-v2-root')
+      ? page.getByTestId('v2-chat-shell')
       : page.locator('[data-testid="consume-shell-root"], main').first()
     await root.waitFor({ state: 'visible', timeout: 20_000 })
     if (scenario.setup) await scenario.setup(page)
