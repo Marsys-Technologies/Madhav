@@ -3,28 +3,29 @@ artifact: FINDINGS_CLASSICAL_CLAIM_v1_0.md
 version: "1.0"
 status: CURRENT
 layer: L8
-generated_at: 2026-05-14T11:53:34Z
+generated_at: 2026-05-18T09:08:40Z
 ---
 
 # FINDINGS: Classical Claim Inventory
 
 | Text Key | confirms | contradicts | partial | extends | silent | total |
 |---|---|---|---|---|---|---|
-| bphs | 6 | 3 | 21 | 0 | 85 | 115 |
-| brihat_jataka | 1 | 0 | 8 | 2 | 43 | 54 |
-| brihat_samhita | 0 | 0 | 0 | 0 | 11 | 11 |
-| hora_sara | 2 | 0 | 11 | 2 | 45 | 60 |
-| jaimini_sutra | 0 | 0 | 1 | 0 | 11 | 12 |
-| kp_texts | 9 | 2 | 12 | 3 | 72 | 98 |
-| prashna_marga | 0 | 1 | 1 | 1 | 14 | 17 |
-| saravali | 0 | 2 | 5 | 0 | 11 | 18 |
-| uttara_kalamrita | 3 | 0 | 5 | 2 | 25 | 35 |
-| **TOTAL** | **21** | **8** | **64** | **10** | **317** | **420** |
+| bhrigu_nandi_nadi | 8 | 6 | 47 | 1 | 159 | 221 |
+| bphs | 18 | 14 | 108 | 5 | 451 | 596 |
+| brihat_jataka | 4 | 1 | 35 | 3 | 166 | 209 |
+| brihat_samhita | 0 | 1 | 5 | 1 | 57 | 64 |
+| hora_sara | 6 | 3 | 41 | 3 | 159 | 212 |
+| jaimini_sutra | 1 | 0 | 26 | 5 | 83 | 115 |
+| kp_texts | 21 | 6 | 93 | 14 | 364 | 498 |
+| prashna_marga | 4 | 1 | 27 | 3 | 121 | 156 |
+| saravali | 2 | 2 | 18 | 1 | 82 | 105 |
+| uttara_kalamrita | 8 | 2 | 28 | 6 | 110 | 154 |
+| **TOTAL** | **72** | **36** | **428** | **42** | **1752** | **2330** |
 
 ## Interpretation
 
-- **confirms**: 21 attributions where classical text directly validates the MSR signal
-- **contradicts**: 8 attributions where classical text opposes the signal
-- **partial**: 64 attributions with partial classical support
-- **extends**: 10 attributions where classical text adds nuance
-- **silent**: 317 attributions where classical text is unrelated
+- **confirms**: 72 attributions where classical text directly validates the MSR signal
+- **contradicts**: 36 attributions where classical text opposes the signal
+- **partial**: 428 attributions with partial classical support
+- **extends**: 42 attributions where classical text adds nuance
+- **silent**: 1752 attributions where classical text is unrelated

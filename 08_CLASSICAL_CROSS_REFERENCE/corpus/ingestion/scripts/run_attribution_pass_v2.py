@@ -40,7 +40,7 @@ TOP_K       = 5
 MIN_SIMILARITY = 0.55
 
 REPO_ROOT   = Path(__file__).parents[4]
-MSR_PATH    = REPO_ROOT / "025_HOLISTIC_SYNTHESIS" / "MSR_v3_0.md"
+MSR_PATH    = REPO_ROOT / "025_HOLISTIC_SYNTHESIS" / "MSR_v5_0.md"
 OUTPUT_DIR  = REPO_ROOT / "08_CLASSICAL_CROSS_REFERENCE"
 REGISTRY_JSON  = OUTPUT_DIR / "CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json"
 REGISTRY_MD    = OUTPUT_DIR / "CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.md"
@@ -136,7 +136,7 @@ def load_msr_signals(path: Path) -> list[dict[str, str]]:
             "signal_name":      name_m.group(1) if name_m else sig_id,
             "classical_source": src_m.group(1)  if src_m  else "",
         })
-    log.info("Parsed %d signals from MSR_v3_0.md", len(signals))
+    log.info("Parsed %d signals from MSR_v5_0.md", len(signals))
     return signals
 
 
