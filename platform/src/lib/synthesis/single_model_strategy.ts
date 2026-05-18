@@ -407,7 +407,13 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // the model consumes 4 000–8 000 tokens for CoT and the text answer is
     // truncated mid-sentence. Add 10 000-token thinking headroom so the
     // answer text always receives the full content cap.
-    const isThinkingModeSynthesis = !!deepseekProviderOptions(selected_model_id, 'synthesis')
+    // R9: any reasoning-capable synthesis model — DeepSeek thinking-mode (markers),
+    // Gemini Pro/Flash with thinkingBudget>0 (native), Claude extended thinking, etc.
+    // All get the no-tools treatment: tools are pre-injected via FUB-2/FUB-3 into the
+    // system context, so the model needs to focus solely on synthesis reasoning.
+    const reasoningMode = getReasoningMode(selected_model_id)
+    const isThinkingModeSynthesis = reasoningMode !== 'none' ||
+      !!deepseekProviderOptions(selected_model_id, 'synthesis')
     const effectiveMaxTokens = isThinkingModeSynthesis
       ? Math.min(contentCap + 10_000, modelMeta?.maxOutputTokens ?? contentCap + 10_000)
       : contentCap

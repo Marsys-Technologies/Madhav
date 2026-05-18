@@ -144,7 +144,7 @@ export function googleProviderOptions(modelId: string):
   | {
       google: {
         safetySettings: Array<{ category: string; threshold: 'BLOCK_NONE' }>
-        thinkingConfig: { thinkingBudget: number }
+        thinkingConfig: { thinkingBudget: number; includeThoughts?: boolean }
       }
     }
   | undefined {
@@ -161,6 +161,7 @@ export function googleProviderOptions(modelId: string):
       ],
       thinkingConfig: {
         thinkingBudget: 24576,
+        includeThoughts: true,  // R9: emit short thought-summary channel for V2 bullet ticker
       },
     },
   }
