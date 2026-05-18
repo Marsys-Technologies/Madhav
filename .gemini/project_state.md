@@ -10,6 +10,22 @@ _Last updated: 2026-05-14 at M9-A-S1 (**M9 MACRO-PHASE OPEN — Multi-School Tri
 - **Next governance action:** Execute `Madhav_M2A_Exec_6` — B.4 RAG Query Engine + Gemini two-pass carry-forward. Carry-forward priorities: (1) native pastes cgm_edge_proposals_v1_0.md to Gemini, commits raw response, Claude reconciler runs Tasks 4a/4b; (2) write_chunks_to_db() for 234 CGM chunks; (3) B.4 RAG Query Engine per PHASE_B_PLAN §B.4.
 - **Steps remaining:** **0 (governance rebuild complete).** Steady-state governance discipline fully active. M2 active execution: B.0 closed, M2A Plan produced, B.1 complete, B.2 complete, B.3 complete, **B.3.5 complete** (M2A Foundation Stack 5/5 sessions done).
 
+## Concurrent Workstream — Phase 4C Panchang (ACTIVE 2026-05-19 — 4C-0 SEALED)
+
+**OPENED 2026-05-19 at session 4C-0 (governance setup). 4C-1 INCOMING.** Concurrent workstream alongside the M-phase main thread. Phase 4C — Panchang Module — adds the `query_panchanga` RetrievalTool, the `PANCHANG_DAILY` L1.5 data asset, and the `/panchang` UI surface (Muhurat Finder + iCal export + Ask-Madhav deep links) to the instrument.
+
+- **Brief artifact:** `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` (status CURRENT; canonical_id `PHASE_4C_PANCHANG_BRIEF_v1_0`).
+- **Governing plan:** `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md` (v1.0; status CURRENT).
+- **Parent campaign:** `00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md` (v1.0; 4A CLOSED, 4B PENDING, 4C ACTIVE, 4D PENDING).
+- **Worktree:** `/Users/Dev/Vibe-Coding/Apps/Panchang/`. **Branch:** `feature/phase-4c-panchang`.
+- **Phase 4C sub-phase status:** 4C.0 CLOSED (2026-05-19) | 4C.1 NEXT | 4C.2–4C.9 PENDING.
+- **CAPABILITY_MANIFEST entry:** `PANCHANG_DAILY_v1_0` — entry #163, path `03_DERIVATIONS/PANCHANG_DAILY_v1_0.md`, status PLANNED, layer L1.5, `sql_table: panchang_daily`, `computed_by: platform/sidecar/panchang_engine`.
+- **Layer:** PANCHANG_DAILY is L1.5 — deterministic facts computed from Swiss Ephemeris (`EPHEMERIS_DAILY`) + static classical Muhurta Shastra lookup tables. No interpretation at this layer (interpretation is L2.5+ territory).
+- **Settled decisions (locked 2026-05-19):** D1 default location Bhubaneswar; D2 Muhurat MVP 6 curated events (Vivah, Griha Pravesh, Property Purchase, Vyapara, Yatra, Mantra Initiation); D3 calendar auth HMAC-signed URLs 90-day expiry.
+- **Prereq dependency:** Phase 4B (sunrise derivation, Migration 059, MEAN_NODE rebuild) must close before 4C.2 backfill. 4C.0 + 4C.1 are 4B-independent.
+- **Gemini L4 Discovery impact:** `query_panchanga` RetrievalTool available after 4C.3 closes. `panchang_daily` table carries Tithi/Nakshatra/Yoga/Vara/Karana + timings (Rahu Kalam, Yamagandam, Abhijit, Choghadiya, Hora) + special yogas + planetary positions at sunrise. Enables time-anchored Muhurta queries in the LLM pipeline.
+- **Mirror pair:** MP.1 + MP.2 (this block ↔ Claude-side `CLAUDE.md §E` and `CAPABILITY_MANIFEST.json`). Propagated same-session at 4C-0 close.
+
 ## Concurrent Workstream — Phase O Observatory (CLOSED 2026-05-03 — COMPLETE)
 
 **OPENED 2026-05-02 at PHASE_O_S0_1_OBSERVATORY_GOVERNANCE_BOOTSTRAP. CLOSED 2026-05-03 at USTAD_S4_6_ANOMALY_O4_CLOSE — Phase O macro-phase COMPLETE.** Concurrent workstream alongside the M-phase main thread. Phase O — LLM Cost & Usage Observatory — provides super-admin-only observability over LLM spend across all five providers (Anthropic, OpenAI, Gemini, DeepSeek, NIM) and all pipeline stages (classify, compose, retrieve, synthesize, audit).
