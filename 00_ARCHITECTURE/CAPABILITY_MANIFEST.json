@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-14T16:09:09Z",
   "generator_version": "1.0",
-  "entry_count": 162,
+  "entry_count": 163,
   "fingerprint": "7760396b06cb8dfcd2f3700827e0440effeb0e1bf14e4fa7b209760a9749b58c",
   "entries": [
     {
@@ -2297,6 +2297,26 @@
       "native_id": "abhisek",
       "produced_during": "Phase-2A-M9 2026-05-18",
       "notes": "M9 convergence tool. Use when query mentions convergence score, school agreement, or divergence. See R32 in PLANNER_PROMPT_v2_0.md."
+    },
+    {
+      "canonical_id": "PANCHANG_DAILY_v1_0",
+      "path": "03_DERIVATIONS/PANCHANG_DAILY_v1_0.md",
+      "version": "1.0.0",
+      "status": "PLANNED",
+      "layer": "L1.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file",
+        "sql"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_4C_1",
+      "native_id": "abhisek",
+      "type": "document",
+      "description": "Daily Panchang state (5 angas, timings, special yogas, planetary positions) computed deterministically from Swiss Ephemeris + Muhurta Shastra lookup tables for any (date, lat, lon) tuple. Schema doc at 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md; data in Cloud SQL panchang_daily table. Computed by platform/sidecar/panchang_engine.",
+      "produced_during": "Phase-4C-0 2026-05-19",
+      "produced_on": "2026-05-19",
+      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. Status PLANNED\u2192IN_DEVELOPMENT at 4C.1 open; \u2192CURRENT at 4C.2 backfill complete."
     }
   ],
   "last_updated_by": "Phase-2A-M9",
