@@ -109,13 +109,15 @@ interface PerToolReport {
 const here = path.dirname(fileURLToPath(import.meta.url))
 const GOLDEN_SET_PATH = path.resolve(here, 'planner_golden_set.json')
 
-// The four tools restored to RCS visibility on 2026-05-17.
-// GT entries that exercise them (added 2026-05-17 in the same change).
+// Phase 1 tools restored to RCS visibility on 2026-05-17 (GT.053–064)
+// + Phase 2A M9 tools wired on 2026-05-18 (GT.050–052 — pre-existing M9 golden entries).
 const TARGET_TOOLS = {
   lel_query: ['GT.053', 'GT.054', 'GT.055'],
   query_signal_state: ['GT.056', 'GT.057', 'GT.058'],
   query_kp_ruling_planets: ['GT.059', 'GT.060', 'GT.061'],
   query_varshaphala: ['GT.062', 'GT.063', 'GT.064'],
+  multi_school_signal_lookup: ['GT.050', 'GT.051', 'GT.052'],
+  convergence_score_lookup: ['GT.050', 'GT.051', 'GT.052'],
 } as const
 
 // Default matches production routing: planner_fast.primary = gemini-2.5-flash
@@ -163,7 +165,7 @@ async function main(): Promise<void> {
   console.log(`Model:    ${MODEL_ID}`)
   console.log(`Chart:    ${CHART_ID}`)
   console.log(`Run time: ${NOW_ISO}`)
-  console.log(`Scope:    12 entries (GT.053-064) × 4 tools`)
+  console.log(`Scope:    15 unique entries (GT.050-064) × 6 tools (Phase 1 + Phase 2A M9)`)
   console.log('')
 
   // Dynamic import keeps server-only resolver deps out of vitest CI.

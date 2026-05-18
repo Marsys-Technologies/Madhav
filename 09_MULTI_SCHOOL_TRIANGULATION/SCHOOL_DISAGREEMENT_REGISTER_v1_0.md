@@ -3,13 +3,13 @@ artifact: SCHOOL_DISAGREEMENT_REGISTER_v1_0.md
 version: 1.0
 status: CURRENT
 session_id: M9-E-S1
-produced_on: "2026-05-14"
+produced_on: "2026-05-18"
 total_disagreements: 10
 ---
 
 # School Disagreement Register — M9 Multi-School Triangulation
 
-Generated: 2026-05-14 | Session: M9-E-S1
+Generated: 2026-05-18 | Session: M9-E-S1
 
 ## §1 — Overview
 
@@ -230,4 +230,4 @@ Total disagreements identified: **10** across 5 domains × 7 schools.
 | yogini | 2 | 1 | 1 | 0 |
 
 ---
-*End SCHOOL_DISAGREEMENT_REGISTER_v1_0.md v1.0 — M9-E-S1 2026-05-14*
+*End SCHOOL_DISAGREEMENT_REGISTER_v1_0.md v1.0 — M9-E-S1 2026-05-18*

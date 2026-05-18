@@ -542,6 +542,72 @@ const lel_query: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Phase 2A — M9 multi-school triangulation tools (tools 27 + 28)
+// ────────────────────────────────────────────────────────────────────────────
+
+const multi_school_signal_lookup: RetrievalCapabilityEntry = {
+  tool_name: 'multi_school_signal_lookup',
+  description:
+    'Cross-school signal coverage lookup for all 7 Jyotish schools (Parashari, Jaimini, Tajika, ' +
+    'KP, Nadi, BNN, Yogini). For a given topic or domain, returns per-school coverage ' +
+    '(primary / secondary / silent), matching MSR signals, and attribution references. ' +
+    'Use when the query requires multi-school comparison, inter-tradition triangulation, or ' +
+    'surfacing which schools agree or disagree on a domain or signal cluster. ' +
+    'Triggers query_class=multi_school_triangulation.',
+  data_surface:
+    'L9 — table school_signal_coverage JOIN l25_msr_signals. ' +
+    'Fields: school (7 values: parashari/jaimini/tajika/kp/nadi/bnn/yogini), ' +
+    'coverage_type (primary/secondary/silent), confidence, signal_id, signal_name, ' +
+    'domain, attribution_ref (from classical_chunks). 4,011 coverage rows at M9-A close.',
+  supported_params:
+    '{ topic?: string (ILIKE search on signal_name/description/domain; default: plan query text); ' +
+    'domain?: string (single domain, e.g. "CAREER"); ' +
+    'domains?: string[] (multi-domain filter, e.g. ["CAREER","HEALTH"]); ' +
+    'school?: string (single school, e.g. "parashari"); ' +
+    'schools?: string[] (filter to subset of schools). ' +
+    'All params optional — omit to return all 7 schools for the plan query. }',
+  optimal_patterns: [
+    'All schools for career: {topic:"career", domain:"CAREER"}',
+    'Compare Saturn readings across schools: {topic:"Saturn exalted tenth house"}',
+    'Single school health signals: {school:"parashari", domain:"HEALTH"}',
+    'KP vs Parashari career comparison: {schools:["kp","parashari"], domain:"CAREER"}',
+    'Nadi school marriage signals: {school:"nadi", topic:"marriage seventh house"}',
+  ],
+  cost_tier: 'medium',
+  requires_temporal: false,
+}
+
+const convergence_score_lookup: RetrievalCapabilityEntry = {
+  tool_name: 'convergence_score_lookup',
+  description:
+    'Returns inter-school convergence scores across 5 life domains (CAREER, HEALTH, ' +
+    'RELATIONSHIP, SPIRITUAL, PSYCHOLOGICAL). Each score reports schools_agreeing / schools_total, ' +
+    'convergence_level (HIGH/MEDIUM/LOW), mean direction, and a convergence narrative. ' +
+    'Use when the query requires an aggregate view of inter-school agreement, when showing ' +
+    'the user where all 7 schools converge strongly, or as context for multi-school synthesis.',
+  data_surface:
+    'L9 — table convergence_scores. ' +
+    'Fields: domain, schools_agreeing, schools_total (7), ' +
+    'convergence_level (HIGH/MEDIUM/LOW), mean_domain_score, std_domain_score, ' +
+    'direction (positive/negative/neutral/mixed), per_school_scores (JSON map of 7 schools), ' +
+    'convergence_narrative, computed_at. 5 rows (one per domain) at M9-E close.',
+  supported_params:
+    '{ domain?: string (single domain, e.g. "CAREER"); ' +
+    'domains?: string[] (filter to subset of 5 domains); ' +
+    'min_level?: "HIGH"|"MEDIUM"|"LOW" (post-filter by convergence level). ' +
+    'Omit all params to return all 5 domains. }',
+  optimal_patterns: [
+    'All 5 domains: {}',
+    'Career convergence only: {domain:"CAREER"}',
+    'High-convergence domains only: {min_level:"HIGH"}',
+    'Relationship and health convergence: {domains:["RELATIONSHIP","HEALTH"]}',
+    'Spiritual divergence check: {domain:"SPIRITUAL"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -570,6 +636,8 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   lel_query,
   classical_text_search,
   classical_attribution_lookup,
+  multi_school_signal_lookup,
+  convergence_score_lookup,
 ] as const
 
 /**

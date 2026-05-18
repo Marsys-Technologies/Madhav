@@ -241,8 +241,8 @@ export type PipelineStage =
  * Updated 2026-05-17: added lel_query (previously omitted alongside the planner-blind
  * RCS gap — see retrieval_capability_spec.ts header comment). Name retained as
  * `ALL_21_RETRIEVAL_TOOLS` for callsite compatibility; literal count is now 22.
- * M8/M9 classical + multi-school tools are intentionally excluded from this list
- * for now — trace UI sub-row rendering is wired only for the L1/L2.5/L3.5 surfaces.
+ * Updated 2026-05-18 (Phase 2A): added multi_school_signal_lookup + convergence_score_lookup.
+ * Literal count is now 24.
  */
 export const ALL_21_RETRIEVAL_TOOLS = [
   'msr_sql',
@@ -267,6 +267,8 @@ export const ALL_21_RETRIEVAL_TOOLS = [
   'query_kp_ruling_planets',
   'query_varshaphala',
   'lel_query',
+  'multi_school_signal_lookup',
+  'convergence_score_lookup',
 ] as const
 
 export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]
