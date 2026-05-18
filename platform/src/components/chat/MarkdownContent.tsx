@@ -7,6 +7,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { CodeBlock } from './CodeBlock'
 import { cn } from '@/lib/utils'
+import { StreamingDots } from './StreamingDots'
 
 interface Props {
   children: string
@@ -107,7 +108,6 @@ function MarkdownContentImpl({ children, className, streaming = false }: Props) 
       className={cn(
         'chat-prose text-[15px] leading-[1.72] text-foreground',
         '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
-        streaming && 'chat-stream-caret',
         className
       )}
       style={streaming ? { contain: 'style' } : undefined}
@@ -120,6 +120,11 @@ function MarkdownContentImpl({ children, className, streaming = false }: Props) 
       >
         {children}
       </Streamdown>
+      {streaming && (
+        <span className="inline-flex items-center ml-1" data-testid="v2-streaming-dots">
+          <StreamingDots />
+        </span>
+      )}
     </div>
   )
 }

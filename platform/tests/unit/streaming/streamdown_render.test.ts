@@ -70,13 +70,18 @@ describe('MarkdownContent — streamdown integration', () => {
   })
 
   describe('CSS class wiring', () => {
-    it('adds chat-stream-caret class when streaming', () => {
-      const { container } = render(mk({ streaming: true, children: 'text' }))
-      expect((container.firstChild as HTMLElement).className).toContain('chat-stream-caret')
+    it('renders v2-streaming-dots element when streaming', () => {
+      const { getByTestId } = render(mk({ streaming: true, children: 'text' }))
+      expect(getByTestId('v2-streaming-dots')).toBeTruthy()
     })
 
-    it('does not add chat-stream-caret class when not streaming', () => {
-      const { container } = render(mk({ children: 'text' }))
+    it('does not render v2-streaming-dots when not streaming', () => {
+      const { queryByTestId } = render(mk({ children: 'text' }))
+      expect(queryByTestId('v2-streaming-dots')).toBeNull()
+    })
+
+    it('does not add chat-stream-caret class (replaced by StreamingDots)', () => {
+      const { container } = render(mk({ streaming: true, children: 'text' }))
       expect((container.firstChild as HTMLElement).className).not.toContain('chat-stream-caret')
     })
 

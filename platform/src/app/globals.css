@@ -283,35 +283,6 @@ body {
   40% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes chat-caret {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-/* Inline caret trailing the last character of a streaming markdown block.
-   Attached to the deepest leaf of the final block-level child so it sits
-   at the end of the last line rather than on its own row. */
-.chat-stream-caret > *:last-child::after,
-.chat-stream-caret > *:last-child > *:last-child::after {
-  content: '';
-  display: inline-block;
-  width: 2px;
-  height: 1.05em;
-  margin-left: 2px;
-  transform: translateY(2px);
-  background-color: color-mix(in oklab, var(--brand-gold) 80%, transparent);
-  vertical-align: baseline;
-  animation: chat-caret 1s steps(1) infinite;
-}
-/* Avoid a doubled caret: hide the outer one when a nested one is present. */
-.chat-stream-caret > *:last-child:has(> *:last-child)::after {
-  content: none;
-}
-/* Don't draw a caret inside code blocks (they have their own styling). */
-.chat-stream-caret pre::after,
-.chat-stream-caret code::after {
-  content: none !important;
-}
 
 /* Build-portal typography scale — strict 5-step ladder.
    Use these classes anywhere in /build/* instead of arbitrary text-* utilities.
@@ -716,7 +687,7 @@ body {
 
 /* ── Consume UI Redesign additions (2026-05-15) ─────────────────────── */
 
-/* ConsumeRail hover-panel slide transition — include both `transform` (Tailwind v3
+/* Hover-panel slide transition — include both `transform` (Tailwind v3
    syntax) and `translate` (Tailwind v4 syntax) so either generator path animates. */
 .consume-rail-panel {
   transition: opacity 0.15s ease, transform 0.15s ease, translate 0.15s ease;
