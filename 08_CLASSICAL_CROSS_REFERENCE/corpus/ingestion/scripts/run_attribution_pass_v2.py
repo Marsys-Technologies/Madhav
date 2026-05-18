@@ -52,7 +52,13 @@ FINDINGS_CLAIM = OUTPUT_DIR / "FINDINGS_CLASSICAL_CLAIM_v1_0.md"
 @contextmanager
 def get_db() -> Generator[psycopg2.extensions.connection, None, None]:
     url = os.environ["DATABASE_URL"]
-    conn = psycopg2.connect(url)
+    conn = psycopg2.connect(
+        url,
+        keepalives=1,
+        keepalives_idle=60,
+        keepalives_interval=20,
+        keepalives_count=5,
+    )
     try:
         yield conn
     finally:

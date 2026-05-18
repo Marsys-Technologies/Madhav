@@ -13,6 +13,11 @@
  *           scripts/sla_probe_temporal.ts)
  *      Optional: SCENARIO_COUNT=3 (default 1)
  *                WARMUP_RUNS=1 (default 1)
+ *                PROBE_TARGET=production  → hits live Cloud Run sidecar
+ *                PROBE_TARGET=local       → uses PYTHON_SIDECAR_URL (default)
+ *
+ * PROBE_TARGET=production automatically sets the sidecar URL to the Cloud Run
+ * production endpoint. No PYTHON_SIDECAR_URL needed in that mode.
  *
  * If the sidecar is unavailable, temporal degrades gracefully (returns a
  * warning bundle instead of throwing). Those runs are marked 'degraded'.
@@ -31,9 +36,11 @@ import type { QueryPlan, RetrievalTool, ToolBundle } from '../src/lib/retrieve/t
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SCENARIO_COUNT = Number(process.env.SCENARIO_COUNT ?? '1')
-const WARMUP_RUNS    = Number(process.env.WARMUP_RUNS    ?? '1')
-const NOW_ISO        = new Date().toISOString()
+const SCENARIO_COUNT            = Number(process.env.SCENARIO_COUNT ?? '1')
+const WARMUP_RUNS               = Number(process.env.WARMUP_RUNS    ?? '1')
+const PROBE_TARGET              = process.env.PROBE_TARGET ?? 'local'
+const PRODUCTION_SIDECAR_URL    = 'https://amjis-sidecar-938361928218.asia-south1.run.app'
+const NOW_ISO                   = new Date().toISOString()
 const OUTPUT_DIR     = path.join(__dirname, 'eval')
 const OUTPUT_FILE    = path.join(
   OUTPUT_DIR,
@@ -211,11 +218,15 @@ async function probeOne(scenario: Scenario): Promise<ProbeResult> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  if (!process.env.PYTHON_SIDECAR_URL) {
+  // Resolve sidecar URL: production mode auto-fills it; local mode requires PYTHON_SIDECAR_URL.
+  if (PROBE_TARGET === 'production') {
+    process.env.PYTHON_SIDECAR_URL = PRODUCTION_SIDECAR_URL
+  } else if (!process.env.PYTHON_SIDECAR_URL) {
     console.error(
       'PYTHON_SIDECAR_URL is not set.\n' +
       'The temporal tool requires a Python sidecar URL.\n' +
-      'Set PYTHON_SIDECAR_URL=http://localhost:8000 (or wherever your sidecar is running).\n'
+      'Set PYTHON_SIDECAR_URL=http://localhost:8000 (or wherever your sidecar is running).\n' +
+      'Or set PROBE_TARGET=production to hit the live Cloud Run sidecar.\n'
     )
     process.exit(2)
   }
@@ -223,6 +234,7 @@ async function main() {
   console.log('━'.repeat(80))
   console.log('SLA Probe — temporal tool (Phase 2C, 2026-05-18)')
   console.log('━'.repeat(80))
+  console.log(`Target:    ${PROBE_TARGET}`)
   console.log(`Sidecar:   ${process.env.PYTHON_SIDECAR_URL}`)
   console.log(`Run time:  ${NOW_ISO}`)
   console.log(`Scenarios: ${SCENARIOS.length} × ${SCENARIO_COUNT} measured run(s)`)
@@ -300,6 +312,7 @@ async function main() {
   const report = {
     probe_name:          'temporal_2026_05_18',
     run_at:              NOW_ISO,
+    probe_target:        PROBE_TARGET,
     python_sidecar_url:  process.env.PYTHON_SIDECAR_URL,
     scenario_count:      SCENARIOS.length,
     runs_per_scenario:   SCENARIO_COUNT,

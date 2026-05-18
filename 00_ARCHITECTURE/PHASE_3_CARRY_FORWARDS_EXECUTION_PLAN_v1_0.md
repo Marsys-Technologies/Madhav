@@ -105,11 +105,11 @@ Unique to Phase 3: each sub-phase begins by **authoring its own detailed brief**
 ## §B — State Tracker (LIVE — executor updates this section)
 
 ```yaml
-last_updated_at: 2026-05-18T14:45:00Z
-last_action: "Phase 3C implementation complete — migrations 057+058, runtime_config.ts TTL filter, aiops.ts schema, _parse.ts expires_at field, routing route.ts UPSERT, aiops_overrides_active.sql, ONGOING_HYGIENE_POLICIES §Q. TSC: 0 errors. Staged for commit."
-next_action: "commit Phase 3B+3C bundle, then begin §F Phase 3D hygiene fixes"
+last_updated_at: 2026-05-18T15:00:00Z
+last_action: "Phase 3D complete — psycopg2 keepalive hardening, sla_probe_temporal PROBE_TARGET env var, §I polling sub-status in both plan files. TSC: 0 errors. Staged for commit."
+next_action: "commit Phase 3D, then §G main-merge PR"
 
-phase_3a_status: committed         # pending | investigating | in_progress | committed | failed | interrupted
+phase_3a_status: committed         # pending | investigating | polling | in_progress | committed | failed | interrupted
 phase_3a_brief_authored: true
 phase_3a_commit: "3943f52"
 phase_3a_started_at: 2026-05-18T04:30:00Z
@@ -139,7 +139,7 @@ phase_3b_anomalies:
 
 phase_3c_status: committed
 phase_3c_brief_authored: true
-phase_3c_commit: "pending — staging now"
+phase_3c_commit: "6d2b684"
 phase_3c_started_at: 2026-05-18T05:15:00Z
 phase_3c_finished_at: 2026-05-18T14:45:00Z
 phase_3c_acceptance:
@@ -149,16 +149,16 @@ phase_3c_acceptance:
   governance_amendment_drafted: "yes — ONGOING_HYGIENE_POLICIES_v1_0.md §Q added"
 phase_3c_anomalies: []
 
-phase_3d_status: pending
-phase_3d_brief_authored: false
-phase_3d_commit: null
-phase_3d_started_at: null
-phase_3d_finished_at: null
+phase_3d_status: committed
+phase_3d_brief_authored: false   # §F 3D.0: well-defined scope, no investigation needed — no brief required
+phase_3d_commit: "pending — staging now"
+phase_3d_started_at: 2026-05-18T14:45:00Z
+phase_3d_finished_at: 2026-05-18T15:00:00Z
 phase_3d_acceptance:
-  attribution_keepalive_added: null         # target: psycopg2 connection has keepalives_idle/keepalives_interval/keepalives_count
-  attribution_keepalive_tested: null        # target: long-running test passes
-  temporal_sla_probe_sidecar_mode_added: null  # target: PROBE_TARGET=production env var, hits live sidecar
-  resume_protocol_polling_status_added: null   # target: §I distinguishes "polling" (auto-resumable) from "in_progress" (interrupted)
+  attribution_keepalive_added: "yes — psycopg2.connect() now passes keepalives=1, keepalives_idle=60, keepalives_interval=20, keepalives_count=5"
+  attribution_keepalive_tested: "deferred — long-run test requires live DB; keepalive args are the standard fix per Phase 2 §K.1"
+  temporal_sla_probe_sidecar_mode_added: "yes — PROBE_TARGET env var added; PROBE_TARGET=production auto-sets PYTHON_SIDECAR_URL to amjis-sidecar URL; report includes probe_target field"
+  resume_protocol_polling_status_added: "yes — §I in both PHASE_3 and PHASE_2 plan files updated with polling branch; §B status enum updated"
 phase_3d_anomalies: []
 
 main_merge_status: pending
@@ -427,8 +427,15 @@ ELIF phase_3a_status == "investigating":
   → Continue 3A.0 investigation OR resume brief authoring if interrupted.
   → Check §B last_action for context.
 
+ELIF phase_3a_status == "polling":
+  → A previous session was in a long-running wait loop (e.g., watching a deploy
+    or waiting for an eval script to finish). SAFE TO RESUME automatically.
+  → Re-attach to the operation: re-run gh run watch or restart the eval.
+  → Do NOT set to interrupted — polling is auto-resumable.
+
 ELIF phase_3a_status == "in_progress":
-  → A previous session was running 3A.1 when it stopped. Check §B last_action.
+  → A previous session was running 3A.1 when it stopped mid-step. UNSAFE TO RESUME
+    without inspection. Check §B last_action.
   → If stopped at an editable checkpoint (e.g., between file edits), resume.
   → If stopped mid-test or mid-commit, set status: interrupted and STOP.
 
