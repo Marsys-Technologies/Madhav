@@ -46,7 +46,7 @@ campaign:
         status: CLOSED
         brief: briefs/PHASE_4A_QUERY_EPHEMERIS_BRIEF_v1_0.md
         closed_on: 2026-05-19
-        closing_commit_sha: TBD
+        closing_commit_sha: bd41f13
         scope: |
           Wrap ephemeris_daily as a planner-reachable RetrievalTool.
           Encode R-TC transit-context rule in PLANNER_PROMPT.
