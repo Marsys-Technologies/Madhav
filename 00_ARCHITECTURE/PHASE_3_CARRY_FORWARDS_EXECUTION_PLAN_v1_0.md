@@ -105,9 +105,9 @@ Unique to Phase 3: each sub-phase begins by **authoring its own detailed brief**
 ## §B — State Tracker (LIVE — executor updates this section)
 
 ```yaml
-last_updated_at: 2026-05-18T15:00:00Z
-last_action: "Phase 3D complete — psycopg2 keepalive hardening, sla_probe_temporal PROBE_TARGET env var, §I polling sub-status in both plan files. TSC: 0 errors. Staged for commit."
-next_action: "commit Phase 3D, then §G main-merge PR"
+last_updated_at: 2026-05-18T15:45:00Z
+last_action: "Post-deploy answer:eval complete — 15/15 PASS (100%). Migrations 057+058 applied manually via Cloud SQL proxy. Campaign complete."
+next_action: "DONE — campaign_complete: true"
 
 phase_3a_status: committed         # pending | investigating | polling | in_progress | committed | failed | interrupted
 phase_3a_brief_authored: true
@@ -151,7 +151,7 @@ phase_3c_anomalies: []
 
 phase_3d_status: committed
 phase_3d_brief_authored: false   # §F 3D.0: well-defined scope, no investigation needed — no brief required
-phase_3d_commit: "pending — staging now"
+phase_3d_commit: "b59a3d9"
 phase_3d_started_at: 2026-05-18T14:45:00Z
 phase_3d_finished_at: 2026-05-18T15:00:00Z
 phase_3d_acceptance:
@@ -161,25 +161,27 @@ phase_3d_acceptance:
   resume_protocol_polling_status_added: "yes — §I in both PHASE_3 and PHASE_2 plan files updated with polling branch; §B status enum updated"
 phase_3d_anomalies: []
 
-main_merge_status: pending
-main_merge_method: null
-main_merge_commit: null
-main_merge_started_at: null
-main_merge_finished_at: null
+main_merge_status: merged
+main_merge_method: "PR #83 — merge commit"
+main_merge_commit: "01d5dd6"
+main_merge_started_at: 2026-05-18T15:10:00Z
+main_merge_finished_at: 2026-05-18T15:13:00Z
 main_merge_anomalies: []
 
-deploy_status: pending
-deploy_run_id: null
-deploy_revision: null
+deploy_status: deployed
+deploy_run_id: "26039956695"
+deploy_revision: "amjis-web-00217-k6w"
 deploy_anomalies: []
 
-post_deploy_eval_status: pending
-post_deploy_eval_results_file: null
-post_deploy_eval_pass_rate: null    # target: ≥ 13/15 (regression-fix baseline)
-post_deploy_eval_anomalies: []
+post_deploy_eval_status: complete
+post_deploy_eval_results_file: "eval_run_id: be7ccbdf-07f4-4f95-84ee-ada38dd75c8d (persisted to performance_queries)"
+post_deploy_eval_pass_rate: "15/15 (100%)"
+post_deploy_eval_anomalies:
+  - "Migrations 057+058 needed manual application via Cloud SQL proxy — they were not auto-applied by the CI deploy. Applied in-session before eval."
+  - "HTTP 500 on first eval attempt (pre-migration) — expected; resolved by applying migrations."
 
-campaign_complete: false
-campaign_completed_at: null
+campaign_complete: true
+campaign_completed_at: 2026-05-18T15:45:00Z
 ```
 
 ---
