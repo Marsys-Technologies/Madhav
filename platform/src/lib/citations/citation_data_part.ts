@@ -4,9 +4,14 @@
  * Each unique SIG.MSR.NNN detected in the synthesis response becomes a
  * CitationPart. The index (1-based, order of first appearance) drives the
  * inline [N] superscript in the message renderer.
+ *
+ * R6.3 (2026-05-18): enrichCitations() populates snippet from claim_text
+ * in l25_msr_signals via a single batch query before parts are emitted.
  */
 
 import { z } from 'zod'
+import { query } from '@/lib/db/client'
+import type { MsrSignal } from '@/lib/db/types'
 
 export const CitationPartSchema = z.object({
   type: z.literal('citation'),
@@ -47,4 +52,27 @@ export function extractCitations(text: string): CitationPart[] {
 /** Build a map from signal_id → citation index for fast inline lookup. */
 export function buildCitationIndex(citations: CitationPart[]): Map<string, number> {
   return new Map(citations.map(c => [c.signal_id, c.index]))
+}
+
+/**
+ * Enrich citation snippets from l25_msr_signals.claim_text via a single
+ * batch query. Best-effort — on DB failure returns citations unmodified.
+ */
+export async function enrichCitations(citations: CitationPart[]): Promise<CitationPart[]> {
+  if (citations.length === 0) return citations
+  const ids = citations.map(c => c.signal_id)
+  try {
+    const result = await query<Pick<MsrSignal, 'signal_id' | 'claim_text'>>(
+      'SELECT signal_id, claim_text FROM l25_msr_signals WHERE signal_id = ANY($1)',
+      [ids],
+    )
+    const claimMap = new Map(result.rows.map(r => [r.signal_id, r.claim_text]))
+    return citations.map(c => ({
+      ...c,
+      snippet: claimMap.get(c.signal_id)?.slice(0, 300) ?? c.snippet,
+    }))
+  } catch (err) {
+    console.warn('[enrichCitations] DB lookup failed, returning bare citations', err)
+    return citations
+  }
 }

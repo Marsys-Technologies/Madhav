@@ -10,7 +10,7 @@ import type { ModelMessage, UIMessage } from 'ai'
 import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart } from '@/lib/streams/data_parts'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
-import { extractCitations } from '@/lib/citations/citation_data_part'
+import { extractCitations, enrichCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -1152,7 +1152,8 @@ export async function POST(request: Request) {
           .map(p => p.text)
           .join('') ?? ''
         if (lastAssistantText) {
-          for (const c of extractCitations(lastAssistantText)) {
+          const enriched = await enrichCitations(extractCitations(lastAssistantText))
+          for (const c of enriched) {
             writer.write({
               type: 'data-citation',
               data: citationPart({
