@@ -65,12 +65,14 @@ export function CitationSidePanel({ citations, pinned, onUnpin }: CitationSidePa
               data-citation-index={c.index}
             >
               <span className="shrink-0 font-semibold text-indigo-400">[{c.index}]</span>
-              <div className="flex flex-col gap-0.5 min-w-0">
-                <span className="font-mono text-zinc-300 text-[10px]">{c.signal_id}</span>
-                {c.snippet && (
-                  <span className="text-zinc-500 line-clamp-2">{c.snippet}</span>
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="font-mono text-[10px] text-[rgba(var(--brand-gold-rgb),0.70)]">{c.signal_id}</span>
+                {c.snippet ? (
+                  <span className="text-[11px] leading-snug text-zinc-300">{c.snippet}</span>
+                ) : (
+                  <span className="text-[10px] text-zinc-600 italic">No excerpt available</span>
                 )}
-                <span className="text-zinc-700">{c.layer}</span>
+                <span className="text-[10px] text-zinc-600">{c.layer}</span>
               </div>
               <button
                 type="button"

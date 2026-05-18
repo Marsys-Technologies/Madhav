@@ -11,6 +11,27 @@ import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, cit
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
+
+/** Fetch signal name + description from l25_msr_signals for a list of signal IDs.
+ *  Returns a map signal_id → snippet string. Missing IDs get empty string. */
+async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string>> {
+  if (signalIds.length === 0) return new Map()
+  try {
+    const placeholders = signalIds.map((_, i) => `$${i + 1}`).join(', ')
+    const { rows } = await query<{ signal_id: string; name: string; description: string }>(
+      `SELECT signal_id, name, description FROM l25_msr_signals WHERE signal_id IN (${placeholders})`,
+      signalIds,
+    )
+    return new Map(rows.map(r => {
+      const full = r.name
+        ? (r.description ? `${r.name} — ${r.description}` : r.name)
+        : (r.description ?? '')
+      return [r.signal_id, full.length > 295 ? full.slice(0, 294) + '…' : full]
+    }))
+  } catch {
+    return new Map()
+  }
+}
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -1152,14 +1173,16 @@ export async function POST(request: Request) {
           .map(p => p.text)
           .join('') ?? ''
         if (lastAssistantText) {
-          for (const c of extractCitations(lastAssistantText)) {
+          const citations = extractCitations(lastAssistantText)
+          const msrSnippets = await fetchMsrSnippets(citations.map(c => c.signal_id))
+          for (const c of citations) {
             writer.write({
               type: 'data-citation',
               data: citationPart({
                 index: c.index,
                 signal_id: c.signal_id,
                 layer: c.layer,
-                snippet: c.snippet,
+                snippet: msrSnippets.get(c.signal_id) ?? '',
               }),
             })
           }

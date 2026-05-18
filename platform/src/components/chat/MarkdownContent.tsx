@@ -13,6 +13,7 @@ interface Props {
   children: string
   className?: string
   streaming?: boolean
+  customComponents?: Partial<Components>
 }
 
 function extractLang(className: string | undefined): string | undefined {
@@ -88,17 +89,19 @@ const MARKDOWN_COMPONENTS = (isStreaming: boolean): Components => ({
         </code>
       )
     }
-    // Methodology block is captured server-side and surfaced in the
-    // metadata strip; it must not appear in the visible prose.
-    if (lang === 'marsys_methodology_block') return null
+    // Internal blocks captured server-side — must not appear in visible prose.
+    if (lang === 'marsys_methodology_block' || lang === 'marsys_citations') return null
     const raw = String(children).replace(/\n$/, '')
     return <CodeBlock code={raw} lang={lang} isStreaming={isStreaming} />
   },
   pre: ({ children }) => <>{children}</>,
 })
 
-function MarkdownContentImpl({ children, className, streaming = false }: Props) {
-  const components = useMemo(() => MARKDOWN_COMPONENTS(streaming), [streaming])
+function MarkdownContentImpl({ children, className, streaming = false, customComponents }: Props) {
+  const components = useMemo(
+    () => ({ ...MARKDOWN_COMPONENTS(streaming), ...customComponents }),
+    [streaming, customComponents],
+  )
 
   return (
     <div
