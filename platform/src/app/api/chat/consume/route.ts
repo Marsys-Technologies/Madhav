@@ -914,6 +914,7 @@ export async function POST(request: Request) {
       // The seq is used by the resume endpoint to skip already-received events.
       pendingStreamWriter.onEvent()
       writer.merge(result.toUIMessageStream({
+        sendReasoning: true,  // R9: forward AI SDK reasoning parts to V2's ReasoningProgress
         originalMessages: messages,
         generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
         messageMetadata: ({ part }: { part: { type: string } }) => {
