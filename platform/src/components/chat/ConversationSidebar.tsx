@@ -60,7 +60,7 @@ interface Props {
   onDeleted?: (id: string) => void
   onClose?: () => void
   onNavigate?: () => void
-  /** Hide the bottom MARSYS-JIS + ThemeToggle footer (used by ConsumeRail). */
+  /** Hide the bottom MARSYS-JIS + ThemeToggle footer. */
   hideFooter?: boolean
   /**
    * Simple/slide-over mode: renders as w-full h-full with no auto-expand
@@ -181,7 +181,7 @@ export function ConversationSidebar({
       data-sidebar-state={simple ? 'simple' : sidebar.state}
     >
       <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-        {/* Dashboard link — hidden in simple mode (back arrow is in ConsumeShell header) */}
+        {/* Dashboard link — hidden in simple mode */}
         {!simple && (
           <Link
             href="/dashboard"

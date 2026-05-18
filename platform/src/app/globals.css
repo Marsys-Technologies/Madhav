@@ -716,7 +716,7 @@ body {
 
 /* ── Consume UI Redesign additions (2026-05-15) ─────────────────────── */
 
-/* ConsumeRail hover-panel slide transition — include both `transform` (Tailwind v3
+/* Hover-panel slide transition — include both `transform` (Tailwind v3
    syntax) and `translate` (Tailwind v4 syntax) so either generator path animates. */
 .consume-rail-panel {
   transition: opacity 0.15s ease, transform 0.15s ease, translate 0.15s ease;

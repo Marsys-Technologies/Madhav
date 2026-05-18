@@ -37,7 +37,7 @@ export function ConsumeReportLibraryV2({ reports, className }: Props) {
 
   return (
     <>
-      {/* Trigger button — consistent with ConversationHistoryButton brand styling */}
+      {/* Trigger button */}
       <button
         type="button"
         data-testid="v2-report-library-trigger"
