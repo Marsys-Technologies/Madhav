@@ -1195,12 +1195,16 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
         aria-label="Conversation messages"
       >
         <ThreadPrimitive.Empty>
-          <EmptyState
-            chartId={chartId}
-            chartName={chartName}
-            className="h-full"
-            data-testid="v2-thread-empty"
-          />
+          <div
+            className="mx-auto flex h-full w-full max-w-4xl items-center justify-center px-4"
+            data-testid="v2-thread-empty-wrap"
+          >
+            <EmptyState
+              chartId={chartId}
+              chartName={chartName}
+              data-testid="v2-thread-empty"
+            />
+          </div>
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
