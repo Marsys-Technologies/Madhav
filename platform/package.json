@@ -28,6 +28,7 @@
     "observatory:smoke": "tsx scripts/observatory/smoke_test.ts",
     "answer:eval": "npx tsx scripts/answer_eval.ts",
     "sla:probe-planner-blind": "npx tsx --conditions=react-server --env-file-if-exists=../.env.rag scripts/sla_probe_planner_blind_tools.ts",
+    "sla:probe-temporal": "npx tsx --conditions=react-server --env-file-if-exists=../.env.rag scripts/sla_probe_temporal.ts",
     "embedding:freshness": "npx tsx --conditions=react-server scripts/retrieval/embedding_freshness_check.ts",
     "aiops:health": "tsx scripts/aiops/probe_health_cron.ts",
     "aiops:cutover-smoke": "tsx scripts/aiops/cutover_smoke.ts",

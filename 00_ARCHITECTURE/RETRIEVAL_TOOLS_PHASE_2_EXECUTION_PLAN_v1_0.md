@@ -96,18 +96,18 @@ The plan file follows a strict shape so the executor's resume logic in §I can p
 > Edit only the YAML values below. Do not change keys or add new top-level fields without updating §I to match.
 
 ```yaml
-last_updated_at: 2026-05-18T09:10:00Z
-last_action: "Option B complete: build_registry_from_db.py → 2330 rows / 486 signals in registry. SLA probe PASS: all 6 tool types within budget (p95 max 209ms). All Phase 2B acceptance gates GREEN. STOP — awaiting native commit approval per brief §F."
-next_action: "native approves commit → git add + git commit registry files → phase_2b_status: committed → begin §D Phase 2C"
+last_updated_at: 2026-05-18T09:11:00Z
+last_action: "Phase 2B committed at 0e49e89 — all gates GREEN (2330 rows / 486 signals / 1,039,563 signal_states rows / SLA all within budget)"
+next_action: "begin §D Phase 2C — read RETRIEVAL_TOOLS_PHASE_2C_HYGIENE_BRIEF_v1_0.md and execute"
 
 phase_2a_status: committed
 phase_2a_commit: de1731e
 phase_2a_note: "Predecessor — wired M9 tools 27+28, shipped L9 data. Already on audit branch."
 
-phase_2b_status: in_progress     # pending | in_progress | committed | failed | interrupted
-phase_2b_commit: null
+phase_2b_status: committed
+phase_2b_commit: 0e49e89
 phase_2b_started_at: 2026-05-18T07:00:00Z
-phase_2b_finished_at: null
+phase_2b_finished_at: 2026-05-18T09:11:00Z
 phase_2b_acceptance:
   classical_attributions_rows: 2330         # target: ≥1500 ✓ GATE GREEN
   classical_signals_attributed: 486         # target: ≥300  ✓ GATE GREEN
@@ -124,9 +124,9 @@ phase_2b_anomalies:
   - "Cloud SQL connection timeout at 13:39:34 / signal 320 of 493 — script restarted via Option A (idempotent skip-already-attributed); Resume PID 78517"
   - "SECOND psycopg2.OperationalError crash ~14:37 IST at run_attribution_pass_v2.py:115 insert_attribution; last progress 140/189 pending; same Cloud SQL disconnect class. Autonomous fallback policy: fell back to Option B (build_registry_from_db.py) — no third restart. Gates already GREEN."
 
-phase_2c_status: pending
+phase_2c_status: in_progress
 phase_2c_commit: null
-phase_2c_started_at: null
+phase_2c_started_at: 2026-05-18T09:11:00Z
 phase_2c_finished_at: null
 phase_2c_acceptance:
   tsc_errors: null              # target: 0
