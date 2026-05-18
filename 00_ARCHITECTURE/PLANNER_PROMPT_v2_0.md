@@ -715,10 +715,50 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
            the actual ephemeris lookup at the dasha window boundaries.
          - R7c (transit ban on vector_search for pure-timing): unaffected;
            query_ephemeris and vector_search serve different purposes.
+         - R-PA (panchanga anchor): when the query references panchanga elements
+           explicitly (Purnima, tithi, nakshatra-of-day, etc.), R-PA fires
+           query_panchanga alongside query_ephemeris. The two tools complement
+           each other — ephemeris gives transit positions, panchanga gives
+           time-quality.
 
        The default behavior is INCLUSION. When in doubt, attach query_ephemeris.
        Synthesis tolerates extra context; missing transit context is the failure
        mode that R-TC fixes.
+
+  R-PA. PANCHANGA ANCHOR: Attach `query_panchanga` (in addition to query_ephemeris
+       under R-TC) when the query references:
+         (a) Lunar phase / tithi by name: Purnima, Amavasya, Ekadashi, Chaturdashi,
+             Pratipada, "full moon", "new moon", "bright fortnight" (Shukla),
+             "dark fortnight" (Krishna), "waxing moon", "waning moon".
+         (b) Moon's nakshatra on a specific date (distinct from natal Moon
+             nakshatra — natal goes through msr_sql/chart_facts_query). Phrases
+             like "what nakshatra was the moon in on X", "Moon nakshatra today",
+             "when is the moon in Rohini next".
+         (c) Vara / day-of-week in astrological framing: "is Saturday Saturn's day",
+             "what's Mars's day", "auspicious for Mercury (Budhavara)".
+         (d) Yoga / karana by name.
+         (e) Muhurta / auspicious-day questions ("good day for marriage", "starting
+             a venture", "travel"). query_panchanga gives the inputs; synthesis
+             reasons over yoga + tithi + vara conjunction.
+
+       Priority:
+         - When query is explicitly about a panchanga element (e.g., "what tithi
+           was it on X?"): query_panchanga at priority 1, query_ephemeris at
+           priority 2.
+         - When query is a general non-natal question that happens to touch
+           time-quality: both at priority 2.
+
+       Date param selection: same as R-TC (now / past LEL event / specific date /
+       range / named dasha period).
+
+       Exclusions:
+         - Pure natal queries about the native's birth nakshatra/lagna nakshatra
+           — those go through chart_facts_query and msr_sql.
+         - Multi-school triangulation queries (R31/R32 STOP at step 5).
+
+       The vara_lord field can be used to filter to specific day-lord transits:
+       e.g., "Saturn-favorable days this year" → query_panchanga with
+       vara_lord="Saturn".
 
 Style rules (unchanged from v1.7):
 
@@ -1812,6 +1852,39 @@ Query: "What was Saturn doing when I got married in 2008?"
 
 This example shows R-TC firing alongside R7a (predictive cross-domain lens) for a LEL-anchored historical-event transit query. The planner does NOT need to compute the marriage date itself — `lel_query` supplies it and the synthesis layer joins. `query_ephemeris` runs with `{planet:"Saturn"}` and an implicit `date = today UTC` fallback, BUT in this LEL-paired case the synthesis layer SHOULD pass the LEL event_date forward (the tool param schema supports `date` — planner can later set it explicitly when LEL is in the bundle and the date is resolvable pre-execution; for now the join happens at synthesis time).
 
+### 4.26 R-PA panchanga anchor — Purnima query
+
+Query: "When is the next Purnima after May 2026?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Date of next full moon — pure panchanga lookup.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_panchanga",
+      "params": { "start_date": "2026-05-01", "end_date": "2026-07-31", "tithi": 15, "limit": 3 },
+      "token_budget": 400,
+      "priority": 1,
+      "reason": "R-PA explicit tithi=15 (Purnima) filter."
+    }
+  ],
+  "synthesis_guidance": "Return the first Purnima date in the result set.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query.", "mode": "independent" }
+}
+```
+
+This example shows R-PA firing without R-TC — a pure panchanga lookup requires no transit positions (the tithi already encodes the Sun-Moon elongation). query_ephemeris is NOT attached here because the query_intent is the tithi date, not the raw planet positions. When the user asks "what was the Moon nakshatra when I got married?" (LEL-anchored), both R-TC and R-PA fire: lel_query + query_panchanga (priority 1), query_ephemeris (priority 2).
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -1833,3 +1906,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.1 content extension 2026-05-17 — R28/R29/R30 + examples 4.19–4.22 added for the L1 substrate tools (planner-blind fix)*
 *v2.0.2 content extension 2026-05-18 — R31/R32 + examples 4.23–4.24 added for M9 multi-school triangulation tools (Phase 2A)*
 *v2.0.3 content extension 2026-05-18 (Phase 4A) — R-TC transit-context rule + example 4.25 added for query_ephemeris*
+*v2.0.4 content extension 2026-05-19 (Phase 4C) — R-PA panchanga anchor rule + R-TC pairing-clause update + example 4.26 added for query_panchanga*

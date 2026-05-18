@@ -10,6 +10,7 @@
  * Wave 5 M2-D234: domain_report_query, remedial_codex_query, timeline_query (3 tools)
  * M5-A: lel_query — LEL ground-truth life events from life_events table (1 tool)
  * Phase 4A: query_ephemeris — date-indexed ephemeris lookup (1 tool; closes ephemeris-accessibility gap)
+ * Phase 4C: query_panchanga — sunrise-anchored daily panchanga (1 tool; 28th total)
  */
 
 import * as msrSql from './msr_sql'
@@ -60,6 +61,9 @@ import * as convergenceScoreLookupTool from './convergence_score_lookup_tool'
 // Phase 4A — date-indexed ephemeris lookup (closes ephemeris-accessibility gap)
 import * as queryEphemeris from './query_ephemeris'
 
+// Phase 4C — sunrise-anchored daily panchanga (5 limbs of Vedic time)
+import * as queryPanchanga from './query_panchanga'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -91,6 +95,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   multiSchoolSignalLookupTool.tool,
   convergenceScoreLookupTool.tool,
   queryEphemeris.tool,
+  queryPanchanga.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

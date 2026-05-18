@@ -1779,6 +1779,62 @@
         "FORENSIC"
       ],
       "notes": "Phase 4B R-TC + sign_ingress filter. Planner emits query_ephemeris with start_date=2027-01-01, end_date=2027-12-31, planet=Jupiter. Synthesis filters sign_ingress_today=true AND sign='Aries' to find the exact ingress day."
+    },
+    {
+      "id": "GT.074",
+      "query": "What tithi was it on the day I got married in 2008?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["lel_query", "query_panchanga"],
+      "required_tools": ["lel_query", "query_panchanga"],
+      "forbidden_tools": ["vector_search", "pattern_register"],
+      "required_asset_ids": ["FORENSIC", "LEL"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-PA + LEL anchor. lel_query gets marriage date; query_panchanga returns tithi at sunrise on that date. R-FACT enforces single-tool synthesis (panchanga is the answer surface)."
+    },
+    {
+      "id": "GT.075",
+      "query": "When is the next Purnima?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_panchanga"],
+      "required_tools": ["query_panchanga"],
+      "forbidden_tools": ["vector_search", "pattern_register", "query_ephemeris"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-PA explicit Purnima keyword → query_panchanga with tithi=15. R-FACT bans registers; R-TC suspended because pure panchanga query — no transit positions needed."
+    },
+    {
+      "id": "GT.076",
+      "query": "What nakshatra is the Moon in today?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_panchanga"],
+      "required_tools": ["query_panchanga"],
+      "forbidden_tools": ["vector_search", "msr_sql"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Moon"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-PA Moon-nakshatra-of-day trigger. Distinct from natal Moon nakshatra (which goes through chart_facts_query). msr_sql FORBIDDEN — that would surface natal signals, not transit."
+    },
+    {
+      "id": "GT.077",
+      "query": "What was my birth nakshatra?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["chart_facts_query"],
+      "required_tools": ["chart_facts_query"],
+      "forbidden_tools": ["query_panchanga", "query_ephemeris"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Moon"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "NEGATIVE for R-PA. Pure natal query about birth nakshatra — chart_facts_query is the right surface (natal Moon nakshatra is a chart fact). query_panchanga FORBIDDEN — that would be the daily-Moon-nakshatra-at-sunrise, not natal."
     }
   ],
   "_schema_version": "1.2"

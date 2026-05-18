@@ -244,6 +244,7 @@ export type PipelineStage =
  * adding classical_text_search + classical_attribution_lookup (which had shipped in
  * production via M8-G but were missing from this array). Name retained as
  * `ALL_21_RETRIEVAL_TOOLS` for callsite compatibility; literal count is now 27.
+ * Updated 2026-05-19 (Phase 4C): added query_panchanga. Literal count is now 28.
  */
 export const ALL_21_RETRIEVAL_TOOLS = [
   'msr_sql',
@@ -273,6 +274,7 @@ export const ALL_21_RETRIEVAL_TOOLS = [
   'multi_school_signal_lookup',
   'convergence_score_lookup',
   'query_ephemeris',
+  'query_panchanga',
 ] as const
 
 export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]

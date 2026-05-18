@@ -157,9 +157,59 @@ UPDATE ephemeris_daily SET
 - Path A: ~4–6 hours for 73,050 days × 9 planets at ~3 days/second.
 - Path B: ~20–40 minutes for 657K UPDATE batches at 500 rows/batch.
 
+## §4 Panchanga Bootstrap (Phase 4C)
+
+Independent of the ephemeris_daily rebuild. ~73,050 rows, ~30 minutes runtime.
+
+### Steps
+
+1. Start Cloud SQL Auth proxy on port 5433.
+2. Apply migration:
+   ```bash
+   psql "$DATABASE_URL" -f platform/migrations/060_panchanga_daily.sql
+   ```
+3. Bootstrap (writes to staging):
+   ```bash
+   cd platform/python-sidecar
+   python -m pipeline.bootstrap_panchanga --build-id "phase-4c-$(date +%Y%m%d)"
+   ```
+4. Verify count = 73,050:
+   ```sql
+   SELECT COUNT(*) FROM panchanga_daily_staging;
+   ```
+5. Swap atomically:
+   ```sql
+   BEGIN;
+   TRUNCATE panchanga_daily;
+   INSERT INTO panchanga_daily SELECT * FROM panchanga_daily_staging;
+   COMMIT;
+   ```
+6. Spot-check known dates:
+   ```sql
+   -- Native birth day panchanga
+   SELECT date, tithi_name, vara, moon_nakshatra, yoga, karana
+   FROM panchanga_daily WHERE date = '1984-02-05';
+   -- Next Purnima from a known reference
+   SELECT date, tithi_name FROM panchanga_daily
+   WHERE date >= '2026-05-19' AND tithi = 15 ORDER BY date ASC LIMIT 1;
+   ```
+
+### Rollback
+
+```sql
+TRUNCATE panchanga_daily;
+DROP TABLE IF EXISTS panchanga_daily, panchanga_daily_staging;
+-- then re-run migration to recreate empty tables
+```
+
+---
+
 ## References
 
-- Brief: `00_ARCHITECTURE/BRIEFS/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md`
+- Brief (Phase 4B): `00_ARCHITECTURE/BRIEFS/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md`
+- Brief (Phase 4C): `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANGA_BRIEF_v1_0.md`
 - Derivation module: `platform/python-sidecar/pipeline/ephemeris_derivations.py`
-- Bootstrap: `platform/python-sidecar/pipeline/bootstrap_ephemeris.py`
+- Panchanga derivation module: `platform/python-sidecar/pipeline/panchanga_derivations.py`
+- Bootstrap (ephemeris): `platform/python-sidecar/pipeline/bootstrap_ephemeris.py`
+- Bootstrap (panchanga): `platform/python-sidecar/pipeline/bootstrap_panchanga.py`
 - Backfill: `platform/python-sidecar/pipeline/enrich_ephemeris_daily.py`

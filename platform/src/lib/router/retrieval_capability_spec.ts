@@ -11,8 +11,8 @@
  * the matching pair to update.
  *
  * Source of truth for tool implementations: platform/src/lib/retrieve/index.ts
- * (RETRIEVAL_TOOLS registry, 18 tools as of 2026-05-10 — VARGA-ETL-FULL-S1-CPA
- * added cross_varga_dignity_query for the §3.15 CSI ledger).
+ * (RETRIEVAL_TOOLS registry, 28 tools as of 2026-05-19 — Phase 4C added
+ * query_panchanga for sunrise-anchored daily panchanga).
  */
 
 export type CostTier = 'low' | 'medium' | 'high'
@@ -649,6 +649,44 @@ const query_ephemeris: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Phase 4C — sunrise-anchored daily panchanga
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_panchanga: RetrievalCapabilityEntry = {
+  tool_name: 'query_panchanga',
+  description:
+    'Sunrise-anchored Vedic panchanga (tithi / vara / Moon nakshatra / yoga / karana) ' +
+    'from panchanga_daily — precomputed for Bhubaneswar observer (native birth location). ' +
+    '73K rows, 1900-2100. CANONICAL SURFACE for time-quality queries — anything ' +
+    'referencing lunar phase (Purnima/Amavasya/Ekadashi), Moon-nakshatra-of-day ' +
+    '(distinct from natal Moon nakshatra), vara/day-of-week in astrological context, ' +
+    'yoga, karana, or muhurta inputs. Vara boundary is sunrise, not midnight. ' +
+    'Pairs with query_ephemeris under R-TC for any non-natal query — ephemeris gives ' +
+    'transit positions, panchanga gives time-quality.',
+  data_surface:
+    'L1 — table panchanga_daily (migration 060). Fields: date, sunrise_utc, sunrise_jd, ' +
+    'sunrise_ist, tithi (1-30), tithi_name, paksha (shukla/krishna), tithi_fraction, ' +
+    'vara, vara_lord, vara_index (0=Sun..6=Saturn), moon_nakshatra, moon_nakshatra_pada, ' +
+    'moon_longitude_deg (sidereal Lahiri at sunrise), sun_longitude_deg, yoga, yoga_index, ' +
+    'karana, karana_position_in_month, ayanamsha, observer_lat/lon/alt.',
+  supported_params:
+    '{ date?: YYYY-MM-DD; start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'tithi?: number (1-30); tithi_name?: string (e.g. "Shukla Ekadashi"); ' +
+    'paksha?: "shukla"|"krishna"; moon_nakshatra?: string; vara_lord?: string; ' +
+    'yoga?: string; karana?: string; fields?: ("tithi"|"vara"|"nakshatra"|"yoga"|"karana"|"sunrise")[] ' +
+    '(default ALL); limit?: number (default 100, max 500) }',
+  optimal_patterns: [
+    'Panchanga on a specific event: {date:"2008-04-15"} (tithi + vara + nakshatra + yoga + karana at marriage)',
+    'Current day-quality: {} (defaults to today UTC, all fields)',
+    'Next Purnima: {start_date:"2026-05-19", end_date:"2026-07-31", tithi:15, limit:5}',
+    'All Ekadashi days in 2026: {start_date:"2026-01-01", end_date:"2026-12-31", tithi:11}',
+    'Moon-in-Rohini days: {start_date:"2026-01-01", end_date:"2026-12-31", moon_nakshatra:"Rohini"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -679,7 +717,8 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   classical_attribution_lookup,
   multi_school_signal_lookup,
   convergence_score_lookup,
-  query_ephemeris,  // Phase 4A
+  query_ephemeris,   // Phase 4A
+  query_panchanga,   // Phase 4C
 ] as const
 
 /**

@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0",
-  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065\u2013GT.069 for query_ephemeris R-TC transit-context rule coverage. Extended 2026-05-19 (Phase 4B) with GT.070\u2013GT.073 for derived-column queries: combust, dignity, whole-sign-house, sign-ingress.",
+  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065\u2013GT.069 for query_ephemeris R-TC transit-context rule coverage. Extended 2026-05-19 (Phase 4B) with GT.070\u2013GT.073 for derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with GT.074\u2013GT.077 for R-PA panchanga anchor: tithi-at-LEL-event, Purnima lookup, Moon-nakshatra-of-day, and the NEGATIVE natal-nakshatra case (query_panchanga forbidden).",
   "entries": [
     {
       "id": "GT.001",
@@ -1684,6 +1684,61 @@
           "token_budget": 1000,
           "priority": 1,
           "reason": "R-TC + R-FACT: Jupiter 2027 range scan; synthesis filters sign_ingress_today=true AND sign=Aries"
+        }
+      ]
+    },
+    {
+      "id": "GT.074",
+      "mock_tool_calls": [
+        {
+          "tool_name": "lel_query",
+          "params": { "category": "relationship", "significance": "major" },
+          "token_budget": 600,
+          "priority": 1,
+          "reason": "R-PA + LEL anchor: get marriage event date from ground-truth log"
+        },
+        {
+          "tool_name": "query_panchanga",
+          "params": { "date": "2008-04-15" },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-PA: panchanga at marriage sunrise — tithi is the primary answer"
+        }
+      ]
+    },
+    {
+      "id": "GT.075",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_panchanga",
+          "params": { "start_date": "2026-05-19", "end_date": "2026-07-31", "tithi": 15, "limit": 3 },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-PA explicit Purnima (tithi=15) filter — pure panchanga lookup, no ephemeris needed"
+        }
+      ]
+    },
+    {
+      "id": "GT.076",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_panchanga",
+          "params": {},
+          "token_budget": 300,
+          "priority": 1,
+          "reason": "R-PA Moon-nakshatra-of-day trigger: today's sunrise panchanga gives moon_nakshatra directly"
+        }
+      ]
+    },
+    {
+      "id": "GT.077",
+      "mock_tool_calls": [
+        {
+          "tool_name": "chart_facts_query",
+          "params": {},
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "Pure natal query — birth nakshatra is a chart fact; R-PA does NOT fire"
         }
       ]
     }
