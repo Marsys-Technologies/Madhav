@@ -52,6 +52,10 @@ import * as lelQuery from './lel_query'
 import * as classicalTextSearchTool from './classical_text_search_tool'
 import * as classicalAttributionLookupTool from './classical_attribution_lookup_tool'
 
+// M9 — multi-school triangulation (tools 27+28)
+import * as multiSchoolSignalLookupTool from './multi_school_signal_lookup_tool'
+import * as convergenceScoreLookupTool from './convergence_score_lookup_tool'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -80,6 +84,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   lelQuery.tool,
   classicalTextSearchTool.tool,
   classicalAttributionLookupTool.tool,
+  multiSchoolSignalLookupTool.tool,
+  convergenceScoreLookupTool.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

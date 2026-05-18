@@ -67,7 +67,7 @@ export async function multi_school_signal_lookup(
       ssc.coverage_type,
       ssc.confidence,
       msr.signal_id,
-      msr.signal_name,
+      msr.name AS signal_name,
       msr.domains_affected[1] AS domain,
       cc.attribution_ref
     FROM school_signal_coverage ssc
@@ -80,8 +80,8 @@ export async function multi_school_signal_lookup(
       WHERE ssc2.attribution_chunk_id IS NOT NULL
     ) cc ON cc.signal_id = ssc.signal_id
     WHERE (
-      msr.signal_name ILIKE $1
-      OR msr.signal_description ILIKE $1
+      msr.name ILIKE $1
+      OR msr.description ILIKE $1
       OR msr.domains_affected::text ILIKE $1
     )
     AND ssc.school = ANY($2::text[])

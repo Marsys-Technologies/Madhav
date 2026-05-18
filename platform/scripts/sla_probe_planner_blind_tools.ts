@@ -1,7 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * sla_probe_planner_blind_tools.ts — live SLA probe for the four tools
- * restored to RETRIEVAL_CAPABILITY_SPEC on 2026-05-17.
+ * sla_probe_planner_blind_tools.ts — live SLA probe for the four Phase 1 tools
+ * restored to RETRIEVAL_CAPABILITY_SPEC on 2026-05-17, plus the two Phase 2A
+ * M9 tools (multi_school_signal_lookup + convergence_score_lookup) wired 2026-05-18.
  *
  * Invokes each tool's retrieve() directly against the live DB (via the local
  * Cloud SQL Auth Proxy on port 5433) and reports:
@@ -40,6 +41,8 @@ import { tool as lelQuery } from '../src/lib/retrieve/lel_query'
 import { tool as querySignalState } from '../src/lib/retrieve/query_signal_state'
 import { tool as queryKpRulingPlanets } from '../src/lib/retrieve/query_kp_ruling_planets'
 import { tool as queryVarshaphala } from '../src/lib/retrieve/query_varshaphala'
+import { tool as multiSchoolSignalLookup } from '../src/lib/retrieve/multi_school_signal_lookup_tool'
+import { tool as convergenceScoreLookup } from '../src/lib/retrieve/convergence_score_lookup_tool'
 import type { QueryPlan, RetrievalTool, ToolBundle } from '../src/lib/retrieve/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,10 +62,12 @@ const OUTPUT_FILE = path.join(
 // SLA budgets — conservative ceilings sourced from the SLO_PROBE rule of thumb
 // for DB-only retrieval tools (no LLM call). Tuned to fire if a tool degrades.
 const SLA_BUDGETS_MS: Record<string, number> = {
-  lel_query: 250,                // simple table scan, 36 rows max
-  query_signal_state: 400,       // indexed query with optional ANY() arrays
-  query_kp_ruling_planets: 200,  // 9-row sort, indexed by chart_id+ayanamsha
-  query_varshaphala: 250,        // year-range scan, ~78 rows max for native
+  lel_query: 250,                    // simple table scan, 36 rows max
+  query_signal_state: 400,           // indexed query with optional ANY() arrays
+  query_kp_ruling_planets: 200,      // 9-row sort, indexed by chart_id+ayanamsha
+  query_varshaphala: 250,            // year-range scan, ~78 rows max for native
+  multi_school_signal_lookup: 350,   // 7-school JOIN on school_signal_coverage, complex
+  convergence_score_lookup: 200,     // 5-domain rollup from convergence_scores, simpler
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,6 +185,42 @@ const SCENARIOS: Scenario[] = [
     scenario_name: 'query_varshaphala · plan.time_window 2026-2028',
     params: { chart_id: CHART_ID },
     expect_rows_min: 1,
+  },
+
+  // multi_school_signal_lookup (3 scenarios — Phase 2A M9 wiring 2026-05-18)
+  {
+    tool: multiSchoolSignalLookup,
+    scenario_name: 'multi_school · career domain',
+    params: { topic: 'career', domain: 'CAREER' },
+  },
+  {
+    tool: multiSchoolSignalLookup,
+    scenario_name: 'multi_school · specific signal',
+    params: { signal_ids: ['SIG.MSR.142'] },
+  },
+  {
+    tool: multiSchoolSignalLookup,
+    scenario_name: 'multi_school · per-school filter',
+    params: { topic: 'health', school: 'parashari', domain: 'HEALTH' },
+  },
+
+  // convergence_score_lookup (3 scenarios — Phase 2A M9 wiring 2026-05-18)
+  {
+    tool: convergenceScoreLookup,
+    scenario_name: 'convergence · all domains',
+    params: {},
+    expect_rows_min: 5,
+  },
+  {
+    tool: convergenceScoreLookup,
+    scenario_name: 'convergence · single domain',
+    params: { domain: 'RELATIONSHIP' },
+    expect_rows_min: 1,
+  },
+  {
+    tool: convergenceScoreLookup,
+    scenario_name: 'convergence · HIGH only filter',
+    params: { min_level: 'HIGH' },
   },
 ]
 

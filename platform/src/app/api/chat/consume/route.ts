@@ -83,12 +83,17 @@ function toolStepType(toolName: string): TraceStep['step_type'] {
   ) {
     return 'sql'
   }
+  // M9 L9 tools — Postgres-backed convergence + coverage tables
+  if (['multi_school_signal_lookup', 'convergence_score_lookup'].includes(toolName)) {
+    return 'sql'
+  }
   return 'gcs'
 }
 
 function inferLayer(toolName: string): 'L1' | 'L2.5' {
   if (['msr_sql', 'query_msr_aggregate', 'pattern_register', 'resonance_register',
-       'cluster_atlas', 'contradiction_register', 'temporal', 'cgm_graph_walk'].includes(toolName)) {
+       'cluster_atlas', 'contradiction_register', 'temporal', 'cgm_graph_walk',
+       'multi_school_signal_lookup', 'convergence_score_lookup'].includes(toolName)) {
     return 'L2.5'
   }
   return 'L1'

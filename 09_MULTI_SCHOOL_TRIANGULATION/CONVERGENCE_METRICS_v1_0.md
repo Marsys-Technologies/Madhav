@@ -3,7 +3,7 @@ artifact: CONVERGENCE_METRICS_v1_0.md
 version: 1.0
 status: CURRENT
 session_id: M9-D-S1
-produced_on: "2026-05-14"
+produced_on: "2026-05-18"
 schools_total_effective: 6
 schools_excluded: ["tajika (CF.M9.1 VARSHA_KUNDALI_PENDING)"]
 convergence_formula: "HIGH=>=5/6; MEDIUM=4/6; LOW<4/6; isDivergent=>=2 contradict"
@@ -11,7 +11,7 @@ convergence_formula: "HIGH=>=5/6; MEDIUM=4/6; LOW<4/6; isDivergent=>=2 contradic
 
 # Convergence Metrics — M9 Multi-School Triangulation
 
-Generated: 2026-05-14 | Session: M9-D-S1
+Generated: 2026-05-18 | Session: M9-D-S1
 
 ## Convergence Formula (NAP.M9.2 / NAP.M9.3)
 

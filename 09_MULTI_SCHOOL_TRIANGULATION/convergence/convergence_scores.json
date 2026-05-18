@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "session_id": "M9-D-S1",
-  "produced_on": "2026-05-14",
+  "produced_on": "2026-05-18",
   "convergence_formula": {
     "HIGH": ">= 5 effective schools agree direction",
     "MEDIUM": "4 effective schools agree direction",
@@ -58,8 +58,8 @@
         ],
         "yogini": []
       },
-      "computed_at": "2026-05-14T16:33:59.120794+00:00",
-      "run_date": "2026-05-14",
+      "computed_at": "2026-05-17T19:49:37.478205+00:00",
+      "run_date": "2026-05-18",
       "pending_notes": [
         "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
         "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
@@ -111,8 +111,8 @@
         ],
         "yogini": []
       },
-      "computed_at": "2026-05-14T16:33:59.120968+00:00",
-      "run_date": "2026-05-14",
+      "computed_at": "2026-05-17T19:49:37.478392+00:00",
+      "run_date": "2026-05-18",
       "pending_notes": [
         "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
         "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
@@ -168,8 +168,8 @@
         ],
         "yogini": []
       },
-      "computed_at": "2026-05-14T16:33:59.120990+00:00",
-      "run_date": "2026-05-14",
+      "computed_at": "2026-05-17T19:49:37.478412+00:00",
+      "run_date": "2026-05-18",
       "pending_notes": [
         "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
         "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
@@ -223,8 +223,8 @@
         ],
         "yogini": []
       },
-      "computed_at": "2026-05-14T16:33:59.121009+00:00",
-      "run_date": "2026-05-14",
+      "computed_at": "2026-05-17T19:49:37.478428+00:00",
+      "run_date": "2026-05-18",
       "pending_notes": [
         "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
         "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"
@@ -278,8 +278,8 @@
         ],
         "yogini": []
       },
-      "computed_at": "2026-05-14T16:33:59.121024+00:00",
-      "run_date": "2026-05-14",
+      "computed_at": "2026-05-17T19:49:37.478443+00:00",
+      "run_date": "2026-05-18",
       "pending_notes": [
         "CF.M9.1 VARSHA_KUNDALI_PENDING: Tajika excluded from convergence count (schoolsTotal=6)",
         "CF.M9.2 TRANSIT_DATA_PENDING: BNN confidence 0.45x; included in convergence"

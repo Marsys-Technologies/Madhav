@@ -152,6 +152,92 @@ function loadManifest(): CapabilityManifest {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// M9 multi-school few-shot injection
+//
+// gemini-2.5-flash with thinkingBudget=0 ignores system-prompt rules for
+// novel tool names not in its training distribution. Message-turn examples
+// are the reliable fix: the model treats them as conversation continuation
+// and directly mirrors the demonstrated tool selection pattern.
+//
+// Injected only when the query matches M9 patterns (Pattern A/B/C from
+// PLANNER_PROMPT_v2_0.md STEP 0) — zero overhead for non-M9 queries.
+// ────────────────────────────────────────────────────────────────────────────
+
+function detectM9Query(query: string): boolean {
+  const q = query.toLowerCase()
+  // Pattern A: school count keywords
+  if (/all\s+7\s+jyotish\s+school/.test(q)) return true
+  if (/\b(all|each|every)\s+jyotish\s+school/.test(q)) return true
+  if (/all\s+7\s+school/.test(q)) return true
+  if (/all\s+schools?\b/.test(q)) return true
+  // Pattern C: convergence keywords
+  if (q.includes('convergence score') || q.includes('convergence level') ||
+      q.includes('convergence metrics') || q.includes('inter-school') ||
+      q.includes('school agreement') || q.includes('divergent school') ||
+      q.includes('schools agree') || q.includes('schools diverge')) return true
+  // Pattern B: 2+ Jyotish school names present in query
+  const schools = ['parashari', 'jaimini', 'tajika', 'nadi', 'yogini']
+  const shortSchools = ['kp', 'bnn']
+  let hits = schools.filter(s => q.includes(s)).length
+  hits += shortSchools.filter(s => new RegExp(`\\b${s}\\b`).test(q)).length
+  return hits >= 2
+}
+
+function buildM9FewShotMessages(manifestStr: string): Array<{ role: 'user' | 'assistant'; content: string }> {
+  const manifest = JSON.parse(manifestStr) as unknown
+  const emptyHistory = { turns: [], was_summarized: false }
+
+  // Example 1: all-schools career query → R31 (multi_school_signal_lookup) + R32 (convergence_score_lookup)
+  const ex1User = JSON.stringify({
+    native_id: 'example', manifest, history: emptyHistory,
+    query: 'How do all 7 Jyotish schools read my career prospects?',
+  })
+  const ex1Assistant = JSON.stringify({
+    query_class: 'multi_school_triangulation',
+    query_intent_summary: 'Multi-school career signal coverage and convergence metrics.',
+    asset_bundle: [
+      { asset_id: 'FORENSIC', priority: 1, reason: 'Floor: career-significator placements.' },
+      { asset_id: 'MSR', priority: 1, reason: 'Floor: signal list for coverage lookup.' },
+    ],
+    tool_calls: [
+      { tool_name: 'multi_school_signal_lookup', params: { topic: 'career', domains: ['CAREER'] }, token_budget: 800, priority: 1, reason: 'R31: all 7 schools signal coverage for career.' },
+      { tool_name: 'convergence_score_lookup', params: { domain: 'CAREER' }, token_budget: 400, priority: 1, reason: 'R32: inter-school convergence score for CAREER.' },
+    ],
+    synthesis_guidance: 'Lead with convergence level for CAREER. Enumerate schools by coverage type. Flag divergent schools.',
+    forward_looking: false, dasha_context_required: false,
+    expected_output_shape: 'structured_data', domains: ['career'], history_mode: 'research',
+    prior_turn_relevance: { used: 0, reason: 'No prior turns relevant.', mode: 'independent' },
+  })
+
+  // Example 2: convergence-only query → R32 alone (convergence_score_lookup)
+  const ex2User = JSON.stringify({
+    native_id: 'example', manifest, history: emptyHistory,
+    query: 'What is the inter-school convergence score for my spiritual domain? Are there any divergent schools?',
+  })
+  const ex2Assistant = JSON.stringify({
+    query_class: 'multi_school_triangulation',
+    query_intent_summary: 'Convergence score for SPIRITUAL domain plus divergence analysis.',
+    asset_bundle: [
+      { asset_id: 'FORENSIC', priority: 1, reason: 'Floor: spiritual-domain significators.' },
+    ],
+    tool_calls: [
+      { tool_name: 'convergence_score_lookup', params: { domain: 'SPIRITUAL' }, token_budget: 400, priority: 1, reason: 'R32: inter-school convergence score for SPIRITUAL.' },
+    ],
+    synthesis_guidance: 'State convergence level and overall agreement. Identify any divergent school.',
+    forward_looking: false, dasha_context_required: false,
+    expected_output_shape: 'single_answer', domains: ['spiritual'], history_mode: 'research',
+    prior_turn_relevance: { used: 0, reason: 'No prior turns relevant.', mode: 'independent' },
+  })
+
+  return [
+    { role: 'user' as const, content: ex1User },
+    { role: 'assistant' as const, content: ex1Assistant },
+    { role: 'user' as const, content: ex2User },
+    { role: 'assistant' as const, content: ex2Assistant },
+  ]
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Public entrypoint
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -226,7 +312,10 @@ export async function callPipelinePlanner(
         callType: 'planner_fast',
         modelOverride: { modelId: activeModelId },
         systemPrompt: getSystemPrompt(),
-        messages: [{ role: 'user', content: userMessage }],
+        messages: [
+          ...(detectM9Query(query) ? buildM9FewShotMessages(compressedManifestStr) : []),
+          { role: 'user', content: userMessage },
+        ],
         temperature: 0,
         disableSdkRetry: true,
         reasoning: 'disable',

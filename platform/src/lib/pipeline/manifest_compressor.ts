@@ -62,6 +62,9 @@ export const PRIMARY_TOOL_NAMES: readonly string[] = [
   'cgm_graph_walk',
   'vector_search',
   'lel_query',
+  // Phase 2A M9 tools (multi-school triangulation) — added 2026-05-18
+  'multi_school_signal_lookup',
+  'convergence_score_lookup',
 ] as const
 
 /**
