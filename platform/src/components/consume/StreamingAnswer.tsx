@@ -42,7 +42,7 @@ interface Props {
  *   - Streamed assistant text is run through `parseMarkers` so ‹reasoning›,
  *     ‹correction›, ‹sanskrit›, and ‹out_of_domain› spans are extracted.
  *   - Markers bubble up via `onMarkers` so ConsumeChat can drive
- *     LiveReasoningCard, CorrectionNotice, etc.
+ *     CorrectionNotice, ReasoningSlot, etc.
  *   - The visible streamed prose has markers stripped (Sanskrit display
  *     text is kept; reasoning/correction/out_of_domain are removed).
  */

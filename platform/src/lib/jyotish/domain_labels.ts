@@ -43,8 +43,8 @@ export const QUERY_CLASS_LABELS: Record<QueryClass, string> = {
 }
 
 /**
- * Pipeline step → astrological-domain narration. Used by LiveReasoningCard
- * during the pre-synthesis phase. Step names mirror the trace step_name
+ * Pipeline step → astrological-domain narration. Used during the pre-synthesis
+ * phase to narrate pipeline trace steps. Step names mirror the trace step_name
  * values emitted by route.ts and pipeline_planner.ts.
  */
 export const PIPELINE_STEP_NARRATION: Record<string, string> = {
