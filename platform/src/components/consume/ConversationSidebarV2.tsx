@@ -214,6 +214,30 @@ export function ConversationSidebarV2({
         <div className="flex gap-1">
           <button
             type="button"
+            onClick={onToggle}
+            title="Collapse sidebar"
+            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            data-testid="v2-sidebar-collapse"
+          >
+            {/* ChevronLeft icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="none"
+              className="h-3.5 w-3.5"
+              aria-hidden
+            >
+              <path
+                d="M10 3L5 8l5 5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
             onClick={onNew}
             title="New conversation"
             className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
