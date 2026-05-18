@@ -191,32 +191,6 @@ interface CitationContextValue {
 }
 const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
 
-function renderWithCitations(
-  text: string,
-  onPin: (n: number, signalId: string) => void,
-): (string | React.ReactElement)[] {
-  const pattern = /SIG\.MSR\.\d{3}(?!\d)/g
-  const parts: (string | React.ReactElement)[] = []
-  const seen: string[] = []
-  function getN(id: string): number {
-    const i = seen.indexOf(id)
-    if (i >= 0) return i + 1
-    seen.push(id)
-    return seen.length
-  }
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
-    const sigId = match[0]
-    const n = getN(sigId)
-    parts.push(<NumberedCitation key={`${sigId}-${match.index}`} n={n} signalId={sigId} onPin={onPin} />)
-    lastIndex = match.index + match[0].length
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
-  return parts
-}
-
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
@@ -225,7 +199,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
 
-  // C.3: build signal_id → {snippet, layer} map from data-citation parts (both sources via hook).
+  // Build signal_id → {snippet, layer} map from data-citation stream parts.
   const citationRichMap = useMemo(() => {
     const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
     for (const d of dataParts) {
@@ -247,32 +221,45 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
   }, [onPin, citationRichMap])
 
-  // D.1: extract citation chips (NumberedCitation elements) for footer rendering.
-  // MarkdownContent only accepts string children, so chips render below the text.
-  const citationChips = useMemo(() => {
-    const parts = renderWithCitations(text, enrichedOnPin)
-    return parts.filter((p): p is React.ReactElement => typeof p !== 'string')
-  }, [text, enrichedOnPin])
+  // Parse [^N]: SIG.MSR.NNN definitions from text to map footnote numbers → signal IDs.
+  const citationByNumber = useMemo(() => {
+    const map = new Map<number, string>()
+    const defPattern = /\[\^(\d+)\]:\s*(SIG\.MSR\.\d{3})/g
+    let m: RegExpExecArray | null
+    while ((m = defPattern.exec(text)) !== null) {
+      map.set(parseInt(m[1]), m[2])
+    }
+    return map
+  }, [text])
+
+  // Count unique [^N] inline references for the citation panel badge.
+  const citationCount = useMemo(() => {
+    const refs = new Set<number>()
+    const refPattern = /\[\^(\d+)\]/g
+    let m: RegExpExecArray | null
+    while ((m = refPattern.exec(text)) !== null) refs.add(parseInt(m[1]))
+    return refs.size
+  }, [text])
 
   useEffect(() => {
-    onCitationCount?.(citationChips.length)
-  }, [citationChips.length, onCitationCount])
+    onCitationCount?.(citationCount)
+  }, [citationCount, onCitationCount])
+
+  // Render [^N] footnote refs as inline NumberedCitation badges.
+  const footnoteRef = useCallback((n: number): React.ReactNode => {
+    const signalId = citationByNumber.get(n) ?? ''
+    return <NumberedCitation n={n} signalId={signalId} onPin={enrichedOnPin} />
+  }, [citationByNumber, enrichedOnPin])
 
   return (
-    <div>
-      <MarkdownContent
-        streaming={isStreaming}
-        className="text-sm text-zinc-200"
-        data-testid="v2-message-text"
-      >
-        {text}
-      </MarkdownContent>
-      {citationChips.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
-          {citationChips}
-        </div>
-      )}
-    </div>
+    <MarkdownContent
+      streaming={isStreaming}
+      className="text-sm text-zinc-200"
+      data-testid="v2-message-text"
+      footnoteRef={footnoteRef}
+    >
+      {text}
+    </MarkdownContent>
   )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
-import { memo, useMemo } from 'react'
+import React, { memo, useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { Streamdown, type Components } from 'streamdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -12,6 +13,10 @@ interface Props {
   children: string
   className?: string
   streaming?: boolean
+  /** When provided, [^N] footnote references render via this function instead
+   *  of the default superscript anchor. The footnote definition section is
+   *  also suppressed. Used by V2AssistantText for inline citation badges. */
+  footnoteRef?: (n: number) => ReactNode
 }
 
 function extractLang(className: string | undefined): string | undefined {
@@ -20,18 +25,31 @@ function extractLang(className: string | undefined): string | undefined {
   return match ? match[1] : undefined
 }
 
-const MARKDOWN_COMPONENTS = (isStreaming: boolean): Components => ({
+const MARKDOWN_COMPONENTS = (
+  isStreaming: boolean,
+  footnoteRef?: (n: number) => ReactNode,
+): Components => ({
   p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target={href?.startsWith('http') ? '_blank' : undefined}
-      rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-      className="text-[var(--brand-gold-light)] underline decoration-[var(--brand-gold-light)]/60 underline-offset-2 hover:decoration-[var(--brand-gold-light)] hover:text-[var(--brand-gold)] transition-colors"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children, ...rest }) => {
+    if (footnoteRef && (rest as Record<string, unknown>)['data-footnote-ref'] !== undefined) {
+      const n = parseInt(String(children), 10)
+      if (!isNaN(n)) return <>{footnoteRef(n)}</>
+    }
+    return (
+      <a
+        href={href}
+        target={href?.startsWith('http') ? '_blank' : undefined}
+        rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+        className="text-[var(--brand-gold-light)] underline decoration-[var(--brand-gold-light)]/60 underline-offset-2 hover:decoration-[var(--brand-gold-light)] hover:text-[var(--brand-gold)] transition-colors"
+      >
+        {children}
+      </a>
+    )
+  },
+  section: ({ children, ...rest }) => {
+    if (footnoteRef && (rest as Record<string, unknown>)['data-footnotes'] !== undefined) return null
+    return <section {...(rest as React.HTMLAttributes<HTMLElement>)}>{children}</section>
+  },
   strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   // Downshift: markdown # → <h2>, ## → <h3>, etc. so ChatShell's <h1>
@@ -96,8 +114,8 @@ const MARKDOWN_COMPONENTS = (isStreaming: boolean): Components => ({
   pre: ({ children }) => <>{children}</>,
 })
 
-function MarkdownContentImpl({ children, className, streaming = false }: Props) {
-  const components = useMemo(() => MARKDOWN_COMPONENTS(streaming), [streaming])
+function MarkdownContentImpl({ children, className, streaming = false, footnoteRef }: Props) {
+  const components = useMemo(() => MARKDOWN_COMPONENTS(streaming, footnoteRef), [streaming, footnoteRef])
 
   return (
     <div

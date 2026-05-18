@@ -2,9 +2,10 @@
  * Chat V2 synthesis system prompt — fork of consumeSystemPrompt with
  * citation rendering instructions for the [N] superscript UI.
  *
- * Extends the base prompt with a directive to emit SIG.MSR.NNN citations
- * so the V2 renderer can substitute them with inline numbered badges.
- * Does NOT change the citation format (gate remains valid).
+ * R6.2 (2026-05-18): switched from → SIG.MSR.NNN inline markers to GFM
+ * footnote syntax ([^N] inline + [^N]: SIG.MSR.NNN definitions at end).
+ * The UI renders [^N] as inline numbered badges and suppresses the
+ * definition block — matching CITATION_APPENDIX format below.
  */
 
 import { consumeSystemPrompt, type ConsumeStyle } from '@/lib/claude/system-prompts'
@@ -27,9 +28,11 @@ export const CITATION_APPENDIX = `
 
 ---
 CITATION FORMAT (V2 UI):
-When you reference MSR signals in your answer, use the inline format (→ SIG.MSR.NNN).
-The UI will automatically number them [1], [2], … in order of first appearance and show a
-citation side panel. Do NOT use numeric footnotes like [^1] — use the SIG.MSR.NNN format.`
+When you reference MSR signals in your answer, use GFM footnote syntax:
+- Inline: place [^N] at the point of reference (e.g. "Saturn activates the 7th [^1]").
+- Definitions: at the very end of your response list each one as [^N]: SIG.MSR.NNN.
+Number citations in order of first appearance. The UI renders [^N] as a numbered badge
+and hides the definition block. Do NOT use the → SIG.MSR.NNN inline format.`
 
 export function consumeSystemPromptV2(
   chart: ChartContext,
