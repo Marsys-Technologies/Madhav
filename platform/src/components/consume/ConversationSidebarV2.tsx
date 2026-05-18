@@ -12,7 +12,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
+import { MoreHorizontal, PenSquare, Trash2 } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +41,10 @@ export interface ConversationSidebarV2Props {
   onToggle: () => void
   /** E.1: increments each time the server signals a title was set; triggers reload. */
   reloadTrigger?: number
+  /** N3: rename conversation via PATCH /api/conversations/[id] */
+  onRename?: (id: string, currentTitle: string) => Promise<void> | void
+  /** N3: delete (archive) conversation via DELETE /api/conversations/[id] */
+  onDelete?: (id: string) => Promise<void> | void
 }
 
 // ─── Date grouping ────────────────────────────────────────────────────────────
@@ -78,12 +90,17 @@ function ConversationItem({
   conv,
   active,
   onSelect,
+  onRename,
+  onDelete,
 }: {
   conv: ConversationSummary
   active: boolean
   onSelect: (id: string) => void
+  onRename?: (id: string, currentTitle: string) => Promise<void> | void
+  onDelete?: (id: string) => Promise<void> | void
 }) {
   const [hovered, setHovered] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <div
@@ -104,28 +121,35 @@ function ConversationItem({
         {conv.title ?? 'Untitled'}
       </button>
 
-      {/* Archive affordance — decorative only; rename/delete wiring deferred to R7. */}
-      <span
-        aria-hidden
-        className={`hidden absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded transition-opacity text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 ${
-          hovered ? 'opacity-100' : 'opacity-0'
-        }`}
-        title="More actions"
-        data-testid={`v2-conversation-menu-${conv.id}`}
-      >
-        {/* Horizontal ellipsis */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 16 16"
-          fill="currentColor"
-          className="h-3.5 w-3.5"
-          aria-hidden
-        >
-          <circle cx="3" cy="8" r="1.2" />
-          <circle cx="8" cy="8" r="1.2" />
-          <circle cx="13" cy="8" r="1.2" />
-        </svg>
-      </span>
+      {(hovered || menuOpen) && (
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <DropdownMenuTrigger
+            aria-label="Conversation actions"
+            data-testid={`v2-conversation-menu-${conv.id}`}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={2}>
+            <DropdownMenuItem
+              onClick={() => onRename?.(conv.id, conv.title ?? 'Untitled')}
+              data-testid={`v2-conversation-rename-${conv.id}`}
+            >
+              <PenSquare className="h-3.5 w-3.5" aria-hidden />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => onDelete?.(conv.id)}
+              data-testid={`v2-conversation-delete-${conv.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   )
 }
@@ -140,6 +164,8 @@ export function ConversationSidebarV2({
   collapsed,
   onToggle,
   reloadTrigger,
+  onRename,
+  onDelete,
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -256,6 +282,8 @@ export function ConversationSidebarV2({
                 conv={conv}
                 active={conv.id === activeId}
                 onSelect={onSelect}
+                onRename={onRename}
+                onDelete={onDelete}
               />
             ))}
           </div>

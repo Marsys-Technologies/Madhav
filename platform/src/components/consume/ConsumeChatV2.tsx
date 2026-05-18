@@ -1322,6 +1322,34 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     setRestoredKey((k) => k + 1)
   }, [])
 
+  const handleRenameConversation = useCallback(async (id: string, currentTitle: string) => {
+    const newTitle = window.prompt('Rename conversation', currentTitle)
+    if (!newTitle || newTitle.trim() === currentTitle.trim()) return
+    try {
+      const r = await fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      })
+      if (!r.ok) throw new Error(`PATCH failed ${r.status}`)
+      setSidebarReloadTick(t => t + 1)
+    } catch (err) {
+      console.error('Rename failed', err)
+    }
+  }, [])
+
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    if (!window.confirm('Archive this conversation? It will be hidden from the list.')) return
+    try {
+      const r = await fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+      if (!r.ok) throw new Error(`DELETE failed ${r.status}`)
+      if (activeConversationId === id) setActiveConversationId(null)
+      setSidebarReloadTick(t => t + 1)
+    } catch (err) {
+      console.error('Delete failed', err)
+    }
+  }, [activeConversationId])
+
   const v2Commands = useMemo<Command[]>(() => [
     {
       id: 'new-chat',
@@ -1385,6 +1413,8 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((c) => !c)}
           reloadTrigger={sidebarReloadTick}
+          onRename={handleRenameConversation}
+          onDelete={handleDeleteConversation}
         />
       </div>
 
