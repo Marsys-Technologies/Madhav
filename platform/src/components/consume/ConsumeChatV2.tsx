@@ -1185,7 +1185,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
     >
       {/* γ8: live region announces new assistant messages to screen readers */}
       <ThreadPrimitive.Viewport
-        className="flex-1 overflow-y-auto scroll-smooth py-4"
+        className="flex flex-col items-center flex-1 overflow-y-auto scroll-smooth py-4"
         data-testid="v2-thread-viewport"
         // γ8: role=log is the semantic landmark for a chat message log.
         // aria-live=polite ensures new messages are announced without interrupting.
@@ -1195,16 +1195,12 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
         aria-label="Conversation messages"
       >
         <ThreadPrimitive.Empty>
-          <div
-            className="mx-auto flex h-full w-full max-w-4xl items-center justify-center px-4"
-            data-testid="v2-thread-empty-wrap"
-          >
-            <EmptyState
-              chartId={chartId}
-              chartName={chartName}
-              data-testid="v2-thread-empty"
-            />
-          </div>
+          <EmptyState
+            chartId={chartId}
+            chartName={chartName}
+            className="max-w-4xl px-4"
+            data-testid="v2-thread-empty"
+          />
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
