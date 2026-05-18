@@ -1,17 +1,13 @@
 ---
-artifact: PHASE_4C_PANCHANG_MASTER_PLAN_v1_0_DRAFT.md
+artifact: PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
 canonical_id: PHASE_4C_PANCHANG_MASTER_PLAN
-version: 1.0-DRAFT
-status: DRAFT
+version: 1.0
+status: CURRENT
 authored_by: Claude (Sonnet 4.6, brainstormed under superpowers:brainstorming)
 authored_on: 2026-05-19
-purpose: >
-  Master design plan for Phase 4C (Panchang Module) — concurrent workstream
-  alongside active M5-A. DRAFT awaiting native approval to seal as
-  00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md and to drive Phase 4C.0
-  governance session (brief promotion, manifest entry, CLAUDE.md §E update).
-governance_path_when_sealed: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
-brief_path_when_promoted: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
+sealed_on: 2026-05-19
+sealed_by: Claude Code (Sonnet 4.6, session 4C-0)
+brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
 ---
 
 # Panchang Module — Master Design Plan v1.0
@@ -682,17 +678,45 @@ A senior Jyotish acharya should be able to use the `/panchang` page in place of 
 
 ---
 
-## §10 — Open Decisions for Native (before Phase 4C.0)
+## §10 — Settled Decisions (sealed 2026-05-19, session 4C-0)
 
-Three minor calls remain before promoting this document to the canonical brief:
+All three open decisions were settled by the native at the 4C.0 governance session before sealing.
 
-1. **Default location on the `/panchang` page for first-time visitors** — Bhubaneswar (native's birthplace, project-canonical), or user's geo-IP detected location, or no default (force selection)?
+### D1 — Default location
 
-2. **Muhurat Finder event list scope for MVP** — full set per §4.4.1 (15+ events), or a smaller curated set (5–6) for v1 with extension in v2?
+**Decision:** Bhubaneswar (project-canonical). The `/panchang` page loads with Bhubaneswar pre-selected on first visit. A location picker modal shows Bhubaneswar as the highlighted default; the user may override to any city. Geographic IP detection is not used (privacy + accuracy concerns for mobile users).
 
-3. **Calendar feed authentication** — anonymous time-boxed signed URLs (easier), or full user-token auth (more secure but adds friction)?
+**Rationale:** Bhubaneswar is the project-canonical location (native's birthplace). Every session that references location defaults to Bhubaneswar per the existing FORENSIC convention. Consistency across the instrument matters more than geo-convenience.
 
-These can be settled in the Phase 4C.0 governance session, not now.
+### D2 — Muhurat MVP event scope
+
+**Decision:** Curated 5–6 events for v1; extend to the full §4.4.1 set in v2.
+
+**Curated MVP set (6 events):**
+
+| Category | Event |
+|---|---|
+| Life-cycle | Vivah (marriage) |
+| Property | Griha Pravesh (housewarming), Property Purchase |
+| Commerce | Vyapara (business start) |
+| Travel | Yatra (travel) |
+| Spiritual | Mantra Initiation |
+
+Cross-category coverage: Life-cycle / Property / Commerce / Travel / Spiritual — one per domain. All 6 have well-defined Muhurta Shastra criteria (Tithi, Nakshatra, Vara weights established in classical texts). Extension events (Namakarana, Mundan, etc.) require additional research and are deferred to v2.
+
+### D3 — Calendar feed authentication
+
+**Decision:** Signed time-boxed URLs (HMAC-signed, 90-day expiry).
+
+**Specification:**
+- Feed URL carries a per-user token in query string; no `chart_id`, no PII.
+- URL schema: `/api/panchang/feed.ics?location=<city_slug>&personalise=<chart_alias>&token=<hmac>&expires=<ts>`
+- `chart_alias` is a stable hash of the chart's internal ID — never the raw UUID.
+- Token covers `(user_id, location, expires)` triple; server verifies HMAC on each request.
+- Rotation policy: native can revoke any subscription from Settings → Calendar Feeds table. Revocation invalidates the token immediately (checked against a DB revocation list).
+- Re-issue: new 90-day token on each "Subscribe" click; prior tokens are implicitly superseded.
+
+**Rationale:** Anonymous signed URLs avoid OAuth round-trips in calendar clients (Google Calendar, Apple Calendar, Outlook all support unauthenticated iCal subscription URLs). The HMAC + expiry window provides adequate protection without adding implementation complexity for v1.
 
 ---
 
@@ -719,4 +743,8 @@ This is a defensive cite for future sessions that may re-question Phase 4C place
 
 ---
 
-*End of Master Design Plan v1.0. To be promoted to `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` after native approval and Phase 4C.0 governance session.*
+---
+
+## Changelog
+
+*Sealed 2026-05-19 in session 4C-0; §10 decisions settled by native (D1=Bhubaneswar, D2=curated 6-event MVP [Vivah, Griha Pravesh, Vyapara, Yatra, Property Purchase, Mantra Initiation], D3=signed time-boxed URLs [HMAC, 90-day expiry, no chart_id or PII in URL]).*
