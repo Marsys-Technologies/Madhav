@@ -80,9 +80,6 @@ export type FeatureFlag =
   // AIOps Phase 3 — Consume UI Overhaul. Default OFF through CO.6; flip in CO.7
   // after 48h engagement metric watch. Env: MARSYS_FLAG_CONSUME_UI_V2_ENABLED.
   | 'CONSUME_UI_V2_ENABLED'
-  // Chat V2 — assistant-ui big-bang (α7+). Default OFF; flip after phase α exit gate.
-  // Env: MARSYS_FLAG_CHAT_V2_ENABLED.
-  | 'CHAT_V2_ENABLED'
   // β8 — Sliding-window history summarization. Default OFF; flip at γ exit gate.
   // When ON, conversations > 32k estimated tokens have their oldest turns compressed
   // via a Haiku call before being passed to synthesis. Env: MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED.
@@ -146,8 +143,6 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED: true,
   // AIOps Phase 3 — flipped true (α6 reconciliation: prod deploy.yml=true since CO.7).
   CONSUME_UI_V2_ENABLED: true,
-  // Chat V2 — default false until phase α exit gate (α7 wires the switch).
-  CHAT_V2_ENABLED: false,
   // β8 — Sliding-window history summarization. Default false until γ exit gate.
   HISTORY_COMPRESSION_ENABLED: false,
   // γ6 — Cost visibility for non-admin users. Default false.

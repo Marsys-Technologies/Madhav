@@ -32,15 +32,10 @@ describe('B.9 — citation prompt v2 wired (O5)', () => {
     expect(strategySrc).toContain('CITATION_APPENDIX')
   })
 
-  it('strategy appends CITATION_APPENDIX when CHAT_V2_ENABLED flag is true', () => {
-    // Must be guarded by getFlag('CHAT_V2_ENABLED')
-    expect(strategySrc).toContain("getFlag('CHAT_V2_ENABLED')")
-    // Must append the appendix to renderedPrompt
-    const v2Block = strategySrc.slice(
-      strategySrc.indexOf("getFlag('CHAT_V2_ENABLED')"),
-      strategySrc.indexOf("getFlag('CHAT_V2_ENABLED')") + 200,
-    )
-    expect(v2Block).toContain('CITATION_APPENDIX')
-    expect(v2Block).toContain('renderedPrompt')
+  it('strategy appends CITATION_APPENDIX unconditionally (post-§M.16 cutover)', () => {
+    // Post-§M.16: Chat V2 is the only path. CHAT_V2_ENABLED flag removed.
+    // CITATION_APPENDIX must be appended to renderedPrompt without a flag guard.
+    expect(strategySrc).not.toContain("getFlag('CHAT_V2_ENABLED')")
+    expect(strategySrc).toContain('renderedPrompt += CITATION_APPENDIX')
   })
 })

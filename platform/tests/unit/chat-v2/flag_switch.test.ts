@@ -1,13 +1,9 @@
 /**
- * α7 — master flag switch tests.
+ * Post-§M.16 — ConsumeChat V2 source-level guards.
  *
- * Verifies that ConsumeChat.tsx is a thin switch that delegates to:
- *   - ConsumeChatLegacy when chatV2Enabled=false (default)
- *   - ConsumeChatV2    when chatV2Enabled=true
- *
- * Uses source-level assertions (no DOM rendering) because the components
- * require Next.js router context and assistant-ui providers. Integration
- * rendering is covered by the E2E tests.
+ * The α7 thin-switch assertions (chatV2Enabled, ConsumeChatLegacy) were
+ * retired at §M.16 (2026-05-18). V2 is the only path; the switch and
+ * legacy file are deleted. Only V2 behavioral guards remain.
  */
 
 import { describe, it, expect } from 'vitest'
@@ -19,40 +15,7 @@ const CONSUME_DIR = path.resolve(
   '../../../src/components/consume'
 )
 
-describe('α7 — ConsumeChat thin switch (source-level)', () => {
-  it('ConsumeChat.tsx imports both ConsumeChatLegacy and ConsumeChatV2', () => {
-    const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChat.tsx'), 'utf8')
-    expect(src).toContain("from './ConsumeChatLegacy'")
-    expect(src).toContain("from './ConsumeChatV2'")
-  })
-
-  it('ConsumeChat.tsx exports the ConsumeChat function', () => {
-    const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChat.tsx'), 'utf8')
-    expect(src).toContain('export function ConsumeChat')
-  })
-
-  it('ConsumeChat.tsx has chatV2Enabled prop in SwitchProps', () => {
-    const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChat.tsx'), 'utf8')
-    expect(src).toContain('chatV2Enabled')
-  })
-
-  it('ConsumeChat.tsx branches on chatV2Enabled to render V2 or Legacy', () => {
-    const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChat.tsx'), 'utf8')
-    expect(src).toContain('if (chatV2Enabled)')
-    expect(src).toContain('ConsumeChatV2')
-    expect(src).toContain('ConsumeChatLegacy')
-  })
-
-  it('ConsumeChatLegacy.tsx exports ConsumeChatLegacy function', () => {
-    const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChatLegacy.tsx'), 'utf8')
-    expect(src).toContain('export function ConsumeChatLegacy')
-  })
-
-  it('ConsumeChatLegacy.tsx exports ConsumeChatProps interface', () => {
-    const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChatLegacy.tsx'), 'utf8')
-    expect(src).toContain('export interface ConsumeChatProps')
-  })
-
+describe('§M.16 — ConsumeChatV2 source-level guards', () => {
   it('ConsumeChatV2.tsx exports ConsumeChatV2 function', () => {
     const src = fs.readFileSync(path.join(CONSUME_DIR, 'ConsumeChatV2.tsx'), 'utf8')
     expect(src).toContain('export function ConsumeChatV2')
@@ -79,23 +42,5 @@ describe('α7 — ConsumeChat thin switch (source-level)', () => {
     expect(src).toContain('useThreadRuntime')
     expect(src).toContain('.subscribe(')
     expect(src).not.toContain('ComposerPrimitive.If')
-  })
-
-  it('both page files pass chatV2Enabled to ConsumeChat', () => {
-    const pages = [
-      path.resolve(
-        import.meta.dirname,
-        '../../../src/app/clients/[id]/consume/page.tsx'
-      ),
-      path.resolve(
-        import.meta.dirname,
-        '../../../src/app/clients/[id]/consume/[conversationId]/page.tsx'
-      ),
-    ]
-    for (const p of pages) {
-      const src = fs.readFileSync(p, 'utf8')
-      expect(src).toContain("getFlag('CHAT_V2_ENABLED')")
-      expect(src).toContain('chatV2Enabled={chatV2Enabled}')
-    }
   })
 })
