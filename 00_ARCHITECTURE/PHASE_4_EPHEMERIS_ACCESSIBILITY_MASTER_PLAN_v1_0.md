@@ -1,7 +1,7 @@
 ---
 canonical_id: PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN
 version: 1.1
-status: ACTIVE — §4.A CLOSED; §4.B CLOSED; §4.C CLOSED (abab885); §4.D next
+status: CLOSED — §4.A CLOSED (bd41f13); §4.B CLOSED (c63ef9f); §4.C CLOSED (abab885); §4.D CLOSED (d7ec853)
 author: Claude (analysis stream)
 authored_on: 2026-05-18
 last_updated: 2026-05-19
@@ -145,13 +145,35 @@ campaign:
           The brief delivers code + migration + runbook addendum. It does NOT
           execute the ~73K-row panchanga bootstrap against production Cloud SQL.
           Native triggers post-merge per RUNBOOK §4.
+        acceptance_results:
+          tsc: GREEN
+          ts_unit_tests: 6/6 PASS query_panchanga + full retrieve suite 263 tests across 28 files
+          python_pytest: 31/31 PASS (5 test classes — TestComputeTithi 8, TestComputeVara 4, TestComputeMoonNakshatra 5, TestComputeYoga 5, TestComputeKarana 9)
+          migration_sql: REVIEWED — no autonomous DB execution
+          planner_regression_gate: 2/2 PASS
+          production_bootstrap: DEFERRED to native (~73K rows, ~30 min)
+        executor_scope_notes_for_4D:
+          - "Tithi boundary semantics are integer-floor, not nearest-rounding. At exactly 180° elongation, result is Krishna Pratipada (16), not Purnima (15). §4.D event-search should document its crossing-moment convention (swe.solcross/mooncross return exact JD when longitude equals target, not 'the day of crossing')."
+          - "Vara/day-of-week computation requires IST datetime, not UTC. A 00:30 UTC sunrise = 06:00 IST same day; passing UTC datetime would yield wrong vara. §4.D sidecar /transit_search endpoint must use jd_to_ist_iso() conversion for any vara-relevant output."
         depends_on: 4A (bd41f13), 4B (c63ef9f)
       4D_transit_search:
-        status: PENDING — author after 4C closes
+        status: CLOSED
+        brief: briefs/PHASE_4D_TRANSIT_SEARCH_BRIEF_v1_0.md
+        authored_on: 2026-05-19
+        closing_commit_sha: d7ec853
         scope: |
-          query_transit_event retrieval tool. Sidecar /transit_search endpoint.
-          Ingress + aspect + conjunction + station search using swe.solcross/mooncross
-          for Sun/Moon, root-finding for others. ±10 year window cap.
+          query_transit_event retrieval tool (29th). Four event classes routed:
+            ingress → ephemeris_daily.sign_ingress_today (§4.B-precomputed)
+            station → retrogrades table (existing migration 016)
+            aspect → sidecar POST /transit_search live compute
+            conjunction → sidecar POST /transit_search live compute
+          Sidecar uses swe.solcross/mooncross for Sun/Moon, day-step + bisection
+          root-finding for other planets. ±10 year window cap. Lahiri sidereal.
+          PLANNER_PROMPT v2.0.5: new R-TE (Transit Event) rule + §4.27 few-shot.
+          Graha-yuddha docstring update — formally documents longitude-only as
+          accepted Vedic approximation per §4.B executor scope-note (no code change).
+          12 Python pytest cases + 5 TS vitest cases + GT.078-082 (4 positive + 1 negative).
+          RUNBOOK §5 sidecar verification section. PHASE_4_CLOSE_v1_0.md sealing artifact.
           Also: revisit graha_yuddha latitude-difference check (per §4.B executor note)
           or document longitude-only form as accepted approximation.
         depends_on: 4C
@@ -195,12 +217,14 @@ At close, author `PHASE_4_CLOSE_v1_0.md` sealing artifact with:
 
 **§4.B is CLOSED** (2026-05-19 at `c63ef9f`). Migration 059 + 7 derived columns + MEAN_NODE Rahu fix + `ephemeris_derivations.py` + `enrich_ephemeris_daily.py` + `query_ephemeris` `derived_fields` param + 20 Python tests + 12 TS tests (5 new) + GT.070–073 + RUNBOOK_EPHEMERIS_REBUILD_v1_0.md all shipped. tsc clean, vitest 12/12, pytest 20/20, planner_regression_gate 2/2. Production 657K-row rebuild deferred to native per runbook — Path A recommended.
 
-**§4.C is AUTHORED_READY_TO_EXECUTE** (2026-05-19). Brief at `briefs/PHASE_4C_PANCHANGA_BRIEF_v1_0.md`. Ships migration 060 + `panchanga_daily` table + `panchanga_derivations.py` (imports `SIGNS` + `SIGN_TO_IDX` from `ephemeris_derivations` per §4.B executor note — single source of truth) + `bootstrap_panchanga.py` using `swe.rise_trans` for Bhubaneswar sunrise (20.27021°N, 85.82966°E, 45m) + `query_panchanga` as the 28th retrieval tool + R-PA (Panchanga Anchor) rule in PLANNER_PROMPT alongside R-TC + ~15 Python pytest cases + ~5 TS vitest cases + GT.074–077 golden set (3 positive R-PA + 1 negative natal exclusion) + RUNBOOK §4 panchanga bootstrap addendum. The ~73K-row precompute is deferred to native per runbook.
+**§4.C is CLOSED** (2026-05-19 at `abab885`). Migration 060 + `panchanga_daily` + `panchanga_derivations.py` + `bootstrap_panchanga.py` + `query_panchanga` (28th tool) + R-PA rule + 31 Python pytests + 6 TS vitests (full retrieve suite 263 tests across 28 files) + GT.074-077 + RUNBOOK §4 all shipped. tsc clean, planner_regression_gate 2/2. Production ~73K-row bootstrap deferred to native per runbook. Two semantics carry-forwards captured in §B for §4.D (tithi integer-floor, vara IST datetime).
 
-**Execution prompt to paste into Claude Code for §4.C:**
+**§4.D is CLOSED** (2026-05-19 at `d7ec853`). `query_transit_event` (29th tool) routes four event classes: ingress → `ephemeris_daily.sign_ingress_today` (§4.B-precomputed), station → `retrogrades` (migration 016), aspect+conjunction → sidecar `/transit_search` live-compute using `swe.solcross`/`mooncross` for Sun/Moon + day-step bisection for other planets. ±10 year window cap. Lahiri throughout. R-TE rule in PLANNER_PROMPT v2.0.5 + §4.27 few-shot. Graha-yuddha docstring updated in `ephemeris_derivations.py` documenting longitude-only form as accepted Vedic approximation (resolves §4.B carry-forward; no code change). 12 Python pytests (12/12) + 5 TS vitests (5/5) + GT.078-082 + RUNBOOK §5 all shipped. tsc clean, planner_regression_gate 2/2. PHASE 4 EPHEMERIS ACCESSIBILITY CAMPAIGN CLOSED. Sealing artifact: `PHASE_4_CLOSE_v1_0.md`.
+
+**Execution prompt to paste into Claude Code for §4.D:**
 
 ```
-Read 00_ARCHITECTURE/briefs/PHASE_4C_PANCHANGA_BRIEF_v1_0.md and execute it.
+Read 00_ARCHITECTURE/briefs/PHASE_4D_TRANSIT_SEARCH_BRIEF_v1_0.md and execute it.
 
 Start with:
 git -C /Users/Dev/Vibe-Coding/Apps/Madhav-analysis checkout analysis/backend-data-pipeline-perf-audit
@@ -213,15 +237,23 @@ Hard constraints (re-stated from CLAUDE.md + master plan §C):
 - Analysis branch only. Never touch Chat V2 files.
 - No autonomous npm run answer:eval. Pre-commit verification only.
 - Approved decisions in EPHEMERIS_ACCESSIBILITY_RESEARCH_v1_0.md §6 are locked.
-- Do NOT execute the ~73K-row panchanga bootstrap against production Cloud SQL.
-  The brief ships code + migration + runbook addendum; native runs the
-  bootstrap post-merge per RUNBOOK_EPHEMERIS_REBUILD_v1_0.md §4.
-- Import SIGNS + SIGN_TO_IDX from pipeline.ephemeris_derivations
-  (do NOT re-declare). This is the §4.B executor note carried forward.
+- Reuse existing tables: ephemeris_daily.sign_ingress_today (§4.B) for ingress,
+  retrogrades table (migration 016) for station. NO new migration in §4.D.
+- Import SIGNS / SIGN_TO_IDX / NAKSHATRAS from existing modules per the
+  established pattern (no re-declaration). §4.C executor honored this for
+  panchanga; §4.D must continue.
+- Tithi integer-floor convention + vara IST-datetime convention from §4.C
+  carry forward to /transit_search endpoint output formatting.
 - Pre-commit gates: tsc + TS vitest + Python pytest + planner_regression_gate.
 
-When complete: report commit SHA + git log + gate results + any §4.D scope
-adjustments suggested by §4.C execution.
+After §4.D commit lands, author PHASE_4_CLOSE_v1_0.md per master plan §E + §6.1
+of the brief. This SEALS the campaign.
+
+When complete: report commit SHA + git log + gate results + confirmation that
+PHASE_4_CLOSE_v1_0.md was authored + final tool count check (29 in all three
+registries) + recommendation on whether to run operator data operations
+(Path A rebuild + panchanga bootstrap) before or in parallel with the
+consolidated answer:eval batch.
 ```
 
-After §4.C closes (commit lands on analysis branch), come back to Cowork and I'll author the §4.D brief (transit-event search: ingress / aspect / conjunction / station) based on what §4.C delivered.
+After §4.D closes AND `PHASE_4_CLOSE_v1_0.md` is authored, the campaign is sealed. Native then triggers (1) the operator data operations per `RUNBOOK_EPHEMERIS_REBUILD_v1_0.md`, and (2) the consolidated answer:eval batch — these are the deferred operator-supervised steps that the discipline kept out of the brief executions.
