@@ -1712,12 +1712,56 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 
 ### F.3 — Operator final visual review
 
-- **Status**: HALT — requires operator to open local dev server with `MARSYS_FLAG_CHAT_V2_ENABLED=true` and walk through all chat-v2 surfaces. See `CHAT_V2_ROUND_5_PLAN_v1_0.md §11 F.3` for checklist.
+- **Date**: 2026-05-18
+- **Status**: **FAIL** — operator manual walkthrough caught 13+ regressions
+- **Forensic**: `00_ARCHITECTURE/CHAT_V2_F3_FORENSIC_v1_0.md` (on main since a97c344) traced each finding to file:line; identified three cumulative root-cause patterns (data-parts source-of-truth; duplicate affordances; backend stubs satisfying types-not-contracts)
+- **Outcome**: F.4 reflip blocked. Round 6 fix-wave required.
 
 ### F.4 — Re-flip master flag
 
-- **Status**: PENDING — depends on F.3 PASS verdict from operator
+- **Status**: BLOCKED on Round 6 close. Will reflip after R6.1–R6.6 merge + R6-SMOKE green + operator manual F.3 re-run sign-off.
 
 ---
 
-**Phase A–E executor hand-off complete.** All PRs merged. F.1/F.2 blocked on auth; F.3 is a manual operator gate; F.4 follows F.3 approval.
+**Round 5 closed at F.3 FAIL.** Phase A–E shipped 11 PRs to main. F.1/F.2 remained blocked on auth (auth-unavailable log). F.3 caught regressions Round 5's per-PR visual review did not surface. Round 6 begins.
+
+---
+
+## Round 6 — F.3 fix-wave + automated smoke gate
+
+**Plan**: `00_ARCHITECTURE/CHAT_V2_ROUND_6_PLAN_v1_0.md` (v1.0 DRAFT, on main since 2026-05-18 commit a97c344 / PR #72)
+
+**Forensic**: `00_ARCHITECTURE/CHAT_V2_F3_FORENSIC_v1_0.md` (v1.0 DRAFT, on main since same commit)
+
+**Scope**: 6 P0 PRs (R6.1–R6.6) + R6-SMOKE Playwright spec + R6-CI required-check workflow + F.4 master flag reflip. R7 deferred: N3, L4, N2, O5, N1, O11, O6, O4.
+
+**Operator decisions baked in (plan §7)**:
+1. R6.5 cancel-and-resend → right-click context menu
+2. R6.3 enrichCitations → route-side onFinish
+3. R6-CI trigger → pull_request + merge_group
+4. F.4 watch window → 7 days
+5. Decorative three-dot sidebar menu → hide via display:none in R6.4
+
+### R6 — EXEC briefs
+
+| Brief | Path | Status |
+|---|---|---|
+| R6-SMOKE + R6-CI | `00_ARCHITECTURE/chat_v2_briefs/round6/R6-SMOKE-and-R6-CI.md` | READY_FOR_EXECUTION (on main since 2026-05-18 PR #72) |
+| R6.1 useDataParts hook | not yet authored | pending |
+| R6.2 footnote citations | not yet authored | pending |
+| R6.3 enrichCitations | not yet authored | pending |
+| R6.4 sidebar layout discipline | not yet authored | pending |
+| R6.5 single stream button | not yet authored | pending |
+| R6.6 action-bar icon scale | not yet authored | pending |
+| F.4 master flag reflip | not yet authored | pending |
+
+### R6 — Execution timeline
+
+| Date | Event |
+|---|---|
+| 2026-05-18 | Forensic + Round 6 plan + R6-SMOKE/R6-CI brief landed on main (PR #72, a97c344) |
+| pending | R6-SMOKE + R6-CI executor session (branch `chore/chat-v2-r6/smoke-spec-and-workflow`) |
+| pending | R6.1–R6.6 EXEC briefs authored + executed (one per round, in plan §4.5 order) |
+| pending | Operator F.3 re-run on post-merge staging revision |
+| pending | F.4 reflip; 7-day watch window |
+
