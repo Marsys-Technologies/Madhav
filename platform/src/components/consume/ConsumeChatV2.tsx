@@ -429,6 +429,16 @@ function V2Message() {
               className="flex gap-1.5"
               data-testid="v2-user-action-bar"
             >
+              <ActionBarPrimitive.Copy asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  title="Copy message"
+                  data-testid="v2-user-copy-btn"
+                >
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </ActionBarPrimitive.Copy>
               <ActionBarPrimitive.Edit asChild>
                 <button
                   type="button"
