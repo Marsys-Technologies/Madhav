@@ -7,8 +7,8 @@
  * citation count, cost, and a "View trace" stub link for a single assistant message.
  *
  * Data sources:
- *   - message.metadata.custom  → model, stack, style, disclosure_tier, queryId, query_class, latency
- *   - message.metadata.unstable_data → data-cost (tokens + dollars), data-citation-gate (result)
+ *   - message.metadata.custom  → model, stack, style, disclosure_tier, queryId, query_class, latency (reload path)
+ *   - message.content (DataMessagePart) → data-cost (tokens + dollars), data-citation-gate (result)
  *   - prop: citationCount (passed from the V2AssistantText renderer)
  */
 
@@ -83,17 +83,16 @@ export function PerMessageDetailsDrawer({
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
 
   // ── Extract data parts ────────────────────────────────────────────────────
-  // Live stream path: writer.write({type:'data-cost', data:{...}}) lands in message.content
-  //   as { type:"data", name:"cost", data:{type:"cost", model:..., input_tokens:...} }.
-  //   The "data-X" type maps to name="X" — the "data-" prefix is stripped.
-  // Reload path: no data parts available (content only has text parts).
+  // @assistant-ui/react-ai-sdk's convertMessage.js converts writer.write({ type: 'data-cost', ... })
+  // stream chunks into DataMessagePart ({ type: 'data', name: 'cost', data: {...} }) in message.content.
   type NamedDataPart = { type: 'data'; name: string; data: Record<string, unknown> }
-  const namedDataParts = ((message.content ?? []) as ReadonlyArray<unknown>).filter(
+  const namedDataParts = (message.content as ReadonlyArray<unknown>).filter(
     (p): p is NamedDataPart =>
-      typeof p === 'object' &&
-      p !== null &&
+      typeof p === 'object' && p !== null &&
       (p as Record<string, unknown>).type === 'data' &&
-      typeof (p as Record<string, unknown>).name === 'string',
+      typeof (p as Record<string, unknown>).name === 'string' &&
+      typeof (p as Record<string, unknown>).data === 'object' &&
+      (p as Record<string, unknown>).data !== null,
   )
 
   const costEntry = namedDataParts.find(p => p.name === 'cost')

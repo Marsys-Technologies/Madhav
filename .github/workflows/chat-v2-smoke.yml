@@ -1,0 +1,60 @@
+# chat-v2 smoke gate
+#
+# Today (post R6-SMOKE-PATCH): runs the round6-walkthrough spec under chromium.
+# Without SMOKE_SESSION_COOKIE + SMOKE_CHART_ID secrets provisioned in this
+# workflow's environment, all 9 tests skip — workflow exits 0 vacuously.
+# Local operator runs (with cookies minted) exercise the gate normally.
+#
+# R7 follow-up: provision SMOKE_SESSION_COOKIE + SMOKE_CHART_ID as GitHub
+# Actions secrets, inject via `env:` block on the playwright step, then
+# enable `chat-v2 smoke / smoke` as a required check on main branch
+# protection. Tracking: 00_ARCHITECTURE/CHAT_V2_ROUND_6_PLAN_v1_0.md §8.3.
+#
+
+name: chat-v2 smoke
+
+on:
+  pull_request:
+    paths:
+      - 'platform/src/components/consume/ConsumeChatV2.tsx'
+      - 'platform/src/components/chat-v2/**'
+      - 'platform/src/components/chat/ConversationSidebarV2.tsx'
+      - 'platform/src/app/api/chat/consume/route.ts'
+      - 'platform/src/lib/synthesis/prompts/synthesis_prompt_v2.ts'
+      - 'platform/src/lib/citations/**'
+      - 'platform/tests/e2e/chat-v2/round6-walkthrough.spec.ts'
+      - 'platform/tests/e2e/chat-v2/fixtures/round6-mock-route.ts'
+  merge_group:
+    branches:
+      - main
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run chat-v2 smoke spec
+        run: npx playwright test tests/e2e/chat-v2/round6-walkthrough.spec.ts --project=chromium --reporter=list
+        env:
+          SMOKE_SESSION_COOKIE: ${{ secrets.SMOKE_SESSION_COOKIE }}
+          SMOKE_CHART_ID: ${{ secrets.SMOKE_CHART_ID }}
+          # No LLM credentials needed — mock route intercepts the API call.
+          # Without secrets provisioned, the spec skips (test.skip guard) and
+          # the workflow exits 0 vacuously. R7 follow-up: provision secrets.

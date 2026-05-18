@@ -5,7 +5,7 @@
  *
  * β2: conversation list sidebar + write-through restore on mount.
  * β5: multi-modal file attachments (image + PDF) via upload → token flow.
- * Flag gate: only rendered when MARSYS_FLAG_CHAT_V2_ENABLED=true.
+ * Post-§M.16 (2026-05-18): sole chat shell — flag + legacy path removed.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,9 +13,11 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
+import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
+import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
 import { CommandPalette } from '@/components/chat/CommandPalette'
 import type { Command } from '@/components/chat/CommandPalette'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
@@ -33,8 +35,32 @@ import {
   BranchPickerPrimitive,
   useThreadRuntime,
   useMessage,
+  useMessageRuntime,
 } from '@assistant-ui/react'
-import type { ConsumeChatProps } from './ConsumeChatLegacy'
+interface ConversationRow {
+  id: string
+  title: string | null
+  created_at: string
+  chart_id: string
+  user_id: string
+  module: ConversationModule
+}
+
+export interface ConsumeChatProps {
+  chartId: string
+  chartName: string
+  chartMeta?: string
+  reports: Report[]
+  conversations: ConversationRow[]
+  currentConversationId?: string
+  initialMessages?: UIMessage[]
+  panelModeEnabled?: boolean
+  audienceTier?: AudienceTier
+  /** AIOps Phase 3: enables the new lifecycle-slot UI. Default false through CO.6. */
+  consumeUiV2Enabled?: boolean
+  /** γ6: show per-message cost to non-admin users. Super-admin always sees cost. */
+  costVisibilityEnabled?: boolean
+}
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
@@ -48,12 +74,18 @@ import { PredictionLogModal } from '../chat/PredictionLogModal'
 import { ValidatorFailureBand } from '../chat/ValidatorFailureBand'
 import { ValidatorFooterChip } from '../chat/ValidatorFooterChip'
 import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart, StagePart, ToolPart } from '@/lib/streams/data_parts'
+import { useDataParts } from '@/lib/chat-v2/useDataParts'
+import type { NormalizedDataPart } from '@/lib/chat-v2/useDataParts'
 import { StageStepper } from '../chat-v2/StageStepper'
 import { ToolCallCard } from '../chat-v2/ToolCallCard'
 import { PanelModeToggle, PanelOptInCtx } from '../chat-v2/PanelModeToggle'
 import { ContextUsageCue } from './ContextUsageCue'
 import { PostAnswerProvenance } from './PostAnswerProvenance'
+import { CorrectionNotice } from './CorrectionNotice'
+import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
+import { cn } from '@/lib/utils'
+import type { Report, ConversationModule } from '@/lib/db/types'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
 
@@ -72,131 +104,6 @@ export interface AttachedFile {
 const ACCEPT_TYPES = 'image/jpeg,image/png,image/gif,image/webp,application/pdf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ConversationSummary {
-  id: string
-  title: string | null
-  created_at: string
-  updated_at: string | null
-  archived_at: string | null
-}
-
-// ─── Conversation sidebar ─────────────────────────────────────────────────────
-
-interface ConversationSidebarProps {
-  chartId: string
-  activeId: string | null
-  onSelect: (id: string) => void
-  onNew: () => void
-  collapsed: boolean
-  onToggle: () => void
-}
-
-function ConversationSidebar({
-  chartId,
-  activeId,
-  onSelect,
-  onNew,
-  collapsed,
-  onToggle,
-}: ConversationSidebarProps) {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const reload = useCallback(() => {
-    setLoading(true)
-    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data?.conversations)) {
-          setConversations(data.conversations as ConversationSummary[])
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [chartId])
-
-  useEffect(() => {
-    reload()
-  }, [reload])
-
-  if (collapsed) {
-    return (
-      <div className="flex flex-col items-center w-10 border-r border-zinc-800 bg-zinc-950 shrink-0">
-        <button
-          type="button"
-          onClick={onToggle}
-          title="Expand conversation list"
-          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-          data-testid="v2-sidebar-expand"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-            <path d="M2 4h12M2 8h7M2 12h9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <aside
-      className="flex flex-col w-56 shrink-0 border-r border-zinc-800 bg-zinc-950"
-      data-testid="v2-conversation-sidebar"
-    >
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
-        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Conversations</span>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onNew}
-            title="New conversation"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-new-conversation"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
-              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onToggle}
-            title="Collapse"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-sidebar-collapse"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto py-1">
-        {loading && conversations.length === 0 && (
-          <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
-        )}
-        {conversations.map((conv) => (
-          <button
-            key={conv.id}
-            type="button"
-            onClick={() => onSelect(conv.id)}
-            className={`w-full text-left px-3 py-2 text-xs rounded-md transition-colors truncate ${
-              conv.id === activeId
-                ? 'bg-indigo-600/20 text-indigo-300'
-                : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-            }`}
-            data-testid={`v2-conversation-item-${conv.id}`}
-          >
-            {conv.title ?? 'Untitled'}
-          </button>
-        ))}
-        {!loading && conversations.length === 0 && (
-          <p className="px-3 py-4 text-xs text-zinc-600 text-center">No conversations yet</p>
-        )}
-      </div>
-    </aside>
-  )
-}
 
 // ─── Branch picker (inline navigation between alternates) ────────────────────
 
@@ -244,6 +151,15 @@ const ConversationIdCtx = createContext<string | null>(null)
 // ─── Latest query-id callback context (C.2: V2QueryIdTracker → ConsumeChatV2 header) ──
 const V2QueryIdCb = createContext<((id: string) => void) | null>(null)
 
+// ─── Conversation-id callback context (W5 fix: V2ConversationIdTracker → ConsumeChatV2) ──
+// Reads data-persistence parts to propagate conversation_id after the first turn so that
+// the regenerate button and subsequent request bodies carry the correct conversation ID.
+const V2ConversationIdCb = createContext<((id: string) => void) | null>(null)
+
+// ─── Title callback context (E.1: V2TitleTracker → ConsumeChatV2 sidebar reload) ──
+// Fires once on the first turn when a data-title part lands, triggering sidebar refresh.
+const V2TitleCb = createContext<(() => void) | null>(null)
+
 // ─── Preferences context (C.3: bottom-bar selectors share state with API body) ──
 interface V2PrefsCtxValue {
   stack: ModelStack
@@ -271,7 +187,7 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
 // ─── Citation context ─────────────────────────────────────────────────────────
 
 interface CitationContextValue {
-  onPin: (n: number, signalId: string) => void
+  onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
 }
 const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
 
@@ -307,13 +223,36 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const { onPin } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
+  const dataParts = useDataParts(message)
+
+  // C.3: build signal_id → {snippet, layer} map from data-citation parts (both sources via hook).
+  const citationRichMap = useMemo(() => {
+    const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
+    for (const d of dataParts) {
+      if (d.type === 'data-citation') {
+        const data = d.data as Record<string, unknown>
+        if (typeof data.signal_id === 'string') {
+          result.set(data.signal_id, {
+            snippet: typeof data.snippet === 'string' ? data.snippet : '',
+            layer: (data.layer === 'L1' ? 'L1' : 'L2.5'),
+          })
+        }
+      }
+    }
+    return result
+  }, [dataParts])
+
+  const enrichedOnPin = useCallback((n: number, signalId: string) => {
+    const rich = citationRichMap.get(signalId)
+    onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
+  }, [onPin, citationRichMap])
 
   // D.1: extract citation chips (NumberedCitation elements) for footer rendering.
   // MarkdownContent only accepts string children, so chips render below the text.
   const citationChips = useMemo(() => {
-    const parts = renderWithCitations(text, onPin)
+    const parts = renderWithCitations(text, enrichedOnPin)
     return parts.filter((p): p is React.ReactElement => typeof p !== 'string')
-  }, [text, onPin])
+  }, [text, enrichedOnPin])
 
   useEffect(() => {
     onCitationCount?.(citationChips.length)
@@ -328,7 +267,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       >
         {text}
       </MarkdownContent>
-      {citationChips.length > 0 && !isStreaming && (
+      {citationChips.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
           {citationChips}
         </div>
@@ -339,16 +278,12 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
 
 // ─── Panel data extraction helpers ───────────────────────────────────────────
 
-function usePanelData(dataParts: ReadonlyArray<unknown>) {
+function usePanelData(dataParts: ReadonlyArray<NormalizedDataPart>) {
   const panelMembers = useMemo(() => {
     const parts: PanelMemberPart[] = []
     for (const d of dataParts) {
-      if (
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-panel-member'
-      ) {
-        const entry = d as { type: string; data: unknown }
-        parts.push(entry.data as PanelMemberPart)
+      if (d.type === 'data-panel-member') {
+        parts.push(d.data as PanelMemberPart)
       }
     }
     // Sort by member_index for stable tab order
@@ -357,12 +292,8 @@ function usePanelData(dataParts: ReadonlyArray<unknown>) {
   }, [dataParts])
 
   const panelMeta = useMemo((): PanelMetaPart | null => {
-    const entry = dataParts.find(
-      (d): d is { type: string; data: PanelMetaPart } =>
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-panel-meta',
-    )
-    return entry ? (entry as { type: string; data: PanelMetaPart }).data : null
+    const entry = dataParts.find(d => d.type === 'data-panel-meta')
+    return entry ? (entry.data as PanelMetaPart) : null
   }, [dataParts])
 
   return { panelMembers, panelMeta, isPanel: panelMeta !== null }
@@ -374,41 +305,44 @@ function usePanelData(dataParts: ReadonlyArray<unknown>) {
 
 function V2RegenerateButton() {
   const message = useMessage()
+  const messageRuntime = useMessageRuntime()
   const runtime = useThreadRuntime()
   const conversationId = useContext(ConversationIdCtx)
 
-  // Fire truncation before assistant-ui's Reload handler executes.
-  // Slot merges onClick handlers: child fires first, then Reload's handler.
-  // Truncation is intentionally fire-and-forget: fast DB DELETE; synthesis
-  // won't finish before truncation completes.
-  const handleClick = useCallback(() => {
-    if (!conversationId) return
+  // Await DB truncation BEFORE triggering assistant-ui reload.
+  // Prior implementation was fire-and-forget which caused a race: synthesis
+  // would start against the un-truncated conversation.
+  // If conversationId is not yet available (first turn before data-persistence lands),
+  // skip truncation and reload directly — the DB doesn't have a persisted turn to truncate.
+  const handleClick = useCallback(async () => {
     const messages = runtime.getState().messages
     const myIndex = messages.findIndex((m) => m.id === message.id)
     const parentId = myIndex > 0 ? messages[myIndex - 1].id : null
     if (!parentId) return
-    void fetch('/api/chat/consume/regenerate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversation_id: conversationId, parent_message_id: parentId }),
-    }).catch(() => {})
-  }, [message.id, runtime, conversationId])
+    if (conversationId) {
+      try {
+        await fetch('/api/chat/consume/regenerate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id: conversationId, parent_message_id: parentId }),
+        })
+      } catch {
+        // Truncation failed — still reload so the UI reflects the new attempt
+      }
+    }
+    messageRuntime.reload()
+  }, [message.id, messageRuntime, runtime, conversationId])
 
   return (
-    <ActionBarPrimitive.Reload asChild>
-      <button
-        type="button"
-        onClick={handleClick}
-        className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
-        title="Regenerate response"
-        data-testid="v2-regenerate-btn"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3" aria-hidden="true">
-          <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
-          <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    </ActionBarPrimitive.Reload>
+    <button
+      type="button"
+      onClick={handleClick}
+      className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+      title="Regenerate response"
+      data-testid="v2-regenerate-btn"
+    >
+      <RotateCcw className="h-4 w-4" aria-hidden="true" />
+    </button>
   )
 }
 
@@ -424,9 +358,9 @@ function V2Message() {
   const [predModalOpen, setPredModalOpen] = useState(false)
   const [activePredCandidate, setActivePredCandidate] = useState<PredictionCandidatePart | null>(null)
 
-  // γ1: panel data from message metadata
+  // γ1: panel data from message — merged from both stream sources via hook
   const message = useMessage()
-  const dataParts = (message.metadata?.unstable_data ?? []) as ReadonlyArray<unknown>
+  const dataParts = useDataParts(message)
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
@@ -441,12 +375,8 @@ function V2Message() {
 
   // γ4: extract citation gate status from data parts
   const citationGate = useMemo(() => {
-    const entry = dataParts.find(
-      (d): d is { type: string; data: { status?: string; issues?: string[] } } =>
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-citation-gate',
-    )
-    return entry ? (entry as { type: string; data: { status?: string; issues?: string[] } }).data : null
+    const entry = dataParts.find(d => d.type === 'data-citation-gate')
+    return entry ? (entry.data as { status?: string; issues?: string[] }) : null
   }, [dataParts])
 
   // O3: compute isStreaming for stage/tool gating
@@ -456,12 +386,9 @@ function V2Message() {
   const stageHistory = useMemo(() => {
     const map = new Map<string, StagePart>()
     for (const d of dataParts) {
-      if (
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-stage'
-      ) {
-        const entry = d as { type: string; data: StagePart }
-        map.set(entry.data.stage, entry.data)
+      if (d.type === 'data-stage') {
+        const stage = d.data as StagePart
+        map.set(stage.stage, stage)
       }
     }
     return Array.from(map.values())
@@ -471,12 +398,9 @@ function V2Message() {
   const toolHistory = useMemo(() => {
     const map = new Map<string, ToolPart>()
     for (const d of dataParts) {
-      if (
-        typeof d === 'object' && d !== null &&
-        (d as Record<string, unknown>).type === 'data-tool'
-      ) {
-        const entry = d as { type: string; data: ToolPart }
-        map.set(entry.data.name, entry.data)
+      if (d.type === 'data-tool') {
+        const tool = d.data as ToolPart
+        map.set(tool.name, tool)
       }
     }
     return Array.from(map.values())
@@ -485,13 +409,20 @@ function V2Message() {
   // γ3: extract prediction candidates from data parts
   const predictionCandidates = useMemo(() => {
     return dataParts
-      .filter(
-        (d): d is { type: string; data: PredictionCandidatePart } =>
-          typeof d === 'object' && d !== null &&
-          (d as Record<string, unknown>).type === 'data-prediction-candidate',
-      )
-      .map(d => d.data)
+      .filter(d => d.type === 'data-prediction-candidate')
+      .map(d => d.data as PredictionCandidatePart)
       .sort((a, b) => b.score - a.score)
+  }, [dataParts])
+
+  // D.3: extract correction and out-of-domain via hook (merges both live-stream + post-stream sources).
+  const correction = useMemo(() => {
+    const d = dataParts.find(d => d.type === 'data-correction')
+    return d ? (d.data as { original_claim: string; corrected_claim: string; classical_source?: string }) : null
+  }, [dataParts])
+
+  const outOfDomain = useMemo(() => {
+    const d = dataParts.find(d => d.type === 'data-out-of-domain')
+    return d ? (d.data as { reason: string }) : null
   }, [dataParts])
 
   const handleCitationCount = useCallback((n: number) => {
@@ -514,24 +445,32 @@ function V2Message() {
           </div>
 
           {/* Edit action + branch picker for user messages */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
               hideWhenRunning
               autohide="not-last"
-              className="flex gap-1"
+              className="flex gap-1.5"
               data-testid="v2-user-action-bar"
             >
+              <ActionBarPrimitive.Copy asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  title="Copy message"
+                  data-testid="v2-user-copy-btn"
+                >
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </ActionBarPrimitive.Copy>
               <ActionBarPrimitive.Edit asChild>
                 <button
                   type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
                   title="Edit message"
                   data-testid="v2-edit-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
-                    <path d="M11.5 2.5a1.414 1.414 0 0 1 2 2L5 13H2v-3L11.5 2.5z" />
-                  </svg>
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                 </button>
               </ActionBarPrimitive.Edit>
             </ActionBarPrimitive.Root>
@@ -561,6 +500,19 @@ function V2Message() {
               issues={citationGate.issues ?? []}
               isSuperAdmin={isSuperAdmin}
               onOpenDetails={() => setDetailsOpen(true)}
+            />
+          )}
+
+          {/* D.3: out-of-domain banner (above answer) */}
+          {outOfDomain && (
+            <OutOfDomainBanner event={{ type: 'out_of_domain', reason: outOfDomain.reason }} data-testid="v2-out-of-domain-banner" />
+          )}
+
+          {/* D.3: correction notice (above answer) */}
+          {correction && (
+            <CorrectionNotice
+              correction={{ type: 'correction', original_claim: correction.original_claim, corrected_claim: correction.corrected_claim, classical_source: correction.classical_source }}
+              data-testid="v2-correction-notice"
             />
           )}
 
@@ -635,12 +587,12 @@ function V2Message() {
           {provenance && <PostAnswerProvenance provenance={provenance} />}
 
           {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
               hideWhenRunning
               autohide="not-last"
-              className="flex gap-1"
+              className="flex gap-1.5"
               data-testid="v2-assistant-action-bar"
             >
               <V2RegenerateButton />
@@ -649,27 +601,21 @@ function V2Message() {
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
                 title="Show message details"
                 data-testid="v2-details-btn"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
-                  <circle cx="8" cy="8" r="6" />
-                  <path d="M8 7v4M8 5h.01" strokeLinecap="round" />
-                </svg>
+                <Info className="h-4 w-4" aria-hidden="true" />
               </button>
 
               <ActionBarPrimitive.Copy asChild>
                 <button
                   type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
                   title="Copy response"
                   data-testid="v2-copy-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
-                    <rect x="5" y="5" width="8" height="9" rx="1" />
-                    <path d="M3 2h7a1 1 0 0 1 1 1v1H3V2z" />
-                  </svg>
+                  <Copy className="h-4 w-4" aria-hidden="true" />
                 </button>
               </ActionBarPrimitive.Copy>
             </ActionBarPrimitive.Root>
@@ -887,39 +833,20 @@ function V2Composer() {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
-  const [interruptToast, setInterruptToast] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
-  const pendingResubmit = useRef(false)
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
       const running = runtime.getState().isRunning
-      const wasRunning = isRunningRef.current
       isRunningRef.current = running
       setIsRunning(running)
-
-      // β3: When run ends with a pending interrupt-send, resubmit after 300ms.
-      if (wasRunning && !running && pendingResubmit.current) {
-        pendingResubmit.current = false
-        setTimeout(() => {
-          setInterruptToast(false)
-          const form = containerRef.current?.querySelector('form')
-          form?.requestSubmit()
-        }, 300)
-      }
     })
     return unsub
   }, [runtime])
-
-  function handleInterruptSend() {
-    pendingResubmit.current = true
-    setInterruptToast(true)
-    runtime.cancelRun()
-  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -959,16 +886,6 @@ function V2Composer() {
         className="px-4 pb-3 pt-1"
         data-testid="v2-composer"
       >
-        {interruptToast && (
-          <div
-            className="mx-auto max-w-4xl mb-2 text-center text-xs text-amber-400"
-            data-testid="v2-interrupt-toast"
-            aria-live="polite"
-          >
-            Cancelled — sending new query
-          </div>
-        )}
-
         {/* β5: hidden file input (inside form, outside pill) */}
         <input
           ref={fileInputRef}
@@ -1021,29 +938,17 @@ function V2Composer() {
 
               <div className="flex items-center gap-1">
                 {isRunning ? (
-                  <>
-                    <ComposerPrimitive.Cancel asChild>
-                      <button
-                        type="button"
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
-                        title="Stop generation"
-                        aria-label="Stop generating response"
-                        data-testid="v2-abort-btn"
-                      >
-                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
-                      </button>
-                    </ComposerPrimitive.Cancel>
+                  <ComposerPrimitive.Cancel asChild>
                     <button
                       type="button"
-                      onClick={handleInterruptSend}
-                      className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-95"
-                      title="Cancel and send new query"
-                      aria-label="Cancel current response and send new query"
-                      data-testid="v2-interrupt-send-btn"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
+                      title="Stop generation"
+                      aria-label="Stop generating response"
+                      data-testid="v2-abort-btn"
                     >
-                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                      <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                     </button>
-                  </>
+                  </ComposerPrimitive.Cancel>
                 ) : (
                   <ComposerPrimitive.Send asChild>
                     <button
@@ -1097,6 +1002,73 @@ function V2QueryIdTracker() {
     })
     return unsub
   }, [runtime, onQueryId])
+
+  return null
+}
+
+// Reads conversation_id from data-persistence parts in message.content so that
+// subsequent requests and the regenerate button carry the correct conversation ID.
+function V2ConversationIdTracker() {
+  const runtime = useThreadRuntime()
+  const onConversationId = useContext(V2ConversationIdCb)
+
+  useEffect(() => {
+    if (!onConversationId) return
+    const unsub = runtime.subscribe(() => {
+      const state = runtime.getState()
+      const messages = state.messages
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        if (msg.role !== 'assistant') continue
+        const content = (msg.content ?? []) as ReadonlyArray<unknown>
+        for (const part of content) {
+          if (
+            typeof part === 'object' && part !== null &&
+            (part as Record<string, unknown>).type === 'data' &&
+            (part as Record<string, unknown>).name === 'persistence'
+          ) {
+            const data = (part as Record<string, unknown>).data as Record<string, unknown>
+            if (typeof data?.conversation_id === 'string') {
+              onConversationId(data.conversation_id)
+              return
+            }
+          }
+        }
+      }
+    })
+    return unsub
+  }, [runtime, onConversationId])
+
+  return null
+}
+
+// Reads data-title parts from message.content (post-stream) and fires the reload
+// callback once so ConversationSidebarV2 fetches the updated conversation list.
+function V2TitleTracker() {
+  const runtime = useThreadRuntime()
+  const onTitle = useContext(V2TitleCb)
+
+  useEffect(() => {
+    if (!onTitle) return
+    const unsub = runtime.subscribe(() => {
+      const state = runtime.getState()
+      for (const msg of state.messages) {
+        if (msg.role !== 'assistant') continue
+        const content = (msg.content ?? []) as ReadonlyArray<unknown>
+        for (const part of content) {
+          if (
+            typeof part === 'object' && part !== null &&
+            (part as Record<string, unknown>).type === 'data' &&
+            (part as Record<string, unknown>).name === 'title'
+          ) {
+            onTitle()
+            return
+          }
+        }
+      }
+    })
+    return unsub
+  }, [runtime, onTitle])
 
   return null
 }
@@ -1190,12 +1162,12 @@ function V2BottomBar() {
 function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }) {
   return (
     <ThreadPrimitive.Root
-      className="flex h-full flex-col"
+      className="flex h-full flex-col flex-1 min-w-0"
       data-testid="v2-thread-root"
     >
       {/* γ8: live region announces new assistant messages to screen readers */}
       <ThreadPrimitive.Viewport
-        className="flex-1 overflow-y-auto scroll-smooth py-4"
+        className="flex flex-col items-center flex-1 overflow-y-auto scroll-smooth py-4"
         data-testid="v2-thread-viewport"
         // γ8: role=log is the semantic landmark for a chat message log.
         // aria-live=polite ensures new messages are announced without interrupting.
@@ -1208,7 +1180,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
           <EmptyState
             chartId={chartId}
             chartName={chartName}
-            className="h-full"
+            className="max-w-4xl px-4"
             data-testid="v2-thread-empty"
           />
         </ThreadPrimitive.Empty>
@@ -1239,13 +1211,14 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
 
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
- * Accepts the same props as ConsumeChatLegacy for API compatibility.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client' }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [] }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
+  const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
@@ -1380,7 +1353,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <V2PrefsCtx.Provider value={prefsCtxValue}>
     <div
       className="relative flex h-dvh text-zinc-100"
-      data-testid="consume-chat-v2-root"
+      data-testid="v2-chat-shell"
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
       {!sidebarCollapsed && (
@@ -1399,21 +1372,27 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       <div
         className={
           sidebarCollapsed
-            ? 'hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex'
+            ? 'hidden'
             : 'fixed inset-y-0 left-0 z-40 flex'
         }
       >
-        <ConversationSidebar
+        <ConversationSidebarV2
           chartId={chartId}
           activeId={activeConversationId}
           onSelect={handleSelectConversation}
           onNew={handleNewConversation}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((c) => !c)}
+          reloadTrigger={sidebarReloadTick}
         />
       </div>
 
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+      <div
+        data-testid="v2-chat-column"
+        className={cn(
+          "flex flex-col flex-1 overflow-hidden min-w-0"
+        )}
+      >
         <header
           className="flex items-center gap-3 border-b border-zinc-800 px-4 md:px-6 py-3 shrink-0"
           data-testid="v2-header"
@@ -1461,6 +1440,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
 
           {/* Right-side actions: Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
+            <ConsumeReportLibraryV2 reports={reports} />
             <ShareButton conversationId={activeConversationId ?? undefined} />
             {audienceTier === 'super_admin' && (
               <button
@@ -1490,6 +1470,8 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             conversationId={activeConversationId}
             initialMessages={initialMessages}
             onQueryId={setLatestQueryId}
+            onConversationId={setActiveConversationId}
+            onTitle={handleTitleGenerated}
           />
         </main>
       </div>
@@ -1510,6 +1492,8 @@ interface V2ChatRuntimeProps {
   chartName: string
   conversationId: string | null
   initialMessages: UIMessage[] | undefined
+  onConversationId?: (id: string) => void
+  onTitle?: () => void
 }
 
 // ─── γ7: Session-storage key for stream-resume ───────────────────────────────
@@ -1524,7 +1508,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -1534,10 +1518,10 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
   const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
 
-  const handlePin = useCallback((n: number, signalId: string) => {
+  const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
     setPinnedCitations(prev => {
       if (prev.some(c => c.index === n)) return prev
-      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer: 'L2.5' as const, snippet: '' }]
+      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
     })
   }, [])
 
@@ -1606,6 +1590,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
 
   return (
     <V2QueryIdCb.Provider value={onQueryId ?? null}>
+    <V2ConversationIdCb.Provider value={onConversationId ?? null}>
+    <V2TitleCb.Provider value={onTitle ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
     <CitationCtx.Provider value={citationCtxValue}>
@@ -1615,6 +1601,10 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
           {/* C.2: surface latest query_id to parent via callback */}
           <V2QueryIdTracker />
+          {/* W5 fix: surface conversation_id from data-persistence part to parent */}
+          <V2ConversationIdTracker />
+          {/* E.1: trigger sidebar reload when data-title part lands after first turn */}
+          <V2TitleTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
@@ -1628,6 +1618,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
+    </V2TitleCb.Provider>
+    </V2ConversationIdCb.Provider>
     </V2QueryIdCb.Provider>
   )
 }

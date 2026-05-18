@@ -177,13 +177,5 @@ describe('AC.CO3.8 — LiveReasoningCard preserved for flag-off', () => {
     expect(src).toContain('AIOps Phase 3')
   })
 
-  it('ConsumeChatLegacy.tsx flag-off path still references LiveReasoningCard (α7: legacy content moved)', () => {
-    // After α7, ConsumeChat.tsx is a thin switch; legacy content is in ConsumeChatLegacy.tsx
-    const src = fs.readFileSync(
-      path.resolve(__dirname, '..', 'ConsumeChatLegacy.tsx'),
-      'utf8',
-    )
-    expect(src).toContain('LiveReasoningCard')
-    expect(src).toContain('Flag-OFF: legacy path')
-  })
+  // Post-§M.16: legacy chat file deleted — test retired.
 })

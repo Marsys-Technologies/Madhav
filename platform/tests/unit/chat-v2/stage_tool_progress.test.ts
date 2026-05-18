@@ -86,7 +86,7 @@ describe('B.5 — ConsumeChatV2 wiring', () => {
   it('StageStepper and ToolCallCard render inside V2Message gated on isStreaming', () => {
     const msgFn = v2Src.slice(
       v2Src.indexOf('function V2Message'),
-      v2Src.indexOf('function V2Message') + 7000,
+      v2Src.indexOf('function V2Message') + 10000,
     )
     expect(msgFn).toContain('isStreaming && stageHistory.length > 0')
     expect(msgFn).toContain('<StageStepper stages={stageHistory}')

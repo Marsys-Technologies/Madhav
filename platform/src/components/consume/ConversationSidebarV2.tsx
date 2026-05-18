@@ -30,6 +30,8 @@ export interface ConversationSidebarV2Props {
   onNew: () => void
   collapsed: boolean
   onToggle: () => void
+  /** E.1: increments each time the server signals a title was set; triggers reload. */
+  reloadTrigger?: number
 }
 
 // ─── Date grouping ────────────────────────────────────────────────────────────
@@ -101,10 +103,10 @@ function ConversationItem({
         {conv.title ?? 'Untitled'}
       </button>
 
-      {/* Archive affordance — "…" menu icon, visible on hover */}
+      {/* Archive affordance — decorative only; rename/delete wiring deferred to R7. */}
       <span
         aria-hidden
-        className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded transition-opacity text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 ${
+        className={`hidden absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded transition-opacity text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 ${
           hovered ? 'opacity-100' : 'opacity-0'
         }`}
         title="More actions"
@@ -136,6 +138,7 @@ export function ConversationSidebarV2({
   onNew,
   collapsed,
   onToggle,
+  reloadTrigger,
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -157,46 +160,25 @@ export function ConversationSidebarV2({
     reload()
   }, [reload])
 
+  // E.1: reload when server signals a title was set (fires once on the first turn).
+  useEffect(() => {
+    if (reloadTrigger !== undefined && reloadTrigger > 0) reload()
+  }, [reloadTrigger, reload])
+
   const groups = useMemo(() => groupConversations(conversations), [conversations])
 
   // ── Collapsed strip ────────────────────────────────────────────────────────
 
   if (collapsed) {
-    return (
-      <div className="flex flex-col items-center w-10 border-r border-zinc-800 bg-zinc-950 shrink-0">
-        <button
-          type="button"
-          onClick={onToggle}
-          title="Expand conversation list"
-          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-          data-testid="v2-sidebar-expand"
-        >
-          {/* Hamburger / list icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="h-4 w-4"
-            aria-hidden
-          >
-            <path
-              d="M2 4h12M2 8h7M2 12h9"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-    )
+    return null
   }
 
   // ── Expanded sidebar ───────────────────────────────────────────────────────
 
   return (
     <aside
-      className="flex flex-col w-56 shrink-0 border-r border-zinc-800 bg-zinc-950"
-      data-testid="v2-conversation-sidebar-v2"
+      className="flex flex-col w-56 shrink-0 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md"
+      data-testid="v2-conversation-sidebar"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
@@ -204,6 +186,30 @@ export function ConversationSidebarV2({
           Conversations
         </span>
         <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={onToggle}
+            title="Collapse sidebar"
+            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            data-testid="v2-sidebar-collapse"
+          >
+            {/* ChevronLeft icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="none"
+              className="h-3.5 w-3.5"
+              aria-hidden
+            >
+              <path
+                d="M10 3L5 8l5 5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={onNew}
@@ -224,30 +230,6 @@ export function ConversationSidebarV2({
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onToggle}
-            title="Collapse"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-sidebar-collapse"
-          >
-            {/* Left-chevron icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="h-3.5 w-3.5"
-              aria-hidden
-            >
-              <path
-                d="M10 3L5 8l5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
               />
             </svg>
           </button>

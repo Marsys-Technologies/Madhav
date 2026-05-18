@@ -31,9 +31,10 @@ describe('ConsumeChatV2 β1 edit & regenerate wiring', () => {
     expect(src).toContain('v2-edit-btn')
   })
 
-  it('renders ActionBarPrimitive.Reload (regenerate) for assistant messages', () => {
-    expect(src).toContain('ActionBarPrimitive.Reload')
+  it('renders V2RegenerateButton with async-await reload (race-condition-free)', () => {
+    expect(src).toContain('V2RegenerateButton')
     expect(src).toContain('v2-regenerate-btn')
+    expect(src).toContain('messageRuntime.reload()')
   })
 
   it('renders ActionBarPrimitive.Copy for assistant messages', () => {

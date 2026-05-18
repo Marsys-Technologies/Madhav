@@ -90,7 +90,7 @@ export interface SynthesisRequest {
   >
   /** γ7: called on each text-delta from the synthesis stream for stream-resume
    *  accumulation (pending_streams table). Non-blocking — failures are swallowed
-   *  inside createPendingStreamWriter. Only wired when CHAT_V2_ENABLED=true. */
+   *  inside createPendingStreamWriter. */
   onTextDelta?: (delta: string) => void
 }
 

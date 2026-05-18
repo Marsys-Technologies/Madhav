@@ -29,15 +29,17 @@ describe('regenerate truncation wiring — B.3 fix', () => {
     expect(v2Src).toContain('parent_message_id')
   })
 
-  it('V2RegenerateButton wraps ActionBarPrimitive.Reload asChild (reload still fires)', () => {
-    expect(v2Src).toContain('ActionBarPrimitive.Reload asChild')
-    // The custom button is rendered inside the Reload primitive
+  it('V2RegenerateButton awaits truncation then calls messageRuntime.reload() (race-condition-free)', () => {
+    // Commit 220e366 replaced ActionBarPrimitive.Reload asChild with an explicit
+    // await-then-reload pattern to eliminate the race where synthesis started against
+    // an un-truncated conversation.
     const reloadBlock = v2Src.slice(
       v2Src.indexOf('function V2RegenerateButton'),
       v2Src.indexOf('function V2RegenerateButton') + 2000,
     )
-    expect(reloadBlock).toContain('ActionBarPrimitive.Reload asChild')
+    expect(reloadBlock).toContain('messageRuntime.reload()')
     expect(reloadBlock).toContain('v2-regenerate-btn')
+    expect(reloadBlock).toContain('/api/chat/consume/regenerate')
   })
 
   it('ConversationIdCtx threads conversationId into V2Message without prop drilling', () => {

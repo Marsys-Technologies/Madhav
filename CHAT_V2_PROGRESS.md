@@ -1478,5 +1478,290 @@ _Gate: every W-case Playwright test must PASS with auth before PR opens. F.1 (15
 - **Labels created**: `needs-visual-review` (#FBCA04), `chat-v2-r5` (#5319E7) — new to repo
 - **Reason**: pre-condition for Round 5 process change (operator visual review gate per CHAT_V2_ROUND_5_PLAN_v1_0.md §7)
 - **PR #56 (F-W3)**: OPEN (not yet merged — plan assumed merged; flagged for Cowork attention; same hold applies)
-- **Next**: Phase A.1 chat column offset fix
+- **Next**: ~~Phase A.1 chat column offset fix~~ → DONE (see Phase A.1 below)
+
+## Round 5 — Phase A.1 — Chat column sidebar offset
+
+- **Date**: 2026-05-17
+- **PR**: [#60](https://github.com/amonty84/Madhav/pull/60) `fix(chat-v2/r5/A.1): chat column sidebar offset (eliminates clipping)`
+- **Branch**: `fix/chat-v2-r5/A1-chat-column-offset`
+- **Change**: `ConsumeChatV2.tsx:1417` — added `md:ml-{10|56}` conditional class + `transition-[margin-left]`
+- **Tests**: vitest 2/2 PASS; Playwright E2E 4/4 PASS (bounding-box + visual baselines)
+- **Visual baselines**: `platform/tests/screenshots/r5/a1-sidebar-{collapsed,expanded}.png`
+- **Status**: AWAITING OPERATOR VISUAL REVIEW → merge via `gh pr merge 60 --squash --delete-branch`
+- **Next**: Phase A.2 (sidebar background color) after A.1 is merged
+
+## Round 5 — Phase A.2 — Sidebar background gradient
+
+- **Date**: 2026-05-18
+- **PR**: [#63](https://github.com/amonty84/Madhav/pull/63) `fix(chat-v2/r5/A.2): sidebar background — restore brand gradient`
+- **Branch**: `fix/chat-v2-r5/A2-sidebar-background`
+- **Change**: `ConsumeChatV2.tsx` sidebar wrappers — removed hardcoded `bg-zinc-950`; replaced with translucent brand-charcoal + `backdrop-blur-sm` + gold hairline border so ConsumeOverlayPortal gradient shows through
+- **Tests**: vitest unit tests PASS
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: a9af145
+
+### A.2 — COMPLETE
+
+## Round 5 — Phase B.1 — F-W10 citation chips fix
+
+- **Date**: 2026-05-18
+- **PR**: [#57](https://github.com/amonty84/Madhav/pull/57) `fix(chat-v2/parity/F-W10): citation chips always render + collapsed sidebar pointer-events`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W10-citation-chips`
+- **Change**: Citation chip rendering fix (W10) + collapsed sidebar pointer-events-none (side effect of A.2 rebase)
+- **Tests**: vitest component/unit PASS (23 tests, 4 files)
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 6a5c708
+
+### B.1 — COMPLETE
+
+## Round 5 — Phase B.2 — F-W5 regenerate wiring
+
+- **Date**: 2026-05-18
+- **PR**: [#58](https://github.com/amonty84/Madhav/pull/58) `fix(chat-v2/parity/F-W5): conversation-ID tracking + regenerate always fires + sidebar pointer-events`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W5-regenerate-wiring`
+- **Change**: V2RegenerateButton awaits `/api/chat/consume/regenerate` truncation then calls `messageRuntime.reload()` — eliminates race condition. V2ConversationIdTracker extracts conversation_id from data-persistence parts.
+- **Tests**: unit + integration tests updated to match new await-then-reload pattern; vitest 23/23 PASS
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 379066f
+
+### B.2 — COMPLETE
+
+## Round 5 — Phase B.3 — F-W3 details drawer live-stream
+
+- **Date**: 2026-05-18
+- **PR**: [#56](https://github.com/amonty84/Madhav/pull/56) `fix(chat-v2/parity/W3): details drawer reads tokens+cost from message.content`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W3-drawer-livestream`
+- **Change**: `PerMessageDetailsDrawer.tsx` — switched data-part extraction from `message.metadata.unstable_data` (live-stream only) to `message.content` DataMessagePart (`{ type: 'data', name, data }` format) — universal path covering both live-stream and reload
+- **Conflict resolved**: `walkthrough-comprehensive.spec.ts` kept HEAD's `collapseSidebar()` helper; docstring in PerMessageDetailsDrawer updated to F-W3 description
+- **Tests**: 34 chat-v2 test files, 391/391 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 1e714dc
+
+### B.3 — COMPLETE
+
+## Round 5 — Phase B.4 — F-W4+F-W8 panel toggle + trace drawer testid
+
+- **Date**: 2026-05-18
+- **PR**: [#59](https://github.com/amonty84/Madhav/pull/59) `fix(chat-v2/parity/W4+W8): panel toggle pointer-events + trace drawer testid`
+- **Branch**: `fix/chat-v2-parity-c-ext/F-W4W8-panel-trace`
+- **Change**: W4 panel toggle pointer-events fix + W8 `v2-details-btn` testid wiring in `TraceDrawer.tsx`; collapsed sidebar styling conflict resolved (kept HEAD's A.2 brand-charcoal gradient — `pointer-events-none` already present in both)
+- **Tests**: 34 chat-v2 test files, 391/391 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED (squash-merged to main)
+- **Commit**: 2179f92
+
+### B.4 — COMPLETE
+
+## Round 5 — Phase C.1 — Wire ConsumeReportLibraryV2
+
+- **Date**: 2026-05-18
+- **PR**: [#64](https://github.com/amonty84/Madhav/pull/64) `feat(chat-v2/r5/C.1): wire ConsumeReportLibraryV2 into ConsumeChatV2 header`
+- **Branch**: `fix/chat-v2-r5/C1-report-library-wire-in`
+- **Change**: Added `ConsumeReportLibraryV2` import; destructured `reports = []` from props; rendered `<ConsumeReportLibraryV2 reports={reports} />` in `v2-header-actions` before `ShareButton`
+- **Tests**: `report_library_wire.test.ts` — 4/4 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: af138af
+
+### C.1 — COMPLETE
+
+## Round 5 — Phase C.2 — Adopt ConversationSidebarV2
+
+- **Date**: 2026-05-18
+- **PR**: [#65](https://github.com/amonty84/Madhav/pull/65) `fix(chat-v2/r5/C.2): adopt ConversationSidebarV2 — replace inlined sidebar`
+- **Branch**: `fix/chat-v2-r5/C2-sidebar-v2-adoption`
+- **Change**: Removed ~125-line `ConversationSidebar` function + supporting interfaces from `ConsumeChatV2.tsx`; imported `ConversationSidebarV2`; applied A.2 brand-charcoal styling to standalone component; fixed testid to `v2-conversation-sidebar`; fixed `sidebar-background.test.tsx` import path
+- **Tests**: `sidebar_v2_adoption.test.ts` — 5/5 PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+
+### C.2 — COMPLETE
+
+## Round 5 — Phase C.3 — Rich data-citation payload
+
+- **Date**: 2026-05-18
+- **PR**: [#66](https://github.com/amonty84/Madhav/pull/66) `fix(chat-v2/r5/C.3): consume rich data-citation payload in V2AssistantText`
+- **Branch**: `fix/chat-v2-r5/C3-citation-rich-payload`
+- **Change**: Extended `CitationContextValue.onPin` signature with `snippet?` + `layer?`; updated `handlePin` to use params; added `citationRichMap` (signal_id → {snippet, layer} from `message.content` DataMessageParts) + `enrichedOnPin` in `V2AssistantText`; wired `renderWithCitations(text, enrichedOnPin)`; widened `markdown_render_v2.test.ts` slice to 2500 chars
+- **Tests**: `citation_rich_payload.test.ts` — 5/5 PASS; 38 chat-v2 files / 410 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+
+### C.3 — COMPLETE
+
+## Round 5 — Phase C.4 — Emit data-observability + trace deep-link
+
+- **Date**: 2026-05-18
+- **PR**: [#67](https://github.com/amonty84/Madhav/pull/67) `fix(chat-v2/r5/C.4): emit data-observability with query_id + trace_url`
+- **Branch**: `fix/chat-v2-r5/C4-observability-emission`
+- **Change**: Added `observabilityPart` to `route.ts` import; emitted `data-observability` in `onFinish` with `query_id: queryId` + `trace_url: /observatory/trace/${queryId}`; `PerMessageDetailsDrawer` already reads the part and renders the trace link (wired in B.3)
+- **Tests**: `observability_emission.test.ts` — 5/5 PASS; 38 chat-v2 files / 410 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: 3004f62
+
+### C.4 — COMPLETE
+
+## Round 5 — Phase C.5 — Action bar always-visible on touch devices
+
+- **Date**: 2026-05-18
+- **PR**: [#68](https://github.com/amonty84/Madhav/pull/68) `fix(chat-v2/r5/C.5): action bar always-visible on touch devices`
+- **Branch**: `fix/chat-v2-r5/C5-action-bar-touch`
+- **Change**: Replaced `opacity-0 group-hover:opacity-100` with `[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100` on both user and assistant action bar divs in `ConsumeChatV2.tsx`
+- **Tests**: `action_bar_touch.test.ts` — 4/4 PASS; 39 chat-v2 files / 414 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: f9da251
+
+### C.5 — COMPLETE
+
+## Round 5 — Phase D.1 — Real GCS retrieval
+
+- **Date**: 2026-05-18
+- **Status**: DEFERRED — no GCS credentials available in this execution environment
+- **Action**: No code change. Log entry only per operator-approved defaults.
+
+### D.1 — DEFERRED
+
+## Round 5 — Phase D.2 — Vertex DU PDF extraction
+
+- **Date**: 2026-05-18
+- **Status**: DEFERRED — no Vertex credentials available in this execution environment
+- **Action**: No code change. Log entry only per operator-approved defaults.
+
+### D.2 — DEFERRED
+
+## Round 5 — Phase D.3 — CorrectionNotice + OutOfDomainBanner emission
+
+- **Date**: 2026-05-18
+- **PR**: [#69](https://github.com/amonty84/Madhav/pull/69) `fix(chat-v2/r5/D.3): emit data-correction + data-out-of-domain; subscribe in V2Message`
+- **Branch**: `fix/chat-v2-r5/D3-correction-out-of-domain-emission`
+- **Change**: Added `CorrectionPartSchema` + `OutOfDomainPartSchema` to `data_parts.ts`; imported `parseMarkers` in `route.ts` and emit `data-correction`/`data-out-of-domain` in `onFinish`; imported `CorrectionNotice` + `OutOfDomainBanner` in `ConsumeChatV2.tsx`, read from both `message.content` (post-stream) and `dataParts` (live), render above `MessagePrimitive.Parts`
+- **Tests**: `correction_out_of_domain.test.ts` — 15/15 PASS; 40 chat-v2 files / 429 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: 39044ff
+
+### D.3 — COMPLETE
+
+## Round 5 — Phase E.1 — Sidebar refresh on auto-title
+
+- **Date**: 2026-05-18
+- **PR**: [#70](https://github.com/amonty84/Madhav/pull/70) `fix(chat-v2/r5/E.1): sidebar auto-refresh on title generation via data-title part`
+- **Branch**: `fix/chat-v2-r5/E1-sidebar-refresh-on-title`
+- **Change**: Added `TitlePartSchema` + `titlePart` to `data_parts.ts`; emitted `data-title` in route.ts `onFinish` when `isFirstTurn`; added `reloadTrigger` prop to `ConversationSidebarV2`; added `V2TitleCb` context + `V2TitleTracker` in `ConsumeChatV2`; threaded `onTitle` through `V2ChatRuntime`
+- **Tests**: `sidebar_auto_title_refresh.test.ts` — 12/12 PASS; 41 chat-v2 files / 441 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: b33ade4
+
+### E.1 — COMPLETE
+
+## Round 5 — Phase E.2 — Wire or remove dormant flags
+
+- **Date**: 2026-05-18
+- **Verdict**: Both flags are **properly wired with effective gates** — no code change needed.
+  - `HISTORY_COMPRESSION_ENABLED`: wired in `route.ts:739` — calls `compressHistory` when true. Default `false`. Leave.
+  - `COST_VISIBILITY_FOR_USERS`: wired in consume page.tsx files — passed as prop → `CostVisibilityCtx` → `V2Message.costVisible`. Default `false`. Leave.
+- **Status**: AUDIT-ONLY (no PR)
+
+### E.2 — COMPLETE
+
+## Round 5 — Phase E.3 — Anthropic force-route param
+
+- **Date**: 2026-05-18
+- **PR**: [#71](https://github.com/amonty84/Madhav/pull/71) `fix(chat-v2/r5/E.3): ?provider= URL param + MARSYS_FORCE_PROVIDER env override`
+- **Branch**: `fix/chat-v2-r5/E3-anthropic-force-route`
+- **Change**: Added provider-override block in `route.ts` after `VALID_STACKS` declaration: reads `?provider=` URL search param or `MARSYS_FORCE_PROVIDER` env var (only when `body.stack` is not set); validates against `VALID_STACKS`; falls back to `DEFAULT_STACK_ID`
+- **Tests**: `provider_force_route.test.ts` — 5/5 PASS; 42 chat-v2 files / 446 tests all PASS; tsc clean
+- **Auth**: not available — screenshots skipped (auth-unavailable)
+- **Status**: MERGED
+- **Commit**: bef8383
+
+### E.3 — COMPLETE
+
+## Round 5 — Phase E.4 — Delete stranded legacy components
+
+- **Date**: 2026-05-18
+- **Audit**: Fresh symbol-based grep shows all four previously-targeted components are imported from within the V1 legacy subsystem — NOT safe to delete:
+  - `MessageActions.tsx` — 2 imports from `AssistantMessage.tsx` + `UserMessage.tsx` (within chat/)
+  - `ThemeToggle.tsx` — 1 import from `ConversationSidebar.tsx` (which has 3 imports from ConsumeShell/ConsumeRail/BuildChat)
+  - `UserMessage.tsx` — 2 imports from `MessageList.tsx` + `VirtualizedMessageList.tsx` (within chat/)
+  - `VirtualizedMessageList.tsx` — 1 import from `AdaptiveMessageList.tsx` (within chat/)
+  - No `chat/` component has zero total imports; V1 path (BuildChat, ConsumeShell, StreamingAnswer) keeps the whole chain live
+- **Decision**: No deletions. V1 components will become zero-import only when the V1 path is retired post-flag-flip.
+- **Status**: AUDIT-ONLY (no PR)
+
+### E.4 — COMPLETE (AUDIT-ONLY)
+
+---
+
+## Round 5 — Phase F — Verification + Re-flip
+
+### F.1 — Comprehensive Playwright walkthrough
+
+- **Status**: BLOCKED — auth-unavailable (auth-unavailable log per operator-approved defaults)
+
+### F.2 — Visual regression baselines
+
+- **Status**: BLOCKED — auth-unavailable (auth-unavailable log per operator-approved defaults)
+
+### F.3 — Operator final visual review
+
+- **Date**: 2026-05-18
+- **Status**: **FAIL** — operator manual walkthrough caught 13+ regressions
+- **Forensic**: `00_ARCHITECTURE/CHAT_V2_F3_FORENSIC_v1_0.md` (on main since a97c344) traced each finding to file:line; identified three cumulative root-cause patterns (data-parts source-of-truth; duplicate affordances; backend stubs satisfying types-not-contracts)
+- **Outcome**: F.4 reflip blocked. Round 6 fix-wave required.
+
+### F.4 — Re-flip master flag
+
+- **Status**: BLOCKED on Round 6 close. Will reflip after R6.1–R6.6 merge + R6-SMOKE green + operator manual F.3 re-run sign-off.
+
+---
+
+**Round 5 closed at F.3 FAIL.** Phase A–E shipped 11 PRs to main. F.1/F.2 remained blocked on auth (auth-unavailable log). F.3 caught regressions Round 5's per-PR visual review did not surface. Round 6 begins.
+
+---
+
+## Round 6 — F.3 fix-wave + automated smoke gate
+
+**Plan**: `00_ARCHITECTURE/CHAT_V2_ROUND_6_PLAN_v1_0.md` (v1.0 DRAFT, on main since 2026-05-18 commit a97c344 / PR #72)
+
+**Forensic**: `00_ARCHITECTURE/CHAT_V2_F3_FORENSIC_v1_0.md` (v1.0 DRAFT, on main since same commit)
+
+**Scope**: 6 P0 PRs (R6.1–R6.6) + R6-SMOKE Playwright spec + R6-CI required-check workflow + F.4 master flag reflip. R7 deferred: N3, L4, N2, O5, N1, O11, O6, O4.
+
+**Operator decisions baked in (plan §7)**:
+1. R6.5 cancel-and-resend → right-click context menu
+2. R6.3 enrichCitations → route-side onFinish
+3. R6-CI trigger → pull_request + merge_group
+4. F.4 watch window → 7 days
+5. Decorative three-dot sidebar menu → hide via display:none in R6.4
+
+### R6 — EXEC briefs
+
+| Brief | Path | Status |
+|---|---|---|
+| R6-SMOKE + R6-CI | `00_ARCHITECTURE/chat_v2_briefs/round6/R6-SMOKE-and-R6-CI.md` | READY_FOR_EXECUTION (on main since 2026-05-18 PR #72) |
+| R6.1 useDataParts hook | not yet authored | pending |
+| R6.2 footnote citations | not yet authored | pending |
+| R6.3 enrichCitations | not yet authored | pending |
+| R6.4 sidebar layout discipline | not yet authored | pending |
+| R6.5 single stream button | not yet authored | pending |
+| R6.6 action-bar icon scale | not yet authored | pending |
+| F.4 master flag reflip | not yet authored | pending |
+
+### R6 — Execution timeline
+
+| Date | Event |
+|---|---|
+| 2026-05-18 | Forensic + Round 6 plan + R6-SMOKE/R6-CI brief landed on main (PR #72, a97c344) |
+| pending | R6-SMOKE + R6-CI executor session (branch `chore/chat-v2-r6/smoke-spec-and-workflow`) |
+| pending | R6.1–R6.6 EXEC briefs authored + executed (one per round, in plan §4.5 order) |
+| pending | Operator F.3 re-run on post-merge staging revision |
+| pending | F.4 reflip; 7-day watch window |
 

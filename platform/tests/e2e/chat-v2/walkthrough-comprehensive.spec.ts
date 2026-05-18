@@ -215,6 +215,9 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
     // Read initial state
     const initialStored = await page.evaluate(() => sessionStorage.getItem('v2_panel_opt_in_new'))
 
+    // Collapse sidebar — overlay z-40 can intercept pointer events on the toolbar
+    await collapseSidebar(page)
+
     // Click toggle
     await toggle.click()
     const afterClickStored = await page.evaluate(() => sessionStorage.getItem('v2_panel_opt_in_new'))
@@ -242,6 +245,7 @@ test.describe('Walkthrough W1–W15 — default provider (Gemini)', () => {
 
     const beforeCount = await page.locator('[data-testid="v2-assistant-message"]').count()
 
+    await collapseSidebar(page)
     await page.getByTestId('v2-assistant-message').last().hover()
     await page.waitForSelector('[data-testid="v2-regenerate-btn"]', { timeout: 5_000 })
     await page.getByTestId('v2-regenerate-btn').last().click()

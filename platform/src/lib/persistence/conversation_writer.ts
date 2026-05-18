@@ -22,8 +22,6 @@ export interface WriteConversationMessagesResult {
  * Strategy: upsert each UIMessage by its stable AI SDK `id` into
  * `conversation_messages` so the operation is idempotent on reconnect/retry.
  * After writing, performs a read-after-write count check.
- *
- * The legacy `messages` table is NOT touched — that belongs to ConsumeChatLegacy.
  */
 export async function writeConversationMessages(
   params: WriteConversationMessagesParams,

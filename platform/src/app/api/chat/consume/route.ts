@@ -7,7 +7,8 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart } from '@/lib/streams/data_parts'
+import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { NextResponse } from 'next/server'
@@ -199,9 +200,18 @@ export async function POST(request: Request) {
   // Resolve synthesis model from stack. Stack takes precedence over the legacy
   // `model` field. Unknown/missing stacks fall back to the default NIM stack.
   const VALID_STACKS = Object.keys(STACK_ROUTING) as ModelStack[]
+  // E.3: provider override — URL param ?provider=<stack> or MARSYS_FORCE_PROVIDER env.
+  // Takes lowest precedence: only applied when the client sent no explicit stack.
+  const providerOverride = (
+    (!body.stack && new URL(request.url).searchParams.get('provider')) ||
+    (!body.stack && process.env.MARSYS_FORCE_PROVIDER) ||
+    null
+  )
   const selectedStack: ModelStack = VALID_STACKS.includes(body.stack as ModelStack)
     ? (body.stack as ModelStack)
-    : DEFAULT_STACK_ID
+    : (providerOverride && VALID_STACKS.includes(providerOverride as ModelStack)
+        ? (providerOverride as ModelStack)
+        : DEFAULT_STACK_ID)
   const [stackSynthPrimary, stackSynthFallback] = await Promise.all([
     getEffectiveModel(selectedStack, 'synthesis', 'primary', request),
     getEffectiveModel(selectedStack, 'synthesis', 'fallback', request),
@@ -359,11 +369,7 @@ export async function POST(request: Request) {
   const queryId = preAllocatedQueryId
 
   // γ7: Create per-request pending stream writer for stream-resume.
-  // Only wired when CHAT_V2_ENABLED (the V2 runtime will read from sessionStorage).
-  const chatV2Enabled = configService.getFlag('CHAT_V2_ENABLED')
-  const pendingStreamWriter = chatV2Enabled
-    ? createPendingStreamWriter(queryId, finalConversationId, user.uid)
-    : null
+  const pendingStreamWriter = createPendingStreamWriter(queryId, finalConversationId, user.uid)
 
   // β3: Register abort sentinel — writes a 'cancelled' step when client disconnects mid-stream.
   request.signal.addEventListener('abort', () => {
@@ -801,7 +807,7 @@ export async function POST(request: Request) {
     synthesis_guidance: plan.synthesis_guidance,
     abortSignal: request.signal,
     // γ7: wire text-delta accumulator for stream-resume (pending_streams).
-    ...(pendingStreamWriter && { onTextDelta: (d: string) => pendingStreamWriter.onTextDelta(d) }),
+    onTextDelta: (d: string) => pendingStreamWriter.onTextDelta(d),
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,
@@ -885,7 +891,7 @@ export async function POST(request: Request) {
       }
       // γ7: bump event seq for each pre-stream data-part block (stage/tool events).
       // The seq is used by the resume endpoint to skip already-received events.
-      pendingStreamWriter?.onEvent()
+      pendingStreamWriter.onEvent()
       writer.merge(result.toUIMessageStream({
         originalMessages: messages,
         generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
@@ -1052,6 +1058,10 @@ export async function POST(request: Request) {
         console.error('[consume:v2] citation gate error', err)
       }
 
+      // Close the synthesis stage state machine — pip transitions from pulsing to static.
+      // synthesisStart captured at L712 before stream merge; duration is observability only.
+      writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - synthesisStart) })
+
       // Emit trace done sentinel so SSE endpoint closes the stream
       emit({ event: 'done', query_id: queryId })
       try {
@@ -1076,6 +1086,11 @@ export async function POST(request: Request) {
             }),
           })
         }
+        // γ5: emit observability part so PerMessageDetailsDrawer "View trace" link has query_id
+        writer.write({
+          type: 'data-observability',
+          data: observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` }),
+        })
       } catch (err) {
         console.error('[consume:v2] cost data part error', err)
       }
@@ -1150,6 +1165,27 @@ export async function POST(request: Request) {
           }
         }
 
+        // D.3: emit correction + out-of-domain data parts when synthesis markers present.
+        if (lastAssistantText) {
+          const { correction, outOfDomain } = parseMarkers(lastAssistantText)
+          if (correction) {
+            writer.write({
+              type: 'data-correction',
+              data: correctionPart({
+                original_claim: correction.original_claim,
+                corrected_claim: correction.corrected_claim,
+                classical_source: correction.classical_source,
+              }),
+            })
+          }
+          if (outOfDomain) {
+            writer.write({
+              type: 'data-out-of-domain',
+              data: outOfDomainPart({ reason: outOfDomain.reason }),
+            })
+          }
+        }
+
         // γ3: PPL — detect time-indexed prediction candidates in the final answer.
         // Runs sync (regex-only) in onFinish — does NOT block the user stream.
         // Only emit candidates with score >= 0.5 (high-confidence regex hits).
@@ -1169,6 +1205,15 @@ export async function POST(request: Request) {
           }
         }
 
+        if (isFirstTurn) {
+          // E.1: signal client to reload sidebar (title is being set — Gate II already
+          // wrote it; Gate III will write it asynchronously after onFinish returns).
+          writer.write({
+            type: 'data-title',
+            data: titlePart({ conversation_id: finalConversationId }),
+          })
+        }
+
         if (isFirstTurn && !gateIIITitle) {
           // Gate III: only runs if eager pre-stream title generation failed.
           generateConversationTitle(finalMessages, {
@@ -1185,7 +1230,7 @@ export async function POST(request: Request) {
       // γ7: Clear pending stream now that β2 persistence has written the full
       // conversation. On next reload the client will restore from conversation_messages
       // rather than pending_streams. Failure is non-fatal (TTL will expire the row).
-      if (pendingStreamWriter) { void pendingStreamWriter.clear() }
+      void pendingStreamWriter.clear()
       if (!lelContextEnabled) {
         try {
           const fs = await import('fs/promises')
