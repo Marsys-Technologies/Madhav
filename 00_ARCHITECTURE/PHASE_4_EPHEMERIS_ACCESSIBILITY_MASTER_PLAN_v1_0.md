@@ -73,6 +73,7 @@ campaign:
         brief: briefs/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md
         authored_on: 2026-05-19
         closed_on: 2026-05-19
+        closing_commit_sha: c63ef9f
         scope: |
           Migration 059 adds 7 nullable derived columns to ephemeris_daily:
             dignity_d1, is_combust, combust_orb_deg, vargottama_today,
@@ -152,7 +153,7 @@ At close, author `PHASE_4_CLOSE_v1_0.md` sealing artifact with:
 
 **§4.A is CLOSED** (2026-05-19 at `bd41f13`). `query_ephemeris` tool live in RETRIEVAL_TOOLS registry, R-TC rule encoded in PLANNER_PROMPT_v2_0.md v2.0.3.
 
-**§4.B is CLOSED** (2026-05-19). Migration 059 + 7 derived columns + MEAN_NODE Rahu fix + `ephemeris_derivations.py` + `enrich_ephemeris_daily.py` + `query_ephemeris` `derived_fields` param + 20 Python tests + 12 TS tests (5 new) + GT.070–073 + RUNBOOK_EPHEMERIS_REBUILD_v1_0.md all shipped. tsc clean, vitest 12/12, pytest 20/20, planner_regression_gate 2/2. Closing commit SHA: (see git log). Production 657K-row rebuild deferred to native per runbook — Path A recommended.
+**§4.B is CLOSED** (2026-05-19 at `c63ef9f`). Migration 059 + 7 derived columns + MEAN_NODE Rahu fix + `ephemeris_derivations.py` + `enrich_ephemeris_daily.py` + `query_ephemeris` `derived_fields` param + 20 Python tests + 12 TS tests (5 new) + GT.070–073 + RUNBOOK_EPHEMERIS_REBUILD_v1_0.md all shipped. tsc clean, vitest 12/12, pytest 20/20, planner_regression_gate 2/2. Production 657K-row rebuild deferred to native per runbook — Path A recommended.
 
 **Execution prompt to paste into Claude Code for §4.B:**
 
