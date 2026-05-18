@@ -1,0 +1,46 @@
+name: chat-v2 smoke
+
+on:
+  pull_request:
+    paths:
+      - 'platform/src/components/consume/ConsumeChatV2.tsx'
+      - 'platform/src/components/chat-v2/**'
+      - 'platform/src/components/chat/ConversationSidebarV2.tsx'
+      - 'platform/src/app/api/chat/consume/route.ts'
+      - 'platform/src/lib/synthesis/prompts/synthesis_prompt_v2.ts'
+      - 'platform/src/lib/citations/**'
+      - 'platform/tests/e2e/chat-v2/round6-walkthrough.spec.ts'
+      - 'platform/tests/e2e/chat-v2/fixtures/round6-mock-route.ts'
+  merge_group:
+    branches:
+      - main
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run chat-v2 smoke spec
+        run: npx playwright test tests/e2e/chat-v2/round6-walkthrough.spec.ts --project=chromium --reporter=github
+        env:
+          PLAYWRIGHT_CHAT_CLIENT_ID: ${{ vars.PLAYWRIGHT_CHAT_CLIENT_ID || 'test-client' }}
+          # No LLM credentials needed — mock route intercepts the API call.
+          # MARSYS_FLAG_CHAT_V2_ENABLED is passed via ?provider=mock query param
+          # in the spec's beforeEach; no env var required for the flag in CI.
