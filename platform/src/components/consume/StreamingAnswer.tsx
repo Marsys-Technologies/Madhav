@@ -42,7 +42,7 @@ interface Props {
  *   - Streamed assistant text is run through `parseMarkers` so ‹reasoning›,
  *     ‹correction›, ‹sanskrit›, and ‹out_of_domain› spans are extracted.
  *   - Markers bubble up via `onMarkers` so ConsumeChat can drive
- *     LiveReasoningCard, CorrectionNotice, etc.
+ *     CorrectionNotice, ReasoningSlot, etc.
  *   - The visible streamed prose has markers stripped (Sanskrit display
  *     text is kept; reasoning/correction/out_of_domain are removed).
  */
@@ -74,7 +74,6 @@ export function StreamingAnswer({
 
   // For 'native' models (Gemini 2.5), reasoning arrives as SDK-level
   // type:'reasoning' UIMessage parts rather than ‹reasoning› text markers.
-  // Extract them and convert to ReasoningStepEvent[] for LiveReasoningCard.
   // Each reasoning part may contain a multi-line thought block; split by line
   // so the card renders individual steps (matching the ‹reasoning› granularity).
   //
@@ -158,9 +157,6 @@ export function StreamingAnswer({
 
           if (isCurrentlyStreaming) {
             // When there's no visible text yet, return an invisible placeholder.
-            // LiveReasoningCard (rendered below StreamingAnswer in ConsumeChat)
-            // owns the "Thinking…" state — rendering StreamingDots here would
-            // produce duplicate dots above the reasoning card.
             if (!visible) return <div key={message.id} aria-hidden />
             return (
               <div key={message.id} className="mx-auto w-full max-w-4xl px-4 py-2">

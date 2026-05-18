@@ -59,7 +59,7 @@ export type ModelTier = 'premium' | 'mid' | 'worker'
  *  'native'  — reasoning arrives via SDK-level `type:'reasoning'` UIMessage
  *              parts (Gemini 2.5 with thinkingBudget). No inline markers needed;
  *              REASONING_NARRATION_GATE is stripped from the synthesis prompt.
- *              StreamingAnswer extracts these parts and routes them to LiveReasoningCard.
+ *              StreamingAnswer extracts these parts for the reasoning UI surface (ReasoningSlot).
  *
  *  'none'    — no reasoning UI surface (GPT, Anthropic, NVIDIA, etc.).
  *              REASONING_NARRATION_GATE is stripped from the synthesis prompt,
@@ -104,7 +104,7 @@ export interface ModelMeta {
   /**
    * How this model's chain-of-thought reasoning surfaces in the UI.
    * Controls whether REASONING_NARRATION_GATE is included in the synthesis
-   * prompt and how StreamingAnswer routes reasoning content to LiveReasoningCard.
+   * prompt and how StreamingAnswer routes reasoning content to the UI.
    */
   reasoningMode: ReasoningMode
   /** Provider-specific behavior metadata. Drives the Adapter Layer (AD.1+). */

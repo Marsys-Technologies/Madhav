@@ -1,14 +1,15 @@
 # chat-v2 smoke gate
 #
-# Today (post R6-SMOKE-PATCH): runs the round6-walkthrough spec under chromium.
-# Without SMOKE_SESSION_COOKIE + SMOKE_CHART_ID secrets provisioned in this
-# workflow's environment, all 9 tests skip — workflow exits 0 vacuously.
+# After R7-CI-WIRING (this commit): CI smoke runs E2E if secrets are provisioned;
+# otherwise still skips — workflow exits 0 vacuously.
+# Firebase + SMOKE_SESSION_COOKIE + SMOKE_CHART_ID are injected via `env:` below.
 # Local operator runs (with cookies minted) exercise the gate normally.
 #
-# R7 follow-up: provision SMOKE_SESSION_COOKIE + SMOKE_CHART_ID as GitHub
-# Actions secrets, inject via `env:` block on the playwright step, then
-# enable `chat-v2 smoke / smoke` as a required check on main branch
-# protection. Tracking: 00_ARCHITECTURE/CHAT_V2_ROUND_6_PLAN_v1_0.md §8.3.
+# Operator follow-up (one-time setup):
+#   1. Mint a long-lived __session cookie via platform/scripts/dev/mint_session_cookie.ts
+#   2. Provision GitHub Actions secrets: SMOKE_SESSION_COOKIE, SMOKE_CHART_ID
+#   3. Verify NEXT_PUBLIC_FIREBASE_* + FIREBASE_ADMIN_CREDENTIALS already provisioned
+#   4. Enable `chat-v2 smoke / smoke` as required check on main branch protection
 #
 
 name: chat-v2 smoke
@@ -55,6 +56,12 @@ jobs:
         env:
           SMOKE_SESSION_COOKIE: ${{ secrets.SMOKE_SESSION_COOKIE }}
           SMOKE_CHART_ID: ${{ secrets.SMOKE_CHART_ID }}
-          # No LLM credentials needed — mock route intercepts the API call.
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          FIREBASE_ADMIN_CREDENTIALS: ${{ secrets.FIREBASE_ADMIN_CREDENTIALS }}
           # Without secrets provisioned, the spec skips (test.skip guard) and
-          # the workflow exits 0 vacuously. R7 follow-up: provision secrets.
+          # the workflow exits 0 vacuously.

@@ -2,8 +2,8 @@
  * pipeline_event_translator.ts — Gate III.
  *
  * Pure translation: pipeline step name (+ optional metadata) → astrological
- * narration string. Used by LiveReasoningCard to render trace events without
- * leaking internal jargon.
+ * narration string. Used to render pipeline trace events without leaking
+ * internal jargon into the UI.
  */
 
 import {
