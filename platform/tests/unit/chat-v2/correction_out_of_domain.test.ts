@@ -83,12 +83,14 @@ describe('D.3 — CorrectionNotice + OutOfDomainBanner emission', () => {
       expect(v2Src).toContain("from './OutOfDomainBanner'")
     })
 
-    it('subscribes to correction data part from message.content', () => {
-      expect(v2Src).toContain("name === 'correction'")
+    it('subscribes to correction data part (via useDataParts hook)', () => {
+      // R6.1: consolidated to hook — matches data-correction from both sources
+      expect(v2Src).toContain("'data-correction'")
     })
 
-    it('subscribes to out_of_domain data part from message.content', () => {
-      expect(v2Src).toContain("name === 'out_of_domain'")
+    it('subscribes to out_of_domain data part (via useDataParts hook)', () => {
+      // R6.1: consolidated to hook — matches data-out-of-domain from both sources
+      expect(v2Src).toContain("'data-out-of-domain'")
     })
 
     it('renders CorrectionNotice when correction present', () => {

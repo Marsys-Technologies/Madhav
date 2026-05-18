@@ -39,7 +39,7 @@ test.describe('A.1 — chat column sidebar offset', () => {
 
   // Navigate to a known fresh state before each test.
   // Using page.goto on repeated navigations to the same Next.js app-router URL can leave
-  // a second consume-chat-v2-root in the DOM during the transition. Going to '/' first
+  // a second v2-chat-shell in the DOM during the transition. Going to '/' first
   // clears the old render before navigating to the consume page.
   test.beforeEach(async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
@@ -48,7 +48,7 @@ test.describe('A.1 — chat column sidebar offset', () => {
   test('sidebar collapsed: chat column left edge clears collapsed strip', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').first().waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').first().waitFor({ state: 'visible', timeout: 15_000 })
 
     await ensureCollapsed(page)
 
@@ -63,7 +63,7 @@ test.describe('A.1 — chat column sidebar offset', () => {
   test('sidebar expanded: chat column left edge clears full sidebar (no clipping)', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').first().waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').first().waitFor({ state: 'visible', timeout: 15_000 })
 
     await ensureExpanded(page)
 
@@ -77,20 +77,20 @@ test.describe('A.1 — chat column sidebar offset', () => {
   test('A.1 — visual: sidebar collapsed', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').first().waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').first().waitFor({ state: 'visible', timeout: 15_000 })
 
     await ensureCollapsed(page)
 
-    await expect(page.getByTestId('consume-chat-v2-root').first()).toHaveScreenshot('a1-sidebar-collapsed.png')
+    await expect(page.getByTestId('v2-chat-shell').first()).toHaveScreenshot('a1-sidebar-collapsed.png')
   })
 
   test('A.1 — visual: sidebar expanded (content not clipped)', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto(CONSUME_URL, { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('consume-chat-v2-root').first().waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('v2-chat-shell').first().waitFor({ state: 'visible', timeout: 15_000 })
 
     await ensureExpanded(page)
 
-    await expect(page.getByTestId('consume-chat-v2-root').first()).toHaveScreenshot('a1-sidebar-expanded.png')
+    await expect(page.getByTestId('v2-chat-shell').first()).toHaveScreenshot('a1-sidebar-expanded.png')
   })
 })
