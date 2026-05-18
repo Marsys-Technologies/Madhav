@@ -1409,9 +1409,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       <div
         data-testid="v2-chat-column"
         className={cn(
-          "flex flex-col flex-1 overflow-hidden min-w-0",
-          "transition-[margin-left] duration-200 ease-out",
-          sidebarCollapsed ? "md:ml-10" : "md:ml-56"
+          "flex flex-col flex-1 overflow-hidden min-w-0"
         )}
       >
         <header

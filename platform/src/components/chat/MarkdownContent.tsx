@@ -105,7 +105,7 @@ function MarkdownContentImpl({ children, className, streaming = false }: Props) 
       aria-atomic="false"
       aria-busy={streaming}
       className={cn(
-        'chat-prose mx-auto max-w-[68ch] text-[15px] leading-[1.72] text-foreground',
+        'chat-prose text-[15px] leading-[1.72] text-foreground',
         '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
         streaming && 'chat-stream-caret',
         className
