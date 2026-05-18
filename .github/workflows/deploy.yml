@@ -90,6 +90,7 @@ jobs:
             NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
             NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
             NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+            MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:latest
             DB_PASSWORD=amjis-db-password:latest

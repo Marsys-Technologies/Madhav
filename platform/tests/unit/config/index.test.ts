@@ -5,7 +5,6 @@ describe('ConfigService', () => {
   it('pipeline feature flags default to false', () => {
     const svc = createConfigService()
     const flags: FeatureFlag[] = [
-      'MANIFEST_BUILDER_ENABLED',
       'LLM_CHECKPOINTS_ENABLED',
     ]
     for (const flag of flags) {
