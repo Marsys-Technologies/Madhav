@@ -1,21 +1,57 @@
 import { test, expect } from '@playwright/test';
 import { applyRound6MockRoute } from './fixtures/round6-mock-route';
 
-// One describe block wraps all tests. beforeEach navigates to the chat-v2
-// URL with the master flag enabled (via query param or cookie set in fixture).
-// applyRound6MockRoute intercepts /api/chat/consume before navigation.
+/**
+ * Round 6 walkthrough smoke spec.
+ *
+ * Asserts every F.3 finding against a mocked consume route (no live LLM).
+ * The spec navigates to `/clients/[id]/consume` which is auth-gated server-
+ * side, so we inject a `__session` cookie that matches `getServerUser()`'s
+ * reader in `platform/src/lib/firebase/server.ts`. Without the cookie the
+ * spec is skipped — both locally and in CI — until secrets are provisioned.
+ *
+ * Run locally:
+ *   1. Mint a session cookie:
+ *      cd platform && npx tsx scripts/mint_session_cookie.ts \
+ *        --uid <your-uid> --email <your-email>
+ *      (See `platform/tests/e2e/chat-v2/README.md` for full runbook.)
+ *   2. export SMOKE_SESSION_COOKIE='<cookie value from step 1>'
+ *   3. export SMOKE_CHART_ID='<chart id you have access to>'
+ *   4. cd platform && npx playwright test tests/e2e/chat-v2/round6-walkthrough.spec.ts --project=chromium
+ *
+ * Run in CI: requires SMOKE_SESSION_COOKIE + SMOKE_CHART_ID secrets in the
+ * chat-v2-smoke workflow. Until those secrets land (R7 follow-up), this
+ * spec skips in CI. The workflow remains as a path-trigger sentinel.
+ */
+
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000';
+const SESSION_COOKIE = process.env.SMOKE_SESSION_COOKIE;
+const CHART_ID = process.env.SMOKE_CHART_ID;
+const SKIP = !SESSION_COOKIE || !CHART_ID;
 
 test.describe('Round 6 walkthrough — smoke assertions against F.3 findings', () => {
-  test.beforeEach(async ({ page }) => {
+  test.skip(SKIP, 'SMOKE_SESSION_COOKIE or SMOKE_CHART_ID not set; skipping authenticated smoke tests. See spec header for setup instructions.');
+
+  test.beforeEach(async ({ context, page }) => {
+    // Inject the Firebase session cookie that `getServerUser()` reads.
+    // Cookie name MUST be `__session` to match
+    // `platform/src/lib/firebase/server.ts:48`.
+    await context.addCookies([
+      {
+        name: '__session',
+        value: SESSION_COOKIE!,
+        domain: new URL(BASE_URL).hostname,
+        path: '/',
+      },
+    ]);
+
+    // Intercept the consume API before navigation so the mock answers any
+    // streaming request V2 fires after mount.
     await applyRound6MockRoute(page);
-    // Navigate to the consume page with chat-v2 enabled.
-    // The consume page is at /clients/[id]/consume. Use the dev-server
-    // test client ID (check playwright.config.ts for the configured base URL
-    // and the test client fixture). If no test client is configured, add
-    // PLAYWRIGHT_CHAT_CLIENT_ID to the .env.test file and read it here.
-    const clientId = process.env.PLAYWRIGHT_CHAT_CLIENT_ID ?? 'test-client';
-    await page.goto(`/clients/${clientId}/consume?provider=mock`);
-    // Wait for the page shell to mount before any test asserts.
+
+    // Navigate to the consume page. After auth passes the V2 component
+    // mounts; we wait for its outermost testid before asserting.
+    await page.goto(`/clients/${CHART_ID}/consume?provider=mock`);
     await page.waitForSelector('[data-testid="v2-chat-shell"]', { timeout: 10_000 });
   });
 
