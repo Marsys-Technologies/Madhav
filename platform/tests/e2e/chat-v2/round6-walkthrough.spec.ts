@@ -180,3 +180,5 @@ test.describe('Round 6 walkthrough — smoke assertions against F.3 findings', (
     }
   });
 });
+
+// CI smoke probe: 2026-05-18 — verify R7 §3.H wiring fires E2E. Safe to revert.
