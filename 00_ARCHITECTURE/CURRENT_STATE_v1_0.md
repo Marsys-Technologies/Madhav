@@ -5505,11 +5505,38 @@ current_state:
       merge_ready: true
       executor: claude-code (Sonnet 4.6)
 
+    phase_4c_panchang:
+      active_since: 2026-05-19
+      phase_status: ACTIVE                         # 4C-0 CLOSED; 4C-1 next
+      description: >
+        Panchang Module — concurrent workstream alongside M5-A.
+        query_panchanga RetrievalTool + PANCHANG_DAILY L1.5 asset +
+        /panchang UI surface with Muhurat Finder + iCal export + Ask-Madhav links.
+        Precedent: Phase O Observatory + Chat V2 Big Bang.
+      worktree: /Users/Dev/Vibe-Coding/Apps/Panchang/
+      branch: feature/phase-4c-panchang
+      base_branch: main
+      sub_phase_4c_0_status: CLOSED                # 2026-05-19 session 4C-0; 8-item governance setup
+      sub_phase_4c_1_status: NEXT                  # panchang_engine Python module; Drik validation
+      sub_phase_4c_2_through_9_status: PENDING
+      brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
+      master_plan_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
+      parent_plan_path: 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
+      capability_manifest_entry: PANCHANG_DAILY_v1_0
+      claude_md_section: "§E — Five workstreams (added 2026-05-19)"
+      dependency_note: "4B sunrise derivation prerequisite for 4C.2; does NOT block 4C.0 or 4C.1"
+      next_session_id: 4C-1
+      next_session_objective: >
+        4C-1: panchang_engine Python module scaffold — angas.py, timings.py,
+        special_yogas.py, planets.py, shastra_tables.py; 30-day Drik validation
+        fixture; all 30 days must match Drik to within tolerance per master plan §5.3.
+      estimated_sessions_remaining: 16-21  # 4C.1–4C.9
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-14T18:30:00+05:30
-  file_updated_by_session: M8-E-S1
+  file_updated_at: 2026-05-19T02:55:00+05:30
+  file_updated_by_session: 4C-0
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

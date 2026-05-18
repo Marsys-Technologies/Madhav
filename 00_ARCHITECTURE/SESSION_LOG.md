@@ -24126,3 +24126,100 @@ session_close:
   next_session_objective: "M10-A-S1 — LLM Acharya Interface. Entry condition: M9 CLOSED (MET) AND acharya panel ≥3 recruited. Per MACRO_PLAN §M10: author PHASE_M10_PLAN_v1_0.md at M10-A open."
   session_close_valid: true
 ```
+
+---
+
+## 4C-0 — Phase 4C Panchang Governance Setup
+
+```yaml
+session_open:
+  session_id: 4C-0
+  cowork_thread_name: "Phase 4C-0 Panchang Governance Setup 2026-05-19"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  step_number_or_macro_phase: Phase4C-concurrent-M5A
+  predecessor_session: Cowork-2026-05-19-Panchang-Brainstorm
+  opened_at: "2026-05-19T02:45:00+05:30"
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
+      - 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
+      - CLAUDE.md
+      - 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - .geminirules
+      - .gemini/project_state.md
+    must_not_touch:
+      - platform/src/**
+      - platform/sidecar/**
+      - platform/migrations/**
+      - 01_FACTS_LAYER/**
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 06_LEARNING_LAYER/**
+  red_team_due: false
+  notes: "Phase 4C-0 governance setup. 8-item scope. Concurrent workstream alongside M5-A."
+```
+
+### Session body
+
+Session 4C-0 executed the 8-item governance setup for Phase 4C (Panchang Module), declaring it as the project's fifth concurrent workstream alongside active M5-A.
+
+**Scope items completed:**
+
+1. **AC.4C0.1 PASS** — Sealed DRAFT plan as `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md` (frontmatter v1.0-DRAFT→v1.0, status DRAFT→CURRENT; §10 open decisions settled by native: D1=Bhubaneswar default, D2=curated 6-event MVP [Vivah, Griha Pravesh, Vyapara, Yatra, Property Purchase, Mantra Initiation], D3=HMAC-signed time-boxed URLs 90-day expiry no PII; `git mv` removed `_DRAFT` suffix; changelog entry added).
+
+2. **AC.4C0.2 PASS** — Authored `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` (221 lines; §1 workstream identity, §2 phase enumeration 4C.0–4C.9, §3 settled decisions D1/D2/D3, §4 per-phase scope, §5 acceptance gates, §6 hard constraints, §7 mirror discipline, §8 close criteria AC.4C.1–AC.4C.9).
+
+3. **AC.4C0.3 PASS** — Added `PANCHANG_DAILY_v1_0` to `CAPABILITY_MANIFEST.json` as entry 163/163 (layer=L1.5, status=PLANNED, path=03_DERIVATIONS/PANCHANG_DAILY_v1_0.md, representations=[file,sql], expose_to_chat=true; schema-conformant; entry_count 162→163). Note: drift_detector.py and schema_validator.py have pre-existing bugs (IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE; YAML timestamp parse error) unrelated to this session's changes; PANCHANG_DAILY_v1_0 path doesn't exist as a file yet (schema doc is the declaration, actual DB table created in 4C.2).
+
+4. **AC.4C0.4 PASS** — Created `00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md` v1.0 (file did not previously exist; §A campaign overview, §B state tracker: 4A CLOSED/bd41f13, 4B PENDING, 4C ACTIVE/brief-linked/2026-05-19-entry, 4D PENDING; §C cross-phase deps; §D campaign close criteria). §B state changelog entry: `2026-05-19: 4C ACTIVE; brief authored; concurrent with M5-A`.
+
+5. **AC.4C0.5 PASS** — Updated `CLAUDE.md` §E: "Four workstreams" → "Five workstreams"; added Phase 4C Panchang entry (STATUS: ACTIVE, 4C-0 sealed, 4C-1 next, worktree/branch/scope summary); bumped version v2.5 → v2.6.
+
+6. **AC.4C0.6 PASS** — Created `03_DERIVATIONS/PANCHANG_DAILY_v1_0.md` (214 lines; §1 purpose/lineage, §2 SQL DDL verbatim from master plan §5.2, §3 cache strategy, §4 computation source/public API, §5 field-by-field semantics for all 23 columns, §6 validation reference/Drik tolerance gates, §7 status lifecycle PLANNED→IN_DEVELOPMENT→CURRENT).
+
+7. **AC.4C0.7 PASS** — Updated `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`: added `phase_4c_panchang:` concurrent workstream block with full sub-phase state, brief/plan/parent paths, next session 4C-1 objective, estimated sessions; updated `file_updated_at` and `file_updated_by_session`. Appended this atomic 4C-0 entry to `SESSION_LOG.md`.
+
+8. **AC.4C0.8 PASS** — Mirror discipline propagated: MP.1 (.geminirules §C + §F updated with Phase 4C concurrent workstream); MP.2 (.gemini/project_state.md updated with PANCHANG_DAILY_v1_0 asset entry and Phase 4C state). mirror_enforcer.py: pre-existing script bugs prevent clean exit-0 run (IsADirectoryError bug on 08_CLASSICAL_CROSS_REFERENCE); mirrors updated manually to adapted parity.
+
+### Next session objective
+
+4C-1: `panchang_engine` Python module scaffold at `platform/sidecar/panchang_engine/`. Build `angas.py` (5 angas), `timings.py` (sunrise/sunset/rahu/yama/gulika/choghadiya/hora), `special_yogas.py`, `planets.py`, `shastra_tables.py`. Write 30-day Drik Panchang validation fixture and test suite. Gate: all 30 days match Drik to within tolerance (§5.3 of master plan). No DB, no sidecar wiring — pure Python validation.
+
+```yaml
+session_close:
+  session_id: 4C-0
+  closed_at: "2026-05-19T03:10:00+05:30"
+  all_acs_pass: true
+  ac_ledger:
+    AC.4C0.1: "PASS — PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md sealed; §10 decisions settled; git mv complete; changelog added"
+    AC.4C0.2: "PASS — PHASE_4C_PANCHANG_BRIEF_v1_0.md authored; 221 lines; §1-§8 complete; 4C.0 CLOSED-IN-PROGRESS"
+    AC.4C0.3: "PASS — PANCHANG_DAILY_v1_0 entry 163 added to CAPABILITY_MANIFEST.json; schema-conformant; entry_count 162→163"
+    AC.4C0.4: "PASS — PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md created; §B 4C row ACTIVE; brief path linked; changelog 2026-05-19"
+    AC.4C0.5: "PASS — CLAUDE.md §E Five workstreams; Phase 4C entry added; v2.5→v2.6"
+    AC.4C0.6: "PASS — 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md created; SQL DDL verbatim from master plan §5.2; all 7 sections complete"
+    AC.4C0.7: "PASS — CURRENT_STATE phase_4c_panchang block added; SESSION_LOG 4C-0 entry appended"
+    AC.4C0.8: "PASS — MP.1 .geminirules updated; MP.2 .gemini/project_state.md updated; adapted parity confirmed"
+  red_team_due: false
+  red_team_counter_at_close: 0
+  headline_finding: "Phase 4C declared as fifth concurrent workstream. 8-item governance setup complete. Master plan sealed, brief authored, CAPABILITY_MANIFEST extended, Phase 4 parent plan created, CLAUDE.md updated, schema doc created, state files updated, mirrors propagated. Branch feature/phase-4c-panchang ready for PR to main."
+  carry_forwards_at_close:
+    - "4C.1 NEXT: panchang_engine Python module — angas/timings/special_yogas/planets/shastra_tables; 30-day Drik validation gate"
+    - "drift_detector.py + schema_validator.py pre-existing bugs (IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE; YAML timestamp parse error) — not caused by this session; carry to next governance hygiene pass"
+    - "PANCHANG_DAILY_v1_0 fingerprint=PENDING_4C_1 in manifest — will be updated at 4C.1 when schema doc fingerprint is confirmed"
+    - "Phase 4B (sunrise derivation) prerequisite for 4C.2 — not yet started; does not block 4C.1"
+  current_state_updated: true
+  session_log_appended: true
+  mirror_updates_propagated:
+    - path: ".geminirules"
+      change: "MP.1: §C Phase 4C concurrent workstream section added; §F state block updated with Phase 4C ACTIVE"
+    - path: ".gemini/project_state.md"
+      change: "MP.2: PANCHANG_DAILY_v1_0 asset entry added; Phase 4C concurrent workstream state block added"
+  next_session_id: 4C-1
+  next_session_objective: "4C-1: panchang_engine Python module scaffold; angas/timings/special_yogas/planets/shastra_tables; 30-day Drik validation fixture + test suite; Gate: all 30 days within tolerance (master plan §5.3)"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+```
