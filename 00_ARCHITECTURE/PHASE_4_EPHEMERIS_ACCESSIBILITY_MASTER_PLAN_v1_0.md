@@ -1,7 +1,7 @@
 ---
 canonical_id: PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN
 version: 1.1
-status: ACTIVE — §4.A CLOSED; §4.B CLOSED; §4.C next
+status: ACTIVE — §4.A CLOSED; §4.B CLOSED; §4.C CLOSED (abab885); §4.D next
 author: Claude (analysis stream)
 authored_on: 2026-05-18
 last_updated: 2026-05-19
@@ -100,20 +100,60 @@ campaign:
           The brief delivers code + migration + runbook. It does NOT
           execute the 657K-row rebuild against production Cloud SQL.
           Native triggers post-merge per RUNBOOK §Steps.
+        acceptance_results:
+          tsc: GREEN
+          ts_unit_tests: 12/12 PASS (5 new + 7 existing)
+          python_pytest: 20/20 PASS (all BPHS spot-checks)
+          migration_sql: REVIEWED — valid PostgreSQL with IF NOT EXISTS + transaction guard
+          enrich_script_review: VERIFIED — LAG window for prior_sign + day-grouping
+          planner_regression_gate: 2/2 PASS
+          production_rebuild: DEFERRED to native (Path A recommended; ~4-6h)
+        executor_scope_notes:
+          - §4.C should import SIGNS+SIGN_TO_IDX from ephemeris_derivations (not re-declare)
+          - §4.D should refine graha_yuddha to add latitude-difference check OR formally document longitude-only form
         depends_on: 4A (CLOSED at bd41f13)
       4C_panchanga:
-        status: PENDING — author after 4B closes
+        status: CLOSED
+        closing_commit_sha: abab885
+        closed_on: 2026-05-19
+        brief: briefs/PHASE_4C_PANCHANGA_BRIEF_v1_0.md
+        authored_on: 2026-05-19
         scope: |
-          query_panchanga retrieval tool reading sunrise-anchored
-          tithi/vara/karana/yoga/nakshatra at Bhubaneswar observer.
-          Migration + precompute table or sidecar live-compute.
-        depends_on: 4B
+          Migration 060 adds panchanga_daily + panchanga_daily_staging (73K rows expected).
+          panchanga_derivations.py — pure-Python 5-limb computation (tithi/vara/nakshatra/yoga/karana).
+          Imports SIGNS+SIGN_TO_IDX from ephemeris_derivations per §4.B executor note.
+          bootstrap_panchanga.py uses swe.rise_trans for Bhubaneswar sunrise (20.27021N, 85.82966E, 45m).
+          query_panchanga is the 28th retrieval tool. Filters by date/range/tithi/paksha/nakshatra/vara_lord/yoga/karana.
+          PLANNER_PROMPT v2.0.4: new R-PA (Panchanga Anchor) rule + R-TC pairing-clause amendment + §4.26 few-shot.
+          15 Python pytest cases + 5 TS vitest cases + GT.074-077 golden set (3 positive + 1 negative).
+          RUNBOOK §4 panchanga bootstrap section added.
+        outputs:
+          - platform/migrations/060_panchanga_daily.sql (new)
+          - platform/python-sidecar/pipeline/panchanga_derivations.py (new)
+          - platform/python-sidecar/pipeline/bootstrap_panchanga.py (new)
+          - platform/python-sidecar/pipeline/__tests__/test_panchanga_derivations.py (new, ~15 tests)
+          - platform/src/lib/retrieve/query_panchanga.ts (new)
+          - platform/src/lib/retrieve/__tests__/query_panchanga.test.ts (new, ~5 tests)
+          - platform/src/lib/retrieve/index.ts (+1 entry)
+          - platform/src/lib/router/retrieval_capability_spec.ts (+1 entry)
+          - platform/src/lib/trace/types.ts (literal count 27 → 28)
+          - 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md (R-PA rule + R-TC pairing-clause + §4.26)
+          - 00_ARCHITECTURE/RUNBOOK_EPHEMERIS_REBUILD_v1_0.md (§4 panchanga bootstrap section)
+          - platform/tests/eval/planner_golden_set.json (+4: GT.074-077)
+          - platform/tests/eval/fixtures/regression_baseline.json (paired)
+        boundary: |
+          The brief delivers code + migration + runbook addendum. It does NOT
+          execute the ~73K-row panchanga bootstrap against production Cloud SQL.
+          Native triggers post-merge per RUNBOOK §4.
+        depends_on: 4A (bd41f13), 4B (c63ef9f)
       4D_transit_search:
         status: PENDING — author after 4C closes
         scope: |
           query_transit_event retrieval tool. Sidecar /transit_search endpoint.
           Ingress + aspect + conjunction + station search using swe.solcross/mooncross
           for Sun/Moon, root-finding for others. ±10 year window cap.
+          Also: revisit graha_yuddha latitude-difference check (per §4.B executor note)
+          or document longitude-only form as accepted approximation.
         depends_on: 4C
 ```
 
@@ -155,10 +195,12 @@ At close, author `PHASE_4_CLOSE_v1_0.md` sealing artifact with:
 
 **§4.B is CLOSED** (2026-05-19 at `c63ef9f`). Migration 059 + 7 derived columns + MEAN_NODE Rahu fix + `ephemeris_derivations.py` + `enrich_ephemeris_daily.py` + `query_ephemeris` `derived_fields` param + 20 Python tests + 12 TS tests (5 new) + GT.070–073 + RUNBOOK_EPHEMERIS_REBUILD_v1_0.md all shipped. tsc clean, vitest 12/12, pytest 20/20, planner_regression_gate 2/2. Production 657K-row rebuild deferred to native per runbook — Path A recommended.
 
-**Execution prompt to paste into Claude Code for §4.B:**
+**§4.C is AUTHORED_READY_TO_EXECUTE** (2026-05-19). Brief at `briefs/PHASE_4C_PANCHANGA_BRIEF_v1_0.md`. Ships migration 060 + `panchanga_daily` table + `panchanga_derivations.py` (imports `SIGNS` + `SIGN_TO_IDX` from `ephemeris_derivations` per §4.B executor note — single source of truth) + `bootstrap_panchanga.py` using `swe.rise_trans` for Bhubaneswar sunrise (20.27021°N, 85.82966°E, 45m) + `query_panchanga` as the 28th retrieval tool + R-PA (Panchanga Anchor) rule in PLANNER_PROMPT alongside R-TC + ~15 Python pytest cases + ~5 TS vitest cases + GT.074–077 golden set (3 positive R-PA + 1 negative natal exclusion) + RUNBOOK §4 panchanga bootstrap addendum. The ~73K-row precompute is deferred to native per runbook.
+
+**Execution prompt to paste into Claude Code for §4.C:**
 
 ```
-Read 00_ARCHITECTURE/briefs/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md and execute it.
+Read 00_ARCHITECTURE/briefs/PHASE_4C_PANCHANGA_BRIEF_v1_0.md and execute it.
 
 Start with:
 git -C /Users/Dev/Vibe-Coding/Apps/Madhav-analysis checkout analysis/backend-data-pipeline-perf-audit
@@ -171,14 +213,15 @@ Hard constraints (re-stated from CLAUDE.md + master plan §C):
 - Analysis branch only. Never touch Chat V2 files.
 - No autonomous npm run answer:eval. Pre-commit verification only.
 - Approved decisions in EPHEMERIS_ACCESSIBILITY_RESEARCH_v1_0.md §6 are locked.
-- Do NOT execute the 657K-row rebuild against production Cloud SQL.
-  The brief ships code + migration + runbook; native runs the rebuild
-  post-merge per RUNBOOK_EPHEMERIS_REBUILD_v1_0.md.
+- Do NOT execute the ~73K-row panchanga bootstrap against production Cloud SQL.
+  The brief ships code + migration + runbook addendum; native runs the
+  bootstrap post-merge per RUNBOOK_EPHEMERIS_REBUILD_v1_0.md §4.
+- Import SIGNS + SIGN_TO_IDX from pipeline.ephemeris_derivations
+  (do NOT re-declare). This is the §4.B executor note carried forward.
 - Pre-commit gates: tsc + TS vitest + Python pytest + planner_regression_gate.
-- Migration apply against real DB is operator-supervised, not autonomous.
 
-When complete: report commit SHA + git log + gate results + Path A vs B
-recommendation for the rebuild + any §4.C/4.D scope adjustments.
+When complete: report commit SHA + git log + gate results + any §4.D scope
+adjustments suggested by §4.C execution.
 ```
 
-After §4.B closes (commit lands on analysis branch), come back to Cowork and I'll author the §4.C brief (panchanga) based on what §4.B delivered.
+After §4.C closes (commit lands on analysis branch), come back to Cowork and I'll author the §4.D brief (transit-event search: ingress / aspect / conjunction / station) based on what §4.C delivered.
