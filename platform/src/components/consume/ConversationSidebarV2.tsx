@@ -103,10 +103,10 @@ function ConversationItem({
         {conv.title ?? 'Untitled'}
       </button>
 
-      {/* Archive affordance — "…" menu icon, visible on hover */}
+      {/* Archive affordance — decorative only; rename/delete wiring deferred to R7. */}
       <span
         aria-hidden
-        className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded transition-opacity text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 ${
+        className={`hidden absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded transition-opacity text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 ${
           hovered ? 'opacity-100' : 'opacity-0'
         }`}
         title="More actions"
@@ -232,30 +232,6 @@ export function ConversationSidebarV2({
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onToggle}
-            title="Collapse"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-sidebar-collapse"
-          >
-            {/* Left-chevron icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="h-3.5 w-3.5"
-              aria-hidden
-            >
-              <path
-                d="M10 3L5 8l5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
               />
             </svg>
           </button>
