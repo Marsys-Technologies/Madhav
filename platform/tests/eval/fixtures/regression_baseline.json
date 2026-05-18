@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0",
-  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1.",
+  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065\u2013GT.069 for query_ephemeris R-TC transit-context rule coverage.",
   "entries": [
     {
       "id": "GT.001",
@@ -1541,6 +1541,94 @@
           "token_budget": 1500,
           "priority": 3,
           "reason": "pattern archetypes for next-year forecast"
+        }
+      ]
+    },
+    {
+      "id": "GT.065",
+      "mock_tool_calls": [
+        {
+          "tool_name": "lel_query",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "ground-truth life event: job change in 2018 date anchor"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "MSR signals for Mars + career domain at the 2018 event"
+        },
+        {
+          "tool_name": "query_ephemeris",
+          "params": {},
+          "token_budget": 1000,
+          "priority": 2,
+          "reason": "R-TC: Mars planetary position and state on the 2018 job-change date"
+        }
+      ]
+    },
+    {
+      "id": "GT.066",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_ephemeris",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 1,
+          "reason": "current planetary positions snapshot — today's date, all planets"
+        }
+      ]
+    },
+    {
+      "id": "GT.067",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_ephemeris",
+          "params": {},
+          "token_budget": 1000,
+          "priority": 1,
+          "reason": "Mercury retrograde state lookup for January 2019 date range"
+        }
+      ]
+    },
+    {
+      "id": "GT.068",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "career-domain MSR signals active in current transit window"
+        },
+        {
+          "tool_name": "query_ephemeris",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "R-TC: current transit snapshot — today's planetary positions"
+        },
+        {
+          "tool_name": "pattern_register",
+          "params": {},
+          "token_budget": 1500,
+          "priority": 2,
+          "reason": "pattern archetypes activated by current transit configuration"
+        }
+      ]
+    },
+    {
+      "id": "GT.069",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": {},
+          "token_budget": 2000,
+          "priority": 1,
+          "reason": "natal Saturn house position from MSR signal store"
         }
       ]
     }

@@ -235,14 +235,15 @@ export type PipelineStage =
   | 'checkpoint_8_5'
 
 /**
- * Retrieval tools registered in the RETRIEVAL_TOOLS manifest (D10).
+ * Retrieval tools registered in the RETRIEVAL_TOOLS manifest.
  * Sub-rows for unfired tools render dimmed in the Retrieval container.
  *
- * Updated 2026-05-17: added lel_query (previously omitted alongside the planner-blind
- * RCS gap — see retrieval_capability_spec.ts header comment). Name retained as
- * `ALL_21_RETRIEVAL_TOOLS` for callsite compatibility; literal count is now 22.
+ * Updated 2026-05-17: added lel_query (planner-blind RCS fix).
  * Updated 2026-05-18 (Phase 2A): added multi_school_signal_lookup + convergence_score_lookup.
- * Literal count is now 24.
+ * Updated 2026-05-18 (Phase 4A): added query_ephemeris + closed cosmetic trace gap by
+ * adding classical_text_search + classical_attribution_lookup (which had shipped in
+ * production via M8-G but were missing from this array). Name retained as
+ * `ALL_21_RETRIEVAL_TOOLS` for callsite compatibility; literal count is now 27.
  */
 export const ALL_21_RETRIEVAL_TOOLS = [
   'msr_sql',
@@ -267,8 +268,11 @@ export const ALL_21_RETRIEVAL_TOOLS = [
   'query_kp_ruling_planets',
   'query_varshaphala',
   'lel_query',
+  'classical_text_search',
+  'classical_attribution_lookup',
   'multi_school_signal_lookup',
   'convergence_score_lookup',
+  'query_ephemeris',
 ] as const
 
 export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]

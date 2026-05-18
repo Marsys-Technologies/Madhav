@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.2",
-  "description": "Golden test set for the MARSYS-JIS query planner. 64 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala.",
+  "description": "Golden test set for the MARSYS-JIS query planner. 69 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala. Extended 2026-05-18 (Phase 4A) with 5 entries (GT.065–069) covering query_ephemeris + R-TC transit-context rule (4 positive + 1 negative NEGATIVE test).",
   "native_context": {
     "name": "Abhisek Mohanty",
     "birth_date": "1984-02-05",
@@ -34,6 +34,7 @@
     "msr_sql",
     "multi_school_signal_lookup",
     "pattern_register",
+    "query_ephemeris",
     "query_kp_ruling_planets",
     "query_signal_state",
     "query_varshaphala",
@@ -1591,6 +1592,115 @@
         "CGM"
       ],
       "notes": "2026-05-17 query_varshaphala golden entry 3. Open-horizon forward predictive question with no explicit year — exercises the plan.time_window fallback in query_varshaphala (RCS optimal_patterns line 3). Planner emits query_varshaphala with {} or {} + time_window-injected year=2027. temporal supplies the dasha+transit overlay for the next-year window. lel_query with {significance:'major'} grounds the forward read against ground-truth event base-rates. msr_sql for natal-signal context; pattern_register for forward_looking yogas. vector_search/cluster_atlas forbidden — wrong layers for a substrate-heavy annual prediction."
+    },
+    {
+      "id": "GT.065",
+      "query": "What was Mars doing when I changed jobs in 2018?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "lel_query",
+        "msr_sql",
+        "query_ephemeris",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "lel_query",
+        "msr_sql",
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "LEL"
+      ],
+      "notes": "Phase 4A R-TC golden entry 1. R-TC + R7a. Historical LEL-anchored transit query. lel_query supplies job-change date; query_ephemeris reads Mars transit position at that date; msr_sql gives natal Mars signals; pattern_register satisfies R7a predictive cross-domain lens. temporal is NOT needed (no eclipse/sade-sati/retrograde-window dependency)."
+    },
+    {
+      "id": "GT.066",
+      "query": "Where are the planets right now?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register",
+        "cluster_atlas"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4A R-TC golden entry 2. R-TC + R-FACT. Pure transit positional query. query_ephemeris with empty params defaults to today UTC for all 9 planets. R-FACT bans vector_search and registers; R-TC fires query_ephemeris."
+    },
+    {
+      "id": "GT.067",
+      "query": "Was Mercury retrograde in January 2019?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4A R-TC golden entry 3. R-TC + R-FACT. Date-range factual transit query. params: {start_date:'2019-01-01', end_date:'2019-01-31', planet:'Mercury'}. R-FACT bans registers; R-TC fires query_ephemeris."
+    },
+    {
+      "id": "GT.068",
+      "query": "What's the current transit picture for my career?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "msr_sql",
+        "query_ephemeris",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "query_ephemeris",
+        "pattern_register"
+      ],
+      "forbidden_tools": [],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
+      "notes": "Phase 4A R-TC golden entry 4. R-TC + R7a. Domain-scoped present-tense transit query. msr_sql with domain=career; query_ephemeris with empty params (today); pattern_register satisfies R7a."
+    },
+    {
+      "id": "GT.069",
+      "query": "What house is my Saturn in?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "msr_sql"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "query_ephemeris",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4A R-TC NEGATIVE golden entry. Pure natal positional query, NO temporal anchor. R-TC must NOT fire; query_ephemeris is forbidden. R-FACT enforces single-tool msr_sql."
     }
   ],
   "_schema_version": "1.2"

@@ -678,6 +678,48 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        Hypothesis: restores F022/F024 holistic graph-seed-hint pattern lost from
        commit 884b99c.
 
+  R-TC. TRANSIT-CONTEXT ENRICHMENT: For ANY query that is NOT pure-natal-only,
+       attach `query_ephemeris` to tool_calls at priority 2. The trigger is
+       any temporal anchor (now/past/future date or named event) — divisional
+       charts give the natal positions, ephemeris gives the present/historical/
+       future transit positions, and the synthesis layer needs BOTH to reason
+       about timing.
+
+       Date param selection:
+         - "now" / "currently" / "today" / "at this point" / "in my life right now"
+           → params.date = today UTC (server fills CURRENT_DATE; planner emits
+             empty params {} which the tool defaults).
+         - LEL-known past event (marriage, job change, illness, etc.)
+           → also schedule lel_query at priority 1; the synthesis layer joins
+             query_ephemeris on the LEL event_date.
+         - Specific past or future date stated
+           → params.date = stated date (YYYY-MM-DD).
+         - Date range or implied range ("next 2 years", "2026-2028", "this quarter")
+           → params.start_date + params.end_date (YYYY-MM-DD).
+         - Named dasha period
+           → params.start_date + params.end_date matching the dasha window
+             (also schedule temporal with dasha_context_required:true).
+
+       Exclusions (R-TC does NOT fire for):
+         - Pure natal positional queries: "what house is X in", "what is my Y",
+           "describe my Z", "what's my lagna lord" — no temporal anchor.
+         - Pure classical interpretation: "what does Saturn in 10H mean classically".
+         - Remedial codex lookup: "what gemstone for Venus".
+         - Multi-school triangulation queries (R31/R32 STOP at step 5; do NOT
+           append query_ephemeris when on the SCHOOL/CONVERGENCE PATH).
+
+       Pairing with existing rules:
+         - R-TW1 (eclipse temporal scope): keep temporal for the eclipse window;
+           R-TC adds query_ephemeris for Sun/Moon positions at the eclipse moment.
+         - R-TW2 (antardasha date-range): keep time_window semantics; R-TC adds
+           the actual ephemeris lookup at the dasha window boundaries.
+         - R7c (transit ban on vector_search for pure-timing): unaffected;
+           query_ephemeris and vector_search serve different purposes.
+
+       The default behavior is INCLUSION. When in doubt, attach query_ephemeris.
+       Synthesis tolerates extra context; missing transit context is the failure
+       mode that R-TC fixes.
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -1738,6 +1780,38 @@ except in factual examples.
 }
 ```
 
+### 4.25 R-TC transit-context — historical LEL event
+
+Query: "What was Saturn doing when I got married in 2008?"
+
+```json
+{
+  "query_class": "predictive",
+  "query_intent_summary": "Saturn transit at marriage event — natal-vs-transit comparison.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Natal Saturn placement." },
+    { "asset_id": "LEL", "priority": 1, "reason": "Marriage event date." },
+    { "asset_id": "CGM", "priority": 2, "reason": "Saturn's natal aspect graph." }
+  ],
+  "tool_calls": [
+    { "tool_name": "lel_query", "params": {"category":"relationship","significance":"major"}, "token_budget": 600, "priority": 1, "reason": "Marriage event date from LEL." },
+    { "tool_name": "msr_sql", "params": {"planets":["Saturn"], "min_significance":0.6, "limit":20}, "token_budget": 1200, "priority": 1, "reason": "Natal Saturn signals." },
+    { "tool_name": "query_ephemeris", "params": {"planet":"Saturn"}, "token_budget": 400, "priority": 2, "reason": "R-TC transit Saturn position at marriage date (synthesis layer joins on lel_query result)." },
+    { "tool_name": "pattern_register", "params": {"planets":["Saturn"], "min_strength":0.6}, "token_budget": 800, "priority": 2, "reason": "R7a predictive cross-domain lens — Saturn-keyed patterns." }
+  ],
+  "synthesis_guidance": "Compare natal Saturn (msr_sql) against transit Saturn at marriage date (query_ephemeris joined to lel_query event_date). Surface dignity, sign, retrograde, and any Saturn-aspect activation patterns.",
+  "expected_output_shape": "time_indexed_prediction",
+  "history_mode": "synthesized",
+  "planets": ["Saturn"],
+  "houses": [],
+  "domains": ["relationships"],
+  "forward_looking": false,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent question — chart facts + LEL event are enough.", "mode": "independent" }
+}
+```
+
+This example shows R-TC firing alongside R7a (predictive cross-domain lens) for a LEL-anchored historical-event transit query. The planner does NOT need to compute the marriage date itself — `lel_query` supplies it and the synthesis layer joins. `query_ephemeris` runs with `{planet:"Saturn"}` and an implicit `date = today UTC` fallback, BUT in this LEL-paired case the synthesis layer SHOULD pass the LEL event_date forward (the tool param schema supports `date` — planner can later set it explicitly when LEL is in the bundle and the date is resolvable pre-execution; for now the join happens at synthesis time).
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -1758,3 +1832,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *Supersedes PLANNER_PROMPT_v1_0.md v1.7 (2026-05-04)*
 *v2.0.1 content extension 2026-05-17 — R28/R29/R30 + examples 4.19–4.22 added for the L1 substrate tools (planner-blind fix)*
 *v2.0.2 content extension 2026-05-18 — R31/R32 + examples 4.23–4.24 added for M9 multi-school triangulation tools (Phase 2A)*
+*v2.0.3 content extension 2026-05-18 (Phase 4A) — R-TC transit-context rule + example 4.25 added for query_ephemeris*
