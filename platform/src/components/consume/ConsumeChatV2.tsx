@@ -166,11 +166,12 @@ interface V2PrefsCtxValue {
   style: StyleId
   lelEnabled: boolean
   activeTier: AudienceTier
+  /** READ-ONLY: server-provided audience tier from chart_meta. The in-chat override is `activeTier` + `setActiveTierOverride`. */
   audienceTier: AudienceTier
   setStack: (s: ModelStack) => void
   setStyle: (s: StyleId) => void
   setLelEnabled: (v: boolean) => void
-  setActiveTier: (t: AudienceTier) => void
+  setActiveTierOverride: (t: AudienceTier) => void
 }
 const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   stack: 'gemini-2.5-flash' as ModelStack,
@@ -181,7 +182,7 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   setStack: () => {},
   setStyle: () => {},
   setLelEnabled: () => {},
-  setActiveTier: () => {},
+  setActiveTierOverride: () => {},
 })
 
 // ─── Citation context ─────────────────────────────────────────────────────────
@@ -975,84 +976,68 @@ function V2Composer() {
   )
 }
 
-// ─── C.2: Query-id tracker ────────────────────────────────────────────────────
-// Mounted inside AssistantRuntimeProvider; subscribes to messages and surfaces
-// the most recent query_id into V2QueryIdCtx for the TraceDrawer.
+// ─── C.2 + W5 + E.1: Unified runtime tracker ─────────────────────────────────
+// Single subscriber replacing V2QueryIdTracker, V2ConversationIdTracker, and
+// V2TitleTracker. One subscribe loop per mount — ~3x fewer callbacks during streams.
 
-function V2QueryIdTracker() {
+function V2RuntimeTracker() {
   const runtime = useThreadRuntime()
   const onQueryId = useContext(V2QueryIdCb)
-
-  useEffect(() => {
-    if (!onQueryId) return
-    const unsub = runtime.subscribe(() => {
-      const state = runtime.getState()
-      const messages = state.messages
-      for (let i = messages.length - 1; i >= 0; i--) {
-        const msg = messages[i]
-        if (msg.role !== 'assistant') continue
-        const custom = (msg.metadata as { custom?: { queryId?: string } } | undefined)?.custom
-        if (custom?.queryId) { onQueryId(custom.queryId); return }
-        const data = (msg.metadata as unknown as { unstable_data?: ReadonlyArray<unknown> } | undefined)?.unstable_data ?? []
-        for (const part of data) {
-          const p = part as { query_id?: string }
-          if (p.query_id) { onQueryId(p.query_id); return }
-        }
-      }
-    })
-    return unsub
-  }, [runtime, onQueryId])
-
-  return null
-}
-
-// Reads conversation_id from data-persistence parts in message.content so that
-// subsequent requests and the regenerate button carry the correct conversation ID.
-function V2ConversationIdTracker() {
-  const runtime = useThreadRuntime()
   const onConversationId = useContext(V2ConversationIdCb)
-
-  useEffect(() => {
-    if (!onConversationId) return
-    const unsub = runtime.subscribe(() => {
-      const state = runtime.getState()
-      const messages = state.messages
-      for (let i = messages.length - 1; i >= 0; i--) {
-        const msg = messages[i]
-        if (msg.role !== 'assistant') continue
-        const content = (msg.content ?? []) as ReadonlyArray<unknown>
-        for (const part of content) {
-          if (
-            typeof part === 'object' && part !== null &&
-            (part as Record<string, unknown>).type === 'data' &&
-            (part as Record<string, unknown>).name === 'persistence'
-          ) {
-            const data = (part as Record<string, unknown>).data as Record<string, unknown>
-            if (typeof data?.conversation_id === 'string') {
-              onConversationId(data.conversation_id)
-              return
-            }
-          }
-        }
-      }
-    })
-    return unsub
-  }, [runtime, onConversationId])
-
-  return null
-}
-
-// Reads data-title parts from message.content (post-stream) and fires the reload
-// callback once so ConversationSidebarV2 fetches the updated conversation list.
-function V2TitleTracker() {
-  const runtime = useThreadRuntime()
   const onTitle = useContext(V2TitleCb)
 
   useEffect(() => {
-    if (!onTitle) return
+    if (!onQueryId && !onConversationId && !onTitle) return
+
+    let lastQueryId: string | null = null
+    let lastConversationId: string | null = null
+    let lastTitleEmit = false
+
     const unsub = runtime.subscribe(() => {
       const state = runtime.getState()
-      for (const msg of state.messages) {
+      const messages = state.messages
+
+      let queryIdHit: string | null = null
+      let conversationIdHit: string | null = null
+      let titleHit = false
+
+      // Backward walk: query_id + conversation_id from latest assistant message.
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        if (msg.role !== 'assistant') continue
+        if (!queryIdHit) {
+          const custom = (msg.metadata as { custom?: { queryId?: string } } | undefined)?.custom
+          if (custom?.queryId) {
+            queryIdHit = custom.queryId
+          } else {
+            const data = (msg.metadata as unknown as { unstable_data?: ReadonlyArray<unknown> } | undefined)?.unstable_data ?? []
+            for (const part of data) {
+              const p = part as { query_id?: string }
+              if (p.query_id) { queryIdHit = p.query_id; break }
+            }
+          }
+        }
+        if (!conversationIdHit) {
+          const content = (msg.content ?? []) as ReadonlyArray<unknown>
+          for (const part of content) {
+            if (
+              typeof part === 'object' && part !== null &&
+              (part as Record<string, unknown>).type === 'data' &&
+              (part as Record<string, unknown>).name === 'persistence'
+            ) {
+              const data = (part as Record<string, unknown>).data as Record<string, unknown>
+              if (typeof data?.conversation_id === 'string') {
+                conversationIdHit = data.conversation_id
+                break
+              }
+            }
+          }
+        }
+        if (queryIdHit && conversationIdHit) break
+      }
+
+      // Forward walk: title part (first occurrence; fires once per mount).
+      for (const msg of messages) {
         if (msg.role !== 'assistant') continue
         const content = (msg.content ?? []) as ReadonlyArray<unknown>
         for (const part of content) {
@@ -1061,14 +1046,30 @@ function V2TitleTracker() {
             (part as Record<string, unknown>).type === 'data' &&
             (part as Record<string, unknown>).name === 'title'
           ) {
-            onTitle()
-            return
+            titleHit = true
+            break
           }
         }
+        if (titleHit) break
+      }
+
+      // Emit only on transitions — avoid callback spam on every streaming token.
+      if (queryIdHit && queryIdHit !== lastQueryId) {
+        lastQueryId = queryIdHit
+        if (onQueryId) onQueryId(queryIdHit)
+      }
+      if (conversationIdHit && conversationIdHit !== lastConversationId) {
+        lastConversationId = conversationIdHit
+        if (onConversationId) onConversationId(conversationIdHit)
+      }
+      if (titleHit && !lastTitleEmit) {
+        lastTitleEmit = true
+        if (onTitle) onTitle()
       }
     })
+
     return unsub
-  }, [runtime, onTitle])
+  }, [runtime, onQueryId, onConversationId, onTitle])
 
   return null
 }
@@ -1122,7 +1123,7 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
 // ─── C.3: Bottom-bar selectors ───────────────────────────────────────────────
 
 function V2BottomBar() {
-  const { stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled, setActiveTier } =
+  const { stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled, setActiveTierOverride } =
     useContext(V2PrefsCtx)
 
   return (
@@ -1151,7 +1152,7 @@ function V2BottomBar() {
         Life Events: {lelEnabled ? 'On' : 'Off'}
       </button>
       {audienceTier === 'super_admin' && (
-        <TierPicker tier={activeTier} onChange={setActiveTier} />
+        <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
       )}
     </div>
   )
@@ -1222,11 +1223,11 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
-  const [activeTier, setActiveTier] = useState<AudienceTier>(audienceTier)
+  const [activeTier, setActiveTierOverride] = useState<AudienceTier>(audienceTier)
 
   const prefsCtxValue = useMemo<V2PrefsCtxValue>(() => ({
     stack, style, lelEnabled, activeTier, audienceTier,
-    setStack, setStyle, setLelEnabled, setActiveTier,
+    setStack, setStyle, setLelEnabled, setActiveTierOverride,
   }), [stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled])
 
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -1599,12 +1600,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
-          {/* C.2: surface latest query_id to parent via callback */}
-          <V2QueryIdTracker />
-          {/* W5 fix: surface conversation_id from data-persistence part to parent */}
-          <V2ConversationIdTracker />
-          {/* E.1: trigger sidebar reload when data-title part lands after first turn */}
-          <V2TitleTracker />
+          {/* C.2 + W5 + E.1: unified runtime tracker — emits query_id, conversation_id, title in one subscribe loop */}
+          <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
