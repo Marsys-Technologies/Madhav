@@ -170,33 +170,7 @@ export function ConversationSidebarV2({
   // ── Collapsed strip ────────────────────────────────────────────────────────
 
   if (collapsed) {
-    return (
-      <div className="flex flex-col items-center w-10 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md shrink-0 pointer-events-none">
-        <button
-          type="button"
-          onClick={onToggle}
-          title="Expand conversation list"
-          className="mt-3 flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors pointer-events-auto"
-          data-testid="v2-sidebar-expand"
-        >
-          {/* Hamburger / list icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 16 16"
-            fill="none"
-            className="h-4 w-4"
-            aria-hidden
-          >
-            <path
-              d="M2 4h12M2 8h7M2 12h9"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-    )
+    return null
   }
 
   // ── Expanded sidebar ───────────────────────────────────────────────────────

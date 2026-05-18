@@ -1391,7 +1391,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       <div
         className={
           sidebarCollapsed
-            ? 'hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:pointer-events-none'
+            ? 'hidden'
             : 'fixed inset-y-0 left-0 z-40 flex'
         }
       >
