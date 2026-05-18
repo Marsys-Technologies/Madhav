@@ -687,6 +687,50 @@ const query_panchanga: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Phase 4D — transit event search (when does X happen?)
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_transit_event: RetrievalCapabilityEntry = {
+  tool_name: 'query_transit_event',
+  description:
+    'Find WHEN transit events happen (versus query_ephemeris which is WHAT on a ' +
+    'date). Four event classes: ingress (planet enters a sign — reads ' +
+    'ephemeris_daily.sign_ingress_today from §4.B), station (planet stations ' +
+    'retrograde/direct — reads retrogrades table), aspect (transit-to-natal by ' +
+    'degree+orb — live compute via sidecar), conjunction (two transit planets ' +
+    'within orb — live compute via sidecar). Lahiri sidereal. ' +
+    'Use whenever the query asks "when next" / "when will" / "next time" / ' +
+    '"when does X enter/aspect/conjunct/station". Pairs with query_ephemeris + ' +
+    'query_panchanga under R-TC/R-PA for context; R-TE handles the search trigger.',
+  data_surface:
+    'L1 — table ephemeris_daily (sign_ingress_today column + table-backed ingress rows) + ' +
+    'table retrogrades (station_type rows from migration 016). ' +
+    'Live compute — sidecar POST /transit_search using swe.solcross/mooncross ' +
+    'for Sun/Moon, day-step + bisection root-finding for other planets. ' +
+    'Window cap ±10 years for sidecar queries.',
+  supported_params:
+    '{ event_type: "ingress"|"station"|"aspect"|"conjunction" (required); ' +
+    'start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'planet?: string (ingress); target_sign?: string (ingress); ' +
+    'station_type?: "retrograde_start"|"retrograde_end"|"both" (station); ' +
+    'transit_planet?: string (aspect); natal_planet?: string (aspect); ' +
+    'natal_longitude_deg?: number (aspect, alternative to natal_planet); ' +
+    'aspect_degrees?: number[] (aspect, default [0,60,90,120,180]); ' +
+    'orb_deg?: number (default 1.0, max 3.0); ' +
+    'planet_a?: string + planet_b?: string (conjunction); ' +
+    'limit?: number (default 50, max 200) }',
+  optimal_patterns: [
+    'Next Jupiter sign-ingress: {event_type:"ingress", planet:"Jupiter", start_date:"2026-05-19", limit:5}',
+    'Next Jupiter into Aries: {event_type:"ingress", planet:"Jupiter", target_sign:"Aries", start_date:"2026-05-19"}',
+    'Mercury retrograde periods 2026: {event_type:"station", planet:"Mercury", start_date:"2026-01-01", end_date:"2026-12-31"}',
+    'Saturn aspects to natal Moon next 2 years: {event_type:"aspect", transit_planet:"Saturn", natal_planet:"Moon", aspect_degrees:[180,90,60,120], orb_deg:1.5}',
+    'Next Jupiter-Saturn conjunction: {event_type:"conjunction", planet_a:"Jupiter", planet_b:"Saturn", start_date:"2026-05-19", orb_deg:1.0}',
+  ],
+  cost_tier: 'medium',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -717,8 +761,9 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   classical_attribution_lookup,
   multi_school_signal_lookup,
   convergence_score_lookup,
-  query_ephemeris,   // Phase 4A
-  query_panchanga,   // Phase 4C
+  query_ephemeris,      // Phase 4A
+  query_panchanga,      // Phase 4C
+  query_transit_event,  // Phase 4D
 ] as const
 
 /**

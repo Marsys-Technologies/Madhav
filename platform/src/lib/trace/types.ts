@@ -245,6 +245,7 @@ export type PipelineStage =
  * production via M8-G but were missing from this array). Name retained as
  * `ALL_21_RETRIEVAL_TOOLS` for callsite compatibility; literal count is now 27.
  * Updated 2026-05-19 (Phase 4C): added query_panchanga. Literal count is now 28.
+ * Updated 2026-05-19 (Phase 4D): added query_transit_event. Literal count is now 29.
  */
 export const ALL_21_RETRIEVAL_TOOLS = [
   'msr_sql',
@@ -275,6 +276,7 @@ export const ALL_21_RETRIEVAL_TOOLS = [
   'convergence_score_lookup',
   'query_ephemeris',
   'query_panchanga',
+  'query_transit_event',
 ] as const
 
 export type RetrievalSubTool = typeof ALL_21_RETRIEVAL_TOOLS[number]

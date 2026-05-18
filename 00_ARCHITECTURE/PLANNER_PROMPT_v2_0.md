@@ -760,6 +760,45 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        e.g., "Saturn-favorable days this year" → query_panchanga with
        vara_lord="Saturn".
 
+  R-TE. TRANSIT EVENT SEARCH: For queries asking WHEN an event happens (versus
+       WHAT is happening at a date), attach `query_transit_event` at priority 1.
+       This is search-mode; R-TC (query_ephemeris lookup) and R-PA (panchanga
+       lookup) can also fire as priority-2 context if the search result will be
+       interpreted.
+
+       Trigger keywords:
+         - "when next" / "when will" / "next time" / "next occurrence"
+         - "when does X enter Y" / "Jupiter going into" / "ingress"
+         - "when X aspects Y" / "transit aspect" / "Saturn aspecting my"
+         - "when X conjuncts Y" / "Jupiter-Saturn conjunction" / "graha-yuddha"
+         - "when X retrograde" / "station retrograde" / "Mercury retrograde next"
+         - "when X turns direct" / "station direct"
+
+       Event-type selection:
+         - "ingress" — query mentions sign/zodiac entry: "enters Cancer",
+           "into Aries", "sign change"
+         - "station" — query mentions retrograde or direct: "Mercury retrograde
+           next", "Saturn stations direct"
+         - "aspect" — query mentions aspect/conjunction to a NATAL planet:
+           "Saturn aspecting my Moon", "transit Jupiter trine natal Sun"
+         - "conjunction" — query mentions two TRANSIT planets coming together:
+           "Jupiter-Saturn conjunction", "when do Mars and Saturn meet"
+
+       Date param selection:
+         - Default end_date = start_date + 1 year for ingress/station,
+           + 2 years for aspect/conjunction.
+         - "in 2027" / specific year → start_date + end_date both within year.
+         - "in my X dasha" → start_date + end_date matching dasha window.
+
+       Exclusions:
+         - Pure positional queries (WHAT, not WHEN): use query_ephemeris under R-TC.
+         - Eclipse search: continues to use temporal.eclipse_query (existing,
+           not duplicated in query_transit_event).
+         - Vedic special-aspect queries (Mars 4/8, Jupiter 5/9, Saturn 3/10):
+           emit aspect_degrees per planet's classical pattern, OR leave it to
+           synthesis to interpret 7th-aspect (180°) and let cgm_graph_walk
+           surface Vedic special-aspect membership separately.
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -1885,6 +1924,55 @@ Query: "When is the next Purnima after May 2026?"
 
 This example shows R-PA firing without R-TC — a pure panchanga lookup requires no transit positions (the tithi already encodes the Sun-Moon elongation). query_ephemeris is NOT attached here because the query_intent is the tithi date, not the raw planet positions. When the user asks "what was the Moon nakshatra when I got married?" (LEL-anchored), both R-TC and R-PA fire: lel_query + query_panchanga (priority 1), query_ephemeris (priority 2).
 
+### 4.27 R-TE transit event search — Saturn aspects natal Moon
+
+Query: "When will Saturn next aspect my natal Moon?"
+
+```json
+{
+  "query_class": "predictive",
+  "query_intent_summary": "Find future dates when transiting Saturn aspects the native's natal Moon position by degree+orb.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor; natal Moon longitude is in chart_facts." },
+    { "asset_id": "CGM", "priority": 2, "reason": "R7a: CGM ASPECTS_* edges give Vedic special-aspect membership for Saturn-Moon." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_transit_event",
+      "params": {
+        "event_type": "aspect",
+        "transit_planet": "Saturn",
+        "natal_planet": "Moon",
+        "aspect_degrees": [180, 90, 60, 120],
+        "orb_deg": 1.5,
+        "start_date": "2026-05-19",
+        "end_date": "2028-05-19"
+      },
+      "token_budget": 600,
+      "priority": 1,
+      "reason": "R-TE: WHEN-search for Saturn aspecting natal Moon. natal_planet=Moon triggers chart_facts lookup inside the tool; sidecar live-compute returns exact JDs + IST datetimes."
+    },
+    {
+      "tool_name": "msr_sql",
+      "params": { "planet": "Moon", "limit": 15 },
+      "token_budget": 400,
+      "priority": 2,
+      "reason": "R7a: natal Moon signal density — synthesis interprets the upcoming aspect against natal Moon's functional role."
+    }
+  ],
+  "synthesis_guidance": "Lead with the first upcoming Saturn-Moon aspect date(s) from query_transit_event. Then contextualise with natal Moon's dignities and MSR signals. Note whether Saturn's 3rd or 10th special aspect (per Vedic tradition) also applies.",
+  "expected_output_shape": "detailed_analysis",
+  "history_mode": "synthesized",
+  "planets": ["Saturn", "Moon"],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent predictive query.", "mode": "independent" }
+}
+```
+
+This example shows R-TE firing for a search-mode transit-aspect query. query_transit_event resolves natal Moon longitude from chart_facts internally when `natal_planet` is given — the planner does not need to look it up separately. R-TC does NOT fire (query_ephemeris not needed — the sidecar already returns exact event dates). msr_sql fires under R7a to supply natal Moon signal context for synthesis-layer interpretation of the upcoming transit.
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -1907,3 +1995,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.2 content extension 2026-05-18 — R31/R32 + examples 4.23–4.24 added for M9 multi-school triangulation tools (Phase 2A)*
 *v2.0.3 content extension 2026-05-18 (Phase 4A) — R-TC transit-context rule + example 4.25 added for query_ephemeris*
 *v2.0.4 content extension 2026-05-19 (Phase 4C) — R-PA panchanga anchor rule + R-TC pairing-clause update + example 4.26 added for query_panchanga*
+*v2.0.5 content extension 2026-05-19 (Phase 4D) — R-TE transit-event-search rule + example 4.27 added for query_transit_event*

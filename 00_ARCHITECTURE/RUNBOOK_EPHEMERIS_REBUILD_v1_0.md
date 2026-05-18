@@ -204,10 +204,62 @@ DROP TABLE IF EXISTS panchanga_daily, panchanga_daily_staging;
 
 ---
 
+---
+
+## §5 Transit Search Sidecar Endpoint (Phase 4D)
+
+No bootstrap or precompute needed. The `/transit_search` POST endpoint is
+live-compute via Swiss Ephemeris. It depends on the sidecar service being
+running and reachable from the web tier.
+
+### Verification post-merge
+
+1. Confirm sidecar deployment includes the new router:
+
+```bash
+curl -s -X POST ${SIDECAR_URL}/transit_search \
+  -H "x-api-key: ${PYTHON_SIDECAR_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "conjunction",
+    "planet_a": "Jupiter",
+    "planet_b": "Saturn",
+    "start_date": "2026-05-19",
+    "end_date": "2027-05-19",
+    "orb_deg": 1.0
+  }' | jq length
+```
+
+Expect: a JSON array (likely empty or 1-2 events for that window). A `404`
+or `500` means the router was not registered — check `main.py` imports.
+
+2. Latency expectations:
+   - Aspect/conjunction searches over 2-year windows: ~500ms–2s (bisection
+     over ~730 day-steps per planet pair).
+   - Ingress and station queries hit Postgres directly via the TS tool: <100ms.
+
+3. Window cap sanity check:
+
+```bash
+curl -s -X POST ${SIDECAR_URL}/transit_search \
+  -H "x-api-key: ${PYTHON_SIDECAR_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "conjunction",
+    "planet_a": "Jupiter",
+    "planet_b": "Saturn",
+    "start_date": "2020-01-01",
+    "end_date": "2031-01-02"
+  }' | jq .detail
+```
+
+Expect: `"Window exceeds ±10-year cap"` (HTTP 400).
+
 ## References
 
 - Brief (Phase 4B): `00_ARCHITECTURE/BRIEFS/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md`
 - Brief (Phase 4C): `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANGA_BRIEF_v1_0.md`
+- Brief (Phase 4D): `00_ARCHITECTURE/BRIEFS/PHASE_4D_TRANSIT_SEARCH_BRIEF_v1_0.md`
 - Derivation module: `platform/python-sidecar/pipeline/ephemeris_derivations.py`
 - Panchanga derivation module: `platform/python-sidecar/pipeline/panchanga_derivations.py`
 - Bootstrap (ephemeris): `platform/python-sidecar/pipeline/bootstrap_ephemeris.py`

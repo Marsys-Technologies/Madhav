@@ -11,6 +11,7 @@
  * M5-A: lel_query — LEL ground-truth life events from life_events table (1 tool)
  * Phase 4A: query_ephemeris — date-indexed ephemeris lookup (1 tool; closes ephemeris-accessibility gap)
  * Phase 4C: query_panchanga — sunrise-anchored daily panchanga (1 tool; 28th total)
+ * Phase 4D: query_transit_event — transit event search: when does X happen? (1 tool; 29th total)
  */
 
 import * as msrSql from './msr_sql'
@@ -64,6 +65,9 @@ import * as queryEphemeris from './query_ephemeris'
 // Phase 4C — sunrise-anchored daily panchanga (5 limbs of Vedic time)
 import * as queryPanchanga from './query_panchanga'
 
+// Phase 4D — transit event search: when does X happen? (29th tool)
+import * as queryTransitEvent from './query_transit_event'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -96,6 +100,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   convergenceScoreLookupTool.tool,
   queryEphemeris.tool,
   queryPanchanga.tool,
+  queryTransitEvent.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

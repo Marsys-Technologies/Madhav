@@ -1741,6 +1741,73 @@
           "reason": "Pure natal query — birth nakshatra is a chart fact; R-PA does NOT fire"
         }
       ]
+    },
+    {
+      "id": "GT.078",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_transit_event",
+          "params": { "event_type": "ingress", "planet": "Jupiter", "target_sign": "Aries", "start_date": "2026-05-19", "limit": 5 },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-TE event_type=ingress — routes to ephemeris_daily.sign_ingress_today for next Jupiter-Aries ingress"
+        }
+      ]
+    },
+    {
+      "id": "GT.079",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_transit_event",
+          "params": { "event_type": "station", "planet": "Mercury", "station_type": "retrograde_start", "start_date": "2026-05-19" },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-TE event_type=station — routes to retrogrades table for next Mercury retrograde start"
+        }
+      ]
+    },
+    {
+      "id": "GT.080",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_transit_event",
+          "params": { "event_type": "aspect", "transit_planet": "Saturn", "natal_planet": "Moon", "aspect_degrees": [180, 90, 60, 120], "orb_deg": 1.5, "start_date": "2026-05-19", "end_date": "2028-05-19" },
+          "token_budget": 600,
+          "priority": 1,
+          "reason": "R-TE event_type=aspect — natal_planet=Moon triggers chart_facts lookup inside tool; sidecar live-compute returns exact event JDs"
+        },
+        {
+          "tool_name": "msr_sql",
+          "params": { "planet": "Moon", "limit": 15 },
+          "token_budget": 400,
+          "priority": 2,
+          "reason": "R7a: natal Moon signal density for synthesis-layer interpretation of upcoming Saturn transit"
+        }
+      ]
+    },
+    {
+      "id": "GT.081",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_transit_event",
+          "params": { "event_type": "conjunction", "planet_a": "Jupiter", "planet_b": "Saturn", "start_date": "2026-05-19", "orb_deg": 1.0 },
+          "token_budget": 500,
+          "priority": 1,
+          "reason": "R-TE event_type=conjunction — sidecar live-compute for next Jupiter-Saturn conjunction"
+        }
+      ]
+    },
+    {
+      "id": "GT.082",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_ephemeris",
+          "params": { "planet": "Jupiter" },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-TC WHAT-not-WHEN: current Jupiter sign is a positional lookup; R-TE does NOT fire"
+        }
+      ]
     }
   ]
 }
