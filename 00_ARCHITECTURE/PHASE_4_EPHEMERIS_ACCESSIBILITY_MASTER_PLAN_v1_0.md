@@ -1,7 +1,7 @@
 ---
 canonical_id: PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN
 version: 1.1
-status: ACTIVE — §4.A CLOSED; §4.B next
+status: ACTIVE — §4.A CLOSED; §4.B CLOSED; §4.C next
 author: Claude (analysis stream)
 authored_on: 2026-05-18
 last_updated: 2026-05-19
@@ -69,13 +69,37 @@ campaign:
           planner_smoke_live: DEFERRED — requires live API keys; run post-push
         commit_target: feat(retrieval): query_ephemeris tool + R-TC transit-context rule (§4.A)
       4B_derived_enrichment:
-        status: PENDING — author after 4A closes
+        status: CLOSED
+        brief: briefs/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md
+        authored_on: 2026-05-19
+        closed_on: 2026-05-19
         scope: |
-          Migration 059 + bootstrap enrichment for combust, dignity_d1,
-          vargottama, sign_ingress, graha_yuddha, whole_sign_house columns.
-          Includes TRUE_NODE → MEAN_NODE Rahu fix + 657K row rebuild.
-          Extend query_ephemeris with derived_fields param.
-        depends_on: 4A
+          Migration 059 adds 7 nullable derived columns to ephemeris_daily:
+            dignity_d1, is_combust, combust_orb_deg, vargottama_today,
+            sign_ingress_today, whole_sign_house, graha_yuddha_with.
+          ephemeris_derivations.py pure-Python BPHS-canonical computation module.
+          bootstrap_ephemeris.py: TRUE_NODE → MEAN_NODE Rahu fix + inline derived computation.
+          enrich_ephemeris_daily.py: idempotent backfill for existing rows.
+          query_ephemeris (4A tool) extended with derived_fields param.
+          14 Python derivation unit tests + 5 new TS tests + GT.070-073 golden set.
+          RUNBOOK_EPHEMERIS_REBUILD_v1_0.md delivered for native-supervised rebuild.
+        outputs:
+          - platform/migrations/059_ephemeris_derived_columns.sql (new)
+          - platform/python-sidecar/pipeline/ephemeris_derivations.py (new)
+          - platform/python-sidecar/pipeline/bootstrap_ephemeris.py (updated — MEAN_NODE + derived)
+          - platform/python-sidecar/pipeline/enrich_ephemeris_daily.py (new)
+          - platform/python-sidecar/pipeline/__tests__/test_ephemeris_derivations.py (new, 14 tests)
+          - platform/src/lib/retrieve/query_ephemeris.ts (+derived_fields param)
+          - platform/src/lib/retrieve/__tests__/query_ephemeris.test.ts (+5 tests)
+          - platform/src/lib/router/retrieval_capability_spec.ts (entry rewrite)
+          - platform/tests/eval/planner_golden_set.json (+4: GT.070-073)
+          - platform/tests/eval/fixtures/regression_baseline.json (paired)
+          - 00_ARCHITECTURE/RUNBOOK_EPHEMERIS_REBUILD_v1_0.md (new)
+        boundary: |
+          The brief delivers code + migration + runbook. It does NOT
+          execute the 657K-row rebuild against production Cloud SQL.
+          Native triggers post-merge per RUNBOOK §Steps.
+        depends_on: 4A (CLOSED at bd41f13)
       4C_panchanga:
         status: PENDING — author after 4B closes
         scope: |
@@ -126,8 +150,34 @@ At close, author `PHASE_4_CLOSE_v1_0.md` sealing artifact with:
 
 ## §F Where to start
 
-**§4.A is CLOSED** (2026-05-19). `query_ephemeris` tool live in RETRIEVAL_TOOLS registry, R-TC rule encoded in PLANNER_PROMPT_v2_0.md v2.0.3.
+**§4.A is CLOSED** (2026-05-19 at `bd41f13`). `query_ephemeris` tool live in RETRIEVAL_TOOLS registry, R-TC rule encoded in PLANNER_PROMPT_v2_0.md v2.0.3.
 
-**Next: §4.B** — author `briefs/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md`. Depends on 4A outputs (query_ephemeris tool + ephemeris_daily schema). Key 4B scope: migration 059 for derived columns, TRUE_NODE → MEAN_NODE Rahu fix, 657K row rebuild, `derived_fields` param extension for query_ephemeris.
+**§4.B is CLOSED** (2026-05-19). Migration 059 + 7 derived columns + MEAN_NODE Rahu fix + `ephemeris_derivations.py` + `enrich_ephemeris_daily.py` + `query_ephemeris` `derived_fields` param + 20 Python tests + 12 TS tests (5 new) + GT.070–073 + RUNBOOK_EPHEMERIS_REBUILD_v1_0.md all shipped. tsc clean, vitest 12/12, pytest 20/20, planner_regression_gate 2/2. Closing commit SHA: (see git log). Production 657K-row rebuild deferred to native per runbook — Path A recommended.
 
-After §4.A closes (commit lands on analysis branch), come back to Cowork and I'll author the §4.B brief based on what §4.A delivered.
+**Execution prompt to paste into Claude Code for §4.B:**
+
+```
+Read 00_ARCHITECTURE/briefs/PHASE_4B_DERIVED_ENRICHMENT_BRIEF_v1_0.md and execute it.
+
+Start with:
+git -C /Users/Dev/Vibe-Coding/Apps/Madhav-analysis checkout analysis/backend-data-pipeline-perf-audit
+git -C /Users/Dev/Vibe-Coding/Apps/Madhav-analysis status
+
+If branch is correct and working tree clean, proceed with the brief autonomously.
+If not, STOP and report.
+
+Hard constraints (re-stated from CLAUDE.md + master plan §C):
+- Analysis branch only. Never touch Chat V2 files.
+- No autonomous npm run answer:eval. Pre-commit verification only.
+- Approved decisions in EPHEMERIS_ACCESSIBILITY_RESEARCH_v1_0.md §6 are locked.
+- Do NOT execute the 657K-row rebuild against production Cloud SQL.
+  The brief ships code + migration + runbook; native runs the rebuild
+  post-merge per RUNBOOK_EPHEMERIS_REBUILD_v1_0.md.
+- Pre-commit gates: tsc + TS vitest + Python pytest + planner_regression_gate.
+- Migration apply against real DB is operator-supervised, not autonomous.
+
+When complete: report commit SHA + git log + gate results + Path A vs B
+recommendation for the rebuild + any §4.C/4.D scope adjustments.
+```
+
+After §4.B closes (commit lands on analysis branch), come back to Cowork and I'll author the §4.C brief (panchanga) based on what §4.B delivered.

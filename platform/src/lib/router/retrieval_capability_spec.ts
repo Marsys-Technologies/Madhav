@@ -614,33 +614,35 @@ const convergence_score_lookup: RetrievalCapabilityEntry = {
 const query_ephemeris: RetrievalCapabilityEntry = {
   tool_name: 'query_ephemeris',
   description:
-    'Date-indexed planetary positions from the ephemeris_daily table (657K rows, ' +
-    '1900-01-01 to 2100-12-31, 9 grahas, Lahiri sidereal, midnight UT, computed by ' +
-    'pyswisseph at bootstrap and persisted). Returns per-planet per-day longitude, ' +
-    'sign, nakshatra+pada, sign_degree, retrograde flag, speed. ' +
-    'CANONICAL SURFACE for transit context: divisional_query / chart_facts_query give ' +
-    'natal positions; query_ephemeris gives transit positions at any date in the ' +
-    'supported range. Use whenever a query is not purely natal — past LEL event date, ' +
-    'present moment, future date, or date range. The planner attaches this tool by ' +
-    'default at priority 2 under rule R-TC (transit-context).',
+    'Date-indexed planetary positions PLUS Vedic-interpretable derived state from ' +
+    'the ephemeris_daily table (657K rows, 1900-2100, 9 grahas, Lahiri sidereal). ' +
+    'Returns per-planet per-day: longitude, sign, nakshatra+pada, retrograde, speed, ' +
+    'AND derived state: dignity (exalted/debilitated/own/mooltrikona/neutral), ' +
+    'combust state + orb degrees, vargottama (D1=D9 sign), whole-sign-house (relative ' +
+    'to native lagna = Aries), sign-ingress flag (entered new sign today), ' +
+    'graha-yuddha (within 1° of another planet — among Mars/Mercury/Jupiter/Venus/Saturn). ' +
+    'CANONICAL SURFACE for any transit-context query — both the raw positions AND ' +
+    'their Vedic interpretation. Default attached at priority 2 under R-TC for any ' +
+    'non-natal query. Use derived_fields:[] to skip derived columns for token-tight calls.',
   data_surface:
-    'L1 — table ephemeris_daily (migration 015). Fields: date, planet (lowercase: ' +
-    'sun..ketu), longitude_deg (sidereal Lahiri 0-360), latitude_deg, ' +
-    'speed_deg_per_day, is_retrograde, sign, sign_degree (0-30), nakshatra, ' +
-    'nakshatra_pada (1-4), ayanamsha (lahiri), ephemeris_version (pyswisseph-2.10.x).',
+    'L1 — table ephemeris_daily (migrations 015 + 059). Fields: date, planet (lowercase: ' +
+    'sun..ketu), longitude_deg (sidereal Lahiri 0-360), latitude_deg, speed_deg_per_day, ' +
+    'is_retrograde, sign, sign_degree (0-30), nakshatra, nakshatra_pada (1-4), ' +
+    'ayanamsha (lahiri), ephemeris_version. ' +
+    'Phase 4B derived: dignity_d1, is_combust, combust_orb_deg, vargottama_today, ' +
+    'sign_ingress_today, whole_sign_house (1-12, Aries lagna), graha_yuddha_with.',
   supported_params:
-    '{ date?: YYYY-MM-DD (single date; default today UTC); ' +
-    'start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD (range mode); ' +
-    'planet?: string (canonical name, case-insensitive); ' +
-    'planets?: string[] (multiple); ' +
-    'limit?: number (default 100, max 500). ' +
-    'Date range supported: 1900-01-01 to 2100-12-31. Out-of-range returns diagnostic row. }',
+    '{ date?: YYYY-MM-DD; start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'planet?: string; planets?: string[]; limit?: number (default 100, max 500); ' +
+    'derived_fields?: ("dignity"|"combust"|"vargottama"|"ingress"|"yuddha"|"house")[] ' +
+    '(default ALL — empty array opts out). ' +
+    'Date range: 1900-01-01 to 2100-12-31. Out-of-range returns diagnostic row. }',
   optimal_patterns: [
-    'Transit on a specific past event: {date:"2008-04-15"} (then read planet=Saturn for "Saturn at marriage")',
-    'Current transits: {} (no params, defaults to today UTC, all 9 planets)',
-    'Single planet history: {start_date:"2018-01-01", end_date:"2019-12-31", planet:"Mars"}',
-    'Future transit window: {start_date:"2027-08-21", end_date:"2034-08-21", planet:"Ketu"} (Ketu MD)',
-    'Multi-planet snapshot: {date:"2026-05-18", planets:["Sun","Moon","Saturn"]}',
+    'Transit at LEL event: {date:"2008-04-15", planet:"Saturn"} (returns Saturn at marriage with dignity + house + combust status)',
+    'Combust check: {start_date:"2018-06-01", end_date:"2018-07-31", planet:"Mercury"} (combust_orb_deg + is_combust per day)',
+    'Current transits with full state: {} (today UTC, all 9 grahas, all derived fields)',
+    'Sign-ingress scan: {start_date:"2026-01-01", end_date:"2026-12-31", planet:"Jupiter"} (sign_ingress_today=true marks each Jupiter sign-change in the year)',
+    'Token-tight raw positions: {date:"2026-05-19", derived_fields:[]}',
   ],
   cost_tier: 'low',
   requires_temporal: true,

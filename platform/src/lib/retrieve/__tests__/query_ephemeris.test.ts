@@ -42,6 +42,14 @@ const marsRow = {
   nakshatra_pada: 4,
   ayanamsha: 'lahiri',
   ephemeris_version: '2.10.03',
+  // Phase 4B derived columns
+  dignity_d1: 'exalted',
+  is_combust: false,
+  combust_orb_deg: '142.3000',
+  vargottama_today: false,
+  sign_ingress_today: false,
+  whole_sign_house: 10,
+  graha_yuddha_with: null,
 }
 
 beforeEach(() => {
@@ -130,6 +138,61 @@ describe('query_ephemeris tool', () => {
     expect(content.note).toContain('ephemeris_daily empty or out-of-range')
     expect(bundle.results[0].confidence).toBe(0)
     expect(bundle.results[0].significance).toBe(0)
+  })
+
+  it('surfaces dignity field in response by default', async () => {
+    mockQuery.mockResolvedValue({ rows: [marsRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan, { date: '2008-04-15', planet: 'mars' })
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.dignity).toBe('exalted')
+  })
+
+  it('surfaces combust + orb in response by default', async () => {
+    const combustRow = { ...marsRow, is_combust: true, combust_orb_deg: '10.5000' }
+    mockQuery.mockResolvedValue({ rows: [combustRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan)
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.is_combust).toBe(true)
+    expect(content.combust_orb_deg).toBeCloseTo(10.5)
+  })
+
+  it('surfaces whole_sign_house in response by default', async () => {
+    mockQuery.mockResolvedValue({ rows: [marsRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan)
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.whole_sign_house).toBe(10)
+  })
+
+  it('derived_fields:[] opts out — response omits all 6 derived keys', async () => {
+    mockQuery.mockResolvedValue({ rows: [marsRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan, { derived_fields: [] })
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.dignity).toBeUndefined()
+    expect(content.is_combust).toBeUndefined()
+    expect(content.combust_orb_deg).toBeUndefined()
+    expect(content.vargottama).toBeUndefined()
+    expect(content.sign_ingress).toBeUndefined()
+    expect(content.whole_sign_house).toBeUndefined()
+    expect(content.graha_yuddha_with).toBeUndefined()
+  })
+
+  it('derived_fields:[dignity] returns only dignity — other derived keys absent', async () => {
+    mockQuery.mockResolvedValue({ rows: [marsRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan, { derived_fields: ['dignity'] })
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.dignity).toBe('exalted')
+    expect(content.is_combust).toBeUndefined()
+    expect(content.whole_sign_house).toBeUndefined()
   })
 
   it('DB error rethrows (does not degrade) and logs via writeToolExecutionLog', async () => {

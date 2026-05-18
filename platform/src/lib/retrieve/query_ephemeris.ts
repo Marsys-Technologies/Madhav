@@ -32,6 +32,8 @@ const TOOL_VERSION = '1.0.0'
 const VALID_PLANETS = ['sun', 'moon', 'mars', 'mercury', 'jupiter', 'venus', 'saturn', 'rahu', 'ketu'] as const
 type PlanetName = (typeof VALID_PLANETS)[number]
 
+export type DerivedField = 'dignity' | 'combust' | 'vargottama' | 'ingress' | 'yuddha' | 'house'
+
 export interface QueryEphemerisInput {
   /** Single date (YYYY-MM-DD). Defaults to today UTC if neither date nor start_date provided. */
   date?: string
@@ -45,6 +47,12 @@ export interface QueryEphemerisInput {
   planets?: string[]
   /** Maximum rows. Clamped to [1, 500]. Defaults to 100. */
   limit?: number
+  /**
+   * Which derived columns to include. Defaults to all 6 (dignity, combust,
+   * vargottama, ingress, yuddha, house). Pass [] to opt out for token-budget
+   * tight queries. Pass a subset to include only specific fields.
+   */
+  derived_fields?: DerivedField[]
 }
 
 interface EphemerisRow {
@@ -60,7 +68,17 @@ interface EphemerisRow {
   nakshatra_pada: number
   ayanamsha: string
   ephemeris_version: string
+  // Phase 4B derived columns (nullable until rebuilt)
+  dignity_d1: string | null
+  is_combust: boolean | null
+  combust_orb_deg: string | null
+  vargottama_today: boolean | null
+  sign_ingress_today: boolean | null
+  whole_sign_house: number | null
+  graha_yuddha_with: string | null
 }
+
+const ALL_DERIVED_FIELDS: DerivedField[] = ['dignity', 'combust', 'vargottama', 'ingress', 'yuddha', 'house']
 
 function normalizePlanet(p: string): PlanetName | null {
   const lower = p.toLowerCase().trim()
@@ -154,7 +172,14 @@ async function retrieveImpl(
       nakshatra,
       nakshatra_pada,
       ayanamsha,
-      ephemeris_version
+      ephemeris_version,
+      dignity_d1,
+      is_combust,
+      combust_orb_deg::text AS combust_orb_deg,
+      vargottama_today,
+      sign_ingress_today,
+      whole_sign_house,
+      graha_yuddha_with
     FROM ephemeris_daily
     WHERE ${where}
     ORDER BY date ASC, planet ASC
@@ -165,9 +190,13 @@ async function retrieveImpl(
   const result = await storage.query(sql, args)
   const rows = result.rows as EphemerisRow[]
 
+  // Determine which derived fields to include (default: all).
+  const derivedFields: DerivedField[] =
+    input.derived_fields !== undefined ? input.derived_fields : ALL_DERIVED_FIELDS
+
   const results: ToolBundleResult[] = rows.length > 0
-    ? rows.map(r => ({
-        content: JSON.stringify({
+    ? rows.map(r => {
+        const base: Record<string, unknown> = {
           date: r.date,
           planet: r.planet,
           longitude_deg: Number(r.longitude_deg),
@@ -180,12 +209,21 @@ async function retrieveImpl(
           nakshatra_pada: r.nakshatra_pada,
           ayanamsha: r.ayanamsha,
           ephemeris_version: r.ephemeris_version,
-        }),
-        source_canonical_id: 'EPHEMERIS_DAILY',
-        source_version: '1.0',
-        confidence: 1.0,
-        significance: 0.85,
-      }))
+        }
+        if (derivedFields.includes('dignity'))   base.dignity = r.dignity_d1
+        if (derivedFields.includes('combust'))   { base.is_combust = r.is_combust; base.combust_orb_deg = r.combust_orb_deg !== null ? Number(r.combust_orb_deg) : null }
+        if (derivedFields.includes('vargottama')) base.vargottama = r.vargottama_today
+        if (derivedFields.includes('ingress'))   base.sign_ingress = r.sign_ingress_today
+        if (derivedFields.includes('house'))     base.whole_sign_house = r.whole_sign_house
+        if (derivedFields.includes('yuddha'))    base.graha_yuddha_with = r.graha_yuddha_with
+        return {
+          content: JSON.stringify(base),
+          source_canonical_id: 'EPHEMERIS_DAILY',
+          source_version: '1.0',
+          confidence: 1.0,
+          significance: 0.85,
+        }
+      })
     : [{
         content: JSON.stringify({
           note: 'ephemeris_daily empty or out-of-range for requested params. Date range supported: 1900-01-01 to 2100-12-31.',
@@ -237,10 +275,15 @@ export const tool: RetrievalTool = {
   name: TOOL_NAME,
   version: TOOL_VERSION,
   description:
-    'Date-indexed planetary position lookup from the ephemeris_daily table ' +
-    '(1900-01-01 to 2100-12-31, 9 grahas, Lahiri sidereal, midnight UT). ' +
-    'Returns longitude, sign, nakshatra+pada, retrograde, speed for the queried date(s). ' +
-    'Default surface for any non-natal query that needs transit context (past LEL event, ' +
-    'present moment, future date, or date range). Pairs with the R-TC planner rule.',
+    'Date-indexed planetary positions PLUS Vedic-interpretable derived state from ' +
+    'the ephemeris_daily table (657K rows, 1900-2100, 9 grahas, Lahiri sidereal). ' +
+    'Returns per-planet per-day: longitude, sign, nakshatra+pada, retrograde, speed, ' +
+    'AND derived state: dignity (exalted/debilitated/own/mooltrikona/neutral), ' +
+    'combust state + orb degrees, vargottama (D1=D9 sign), whole-sign-house (relative ' +
+    'to native lagna = Aries), sign-ingress flag (entered new sign today), ' +
+    'graha-yuddha (within 1° of another planet — among Mars/Mercury/Jupiter/Venus/Saturn). ' +
+    'CANONICAL SURFACE for any transit-context query — both the raw positions AND ' +
+    'their Vedic interpretation. Default attached at priority 2 under R-TC for any ' +
+    'non-natal query. Use derived_fields:[] to skip derived columns for token-tight calls.',
   retrieve,
 }

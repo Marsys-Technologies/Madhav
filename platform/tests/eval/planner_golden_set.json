@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.2",
-  "description": "Golden test set for the MARSYS-JIS query planner. 69 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala. Extended 2026-05-18 (Phase 4A) with 5 entries (GT.065–069) covering query_ephemeris + R-TC transit-context rule (4 positive + 1 negative NEGATIVE test).",
+  "description": "Golden test set for the MARSYS-JIS query planner. 73 labeled query → expected_tool-plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala. Extended 2026-05-18 (Phase 4A) with 5 entries (GT.065–069) covering query_ephemeris + R-TC transit-context rule (4 positive + 1 negative NEGATIVE test). Extended 2026-05-19 (Phase 4B) with 4 entries (GT.070–073) covering derived-column queries: combust, dignity, whole-sign-house, sign-ingress.",
   "native_context": {
     "name": "Abhisek Mohanty",
     "birth_date": "1984-02-05",
@@ -1701,6 +1701,84 @@
         "FORENSIC"
       ],
       "notes": "Phase 4A R-TC NEGATIVE golden entry. Pure natal positional query, NO temporal anchor. R-TC must NOT fire; query_ephemeris is forbidden. R-FACT enforces single-tool msr_sql."
+    },
+    {
+      "id": "GT.070",
+      "query": "Was Mercury combust during my January 2019 job interview?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "lel_query",
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "lel_query",
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [],
+      "required_asset_ids": [
+        "FORENSIC",
+        "LEL"
+      ],
+      "notes": "Phase 4B R-TC + LEL anchor. query_ephemeris surfaces is_combust + combust_orb_deg for the LEL event date. Synthesis joins on event_date."
+    },
+    {
+      "id": "GT.071",
+      "query": "Where will Jupiter be exalted next?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4B R-TC + dignity filter. Planner emits query_ephemeris with start_date=today, end_date=+5 years, planet=Jupiter; synthesis filters dignity='exalted'."
+    },
+    {
+      "id": "GT.072",
+      "query": "Which house is Saturn currently transiting in my chart?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4B R-TC + R-FACT. query_ephemeris returns whole_sign_house directly. No synthesis needed beyond surfacing the value."
+    },
+    {
+      "id": "GT.073",
+      "query": "When does Jupiter enter Aries in 2027?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4B R-TC + sign_ingress filter. Planner emits query_ephemeris with start_date=2027-01-01, end_date=2027-12-31, planet=Jupiter. Synthesis filters sign_ingress_today=true AND sign='Aries' to find the exact ingress day."
     }
   ],
   "_schema_version": "1.2"
