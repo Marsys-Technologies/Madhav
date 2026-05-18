@@ -10,7 +10,7 @@
  *   (b) the messageMetadata({part}) hook on `start` and `finish` parts.
  *
  * This module is the canonical type surface for what each payload looks
- * like, regardless of transport. Consumers (AnswerView, ConsumeChat) reference
+ * like, regardless of transport. Consumers (ConsumeChat) reference
  * these types; the marker-parser (lib/consume/
  * marker_parser) produces them.
  */

@@ -12,7 +12,7 @@
  * display text), and (b) the structured payload events extracted so far.
  *
  * Idempotent: passing the same text twice yields the same outputs. The caller
- * (StreamingAnswer) re-parses on every text delta.
+ * re-parses on every text delta.
  */
 
 import type {
