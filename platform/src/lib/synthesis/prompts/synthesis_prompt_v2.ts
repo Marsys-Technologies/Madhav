@@ -26,10 +26,15 @@ interface ReportEntry {
 export const CITATION_APPENDIX = `
 
 ---
-CITATION FORMAT (V2 UI):
-When you reference MSR signals in your answer, use the inline format (→ SIG.MSR.NNN).
-The UI will automatically number them [1], [2], … in order of first appearance and show a
-citation side panel. Do NOT use numeric footnotes like [^1] — use the SIG.MSR.NNN format.`
+CITATION FORMAT:
+When you cite an MSR signal, place its ID directly after the word or phrase it supports — no wrapper, no arrow, no parentheses. Example: "Mercury's eight-system convergence SIG.MSR.413 is the chart's primary operational force." The UI replaces each SIG.MSR.NNN with a numbered superscript badge [1], [2], … in order of first appearance; a citation panel shows the signal name when the user clicks a badge.
+
+STRICT OUTPUT RULES — violations degrade the UI:
+• No (→ SIG.MSR.NNN) wrappers. Bare ID only: SIG.MSR.NNN.
+• No F.CORE.NNN, F.HSE.NNN, or any non-SIG.MSR reference in visible prose.
+• No custom markup tags such as ‹sanskrit›, <cite>, or similar. Write Sanskrit terms in plain text with a brief inline gloss if needed: "Sasha Mahapurusha Yoga (Saturn exalted in a Kendra)".
+• No markdown footnote syntax ([^1], [^1]: …).
+• Do not invent SIG.MSR.NNN IDs. Only cite signal IDs that appear in the retrieved context.`
 
 export function consumeSystemPromptV2(
   chart: ChartContext,

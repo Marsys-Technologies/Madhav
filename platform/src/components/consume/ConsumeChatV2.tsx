@@ -64,6 +64,7 @@ export interface ConsumeChatProps {
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
+import { CodeBlock } from '../chat/CodeBlock'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
 import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
@@ -192,31 +193,39 @@ interface CitationContextValue {
 }
 const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
 
-function renderWithCitations(
-  text: string,
-  onPin: (n: number, signalId: string) => void,
-): (string | React.ReactElement)[] {
-  const pattern = /SIG\.MSR\.\d{3}(?!\d)/g
-  const parts: (string | React.ReactElement)[] = []
+/** Pre-process LLM response text before markdown rendering.
+ *
+ *  Primary path (new prompt format):
+ *    bare SIG.MSR.NNN → inline CITE badge marker
+ *
+ *  Defence-in-depth for legacy / prompt-drift:
+ *    custom sanskrit markup tags → bare inner term
+ *    (→ id1, id2, ...) wrappers  → badges for MSR ids, rest dropped
+ *
+ *  Returns processed text and unique MSR citation count. */
+function preprocessCitations(text: string): { processedText: string; count: number } {
   const seen: string[] = []
-  function getN(id: string): number {
-    const i = seen.indexOf(id)
-    if (i >= 0) return i + 1
-    seen.push(id)
-    return seen.length
+  function badge(sigId: string): string {
+    let i = seen.indexOf(sigId)
+    if (i < 0) { seen.push(sigId); i = seen.length - 1 }
+    return `\`CITE:${i + 1}:${sigId}\``
   }
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
-    const sigId = match[0]
-    const n = getN(sigId)
-    parts.push(<NumberedCitation key={`${sigId}-${match.index}`} n={n} signalId={sigId} onPin={onPin} />)
-    lastIndex = match.index + match[0].length
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
-  return parts
+
+  // Defence-in-depth: strip custom markup tags (prompt-drift safety net).
+  let result = text.replace(/‹sanskrit[^›]*›([\s\S]*?)‹\/sanskrit›/g, '$1')
+
+  // Defence-in-depth: collapse (→ ...) wrappers — extract MSR signals, drop others.
+  result = result.replace(/\(→\s*([^)]*)\)/g, (_match, contents: string) => {
+    const signals = [...contents.matchAll(/SIG\.MSR\.(\d{3})(?!\d)/g)].map(m => `SIG.MSR.${m[1]}`)
+    return signals.length > 0 ? signals.map(badge).join(' ') : ''
+  })
+
+  // Primary: replace bare SIG.MSR.NNN with inline CITE badge markers.
+  result = result.replace(/SIG\.MSR\.\d{3}(?!\d)/g, badge)
+
+  return { processedText: result, count: seen.length }
 }
+
 
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
@@ -226,7 +235,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
 
-  // C.3: build signal_id → {snippet, layer} map from data-citation parts (both sources via hook).
+  // C.3: build signal_id → {snippet, layer} map from data-citation parts.
   const citationRichMap = useMemo(() => {
     const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
     for (const d of dataParts) {
@@ -248,32 +257,50 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
   }, [onPin, citationRichMap])
 
-  // D.1: extract citation chips (NumberedCitation elements) for footer rendering.
-  // MarkdownContent only accepts string children, so chips render below the text.
-  const citationChips = useMemo(() => {
-    const parts = renderWithCitations(text, enrichedOnPin)
-    return parts.filter((p): p is React.ReactElement => typeof p !== 'string')
-  }, [text, enrichedOnPin])
+  // Pre-process text: replace SIG.MSR.NNN → `CITE:N:SIG.MSR.NNN` inline markers.
+  const { processedText, count } = useMemo(
+    () => preprocessCitations(text),
+    [text],
+  )
 
   useEffect(() => {
-    onCitationCount?.(citationChips.length)
-  }, [citationChips.length, onCitationCount])
+    onCitationCount?.(count)
+  }, [count, onCitationCount])
+
+  // Custom code component: intercepts CITE:N:SIG patterns to render inline badges;
+  // all other code (inline or fenced) falls through to standard rendering.
+  const citeCodeComponent = useMemo(() => {
+    function CiteCode({ className: codeClass, children, ...rest }: React.ComponentPropsWithoutRef<'code'>) {
+      const raw = String(children ?? '')
+      const m = raw.match(/^CITE:(\d+):(SIG\.MSR\.\d{3})$/)
+      if (m) {
+        return (
+          <NumberedCitation
+            n={parseInt(m[1], 10)}
+            signalId={m[2]}
+            onPin={enrichedOnPin}
+          />
+        )
+      }
+      const lang = codeClass?.match(/language-(\w+)/)?.[1]
+      if (!lang) {
+        return <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.88em]" {...rest}>{children}</code>
+      }
+      if (lang === 'marsys_methodology_block') return null
+      return <CodeBlock code={raw.replace(/\n$/, '')} lang={lang} isStreaming={isStreaming} />
+    }
+    return CiteCode
+  }, [enrichedOnPin, isStreaming])
 
   return (
-    <div>
-      <MarkdownContent
-        streaming={isStreaming}
-        className="text-sm text-zinc-200"
-        data-testid="v2-message-text"
-      >
-        {text}
-      </MarkdownContent>
-      {citationChips.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
-          {citationChips}
-        </div>
-      )}
-    </div>
+    <MarkdownContent
+      streaming={isStreaming}
+      className="text-sm text-zinc-200"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      customComponents={{ code: citeCodeComponent as any }}
+    >
+      {processedText}
+    </MarkdownContent>
   )
 }
 
@@ -438,7 +465,7 @@ function V2Message() {
       <MessagePrimitive.If user>
         <div className="flex flex-col items-end gap-1">
           <div
-            className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm text-white max-w-[70%]"
+            className="v2-user-bubble rounded-2xl px-4 py-2.5 text-sm text-foreground max-w-[70%]"
             data-testid="v2-user-message"
           >
             {/* F.2: flat props — renderer receives {text,...} directly, not a nested part object */}
@@ -910,7 +937,7 @@ function V2Composer() {
             )}
 
             <ComposerPrimitive.Input
-              className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-zinc-100 placeholder-zinc-500 focus:outline-none"
+              className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Ask about the chart…"
               rows={3}
               data-testid="v2-composer-input"
@@ -967,10 +994,6 @@ function V2Composer() {
           </div>
         </div>
 
-        {/* O2: panel mode toggle — below pill */}
-        <div className="mx-auto max-w-4xl flex items-center pt-1.5" data-testid="v2-composer-options">
-          <PanelModeToggle />
-        </div>
       </ComposerPrimitive.Root>
     </div>
   )
@@ -1128,7 +1151,7 @@ function V2BottomBar() {
 
   return (
     <div
-      className="mx-auto max-w-4xl w-full px-4 py-1 flex flex-wrap items-center gap-2 border-b border-zinc-800"
+      className="mx-auto max-w-4xl w-full px-4 py-1 flex items-center justify-between border-b border-zinc-800"
       data-testid="v2-bottom-bar"
     >
       <ModelStylePicker
@@ -1137,23 +1160,26 @@ function V2BottomBar() {
         onStackChange={setStack}
         onStyleChange={setStyle}
       />
-      <button
-        type="button"
-        aria-pressed={lelEnabled}
-        onClick={() => setLelEnabled(!lelEnabled)}
-        className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
-          lelEnabled
-            ? 'border-[rgba(var(--brand-gold-rgb),0.35)] text-[rgba(var(--brand-gold-rgb),0.80)] bg-[rgba(var(--brand-gold-rgb),0.06)]'
-            : 'border-zinc-700 text-zinc-500 bg-transparent'
-        }`}
-        data-testid="v2-lel-toggle"
-        title={lelEnabled ? 'Life Events context enabled' : 'Life Events context disabled'}
-      >
-        Life Events: {lelEnabled ? 'On' : 'Off'}
-      </button>
-      {audienceTier === 'super_admin' && (
-        <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
-      )}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={lelEnabled}
+          onClick={() => setLelEnabled(!lelEnabled)}
+          className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+            lelEnabled
+              ? 'border-[rgba(var(--brand-gold-rgb),0.35)] text-[rgba(var(--brand-gold-rgb),0.80)] bg-[rgba(var(--brand-gold-rgb),0.06)]'
+              : 'border-zinc-700 text-zinc-500 bg-transparent'
+          }`}
+          data-testid="v2-lel-toggle"
+          title={lelEnabled ? 'Life Events context enabled' : 'Life Events context disabled'}
+        >
+          Life Events: {lelEnabled ? 'On' : 'Off'}
+        </button>
+        {audienceTier === 'super_admin' && (
+          <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
+        )}
+        <PanelModeToggle />
+      </div>
     </div>
   )
 }

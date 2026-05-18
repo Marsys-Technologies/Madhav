@@ -283,6 +283,22 @@ body {
   40% { opacity: 1; transform: scale(1); }
 }
 
+/* V2 user message bubble — glassmorphism + right-pointing speech tail */
+.v2-user-bubble {
+  position: relative;
+  background: oklch(0.24 0.012 80);
+  border: 1px solid rgba(var(--brand-gold-rgb), 0.18);
+}
+.v2-user-bubble::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: -7px;
+  border: 7px solid transparent;
+  border-left: 7px solid oklch(0.24 0.012 80);
+  border-right: 0;
+}
+
 
 /* Build-portal typography scale — strict 5-step ladder.
    Use these classes anywhere in /build/* instead of arbitrary text-* utilities.
