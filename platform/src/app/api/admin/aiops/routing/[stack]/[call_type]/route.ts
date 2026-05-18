@@ -32,18 +32,18 @@ export async function PUT(req: Request, { params }: { params: Promise<Params> })
   if (!bodyParsed.success) {
     return res.badRequest(`Body must include primary_model and fallback_model strings.`)
   }
-  const { primary_model, fallback_model } = bodyParsed.data
+  const { primary_model, fallback_model, expires_at = null } = bodyParsed.data
 
   try {
     const before = STACK_ROUTING[stack]?.[callType] ?? { primary: '', fallback: '' }
 
     await query(
       `INSERT INTO llm_stack_routing_override
-         (scope, stack, call_type, primary_model, fallback_model, updated_at, updated_by)
-       VALUES ('global', $1, $2, $3, $4, NOW(), $5)
+         (scope, stack, call_type, primary_model, fallback_model, updated_at, updated_by, expires_at)
+       VALUES ('global', $1, $2, $3, $4, NOW(), $5, $6)
        ON CONFLICT (scope, stack, call_type)
-         DO UPDATE SET primary_model=$3, fallback_model=$4, updated_at=NOW(), updated_by=$5`,
-      [stack, callType, primary_model, fallback_model, guard.user.uid],
+         DO UPDATE SET primary_model=$3, fallback_model=$4, updated_at=NOW(), updated_by=$5, expires_at=$6`,
+      [stack, callType, primary_model, fallback_model, guard.user.uid, expires_at ?? null],
     )
 
     await query(
@@ -55,13 +55,13 @@ export async function PUT(req: Request, { params }: { params: Promise<Params> })
         stack,
         callType,
         JSON.stringify(before),
-        JSON.stringify({ primary_model, fallback_model }),
+        JSON.stringify({ primary_model, fallback_model, expires_at: expires_at ?? null }),
       ],
     )
 
     invalidateRuntimeConfigCache()
 
-    return NextResponse.json({ stack, call_type: callType, primary_model, fallback_model })
+    return NextResponse.json({ stack, call_type: callType, primary_model, fallback_model, expires_at: expires_at ?? null })
   } catch (err) {
     console.error('[aiops/routing] PUT error:', err)
     return res.internal('Failed to update routing override.')

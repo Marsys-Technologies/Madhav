@@ -40,7 +40,7 @@ export function invalidateRuntimeConfigCache(): void {
 async function fetchFromDb(): Promise<RuntimeCache> {
   const [stackRows, routingRows, paramRows] = await Promise.all([
     query<LlmStackConfigRow>(`SELECT * FROM llm_stack_config WHERE scope = 'global' LIMIT 1`),
-    query<LlmStackRoutingOverrideRow>(`SELECT * FROM llm_stack_routing_override WHERE scope = 'global'`),
+    query<LlmStackRoutingOverrideRow>(`SELECT * FROM llm_stack_routing_override WHERE scope = 'global' AND (expires_at IS NULL OR expires_at > NOW())`),
     query<LlmParamOverrideRow>(`SELECT * FROM llm_param_override WHERE scope = 'global'`),
   ])
 

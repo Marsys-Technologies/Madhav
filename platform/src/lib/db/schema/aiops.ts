@@ -33,6 +33,8 @@ export interface LlmStackRoutingOverrideRow {
   fallback_model: string
   updated_at:     string
   updated_by:     string
+  /** NULL = permanent override; ISO string = auto-expire at this time (Phase 3C). */
+  expires_at:     string | null
 }
 
 export interface LlmParamOverrideRow {

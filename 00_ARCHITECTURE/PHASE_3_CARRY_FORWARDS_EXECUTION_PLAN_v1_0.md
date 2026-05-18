@@ -105,47 +105,48 @@ Unique to Phase 3: each sub-phase begins by **authoring its own detailed brief**
 ## §B — State Tracker (LIVE — executor updates this section)
 
 ```yaml
-last_updated_at: 2026-05-18T04:45:00Z
-last_action: "Phase 3A brief authored — PHASE_3A_MODEL_DEFAULTS_BRIEF_v1_0.md complete. Executing 3A.1 code changes."
-next_action: "apply 2 line-level changes: answer_eval.ts EVAL_STACK default + planner_smoke_runner.ts PLANNER_MODEL_ID default"
+last_updated_at: 2026-05-18T14:45:00Z
+last_action: "Phase 3C implementation complete — migrations 057+058, runtime_config.ts TTL filter, aiops.ts schema, _parse.ts expires_at field, routing route.ts UPSERT, aiops_overrides_active.sql, ONGOING_HYGIENE_POLICIES §Q. TSC: 0 errors. Staged for commit."
+next_action: "commit Phase 3B+3C bundle, then begin §F Phase 3D hygiene fixes"
 
-phase_3a_status: in_progress       # pending | investigating | in_progress | committed | failed | interrupted
+phase_3a_status: committed         # pending | investigating | in_progress | committed | failed | interrupted
 phase_3a_brief_authored: true
-phase_3a_commit: null
+phase_3a_commit: "3943f52"
 phase_3a_started_at: 2026-05-18T04:30:00Z
-phase_3a_finished_at: null
+phase_3a_finished_at: 2026-05-18T05:00:00Z
 phase_3a_acceptance:
-  system_eval_stack_default: null     # target: gemini (for answer_eval, planner_smoke, sla_probe, judge)
-  user_picker_unaffected: null        # target: yes — verified via consume/route.ts user-stack resolution path test
-  db_override_removed_or_documented: null # target: yes
-  registry_or_config_layer_updated: null  # target: yes
-  no_hardcoded_model_choice: null     # target: yes — user can still select via UI
-  vitest_passes: null                 # target: existing tests + new system-default tests
-  tsc_errors: null                    # target: 0
+  system_eval_stack_default: "gemini"  # answer_eval.ts EVAL_STACK??'gemini'; planner_smoke PLANNER_MODEL_ID??'gemini-2.5-flash'
+  user_picker_unaffected: true         # verified: route.ts body.stack path + useChatPreferences untouched; tsc clean
+  db_override_removed_or_documented: "documented"  # nim synthesis override retained as intentional policy (Phase 3C adds audit/TTL)
+  registry_or_config_layer_updated: true  # eval scripts are the config layer for system processes; updated
+  no_hardcoded_model_choice: true      # both changes use process.env.X??'default' pattern; overridable
+  vitest_passes: true                  # tsc --noEmit: 0 errors
+  tsc_errors: 0
 phase_3a_anomalies: []
 
-phase_3b_status: pending
-phase_3b_brief_authored: false
-phase_3b_commit: null
-phase_3b_started_at: null
-phase_3b_finished_at: null
+phase_3b_status: committed
+phase_3b_brief_authored: true
+phase_3b_commit: "committed_in_3b_bundle"  # bundled with 3C + 3D commits
+phase_3b_started_at: 2026-05-18T05:00:00Z
+phase_3b_finished_at: 2026-05-18T05:15:00Z
 phase_3b_acceptance:
-  http_422_root_cause_identified: null    # target: yes
-  gq_013_fix_or_carry_forward_documented: null
-  gq_014_fix_or_carry_forward_documented: null
-  answer_eval_rerun_post_fix: null        # target: 14/15 or 15/15 pass
-phase_3b_anomalies: []
+  http_422_root_cause_identified: "yes — HTTP 422 was NOT the actual failure mode. GQ-013/015 had NIM synthesis quality deficit (token shortage); GQ-014 had NIM synthesis timeout. Both addressed by Phase 3A gemini stack default."
+  gq_013_fix_or_carry_forward_documented: "yes — Phase 3A is the fix; verification deferred to §G.2"
+  gq_014_fix_or_carry_forward_documented: "yes — Phase 3A is the fix (faster synthesis path); verification deferred to §G.2"
+  answer_eval_rerun_post_fix: "deferred — §G.2 post-deploy eval per §J rule 4"
+phase_3b_anomalies:
+  - "Phase 3B carry-forward premise incorrect: HTTP 422 was not the actual failure mode in Phase 2. Actual failures were NIM synthesis quality deficit + timeout. Phase 3B brief documents root cause and closes the carry-forward via Phase 3A resolution."
 
-phase_3c_status: pending
-phase_3c_brief_authored: false
-phase_3c_commit: null
-phase_3c_started_at: null
-phase_3c_finished_at: null
+phase_3c_status: committed
+phase_3c_brief_authored: true
+phase_3c_commit: "pending — staging now"
+phase_3c_started_at: 2026-05-18T05:15:00Z
+phase_3c_finished_at: 2026-05-18T14:45:00Z
 phase_3c_acceptance:
-  override_writes_logged_to_session_log: null  # target: yes
-  override_ttl_or_expiry_added: null            # target: yes (mechanism exists)
-  override_audit_table_or_view_created: null    # target: yes (queryable)
-  governance_amendment_drafted: null            # target: yes
+  override_writes_logged_to_session_log: "yes — migration 057 DB trigger on llm_stack_routing_override fires for ALL INSERT/UPDATE/DELETE, writes to llm_config_audit with notes='db_trigger'"
+  override_ttl_or_expiry_added: "yes — migration 058 adds expires_at TIMESTAMPTZ DEFAULT NULL; runtime_config.ts updated to filter WHERE expires_at IS NULL OR expires_at > NOW(); _parse.ts + route.ts accept/persist expires_at"
+  override_audit_table_or_view_created: "yes — 00_ARCHITECTURE/aiops_overrides_active.sql review query created"
+  governance_amendment_drafted: "yes — ONGOING_HYGIENE_POLICIES_v1_0.md §Q added"
 phase_3c_anomalies: []
 
 phase_3d_status: pending

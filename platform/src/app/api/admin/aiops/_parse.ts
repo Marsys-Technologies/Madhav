@@ -20,6 +20,8 @@ export const callTypeSchema = z.enum([
 export const routingOverrideBodySchema = z.object({
   primary_model:  z.string().min(1),
   fallback_model: z.string().min(1),
+  /** ISO timestamp. NULL = permanent. AIOps automation MUST set this; Control Panel omits for permanent policy overrides. */
+  expires_at:     z.string().datetime().nullable().optional(),
 })
 
 export const paramOverrideBodySchema = z.object({
