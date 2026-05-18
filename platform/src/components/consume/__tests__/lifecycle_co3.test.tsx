@@ -1,7 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { ReasoningSlot } from '../lifecycle/ReasoningSlot'
 import { ToolCallChronology } from '../lifecycle/ToolCallChronology'
 import type { ToolCallRecord } from '@/lib/hooks/useChatLifecycle'
@@ -167,15 +165,3 @@ describe('AC.CO3.7 — CLS measurement documented', () => {
   })
 })
 
-describe('AC.CO3.8 — LiveReasoningCard preserved for flag-off', () => {
-  it('LiveReasoningCard.tsx exists and is marked legacy', () => {
-    const src = fs.readFileSync(
-      path.resolve(__dirname, '..', 'LiveReasoningCard.tsx'),
-      'utf8',
-    )
-    expect(src).toContain('LEGACY')
-    expect(src).toContain('AIOps Phase 3')
-  })
-
-  // Post-§M.16: legacy chat file deleted — test retired.
-})
