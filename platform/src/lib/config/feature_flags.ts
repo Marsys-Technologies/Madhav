@@ -1,6 +1,5 @@
 export type FeatureFlag =
   | 'PANEL_MODE_ENABLED'
-  | 'MANIFEST_BUILDER_ENABLED'
   | 'LLM_CHECKPOINTS_ENABLED'
   // BHISMA-B1 §6.2 — retired: BUNDLE_AUGMENTER_ENABLED, MSR_RERANKER_ENABLED,
   // SEMANTIC_GATE_ENABLED were declared but never implemented in any code path.
@@ -91,7 +90,6 @@ export type FeatureFlag =
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
-  MANIFEST_BUILDER_ENABLED: false,
   LLM_CHECKPOINTS_ENABLED: false,
   VALIDATOR_FAILURE_HALT: true,
   SYNTHESIS_PROMPT_DEBUG: false,
@@ -144,7 +142,7 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // AIOps Phase 3 — flipped true (α6 reconciliation: prod deploy.yml=true since CO.7).
   CONSUME_UI_V2_ENABLED: true,
   // β8 — Sliding-window history summarization. Default false until γ exit gate.
-  HISTORY_COMPRESSION_ENABLED: false,
+  HISTORY_COMPRESSION_ENABLED: true,
   // γ6 — Cost visibility for non-admin users. Default false.
   COST_VISIBILITY_FOR_USERS: false,
 }
