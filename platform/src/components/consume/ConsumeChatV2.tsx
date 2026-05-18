@@ -13,7 +13,7 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
@@ -313,14 +313,11 @@ function V2RegenerateButton() {
     <button
       type="button"
       onClick={handleClick}
-      className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+      className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
       title="Regenerate response"
       data-testid="v2-regenerate-btn"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3" aria-hidden="true">
-        <path d="M13.5 4A6 6 0 1 0 14 9" strokeLinecap="round" />
-        <path d="M11 1l2.5 3L11 7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <RotateCcw className="h-4 w-4" aria-hidden="true" />
     </button>
   )
 }
@@ -429,19 +426,27 @@ function V2Message() {
             <ActionBarPrimitive.Root
               hideWhenRunning
               autohide="not-last"
-              className="flex gap-1"
+              className="flex gap-1.5"
               data-testid="v2-user-action-bar"
             >
+              <ActionBarPrimitive.Copy asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  title="Copy message"
+                  data-testid="v2-user-copy-btn"
+                >
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </ActionBarPrimitive.Copy>
               <ActionBarPrimitive.Edit asChild>
                 <button
                   type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
                   title="Edit message"
                   data-testid="v2-edit-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
-                    <path d="M11.5 2.5a1.414 1.414 0 0 1 2 2L5 13H2v-3L11.5 2.5z" />
-                  </svg>
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                 </button>
               </ActionBarPrimitive.Edit>
             </ActionBarPrimitive.Root>
@@ -563,7 +568,7 @@ function V2Message() {
             <ActionBarPrimitive.Root
               hideWhenRunning
               autohide="not-last"
-              className="flex gap-1"
+              className="flex gap-1.5"
               data-testid="v2-assistant-action-bar"
             >
               <V2RegenerateButton />
@@ -572,27 +577,21 @@ function V2Message() {
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
                 title="Show message details"
                 data-testid="v2-details-btn"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3 w-3">
-                  <circle cx="8" cy="8" r="6" />
-                  <path d="M8 7v4M8 5h.01" strokeLinecap="round" />
-                </svg>
+                <Info className="h-4 w-4" aria-hidden="true" />
               </button>
 
               <ActionBarPrimitive.Copy asChild>
                 <button
                   type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
                   title="Copy response"
                   data-testid="v2-copy-btn"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
-                    <rect x="5" y="5" width="8" height="9" rx="1" />
-                    <path d="M3 2h7a1 1 0 0 1 1 1v1H3V2z" />
-                  </svg>
+                  <Copy className="h-4 w-4" aria-hidden="true" />
                 </button>
               </ActionBarPrimitive.Copy>
             </ActionBarPrimitive.Root>
