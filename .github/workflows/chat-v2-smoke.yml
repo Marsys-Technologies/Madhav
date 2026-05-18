@@ -1,3 +1,16 @@
+# chat-v2 smoke gate
+#
+# Today (post R6-SMOKE-PATCH): runs the round6-walkthrough spec under chromium.
+# Without SMOKE_SESSION_COOKIE + SMOKE_CHART_ID secrets provisioned in this
+# workflow's environment, all 9 tests skip — workflow exits 0 vacuously.
+# Local operator runs (with cookies minted) exercise the gate normally.
+#
+# R7 follow-up: provision SMOKE_SESSION_COOKIE + SMOKE_CHART_ID as GitHub
+# Actions secrets, inject via `env:` block on the playwright step, then
+# enable `chat-v2 smoke / smoke` as a required check on main branch
+# protection. Tracking: 00_ARCHITECTURE/CHAT_V2_ROUND_6_PLAN_v1_0.md §8.3.
+#
+
 name: chat-v2 smoke
 
 on:
@@ -38,9 +51,10 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Run chat-v2 smoke spec
-        run: npx playwright test tests/e2e/chat-v2/round6-walkthrough.spec.ts --project=chromium --reporter=github
+        run: npx playwright test tests/e2e/chat-v2/round6-walkthrough.spec.ts --project=chromium --reporter=list
         env:
-          PLAYWRIGHT_CHAT_CLIENT_ID: ${{ vars.PLAYWRIGHT_CHAT_CLIENT_ID || 'test-client' }}
+          SMOKE_SESSION_COOKIE: ${{ secrets.SMOKE_SESSION_COOKIE }}
+          SMOKE_CHART_ID: ${{ secrets.SMOKE_CHART_ID }}
           # No LLM credentials needed — mock route intercepts the API call.
-          # MARSYS_FLAG_CHAT_V2_ENABLED is passed via ?provider=mock query param
-          # in the spec's beforeEach; no env var required for the flag in CI.
+          # Without secrets provisioned, the spec skips (test.skip guard) and
+          # the workflow exits 0 vacuously. R7 follow-up: provision secrets.
