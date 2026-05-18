@@ -1180,7 +1180,7 @@ function V2BottomBar() {
 function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }) {
   return (
     <ThreadPrimitive.Root
-      className="flex h-full flex-col"
+      className="flex h-full flex-col flex-1 min-w-0"
       data-testid="v2-thread-root"
     >
       {/* γ8: live region announces new assistant messages to screen readers */}
