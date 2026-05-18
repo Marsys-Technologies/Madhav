@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
+import { Logo } from '@/components/brand/Logo'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ function groupConversations(
 
 function SectionHeader({ label }: { label: DateGroup }) {
   return (
-    <p className="px-3 pt-3 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 select-none">
+    <p className="px-3 pt-3 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] select-none">
       {label}
     </p>
   )
@@ -182,7 +183,7 @@ export function ConversationSidebarV2({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
-        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)]">
           Conversations
         </span>
         <div className="flex gap-1">
@@ -259,6 +260,11 @@ export function ConversationSidebarV2({
             ))}
           </div>
         ))}
+      </div>
+
+      {/* L4: Brand anchor — low-volume Logo at bottom of expanded sidebar */}
+      <div className="flex items-center justify-center px-3 py-3 border-t border-zinc-800 mt-auto">
+        <Logo size="sm" className="opacity-40" />
       </div>
     </aside>
   )
