@@ -22,7 +22,7 @@ export function EmptyState({ chartName, className }: Props) {
   return (
     <div
       className={cn(
-        'mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center px-4',
+        'flex h-full w-full flex-col items-center justify-center',
         className
       )}
     >

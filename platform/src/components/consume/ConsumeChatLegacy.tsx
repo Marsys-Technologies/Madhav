@@ -558,6 +558,7 @@ export function ConsumeChatLegacy({
             <EmptyState
               chartId={chartId}
               chartName={chartName}
+              className="mx-auto max-w-2xl px-4"
               onPick={(text) => {
                 composerRef.current?.setValue(text)
                 composerRef.current?.focus()
