@@ -610,4 +610,27 @@ Cowork conversations are ephemeral from the repo's perspective — they happen o
 
 ---
 
-*End of ONGOING_HYGIENE_POLICIES_v1_0.md — amended at Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 (2026-04-26): §O extended (shards_emitted, cowork_ledger_referenced fields); §P Cowork ledger discipline added.*
+## §Q — AIOps Routing Override Policy (Phase 3C, 2026-05-18)
+
+### Policy
+
+1. **TTL on temporary overrides.** All writes to `llm_stack_routing_override` MUST set `expires_at` when the override is temporary. AIOps automation: default `NOW() + INTERVAL '72 hours'`; critical emergencies: `NOW() + INTERVAL '4 hours'`. Permanent policy overrides (e.g., nim stack synthesis → gemini-2.5-flash) may use `expires_at = NULL`.
+
+2. **Prefer the Control Panel API.** All writes SHOULD use `PUT /api/admin/aiops/routing/[stack]/[call_type]` so that `actor_user_id` is captured from the authenticated Firebase session. Direct DB writes are captured by the trigger (migration 057) but will log `actor_user_id = updated_by` which may be `'system'` or `'db_direct'`.
+
+3. **Active-override review at session open.** The `00_ARCHITECTURE/aiops_overrides_active.sql` query MUST be reviewed at the start of any session evaluating production state. Add as step 0 of session-open checklist §G.
+
+### Rationale
+
+The 2026-05-15 3-day silent demote (root cause per `PHASE_3C_AIOPS_OBSERVABILITY_BRIEF_v1_0.md`): a direct DB insert on `llm_stack_routing_override` produced no audit entry and persisted indefinitely. Three countermeasures close all three failure modes: DB trigger (migration 057) for audit coverage, `expires_at` column (migration 058) + resolver enforcement (`runtime_config.ts`) for TTL, and `aiops_overrides_active.sql` for review cadence.
+
+### Enforcement mechanism
+
+- Migration 057 trigger: automatic; fires on ALL INSERT/UPDATE/DELETE regardless of source.
+- Migration 058 column: `expires_at` resolver filter in `runtime_config.ts` line 43 (`expires_at IS NULL OR expires_at > NOW()`).
+- Body schema (`_parse.ts` `routingOverrideBodySchema`): accepts optional `expires_at` ISO string; defaults to NULL if omitted.
+- UPSERT in `routing/[stack]/[call_type]/route.ts`: persists `expires_at` to DB; echoes it in the JSON response.
+
+---
+
+*End of ONGOING_HYGIENE_POLICIES_v1_0.md — amended at Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 (2026-04-26): §O extended (shards_emitted, cowork_ledger_referenced fields); §P Cowork ledger discipline added. Amended 2026-05-18 Phase 3C: §Q AIOps Routing Override Policy added.*
