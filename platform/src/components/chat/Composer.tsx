@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils'
 import type { Attachment } from '@/hooks/useAttachments'
 import { useDraft } from '@/hooks/useChatPreferences'
 import { useTokenCount } from '@/hooks/useTokenCount'
+import { SlashCommandMenu } from './SlashCommandMenu'
+import type { SlashCommand } from '@/lib/chat-commands'
 
 export interface ComposerHandle {
   focus: () => void
@@ -37,6 +39,8 @@ interface Props {
   /** AC-2 (R7-S6): per-conversation draft key. null → __new__ key. */
   conversationId?: string | null
   tokensEnabled?: boolean
+  slashEnabled?: boolean
+  slashCommands?: SlashCommand[]
 }
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
@@ -54,6 +58,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     attachmentsReady,
     conversationId = null,
     tokensEnabled = false,
+    slashEnabled = false,
+    slashCommands = [],
   },
   ref
 ) {
@@ -61,10 +67,27 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const [value, setValue] = useState(draft)
   const [isFocused, setIsFocused] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [slashActiveIdx, setSlashActiveIdx] = useState(0)
+  const [slashBlurTimer, setSlashBlurTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { tokenCount, pctUsed } = useTokenCount(tokensEnabled ? value : '')
+
+  // Slash command detection: find /query at start or after space
+  const slashQuery = slashEnabled ? (() => {
+    const m = value.match(/(?:^| )\/(\w*)$/)
+    return m ? m[1] : null
+  })() : null
+
+  const slashFiltered = slashQuery !== null
+    ? slashCommands.filter(c =>
+        c.name.toLowerCase().startsWith(slashQuery.toLowerCase()) ||
+        c.description.toLowerCase().includes(slashQuery.toLowerCase())
+      ).slice(0, 6)
+    : []
+
+  const slashOpen = slashEnabled && slashQuery !== null
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -112,7 +135,48 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     setValue('')
   }
 
+  function selectSlashCommand(cmd: SlashCommand) {
+    if (cmd.run) {
+      cmd.run()
+    } else {
+      // Replace the /query fragment with the template
+      const newValue = value.replace(/(?:^|( ))\/\w*$/, (_, space) => (space ?? '') + (cmd.template ?? ''))
+      setValue(newValue)
+      // Position cursor at end after state update
+      requestAnimationFrame(() => {
+        const el = textareaRef.current
+        if (el) { el.selectionStart = el.selectionEnd = el.value.length }
+      })
+    }
+    setSlashActiveIdx(0)
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (slashOpen && slashFiltered.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSlashActiveIdx(i => Math.min(i + 1, slashFiltered.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSlashActiveIdx(i => Math.max(i - 1, 0))
+        return
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        const cmd = slashFiltered[slashActiveIdx]
+        if (cmd) selectSlashCommand(cmd)
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        // Close slash menu without clearing input
+        setValue(v => v + ' ')
+        setTimeout(() => setValue(v => v.trimEnd()), 0)
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       send()
@@ -173,7 +237,14 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const showStop = isStreaming && onStop
 
   return (
-    <div className={cn('mx-auto w-full max-w-4xl px-4 pb-3 pt-1', className)}>
+    <div className={cn('mx-auto w-full max-w-4xl px-4 pb-3 pt-1 relative', className)}>
+      {slashOpen && (
+        <SlashCommandMenu
+          commands={slashFiltered}
+          activeIndex={slashActiveIdx}
+          onSelect={selectSlashCommand}
+        />
+      )}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -205,8 +276,16 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           onChange={e => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={() => {
+            setIsFocused(true)
+            if (slashBlurTimer) { clearTimeout(slashBlurTimer); setSlashBlurTimer(null) }
+          }}
+          onBlur={() => {
+            setIsFocused(false)
+            // 150ms debounce so a menu-item mousedown can fire first
+            const t = setTimeout(() => setValue(v => v), 150)
+            setSlashBlurTimer(t)
+          }}
           placeholder={placeholder}
           rows={3}
           disabled={disabled}

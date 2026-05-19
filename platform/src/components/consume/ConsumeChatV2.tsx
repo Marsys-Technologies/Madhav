@@ -20,7 +20,9 @@ import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
 import { CommandPalette } from '@/components/chat/CommandPalette'
-import type { Command } from '@/components/chat/CommandPalette'
+import type { Command } from '@/lib/chat-commands'
+import { COMMANDS } from '@/lib/chat-commands'
+import { SlashCommandMenu } from '@/components/chat/SlashCommandMenu'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
@@ -61,6 +63,8 @@ export interface ConsumeChatProps {
   consumeUiV2Enabled?: boolean
   /** γ6: show per-message cost to non-admin users. Super-admin always sees cost. */
   costVisibilityEnabled?: boolean
+  /** R8-S6: enable inline slash command menu in composer */
+  slashEnabled?: boolean
 }
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
@@ -977,13 +981,15 @@ function AttachmentStrip({
 
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
-function V2Composer() {
+function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
+  const [composerValue, setComposerValue] = useState('')
+  const [slashActiveIdx, setSlashActiveIdx] = useState(0)
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
 
@@ -1011,6 +1017,37 @@ function V2Composer() {
 
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
+  }
+
+  // Slash command detection
+  const slashQuery = slashEnabled ? (() => {
+    const m = composerValue.match(/(?:^| )\/(\w*)$/)
+    return m ? m[1] : null
+  })() : null
+  const slashFiltered = slashQuery !== null
+    ? COMMANDS.filter(c =>
+        c.name.toLowerCase().startsWith(slashQuery.toLowerCase()) ||
+        c.description.toLowerCase().includes(slashQuery.toLowerCase())
+      ).slice(0, 6)
+    : []
+  const slashOpen = slashEnabled && slashQuery !== null
+
+  function handleSlashSelect(cmd: typeof COMMANDS[0]) {
+    const textarea = containerRef.current?.querySelector('textarea')
+    if (!textarea) return
+    const newValue = composerValue.replace(
+      /(?:^|( ))\/\w*$/,
+      (_, space) => (space ?? '') + (cmd.template ?? '')
+    )
+    // Use native setter so React's synthetic event fires
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype, 'value'
+    )?.set
+    nativeSetter?.call(textarea, newValue)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    setComposerValue(newValue)
+    setSlashActiveIdx(0)
+    textarea.focus()
   }
 
   // Handle paste (images only — paste event carries DataTransfer items)
@@ -1047,7 +1084,14 @@ function V2Composer() {
         />
 
         {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-4xl relative">
+          {slashOpen && (
+            <SlashCommandMenu
+              commands={slashFiltered}
+              activeIndex={slashActiveIdx}
+              onSelect={handleSlashSelect}
+            />
+          )}
           <div className="relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200">
             {/* β5: attachment strip inside pill top */}
             {attachments.length > 0 && (
@@ -1062,6 +1106,7 @@ function V2Composer() {
               rows={3}
               data-testid="v2-composer-input"
               onPaste={handlePaste}
+              onChange={slashEnabled ? (e: React.ChangeEvent<HTMLTextAreaElement>) => setComposerValue(e.target.value) : undefined}
               aria-label="Message input"
               aria-multiline="true"
             />
@@ -1306,7 +1351,7 @@ function V2BottomBar() {
 
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
-function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }) {
+function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean }) {
   return (
     <ThreadPrimitive.Root
       className="flex h-full flex-col flex-1 min-w-0"
@@ -1349,7 +1394,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
       </ThreadPrimitive.Viewport>
 
       <V2BottomBar />
-      <V2Composer />
+      <V2Composer slashEnabled={slashEnabled} />
     </ThreadPrimitive.Root>
   )
 }
@@ -1359,7 +1404,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [] }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
@@ -1660,6 +1705,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             onQueryId={setLatestQueryId}
             onConversationId={setActiveConversationId}
             onTitle={handleTitleGenerated}
+            slashEnabled={slashEnabled}
           />
         </main>
       </div>
@@ -1682,6 +1728,7 @@ interface V2ChatRuntimeProps {
   initialMessages: UIMessage[] | undefined
   onConversationId?: (id: string) => void
   onTitle?: () => void
+  slashEnabled?: boolean
 }
 
 // ─── γ7: Session-storage key for stream-resume ───────────────────────────────
@@ -1696,7 +1743,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -1804,7 +1851,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           {/* C.2 + W5 + E.1: unified runtime tracker — emits query_id, conversation_id, title in one subscribe loop */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
-            <V2Thread chartId={chartId} chartName={chartName} />
+            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} />
             <CitationSidePanel
               citations={allCitations}
               pinned={pinnedSet}
