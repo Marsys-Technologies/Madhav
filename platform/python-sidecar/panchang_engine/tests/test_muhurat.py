@@ -1,9 +1,11 @@
 """
-test_muhurat.py — Muhurat scaffold tests.
-Session 4C-1-S2.
+test_muhurat.py — Muhurat module smoke tests.
 
-3 trivial tests to verify the scaffold is callable without errors.
-Full scoring tests land in 4C.6.
+Updated 4C-6-S1: scaffold tests replaced with real implementation tests.
+The 4C-1-S2 scaffold returned empty lists and zeros — those invariants
+no longer hold. These tests now verify the real implementation's public API.
+
+Full scoring tests live in test_muhurat_scoring.py.
 """
 from datetime import date
 import pytest
@@ -21,13 +23,6 @@ def test_is_supported_event_invalid():
     assert is_supported_event("invalid_event") is False
 
 
-def test_find_muhurat_returns_empty_list():
-    """Scaffold find_muhurat returns [] for a valid event."""
-    from panchang_engine.muhurat import find_muhurat
-    result = find_muhurat("vivah", date(2026, 1, 1), date(2026, 1, 31), 20.27, 85.84)
-    assert result == []
-
-
 def test_find_muhurat_invalid_event_raises():
     """find_muhurat raises ValueError for an unsupported event."""
     from panchang_engine.muhurat import find_muhurat
@@ -35,10 +30,26 @@ def test_find_muhurat_invalid_event_raises():
         find_muhurat("unsupported", date(2026, 1, 1), date(2026, 1, 31), 20.27, 85.84)
 
 
-def test_score_muhurat_returns_zero():
-    """Scaffold score_muhurat returns 0.0 for any valid input."""
-    from panchang_engine.muhurat import score_muhurat
-    assert score_muhurat(date(2026, 1, 1), 20.27, 85.84, "vivah") == 0.0
+def test_find_muhurat_returns_list():
+    """find_muhurat returns a list (may be non-empty for real dates)."""
+    from panchang_engine.muhurat import find_muhurat
+    result = find_muhurat("vivah", date(2026, 1, 1), date(2026, 1, 31), 20.27, 85.84)
+    assert isinstance(result, list)
+
+
+def test_find_muhurat_sorted_by_score():
+    """find_muhurat returns windows sorted by score descending."""
+    from panchang_engine.muhurat import find_muhurat
+    result = find_muhurat("vivah", date(2026, 1, 1), date(2026, 1, 31), 20.27, 85.84, top_n=10)
+    scores = [w.score for w in result]
+    assert scores == sorted(scores, reverse=True), "Windows not sorted by score"
+
+
+def test_find_muhurat_top_n_respected():
+    """find_muhurat returns at most top_n windows."""
+    from panchang_engine.muhurat import find_muhurat
+    result = find_muhurat("vivah", date(2026, 1, 1), date(2026, 3, 31), 20.27, 85.84, top_n=5)
+    assert len(result) <= 5
 
 
 def test_all_events_supported():

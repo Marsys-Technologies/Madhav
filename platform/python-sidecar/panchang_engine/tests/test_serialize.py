@@ -139,8 +139,8 @@ def test_datetime_strings_are_utc(panchang_dict):
 
 
 def test_computation_version_present(panchang_dict):
-    """computation_version should be '1.0.0-S2' (the S2 close baseline)."""
-    assert panchang_dict["computation_version"] == "1.0.0-S2"
+    """computation_version should be '1.0.0-S3' (muhurat backend live; 4C-6-S1)."""
+    assert panchang_dict["computation_version"] == "1.0.0-S3"
 
 
 def test_special_yogas_serializable(panchang_dict):
