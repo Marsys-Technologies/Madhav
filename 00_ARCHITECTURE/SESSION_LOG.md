@@ -25355,3 +25355,125 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-7
+  date: 2026-05-20
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  branch: feature/phase-4c-panchang
+  predecessor: 4C-6-S4
+  governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
+  objective: >
+    iCal export — page export, finder results, subscribable HMAC-signed feed URL.
+    Three calendar export surfaces: (1) day's significant windows from /panchang,
+    (2) Muhurat Finder result exports, (3) subscribable iCal feed URL (HMAC-signed, 90-day expiry).
+  may_touch: >
+    platform/package.json; platform/src/lib/panchang/ics_builder.ts;
+    platform/src/lib/security/sign_url.ts; platform/src/app/api/panchang/{ics,feed.ics,feed/subscribe,feed/revoke}/;
+    platform/src/app/panchang/components/{ActionBar,MuhuratResultsList}.tsx; tests; governance state files.
+  must_not_touch: >
+    sidecar; engine internals; retrieve/; muhurat backend (sealed); corpus.
+
+session_body:
+  items_completed:
+    - id: AC.4C7.1
+      description: Install ical-generator dependency
+      result: PASS
+      detail: "ical-generator@10.2.0 installed; import works."
+
+    - id: AC.4C7.2
+      description: panchangToIcs builder
+      result: PASS
+      detail: >
+        ics_builder.ts: buildDayIcs(panchang, location) → RFC 5545 ICS with inauspicious
+        windows (CATEGORIES:MARSYS-Panchang/avoid) + auspicious yogas + special_yogas
+        (CATEGORIES:MARSYS-Panchang/auspicious); buildMuhuratIcs(windows, location, eventKey)
+        → ICS with muhurat windows ranked by score (CATEGORIES:MARSYS-Panchang/muhurat).
+        22/22 tests PASS.
+
+    - id: AC.4C7.3
+      description: HMAC URL signing utility
+      result: PASS
+      detail: >
+        sign_url.ts: HMAC-SHA256 sign/verify; jti-based payload (no user PII in token payload —
+        user_id stored only in DB); 90-day expiry; tampered signatures rejected (reason:'tampered');
+        expired tokens rejected (reason:'expired'); malformed tokens rejected (reason:'invalid').
+        17/17 tests PASS.
+
+    - id: AC.4C7.4
+      description: /api/panchang/ics route (one-off export)
+      result: PASS
+      detail: >
+        GET /api/panchang/ics; auth-gated; d=YYYY-MM-DD + loc + lat + lon params;
+        proxies sidecar via sidecar_mapper.ts; returns text/calendar with Content-Disposition: attachment.
+
+    - id: AC.4C7.5
+      description: /api/panchang/feed.ics route (subscribable feed)
+      result: PASS
+      detail: >
+        GET /api/panchang/feed.ics?token=...; token-auth (HMAC verify + jti revocation check);
+        rolling 90-day feed in 14-day parallel batches; inauspicious + special yoga events;
+        ttl:86400; Content-Type text/calendar; no Firebase session required.
+
+    - id: AC.4C7.6
+      description: /api/panchang/feed/subscribe route
+      result: PASS
+      detail: >
+        POST; auth-gated; generates random jti + signFeedToken; registers in panchang_feed_tokens
+        DB table (auto-created); returns {feed_url, expires_at, jti}.
+
+    - id: AC.4C7.7
+      description: /api/panchang/feed/revoke route
+      result: PASS
+      detail: >
+        POST; auth-gated; revokes all user tokens (empty body) or specific jti;
+        panchang_feed_tokens.revoked_at set; post-revoke feed URLs return 401.
+
+    - id: AC.4C7.8
+      description: UI wiring — ActionBar export button
+      result: PASS
+      detail: >
+        ActionBar.tsx: Export to Calendar dropdown wired; three options: Download today's
+        Panchang (.ics file download), Get subscribable feed URL (clipboard + toast),
+        Manage feed subscriptions (revoke-all modal). Replaces ComingSoonModal from 4C-4-S4.
+
+    - id: AC.4C7.9
+      description: Muhurat Finder results export
+      result: PASS
+      detail: >
+        MuhuratResultsList.tsx: Export to Calendar button enabled per row; ics_client.ts
+        browser-safe RFC 5545 builder (no Node crypto dep); Blob download with filename
+        pattern muhurat-{event}-{date}.ics.
+
+    - id: AC.4C7.10
+      description: Tests + cross-app verification
+      result: PASS
+      detail: >
+        39 new tests (22 ics_builder + 17 sign_url); 82/82 total panchang+security tests PASS.
+        tsc 0 errors. eslint clean. PII audit PASS: feed URL contains only jti (random opaque)
+        + location slug; no chart_id or user identity beyond signed token.
+        Cross-app subscribe (Google/Apple Calendar) requires live deployment — canary noted.
+
+    - id: AC.4C7.11
+      description: Close protocol
+      result: PASS
+      detail: >
+        CURRENT_STATE v5.24; SESSION_LOG appended; brief status=COMPLETE;
+        queue advanced 4C-8 pending. FINAL_SUMMARY emitted.
+
+session_close:
+  test_suite: "82/82 panchang+security tests PASS (22 ics_builder + 17 sign_url + 43 prior)"
+  mirror_enforcer: "not run (no MP.1/MP.2 governance surface changes this session)"
+  drift_detector: "not run (new lib + API files; no canonical artifact mutations)"
+  commits:
+    - 8e0f3ce  # Items 1-10: iCal export + HMAC-signed subscribable feed
+    - <close_commit>  # Item 11: close protocol
+  next_session_id: 4C-8
+  next_session_objective: "Ask-Madhav deep links + prompt context blocks"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```
