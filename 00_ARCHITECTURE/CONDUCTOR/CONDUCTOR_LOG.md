@@ -535,3 +535,60 @@ Pre-flight status: sidecar code sealed (S1+S2 commits); just needs operator star
 - AC.4C6S3.10 — Close protocol complete
 
 ---
+
+## 4C-6-S3 — PASS — 2026-05-20T04:16:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-6-S3 |
+| Result | PASS |
+| Timestamp | 2026-05-20T04:16:00+05:30 |
+| Commits | 34ebd06, ef9f9bb, b40a136, 2805347 |
+| Gate exit code | 0 |
+| Context sessions used | 8 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+```
+Test Files  6 passed (6) | Tests  82 passed (82)
+OK — 17 entries valid (session_queue.yaml)
+```
+
+### Sub-agent summary
+
+All 10 ACs. MuhuratFinderModal.tsx (6 MVP events, date-range today→today+89d, lat/lon pre-fill, personalise checkbox), MuhuratResultsList.tsx (ranked rows with StarRating + Ask-Madhav deep link), useMuhuratFinder.ts (POST hook, cached state), /api/compute/muhurat/route.ts (proxy), ActionBar.tsx updated to open modal. 25 new component tests; 82 total panchang suite. Date range capped at +89d (sidecar 422s beyond 89 delta).
+
+### Scope items completed
+
+- AC.4C6S3.1–AC.4C6S3.10 (all 10)
+
+---
+
+## Session: 4C-6-S4
+
+| Field | Value |
+|---|---|
+| Session ID | 4C-6-S4 |
+| Date | 2026-05-20 |
+| Status | PASS |
+| Brief | 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S4_v1_0.md |
+| Commits | 0d3ed87, a6fe6ed, ed60d34, ff5043b, 8036312 |
+| Gate exit code | 0 (12/12 E2E tests PASS against live sidecar) |
+| Context sessions used | 1 of 20 (sub-agent session) |
+
+### Sub-agent summary
+
+8 ACs. E2E test (12/12 PASS live sidecar, graceful SKIP); acharya review 25 windows canary PASS; perf regression 87–97% of S1 baseline (PASS); README §9 Muhurat Finder section; Phase 4C.6 close protocol (CURRENT_STATE v5.23, SESSION_LOG, PHASE_4C_6_CLOSE_v1_0.md, queue update). Brief COMPLETE.
+
+### Scope items completed
+
+- AC.4C6S4.1 — E2E test PASS (12/12)
+- AC.4C6S4.2 — Acharya review: 25 windows, canary PASS
+- AC.4C6S4.3 — No weight tuning needed
+- AC.4C6S4.4 — Perf regression PASS (87–97% of S1)
+- AC.4C6S5.5 — README Muhurat Finder section
+- AC.4C6S4.6 — Phase 4C.6 close protocol
+- AC.4C6S4.7 — Brief COMPLETE + FINAL_SUMMARY
+- AC.4C6S4.8 — Acharya review caveat noted
+
+---
