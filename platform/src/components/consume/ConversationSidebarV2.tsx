@@ -8,6 +8,7 @@
  * the exact same props interface as the inline component.
  *
  * Part of Chat V2 Chrome Parity Phase C — item C.11.
+ * R9-S1: Added flag-gated Projects section above conversation list.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -27,6 +28,9 @@ import {
 import { FolderGroup } from './FolderGroup'
 import { ArchivedView } from './ArchivedView'
 import { useFolders } from '@/hooks/useFolders'
+import { useProjects } from '@/hooks/useProjects'
+import { ProjectsSection } from '@/components/sidebar/ProjectsSection'
+import { NewProjectModal } from '@/components/modals/NewProjectModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +63,8 @@ export interface ConversationSidebarV2Props {
   onRename?: (id: string, currentTitle: string) => Promise<void> | void
   /** N3: delete (archive) conversation via DELETE /api/conversations/[id] */
   onDelete?: (id: string) => Promise<void> | void
+  /** R9-S1: Show Projects section above conversations. Controlled by MARSYS_FLAG_R9_PROJECTS. */
+  showProjects?: boolean
 }
 
 // ─── Date grouping ────────────────────────────────────────────────────────────
@@ -250,6 +256,7 @@ export function ConversationSidebarV2({
   reloadTrigger,
   onRename,
   onDelete,
+  showProjects = false,
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -260,6 +267,11 @@ export function ConversationSidebarV2({
   const [showArchived, setShowArchived] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { folders, createFolder, renameFolder, deleteFolder } = useFolders()
+
+  // R9-S1: Project filter state — null means "all conversations"
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
+  const [newProjectOpen, setNewProjectOpen] = useState(false)
+  const { projects, createProject } = useProjects()
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -368,15 +380,37 @@ export function ConversationSidebarV2({
     if (name?.trim()) renameFolder(id, name.trim())
   }, [renameFolder])
 
-  // Derived groupings
+  // R9-S1: Fetch project conversation IDs for the active project filter
+  const [projectConversationIds, setProjectConversationIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!showProjects || !activeProjectId) {
+      setProjectConversationIds(new Set())
+      return
+    }
+    fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`)
+      .then(r => r.json())
+      .then(data => {
+        const ids: string[] = data?.project?.conversation_ids ?? []
+        setProjectConversationIds(new Set(ids))
+      })
+      .catch(() => setProjectConversationIds(new Set()))
+  }, [showProjects, activeProjectId])
+
+  // R9-S1: Filter conversations by project when a project is selected
+  const filteredConversations = useMemo(() => {
+    if (!showProjects || activeProjectId === null) return conversations
+    return conversations.filter(c => projectConversationIds.has(c.id))
+  }, [conversations, showProjects, activeProjectId, projectConversationIds])
+
+  // Derived groupings — apply project filter via filteredConversations
   const pinnedConversations = useMemo(
-    () => conversations.filter(c => c.pinned && !c.archived_at),
-    [conversations]
+    () => filteredConversations.filter(c => c.pinned && !c.archived_at),
+    [filteredConversations]
   )
 
   const unfolderedUnpinned = useMemo(
-    () => conversations.filter(c => !c.pinned && !c.folder_id && !c.archived_at),
-    [conversations]
+    () => filteredConversations.filter(c => !c.pinned && !c.folder_id && !c.archived_at),
+    [filteredConversations]
   )
 
   // ── Collapsed strip ────────────────────────────────────────────────────────
@@ -469,6 +503,25 @@ export function ConversationSidebarV2({
         </div>
       </div>
 
+      {/* R9-S1: Projects section — only when showProjects=true */}
+      {showProjects && (
+        <>
+          <ProjectsSection
+            projects={projects}
+            activeProjectId={activeProjectId}
+            onSelectProject={setActiveProjectId}
+            onNewProject={() => setNewProjectOpen(true)}
+          />
+          <NewProjectModal
+            open={newProjectOpen}
+            onClose={() => setNewProjectOpen(false)}
+            onCreated={async (name, addition) => {
+              await createProject(name, addition)
+            }}
+          />
+        </>
+      )}
+
       {/* Search input */}
       <div className="px-2 pt-2 pb-1">
         <div className="relative flex items-center">
@@ -539,8 +592,10 @@ export function ConversationSidebarV2({
               <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
             )}
 
-            {!loading && conversations.length === 0 && (
-              <p className="px-3 py-4 text-xs text-zinc-600 text-center">No conversations yet</p>
+            {!loading && filteredConversations.length === 0 && (
+              <p className="px-3 py-4 text-xs text-zinc-600 text-center">
+                {activeProjectId ? 'No conversations in this project' : 'No conversations yet'}
+              </p>
             )}
 
             {/* Pinned section */}

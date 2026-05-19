@@ -154,6 +154,19 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     }
     let renderedPrompt = renderTemplate(template, variables, style)
 
+    // ── R9-S1: Project context injection ─────────────────────────────────────
+    // Prepend project system_prompt_addition when flag is on and addition is present.
+    // The base synthesis prompt is NOT replaced — this is a prefix block only.
+    if (
+      getFlag('R9_PROJECTS') &&
+      request.project_system_prompt_addition &&
+      request.project_system_prompt_addition.trim().length > 0
+    ) {
+      renderedPrompt =
+        `[PROJECT CONTEXT]\n${request.project_system_prompt_addition.trim()}\n[END PROJECT CONTEXT]\n\n` +
+        renderedPrompt
+    }
+
     // ── Reasoning-mode prompt gating ─────────────────────────────────────────
     // REASONING_NARRATION_GATE instructs models to emit ‹reasoning›…‹/reasoning›
     // inline markers that parseMarkers extracts client-side. This only makes sense

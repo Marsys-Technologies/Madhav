@@ -92,6 +92,14 @@ export interface SynthesisRequest {
    *  accumulation (pending_streams table). Non-blocking — failures are swallowed
    *  inside createPendingStreamWriter. */
   onTextDelta?: (delta: string) => void
+  /** R9-S1: Project identifier for the conversation, if it belongs to a project.
+   *  Written into the query_trace for observability. Only populated when
+   *  MARSYS_FLAG_R9_PROJECTS=true. */
+  project_id?: string
+  /** R9-S1: Project-scoped system prompt addition. When MARSYS_FLAG_R9_PROJECTS=true
+   *  and the conversation belongs to a project with a non-empty system_prompt_addition,
+   *  this is prepended to the synthesis prompt as a [PROJECT CONTEXT] block. */
+  project_system_prompt_addition?: string
 }
 
 export interface SynthesisMetadata {
