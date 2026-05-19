@@ -56,6 +56,9 @@ import * as classicalAttributionLookupTool from './classical_attribution_lookup_
 import * as multiSchoolSignalLookupTool from './multi_school_signal_lookup_tool'
 import * as convergenceScoreLookupTool from './convergence_score_lookup_tool'
 
+// Phase 4C-3 — Panchang daily state tool (tool 29)
+import * as queryPanchangaTool from './query_panchanga'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -86,6 +89,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   classicalAttributionLookupTool.tool,
   multiSchoolSignalLookupTool.tool,
   convergenceScoreLookupTool.tool,
+  queryPanchangaTool.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
