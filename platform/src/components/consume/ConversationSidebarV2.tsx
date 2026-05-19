@@ -12,15 +12,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
-import { MoreHorizontal, PenSquare, Search, Trash2 } from 'lucide-react'
+import { Archive, FolderPlus, MoreHorizontal, PenSquare, Pin, PinOff, Search, Trash2 } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { FolderGroup } from './FolderGroup'
+import { ArchivedView } from './ArchivedView'
+import { useFolders } from '@/hooks/useFolders'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +36,8 @@ interface ConversationSummary {
   created_at: string
   updated_at: string | null
   archived_at: string | null
+  pinned?: boolean
+  folder_id?: string | null
 }
 
 interface SearchResult {
@@ -125,12 +133,20 @@ function ConversationItem({
   onSelect,
   onRename,
   onDelete,
+  onPin,
+  onArchive,
+  onMoveToFolder,
+  folders,
 }: {
   conv: ConversationSummary
   active: boolean
   onSelect: (id: string) => void
   onRename?: (id: string, currentTitle: string) => Promise<void> | void
   onDelete?: (id: string) => Promise<void> | void
+  onPin?: (id: string, pinned: boolean) => void
+  onArchive?: (id: string, archived: boolean) => void
+  onMoveToFolder?: (id: string, folderId: string | null) => void
+  folders?: Array<{ id: string; name: string }>
 }) {
   const [hovered, setHovered] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -151,6 +167,7 @@ function ConversationItem({
         }`}
         data-testid={`v2-conversation-item-${conv.id}`}
       >
+        {conv.pinned && <span className="mr-1 text-amber-500" aria-label="Pinned">📌</span>}
         {conv.title ?? 'Untitled'}
       </button>
 
@@ -171,6 +188,40 @@ function ConversationItem({
               <PenSquare className="h-3.5 w-3.5" aria-hidden />
               Rename
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPin?.(conv.id, !conv.pinned)}>
+              {conv.pinned ? (
+                <><PinOff className="h-3.5 w-3.5" aria-hidden /> Unpin</>
+              ) : (
+                <><Pin className="h-3.5 w-3.5" aria-hidden /> Pin</>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onArchive?.(conv.id, !conv.archived_at)}>
+              <Archive className="h-3.5 w-3.5" aria-hidden />
+              {conv.archived_at ? 'Unarchive' : 'Archive'}
+            </DropdownMenuItem>
+            {onMoveToFolder && folders && folders.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FolderPlus className="h-3.5 w-3.5 mr-1" aria-hidden />
+                  Move to folder
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {folders.map(f => (
+                    <DropdownMenuItem key={f.id} onClick={() => onMoveToFolder(conv.id, f.id)}>
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                  {conv.folder_id && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onMoveToFolder(conv.id, null)}>
+                        Remove from folder
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
@@ -206,7 +257,9 @@ export function ConversationSidebarV2({
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { folders, createFolder, renameFolder, deleteFolder } = useFolders()
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -267,7 +320,6 @@ export function ConversationSidebarV2({
     }
   }, [searchQuery])
 
-  const groups = useMemo(() => groupConversations(conversations), [conversations])
 
   // Local title filter for short queries (fallback to client-side when search not active).
   const localFiltered = useMemo(() => {
@@ -276,10 +328,82 @@ export function ConversationSidebarV2({
     return conversations.filter(c => (c.title ?? '').toLowerCase().includes(lower))
   }, [conversations, searchQuery])
 
+  // Mutation helpers — optimistic update + background sync
+  const pinConversation = useCallback((id: string, pinned: boolean) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, pinned } : c))
+    fetch(`/api/conversations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned }),
+    }).catch(() => { reload() })
+  }, [reload])
+
+  const archiveConversation = useCallback((id: string, archived: boolean) => {
+    setConversations(prev =>
+      prev.map(c => c.id === id ? { ...c, archived_at: archived ? new Date().toISOString() : null } : c)
+    )
+    fetch(`/api/conversations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived }),
+    }).catch(() => { reload() })
+  }, [reload])
+
+  const moveToFolder = useCallback((id: string, folderId: string | null) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, folder_id: folderId } : c))
+    fetch(`/api/conversations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder_id: folderId }),
+    }).catch(() => { reload() })
+  }, [reload])
+
+  const handleNewFolder = useCallback(() => {
+    const name = window.prompt('Folder name:')
+    if (name?.trim()) createFolder(name.trim())
+  }, [createFolder])
+
+  const handleRenameFolder = useCallback((id: string, currentName: string) => {
+    const name = window.prompt('New name:', currentName)
+    if (name?.trim()) renameFolder(id, name.trim())
+  }, [renameFolder])
+
+  // Derived groupings
+  const pinnedConversations = useMemo(
+    () => conversations.filter(c => c.pinned && !c.archived_at),
+    [conversations]
+  )
+
+  const unfolderedUnpinned = useMemo(
+    () => conversations.filter(c => !c.pinned && !c.folder_id && !c.archived_at),
+    [conversations]
+  )
+
   // ── Collapsed strip ────────────────────────────────────────────────────────
 
   if (collapsed) {
     return null
+  }
+
+  // ── Archived view ──────────────────────────────────────────────────────────
+  if (showArchived) {
+    return (
+      <aside
+        className="flex flex-col w-56 shrink-0 border-r border-[rgba(var(--brand-gold-rgb),0.15)] bg-[rgba(var(--brand-charcoal-rgb),0.55)] backdrop-blur-md"
+        data-testid="v2-conversation-sidebar"
+      >
+        <ArchivedView
+          chartId={chartId}
+          activeId={activeId}
+          onSelect={onSelect}
+          onBack={() => setShowArchived(false)}
+          onUnarchive={(id) => { archiveConversation(id, false); setShowArchived(false) }}
+        />
+        <div className="flex items-center justify-center px-3 py-3 border-t border-zinc-800 mt-auto">
+          <Logo size="sm" className="opacity-40" />
+        </div>
+      </aside>
+    )
   }
 
   // ── Expanded sidebar ───────────────────────────────────────────────────────
@@ -408,7 +532,7 @@ export function ConversationSidebarV2({
           </>
         )}
 
-        {/* Normal mode (no search) */}
+        {/* Normal mode (no search): Pinned → Folders → Date buckets */}
         {searchQuery.length === 0 && (
           <>
             {loading && conversations.length === 0 && (
@@ -419,7 +543,51 @@ export function ConversationSidebarV2({
               <p className="px-3 py-4 text-xs text-zinc-600 text-center">No conversations yet</p>
             )}
 
-            {groups.map(({ label, items }) => (
+            {/* Pinned section */}
+            {pinnedConversations.length > 0 && (
+              <div>
+                <p className="px-3 pt-3 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.20em] text-amber-600/60 select-none">
+                  Pinned
+                </p>
+                {pinnedConversations.map(conv => (
+                  <ConversationItem
+                    key={conv.id}
+                    conv={conv}
+                    active={conv.id === activeId}
+                    onSelect={onSelect}
+                    onRename={onRename}
+                    onDelete={onDelete}
+                    onPin={pinConversation}
+                    onArchive={archiveConversation}
+                    onMoveToFolder={moveToFolder}
+                    folders={folders}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Folder sections */}
+            {folders.map(folder => {
+              const members = conversations.filter(
+                c => c.folder_id === folder.id && !c.archived_at
+              )
+              return (
+                <FolderGroup
+                  key={folder.id}
+                  folderId={folder.id}
+                  folderName={folder.name}
+                  folderColor={folder.color}
+                  members={members.map(c => ({ id: c.id, title: c.title, active: c.id === activeId }))}
+                  onSelect={onSelect}
+                  onRename={handleRenameFolder}
+                  onDelete={deleteFolder}
+                  onMemberRemove={(cid) => moveToFolder(cid, null)}
+                />
+              )
+            })}
+
+            {/* Date bucket groups (unfoldered, unpinned, unarchived) */}
+            {groupConversations(unfolderedUnpinned).map(({ label, items }) => (
               <div key={label}>
                 <SectionHeader label={label} />
                 {items.map((conv) => (
@@ -430,12 +598,36 @@ export function ConversationSidebarV2({
                     onSelect={onSelect}
                     onRename={onRename}
                     onDelete={onDelete}
+                    onPin={pinConversation}
+                    onArchive={archiveConversation}
+                    onMoveToFolder={moveToFolder}
+                    folders={folders}
                   />
                 ))}
               </div>
             ))}
+
           </>
         )}
+      </div>
+
+      {/* Archived link + New folder button */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-t border-zinc-800">
+        <button
+          type="button"
+          onClick={() => setShowArchived(true)}
+          className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          Archived
+        </button>
+        <button
+          type="button"
+          onClick={handleNewFolder}
+          title="New folder"
+          className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          + Folder
+        </button>
       </div>
 
       {/* L4: Brand anchor — low-volume Logo at bottom of expanded sidebar */}
