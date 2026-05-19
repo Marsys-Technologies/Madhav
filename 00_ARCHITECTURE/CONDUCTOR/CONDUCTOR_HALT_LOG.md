@@ -25,3 +25,39 @@ Each entry contains:
 ---
 
 <!-- Conductor appends entries below this line. Do not edit above. -->
+
+## 4C-1-S1 — HALT — 2026-05-19T18:38:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-1-S1 |
+| Failure class | sub_agent_halt |
+| Timestamp | 2026-05-19T18:38:00+05:30 |
+| Last passed | SMOKE-S0 |
+| Queue position | 1 of 11 |
+| Resolution status | open |
+
+### Failure context
+
+Sub-agent did not emit a parseable FINAL_SUMMARY block. API stream idle timeout after ~36 minutes of work (30 tool uses). Sub-agent completed Items 1–3 (3 commits: fa3bf1d, 21cd781, 4eb39ab) and wrote angas.py (Item 4) but timed out before committing it. Items 5–12 not attempted.
+
+### Gate output
+
+(gate not run — sub-agent timed out before completing implementation)
+
+### Suggested resolution paths
+
+- RESUME 4C-1-S1 — orchestrator retries with a recovery sub-agent briefed on partial state
+- SKIP 4C-1-S1 — orchestrator marks skipped + advances (not recommended — gate not satisfied)
+- ABANDON — orchestrator stops permanently
+
+---
+
+## 4C-1-S1 — HALT — RESOLUTION — 2026-05-19T18:38:30+05:30
+
+Conductor issued RESUME 4C-1-S1. Recovery sub-agent spawned with full context of partial
+state: Items 1–3 committed, angas.py written (uncommitted), Items 5–12 pending.
+Recovery sub-agent instructed to commit angas.py, create all remaining modules, and
+complete the Drik parity gate.
+
+---

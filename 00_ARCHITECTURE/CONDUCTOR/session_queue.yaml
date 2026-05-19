@@ -49,7 +49,7 @@ entries:
       - platform/sidecar/panchang_engine/tests/fixtures/drik_panchang_v1.json
     est_tokens: 120000
     est_duration_min: 90
-    status: pending
+    status: in_flight
     human_decision_prompt: null
 
   - session_id: 4C-1-S2

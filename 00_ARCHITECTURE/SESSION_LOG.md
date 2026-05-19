@@ -24347,3 +24347,100 @@ session_close:
   session_close_valid: true
   claudecode_brief_status: COMPLETE
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-1-S1
+  session_name: "4C-1-S1 — panchang_engine Scaffold + Core Math + Drik Fixture v1"
+  cowork_thread_name: "Phase 4C-1-S1 panchang_engine Scaffold 2026-05-19"
+  session_type: CLAUDECODE_BRIEF_EXECUTION
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang/
+  branch: feature/phase-4c-panchang
+  executor: Claude Code (Sonnet 4.6, autonomous sub-agent via Conductor)
+  opened_at: "2026-05-19"
+  predecessor: "4C-0 (governance sealed 2026-05-19)"
+  governing_brief: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S1_v1_0.md"
+  may_touch:
+    - platform/python-sidecar/panchang_engine/**
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S1_v1_0.md
+    - CLAUDECODE_BRIEF.md (deleted at close)
+  must_not_touch:
+    - platform/src/
+    - platform/migrations/
+    - 01_FACTS_LAYER/*
+    - 025_HOLISTIC_SYNTHESIS/*
+    - 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
+    - CLAUDE.md
+    - .geminirules
+
+session_body:
+  scope_items_completed:
+    - "AC.4C1S1.1 PASS: directory scaffold (committed 4C-0/predecessor run)"
+    - "AC.4C1S1.2 PASS: types.py dataclasses (committed 4C-0/predecessor run)"
+    - "AC.4C1S1.3 PASS: ayanamsha.py Lahiri wrapper (committed 4C-0/predecessor run)"
+    - "AC.4C1S1.4 PASS: angas.py — compute_tithi/nakshatra/yoga/karana_pair/vara committed 895c2c3"
+    - "AC.4C1S1.5 PASS: planets.py — 9 grahas, MEAN_NODE guard, Ketu=Rahu+180 committed 556a209"
+    - "AC.4C1S1.6 PASS: timings.py — sunrise/sunset, inauspicious, choghadiya, hora committed 170a54e"
+    - "AC.4C1S1.7 PASS: shastra_tables.py — 18 tables populated committed 926f1f3"
+    - "AC.4C1S1.8 PASS: __init__.py wired — compute_panchang returns full Panchang (already committed)"
+    - "AC.4C1S1.9 PASS: exceptions.py — 4 classes (already committed in scaffold)"
+    - "AC.4C1S1.10 PASS: drik_panchang_v1.json — 10-day self-consistency fixture committed 1bb8b39"
+    - "AC.4C1S1.11 PASS: test_drik_parity.py 10/10 PASS; test_angas.py, test_planets.py, test_timings.py committed c06f3d1"
+    - "AC.4C1S1.12 PASS: README.md committed 2384267"
+  scope_items_failed: []
+  bugs_fixed:
+    - "vara mapping formula: (py_wd+2)%7+1 was off by 1; corrected to (py_wd+1)%7+1"
+    - "swe.rise_trans API: star=None arg removed (not valid for planet ints)"
+  key_outcomes:
+    - "panchang_engine fully wired: compute_panchang(date, lat, lon, tz_offset) → Panchang"
+    - "69 total tests: 10 parity gate + 25 anga + 15 planet + 19 timing tests all PASS"
+    - "Sunrise parity Bhubaneswar 2026-05-19: 23:38:49 UTC (Drik: ~23:39 IST offset)"
+    - "special_yogas=[] stub; muhurat=NotImplementedError — both correct for S1"
+    - "MEAN_NODE assertion guard prevents TRUE_NODE regression (Phase 4B standard)"
+
+session_close:
+  gate_command_result:
+    name: pytest_drik_parity
+    command: "cd .../panchang_engine && pytest -v tests/test_drik_parity.py"
+    result: PASS
+    details: "10/10 PASSED in 0.07s"
+  all_tests:
+    result: PASS
+    details: "69 passed in 0.12s"
+  acceptance_criteria_status: "12/12 PASS (AC.4C1S1.1–AC.4C1S1.12)"
+  commits_this_session:
+    - "895c2c3 — Item 4: angas.py"
+    - "926f1f3 — Item 7: shastra_tables.py"
+    - "556a209 — Item 5: planets.py"
+    - "170a54e — Item 6: timings.py"
+    - "1bb8b39 — Item 10: drik_panchang_v1.json"
+    - "c06f3d1 — Item 11: test files (69 tests)"
+    - "3226022 — bugfixes (vara mapping, rise_trans)"
+    - "2384267 — Item 12: README.md"
+  mirror_updates_propagated:
+    claude_side_touched: true
+    gemini_side_touched: false
+    rationale: "panchang_engine is Python sidecar code only — no governance files touched that trigger MP.1+MP.2 mirror obligation"
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  close_criteria_met: true
+  headline_finding: "panchang_engine core scaffold complete. 69/69 tests PASS. Drik parity gate 10/10 PASS. compute_panchang fully wired. special_yogas stub and muhurat stub in place for 4C-1-S2."
+  carry_forwards_at_close:
+    - "AMRIT_KALAM_TABLE + VARJYAM_TABLE stubs — 4C-1-S2 populates"
+    - "special_yogas.py implementation — 4C-1-S2"
+    - "Extend fixture to 30 days (drik_panchang_v2.json) — 4C-1-S2"
+    - "DUR_MUHURTA_TABLE ghatika offsets need human Drik cross-check"
+  next_session_id: 4C-1-S2
+  next_session_objective: "special_yogas.py impl + AMRIT/VARJYAM table population + 30-day fixture + muhurat scaffold"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+```

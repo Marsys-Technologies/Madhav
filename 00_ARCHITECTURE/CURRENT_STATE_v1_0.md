@@ -5517,7 +5517,7 @@ current_state:
       branch: feature/phase-4c-panchang
       base_branch: main
       sub_phase_4c_0_status: CLOSED                # 2026-05-19 session 4C-0; 8-item governance setup
-      sub_phase_4c_1_status: NEXT                  # panchang_engine Python module; Drik validation
+      sub_phase_4c_1_status: IN_PROGRESS           # 4C-1-S1 CLOSED 2026-05-19; 4C-1-S2 next
       sub_phase_4c_2_through_9_status: PENDING
       brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
       master_plan_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
@@ -5525,12 +5525,20 @@ current_state:
       capability_manifest_entry: PANCHANG_DAILY_v1_0
       claude_md_section: "§E — Five workstreams (added 2026-05-19)"
       dependency_note: "4B sunrise derivation prerequisite for 4C.2; does NOT block 4C.0 or 4C.1"
-      next_session_id: 4C-1
+      last_session_id: 4C-1-S1
+      last_session_summary: >
+        4C-1-S1 CLOSED 2026-05-19. panchang_engine core scaffold complete:
+        shastra_tables.py (18 tables), planets.py (9 grahas, MEAN_NODE guard),
+        timings.py (sunrise/sunset, inauspicious, choghadiya, hora),
+        angas.py (bugfix: vara mapping), Drik fixture v1 (10 days),
+        69 tests all PASS (10/10 parity gate PASS). Engine fully wired via
+        compute_panchang(). special_yogas=[] stub; muhurat=NotImplementedError.
+      next_session_id: 4C-1-S2
       next_session_objective: >
-        4C-1: panchang_engine Python module scaffold — angas.py, timings.py,
-        special_yogas.py, planets.py, shastra_tables.py; 30-day Drik validation
-        fixture; all 30 days must match Drik to within tolerance per master plan §5.3.
-      estimated_sessions_remaining: 16-21  # 4C.1–4C.9
+        4C-1-S2: special_yogas.py implementation (Sarvartha Siddhi, Amrit Siddhi,
+        Dwipushkar, Tripushkar); populate AMRIT_KALAM_TABLE + VARJYAM_TABLE;
+        extend fixture to 30 days (drik_panchang_v2.json); muhurat scaffold.
+      estimated_sessions_remaining: 15-20  # 4C.1-S2 through 4C.9
 
     conductor:
       active_since: 2026-05-19
