@@ -147,3 +147,43 @@ IN_DEVELOPMENT. Total test count: 150 passing. 4C-1-S3 marked skipped
 - AC.4C1S2.13 — Brief COMPLETE, queue updated
 
 ---
+
+## 4C-3 — PASS — 2026-05-19T23:19:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-3 |
+| Result | PASS |
+| Timestamp | 2026-05-19T23:19:00+05:30 |
+| Commits | a66a4c4, 43278f5, 78c89b6, 929d402, ba27d20, 0e30c5b, 34833c1, b2b41e0, d066eb9, 1635735, 4118185 |
+| Gate exit code | 0 |
+| Context sessions used | 3 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+```
+test_serialize.py: 13 passed in 0.01s
+panchang_routing.test.ts: 14 passed (14)
+validate_queue.py: OK — 11 entries valid (session_queue.yaml)
+```
+
+### Sub-agent summary
+
+4C-3 completed all 12 acceptance criteria across 11 commits. Engine-direct path established: queryPanchanga RetrievalTool calls panchang_engine via sidecar /api/compute/panchanga (SQL cache deferred to 4C-2 gated on Phase 4B). Planner wired with R-TC routing rule covering 34 panchang + 13 ephemeris keywords; few-shot examples 4.25–4.27 added to PLANNER_PROMPT_v2_0.md. serialize.py delivers 5-section ToolBundle shape. 14/14 routing assertions PASS; 3/3 E2E smoke PASS; tsc 0 errors. expose_to_chat_confirmed: true set in CAPABILITY_MANIFEST. MP.2 mirror propagated; mirror_enforcer exit 0.
+
+### Scope items completed
+
+- AC.4C3.1 — Pre-flight integrity OK (150/150 engine tests; TS harness healthy)
+- AC.4C3.2 — Sidecar /api/compute/panchanga + /range endpoints
+- AC.4C3.3 — serialize.py (13/13 round-trip tests)
+- AC.4C3.4 — queryPanchanga RetrievalTool (16/16 unit tests; tsc 0 errors)
+- AC.4C3.5 — Tool 29 registered in RETRIEVAL_TOOLS
+- AC.4C3.6 — Few-shot examples 4.25–4.27 in PLANNER_PROMPT_v2_0.md
+- AC.4C3.7 — R-TC routing rule (34 panchang + 13 ephemeris keywords)
+- AC.4C3.8 — panchang_probe_set.json (10 queries PP.01–PP.10)
+- AC.4C3.9 — panchang_routing.test.ts (14/14 PASS, CI-safe)
+- AC.4C3.10 — E2E smoke (3/3 PASS; live uvicorn + ToolBundle assertions)
+- AC.4C3.11 — CAPABILITY_MANIFEST updated; MP.2 propagated; mirror_enforcer exit 0
+- AC.4C3.12 — Session close: CURRENT_STATE v5.17; SESSION_LOG; master plan; queue; brief COMPLETE
+
+---
