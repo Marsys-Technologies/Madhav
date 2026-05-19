@@ -26,5 +26,5 @@ entries:
       - 00_ARCHITECTURE/CONDUCTOR/smoke/SMOKE_HEARTBEAT.md
     est_tokens: 5000
     est_duration_min: 3
-    status: pending
+    status: passed
     human_decision_prompt: null
