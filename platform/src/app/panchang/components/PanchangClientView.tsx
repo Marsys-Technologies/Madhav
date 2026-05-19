@@ -17,6 +17,9 @@ import { PrimaryStrip } from './PrimaryStrip'
 import { TimingsPanel } from './TimingsPanel'
 import { PlanetaryGrid } from './PlanetaryGrid'
 import { usePanchangDay, type PanchangDay } from '../hooks/usePanchangDay'
+import { SpecialYogasList } from './SpecialYogasList'
+import { ChoghadiyaPanel } from './ChoghadiyaPanel'
+import { HoraPanel } from './HoraPanel'
 
 interface PanchangClientViewProps {
   /** Server-rendered initial data — used as TanStack Query initialData to skip first fetch */
@@ -94,7 +97,7 @@ export function PanchangClientView({
           />
 
           {/* Timings + Planetary Grid — two-column on md+, stacked on mobile (§4.2) */}
-          <div className="mx-auto max-w-4xl px-4 pb-6">
+          <div className="mx-auto max-w-4xl px-4 pb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TimingsPanel
                 timings={data.timings}
@@ -104,6 +107,26 @@ export function PanchangClientView({
                 planets={data.planets as Record<string, never> | null}
               />
             </div>
+          </div>
+
+          {/* Active Special Yogas (§4.2 — below timings/planetary) */}
+          <div className="mx-auto max-w-4xl px-4 pb-4">
+            <SpecialYogasList
+              specialYogas={data.special_yogas}
+              tzOffsetMinutes={330}
+            />
+          </div>
+
+          {/* Choghadiya + Hora — collapsible panels (§4.2 — collapsed by default) */}
+          <div className="mx-auto max-w-4xl px-4 pb-6 flex flex-col gap-3">
+            <ChoghadiyaPanel
+              choghadiya={data.raw['choghadiya']}
+              tzOffsetMinutes={330}
+            />
+            <HoraPanel
+              hora={data.hora}
+              tzOffsetMinutes={330}
+            />
           </div>
         </>
       )}
