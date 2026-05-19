@@ -121,6 +121,33 @@ describe('detectDashaRelevance', () => {
       }),
     ).toBe(false)
   })
+
+  it('returns true when query contains "yogini"', () => {
+    expect(
+      detectDashaRelevance({
+        query: 'what is my current yogini dasha?',
+        query_plan: makeQueryPlan(),
+      }),
+    ).toBe(true)
+  })
+
+  it('returns true when query contains "chara" (Jaimini)', () => {
+    expect(
+      detectDashaRelevance({
+        query: 'which sign is my chara dasha lord?',
+        query_plan: makeQueryPlan(),
+      }),
+    ).toBe(true)
+  })
+
+  it('returns true when query contains "jaimini"', () => {
+    expect(
+      detectDashaRelevance({
+        query: 'explain my jaimini dasha sequence',
+        query_plan: makeQueryPlan(),
+      }),
+    ).toBe(true)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -370,5 +397,124 @@ describe('runCheckpointDasha — pass verdict', () => {
     const result = await runCheckpointDasha(input)
     expect(result.verdict).toBe('pass')
     expect(result.violations_count).toBe(0)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Yogini + Chara (Jaimini) extension — §5C follow-up
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('extractDashaClaims — Yogini system', () => {
+  it('extracts "Siddha Yogini" as a claim with lord=Siddha and level=MD', () => {
+    const text = 'Your next Siddha Yogini dasha (→ DSH.Y.003, 2026-09-14 to 2029-09-14) will challenge boundaries.'
+    const claims = extractDashaClaims(text)
+    const siddha = claims.find(c => c.lord === 'Siddha')
+    expect(siddha).toBeDefined()
+    expect(siddha!.level).toBe('MD')
+    expect(siddha!.has_citation).toBe(true)
+    expect(siddha!.cited_fact_id).toBe('DSH.Y.003')
+  })
+
+  it('extracts Yogini claim without citation as has_citation=false', () => {
+    const text = 'Currently running Mangala Yogini — a period of intense activity.'
+    const claims = extractDashaClaims(text)
+    const mangala = claims.find(c => c.lord === 'Mangala')
+    expect(mangala).toBeDefined()
+    expect(mangala!.has_citation).toBe(false)
+  })
+})
+
+describe('extractDashaClaims — Chara (Jaimini) system', () => {
+  it('extracts "Aries Chara" as a claim with lord=Aries and level=MD', () => {
+    const text = 'The next Aries Chara dasha (→ DSH.C.005, 2028-01-01 to 2034-01-01) brings strong ambition.'
+    const claims = extractDashaClaims(text)
+    const aries = claims.find(c => c.lord === 'Aries')
+    expect(aries).toBeDefined()
+    expect(aries!.level).toBe('MD')
+    expect(aries!.has_citation).toBe(true)
+    expect(aries!.cited_fact_id).toBe('DSH.C.005')
+  })
+})
+
+describe('validateClaimsAgainstChartFacts — Yogini citation cross-check', () => {
+  it('returns pass when DSH.Y.003 lord matches synthesis claim (Siddha)', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          fact_id: 'DSH.Y.003',
+          md_lord: 'Siddha',
+          ad_lord: 'Siddha',
+          start_date: '2026-09-14',
+          end_date: '2029-09-14',
+        },
+      ],
+    })
+    const claims: DashaClaim[] = [
+      {
+        span: 'next Siddha Yogini',
+        start: 0,
+        end: 18,
+        temporal: 'next',
+        lord: 'Siddha',
+        level: 'MD',
+        has_citation: true,
+        cited_fact_id: 'DSH.Y.003',
+        cited_date_range: '2026-09-14 to 2029-09-14',
+      },
+    ]
+    const results = await validateClaimsAgainstChartFacts(claims)
+    expect(results[0].verdict).toBe('pass')
+  })
+
+  it('returns halt when DSH.Y.003 has Siddha but synthesis claims Bhramari', async () => {
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          fact_id: 'DSH.Y.003',
+          md_lord: 'Siddha',
+          ad_lord: 'Siddha',
+          start_date: '2026-09-14',
+          end_date: '2029-09-14',
+        },
+      ],
+    })
+    const claims: DashaClaim[] = [
+      {
+        span: 'next Bhramari Yogini',
+        start: 0,
+        end: 20,
+        temporal: 'next',
+        lord: 'Bhramari',
+        level: 'MD',
+        has_citation: true,
+        cited_fact_id: 'DSH.Y.003',
+        cited_date_range: null,
+      },
+    ]
+    const results = await validateClaimsAgainstChartFacts(claims)
+    expect(results[0].verdict).toBe('halt')
+    expect(results[0].violation).toMatch(/lord_mismatch/)
+  })
+})
+
+describe('validateClaimsAgainstChartFacts — Chara citation cross-check', () => {
+  it('returns halt for unknown DSH.C fact_id', async () => {
+    mockQuery.mockResolvedValue({ rows: [] })
+    const claims: DashaClaim[] = [
+      {
+        span: 'next Aries Chara',
+        start: 0,
+        end: 16,
+        temporal: 'next',
+        lord: 'Aries',
+        level: 'MD',
+        has_citation: true,
+        cited_fact_id: 'DSH.C.999',
+        cited_date_range: null,
+      },
+    ]
+    const results = await validateClaimsAgainstChartFacts(claims)
+    expect(results[0].verdict).toBe('halt')
+    expect(results[0].violation).toMatch(/unknown_fact_id/)
   })
 })
