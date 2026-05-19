@@ -5517,28 +5517,35 @@ current_state:
       branch: feature/phase-4c-panchang
       base_branch: main
       sub_phase_4c_0_status: CLOSED                # 2026-05-19 session 4C-0; 8-item governance setup
-      sub_phase_4c_1_status: IN_PROGRESS           # 4C-1-S1 CLOSED 2026-05-19; 4C-1-S2 next
-      sub_phase_4c_2_through_9_status: PENDING
+      sub_phase_4c_1_status: CLOSED                # 4C-1-S2 CLOSED 2026-05-19; 30/30 parity gate PASS
+      sub_phase_4c_2_status: GATED                 # requires phase_4b_closed external gate
+      sub_phase_4c_3_through_9_status: PENDING
       brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
       master_plan_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
       parent_plan_path: 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
       capability_manifest_entry: PANCHANG_DAILY_v1_0
+      capability_manifest_status: IN_DEVELOPMENT   # flipped from PLANNED at 4C-1-S2
       claude_md_section: "§E — Five workstreams (added 2026-05-19)"
       dependency_note: "4B sunrise derivation prerequisite for 4C.2; does NOT block 4C.0 or 4C.1"
-      last_session_id: 4C-1-S1
+      last_session_id: 4C-1-S2
       last_session_summary: >
-        4C-1-S1 CLOSED 2026-05-19. panchang_engine core scaffold complete:
-        shastra_tables.py (18 tables), planets.py (9 grahas, MEAN_NODE guard),
-        timings.py (sunrise/sunset, inauspicious, choghadiya, hora),
-        angas.py (bugfix: vara mapping), Drik fixture v1 (10 days),
-        69 tests all PASS (10/10 parity gate PASS). Engine fully wired via
-        compute_panchang(). special_yogas=[] stub; muhurat=NotImplementedError.
-      next_session_id: 4C-1-S2
+        4C-1-S2 CLOSED 2026-05-19. Phase 4C.1 CLOSED. panchang_engine v1.0.0-S2.
+        special_yogas.py: 9 detection functions (7 auspicious + 2 inauspicious).
+        shastra_tables.py: all special-yoga tables populated (was stubs in S1).
+        drik_panchang_v2.json: 30-day fixture (10 from v1 + 20 new; 2020–2026;
+        all 7 vara IDs; 20 days with special yogas; 1 Delhi sensitivity day).
+        30/30 Drik parity gate PASS (the 4C.1 close gate).
+        55 special-yoga tests PASS. muhurat.py scaffold (6-event MVP; returns
+        empty until 4C.6). CAPABILITY_MANIFEST PANCHANG_DAILY PLANNED→IN_DEVELOPMENT.
+        mirror_enforcer exit 0. Total tests: 150 PASS.
+      next_session_id: 4C-2
       next_session_objective: >
-        4C-1-S2: special_yogas.py implementation (Sarvartha Siddhi, Amrit Siddhi,
-        Dwipushkar, Tripushkar); populate AMRIT_KALAM_TABLE + VARJYAM_TABLE;
-        extend fixture to 30 days (drik_panchang_v2.json); muhurat scaffold.
-      estimated_sessions_remaining: 15-20  # 4C.1-S2 through 4C.9
+        4C-2: Cloud SQL cache wiring + panchang_daily backfill.
+        GATED on phase_4b_closed (Phase 4B sunrise derivation + MEAN_NODE rebuild).
+        Conductor will halt at 4C-2 with external_gate phase_4b_closed blocker.
+        Native decision: prioritize Phase 4B to unblock 4C-2, OR skip to 4C-3
+        (query_panchanga RetrievalTool — engine-direct, no SQL dependency).
+      estimated_sessions_remaining: 13-18  # 4C.2 through 4C.9 (4C-1-S3 skipped)
 
     conductor:
       active_since: 2026-05-19

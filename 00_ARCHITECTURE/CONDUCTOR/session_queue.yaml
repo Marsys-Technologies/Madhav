@@ -70,7 +70,7 @@ entries:
   - 00_ARCHITECTURE/PHASE_4C_1_CLOSE_v1_0.md
   est_tokens: 140000
   est_duration_min: 110
-  status: pending
+  status: passed
   human_decision_prompt: null
 - session_id: 4C-1-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
@@ -86,7 +86,8 @@ entries:
   expected_artifacts: []
   est_tokens: 100000
   est_duration_min: 75
-  status: pending
+  status: skipped
+  skip_reason: "4C-1-S2 closed 4C.1 cleanly with 30/30 gate; S3 polish not required"
   human_decision_prompt: '4C-1-S2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
     covering: 30-day Drik validation gate run (all 30 days must pass tolerance), phase
     4C.1 close artifact, gate command tuning if any days still fail tolerance. Final

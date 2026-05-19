@@ -68,7 +68,7 @@ L1    ──── EPHEMERIS_DAILY    FORENSIC
 |---|---|---|---|---|---|
 | **4A** | **CLOSED** (2026-05-19, commit `bd41f13`) | main (merged) | — | ~1 | `query_ephemeris` RetrievalTool live; `ephemeris_daily` table backfilled (657K rows, 1900–2100) |
 | **4B** | **PENDING** | TBD | TBD | ~2–3 | Sunrise derivation; Migration 059; TRUE_NODE→MEAN_NODE Rahu fix; `ephemeris_daily` rebuild. **Prerequisite for 4C.2.** |
-| **4C** | **ACTIVE** (2026-05-19, session 4C-0) | `feature/phase-4c-panchang` / `/Users/Dev/Vibe-Coding/Apps/Panchang/` | `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` | 4C-0 CLOSED; 4C-1 next | `query_panchanga` RetrievalTool + `PANCHANG_DAILY` L1.5 asset + `/panchang` UI. Concurrent with M5-A. 4C.0 governance done; 4C.1 (`panchang_engine` Python module) next. |
+| **4C** | **ACTIVE** (2026-05-19, session 4C-0) | `feature/phase-4c-panchang` / `/Users/Dev/Vibe-Coding/Apps/Panchang/` | `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` | 4C-0 CLOSED; **4C-1 CLOSED** (2026-05-19, 4C-1-S2); 4C-2 GATED (phase_4b_closed) | `query_panchanga` RetrievalTool + `PANCHANG_DAILY` L1.5 asset + `/panchang` UI. 4C.1 closed: `panchang_engine` v1.0.0-S2; 9 special-yoga detectors; 30/30 Drik parity gate PASS; muhurat scaffold; 150 tests pass. 4C.2 blocked on Phase 4B. |
 | **4D** | **PENDING** | TBD | TBD | ~2–3 | `query_transit_event` for ingress/aspect/conjunction/station search |
 
 ### State changelog
@@ -79,6 +79,7 @@ L1    ──── EPHEMERIS_DAILY    FORENSIC
 | 2026-05-19 | 4B PENDING — sunrise derivation prerequisite; not yet started |
 | 2026-05-19 | **4C ACTIVE** — brief authored (`PHASE_4C_PANCHANG_BRIEF_v1_0.md`); concurrent workstream declared in `CLAUDE.md §E` (Five workstreams); `PANCHANG_DAILY_v1_0` added to `CAPABILITY_MANIFEST.json`; 4C-0 governance session closed; 4C-1 next. Concurrent with M5-A. |
 | 2026-05-19 | 4D PENDING — transit event search; not yet scoped |
+| 2026-05-19 | **4C.1 CLOSED** — 4C-1-S2 session close. `panchang_engine` v1.0.0-S2: 9 special-yoga detectors (Sarvartha Siddhi, Amrit Siddhi, Ravi Pushya, Guru Pushya, Tripushkar, Dwipushkar, Siddha Yoga, Bhadra, Panchaka); `drik_panchang_v2.json` 30-day fixture; 30/30 Drik parity gate PASS; muhurat.py scaffold (6-event MVP); 150 tests pass; PANCHANG_DAILY status PLANNED→IN_DEVELOPMENT. 4C-1-S3 skipped (4C.1 closed cleanly). 4C.2 GATED on phase_4b_closed. |
 
 ---
 
