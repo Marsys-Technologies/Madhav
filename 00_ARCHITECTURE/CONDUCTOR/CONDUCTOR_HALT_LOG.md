@@ -119,3 +119,30 @@ Entry has `requires_brief_authoring: true` and `requires_human_approval: true`. 
 - ABANDON — stop permanently.
 
 ---
+
+## 4C-4 — HALT — 2026-05-19T23:20:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-4 |
+| Failure class | requires_brief_authoring |
+| Timestamp | 2026-05-19T23:20:00+05:30 |
+| Last passed | 4C-3 |
+| Queue position | 6 of 11 |
+| Resolution status | open |
+
+### Failure context
+
+Entry has `requires_brief_authoring: true` and `requires_human_approval: true`. Brief `CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md` does not yet exist. This is the `/panchang` UI page — the first frontend phase of 4C. It is intentionally gated on human brief authoring because it requires native sign-off on layout (5-anga primary strip, timings panel, planetary grid, date picker, location selector, active special yogas list) with visual review vs Drik Panchang for 5 sample days. Note: Phase 4C.4 is 3–4 sub-sessions; the brief should break scope into 4C-4-S1/S2/S3/S4 with sequential deps.
+
+### Gate output
+
+(gate not run — entry blocked on requires_brief_authoring)
+
+### Suggested resolution paths
+
+- [Author CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md in Cowork; set requires_brief_authoring: false + requires_human_approval: false in queue entry; then re-paste kickoff]
+- SKIP 4C-4 — orchestrator marks skipped + advances (not recommended — skips entire UI layer)
+- ABANDON — orchestrator stops permanently
+
+---
