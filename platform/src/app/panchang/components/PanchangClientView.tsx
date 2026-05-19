@@ -14,6 +14,8 @@
 import { useSearchParams } from 'next/navigation'
 import { PanchangHeader, resolveDate, resolveLocation } from './PanchangHeader'
 import { PrimaryStrip } from './PrimaryStrip'
+import { TimingsPanel } from './TimingsPanel'
+import { PlanetaryGrid } from './PlanetaryGrid'
 import { usePanchangDay, type PanchangDay } from '../hooks/usePanchangDay'
 
 interface PanchangClientViewProps {
@@ -84,11 +86,26 @@ export function PanchangClientView({
       )}
 
       {data && (
-        <PrimaryStrip
-          angas={data.angas}
-          tzOffsetMinutes={330}
-          date={date}
-        />
+        <>
+          <PrimaryStrip
+            angas={data.angas}
+            tzOffsetMinutes={330}
+            date={date}
+          />
+
+          {/* Timings + Planetary Grid — two-column on md+, stacked on mobile (§4.2) */}
+          <div className="mx-auto max-w-4xl px-4 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TimingsPanel
+                timings={data.timings}
+                tzOffsetMinutes={330}
+              />
+              <PlanetaryGrid
+                planets={data.planets as Record<string, never> | null}
+              />
+            </div>
+          </div>
+        </>
       )}
     </>
   )
