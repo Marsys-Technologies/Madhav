@@ -117,7 +117,7 @@ def _compute_sunrise(swe: Any, year: int, month: int, day: int) -> tuple[float, 
     flags = swe.FLG_SWIEPH
     rsmi = swe.CALC_RISE | swe.BIT_DISC_CENTER
     retflag, tret = swe.rise_trans(
-        jd_midnight_ist, swe.SUN, "", flags, rsmi, geopos, 0, 0
+        jd_midnight_ist, swe.SUN, rsmi, geopos, 0, 0, flags=flags
     )
     if retflag < 0:
         raise RuntimeError(
