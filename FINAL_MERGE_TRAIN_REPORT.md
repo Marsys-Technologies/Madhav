@@ -68,6 +68,7 @@ merged into main in correct dependency order. The merge train is COMPLETE.
 | D3 | R8 vision adapter not wired to consume route. | MAJOR/fix-forward | Explicit in R8 PR body. `R8_VISION_ENABLED` default false. |
 | D4 | R9-S2 vector dimension 768 not 1536. | ADJUSTMENT | Brief specified 1536; adjusted to match existing Vertex AI text-multilingual-embedding-002 embedder (768 dims). Documented in migration comment and commit message. |
 | D5 | CI Stage 1 ESLint fails on pre-existing errors. | PRE-EXISTING | 12 pre-existing ESLint errors in `ConsumeChatV2.tsx` (prefer-const, refs-in-render). TypeScript ✓ and unit tests ✓ both pass. Documented in KNOWN_PRE_EXISTING_FAILURES.md. |
+| D6 | R9 Cloud Run deploy failed on first attempt. | BUILD-FIX | `ModelStylePicker.tsx` (R9-S3) used `DropdownMenuItem asChild` which is not in the component's Props type. Fix commit `b83487f` applied immediately; re-deploy to `amjis-web-00241-jn4` succeeded. |
 
 ---
 
@@ -96,7 +97,8 @@ gated (no node_modules in R9 worktree) but all new code TypeScript-clean.
 |---|---|---|
 | R7 merge | `amjis-web-00238-k5r` | 100% |
 | R8 merge | `amjis-web-00239-jj7` | 100% |
-| R9 merge | Deploying at report time | — |
+| R9 merge (first attempt) | `amjis-web-00240-pjb` | Build failed — `asChild` TypeScript error in ModelStylePicker |
+| R9 fix (`b83487f`) | `amjis-web-00241-jn4` | 100% |
 
 ---
 

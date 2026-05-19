@@ -184,7 +184,7 @@ Review completed: 2026-05-19T21:10:00Z. No BLOCKERS found. All three PRs cleared
 | Field | Value |
 |---|---|
 | Merge commit (R9) | `e4f30bee7da12e51ff8621586b6e22ec397d0899` |
-| Cloud Run revision | First deploy FAILED (TypeScript error in `ModelStylePicker.tsx` — `asChild` not accepted by `DropdownMenuItem`; R9-S3 shipped invalid prop). Fix commit `b83487f` pushed immediately; re-deploy triggered. |
+| Cloud Run revision | First deploy FAILED (`ModelStylePicker.tsx` `asChild` TypeScript error). Fix commit `b83487f` pushed immediately; re-deploy `amjis-web-00241-jn4` SUCCEEDED and is live at 100% traffic. |
 | R9 flag additions | Code-level in `feature_flags.ts` (not Cloud Run env vars). R9_PERSONAS defaults true; R9_PROJECTS, R9_SEMANTIC_SEARCH, R9_TOOL_FLOW all default false. Native flips manually post-migration. |
 | Migration prerequisite | Operator must apply migrations 110 (projects), 111 (personas), 112 (conversation_message_embeddings) before enabling R9 flags |
 
