@@ -137,11 +137,13 @@ entries:
   expected_artifacts:
   - platform/src/lib/retrieve/query_panchanga.ts
   - platform/tests/planner/panchang_probe_set.json
-  - platform/tests/planner/test_panchang_routing.ts
+  - platform/tests/planner/panchang_routing.test.ts
   - platform/python-sidecar/panchang_engine/serialize.py
   est_tokens: 110000
   est_duration_min: 80
-  status: in_flight
+  status: passed
+  closed_on: 2026-05-19
+  gate_results: "serialize 13/13 PASS; planner routing 14/14 PASS; E2E 3/3 PASS; tsc 0 errors"
   human_decision_prompt: null
 - session_id: 4C-4
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md

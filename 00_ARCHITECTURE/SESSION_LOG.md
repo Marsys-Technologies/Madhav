@@ -24531,3 +24531,128 @@ session_close:
   session_close_valid: true
   claudecode_brief_status: COMPLETE
 ```
+  claudecode_brief_status: COMPLETE
+```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-3
+  opened_at: 2026-05-19
+  session_name: "4C-3 — query_panchanga RetrievalTool + Sidecar Endpoint + Planner Integration"
+  executor: Claude Code (Sonnet 4.6, sub-agent spawned by Conductor)
+  branch: feature/phase-4c-panchang
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  predecessor_session: 4C-1-S2 (4C.1 CLOSED — panchang_engine v1.0.0-S2; 150 tests; 30/30 Drik parity)
+  skipped_predecessor: 4C-2 (GATED on phase_4b_closed; engine-direct path via 4C-3 unblocked)
+  gate_for_4c_3_close: "10/10 planner probe PASS; 3/3 E2E PASS"
+  may_touch:
+    - platform/python-sidecar/routers/panchang.py
+    - platform/python-sidecar/main.py
+    - platform/python-sidecar/panchang_engine/serialize.py
+    - platform/python-sidecar/panchang_engine/tests/test_serialize.py
+    - platform/src/lib/retrieve/query_panchanga.ts
+    - platform/src/lib/retrieve/__tests__/query_panchanga.test.ts
+    - platform/src/lib/retrieve/index.ts
+    - platform/tests/planner/panchang_probe_set.json
+    - platform/tests/planner/panchang_routing.test.ts
+    - platform/tests/integration/test_query_panchanga_e2e.test.ts
+    - 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CONDUCTOR/session_queue.yaml
+    - 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
+    - .gemini/project_state.md
+  must_not_touch:
+    - platform/python-sidecar/panchang_engine/panchang_engine.py
+    - platform/python-sidecar/panchang_engine/special_yogas.py
+    - platform/python-sidecar/panchang_engine/tests/test_drik_parity.py
+    - platform/migrations/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+```
+
+## Session 4C-3 body
+
+**Phase 4C-3 — query_panchanga RetrievalTool + Sidecar Endpoint + Planner Integration**
+
+Items executed (12/12):
+
+1. **Pre-flight integrity check** — 150/150 panchang_engine tests PASS; TS harness (vitest, tsc) healthy; AC.4C3.1 PASS.
+2. **Sidecar endpoints** — `routers/panchang.py` created with `PanchangaRequest` + `PanchangaRangeRequest` models; `POST /api/compute/panchanga` + `POST /api/compute/panchanga/range` registered in `main.py` under `/api/compute` prefix with `verify_api_key` guard; AC.4C3.2 PASS.
+3. **`panchang_to_dict()` serializer** — `platform/python-sidecar/panchang_engine/serialize.py` created; 7 helper functions (`_dt_to_iso`, `_anga_to_dict`, `_timing_to_dict`, `_planet_state_to_dict`, `_serialize_choghadiya`, `_serialize_special_yoga`, `panchang_to_dict`); output matches `PANCHANG_DAILY_v1_0.md §2` JSONB shape; `test_serialize.py` 13/13 PASS; AC.4C3.3 PASS.
+4. **`query_panchanga` RetrievalTool** — `platform/src/lib/retrieve/query_panchanga.ts` created; `callSidecar()`, `panchangToResults()` (5 ToolBundleResult sections: five_angas, timings, special_yogas, planets_at_sunrise, choghadiya_hora), `retrieve()` with single-day + range paths; defaults Bhubaneswar (lat=20.27, lon=85.84, tz=330); `__tests__/query_panchanga.test.ts` 16/16 PASS; tsc 0 errors; AC.4C3.4 PASS.
+5. **Registry** — `index.ts` updated; `query_panchanga` registered as tool 29 with comment `// Phase 4C-3`; AC.4C3.5 PASS.
+6. **Few-shot examples** — `PLANNER_PROMPT_v2_0.md` §4 extended with examples 4.25 (tithi + property purchase), 4.26 (Rahu Kalam + Sarvartha Siddhi), 4.27 (Mars combust + panchang — both tools); count updated 22→27; AC.4C3.6 PASS.
+7. **R-TC routing rule** — `PLANNER_PROMPT_v2_0.md §3` extended with R-TC: (a) PANCHANG PATH (34+ keywords), (b) EPHEMERIS PATH (13 keywords), (c) CO-SELECTION for mixed queries; v2.0.3 footer note; AC.4C3.7 PASS.
+8. **Probe set** — `platform/tests/planner/panchang_probe_set.json` created; 10 queries PP.01–PP.10 (5 panchanga-only, 3 ephemeris-only, 1 co-selection PP.09, 1 auspicious timing); AC.4C3.8 PASS.
+9. **Routing gate test** — `platform/tests/planner/panchang_routing.test.ts` created (deterministic `routeQuery()` mirroring R-TC; PANCHANG_KEYWORDS 34 entries; EPHEMERIS_KEYWORDS 13 entries; isCombustQuery flag; fallback ephemeris); 14/14 tests PASS (10 probe + 4 FP/FN checks); CI-safe (no LLM/API calls); AC.4C3.9 PASS. Fixed: PP.09 isCombustQuery flag; vitest naming convention `*.test.ts`.
+10. **E2E smoke** — `platform/tests/integration/test_query_panchanga_e2e.test.ts` created; spawns `uvicorn main:app --port 18765`; polls `/health`; 3 tests (health, POST /api/compute/panchanga, `tool.retrieve()` ToolBundle assertions); 3/3 PASS; AC.4C3.10 PASS.
+11. **CAPABILITY_MANIFEST + MP.2 mirror** — `PANCHANG_DAILY_v1_0` entry updated: `expose_to_chat_confirmed=true`, `retrieval_tool=query_panchanga`, `runtime_path=engine_direct`, `fingerprint=PENDING_4C_2`; `.gemini/project_state.md` Phase 4C block updated to adapted parity (4C.3 CLOSED row, runtime_path, last/next session pointers); `mirror_enforcer.py` exit 0 (9 pairs, 0 findings); AC.4C3.11 PASS.
+12. **Session close** — CURRENT_STATE v5.16→v5.17; SESSION_LOG appended; PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN 4C.3 CLOSED row + changelog; session_queue.yaml 4C-3 status→passed; CLAUDECODE_BRIEF status→COMPLETE; validate_queue.py OK (11 entries valid); AC.4C3.12 PASS.
+
+**Key decisions:**
+- Engine-direct path (no SQL cache): `runtime_path: engine_direct`. SQL cache wiring deferred to 4C.2 (gated on Phase 4B). Tool calls `panchang_engine` directly via sidecar `/api/compute/panchanga`.
+- PP.09 co-selection: `isCombustQuery` flag triggers ephemeris path; "panchang look" triggers panchanga path; both fire for "Is Mars combust today and what's the panchang look like?" — correct R-TC co-selection behavior.
+- E2E sidecar auth: empty `PYTHON_SIDECAR_API_KEY` bypasses auth middleware (middleware skips when env var absent), enabling local subprocess tests without credential management.
+- Test file naming: vitest discovers `*.test.ts` pattern only; renamed `test_panchang_routing.ts` → `panchang_routing.test.ts`.
+
+**gate_for_4c_3_close:** serialize 13/13 PASS; planner routing 14/14 PASS; E2E 3/3 PASS; tsc 0 errors. 4C.3 CLOSED.
+
+```yaml
+session_close:
+  session_id: 4C-3
+  closed_at: 2026-05-19
+  phase_4c_3_status: CLOSED
+  all_acs_complete: true
+  ac_summary:
+    - name: AC.4C3.1_preflight
+      result: PASS
+      detail: "150/150 panchang_engine tests; TS harness healthy"
+    - name: AC.4C3.2_sidecar_endpoints
+      result: PASS
+      detail: "/api/compute/panchanga + /range registered; main.py updated"
+    - name: AC.4C3.3_serializer
+      result: PASS
+      detail: "panchang_to_dict() + 13/13 round-trip tests PASS"
+    - name: AC.4C3.4_retrieval_tool
+      result: PASS
+      detail: "query_panchanga.ts 16/16 unit tests PASS; tsc 0 errors"
+    - name: AC.4C3.5_registry
+      result: PASS
+      detail: "tool 29 registered in RETRIEVAL_TOOLS array"
+    - name: AC.4C3.6_few_shot
+      result: PASS
+      detail: "examples 4.25–4.27 added to PLANNER_PROMPT_v2_0.md"
+    - name: AC.4C3.7_rtc_rule
+      result: PASS
+      detail: "R-TC routing rule in §3; 34 panchang + 13 ephemeris keywords; co-selection"
+    - name: AC.4C3.8_probe_set
+      result: PASS
+      detail: "panchang_probe_set.json 10 queries PP.01–PP.10"
+    - name: AC.4C3.9_routing_gate
+      result: PASS
+      detail: "panchang_routing.test.ts 14/14 PASS; CI-safe deterministic"
+    - name: AC.4C3.10_e2e_smoke
+      result: PASS
+      detail: "3/3 PASS; live sidecar subprocess; uvicorn; ToolBundle assertions"
+    - name: AC.4C3.11_manifest_mirror
+      result: PASS
+      detail: "CAPABILITY_MANIFEST updated; MP.2 propagated; mirror_enforcer exit 0"
+    - name: AC.4C3.12_session_close
+      result: PASS
+      detail: "CURRENT_STATE v5.17; SESSION_LOG appended; master plan updated; queue passed; brief COMPLETE"
+  gate_results: "14/14 routing PASS; 3/3 E2E PASS; 13/13 serialize PASS; 16/16 TS PASS; tsc 0 errors"
+  mirror_enforcer: exit 0
+  drift_detector: "exit non-zero (known pre-existing residual — 08_CLASSICAL_CROSS_REFERENCE directory; not introduced by this session)"
+  validate_queue: "OK — 11 entries valid"
+  commits: 12
+  next_session_id: 4C-4-S1
+  next_session_objective: "/panchang page MVP — server shell + 5-anga primary strip (requires_brief_authoring: true)"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+```
