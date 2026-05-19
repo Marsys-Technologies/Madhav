@@ -1,5 +1,60 @@
 # R8 Sessions Log — Chat V2 Capabilities Round
 
+## R8-S8 — Conversation Export (MD/JSON/PDF)
+- **Completed**: 2026-05-20
+- **Commit**: 5e248fc
+- **Files touched**:
+  - `platform/src/app/api/conversations/[id]/export/route.ts` (new)
+  - `platform/src/components/chat/ExportDropdown.tsx` (new)
+  - `platform/src/components/chat/ChatShell.tsx` (modified — ExportDropdown in header)
+- **Acceptance criteria**: tsc: 0 errors. Lint on new files: 0 errors. Export route + ExportDropdown exist.
+- **Decisions**:
+  - PDF returns 501 (html-pdf-node not installed — expected outcome per brief)
+  - ExportDropdown injected via existing `conversationId` prop in ChatShell
+  - `toJson` uses `new Date().toISOString()` for timestamp (UIMessage lacks createdAt)
+
+## R8-S7 — Vision Pipeline (GeminiVisionAdapter)
+- **Completed**: 2026-05-20
+- **Commit**: 6e074df
+- **Files touched**:
+  - `platform/src/lib/adapters/geminiVisionAdapter.ts` (new)
+  - `platform/src/lib/adapters/index.ts` (modified — re-export adapter)
+  - `platform/src/hooks/useAttachments.ts` (modified — mimeType field)
+  - `platform/tests/e2e/chat-v2/vision-smoke.spec.ts` (new)
+- **Acceptance criteria**: tsc: 0 errors. Lint on new files: 0 errors. geminiVisionAdapter.ts exists.
+- **Decisions**:
+  - fileUri-first when url present, inlineData fallback; skips non-image MIME
+  - mimeType field added as alias for mime on Attachment interface (AC-7)
+  - E2E smoke guarded by SMOKE_SESSION_COOKIE + SMOKE_CHART_ID (skips in CI)
+
+## R8-S6 — Slash Command Menu
+- **Completed**: 2026-05-20
+- **Commit**: 237b366
+- **Files touched**:
+  - `platform/src/lib/chat-commands.ts` (new)
+  - `platform/src/components/chat/SlashCommandMenu.tsx` (new)
+  - `platform/src/components/chat/CommandPalette.tsx` (modified — Command from lib)
+  - `platform/src/components/chat/Composer.tsx` (modified — slash detection)
+  - `platform/src/components/consume/ConsumeChatV2.tsx` (modified — slashEnabled prop chain)
+- **Acceptance criteria**: tsc: 0 errors. SlashCommandMenu.tsx and lib/chat-commands.ts exist.
+- **Decisions**:
+  - COMMANDS array has 6 Jyotish commands with text templates
+  - slashEnabled threaded ConsumeChatV2 → V2ChatRuntime → V2Thread → V2Composer
+  - mousedown-on-select in SlashCommandMenu prevents textarea blur before selection
+
+## R8-S5 — Token Estimate in Composer
+- **Completed**: 2026-05-20
+- **Commit**: 18f5e44
+- **Files touched**:
+  - `platform/src/hooks/useTokenCount.ts` (new)
+  - `platform/src/components/chat/Composer.tsx` (modified — token indicator UI)
+  - `platform/tests/unit/useTokenCount.test.ts` (new — 5 tests)
+  - `platform/package.json` + `platform/package-lock.json` (gpt-tokenizer added)
+- **Acceptance criteria**: tsc: 0 errors. Lint: 0 errors. 5/5 tests pass.
+- **Decisions**:
+  - encodeFn stored as state (not ref) so encoder load triggers debounce effect re-run
+  - tokensEnabled prop (default false) gates all UI; 200ms/500ms debounce thresholds
+
 ## R8-S4 — Pin/Archive/Folders
 - **Completed**: 2026-05-20
 - **Commit**: b5ca24b

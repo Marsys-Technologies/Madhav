@@ -62,6 +62,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s5): live token count + context % in Composer (gpt-tokenizer, lazy-loaded; amber/red thresholds)"
     estimated_loc: "+60"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 18f5e44
 
   - id: R8-S6
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S6-slash-command-menu.md
@@ -70,6 +73,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s6): inline slash command menu — /trigger + CommandPalette reuse + keyboard nav"
     estimated_loc: "+100 (new component + shared commands lib)"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 237b366
 
   - id: R8-S7
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S7-vision-pipeline.md
@@ -78,6 +84,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s7): vision pipeline — GeminiVisionAdapter + image attachment routing through synthesis LLM"
     estimated_loc: "+80"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 6e074df
 
   - id: R8-S8
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S8-pdf-md-export.md
@@ -86,3 +95,6 @@ sessions:
     commit_template: "feat(chat-v2/r8-s8): conversation export — MD/JSON/PDF via /api/conversations/[id]/export + Export button in ChatShell header"
     estimated_loc: "+100"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 5e248fc
