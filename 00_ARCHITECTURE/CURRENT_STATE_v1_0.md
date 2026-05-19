@@ -5532,11 +5532,30 @@ current_state:
         fixture; all 30 days must match Drik to within tolerance per master plan §5.3.
       estimated_sessions_remaining: 16-21  # 4C.1–4C.9
 
+    conductor:
+      active_since: 2026-05-19
+      phase_status: BUILT — on feature/phase-4c-panchang pending Wave 1 close + cherry-pick to main
+      description: >
+        Autonomous session orchestrator for MARSYS-JIS Wave 1 (Phase 4C proving ground).
+        Walks session_queue.yaml, spawns sub-agents per brief, gates each session via
+        shell tests, halts for human approval at required checkpoints.
+        Cherry-pick to main deferred to Wave 1 close (split-PR strategy).
+      worktree: /Users/Dev/Vibe-Coding/Apps/Panchang/
+      branch: feature/phase-4c-panchang
+      conductor_dir: 00_ARCHITECTURE/CONDUCTOR/
+      queue_file: 00_ARCHITECTURE/CONDUCTOR/session_queue.yaml
+      queue_entries: 11                          # 4C-1-S1 through 4C-9
+      smoke_test_status: PASS                    # SMOKE-S0 commit ef3d14d, 2026-05-19
+      migration_target: main (cherry-pick PR 1 at Wave 1 close — see WAVE_2_MIGRATION_NOTE.md)
+      wave_2_scope: M5-A + Phase 4B + Phase 4D (after PR 1 merges to main)
+      claude_md_amendment: PROPOSED — in CLAUDE_MD_AMENDMENT_PROPOSAL.md (apply after PR 1 merges)
+      built_by_session: CONDUCTOR-S0
+
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-19T02:55:00+05:30
-  file_updated_by_session: 4C-0
+  file_updated_at: 2026-05-19T15:25:00+05:30
+  file_updated_by_session: CONDUCTOR-S0
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
