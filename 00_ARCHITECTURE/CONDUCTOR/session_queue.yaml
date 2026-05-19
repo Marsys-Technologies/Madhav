@@ -268,7 +268,9 @@ entries:
   - platform/python-sidecar/panchang_engine/tests/test_muhurat_scoring.py
   est_tokens: 140000
   est_duration_min: 110
-  status: in_flight
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: pytest 196 passed (195+1 warning); validate_queue OK
   human_decision_prompt: null
 - session_id: 4C-6-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S2_v1_0.md
@@ -286,7 +288,9 @@ entries:
   - platform/python-sidecar/panchang_engine/config_loader.py
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: pytest 230 passed; validate_queue OK
   human_decision_prompt: null
 - session_id: 4C-6-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S3_v1_0.md
@@ -305,7 +309,9 @@ entries:
   - platform/src/app/panchang/hooks/useMuhuratFinder.ts
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 82 passed (6 test files); validate_queue OK (17 entries valid)
   human_decision_prompt: null
 - session_id: 4C-6-S4
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S4_v1_0.md

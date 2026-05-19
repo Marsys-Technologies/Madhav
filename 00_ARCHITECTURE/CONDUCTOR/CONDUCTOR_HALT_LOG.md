@@ -146,3 +146,43 @@ Entry has `requires_brief_authoring: true` and `requires_human_approval: true`. 
 - ABANDON — orchestrator stops permanently
 
 ---
+
+## 4C-4-S4 — HALT — 2026-05-20T01:23:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-4-S4 |
+| Failure class | gate_failed |
+| Timestamp | 2026-05-20T01:23:00+05:30 |
+| Last passed | 4C-4-S3 |
+| Queue position | 9 of 17 |
+| Resolution status | open |
+
+### Failure context
+
+Sub-agent returned `status: PASS` and self-updated queue to `passed`, but orchestrator gate command `npm test -- src/app/panchang` exited non-zero (1 test failed).
+
+**Failing test:** `PanchangHeader > Personalise button is present and disabled (4C-5 scope)`
+**File:** `platform/src/app/panchang/__tests__/PanchangHeader.test.tsx:97`
+
+Root cause: AC.4C4S4.3 upgraded the Personalise control from a static disabled button to an interactive `<select>` element (with "Generic Panchang" default + disabled 4C-5 hint option). The S1-era test still queries `getByLabelText('Personalise (coming soon)')` which matched the old button's `aria-label`. The new `<select>` element does not carry that exact aria-label.
+
+**Fix (trivial):** Update `PanchangHeader.test.tsx:97` to query the Personalise select by its actual rendered aria-label or by role (`getByRole('combobox', { name: /personalise/i })`), then verify it is not disabled (it is now enabled as a select). Then RESUME 4C-4-S4.
+
+### Gate output (truncated to 500 chars)
+
+```
+Test Files  1 failed | 4 passed (5)
+Tests  1 failed | 56 passed (57)
+FAIL  src/app/panchang/__tests__/PanchangHeader.test.tsx >
+  PanchangHeader > Personalise button is present and disabled (4C-5 scope)
+TestingLibraryElementError: Unable to find a label with the text of: Personalise (coming soon)
+```
+
+### Suggested resolution paths
+
+- **RESUME 4C-4-S4** — fix test at `platform/src/app/panchang/__tests__/PanchangHeader.test.tsx:97` to match the select-based Personalise control, then re-kick the conductor
+- SKIP 4C-4-S4 — mark skipped + advance to 4C-5 (not recommended — skips ActionBar + phase 4C.4 close artifact)
+- ABANDON — orchestrator stops permanently
+
+---

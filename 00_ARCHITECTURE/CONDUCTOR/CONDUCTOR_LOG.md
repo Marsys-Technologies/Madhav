@@ -465,3 +465,73 @@ All 7 ACs. YAML weights config created at config/muhurat_weights.yaml with 6 per
 - AC.4C6S2.7 — Session close
 
 ---
+
+## 4C-6-S2 — PASS — 2026-05-20T03:10:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-6-S2 |
+| Result | PASS |
+| Timestamp | 2026-05-20T03:10:00+05:30 |
+| Commits | 7f0db83, ed143c6, 3aba34a, c7658fb, 761b10c, 3946257, 9808294 |
+| Gate exit code | 0 |
+| Context sessions used | 7 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+```
+230 passed, 1 warning in 2.38s
+OK — 17 entries valid (session_queue.yaml)
+```
+
+### Sub-agent summary
+
+All 7 ACs. config/muhurat_weights.yaml with 6 per-event weight blocks (sums = 1.00). config_loader.py with lru_cache + test-isolation arg. muhurat.py dispatches to get_weights_for_event(). vivah score 71.75 (was 67.0) due to YAML nakshatra=0.40 vs old default 0.30 — intentional. Numerical regression confirms S1_DEFAULTS produces delta=0 across 15 cases. test_config_loader.py: 34 new tests.
+
+### Scope items completed
+
+- AC.4C6S2.1–AC.4C6S2.7 (all 7)
+
+---
+
+## 4C-6-S3 — PASS — 2026-05-20T04:15:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-6-S3 |
+| Result | PASS |
+| Timestamp | 2026-05-20T04:15:00+05:30 |
+| Commits | 34ebd06, ef9f9bb, b40a136 |
+| Gate exit code | 0 |
+| Context sessions used | 1 of 1 |
+
+### Gate output (truncated to 500 chars)
+
+```
+Test Files  6 passed (6)
+      Tests  82 passed (82)
+OK — 17 entries valid (session_queue.yaml)
+```
+
+### Sub-agent summary
+
+Items 1–7 fully delivered. MuhuratFinderModal.tsx (form: 6 MVP events, date range, lat/lon, personalise checkbox auto-checked from chartId), MuhuratResultsList.tsx (ranked rows: date, star rating, time window, breakdown badges, inline actions), useMuhuratFinder.ts (POST hook with cached state), /api/compute/muhurat/route.ts (Next.js proxy mirroring /api/panchanga pattern), ActionBar.tsx wired (Find Muhurat now opens modal; uses resolveLocation + resolveChartId from URL). Personalise pass-through: chart_id from URL → checked checkbox → included in API request. 25 new component tests; 82 total panchang suite PASS.
+
+Items 8–9 (visual review + acharya sanity check) BLOCKED: port 8000 is Madhav worktree sidecar, not Panchang sidecar. Visual review framework and acharya criteria fully documented in platform/tests/visual/4C6_S3_review.md with operator instructions and red-flag definitions. Live canary run deferred to 4C-6-S4 (which has acharya_review.md as its primary output artifact).
+
+Pre-flight status: sidecar code sealed (S1+S2 commits); just needs operator start on a non-conflicting port.
+
+### Scope items completed
+
+- AC.4C6S3.1 — MuhuratFinderModal: event dropdown, date range, location, personalise, submit
+- AC.4C6S3.2 — useMuhuratFinder hook: POST to /api/compute/muhurat, cached results
+- AC.4C6S3.3 — MuhuratResultsList: sorted rows, star ratings, breakdown badges
+- AC.4C6S3.4 — Inline actions: Ask-Madhav functional; Export disabled with 4C-7 hint
+- AC.4C6S3.5 — ActionBar wired: "Find Muhurat" opens modal
+- AC.4C6S3.6 — Personalise pass-through: chart_id in API request when chart selected
+- AC.4C6S3.7 — 25 component tests PASS (82 total)
+- AC.4C6S3.8 — Visual review PARTIAL: framework documented; live run blocked (sidecar not started)
+- AC.4C6S3.9 — Acharya sanity PARTIAL: criteria documented; live run deferred to 4C-6-S4
+- AC.4C6S3.10 — Close protocol complete
+
+---
