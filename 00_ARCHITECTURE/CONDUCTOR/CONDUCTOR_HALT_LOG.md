@@ -25,3 +25,66 @@ Each entry contains:
 ---
 
 <!-- Conductor appends entries below this line. Do not edit above. -->
+
+## 4C-1-S2 — HALT — 2026-05-19T18:46:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-1-S2 |
+| Failure class | requires_brief_authoring |
+| Timestamp | 2026-05-19T18:46:00+05:30 |
+| Last passed | 4C-1-S1 |
+| Queue position | 2 of 11 |
+| Resolution status | open |
+
+### Failure context
+
+4C-1-S1 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_1_S2_v1_0.md covering: special_yogas.py implementation, Drik fixture extension to 30 days (10 days in S1), muhurat scoring scaffold, and shastra_tables.py lookup tables. Scope: platform/sidecar/panchang_engine/ only.
+
+### Gate output
+
+(gate not run — entry blocked on requires_brief_authoring)
+
+### Suggested resolution paths
+
+- [Author the brief in Cowork, commit it, update queue entry requires_brief_authoring to false, then re-paste kickoff]
+- SKIP 4C-1-S2 — orchestrator marks skipped + advances (not recommended)
+- ABANDON — orchestrator stops permanently
+
+---
+
+## 4C-1-S1 — HALT — 2026-05-19T18:38:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-1-S1 |
+| Failure class | sub_agent_halt |
+| Timestamp | 2026-05-19T18:38:00+05:30 |
+| Last passed | SMOKE-S0 |
+| Queue position | 1 of 11 |
+| Resolution status | open |
+
+### Failure context
+
+Sub-agent did not emit a parseable FINAL_SUMMARY block. API stream idle timeout after ~36 minutes of work (30 tool uses). Sub-agent completed Items 1–3 (3 commits: fa3bf1d, 21cd781, 4eb39ab) and wrote angas.py (Item 4) but timed out before committing it. Items 5–12 not attempted.
+
+### Gate output
+
+(gate not run — sub-agent timed out before completing implementation)
+
+### Suggested resolution paths
+
+- RESUME 4C-1-S1 — orchestrator retries with a recovery sub-agent briefed on partial state
+- SKIP 4C-1-S1 — orchestrator marks skipped + advances (not recommended — gate not satisfied)
+- ABANDON — orchestrator stops permanently
+
+---
+
+## 4C-1-S1 — HALT — RESOLUTION — 2026-05-19T18:38:30+05:30
+
+Conductor issued RESUME 4C-1-S1. Recovery sub-agent spawned with full context of partial
+state: Items 1–3 committed, angas.py written (uncommitted), Items 5–12 pending.
+Recovery sub-agent instructed to commit angas.py, create all remaining modules, and
+complete the Drik parity gate.
+
+---
