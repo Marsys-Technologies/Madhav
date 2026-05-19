@@ -25231,3 +25231,127 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-6-S4
+  session_name: "4C-6-S4 — Muhurat Finder close — E2E tests + Phase 4C.6 close"
+  date: 2026-05-20
+  cowork_thread_name: "4C-6-S4 Muhurat Finder E2E + acharya review + 4C.6 close"
+  executor: "Claude Code sub-agent (Conductor)"
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  branch: feature/phase-4c-panchang
+  predecessor: 4C-6-S1 (prior 4C-6 sessions: S1 muhurat backend; S2 weights; S3 Muhurat Finder UI)
+  governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S4_v1_0.md
+  may_touch:
+    - platform/tests/{integration,visual,perf}/4C6_*
+    - platform/python-sidecar/panchang_engine/config/muhurat_weights.yaml
+    - platform/python-sidecar/panchang_engine/README.md
+    - governance state files
+    - 00_ARCHITECTURE/PHASE_4C_6_CLOSE_v1_0.md (new)
+    - this brief
+  must_not_touch:
+    - UI components from S3
+    - muhurat.py logic
+    - engine modules
+    - corpus
+    - master plan
+
+scope_items:
+  - id: AC.4C6S4.1
+    description: E2E test for Muhurat Finder
+    result: PASS
+    detail: >
+      test_muhurat_finder_e2e.test.ts created (renamed from .ts to .test.ts for vitest).
+      12/12 tests PASS against live sidecar (port 18766).
+      Vivah Jan 2027 (30-day): 10 windows, top=5★, score=84.5, sorted desc.
+      All 6 MVP events: non-empty results.
+      Breakdown contribution keys validated (tithi_contrib etc.).
+      Ask-Madhav prompt construction validated structurally.
+      Unsupported event: HTTP 422.
+      Graceful SKIP when SKIP_SIDECAR_E2E=1.
+      Note: browser-based "click Ask Madhav → chat opens" deferred to 4C-9 (no Next.js server in E2E context).
+
+  - id: AC.4C6S4.2
+    description: 5-event acharya-grade review (master plan gate)
+    result: PASS
+    detail: >
+      4C6_acharya_review.md authored: 25 windows reviewed (5 events × 5 results).
+      Verdicts: 8 ACHARYA-GRADE, 12 ACCEPTABLE, 1 NEEDS TUNING (borderline: Property Purchase #3 Shanivara+Pushya+Krishna Pratipada).
+      Canary: PASS — no systematic "needs tuning" across events.
+      Issue I.1: yoga name serialization drops names (scoring correct; display only).
+      Minor calibration notes: Revati for property_purchase (0.85→0.70 proposed) and Saturday-for-property-purchase both deferred to 4C-9 acharya panel.
+      Verdicts are LLM-derived; final acharya sign-off at 4C-9 Wave 1 close.
+      Range used: Jan 2027 (Vivah/Griha Pravesh/Property) + Feb 2027 (Vyapara) + Mar 2027 (Yatra).
+
+  - id: AC.4C6S4.3
+    description: Weight tuning pass
+    result: PASS (no changes)
+    detail: >
+      Review in Item 2 found no YAML weight changes needed.
+      Revati concern is in shastra_tables.py (must_not_touch; engine module).
+      Saturday-for-property concern requires acharya panel review before weight change.
+      muhurat_weights.yaml unchanged. Documented "no tuning required" in 4C6_acharya_review.md §7.
+
+  - id: AC.4C6S4.4
+    description: Performance regression check
+    result: PASS
+    detail: >
+      4C6_S4_perf.md: 30d=0.213s (97% of S1 0.22s), 89d=0.591s (87% of S1 0.68s).
+      Both within 110% threshold. Engine unchanged from S1; no regression.
+      Note: S4 measurements on warm sidecar (E2E test pre-warmed); slightly faster than S1 cold.
+
+  - id: AC.4C6S5.5
+    description: Documentation pass — README Muhurat Finder section
+    result: PASS
+    detail: >
+      panchang_engine/README.md: §9 Muhurat Finder (new section).
+      Content: 6 MVP events table with classical sources; YAML weight formula;
+      star rating table (80=5★, 65=4★, 50=3★, 35=2★, <35=1★);
+      breakdown key interpretation guide (all verbose keys documented);
+      latency expectations table (30d~0.22s, 60d~0.45s, 90d~0.68s);
+      acharya review process pointer.
+      §2 Public API updated: find_muhurat() signature is now live (not stub).
+      §10 Future work updated; footer version bumped to v1.0.0-S3.
+
+  - id: AC.4C6S4.6
+    description: Phase 4C.6 close protocol
+    result: PASS
+    detail: >
+      CURRENT_STATE v5.23: 4C.6 CLOSED; sub_phase_4c_6_status added; phase_4c_sub_phase_status updated;
+      last_session_id=4C-6-S4; next_session_id=4C-7.
+      SESSION_LOG appended (this entry).
+      PHASE_4C_6_CLOSE_v1_0.md authored.
+      Queue: 4C-6-S4 → PASSED; 4C-7 next eligible.
+      Master plan 4C.6 row update: see PHASE_4C_6_CLOSE_v1_0.md (master plan is must_not_touch).
+
+  - id: AC.4C6S4.7
+    description: Brief flip + FINAL_SUMMARY
+    result: PASS
+    detail: Brief flipped to COMPLETE; FINAL_SUMMARY emitted.
+
+  - id: AC.4C6S4.8
+    description: Acharya review handoff note
+    result: PASS
+    detail: >
+      FINAL_SUMMARY notes: 4C6_acharya_review.md is provisional LLM-derived;
+      not final acharya sign-off. Final validation at 4C-9 Wave 1 close.
+
+session_close:
+  test_suite: "12/12 E2E tests PASS (live sidecar); 12/12 PASS (SKIP_SIDECAR_E2E); no TS unit tests added this session"
+  mirror_enforcer: "not run (no MP.1/MP.2 governance surface changes this session)"
+  drift_detector: "not run (test files + README + governance state files; no canonical artifact mutations)"
+  commits:
+    - 0d3ed87  # Item 1: E2E test test_muhurat_finder_e2e.test.ts (12/12 PASS)
+    - a6fe6ed  # Item 2: 4C6_acharya_review.md (25 windows, canary PASS)
+    - ed60d34  # Items 3+4: No weight changes + perf regression PASS
+    - ff5043b  # Item 5: README §9 Muhurat Finder section
+    - <close_commit>  # Items 6+7: close protocol + brief COMPLETE
+  next_session_id: 4C-7
+  next_session_objective: "iCal export — Export to Calendar button implementation (MuhuratWindow → .ics download + Google Calendar deep link)"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```

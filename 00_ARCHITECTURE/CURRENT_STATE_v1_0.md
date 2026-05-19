@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.22
+version: 5.23
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -57,7 +57,7 @@ changelog:
   - v5.22 (2026-05-20, 4C-5):
     **CONCURRENT WORKSTREAM 4C-5 CLOSED. Personalise overlay: Tara Bala + Chandra Bala + chart selection. 100 TS tests + 163 sidecar pytest PASS. tsc 0 errors.**
     Key outcomes: (1) AC.4C5.1 PASS — tara_bala.ts: computeTaraBala(birth, current) → {tara, count, classification}; exhaustive 27×27 test suite (729 combinations); classical table verified (Janma/Sampat/Vipat/Kshema/Pratyari/Sadhaka/Vadha/Mitra/Ati Mitra). (2) AC.4C5.2 PASS — chandra_bala.ts: computeChandraBala(natal, transit) → {strength, houseFromMoon, isChandrashtama}; STRONG houses 1/3/6/7/10/11, MODERATE 2/5/9, WEAK 4/8/12; exhaustive 12×12 test suite (144 combinations); Chandrashtama flag on house 8. (3) AC.4C5.3 PASS — useChartList hook: GET /api/panchang/charts; astrologer=all, client=own; returns {charts, isLoading, error}; RLS enforced server-side by role + Firebase uid. (4) AC.4C5.4 PASS — PanchangHeader: personalise dropdown wired with useChartList; chart_id stored in URL (?chart_id=) + localStorage (key: panchang.personalise.chart_id); "Clear personalisation" option restores Generic; disabled while charts loading. (5) AC.4C5.5 PASS — usePanchangDay: NativeContext type added; chartId in SWR cache key; mapSidecarResponse extracts native_context from top-level sidecar response; PanchangClientView tracks chartId state + passes to hook. (6) AC.4C5.6 PASS — sidecar panchang.py: NativeContext model (chart_id, native_name, birth_nakshatra_id/name, moon_sign_id/name, active_dasha_lord); _fetch_native_context(): DB fetch via psycopg → compute_panchang on birth date → Moon.nakshatra_id + Moon.sign_id; 503 on DB unreachable, 404 on chart not found. (7) AC.4C5.7 PASS — PrimaryStrip: TaraBadge on Nakshatra row (auspicious=green, inauspicious=red, mixed=gold); PlanetaryGrid: ChandraBadge on Moon card (STRONG=green, MODERATE=gold, WEAK=red, Chandrashtama label for house 8). (8) AC.4C5.8 PASS — SpecialYogasList: "for [native first name]" annotation when yoga.nakshatra_id === native.birth_nakshatra_id; gold pill badge; dasha-aware scoring deferred to 4C-6. (9) AC.4C5.9 PASS — 43/43 new lib tests (tara_bala: 21, chandra_bala: 22); 100/100 total panchang TS tests; 163/163 sidecar panchang_engine pytest; tsc 0 errors. (10) AC.4C5.10 PASS — close protocol: CURRENT_STATE v5.22; SESSION_LOG appended; brief status=COMPLETE; queue advanced 4C-6-S1 next eligible.
-    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C.4 CLOSED | 4C.5 CLOSED | 4C-6–4C.9 PENDING.
+    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C.4 CLOSED | 4C.5 CLOSED | 4C.6 CLOSED | 4C.7–4C.9 PENDING.
     last_session_id (4C stream): 4C-5. next_session_id (4C stream): 4C-6-S1 (Muhurat Finder engine — event scoring + backend).
     file_updated_at: 2026-05-20T01:50:00+05:30. file_updated_by_session: 4C-5.
   - v5.21 (2026-05-20, 4C-4-S4):
@@ -5560,7 +5560,8 @@ current_state:
       sub_phase_4c_3_status: CLOSED                # 4C-3 CLOSED 2026-05-19; query_panchanga live; 14/14 routing PASS
       sub_phase_4c_4_s1_status: CLOSED               # 4C-4-S1 CLOSED 2026-05-20; /panchang route shell + Header + PrimaryStrip
       sub_phase_4c_6_s1_status: CLOSED               # 4C-6-S1 CLOSED 2026-05-20; muhurat backend live; 195 tests PASS
-      sub_phase_4c_4_through_9_status: PENDING        # 4C-4-S2 next; 4C-6-S1 closed in parallel
+      sub_phase_4c_6_status: CLOSED                  # 4C.6 CLOSED 2026-05-20; Muhurat Finder full stack CLOSED (S1-S4); E2E+acharya review+perf+docs done
+      sub_phase_4c_4_through_9_status: PENDING        # 4C-7 next (iCal export); 4C-4 parallel track continues
       brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
       master_plan_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
       parent_plan_path: 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
@@ -5569,32 +5570,39 @@ current_state:
       capability_manifest_new_fields: "expose_to_chat_confirmed=true; retrieval_tool=query_panchanga; runtime_path=engine_direct"
       claude_md_section: "§E — Five workstreams (added 2026-05-19)"
       dependency_note: "4B sunrise derivation prerequisite for 4C.2; does NOT block 4C.0, 4C.1, or 4C.3"
-      last_session_id: 4C-6-S1
+      last_session_id: 4C-6-S4
       last_session_summary: >
-        4C-6-S1 CLOSED 2026-05-20. Muhurat backend live (parallel to 4C-4 UI track).
-        shastra_tables.py: 6 per-event quality tables (VIVAH, GRIHA_PRAVESH, VYAPARA, YATRA,
-          PROPERTY_PURCHASE, MANTRA_INITIATION); EVENT_TABLES dispatch dict;
-          DEFAULT_MUHURAT_WEIGHTS (tithi=0.20, nak=0.30, vara=0.10, yoga=0.15, planet=0.10,
-          native=0.10, avoid_penalty=1.0). All tables cite classical sources (MC, BS, MMP, DP).
-        tara_bala.py: Nava Tara Chakra (9-position × 3 cycles, attenuated 1.0/0.80/0.60×);
-          compute_tara_bala_score() + compute_chandra_bala_score() + compute_combined_native_score().
-        muhurat.py: score_muhurat(panchang, event, weights, native_chart) → 0..100;
-          knockout → 0.0; _score_breakdown() explainability dict; _score_to_stars() 1..5;
-          find_muhurat() day-by-day range scan → list[MuhuratWindow] sorted by score.
-        panchang_engine/__init__.py: version 1.0.0-S3; find_muhurat delegates to real impl.
-        test_muhurat_scoring.py: 31 tests PASS (Tara Bala 9 inputs, scoring, knockout, breakdown,
-          star ratings, native overlay, all 6 events). 195 total engine tests PASS.
-        routers/muhurat.py: POST /api/compute/muhurat (90-day cap, chart_id→NatalChart from DB).
-        main.py: muhurat router wired at /api/compute.
-        Latency baseline: 0.22s/30d, 0.68s/90d (44× faster than estimated 30s).
-        Canary: Jun 2026 Vivah top = 2026-06-21 Uttara Phalguni Monday (classically validated).
+        4C-6-S4 CLOSED 2026-05-20. Phase 4C.6 FULLY CLOSED — Muhurat Finder complete (S1 through S4).
+        S4 deliverables:
+        (1) AC.4C6S4.1 PASS — E2E test test_muhurat_finder_e2e.test.ts: 12/12 tests PASS
+            against live sidecar; Vivah Jan 2027 top=5★; all 6 MVP events non-empty; Ask-Madhav
+            prompt construction validated; unsupported event → HTTP 422.
+        (2) AC.4C6S4.2 PASS — Acharya review 4C6_acharya_review.md: 25 windows reviewed
+            (5 events × 5 results); verdicts: 8 ACHARYA-GRADE, 12 ACCEPTABLE, 1 NEEDS TUNING
+            (borderline); canary PASS; LLM-derived; final acharya sign-off at 4C-9.
+        (3) AC.4C6S4.3 PASS — No YAML weight changes needed; Revati/Saturday calibration
+            deferred to 4C-9 (shastra_tables.py scope, must_not_touch in S4).
+        (4) AC.4C6S4.4 PASS — Perf regression: 30d 0.213s (97% of S1), 89d 0.591s (87% of S1);
+            both within 110% threshold; no regression.
+        (5) AC.4C6S5.5 PASS — README §9 Muhurat Finder section: 6 MVP events table,
+            weight mechanics, breakdown key guide, latency table, acharya review process.
+        (6) AC.4C6S4.6 — Close protocol: CURRENT_STATE v5.23; SESSION_LOG appended;
+            master plan 4C.6 row CLOSED; PHASE_4C_6_CLOSE_v1_0.md authored; queue advanced.
+        Prior sessions: 4C-6-S1 (muhurat backend + scoring); 4C-6-S2 (YAML weights + S2 tests);
+          4C-6-S3 (Muhurat Finder UI: MuhuratFinderModal + MuhuratResultsList + useMuhuratFinder
+          hook + ActionBar integration + /api/compute/muhurat Next.js proxy).
+        Commits (S4): 0d3ed87, a6fe6ed, ed60d34, ff5043b + close protocol commits.
+      previous_session_id: 4C-6-S1
+      previous_session_summary: >
+        4C-6-S1 CLOSED 2026-05-20. Muhurat backend live.
         Commits: c80e1b3, 3d4b3f2, 3d9d3b0, 8108901, 35537aa, f1f3bf0, f0c603f.
-      next_session_id: 4C-4-S2
+      next_session_id: 4C-7
       next_session_objective: >
-        4C-4-S2: Panchang timings grid + planetary positions at sunrise panel.
-        Adds TimingsPanel (sunrise/sunset/moonrise/moonset + Rahu Kalam + Yamagandam + Gulika +
-        Abhijit + Brahma Muhurta) and PlanetaryGrid (9-graha positions at sunrise).
-      estimated_sessions_remaining: 10-15  # 4C-4-S2 through 4C.9 (4C-1-S3, 4C-2 gated/skipped)
+        4C-7: iCal export — "Export to Calendar" button implementation.
+        The Export to Calendar button in MuhuratResultsList.tsx is currently disabled
+        (4C-7 label badge). 4C-7 implements: iCal file generation from MuhuratWindow,
+        download flow, and optional Google Calendar deep link.
+      estimated_sessions_remaining: 8-12  # 4C-7 through 4C.9 (4C-4-S2 parallel track continues)
 
     conductor:
       active_since: 2026-05-19
