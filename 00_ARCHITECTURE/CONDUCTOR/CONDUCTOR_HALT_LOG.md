@@ -88,3 +88,34 @@ Recovery sub-agent instructed to commit angas.py, create all remaining modules, 
 complete the Drik parity gate.
 
 ---
+
+## 4C-2 — HALT — 2026-05-19T22:46:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-2 |
+| Failure class | requires_brief_authoring |
+| Timestamp | 2026-05-19T22:46:00+05:30 |
+| Last passed | 4C-1-S2 |
+| Queue position | 4 of 11 |
+| Resolution status | open |
+
+### Failure context
+
+Entry has `requires_brief_authoring: true` and `requires_human_approval: true`. Brief `CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md` does not yet exist.
+
+**External gate note (phase_4b_closed):** The check_command regex `4B.*CLOSED` returned exit 0 via a **false positive** — it matched `M4-B-CLOSED` in Madhav's CURRENT_STATE_v1_0.md (M4 macro sub-phase B), NOT Phase 4B of the Panchang ephemeris accessibility plan. Phase 4B (sunrise derivation + MEAN_NODE rebuild) is a separate pending workstream that has NOT closed. Before authoring the 4C-2 brief, verify Phase 4B status independently. The check_command should be tightened to use a more specific pattern (e.g., `Phase 4B.*CLOSED\|PHASE_4B_CLOSED\|4C.*Phase 4B.*COMPLETE`) to avoid this false match.
+
+### Gate output (truncated to 500 chars)
+
+```
+(external gate check_command exited 0 — false positive as described above)
+```
+
+### Suggested resolution paths
+
+- **[RECOMMENDED]** Author a more specific phase_4b_closed check_command in session_queue.yaml before proceeding — the current regex is too broad. Then author Phase 4B brief in a Cowork session and wait for Phase 4B to close before authoring the 4C-2 brief.
+- SKIP 4C-2 — mark skipped, advance to 4C-3 (query_panchanga RetrievalTool — no SQL dependency; can work directly against the engine); requires Cowork brief authoring for 4C-3.
+- ABANDON — stop permanently.
+
+---
