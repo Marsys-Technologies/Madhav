@@ -2,7 +2,7 @@
 panchang_engine — Deterministic Panchang computation, Drik-parity, no LLM.
 Public API: compute_panchang, panchang_range, find_muhurat.
 """
-__version__ = "1.0.0-S1"
+__version__ = "1.0.0-S2"
 
 from .ayanamsha import set_ayanamsha, get_ayanamsha_value, DEFAULT_AYANAMSHA
 from .types import Panchang, Anga, Timing, PlanetState, MuhuratWindow, NatalChart
@@ -20,7 +20,7 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
         lon: float — longitude in decimal degrees (+E)
         tz_offset: int — UTC offset in minutes (e.g. +330 for IST +05:30)
     Returns:
-        Panchang dataclass fully populated (special_yogas=[] this session).
+        Panchang dataclass fully populated including special_yogas (implemented 4C-1-S2).
     """
     from datetime import date as dt_date
     from .timings import (
@@ -33,6 +33,7 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
         compute_tithi, compute_nakshatra, compute_yoga,
         compute_karana_pair, compute_vara,
     )
+    from .special_yogas import detect_all_special_yogas
     import swisseph as swe
     from datetime import datetime, timezone
 
@@ -89,6 +90,12 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     choghadiya = compute_choghadiya(sunrise_utc, sunset_utc, next_sunrise_utc, vara.id)
     hora = compute_hora(sunrise_utc, next_sunrise_utc, vara.id)
 
+    # Special yogas (implemented 4C-1-S2)
+    special_yogas = detect_all_special_yogas(
+        sunrise_utc, sunset_utc, next_sunrise_utc,
+        tithi, nakshatra, yoga, karana_first, karana_second, vara,
+    )
+
     # ephemeris version
     swe.set_ephe_path(None)
     ephe_ver = swe.version
@@ -113,7 +120,7 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
         auspicious=auspicious,
         choghadiya=choghadiya,
         hora=hora,
-        special_yogas=[],  # 4C-1-S2 implements
+        special_yogas=special_yogas,
         planets=planets,
         computation_version=__version__,
         ephemeris_version=ephe_ver,
