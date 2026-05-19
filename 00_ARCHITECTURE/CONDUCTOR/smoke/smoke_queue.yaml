@@ -1,0 +1,30 @@
+---
+schema_version: "1.0"
+queue_name: smoke
+generated_at: "2026-05-19"
+generated_by: CONDUCTOR-S0
+total_entries: 1
+notes: >
+  Single-entry queue for the Conductor smoke test (Item 7 of CONDUCTOR-S0).
+  This queue is NOT the main Phase 4C queue — it is used only for the
+  proof-of-life validation before handing off to session_queue.yaml.
+
+entries:
+  - session_id: SMOKE-S0
+    brief_path: 00_ARCHITECTURE/CONDUCTOR/smoke/SMOKE_BRIEF_v1_0.md
+    branch: feature/phase-4c-panchang
+    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+    depends_on: []
+    requires_external_gate: null
+    requires_brief_authoring: false
+    requires_human_approval: false
+    push_to_remote: false
+    gate_command: |
+      test -f 00_ARCHITECTURE/CONDUCTOR/smoke/SMOKE_HEARTBEAT.md && \
+      git log -1 --pretty=%s | grep -q "SMOKE-S0: heartbeat"
+    expected_artifacts:
+      - 00_ARCHITECTURE/CONDUCTOR/smoke/SMOKE_HEARTBEAT.md
+    est_tokens: 5000
+    est_duration_min: 3
+    status: pending
+    human_decision_prompt: null
