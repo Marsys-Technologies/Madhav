@@ -90,28 +90,64 @@ executor: Claude Code (autonomous, native-authorized)
 
 ## Phase 4 — MARSYS_FLAG_R9_PROJECTS
 
-*(pending)*
+- **Local smoke:** /api/projects on existing dev server (port 3000) → 401 ✓ (route exists, auth-gated)
+- **Flag flip:** `gcloud run services update amjis-web --region asia-south1 --update-env-vars=MARSYS_FLAG_R9_PROJECTS=true`
+- **Initial revision:** amjis-web-00243-p7p
+- **Initial prod test:** 500 ← routing conflict still present in deployed code
+- **Root cause:** S173 routing fix (queryId→query_id rename) was applied to working tree only, never committed. git tracked both `audit/[queryId]/trace/route.ts` (old) and `audit/[query_id]/route.ts` (new) simultaneously.
+- **Fix applied:** Staged the rename as a git rename, committed as `b68f533`, pushed to main.
+- **CI:** Quality gate passed; deploy triggered automatically.
+- **Final revision:** amjis-web-00245-4w7 (routing fix included + R9_PROJECTS=true)
+- **Final prod test:** /api/projects → 401 ✓
+- **5-min log watch:** 0 errors ✓
+- **STATUS: COMPLETE ✓**
 
 ---
 
 ## Phase 5 — MARSYS_FLAG_R9_SEMANTIC_SEARCH
 
-*(pending)*
+- **Local smoke:** /api/conversations/search?q=test&semantic=true on dev server (port 3000) → 401 ✓
+- **Flag flip:** `MARSYS_FLAG_R9_SEMANTIC_SEARCH=true`
+- **Revision:** amjis-web-00246-l26
+- **Prod verify:** /api/conversations/search?q=test&semantic=true → 401 ✓
+- **5-min log watch:** 0 errors ✓
+- **Note:** New messages will now produce embeddings live. Historical coverage requires Phase 7 backfill.
+- **STATUS: COMPLETE ✓**
 
 ---
 
 ## Phase 6 — MARSYS_FLAG_R9_TOOL_FLOW
 
-*(pending)*
+- **Local smoke:** /api/audit/18a12336-a335-4ac3-a40a-0489e9d7ad0c/trace → 401 ✓ (used real query_id from query_trace_steps)
+- **Flag flip:** `MARSYS_FLAG_R9_TOOL_FLOW=true`
+- **Revision:** amjis-web-00247-vbp
+- **Prod verify:** /api/audit/{query_id}/trace → 401 ✓
+- **5-min log watch:** 0 errors ✓
+- **STATUS: COMPLETE ✓**
 
 ---
 
 ## Phase 7 — Historical Embedding Backfill
 
-*(pending)*
+- **HALTED** — backfill script `platform/scripts/backfill_conversation_embeddings.ts` not found.
+- Searched platform/scripts/ for backfill_* and *embed* — no matches.
+- BACKFILL_SCRIPT_NOT_FOUND.md written with full impact assessment and resolution path.
+- **Impact:** Historical messages lack embeddings; semantic search results sparse until backfill.
+  New messages (post Phase 5 flip) will embed live. trgm fallback path functional.
+- **STATUS: HALTED — continuing to Phase 8 per protocol**
 
 ---
 
 ## Phase 8 — Final State Seal
 
-*(pending)*
+- **Cloud Run env verified:**
+  - `MARSYS_FLAG_R9_PROJECTS=true` ✓
+  - `MARSYS_FLAG_R9_SEMANTIC_SEARCH=true` ✓
+  - `MARSYS_FLAG_R9_TOOL_FLOW=true` ✓
+  - Final revision: amjis-web-00247-vbp ✓
+- **Schema verification:** All 5 R9 tables present ✓; embedding rows: 0 (backfill pending)
+- **CLAUDE.md:** §E R9 entry updated with operator close-out line; frontmatter bumped 2.4→2.7→2.8; footer bumped to v2.8 ✓
+- **OPERATOR_CLOSEOUT_R9_COMPLETE.md:** Written ✓
+- **BACKFILL_SCRIPT_NOT_FOUND.md:** Written ✓
+- **Cloud SQL proxy:** Left running (pre-existing process PID 87661; not started by this session)
+- **STATUS: COMPLETE ✓**
