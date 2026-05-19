@@ -102,10 +102,11 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
               </DropdownMenuLabel>
 
               {personas.length === 0 ? (
-                <DropdownMenuItem asChild>
-                  <a href="/settings/personas" className="text-xs text-muted-foreground">
-                    No personas yet — Manage
-                  </a>
+                <DropdownMenuItem
+                  className="text-xs text-muted-foreground"
+                  onSelect={() => { window.location.href = '/settings/personas' }}
+                >
+                  No personas yet — Manage
                 </DropdownMenuItem>
               ) : (
                 <>
@@ -135,10 +136,11 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
                       {activePersonaId === p.id && <Check className="mt-0.5 size-3.5 shrink-0" />}
                     </DropdownMenuItem>
                   ))}
-                  <DropdownMenuItem asChild>
-                    <a href="/settings/personas" className="text-[11px] text-muted-foreground mt-0.5">
-                      Manage Personas →
-                    </a>
+                  <DropdownMenuItem
+                    className="text-[11px] text-muted-foreground mt-0.5"
+                    onSelect={() => { window.location.href = '/settings/personas' }}
+                  >
+                    Manage Personas →
                   </DropdownMenuItem>
                 </>
               )}
