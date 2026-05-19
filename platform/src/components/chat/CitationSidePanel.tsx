@@ -66,13 +66,21 @@ export function CitationSidePanel({ citations, pinned, onUnpin }: CitationSidePa
             >
               <span className="shrink-0 font-semibold text-indigo-400">[{c.index}]</span>
               <div className="flex flex-col gap-1 min-w-0">
-                <span className="font-mono text-[10px] text-[rgba(var(--brand-gold-rgb),0.70)]">{c.signal_id}</span>
+                {/* Signal ID + layer badge on the same row (AC-3: badge adjacent to signal ID) */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-mono text-[10px] text-[rgba(var(--brand-gold-rgb),0.70)]">{c.signal_id}</span>
+                  {c.layer && (
+                    <span className="inline-flex items-center rounded px-1 py-0.5 text-[9px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30" data-testid="v2-citation-layer-badge">
+                      {c.layer}
+                    </span>
+                  )}
+                </div>
+                {/* Snippet text — wraps freely (AC-4: not truncated to one line) */}
                 {c.snippet ? (
-                  <span className="text-[11px] leading-snug text-zinc-300">{c.snippet}</span>
+                  <span className="text-[11px] leading-snug text-zinc-300 overflow-visible whitespace-normal">{c.snippet}</span>
                 ) : (
                   <span className="text-[10px] text-zinc-600 italic">No excerpt available</span>
                 )}
-                <span className="text-[10px] text-zinc-600">{c.layer}</span>
               </div>
               <button
                 type="button"
