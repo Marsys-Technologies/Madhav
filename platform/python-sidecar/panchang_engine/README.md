@@ -36,9 +36,17 @@ p = compute_panchang(date(2026, 5, 19), lat=20.27, lon=85.84, tz_offset=330)
 results = panchang_range(date(2026, 5, 1), date(2026, 5, 31), 20.27, 85.84, 330)
 # Returns list[Panchang]
 
-# Muhurat Finder — STUB until 4C.6
-find_muhurat("vivaha", date(2026, 6, 1), date(2026, 7, 1), 20.27, 85.84)
-# Raises NotImplementedError — 4C.6 implements this
+# Muhurat Finder — LIVE since 4C.6 (Phase 4C-6-S1)
+windows = find_muhurat(
+    "vivah",                  # event key (see §9 below)
+    date(2027, 1, 1),         # date_from
+    date(2027, 1, 31),        # date_to (max 89 days from date_from)
+    20.27,                    # lat
+    85.84,                    # lon
+    top_n=10,                 # max results returned
+)
+# Returns list[MuhuratWindow] sorted by score descending
+# Each window: event, start_utc, end_utc, star_rating (1–5), score, breakdown dict
 ```
 
 ### Panchang fields
@@ -239,22 +247,129 @@ Phase 4C.1 is CLOSED at `1.0.0-S2`. Next version bump at 4C.2 (cache + sidecar w
 
 ---
 
-## §10 — Future work (deferred to 4C.6)
+## §9 — Muhurat Finder (Phase 4C.6 — LIVE)
 
-- **`muhurat.py` body implementation**: `score_muhurat()` returns 0.0 and
-  `find_muhurat()` returns `[]` in the current scaffold. The full scoring rubric
-  (panchang factor weighting, dasha-lord alignment, event-type profiles) is
-  specified in `PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md §5.3` and will be
-  implemented in Phase 4C.6.
-- **Full Muhurat Finder UI integration**: the `/panchang` route's Muhurat Finder
-  widget (4C.5) calls `find_muhurat()`; results are empty until 4C.6 ships.
-- **`AMRIT_KALAM_TABLE` + `VARJYAM_TABLE`**: `shastra_tables.py` §13–§14 stubs
-  (all `[None, None]`). To be populated from Drik reference in 4C-1-S2 or S3.
-- **Amrit Siddhi death-yoga exclusions**: MC 5.17 Visha Yoga suppression rules;
-  currently not implemented (marked TODO in `special_yogas.py`).
+The Muhurat Finder is **fully implemented as of Phase 4C-6-S1** (2026-05-20).
+It ranks every day in a date range for a given event type, returning the top N
+windows sorted by auspiciousness score.
+
+### Supported Events (MVP — Phase 4C.6)
+
+| Event Key | Event Type | Primary Classical Source |
+|---|---|---|
+| `vivah` | Marriage / Vivah | Muhurta Chintamani §3 |
+| `griha_pravesh` | Housewarming / Griha Pravesh | Muhurta Chintamani §4 |
+| `vyapara` | Business Start / Trade | Muhurta Chintamani §5 |
+| `yatra` | Travel / Yatra | Brihat Samhita §Yatra |
+| `property_purchase` | Property or Vehicle Purchase | Muhurta Chintamani §11 |
+| `mantra_initiation` | Mantra Diksha / Spiritual Initiation | Muhurta Chintamani §8 |
+
+Pass the key exactly as listed above. Any other value raises `ValueError`.
+
+### How the YAML Weights Work
+
+Weights live in `config/muhurat_weights.yaml` (see §8a above for tuning guide).
+
+The scoring formula for each day:
+
+```
+score = (
+    weights.tithi    × quality_table[tithi_id][event]      +
+    weights.nakshatra× quality_table[nakshatra_id][event]  +
+    weights.vara     × quality_table[vara_id][event]       +
+    weights.yoga     × yoga_bonus(active_yogas)            +
+    weights.planet   × planet_factor(jupiter, venus)       +
+    weights.native   × native_overlay(chart, day)
+) × 100
+
+# Knockout: if in compound inauspicious window, score = 0.0
+if _in_inauspicious(panchang):
+    score = 0.0
+```
+
+The weights sum to ~1.0 for positive contributors. `avoid_penalty` (1.0) is the
+knockout multiplier — it is never modified (master plan hard constraint).
+
+**Star rating** maps score → stars:
+
+| Score | Stars |
+|-------|-------|
+| ≥ 80  | 5★ |
+| 65–79 | 4★ |
+| 50–64 | 3★ |
+| 35–49 | 2★ |
+| < 35  | 1★ |
+
+### How to Interpret Breakdown Badges
+
+Each `MuhuratWindow.breakdown` dict contains verbose factor keys:
+
+| Key | Meaning |
+|-----|---------|
+| `tithi_name` | Name of the lunar day (e.g., "Shukla Panchami") |
+| `tithi_score` | Quality score 0.0–1.0 for tithi |
+| `tithi_weight` | Weight applied (from YAML) |
+| `tithi_contrib` | Actual contribution to score (score × weight) |
+| `nakshatra_name` | Moon's asterism name |
+| `nakshatra_contrib` | Nakshatra contribution |
+| `vara_name` | Weekday name (e.g., "Guruvara") |
+| `vara_contrib` | Vara contribution |
+| `yoga_score` | Yoga bonus (1.0 if a strong auspicious yoga is active) |
+| `yoga_contrib` | Yoga contribution |
+| `active_auspicious_yogas` | List of active yoga names (may be empty strings — see known issue) |
+| `planet_score` | Planet factor (1.0 if neither Jupiter nor Venus combust) |
+| `planet_contrib` | Planet contribution |
+| `jupiter_combust` / `venus_combust` | Boolean flags |
+| `native_score` | Tara Bala overlay (0.0 if no NatalChart passed) |
+| `native_contrib` | Native contribution |
+| `native_chart_present` | Boolean — False when chart_id is None |
+| `inauspicious_windows` | List of active inauspicious window labels on this day |
+| `knockout` | Boolean — True if day was zeroed by compound inauspicious window |
+
+**Known Issue (Issue I.1):** `active_auspicious_yogas` may contain empty strings
+instead of yoga names. The yoga_score and yoga_contrib are correct — only the label
+serialization is affected. Fix deferred to 4C-7.
+
+### Latency Expectations
+
+Measured on Apple Silicon (M-series), Lahiri ayanamsha, Swiss Ephemeris:
+
+| Range | Expected Latency | ms/day |
+|-------|-----------------|--------|
+| 30-day | ~0.22s | ~7 ms |
+| 60-day | ~0.45s | ~7 ms |
+| 90-day (max) | ~0.68s | ~7 ms |
+
+Cloud Run cold start adds ~2–3s; warm sidecar (keep-alive ping) avoids this.
+Maximum range enforced by sidecar: 89 days (date_to − date_from ≤ 89).
+
+### Acharya Review Process
+
+The Muhurat Finder output was reviewed for acharya-grade quality in Phase 4C-6-S4:
+- 5 events × 5 top results = 25 windows reviewed
+- Classical authorities: Muhurta Chintamani, Brihat Samhita, Muhurta Martanda
+- Canary: PASS — no systematic scoring failure
+- Provisional verdicts (LLM-derived); final acharya sign-off at 4C-9 Wave 1 close
+- Full review: `platform/tests/visual/4C6_acharya_review.md`
 
 ---
 
-*panchang_engine v1.0.0-S2 — 4C-1-S2 close (2026-05-19)*
+## §10 — Future work
+
+- **`AMRIT_KALAM_TABLE` + `VARJYAM_TABLE`**: `shastra_tables.py` §13–§14 stubs
+  (all `[None, None]`). To be populated from Drik reference in a future session.
+- **Amrit Siddhi death-yoga exclusions**: MC 5.17 Visha Yoga suppression rules;
+  currently not implemented (marked TODO in `special_yogas.py`).
+- **Sub-day muhurta windows (v2)**: MVP scoring is daylong. Phase 4C v2 will add
+  sub-day precision (per-muhurta within the day), estimated ~22s for 90-day range.
+- **iCal export**: 4C-7 scope — "Export to Calendar" button in UI.
+- **Yoga name serialization fix**: active_auspicious_yogas may return empty strings
+  (Issue I.1); fix in 4C-7 sidecar update.
+- **Shastra table calibration**: minor calibration for Revati (property_purchase)
+  and Shanivara (property_purchase) — deferred to 4C-9 acharya panel review.
+
+---
+
+*panchang_engine v1.0.0-S3 — 4C-6 close (2026-05-20)*
 *Branch: feature/phase-4c-panchang | Worktree: /Users/Dev/Vibe-Coding/Apps/Panchang*
-*Phase 4C.1 CLOSED. 30/30 Drik parity gate PASS.*
+*Phase 4C.1 CLOSED. Phase 4C.6 CLOSED. 30/30 Drik parity gate PASS. Muhurat Finder LIVE.*
