@@ -1,7 +1,7 @@
 ---
 canonical_id: PHASE_5_DASHA_CORRECTNESS_MASTER_PLAN
 version: 1.0
-status: ACTIVE — §5A CLOSED; §5B CLOSED; §5C PENDING
+status: CLOSED — §5A CLOSED; §5B CLOSED; §5C CLOSED (campaign complete 2026-05-19)
 author: Claude (analysis stream)
 authored_on: 2026-05-19
 campaign_name: Phase 5 Dasha Correctness
@@ -107,7 +107,9 @@ campaign:
           - version numbers bumped per brief §3
         depends_on: 5A
       5C_dasha_validator:
-        status: PENDING — author after 5B closes
+        status: CLOSED
+        closing_commit_sha: 36f9a3c
+        closed_on: 2026-05-19
         scope: |
           checkpoint_dasha.ts post-synthesis validator. Extracts dasha
           claims via regex; cross-checks against chart_facts dasha
@@ -115,6 +117,13 @@ campaign:
           VALIDATOR_FAILURE per native-approved decision §6.1.
           Vimshottari-only initially; Yogini/Chara extension queued
           as follow-up.
+        acceptance_met:
+          - tsc clean (0 errors)
+          - checkpoint_dasha.test.ts 21/21 pass
+          - single_model_strategy.test.ts 4/4 pass
+          - planner_regression_gate 2/2 pass
+          - full src/lib 1698+/1729 (9 pre-existing aiops failures only)
+          - PHASE_5_CLOSE_v1_0.md authored
         depends_on: 5B
 ```
 
