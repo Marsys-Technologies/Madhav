@@ -25115,3 +25115,119 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-6-S1
+  session_name: "4C-6-S1 — Muhurat backend: event tables + scoring rubric"
+  cowork_thread_name: "4C-6-S1 — Muhurat backend: event tables + scoring rubric"
+  date: 2026-05-20
+  executor: claude-code-subagent (Sonnet 4.6)
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang/
+  branch: feature/phase-4c-panchang
+  brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S1_v1_0.md
+  governing_plan: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md §4.4.1 + §5.3
+  may_touch:
+    - platform/python-sidecar/panchang_engine/{muhurat,tara_bala,shastra_tables,__init__}.py
+    - platform/python-sidecar/panchang_engine/tests/test_muhurat_scoring.py
+    - platform/python-sidecar/panchang_engine/tests/test_muhurat.py
+    - platform/python-sidecar/panchang_engine/tests/test_serialize.py
+    - platform/python-sidecar/routers/muhurat.py
+    - platform/python-sidecar/main.py
+    - platform/tests/perf/4C6_S1_muhurat_latency.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S1_v1_0.md
+  must_not_touch:
+    - UI components (4C-6-S3 territory)
+    - RetrievalTool (Phase 4C-3 sealed)
+    - engine modules other than muhurat/tara_bala/shastra_tables/__init__
+    - corpus, master plan, FORENSIC
+
+session_body:
+  items_completed:
+    - id: AC.4C6S1.1
+      result: PASS
+      detail: >
+        shastra_tables.py §22: 6 per-event quality tables (VIVAH, GRIHA_PRAVESH, VYAPARA,
+        YATRA, PROPERTY_PURCHASE, MANTRA_INITIATION). Each has tithi/nakshatra/vara sub-dicts
+        with 0.0..1.0 scores. Explicit 0.0 entries for known-avoided IDs (no silent zeros).
+        Inline classical source citations (MC, BS, MMP, DP) per table.
+        EVENT_TABLES dispatch dict for central lookup.
+    - id: AC.4C6S1.2
+      result: PASS
+      detail: >
+        DEFAULT_MUHURAT_WEIGHTS in shastra_tables.py §24:
+        tithi=0.20, nakshatra=0.30, vara=0.10, yoga=0.15, planet=0.10, native=0.10,
+        avoid_penalty=1.0. Positive contributors sum=0.95 (0.05 conservatism headroom).
+    - id: AC.4C6S1.3
+      result: PASS
+      detail: >
+        muhurat.py: score_muhurat(panchang, event, weights, native_chart) → 0.0..100.0.
+        Compound knockout (Rahu+Yamagandam+worst_tithi+Saturday) → 0.0.
+        _score_breakdown() returns per-factor contribution dict.
+        Thu/Rohini/Dashami = 67.0 (4-star); Sat/Bharani/Amavasya ≤ 20.
+    - id: AC.4C6S1.4
+      result: PASS
+      detail: >
+        find_muhurat(event, date_from, date_to, lat, lon, tz_offset_minutes, native_chart,
+        weights, top_n) → list[MuhuratWindow] sorted by score desc.
+        Day-by-day scan via compute_panchang. Each window: breakdown populated, star_rating correct.
+        Jun 2026 top Vivah: 2026-06-21 Uttara Phalguni Monday (classically validated).
+    - id: AC.4C6S1.5
+      result: PASS
+      detail: >
+        31 new tests in test_muhurat_scoring.py PASS.
+        195 total engine tests PASS (31 new + 164 pre-existing).
+        test_muhurat.py updated (scaffold tests replaced with real API tests).
+        test_serialize.py updated (version string S2→S3).
+    - id: AC.4C6S1.6
+      result: PASS
+      detail: >
+        tara_bala.py: Nava Tara Chakra (9-position × 3 cycles);
+        primary=1.0×, secondary=0.80×, tertiary=0.60× attenuation.
+        compute_tara_bala_score(), compute_chandra_bala_score(), compute_combined_native_score().
+        13 Tara Bala tests PASS (all 9 positions + cycle attenuation + wraparound + error handling).
+    - id: AC.4C6S1.7
+      result: PASS
+      detail: >
+        routers/muhurat.py: POST /api/compute/muhurat.
+        MuhuratRequest: event/date_from/date_to/lat/lon/tz_offset_minutes/chart_id/top_n.
+        90-day range cap (422 if exceeded). chart_id→NatalChart via psycopg.
+        main.py wired: app.include_router(muhurat_router.router, prefix="/api/compute", ...).
+        Endpoint smoke validated via Python process invocation.
+    - id: AC.4C6S1.8
+      result: PASS
+      detail: >
+        platform/tests/perf/4C6_S1_muhurat_latency.md:
+        30d=0.22s (7ms/day), 90d=0.68s (8ms/day).
+        44× faster than brief estimate of ~30s.
+        Canary cross-check: Jun 2026 top = Uttara Phalguni Monday (classically sound).
+        v2 projection + pre-filter recommendation documented.
+    - id: AC.4C6S1.9
+      result: PASS
+      detail: >
+        CURRENT_STATE v5.23 (4C-6-S1 CLOSED; sub_phase_4c_6_s1_status=CLOSED).
+        SESSION_LOG appended. Brief COMPLETE. FINAL_SUMMARY emitted.
+
+session_close:
+  test_suite: "195/195 engine pytest PASS (31 new muhurat scoring tests); tsc not applicable (Python-only session)"
+  mirror_enforcer: "not run (no MP.1/MP.2 governance surface changes this session)"
+  drift_detector: "not run (Python engine + governance files only; no canonical artifact mutations)"
+  commits:
+    - c80e1b3  # shastra_tables: 6 event tables + weights (Items 1+2)
+    - 3d4b3f2  # tara_bala.py (Item 7)
+    - 3d9d3b0  # muhurat.py score_muhurat + find_muhurat (Items 3+4)
+    - 8108901  # __init__.py version S3 + find_muhurat delegation (Item 5)
+    - 35537aa  # test_muhurat_scoring.py + test updates (Item 6)
+    - f1f3bf0  # routers/muhurat.py + main.py (Item 8)
+    - f0c603f  # latency baseline (Item 9)
+    - <close_commit>
+  next_session_id: 4C-4-S2
+  next_session_objective: "Panchang timings grid + planetary positions at sunrise panel (UI track continues)"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```

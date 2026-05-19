@@ -5559,7 +5559,8 @@ current_state:
       sub_phase_4c_2_status: GATED                 # requires phase_4b_closed external gate
       sub_phase_4c_3_status: CLOSED                # 4C-3 CLOSED 2026-05-19; query_panchanga live; 14/14 routing PASS
       sub_phase_4c_4_s1_status: CLOSED               # 4C-4-S1 CLOSED 2026-05-20; /panchang route shell + Header + PrimaryStrip
-      sub_phase_4c_4_through_9_status: PENDING        # 4C-4-S2 next
+      sub_phase_4c_6_s1_status: CLOSED               # 4C-6-S1 CLOSED 2026-05-20; muhurat backend live; 195 tests PASS
+      sub_phase_4c_4_through_9_status: PENDING        # 4C-4-S2 next; 4C-6-S1 closed in parallel
       brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
       master_plan_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
       parent_plan_path: 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
@@ -5568,24 +5569,26 @@ current_state:
       capability_manifest_new_fields: "expose_to_chat_confirmed=true; retrieval_tool=query_panchanga; runtime_path=engine_direct"
       claude_md_section: "§E — Five workstreams (added 2026-05-19)"
       dependency_note: "4B sunrise derivation prerequisite for 4C.2; does NOT block 4C.0, 4C.1, or 4C.3"
-      last_session_id: 4C-4-S1
+      last_session_id: 4C-6-S1
       last_session_summary: >
-        4C-4-S1 CLOSED 2026-05-20. /panchang route shell + Header + PrimaryStrip MVP (S1 of 4).
-        layout.tsx: auth-gated (mirrors dashboard pattern; all active roles; ZoneRoot ink zone).
-        page.tsx: server component SSR-fetches sidecar directly (fetchPanchangSSR); passes initialData to client.
-        loading.tsx: 6-row skeleton matching PrimaryStrip layout.
-        error.tsx: error boundary with unstable_retry (Next.js 16 convention).
-        PanchangHeader: date ◀/▶ + calendar input + location dropdown (6 presets + custom lat/lon)
-          + disabled Personalise shell (4C-5 scope); state in URL query string (?d=&loc=).
-        PrimaryStrip: 6-row anga display (Tithi, Nakshatra, Yoga, Karana, Vara, Paksha) with Sanskrit
-          labels, ordinal Tithi, UTC→IST ends_at conversion, second Karana row.
-        PanchangClientView: client wrapper driving Header + Strip via usePanchangDay.
-        usePanchangDay: TanStack Query hook (queryKey=[panchang,date,lat,lon,chartId];
-          refetchOnWindowFocus=false; staleTime 5min; initialData from SSR).
-        /api/panchanga route: authenticated Next.js proxy to Python sidecar.
-        AppShellRail + MobileNavSheet: Panchang nav entry (all roles) with lunar crescent SVG icon.
-        Tests: 27/27 PASS (PanchangHeader + resolveDate/resolveLocation; PrimaryStrip). tsc 0 errors.
-        commit: b76ad13
+        4C-6-S1 CLOSED 2026-05-20. Muhurat backend live (parallel to 4C-4 UI track).
+        shastra_tables.py: 6 per-event quality tables (VIVAH, GRIHA_PRAVESH, VYAPARA, YATRA,
+          PROPERTY_PURCHASE, MANTRA_INITIATION); EVENT_TABLES dispatch dict;
+          DEFAULT_MUHURAT_WEIGHTS (tithi=0.20, nak=0.30, vara=0.10, yoga=0.15, planet=0.10,
+          native=0.10, avoid_penalty=1.0). All tables cite classical sources (MC, BS, MMP, DP).
+        tara_bala.py: Nava Tara Chakra (9-position × 3 cycles, attenuated 1.0/0.80/0.60×);
+          compute_tara_bala_score() + compute_chandra_bala_score() + compute_combined_native_score().
+        muhurat.py: score_muhurat(panchang, event, weights, native_chart) → 0..100;
+          knockout → 0.0; _score_breakdown() explainability dict; _score_to_stars() 1..5;
+          find_muhurat() day-by-day range scan → list[MuhuratWindow] sorted by score.
+        panchang_engine/__init__.py: version 1.0.0-S3; find_muhurat delegates to real impl.
+        test_muhurat_scoring.py: 31 tests PASS (Tara Bala 9 inputs, scoring, knockout, breakdown,
+          star ratings, native overlay, all 6 events). 195 total engine tests PASS.
+        routers/muhurat.py: POST /api/compute/muhurat (90-day cap, chart_id→NatalChart from DB).
+        main.py: muhurat router wired at /api/compute.
+        Latency baseline: 0.22s/30d, 0.68s/90d (44× faster than estimated 30s).
+        Canary: Jun 2026 Vivah top = 2026-06-21 Uttara Phalguni Monday (classically validated).
+        Commits: c80e1b3, 3d4b3f2, 3d9d3b0, 8108901, 35537aa, f1f3bf0, f0c603f.
       next_session_id: 4C-4-S2
       next_session_objective: >
         4C-4-S2: Panchang timings grid + planetary positions at sunrise panel.
