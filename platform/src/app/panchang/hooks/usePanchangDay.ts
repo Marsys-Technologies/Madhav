@@ -57,6 +57,8 @@ interface UsePanchangDayOptions {
   chartId?: string | null
   /** Initial data from SSR — avoids the first client fetch */
   initialData?: PanchangDay | null
+  /** Set false to skip the fetch (e.g. date out of range) */
+  enabled?: boolean
 }
 
 function mapSidecarResponse(raw: Record<string, unknown>): PanchangDay {
@@ -122,6 +124,7 @@ export function usePanchangDay({
   tzOffsetMinutes = 330, // IST +05:30
   chartId = null,
   initialData,
+  enabled = true,
 }: UsePanchangDayOptions) {
   return useQuery<PanchangDay>({
     queryKey: ['panchang', date, lat, lon, chartId],
@@ -130,6 +133,7 @@ export function usePanchangDay({
     staleTime: 5 * 60 * 1000,      // 5 min — panchang values don't change mid-day
     refetchOnWindowFocus: false,    // brief spec: "refetch on focus disabled"
     retry: 1,
+    enabled,
   })
 }
 

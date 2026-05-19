@@ -235,18 +235,27 @@ export function PanchangHeader({ initialDate, initialLocation }: PanchangHeaderP
           )}
         </div>
 
-        {/* Personalise placeholder — disabled shell; full implementation in 4C-5 */}
-        <div className="ml-auto">
-          <button
-            disabled
-            aria-label="Personalise (coming soon)"
-            title="Personalise overlay — available in a future update"
-            className="flex h-9 items-center gap-2 rounded-lg border border-[rgba(212,175,55,0.12)] bg-[rgba(212,175,55,0.03)] px-3 text-sm opacity-40 cursor-not-allowed"
-            style={{ color: 'rgba(212,175,55,0.55)' }}
+        {/* Personalise dropdown — interactive shell; chart loading wired in 4C-5 */}
+        <div className="ml-auto flex items-center gap-2">
+          <User className="h-4 w-4 shrink-0" style={{ color: 'rgba(212,175,55,0.55)' }} aria-hidden="true" />
+          <label htmlFor="panchang-personalise" className="sr-only">Personalise view</label>
+          <select
+            id="panchang-personalise"
+            defaultValue="generic"
+            aria-label="Personalise panchang view"
+            className="h-9 rounded-lg border border-[rgba(212,175,55,0.20)] bg-[rgba(28,28,26,0.80)] px-3 text-sm font-medium appearance-none cursor-pointer outline-none focus:ring-1 focus:ring-[var(--brand-gold)]"
+            style={{ color: 'var(--brand-gold)' }}
+            onChange={() => {
+              // No-op until 4C-5 wires chart loading
+            }}
           >
-            <User className="h-4 w-4" aria-hidden="true" />
-            <span>Personalise</span>
-          </button>
+            <option value="generic" style={{ background: '#1c1c1a', color: '#fce29a' }}>
+              Generic Panchang
+            </option>
+            <option disabled style={{ background: '#1c1c1a', color: 'rgba(252,226,154,0.35)' }}>
+              ── Personalise (4C-5) ──
+            </option>
+          </select>
         </div>
       </div>
     </header>
