@@ -18,8 +18,8 @@ _Last updated: 2026-05-14 at M9-A-S1 (**M9 MACRO-PHASE OPEN — Multi-School Tri
 - **Governing plan:** `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md` (v1.0; status CURRENT).
 - **Parent campaign:** `00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md` (v1.0; 4A CLOSED, 4B PENDING, 4C ACTIVE, 4D PENDING).
 - **Worktree:** `/Users/Dev/Vibe-Coding/Apps/Panchang/`. **Branch:** `feature/phase-4c-panchang`.
-- **Phase 4C sub-phase status:** 4C.0 CLOSED (2026-05-19) | 4C.1 NEXT | 4C.2–4C.9 PENDING.
-- **CAPABILITY_MANIFEST entry:** `PANCHANG_DAILY_v1_0` — entry #163, path `03_DERIVATIONS/PANCHANG_DAILY_v1_0.md`, status PLANNED, layer L1.5, `sql_table: panchang_daily`, `computed_by: platform/sidecar/panchang_engine`.
+- **Phase 4C sub-phase status:** 4C.0 CLOSED (2026-05-19) | 4C.1 CLOSED (2026-05-19, 4C-1-S2 — 30/30 Drik parity PASS; special_yogas + muhurat scaffold + v1.0.0-S2) | 4C.2 GATED (phase_4b_closed) | 4C.3–4C.9 PENDING.
+- **CAPABILITY_MANIFEST entry:** `PANCHANG_DAILY_v1_0` — entry #163, path `03_DERIVATIONS/PANCHANG_DAILY_v1_0.md`, status IN_DEVELOPMENT (flipped from PLANNED at 4C-1-S2 close 2026-05-19 — engine computes; cache + backfill pending 4C.2 + Phase 4B prerequisite), layer L1.5, `sql_table: panchang_daily`, `computed_by: platform/sidecar/panchang_engine`.
 - **Layer:** PANCHANG_DAILY is L1.5 — deterministic facts computed from Swiss Ephemeris (`EPHEMERIS_DAILY`) + static classical Muhurta Shastra lookup tables. No interpretation at this layer (interpretation is L2.5+ territory).
 - **Settled decisions (locked 2026-05-19):** D1 default location Bhubaneswar; D2 Muhurat MVP 6 curated events (Vivah, Griha Pravesh, Property Purchase, Vyapara, Yatra, Mantra Initiation); D3 calendar auth HMAC-signed URLs 90-day expiry.
 - **Prereq dependency:** Phase 4B (sunrise derivation, Migration 059, MEAN_NODE rebuild) must close before 4C.2 backfill. 4C.0 + 4C.1 are 4B-independent.
