@@ -40,6 +40,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s3): pg_trgm FTS — conversation body search API + sidebar expand filter to body"
     estimated_loc: "+90 (migration + route + sidebar update)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 0816fd9
 
   - id: R8-S4
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S4-pin-archive-folders.md

@@ -1,5 +1,19 @@
 # R8 Sessions Log — Chat V2 Capabilities Round
 
+## R8-S3 — Sidebar FTS Search
+- **Completed**: 2026-05-20
+- **Commit**: 0816fd9
+- **Files touched**:
+  - `platform/supabase/migrations/067_pg_trgm_conversation_messages.sql` (new)
+  - `platform/src/app/api/conversations/search/route.ts` (new)
+  - `platform/src/components/consume/ConversationSidebarV2.tsx` (modified)
+- **Acceptance criteria**: tsc: 0 errors. Lint on changed files: 0 errors. Search route file exists.
+- **Decisions**:
+  - conversation_messages uses parts_json (JSONB), not a body text column — used expression index
+  - Search query uses DISTINCT ON for dedup, LEFT JOIN for conversations without messages
+  - Snippet extracted from first text part via jsonb_array_elements subquery
+  - Pre-existing set-state-in-effect lint errors in reload() effects also suppressed per project pattern
+
 ## R8-S2 — BranchPicker UI Component
 - **Completed**: 2026-05-20
 - **Commit**: 757f34d
