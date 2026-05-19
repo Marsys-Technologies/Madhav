@@ -678,6 +678,40 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        Hypothesis: restores F022/F024 holistic graph-seed-hint pattern lost from
        commit 884b99c.
 
+  R-TC. TRANSIT-CONTEXT ROUTING — Panchang vs. Ephemeris disambiguation:
+
+       When the query is about transit-context or current sky state, route as follows:
+
+       (a) PANCHANG PATH → call `query_panchanga` (NOT `query_ephemeris`) when the query
+           mentions ANY of these terms or concepts:
+             tithi, nakshatra, yoga (Shubha, Siddhi, etc.), karana, vara, paksha, masa,
+             muhurat, choghadiya, hora, rahu kalam, yamagandam, gulika, abhijit,
+             brahma muhurta, amrit kalam, sarvartha siddhi, amrit siddhi, guru pushya,
+             ravi pushya, bhadra, panchaka, tripushkar,
+             OR asks "good day for X" / "auspicious time for Y" / "when should I do X" /
+             "is today auspicious" / "panchang for today" / "today's panchang".
+           Use `fields` projection to limit to the fields actually relevant:
+             - Auspicious-timing queries: fields = ["tithi", "nakshatra", "vara", "special_yogas", "auspicious", "inauspicious"]
+             - Planetary-position-at-sunrise queries: fields = ["planets", "tithi", "vara"]
+             - Full panchang: omit fields (returns all)
+
+       (b) EPHEMERIS PATH → call `query_ephemeris` (NOT `query_panchanga`) when the query
+           asks about:
+             raw planetary positions at a SPECIFIC MOMENT (not just sunrise),
+             planetary ingresses, exact degrees,
+             retrogrades (which planet, when does it station),
+             transit aspects at an arbitrary time,
+             a specific moment's chart (not a daily panchang overview).
+
+       (c) BOTH PATHS → emit BOTH tool_calls when the query asks about BOTH:
+             "Is Mars combust today [→ panchanga planets_at_sunrise] and what is its
+              exact ecliptic longitude at noon UTC [→ query_ephemeris]?"
+           This is the R-TC co-selection rule — both tools at priority 1 when both
+           data types are needed. Planner supports multi-tool emission per Phase 4A
+           precedent.
+
+       R-TC does NOT override R7c (transit ban on vector_search/cgm_graph_walk).
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -717,12 +751,14 @@ PRIOR-TURN RELEVANCE SELECTION (Gate III, added v2.2):
 
 ## 4. Few-shot examples
 
-Twenty-two examples covering all major query classes (4.1–4.11 from v2.0;
+Twenty-seven examples covering all major query classes (4.1–4.11 from v2.0;
 4.12–4.17 added in v2.1 gap-closure patch for eclipse/antardasha
 time_window, karaka/yoga graph_seed_hints, discovery, cross_domain, and
 factual classes; 4.18 multi-domain lifetime predictive; 4.19–4.22 added
 in v2.0.1 planner-blind fix for query_signal_state, query_kp_ruling_planets,
-query_varshaphala, and a signal_state+lel_query combination example).
+query_varshaphala, and a signal_state+lel_query combination example;
+4.23–4.24 added in v2.0.2 for M9 multi-school triangulation;
+4.25–4.27 added in v2.0.3 for Phase 4C-3 query_panchanga Panchang routing).
 Each shown as `{ user_query, expected_plan }`. Every expected_plan includes
 `asset_bundle[]` and `tool_calls[]`; `synthesis_guidance` is present
 except in factual examples.
@@ -1738,6 +1774,108 @@ except in factual examples.
 }
 ```
 
+### 4.25 Panchang query — single date, auspicious timing (query_panchanga priority 1)
+
+```json
+{
+  "user_query": "What's today's tithi and is it a good day for buying property?",
+  "expected_plan": {
+    "query_class": "factual",
+    "query_intent_summary": "Today's tithi and auspiciousness assessment for property purchase.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for context." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural topology floor." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_panchanga",
+        "params": {
+          "date": "<today>",
+          "lat": 20.27,
+          "lon": 85.84,
+          "tz_offset_minutes": 330,
+          "fields": ["tithi", "nakshatra", "vara", "special_yogas", "inauspicious"]
+        },
+        "token_budget": 600, "priority": 1,
+        "reason": "Panchang query about a specific date — tithi, yogas, and inauspicious windows inform property purchase auspiciousness. fields projection skips Choghadiya and hora to control token budget."
+      }
+    ],
+    "expected_output_shape": "single_answer",
+    "prior_turn_relevance": { "used": 0, "reason": "Independent Panchang query.", "mode": "independent" }
+  }
+}
+```
+
+### 4.26 Panchang query — Rahu Kalam timing (query_panchanga priority 1)
+
+```json
+{
+  "user_query": "When does Rahu Kalam end today in Bhubaneswar? And is there any Sarvartha Siddhi Yoga today?",
+  "expected_plan": {
+    "query_class": "factual",
+    "query_intent_summary": "Rahu Kalam window and Sarvartha Siddhi Yoga presence for today in Bhubaneswar.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_panchanga",
+        "params": {
+          "date": "<today>",
+          "lat": 20.27,
+          "lon": 85.84,
+          "tz_offset_minutes": 330,
+          "fields": ["inauspicious", "special_yogas", "vara", "tithi"]
+        },
+        "token_budget": 500, "priority": 1,
+        "reason": "Rahu Kalam and Sarvartha Siddhi are Panchang-layer facts — inauspicious + special_yogas fields are sufficient; fields projection skips hora and choghadiya."
+      }
+    ],
+    "expected_output_shape": "single_answer",
+    "prior_turn_relevance": { "used": 0, "reason": "Self-contained Panchang timing query.", "mode": "independent" }
+  }
+}
+```
+
+### 4.27 Mixed query — Panchang + planetary position (query_panchanga + query_ephemeris co-selected)
+
+```json
+{
+  "user_query": "Is Mars combust today and what does the panchang look like overall?",
+  "expected_plan": {
+    "query_class": "cross_domain",
+    "query_intent_summary": "Mars combustion check plus today's full Panchang state.",
+    "asset_bundle": [
+      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: natal Mars position for combustion context." },
+      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map." }
+    ],
+    "tool_calls": [
+      {
+        "tool_name": "query_panchanga",
+        "params": {
+          "date": "<today>",
+          "lat": 20.27,
+          "lon": 85.84,
+          "tz_offset_minutes": 330
+        },
+        "token_budget": 800, "priority": 1,
+        "reason": "Panchang state for the day — five angas, timings, yogas, planets at sunrise (includes Mars combust flag)."
+      },
+      {
+        "tool_name": "msr_sql",
+        "params": { "planets": ["Mars"], "domains": [] },
+        "token_budget": 400, "priority": 2,
+        "reason": "Natal Mars signal context for interpreting combustion against chart background."
+      }
+    ],
+    "synthesis_guidance": "Address Mars combustion first (from planets_at_sunrise in Panchang), then summarise the five angas and any active special yogas. Keep the Panchang summary tight — the user wants both pieces.",
+    "planets": ["Mars"],
+    "prior_turn_relevance": { "used": 0, "reason": "Independent compound query.", "mode": "independent" }
+  }
+}
+```
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -1758,3 +1896,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *Supersedes PLANNER_PROMPT_v1_0.md v1.7 (2026-05-04)*
 *v2.0.1 content extension 2026-05-17 — R28/R29/R30 + examples 4.19–4.22 added for the L1 substrate tools (planner-blind fix)*
 *v2.0.2 content extension 2026-05-18 — R31/R32 + examples 4.23–4.24 added for M9 multi-school triangulation tools (Phase 2A)*
+*v2.0.3 content extension 2026-05-19 — R-TC rule added (Panchang vs ephemeris routing disambiguation) + examples 4.25–4.27 for query_panchanga (Phase 4C-3)*
