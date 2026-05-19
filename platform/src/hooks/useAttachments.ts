@@ -6,6 +6,8 @@ export interface Attachment {
   id: string
   filename: string
   mime: string
+  /** Alias for mime — present for AC-7 (R8-S7) and GeminiVisionAdapter compat */
+  mimeType: string
   size: number
   previewUrl?: string
   url?: string
@@ -77,10 +79,12 @@ export function useAttachments() {
         for (const file of list) {
           if (next.length >= MAX_FILES) break
           if (file.size > MAX_BYTES) {
+            const largeMime = file.type || 'application/octet-stream'
             next.push({
               id: crypto.randomUUID(),
               filename: file.name,
-              mime: file.type || 'application/octet-stream',
+              mime: largeMime,
+              mimeType: largeMime,
               size: file.size,
               status: 'error',
               errorMsg: 'File too large (max 30 MB)',
@@ -88,10 +92,12 @@ export function useAttachments() {
             continue
           }
           if (!isSupportedMime(file.type)) {
+            const errMime = file.type || 'application/octet-stream'
             next.push({
               id: crypto.randomUUID(),
               filename: file.name,
-              mime: file.type || 'application/octet-stream',
+              mime: errMime,
+              mimeType: errMime,
               size: file.size,
               status: 'error',
               errorMsg: 'Unsupported type (images and PDFs only)',
@@ -107,6 +113,7 @@ export function useAttachments() {
             id,
             filename: file.name,
             mime: file.type,
+            mimeType: file.type,
             size: file.size,
             previewUrl,
             status: 'uploading',
