@@ -221,10 +221,13 @@ function preprocessCitations(text: string): { processedText: string; count: numb
   })
 
   // Primary: replace bare SIG.MSR.NNN with inline CITE badge markers.
-  result = result.replace(/SIG\.MSR\.\d{3}(?!\d)/g, badge)
+  // Negative lookbehind skips IDs already wrapped by step 2 (CITE:N: prefix).
+  result = result.replace(/(?<!CITE:\d+:)SIG\.MSR\.\d{3}(?!\d)/g, badge)
 
   return { processedText: result, count: seen.length }
 }
+
+export { preprocessCitations }
 
 
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
