@@ -133,31 +133,75 @@ Review completed: 2026-05-19T21:10:00Z. No BLOCKERS found. All three PRs cleared
 
 ## Phase 3 — R7 Merge
 
-*(To be filled during Phase 3)*
+| Field | Value |
+|---|---|
+| Merge commit (R7) | b54c769ac8f58354725d3d78f14a3515eefc4659 |
+| S132 back button commit | 10a3b863bbd348021b3c63d43d449fcfc4db138d |
+| Cloud Run revision | amjis-web-00238-k5r (100% traffic) |
+| R7 flag additions | None (R7 ships always-on per §M.16 precedent) |
+| Pre-existing lint failures | Stage 1 ESLint in CI fails on pre-existing ConsumeChatV2.tsx errors (prefer-const, refs-in-render). TypeScript ✓, Unit Tests ✓ both pass separately. Documented deviation: proceeding with merge since failures are pre-existing per R7 session log ("12 pre-existing errors, 0 new errors introduced"). |
+| S132 stash conflict | Additive conflict on ConsumeChatV2.tsx import line (R7 adds Loader2; S132 adds ArrowLeft + Link). Resolved by keeping both. Committed as standalone commit post-R7-merge. |
+| R7-S1 bundle verification | R7-S1 fix presence in source confirmed; deployed verification requires UI test, deferred (Next.js minified bundle — regex pattern not grep-able in production chunk). |
+
+**Phase 3 status: COMPLETE**
 
 ---
 
 ## Phase 4 — R8 Merge
 
-*(To be filled during Phase 4)*
+| Field | Value |
+|---|---|
+| Merge commit (R8) | 197c90746713df5e161df3943891eb4cc83a16e1 |
+| Cloud Run revision | amjis-web-00239-jj7 (100% traffic) |
+| Rebase conflict resolved | `platform/src/components/chat/Composer.tsx` — 4 additive conflict regions: imports (R7 useDraft + R8 useTokenCount), Props interface (R7 conversationId + R8 tokensEnabled), destructuring defaults, implementation (R7 debounceRef + R8 tokenCount hook). All resolved additively. Subsequent R8-S6 SlashCommandMenu commit also applied cleanly. |
+| R8 flag additions | Code-level in `feature_flags.ts` (not Cloud Run env vars). All default false: R8_BRANCHES_ENABLED, R8_SEARCH_ENABLED, R8_FOLDERS_ENABLED, R8_TOKENS_ENABLED, R8_SLASH_ENABLED, R8_VISION_ENABLED, R8_EXPORT_ENABLED. Native flips manually post-merge. |
+| TypeScript gate | PASS (0 errors) |
+| Test gate | 21 failures — identical to pre-existing baseline. Zero new regressions. |
+
+**Phase 4 status: COMPLETE**
 
 ---
 
 ## Phase 5 — R9-S2 Implementation
 
-*(To be filled during Phase 5)*
+| Field | Value |
+|---|---|
+| Rebase base | `197c907` (post-R8 main) |
+| Conflicts resolved | `feature_flags.ts` (R8+R9 flags — additive union); `ConversationSidebarV2.tsx` (R8 pin/archive/folders + FTS + R9 projects — additive; filteredConversations base for R8 groupings) |
+| New files | `platform/migrations/112_add_conversation_message_embeddings.sql`, `platform/src/lib/embeddings/embedText.ts`, `platform/src/lib/embeddings/embedConversationMessage.ts` |
+| Modified files | `platform/src/app/api/conversations/search/route.ts` (hybrid trgm+cosine), `platform/src/lib/persistence/conversation_writer.ts` (non-blocking embed), `platform/src/components/consume/ConversationSidebarV2.tsx` (semantic toggle) |
+| Embedding dimension | 768 (Vertex AI text-multilingual-embedding-002) — brief specified 1536; adjusted to match existing embedder |
+| R9-S2 commit | `db571cc` |
+| TypeScript gate | PASS (all imports verified; no new `any` casts introduced) |
+| Graceful degradation | Embed failures fall back to trgm-only with `X-Search-Mode: trgm-fallback` header |
+
+**Phase 5 status: COMPLETE**
 
 ---
 
 ## Phase 6 — R9 Merge
 
-*(To be filled during Phase 6)*
+| Field | Value |
+|---|---|
+| Merge commit (R9) | `e4f30bee7da12e51ff8621586b6e22ec397d0899` |
+| Cloud Run revision | First deploy FAILED (TypeScript error in `ModelStylePicker.tsx` — `asChild` not accepted by `DropdownMenuItem`; R9-S3 shipped invalid prop). Fix commit `b83487f` pushed immediately; re-deploy triggered. |
+| R9 flag additions | Code-level in `feature_flags.ts` (not Cloud Run env vars). R9_PERSONAS defaults true; R9_PROJECTS, R9_SEMANTIC_SEARCH, R9_TOOL_FLOW all default false. Native flips manually post-migration. |
+| Migration prerequisite | Operator must apply migrations 110 (projects), 111 (personas), 112 (conversation_message_embeddings) before enabling R9 flags |
+
+**Phase 6 status: COMPLETE (merge done; deploy in-progress)**
 
 ---
 
 ## Phase 7 — Post-Merge Cleanup
 
-*(To be filled during Phase 7)*
+| Field | Value |
+|---|---|
+| Worktrees removed | MadhavR7 (force — only package-lock.json stale), MadhavR8 (clean), MadhavR9 (clean) |
+| Local branches deleted | `chat-v2/round7-polish`, `chat-v2/round8-capabilities`, `chat-v2/round9-elevation` |
+| CLAUDE.md update | §E R7/R8/R9 marked COMPLETE; v2.6 → v2.7 |
+| Remaining active worktrees | `marsys-m6-prospective` (feature/m6-prospective-testing), `Panchang` (feature/phase-4c-panchang) — both preserved |
+
+**Phase 7 status: COMPLETE**
 
 ---
 
