@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, Database } from 'lucide-react'
+import { Check, ChevronDown, Database, User } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +16,7 @@ import {
   type ModelStack,
 } from '@/lib/models/registry'
 import { cn } from '@/lib/utils'
+import { usePersonas } from '@/hooks/usePersonas'
 
 // ModelId kept as a string alias — legacy consumers may still import this type.
 export type ModelId = string
@@ -56,13 +57,22 @@ interface Props {
   onStackChange: (s: ModelStack) => void
   onStyleChange: (s: StyleId) => void
   disabled?: boolean
+  /** R9-S3: Active persona ID; null means no persona active. */
+  activePersonaId?: string | null
+  /** R9-S3: Callback when user selects a persona; null = clear selection. */
+  onPersonaChange?: (personaId: string | null) => void
 }
 
-export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, disabled }: Props) {
+export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, disabled, activePersonaId, onPersonaChange }: Props) {
   const stacks = stackPicker()
   const currentStack = stacks.find(s => s.stack === stack) ?? stacks[0]
   const currentStyle = STYLE_OPTIONS.find(s => s.id === style) ?? STYLE_OPTIONS[0]
   const ctxLabel = formatCtx(currentStack.synthesisContextWindow)
+
+  // R9-S3: Persona list — only fetch when personas are enabled (NEXT_PUBLIC flag)
+  const showPersonas = process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS !== 'false'
+  const { personas } = usePersonas()
+  const activePersona = personas.find(p => p.id === activePersonaId) ?? null
 
   return (
     <DropdownMenu>
@@ -82,6 +92,61 @@ export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, d
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="w-72">
+        {/* ── R9-S3: Personas section ────────────────────────────────────────── */}
+        {showPersonas && onPersonaChange && (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <User className="size-3" aria-hidden />
+                Persona
+              </DropdownMenuLabel>
+
+              {personas.length === 0 ? (
+                <DropdownMenuItem asChild>
+                  <a href="/settings/personas" className="text-xs text-muted-foreground">
+                    No personas yet — Manage
+                  </a>
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  {/* "None" option — clears persona */}
+                  <DropdownMenuItem onClick={() => onPersonaChange(null)} className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-muted-foreground">None</div>
+                    </div>
+                    {activePersonaId === null && <Check className="mt-0.5 size-3.5 shrink-0" />}
+                  </DropdownMenuItem>
+                  {personas.map(p => (
+                    <DropdownMenuItem key={p.id} onClick={() => {
+                      onPersonaChange(p.id)
+                      if (p.default_style) onStyleChange(p.default_style as StyleId)
+                      if (p.default_stack) onStackChange(p.default_stack as ModelStack)
+                    }} className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium">{p.name}</span>
+                          {p.is_default && <span className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">default</span>}
+                        </div>
+                        <div className="flex gap-1 mt-0.5">
+                          {p.default_style && <span className="rounded bg-muted px-1 text-[9px] text-muted-foreground">{p.default_style}</span>}
+                          {p.default_stack && <span className="rounded bg-muted px-1 text-[9px] text-muted-foreground">{p.default_stack}</span>}
+                        </div>
+                      </div>
+                      {activePersonaId === p.id && <Check className="mt-0.5 size-3.5 shrink-0" />}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem asChild>
+                    <a href="/settings/personas" className="text-[11px] text-muted-foreground mt-0.5">
+                      Manage Personas →
+                    </a>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
         {/* ── Stack section ─────────────────────────────────────────────────── */}
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">

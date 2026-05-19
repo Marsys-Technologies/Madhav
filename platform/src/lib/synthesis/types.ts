@@ -100,6 +100,11 @@ export interface SynthesisRequest {
    *  and the conversation belongs to a project with a non-empty system_prompt_addition,
    *  this is prepended to the synthesis prompt as a [PROJECT CONTEXT] block. */
   project_system_prompt_addition?: string
+  /** R9-S3: Active persona identifier. Written into query_trace under persona_injection. */
+  persona_id?: string
+  /** R9-S3: Active persona system prompt. Prepended first (before project addition)
+   *  when MARSYS_FLAG_R9_PERSONAS=true. Order: persona → project → main prompt. */
+  persona_system_prompt?: string
 }
 
 export interface SynthesisMetadata {
