@@ -970,19 +970,9 @@ EVENT_TABLES: dict = {
 }
 
 # ---------------------------------------------------------------------------
-# §24 — Default Muhurat Scoring Weights (Phase 4C-6-S1)
-# YAML per-event overrides land in S2; these are the universal defaults.
-# Positive contributor weights sum to 0.95; avoid_penalty is a knockout multiplier.
-# Source: Brief §3 Item 2; classical factor weighting tradition.
+# §24 — Muhurat Scoring Weights
+# Weights are now canonical in config/muhurat_weights.yaml (Phase 4C-6-S2).
+# Load via panchang_engine.config_loader.get_weights_for_event(event).
+# DEFAULT_MUHURAT_WEIGHTS was removed in S2; do not re-add it here.
 # ---------------------------------------------------------------------------
-DEFAULT_MUHURAT_WEIGHTS: dict = {
-    "tithi":         0.20,   # Tithi factor weight
-    "nakshatra":     0.30,   # Nakshatra factor weight (most influential in classical texts)
-    "vara":          0.10,   # Vara (weekday) factor weight
-    "yoga":          0.15,   # Bonus for active auspicious special yoga (Sarvartha Siddhi, etc.)
-    "planet":        0.10,   # Bonus for non-combust Jupiter/Venus
-    "native":        0.10,   # Bonus for Tara Bala / Chandra Bala (when personalised)
-    "avoid_penalty": 1.00,   # FULL penalty multiplier: 0.0 score when in Rahu/Yama/Gulika/DurMuhurta
-    # Total positive contributors: 0.20+0.30+0.10+0.15+0.10+0.10 = 0.95
-    # The remaining 0.05 is a built-in conservatism headroom (no day is perfect).
-}
+# (constant removed — see config/muhurat_weights.yaml)

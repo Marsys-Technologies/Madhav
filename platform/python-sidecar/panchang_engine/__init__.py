@@ -174,7 +174,8 @@ def find_muhurat(
         lat, lon: float — location
         tz_offset_minutes: int — UTC offset in minutes (default 330 = IST)
         native_chart: NatalChart | None — for Tara Bala native overlay
-        weights: dict | None — custom weights; defaults to DEFAULT_MUHURAT_WEIGHTS
+        weights: dict | None — custom weights; defaults to YAML-loaded per-event weights
+                 from config/muhurat_weights.yaml
         top_n: int — number of top windows to return
     Returns:
         list[MuhuratWindow] sorted by score descending
