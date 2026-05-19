@@ -32,7 +32,7 @@ CREATE TABLE project_files (
 
 CREATE TABLE project_conversations (
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   PRIMARY KEY (project_id, conversation_id)
 );
 

@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "2.4"
+version: "2.7"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
