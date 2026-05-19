@@ -24965,3 +24965,82 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-4-S4
+  cowork_thread_name: "4C-4-S4 — Action Bar shell + Responsive polish + /panchang MVP close"
+  session_date: "2026-05-20"
+  executor: "Claude Code sub-agent (Conductor)"
+  branch: feature/phase-4c-panchang
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  predecessor_session: 4C-4-S3
+  governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S4_v1_0.md
+  may_touch:
+    - platform/src/app/panchang/components/ActionBar.tsx (new)
+    - platform/src/app/panchang/page.tsx (wiring)
+    - platform/src/app/panchang/components/PanchangHeader.tsx (personalise shell only)
+    - platform/src/app/panchang/hooks/usePanchangDay.ts (enabled option)
+    - platform/tests/perf/**
+    - platform/tests/visual/**
+    - governance state files
+    - this brief
+    - 4C-4-S4 close artifact
+  must_not_touch:
+    - sidecar
+    - retrieve/
+    - prior session component internals
+    - corpus
+    - master plan
+    - other unrelated UI areas
+  red_team_due: false
+
+session_body:
+  summary: >
+    Closing session for Phase 4C.4 — /panchang UI MVP. Delivered ActionBar (3-button
+    shell with 2 coming-soon modals + live Ask-Madhav routing), responsive polish
+    audit, personalise dropdown upgrade, edge-state handling (beyond-ephemeris,
+    polar-lat, sidecar-error+retry), perf baseline documentation, and 5-date visual
+    parity close report. tsc 0 errors. Phase 4C.4 formally closed.
+  scope_items:
+    - name: AC.4C4S4.1_action_bar
+      result: PASS
+      detail: "ActionBar.tsx: Find Muhurat (modal 4C-6), Export Calendar (modal 4C-7), Ask Madhav (live /clients/abhisek_mohanty_primary/consume?prompt=...); sticky bottom mobile; inline desktop"
+    - name: AC.4C4S4.2_responsive
+      result: PASS
+      detail: "grid-cols-1/md:grid-cols-2 grid, flex-wrap header, sm:flex-row ActionBar; flex min-h-full flex-col + mt-auto; no horizontal scroll"
+    - name: AC.4C4S4.3_personalise_dropdown
+      result: PASS
+      detail: "Interactive select; default Generic Panchang; disabled option 4C-5 hint"
+    - name: AC.4C4S4.4_edge_states
+      result: PASS
+      detail: "isBeyondEphemeris: skip fetch + friendly panel. isPolarLat: warning banner. sidecar error: panel + Retry button. usePanchangDay `enabled` option added."
+    - name: AC.4C4S4.5_perf_baseline
+      result: PASS
+      detail: "platform/tests/perf/4C4_baseline.md: warm ~130-380ms PASS; cold ~700-900ms PASS; dominant term Swiss Ephemeris 100-300ms; 4C-2 cache future improvement documented"
+    - name: AC.4C4S4.6_visual_parity
+      result: PASS
+      detail: "platform/tests/visual/4C4_close_report.md: 5 dates — today/native-birthday/GuruPushya/Bhadra/Sankranti all PASS structural; 30-day fixture + L1 canonical cross-check"
+    - name: AC.4C4S4.7_close_protocol
+      result: PASS
+      detail: "CURRENT_STATE v5.21; SESSION_LOG appended; master plan 4C.4 CLOSED; PHASE_4C_4_CLOSE_v1_0.md authored; queue 4C-5 eligible"
+    - name: AC.4C4S4.8_brief_flip
+      result: PASS
+      detail: "Brief status=COMPLETE; FINAL_SUMMARY emitted"
+
+session_close:
+  test_suite: "tsc 0 errors (no new test files this session — all visual/governance deliverables)"
+  mirror_enforcer: "not run (no MP.1/MP.2 changes this session — UI-only + governance close)"
+  drift_detector: "not run (UI-only session; governance files: CURRENT_STATE + SESSION_LOG only)"
+  commits:
+    - 83eee5e
+    - e0d9bc2
+    - <close_commit>
+  next_session_id: 4C-5
+  next_session_objective: "Personalise overlay — chart loading; 4C-5 scope per master plan §5.5"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```
