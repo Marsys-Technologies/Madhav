@@ -50,6 +50,12 @@ export interface ChartFactsQueryInput {
   limit?: number
   /** If true, restrict to rows whose value_json->>'vargottama' = 'true'. Surfaces vargottama Mercury (and any other vargottama planet) across all vargas. */
   vargottama_only?: boolean
+  /** ISO date (YYYY-MM-DD). For dasha categories: returns rows where start_date <= d < end_date. */
+  as_of_date?: string
+  /** ISO date. For dasha categories: returns rows where end_date >= from_date. */
+  from_date?: string
+  /** ISO date. For dasha categories: returns rows where start_date <= to_date. */
+  to_date?: string
 }
 
 interface ChartFactsRow {
@@ -123,6 +129,25 @@ function buildWhereClause(p: ChartFactsQueryInput): { where: string; args: unkno
 
   if (p.vargottama_only === true) {
     conditions.push(`(value_json->>'vargottama')::boolean = true`)
+  }
+
+  if (p.as_of_date) {
+    conditions.push(
+      `(value_json->>'start_date')::date <= $${idx}::date AND ` +
+      `(value_json->>'end_date')::date > $${idx + 1}::date`
+    )
+    args.push(p.as_of_date, p.as_of_date)
+    idx += 2
+  }
+  if (p.from_date) {
+    conditions.push(`(value_json->>'end_date')::date >= $${idx}::date`)
+    args.push(p.from_date)
+    idx++
+  }
+  if (p.to_date) {
+    conditions.push(`(value_json->>'start_date')::date <= $${idx}::date`)
+    args.push(p.to_date)
+    idx++
   }
 
   return { where: conditions.join(' AND '), args }
@@ -234,6 +259,9 @@ async function retrieveImpl(
       keyword: p.keyword,
       rank_by: p.rank_by,
       vargottama_only: p.vargottama_only,
+      as_of_date: p.as_of_date,
+      from_date: p.from_date,
+      to_date: p.to_date,
       limit,
     },
     results,

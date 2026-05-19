@@ -228,17 +228,28 @@ const vector_search: RetrievalCapabilityEntry = {
 const chart_facts_query: RetrievalCapabilityEntry = {
   tool_name: 'chart_facts_query',
   description:
-    'PRIMARY tool for quantitative chart-fact retrieval — queries 795 chart_facts rows across 37 categories (shadbala, ashtakavarga, bhava bala, sahams, yogas, longevity indicators, upagrahas, mrityu bhaga, avastha, planet placements, house contents). Use for any strength ranking, BAV bindu count, yoga register lookup, or quantitative placement question.',
+    'PRIMARY tool for quantitative chart-fact retrieval — 795 chart_facts rows ' +
+    'across 37 categories: shadbala, ashtakavarga (BAV/SAV/Pinda), bhava_bala, ' +
+    'sahams, yogas, longevity indicators, upagrahas, mrityu_bhaga, avastha, ' +
+    'planet placements, house contents, AND DASHA SCHEDULES ' +
+    '(dasha_vimshottari with 50 rows covering 1984-2060, dasha_yogini, ' +
+    'dasha_chara). Use for any strength ranking, BAV bindu count, yoga register ' +
+    'lookup, quantitative placement question, OR specific historical dasha ' +
+    'period lookup. For "what is the current/next dasha?" semantic queries, ' +
+    'prefer query_dasha_periods (semantically richer; surfaces next_count + ' +
+    'prev_count + active-chain shortcuts).',
   data_surface:
     'L1 — chart_facts table (795 rows × 37 categories). Each row has category, planet, house, sign, nakshatra, divisional_chart, value, ranking_field.',
   supported_params:
-    '{ category?: string (e.g. "shadbala","ashtakavarga_bav","bhava_bala","saham","yoga","planet","house","longevity_indicator","upagraha","mrityu_bhaga","avastha"); planet?: string; house?: number; sign?: string; nakshatra?: string; divisional_chart?: string ("D1".."D60"); keyword?: string; rank_by?: string; limit?: number (default 10, range 5–20) }',
+    '{ category?: string|string[] (e.g. "shadbala","ashtakavarga_bav","bhava_bala","saham","yoga","planet","house","longevity_indicator","upagraha","mrityu_bhaga","avastha","dasha_vimshottari","dasha_yogini","dasha_chara"); planet?: string; house?: number; sign?: string; nakshatra?: string; divisional_chart?: string ("D1".."D60"); keyword?: string; rank_by?: string; as_of_date?: YYYY-MM-DD (filters dasha rows where start_date <= d < end_date); from_date?: YYYY-MM-DD (range start); to_date?: YYYY-MM-DD (range end); limit?: number (default 10) }',
   optimal_patterns: [
     'Strength ranking: {category:"shadbala", rank_by:"total_rupas", limit:9}',
     'BAV by planet+sign: {category:"ashtakavarga_bav", planet:"Mars", sign:"Capricorn"}',
     'Yoga register: {category:"yoga"}',
     'Saham lookup: {category:"saham", keyword:"Vivaha"}',
     'House contents: {category:"house", house:7}',
+    'Specific dasha row: {category:"dasha_vimshottari", as_of_date:"2008-04-15"} (returns Mercury MD/Mars AD row active on that date)',
+    'Historical MD lookup: {category:"dasha_vimshottari", keyword:"Saturn"} (returns rows where md_lord=Saturn)',
   ],
   cost_tier: 'low',
   requires_temporal: false,
@@ -731,6 +742,50 @@ const query_transit_event: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Phase 5A — surgical dasha schedule lookup (30th tool)
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_dasha_periods: RetrievalCapabilityEntry = {
+  tool_name: 'query_dasha_periods',
+  description:
+    'Surgical dasha schedule lookup (Vimshottari / Yogini / Chara). Reads ' +
+    'chart_facts dasha rows with semantic helpers for active-chain / next-N / ' +
+    "prev-N / specific-lord queries. Default empty params returns today's " +
+    'active chain row + next 3 MD-transitions. CANONICAL SURFACE for any ' +
+    'query asking about current / next / upcoming / previous dasha periods. ' +
+    'Pairs with R-DA planner rule. Distinct from temporal.dasha_context_required ' +
+    '(which returns only the active 5-level chain at one date via sidecar); ' +
+    'this tool surfaces the full schedule from chart_facts with multi-MD ' +
+    'visibility.',
+  data_surface:
+    'L1 — chart_facts table (50 dasha_vimshottari rows covering 1984-02-05 → ' +
+    '2060-08-21, plus dasha_yogini and dasha_chara categories). ' +
+    'value_json: {md_lord, ad_lord, start_date, end_date}. ' +
+    'Source: FORENSIC §5.1 (Lahiri sidereal, GAP.09 resolved — FORENSIC dates ' +
+    'are canonical over JH dates).',
+  supported_params:
+    '{ system?: "vimshottari"|"yogini"|"chara" (default vimshottari); ' +
+    'level?: "M"|"A"|"P"|"all" (default all; "M" deduplicates to one row per MD cluster); ' +
+    'as_of_date?: YYYY-MM-DD (returns active row where start_date <= d < end_date); ' +
+    'next_count?: number (returns next N MD transitions after as_of_date or today); ' +
+    'prev_count?: number (returns prev N MD transitions before as_of_date or today); ' +
+    'md_lord?: string (filter by MD lord, ILIKE); ' +
+    'ad_lord?: string (filter by AD lord, ILIKE); ' +
+    'from_date?: YYYY-MM-DD; to_date?: YYYY-MM-DD; ' +
+    'limit?: number (default 30, max 100) }',
+  optimal_patterns: [
+    "Current dasha snapshot: {} (no params; returns today's active row + next 3 MDs)",
+    'What is my next MD?: {level:"M", next_count:1}',
+    'Specific date lookup: {as_of_date:"2008-04-15"} (returns the MD/AD running at marriage)',
+    'All Mercury MD rows: {md_lord:"Mercury"} (9 ADs under Mercury MD)',
+    'Historical MD scan: {level:"M", from_date:"1984-02-05", to_date:"2030-01-01"}',
+    'Yogini schedule: {system:"yogini", next_count:3}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -764,6 +819,7 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   query_ephemeris,      // Phase 4A
   query_panchanga,      // Phase 4C
   query_transit_event,  // Phase 4D
+  query_dasha_periods,  // Phase 5A
 ] as const
 
 /**

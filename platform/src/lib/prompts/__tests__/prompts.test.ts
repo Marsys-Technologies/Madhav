@@ -366,6 +366,101 @@ describe('Contradiction-framing rubric in shared preamble', () => {
 })
 
 // ---------------------------------------------------------------------------
+// F025 — DASHA DISCIPLINE GATE (§5B dasha correctness campaign)
+// Fixture label: dasha_discipline_gate_in_4_templates
+// ---------------------------------------------------------------------------
+
+describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
+  // The four mandated templates per research dossier §6 decision 2.
+  const DASHA_GATE_TEMPLATES: QueryClass[] = ['predictive', 'factual', 'holistic', 'remedial']
+
+  // Templates that must NOT receive the gate.
+  const NON_DASHA_GATE_TEMPLATES: QueryClass[] = ['interpretive', 'cross_domain', 'discovery']
+
+  it.each(DASHA_GATE_TEMPLATES)(
+    'template "%s": DASHA DISCIPLINE GATE is present in rendered output',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).toContain('DASHA DISCIPLINE GATE')
+    },
+  )
+
+  it.each(DASHA_GATE_TEMPLATES)(
+    'template "%s": gate mandates DSH.V.NNN citation format',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).toContain('DSH.V.')
+      expect(rendered).toContain('DSH.V.NNN')
+    },
+  )
+
+  it.each(DASHA_GATE_TEMPLATES)(
+    'template "%s": gate forbids extrapolation from generic Vimshottari knowledge',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).toContain('Extrapolating')
+      expect(rendered).toContain('generic Vimshottari knowledge')
+      expect(rendered).toContain('B.10')
+    },
+  )
+
+  it.each(DASHA_GATE_TEMPLATES)(
+    'template "%s": gate emits EXTERNAL_COMPUTATION_REQUIRED for missing rows',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).toContain('EXTERNAL_COMPUTATION_REQUIRED: dasha_vimshottari row')
+      expect(rendered).toContain('refetch via query_dasha_periods')
+    },
+  )
+
+  it.each(DASHA_GATE_TEMPLATES)(
+    'template "%s": gate references query_dasha_periods tool',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).toContain('query_dasha_periods')
+    },
+  )
+
+  it.each(DASHA_GATE_TEMPLATES)(
+    'template "%s": DASHA DISCIPLINE GATE appears exactly once (no double-injection)',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      const occurrences = rendered.split('DASHA DISCIPLINE GATE').length - 1
+      expect(occurrences).toBe(1)
+    },
+  )
+
+  it.each(NON_DASHA_GATE_TEMPLATES)(
+    'template "%s": DASHA DISCIPLINE GATE is NOT present (out of mandate scope)',
+    (qc) => {
+      const registry = getDefaultRegistry()
+      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+      expect(rendered).not.toContain('DASHA DISCIPLINE GATE')
+    },
+  )
+
+  it('cross_native stub does not carry the dasha gate (Phase 7 stub isolation)', () => {
+    const registry = getDefaultRegistry()
+    const tmpl = registry.get('cross_native', 'super_admin', 'single_model')
+    const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
+    expect(rendered).not.toContain('DASHA DISCIPLINE GATE')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // GANGA-P3-R4-S1 — Synthesis integration gates (AC.7, AC.8, AC.9, AC.11)
 // ---------------------------------------------------------------------------
 

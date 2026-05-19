@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0",
-  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065\u2013GT.069 for query_ephemeris R-TC transit-context rule coverage. Extended 2026-05-19 (Phase 4B) with GT.070\u2013GT.073 for derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with GT.074\u2013GT.077 for R-PA panchanga anchor: tithi-at-LEL-event, Purnima lookup, Moon-nakshatra-of-day, and the NEGATIVE natal-nakshatra case (query_panchanga forbidden).",
+  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065\u2013GT.069 for query_ephemeris R-TC transit-context rule coverage. Extended 2026-05-19 (Phase 4B) with GT.070\u2013GT.073 for derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with GT.074\u2013GT.077 for R-PA panchanga anchor: tithi-at-LEL-event, Purnima lookup, Moon-nakshatra-of-day, and the NEGATIVE natal-nakshatra case (query_panchanga forbidden). Extended 2026-05-19 (Phase 5A) with GT.083\u2013GT.086 for R-DA dasha-anchor rule: current MD, next MD after Mercury (canonical failure-case), Saturn MD historical, and interpretive MD-lord query (R-DA negative).",
   "entries": [
     {
       "id": "GT.001",
@@ -1806,6 +1806,68 @@
           "token_budget": 400,
           "priority": 1,
           "reason": "R-TC WHAT-not-WHEN: current Jupiter sign is a positional lookup; R-TE does NOT fire"
+        }
+      ]
+    },
+    {
+      "id": "GT.083",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_dasha_periods",
+          "params": {},
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-DA: empty params return today's active row + next 3 MDs from chart_facts"
+        }
+      ]
+    },
+    {
+      "id": "GT.084",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_dasha_periods",
+          "params": { "level": "M", "next_count": 1 },
+          "token_budget": 300,
+          "priority": 1,
+          "reason": "R-DA: next MD lookup — level:M + next_count:1 returns the first MD cluster after Mercury MD"
+        }
+      ]
+    },
+    {
+      "id": "GT.085",
+      "mock_tool_calls": [
+        {
+          "tool_name": "query_dasha_periods",
+          "params": { "md_lord": "Saturn" },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-DA: md_lord filter returns all Saturn MD antardasha rows (DSH.V.006-014)"
+        }
+      ]
+    },
+    {
+      "id": "GT.086",
+      "mock_tool_calls": [
+        {
+          "tool_name": "msr_sql",
+          "params": { "planet": "Mercury", "limit": 20 },
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "R7a: natal Mercury signal density for MD-lord interpretive query"
+        },
+        {
+          "tool_name": "chart_facts_query",
+          "params": { "planet": "Mercury" },
+          "token_budget": 400,
+          "priority": 1,
+          "reason": "R-FACT: Mercury placement + strength data for MD-lord interpretation"
+        },
+        {
+          "tool_name": "query_dasha_periods",
+          "params": { "md_lord": "Mercury" },
+          "token_budget": 200,
+          "priority": 3,
+          "reason": "R-DA priority 3: date anchor for interpretive query — schedule context only"
         }
       ]
     }

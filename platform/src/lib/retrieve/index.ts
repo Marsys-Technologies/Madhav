@@ -68,6 +68,9 @@ import * as queryPanchanga from './query_panchanga'
 // Phase 4D — transit event search: when does X happen? (29th tool)
 import * as queryTransitEvent from './query_transit_event'
 
+// Phase 5A — surgical dasha schedule lookup (30th tool)
+import * as queryDashaPeriods from './query_dasha_periods'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -101,6 +104,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryEphemeris.tool,
   queryPanchanga.tool,
   queryTransitEvent.tool,
+  queryDashaPeriods.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
