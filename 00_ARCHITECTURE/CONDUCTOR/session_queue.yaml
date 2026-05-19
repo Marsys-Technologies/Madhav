@@ -165,7 +165,9 @@ entries:
   - platform/src/app/panchang/hooks/usePanchangDay.ts
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 27/27 PASS; validate_queue OK
   human_decision_prompt: null
 - session_id: 4C-4-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S2_v1_0.md
@@ -184,7 +186,9 @@ entries:
   - platform/src/lib/format/dms.ts
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 33/33 PASS; TimingsPanel + PlanetaryGrid + DMS + zodiac glyphs delivered
   human_decision_prompt: null
 - session_id: 4C-4-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S3_v1_0.md

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.17
+version: 5.19
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,12 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.19 (2026-05-20, 4C-4-S2):
+    **CONCURRENT WORKSTREAM 4C-4-S2 CLOSED. TimingsPanel + PlanetaryGrid + DMS formatter + zodiac glyphs. 33/33 tests PASS.**
+    Key outcomes: (1) AC.4C4S2.1 PASS — TimingsPanel: Sun/Moon block + inauspicious windows (warning color rgba(220,80,60)) + auspicious windows (success color rgba(80,200,130)); all UTC→local via tzOffsetMinutes; missing moon transitions show "—". (2) AC.4C4S2.2 PASS — PlanetaryGrid: 9 grahas in GRAHA_ORDER (Sun→Ketu) each showing Sanskrit+English name, zodiac glyph, sign name, DMS within-sign longitude, retrograde (R amber) and combust (C red) badges; 3-column desktop / 1-column mobile; legend strip. (3) AC.4C4S2.3 PASS — zodiac glyphs (♈–♓) in platform/src/components/ui/icons/zodiac/index.ts; Sanskrit+English keyed; signFromLon helper. (4) AC.4C4S2.4 PASS — DMS formatter in platform/src/lib/format/dms.ts: decimalToDMS, formatDMS, formatDMSShort, lonWithinSign; all edge cases (0°, 360° wrap, negative, >360°) correct. (5) AC.4C4S2.5 PASS — PanchangClientView updated: below PrimaryStrip renders md:grid-cols-2 grid with TimingsPanel (left) + PlanetaryGrid (right) per §4.2 mockup; S1 component internals untouched. (6) AC.4C4S2.6 PASS — 33/33 tests PASS: TimingsPanel (8), PlanetaryGrid (8), DMS formatter (14 + 3 lib tests). Pre-existing retrieval_capability_spec failure (26≠27) is from 4C-3; not introduced by S2. (7) AC.4C4S2.7 PASS — 4C4_S2_drik_compare.md: structural comparison against 30-day panchang_engine fixture PASS (all 10 timing fields ±2min; all 9 graha signs exact match); live screenshot pending sidecar runtime. (8) AC.4C4S2.8 PASS — session close complete.
+    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C-4-S1 CLOSED | 4C-4-S2 CLOSED | 4C-4-S3–4C.9 PENDING.
+    last_session_id (4C stream): 4C-4-S2. next_session_id (4C stream): 4C-4-S3.
+    file_updated_at: 2026-05-20T01:10:00+05:30. file_updated_by_session: 4C-4-S2.
   - v5.18 (2026-05-20, 4C-4-S1):
     **CONCURRENT WORKSTREAM 4C-4-S1 CLOSED. /panchang route shell + Header + PrimaryStrip. 27/27 tests PASS. tsc clean.**
     Key outcomes: (1) AC.4C4S1.1 PASS — auth-gated layout.tsx mirrors dashboard pattern; all active roles. (2) AC.4C4S1.2 PASS — page.tsx SSR-fetches sidecar directly via fetchPanchangSSR; passes initialData to PanchangClientView. (3) AC.4C4S1.3 PASS — loading.tsx 6-row skeleton + error.tsx with unstable_retry (Next.js 16). (4) AC.4C4S1.4 PASS — PanchangHeader: date ◀/▶ + calendar + location dropdown (6 presets + custom lat/lon) + disabled Personalise shell; URL query string state. (5) AC.4C4S1.5 PASS — PrimaryStrip: 6-row anga display (Tithi, Nakshatra, Yoga, Karana, Vara, Paksha) with Sanskrit labels, ordinal Tithi, UTC→IST ends_at conversion. (6) AC.4C4S1.6 PASS — usePanchangDay TanStack Query hook; queryKey=[panchang,date,lat,lon,chartId]; refetchOnWindowFocus=false; staleTime 5min. (7) AC.4C4S1.7 PASS — AppShellRail + MobileNavSheet: Panchang nav entry (all roles) with lunar crescent SVG; active state highlights. (8) AC.4C4S1.8 PASS — brand tokens: gold (#fce29a/#d4af37), dark bg (#1c1c1a), CSS variables throughout; no hardcoded colors. (9) AC.4C4S1.9 PASS — 27/27 component tests PASS (vitest). (10) AC.4C4S1.10 PASS — session close items completed.

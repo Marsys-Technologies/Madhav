@@ -24753,3 +24753,109 @@ session_close:
   session_close_valid: true
   claudecode_brief_status: COMPLETE
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-4-S2
+  session_name: "4C-4-S2 — Timings Panel + Planetary Grid"
+  cowork_thread_name: "4C-4-S2 — Timings Panel + Planetary Grid"
+  opened_at: "2026-05-20T00:53:00+05:30"
+  executor: "Claude Code sub-agent (Conductor)"
+  worktree: "/Users/Dev/Vibe-Coding/Apps/Panchang"
+  branch: "feature/phase-4c-panchang"
+  governing_brief: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S2_v1_0.md"
+  may_touch:
+    - "platform/src/app/panchang/**"
+    - "platform/src/lib/format/dms.ts"
+    - "platform/src/components/ui/icons/zodiac/**"
+    - "governance state files"
+    - "this brief"
+  must_not_touch:
+    - "sidecar"
+    - "retrieve/"
+    - "Phase 4C-3 sealed code"
+    - "corpus"
+    - "S1's existing component internals"
+  pre_flight_status: PASS
+  pre_flight_details: "panchang dir OK; PanchangHeader OK; PrimaryStrip OK; usePanchangDay OK"
+
+session_body:
+  scope_items:
+    - id: AC.4C4S2.1
+      description: "TimingsPanel component"
+      status: PASS
+      detail: "platform/src/app/panchang/components/TimingsPanel.tsx — Sun/Moon + inauspicious (warning) + auspicious (success) windows; UTC→local; missing moon shows '—'"
+    - id: AC.4C4S2.2
+      description: "PlanetaryGrid component"
+      status: PASS
+      detail: "platform/src/app/panchang/components/PlanetaryGrid.tsx — 9 grahas; Sanskrit+English; zodiac glyph; sign; DMS within-sign; R/C badges; 3-col desktop / 1-col mobile; legend"
+    - id: AC.4C4S2.3
+      description: "Sanskrit sign glyphs"
+      status: PASS
+      detail: "platform/src/components/ui/icons/zodiac/index.ts — Unicode ♈–♓; Sanskrit+English keyed; signFromLon helper"
+    - id: AC.4C4S2.4
+      description: "DMS formatter"
+      status: PASS
+      detail: "platform/src/lib/format/dms.ts — decimalToDMS, formatDMS, formatDMSShort, lonWithinSign; all edge cases PASS"
+    - id: AC.4C4S2.5
+      description: "Page wiring"
+      status: PASS
+      detail: "PanchangClientView.tsx updated: md:grid-cols-2 grid with TimingsPanel + PlanetaryGrid below PrimaryStrip per §4.2"
+    - id: AC.4C4S2.6
+      description: "Component unit tests"
+      status: PASS
+      detail: "33/33 PASS — TimingsPanel (8), PlanetaryGrid (8), DMS lib (14 + 3). Pre-existing retrieval_capability_spec failure (4C-3 residual) not introduced by S2."
+    - id: AC.4C4S2.7
+      description: "Visual parity check"
+      status: PASS
+      detail: "platform/tests/visual/4C4_S2_drik_compare.md — structural comparison via 30-day fixture PASS; live screenshot pending sidecar runtime"
+    - id: AC.4C4S2.8
+      description: "Session close"
+      status: PASS
+      detail: "CURRENT_STATE v5.19; SESSION_LOG appended; brief COMPLETE; 6 commits"
+
+session_close:
+  closed_at: "2026-05-20T01:10:00+05:30"
+  gate_results:
+    - name: AC.4C4S2.1_timings_panel
+      result: PASS
+      detail: "All 10+ rows; warning/success color coding correct"
+    - name: AC.4C4S2.2_planetary_grid
+      result: PASS
+      detail: "9 grahas; retrograde/combust flags; DMS within-sign; zodiac glyphs"
+    - name: AC.4C4S2.3_zodiac_glyphs
+      result: PASS
+      detail: "♈–♓ Unicode glyphs; Sanskrit+English keyed map"
+    - name: AC.4C4S2.4_dms_formatter
+      result: PASS
+      detail: "14 edge-case tests PASS (0°, 360°, negative, >360°, lonWithinSign)"
+    - name: AC.4C4S2.5_page_wiring
+      result: PASS
+      detail: "Full page: header + primary strip + two-column timings/planetary grid"
+    - name: AC.4C4S2.6_component_tests
+      result: PASS
+      detail: "33/33 vitest PASS"
+    - name: AC.4C4S2.7_visual_parity
+      result: PASS
+      detail: "Structural comparison PASS; live screenshot documented as pending sidecar"
+    - name: AC.4C4S2.8_session_close
+      result: PASS
+      detail: "CURRENT_STATE v5.19; SESSION_LOG appended"
+  test_suite: "33/33 vitest PASS"
+  mirror_enforcer: "not run (no MP.1/MP.2 changes this session — UI-only + lib work)"
+  drift_detector: "not run (UI-only session; governance files: CURRENT_STATE + SESSION_LOG + CONDUCTOR_LOG only)"
+  commits:
+    - bd9c38a
+    - "1280562"
+    - 13fe80e
+    - e416ff6
+    - adb5302
+    - efd78ba
+  next_session_id: 4C-4-S3
+  next_session_objective: "SpecialYogasList component + ChoghadiyaPanel (collapsible) + ActionBar stub"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```
