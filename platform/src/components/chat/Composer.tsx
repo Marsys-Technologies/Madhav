@@ -15,6 +15,7 @@ import { ArrowUp, Square, Paperclip, X, FileText, Loader2, AlertCircle } from 'l
 import { cn } from '@/lib/utils'
 import type { Attachment } from '@/hooks/useAttachments'
 import { useDraft } from '@/hooks/useChatPreferences'
+import { useTokenCount } from '@/hooks/useTokenCount'
 
 export interface ComposerHandle {
   focus: () => void
@@ -35,6 +36,7 @@ interface Props {
   attachmentsReady: boolean
   /** AC-2 (R7-S6): per-conversation draft key. null → __new__ key. */
   conversationId?: string | null
+  tokensEnabled?: boolean
 }
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
@@ -51,6 +53,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     onRemoveAttachment,
     attachmentsReady,
     conversationId = null,
+    tokensEnabled = false,
   },
   ref
 ) {
@@ -61,6 +64,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { tokenCount, pctUsed } = useTokenCount(tokensEnabled ? value : '')
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -217,6 +221,32 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             Use{' '}
             <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">⌘K</kbd>
             {' '}for commands
+          </p>
+        )}
+        {tokensEnabled && (
+          <p
+            className={cn(
+              'px-5 pb-0.5 text-[10px] transition-colors',
+              pctUsed === null || pctUsed < 75
+                ? 'text-zinc-500'
+                : pctUsed < 95
+                ? 'text-amber-400'
+                : 'text-red-400'
+            )}
+            title={
+              pctUsed !== null && pctUsed >= 75
+                ? 'Approaching context limit'
+                : undefined
+            }
+          >
+            {tokenCount === null
+              ? '— tokens'
+              : `${tokenCount} tokens · ${pctUsed}%`}
+          </p>
+        )}
+        {tokensEnabled && pctUsed !== null && pctUsed >= 95 && (
+          <p className="mx-5 mb-1 rounded-md bg-red-950/40 px-3 py-1.5 text-[11px] text-red-400">
+            Context nearly full — consider starting a new conversation
           </p>
         )}
         <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-0.5">
