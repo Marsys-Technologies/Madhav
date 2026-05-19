@@ -1,5 +1,18 @@
 # R8 Sessions Log — Chat V2 Capabilities Round
 
+## R8-S2 — BranchPicker UI Component
+- **Completed**: 2026-05-20
+- **Commit**: 757f34d
+- **Files touched**:
+  - `platform/src/components/chat/BranchPicker.tsx` (new — pure display component)
+  - `platform/src/components/chat/BranchPicker.test.tsx` (new — 7 tests)
+  - `platform/src/components/chat/UserMessage.tsx` (modified — use BranchPicker)
+- **Acceptance criteria**: tsc: 0 errors. 7/7 BranchPicker tests pass. grep BranchPicker in UserMessage: found.
+- **Decisions**:
+  - UserMessage already had inline branch navigation; refactored into BranchPicker component
+  - Used text `‹` / `›` per brief (not Lucide icons as in original implementation)
+  - `currentBranch` is 1-indexed; converts from hook's 0-indexed `branchCurrent + 1`
+
 ## R8-S1 — Conversation Branches Persistence
 - **Completed**: 2026-05-20
 - **Commit**: ddcb350

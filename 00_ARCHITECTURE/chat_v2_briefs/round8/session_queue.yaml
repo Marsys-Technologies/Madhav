@@ -29,6 +29,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s2): BranchPicker component — ‹ N/M › inline on edited messages"
     estimated_loc: "+80 (new component + test)"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 757f34d
 
   - id: R8-S3
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S3-sidebar-fts-search.md
