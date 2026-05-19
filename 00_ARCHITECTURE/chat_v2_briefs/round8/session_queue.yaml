@@ -18,6 +18,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s1): conversation_branches table + GET/POST /api/conversations/[id]/branches + useBranches server mirror"
     estimated_loc: "+120 (migration + route + hook update)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: ddcb350
 
   - id: R8-S2
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S2-branch-picker-ui.md
