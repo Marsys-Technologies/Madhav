@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "queue_entry_schema.json",
+  "title": "ConductorQueueEntry",
+  "description": "Schema for a single entry in session_queue.yaml. Validated by validate_queue.py before every Conductor run.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "brief_path",
+    "branch",
+    "worktree_path",
+    "depends_on",
+    "requires_human_approval",
+    "push_to_remote",
+    "gate_command",
+    "status"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique identifier for this queue entry. Format: <phase>-<sub-session> e.g. 4C-1-S1, SMOKE-S0, 4C-3.",
+      "pattern": "^[A-Z0-9][A-Z0-9_.-]{1,30}$"
+    },
+    "brief_path": {
+      "type": "string",
+      "description": "Relative path (from worktree root) to the CLAUDECODE_BRIEF for this session.",
+      "minLength": 1
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch the sub-agent works on.",
+      "minLength": 1
+    },
+    "worktree_path": {
+      "type": "string",
+      "description": "Absolute filesystem path to the git worktree the sub-agent operates in.",
+      "pattern": "^/"
+    },
+    "depends_on": {
+      "type": "array",
+      "description": "List of session_ids that must have status: passed or status: skipped before this entry is eligible.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requires_external_gate": {
+      "description": "Name of a gate defined in the external_gates block, or null if no external gate.",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ]
+    },
+    "requires_brief_authoring": {
+      "type": "boolean",
+      "description": "If true, the brief at brief_path does not yet exist. Conductor halts with failure_class: requires_brief_authoring before attempting to run."
+    },
+    "requires_human_approval": {
+      "type": "boolean",
+      "description": "If true, Conductor always halts before executing this entry, regardless of gate state."
+    },
+    "push_to_remote": {
+      "type": "boolean",
+      "description": "If true, the sub-agent is permitted to push to remote after completing its work."
+    },
+    "gate_command": {
+      "type": "string",
+      "description": "Shell command run by the orchestrator after sub-agent completes. Must exit 0 for PASS. Empty string means no gate."
+    },
+    "expected_artifacts": {
+      "type": "array",
+      "description": "Informational list of file paths expected to exist after the sub-agent runs. Not machine-validated — for human review.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "est_tokens": {
+      "type": "integer",
+      "description": "Estimated token budget for the sub-agent context. Informational only.",
+      "minimum": 0
+    },
+    "est_duration_min": {
+      "type": "integer",
+      "description": "Estimated wall-clock duration in minutes. Informational only.",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "description": "Current lifecycle status of this queue entry.",
+      "enum": [
+        "pending",
+        "in_flight",
+        "passed",
+        "halted",
+        "skipped"
+      ]
+    },
+    "human_decision_prompt": {
+      "description": "Text shown to the user when this entry triggers a human-approval halt. null if requires_human_approval is false.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    }
+  }
+}
