@@ -1,27 +1,32 @@
 """
 test_drik_parity.py — Drik Panchang parity gate for panchang_engine.
 
-This is the SESSION VALIDATION GATE for 4C-1-S1.
-All 10 fixture entries must pass before the session may claim close.
+This is the SESSION VALIDATION GATE for 4C-1-S2 (supersedes S1 gate).
+All 30 fixture entries must pass — this is the 4C.1 close gate.
 
 Fixture is a SELF-CONSISTENCY fixture (seeded from compute_panchang itself).
 Human Drik cross-validation is performed post-session; any deltas recorded
 in fixture _meta.drik_deltas. The test verifies determinism: calling
 compute_panchang twice for the same inputs produces the same output.
 
+v2 extends v1 with:
+  - 20 additional days (2020-2026, all 7 vara IDs, Delhi sensitivity)
+  - special_yogas assertions per day
+
 Tolerances (from fixture _meta.expected_match_tolerance):
-  anga_id:           exact match
-  anga_transition:   ±120 seconds
-  sunrise_sunset:    ±30 seconds (self-consistency = 0 sec; tolerance for future Drik overlay)
-  rahu_yama_gulika:  ±120 seconds
+  anga_id:             exact match
+  anga_transition:     ±120 seconds
+  sunrise_sunset:      ±30 seconds (self-consistency = 0 sec; tolerance for future Drik overlay)
+  rahu_yama_gulika:    ±120 seconds
+  special_yoga_times:  ±120 seconds
 """
 import json
 import os
 import pytest
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 
 # Resolve fixture path relative to this test file
-_FIXTURE_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "drik_panchang_v1.json")
+_FIXTURE_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "drik_panchang_v2.json")
 
 with open(_FIXTURE_PATH) as _f:
     _FIXTURE = json.load(_f)
@@ -151,3 +156,45 @@ def test_drik_parity_for_day(entry):
     assert panchang.karana_second.id == exp["karana_second_id"], (
         f"[{entry['date']}] karana_second.id: got {panchang.karana_second.id}, expected {exp['karana_second_id']}"
     )
+
+    # --- Special Yogas (v2 gate) ---
+    _YOGA_TOL = 120   # seconds tolerance for yoga start/end times
+
+    fixture_yogas = exp.get("special_yogas", [])
+    computed_yoga_names = [y["yoga"] for y in panchang.special_yogas]
+    fixture_yoga_names = [y["yoga"] for y in fixture_yogas]
+
+    # No false negatives: every yoga in fixture must appear in computed output
+    for fy in fixture_yogas:
+        assert fy["yoga"] in computed_yoga_names, (
+            f"[{entry['date']}] Fixture yoga '{fy['yoga']}' not found in computed output. "
+            f"Computed: {computed_yoga_names}"
+        )
+
+    # No false positives: every computed yoga must appear in fixture
+    for cy in panchang.special_yogas:
+        assert cy["yoga"] in fixture_yoga_names, (
+            f"[{entry['date']}] Computed yoga '{cy['yoga']}' not expected by fixture. "
+            f"Fixture yogas: {fixture_yoga_names}"
+        )
+
+    # Timing check: for each matched yoga, start/end within ±120 sec of fixture
+    for fy in fixture_yogas:
+        # Find matching computed yoga
+        cy = next((y for y in panchang.special_yogas if y["yoga"] == fy["yoga"]), None)
+        if cy is None:
+            continue   # Already caught above in false-negative check
+
+        fy_start = _parse_dt(fy["start_utc"])
+        fy_end = _parse_dt(fy["end_utc"])
+
+        if fy_start is not None:
+            diff_start = _dt_diff_sec(cy["start_utc"], fy_start)
+            assert diff_start <= _YOGA_TOL, (
+                f"[{entry['date']}] yoga '{fy['yoga']}' start diff={diff_start:.1f}s > {_YOGA_TOL}s"
+            )
+        if fy_end is not None:
+            diff_end = _dt_diff_sec(cy["end_utc"], fy_end)
+            assert diff_end <= _YOGA_TOL, (
+                f"[{entry['date']}] yoga '{fy['yoga']}' end diff={diff_end:.1f}s > {_YOGA_TOL}s"
+            )
