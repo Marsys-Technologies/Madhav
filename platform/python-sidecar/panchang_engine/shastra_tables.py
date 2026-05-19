@@ -461,19 +461,124 @@ DUR_MUHURTA_TABLE: dict[int, list] = {
 }
 
 # ---------------------------------------------------------------------------
-# §16–§19 — Special Yoga Lookup Tables (STUB SHELLS — 4C-1-S2 populates)
-# Source: MC §10–§12; BS §3; DP convention.
+# §16 — Sarvartha Siddhi Yoga (vara × nakshatra)
+# "Auspicious for all purposes" — among the most-cited muhurat yogas.
+# Source: MC §10 (Muhurta Chintamani 5.16); DP published reference table.
+# Format: {vara_id: set(nakshatra_ids)}
+# vara_id:  1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat
+# nakshatra_id: 1=Ashwini … 27=Revati (1-based)
 # ---------------------------------------------------------------------------
+SARVARTHA_SIDDHI_TABLE: dict[int, set] = {
+    1: {3, 5, 8, 11, 19},        # Ravi (Sun):   Krittika, Mrigashira, Pushya, Purva Phalguni, Moola
+    2: {1, 6, 18, 21, 22},       # Soma (Mon):   Ashwini, Ardra, Jyeshtha, Uttara Ashadha, Shravana
+    3: {1, 6, 14},               # Mangala (Tue): Ashwini, Ardra, Chitra
+    4: {3, 8, 14, 17, 24},       # Budha (Wed):  Krittika, Pushya, Chitra, Anuradha, Shatabhisha
+    5: {5, 7, 8, 22, 27},        # Guru (Thu):   Mrigashira, Punarvasu, Pushya, Shravana, Revati
+    6: {1, 2, 5, 21, 22, 27},    # Shukra (Fri): Ashwini, Bharani, Mrigashira, Uttara Ashadha, Shravana, Revati
+    7: {4, 8, 23, 26},           # Shani (Sat):  Rohini, Pushya, Dhanishtha, Uttara Bhadrapada
+}
 
-# Sarvartha Siddhi Yoga: vara×nakshatra combinations that create this auspicious yoga.
-# Source: MC §10; DP. Format: {vara_id: [nakshatra_ids...]}
-SARVARTHA_SIDDHI_TABLE: dict[int, list[int]] = {}  # 4C-1-S2 populates this
+# ---------------------------------------------------------------------------
+# §17 — Amrit Siddhi Yoga (vara × nakshatra)
+# "Most auspicious for new beginnings" — tighter set than Sarvartha Siddhi.
+# Source: MC §10 (Muhurta Chintamani 5.17); DP published reference.
+# Note: Amrit Siddhi is superseded/blocked by certain death-yoga combinations
+# (e.g. Visha Yoga, specific tithi-vara pairs per MC 5.17). Where DP suppresses
+# Amrit Siddhi on a day our engine would otherwise flag it, treat DP as
+# authoritative and document the suppression in _meta.drik_deltas (4C-1-S2 convention).
+# ---------------------------------------------------------------------------
+AMRIT_SIDDHI_TABLE: dict[int, set] = {
+    1: {8},      # Sun  + Pushya  → Ravi Pushya component
+    2: {4},      # Moon + Rohini
+    3: {6},      # Mars + Ardra
+    4: {1},      # Mercury + Ashwini
+    5: {8},      # Jupiter + Pushya → Guru Pushya component
+    6: {27},     # Venus + Revati
+    7: {25},     # Saturn + Purva Bhadrapada (MC variant; verify against DP fixture)
+}
 
-# Amrit Siddhi Yoga: vara×nakshatra combinations.
-# Source: MC §10; DP. Format: {vara_id: [nakshatra_ids...]}
-AMRIT_SIDDHI_TABLE: dict[int, list[int]] = {}  # 4C-1-S2 populates this
+# ---------------------------------------------------------------------------
+# §17a — Ravi Pushya Yoga
+# Sunday AND Pushya nakshatra simultaneously (~6-8 occurrences per year).
+# Special case of Sarvartha Siddhi; tracked separately for UI prominence.
+# Source: MC §10; DP "Ravi Pushya Yoga" dedicated page.
+# ---------------------------------------------------------------------------
+RAVI_PUSHYA: dict = {"vara_id": 1, "nakshatra_id": 8}
 
-# Dwipushkar / Tripushkar Yoga: tithi×vara×nakshatra combinations.
-# Source: MC §11; DP. Format: list of (tithi_ids, vara_ids, nakshatra_ids) tuples.
-DWIPUSHKAR_TABLE: list[dict] = []   # 4C-1-S2 populates this
-TRIPUSHKAR_TABLE: list[dict] = []   # 4C-1-S2 populates this
+# ---------------------------------------------------------------------------
+# §17b — Guru Pushya Yoga
+# Thursday AND Pushya nakshatra simultaneously (highly auspicious for wealth).
+# Source: MC §10; DP "Guru Pushya Nakshatra Yoga" dedicated page.
+# ---------------------------------------------------------------------------
+GURU_PUSHYA: dict = {"vara_id": 5, "nakshatra_id": 8}
+
+# ---------------------------------------------------------------------------
+# §18 — Tripushkar Yoga (tithi × vara × nakshatra)
+# Purchases on this day are said to "triple". All three conditions must coincide.
+# Source: MC §11; DP convention.
+# Tithis: Dvitiya (2), Saptami (7), Dwadashi (12) in each paksha
+#   → continuous count: shukla 2,7,12 and krishna 17,22,27 → {2,7,12,17,22,27}
+#   DP convention uses the paksha-remainder (1..15), so 2,7,12 applies to BOTH pakshas.
+#   We use the continuous 1..30 tithi_id; both-paksha coverage:
+TRIPUSHKAR_TITHIS: set = {2, 7, 12, 17, 22, 27}
+# Varas: Sun(1), Tue(3), Sat(7)
+TRIPUSHKAR_VARAS: set = {1, 3, 7}
+# Nakshatras: dvi-svabhava (dual-natured) — Krittika(3), Punarvasu(7),
+#   Uttara Phalguni(12), Vishakha(16), Uttara Ashadha(21), Purva Bhadrapada(25)
+TRIPUSHKAR_NAKSHATRAS: set = {3, 7, 12, 16, 21, 25}
+
+# ---------------------------------------------------------------------------
+# §18a — Dwipushkar Yoga (tithi × vara × nakshatra)
+# "Double" multiplier variant; nakshatras are dvi-svabhava restricted further.
+# Source: MC §11; DP convention.
+# Tithis and varas same as Tripushkar; nakshatras are the Dvipada set.
+DWIPUSHKAR_TITHIS: set = {2, 7, 12, 17, 22, 27}
+DWIPUSHKAR_VARAS: set = {1, 3, 7}
+# Nakshatras: Mrigashira(5), Chitra(14), Dhanishtha(23)
+DWIPUSHKAR_NAKSHATRAS: set = {5, 14, 23}
+
+# ---------------------------------------------------------------------------
+# §19 — Siddha Yoga (vara × nakshatra)
+# Auspicious composite; distinct from Vishnu Yoga or the Siddhi anga-yoga.
+# Source: MC §10; BS §3; DP published table.
+# Note: this is the Vara-Nakshatra Siddha Yoga (not the 16th of the 27 yogas).
+# ---------------------------------------------------------------------------
+SIDDHA_YOGA_TABLE: dict[int, set] = {
+    1: {1, 6, 11, 16, 21, 26},    # Sun
+    2: {2, 7, 12, 17, 22, 27},    # Mon
+    3: {3, 8, 13, 18, 23},        # Tue
+    4: {4, 9, 14, 19, 24},        # Wed
+    5: {5, 10, 15, 20, 25},       # Thu
+    6: {1, 6, 11, 16, 21, 26},    # Fri
+    7: {2, 7, 12, 17, 22, 27},    # Sat
+}
+
+# ---------------------------------------------------------------------------
+# §20 — Bhadra (Vishti) Karana
+# Inauspicious karana; one of the 11 karanas. Karana_id == 7 in the movable cycle.
+# Source: MC §2; BS §2. DP displays Vishti/Bhadra period with start/end.
+# The half-tithi where Vishti falls is the inauspicious window.
+# Bhadra has two phases — Mukha (face/start, most inauspicious) and
+# Puccha (tail/end, less inauspicious) — not distinguished at MVP scope.
+# ---------------------------------------------------------------------------
+BHADRA_KARANA_ID: int = 7   # Vishti / Bhadra karana_id
+
+# ---------------------------------------------------------------------------
+# §21 — Panchaka Dosha (Moon in 5 inauspicious nakshatras)
+# Five nakshatras where Moon's transit creates certain doshas for specific activities.
+# Source: BS (Brihat Samhita) §3; DP "Panchaka" dedicated page.
+# Full Panchaka: nakshatra AND vara both inauspicious (DP's stricter interpretation).
+# Nakshatras: Dhanishtha(23), Shatabhisha(24), Purva Bhadrapada(25),
+#             Uttara Bhadrapada(26), Revati(27)
+# ---------------------------------------------------------------------------
+PANCHAKA_NAKSHATRAS: set = {23, 24, 25, 26, 27}
+# Varas that amplify Panchaka to full-dosha status (DP convention)
+# Sat(7), Sun(1), Tue(3) — when Moon is in Panchaka nakshatras on these varas,
+# the dosha is active for the entire day.
+PANCHAKA_VARAS: set = {7, 1, 3}
+
+# ---------------------------------------------------------------------------
+# Legacy list-format aliases (kept for any code that imported the old stubs)
+# ---------------------------------------------------------------------------
+DWIPUSHKAR_TABLE: list = []   # deprecated; use DWIPUSHKAR_TITHIS/VARAS/NAKSHATRAS
+TRIPUSHKAR_TABLE: list = []   # deprecated; use TRIPUSHKAR_TITHIS/VARAS/NAKSHATRAS
