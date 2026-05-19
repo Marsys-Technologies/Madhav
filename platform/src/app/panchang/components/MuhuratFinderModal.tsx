@@ -73,7 +73,7 @@ export function MuhuratFinderModal({
   // Form state
   const [event, setEvent] = useState<string>(MVP_EVENTS[0].key)
   const [dateFrom, setDateFrom] = useState(today)
-  const [dateTo, setDateTo] = useState(addDaysISO(today, 90))
+  const [dateTo, setDateTo] = useState(addDaysISO(today, 89))
   const [customLat, setCustomLat] = useState(String(lat))
   const [customLon, setCustomLon] = useState(String(lon))
   const [personalise, setPersonalise] = useState(Boolean(chartId))
