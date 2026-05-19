@@ -25,3 +25,35 @@ Each entry contains:
 ---
 
 <!-- Conductor appends entries below this line. Do not edit above. -->
+
+## SMOKE-S0 — PASS — 2026-05-19T15:19:30+05:30
+
+| Field | Value |
+|---|---|
+| Session | SMOKE-S0 |
+| Result | PASS |
+| Timestamp | 2026-05-19T15:19:30+05:30 |
+| Commits | ef3d14d31703b6927042d09e014fa67cf26d5255 |
+| Gate exit code | 0 |
+| Context sessions used | 1 of 20 |
+
+### Gate output
+
+```
+GATE PASS
+ef3d14d31703b6927042d09e014fa67cf26d5255 SMOKE-S0: heartbeat
+```
+
+### Sub-agent summary
+
+Smoke test heartbeat file created at 00_ARCHITECTURE/CONDUCTOR/smoke/SMOKE_HEARTBEAT.md
+and committed on feature/phase-4c-panchang (SHA ef3d14d) with message "SMOKE-S0: heartbeat".
+File contains the required header line with ISO timestamp 2026-05-19T15:19:00+05:30.
+All AC.SMOKE.1 criteria satisfied. The orchestrator + sub-agent + gate pattern is
+confirmed structurally sound and ready for the first real Phase 4C session.
+
+### Scope items completed
+
+- AC.SMOKE.1 — Heartbeat file created and committed
+
+---
