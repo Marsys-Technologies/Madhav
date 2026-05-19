@@ -8,11 +8,13 @@
  *
  * When native_context is provided, the Nakshatra row shows a Tara Bala badge.
  *
- * Phase: 4C-4-S1 (Item 5); 4C-5 (Tara Bala badge — Item 7)
+ * Phase: 4C-4-S1 (Item 5); 4C-5 (Tara Bala badge — Item 7);
+ *        4C-8 (AskMadhavLink on Tithi + Tara Bala badge rows — Item 5)
  */
 
 import type { PanchangAngas, NativeContext } from '../hooks/usePanchangDay'
 import { computeTaraBala, type TaraBalaClass } from '@/lib/panchang/tara_bala'
+import { AskMadhavLink } from './AskMadhavLink'
 
 interface PrimaryStripProps {
   angas: PanchangAngas
@@ -22,6 +24,12 @@ interface PrimaryStripProps {
   date: string
   /** Native overlay — when present, show Tara Bala badge on Nakshatra row */
   nativeContext?: NativeContext | null
+  /**
+   * Full Panchang day JSON injected as context into Ask-Madhav deep links.
+   * Passed by PanchangClientView from the usePanchangDay result.
+   * 4C-8 (Item 5)
+   */
+  panchangContext?: object | null
 }
 
 interface AngaRow {
@@ -57,7 +65,7 @@ function ordinal(n: number | null | undefined): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date, nativeContext }: PrimaryStripProps) {
+export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date, nativeContext, panchangContext }: PrimaryStripProps) {
   const rows: AngaRow[] = [
     {
       label: 'Tithi',
@@ -108,6 +116,19 @@ export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date, nativeContext
     },
   ]
 
+  // Build the Ask-Madhav prompt for the Tithi row (4C-8 Item 5)
+  const tithiName = angas.tithi?.name ?? null
+  const tithiPrompt = tithiName
+    ? `What does ${tithiName} mean for me today?`
+    : null
+
+  // Tara Bala prompt — used when nativeContext is present (personalised view)
+  const nakshatraName = angas.nakshatra?.name ?? null
+  const taraBalaPrompt =
+    nativeContext && nakshatraName
+      ? `Is today's ${nakshatraName} Nakshatra a Tara day for me? What does that mean for planning?`
+      : null
+
   return (
     <section
       aria-label="Five Angas — Primary Panchang Strip"
@@ -120,6 +141,15 @@ export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date, nativeContext
             row={row}
             isLast={i === rows.length - 1}
             nativeContext={nativeContext}
+            // Inject AskMadhavLink on Tithi row
+            askMadhavPrompt={
+              row.label === 'Tithi' && tithiPrompt
+                ? tithiPrompt
+                : row.label === 'Nakshatra' && taraBalaPrompt
+                  ? taraBalaPrompt
+                  : null
+            }
+            panchangContext={panchangContext ?? undefined}
           />
         ))}
       </div>
@@ -186,10 +216,15 @@ function PrimaryStripRow({
   row,
   isLast,
   nativeContext,
+  askMadhavPrompt,
+  panchangContext,
 }: {
   row: AngaRow
   isLast: boolean
   nativeContext?: NativeContext | null
+  /** When set, renders an AskMadhavLink icon at the end of the row. */
+  askMadhavPrompt?: string | null
+  panchangContext?: object
 }) {
   const isEmpty = !row.value
   const showTaraBadge =
@@ -244,8 +279,16 @@ function PrimaryStripRow({
         )}
       </div>
 
-      {/* Ends-at badge */}
-      {row.endsAt && <EndsBadge time={row.endsAt} />}
+      {/* Right-side cluster: ends-at + Ask-Madhav link */}
+      <div className="flex items-center gap-2 shrink-0 ml-2">
+        {row.endsAt && <EndsBadge time={row.endsAt} />}
+        {askMadhavPrompt && (
+          <AskMadhavLink
+            prompt={askMadhavPrompt}
+            panchang_context={panchangContext}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -254,7 +297,7 @@ function EndsBadge({ time }: { time: string | null }) {
   if (!time) return null
   return (
     <span
-      className="ml-4 shrink-0 rounded-md border border-[rgba(212,175,55,0.18)] bg-[rgba(212,175,55,0.06)] px-2.5 py-1 text-xs font-mono tabular-nums"
+      className="shrink-0 rounded-md border border-[rgba(212,175,55,0.18)] bg-[rgba(212,175,55,0.06)] px-2.5 py-1 text-xs font-mono tabular-nums"
       style={{ color: 'rgba(212,175,55,0.65)' }}
       aria-label={`Ends at ${time}`}
     >

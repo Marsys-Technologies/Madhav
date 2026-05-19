@@ -16,11 +16,13 @@
  *
  * Empty state: "No special yogas active today."
  *
- * Phase: 4C-4-S3 (Item 1); 4C-5 (native annotation — Item 8)
+ * Phase: 4C-4-S3 (Item 1); 4C-5 (native annotation — Item 8);
+ *        4C-8 (AskMadhavLink on auspicious yogas — Item 5)
  */
 
 import { StarRating } from '@/components/ui/star-rating'
 import type { NativeContext } from '../hooks/usePanchangDay'
+import { AskMadhavLink } from './AskMadhavLink'
 
 // ── Data shape (from sidecar serialize.py) ────────────────────────────────────
 
@@ -96,6 +98,11 @@ interface SpecialYogasListProps {
   tzOffsetMinutes?: number
   /** Native overlay — when present, yogas on native's birth nakshatra get annotation */
   nativeContext?: NativeContext | null
+  /**
+   * Full Panchang day JSON injected as context into Ask-Madhav deep links.
+   * 4C-8 (Item 5)
+   */
+  panchangContext?: object | null
 }
 
 // ── Yoga row ──────────────────────────────────────────────────────────────────
@@ -120,11 +127,13 @@ function YogaRow({
   tzOffsetMinutes,
   isLast,
   nativeContext,
+  panchangContext,
 }: {
   entry: YogaEntry
   tzOffsetMinutes: number
   isLast: boolean
   nativeContext?: NativeContext | null
+  panchangContext?: object | null
 }) {
   const meta = getMeta(entry.yoga)
   const isAuspicious = entry.strength === 'auspicious'
@@ -138,6 +147,11 @@ function YogaRow({
     nativeContext != null && isNativeAlignment(entry, nativeContext)
   const nativeLabel = showNativeAnnotation
     ? `for ${firstName(nativeContext.native_name)}`
+    : null
+
+  // Ask-Madhav prompt — only for auspicious yogas (4C-8 Item 5)
+  const askMadhavPrompt = isAuspicious
+    ? `Explain why today's ${meta.display} matters for major decisions.`
     : null
 
   return (
@@ -201,8 +215,8 @@ function YogaRow({
         </div>
       </div>
 
-      {/* Right: time window + stars */}
-      <div className="flex items-center gap-3 shrink-0 ml-2">
+      {/* Right: time window + stars + Ask-Madhav link */}
+      <div className="flex items-center gap-2 shrink-0 ml-2">
         <span
           className="font-mono text-xs tabular-nums"
           style={{ color: 'rgba(212,175,55,0.55)' }}
@@ -211,6 +225,13 @@ function YogaRow({
         </span>
         {isAuspicious && entry.stars > 0 && (
           <StarRating value={entry.stars} max={5} size="sm" />
+        )}
+        {/* Ask-Madhav icon — only for auspicious yogas */}
+        {askMadhavPrompt && (
+          <AskMadhavLink
+            prompt={askMadhavPrompt}
+            panchang_context={panchangContext ?? undefined}
+          />
         )}
       </div>
     </div>
@@ -223,6 +244,7 @@ export function SpecialYogasList({
   specialYogas,
   tzOffsetMinutes = 330,
   nativeContext,
+  panchangContext,
 }: SpecialYogasListProps) {
   const yogas = (Array.isArray(specialYogas) ? specialYogas : []) as YogaEntry[]
 
@@ -258,6 +280,7 @@ export function SpecialYogasList({
             tzOffsetMinutes={tzOffsetMinutes}
             isLast={i === yogas.length - 1}
             nativeContext={nativeContext}
+            panchangContext={panchangContext}
           />
         ))
       )}

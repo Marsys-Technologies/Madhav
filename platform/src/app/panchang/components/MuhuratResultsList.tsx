@@ -13,7 +13,8 @@
  * Sorted by score descending (backend already sorts; we sort defensively).
  * Loading skeleton shown during fetch. Empty state if no windows.
  *
- * Phase: 4C-6-S3 (Item 3 + Item 4); 4C-7 (Item 9 — Export to Calendar wired)
+ * Phase: 4C-6-S3 (Item 3 + Item 4); 4C-7 (Item 9 — Export to Calendar wired);
+ *        4C-8 (Panchang context injection in Ask-Madhav deep links — Item 5)
  */
 
 import { useRouter } from 'next/navigation'
@@ -21,6 +22,7 @@ import { CalendarDays, MessageCircle } from 'lucide-react'
 import { StarRating } from '@/components/ui/star-rating'
 import type { MuhuratWindow } from '../hooks/useMuhuratFinder'
 import { buildMuhuratWindowIcs, downloadIcs } from '@/lib/panchang/ics_client'
+import { serialiseContext } from './AskMadhavLink'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,11 @@ interface MuhuratResultsListProps {
   event: string
   /** Panchang data for the displayed day to enrich Ask-Madhav prompt */
   tzOffsetMinutes?: number
+  /**
+   * Full Panchang day JSON injected as context into Ask-Madhav deep links.
+   * 4C-8 (Item 5)
+   */
+  panchangContext?: object | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,11 +145,13 @@ function MuhuratRow({
   rank,
   event,
   tzOffsetMinutes,
+  panchangContext,
 }: {
   window: MuhuratWindow
   rank: number
   event: string
   tzOffsetMinutes: number
+  panchangContext?: object | null
 }) {
   const router = useRouter()
 
@@ -150,7 +159,7 @@ function MuhuratRow({
   const startTime = formatWindowTime(w.start_utc, tzOffsetMinutes)
   const endTime = formatWindowTime(w.end_utc, tzOffsetMinutes)
 
-  // Build the Ask-Madhav prompt — deep link into chat with pre-loaded context
+  // Build the Ask-Madhav prompt — deep link into chat with pre-loaded Panchang context (4C-8)
   function handleAskMadhav() {
     // Identify top breakdown factors for the prompt
     const topFactors = Object.entries(w.breakdown)
@@ -160,13 +169,18 @@ function MuhuratRow({
       .map(([k, v]) => `${labelForBreakdownKey(k)} (${formatScore(v)})`)
       .join(', ')
 
-    const prompt = encodeURIComponent(
+    const visiblePrompt =
       `Walk me through why ${dateLabel} is ranked #${rank} for ${event.replace(/_/g, ' ')}. ` +
       `The Panchang engine gave it ${w.star_rating} stars (score ${w.score.toFixed(2)}). ` +
       (topFactors ? `Top factors: ${topFactors}. ` : '') +
       `What does this mean for planning this event?`
-    )
-    router.push(`/clients/${NATIVE_CLIENT_ID}/consume?prompt=${prompt}`)
+
+    const params = new URLSearchParams()
+    params.set('prompt', visiblePrompt)
+    if (panchangContext) {
+      params.set('context', serialiseContext(panchangContext))
+    }
+    router.push(`/clients/${NATIVE_CLIENT_ID}/consume?${params.toString()}`)
   }
 
   // Export this window as an ICS file (browser-safe, client-side build)
@@ -280,6 +294,7 @@ export function MuhuratResultsList({
   error,
   event,
   tzOffsetMinutes = 330,
+  panchangContext,
 }: MuhuratResultsListProps) {
   // Loading state
   if (isLoading) {
@@ -341,6 +356,7 @@ export function MuhuratResultsList({
           rank={i + 1}
           event={event}
           tzOffsetMinutes={tzOffsetMinutes}
+          panchangContext={panchangContext}
         />
       ))}
     </div>

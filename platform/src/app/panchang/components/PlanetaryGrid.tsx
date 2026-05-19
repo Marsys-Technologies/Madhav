@@ -16,13 +16,15 @@
  * Shape: {name, longitude_sidereal, sign_id, sign_name, nakshatra_name,
  *          nakshatra_pada, retrograde, combust}
  *
- * Phase: 4C-4-S2 (Item 2); 4C-5 (Chandra Bala badge — Item 7)
+ * Phase: 4C-4-S2 (Item 2); 4C-5 (Chandra Bala badge — Item 7);
+ *        4C-8 (AskMadhavLink on retrograde planets — Item 5)
  */
 
 import { lonWithinSign, formatDMSShort } from '@/lib/format/dms'
 import { getZodiacGlyph } from '@/components/ui/icons/zodiac'
 import { computeChandraBala, type ChandraBalaStrength } from '@/lib/panchang/chandra_bala'
 import type { NativeContext } from '../hooks/usePanchangDay'
+import { AskMadhavLink } from './AskMadhavLink'
 
 // ── Graha catalog ─────────────────────────────────────────────────────────────
 
@@ -69,6 +71,11 @@ interface PlanetaryGridProps {
   planets: Record<string, PlanetStateDict> | unknown[] | null | undefined
   /** Native overlay — when present, Moon row shows Chandra Bala badge */
   nativeContext?: NativeContext | null
+  /**
+   * Full Panchang day JSON injected as context into Ask-Madhav deep links.
+   * 4C-8 (Item 5)
+   */
+  panchangContext?: object | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -135,14 +142,21 @@ function GrahaCard({
   spec,
   ps,
   nativeContext,
+  panchangContext,
 }: {
   spec: GrahaSpec
   ps: PlanetStateDict | undefined
   nativeContext?: NativeContext | null
+  panchangContext?: object | null
 }) {
   const glyph = ps ? getZodiacGlyph(ps.sign_name) : ''
   const withinSign = ps ? lonWithinSign(ps.longitude_sidereal) : null
   const dms = withinSign !== null ? formatDMSShort(withinSign) : null
+
+  // Ask-Madhav prompt — shown when planet is retrograde (4C-8 Item 5)
+  const retrogradePrompt = ps?.retrograde
+    ? `What is ${spec.english} retrograde doing in my chart right now?`
+    : null
 
   return (
     <div
@@ -168,7 +182,7 @@ function GrahaCard({
           </span>
         </div>
 
-        {/* Retrograde + Combust badges */}
+        {/* Retrograde + Combust badges + Ask-Madhav link (retrograde only) */}
         <div className="flex items-center gap-1 shrink-0 ml-2 flex-wrap">
           {ps?.retrograde && (
             <span
@@ -195,6 +209,13 @@ function GrahaCard({
             <ChandraBadge
               nativeContext={nativeContext}
               currentMoonSignId={ps.sign_id}
+            />
+          )}
+          {/* Ask-Madhav icon — only when planet is retrograde (4C-8 Item 5) */}
+          {retrogradePrompt && (
+            <AskMadhavLink
+              prompt={retrogradePrompt}
+              panchang_context={panchangContext ?? undefined}
             />
           )}
         </div>
@@ -236,7 +257,7 @@ function GrahaCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function PlanetaryGrid({ planets, nativeContext }: PlanetaryGridProps) {
+export function PlanetaryGrid({ planets, nativeContext, panchangContext }: PlanetaryGridProps) {
   const planetMap = normalizePlanets(planets)
   const hasAnyData = Object.keys(planetMap).length > 0
 
@@ -259,6 +280,7 @@ export function PlanetaryGrid({ planets, nativeContext }: PlanetaryGridProps) {
             spec={spec}
             ps={planetMap[spec.key]}
             nativeContext={nativeContext}
+            panchangContext={panchangContext}
           />
         ))}
       </div>

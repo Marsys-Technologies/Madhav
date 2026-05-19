@@ -57,6 +57,11 @@ interface MuhuratFinderModalProps {
   tzOffsetMinutes?: number
   /** If present, personalise checkbox defaults to checked */
   chartId?: string | null
+  /**
+   * Full Panchang day JSON — passed through to MuhuratResultsList
+   * for Ask-Madhav deep-link context injection. 4C-8 (Item 5)
+   */
+  panchangContext?: object | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -67,6 +72,7 @@ export function MuhuratFinderModal({
   lon,
   tzOffsetMinutes = 330,
   chartId,
+  panchangContext,
 }: MuhuratFinderModalProps) {
   const today = todayISO()
 
@@ -346,6 +352,7 @@ export function MuhuratFinderModal({
               error={error}
               event={event}
               tzOffsetMinutes={tzOffsetMinutes}
+              panchangContext={panchangContext}
             />
           </div>
         )}

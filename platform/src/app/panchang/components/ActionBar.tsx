@@ -27,6 +27,11 @@ const NATIVE_CLIENT_ID = 'abhisek_mohanty_primary'
 interface ActionBarProps {
   /** ISO date string for the currently displayed Panchang day (YYYY-MM-DD) */
   date: string
+  /**
+   * Full Panchang day JSON — injected into Ask-Madhav deep links and
+   * passed through to MuhuratFinderModal. 4C-8 (Item 5)
+   */
+  panchangContext?: object | null
 }
 
 // ── Calendar export sub-components ────────────────────────────────────────────
@@ -279,7 +284,7 @@ function CalendarExportDropdown({
   )
 }
 
-export function ActionBar({ date }: ActionBarProps) {
+export function ActionBar({ date, panchangContext }: ActionBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [muhuratOpen, setMuhuratOpen] = useState(false)
@@ -292,15 +297,34 @@ export function ActionBar({ date }: ActionBarProps) {
   const chartId = resolveChartId(searchParams)
 
   function handleAskMadhav() {
-    const prompt = encodeURIComponent(
-      `Tell me about today's Panchang (${date}) and what it means for me.`,
-    )
-    router.push(`/clients/${NATIVE_CLIENT_ID}/consume?prompt=${prompt}`)
+    // 4C-8: inject full Panchang context when available
+    const visiblePrompt = `Tell me about today's Panchang (${date}) and what it means for me.`
+    const params = new URLSearchParams()
+    params.set('prompt', visiblePrompt)
+    if (panchangContext) {
+      // Import serialiseContext inline to keep the import minimal
+      const serialised = (() => {
+        try {
+          const MAX = 10_240
+          const full = JSON.stringify(panchangContext)
+          if (new TextEncoder().encode(full).length <= MAX) return full
+          const ctx = panchangContext as Record<string, unknown>
+          return JSON.stringify({
+            _truncated: true,
+            _note: 'Context exceeded 10 KB. Call query_panchanga for full detail.',
+            date: ctx['date'],
+            angas: ctx['angas'],
+          })
+        } catch { return null }
+      })()
+      if (serialised) params.set('context', serialised)
+    }
+    router.push(`/clients/${NATIVE_CLIENT_ID}/consume?${params.toString()}`)
   }
 
   return (
     <>
-      {/* Muhurat Finder modal — live (4C-6-S3) */}
+      {/* Muhurat Finder modal — live (4C-6-S3); panchangContext injected in 4C-8 */}
       {muhuratOpen && (
         <MuhuratFinderModal
           onClose={() => setMuhuratOpen(false)}
@@ -308,6 +332,7 @@ export function ActionBar({ date }: ActionBarProps) {
           lon={location.lon}
           tzOffsetMinutes={330}
           chartId={chartId}
+          panchangContext={panchangContext}
         />
       )}
 

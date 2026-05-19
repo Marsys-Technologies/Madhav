@@ -151,6 +151,7 @@ export function PanchangClientView({
             tzOffsetMinutes={330}
             date={date}
             nativeContext={data.native_context}
+            panchangContext={data}
           />
 
           {/* Timings + Planetary Grid — two-column on md+, stacked on mobile (§4.2) */}
@@ -163,6 +164,7 @@ export function PanchangClientView({
               <PlanetaryGrid
                 planets={data.planets as Record<string, never> | null}
                 nativeContext={data.native_context}
+                panchangContext={data}
               />
             </div>
           </div>
@@ -173,6 +175,7 @@ export function PanchangClientView({
               specialYogas={data.special_yogas}
               tzOffsetMinutes={330}
               nativeContext={data.native_context}
+              panchangContext={data}
             />
           </div>
 
@@ -191,8 +194,9 @@ export function PanchangClientView({
       )}
 
       {/* Action Bar — sticky bottom on mobile, inline on desktop (§4.2) */}
+      {/* 4C-8: panchangContext passed for Ask-Madhav deep link injection */}
       <div className="mt-auto">
-        <ActionBar date={date} />
+        <ActionBar date={date} panchangContext={data ?? undefined} />
       </div>
     </div>
   )

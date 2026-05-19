@@ -712,6 +712,26 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
 
        R-TC does NOT override R7c (transit ban on vector_search/cgm_graph_walk).
 
+  R-PCI. PANCHANG CONTEXT INHERITANCE — skip query_panchanga when context block present:
+
+       When the user's message body contains a <panchang_context> block (injected
+       by the /panchang AskMadhavLink deep-link), that block IS the L1.5 Panchang
+       state for the date/location specified within it.
+
+       RULE: If <panchang_context> is present AND the <user_question> (or raw query)
+       asks about the SAME date/location as in the context block, do NOT emit
+       query_panchanga in tool_calls. The synthesis layer will cite from the injected
+       context using [PANCHANG:<field>] markers.
+
+       Exception — DO still emit query_panchanga when:
+         (a) The user asks about a DIFFERENT date or location than the one in the block.
+         (b) The user explicitly requests "re-query" or "check again".
+         (c) The context block contains `"_truncated": true` — the payload was trimmed;
+             emit query_panchanga with appropriate fields to fill in the gap.
+
+       This rule saves one tool call per chat turn when Panchang context is injected.
+       R-PCI has HIGHER PRIORITY than R-TC for the same date/location match.
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -1897,3 +1917,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.1 content extension 2026-05-17 — R28/R29/R30 + examples 4.19–4.22 added for the L1 substrate tools (planner-blind fix)*
 *v2.0.2 content extension 2026-05-18 — R31/R32 + examples 4.23–4.24 added for M9 multi-school triangulation tools (Phase 2A)*
 *v2.0.3 content extension 2026-05-19 — R-TC rule added (Panchang vs ephemeris routing disambiguation) + examples 4.25–4.27 for query_panchanga (Phase 4C-3)*
+*v2.0.4 content extension 2026-05-20 — R-PCI rule added: context inheritance — skip query_panchanga when <panchang_context> block present in query (Phase 4C-8)*
