@@ -2,7 +2,7 @@ schema_version: '1.0'
 queue_name: wave_1_phase_4c
 generated_at: '2026-05-19'
 generated_by: CONDUCTOR-S0
-total_entries: 11
+total_entries: 17
 notes: 'Wave 1: Phase 4C autonomy proving ground. 11 entries spanning phases 4C.1–4C.9.
   Phase 4C.0 is COMPLETE (sealed 4C-0 on 2026-05-19). Only 4C-1-S1 has an authored
   brief; all others require brief authoring halts. 4C-2 additionally requires the
@@ -143,141 +143,239 @@ entries:
   est_duration_min: 80
   status: passed
   closed_on: 2026-05-19
-  gate_results: "serialize 13/13 PASS; planner routing 14/14 PASS; E2E 3/3 PASS; tsc 0 errors"
+  gate_results: serialize 13/13 PASS; planner routing 14/14 PASS; E2E 3/3 PASS; tsc
+    0 errors
   human_decision_prompt: null
-- session_id: 4C-4
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
+- session_id: 4C-4-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S1_v1_0.md
   branch: feature/phase-4c-panchang
   worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
   depends_on:
   - 4C-3
-  requires_external_gate: null
-  requires_brief_authoring: true
-  requires_human_approval: true
+  requires_brief_authoring: false
+  requires_human_approval: false
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 150000
-  est_duration_min: 180
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/layout.tsx
+  - platform/src/app/panchang/page.tsx
+  - platform/src/app/panchang/components/PanchangHeader.tsx
+  - platform/src/app/panchang/components/PrimaryStrip.tsx
+  - platform/src/app/panchang/hooks/usePanchangDay.ts
+  est_tokens: 120000
+  est_duration_min: 90
   status: pending
-  human_decision_prompt: '4C-3 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
-    covering: /panchang page shell, header, primary strip (5 angas), timings panel,
-    planetary grid, date picker, location selector, and active special yogas list.
-    Gate: visual review vs Drik Panchang for 5 sample days + native sign-off on layout.
-    Note: Phase 4C.4 is 3–4 sub-sessions; Cowork should break this into S1/S2/S3/S4
-    in the brief with sequential deps.
-
-    '
+  human_decision_prompt: null
+- session_id: 4C-4-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S1
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/TimingsPanel.tsx
+  - platform/src/app/panchang/components/PlanetaryGrid.tsx
+  - platform/src/lib/format/dms.ts
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+- session_id: 4C-4-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S2
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/SpecialYogasList.tsx
+  - platform/src/app/panchang/components/ChoghadiyaPanel.tsx
+  - platform/src/app/panchang/components/HoraPanel.tsx
+  - platform/src/components/ui/star-rating.tsx
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+- session_id: 4C-4-S4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S4_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S3
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/ActionBar.tsx
+  - 00_ARCHITECTURE/PHASE_4C_4_CLOSE_v1_0.md
+  - platform/tests/visual/4C4_close_report.md
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
 - session_id: 4C-5
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
   branch: feature/phase-4c-panchang
   worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
   depends_on:
-  - 4C-4
-  requires_external_gate: null
-  requires_brief_authoring: true
-  requires_human_approval: true
+  - 4C-4-S4
+  requires_brief_authoring: false
+  requires_human_approval: false
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 100000
-  est_duration_min: 90
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/lib/panchang
+    src/app/panchang && cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -q && cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/lib/panchang/tara_bala.ts
+  - platform/src/lib/panchang/chandra_bala.ts
+  - platform/src/app/panchang/hooks/useChartList.ts
+  - platform/python-sidecar/panchang_engine/tara_bala.py
+  est_tokens: 130000
+  est_duration_min: 100
   status: pending
-  human_decision_prompt: '4C-4 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
-    covering: chart list dropdown (personalise selector), Tara Bala / Chandra Bala
-    badges, native-aware special yoga annotations, and localStorage persistence. Gate:
-    switching personalisation correctly hydrates from FORENSIC for the selected chart.
-
-    '
-- session_id: 4C-6
-  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_v1_0.md
+  human_decision_prompt: null
+- session_id: 4C-6-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S1_v1_0.md
   branch: feature/phase-4c-panchang
   worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
   depends_on:
   - 4C-5
-  requires_external_gate: null
-  requires_brief_authoring: true
-  requires_human_approval: true
+  requires_brief_authoring: false
+  requires_human_approval: false
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 150000
-  est_duration_min: 180
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -q && cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/python-sidecar/panchang_engine/muhurat.py
+  - platform/python-sidecar/panchang_engine/tests/test_muhurat_scoring.py
+  est_tokens: 140000
+  est_duration_min: 110
   status: pending
-  human_decision_prompt: '4C-5 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_6_v1_0.md
-    covering: find_muhurat() in panchang_engine with shastra scoring rubric, muhurat_weights.yaml
-    (6 MVP events: Vivah, Griha Pravesh, Naamkaran, Vidyarambha, Vyapar Aarambha,
-    and Yatra), frontend modal form + results list with star ratings, "Export this
-    window to calendar" + "Ask Madhav about this date" inline actions. Gate: 5 manual
-    test events × 30-day range each, results sensible to acharya-grade review. Phase
-    4C.6 is 3–4 sub-sessions; Cowork should break this down.
-
-    '
+  human_decision_prompt: null
+- session_id: 4C-6-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S1
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -q && cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/python-sidecar/panchang_engine/config/muhurat_weights.yaml
+  - platform/python-sidecar/panchang_engine/config_loader.py
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+- session_id: 4C-6-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S2
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/MuhuratFinderModal.tsx
+  - platform/src/app/panchang/components/MuhuratResultsList.tsx
+  - platform/src/app/panchang/hooks/useMuhuratFinder.ts
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+- session_id: 4C-6-S4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S4_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S3
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test && python3
+    00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - 00_ARCHITECTURE/PHASE_4C_6_CLOSE_v1_0.md
+  - platform/tests/visual/4C6_acharya_review.md
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
 - session_id: 4C-7
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
   branch: feature/phase-4c-panchang
   worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
   depends_on:
-  - 4C-6
-  requires_external_gate: null
-  requires_brief_authoring: true
-  requires_human_approval: true
+  - 4C-6-S4
+  requires_brief_authoring: false
+  requires_human_approval: false
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 100000
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/lib/panchang
+    src/lib/security && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/lib/panchang/ics_builder.ts
+  - platform/src/lib/security/sign_url.ts
+  - platform/src/app/api/panchang/feed.ics/route.ts
+  est_tokens: 120000
   est_duration_min: 90
   status: pending
-  human_decision_prompt: '4C-6 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
-    covering: server-side ical generation, /api/panchang/ics one-off export route,
-    /api/panchang/feed.ics subscribable feed, per-event categorisation (auspicious/avoid),
-    and signed time-boxed feed URLs (privacy — never expose chart_id in URL). Gate:
-    round-trip test: export → import to Google Calendar → events render correctly.
-
-    '
+  human_decision_prompt: null
 - session_id: 4C-8
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
   branch: feature/phase-4c-panchang
   worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
   depends_on:
   - 4C-7
-  requires_external_gate: null
-  requires_brief_authoring: true
-  requires_human_approval: true
+  requires_brief_authoring: false
+  requires_human_approval: false
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 80000
-  est_duration_min: 60
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    src/lib/synthesis && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/AskMadhavLink.tsx
+  est_tokens: 120000
+  est_duration_min: 90
   status: pending
-  human_decision_prompt: '4C-7 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
-    covering: inline "💬" affordances on every relevant Panchang element, pre-loaded
-    prompt with hidden Panchang context block, deep link into /clients/[id]/consume
-    with prompt + context. Gate: chat receives Panchang context; planner can reference
-    it without extra tool call.
-
-    '
+  human_decision_prompt: null
 - session_id: 4C-9
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
   branch: feature/phase-4c-panchang
   worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
   depends_on:
   - 4C-8
-  requires_external_gate: null
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: true
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 100000
-  est_duration_min: 90
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 platform/scripts/governance/schema_validator.py
+    && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - 00_ARCHITECTURE/PHASE_4C_CLOSE_v1_0.md
+  - HANDOFF_WAVE_1.md
+  - 00_ARCHITECTURE/RED_TEAM/RT_4C_1_FINDING.md
+  est_tokens: 130000
+  est_duration_min: 100
   status: pending
-  human_decision_prompt: '4C-8 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
-    covering: Observatory panels for Panchang sidecar latency + cache hit ratio, IS.8(b)
-    red-team pass (Phase 4 close requires this — 5-axis red-team against the full
-    Panchang workstream), PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN.md §B state
-    tracker update to CLOSED, SESSION_LOG.md Phase 4C close append, CLAUDE.md §E workstream
-    entry update to COMPLETE. Gate: IS.8(b) red-team verdict PASS; CURRENT_STATE updated
-    to 4C CLOSED.
-
-    '
+  human_decision_prompt: '4C-8 has closed. Phase 4C MVP is feature-complete. Approve
+    to execute 4C-9 (Wave 1 close): polish, telemetry, red-team, CLAUDE.md amendment
+    apply, Phase 4C close artifact, HANDOFF_WAVE_1.md. Reply APPROVE 4C-9, SKIP 4C-9,
+    or ABANDON.'
+wave_1_expanded_at: '2026-05-19'
