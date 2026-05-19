@@ -26,6 +26,45 @@ Each entry contains:
 
 <!-- Conductor appends entries below this line. Do not edit above. -->
 
+## 4C-1-S1 — PASS — 2026-05-19T18:45:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-1-S1 |
+| Result | PASS |
+| Timestamp | 2026-05-19T18:45:00+05:30 |
+| Commits | 895c2c3, 926f1f3, 556a209, 170a54e, 1bb8b39, c06f3d1, 3226022, 2384267, 82ca30c |
+| Gate exit code | 0 |
+| Context sessions used | 2 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+```
+10 passed in 0.07s — test_drik_parity_for_day[2025-01-14] PASSED, [2025-03-29] PASSED, [2025-04-13] PASSED, [2025-08-09] PASSED, [2025-10-20] PASSED, [2025-11-15] PASSED, [2026-01-26] PASSED, [2026-02-05] PASSED, [2026-05-19] PASSED, [2026-08-15] PASSED
+Full suite: 69 passed in 0.11s
+```
+
+### Sub-agent summary
+
+Session required two sub-agent runs due to stream timeout on the first attempt. First sub-agent committed Items 1–12 (including bugfix commit 3226022) and wrote governance close files to disk but timed out before committing them. Recovery sub-agent committed the 5 governance close artifacts (SESSION_LOG, CURRENT_STATE, brief status=COMPLETE, Conductor halt log, session_queue.yaml) and confirmed 69/69 tests PASS. Gate 10/10 PASS verified by orchestrator independently.
+
+### Scope items completed
+
+- AC.4C1S1.1 — Scaffold (directory, pyswisseph importable)
+- AC.4C1S1.2 — types.py (dataclasses)
+- AC.4C1S1.3 — ayanamsha.py (Lahiri default)
+- AC.4C1S1.4 — angas.py (tithi, nakshatra, yoga, karana_pair, vara)
+- AC.4C1S1.5 — planets.py (9 grahas, MEAN_NODE assertion)
+- AC.4C1S1.6 — timings.py (sunrise/sunset, inauspicious, auspicious, choghadiya, hora)
+- AC.4C1S1.7 — shastra_tables.py (18 named tables + 4 special yoga stubs)
+- AC.4C1S1.8 — __init__.py (compute_panchang, panchang_range, find_muhurat)
+- AC.4C1S1.9 — exceptions.py (hierarchy)
+- AC.4C1S1.10 — drik_panchang_v1.json (10-day self-consistency fixture)
+- AC.4C1S1.11 — test_drik_parity.py 10/10 PASS + test_angas + test_planets + test_timings (69 total)
+- AC.4C1S1.12 — README.md
+
+---
+
 ## SMOKE-S0 — PASS — 2026-05-19T15:19:30+05:30
 
 | Field | Value |
