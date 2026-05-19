@@ -27,6 +27,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s2): GFM footnote citations — synthesis prompt + MarkdownContent footnoteReference component (R6.2)"
     estimated_loc: "+40"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T01:38:00Z"
 
   - id: R7-S3
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S3-enrich-citations.md

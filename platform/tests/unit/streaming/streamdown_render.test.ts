@@ -51,6 +51,14 @@ beforeAll(async () => {
 const mk = (props: { streaming?: boolean; children: string; className?: string }) =>
   React.createElement(MarkdownContent, props)
 
+let MARKDOWN_COMPONENTS: ((streaming: boolean) => Record<string, unknown>)
+
+beforeAll(async () => {
+  // Already loaded MarkdownContent above; also grab MARKDOWN_COMPONENTS.
+  const mod = await import('@/components/chat/MarkdownContent')
+  MARKDOWN_COMPONENTS = mod.MARKDOWN_COMPONENTS as unknown as (streaming: boolean) => Record<string, unknown>
+})
+
 describe('MarkdownContent — streamdown integration', () => {
   describe('ARIA attributes', () => {
     it('sets aria-live=polite + aria-busy=true when streaming', () => {
@@ -107,6 +115,28 @@ describe('MarkdownContent — streamdown integration', () => {
     it('forwards children to Streamdown unchanged', () => {
       render(mk({ children: 'Hello world' }))
       expect(screen.getByTestId('streamdown').textContent).toBe('Hello world')
+    })
+  })
+
+  describe('GFM footnote components (R7-S2)', () => {
+    it('footnoteReference renders amber badge with identifier', () => {
+      // The footnoteReference component in MARKDOWN_COMPONENTS renders [^N] as amber badge
+      const comps = MARKDOWN_COMPONENTS(false)
+      const FootnoteRef = comps.footnoteReference as React.ComponentType<{ node?: { identifier: string } }>
+      expect(FootnoteRef).toBeDefined()
+      const { container } = render(React.createElement(FootnoteRef, { node: { identifier: '1' } }))
+      const span = container.querySelector('.bg-amber-500\\/20.text-amber-400')
+      expect(span).not.toBeNull()
+      expect(span?.textContent).toBe('1')
+    })
+
+    it('footnoteDefinition renders sr-only span (invisible)', () => {
+      const comps = MARKDOWN_COMPONENTS(false)
+      const FootnoteDef = comps.footnoteDefinition as React.ComponentType<Record<string, never>>
+      expect(FootnoteDef).toBeDefined()
+      const { container } = render(React.createElement(FootnoteDef, {}))
+      const span = container.querySelector('.sr-only')
+      expect(span).not.toBeNull()
     })
   })
 
