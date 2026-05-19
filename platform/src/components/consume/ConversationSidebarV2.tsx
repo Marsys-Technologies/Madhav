@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
-import { Archive, FolderPlus, MoreHorizontal, PenSquare, Pin, PinOff, Search, Trash2 } from 'lucide-react'
+import { Archive, FolderPlus, MoreHorizontal, PenSquare, Pin, PinOff, Search, Sparkles, Trash2 } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import {
   DropdownMenu,
@@ -264,6 +264,8 @@ export function ConversationSidebarV2({
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(false)
+  const [semanticEnabled, setSemanticEnabled] = useState(false)
+  const semanticSearchAvailable = process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH === 'true'
   const [showArchived, setShowArchived] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { folders, createFolder, renameFolder, deleteFolder } = useFolders()
@@ -312,7 +314,8 @@ export function ConversationSidebarV2({
     debounceRef.current = setTimeout(() => {
       setSearchLoading(true)
       setSearchError(false)
-      fetch(`/api/conversations/search?q=${encodeURIComponent(searchQuery)}&limit=20`)
+      const semanticParam = semanticEnabled && semanticSearchAvailable ? '&semantic=true' : ''
+      fetch(`/api/conversations/search?q=${encodeURIComponent(searchQuery)}&limit=20${semanticParam}`)
         .then(r => {
           if (!r.ok) throw new Error('search failed')
           return r.json()
@@ -330,7 +333,7 @@ export function ConversationSidebarV2({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [searchQuery])
+  }, [searchQuery, semanticEnabled, semanticSearchAvailable])
 
 
   // Local title filter for short queries (fallback to client-side when search not active).
@@ -524,16 +527,33 @@ export function ConversationSidebarV2({
 
       {/* Search input */}
       <div className="px-2 pt-2 pb-1">
-        <div className="relative flex items-center">
-          <Search className="absolute left-2 h-3 w-3 text-zinc-600 pointer-events-none" aria-hidden />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search…"
-            aria-label="Search conversations"
-            className="w-full rounded-md border border-zinc-800 bg-zinc-900 py-1 pl-6 pr-2 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-zinc-700 focus:ring-0"
-          />
+        <div className="relative flex items-center gap-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 h-3 w-3 text-zinc-600 pointer-events-none top-1/2 -translate-y-1/2" aria-hidden />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search…"
+              aria-label="Search conversations"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900 py-1 pl-6 pr-2 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-zinc-700 focus:ring-0"
+            />
+          </div>
+          {semanticSearchAvailable && (
+            <button
+              type="button"
+              onClick={() => setSemanticEnabled(v => !v)}
+              title={semanticEnabled ? 'Semantic search ON' : 'Semantic search OFF'}
+              aria-pressed={semanticEnabled}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors ${
+                semanticEnabled
+                  ? 'bg-indigo-600/30 text-indigo-400'
+                  : 'text-zinc-600 hover:text-zinc-400'
+              }`}
+            >
+              <Sparkles className="h-3 w-3" aria-hidden />
+            </button>
+          )}
         </div>
       </div>
 
