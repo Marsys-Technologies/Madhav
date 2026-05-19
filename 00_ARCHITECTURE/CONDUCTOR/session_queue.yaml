@@ -141,7 +141,7 @@ entries:
   - platform/python-sidecar/panchang_engine/serialize.py
   est_tokens: 110000
   est_duration_min: 80
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 - session_id: 4C-4
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
