@@ -24656,3 +24656,100 @@ session_close:
   session_close_valid: true
   claudecode_brief_status: COMPLETE
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-4-S1
+  session_name: "4C-4-S1 — /panchang route shell + Header + Primary Strip"
+  opened_at: "2026-05-20T00:20:00+05:30"
+  executor: "Claude Code sub-agent (Sonnet 4.6)"
+  branch: feature/phase-4c-panchang
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S1_v1_0.md
+  pre_flight: PASS
+  may_touch:
+    - platform/src/app/panchang/**
+    - platform/src/components/shared/AppShellRail.tsx
+    - platform/src/components/shared/MobileNavSheet.tsx
+    - platform/src/app/api/panchanga/route.ts
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S1_v1_0.md
+  must_not_touch:
+    - platform/python-sidecar/**
+    - platform/src/lib/retrieve/**
+    - 00_ARCHITECTURE/CONDUCTOR/**
+
+session_body:
+  scope_items_completed:
+    - AC.4C4S1.1: "auth-gated layout.tsx — ZoneRoot ink + AppShell; redirect on no ctx or inactive"
+    - AC.4C4S1.2: "page.tsx server component — SSR via fetchPanchangSSR direct sidecar call; initialData to client"
+    - AC.4C4S1.3: "loading.tsx 6-row skeleton + error.tsx with unstable_retry (Next.js 16)"
+    - AC.4C4S1.4: "PanchangHeader — date ◀/▶ + calendar + 6-preset location dropdown + custom lat/lon + disabled Personalise shell; URL param state"
+    - AC.4C4S1.5: "PrimaryStrip — 6-row anga display; Sanskrit labels; ordinal Tithi; UTC→IST ends_at; second Karana row"
+    - AC.4C4S1.6: "usePanchangDay TanStack Query hook — queryKey=[panchang,date,lat,lon,chartId]; refetchOnWindowFocus=false; staleTime 5min"
+    - AC.4C4S1.7: "AppShellRail + MobileNavSheet Panchang nav entry — lunar crescent SVG; all roles; active state"
+    - AC.4C4S1.8: "brand tokens throughout — gold #fce29a/#d4af37; dark bg #1c1c1a; CSS variables; no hardcoded colors"
+    - AC.4C4S1.9: "27/27 component tests PASS (PanchangHeader + resolveDate/resolveLocation; PrimaryStrip)"
+    - AC.4C4S1.10: "session close — CURRENT_STATE v5.18; SESSION_LOG appended; brief COMPLETE"
+  new_files:
+    - platform/src/app/panchang/layout.tsx
+    - platform/src/app/panchang/page.tsx
+    - platform/src/app/panchang/loading.tsx
+    - platform/src/app/panchang/error.tsx
+    - platform/src/app/panchang/components/PanchangHeader.tsx
+    - platform/src/app/panchang/components/PrimaryStrip.tsx
+    - platform/src/app/panchang/components/PanchangClientView.tsx
+    - platform/src/app/panchang/hooks/usePanchangDay.ts
+    - platform/src/app/panchang/__tests__/PanchangHeader.test.tsx
+    - platform/src/app/panchang/__tests__/PrimaryStrip.test.tsx
+    - platform/src/app/api/panchanga/route.ts
+  modified_files:
+    - platform/src/components/shared/AppShellRail.tsx
+    - platform/src/components/shared/MobileNavSheet.tsx
+
+session_close:
+  closed_at: "2026-05-20T00:55:00+05:30"
+  status: PASS
+  ac_results:
+    - name: AC.4C4S1.1_route_layout
+      result: PASS
+      detail: "auth-gated layout.tsx; ZoneRoot ink; AppShell; redirect on !ctx or inactive"
+    - name: AC.4C4S1.2_page_entry
+      result: PASS
+      detail: "SSR via fetchPanchangSSR (direct sidecar); initialData to PanchangClientView"
+    - name: AC.4C4S1.3_loading_error
+      result: PASS
+      detail: "loading.tsx 6-row skeleton; error.tsx unstable_retry (Next.js 16)"
+    - name: AC.4C4S1.4_panchang_header
+      result: PASS
+      detail: "date ◀/▶ + calendar + 6 presets + custom lat/lon + disabled Personalise; URL params"
+    - name: AC.4C4S1.5_primary_strip
+      result: PASS
+      detail: "6 anga rows; Sanskrit labels; ordinal Tithi; UTC→IST; second Karana"
+    - name: AC.4C4S1.6_use_panchang_day_hook
+      result: PASS
+      detail: "TanStack Query; queryKey=[panchang,date,lat,lon,chartId]; refetchOnWindowFocus=false"
+    - name: AC.4C4S1.7_sidebar_nav
+      result: PASS
+      detail: "lunar crescent SVG; all roles; active state highlights in AppShellRail + MobileNavSheet"
+    - name: AC.4C4S1.8_brand_styling
+      result: PASS
+      detail: "gold tokens; dark bg; CSS variables; no hardcoded hex outside CSS var fallbacks"
+    - name: AC.4C4S1.9_component_tests
+      result: PASS
+      detail: "27/27 vitest PASS; PanchangHeader (15 cases) + PrimaryStrip (12 cases)"
+    - name: AC.4C4S1.10_session_close
+      result: PASS
+      detail: "CURRENT_STATE v5.18; SESSION_LOG appended; brief COMPLETE"
+  gate_results: "27/27 vitest PASS; tsc 0 errors; pre-flight 5/5 PASS"
+  mirror_enforcer: "not run (no MP.1/MP.2 changes this session — UI-only work)"
+  drift_detector: "not run (UI-only session; governance files untouched except CURRENT_STATE + SESSION_LOG)"
+  commits: 1 (b76ad13)
+  next_session_id: 4C-4-S2
+  next_session_objective: "Panchang timings grid + planetary positions panel (TimingsPanel + PlanetaryGrid)"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+```

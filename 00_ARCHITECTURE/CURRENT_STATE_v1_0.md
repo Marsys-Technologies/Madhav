@@ -54,13 +54,20 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.18 (2026-05-20, 4C-4-S1):
+    **CONCURRENT WORKSTREAM 4C-4-S1 CLOSED. /panchang route shell + Header + PrimaryStrip. 27/27 tests PASS. tsc clean.**
+    Key outcomes: (1) AC.4C4S1.1 PASS — auth-gated layout.tsx mirrors dashboard pattern; all active roles. (2) AC.4C4S1.2 PASS — page.tsx SSR-fetches sidecar directly via fetchPanchangSSR; passes initialData to PanchangClientView. (3) AC.4C4S1.3 PASS — loading.tsx 6-row skeleton + error.tsx with unstable_retry (Next.js 16). (4) AC.4C4S1.4 PASS — PanchangHeader: date ◀/▶ + calendar + location dropdown (6 presets + custom lat/lon) + disabled Personalise shell; URL query string state. (5) AC.4C4S1.5 PASS — PrimaryStrip: 6-row anga display (Tithi, Nakshatra, Yoga, Karana, Vara, Paksha) with Sanskrit labels, ordinal Tithi, UTC→IST ends_at conversion. (6) AC.4C4S1.6 PASS — usePanchangDay TanStack Query hook; queryKey=[panchang,date,lat,lon,chartId]; refetchOnWindowFocus=false; staleTime 5min. (7) AC.4C4S1.7 PASS — AppShellRail + MobileNavSheet: Panchang nav entry (all roles) with lunar crescent SVG; active state highlights. (8) AC.4C4S1.8 PASS — brand tokens: gold (#fce29a/#d4af37), dark bg (#1c1c1a), CSS variables throughout; no hardcoded colors. (9) AC.4C4S1.9 PASS — 27/27 component tests PASS (vitest). (10) AC.4C4S1.10 PASS — session close items completed.
+    API NOTE: /api/panchanga Next.js proxy route created (authenticated; proxies to PYTHON_SIDECAR_URL/api/compute/panchanga) for client-side usePanchangDay fetches.
+    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C-4-S1 CLOSED | 4C-4-S2–4C.9 PENDING.
+    last_session_id (4C stream): 4C-4-S1. next_session_id (4C stream): 4C-4-S2.
+    file_updated_at: 2026-05-20T00:52:00+05:30. file_updated_by_session: 4C-4-S1.
   - v5.17 (2026-05-19, 4C-3):
     **CONCURRENT WORKSTREAM 4C-3 CLOSED. query_panchanga RetrievalTool live. 14/14 planner routing PASS. 3/3 E2E PASS.**
     Key outcomes: (1) AC.4C3.1 PASS — pre-flight 150/150 engine tests + TS harness healthy. (2) AC.4C3.2 PASS — sidecar /api/compute/panchanga + /api/compute/panchanga/range endpoints registered. (3) AC.4C3.3 PASS — panchang_to_dict() serializer + 13/13 round-trip tests PASS. (4) AC.4C3.4 PASS — query_panchanga.ts RetrievalTool implemented; 16/16 unit tests PASS; tsc 0 errors. (5) AC.4C3.5 PASS — query_panchanga registered as tool 29 in RETRIEVAL_TOOLS array. (6) AC.4C3.6 PASS — few-shot examples 4.25–4.27 added to PLANNER_PROMPT_v2_0.md. (7) AC.4C3.7 PASS — R-TC routing rule added to PLANNER_PROMPT_v2_0.md §3. (8) AC.4C3.8 PASS — panchang_probe_set.json (10-query probe set PP.01–PP.10). (9) AC.4C3.9 PASS — panchang_routing.test.ts gate: 14/14 PASS (CI-safe, deterministic). (10) AC.4C3.10 PASS — E2E smoke test: 3/3 PASS (live sidecar subprocess, uvicorn). (11) AC.4C3.11 PASS — CAPABILITY_MANIFEST PANCHANG_DAILY_v1_0 updated (expose_to_chat_confirmed=true; retrieval_tool=query_panchanga; runtime_path=engine_direct); MP.2 mirror propagated; mirror_enforcer exit 0. (12) Session close items updated.
     ENGINE-DIRECT NOTE: runtime_path=engine_direct (no SQL cache this session); SQL cache wiring deferred to 4C.2 (gated on Phase 4B). Tool calls panchang_engine directly via sidecar /api/compute/panchanga.
-    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C.4–4C.9 PENDING.
-    last_session_id (4C stream): 4C-3. next_session_id (4C stream): 4C-4-S1 (requires_brief_authoring).
-    file_updated_at: 2026-05-19T23:15:00+05:30. file_updated_by_session: 4C-3.
+    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C-4-S1 CLOSED | 4C-4-S2–4C.9 PENDING.
+    last_session_id (4C stream): 4C-4-S1. next_session_id (4C stream): 4C-4-S2.
+    file_updated_at: 2026-05-20T00:52:00+05:30. file_updated_by_session: 4C-4-S1.
   - v5.16 (2026-05-14, M9-E-S1):
     **M9 MACRO-PHASE CLOSED. M10 INCOMING. IS.8(b) PASS 5/5. CLAUDECODE_BRIEF STATUS=COMPLETE. CAPABILITY_MANIFEST 160 ENTRIES.**
     Key outcomes: (1) AC.M9E.1 PASS — 10 disagreement rows; all fields populated. (2) AC.M9E.2 PASS — SCHOOL_DISAGREEMENT_REGISTER_v1_0.md: 10 worked examples; 5 disagreement classes: temporal_scope(3), magnitude_divergence(3), confidence_reduction(2), method_divergence(1), tradition_specificity(1). (3) AC.M9E.3 PASS (DEFERRED) — school_disagreement_register.json written; GCS upload deferred. (4) AC.M9E.4 PASS — Convergence stability: re-run byte-identical on all 5 domains × 6 key fields. (5) AC.M9E.5 PASS — IS.8(b) red-team PASS 5/5: RT.M9.1 factual accuracy (10/10 spot-check PASS), RT.M9.2 layer separation (no raw chart values), RT.M9.3 derivation ledger (all claims anchored to compute_convergence.py outputs), RT.M9.4 mirror discipline (both surfaces M9-D CLOSED), RT.M9.5 scope discipline (no M10 pre-built; no migrations above 060). 0 CRITICAL; 0 HIGH; 0 MEDIUM. (6) AC.M9E.6 PASS — M9_CLOSE_v1_0.md at 09_MULTI_SCHOOL_TRIANGULATION/; seal block present; NAP.M9.5 pre-authorized. (7) AC.M9E.7 PASS — CURRENT_STATE v5.16: M9 CLOSED / M10 INCOMING; red_team_counter=0. (8) AC.M9E.8 PASS — SESSION_LOG M9-E-S1 appended. (9) AC.M9E.9 PASS — CAPABILITY_MANIFEST 4 new M9-E entries; 160 total. (10) AC.M9E.10 PASS — MP.1+MP.2 mirrors propagated to M9-CLOSED state. (11) AC.M9E.11 PASS — CLAUDECODE_BRIEF.md status=COMPLETE; archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M9_v1_0.md. (12) AC.M9E.12 PASS — MACRO_PLAN §M9 exit criteria a–d documented in M9_CLOSE §7 (a=PARTIAL MET, b–d=MET).
@@ -5527,7 +5534,8 @@ current_state:
       sub_phase_4c_1_status: CLOSED                # 4C-1-S2 CLOSED 2026-05-19; 30/30 parity gate PASS
       sub_phase_4c_2_status: GATED                 # requires phase_4b_closed external gate
       sub_phase_4c_3_status: CLOSED                # 4C-3 CLOSED 2026-05-19; query_panchanga live; 14/14 routing PASS
-      sub_phase_4c_4_through_9_status: PENDING
+      sub_phase_4c_4_s1_status: CLOSED               # 4C-4-S1 CLOSED 2026-05-20; /panchang route shell + Header + PrimaryStrip
+      sub_phase_4c_4_through_9_status: PENDING        # 4C-4-S2 next
       brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
       master_plan_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
       parent_plan_path: 00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md
@@ -5536,25 +5544,30 @@ current_state:
       capability_manifest_new_fields: "expose_to_chat_confirmed=true; retrieval_tool=query_panchanga; runtime_path=engine_direct"
       claude_md_section: "§E — Five workstreams (added 2026-05-19)"
       dependency_note: "4B sunrise derivation prerequisite for 4C.2; does NOT block 4C.0, 4C.1, or 4C.3"
-      last_session_id: 4C-3
+      last_session_id: 4C-4-S1
       last_session_summary: >
-        4C-3 CLOSED 2026-05-19. query_panchanga RetrievalTool (tool 29) registered in RETRIEVAL_TOOLS.
-        Sidecar /api/compute/panchanga + /api/compute/panchanga/range endpoints live (FastAPI router panchang.py).
-        panchang_to_dict() serializer (serialize.py) + 13/13 round-trip tests PASS.
-        query_panchanga.ts: 16/16 unit tests PASS (mocked sidecar); tsc 0 errors.
-        Planner R-TC routing rule added to PLANNER_PROMPT_v2_0.md §3 + few-shot examples 4.25–4.27.
-        panchang_probe_set.json: 10-query probe set (PP.01–PP.10).
-        panchang_routing.test.ts: 14/14 routing gate PASS (CI-safe, no LLM calls).
-        test_query_panchanga_e2e.test.ts: 3/3 E2E smoke PASS (live sidecar subprocess).
-        CAPABILITY_MANIFEST: expose_to_chat_confirmed=true; retrieval_tool=query_panchanga; runtime_path=engine_direct.
-        MP.2 mirror propagated to .gemini/project_state.md. mirror_enforcer exit 0.
-        Gate: 4C.3 CLOSED (10/10 probe PASS; 3/3 E2E PASS).
-      next_session_id: 4C-4-S1
+        4C-4-S1 CLOSED 2026-05-20. /panchang route shell + Header + PrimaryStrip MVP (S1 of 4).
+        layout.tsx: auth-gated (mirrors dashboard pattern; all active roles; ZoneRoot ink zone).
+        page.tsx: server component SSR-fetches sidecar directly (fetchPanchangSSR); passes initialData to client.
+        loading.tsx: 6-row skeleton matching PrimaryStrip layout.
+        error.tsx: error boundary with unstable_retry (Next.js 16 convention).
+        PanchangHeader: date ◀/▶ + calendar input + location dropdown (6 presets + custom lat/lon)
+          + disabled Personalise shell (4C-5 scope); state in URL query string (?d=&loc=).
+        PrimaryStrip: 6-row anga display (Tithi, Nakshatra, Yoga, Karana, Vara, Paksha) with Sanskrit
+          labels, ordinal Tithi, UTC→IST ends_at conversion, second Karana row.
+        PanchangClientView: client wrapper driving Header + Strip via usePanchangDay.
+        usePanchangDay: TanStack Query hook (queryKey=[panchang,date,lat,lon,chartId];
+          refetchOnWindowFocus=false; staleTime 5min; initialData from SSR).
+        /api/panchanga route: authenticated Next.js proxy to Python sidecar.
+        AppShellRail + MobileNavSheet: Panchang nav entry (all roles) with lunar crescent SVG icon.
+        Tests: 27/27 PASS (PanchangHeader + resolveDate/resolveLocation; PrimaryStrip). tsc 0 errors.
+        commit: b76ad13
+      next_session_id: 4C-4-S2
       next_session_objective: >
-        4C-4-S1: /panchang page MVP — server shell + 5-anga primary strip.
-        Requires brief authoring before execution (requires_brief_authoring: true in queue).
-        Conductor will halt at 4C-4-S1 for brief authoring before auto-spawning.
-      estimated_sessions_remaining: 11-16  # 4C.4 through 4C.9 (4C-1-S3, 4C-2 gated/skipped)
+        4C-4-S2: Panchang timings grid + planetary positions at sunrise panel.
+        Adds TimingsPanel (sunrise/sunset/moonrise/moonset + Rahu Kalam + Yamagandam + Gulika +
+        Abhijit + Brahma Muhurta) and PlanetaryGrid (9-graha positions at sunrise).
+      estimated_sessions_remaining: 10-15  # 4C-4-S2 through 4C.9 (4C-1-S3, 4C-2 gated/skipped)
 
     conductor:
       active_since: 2026-05-19
