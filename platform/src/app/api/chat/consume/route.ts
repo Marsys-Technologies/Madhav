@@ -47,6 +47,8 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
+import { CheckpointHaltError } from '@/lib/checkpoints/types'
+import type { CheckpointDashaResult } from '@/lib/checkpoints/types'
 import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
@@ -819,6 +821,25 @@ export async function POST(request: Request) {
     }),
   }
   let { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+    // §5C: CheckpointHaltError from checkpoint_dasha (or other checkpoints with FAIL_HARD).
+    // Not a provider error — do NOT attempt the QG6.1 model fallback.
+    // Return HTTP 422 immediately with structured violation detail.
+    if (primaryErr instanceof CheckpointHaltError) {
+      const dashaResult = primaryErr.result as CheckpointDashaResult
+      const violations = (dashaResult.claims ?? [])
+        .filter(c => c.verdict === 'halt')
+        .map(c => ({ span: c.span, lord: c.lord, temporal: c.temporal, violation: c.violation }))
+      return NextResponse.json(
+        {
+          error: 'VALIDATOR_FAILURE',
+          validator: primaryErr.checkpoint_id,
+          violations,
+          retry_count: 2,
+          message: `Synthesis violated DASHA DISCIPLINE GATE after 2 retries. The dasha schedule for this chart is in chart_facts category='dasha_vimshottari'; refetch via query_dasha_periods.`,
+        },
+        { status: 422 },
+      ) as unknown as Awaited<ReturnType<typeof orchestrator.synthesize>>
+    }
     // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
     // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
     const fallbackId = stackSynthFallback

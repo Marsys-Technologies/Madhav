@@ -88,6 +88,13 @@ export type FeatureFlag =
   // Super-admin always sees cost; this flag gates it for lower tiers.
   // Env: MARSYS_FLAG_COST_VISIBILITY_FOR_USERS.
   | 'COST_VISIBILITY_FOR_USERS'
+  // Phase 5C — Dasha post-synthesis validator. Default false for safe rollout;
+  // flip CHECKPOINT_DASHA_ENABLED=true after hand-test verifies DSH.V.NNN citations
+  // resolve correctly in prod. FAIL_HARD default true once enabled — the whole
+  // point is to halt hallucinations, not just log them.
+  // Env: MARSYS_FLAG_CHECKPOINT_DASHA_ENABLED / MARSYS_FLAG_CHECKPOINT_DASHA_FAIL_HARD.
+  | 'CHECKPOINT_DASHA_ENABLED'
+  | 'CHECKPOINT_DASHA_FAIL_HARD'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -147,6 +154,11 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   HISTORY_COMPRESSION_ENABLED: false,
   // γ6 — Cost visibility for non-admin users. Default false.
   COST_VISIBILITY_FOR_USERS: false,
+  // Phase 5C — Dasha validator. Default false (safe rollout).
+  // Flip CHECKPOINT_DASHA_ENABLED=true after prod hand-test.
+  // FAIL_HARD default true — once enabled, halt on violations.
+  CHECKPOINT_DASHA_ENABLED: false,
+  CHECKPOINT_DASHA_FAIL_HARD: true,
 }
 
 // Numeric config keys (read via configService.getValue)

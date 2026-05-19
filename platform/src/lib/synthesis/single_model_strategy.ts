@@ -47,7 +47,9 @@ import { getFlag } from '@/lib/config/index'
 import { runCheckpoint4_5 } from '@/lib/checkpoints/checkpoint_4_5'
 import { runCheckpoint5_5 } from '@/lib/checkpoints/checkpoint_5_5'
 import { runCheckpoint8_5 } from '@/lib/checkpoints/checkpoint_8_5'
-import type { Checkpoint45Result, Checkpoint55Result, Checkpoint85Result } from '@/lib/checkpoints/types'
+import { runCheckpointDasha, detectDashaRelevance, buildDashaRemediationPrompt } from '@/lib/checkpoints/checkpoint_dasha'
+import type { Checkpoint45Result, Checkpoint55Result, Checkpoint85Result, CheckpointDashaResult } from '@/lib/checkpoints/types'
+import { CheckpointHaltError } from '@/lib/checkpoints/types'
 import { countSignalCitations } from './citation_check'
 import { runAll } from '@/lib/validators/index'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
@@ -758,6 +760,80 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
         onAuditEvent?.(auditEvent)
       },
     })
+
+    // ── Hook 4: Checkpoint Dasha (buffer+validate, pre-return) ──────────────────
+    // Only activates when CHECKPOINT_DASHA_ENABLED=true AND the query is dasha-
+    // relevant (regex over query text or query_plan.tool_calls inspection).
+    // Non-dasha queries return immediately — streaming UX fully preserved.
+    //
+    // For dasha-relevant queries:
+    //   1. Await result.text to buffer the full synthesis (AI SDK fan-out stream:
+    //      toUIMessageStream() still works after this read).
+    //   2. Validate via runCheckpointDasha (deterministic regex + chart_facts SQL).
+    //   3. If halt: append remediation prompt and re-call streamText (retry ≤2×).
+    //   4. After MAX_RETRIES and still halt: throw CheckpointHaltError when
+    //      CHECKPOINT_DASHA_FAIL_HARD=true; route.ts catches and returns HTTP 422.
+    const MAX_DASHA_RETRIES = 2
+    if (
+      getFlag('CHECKPOINT_DASHA_ENABLED') &&
+      detectDashaRelevance({ query, query_plan })
+    ) {
+      let currentResult = result
+      let dashaCheckResult: CheckpointDashaResult | undefined
+
+      for (let attempt = 0; attempt <= MAX_DASHA_RETRIES; attempt++) {
+        const synthesizedText = await currentResult.text
+
+        try {
+          dashaCheckResult = await runCheckpointDasha({
+            query,
+            query_plan,
+            synthesized_text: synthesizedText,
+          })
+        } catch (err) {
+          // runCheckpointDasha throws CheckpointHaltError when FAIL_HARD=true.
+          // Catch so the retry loop can proceed; re-throw after exhausting retries.
+          if (
+            err instanceof CheckpointHaltError &&
+            err.checkpoint_id === 'checkpoint_dasha'
+          ) {
+            dashaCheckResult = err.result as CheckpointDashaResult
+          } else {
+            throw err
+          }
+        }
+
+        if (!dashaCheckResult || dashaCheckResult.verdict !== 'halt') break
+
+        if (attempt < MAX_DASHA_RETRIES) {
+          telemetry.recordMetric('checkpoint_dasha', `retry_${attempt + 1}`, 1)
+          const remediationSuffix = await buildDashaRemediationPrompt(
+            dashaCheckResult.claims.filter(c => c.verdict === 'halt'),
+          )
+          currentResult = streamText({
+            model: resolveModel(selected_model_id),
+            messages: [
+              { ...systemMessage, content: renderedPrompt + remediationSuffix },
+              ...historyMessages,
+              { role: 'user', content: userContent },
+            ],
+            tools: synthesisTools,
+            toolChoice: synthesisTools ? ('none' as const) : undefined,
+            stopWhen: stepCountIs(5),
+            maxOutputTokens: effectiveMaxTokens,
+            temperature: synthesisTemperature,
+            maxRetries: synthesisMaxRetries,
+          })
+        }
+      }
+
+      if (dashaCheckResult?.verdict === 'halt' && getFlag('CHECKPOINT_DASHA_FAIL_HARD')) {
+        telemetry.recordMetric('checkpoint_dasha', 'hard_fail', 1)
+        throw new CheckpointHaltError('checkpoint_dasha', dashaCheckResult)
+      }
+
+      return { result: currentResult, metadata, methodologyBlockHolder, usageHolder }
+    }
 
     return { result, metadata, methodologyBlockHolder, usageHolder }
   }
