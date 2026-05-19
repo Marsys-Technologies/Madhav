@@ -426,10 +426,11 @@ def compute_vara(d) -> Anga:
         d = d.date()
 
     # Python weekday: Mon=0..Sun=6
-    # Hindu vara: Sun=1, Mon=2, ..., Sat=7
-    # Python Sunday=6 → Hindu 1; Monday=0 → Hindu 2; ...
+    # Hindu vara: Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6, Sat=7
+    # Mapping: Sun(6)→1, Mon(0)→2, Tue(1)→3, Wed(2)→4, Thu(3)→5, Fri(4)→6, Sat(5)→7
+    # Formula: hindu_vara = (py_wd + 1) % 7 + 1
     py_wd = d.weekday()  # 0=Mon..6=Sun
-    hindu_vara = ((py_wd + 2) % 7) + 1  # Sun→1, Mon→2, ..., Sat→7
+    hindu_vara = (py_wd + 1) % 7 + 1  # Sun(6)→1, Mon(0)→2, ..., Sat(5)→7
 
     vara_info = VARA_NAMES[hindu_vara]
     name = vara_info["name_sanskrit"]

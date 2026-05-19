@@ -89,8 +89,10 @@ def compute_sunrise_sunset(d: date, lat: float, lon: float,
     jd_start = _date_to_jd_local_noon(d, tz_offset) - 0.75   # ~6 hours before noon local = start of day
 
     # Sunrise
+    # swe.rise_trans signature: (tjdut, body, rsmi, geopos, atpress, attemp, flags)
+    # body is the planet int; rsmi is CALC_RISE/CALC_SET; no star name needed for planets.
     sunrise_result = swe.rise_trans(
-        jd_start, swe.SUN, None, swe.CALC_RISE, geopos, 1013.25, 10.0
+        jd_start, swe.SUN, swe.CALC_RISE, geopos, 1013.25, 10.0
     )
     if sunrise_result[0] == -2:
         raise OutOfRangeError(
@@ -101,7 +103,7 @@ def compute_sunrise_sunset(d: date, lat: float, lon: float,
 
     # Sunset — search from shortly after sunrise
     sunset_result = swe.rise_trans(
-        sunrise_jd + 0.1, swe.SUN, None, swe.CALC_SET, geopos, 1013.25, 10.0
+        sunrise_jd + 0.1, swe.SUN, swe.CALC_SET, geopos, 1013.25, 10.0
     )
     if sunset_result[0] == -2:
         raise OutOfRangeError(
@@ -136,12 +138,12 @@ def compute_moonrise_moonset(d: date, lat: float, lon: float,
     moonset_utc = None
 
     # Moonrise
-    r = swe.rise_trans(jd_start, swe.MOON, None, swe.CALC_RISE, geopos, 1013.25, 10.0)
+    r = swe.rise_trans(jd_start, swe.MOON, swe.CALC_RISE, geopos, 1013.25, 10.0)
     if r[0] == 0 and r[1][0] > 0:
         moonrise_utc = _jd_to_utc(r[1][0])
 
     # Moonset — search from a bit before start to capture moonsets early in the day
-    s = swe.rise_trans(jd_start, swe.MOON, None, swe.CALC_SET, geopos, 1013.25, 10.0)
+    s = swe.rise_trans(jd_start, swe.MOON, swe.CALC_SET, geopos, 1013.25, 10.0)
     if s[0] == 0 and s[1][0] > 0:
         moonset_utc = _jd_to_utc(s[1][0])
 
