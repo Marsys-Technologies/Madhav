@@ -4,18 +4,20 @@
  * ActionBar — three-button action bar for the /panchang page.
  *
  * Buttons per §4.2 mockup:
- *   1. 🔎 Find Muhurat — shell (Muhurat Finder full impl deferred to 4C-6)
+ *   1. 🔎 Find Muhurat — opens MuhuratFinderModal (wired in 4C-6-S3)
  *   2. 📅 Export to Calendar — shell (deferred to 4C-7)
  *   3. 💬 Ask Madhav about this day — navigates to /clients/:id/consume with pre-loaded prompt
  *
  * Sticky bottom on mobile; inline on desktop.
  *
- * Phase: 4C-4-S4 (Item 1)
+ * Phase: 4C-4-S4 (Item 1); 4C-6-S3 (Item 5 — Find Muhurat wired)
  */
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, CalendarDays, MessageCircle, X } from 'lucide-react'
+import { MuhuratFinderModal } from './MuhuratFinderModal'
+import { resolveLocation, resolveChartId } from './PanchangHeader'
 
 // Native's chart client ID — used for Ask-Madhav deep link.
 // Phase 4C-8 will enhance this with full context-block deep-linking.
@@ -27,7 +29,7 @@ interface ActionBarProps {
 }
 
 /**
- * Coming-soon modal — shown for unimplemented actions (Muhurat Finder, Calendar Export).
+ * Coming-soon modal — shown for unimplemented actions (Calendar Export).
  */
 function ComingSoonModal({
   title,
@@ -86,7 +88,12 @@ function ComingSoonModal({
 
 export function ActionBar({ date }: ActionBarProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [modal, setModal] = useState<'muhurat' | 'export' | null>(null)
+
+  // Resolve current location + chart from URL (mirrors PanchangClientView / PanchangHeader)
+  const location = resolveLocation(searchParams)
+  const chartId = resolveChartId(searchParams)
 
   function handleAskMadhav() {
     const prompt = encodeURIComponent(
@@ -97,14 +104,17 @@ export function ActionBar({ date }: ActionBarProps) {
 
   return (
     <>
-      {/* Coming-soon modals */}
+      {/* Muhurat Finder modal — live (4C-6-S3) */}
       {modal === 'muhurat' && (
-        <ComingSoonModal
-          title="🔎 Muhurat Finder"
-          phase="Phase 4C-6"
+        <MuhuratFinderModal
           onClose={() => setModal(null)}
+          lat={location.lat}
+          lon={location.lon}
+          tzOffsetMinutes={330}
+          chartId={chartId}
         />
       )}
+      {/* Coming-soon modal for Calendar Export (4C-7) */}
       {modal === 'export' && (
         <ComingSoonModal
           title="📅 Export to Calendar"
@@ -129,29 +139,22 @@ export function ActionBar({ date }: ActionBarProps) {
         role="group"
       >
         <div className="mx-auto flex max-w-4xl flex-col gap-2 sm:flex-row sm:gap-3">
-          {/* Find Muhurat — shell, coming in 4C-6 */}
+          {/* Find Muhurat — live in 4C-6-S3 */}
           <button
             onClick={() => setModal('muhurat')}
-            aria-label="Find Muhurat (coming in Phase 4C-6)"
-            title="Muhurat Finder — Phase 4C-6"
+            aria-label="Find Muhurat — opens Muhurat Finder"
+            title="Muhurat Finder"
             className="
               flex flex-1 items-center justify-center gap-2
-              rounded-xl border border-[rgba(212,175,55,0.20)] bg-[rgba(212,175,55,0.05)]
-              px-4 py-3 text-sm font-medium
-              transition-colors hover:bg-[rgba(212,175,55,0.10)]
+              rounded-xl border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.10)]
+              px-4 py-3 text-sm font-semibold
+              transition-colors hover:bg-[rgba(212,175,55,0.18)] hover:border-[rgba(212,175,55,0.50)]
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]
             "
-            style={{ color: 'rgba(212,175,55,0.65)' }}
+            style={{ color: 'var(--brand-gold)' }}
           >
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>Find Muhurat</span>
-            <span
-              className="ml-auto rounded-full border border-[rgba(212,175,55,0.15)] bg-[rgba(212,175,55,0.08)] px-2 py-0.5 text-xs"
-              style={{ color: 'rgba(212,175,55,0.40)' }}
-              aria-hidden="true"
-            >
-              4C-6
-            </span>
           </button>
 
           {/* Export to Calendar — shell, coming in 4C-7 */}
