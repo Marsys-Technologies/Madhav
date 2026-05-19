@@ -1,308 +1,274 @@
----
-schema_version: "1.0"
+schema_version: '1.0'
 queue_name: wave_1_phase_4c
-generated_at: "2026-05-19"
+generated_at: '2026-05-19'
 generated_by: CONDUCTOR-S0
 total_entries: 11
-notes: >
-  Wave 1: Phase 4C autonomy proving ground. 11 entries spanning phases 4C.1–4C.9.
-  Phase 4C.0 is COMPLETE (sealed 4C-0 on 2026-05-19).
-  Only 4C-1-S1 has an authored brief; all others require brief authoring halts.
-  4C-2 additionally requires the phase_4b_closed external gate.
+notes: 'Wave 1: Phase 4C autonomy proving ground. 11 entries spanning phases 4C.1–4C.9.
+  Phase 4C.0 is COMPLETE (sealed 4C-0 on 2026-05-19). Only 4C-1-S1 has an authored
+  brief; all others require brief authoring halts. 4C-2 additionally requires the
+  phase_4b_closed external gate.
 
+  '
 external_gates:
   phase_4b_closed:
-    description: >
-      Phase 4B ephemeris sunrise + MEAN_NODE rebuild must close before 4C.2 backfill.
-      4C.2 requires the rebuilt ephemeris_daily table with correct MEAN_NODE Rahu values.
-    check_command: |
-      cd /Users/Dev/Vibe-Coding/Apps/Madhav && \
-      grep -q "PHASE_4B.*CLOSED\|4B.*CLOSED\|Phase 4B.*CLOSED\|4B.*COMPLETE" \
-        00_ARCHITECTURE/CURRENT_STATE_v1_0.md
-    blocker_human_prompt: >
-      Phase 4B is still PENDING. 4C.2 (Cloud SQL panchang_daily schema + backfill)
-      requires the rebuilt ephemeris_daily table with MEAN_NODE Rahu fix applied.
-      Defer 4C.2 until Phase 4B closes, or explicitly SKIP 4C-2 to proceed with the
-      legacy TRUE_NODE ephemeris (not recommended — known Rahu accuracy bug).
+    description: 'Phase 4B ephemeris sunrise + MEAN_NODE rebuild must close before
+      4C.2 backfill. 4C.2 requires the rebuilt ephemeris_daily table with correct
+      MEAN_NODE Rahu values.
 
+      '
+    check_command: "cd /Users/Dev/Vibe-Coding/Apps/Madhav && \\\ngrep -q \"PHASE_4B.*CLOSED\\\
+      |4B.*CLOSED\\|Phase 4B.*CLOSED\\|4B.*COMPLETE\" \\\n  00_ARCHITECTURE/CURRENT_STATE_v1_0.md\n"
+    blocker_human_prompt: 'Phase 4B is still PENDING. 4C.2 (Cloud SQL panchang_daily
+      schema + backfill) requires the rebuilt ephemeris_daily table with MEAN_NODE
+      Rahu fix applied. Defer 4C.2 until Phase 4B closes, or explicitly SKIP 4C-2
+      to proceed with the legacy TRUE_NODE ephemeris (not recommended — known Rahu
+      accuracy bug).
+
+      '
 entries:
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.1 — panchang_engine Python library (3 sessions)
-  # ─────────────────────────────────────────────────────────────────────────
+- session_id: 4C-1-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S1_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on: []
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: 'cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/sidecar/panchang_engine
+    && \
 
-  - session_id: 4C-1-S1
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S1_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on: []
-    requires_external_gate: null
-    requires_brief_authoring: false
-    requires_human_approval: false
-    push_to_remote: false
-    gate_command: |
-      cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/sidecar/panchang_engine && \
-      pytest -v tests/test_drik_parity.py && \
-      python /Users/Dev/Vibe-Coding/Apps/Panchang/platform/scripts/governance/schema_validator.py
-    expected_artifacts:
-      - platform/sidecar/panchang_engine/__init__.py
-      - platform/sidecar/panchang_engine/angas.py
-      - platform/sidecar/panchang_engine/tests/fixtures/drik_panchang_v1.json
-    est_tokens: 120000
-    est_duration_min: 90
-    status: passed
-    human_decision_prompt: null
+    pytest -v tests/test_drik_parity.py && \
 
-  - session_id: 4C-1-S2
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S2_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-1-S1
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 120000
-    est_duration_min: 90
-    status: pending
-    human_decision_prompt: >
-      4C-1-S1 has closed. Cowork session needed to author
-      CLAUDECODE_BRIEF_PHASE_4C_1_S2_v1_0.md covering: special_yogas.py implementation,
-      Drik fixture extension to 30 days (10 days in S1), muhurat scoring scaffold,
-      and shastra_tables.py lookup tables. Scope: platform/sidecar/panchang_engine/ only.
+    python /Users/Dev/Vibe-Coding/Apps/Panchang/platform/scripts/governance/schema_validator.py
 
-  - session_id: 4C-1-S3
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-1-S2
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 100000
-    est_duration_min: 75
-    status: pending
-    human_decision_prompt: >
-      4C-1-S2 has closed. Cowork session needed to author
-      CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md covering: 30-day Drik validation gate
-      run (all 30 days must pass tolerance), phase 4C.1 close artifact, gate command
-      tuning if any days still fail tolerance. Final gate: all 30 days PASS.
+    '
+  expected_artifacts:
+  - platform/sidecar/panchang_engine/__init__.py
+  - platform/sidecar/panchang_engine/angas.py
+  - platform/sidecar/panchang_engine/tests/fixtures/drik_panchang_v1.json
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  human_decision_prompt: null
+- session_id: 4C-1-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-1-S1
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -v tests/test_drik_parity.py tests/test_special_yogas.py tests/test_muhurat.py
+    && python3 /Users/Dev/Vibe-Coding/Apps/Panchang/00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/python-sidecar/panchang_engine/special_yogas.py
+  - platform/python-sidecar/panchang_engine/tests/fixtures/drik_panchang_v2.json
+  - 00_ARCHITECTURE/PHASE_4C_1_CLOSE_v1_0.md
+  est_tokens: 140000
+  est_duration_min: 110
+  status: pending
+  human_decision_prompt: null
+- session_id: 4C-1-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-1-S2
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: '4C-1-S2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
+    covering: 30-day Drik validation gate run (all 30 days must pass tolerance), phase
+    4C.1 close artifact, gate command tuning if any days still fail tolerance. Final
+    gate: all 30 days PASS.
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.2 — Schema + cache + sidecar wiring (2 sessions)
-  # Blocked until phase_4b_closed gate is satisfied
-  # ─────────────────────────────────────────────────────────────────────────
+    '
+- session_id: 4C-2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-1-S3
+  requires_external_gate: phase_4b_closed
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 130000
+  est_duration_min: 120
+  status: pending
+  human_decision_prompt: '4C-1-S3 has closed AND phase_4b_closed gate is satisfied.
+    Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md covering:
+    migration 060 (panchang_daily table), sidecar /api/compute/panchanga route extension,
+    panchang_engine wired into sidecar, and the ~292K row backfill job for Bhubaneswar
+    + Delhi 1900–2100. Gate: 100 sampled rows byte-for-byte match fresh re-computation.
 
-  - session_id: 4C-2
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-1-S3
-    requires_external_gate: phase_4b_closed
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 130000
-    est_duration_min: 120
-    status: pending
-    human_decision_prompt: >
-      4C-1-S3 has closed AND phase_4b_closed gate is satisfied. Cowork session needed
-      to author CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md covering: migration 060
-      (panchang_daily table), sidecar /api/compute/panchanga route extension,
-      panchang_engine wired into sidecar, and the ~292K row backfill job for
-      Bhubaneswar + Delhi 1900–2100. Gate: 100 sampled rows byte-for-byte match
-      fresh re-computation.
+    '
+- session_id: 4C-3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-2
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: '4C-2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
+    covering: query_panchanga.ts RetrievalTool, RETRIEVAL_TOOLS registration, PLANNER_PROMPT_v2_0.md
+    few-shot example, R-TC rule extension, and 10-probe planner verification set.
+    Gate: 10/10 planner picks correct tool on probe set.
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.3 — query_panchanga RetrievalTool (1 session)
-  # ─────────────────────────────────────────────────────────────────────────
+    '
+- session_id: 4C-4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-3
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 150000
+  est_duration_min: 180
+  status: pending
+  human_decision_prompt: '4C-3 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
+    covering: /panchang page shell, header, primary strip (5 angas), timings panel,
+    planetary grid, date picker, location selector, and active special yogas list.
+    Gate: visual review vs Drik Panchang for 5 sample days + native sign-off on layout.
+    Note: Phase 4C.4 is 3–4 sub-sessions; Cowork should break this into S1/S2/S3/S4
+    in the brief with sequential deps.
 
-  - session_id: 4C-3
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-2
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 100000
-    est_duration_min: 75
-    status: pending
-    human_decision_prompt: >
-      4C-2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
-      covering: query_panchanga.ts RetrievalTool, RETRIEVAL_TOOLS registration,
-      PLANNER_PROMPT_v2_0.md few-shot example, R-TC rule extension, and 10-probe
-      planner verification set. Gate: 10/10 planner picks correct tool on probe set.
+    '
+- session_id: 4C-5
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 100000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: '4C-4 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
+    covering: chart list dropdown (personalise selector), Tara Bala / Chandra Bala
+    badges, native-aware special yoga annotations, and localStorage persistence. Gate:
+    switching personalisation correctly hydrates from FORENSIC for the selected chart.
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.4 — /panchang page MVP (multi-session, modelled as one placeholder)
-  # ─────────────────────────────────────────────────────────────────────────
+    '
+- session_id: 4C-6
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-5
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 150000
+  est_duration_min: 180
+  status: pending
+  human_decision_prompt: '4C-5 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_6_v1_0.md
+    covering: find_muhurat() in panchang_engine with shastra scoring rubric, muhurat_weights.yaml
+    (6 MVP events: Vivah, Griha Pravesh, Naamkaran, Vidyarambha, Vyapar Aarambha,
+    and Yatra), frontend modal form + results list with star ratings, "Export this
+    window to calendar" + "Ask Madhav about this date" inline actions. Gate: 5 manual
+    test events × 30-day range each, results sensible to acharya-grade review. Phase
+    4C.6 is 3–4 sub-sessions; Cowork should break this down.
 
-  - session_id: 4C-4
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-3
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 150000
-    est_duration_min: 180
-    status: pending
-    human_decision_prompt: >
-      4C-3 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
-      covering: /panchang page shell, header, primary strip (5 angas), timings panel,
-      planetary grid, date picker, location selector, and active special yogas list.
-      Gate: visual review vs Drik Panchang for 5 sample days + native sign-off on layout.
-      Note: Phase 4C.4 is 3–4 sub-sessions; Cowork should break this into S1/S2/S3/S4
-      in the brief with sequential deps.
+    '
+- session_id: 4C-7
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 100000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: '4C-6 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
+    covering: server-side ical generation, /api/panchang/ics one-off export route,
+    /api/panchang/feed.ics subscribable feed, per-event categorisation (auspicious/avoid),
+    and signed time-boxed feed URLs (privacy — never expose chart_id in URL). Gate:
+    round-trip test: export → import to Google Calendar → events render correctly.
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.5 — Personalise dropdown + native overlay (1–2 sessions)
-  # ─────────────────────────────────────────────────────────────────────────
+    '
+- session_id: 4C-8
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-7
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 80000
+  est_duration_min: 60
+  status: pending
+  human_decision_prompt: '4C-7 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
+    covering: inline "💬" affordances on every relevant Panchang element, pre-loaded
+    prompt with hidden Panchang context block, deep link into /clients/[id]/consume
+    with prompt + context. Gate: chat receives Panchang context; planner can reference
+    it without extra tool call.
 
-  - session_id: 4C-5
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-4
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 100000
-    est_duration_min: 90
-    status: pending
-    human_decision_prompt: >
-      4C-4 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
-      covering: chart list dropdown (personalise selector), Tara Bala / Chandra Bala
-      badges, native-aware special yoga annotations, and localStorage persistence.
-      Gate: switching personalisation correctly hydrates from FORENSIC for the selected chart.
+    '
+- session_id: 4C-9
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-8
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 100000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: '4C-8 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
+    covering: Observatory panels for Panchang sidecar latency + cache hit ratio, IS.8(b)
+    red-team pass (Phase 4 close requires this — 5-axis red-team against the full
+    Panchang workstream), PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN.md §B state
+    tracker update to CLOSED, SESSION_LOG.md Phase 4C close append, CLAUDE.md §E workstream
+    entry update to COMPLETE. Gate: IS.8(b) red-team verdict PASS; CURRENT_STATE updated
+    to 4C CLOSED.
 
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.6 — Muhurat Finder (multi-session)
-  # ─────────────────────────────────────────────────────────────────────────
-
-  - session_id: 4C-6
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-5
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 150000
-    est_duration_min: 180
-    status: pending
-    human_decision_prompt: >
-      4C-5 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_6_v1_0.md
-      covering: find_muhurat() in panchang_engine with shastra scoring rubric,
-      muhurat_weights.yaml (6 MVP events: Vivah, Griha Pravesh, Naamkaran, Vidyarambha,
-      Vyapar Aarambha, and Yatra), frontend modal form + results list with star ratings,
-      "Export this window to calendar" + "Ask Madhav about this date" inline actions.
-      Gate: 5 manual test events × 30-day range each, results sensible to acharya-grade
-      review. Phase 4C.6 is 3–4 sub-sessions; Cowork should break this down.
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.7 — Calendar Export (.ics) (1–2 sessions)
-  # ─────────────────────────────────────────────────────────────────────────
-
-  - session_id: 4C-7
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-6
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 100000
-    est_duration_min: 90
-    status: pending
-    human_decision_prompt: >
-      4C-6 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
-      covering: server-side ical generation, /api/panchang/ics one-off export route,
-      /api/panchang/feed.ics subscribable feed, per-event categorisation (auspicious/avoid),
-      and signed time-boxed feed URLs (privacy — never expose chart_id in URL).
-      Gate: round-trip test: export → import to Google Calendar → events render correctly.
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.8 — Ask-Madhav prompt suggestions (1 session)
-  # ─────────────────────────────────────────────────────────────────────────
-
-  - session_id: 4C-8
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-7
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 80000
-    est_duration_min: 60
-    status: pending
-    human_decision_prompt: >
-      4C-7 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
-      covering: inline "💬" affordances on every relevant Panchang element,
-      pre-loaded prompt with hidden Panchang context block, deep link into
-      /clients/[id]/consume with prompt + context.
-      Gate: chat receives Panchang context; planner can reference it without extra tool call.
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4C.9 — Polish, telemetry, close (1 session)
-  # ─────────────────────────────────────────────────────────────────────────
-
-  - session_id: 4C-9
-    brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
-    branch: feature/phase-4c-panchang
-    worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
-    depends_on:
-      - 4C-8
-    requires_external_gate: null
-    requires_brief_authoring: true
-    requires_human_approval: true
-    push_to_remote: false
-    gate_command: ""
-    expected_artifacts: []
-    est_tokens: 100000
-    est_duration_min: 90
-    status: pending
-    human_decision_prompt: >
-      4C-8 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
-      covering: Observatory panels for Panchang sidecar latency + cache hit ratio,
-      IS.8(b) red-team pass (Phase 4 close requires this — 5-axis red-team against
-      the full Panchang workstream), PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN.md §B
-      state tracker update to CLOSED, SESSION_LOG.md Phase 4C close append,
-      CLAUDE.md §E workstream entry update to COMPLETE.
-      Gate: IS.8(b) red-team verdict PASS; CURRENT_STATE updated to 4C CLOSED.
+    '
