@@ -25477,3 +25477,139 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-8
+  session_name: "4C-8 — Ask-Madhav prompt deep links + Panchang context block injection"
+  phase: "Phase 4C (concurrent workstream)"
+  date: 2026-05-20
+  executor: "Claude Code sub-agent (Conductor)"
+  branch: feature/phase-4c-panchang
+  predecessor_session: 4C-7
+  brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
+  may_touch:
+    - "platform/src/app/panchang/components/AskMadhavLink.tsx (new)"
+    - "platform/src/app/panchang/components/PrimaryStrip.tsx"
+    - "platform/src/app/panchang/components/SpecialYogasList.tsx"
+    - "platform/src/app/panchang/components/PlanetaryGrid.tsx"
+    - "platform/src/app/panchang/components/MuhuratResultsList.tsx"
+    - "platform/src/app/panchang/components/MuhuratFinderModal.tsx"
+    - "platform/src/app/panchang/components/ActionBar.tsx"
+    - "platform/src/app/panchang/components/PanchangClientView.tsx"
+    - "platform/src/app/clients/[id]/consume/page.tsx"
+    - "platform/src/lib/claude/system-prompts.ts"
+    - "00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md"
+    - "platform/src/test-setup.ts"
+    - "platform/src/app/panchang/__tests__/ (tests)"
+    - "governance state files; this brief"
+  must_not_touch:
+    - "sidecar; engine; retrieve/; muhurat backend; iCal code from 4C-7; corpus; master plan"
+
+session_body:
+  items_completed:
+    - id: "Item 1 — AskMadhavLink component"
+      ac: AC.4C8.1
+      result: PASS
+      detail: >
+        AskMadhavLink.tsx created. serialiseContext(): checks TextEncoder byte length;
+        if >10,240 trims to {_truncated, _note, date, lat, lon, angas, timings:{sunrise_utc,sunset_utc}}.
+        AskMadhavLink props: prompt, panchang_context?, chart_id?, className?, ariaLabel?.
+        Ghost h-6 w-6 rounded-full MessageCircle icon button. On click: URLSearchParams with
+        prompt + context; router.push to /clients/${chart_id}/consume?${params}.
+        Exports: AskMadhavLink, serialiseContext, DEFAULT_CHART_ID='abhisek_mohanty_primary'.
+
+    - id: "Item 2 — Context block injection at chat entry"
+      ac: AC.4C8.2
+      result: PASS
+      detail: >
+        consume/page.tsx updated. searchParams typed as Promise<Record<string,string|string[]|undefined>>.
+        buildPanchangInitialMessages(prompt,contextJson): produces UIMessage[] or undefined.
+        Content format: <panchang_context>\n<!-- AUTO-INJECTED FROM /panchang ON YYYY-MM-DD -->\n{json}\n</panchang_context>\n\n<user_question>\n{prompt}\n</user_question>.
+        Malformed JSON → falls back to plain prompt message.
+        initialMessages passed to <ConsumeChat initialMessages={initialMessages} />.
+
+    - id: "Item 3 — Synthesis prompt awareness"
+      ac: AC.4C8.3
+      result: PASS
+      detail: >
+        consumeSystemPrompt() in system-prompts.ts gains PANCHANG CONTEXT appendix before blindMode block.
+        Instructs LLM: if <panchang_context> present → treat as authoritative L1.5; cite [PANCHANG:<field>];
+        skip query_panchanga unless different date/location, user explicitly requests re-query,
+        or _truncated:true in context.
+
+    - id: "Item 4 — Planner context-recognition rule"
+      ac: AC.4C8.4
+      result: PASS
+      detail: >
+        PLANNER_PROMPT_v2_0.md R-PCI rule added after R-TC. HIGHER PRIORITY than R-TC for same
+        date/location match. Skip query_panchanga when <panchang_context> present + same date/location.
+        Exception cases: different date/location, user requests re-query, _truncated:true.
+        Footer updated to v2.0.4 content extension 2026-05-20.
+
+    - id: "Item 5 — Wire AskMadhavLink throughout /panchang"
+      ac: AC.4C8.5
+      result: PASS
+      detail: >
+        5 surfaces wired:
+        (a) PrimaryStrip Tithi row: "What does ${tithiName} mean for me today?"
+        (b) PrimaryStrip Tara Bala row (personalised): "Is today's ${nakshatraName} Nakshatra a Tara day for me?"
+        (c) SpecialYogasList auspicious yoga rows: "Explain why today's ${meta.display} matters for major decisions."
+        (d) PlanetaryGrid retrograde graha cards: "What is ${spec.english} retrograde doing in my chart right now?"
+        (e) MuhuratResultsList result rows: "Walk me through why Muhurat #${rank} is ranked highest for ${event}."
+        PanchangClientView passes panchangContext={data} / panchangContext={data??undefined} to all.
+
+    - id: "Item 6 — Context-budget guard"
+      ac: AC.4C8.6
+      result: PASS
+      detail: >
+        serialiseContext() tested: 15 KB single-day → _truncated:true, essentials preserved, output ≤10 KB.
+        30-day range (150 KB) → _truncated:true, output ≤10 KB.
+        MuhuratResultsList uses serialiseContext() from AskMadhavLink import.
+        ActionBar inline budget guard (same logic) for Ask-Madhav deep link.
+
+    - id: "Item 7 — UX polish"
+      ac: AC.4C8.7
+      result: PASS
+      detail: >
+        Ghost h-6 w-6 rounded-full buttons with opacity-0 → group-hover:opacity-100 or inline opacity-60 hover:opacity-100.
+        Hover tooltip: title + aria-label show truncated prompt preview (≤60 chars + ellipsis).
+        No heavy visual weight; no competition with primary Panchang content.
+
+    - id: "Item 8 — Tests"
+      ac: AC.4C8.8
+      result: PASS
+      detail: >
+        20 new tests: AskMadhavLink.test.tsx (11 tests: serialiseContext x4, component x7);
+        PanchangContextInjection.test.ts (9 tests: buildPanchangInitialMessages utility).
+        MuhuratFinderModal.test.tsx: 2 stale 4C-7-era tests retired (disabled state + phase hint);
+        replaced with 2 current tests (enabled state + aria-label format).
+        Global vi.mock('next/navigation') added to test-setup.ts — prevents router invariant
+        in component tests that transitively import AskMadhavLink.
+        167/167 total tests PASS. tsc 0 errors.
+        Commits: fb08415 (Items 1-7, 11 files); 95ceb91 (Item 8, 4 files).
+
+    - id: "Item 9 — Close protocol"
+      ac: AC.4C8.9
+      result: PASS
+      detail: >
+        CURRENT_STATE v5.25: 4C.8 CLOSED; 4C.9 PENDING; last=4C-8; next=4C-9.
+        SESSION_LOG appended (this entry). Brief status=COMPLETE.
+        Queue advanced to 4C-9 (polish, telemetry, close).
+
+session_close:
+  test_suite: "167/167 panchang tests PASS (20 new AskMadhavLink+ContextInjection + 147 prior)"
+  mirror_enforcer: "not run (no MP.1/MP.2 governance surface changes this session beyond planner prompt)"
+  drift_detector: "not run (new component files; no canonical artifact mutations)"
+  commits:
+    - fb08415  # Items 1-7: AskMadhavLink + context injection + planner rule + component wiring
+    - 95ceb91  # Item 8: Tests — 20 new tests PASS, 167/167 total
+    - <close_commit>  # Item 9: close protocol
+  next_session_id: 4C-9
+  next_session_objective: "Phase 4C polish, telemetry, and close"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```
