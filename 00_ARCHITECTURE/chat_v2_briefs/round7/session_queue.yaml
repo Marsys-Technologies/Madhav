@@ -1,0 +1,67 @@
+---
+# R7 Session Queue — Chat V2 Polish Round
+# Conductor pattern: each session is self-contained; depends_on enforces order.
+# Run: open the worktree at /Users/Dev/Vibe-Coding/Apps/MadhavR7 and execute sessions in order.
+round: R7
+branch: chat-v2/round7-polish
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR7
+master_plan: 00_ARCHITECTURE/chat_v2_briefs/round7/R7_MASTER_PLAN_v1_0.md
+authored: 2026-05-20
+---
+
+sessions:
+  - id: R7-S1
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S1-citation-double-wrap-fix.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && npx jest --testPathPattern=preprocessCitations --passWithNoTests"
+    commit_template: "fix(chat-v2/r7-s1): citation double-wrap — negative lookbehind + export preprocessCitations"
+    estimated_loc: "+25 (fix + test file)"
+    risk: low
+
+  - id: R7-S2
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S2-footnote-citations.md
+    depends_on: [R7-S1]
+    acceptance_check: "cd platform && npx tsc --noEmit && npx jest --testPathPattern=streamdown_render --passWithNoTests && grep -q 'footnoteReference' src/components/chat/MarkdownContent.tsx"
+    commit_template: "feat(chat-v2/r7-s2): GFM footnote citations — synthesis prompt + MarkdownContent footnoteReference component (R6.2)"
+    estimated_loc: "+40"
+    risk: low
+
+  - id: R7-S3
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S3-enrich-citations.md
+    depends_on: [R7-S1, R7-S2]
+    acceptance_check: "cd platform && npx tsc --noEmit && npx eslint src/app/api/chat/consume/route.ts src/components/chat/CitationSidePanel.tsx --max-warnings 0"
+    commit_template: "feat(chat-v2/r7-s3): enrich citations server-side — fetchMsrSnippets + layer badge in CitationSidePanel (R6.3)"
+    estimated_loc: "+60"
+    risk: medium
+
+  - id: R7-S4
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S4-citation-panel-default-open.md
+    depends_on: [R7-S3]
+    acceptance_check: "cd platform && npx tsc --noEmit && npx jest --testPathPattern=CitationSidePanel --passWithNoTests"
+    commit_template: "feat(chat-v2/r7-s4): citation panel auto-opens after streaming with all citations; pin becomes highlight"
+    estimated_loc: "+35"
+    risk: low
+
+  - id: R7-S5
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S5-auto-continue-on-truncation.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && test -f src/app/api/chat/consume/continue/route.ts && grep -q 'Continue' src/components/chat/AssistantMessage.tsx"
+    commit_template: "feat(chat-v2/r7-s5): truncation banner Continue button + /api/chat/consume/continue route"
+    estimated_loc: "+80 (new route + UI)"
+    risk: medium
+
+  - id: R7-S6
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S6-composer-draft-persistence.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && grep -q 'useDraft' src/hooks/useChatPreferences.ts && grep -q 'useDraft' src/components/chat/Composer.tsx"
+    commit_template: "feat(chat-v2/r7-s6): composer draft persistence — useDraft hook + debounced localStorage write + clear-on-send"
+    estimated_loc: "+50"
+    risk: low
+
+  - id: R7-S7
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S7-a11y-polish.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && npx jest --testPathPattern=a11y --passWithNoTests && grep -q 'aria-live' src/components/chat/AssistantMessage.tsx"
+    commit_template: "feat(chat-v2/r7-s7): a11y polish — stream-end aria-live + skip-to-content + j/k message nav + action keybinds"
+    estimated_loc: "+70"
+    risk: low
