@@ -1,7 +1,7 @@
 ---
 canonical_id: PHASE_5_DASHA_CORRECTNESS_MASTER_PLAN
 version: 1.0
-status: ACTIVE — §5A CLOSED; §5B PENDING
+status: ACTIVE — §5A CLOSED; §5B CLOSED; §5C PENDING
 author: Claude (analysis stream)
 authored_on: 2026-05-19
 campaign_name: Phase 5 Dasha Correctness
@@ -79,7 +79,10 @@ campaign:
         commit_target: feat(dasha): query_dasha_periods tool + R-DA rule + chart_facts_query dasha extension (§5A)
         commit_actual: 67b36de
       5B_synthesis_dasha_gate:
-        status: PENDING — author after 5A closes
+        status: CLOSED
+        closing_commit_sha: 8649aae
+        closed_on: 2026-05-19
+        brief: briefs/PHASE_5B_DASHA_DISCIPLINE_BRIEF_v1_0.md
         scope: |
           DASHA DISCIPLINE GATE added to all 4 synthesis prompt templates
           (predictive / factual / holistic / remedial). Mandates DSH.V.NNN
@@ -87,6 +90,21 @@ campaign:
           extrapolating from generic Vimshottari knowledge when bundle
           rows are present. Emits [EXTERNAL_COMPUTATION_REQUIRED] when
           rows missing.
+        outputs:
+          - platform/src/lib/prompts/templates/shared.ts (DASHA_DISCIPLINE_GATE export)
+          - platform/src/lib/prompts/templates/predictive.ts (gate injected; v3.0→3.1)
+          - platform/src/lib/prompts/templates/factual.ts (gate injected; v2.0→2.1)
+          - platform/src/lib/prompts/templates/holistic.ts (gate injected; v2.0→2.1)
+          - platform/src/lib/prompts/templates/remedial.ts (gate injected; v2.0→2.1)
+          - platform/src/lib/prompts/__tests__/prompts.test.ts (F025 fixture — 8 new §5B tests)
+          - 00_ARCHITECTURE/BRIEFS/PHASE_5B_DASHA_DISCIPLINE_BRIEF_v1_0.md (brief)
+        acceptance:
+          - tsc green
+          - 165/165 prompts tests pass (8 new F025 §5B tests)
+          - planner_regression_gate 2/2 PASS
+          - DASHA DISCIPLINE GATE present in all 4 mandated templates
+          - interpretive/cross_domain/discovery/cross_native NOT gated
+          - version numbers bumped per brief §3
         depends_on: 5A
       5C_dasha_validator:
         status: PENDING — author after 5B closes
