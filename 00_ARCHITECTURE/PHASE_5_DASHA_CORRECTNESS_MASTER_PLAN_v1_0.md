@@ -1,7 +1,7 @@
 ---
 canonical_id: PHASE_5_DASHA_CORRECTNESS_MASTER_PLAN
 version: 1.0
-status: ACTIVE — §5A AUTHORED_READY_TO_EXECUTE
+status: ACTIVE — §5A CLOSED; §5B PENDING
 author: Claude (analysis stream)
 authored_on: 2026-05-19
 campaign_name: Phase 5 Dasha Correctness
@@ -39,7 +39,9 @@ campaign:
     closed: null
     sub_phases:
       5A_dasha_tool_plus_planner:
-        status: AUTHORED_READY_TO_EXECUTE
+        status: CLOSED
+        closing_commit_sha: 67b36de
+        closed_on: 2026-05-19
         brief: briefs/PHASE_5A_DASHA_TOOL_BRIEF_v1_0.md
         scope: |
           Stage 0: baseline audit of "wrong-next-MD" failure rate on the
@@ -75,6 +77,7 @@ campaign:
           - planner_regression_gate green (no drops on existing 82-entry set)
           - Baseline audit doc captured with N samples + wrong-rate %
         commit_target: feat(dasha): query_dasha_periods tool + R-DA rule + chart_facts_query dasha extension (§5A)
+        commit_actual: 67b36de
       5B_synthesis_dasha_gate:
         status: PENDING — author after 5A closes
         scope: |
