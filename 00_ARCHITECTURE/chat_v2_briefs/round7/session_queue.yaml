@@ -77,3 +77,5 @@ sessions:
     commit_template: "feat(chat-v2/r7-s7): a11y polish — stream-end aria-live + skip-to-content + j/k message nav + action keybinds"
     estimated_loc: "+70"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T03:25:00Z"
