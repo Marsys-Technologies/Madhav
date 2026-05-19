@@ -10,9 +10,9 @@
  * Part of Chat V2 Chrome Parity Phase C — item C.11.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
-import { MoreHorizontal, PenSquare, Trash2 } from 'lucide-react'
+import { MoreHorizontal, PenSquare, Search, Trash2 } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import {
   DropdownMenu,
@@ -30,6 +30,12 @@ interface ConversationSummary {
   created_at: string
   updated_at: string | null
   archived_at: string | null
+}
+
+interface SearchResult {
+  id: string
+  title: string
+  snippet: string
 }
 
 export interface ConversationSidebarV2Props {
@@ -83,6 +89,33 @@ function SectionHeader({ label }: { label: DateGroup }) {
     <p className="px-3 pt-3 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] select-none">
       {label}
     </p>
+  )
+}
+
+function SearchResultItem({
+  result,
+  active,
+  onSelect,
+}: {
+  result: SearchResult
+  active: boolean
+  onSelect: (id: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(result.id)}
+      className={`w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${
+        active
+          ? 'bg-indigo-600/20 text-indigo-300'
+          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+      }`}
+    >
+      <div className="truncate">{result.title}</div>
+      {result.snippet && (
+        <div className="mt-0.5 truncate text-[10px] text-zinc-600">{result.snippet}</div>
+      )}
+    </button>
   )
 }
 
@@ -169,6 +202,11 @@ export function ConversationSidebarV2({
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const reload = useCallback(() => {
     setLoading(true)
@@ -184,15 +222,59 @@ export function ConversationSidebarV2({
   }, [chartId])
 
   useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- initial load on mount */
     reload()
   }, [reload])
 
   // E.1: reload when server signals a title was set (fires once on the first turn).
   useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- triggered reload on title change */
     if (reloadTrigger !== undefined && reloadTrigger > 0) reload()
   }, [reloadTrigger, reload])
 
+  // Debounced FTS search — fires after 300ms of no keystroke, only when query >= 2 chars.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (searchQuery.length < 2) {
+      /* eslint-disable react-hooks/set-state-in-effect -- reset search state on short query */
+      setSearchResults(null)
+      setSearchError(false)
+      /* eslint-enable react-hooks/set-state-in-effect */
+      return
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setSearchLoading(true)
+      setSearchError(false)
+      fetch(`/api/conversations/search?q=${encodeURIComponent(searchQuery)}&limit=20`)
+        .then(r => {
+          if (!r.ok) throw new Error('search failed')
+          return r.json()
+        })
+        .then((data: { conversations: SearchResult[] }) => {
+          setSearchResults(data.conversations)
+        })
+        .catch(() => {
+          setSearchError(true)
+          setSearchResults(null)
+        })
+        .finally(() => setSearchLoading(false))
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [searchQuery])
+
   const groups = useMemo(() => groupConversations(conversations), [conversations])
+
+  // Local title filter for short queries (fallback to client-side when search not active).
+  const localFiltered = useMemo(() => {
+    if (searchQuery.length === 0 || searchQuery.length >= 2) return null
+    const lower = searchQuery.toLowerCase()
+    return conversations.filter(c => (c.title ?? '').toLowerCase().includes(lower))
+  }, [conversations, searchQuery])
 
   // ── Collapsed strip ────────────────────────────────────────────────────────
 
@@ -263,20 +345,57 @@ export function ConversationSidebarV2({
         </div>
       </div>
 
+      {/* Search input */}
+      <div className="px-2 pt-2 pb-1">
+        <div className="relative flex items-center">
+          <Search className="absolute left-2 h-3 w-3 text-zinc-600 pointer-events-none" aria-hidden />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search…"
+            aria-label="Search conversations"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-900 py-1 pl-6 pr-2 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-zinc-700 focus:ring-0"
+          />
+        </div>
+      </div>
+
       {/* Conversation list */}
       <div className="flex-1 overflow-y-auto py-1">
-        {loading && conversations.length === 0 && (
-          <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
+        {/* FTS search results mode */}
+        {searchQuery.length >= 2 && (
+          <>
+            {searchLoading && (
+              <p className="px-3 py-2 text-xs text-zinc-500">Searching…</p>
+            )}
+            {searchError && !searchLoading && (
+              <p className="px-3 py-2 text-xs text-zinc-500">Search unavailable</p>
+            )}
+            {!searchLoading && !searchError && searchResults !== null && searchResults.length === 0 && (
+              <p className="px-3 py-4 text-xs text-zinc-600 text-center">No results</p>
+            )}
+            {!searchLoading && !searchError && searchResults !== null && searchResults.length > 0 && (
+              <div className="px-1">
+                {searchResults.map(result => (
+                  <SearchResultItem
+                    key={result.id}
+                    result={result}
+                    active={result.id === activeId}
+                    onSelect={onSelect}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {!loading && conversations.length === 0 && (
-          <p className="px-3 py-4 text-xs text-zinc-600 text-center">No conversations yet</p>
-        )}
-
-        {groups.map(({ label, items }) => (
-          <div key={label}>
-            <SectionHeader label={label} />
-            {items.map((conv) => (
+        {/* Local title filter mode (1 char) */}
+        {localFiltered !== null && (
+          <>
+            {localFiltered.length === 0 && (
+              <p className="px-3 py-4 text-xs text-zinc-600 text-center">No results</p>
+            )}
+            {localFiltered.map(conv => (
               <ConversationItem
                 key={conv.id}
                 conv={conv}
@@ -286,8 +405,37 @@ export function ConversationSidebarV2({
                 onDelete={onDelete}
               />
             ))}
-          </div>
-        ))}
+          </>
+        )}
+
+        {/* Normal mode (no search) */}
+        {searchQuery.length === 0 && (
+          <>
+            {loading && conversations.length === 0 && (
+              <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
+            )}
+
+            {!loading && conversations.length === 0 && (
+              <p className="px-3 py-4 text-xs text-zinc-600 text-center">No conversations yet</p>
+            )}
+
+            {groups.map(({ label, items }) => (
+              <div key={label}>
+                <SectionHeader label={label} />
+                {items.map((conv) => (
+                  <ConversationItem
+                    key={conv.id}
+                    conv={conv}
+                    active={conv.id === activeId}
+                    onSelect={onSelect}
+                    onRename={onRename}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       {/* L4: Brand anchor — low-volume Logo at bottom of expanded sidebar */}
