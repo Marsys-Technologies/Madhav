@@ -109,6 +109,19 @@ export type FeatureFlag =
   | 'R8_VISION_ENABLED'
   // R8-S8: Conversation export (MD / JSON / PDF).
   | 'R8_EXPORT_ENABLED'
+  // R9-S1: Projects abstraction. Gates sidebar grouping, /api/projects/** routes,
+  // and synthesis prompt injection. Default false — production unaffected until
+  // explicitly enabled. Env: MARSYS_FLAG_R9_PROJECTS.
+  | 'R9_PROJECTS'
+  // R9-S2: Semantic conversation search. Requires pgvector + embedding backfill.
+  // Default false — flip after backfill job completes. Env: MARSYS_FLAG_R9_SEMANTIC_SEARCH.
+  | 'R9_SEMANTIC_SEARCH'
+  // R9-S3: Persona library. ModelStylePicker persona group + settings page.
+  // Default true (additive, no risk). Env: MARSYS_FLAG_R9_PERSONAS.
+  | 'R9_PERSONAS'
+  // R9-S4: Inline tool-flow timeline in AssistantMessage. Admin-only.
+  // Default false — flip for super_admin after smoke verification. Env: MARSYS_FLAG_R9_TOOL_FLOW.
+  | 'R9_TOOL_FLOW'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -180,6 +193,11 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R8_SLASH_ENABLED: false,
   R8_VISION_ENABLED: false,
   R8_EXPORT_ENABLED: false,
+  // R9 flags — all default false/true as per master plan
+  R9_PROJECTS: false,
+  R9_SEMANTIC_SEARCH: false,
+  R9_PERSONAS: true,
+  R9_TOOL_FLOW: false,
 }
 
 // Numeric config keys (read via configService.getValue)

@@ -154,6 +154,36 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     }
     let renderedPrompt = renderTemplate(template, variables, style)
 
+    // ── R9: Context injection prefix (persona → project → main prompt) ───────
+    // Build prefix blocks and prepend atomically so ordering is guaranteed:
+    //   [PERSONA] ... [END PERSONA]
+    //   [PROJECT CONTEXT] ... [END PROJECT CONTEXT]
+    //   <main synthesis prompt>
+    // Each block is only emitted when its respective flag is ON and content exists.
+    const prefixBlocks: string[] = []
+
+    // R9-S3: Persona system prompt (leads the prefix).
+    if (
+      getFlag('R9_PERSONAS') &&
+      request.persona_system_prompt &&
+      request.persona_system_prompt.trim().length > 0
+    ) {
+      prefixBlocks.push(`[PERSONA]\n${request.persona_system_prompt.trim()}\n[END PERSONA]`)
+    }
+
+    // R9-S1: Project system prompt addition.
+    if (
+      getFlag('R9_PROJECTS') &&
+      request.project_system_prompt_addition &&
+      request.project_system_prompt_addition.trim().length > 0
+    ) {
+      prefixBlocks.push(`[PROJECT CONTEXT]\n${request.project_system_prompt_addition.trim()}\n[END PROJECT CONTEXT]`)
+    }
+
+    if (prefixBlocks.length > 0) {
+      renderedPrompt = prefixBlocks.join('\n\n') + '\n\n' + renderedPrompt
+    }
+
     // ── Reasoning-mode prompt gating ─────────────────────────────────────────
     // REASONING_NARRATION_GATE instructs models to emit ‹reasoning›…‹/reasoning›
     // inline markers that parseMarkers extracts client-side. This only makes sense

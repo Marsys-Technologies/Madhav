@@ -91,6 +91,8 @@ import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
 import { extractPdf } from '@/lib/multimodal/pdf_extractor'
+import { getProjectForConversation } from '@/lib/projects'
+import { getPersonaForSynthesis } from '@/lib/personas'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
 
@@ -167,6 +169,8 @@ interface RequestBody {
   lel_context_enabled?: boolean
   /** β5: file attachment tokens from the upload flow */
   attachments?: AttachmentRef[]
+  /** R9-S3: Active persona ID for synthesis prompt injection. */
+  persona_id?: string
 }
 
 // β5: Resolve attachment tokens to ModelMessage-compatible parts.
@@ -802,6 +806,43 @@ export async function POST(request: Request) {
         reason: 'Default 2-turn window — planner did not specify.',
       }
 
+  // R9-S3: Look up persona for synthesis injection (flag-gated).
+  let personaId: string | undefined
+  let personaSystemPrompt: string | undefined
+  if (configService.getFlag('R9_PERSONAS') && body.persona_id) {
+    try {
+      const persona = await getPersonaForSynthesis(body.persona_id, user.uid)
+      if (persona && persona.system_prompt.trim().length > 0) {
+        personaId = persona.id
+        personaSystemPrompt = persona.system_prompt
+      }
+    } catch {
+      // Non-fatal: persona lookup failure does not block synthesis
+    }
+  }
+
+  // R9-S1: Look up project context for prompt injection (flag-gated).
+  let projectId: string | undefined
+  let projectSystemPromptAddition: string | undefined
+  if (configService.getFlag('R9_PROJECTS') && finalConversationId) {
+    try {
+      const project = await getProjectForConversation(finalConversationId)
+      if (project) {
+        projectId = project.id
+        if (project.system_prompt_addition && project.system_prompt_addition.trim().length > 0) {
+          projectSystemPromptAddition = project.system_prompt_addition
+        }
+        if (project.chart_id) {
+          // chart_id retrieval deferred to R9-S2+
+          // Trace: project_chart_retrieval deferred
+          void project.chart_id // referenced to avoid lint unused-var
+        }
+      }
+    } catch {
+      // Non-fatal: project lookup failure does not block synthesis
+    }
+  }
+
   const orchestrator = createOrchestrator({ panel_opt_in: panelOptIn })
   const synthesisRequest = {
     query: queryText,
@@ -831,6 +872,13 @@ export async function POST(request: Request) {
     abortSignal: request.signal,
     // γ7: wire text-delta accumulator for stream-resume (pending_streams).
     onTextDelta: (d: string) => pendingStreamWriter.onTextDelta(d),
+    // R9-S3: Persona context (populated when MARSYS_FLAG_R9_PERSONAS=true and persona_id provided).
+    ...(personaId ? { persona_id: personaId } : {}),
+    ...(personaSystemPrompt ? { persona_system_prompt: personaSystemPrompt } : {}),
+    // R9-S1: Project context (populated when MARSYS_FLAG_R9_PROJECTS=true and
+    // conversation belongs to a project with a non-empty system_prompt_addition).
+    ...(projectId ? { project_id: projectId } : {}),
+    ...(projectSystemPromptAddition ? { project_system_prompt_addition: projectSystemPromptAddition } : {}),
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,

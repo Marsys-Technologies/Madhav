@@ -9,6 +9,7 @@ import { ToolCallCard } from './ToolCallCard'
 import { StreamingDots } from './StreamingDots'
 import { MessageActions } from './MessageActions'
 import { DisclosureTierBadge } from '@/components/disclosure/DisclosureTierBadge'
+import { InlineToolFlow } from './InlineToolFlow'
 import type { Rating } from '@/hooks/useFeedback'
 import type { AudienceTier } from '@/lib/prompts/types'
 
@@ -88,6 +89,8 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
   const styleLabel = (meta.style ?? meta.style_id) as string | undefined
   const tier = meta.disclosure_tier as string | undefined
   const methodologyBlock = meta.methodology_block as string | null | undefined
+  const queryId = (meta.query_id ?? meta.queryId) as string | undefined
+  const isAdmin = tier === 'super_admin' || tier === 'acharya_reviewer'
 
   const copy = useCallback(async () => {
     try {
@@ -211,6 +214,8 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
               />
             </div>
           )}
+
+          <InlineToolFlow queryId={queryId ?? null} isAdmin={isAdmin} />
         </div>
       </div>
     </motion.div>

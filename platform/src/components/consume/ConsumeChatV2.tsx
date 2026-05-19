@@ -1606,6 +1606,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           reloadTrigger={sidebarReloadTick}
           onRename={handleRenameConversation}
           onDelete={handleDeleteConversation}
+          showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
         />
       </div>
 
