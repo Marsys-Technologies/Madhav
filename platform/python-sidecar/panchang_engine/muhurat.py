@@ -18,10 +18,8 @@ from datetime import date as DateType, timedelta
 from typing import Optional
 
 from .types import MuhuratWindow, NatalChart, Panchang
-from .shastra_tables import (
-    EVENT_TABLES,
-    DEFAULT_MUHURAT_WEIGHTS,
-)
+from .shastra_tables import EVENT_TABLES
+from .config_loader import get_weights_for_event as _get_weights_for_event
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +211,9 @@ def score_muhurat(
     Args:
         panchang: Fully-computed Panchang for the day.
         event: Event key — must be in EVENTS_MVP.
-        weights: Scoring weights dict; defaults to DEFAULT_MUHURAT_WEIGHTS.
+        weights: Scoring weights dict; defaults to YAML-loaded per-event weights
+                 from config/muhurat_weights.yaml via config_loader.get_weights_for_event().
+                 Pass an explicit dict to override (useful for testing).
         native_chart: Optional NatalChart for Tara Bala native overlay.
 
     Returns:
@@ -229,7 +229,8 @@ def score_muhurat(
             f"Event '{event}' not in MVP set. Supported events: {EVENTS_MVP}"
         )
 
-    weights = weights or DEFAULT_MUHURAT_WEIGHTS
+    if weights is None:
+        weights = _get_weights_for_event(event)
     quality_table = EVENT_TABLES[event]
 
     # Knockout check — compound inauspicious day → 0.0
@@ -303,7 +304,8 @@ def find_muhurat(
         lon: Longitude in decimal degrees (+E).
         tz_offset_minutes: UTC offset in minutes (default 330 = IST +05:30).
         native_chart: Optional NatalChart for Tara Bala native overlay.
-        weights: Custom scoring weights dict; defaults to DEFAULT_MUHURAT_WEIGHTS.
+        weights: Custom scoring weights dict; defaults to YAML-loaded per-event weights
+                 from config/muhurat_weights.yaml. Pass an explicit dict to override.
         top_n: Number of top windows to return (default 10).
 
     Returns:
@@ -326,7 +328,8 @@ def find_muhurat(
     # Lazy import to avoid circular deps; compute_panchang is the top-level function
     from panchang_engine import compute_panchang
 
-    weights = weights or DEFAULT_MUHURAT_WEIGHTS
+    if weights is None:
+        weights = _get_weights_for_event(event)
 
     candidates: list[MuhuratWindow] = []
     current = date_from
