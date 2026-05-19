@@ -13,7 +13,7 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2 } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
@@ -190,8 +190,14 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
 
 interface CitationContextValue {
   onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
+  onStreamEnd: (citations: CitationPart[]) => void
+  onBadgeClick: (index: number) => void
 }
-const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
+const CitationCtx = createContext<CitationContextValue>({
+  onPin: () => {},
+  onStreamEnd: () => {},
+  onBadgeClick: () => {},
+})
 
 /** Pre-process LLM response text before markdown rendering.
  *
@@ -221,19 +227,23 @@ function preprocessCitations(text: string): { processedText: string; count: numb
   })
 
   // Primary: replace bare SIG.MSR.NNN with inline CITE badge markers.
-  result = result.replace(/SIG\.MSR\.\d{3}(?!\d)/g, badge)
+  // Negative lookbehind skips IDs already wrapped by step 2 (CITE:N: prefix).
+  result = result.replace(/(?<!CITE:\d+:)SIG\.MSR\.\d{3}(?!\d)/g, badge)
 
   return { processedText: result, count: seen.length }
 }
+
+export { preprocessCitations }
 
 
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
-  const { onPin } = useContext(CitationCtx)
+  const { onPin, onStreamEnd, onBadgeClick } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
+  const prevIsStreamingRef = useRef(isStreaming)
 
   // C.3: build signal_id → {snippet, layer} map from data-citation parts.
   const citationRichMap = useMemo(() => {
@@ -252,10 +262,37 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     return result
   }, [dataParts])
 
+  // R7-S4: collect all CitationPart objects from data parts for stream-end event.
+  const allCitationParts = useMemo(() => {
+    return dataParts
+      .filter(d => d.type === 'data-citation')
+      .map(d => {
+        const data = d.data as Record<string, unknown>
+        return {
+          type: 'citation' as const,
+          index: typeof data.index === 'number' ? data.index : 0,
+          signal_id: typeof data.signal_id === 'string' ? data.signal_id : '',
+          snippet: typeof data.snippet === 'string' ? data.snippet : '',
+          layer: (data.layer === 'L1' ? 'L1' : 'L2.5') as 'L1' | 'L2.5',
+        }
+      })
+      .filter(c => c.signal_id)
+      .sort((a, b) => a.index - b.index)
+  }, [dataParts])
+
+  // R7-S4: AC-1 — when streaming ends and citations exist, open the panel.
+  useEffect(() => {
+    if (prevIsStreamingRef.current && !isStreaming && allCitationParts.length > 0) {
+      onStreamEnd(allCitationParts)
+    }
+    prevIsStreamingRef.current = isStreaming
+  }, [isStreaming, allCitationParts, onStreamEnd])
+
   const enrichedOnPin = useCallback((n: number, signalId: string) => {
     const rich = citationRichMap.get(signalId)
     onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
-  }, [onPin, citationRichMap])
+    onBadgeClick(n)
+  }, [onPin, citationRichMap, onBadgeClick])
 
   // Pre-process text: replace SIG.MSR.NNN → `CITE:N:SIG.MSR.NNN` inline markers.
   const { processedText, count } = useMemo(
@@ -371,6 +408,85 @@ function V2RegenerateButton() {
     >
       <RotateCcw className="h-4 w-4" aria-hidden="true" />
     </button>
+  )
+}
+
+// ─── Truncation banner (R7-S5) ────────────────────────────────────────────────
+
+function TruncationContinueBanner() {
+  const message = useMessage()
+  const dataParts = useDataParts(message)
+  const conversationId = useContext(ConversationIdCtx)
+  const isStreaming = message.status?.type === 'running'
+
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
+  const [error, setError] = useState(false)
+
+  const isTruncated = useMemo(() => {
+    if (isStreaming) return false
+    // AC-1 primary signal: data-truncated part
+    if (dataParts.some(d => d.type === 'data-truncated')) return true
+    // AC-1 heuristic fallback: no truncated part, but last char is not sentence-ending
+    // and context_usage indicates >= 90% utilization
+    const textContent = message.content
+      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+      .map(p => p.text).join('') ?? ''
+    const lastChar = textContent.trimEnd().slice(-1)
+    if (/[.!?…]/.test(lastChar)) return false
+    const usagePart = dataParts.find(d => d.type === 'data-context-usage')
+    if (usagePart) {
+      const u = usagePart.data as { tokens_used?: number; tokens_limit?: number }
+      if (typeof u.tokens_used === 'number' && typeof u.tokens_limit === 'number' && u.tokens_limit > 0) {
+        return u.tokens_used / u.tokens_limit >= 0.90
+      }
+    }
+    return false
+  }, [isStreaming, dataParts, message.content])
+
+  if (!isTruncated || status === 'done') return null
+
+  const handleContinue = async () => {
+    if (status !== 'idle' || !conversationId) return
+    setStatus('loading')
+    setError(false)
+    try {
+      const r = await fetch('/api/chat/consume/continue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId, last_message_id: message.id }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      // Drain the stream so the server completes; the thread will update via its own subscription.
+      await r.body?.cancel()
+      setStatus('done')
+    } catch (err) {
+      console.error('Continue failed', err)
+      setError(true)
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 mt-1"
+      data-testid="v2-truncation-continue-banner"
+      aria-label="Response was truncated"
+    >
+      <span className="text-[10px] text-zinc-500 italic">Response truncated</span>
+      <button
+        type="button"
+        onClick={handleContinue}
+        disabled={status === 'loading'}
+        className="border border-zinc-600 text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 rounded px-2.5 py-1 text-xs font-medium transition-colors"
+        data-testid="v2-truncation-continue-btn"
+      >
+        {status === 'loading'
+          ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Loading" />
+          : 'Continue'
+        }
+      </button>
+      {error && <span className="text-[10px] text-red-400">Failed — try again</span>}
+    </div>
   )
 }
 
@@ -566,6 +682,9 @@ function V2Message() {
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
+
+          {/* R7-S5: truncation continue banner — shown after stream ends if message was cut off */}
+          <TruncationContinueBanner />
 
           {/* γ4: validator soft-fail chip (below message body) */}
           {citationGate?.status === 'warn' && (
@@ -1571,22 +1690,36 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
-  // β4: Pinned citations state
-  const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
-  const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
+  // β4: Citation state — allCitations holds every citation from the latest complete message.
+  const [allCitations, setAllCitations] = useState<CitationPart[]>([])
+  const pinnedSet = useMemo(() => new Set(allCitations.map(c => c.index)), [allCitations])
+
+  // R7-S4: panel open/close state and scroll-to-row target.
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [scrollTarget, setScrollTarget] = useState<number | null>(null)
 
   const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
-    setPinnedCitations(prev => {
+    setAllCitations(prev => {
       if (prev.some(c => c.index === n)) return prev
       return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
     })
   }, [])
 
   const handleUnpin = useCallback((n: number) => {
-    setPinnedCitations(prev => prev.filter(c => c.index !== n))
+    setAllCitations(prev => prev.filter(c => c.index !== n))
   }, [])
 
-  const citationCtxValue = useMemo(() => ({ onPin: handlePin }), [handlePin])
+  const citationCtxValue = useMemo(() => ({
+    onPin: handlePin,
+    onStreamEnd: (citations: CitationPart[]) => {
+      setAllCitations(citations)
+      setPanelOpen(true)
+    },
+    onBadgeClick: (index: number) => {
+      setPanelOpen(true)
+      setScrollTarget(index)
+    },
+  }), [handlePin])
 
   // β5: attachment manager — tokens injected into each request body
   const attachmentManager = useAttachmentManager()
@@ -1661,9 +1794,13 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
-              citations={pinnedCitations}
+              citations={allCitations}
               pinned={pinnedSet}
               onUnpin={handleUnpin}
+              open={panelOpen}
+              onClose={() => setPanelOpen(false)}
+              scrollTarget={scrollTarget}
+              onScrolled={() => setScrollTarget(null)}
             />
           </div>
         </AssistantRuntimeProvider>

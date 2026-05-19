@@ -14,6 +14,7 @@ import {
 import { ArrowUp, Square, Paperclip, X, FileText, Loader2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Attachment } from '@/hooks/useAttachments'
+import { useDraft } from '@/hooks/useChatPreferences'
 
 export interface ComposerHandle {
   focus: () => void
@@ -32,6 +33,8 @@ interface Props {
   onAddFiles: (files: FileList | File[]) => void
   onRemoveAttachment: (id: string) => void
   attachmentsReady: boolean
+  /** AC-2 (R7-S6): per-conversation draft key. null → __new__ key. */
+  conversationId?: string | null
 }
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
@@ -47,29 +50,60 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     onAddFiles,
     onRemoveAttachment,
     attachmentsReady,
+    conversationId = null,
   },
   ref
 ) {
-  const [value, setValue] = useState('')
+  const [draft, setDraft, clearDraft] = useDraft(conversationId)
+  const [value, setValue] = useState(draft)
   const [isFocused, setIsFocused] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
     setValue,
   }))
 
+  // AC-3: restore draft when conversationId changes.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValue(draft)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId])
+
   useEffect(() => {
     if (autoFocus) textareaRef.current?.focus()
   }, [autoFocus])
+
+  // AC-4: clear debounce timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current !== null) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  function handleChange(v: string) {
+    setValue(v)
+    if (debounceRef.current !== null) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDraft(v)
+    }, 400)
+  }
 
   function send() {
     const trimmed = value.trim()
     const readyAttachments = attachments.filter(a => a.status === 'ready')
     const hasContent = trimmed.length > 0 || readyAttachments.length > 0
     if (!hasContent || isStreaming || disabled || !attachmentsReady) return
+    // AC-5: clear draft before dispatch.
+    clearDraft()
+    if (debounceRef.current !== null) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
     onSubmit(trimmed, readyAttachments)
     setValue('')
   }
@@ -164,7 +198,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={e => setValue(e.target.value)}
+          onChange={e => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onFocus={() => setIsFocused(true)}

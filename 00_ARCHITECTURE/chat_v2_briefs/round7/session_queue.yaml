@@ -17,6 +17,8 @@ sessions:
     commit_template: "fix(chat-v2/r7-s1): citation double-wrap — negative lookbehind + export preprocessCitations"
     estimated_loc: "+25 (fix + test file)"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T01:31:00Z"
 
   - id: R7-S2
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S2-footnote-citations.md
@@ -25,6 +27,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s2): GFM footnote citations — synthesis prompt + MarkdownContent footnoteReference component (R6.2)"
     estimated_loc: "+40"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T01:38:00Z"
 
   - id: R7-S3
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S3-enrich-citations.md
@@ -33,6 +37,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s3): enrich citations server-side — fetchMsrSnippets + layer badge in CitationSidePanel (R6.3)"
     estimated_loc: "+60"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20T01:42:00Z"
 
   - id: R7-S4
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S4-citation-panel-default-open.md
@@ -41,6 +47,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s4): citation panel auto-opens after streaming with all citations; pin becomes highlight"
     estimated_loc: "+35"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T02:15:00Z"
 
   - id: R7-S5
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S5-auto-continue-on-truncation.md
@@ -49,6 +57,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s5): truncation banner Continue button + /api/chat/consume/continue route"
     estimated_loc: "+80 (new route + UI)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20T02:35:00Z"
 
   - id: R7-S6
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S6-composer-draft-persistence.md
@@ -57,6 +67,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s6): composer draft persistence — useDraft hook + debounced localStorage write + clear-on-send"
     estimated_loc: "+50"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T03:10:00Z"
 
   - id: R7-S7
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S7-a11y-polish.md
@@ -65,3 +77,5 @@ sessions:
     commit_template: "feat(chat-v2/r7-s7): a11y polish — stream-end aria-live + skip-to-content + j/k message nav + action keybinds"
     estimated_loc: "+70"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T03:25:00Z"

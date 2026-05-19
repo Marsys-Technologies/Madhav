@@ -1,7 +1,7 @@
 'use client'
 
 import type { UIMessage } from 'ai'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { StreamingMarkdown } from './StreamingMarkdown'
@@ -56,6 +56,18 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
   const reduce = useReducedMotion()
   const text = extractText(message)
 
+  const prevStreamingRef = useRef(isStreaming)
+  const [announceText, setAnnounceText] = useState('')
+
+  useEffect(() => {
+    if (!prevStreamingRef.current && isStreaming) {
+      setAnnounceText('')
+    } else if (prevStreamingRef.current && !isStreaming) {
+      setAnnounceText('Response complete')
+    }
+    prevStreamingRef.current = isStreaming
+  }, [isStreaming])
+
   const timestamp = useMemo(() => {
     const meta = (message.metadata ?? {}) as Record<string, unknown>
     const raw = meta.created_at ?? (message as unknown as { created_at?: unknown }).created_at
@@ -90,6 +102,7 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
       transition={{ duration: 0.18, ease: 'easeOut' }}
       className="group/message mx-auto w-full max-w-3xl px-6"
     >
+      <span role="status" aria-live="polite" className="sr-only">{announceText}</span>
       <div className="flex items-start gap-3.5">
         <div
           className={cn(

@@ -184,6 +184,25 @@ export const OutOfDomainPartSchema = z.object({
 
 export type OutOfDomainPart = z.infer<typeof OutOfDomainPartSchema>
 
+// ── Truncated part (R7-S5) ────────────────────────────────────────────────
+
+export const TruncatedPartSchema = z.object({
+  type: z.literal('truncated'),
+  reason: z.string(),
+})
+
+export type TruncatedPart = z.infer<typeof TruncatedPartSchema>
+
+// ── Context-usage part (R7-S5 heuristic fallback) ─────────────────────────
+
+export const ContextUsagePartSchema = z.object({
+  type: z.literal('context_usage'),
+  tokens_used: z.number().nonnegative().int(),
+  tokens_limit: z.number().positive().int(),
+})
+
+export type ContextUsagePart = z.infer<typeof ContextUsagePartSchema>
+
 // ── Union ─────────────────────────────────────────────────────────────────
 
 export const DataPartSchema = z.discriminatedUnion('type', [
@@ -200,6 +219,8 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   CorrectionPartSchema,
   OutOfDomainPartSchema,
   TitlePartSchema,
+  TruncatedPartSchema,
+  ContextUsagePartSchema,
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
@@ -270,5 +291,15 @@ export const outOfDomainPart = (args: Omit<OutOfDomainPart, 'type'>): OutOfDomai
 
 export const titlePart = (args: Omit<TitlePart, 'type'>): TitlePart => ({
   type: 'title',
+  ...args,
+})
+
+export const truncatedPart = (reason: string): TruncatedPart => ({
+  type: 'truncated',
+  reason,
+})
+
+export const contextUsagePart = (args: Omit<ContextUsagePart, 'type'>): ContextUsagePart => ({
+  type: 'context_usage',
   ...args,
 })
