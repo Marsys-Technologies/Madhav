@@ -373,9 +373,21 @@ def _run_csv_spotcheck(
 
 def _check_existing_rows(db_url: str, build_id: str) -> int | None:
     """
-    Returns row count if ephemeris_daily already has rows for this build_id,
-    None if the table is empty or has rows for a different build_id.
-    Raises RuntimeError if rows exist for a DIFFERENT build_id (force-stop).
+    Idempotency guard for bootstrap. Returns row count if
+    ephemeris_daily_staging already has rows for this build_id (e.g., from
+    a prior successful bootstrap that has not yet been swapped to live),
+    or None if staging is empty.
+
+    Raises RuntimeError if staging has rows for a DIFFERENT build_id —
+    that means another bootstrap is in flight or was partially staged;
+    operator must TRUNCATE ephemeris_daily_staging before proceeding.
+
+    NOTE: the check is on STAGING, not LIVE. Bootstrap writes to staging;
+    a separate swap script (swap_ephemeris_staging.py) moves staging →
+    live. The original Phase 14C implementation incorrectly queried the
+    live table, which blocked every subsequent rebuild once live was
+    populated. Fixed during §4.B Stage 5 post-merge operator run
+    (2026-05-19).
     """
     try:
         import psycopg2
@@ -384,7 +396,10 @@ def _check_existing_rows(db_url: str, build_id: str) -> int | None:
 
     with psycopg2.connect(db_url) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT DISTINCT build_id, COUNT(*) FROM ephemeris_daily GROUP BY build_id")
+            cur.execute(
+                "SELECT DISTINCT build_id, COUNT(*) "
+                "FROM ephemeris_daily_staging GROUP BY build_id"
+            )
             rows = cur.fetchall()
 
     if not rows:
@@ -392,12 +407,17 @@ def _check_existing_rows(db_url: str, build_id: str) -> int | None:
 
     for existing_build_id, count in rows:
         if existing_build_id == build_id:
-            logger.info("ephemeris_daily already has %d rows for build_id=%s; skipping.", count, build_id)
+            logger.info(
+                "ephemeris_daily_staging already has %d rows for "
+                "build_id=%s; skipping bootstrap.",
+                count, build_id,
+            )
             return count
         raise RuntimeError(
-            f"ephemeris_daily already has {count} rows for build_id={existing_build_id!r}. "
-            f"Refusing to overwrite with build_id={build_id!r}. "
-            "Delete the existing rows manually before re-running."
+            f"ephemeris_daily_staging already has {count} rows for "
+            f"build_id={existing_build_id!r}. Refusing to overwrite with "
+            f"build_id={build_id!r}. TRUNCATE ephemeris_daily_staging "
+            "before re-running."
         )
 
     return None
