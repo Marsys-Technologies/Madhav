@@ -8,18 +8,19 @@
  *   - Star rating (from MuhuratWindow.star_rating)
  *   - Time window (UTC → local, formatted as IST range)
  *   - Breakdown badges (key → score contribution from breakdown dict)
- *   - Inline actions: "Export to Calendar" (disabled, 4C-7) + "Ask Madhav"
+ *   - Inline actions: "Export to Calendar" (enabled in 4C-7) + "Ask Madhav"
  *
  * Sorted by score descending (backend already sorts; we sort defensively).
  * Loading skeleton shown during fetch. Empty state if no windows.
  *
- * Phase: 4C-6-S3 (Item 3 + Item 4)
+ * Phase: 4C-6-S3 (Item 3 + Item 4); 4C-7 (Item 9 — Export to Calendar wired)
  */
 
 import { useRouter } from 'next/navigation'
 import { CalendarDays, MessageCircle } from 'lucide-react'
 import { StarRating } from '@/components/ui/star-rating'
 import type { MuhuratWindow } from '../hooks/useMuhuratFinder'
+import { buildMuhuratWindowIcs, downloadIcs } from '@/lib/panchang/ics_client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -168,6 +169,25 @@ function MuhuratRow({
     router.push(`/clients/${NATIVE_CLIENT_ID}/consume?prompt=${prompt}`)
   }
 
+  // Export this window as an ICS file (browser-safe, client-side build)
+  function handleExport() {
+    const ics = buildMuhuratWindowIcs(
+      {
+        start_utc: w.start_utc,
+        end_utc: w.end_utc,
+        star_rating: w.star_rating,
+        score: w.score,
+        breakdown: w.breakdown,
+        event: w.event,
+      },
+      'Bhubaneswar, IN',
+      event,
+    )
+    if (!ics) return
+    const datePart = w.start_utc ? w.start_utc.slice(0, 10) : 'muhurat'
+    downloadIcs(ics, `muhurat-${event}-${datePart}.ics`)
+  }
+
   const breakdownEntries = Object.entries(w.breakdown).filter(([, v]) => v !== 0)
 
   return (
@@ -216,30 +236,20 @@ function MuhuratRow({
 
       {/* Inline actions */}
       <div className="flex gap-2 mt-1">
-        {/* Export to Calendar — disabled, 4C-7 */}
+        {/* Export to Calendar — enabled in 4C-7 */}
         <button
-          disabled
-          aria-label="Export to Calendar — coming in Phase 4C-7"
-          title="Calendar Export — Phase 4C-7"
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium cursor-not-allowed"
+          onClick={handleExport}
+          aria-label={`Export ${dateLabel} muhurat to calendar`}
+          title="Download as .ics file"
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[rgba(212,175,55,0.12)]"
           style={{
-            color: 'rgba(212,175,55,0.30)',
-            borderColor: 'rgba(212,175,55,0.10)',
-            background: 'rgba(212,175,55,0.03)',
+            color: 'var(--brand-gold)',
+            borderColor: 'rgba(212,175,55,0.30)',
+            background: 'rgba(212,175,55,0.07)',
           }}
         >
           <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span>Export to Calendar</span>
-          <span
-            className="ml-0.5 rounded-full px-1.5 py-0.5 text-[10px]"
-            style={{
-              color: 'rgba(212,175,55,0.25)',
-              background: 'rgba(212,175,55,0.06)',
-              border: '1px solid rgba(212,175,55,0.10)',
-            }}
-          >
-            4C-7
-          </span>
         </button>
 
         {/* Ask Madhav — functional */}
