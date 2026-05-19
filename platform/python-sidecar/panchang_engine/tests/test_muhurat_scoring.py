@@ -120,14 +120,17 @@ class TestScoreMuhuratBasic:
     def test_auspicious_vivah_day_scores_high(self):
         """Thursday + Rohini + Shukla Dashami → score ≥ 65 for vivah (4-star tier).
 
-        Score breakdown (DEFAULT_MUHURAT_WEIGHTS, no yoga, non-combust planets):
+        Score breakdown (YAML vivah weights: nakshatra=0.40, tithi=0.20, vara=0.05,
+          yoga=0.15, planet=0.10, native=0.10; no yoga, non-combust planets):
           tithi(10=Dashami): 0.20 × 0.95 = 0.190
-          nakshatra(4=Rohini): 0.30 × 0.95 = 0.285
-          vara(5=Thu): 0.10 × 0.95 = 0.095
+          nakshatra(4=Rohini): 0.40 × 0.95 = 0.380
+          vara(5=Thu): 0.05 × 0.95 = 0.048
           planet(Jup+Ven non-combust): 0.10 × 1.0 = 0.100
           yoga: 0 (none active in synthetic panchang)
           native: 0 (no chart)
-          Total: 0.670 × 100 = 67.0 → 4-star tier (≥65)
+          Total: 0.718 × 100 = 71.75 → 4-star tier (≥65)
+        Note: scores differ from S1 defaults because vivah now uses YAML per-event
+        weights (nakshatra 0.40 > default 0.30). Explicit weights arg still overrides.
         """
         from panchang_engine.muhurat import score_muhurat
         panchang = _build_panchang(tithi_id=10, nakshatra_id=4, vara_id=5)
