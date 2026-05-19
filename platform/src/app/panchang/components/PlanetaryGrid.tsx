@@ -7,6 +7,8 @@
  * each with: Sanskrit + English name, sign (Sanskrit + glyph), longitude
  * in DMS within sign, retrograde (R) and combust (C) markers.
  *
+ * When native_context is provided, Moon row shows a Chandra Bala badge.
+ *
  * Layout: 3-column grid on desktop, single-column on mobile.
  * Legend strip below grid: "R = retrograde · C = combust"
  *
@@ -14,11 +16,13 @@
  * Shape: {name, longitude_sidereal, sign_id, sign_name, nakshatra_name,
  *          nakshatra_pada, retrograde, combust}
  *
- * Phase: 4C-4-S2 (Item 2)
+ * Phase: 4C-4-S2 (Item 2); 4C-5 (Chandra Bala badge — Item 7)
  */
 
 import { lonWithinSign, formatDMSShort } from '@/lib/format/dms'
 import { getZodiacGlyph } from '@/components/ui/icons/zodiac'
+import { computeChandraBala, type ChandraBalaStrength } from '@/lib/panchang/chandra_bala'
+import type { NativeContext } from '../hooks/usePanchangDay'
 
 // ── Graha catalog ─────────────────────────────────────────────────────────────
 
@@ -63,6 +67,8 @@ interface PlanetaryGridProps {
    * The hook maps it as unknown[] | null (permissive); we accept both shapes.
    */
   planets: Record<string, PlanetStateDict> | unknown[] | null | undefined
+  /** Native overlay — when present, Moon row shows Chandra Bala badge */
+  nativeContext?: NativeContext | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,14 +91,54 @@ function normalizePlanets(
   return out
 }
 
+// ── Chandra Bala badge ────────────────────────────────────────────────────────
+
+const CHANDRA_COLORS: Record<ChandraBalaStrength, { bg: string; text: string; border: string }> = {
+  STRONG:   { bg: 'rgba(80,200,130,0.12)',  text: 'rgba(80,200,130,0.95)',  border: 'rgba(80,200,130,0.30)'  },
+  MODERATE: { bg: 'rgba(212,175,55,0.10)',  text: 'rgba(212,175,55,0.85)',  border: 'rgba(212,175,55,0.28)'  },
+  WEAK:     { bg: 'rgba(220,80,60,0.12)',   text: 'rgba(220,80,60,0.95)',   border: 'rgba(220,80,60,0.30)'   },
+}
+
+function ChandraBadge({
+  nativeContext,
+  currentMoonSignId,
+}: {
+  nativeContext: NativeContext
+  currentMoonSignId: number
+}) {
+  let result
+  try {
+    result = computeChandraBala(nativeContext.moon_sign_id, currentMoonSignId)
+  } catch {
+    return null
+  }
+  const colors = CHANDRA_COLORS[result.strength]
+  const label = result.isChandrashtama
+    ? `Chandrashtama (${result.strength})`
+    : result.strength
+  const shortLabel = result.isChandrashtama ? 'Chandrashtama' : result.strength
+  return (
+    <span
+      className="ml-1 shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+      title={`Chandra Bala: ${label} (house ${result.houseFromMoon} from natal Moon)`}
+      aria-label={`Chandra Bala: ${label}`}
+    >
+      {shortLabel}
+    </span>
+  )
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function GrahaCard({
   spec,
   ps,
+  nativeContext,
 }: {
   spec: GrahaSpec
   ps: PlanetStateDict | undefined
+  nativeContext?: NativeContext | null
 }) {
   const glyph = ps ? getZodiacGlyph(ps.sign_name) : ''
   const withinSign = ps ? lonWithinSign(ps.longitude_sidereal) : null
@@ -123,7 +169,7 @@ function GrahaCard({
         </div>
 
         {/* Retrograde + Combust badges */}
-        <div className="flex items-center gap-1 shrink-0 ml-2">
+        <div className="flex items-center gap-1 shrink-0 ml-2 flex-wrap">
           {ps?.retrograde && (
             <span
               className="rounded px-1.5 py-0.5 text-[10px] font-bold"
@@ -143,6 +189,13 @@ function GrahaCard({
             >
               C
             </span>
+          )}
+          {/* Chandra Bala badge — only on Moon card when native personalised */}
+          {spec.key === 'moon' && nativeContext != null && ps?.sign_id != null && (
+            <ChandraBadge
+              nativeContext={nativeContext}
+              currentMoonSignId={ps.sign_id}
+            />
           )}
         </div>
       </div>
@@ -183,7 +236,7 @@ function GrahaCard({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function PlanetaryGrid({ planets }: PlanetaryGridProps) {
+export function PlanetaryGrid({ planets, nativeContext }: PlanetaryGridProps) {
   const planetMap = normalizePlanets(planets)
   const hasAnyData = Object.keys(planetMap).length > 0
 
@@ -205,6 +258,7 @@ export function PlanetaryGrid({ planets }: PlanetaryGridProps) {
             key={spec.key}
             spec={spec}
             ps={planetMap[spec.key]}
+            nativeContext={nativeContext}
           />
         ))}
       </div>

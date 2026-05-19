@@ -34,6 +34,20 @@ export interface PanchangTimings {
   auspicious: Record<string, unknown> | null
 }
 
+/**
+ * NativeContext — birth-chart overlay returned by the sidecar when chart_id is provided.
+ * Populated in 4C-5; used by Tara Bala + Chandra Bala badge components.
+ */
+export interface NativeContext {
+  chart_id: string
+  native_name: string           // chart name for UI display (e.g. "Abhisek")
+  birth_nakshatra_id: number    // 1..27 (Moon nakshatra at birth, sidereal)
+  birth_nakshatra_name: string  // e.g. "Purva Bhadrapada"
+  moon_sign_id: number          // 1..12 (1 = Aries/Mesha … 12 = Pisces/Meena)
+  moon_sign_name: string        // Sanskrit sign name, e.g. "Kumbha"
+  active_dasha_lord: string | null  // future dasha-aware muhurat (4C-6)
+}
+
 export interface PanchangDay {
   date: string
   lat: number
@@ -45,6 +59,8 @@ export interface PanchangDay {
   planets: unknown[] | null
   choghadiya: unknown[] | null
   hora: unknown[] | null
+  /** Native overlay — only present when chart_id was passed (4C-5) */
+  native_context: NativeContext | null
   /** Raw sidecar panchang dict — for fields not yet modelled above */
   raw: Record<string, unknown>
 }
@@ -63,6 +79,8 @@ interface UsePanchangDayOptions {
 
 function mapSidecarResponse(raw: Record<string, unknown>): PanchangDay {
   const panchang = (raw['panchang'] ?? raw) as Record<string, unknown>
+  // native_context is at the top-level response (not inside panchang dict)
+  const nativeContext = (raw['native_context'] as NativeContext | null | undefined) ?? null
   return {
     date: panchang['date'] as string,
     lat: panchang['lat'] as number,
@@ -89,6 +107,7 @@ function mapSidecarResponse(raw: Record<string, unknown>): PanchangDay {
     planets: (panchang['planets'] as unknown[]) ?? null,
     choghadiya: (panchang['choghadiya'] as unknown[]) ?? null,
     hora: (panchang['hora'] as unknown[]) ?? null,
+    native_context: nativeContext,
     raw: panchang,
   }
 }

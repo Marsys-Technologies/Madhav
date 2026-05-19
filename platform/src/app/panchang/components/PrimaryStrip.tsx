@@ -6,10 +6,13 @@
  * Rows: Tithi, Nakshatra, Yoga, Karana, Vara, Paksha+Masa
  * Each row: Sanskrit name + label + ends_at time (local TZ, HH:MM) where applicable.
  *
- * Phase: 4C-4-S1 (Item 5)
+ * When native_context is provided, the Nakshatra row shows a Tara Bala badge.
+ *
+ * Phase: 4C-4-S1 (Item 5); 4C-5 (Tara Bala badge — Item 7)
  */
 
-import type { PanchangAngas } from '../hooks/usePanchangDay'
+import type { PanchangAngas, NativeContext } from '../hooks/usePanchangDay'
+import { computeTaraBala, type TaraBalaClass } from '@/lib/panchang/tara_bala'
 
 interface PrimaryStripProps {
   angas: PanchangAngas
@@ -17,6 +20,8 @@ interface PrimaryStripProps {
   tzOffsetMinutes?: number
   /** ISO date string for the displayed day */
   date: string
+  /** Native overlay — when present, show Tara Bala badge on Nakshatra row */
+  nativeContext?: NativeContext | null
 }
 
 interface AngaRow {
@@ -24,6 +29,8 @@ interface AngaRow {
   sanskritLabel: string
   value: string | null
   endsAt: string | null
+  /** nakshatra_id from sidecar — used for Tara Bala computation */
+  nakshatraId?: number | null
 }
 
 /** Convert UTC ISO string to local HH:MM given offset in minutes */
@@ -50,7 +57,7 @@ function ordinal(n: number | null | undefined): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date }: PrimaryStripProps) {
+export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date, nativeContext }: PrimaryStripProps) {
   const rows: AngaRow[] = [
     {
       label: 'Tithi',
@@ -69,6 +76,7 @@ export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date }: PrimaryStri
       endsAt: angas.nakshatra?.ends_at_local
         ? utcToLocalTime(angas.nakshatra.ends_at_local, tzOffsetMinutes)
         : null,
+      nakshatraId: angas.nakshatra?.number ?? null,
     },
     {
       label: 'Yoga',
@@ -107,7 +115,12 @@ export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date }: PrimaryStri
     >
       <div className="rounded-xl border border-[rgba(212,175,55,0.14)] bg-[rgba(28,28,26,0.50)] overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.04)]">
         {rows.map((row, i) => (
-          <PrimaryStripRow key={row.label} row={row} isLast={i === rows.length - 1} />
+          <PrimaryStripRow
+            key={row.label}
+            row={row}
+            isLast={i === rows.length - 1}
+            nativeContext={nativeContext}
+          />
         ))}
       </div>
 
@@ -135,8 +148,56 @@ export function PrimaryStrip({ angas, tzOffsetMinutes = 330, date }: PrimaryStri
   )
 }
 
-function PrimaryStripRow({ row, isLast }: { row: AngaRow; isLast: boolean }) {
+// ── Tara Bala badge ───────────────────────────────────────────────────────────
+
+const TARA_COLORS: Record<TaraBalaClass, { bg: string; text: string; border: string }> = {
+  auspicious:   { bg: 'rgba(80,200,130,0.12)',  text: 'rgba(80,200,130,0.95)',  border: 'rgba(80,200,130,0.30)'  },
+  inauspicious: { bg: 'rgba(220,80,60,0.12)',   text: 'rgba(220,80,60,0.95)',   border: 'rgba(220,80,60,0.30)'   },
+  mixed:        { bg: 'rgba(212,175,55,0.10)',  text: 'rgba(212,175,55,0.85)',  border: 'rgba(212,175,55,0.28)'  },
+}
+
+function TaraBadge({
+  nativeContext,
+  currentNakshatraId,
+}: {
+  nativeContext: NativeContext
+  currentNakshatraId: number
+}) {
+  let result
+  try {
+    result = computeTaraBala(nativeContext.birth_nakshatra_id, currentNakshatraId)
+  } catch {
+    return null
+  }
+  const colors = TARA_COLORS[result.classification]
+  return (
+    <span
+      className="ml-2 shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+      title={`Tara Bala: ${result.tara} (count ${result.count})`}
+      aria-label={`Tara Bala: ${result.tara}`}
+    >
+      {result.tara}
+    </span>
+  )
+}
+
+function PrimaryStripRow({
+  row,
+  isLast,
+  nativeContext,
+}: {
+  row: AngaRow
+  isLast: boolean
+  nativeContext?: NativeContext | null
+}) {
   const isEmpty = !row.value
+  const showTaraBadge =
+    row.label === 'Nakshatra' &&
+    nativeContext != null &&
+    row.nakshatraId != null &&
+    row.nakshatraId >= 1 &&
+    row.nakshatraId <= 27
 
   return (
     <div
@@ -172,6 +233,14 @@ function PrimaryStripRow({ row, isLast }: { row: AngaRow; isLast: boolean }) {
           >
             {row.value}
           </span>
+        )}
+
+        {/* Tara Bala badge — only on Nakshatra row when native personalised */}
+        {showTaraBadge && (
+          <TaraBadge
+            nativeContext={nativeContext!}
+            currentNakshatraId={row.nakshatraId!}
+          />
         )}
       </div>
 

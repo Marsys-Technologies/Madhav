@@ -1,18 +1,20 @@
 'use client'
 
 /**
- * PanchangHeader — date picker + location selector + personalise placeholder.
+ * PanchangHeader — date picker + location selector + personalise dropdown.
  *
  * State lives in URL query string: ?d=YYYY-MM-DD&loc=bhubaneswar (or &lat=&lon= for custom).
- * This makes the page deep-linkable and back-navigable without local state management.
+ * chart_id is persisted in both the URL (?chart_id=...) and localStorage
+ * (key: panchang.personalise.chart_id) so it survives navigation.
  *
- * Phase: 4C-4-S1 (Item 4)
+ * Phase: 4C-4-S1 (skeleton); 4C-5 (personalise wiring — Items 4)
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { format, addDays, subDays, parseISO, isValid } from 'date-fns'
 import { ChevronLeft, ChevronRight, MapPin, User } from 'lucide-react'
+import { useChartList } from '../hooks/useChartList'
 
 // Preset locations (per brief §4 options list)
 export const PRESET_LOCATIONS = [
@@ -61,14 +63,23 @@ export function resolveDate(searchParams: URLSearchParams): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
 
+const PERSONALISE_LS_KEY = 'panchang.personalise.chart_id'
+
+/** Read chart_id from URL params */
+export function resolveChartId(searchParams: URLSearchParams): string | null {
+  return searchParams.get('chart_id') ?? null
+}
+
 interface PanchangHeaderProps {
   /** Server-resolved date (YYYY-MM-DD) — used as initial value before client hydration */
   initialDate: string
   /** Server-resolved location */
   initialLocation: SelectedLocation
+  /** Called when chart selection changes so parent can pass chartId to usePanchangDay */
+  onChartIdChange?: (chartId: string | null) => void
 }
 
-export function PanchangHeader({ initialDate, initialLocation }: PanchangHeaderProps) {
+export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }: PanchangHeaderProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -79,6 +90,24 @@ export function PanchangHeader({ initialDate, initialLocation }: PanchangHeaderP
   const [showCustomInputs, setShowCustomInputs] = useState(currentLocation.id === 'custom')
   const [customLat, setCustomLat] = useState(String(currentLocation.id === 'custom' ? currentLocation.lat : ''))
   const [customLon, setCustomLon] = useState(String(currentLocation.id === 'custom' ? currentLocation.lon : ''))
+
+  // Chart list for personalise dropdown
+  const { charts, isLoading: chartsLoading } = useChartList()
+
+  // Resolve initial chart_id from URL, then localStorage
+  const currentChartId = useMemo(() => {
+    const fromUrl = resolveChartId(searchParams)
+    if (fromUrl) return fromUrl
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(PERSONALISE_LS_KEY) ?? null
+    }
+    return null
+  }, [searchParams])
+
+  // Notify parent when chart changes (so usePanchangDay cache key updates)
+  useEffect(() => {
+    onChartIdChange?.(currentChartId)
+  }, [currentChartId, onChartIdChange])
 
   const parsedDate = useMemo(() => {
     const d = parseISO(currentDate)
@@ -133,7 +162,21 @@ export function PanchangHeader({ initialDate, initialLocation }: PanchangHeaderP
     }
   }
 
+  function handlePersonaliseChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value
+    if (val === 'generic') {
+      // Clear personalisation
+      localStorage.removeItem(PERSONALISE_LS_KEY)
+      navigate({ chart_id: null })
+    } else {
+      // Persist to localStorage + URL
+      localStorage.setItem(PERSONALISE_LS_KEY, val)
+      navigate({ chart_id: val })
+    }
+  }
+
   const displayDate = format(parsedDate, 'EEE, d MMM yyyy')
+  const selectedPersonalise = currentChartId ?? 'generic'
 
   return (
     <header
@@ -235,26 +278,46 @@ export function PanchangHeader({ initialDate, initialLocation }: PanchangHeaderP
           )}
         </div>
 
-        {/* Personalise dropdown — interactive shell; chart loading wired in 4C-5 */}
+        {/* Personalise dropdown — wired in 4C-5; chart_id in URL + localStorage */}
         <div className="ml-auto flex items-center gap-2">
           <User className="h-4 w-4 shrink-0" style={{ color: 'rgba(212,175,55,0.55)' }} aria-hidden="true" />
           <label htmlFor="panchang-personalise" className="sr-only">Personalise view</label>
           <select
             id="panchang-personalise"
-            defaultValue="generic"
+            value={selectedPersonalise}
             aria-label="Personalise panchang view"
-            className="h-9 rounded-lg border border-[rgba(212,175,55,0.20)] bg-[rgba(28,28,26,0.80)] px-3 text-sm font-medium appearance-none cursor-pointer outline-none focus:ring-1 focus:ring-[var(--brand-gold)]"
+            disabled={chartsLoading}
+            className="h-9 rounded-lg border border-[rgba(212,175,55,0.20)] bg-[rgba(28,28,26,0.80)] px-3 text-sm font-medium appearance-none cursor-pointer outline-none focus:ring-1 focus:ring-[var(--brand-gold)] disabled:opacity-40 disabled:cursor-wait"
             style={{ color: 'var(--brand-gold)' }}
-            onChange={() => {
-              // No-op until 4C-5 wires chart loading
-            }}
+            onChange={handlePersonaliseChange}
           >
             <option value="generic" style={{ background: '#1c1c1a', color: '#fce29a' }}>
               Generic Panchang
             </option>
-            <option disabled style={{ background: '#1c1c1a', color: 'rgba(252,226,154,0.35)' }}>
-              ── Personalise (4C-5) ──
-            </option>
+            {charts.length > 0 && (
+              <option disabled style={{ background: '#1c1c1a', color: 'rgba(252,226,154,0.35)' }}>
+                ── Personalise ──
+              </option>
+            )}
+            {charts.map((chart) => (
+              <option
+                key={chart.id}
+                value={chart.id}
+                style={{ background: '#1c1c1a', color: '#fce29a' }}
+              >
+                {chart.name} ({chart.birth_date})
+              </option>
+            ))}
+            {currentChartId && (
+              <option disabled style={{ background: '#1c1c1a', color: 'rgba(252,226,154,0.35)' }}>
+                ───────────
+              </option>
+            )}
+            {currentChartId && (
+              <option value="generic" style={{ background: '#1c1c1a', color: 'rgba(252,226,154,0.65)' }}>
+                ✕ Clear personalisation
+              </option>
+            )}
           </select>
         </div>
       </div>

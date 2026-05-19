@@ -8,13 +8,13 @@
  * to avoid a loading flash on first load. Subsequent navigation (date/location
  * changes) is handled client-side via usePanchangDay.
  *
- * Phase: 4C-4-S1 / 4C-4-S4 (edge-state polish)
+ * Phase: 4C-4-S1 / 4C-4-S4 (edge-state polish); 4C-5 (chartId state + native_context)
  */
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { parseISO, isAfter, addYears } from 'date-fns'
-import { PanchangHeader, resolveDate, resolveLocation } from './PanchangHeader'
+import { PanchangHeader, resolveDate, resolveLocation, resolveChartId } from './PanchangHeader'
 import { PrimaryStrip } from './PrimaryStrip'
 import { TimingsPanel } from './TimingsPanel'
 import { PlanetaryGrid } from './PlanetaryGrid'
@@ -42,6 +42,10 @@ export function PanchangClientView({
   const date = resolveDate(searchParams) || initialDate
   const location = resolveLocation(searchParams)
 
+  // chartId state — initialised from URL (handles server-rendered deep links),
+  // then updated by PanchangHeader.onChartIdChange when user changes selection.
+  const [chartId, setChartId] = useState<string | null>(() => resolveChartId(searchParams))
+
   // Ephemeris range: Swiss Ephemeris supports ~5400 BCE – 5400 CE.
   // For practical purposes, flag dates beyond +100 years as "beyond range".
   const EPHEMERIS_CEILING = addYears(new Date(), 100)
@@ -57,6 +61,7 @@ export function PanchangClientView({
     lat: location.lat,
     lon: location.lon,
     tzOffsetMinutes: 330,
+    chartId,
     initialData: initialData ?? undefined,
     // Skip fetching if we know the request can't succeed
     enabled: !isBeyondEphemeris,
@@ -69,6 +74,7 @@ export function PanchangClientView({
       <PanchangHeader
         initialDate={initialDate}
         initialLocation={{ id: 'bhubaneswar', label: 'Bhubaneswar', lat: initialLat, lon: initialLon }}
+        onChartIdChange={setChartId}
       />
 
       {/* Edge: date beyond ephemeris range */}
@@ -144,6 +150,7 @@ export function PanchangClientView({
             angas={data.angas}
             tzOffsetMinutes={330}
             date={date}
+            nativeContext={data.native_context}
           />
 
           {/* Timings + Planetary Grid — two-column on md+, stacked on mobile (§4.2) */}
@@ -155,6 +162,7 @@ export function PanchangClientView({
               />
               <PlanetaryGrid
                 planets={data.planets as Record<string, never> | null}
+                nativeContext={data.native_context}
               />
             </div>
           </div>
@@ -164,6 +172,7 @@ export function PanchangClientView({
             <SpecialYogasList
               specialYogas={data.special_yogas}
               tzOffsetMinutes={330}
+              nativeContext={data.native_context}
             />
           </div>
 

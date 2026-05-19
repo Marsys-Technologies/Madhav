@@ -10,12 +10,17 @@
  * Tripushkar, Dwipushkar, Siddha Yoga) → success green + star rating.
  * Inauspicious (Bhadra, Panchaka) → warning red/amber + ⚠ icon + no stars.
  *
+ * When native_context is present, yogas whose nakshatra aligns with the
+ * native's birth nakshatra get a "for [name]" annotation (light touch).
+ * Full dasha-aware scoring deferred to 4C-6 muhurat engine.
+ *
  * Empty state: "No special yogas active today."
  *
- * Phase: 4C-4-S3 (Item 1)
+ * Phase: 4C-4-S3 (Item 1); 4C-5 (native annotation — Item 8)
  */
 
 import { StarRating } from '@/components/ui/star-rating'
+import type { NativeContext } from '../hooks/usePanchangDay'
 
 // ── Data shape (from sidecar serialize.py) ────────────────────────────────────
 
@@ -25,6 +30,9 @@ export interface YogaEntry {
   end_utc: string | null
   strength: 'auspicious' | 'inauspicious'
   stars: number
+  /** Nakshatra ID involved in the yoga (e.g. Pushya=8 for Ravi/Guru Pushya).
+   *  Used to detect alignment with native's birth nakshatra. Optional. */
+  nakshatra_id?: number | null
 }
 
 // ── Display names + Sanskrit ──────────────────────────────────────────────────
@@ -86,18 +94,37 @@ interface SpecialYogasListProps {
   specialYogas: unknown[] | null | undefined
   /** Local timezone offset in minutes (default 330 = IST +5:30) */
   tzOffsetMinutes?: number
+  /** Native overlay — when present, yogas on native's birth nakshatra get annotation */
+  nativeContext?: NativeContext | null
 }
 
 // ── Yoga row ──────────────────────────────────────────────────────────────────
+
+/**
+ * Returns true when the yoga nakshatra aligns with the native's birth nakshatra.
+ * Supports: sarvartha_siddhi and nakshatra-tagged yogas (ravi_pushya, guru_pushya).
+ * The entry must carry nakshatra_id; when absent, no annotation is shown.
+ */
+function isNativeAlignment(entry: YogaEntry, nativeContext: NativeContext): boolean {
+  if (entry.nakshatra_id == null) return false
+  return entry.nakshatra_id === nativeContext.birth_nakshatra_id
+}
+
+/** Extract a display-friendly first name from a chart name like "Abhisek (1984-02-05)" */
+function firstName(chartName: string): string {
+  return chartName.split(/[\s(]/)[0] ?? chartName
+}
 
 function YogaRow({
   entry,
   tzOffsetMinutes,
   isLast,
+  nativeContext,
 }: {
   entry: YogaEntry
   tzOffsetMinutes: number
   isLast: boolean
+  nativeContext?: NativeContext | null
 }) {
   const meta = getMeta(entry.yoga)
   const isAuspicious = entry.strength === 'auspicious'
@@ -105,6 +132,13 @@ function YogaRow({
 
   const nameColor = isAuspicious ? 'rgba(80,200,130,0.90)' : 'rgba(220,80,60,0.90)'
   const bgTint = isAuspicious ? 'rgba(80,200,130,0.04)' : 'rgba(220,80,60,0.04)'
+
+  // Native alignment annotation: show when yoga nakshatra = native's Janma nakshatra
+  const showNativeAnnotation =
+    nativeContext != null && isNativeAlignment(entry, nativeContext)
+  const nativeLabel = showNativeAnnotation
+    ? `for ${firstName(nativeContext.native_name)}`
+    : null
 
   return (
     <div
@@ -133,12 +167,28 @@ function YogaRow({
           </span>
         )}
         <div className="flex flex-col min-w-0">
-          <span
-            className="text-sm font-medium truncate"
-            style={{ color: nameColor }}
-          >
-            {meta.display}
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="text-sm font-medium truncate"
+              style={{ color: nameColor }}
+            >
+              {meta.display}
+            </span>
+            {/* Native alignment annotation — light touch per §3 Item 8 */}
+            {nativeLabel && (
+              <span
+                className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium"
+                style={{
+                  background: 'rgba(212,175,55,0.08)',
+                  color: 'rgba(212,175,55,0.75)',
+                  borderColor: 'rgba(212,175,55,0.20)',
+                }}
+                aria-label={`Personal alignment: ${nativeLabel}`}
+              >
+                {nativeLabel}
+              </span>
+            )}
+          </div>
           {meta.sanskrit && (
             <span
               className="font-serif text-[11px]"
@@ -172,6 +222,7 @@ function YogaRow({
 export function SpecialYogasList({
   specialYogas,
   tzOffsetMinutes = 330,
+  nativeContext,
 }: SpecialYogasListProps) {
   const yogas = (Array.isArray(specialYogas) ? specialYogas : []) as YogaEntry[]
 
@@ -206,6 +257,7 @@ export function SpecialYogasList({
             entry={entry}
             tzOffsetMinutes={tzOffsetMinutes}
             isLast={i === yogas.length - 1}
+            nativeContext={nativeContext}
           />
         ))
       )}
