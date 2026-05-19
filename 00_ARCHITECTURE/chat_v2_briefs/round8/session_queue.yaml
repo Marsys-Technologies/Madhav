@@ -18,6 +18,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s1): conversation_branches table + GET/POST /api/conversations/[id]/branches + useBranches server mirror"
     estimated_loc: "+120 (migration + route + hook update)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: ddcb350
 
   - id: R8-S2
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S2-branch-picker-ui.md
@@ -26,6 +29,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s2): BranchPicker component — ‹ N/M › inline on edited messages"
     estimated_loc: "+80 (new component + test)"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 757f34d
 
   - id: R8-S3
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S3-sidebar-fts-search.md
@@ -34,6 +40,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s3): pg_trgm FTS — conversation body search API + sidebar expand filter to body"
     estimated_loc: "+90 (migration + route + sidebar update)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 0816fd9
 
   - id: R8-S4
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S4-pin-archive-folders.md
@@ -42,6 +51,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s4): pin/archive/folders — migrations + API routes + sidebar grouping (Pinned → Folders → Date buckets)"
     estimated_loc: "+180 (3 migrations + API + sidebar UI)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: b5ca24b
 
   - id: R8-S5
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S5-token-estimate-composer.md
@@ -50,6 +62,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s5): live token count + context % in Composer (gpt-tokenizer, lazy-loaded; amber/red thresholds)"
     estimated_loc: "+60"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 18f5e44
 
   - id: R8-S6
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S6-slash-command-menu.md
@@ -58,6 +73,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s6): inline slash command menu — /trigger + CommandPalette reuse + keyboard nav"
     estimated_loc: "+100 (new component + shared commands lib)"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 237b366
 
   - id: R8-S7
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S7-vision-pipeline.md
@@ -66,6 +84,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s7): vision pipeline — GeminiVisionAdapter + image attachment routing through synthesis LLM"
     estimated_loc: "+80"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 6e074df
 
   - id: R8-S8
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S8-pdf-md-export.md
@@ -74,3 +95,6 @@ sessions:
     commit_template: "feat(chat-v2/r8-s8): conversation export — MD/JSON/PDF via /api/conversations/[id]/export + Export button in ChatShell header"
     estimated_loc: "+100"
     risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 5e248fc

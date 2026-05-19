@@ -94,6 +94,21 @@ export type FeatureFlag =
   // Env: MARSYS_FLAG_CHECKPOINT_DASHA_ENABLED / MARSYS_FLAG_CHECKPOINT_DASHA_FAIL_HARD.
   | 'CHECKPOINT_DASHA_ENABLED'
   | 'CHECKPOINT_DASHA_FAIL_HARD'
+  // R8 — Capabilities Round flags (all default false; flip individually after smoke verification)
+  // R8-S1: Conversation branches persistence (REST API + useBranches hydration).
+  | 'R8_BRANCHES_ENABLED'
+  // R8-S3: Full-text search via pg_trgm across conversation bodies.
+  | 'R8_SEARCH_ENABLED'
+  // R8-S4: Pin/archive/folders for conversation organisation.
+  | 'R8_FOLDERS_ENABLED'
+  // R8-S5: Live token count + context % in Composer.
+  | 'R8_TOKENS_ENABLED'
+  // R8-S6: Inline slash command menu.
+  | 'R8_SLASH_ENABLED'
+  // R8-S7: Vision pipeline via Gemini adapter (default false — changes LLM cost profile).
+  | 'R8_VISION_ENABLED'
+  // R8-S8: Conversation export (MD / JSON / PDF).
+  | 'R8_EXPORT_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -157,6 +172,14 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // FAIL_HARD default true — once enabled, halt on violations.
   CHECKPOINT_DASHA_ENABLED: false,
   CHECKPOINT_DASHA_FAIL_HARD: true,
+  // R8 Capabilities Round — all default false; flip individually after smoke.
+  R8_BRANCHES_ENABLED: false,
+  R8_SEARCH_ENABLED: false,
+  R8_FOLDERS_ENABLED: false,
+  R8_TOKENS_ENABLED: false,
+  R8_SLASH_ENABLED: false,
+  R8_VISION_ENABLED: false,
+  R8_EXPORT_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
