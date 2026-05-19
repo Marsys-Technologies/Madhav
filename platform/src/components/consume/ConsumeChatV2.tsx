@@ -190,8 +190,14 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
 
 interface CitationContextValue {
   onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
+  onStreamEnd: (citations: CitationPart[]) => void
+  onBadgeClick: (index: number) => void
 }
-const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
+const CitationCtx = createContext<CitationContextValue>({
+  onPin: () => {},
+  onStreamEnd: () => {},
+  onBadgeClick: () => {},
+})
 
 /** Pre-process LLM response text before markdown rendering.
  *
@@ -233,10 +239,11 @@ export { preprocessCitations }
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
-  const { onPin } = useContext(CitationCtx)
+  const { onPin, onStreamEnd, onBadgeClick } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
+  const prevIsStreamingRef = useRef(isStreaming)
 
   // C.3: build signal_id → {snippet, layer} map from data-citation parts.
   const citationRichMap = useMemo(() => {
@@ -255,10 +262,37 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     return result
   }, [dataParts])
 
+  // R7-S4: collect all CitationPart objects from data parts for stream-end event.
+  const allCitationParts = useMemo(() => {
+    return dataParts
+      .filter(d => d.type === 'data-citation')
+      .map(d => {
+        const data = d.data as Record<string, unknown>
+        return {
+          type: 'citation' as const,
+          index: typeof data.index === 'number' ? data.index : 0,
+          signal_id: typeof data.signal_id === 'string' ? data.signal_id : '',
+          snippet: typeof data.snippet === 'string' ? data.snippet : '',
+          layer: (data.layer === 'L1' ? 'L1' : 'L2.5') as 'L1' | 'L2.5',
+        }
+      })
+      .filter(c => c.signal_id)
+      .sort((a, b) => a.index - b.index)
+  }, [dataParts])
+
+  // R7-S4: AC-1 — when streaming ends and citations exist, open the panel.
+  useEffect(() => {
+    if (prevIsStreamingRef.current && !isStreaming && allCitationParts.length > 0) {
+      onStreamEnd(allCitationParts)
+    }
+    prevIsStreamingRef.current = isStreaming
+  }, [isStreaming, allCitationParts, onStreamEnd])
+
   const enrichedOnPin = useCallback((n: number, signalId: string) => {
     const rich = citationRichMap.get(signalId)
     onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
-  }, [onPin, citationRichMap])
+    onBadgeClick(n)
+  }, [onPin, citationRichMap, onBadgeClick])
 
   // Pre-process text: replace SIG.MSR.NNN → `CITE:N:SIG.MSR.NNN` inline markers.
   const { processedText, count } = useMemo(
@@ -1574,22 +1608,36 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
-  // β4: Pinned citations state
-  const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
-  const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
+  // β4: Citation state — allCitations holds every citation from the latest complete message.
+  const [allCitations, setAllCitations] = useState<CitationPart[]>([])
+  const pinnedSet = useMemo(() => new Set(allCitations.map(c => c.index)), [allCitations])
+
+  // R7-S4: panel open/close state and scroll-to-row target.
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [scrollTarget, setScrollTarget] = useState<number | null>(null)
 
   const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
-    setPinnedCitations(prev => {
+    setAllCitations(prev => {
       if (prev.some(c => c.index === n)) return prev
       return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
     })
   }, [])
 
   const handleUnpin = useCallback((n: number) => {
-    setPinnedCitations(prev => prev.filter(c => c.index !== n))
+    setAllCitations(prev => prev.filter(c => c.index !== n))
   }, [])
 
-  const citationCtxValue = useMemo(() => ({ onPin: handlePin }), [handlePin])
+  const citationCtxValue = useMemo(() => ({
+    onPin: handlePin,
+    onStreamEnd: (citations: CitationPart[]) => {
+      setAllCitations(citations)
+      setPanelOpen(true)
+    },
+    onBadgeClick: (index: number) => {
+      setPanelOpen(true)
+      setScrollTarget(index)
+    },
+  }), [handlePin])
 
   // β5: attachment manager — tokens injected into each request body
   const attachmentManager = useAttachmentManager()
@@ -1664,9 +1712,13 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} />
             <CitationSidePanel
-              citations={pinnedCitations}
+              citations={allCitations}
               pinned={pinnedSet}
               onUnpin={handleUnpin}
+              open={panelOpen}
+              onClose={() => setPanelOpen(false)}
+              scrollTarget={scrollTarget}
+              onScrolled={() => setScrollTarget(null)}
             />
           </div>
         </AssistantRuntimeProvider>

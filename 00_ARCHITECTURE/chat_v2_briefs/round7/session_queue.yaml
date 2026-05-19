@@ -47,6 +47,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s4): citation panel auto-opens after streaming with all citations; pin becomes highlight"
     estimated_loc: "+35"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T02:15:00Z"
 
   - id: R7-S5
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S5-auto-continue-on-truncation.md

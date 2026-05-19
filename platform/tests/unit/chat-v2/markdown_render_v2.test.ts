@@ -29,7 +29,7 @@ describe('B.4 — streamdown in V2AssistantText', () => {
   it('V2AssistantText renders via MarkdownContent not bare <p>', () => {
     const fn = v2Src.slice(
       v2Src.indexOf('function V2AssistantText'),
-      v2Src.indexOf('function V2AssistantText') + 2500,
+      v2Src.indexOf('function V2AssistantText') + 5000,
     )
     expect(fn).toContain('<MarkdownContent')
     expect(fn).not.toContain('<p className="whitespace-pre-wrap"')
@@ -38,7 +38,7 @@ describe('B.4 — streamdown in V2AssistantText', () => {
   it('V2AssistantText passes streaming prop based on message.status', () => {
     const fn = v2Src.slice(
       v2Src.indexOf('function V2AssistantText'),
-      v2Src.indexOf('function V2AssistantText') + 2500,
+      v2Src.indexOf('function V2AssistantText') + 5000,
     )
     expect(fn).toContain('streaming={isStreaming}')
     expect(fn).toContain("'running'")
@@ -47,7 +47,7 @@ describe('B.4 — streamdown in V2AssistantText', () => {
   it('V2AssistantText passes data-testid for E2E targeting', () => {
     const fn = v2Src.slice(
       v2Src.indexOf('function V2AssistantText'),
-      v2Src.indexOf('function V2AssistantText') + 2500,
+      v2Src.indexOf('function V2AssistantText') + 5000,
     )
     expect(fn).toContain('v2-message-text')
   })
@@ -82,7 +82,7 @@ describe('B.4 — streamdown in V2AssistantText', () => {
   it('citation count still computed for drawer badge in V2AssistantText', () => {
     const fn = v2Src.slice(
       v2Src.indexOf('function V2AssistantText'),
-      v2Src.indexOf('function V2AssistantText') + 2500,
+      v2Src.indexOf('function V2AssistantText') + 5000,
     )
     expect(fn).toContain('onCitationCount')
     expect(fn).toContain('renderWithCitations')
