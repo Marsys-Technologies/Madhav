@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { PanelLeft, FileText, X, Pencil, ChevronLeft } from 'lucide-react'
+import { ExportDropdown } from './ExportDropdown'
 import { cn } from '@/lib/utils'
 import { getHighlighter } from '@/lib/shiki'
 
@@ -204,6 +205,7 @@ export function ChatShell({
           </div>
 
           <div className="ml-auto flex items-center gap-1">
+            {conversationId && <ExportDropdown conversationId={conversationId} />}
             {headerActions}
             {rightPanel && (
               <button
