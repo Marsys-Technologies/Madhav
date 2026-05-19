@@ -799,6 +799,40 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
            synthesis to interpret 7th-aspect (180°) and let cgm_graph_walk
            surface Vedic special-aspect membership separately.
 
+  R-DA. DASHA ANCHOR: Attach `query_dasha_periods` to tool_calls for any query
+       referencing Vimshottari, Yogini, or Chara dasha periods. The schedule
+       lives in chart_facts; the canonical 50-row FORENSIC §5.1 table is
+       reachable through this single tool — synthesis MUST NOT extrapolate
+       dasha sequences from pretrained knowledge.
+
+       Triggers:
+         (a) Mahadasha / MD / Vimshottari / current dasha / next dasha /
+             upcoming dasha / previous dasha / which dasha
+         (b) Antardasha / AD / Pratyantardasha / PD / Sookshma / Prana
+         (c) A specific dasha lord by name in temporal context
+             ("when is my Saturn dasha", "Mars antardasha")
+         (d) Yogini, Chara, or Narayana dasha system names
+
+       Priority:
+         - Pure dasha-lookup query → priority 1
+         - Predictive query mentioning dasha as a timing layer → priority 1
+         - General predictive (R-TC fires) → priority 2
+
+       Param selection:
+         - "current / now / today" → {} (no params; default returns active row + next 3 MDs)
+         - "next" / "upcoming" → {level:"M", next_count:1}
+         - "previous / past" → {level:"M", prev_count:1}
+         - Specific date → {as_of_date:"YYYY-MM-DD"}
+         - Specific lord → {md_lord:"<lord>"}
+         - Date range → {from_date:"...", to_date:"..."}
+
+       Exclusions:
+         - Pure natal MD-lord-significance query ("what does my Mercury MD lord
+           mean for my career") goes through chart_facts_query + msr_sql (the
+           natal karaka interpretation). R-DA still attaches at priority 3 for
+           cross-reference (date anchor) but the natal layer is the answer.
+         - Multi-school triangulation queries (R31/R32 STOP at step 5).
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -1973,6 +2007,33 @@ Query: "When will Saturn next aspect my natal Moon?"
 
 This example shows R-TE firing for a search-mode transit-aspect query. query_transit_event resolves natal Moon longitude from chart_facts internally when `natal_planet` is given — the planner does not need to look it up separately. R-TC does NOT fire (query_ephemeris not needed — the sidecar already returns exact event dates). msr_sql fires under R7a to supply natal Moon signal context for synthesis-layer interpretation of the upcoming transit.
 
+### 4.28 R-DA dasha anchor — next MD query
+
+Query: "What's my next mahadasha?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Next Vimshottari MD transition from today.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "§5.1 dasha schedule." }
+  ],
+  "tool_calls": [
+    { "tool_name": "query_dasha_periods", "params": {"level":"M","next_count":1}, "token_budget": 300, "priority": 1, "reason": "R-DA: next MD lookup via chart_facts." }
+  ],
+  "synthesis_guidance": "Cite the DSH.V.NNN fact_id from the result. Format: 'next MD is <lord> (→ DSH.V.NNN, start_date to end_date)'. Do NOT extrapolate from pretrained Vimshottari knowledge.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual lookup.", "mode": "independent" }
+}
+```
+
+This example shows R-DA firing for a pure dasha schedule lookup. Empty `next_count:1` + `level:"M"` returns the first MD cluster whose start_date >= today. msr_sql does NOT fire — this is a schedule query, not natal interpretation. The synthesis_guidance mandates citing the DSH.V.NNN fact_id to prevent hallucinated sequences.
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -1996,3 +2057,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.3 content extension 2026-05-18 (Phase 4A) — R-TC transit-context rule + example 4.25 added for query_ephemeris*
 *v2.0.4 content extension 2026-05-19 (Phase 4C) — R-PA panchanga anchor rule + R-TC pairing-clause update + example 4.26 added for query_panchanga*
 *v2.0.5 content extension 2026-05-19 (Phase 4D) — R-TE transit-event-search rule + example 4.27 added for query_transit_event*
+*v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*

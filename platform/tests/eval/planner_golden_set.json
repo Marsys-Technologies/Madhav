@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.2",
-  "description": "Golden test set for the MARSYS-JIS query planner. 82 labeled query → expected_tool-plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala. Extended 2026-05-18 (Phase 4A) with 5 entries (GT.065–069) covering query_ephemeris + R-TC transit-context rule (4 positive + 1 negative NEGATIVE test). Extended 2026-05-19 (Phase 4B) with 4 entries (GT.070–073) covering derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with 4 entries (GT.074–077) covering query_panchanga + R-PA anchor rule. Extended 2026-05-19 (Phase 4D) with 5 entries (GT.078–082) covering query_transit_event + R-TE transit-event-search rule (4 positive + 1 negative NEGATIVE test).",
+  "description": "Golden test set for the MARSYS-JIS query planner. 82 labeled query → expected_tool-plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala. Extended 2026-05-18 (Phase 4A) with 5 entries (GT.065–069) covering query_ephemeris + R-TC transit-context rule (4 positive + 1 negative NEGATIVE test). Extended 2026-05-19 (Phase 4B) with 4 entries (GT.070–073) covering derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with 4 entries (GT.074–077) covering query_panchanga + R-PA anchor rule. Extended 2026-05-19 (Phase 4D) with 5 entries (GT.078–082) covering query_transit_event + R-TE transit-event-search rule (4 positive + 1 negative NEGATIVE test). Extended 2026-05-19 (Phase 5A) with 4 entries (GT.083–086) covering query_dasha_periods + R-DA dasha-anchor rule (3 positive + 1 negative NEGATIVE test).",
   "native_context": {
     "name": "Abhisek Mohanty",
     "birth_date": "1984-02-05",
@@ -1907,6 +1907,62 @@
       "domains": [],
       "forward_looking": false,
       "notes": "NEGATIVE for R-TE. WHAT-not-WHEN query — current Jupiter position is a lookup, not a search. query_ephemeris (R-TC) is the right surface. query_transit_event FORBIDDEN — search-mode does not fire for positional lookups."
+    },
+    {
+      "id": "GT.083",
+      "query": "What's my current mahadasha?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_dasha_periods"],
+      "required_tools": ["query_dasha_periods"],
+      "forbidden_tools": ["vector_search", "pattern_register"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-DA + R-FACT. Empty params return today's active row + next 3 MDs. msr_sql is NOT required (this is a pure schedule lookup, not natal interpretation)."
+    },
+    {
+      "id": "GT.084",
+      "query": "What is my next mahadasha after Mercury?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_dasha_periods"],
+      "required_tools": ["query_dasha_periods"],
+      "forbidden_tools": ["vector_search", "pattern_register", "msr_sql"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-DA canonical failure-case test. CORRECT answer must cite Ketu MD via DSH.V.024+. msr_sql FORBIDDEN here — would surface signals associated with Mercury, not the schedule lookup. This is THE test that the campaign is designed to fix."
+    },
+    {
+      "id": "GT.085",
+      "query": "When was my Saturn mahadasha?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_dasha_periods"],
+      "required_tools": ["query_dasha_periods"],
+      "forbidden_tools": ["vector_search"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Saturn"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-DA with md_lord='Saturn' filter. Returns DSH.V.006-014 (Saturn MD 1991-2010). NEGATIVE for R7c — no transit ban issue since not predictive."
+    },
+    {
+      "id": "GT.086",
+      "query": "What does it mean that my current dasha lord is Mercury?",
+      "query_class": "interpretive",
+      "category": "interpretive",
+      "expected_tools": ["msr_sql", "chart_facts_query"],
+      "required_tools": ["msr_sql", "chart_facts_query"],
+      "forbidden_tools": [],
+      "required_asset_ids": ["FORENSIC", "MSR"],
+      "planets": ["Mercury"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "NEGATIVE for R-DA pure-lookup path. This is natal interpretation of MD-lord significance, NOT a schedule query. query_dasha_periods MAY attach at priority 3 for date anchor, but msr_sql + chart_facts_query are the primary surfaces. Tests that R-DA doesn't over-fire on interpretive queries."
     }
   ],
   "_schema_version": "1.2"

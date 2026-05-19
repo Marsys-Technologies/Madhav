@@ -285,4 +285,50 @@ describe('chart_facts_query tool', () => {
     expect(sql).toContain('value_text ILIKE')
     expect(sql).toContain('value_json::text ILIKE')
   })
+
+  // TC.13 — as_of_date emits start_date/end_date bracket (Phase 5A dasha filter)
+  it('emits start_date <= as_of_date < end_date condition for dasha date lookup', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    await tool.retrieve(basePlan, {
+      category: 'dasha_vimshottari',
+      as_of_date: '2026-05-19',
+    })
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain("start_date')::date <=")
+    expect(sql).toContain("end_date')::date >")
+    const args: unknown[] = mockQuery.mock.calls[0][1]
+    expect(args).toContain('2026-05-19')
+  })
+
+  // TC.14 — from_date emits end_date >= from_date (range start filter)
+  it('emits end_date >= from_date condition for forward range query', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    await tool.retrieve(basePlan, {
+      category: 'dasha_vimshottari',
+      from_date: '2027-01-01',
+    })
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain("end_date')::date >=")
+    const args: unknown[] = mockQuery.mock.calls[0][1]
+    expect(args).toContain('2027-01-01')
+  })
+
+  // TC.15 — to_date emits start_date <= to_date (range end filter)
+  it('emits start_date <= to_date condition for historical range query', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    await tool.retrieve(basePlan, {
+      category: 'dasha_vimshottari',
+      to_date: '2025-12-31',
+    })
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain("start_date')::date <=")
+    const args: unknown[] = mockQuery.mock.calls[0][1]
+    expect(args).toContain('2025-12-31')
+  })
 })
