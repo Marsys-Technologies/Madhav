@@ -120,9 +120,9 @@ describe('PromptRegistry', () => {
   ]
 
   describe('list()', () => {
-    it('returns exactly 8 templates', () => {
+    it('returns exactly 10 templates', () => {
       const registry = getDefaultRegistry()
-      expect(registry.list()).toHaveLength(8)
+      expect(registry.list()).toHaveLength(10)
     })
   })
 
@@ -611,5 +611,42 @@ describe('CTX-GAP-S1: QUERY_INDEPENDENCE_GATE', () => {
     const capped = longHistory.slice(-5).slice(0, -1)
     expect(capped.length).toBeLessThanOrEqual(4)
     expect(capped.length).toBe(4)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Synthesis templates — multi_school_triangulation + classical_grounding
+// (FIX_PROMPT_REGISTRY_MISSING_TEMPLATES_BRIEF_v1_0 §4.4)
+// ---------------------------------------------------------------------------
+
+describe('Synthesis templates — multi_school_triangulation + classical_grounding', () => {
+  it('multi_school_triangulation template registers and renders cleanly', () => {
+    const registry = getDefaultRegistry()
+    const t = registry.get('multi_school_triangulation', 'super_admin', 'single_model')
+    expect(t).toBeDefined()
+    expect(t.body).toContain('MULTI_SCHOOL_TRIANGULATION')
+    expect(t.body).toContain('school_signal_coverage')
+    expect(t.body).toContain('DASHA DISCIPLINE GATE')   // §5B gate present
+    expect(t.body).toContain('B.11 WHOLE-CHART-READ PROTOCOL')
+  })
+
+  it('classical_grounding template registers and renders cleanly', () => {
+    const registry = getDefaultRegistry()
+    const t = registry.get('classical_grounding', 'super_admin', 'single_model')
+    expect(t).toBeDefined()
+    expect(t.body).toContain('CLASSICAL_GROUNDING')
+    expect(t.body).toContain('classical_attributions')
+    expect(t.body).toContain('BPHS')
+  })
+
+  it('registry.list() now returns 10 templates', () => {
+    const registry = getDefaultRegistry()
+    expect(registry.list().length).toBe(10)
+  })
+
+  it('registry throws when looking up an UNKNOWN class (regression — must still fail loud)', () => {
+    const registry = getDefaultRegistry()
+    expect(() => registry.get('unknown_class' as any, 'super_admin', 'single_model'))
+      .toThrow(/no template found/)
   })
 })
