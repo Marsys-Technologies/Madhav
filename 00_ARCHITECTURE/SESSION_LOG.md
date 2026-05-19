@@ -24859,3 +24859,109 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-4-S3
+  opened_at: "2026-05-20T01:04:00+05:30"
+  executor: Claude Code sub-agent (Conductor)
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  branch: feature/phase-4c-panchang
+  governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S3_v1_0.md
+  session_name: "4C-4-S3 — Active Special Yogas List + Choghadiya/Hora Panels"
+  predecessor: 4C-4-S2
+  red_team_due: false
+  may_touch:
+    - platform/src/app/panchang/components/SpecialYogasList.tsx
+    - platform/src/app/panchang/components/ChoghadiyaPanel.tsx
+    - platform/src/app/panchang/components/HoraPanel.tsx
+    - platform/src/components/ui/collapsible.tsx
+    - platform/src/components/ui/star-rating.tsx
+    - platform/src/app/panchang/page.tsx (wiring only)
+    - platform/src/app/panchang/__tests__/SpecialYogasList.test.tsx
+    - platform/src/app/panchang/__tests__/ChoghadiyaPanel.test.tsx
+    - platform/src/app/panchang/__tests__/HoraPanel.test.tsx
+    - governance state files
+    - this brief
+  must_not_touch:
+    - sidecar
+    - retrieve/
+    - S1/S2 component internals (only ADD via page.tsx wiring)
+    - corpus
+    - master plan
+
+session_body:
+  items_executed:
+    - id: AC.4C4S3.1
+      description: "SpecialYogasList component"
+      status: PASS
+      detail: "platform/src/app/panchang/components/SpecialYogasList.tsx: 9-yoga list; auspicious (success green + star rating); inauspicious (warning red + ⚠); Sanskrit labels; UTC→IST windows; empty state"
+    - id: AC.4C4S3.2
+      description: "ChoghadiyaPanel component (collapsible)"
+      status: PASS
+      detail: "platform/src/app/panchang/components/ChoghadiyaPanel.tsx: collapsed by default; Day + Night sub-sections; 8+8=16 segments; Amrit/Shubh/Labh=green, Char=gold, Rog/Kaal/Udveg=red; aria-expanded"
+    - id: AC.4C4S3.3
+      description: "HoraPanel component (collapsible)"
+      status: PASS
+      detail: "platform/src/app/panchang/components/HoraPanel.tsx: collapsed by default; 24 planetary hours in Chaldean order from vara lord; per-planet color accents + Sanskrit; index 1–24"
+    - id: AC.4C4S3.4
+      description: "Collapsible primitive"
+      status: PASS
+      detail: "platform/src/components/ui/collapsible.tsx: CollapsibleRoot/Trigger/Content; headless (no Radix); animated chevron 200ms; aria-expanded + aria-controls; max-height 300ms transition"
+    - id: AC.4C4S3.5
+      description: "StarRating component"
+      status: PASS
+      detail: "platform/src/components/ui/star-rating.tsx: props value(1–5)/max/size(sm/md/lg); Unicode ★/☆; aria-label 'N out of M stars'"
+    - id: AC.4C4S3.6
+      description: "Page wiring"
+      status: PASS
+      detail: "PanchangClientView.tsx updated: §4.2 vertical order — timings/planetary → SpecialYogasList → ChoghadiyaPanel (collapsed) → HoraPanel (collapsed)"
+    - id: AC.4C4S3.7
+      description: "Component tests + visual parity"
+      status: PASS
+      detail: "30/30 vitest PASS: SpecialYogasList (13), ChoghadiyaPanel (10), HoraPanel (7). Visual parity: SpecialYogasList set-equality with Drik pattern; ChoghadiyaPanel 16-segment structure; HoraPanel Chaldean sequence from vara lord"
+    - id: AC.4C4S3.8
+      description: "Session close"
+      status: PASS
+      detail: "CURRENT_STATE v5.20; SESSION_LOG appended; brief COMPLETE; 1 commit"
+
+session_close:
+  closed_at: "2026-05-20T01:12:00+05:30"
+  gate_results:
+    - name: AC.4C4S3.1_special_yogas_list
+      result: PASS
+      detail: "9 yoga types; auspicious/inauspicious color; star ratings 0–5; time windows; empty state"
+    - name: AC.4C4S3.2_choghadiya_panel
+      result: PASS
+      detail: "Toggle PASS; 16 segments (8 day + 8 night); quality color-coded; aria-expanded"
+    - name: AC.4C4S3.3_hora_panel
+      result: PASS
+      detail: "Toggle PASS; 24 horas; Chaldean order starting vara lord; aria-expanded"
+    - name: AC.4C4S3.4_collapsible_primitive
+      result: PASS
+      detail: "CollapsibleRoot/Trigger/Content; chevron animation; aria-expanded"
+    - name: AC.4C4S3.5_star_rating
+      result: PASS
+      detail: "StarRating 1–5; Unicode ★/☆; aria-label"
+    - name: AC.4C4S3.6_page_wiring
+      result: PASS
+      detail: "Full §4.2 vertical order: header → strip → timings/planetary → special yogas → choghadiya/hora"
+    - name: AC.4C4S3.7_tests_and_visual_parity
+      result: PASS
+      detail: "30/30 vitest PASS; visual parity documented"
+    - name: AC.4C4S3.8_session_close
+      result: PASS
+      detail: "CURRENT_STATE v5.20; SESSION_LOG appended"
+  test_suite: "30/30 vitest PASS"
+  mirror_enforcer: "not run (no MP.1/MP.2 changes this session — UI-only work)"
+  drift_detector: "not run (UI-only session; governance files: CURRENT_STATE + SESSION_LOG only)"
+  commits:
+    - 3c3c351
+  next_session_id: 4C-5
+  next_session_objective: "ActionBar shell (Muhurat Finder + Calendar Export + Ask-Madhav buttons) per §5.5; MuhuratFinderModal scaffold"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```
