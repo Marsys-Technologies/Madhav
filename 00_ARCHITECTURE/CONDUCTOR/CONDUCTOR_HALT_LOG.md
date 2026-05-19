@@ -26,6 +26,33 @@ Each entry contains:
 
 <!-- Conductor appends entries below this line. Do not edit above. -->
 
+## 4C-1-S2 — HALT — 2026-05-19T18:46:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-1-S2 |
+| Failure class | requires_brief_authoring |
+| Timestamp | 2026-05-19T18:46:00+05:30 |
+| Last passed | 4C-1-S1 |
+| Queue position | 2 of 11 |
+| Resolution status | open |
+
+### Failure context
+
+4C-1-S1 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_1_S2_v1_0.md covering: special_yogas.py implementation, Drik fixture extension to 30 days (10 days in S1), muhurat scoring scaffold, and shastra_tables.py lookup tables. Scope: platform/sidecar/panchang_engine/ only.
+
+### Gate output
+
+(gate not run — entry blocked on requires_brief_authoring)
+
+### Suggested resolution paths
+
+- [Author the brief in Cowork, commit it, update queue entry requires_brief_authoring to false, then re-paste kickoff]
+- SKIP 4C-1-S2 — orchestrator marks skipped + advances (not recommended)
+- ABANDON — orchestrator stops permanently
+
+---
+
 ## 4C-1-S1 — HALT — 2026-05-19T18:38:00+05:30
 
 | Field | Value |
