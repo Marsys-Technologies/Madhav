@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut as firebaseSignOut } from 'firebase/auth'
@@ -24,18 +25,42 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+// Lunar crescent SVG icon for Panchang nav entry — gold tint matching brand #fce29a
+function MoonCrescentIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* Crescent: full circle minus inner offset circle (clip trick via path) */}
+      <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.9-.1-1.35A7 7 0 0 1 12 3z" />
+    </svg>
+  )
+}
+
+interface NavItem {
+  href: string
+  label: string
+  icon: LucideIcon | React.ComponentType<{ className?: string }>
+  roles: readonly string[]
+}
+
 interface AppShellRailProps {
   user: { uid: string; email?: string; name?: string }
   profile: { role: 'super_admin' | 'admin' | 'client'; status?: string }
 }
 
-const NAV_ITEMS: { href: string; label: string; icon: LucideIcon; roles: readonly string[] }[] = [
-  { href: '/dashboard',   label: 'Roster',      icon: Users,       roles: ['super_admin', 'admin', 'client'] },
-  { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,       roles: ['super_admin'] },
-  { href: '/audit',       label: 'Audit',       icon: FileText,    roles: ['super_admin'] },
-  { href: '/aiops',       label: 'AIOps',       icon: Bot,         roles: ['super_admin'] },
-  { href: '/performance', label: 'Performance', icon: ChartColumn, roles: ['super_admin'] },
-  { href: '/admin',       label: 'Admin',       icon: Settings2,   roles: ['super_admin', 'admin'] },
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',   label: 'Roster',      icon: Users,            roles: ['super_admin', 'admin', 'client'] },
+  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'admin', 'client'] },
+  { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,            roles: ['super_admin'] },
+  { href: '/audit',       label: 'Audit',       icon: FileText,         roles: ['super_admin'] },
+  { href: '/aiops',       label: 'AIOps',       icon: Bot,              roles: ['super_admin'] },
+  { href: '/performance', label: 'Performance', icon: ChartColumn,      roles: ['super_admin'] },
+  { href: '/admin',       label: 'Admin',       icon: Settings2,        roles: ['super_admin', 'admin'] },
 ]
 
 export function AppShellRail({ user, profile }: AppShellRailProps) {
