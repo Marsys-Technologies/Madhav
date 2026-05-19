@@ -92,11 +92,12 @@ describe('PanchangHeader', () => {
     expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
   })
 
-  it('Personalise button is present and disabled (4C-5 scope)', () => {
+  it('Personalise select is present with Generic Panchang default (4C-5 wiring deferred)', () => {
     render(<PanchangHeader {...defaultProps} />)
-    const btn = screen.getByLabelText('Personalise (coming soon)')
-    expect(btn).toBeInTheDocument()
-    expect(btn).toBeDisabled()
+    const sel = screen.getByLabelText('Personalise view')
+    expect(sel).toBeInTheDocument()
+    expect(sel).not.toBeDisabled()
+    expect(sel).toHaveValue('generic')
   })
 })
 
