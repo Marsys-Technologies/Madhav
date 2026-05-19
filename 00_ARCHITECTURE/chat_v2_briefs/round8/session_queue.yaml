@@ -51,6 +51,9 @@ sessions:
     commit_template: "feat(chat-v2/r8-s4): pin/archive/folders — migrations + API routes + sidebar grouping (Pinned → Folders → Date buckets)"
     estimated_loc: "+180 (3 migrations + API + sidebar UI)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: b5ca24b
 
   - id: R8-S5
     brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S5-token-estimate-composer.md

@@ -1,5 +1,25 @@
 # R8 Sessions Log — Chat V2 Capabilities Round
 
+## R8-S4 — Pin/Archive/Folders
+- **Completed**: 2026-05-20
+- **Commit**: b5ca24b
+- **Files touched**:
+  - `platform/supabase/migrations/068_pin_archive_folders.sql` (new)
+  - `platform/src/app/api/conversations/[id]/route.ts` (modified — extend PATCH)
+  - `platform/src/app/api/folders/route.ts` (new)
+  - `platform/src/app/api/folders/[id]/route.ts` (new)
+  - `platform/src/types/folders.ts` (new)
+  - `platform/src/hooks/useFolders.ts` (new)
+  - `platform/src/components/consume/FolderGroup.tsx` (new)
+  - `platform/src/components/consume/ArchivedView.tsx` (new)
+  - `platform/src/components/consume/ConversationSidebarV2.tsx` (modified)
+- **Acceptance criteria**: tsc: 0 errors. Lint on changed files: 0 errors. Migration 068 is 35 lines.
+- **Decisions**:
+  - conversation_folder_members uses PK(conversation_id) to enforce one folder per conversation
+  - Optimistic UI updates via setConversations in mutation helpers; reload on failure
+  - ArchivedView is a separate render path in the sidebar (replaces entire sidebar content)
+  - FolderGroup's onMemberRemove prop was simplified out; parent calls moveToFolder(id, null) directly
+
 ## R8-S3 — Sidebar FTS Search
 - **Completed**: 2026-05-20
 - **Commit**: 0816fd9
