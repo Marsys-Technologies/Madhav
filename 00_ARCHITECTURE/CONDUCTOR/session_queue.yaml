@@ -16,8 +16,7 @@ external_gates:
       MEAN_NODE Rahu values.
 
       '
-    check_command: "cd /Users/Dev/Vibe-Coding/Apps/Madhav && \\\ngrep -q \"PHASE_4B.*CLOSED\\\
-      |4B.*CLOSED\\|Phase 4B.*CLOSED\\|4B.*COMPLETE\" \\\n  00_ARCHITECTURE/CURRENT_STATE_v1_0.md\n"
+    check_command: 'grep -q "phase_4b_status: CLOSED" /Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/CURRENT_STATE_v1_0.md'
     blocker_human_prompt: 'Phase 4B is still PENDING. 4C.2 (Cloud SQL panchang_daily
       schema + backfill) requires the rebuilt ephemeris_daily table with MEAN_NODE
       Rahu fix applied. Defer 4C.2 until Phase 4B closes, or explicitly SKIP 4C-2
@@ -25,6 +24,9 @@ external_gates:
       accuracy bug).
 
       '
+    fix_note: Tightened 2026-05-19 from loose 4B.*CLOSED regex which falsely matched
+      M4-B-CLOSED. Now anchored to a phase-specific status field that only Phase 4B's
+      close session writes.
 entries:
 - session_id: 4C-1-S1
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S1_v1_0.md
@@ -87,7 +89,7 @@ entries:
   est_tokens: 100000
   est_duration_min: 75
   status: skipped
-  skip_reason: "4C-1-S2 closed 4C.1 cleanly with 30/30 gate; S3 polish not required"
+  skip_reason: 4C-1-S2 closed 4C.1 cleanly with 30/30 gate; S3 polish not required
   human_decision_prompt: '4C-1-S2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
     covering: 30-day Drik validation gate run (all 30 days must pass tolerance), phase
     4C.1 close artifact, gate command tuning if any days still fail tolerance. Final
@@ -108,7 +110,7 @@ entries:
   expected_artifacts: []
   est_tokens: 130000
   est_duration_min: 120
-  status: pending
+  status: skipped
   human_decision_prompt: '4C-1-S3 has closed AND phase_4b_closed gate is satisfied.
     Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md covering:
     migration 060 (panchang_daily table), sidecar /api/compute/panchanga route extension,
@@ -116,6 +118,9 @@ entries:
     + Delhi 1900–2100. Gate: 100 sampled rows byte-for-byte match fresh re-computation.
 
     '
+  skip_reason: Phase 4B not yet closed; engine-direct path via 4C-3 doesn't require
+    the panchang_daily SQL cache. Revisit 4C-2 when Phase 4B closes and ephemeris_daily
+    is rebuilt with MEAN_NODE Rahu.
 - session_id: 4C-3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
   branch: feature/phase-4c-panchang
@@ -123,20 +128,21 @@ entries:
   depends_on:
   - 4C-2
   requires_external_gate: null
-  requires_brief_authoring: true
-  requires_human_approval: true
+  requires_brief_authoring: false
+  requires_human_approval: false
   push_to_remote: false
-  gate_command: ''
-  expected_artifacts: []
-  est_tokens: 100000
-  est_duration_min: 75
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -v tests/test_serialize.py && cd /Users/Dev/Vibe-Coding/Apps/Panchang
+    && npm test -- platform/tests/planner/test_panchang_routing.ts && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/lib/retrieve/query_panchanga.ts
+  - platform/tests/planner/panchang_probe_set.json
+  - platform/tests/planner/test_panchang_routing.ts
+  - platform/python-sidecar/panchang_engine/serialize.py
+  est_tokens: 110000
+  est_duration_min: 80
   status: pending
-  human_decision_prompt: '4C-2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
-    covering: query_panchanga.ts RetrievalTool, RETRIEVAL_TOOLS registration, PLANNER_PROMPT_v2_0.md
-    few-shot example, R-TC rule extension, and 10-probe planner verification set.
-    Gate: 10/10 planner picks correct tool on probe set.
-
-    '
+  human_decision_prompt: null
 - session_id: 4C-4
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_v1_0.md
   branch: feature/phase-4c-panchang
