@@ -2,7 +2,7 @@
 panchang_engine — Deterministic Panchang computation, Drik-parity, no LLM.
 Public API: compute_panchang, panchang_range, find_muhurat.
 """
-__version__ = "1.0.0-S2"
+__version__ = "1.0.0-S3"  # S3 = muhurat backend live (4C-6-S1)
 
 from .ayanamsha import set_ayanamsha, get_ayanamsha_value, DEFAULT_AYANAMSHA
 from .types import Panchang, Anga, Timing, PlanetState, MuhuratWindow, NatalChart
@@ -152,19 +152,38 @@ def panchang_range(date_from, date_to, lat: float, lon: float, tz_offset: int) -
     return results
 
 
-def find_muhurat(event: str, date_from, date_to, lat: float, lon: float, native_chart=None):
+def find_muhurat(
+    event: str,
+    date_from,
+    date_to,
+    lat: float,
+    lon: float,
+    tz_offset_minutes: int = 330,
+    native_chart=None,
+    weights=None,
+    top_n: int = 10,
+):
     """
-    STUB — 4C.6 implements Muhurat Finder. 4C-1-S1 only wires the entry point.
+    Return top auspicious windows for event in [date_from, date_to].
+    Implemented in 4C-6-S1 (muhurat.py); this function delegates to it.
+
     Args:
-        event: str — e.g. "vivaha", "griha_pravesh", "business_start"
-        date_from: datetime.date — search window start
-        date_to: datetime.date — search window end
+        event: str — e.g. "vivah", "griha_pravesh"
+        date_from: datetime.date — search window start (inclusive)
+        date_to: datetime.date — search window end (inclusive)
         lat, lon: float — location
-        native_chart: NatalChart | None — for dasha-aware scoring
-    Raises:
-        NotImplementedError — always; implemented in 4C.6
+        tz_offset_minutes: int — UTC offset in minutes (default 330 = IST)
+        native_chart: NatalChart | None — for Tara Bala native overlay
+        weights: dict | None — custom weights; defaults to DEFAULT_MUHURAT_WEIGHTS
+        top_n: int — number of top windows to return
+    Returns:
+        list[MuhuratWindow] sorted by score descending
     """
-    raise NotImplementedError(
-        "4C.6 implements Muhurat Finder. 4C-1-S1 only wires the entry point. "
-        f"Event='{event}', window={date_from}..{date_to}."
+    from .muhurat import find_muhurat as _find_muhurat
+    return _find_muhurat(
+        event, date_from, date_to, lat, lon,
+        tz_offset_minutes=tz_offset_minutes,
+        native_chart=native_chart,
+        weights=weights,
+        top_n=top_n,
     )
