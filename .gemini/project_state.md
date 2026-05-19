@@ -10,21 +10,23 @@ _Last updated: 2026-05-14 at M9-A-S1 (**M9 MACRO-PHASE OPEN — Multi-School Tri
 - **Next governance action:** Execute `Madhav_M2A_Exec_6` — B.4 RAG Query Engine + Gemini two-pass carry-forward. Carry-forward priorities: (1) native pastes cgm_edge_proposals_v1_0.md to Gemini, commits raw response, Claude reconciler runs Tasks 4a/4b; (2) write_chunks_to_db() for 234 CGM chunks; (3) B.4 RAG Query Engine per PHASE_B_PLAN §B.4.
 - **Steps remaining:** **0 (governance rebuild complete).** Steady-state governance discipline fully active. M2 active execution: B.0 closed, M2A Plan produced, B.1 complete, B.2 complete, B.3 complete, **B.3.5 complete** (M2A Foundation Stack 5/5 sessions done).
 
-## Concurrent Workstream — Phase 4C Panchang (ACTIVE 2026-05-19 — 4C-0 SEALED)
+## Concurrent Workstream — Phase 4C Panchang (ACTIVE 2026-05-19 — 4C.3 CLOSED)
 
-**OPENED 2026-05-19 at session 4C-0 (governance setup). 4C-1 INCOMING.** Concurrent workstream alongside the M-phase main thread. Phase 4C — Panchang Module — adds the `query_panchanga` RetrievalTool, the `PANCHANG_DAILY` L1.5 data asset, and the `/panchang` UI surface (Muhurat Finder + iCal export + Ask-Madhav deep links) to the instrument.
+**OPENED 2026-05-19 at session 4C-0 (governance setup). 4C.3 CLOSED 2026-05-19 — `query_panchanga` RetrievalTool registered; engine-direct path live.** Concurrent workstream alongside the M-phase main thread. Phase 4C — Panchang Module — adds the `query_panchanga` RetrievalTool, the `PANCHANG_DAILY` L1.5 data asset, and the `/panchang` UI surface (Muhurat Finder + iCal export + Ask-Madhav deep links) to the instrument.
 
 - **Brief artifact:** `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` (status CURRENT; canonical_id `PHASE_4C_PANCHANG_BRIEF_v1_0`).
 - **Governing plan:** `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md` (v1.0; status CURRENT).
 - **Parent campaign:** `00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md` (v1.0; 4A CLOSED, 4B PENDING, 4C ACTIVE, 4D PENDING).
 - **Worktree:** `/Users/Dev/Vibe-Coding/Apps/Panchang/`. **Branch:** `feature/phase-4c-panchang`.
-- **Phase 4C sub-phase status:** 4C.0 CLOSED (2026-05-19) | 4C.1 CLOSED (2026-05-19, 4C-1-S2 — 30/30 Drik parity PASS; special_yogas + muhurat scaffold + v1.0.0-S2) | 4C.2 GATED (phase_4b_closed) | 4C.3–4C.9 PENDING.
-- **CAPABILITY_MANIFEST entry:** `PANCHANG_DAILY_v1_0` — entry #163, path `03_DERIVATIONS/PANCHANG_DAILY_v1_0.md`, status IN_DEVELOPMENT (flipped from PLANNED at 4C-1-S2 close 2026-05-19 — engine computes; cache + backfill pending 4C.2 + Phase 4B prerequisite), layer L1.5, `sql_table: panchang_daily`, `computed_by: platform/sidecar/panchang_engine`.
+- **Phase 4C sub-phase status:** 4C.0 CLOSED (2026-05-19) | 4C.1 CLOSED (2026-05-19, 4C-1-S2 — 30/30 Drik parity PASS; special_yogas + muhurat scaffold + v1.0.0-S2) | 4C.2 GATED (phase_4b_closed) | 4C.3 CLOSED (2026-05-19 — `query_panchanga` RetrievalTool + sidecar /api/compute/panchanga + planner R-TC rule; runtime_path=engine_direct; 14/14 planner routing PASS + 16/16 TS unit PASS + 3/3 E2E PASS) | 4C.4–4C.9 PENDING.
+- **CAPABILITY_MANIFEST entry:** `PANCHANG_DAILY_v1_0` — entry #163, path `03_DERIVATIONS/PANCHANG_DAILY_v1_0.md`, status IN_DEVELOPMENT, layer L1.5, `sql_table: panchang_daily`, `computed_by: platform/sidecar/panchang_engine`, `retrieval_tool: query_panchanga`, `expose_to_chat_confirmed: true`, `runtime_path: engine_direct` (SQL cache pending 4C.2 + Phase 4B prerequisite; fingerprint PENDING_4C_2).
 - **Layer:** PANCHANG_DAILY is L1.5 — deterministic facts computed from Swiss Ephemeris (`EPHEMERIS_DAILY`) + static classical Muhurta Shastra lookup tables. No interpretation at this layer (interpretation is L2.5+ territory).
 - **Settled decisions (locked 2026-05-19):** D1 default location Bhubaneswar; D2 Muhurat MVP 6 curated events (Vivah, Griha Pravesh, Property Purchase, Vyapara, Yatra, Mantra Initiation); D3 calendar auth HMAC-signed URLs 90-day expiry.
-- **Prereq dependency:** Phase 4B (sunrise derivation, Migration 059, MEAN_NODE rebuild) must close before 4C.2 backfill. 4C.0 + 4C.1 are 4B-independent.
-- **Gemini L4 Discovery impact:** `query_panchanga` RetrievalTool available after 4C.3 closes. `panchang_daily` table carries Tithi/Nakshatra/Yoga/Vara/Karana + timings (Rahu Kalam, Yamagandam, Abhijit, Choghadiya, Hora) + special yogas + planetary positions at sunrise. Enables time-anchored Muhurta queries in the LLM pipeline.
-- **Mirror pair:** MP.1 + MP.2 (this block ↔ Claude-side `CLAUDE.md §E` and `CAPABILITY_MANIFEST.json`). Propagated same-session at 4C-0 close.
+- **Prereq dependency:** Phase 4B (sunrise derivation, Migration 059, MEAN_NODE rebuild) must close before 4C.2 backfill. 4C.0 + 4C.1 + 4C.3 are 4B-independent.
+- **Gemini L4 Discovery impact:** `query_panchanga` RetrievalTool NOW LIVE (4C.3 closed). `panchang_daily` table carries Tithi/Nakshatra/Yoga/Vara/Karana + timings (Rahu Kalam, Yamagandam, Abhijit, Choghadiya, Hora) + special yogas + planetary positions at sunrise. Enables time-anchored Muhurta queries in the LLM pipeline. Planner R-TC rule routes panchang-keyword queries to `query_panchanga`; ephemeris-keyword queries to `query_ephemeris`; mixed queries to both.
+- **Last session:** 4C-3 (2026-05-19) — `query_panchanga` registered as tool 29 in RETRIEVAL_TOOLS; sidecar router + serializer + planner R-TC rule + few-shot examples 4.25–4.27 + 10-probe routing gate (14/14 PASS) + E2E smoke (3/3 PASS).
+- **Next session:** 4C-4-S1 — `/panchang` page MVP (server shell + 5-anga primary strip + requires_brief_authoring).
+- **Mirror pair:** MP.1 + MP.2 (this block ↔ Claude-side `CLAUDE.md §E` and `CAPABILITY_MANIFEST.json`). Propagated same-session at 4C-0 close and 4C-3 close (this update).
 
 ## Concurrent Workstream — Phase O Observatory (CLOSED 2026-05-03 — COMPLETE)
 

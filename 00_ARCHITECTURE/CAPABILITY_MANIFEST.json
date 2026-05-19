@@ -2305,21 +2305,25 @@
       "status": "IN_DEVELOPMENT",
       "layer": "L1.5",
       "expose_to_chat": true,
+      "expose_to_chat_confirmed": true,
+      "retrieval_tool": "query_panchanga",
+      "runtime_path": "engine_direct",
+      "runtime_path_note": "engine_direct = query_panchanga calls sidecar /api/compute/panchanga which invokes panchang_engine on demand (4C-3 state). runtime_path will become 'cached' after 4C-2 lands the panchang_daily Cloud SQL cache layer.",
       "representations": [
         "file",
         "sql"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_4C_1",
+      "fingerprint": "PENDING_4C_2",
       "native_id": "abhisek",
       "type": "document",
-      "description": "Daily Panchang state (5 angas, timings, special yogas, planetary positions) computed deterministically from Swiss Ephemeris + Muhurta Shastra lookup tables for any (date, lat, lon) tuple. Schema doc at 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md; data in Cloud SQL panchang_daily table. Computed by platform/sidecar/panchang_engine.",
+      "description": "Daily Panchang state (5 angas, timings, special yogas, planetary positions) computed deterministically from Swiss Ephemeris + Muhurta Shastra lookup tables for any (date, lat, lon) tuple. Schema doc at 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md; data in Cloud SQL panchang_daily table. Computed by platform/sidecar/panchang_engine. Callable via query_panchanga RetrievalTool (Phase 4C-3).",
       "produced_during": "Phase-4C-0 2026-05-19",
       "produced_on": "2026-05-19",
-      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. Status PLANNED\u2192IN_DEVELOPMENT at 4C.1 open; \u2192CURRENT at 4C.2 backfill complete. 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED \u2192 IN_DEVELOPMENT (4C-1-S2 \u2014 engine computes; cache + backfill pending 4C.2 + Phase 4B prerequisite)."
+      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED\u2192IN_DEVELOPMENT at 4C.1 open; \u2192CURRENT at 4C.2 backfill complete. 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED \u2192 IN_DEVELOPMENT (4C-1-S2 \u2014 engine computes; cache + backfill pending 4C.2 + Phase 4B prerequisite). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga tool registered in RETRIEVAL_TOOLS; expose_to_chat_confirmed=true."
     }
   ],
-  "last_updated_by": "Phase-2A-M9",
-  "last_session": "analysis/backend-data-pipeline-perf-audit",
-  "last_updated": "2026-05-18"
+  "last_updated_by": "4C-3",
+  "last_session": "Phase-4C-3-query_panchanga",
+  "last_updated": "2026-05-19"
 }
