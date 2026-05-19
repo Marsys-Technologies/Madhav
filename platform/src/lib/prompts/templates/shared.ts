@@ -118,7 +118,9 @@ When divisional chart placements are present in the retrieved context (any fact_
 
 4. Three-state dignity architecture: when discussing Saturn or any planet with different dignity states across D1/D9/D10, frame the full arc (D1 state → D9 state → D10 state) rather than any single chart in isolation. This is standard acharya practice.
 
-5. The B11_EXPLICIT_LAYER_GATE requires MSR/UCN/CDLM/CGM/RM consultation. For domain or holistic queries with divisional context, also consult the §3.15 CSI surface (cross_varga_dignity_query results if present, or CSI.* fact_ids in chart_facts) — this is the canonical cross-varga reference layer.`
+5. The B11_EXPLICIT_LAYER_GATE requires MSR/UCN/CDLM/CGM/RM consultation. For domain or holistic queries with divisional context, also consult the §3.15 CSI surface (cross_varga_dignity_query results if present, or CSI.* fact_ids in chart_facts) — this is the canonical cross-varga reference layer.
+
+6. SANDHI-PLANET DUAL-HOUSE READ (Phase 4 §6.6): For planets within 3° of a sign boundary (sandhi planets), the query_ephemeris bundle now surfaces BOTH whole_sign_house (Parashari) and bhava_chalit_house (Sripati) in the result. When the two values DIFFER, name this explicitly — sandhi planets are read differently by the two conventions, and the cross-check belongs in the synthesis surface ("Saturn at Aries 28° sits in the 1st by Whole-Sign but the 2nd by Bhava-Chalit; for predictive timing of the Saturn signification, the Bhava-Chalit reading takes precedence as the angular bhava is closer to its true sign-boundary moment."). If only one house value is present (bhava_chalit_house is null — pre-backfill rows), proceed with the available value and note the absence: [BHAVA_CHALIT_NOT_BACKFILLED for date <D>, planet <P>; default to whole_sign_house only].`
 
 export const REQUIRED_PLACEHOLDERS_BASE = [
   'chart_name',

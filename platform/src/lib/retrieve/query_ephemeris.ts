@@ -32,7 +32,7 @@ const TOOL_VERSION = '1.0.0'
 const VALID_PLANETS = ['sun', 'moon', 'mars', 'mercury', 'jupiter', 'venus', 'saturn', 'rahu', 'ketu'] as const
 type PlanetName = (typeof VALID_PLANETS)[number]
 
-export type DerivedField = 'dignity' | 'combust' | 'vargottama' | 'ingress' | 'yuddha' | 'house'
+export type DerivedField = 'dignity' | 'combust' | 'vargottama' | 'ingress' | 'yuddha' | 'house' | 'house_bc'
 
 export interface QueryEphemerisInput {
   /** Single date (YYYY-MM-DD). Defaults to today UTC if neither date nor start_date provided. */
@@ -76,9 +76,11 @@ interface EphemerisRow {
   sign_ingress_today: boolean | null
   whole_sign_house: number | null
   graha_yuddha_with: string | null
+  // Phase 4 §6.6 Bhava-Chalit (Sripati cusp) house — nullable until backfilled
+  bhava_chalit_house: number | null
 }
 
-const ALL_DERIVED_FIELDS: DerivedField[] = ['dignity', 'combust', 'vargottama', 'ingress', 'yuddha', 'house']
+const ALL_DERIVED_FIELDS: DerivedField[] = ['dignity', 'combust', 'vargottama', 'ingress', 'yuddha', 'house', 'house_bc']
 
 function normalizePlanet(p: string): PlanetName | null {
   const lower = p.toLowerCase().trim()
@@ -179,7 +181,8 @@ async function retrieveImpl(
       vargottama_today,
       sign_ingress_today,
       whole_sign_house,
-      graha_yuddha_with
+      graha_yuddha_with,
+      bhava_chalit_house
     FROM ephemeris_daily
     WHERE ${where}
     ORDER BY date ASC, planet ASC
@@ -216,6 +219,7 @@ async function retrieveImpl(
         if (derivedFields.includes('ingress'))   base.sign_ingress = r.sign_ingress_today
         if (derivedFields.includes('house'))     base.whole_sign_house = r.whole_sign_house
         if (derivedFields.includes('yuddha'))    base.graha_yuddha_with = r.graha_yuddha_with
+        if (derivedFields.includes('house_bc'))  base.bhava_chalit_house = r.bhava_chalit_house
         return {
           content: JSON.stringify(base),
           source_canonical_id: 'EPHEMERIS_DAILY',
@@ -279,8 +283,10 @@ export const tool: RetrievalTool = {
     'the ephemeris_daily table (657K rows, 1900-2100, 9 grahas, Lahiri sidereal). ' +
     'Returns per-planet per-day: longitude, sign, nakshatra+pada, retrograde, speed, ' +
     'AND derived state: dignity (exalted/debilitated/own/mooltrikona/neutral), ' +
-    'combust state + orb degrees, vargottama (D1=D9 sign), whole-sign-house (relative ' +
-    'to native lagna = Aries), sign-ingress flag (entered new sign today), ' +
+    'combust state + orb degrees, vargottama (D1=D9 sign), whole-sign-house (Parashari, ' +
+    'relative to native lagna = Aries), bhava-chalit-house (Sripati-cusp-based — ' +
+    'angular bhava for sandhi-planet refinement; compare with whole_sign_house for ' +
+    'planets within 3° of a sign boundary), sign-ingress flag (entered new sign today), ' +
     'graha-yuddha (within 1° of another planet — among Mars/Mercury/Jupiter/Venus/Saturn). ' +
     'CANONICAL SURFACE for any transit-context query — both the raw positions AND ' +
     'their Vedic interpretation. Default attached at priority 2 under R-TC for any ' +

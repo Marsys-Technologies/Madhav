@@ -74,14 +74,16 @@ INSERT INTO ephemeris_daily_staging (
     is_retrograde, sign, sign_degree, nakshatra, nakshatra_pada,
     ayanamsha, ephemeris_version, build_id,
     dignity_d1, is_combust, combust_orb_deg, vargottama_today,
-    sign_ingress_today, whole_sign_house, graha_yuddha_with
+    sign_ingress_today, whole_sign_house, graha_yuddha_with,
+    bhava_chalit_house
 ) VALUES (
     %(date)s, %(planet)s, %(longitude_deg)s, %(latitude_deg)s,
     %(speed_deg_per_day)s, %(is_retrograde)s, %(sign)s, %(sign_degree)s,
     %(nakshatra)s, %(nakshatra_pada)s, %(ayanamsha)s, %(ephemeris_version)s,
     %(build_id)s,
     %(dignity_d1)s, %(is_combust)s, %(combust_orb_deg)s, %(vargottama_today)s,
-    %(sign_ingress_today)s, %(whole_sign_house)s, %(graha_yuddha_with)s
+    %(sign_ingress_today)s, %(whole_sign_house)s, %(graha_yuddha_with)s,
+    %(bhava_chalit_house)s
 )
 ON CONFLICT (date, planet) DO UPDATE SET
     longitude_deg      = EXCLUDED.longitude_deg,
@@ -101,7 +103,8 @@ ON CONFLICT (date, planet) DO UPDATE SET
     vargottama_today   = EXCLUDED.vargottama_today,
     sign_ingress_today = EXCLUDED.sign_ingress_today,
     whole_sign_house   = EXCLUDED.whole_sign_house,
-    graha_yuddha_with  = EXCLUDED.graha_yuddha_with;
+    graha_yuddha_with  = EXCLUDED.graha_yuddha_with,
+    bhava_chalit_house = EXCLUDED.bhava_chalit_house;
 """
 
 # ── Swiss Ephemeris helpers ────────────────────────────────────────────────────
@@ -116,6 +119,59 @@ def _init_swe() -> Any:
         ) from exc
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     return swe
+
+
+def _compute_native_sripati_cusps(swe: Any) -> list[float]:
+    """
+    Compute the 12 Sripati bhava madhyas (midpoints) for the native chart.
+    Returns a length-12 list where index i is the madhya of bhava i+1.
+
+    Native: 1984-02-05T10:43:00+05:30 IST (= 05:13:00 UTC), Bhubaneswar.
+    Lahiri sidereal, Sripati house system code 'S'.
+
+    NOTE: swe.houses_ex(..., b'S') returns bhava SANDHIS (boundary cusps),
+    NOT madhyas. The madhyas are derived from ASC/MC/IC/DSC by equal-arc
+    division of each quadrant into 3 parts. ASC = bhava 1 madhya,
+    IC = bhava 4 madhya, DSC = bhava 7 madhya, MC = bhava 10 madhya.
+    """
+    NATIVE_BIRTH_JD_UT = swe.julday(1984, 2, 5, 5 + 13 / 60)  # 05:13:00 UTC
+    NATIVE_LAT = 20.27021   # Bhubaneswar
+    NATIVE_LON = 85.82966
+    _cusps, ascmc = swe.houses_ex(
+        NATIVE_BIRTH_JD_UT,
+        NATIVE_LAT,
+        NATIVE_LON,
+        b'S',  # Sripati — ascmc[0]=ASC, ascmc[1]=MC
+        swe.FLG_SIDEREAL,
+    )
+
+    asc = ascmc[0]
+    mc = ascmc[1]
+    ic = (mc + 180.0) % 360.0
+    dsc = (asc + 180.0) % 360.0
+
+    def fwd(start: float, end: float) -> float:
+        return (end - start) % 360.0
+
+    step1 = fwd(asc, ic) / 3.0    # arc ASC→IC divided by 3
+    step2 = fwd(ic, dsc) / 3.0    # arc IC→DSC divided by 3
+    step3 = fwd(dsc, mc) / 3.0    # arc DSC→MC divided by 3
+    step4 = fwd(mc, asc) / 3.0    # arc MC→ASC divided by 3
+
+    return [
+        asc,                          # bhava  1 — ASC
+        (asc + step1) % 360.0,        # bhava  2
+        (asc + 2 * step1) % 360.0,    # bhava  3
+        ic,                           # bhava  4 — IC
+        (ic + step2) % 360.0,         # bhava  5
+        (ic + 2 * step2) % 360.0,     # bhava  6
+        dsc,                          # bhava  7 — DSC
+        (dsc + step3) % 360.0,        # bhava  8
+        (dsc + 2 * step3) % 360.0,    # bhava  9
+        mc,                           # bhava 10 — MC
+        (mc + step4) % 360.0,         # bhava 11
+        (mc + 2 * step4) % 360.0,     # bhava 12
+    ]
 
 
 def _derive(lon: float) -> tuple[str, float, str, int]:
@@ -134,11 +190,13 @@ def _compute_day(
     build_id: str,
     d: date,
     prior_day_signs: dict[str, str] | None = None,
+    native_sripati_cusps: list[float] | None = None,
 ) -> list[dict[str, Any]]:
     """Compute all 9 graha for a single Julian Day.  Returns list of row dicts."""
     from .ephemeris_derivations import (
         compute_dignity, compute_combust, compute_vargottama,
         compute_whole_sign_house, compute_sign_ingress, compute_graha_yuddha,
+        compute_bhava_chalit_house,
     )
     flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
 
@@ -183,6 +241,7 @@ def _compute_day(
             "sign_ingress_today": None,
             "whole_sign_house": None,
             "graha_yuddha_with": None,
+            "bhava_chalit_house": None,
         })
 
     # Rahu (mean node) — Vedic convention is the smoothed 18.6-year cycle.
@@ -216,6 +275,7 @@ def _compute_day(
         "sign_ingress_today": None,
         "whole_sign_house": None,
         "graha_yuddha_with": None,
+        "bhava_chalit_house": None,
     })
 
     # Ketu = Rahu + 180°
@@ -242,6 +302,7 @@ def _compute_day(
         "sign_ingress_today": None,
         "whole_sign_house": None,
         "graha_yuddha_with": None,
+        "bhava_chalit_house": None,
     })
 
     # ── Second pass: derived columns ──────────────────────────────────────────
@@ -263,6 +324,8 @@ def _compute_day(
         row["whole_sign_house"] = compute_whole_sign_house(sign)
         row["sign_ingress_today"] = compute_sign_ingress(sign, (prior_day_signs or {}).get(planet))
         row["graha_yuddha_with"] = compute_graha_yuddha(planet, lon, same_day_positions)
+        if native_sripati_cusps is not None:
+            row["bhava_chalit_house"] = compute_bhava_chalit_house(lon, native_sripati_cusps)
 
     return rows
 
@@ -436,10 +499,12 @@ def run(
     Compute and write ephemeris rows.  Returns total row count written.
     """
     swe = _init_swe()
+    native_sripati_cusps = _compute_native_sripati_cusps(swe)
     logger.info(
         "bootstrap_ephemeris: build_id=%s start=%s end=%s dry_run=%s",
         build_id, start, end, dry_run,
     )
+    logger.info("Sripati cusps for native (Aries lagna, Bhubaneswar): %s", native_sripati_cusps)
 
     total_days = (end - start).days + 1
     total_rows_expected = total_days * 9
@@ -502,7 +567,7 @@ def run(
 
     for d in _date_range(start, end):
         jd = swe.julday(d.year, d.month, d.day, 0.0)  # midnight UT
-        rows = _compute_day(swe, jd, build_id, d, prior_day_signs)
+        rows = _compute_day(swe, jd, build_id, d, prior_day_signs, native_sripati_cusps)
         # Carry forward today's signs for next day's ingress detection.
         prior_day_signs = {row["planet"]: row["sign"] for row in rows}
         batch.extend(rows)

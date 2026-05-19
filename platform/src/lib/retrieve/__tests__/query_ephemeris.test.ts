@@ -50,6 +50,8 @@ const marsRow = {
   sign_ingress_today: false,
   whole_sign_house: 10,
   graha_yuddha_with: null,
+  // Phase 4 §6.6 Bhava-Chalit
+  bhava_chalit_house: 10,
 }
 
 beforeEach(() => {
@@ -220,5 +222,24 @@ describe('query_ephemeris tool', () => {
     expect(bundle.result_hash).toMatch(/^sha256:[0-9a-f]{64}$/)
     expect(bundle.results[0].source_canonical_id).toBe('EPHEMERIS_DAILY')
     expect(bundle.results[0].confidence).toBe(1.0)
+  })
+
+  it('surfaces bhava_chalit_house in response by default (house_bc in ALL_DERIVED_FIELDS)', async () => {
+    mockQuery.mockResolvedValue({ rows: [marsRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan)
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.bhava_chalit_house).toBe(10)
+  })
+
+  it('derived_fields:["house_bc"] returns bhava_chalit_house and omits whole_sign_house', async () => {
+    mockQuery.mockResolvedValue({ rows: [marsRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan, { derived_fields: ['house_bc'] })
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.bhava_chalit_house).toBe(10)
+    expect(content.whole_sign_house).toBeUndefined()
   })
 })

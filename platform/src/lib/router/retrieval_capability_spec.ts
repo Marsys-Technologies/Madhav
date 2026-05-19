@@ -629,24 +629,30 @@ const query_ephemeris: RetrievalCapabilityEntry = {
     'the ephemeris_daily table (657K rows, 1900-2100, 9 grahas, Lahiri sidereal). ' +
     'Returns per-planet per-day: longitude, sign, nakshatra+pada, retrograde, speed, ' +
     'AND derived state: dignity (exalted/debilitated/own/mooltrikona/neutral), ' +
-    'combust state + orb degrees, vargottama (D1=D9 sign), whole-sign-house (relative ' +
-    'to native lagna = Aries), sign-ingress flag (entered new sign today), ' +
+    'combust state + orb degrees, vargottama (D1=D9 sign), ' +
+    'whole-sign-house (Parashari — anchored to native lagna = Aries), ' +
+    'bhava-chalit-house (Sripati-cusp-based — angular bhava for sandhi-planet ' +
+    'refinement; consult alongside whole-sign for planets within 3° of a sign boundary), ' +
+    'sign-ingress flag (entered new sign today), ' +
     'graha-yuddha (within 1° of another planet — among Mars/Mercury/Jupiter/Venus/Saturn). ' +
     'CANONICAL SURFACE for any transit-context query — both the raw positions AND ' +
     'their Vedic interpretation. Default attached at priority 2 under R-TC for any ' +
     'non-natal query. Use derived_fields:[] to skip derived columns for token-tight calls.',
   data_surface:
-    'L1 — table ephemeris_daily (migrations 015 + 059). Fields: date, planet (lowercase: ' +
+    'L1 — table ephemeris_daily (migrations 015 + 059 + 061). Fields: date, planet (lowercase: ' +
     'sun..ketu), longitude_deg (sidereal Lahiri 0-360), latitude_deg, speed_deg_per_day, ' +
     'is_retrograde, sign, sign_degree (0-30), nakshatra, nakshatra_pada (1-4), ' +
     'ayanamsha (lahiri), ephemeris_version. ' +
     'Phase 4B derived: dignity_d1, is_combust, combust_orb_deg, vargottama_today, ' +
-    'sign_ingress_today, whole_sign_house (1-12, Aries lagna), graha_yuddha_with.',
+    'sign_ingress_today, whole_sign_house (1-12, Aries lagna), graha_yuddha_with. ' +
+    'Phase 4 §6.6: bhava_chalit_house (1-12, Sripati cusps, native Bhubaneswar lagna; ' +
+    'nullable until operator runs enrich --backfill-bhava-chalit post-migration 061).',
   supported_params:
     '{ date?: YYYY-MM-DD; start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
     'planet?: string; planets?: string[]; limit?: number (default 100, max 500); ' +
-    'derived_fields?: ("dignity"|"combust"|"vargottama"|"ingress"|"yuddha"|"house")[] ' +
+    'derived_fields?: ("dignity"|"combust"|"vargottama"|"ingress"|"yuddha"|"house"|"house_bc")[] ' +
     '(default ALL — empty array opts out). ' +
+    'house = Whole-Sign (Parashari); house_bc = Bhava-Chalit (Sripati cusp). ' +
     'Date range: 1900-01-01 to 2100-12-31. Out-of-range returns diagnostic row. }',
   optimal_patterns: [
     'Transit at LEL event: {date:"2008-04-15", planet:"Saturn"} (returns Saturn at marriage with dignity + house + combust status)',
@@ -654,6 +660,7 @@ const query_ephemeris: RetrievalCapabilityEntry = {
     'Current transits with full state: {} (today UTC, all 9 grahas, all derived fields)',
     'Sign-ingress scan: {start_date:"2026-01-01", end_date:"2026-12-31", planet:"Jupiter"} (sign_ingress_today=true marks each Jupiter sign-change in the year)',
     'Token-tight raw positions: {date:"2026-05-19", derived_fields:[]}',
+    'Bhava-Chalit sandhi check: {date:"2018-06-15", planet:"Saturn", derived_fields:["house","house_bc"]} (compare whole_sign_house vs bhava_chalit_house — if they differ, Saturn is in sandhi)',
   ],
   cost_tier: 'low',
   requires_temporal: true,
