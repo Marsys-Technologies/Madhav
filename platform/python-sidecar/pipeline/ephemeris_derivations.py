@@ -182,3 +182,73 @@ def compute_graha_yuddha(
         if diff <= 1.0:
             return o
     return None
+
+
+# ── Bhava-Chalit (Sripati cusps) — Phase 4 §6.6 follow-up ─────────────────────
+#
+# Sripati cusps are computed once at chart birth via Swiss Ephemeris's houses_ex
+# function with house system code 'S'. The 12 cusps are FIXED for the native
+# chart (they do not change with transit time — they're properties of the
+# birth moment + observer). For a transit-planet longitude L, the Bhava-Chalit
+# house is determined by which cusp-midpoint band L falls into.
+#
+# Convention: cusps[N] is the MIDPOINT of bhava N (Sripati tradition). Bhava N
+# spans the half-arc band centered on cusps[N]:
+#   boundary_start_N = midpoint(cusps[N-1], cusps[N])
+#   boundary_end_N   = midpoint(cusps[N], cusps[N+1])
+#
+# This differs from the Whole-Sign convention (where each sign IS a house) and
+# from the Equal-house convention (where each house is exactly 30°). For the
+# native's Aries lagna at 12°23'55", Whole-Sign and Bhava-Chalit will mostly
+# agree for non-sandhi planets but diverge at sign boundaries.
+
+
+def midpoint_arc(a: float, b: float) -> float:
+    """Shortest-arc midpoint between two longitudes (degrees, 0-360)."""
+    a = a % 360.0
+    b = b % 360.0
+    diff = (b - a) % 360.0
+    if diff > 180.0:
+        diff -= 360.0
+    return (a + diff / 2.0) % 360.0
+
+
+def _in_arc(lon: float, start: float, end: float) -> bool:
+    """True if lon lies in the arc from start to end going forward (mod 360)."""
+    lon = lon % 360.0
+    start = start % 360.0
+    end = end % 360.0
+    if start <= end:
+        return start <= lon < end
+    return lon >= start or lon < end
+
+
+def compute_bhava_chalit_house(planet_lon: float, cusps: list[float]) -> int:
+    """
+    Return the Bhava-Chalit house (1..12) for a planet at planet_lon, given
+    the native's 12 natal Sripati cusps.
+
+    `cusps` is a length-12 list where cusps[i] is the midpoint of bhava i+1
+    (i.e., cusps[0] is the midpoint of the 1st bhava ≈ ascendant degree).
+
+    Sripati convention: bhava N spans the half-arc band centered on cusps[N-1].
+    """
+    if len(cusps) != 12:
+        raise ValueError(f"compute_bhava_chalit_house: expected 12 cusps, got {len(cusps)}")
+
+    planet_lon = planet_lon % 360.0
+    # Compute the 12 boundary points: between consecutive cusp midpoints
+    boundaries = [midpoint_arc(cusps[i], cusps[(i + 1) % 12]) for i in range(12)]
+
+    # bhava N starts at boundaries[N-1] and ends at boundaries[N] (mod 12).
+    # i.e., bhava 1 spans boundaries[11] → boundaries[0] (the band centered on cusps[0]).
+    for n in range(12):
+        start = boundaries[(n - 1) % 12]
+        end = boundaries[n]
+        if _in_arc(planet_lon, start, end):
+            return n + 1
+
+    raise RuntimeError(
+        f"compute_bhava_chalit_house: longitude {planet_lon} did not match any bhava "
+        f"— cusps={cusps}"
+    )

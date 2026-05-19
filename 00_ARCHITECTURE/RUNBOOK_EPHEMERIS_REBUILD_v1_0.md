@@ -265,3 +265,114 @@ Expect: `"Window exceeds ±10-year cap"` (HTTP 400).
 - Bootstrap (ephemeris): `platform/python-sidecar/pipeline/bootstrap_ephemeris.py`
 - Bootstrap (panchanga): `platform/python-sidecar/pipeline/bootstrap_panchanga.py`
 - Backfill: `platform/python-sidecar/pipeline/enrich_ephemeris_daily.py`
+
+---
+
+## §6 Bhava-Chalit Backfill (Phase 4 §6.6 follow-up)
+
+After migration 061 lands, the `bhava_chalit_house` column is added to
+`ephemeris_daily` (nullable, IF NOT EXISTS). Backfill via the enrich script
+takes ~5-10 min for 660K rows (pure-Python derivation, no Swiss Ephemeris
+recompute — just SELECT longitude_deg + UPDATE bhava_chalit_house).
+
+**Decision: run via Cloud SQL proxy session (Path B below), not a one-shot
+Cloud Run job.** The backfill is a single idempotent Python script invocation
+with no network I/O beyond the database. Cloud SQL proxy is already the
+established operator pattern for DML operations on this project (see §1-§3
+above). A one-shot Cloud Run job adds image-build + Cloud Run overhead for a
+~10 min task; proxy is faster and simpler. If the backfill needs to be
+re-triggered (e.g., after a future full rebuild), the proxy path is equally
+convenient.
+
+### Steps
+
+1. Apply migration 061 via Cloud SQL proxy:
+
+   ```bash
+   # Start Cloud SQL Auth proxy (if not already running)
+   cloud-sql-proxy madhav-marsys:asia-south1:madhav-marsys-pg --port 5433 &
+
+   export DATABASE_URL="postgresql://postgres:${DB_PASSWORD}@localhost:5433/madhav"
+   psql "$DATABASE_URL" -f platform/migrations/061_ephemeris_bhava_chalit.sql
+   ```
+
+2. Run the backfill (idempotent — only patches rows where `bhava_chalit_house IS NULL`):
+
+   ```bash
+   cd platform/python-sidecar
+   python -m pipeline.enrich_ephemeris_daily --backfill-bhava-chalit
+   ```
+
+   Optional dry-run first to confirm script starts cleanly:
+
+   ```bash
+   python -m pipeline.enrich_ephemeris_daily --backfill-bhava-chalit --dry-run
+   ```
+
+3. Verify completeness:
+
+   ```sql
+   SELECT COUNT(*) AS total,
+          COUNT(*) FILTER (WHERE bhava_chalit_house IS NULL) AS still_null
+   FROM ephemeris_daily;
+   -- Expect: still_null = 0
+   ```
+
+4. Spot-check native birth day (1984-02-05). For Aries lagna at 12°25',
+   Saturn at Libra 22.43° should be in bhava 7 (both Whole-Sign and
+   Bhava-Chalit agree — Saturn is near the DSC, not in sandhi):
+
+   ```sql
+   SELECT date, planet, longitude_deg, sign, sign_degree,
+          whole_sign_house, bhava_chalit_house
+   FROM ephemeris_daily
+   WHERE date = '1984-02-05' AND planet IN ('saturn', 'sun', 'moon', 'mars')
+   ORDER BY planet;
+   -- Expected: saturn whole_sign_house=7, bhava_chalit_house=7
+   -- Expected: sun    whole_sign_house=10, bhava_chalit_house=11  ← sandhi case
+   ```
+
+5. Verify the index was created:
+
+   ```sql
+   SELECT indexname FROM pg_indexes
+   WHERE tablename = 'ephemeris_daily' AND indexname = 'idx_ephemeris_bhava_chalit';
+   ```
+
+### Native Sripati cusps (canonical project values)
+
+These are the 12 Sripati bhava madhyas (midpoints) for the native's birth chart,
+computed by `_compute_native_sripati_cusps` at 1984-02-05T05:13:00 UTC,
+Bhubaneswar (20.27021°N, 85.82966°E), Lahiri sidereal:
+
+| Bhava | Madhya (°) | Sign         | Degree |
+|-------|-----------|--------------|--------|
+|  1    |  12.4189  | Aries        | 12°25' | ← ASC (lagna)
+|  2    |  39.2710  | Taurus       |  9°16' |
+|  3    |  66.1230  | Gemini       |  6°07' |
+|  4    |  92.9750  | Cancer       |  2°58' | ← IC
+|  5    | 126.1230  | Leo          |  6°07' |
+|  6    | 159.2710  | Virgo        |  9°16' |
+|  7    | 192.4189  | Libra        | 12°25' | ← DSC
+|  8    | 219.2710  | Scorpio      |  9°16' |
+|  9    | 246.1230  | Sagittarius  |  6°07' |
+| 10    | 272.9750  | Capricorn    |  2°58' | ← MC
+| 11    | 306.1230  | Aquarius     |  6°07' |
+| 12    | 339.2710  | Pisces       |  9°16' |
+
+These values are project-defining constants for the native's Bhava-Chalit layer.
+M7 multi-native extension will require per-native cusp computation; these
+native-specific values become a single row in a future `native_sripati_cusps`
+table.
+
+### Rollback
+
+```sql
+-- Nullify the column (soft rollback — leaves column in place):
+UPDATE ephemeris_daily SET bhava_chalit_house = NULL;
+
+-- Hard rollback (removes column entirely):
+ALTER TABLE ephemeris_daily DROP COLUMN bhava_chalit_house;
+ALTER TABLE ephemeris_daily_staging DROP COLUMN bhava_chalit_house;
+DROP INDEX IF EXISTS idx_ephemeris_bhava_chalit;
+```

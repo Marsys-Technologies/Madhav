@@ -1,18 +1,27 @@
 """
-enrich_ephemeris_daily — backfill the 6 derived columns onto existing
+enrich_ephemeris_daily — backfill derived columns onto existing
 ephemeris_daily rows without re-running Swiss Ephemeris.
 
-Idempotent: skips rows where dignity_d1 IS NOT NULL (already enriched).
+Modes:
+  Default: backfills the 6 dignity/combust/vargottama/ingress/yuddha/house columns.
+           Idempotent: skips rows where dignity_d1 IS NOT NULL.
+
+  --backfill-bhava-chalit: backfills the bhava_chalit_house column only.
+           Idempotent: patches rows where bhava_chalit_house IS NULL.
+           Pure-Python derivation against existing longitude_deg.
+           ~5-10 min for 660K rows (no Swiss Ephemeris recompute).
 
 Usage:
     python -m pipeline.enrich_ephemeris_daily [--dry-run] [--limit N]
         [--start YYYY-MM-DD] [--end YYYY-MM-DD]
+    python -m pipeline.enrich_ephemeris_daily --backfill-bhava-chalit [--dry-run]
 """
 from __future__ import annotations
 import argparse
 import logging
 import os
 from itertools import groupby
+from typing import Any
 
 import psycopg2
 import psycopg2.extras
@@ -24,6 +33,7 @@ from .ephemeris_derivations import (
     compute_whole_sign_house,
     compute_sign_ingress,
     compute_graha_yuddha,
+    compute_bhava_chalit_house,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,16 +63,88 @@ _UPDATE_SQL = """
 """
 
 
+_UPDATE_BHAVA_SQL = """
+    UPDATE ephemeris_daily
+    SET bhava_chalit_house = %(bhava)s
+    WHERE id = %(id)s
+"""
+
+
+def _flush_bhava_updates(conn: Any, updates: list[dict], dry_run: bool) -> int:
+    if dry_run or not updates:
+        return len(updates)
+    with conn.cursor() as cur:
+        psycopg2.extras.execute_batch(cur, _UPDATE_BHAVA_SQL, updates, page_size=500)
+    conn.commit()
+    return len(updates)
+
+
+def backfill_bhava_chalit(db_url: str, batch_size: int = 5000, dry_run: bool = False) -> int:
+    """Backfill bhava_chalit_house for all ephemeris_daily rows where it is NULL.
+
+    Idempotent: only patches rows where bhava_chalit_house IS NULL.
+    Pure-Python derivation — no Swiss Ephemeris recompute needed.
+    """
+    from .bootstrap_ephemeris import _init_swe, _compute_native_sripati_cusps
+
+    swe = _init_swe()
+    cusps = _compute_native_sripati_cusps(swe)
+    logger.info("Sripati cusps for native (Aries lagna, Bhubaneswar): %s", cusps)
+
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = False
+
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT id, longitude_deg
+            FROM ephemeris_daily
+            WHERE bhava_chalit_house IS NULL
+            ORDER BY id
+        """)
+        rows = cur.fetchall()
+
+    logger.info("Backfilling %d rows with bhava_chalit_house", len(rows))
+
+    if dry_run:
+        logger.info("DRY RUN — first 3 rows would be patched: %s", rows[:3])
+        conn.close()
+        return len(rows)
+
+    total = 0
+    updates: list[dict] = []
+    for r in rows:
+        bhava = compute_bhava_chalit_house(float(r["longitude_deg"]), cusps)
+        updates.append({"id": r["id"], "bhava": bhava})
+        if len(updates) >= batch_size:
+            total += _flush_bhava_updates(conn, updates, dry_run=False)
+            updates = []
+    total += _flush_bhava_updates(conn, updates, dry_run=False)
+
+    conn.close()
+    logger.info("backfill_bhava_chalit complete: %d rows updated", total)
+    return total
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Backfill derived ephemeris columns.")
     parser.add_argument("--start", default="1900-01-01")
     parser.add_argument("--end",   default="2100-12-31")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=None, help="Stop after N rows (test slice).")
+    parser.add_argument(
+        "--backfill-bhava-chalit",
+        action="store_true",
+        help="Backfill bhava_chalit_house column only (idempotent, patches NULL rows).",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     db_url = os.environ["DATABASE_URL"]
+
+    if getattr(args, "backfill_bhava_chalit", False):
+        count = backfill_bhava_chalit(db_url, dry_run=args.dry_run)
+        print(f"Done: {count} rows processed.")
+        return
 
     # Stream rows ordered by (date, planet) so we can build per-day groups in
     # one pass and use the windowed prior_sign for ingress detection.
