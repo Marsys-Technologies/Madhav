@@ -57,6 +57,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s5): truncation banner Continue button + /api/chat/consume/continue route"
     estimated_loc: "+80 (new route + UI)"
     risk: medium
+    status: completed
+    completed_at: "2026-05-20T02:35:00Z"
 
   - id: R7-S6
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S6-composer-draft-persistence.md

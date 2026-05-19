@@ -13,7 +13,7 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2 } from 'lucide-react'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
@@ -411,6 +411,85 @@ function V2RegenerateButton() {
   )
 }
 
+// ─── Truncation banner (R7-S5) ────────────────────────────────────────────────
+
+function TruncationContinueBanner() {
+  const message = useMessage()
+  const dataParts = useDataParts(message)
+  const conversationId = useContext(ConversationIdCtx)
+  const isStreaming = message.status?.type === 'running'
+
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
+  const [error, setError] = useState(false)
+
+  const isTruncated = useMemo(() => {
+    if (isStreaming) return false
+    // AC-1 primary signal: data-truncated part
+    if (dataParts.some(d => d.type === 'data-truncated')) return true
+    // AC-1 heuristic fallback: no truncated part, but last char is not sentence-ending
+    // and context_usage indicates >= 90% utilization
+    const textContent = message.content
+      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+      .map(p => p.text).join('') ?? ''
+    const lastChar = textContent.trimEnd().slice(-1)
+    if (/[.!?…]/.test(lastChar)) return false
+    const usagePart = dataParts.find(d => d.type === 'data-context-usage')
+    if (usagePart) {
+      const u = usagePart.data as { tokens_used?: number; tokens_limit?: number }
+      if (typeof u.tokens_used === 'number' && typeof u.tokens_limit === 'number' && u.tokens_limit > 0) {
+        return u.tokens_used / u.tokens_limit >= 0.90
+      }
+    }
+    return false
+  }, [isStreaming, dataParts, message.content])
+
+  if (!isTruncated || status === 'done') return null
+
+  const handleContinue = async () => {
+    if (status !== 'idle' || !conversationId) return
+    setStatus('loading')
+    setError(false)
+    try {
+      const r = await fetch('/api/chat/consume/continue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId, last_message_id: message.id }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      // Drain the stream so the server completes; the thread will update via its own subscription.
+      await r.body?.cancel()
+      setStatus('done')
+    } catch (err) {
+      console.error('Continue failed', err)
+      setError(true)
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 mt-1"
+      data-testid="v2-truncation-continue-banner"
+      aria-label="Response was truncated"
+    >
+      <span className="text-[10px] text-zinc-500 italic">Response truncated</span>
+      <button
+        type="button"
+        onClick={handleContinue}
+        disabled={status === 'loading'}
+        className="border border-zinc-600 text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 rounded px-2.5 py-1 text-xs font-medium transition-colors"
+        data-testid="v2-truncation-continue-btn"
+      >
+        {status === 'loading'
+          ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Loading" />
+          : 'Continue'
+        }
+      </button>
+      {error && <span className="text-[10px] text-red-400">Failed — try again</span>}
+    </div>
+  )
+}
+
 // ─── Message ─────────────────────────────────────────────────────────────────
 
 function V2Message() {
@@ -603,6 +682,9 @@ function V2Message() {
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
+
+          {/* R7-S5: truncation continue banner — shown after stream ends if message was cut off */}
+          <TruncationContinueBanner />
 
           {/* γ4: validator soft-fail chip (below message body) */}
           {citationGate?.status === 'warn' && (
