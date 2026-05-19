@@ -338,7 +338,9 @@ describe('MuhuratResultsList', () => {
   })
 
   describe('inline actions', () => {
-    it('Calendar Export button is disabled', () => {
+    // Note: Calendar Export button was enabled in 4C-7 (the 4C-7 hint + disabled state
+    // tests are retired; export is now active). 4C-8 adds panchangContext threading.
+    it('Calendar Export button is enabled (4C-7 live)', () => {
       render(
         <MuhuratResultsList
           windows={[WINDOW_HIGH]}
@@ -348,11 +350,12 @@ describe('MuhuratResultsList', () => {
           tzOffsetMinutes={330}
         />
       )
-      const exportBtn = screen.getByLabelText(/export to calendar.*4c-7/i)
-      expect(exportBtn.getAttribute('disabled')).toBeDefined()
+      const exportBtn = screen.getByLabelText(/export.*muhurat to calendar/i)
+      // Should NOT be disabled — export is live in 4C-7
+      expect(exportBtn.getAttribute('disabled')).toBeNull()
     })
 
-    it('Calendar Export has 4C-7 phase hint', () => {
+    it('Calendar Export button has correct aria-label', () => {
       render(
         <MuhuratResultsList
           windows={[WINDOW_HIGH]}
@@ -362,7 +365,7 @@ describe('MuhuratResultsList', () => {
           tzOffsetMinutes={330}
         />
       )
-      expect(screen.getByText('4C-7')).toBeTruthy()
+      expect(screen.getByLabelText(/export.*muhurat to calendar/i)).toBeInTheDocument()
     })
 
     it('Ask Madhav button navigates with prompt containing event and rank', () => {

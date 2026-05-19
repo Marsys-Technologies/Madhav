@@ -22,6 +22,18 @@ if (typeof IntersectionObserver === 'undefined') {
   }
 }
 
+// `next/navigation` (useRouter etc.) is not available in jsdom; stub globally so
+// panchang components that use AskMadhavLink (which calls useRouter) don't
+// throw during unit tests. 4C-8 introduced AskMadhavLink to PrimaryStrip /
+// SpecialYogasList / PlanetaryGrid — this mock prevents those tests from breaking.
+// Individual test files that need full routing behaviour should override locally.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+  useParams: () => ({}),
+}))
+
 // `@/lib/db/monitoring-write` carries `import 'server-only'`, which refuses to
 // load under jsdom. Every retrieve tool now imports `writeToolExecutionLog`
 // from this module (MON-7); without a global stub, every transitively-touching
