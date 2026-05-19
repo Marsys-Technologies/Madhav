@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-EPHEMERIS_VERSION = "pyswisseph-2.10.03.2"
+EPHEMERIS_VERSION = "pyswisseph-2.10.03.2+4B-derived-v1"
 AYANAMSHA = "lahiri"
 BATCH_SIZE = 10_000
 
@@ -72,12 +72,16 @@ _UPSERT_SQL = """
 INSERT INTO ephemeris_daily_staging (
     date, planet, longitude_deg, latitude_deg, speed_deg_per_day,
     is_retrograde, sign, sign_degree, nakshatra, nakshatra_pada,
-    ayanamsha, ephemeris_version, build_id
+    ayanamsha, ephemeris_version, build_id,
+    dignity_d1, is_combust, combust_orb_deg, vargottama_today,
+    sign_ingress_today, whole_sign_house, graha_yuddha_with
 ) VALUES (
     %(date)s, %(planet)s, %(longitude_deg)s, %(latitude_deg)s,
     %(speed_deg_per_day)s, %(is_retrograde)s, %(sign)s, %(sign_degree)s,
     %(nakshatra)s, %(nakshatra_pada)s, %(ayanamsha)s, %(ephemeris_version)s,
-    %(build_id)s
+    %(build_id)s,
+    %(dignity_d1)s, %(is_combust)s, %(combust_orb_deg)s, %(vargottama_today)s,
+    %(sign_ingress_today)s, %(whole_sign_house)s, %(graha_yuddha_with)s
 )
 ON CONFLICT (date, planet) DO UPDATE SET
     longitude_deg      = EXCLUDED.longitude_deg,
@@ -90,7 +94,14 @@ ON CONFLICT (date, planet) DO UPDATE SET
     nakshatra_pada     = EXCLUDED.nakshatra_pada,
     ayanamsha          = EXCLUDED.ayanamsha,
     ephemeris_version  = EXCLUDED.ephemeris_version,
-    build_id           = EXCLUDED.build_id;
+    build_id           = EXCLUDED.build_id,
+    dignity_d1         = EXCLUDED.dignity_d1,
+    is_combust         = EXCLUDED.is_combust,
+    combust_orb_deg    = EXCLUDED.combust_orb_deg,
+    vargottama_today   = EXCLUDED.vargottama_today,
+    sign_ingress_today = EXCLUDED.sign_ingress_today,
+    whole_sign_house   = EXCLUDED.whole_sign_house,
+    graha_yuddha_with  = EXCLUDED.graha_yuddha_with;
 """
 
 # ── Swiss Ephemeris helpers ────────────────────────────────────────────────────
@@ -117,8 +128,18 @@ def _derive(lon: float) -> tuple[str, float, str, int]:
     return sign, sign_degree, nakshatra, pada
 
 
-def _compute_day(swe: Any, jd: float, build_id: str, d: date) -> list[dict[str, Any]]:
+def _compute_day(
+    swe: Any,
+    jd: float,
+    build_id: str,
+    d: date,
+    prior_day_signs: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
     """Compute all 9 graha for a single Julian Day.  Returns list of row dicts."""
+    from .ephemeris_derivations import (
+        compute_dignity, compute_combust, compute_vargottama,
+        compute_whole_sign_house, compute_sign_ingress, compute_graha_yuddha,
+    )
     flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
 
     planet_ids = [
@@ -154,10 +175,22 @@ def _compute_day(swe: Any, jd: float, build_id: str, d: date) -> list[dict[str, 
             "ayanamsha": AYANAMSHA,
             "ephemeris_version": EPHEMERIS_VERSION,
             "build_id": build_id,
+            # derived columns — populated in second pass below
+            "dignity_d1": None,
+            "is_combust": None,
+            "combust_orb_deg": None,
+            "vargottama_today": None,
+            "sign_ingress_today": None,
+            "whole_sign_house": None,
+            "graha_yuddha_with": None,
         })
 
-    # Rahu (true node) — always retrograde by Jyotish convention
-    r_node = swe.calc_ut(jd, swe.TRUE_NODE, flags)
+    # Rahu (mean node) — Vedic convention is the smoothed 18.6-year cycle.
+    # §4.B 2026-05-19 fix: bootstrap previously used TRUE_NODE, which is
+    # osculating and occasionally turns briefly direct (contradicts the
+    # Jyotish always-retrograde convention). All other compute paths in this
+    # codebase use MEAN_NODE — bootstrap is now consistent.
+    r_node = swe.calc_ut(jd, swe.MEAN_NODE, flags)
     lon_r = r_node[0][0] % 360.0
     lat_r = r_node[0][1]
     spd_r = r_node[0][3]
@@ -176,6 +209,13 @@ def _compute_day(swe: Any, jd: float, build_id: str, d: date) -> list[dict[str, 
         "ayanamsha": AYANAMSHA,
         "ephemeris_version": EPHEMERIS_VERSION,
         "build_id": build_id,
+        "dignity_d1": None,
+        "is_combust": None,
+        "combust_orb_deg": None,
+        "vargottama_today": None,
+        "sign_ingress_today": None,
+        "whole_sign_house": None,
+        "graha_yuddha_with": None,
     })
 
     # Ketu = Rahu + 180°
@@ -195,7 +235,34 @@ def _compute_day(swe: Any, jd: float, build_id: str, d: date) -> list[dict[str, 
         "ayanamsha": AYANAMSHA,
         "ephemeris_version": EPHEMERIS_VERSION,
         "build_id": build_id,
+        "dignity_d1": None,
+        "is_combust": None,
+        "combust_orb_deg": None,
+        "vargottama_today": None,
+        "sign_ingress_today": None,
+        "whole_sign_house": None,
+        "graha_yuddha_with": None,
     })
+
+    # ── Second pass: derived columns ──────────────────────────────────────────
+    # Build same-day longitude map; Sun must be present for combust computation.
+    same_day_positions = {row["planet"]: float(row["longitude_deg"]) for row in rows}
+    sun_lon = same_day_positions.get("sun")
+
+    for row in rows:
+        planet = row["planet"]
+        lon = float(row["longitude_deg"])
+        sign = row["sign"]
+        sdeg = float(row["sign_degree"])
+        is_retro = bool(row["is_retrograde"])
+
+        row["dignity_d1"] = compute_dignity(planet, sign, sdeg)
+        if sun_lon is not None:
+            row["is_combust"], row["combust_orb_deg"] = compute_combust(planet, lon, sun_lon, is_retro)
+        row["vargottama_today"] = compute_vargottama(sign, sdeg)
+        row["whole_sign_house"] = compute_whole_sign_house(sign)
+        row["sign_ingress_today"] = compute_sign_ingress(sign, (prior_day_signs or {}).get(planet))
+        row["graha_yuddha_with"] = compute_graha_yuddha(planet, lon, same_day_positions)
 
     return rows
 
@@ -388,6 +455,7 @@ def run(
     batch: list[dict[str, Any]] = []
     total_written = 0
     day_count = 0
+    prior_day_signs: dict[str, str] | None = None
 
     try:
         import psycopg2
@@ -414,7 +482,9 @@ def run(
 
     for d in _date_range(start, end):
         jd = swe.julday(d.year, d.month, d.day, 0.0)  # midnight UT
-        rows = _compute_day(swe, jd, build_id, d)
+        rows = _compute_day(swe, jd, build_id, d, prior_day_signs)
+        # Carry forward today's signs for next day's ingress detection.
+        prior_day_signs = {row["planet"]: row["sign"] for row in rows}
         batch.extend(rows)
         day_count += 1
 

@@ -9,6 +9,9 @@
  * Wave 4 M2-C1: chart_facts_query (1 tool)
  * Wave 5 M2-D234: domain_report_query, remedial_codex_query, timeline_query (3 tools)
  * M5-A: lel_query — LEL ground-truth life events from life_events table (1 tool)
+ * Phase 4A: query_ephemeris — date-indexed ephemeris lookup (1 tool; closes ephemeris-accessibility gap)
+ * Phase 4C: query_panchanga — sunrise-anchored daily panchanga (1 tool; 28th total)
+ * Phase 4D: query_transit_event — transit event search: when does X happen? (1 tool; 29th total)
  */
 
 import * as msrSql from './msr_sql'
@@ -52,9 +55,18 @@ import * as lelQuery from './lel_query'
 import * as classicalTextSearchTool from './classical_text_search_tool'
 import * as classicalAttributionLookupTool from './classical_attribution_lookup_tool'
 
-// M9 — multi-school triangulation (tools 27+28)
+// M9 — multi-school triangulation (tools 25+26)
 import * as multiSchoolSignalLookupTool from './multi_school_signal_lookup_tool'
 import * as convergenceScoreLookupTool from './convergence_score_lookup_tool'
+
+// Phase 4A — date-indexed ephemeris lookup (closes ephemeris-accessibility gap)
+import * as queryEphemeris from './query_ephemeris'
+
+// Phase 4C — sunrise-anchored daily panchanga (5 limbs of Vedic time)
+import * as queryPanchanga from './query_panchanga'
+
+// Phase 4D — transit event search: when does X happen? (29th tool)
+import * as queryTransitEvent from './query_transit_event'
 
 export * from './types'
 import type { RetrievalTool } from './types'
@@ -86,6 +98,9 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   classicalAttributionLookupTool.tool,
   multiSchoolSignalLookupTool.tool,
   convergenceScoreLookupTool.tool,
+  queryEphemeris.tool,
+  queryPanchanga.tool,
+  queryTransitEvent.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
