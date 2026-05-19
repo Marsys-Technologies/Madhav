@@ -179,6 +179,51 @@ are recorded in `_meta.drik_deltas` within the fixture JSON.
 
 ---
 
+## §8a — Tuning muhurat scoring weights
+
+Weights live in `config/muhurat_weights.yaml`. Edit there to retune scoring
+without code changes. The file is parsed at sidecar startup (cached);
+restart the sidecar for changes to take effect.
+
+**Structure:**
+- `defaults:` — base weights applied for any event not explicitly overridden.
+- `events:` — per-event overrides; partial — only keys that differ from defaults
+  need to be listed; missing keys inherit from `defaults`.
+
+**Weight keys:**
+| Key | Factor | Notes |
+|---|---|---|
+| `tithi` | Lunar day quality for the event | Shukla paksha tithis dominate |
+| `nakshatra` | Moon's asterism quality | Most influential factor classically |
+| `vara` | Weekday quality | Saturn/Tuesday typically avoided |
+| `yoga` | Auspicious special yoga bonus | Sarvartha Siddhi, Guru Pushya, Tripushkar |
+| `planet` | Non-combust Jupiter + Venus | Each contributes half of the planet weight |
+| `native` | Tara Bala personal overlay | Only active when NatalChart is passed |
+| `avoid_penalty` | **NEVER CHANGE — always 1.0** | Knockout for compound inauspicious windows |
+
+**To tune for a specific user complaint** (e.g. "the scoring overweights nakshatra
+for Griha Pravesh"):
+1. Edit `config/muhurat_weights.yaml` `events.griha_pravesh.nakshatra`
+2. Adjust other weights so they still sum to ~1.0 within positive contributors
+   (tithi + nakshatra + vara + yoga + planet + native ≈ 1.0).
+   `avoid_penalty` is not a positive contributor and must stay at 1.0.
+3. Restart sidecar; verify with `find_muhurat("griha_pravesh", ...)` that
+   rankings shift as intended.
+
+**To add a new event type:**
+1. Add a quality table to `shastra_tables.py` (§22.N)
+2. Register it in `EVENT_TABLES` (§23)
+3. Add to `EVENTS_MVP` in `muhurat.py`
+4. Optionally add an `events.your_event_name:` block to `muhurat_weights.yaml`.
+   If omitted, the event inherits `defaults` weights automatically.
+
+**Critical constraint**: `avoid_penalty` must always be 1.0. This is the knockout
+multiplier for compound inauspicious windows (Rahu Kalam + Yamagandam + worst tithi
++ Saturday). Changing it bypasses a hard rule in the classical muhurta system
+(Muhurta Chintamani §4.4.1 per PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md).
+
+---
+
 ## §8 — Versioning
 
 ```python
