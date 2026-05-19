@@ -33,7 +33,7 @@ const CHECKPOINT_ID = 'checkpoint_dasha'
 // ── Heuristic gate ────────────────────────────────────────────────────────────
 
 const DASHA_QUERY_RE =
-  /\b(mahadasha|antardasha|pratyantardasha|sookshma|prana|vimshottari|dasha|MD|AD|PD|SD)\b/i
+  /\b(mahadasha|antardasha|pratyantardasha|sookshma|prana|vimshottari|yogini|chara|jaimini|bhramari|bhadrika|ulka|siddha|sankata|mangala|pingala|dhanya|dasha|MD|AD|PD|SD)\b/i
 
 /**
  * Returns true when the query or its query_plan indicates a dasha-relevant
@@ -64,14 +64,17 @@ export function detectDashaRelevance(
 // ── Extraction (regex passes) ─────────────────────────────────────────────────
 
 const LORD_NAMES =
-  'Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu'
+  'Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu|' +
+  'Bhramari|Bhadrika|Ulka|Siddha|Sankata|Mangala|Pingala|Dhanya|' +
+  'Aries|Taurus|Gemini|Cancer|Leo|Virgo|Libra|Scorpio|Sagittarius|Capricorn|Aquarius|Pisces'
 
 const TEMPORAL_WORDS =
   'current|next|upcoming|previous|past|future|present|incoming'
 
 const LEVEL_WORDS =
   'Mahadasha|Mahadasa|Maha Dasha|MD|Antardasha|Antardasa|Antar Dasha|AD|' +
-  'Pratyantardasha|Pratyantardasa|Pratyantar Dasha|PD|Sookshma|SD|Prana|PD2'
+  'Pratyantardasha|Pratyantardasa|Pratyantar Dasha|PD|Sookshma|SD|Prana|PD2|' +
+  'Yogini|Chara|Char|Jaimini'
 
 /**
  * Extracts dasha-schedule claims from synthesis text.
@@ -129,7 +132,7 @@ export function extractDashaClaims(text: string): DashaClaim[] {
       const windowStart = Math.max(0, start - 200)
       const windowEnd = Math.min(text.length, end + 200)
       const window = text.slice(windowStart, windowEnd)
-      const citationMatch = /\(→\s*(DSH\.V\.\d{3,}(?:[–\-]\d{3,})?)[^)]*(?:,\s*([^)]+))?\)/i.exec(
+      const citationMatch = /\(→\s*(DSH\.[VYC]\.\d{3,}(?:[–\-]\d{3,})?)[^)]*(?:,\s*([^)]+))?\)/i.exec(
         window,
       )
 
@@ -180,6 +183,8 @@ function normaliseLevelWord(w: string | null): DashaClaim['level'] {
   if (lc.startsWith('pratyantardasha') || lc.startsWith('pratyantardasa') || lc === 'pd') return 'PD'
   if (lc.startsWith('sookshma') || lc === 'sd') return 'SD'
   if (lc === 'prana' || lc === 'pd2') return 'PD2'
+  if (lc === 'yogini') return 'MD'
+  if (lc === 'chara' || lc === 'char' || lc === 'jaimini') return 'MD'
   return null
 }
 
@@ -193,7 +198,16 @@ interface DashaRow {
   end_date: string
 }
 
+function categoryFromFactId(factId: string): string {
+  // DSH.V.NNN → dasha_vimshottari, DSH.Y.NNN → dasha_yogini, DSH.C.NNN → dasha_chara
+  const prefix = factId.charAt(4).toUpperCase()
+  if (prefix === 'Y') return 'dasha_yogini'
+  if (prefix === 'C') return 'dasha_chara'
+  return 'dasha_vimshottari'
+}
+
 async function fetchDashaRowByFactId(factId: string): Promise<DashaRow | null> {
+  const category = categoryFromFactId(factId)
   const storage = getStorageClient()
   const sql = `
     SELECT fact_id,
@@ -203,11 +217,11 @@ async function fetchDashaRowByFactId(factId: string): Promise<DashaRow | null> {
            value_json->>'end_date' AS end_date
     FROM chart_facts
     WHERE fact_id = $1
-      AND category = 'dasha_vimshottari'
+      AND category = $2
       AND is_stale = false
     LIMIT 1
   `
-  const result = await storage.query<DashaRow>(sql, [factId])
+  const result = await storage.query<DashaRow>(sql, [factId, category])
   return result.rows[0] ?? null
 }
 
@@ -259,7 +273,7 @@ export async function validateClaimsAgainstChartFacts(
         results.push({
           ...claim,
           verdict: 'halt',
-          violation: `unknown_fact_id: "${claim.cited_fact_id}" not found in chart_facts dasha_vimshottari`,
+          violation: `unknown_fact_id: "${claim.cited_fact_id}" not found in chart_facts`,
         })
         continue
       }
@@ -303,7 +317,7 @@ async function fetchActiveDashaSnippet(): Promise<string> {
            value_json->>'start_date' AS start_date,
            value_json->>'end_date' AS end_date
     FROM chart_facts
-    WHERE category = 'dasha_vimshottari'
+    WHERE category IN ('dasha_vimshottari', 'dasha_yogini', 'dasha_chara')
       AND is_stale = false
       AND (value_json->>'end_date')::date >= $1::date
     ORDER BY (value_json->>'start_date')::date ASC
@@ -341,8 +355,8 @@ export async function buildDashaRemediationPrompt(
     `\n\nDASHA REMEDIATION (your previous response violated the DASHA DISCIPLINE GATE):\n\n` +
     `Violations detected:\n${violationList}\n\n` +
     `Canonical dasha schedule from chart_facts (use these EXACT citations):\n${snippet}\n\n` +
-    `Regenerate the response with corrected dasha claims, citing DSH.V.NNN exactly as shown above. ` +
-    `Do not extrapolate from generic Vimshottari knowledge — the chart_facts rows above are the ground truth.`
+    `Regenerate the response with corrected dasha claims, citing DSH.V/Y/C.NNN exactly as shown above. ` +
+    `Do not extrapolate from generic dasha knowledge — the chart_facts rows above are the ground truth.`
   )
 }
 
