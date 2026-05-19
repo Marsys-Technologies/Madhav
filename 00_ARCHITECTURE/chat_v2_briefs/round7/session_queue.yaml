@@ -67,6 +67,8 @@ sessions:
     commit_template: "feat(chat-v2/r7-s6): composer draft persistence — useDraft hook + debounced localStorage write + clear-on-send"
     estimated_loc: "+50"
     risk: low
+    status: completed
+    completed_at: "2026-05-20T03:10:00Z"
 
   - id: R7-S7
     brief: 00_ARCHITECTURE/chat_v2_briefs/round7/R7-S7-a11y-polish.md

@@ -2,6 +2,55 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
+
+// ── useDraft ─────────────────────────────────────────────────────────────────
+
+function draftKey(conversationId: string | null): string {
+  return `madhav:draft:v1:${conversationId ?? '__new__'}`
+}
+
+/**
+ * Per-conversation localStorage draft persistence (R7-S6).
+ * Returns [draft, setDraft, clearDraft].
+ * setDraft is a no-op for strings longer than 10 000 chars.
+ * SSR-safe: all localStorage access is guarded by typeof window check.
+ */
+export function useDraft(
+  conversationId: string | null,
+): [string, (v: string) => void, () => void] {
+  const key = draftKey(conversationId)
+
+  const [draft, setDraftState] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try { return localStorage.getItem(key) ?? '' } catch { return '' }
+  })
+
+  // AC-7: when conversationId changes, re-read from localStorage for the new key.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDraftState(localStorage.getItem(key) ?? '')
+    } catch {
+      setDraftState('')
+    }
+  }, [key])
+
+  const setDraft = useCallback((v: string) => {
+    if (v.length > 10000) return
+    setDraftState(v)
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem(key, v) } catch {}
+  }, [key])
+
+  const clearDraft = useCallback(() => {
+    setDraftState('')
+    if (typeof window === 'undefined') return
+    try { localStorage.removeItem(key) } catch {}
+  }, [key])
+
+  return [draft, setDraft, clearDraft]
+}
 import {
   DEFAULT_STACK_ID,
   STACK_ROUTING,
