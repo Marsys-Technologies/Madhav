@@ -4,6 +4,7 @@ import {
   FALSIFIER_GATE,
   PRESCRIPTIVE_CITATION_GATE,
   CALIBRATION_LANGUAGE_GATE,
+  DASHA_DISCIPLINE_GATE,
   B11_EXPLICIT_LAYER_GATE,
   REQUIRED_PLACEHOLDERS_BASE,
   STYLE_SUFFIXES,
@@ -11,7 +12,7 @@ import {
 
 export const template: PromptTemplate = {
   template_id: 'predictive_super_admin_single_model_v1',
-  version: '3.0',
+  version: '3.1',
   query_class: 'predictive',
   audience_tier: 'super_admin',
   strategy: 'single_model',
@@ -47,6 +48,8 @@ You are producing time-indexed, probabilistic predictions about future timing wi
 ${FALSIFIER_GATE}
 
 ${CALIBRATION_LANGUAGE_GATE}
+
+${DASHA_DISCIPLINE_GATE}
 
 RESPONSE STRUCTURE (mandatory for this query class):
 Do NOT produce section headers, bulleted prediction lists, or labeled fields (e.g., no "Indicators:", "Interpretation:", "Probability:", "Falsifier:" as section labels). Write as continuous, acharya-grade prose. Each prediction is embedded naturally in the narrative.

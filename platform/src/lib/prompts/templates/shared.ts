@@ -66,6 +66,36 @@ In the opening paragraph of your response, note which of MSR, UCN, CDLM, CGM, an
 
 For queries with divisional context present: also consult the §3.15 CSI cross-divisional dignity ledger (cross_varga_dignity_query results or CSI.* rows in chart_facts) as the canonical D1↔D9↔D10 cross-walk. Treating MSR/UCN/CDLM/CGM/RM as the complete synthesis surface without referencing CSI when divisional data is in scope is a B.11 violation.`
 
+/**
+ * DASHA_DISCIPLINE_GATE — Phase 5B dasha correctness campaign.
+ *
+ * Mandates DSH.V.NNN citation for any dasha lord claim across the four
+ * synthesis templates (predictive / factual / holistic / remedial).
+ * Forbids extrapolating next/previous periods from pretrained Vimshottari
+ * knowledge when the bundle's dasha_vimshottari rows are present.
+ * Mirrors the pattern of FALSIFIER_GATE and CALIBRATION_LANGUAGE_GATE.
+ */
+export const DASHA_DISCIPLINE_GATE = `DASHA DISCIPLINE GATE (mandatory):
+Whenever this response claims a current, previous, next, or upcoming dasha lord
+(MD / AD / PD / SD / PD2 at any level), the claim MUST be grounded in the
+dasha rows present in the context bundle OR the query_dasha_periods tool result.
+
+Citation format:
+  "current MD lord is Mercury (→ DSH.V.015, 2010-08-18 to 2027-08-19)"
+  "next MD is Ketu (→ DSH.V.024, 2027-08-19 to 2034-08-18)"
+
+Forbidden:
+  - Asserting a dasha lord without a DSH.V.NNN citation
+  - Asserting dasha period dates without citing the FORENSIC §5.1 row
+  - Extrapolating "next" / "previous" from generic Vimshottari knowledge
+    when the bundle's dasha_vimshottari rows are present — this is a B.10
+    fabricated-computation violation
+
+If the required dasha row is absent from the bundle, write:
+  [EXTERNAL_COMPUTATION_REQUIRED: dasha_vimshottari row for <range> not
+   present in bundle; refetch via query_dasha_periods]
+Do not guess the period from training-data knowledge of the Vimshottari cycle.`
+
 export const DIVISIONAL_INTEGRATION_GATE = `DIVISIONAL INTEGRATION GATE (mandatory for interpretive, holistic, predictive, and cross_domain query classes):
 When divisional chart placements are present in the retrieved context (any fact_id of the form D9.*, D10.*, D7.*, D12.*, D24.*, D30.*, D40.*, D45.*, D60.*, or CSI.*), you MUST:
 

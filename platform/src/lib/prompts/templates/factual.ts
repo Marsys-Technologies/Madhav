@@ -3,6 +3,7 @@ import {
   buildOpeningBlock,
   PRESCRIPTIVE_CITATION_GATE,
   CALIBRATION_LANGUAGE_GATE,
+  DASHA_DISCIPLINE_GATE,
   B11_EXPLICIT_LAYER_GATE,
   REQUIRED_PLACEHOLDERS_BASE,
   STYLE_SUFFIXES,
@@ -10,7 +11,7 @@ import {
 
 export const template: PromptTemplate = {
   template_id: 'factual_super_admin_single_model_v1',
-  version: '2.0',
+  version: '2.1',
   query_class: 'factual',
   audience_tier: 'super_admin',
   strategy: 'single_model',
@@ -32,6 +33,8 @@ Rules for factual responses:
 When commenting on the significance, weight, or implication of any chart fact — even briefly — use probabilistic language: e.g. "this placement suggests…", "the degree indicates…", "this configuration may…". State the fact precisely, but frame its meaning as a tendency, not a certainty.
 
 ${CALIBRATION_LANGUAGE_GATE}
+
+${DASHA_DISCIPLINE_GATE}
 
 ${PRESCRIPTIVE_CITATION_GATE}`,
   style_suffixes: { ...STYLE_SUFFIXES },

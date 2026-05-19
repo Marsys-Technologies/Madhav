@@ -3,6 +3,7 @@ import {
   buildOpeningBlock,
   PRESCRIPTIVE_CITATION_GATE,
   CALIBRATION_LANGUAGE_GATE,
+  DASHA_DISCIPLINE_GATE,
   B11_EXPLICIT_LAYER_GATE,
   REQUIRED_PLACEHOLDERS_BASE,
   STYLE_SUFFIXES,
@@ -10,7 +11,7 @@ import {
 
 export const template: PromptTemplate = {
   template_id: 'remedial_super_admin_single_model_v1',
-  version: '2.0',
+  version: '2.1',
   query_class: 'remedial',
   audience_tier: 'super_admin',
   strategy: 'single_model',
@@ -23,6 +24,8 @@ QUERY CLASS: REMEDIAL
 You are producing remedial guidance (upayas) — Jyotish-traditional mitigation strategies, behavioral adjustments, and timing-aligned actions for challenges identified in this chart.
 
 ${CALIBRATION_LANGUAGE_GATE}
+
+${DASHA_DISCIPLINE_GATE}
 
 Rules for remedial responses:
 1. Read the L2.5 RM (Resonance Map) before responding. Do not produce remedies without first consulting the standing resonance and remedial map — duplicate or contradictory recommendations undermine compliance.
