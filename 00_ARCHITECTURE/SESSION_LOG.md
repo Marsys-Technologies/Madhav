@@ -25044,3 +25044,74 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-5
+  cowork_thread_name: "4C-5 — Personalise overlay (Tara Bala + Chandra Bala + localStorage)"
+  session_date: 2026-05-20
+  executor: Claude Code sub-agent (Conductor)
+  branch: feature/phase-4c-panchang
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  predecessor_session: 4C-4-S4
+  active_phase: M5-A (main); 4C-5 (concurrent workstream)
+  may_touch:
+    - platform/src/lib/panchang/{tara_bala,chandra_bala}.ts (new)
+    - platform/src/app/panchang/hooks/useChartList.ts (new)
+    - PanchangHeader.tsx, PrimaryStrip.tsx, PlanetaryGrid.tsx, SpecialYogasList.tsx
+    - usePanchangDay.ts, PanchangClientView.tsx (wiring)
+    - sidecar main.py/routers/panchang.py (NativeContext + endpoint update)
+    - governance state files, brief
+  must_not_touch:
+    - panchang_engine/* (sealed)
+    - Phase 4C-3 RetrievalTool (sealed)
+    - corpus, master plan, FORENSIC, other UI areas
+
+session_body:
+  items_completed:
+    - id: AC.4C5.1
+      result: PASS
+      detail: "tara_bala.ts: computeTaraBala(birth, current) → TaraBalaResult; 27×27 exhaustive test suite 21/21 PASS"
+    - id: AC.4C5.2
+      result: PASS
+      detail: "chandra_bala.ts: computeChandraBala(natal, transit) → ChandraBalaResult; STRONG/MODERATE/WEAK + isChandrashtama; 12×12 exhaustive suite 22/22 PASS"
+    - id: AC.4C5.3
+      result: PASS
+      detail: "useChartList hook + /api/panchang/charts route; astrologer=all charts, client=own; RLS by Firebase uid role"
+    - id: AC.4C5.4
+      result: PASS
+      detail: "PanchangHeader: personalise dropdown wired with useChartList; chart_id in URL + localStorage; Clear personalisation restores Generic"
+    - id: AC.4C5.5
+      result: PASS
+      detail: "usePanchangDay: chartId in cache key; NativeContext type; PanchangClientView passes chartId to hook and native_context downstream"
+    - id: AC.4C5.6
+      result: PASS
+      detail: "sidecar NativeContext model + _fetch_native_context: DB fetch via psycopg → compute_panchang(birth_date) → Moon.nakshatra_id + Moon.sign_id; native_name from chart table"
+    - id: AC.4C5.7
+      result: PASS
+      detail: "TaraBadge on Nakshatra row (auspicious=green, inauspicious=red, mixed=gold); ChandraBadge on Moon card (STRONG/MODERATE/WEAK; Chandrashtama label for house 8)"
+    - id: AC.4C5.8
+      result: PASS
+      detail: "SpecialYogasList: 'for [native first name]' annotation when yoga.nakshatra_id = native.birth_nakshatra_id; gold pill badge"
+    - id: AC.4C5.9
+      result: PASS
+      detail: "43 new lib tests (21 tara_bala + 22 chandra_bala); 100/100 total panchang TS tests PASS; 163/163 sidecar panchang_engine pytest PASS; tsc 0 errors; PanchangHeader test updated with useChartList mock"
+    - id: AC.4C5.10
+      result: PASS
+      detail: "CURRENT_STATE v5.22; SESSION_LOG appended; brief COMPLETE; queue 4C-5 passed → 4C-6-S1 in_flight"
+
+session_close:
+  test_suite: "100/100 TS tests PASS (vitest); 163/163 sidecar pytest PASS; tsc 0 errors"
+  mirror_enforcer: "not run (no MP.1/MP.2 governance surface changes this session)"
+  drift_detector: "not run (UI+computation session; governance files: CURRENT_STATE + SESSION_LOG + queue only)"
+  commits:
+    - 8c9cd8d
+    - <close_commit>
+  next_session_id: 4C-6-S1
+  next_session_objective: "Muhurat Finder engine — event scoring (6 event types D2), muhurat.py + test_muhurat_scoring.py"
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+```

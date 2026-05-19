@@ -228,6 +228,8 @@ entries:
   est_tokens: 120000
   est_duration_min: 90
   status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 57/57 PASS; validate_queue OK (after test fix commit df78ded)
   human_decision_prompt: null
 - session_id: 4C-5
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
@@ -248,7 +250,7 @@ entries:
   - platform/python-sidecar/panchang_engine/tara_bala.py
   est_tokens: 130000
   est_duration_min: 100
-  status: pending
+  status: passed
   human_decision_prompt: null
 - session_id: 4C-6-S1
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S1_v1_0.md
@@ -266,7 +268,7 @@ entries:
   - platform/python-sidecar/panchang_engine/tests/test_muhurat_scoring.py
   est_tokens: 140000
   est_duration_min: 110
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 - session_id: 4C-6-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S2_v1_0.md

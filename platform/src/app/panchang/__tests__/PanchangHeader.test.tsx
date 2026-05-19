@@ -1,9 +1,11 @@
 /**
- * PanchangHeader unit tests — AC.4C4S1.9
+ * PanchangHeader unit tests — AC.4C4S1.9 / AC.4C5.4
  *
- * Tests: date controls, location switch, URL param persistence.
+ * Tests: date controls, location switch, URL param persistence, personalise dropdown.
  * Navigation (router.push) is mocked; we verify the calls rather than
  * rendering a full Next.js router.
+ * useChartList is mocked to return an empty loaded state (no charts) so the
+ * personalise select is not disabled during tests.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -16,6 +18,11 @@ const mockSearchParams = new URLSearchParams()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   useSearchParams: () => mockSearchParams,
+}))
+
+// Mock useChartList — return empty loaded state so personalise select is enabled
+vi.mock('../hooks/useChartList', () => ({
+  useChartList: () => ({ charts: [], isLoading: false, error: null }),
 }))
 
 // Mock date-fns format to make today deterministic
@@ -92,7 +99,7 @@ describe('PanchangHeader', () => {
     expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
   })
 
-  it('Personalise select is present with Generic Panchang default (4C-5 wiring deferred)', () => {
+  it('Personalise select is present with Generic Panchang default and enabled when charts loaded', () => {
     render(<PanchangHeader {...defaultProps} />)
     const sel = screen.getByLabelText('Personalise view')
     expect(sel).toBeInTheDocument()
