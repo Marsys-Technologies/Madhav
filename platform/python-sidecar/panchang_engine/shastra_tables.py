@@ -582,3 +582,407 @@ PANCHAKA_VARAS: set = {7, 1, 3}
 # ---------------------------------------------------------------------------
 DWIPUSHKAR_TABLE: list = []   # deprecated; use DWIPUSHKAR_TITHIS/VARAS/NAKSHATRAS
 TRIPUSHKAR_TABLE: list = []   # deprecated; use TRIPUSHKAR_TITHIS/VARAS/NAKSHATRAS
+
+# ===========================================================================
+# §22 — Per-Event Muhurat Quality Tables (Phase 4C-6-S1)
+# Each table maps a factor → score 0.0..1.0 for that event.
+# Unhandled IDs implicitly score 0.0 (neutral/unknown); known-avoided IDs
+# carry explicit 0.0 entries (commented as "AVOID").
+# Sources abbreviated: MC = Muhurta Chintamani; BS = Brihat Samhita;
+#   MMP = Muhurta Martanda (Nrisimha Daivajña); DP = Drik Panchang.
+# Where sources disagree, MC is treated as authoritative per brief §3 Item 1.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# §22.1 — VIVAH (Marriage) quality table
+# Source: MC 3.2 (tithis), MC 3.5 (nakshatras), classical vara preference
+# ---------------------------------------------------------------------------
+VIVAH_QUALITY: dict = {
+    "tithi": {
+        # Shukla paksha tithis (1-based, continuous: 1..15 = Shukla)
+        2: 0.80,   # Shukla Dvitiya — MC 3.2: auspicious
+        3: 0.80,   # Shukla Tritiya — MC 3.2: auspicious
+        5: 0.90,   # Shukla Panchami — MC 3.2: very auspicious
+        7: 0.85,   # Shukla Saptami — MC 3.2: auspicious
+        10: 0.95,  # Shukla Dashami — MC 3.2: highly auspicious
+        11: 0.85,  # Shukla Ekadashi — MC 3.2: auspicious
+        12: 0.70,  # Shukla Dvadashi — MC 3.2: acceptable
+        13: 0.70,  # Shukla Trayodashi — MC 3.2: acceptable
+        # AVOID: Chaturthi (4), Navami (9), Chaturdashi (14), Amavasya (30)
+        4: 0.00,   # Shukla Chaturthi — AVOID (MC 3.2: inauspicious for marriage)
+        9: 0.00,   # Shukla Navami — AVOID (MC 3.2: inauspicious)
+        14: 0.00,  # Shukla Chaturdashi — AVOID (MC 3.2: inauspicious)
+        30: 0.00,  # Amavasya — AVOID (MC 3.2: utterly inauspicious)
+        # Krishna paksha (16-30) — generally avoided for Vivah; MC 3.2 restricts
+        # to Shukla paksha primarily. Krishna tithis not listed = 0.0 (implicit).
+        1: 0.50,   # Shukla Pratipada — MC 3.2: neutral/acceptable
+        6: 0.60,   # Shukla Shashthi — MC 3.2: acceptable
+        8: 0.40,   # Shukla Ashtami — MC 3.2: use with caution
+        15: 0.60,  # Purnima — MC 3.2: auspicious but secondary to Dashami
+    },
+    "nakshatra": {
+        # Source: MC 3.5 (marriage nakshatras; 1-indexed)
+        1: 0.50,   # Ashwini — MC 3.5: acceptable
+        4: 0.95,   # Rohini — MC 3.5: highly auspicious (fixed nakshatra; stable marriage)
+        7: 0.85,   # Punarvasu — MC 3.5: auspicious
+        8: 0.95,   # Pushya — MC 3.5: highly auspicious (avoided on Sun — handled by vara)
+        10: 0.85,  # Magha — MC 3.5: auspicious (ancestral blessings)
+        12: 0.95,  # Uttara Phalguni — MC 3.5: most auspicious for Vivah (Aryaman presides)
+        13: 0.95,  # Hasta — MC 3.5: highly auspicious
+        21: 0.95,  # Uttara Ashadha — MC 3.5: highly auspicious (fixed star; stable)
+        27: 0.95,  # Revati — MC 3.5: highly auspicious (Pushan: journeys, completion)
+        5: 0.70,   # Mrigashira — MC 3.5: good (dual nature; use with care)
+        17: 0.75,  # Anuradha — MC 3.5: auspicious (Mitra: friendship)
+        22: 0.80,  # Shravana — MC 3.5: auspicious (Vishnu)
+        # AVOID: Bharani, Krittika, Ardra, Ashlesha, Jyeshtha, Moola, Vishakha
+        2: 0.00,   # Bharani — AVOID (MC 3.5: Yama presides; inauspicious)
+        3: 0.00,   # Krittika — AVOID (MC 3.5: Agni; harsh)
+        6: 0.00,   # Ardra — AVOID (MC 3.5: Rudra; inauspicious for marriage)
+        9: 0.00,   # Ashlesha — AVOID (MC 3.5: Sarpa; cruel)
+        18: 0.00,  # Jyeshtha — AVOID (MC 3.5: elder star; causes rivalry)
+        19: 0.00,  # Moola — AVOID (MC 3.5: Nirrti; destructive)
+        16: 0.40,  # Vishakha — use cautiously (MC 3.5: dual; Indra-Agni)
+    },
+    "vara": {
+        # Source: classical preference table; MC §3; DP
+        # 4=Wed, 5=Thu, 6=Fri preferred; 1=Mon secondary; 7=Sat avoided
+        2: 0.80,   # Monday (Somavara) — Moon: auspicious
+        4: 0.90,   # Wednesday (Budhavara) — Mercury: auspicious
+        5: 0.95,   # Thursday (Guruvara) — Jupiter: highly auspicious
+        6: 0.90,   # Friday (Shukravara) — Venus: highly auspicious for marriage
+        1: 0.40,   # Sunday (Ravivara) — Sun: harsh, use with care
+        3: 0.30,   # Tuesday (Mangalavara) — Mars: inauspicious for marriage
+        7: 0.00,   # Saturday (Shanivara) — AVOID (Saturn: delays, sorrow)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §22.2 — GRIHA PRAVESH (New Home Entry / House Warming) quality table
+# Source: MC 4.1 (tithis), MC 4.3 (nakshatras); MMP §Griha Pravesh
+# ---------------------------------------------------------------------------
+GRIHA_PRAVESH_QUALITY: dict = {
+    "tithi": {
+        # Auspicious tithis for Griha Pravesh — shukla paksha strongly preferred
+        1: 0.70,   # Shukla Pratipada — MC 4.1: acceptable new beginning
+        2: 0.85,   # Shukla Dvitiya — MC 4.1: auspicious
+        3: 0.90,   # Shukla Tritiya — MC 4.1: highly auspicious (Teej; auspicious beginnings)
+        5: 0.90,   # Shukla Panchami — MC 4.1: auspicious
+        7: 0.85,   # Shukla Saptami — MC 4.1: auspicious
+        10: 0.95,  # Shukla Dashami — MC 4.1: highly auspicious
+        11: 0.85,  # Shukla Ekadashi — MC 4.1: auspicious
+        12: 0.80,  # Shukla Dvadashi — MC 4.1: auspicious
+        13: 0.75,  # Shukla Trayodashi — MC 4.1: acceptable
+        15: 0.80,  # Purnima — MC 4.1: auspicious (fullness; abundance)
+        # AVOID
+        4: 0.00,   # Chaturthi — AVOID (MC 4.1: Ganesha's tithi but inauspicious for entry)
+        6: 0.00,   # Shashthi — AVOID (MC 4.1: health concerns)
+        8: 0.00,   # Ashtami — AVOID (MC 4.1: Ashta = 8; inauspicious)
+        14: 0.00,  # Chaturdashi — AVOID (MC 4.1: inauspicious)
+        30: 0.00,  # Amavasya — AVOID
+        9: 0.30,   # Navami — use with caution (MC 4.1: secondary avoid)
+    },
+    "nakshatra": {
+        # Source: MC 4.3; MMP §Griha Pravesh
+        4: 0.95,   # Rohini — MC 4.3: highly auspicious (fixed; stable home)
+        7: 0.90,   # Punarvasu — MC 4.3: auspicious (Aditi: abundance)
+        8: 0.95,   # Pushya — MC 4.3: best nakshatra for Griha Pravesh
+        12: 0.90,  # Uttara Phalguni — MC 4.3: highly auspicious
+        13: 0.90,  # Hasta — MC 4.3: auspicious (skill; craft)
+        21: 0.90,  # Uttara Ashadha — MC 4.3: auspicious (victory; stability)
+        22: 0.85,  # Shravana — MC 4.3: auspicious (Vishnu; purity)
+        26: 0.85,  # Uttara Bhadrapada — MC 4.3: auspicious (Ahir Budhnya; depth)
+        27: 0.90,  # Revati — MC 4.3: auspicious (completion; prosperity)
+        1: 0.70,   # Ashwini — MC 4.3: acceptable (swift action)
+        5: 0.75,   # Mrigashira — MC 4.3: auspicious (Moon; gentle)
+        17: 0.80,  # Anuradha — MC 4.3: auspicious
+        # AVOID
+        6: 0.00,   # Ardra — AVOID (MC 4.3: Rudra; destruction; bad for home entry)
+        9: 0.00,   # Ashlesha — AVOID (MC 4.3: Sarpa; toxic)
+        14: 0.00,  # Chitra — MC 4.3: avoid (Mars-ruled; conflict)
+        19: 0.00,  # Moola — AVOID (MC 4.3: Nirrti; uprooting)
+        2: 0.10,   # Bharani — AVOID (MC 4.3: Yama)
+    },
+    "vara": {
+        # Source: MC 4.3; MMP; DP
+        2: 0.85,   # Monday — auspicious (Moon: home, comfort)
+        4: 0.90,   # Wednesday — auspicious
+        5: 0.95,   # Thursday — highly auspicious (Jupiter: expansion, prosperity)
+        6: 0.90,   # Friday — auspicious (Venus: home comforts)
+        1: 0.60,   # Sunday — acceptable
+        3: 0.40,   # Tuesday — cautious (Mars: conflict)
+        7: 0.20,   # Saturday — avoid (Saturn: heaviness)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §22.3 — VYAPARA (Business Start / Commerce) quality table
+# Source: MC 5.1 (tithis); MMP §Vyapara; DP convention
+# ---------------------------------------------------------------------------
+VYAPARA_QUALITY: dict = {
+    "tithi": {
+        # Source: MC 5.1 — business favors Labha tithis (gain-oriented)
+        1: 0.70,   # Shukla Pratipada — MC 5.1: new beginning, acceptable
+        2: 0.80,   # Shukla Dvitiya — MC 5.1: auspicious
+        3: 0.85,   # Shukla Tritiya — MC 5.1: auspicious
+        5: 0.90,   # Shukla Panchami — MC 5.1: auspicious (Saraswati; commerce)
+        6: 0.80,   # Shukla Shashthi — MC 5.1: acceptable
+        7: 0.85,   # Shukla Saptami — MC 5.1: auspicious
+        10: 0.90,  # Shukla Dashami — MC 5.1: auspicious
+        11: 0.80,  # Shukla Ekadashi — MC 5.1: auspicious (Vishnu; wealth)
+        12: 0.85,  # Shukla Dvadashi — MC 5.1: auspicious
+        13: 0.75,  # Shukla Trayodashi — MC 5.1: acceptable
+        15: 0.75,  # Purnima — MC 5.1: auspicious
+        # AVOID
+        4: 0.00,   # Chaturthi — AVOID (MC 5.1: obstacles)
+        8: 0.00,   # Ashtami — AVOID
+        9: 0.00,   # Navami — AVOID
+        14: 0.00,  # Chaturdashi — AVOID
+        30: 0.00,  # Amavasya — AVOID
+    },
+    "nakshatra": {
+        # Source: MC 5.1; Jyotish tradition for Labha nakshatras
+        1: 0.80,   # Ashwini — MC 5.1: auspicious (swift commerce)
+        4: 0.90,   # Rohini — MC 5.1: highly auspicious (wealth, material)
+        5: 0.85,   # Mrigashira — MC 5.1: auspicious (seeking gain)
+        7: 0.90,   # Punarvasu — MC 5.1: auspicious (return; regeneration)
+        8: 0.95,   # Pushya — MC 5.1: best for commerce (Guru Pushya = ultimate)
+        10: 0.85,  # Magha — MC 5.1: auspicious (ancestral wealth)
+        11: 0.85,  # Purva Phalguni — MC 5.1: auspicious (Venus; luxury goods)
+        12: 0.85,  # Uttara Phalguni — MC 5.1: auspicious
+        13: 0.90,  # Hasta — MC 5.1: auspicious (hands; craft; commerce)
+        15: 0.85,  # Swati — MC 5.1: auspicious (Vayu; trade winds)
+        17: 0.85,  # Anuradha — MC 5.1: auspicious (Mitra; alliances)
+        21: 0.85,  # Uttara Ashadha — MC 5.1: auspicious
+        22: 0.85,  # Shravana — MC 5.1: auspicious
+        24: 0.80,  # Shatabhisha — MC 5.1: acceptable (healing; pharmacy)
+        27: 0.90,  # Revati — MC 5.1: auspicious (Pushan; wealth in journeys)
+        # AVOID
+        6: 0.00,   # Ardra — AVOID (Rudra; destruction of commerce)
+        9: 0.00,   # Ashlesha — AVOID (deception; fraud)
+        18: 0.00,  # Jyeshtha — AVOID (rivalry; loss)
+        19: 0.00,  # Moola — AVOID (uprooting business)
+        2: 0.20,   # Bharani — AVOID (Yama; endings)
+    },
+    "vara": {
+        # Source: MC 5.1; classical commerce tradition
+        2: 0.80,   # Monday — auspicious (Moon: public dealings)
+        4: 0.95,   # Wednesday — highly auspicious (Mercury: commerce, trade)
+        5: 0.90,   # Thursday — auspicious (Jupiter: wealth expansion)
+        6: 0.85,   # Friday — auspicious (Venus: luxury goods)
+        1: 0.70,   # Sunday — acceptable (Sun: authority, govt contracts)
+        3: 0.50,   # Tuesday — cautious (Mars: competition)
+        7: 0.30,   # Saturday — avoid (Saturn: delays, losses)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §22.4 — YATRA (Journey / Travel) quality table
+# Source: MC 6.1 (tithis); BS §Yatra; MMP §Yatra; DP convention
+# ---------------------------------------------------------------------------
+YATRA_QUALITY: dict = {
+    "tithi": {
+        # Source: MC 6.1 — Yatra muhurta; shukla paksha preferred for outward journey
+        2: 0.85,   # Shukla Dvitiya — MC 6.1: auspicious
+        3: 0.85,   # Shukla Tritiya — MC 6.1: auspicious
+        5: 0.90,   # Shukla Panchami — MC 6.1: very auspicious
+        6: 0.80,   # Shukla Shashthi — MC 6.1: auspicious
+        7: 0.85,   # Shukla Saptami — MC 6.1: auspicious
+        10: 0.90,  # Shukla Dashami — MC 6.1: auspicious
+        11: 0.80,  # Shukla Ekadashi — MC 6.1: auspicious
+        12: 0.80,  # Shukla Dvadashi — MC 6.1: auspicious
+        13: 0.75,  # Shukla Trayodashi — MC 6.1: acceptable
+        15: 0.70,  # Purnima — MC 6.1: generally auspicious
+        1: 0.60,   # Pratipada — MC 6.1: neutral
+        # AVOID
+        4: 0.00,   # Chaturthi — AVOID (MC 6.1: accidents, obstacles)
+        8: 0.00,   # Ashtami — AVOID (MC 6.1: inauspicious for journeys)
+        9: 0.00,   # Navami — AVOID (MC 6.1)
+        14: 0.00,  # Chaturdashi — AVOID
+        30: 0.00,  # Amavasya — AVOID
+    },
+    "nakshatra": {
+        # Source: BS §Yatra chapter; MC 6.1
+        1: 0.90,   # Ashwini — BS: best for travel (swift; Ashwins = celestial riders)
+        5: 0.90,   # Mrigashira — BS: excellent for journeys (Moon; gentle, seeking)
+        7: 0.85,   # Punarvasu — BS: auspicious (return home safely)
+        8: 0.90,   # Pushya — BS: auspicious (nourishment; protection)
+        10: 0.80,  # Magha — BS: acceptable (royal travel)
+        13: 0.90,  # Hasta — BS: auspicious (skill; arriving safely)
+        15: 0.90,  # Swati — BS: excellent for travel (Vayu = wind; movement)
+        17: 0.85,  # Anuradha — BS: auspicious (Mitra; safe passage)
+        21: 0.85,  # Uttara Ashadha — BS: auspicious (victory at destination)
+        22: 0.90,  # Shravana — BS: auspicious (Vishnu; safe journeys)
+        23: 0.85,  # Dhanishtha — BS: auspicious (wealth at destination)
+        27: 0.90,  # Revati — BS: excellent for travel (Pushan = guide of journeys)
+        4: 0.70,   # Rohini — acceptable (fixed; may delay return)
+        12: 0.80,  # Uttara Phalguni — BS: acceptable
+        # AVOID
+        6: 0.00,   # Ardra — AVOID (BS: storms, danger)
+        9: 0.00,   # Ashlesha — AVOID (BS: serpent dangers on road)
+        18: 0.00,  # Jyeshtha — AVOID (BS: conflict at destination)
+        19: 0.00,  # Moola — AVOID (BS: no return / loss)
+        2: 0.10,   # Bharani — AVOID (Yama; death on journey)
+        14: 0.20,  # Chitra — caution (MC: accidents)
+    },
+    "vara": {
+        # Source: MC 6.1; BS §Yatra; DP
+        # Direction rules apply (BS) but for day-scoring we use general auspiciousness
+        1: 0.80,   # Sunday — acceptable (Sun: authority, bold travel)
+        2: 0.85,   # Monday — auspicious (Moon: waters, North direction)
+        4: 0.90,   # Wednesday — auspicious (Mercury: commerce, travel)
+        5: 0.95,   # Thursday — highly auspicious (Jupiter: safe, prosperous journey)
+        6: 0.90,   # Friday — auspicious (Venus: comfortable travel)
+        3: 0.40,   # Tuesday — cautious (Mars: accidents, conflict)
+        7: 0.20,   # Saturday — avoid (Saturn: delays, hardship)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §22.5 — PROPERTY PURCHASE (Property / Vehicle Purchase) quality table
+# Source: MC 7.1; MMP §Property; DP convention
+# ---------------------------------------------------------------------------
+PROPERTY_PURCHASE_QUALITY: dict = {
+    "tithi": {
+        # Source: MC 7.1 — fixed / stable tithis preferred
+        2: 0.80,   # Shukla Dvitiya — MC 7.1: auspicious
+        3: 0.85,   # Shukla Tritiya — MC 7.1: auspicious
+        5: 0.90,   # Shukla Panchami — MC 7.1: very auspicious
+        7: 0.85,   # Shukla Saptami — MC 7.1: auspicious
+        10: 0.95,  # Shukla Dashami — MC 7.1: highly auspicious
+        11: 0.85,  # Shukla Ekadashi — MC 7.1: auspicious
+        12: 0.90,  # Shukla Dvadashi — MC 7.1: auspicious (Tripushkar amplifier)
+        13: 0.80,  # Shukla Trayodashi — MC 7.1: acceptable
+        15: 0.85,  # Purnima — MC 7.1: auspicious (fullness; abundance)
+        1: 0.65,   # Pratipada — MC 7.1: acceptable new beginning
+        6: 0.70,   # Shashthi — MC 7.1: acceptable
+        # AVOID
+        4: 0.00,   # Chaturthi — AVOID (MC 7.1: obstacles, disputed ownership)
+        8: 0.00,   # Ashtami — AVOID
+        9: 0.00,   # Navami — AVOID
+        14: 0.00,  # Chaturdashi — AVOID
+        30: 0.00,  # Amavasya — AVOID
+    },
+    "nakshatra": {
+        # Source: MC 7.1; fixed nakshatras best for stable property
+        4: 0.95,   # Rohini — MC 7.1: best (fixed; stable property)
+        8: 0.95,   # Pushya — MC 7.1: best (nourishment; prosperity)
+        12: 0.90,  # Uttara Phalguni — MC 7.1: highly auspicious (Aryaman: contracts)
+        13: 0.90,  # Hasta — MC 7.1: auspicious (handshake deals)
+        21: 0.90,  # Uttara Ashadha — MC 7.1: auspicious (stability; fixed)
+        22: 0.85,  # Shravana — MC 7.1: auspicious
+        26: 0.85,  # Uttara Bhadrapada — MC 7.1: auspicious (depth; permanence)
+        27: 0.90,  # Revati — MC 7.1: auspicious (Pushan: wealth)
+        1: 0.80,   # Ashwini — MC 7.1: auspicious (vehicles especially)
+        5: 0.80,   # Mrigashira — MC 7.1: auspicious
+        7: 0.85,   # Punarvasu — MC 7.1: auspicious
+        17: 0.80,  # Anuradha — MC 7.1: auspicious
+        # AVOID
+        2: 0.00,   # Bharani — AVOID (Yama; possession ends)
+        6: 0.00,   # Ardra — AVOID (Rudra; destruction)
+        9: 0.00,   # Ashlesha — AVOID (hidden defects; fraud)
+        19: 0.00,  # Moola — AVOID (uprooting; no stability)
+        14: 0.20,  # Chitra — caution (dispute over aesthetics)
+    },
+    "vara": {
+        # Source: MC 7.1; DP
+        2: 0.85,   # Monday — auspicious (Moon: land, real estate)
+        4: 0.90,   # Wednesday — auspicious (Mercury: documents, deals)
+        5: 0.95,   # Thursday — highly auspicious (Jupiter: expansion, wealth)
+        6: 0.90,   # Friday — auspicious (Venus: property comforts)
+        1: 0.70,   # Sunday — acceptable
+        3: 0.40,   # Tuesday — cautious (Mars: disputes)
+        7: 0.20,   # Saturday — avoid (Saturn: encumbrances, old burdens)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §22.6 — MANTRA INITIATION (Mantra Diksha / Spiritual Initiation) quality table
+# Source: MC 8.1 (diksha muhurta); BS §Diksha; DP convention
+# ---------------------------------------------------------------------------
+MANTRA_INITIATION_QUALITY: dict = {
+    "tithi": {
+        # Source: MC 8.1 — spiritual tithis; Ekadashi and Purnima especially auspicious
+        1: 0.70,   # Shukla Pratipada — MC 8.1: acceptable for new initiations
+        2: 0.75,   # Shukla Dvitiya — MC 8.1: auspicious
+        3: 0.80,   # Shukla Tritiya — MC 8.1: auspicious
+        5: 0.85,   # Shukla Panchami — MC 8.1: auspicious (Saraswati; mantra power)
+        7: 0.85,   # Shukla Saptami — MC 8.1: auspicious (Sun; divine light)
+        10: 0.85,  # Shukla Dashami — MC 8.1: auspicious
+        11: 0.95,  # Shukla Ekadashi — MC 8.1: highly auspicious (Vishnu day; tapas)
+        12: 0.90,  # Shukla Dvadashi — MC 8.1: auspicious (post-Ekadashi; pure)
+        13: 0.80,  # Shukla Trayodashi — MC 8.1: auspicious (Shiva; mantra)
+        15: 0.95,  # Purnima — MC 8.1: best for diksha (fullness; Guru Purnima)
+        # Krishna Navami in some traditions: Durga Navami auspicious for Shakti diksha
+        24: 0.80,  # Krishna Navami (24 in continuous count) — Shakti traditions
+        # AVOID
+        4: 0.00,   # Chaturthi — AVOID (MC 8.1: obstacles to mantra siddhi)
+        14: 0.00,  # Chaturdashi — AVOID (unless Shivaratri; handled by special_yogas)
+        30: 0.00,  # Amavasya — AVOID (pitru tithi; not for diksha initiation)
+        8: 0.20,   # Ashtami — caution (Kali tithis; Shakti schools only)
+        9: 0.30,   # Navami — caution (Durga; Shakti schools only)
+    },
+    "nakshatra": {
+        # Source: BS §Diksha; MC 8.1; Tantra traditions
+        1: 0.80,   # Ashwini — MC 8.1: auspicious (Ashwins: healing mantras)
+        4: 0.90,   # Rohini — MC 8.1: auspicious (Brahma/Prajapati: creation mantras)
+        7: 0.90,   # Punarvasu — MC 8.1: highly auspicious (Aditi: renewal)
+        8: 0.95,   # Pushya — MC 8.1: best for diksha (Brihaspati: guru of gods)
+        10: 0.85,  # Magha — MC 8.1: auspicious (Pitrs: ancestral lineage diksha)
+        12: 0.90,  # Uttara Phalguni — MC 8.1: auspicious (Aryaman: contracts with divine)
+        13: 0.85,  # Hasta — MC 8.1: auspicious (Savitri: solar mantras)
+        17: 0.85,  # Anuradha — MC 8.1: auspicious (Mitra: friendship with deity)
+        20: 0.80,  # Purva Ashadha — MC 8.1: auspicious (Apas: purification mantras)
+        21: 0.85,  # Uttara Ashadha — MC 8.1: auspicious (Vishvedevas: universal)
+        22: 0.90,  # Shravana — MC 8.1: auspicious (Vishnu: Vaishnava mantras)
+        25: 0.85,  # Purva Bhadrapada — MC 8.1: auspicious (Aja Ekapad: depth)
+        27: 0.90,  # Revati — MC 8.1: highly auspicious (Pushan: completion, journey's end)
+        5: 0.75,   # Mrigashira — MC 8.1: acceptable (Moon: chandra mantras)
+        26: 0.85,  # Uttara Bhadrapada — MC 8.1: auspicious (Ahir Budhnya: tantric)
+        # AVOID
+        6: 0.00,   # Ardra — AVOID (Rudra: intense; not for standard diksha)
+        9: 0.00,   # Ashlesha — AVOID (Sarpa: deceptive energies)
+        18: 0.00,  # Jyeshtha — AVOID (Indra: pride; ego obstacles)
+        19: 0.00,  # Moola — AVOID (Nirrti: dissolution; not for initiation)
+        2: 0.10,   # Bharani — AVOID (Yama: death energy)
+    },
+    "vara": {
+        # Source: MC 8.1; BS §Diksha
+        2: 0.85,   # Monday — auspicious (Moon: mantra, mind, Shiva-related)
+        4: 0.90,   # Wednesday — auspicious (Mercury: mantra science)
+        5: 0.95,   # Thursday — best (Jupiter: Guru; all spiritual initiation)
+        6: 0.85,   # Friday — auspicious (Venus: Shakti, tantric initiation)
+        7: 0.80,   # Saturday — acceptable for Saturn mantras/Hanuman (MC 8.1)
+        1: 0.80,   # Sunday — auspicious (Sun: Surya/Gayatri mantras)
+        3: 0.40,   # Tuesday — avoid for most (Mars: tamasic energy for diksha)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §23 — EVENT → TABLE mapping (central dispatch for score_muhurat)
+# ---------------------------------------------------------------------------
+EVENT_TABLES: dict = {
+    "vivah":               VIVAH_QUALITY,
+    "griha_pravesh":       GRIHA_PRAVESH_QUALITY,
+    "vyapara":             VYAPARA_QUALITY,
+    "yatra":               YATRA_QUALITY,
+    "property_purchase":   PROPERTY_PURCHASE_QUALITY,
+    "mantra_initiation":   MANTRA_INITIATION_QUALITY,
+}
+
+# ---------------------------------------------------------------------------
+# §24 — Default Muhurat Scoring Weights (Phase 4C-6-S1)
+# YAML per-event overrides land in S2; these are the universal defaults.
+# Positive contributor weights sum to 0.95; avoid_penalty is a knockout multiplier.
+# Source: Brief §3 Item 2; classical factor weighting tradition.
+# ---------------------------------------------------------------------------
+DEFAULT_MUHURAT_WEIGHTS: dict = {
+    "tithi":         0.20,   # Tithi factor weight
+    "nakshatra":     0.30,   # Nakshatra factor weight (most influential in classical texts)
+    "vara":          0.10,   # Vara (weekday) factor weight
+    "yoga":          0.15,   # Bonus for active auspicious special yoga (Sarvartha Siddhi, etc.)
+    "planet":        0.10,   # Bonus for non-combust Jupiter/Venus
+    "native":        0.10,   # Bonus for Tara Bala / Chandra Bala (when personalised)
+    "avoid_penalty": 1.00,   # FULL penalty multiplier: 0.0 score when in Rahu/Yama/Gulika/DurMuhurta
+    # Total positive contributors: 0.20+0.30+0.10+0.15+0.10+0.10 = 0.95
+    # The remaining 0.05 is a built-in conservatism headroom (no day is perfect).
+}
