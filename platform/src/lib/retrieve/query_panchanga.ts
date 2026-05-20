@@ -26,7 +26,9 @@ import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './t
 const TOOL_NAME = 'query_panchanga'
 const TOOL_VERSION = '1.0.0'
 
-export type PanchangaField = 'tithi' | 'vara' | 'nakshatra' | 'yoga' | 'karana' | 'sunrise'
+export type PanchangaField =
+  | 'tithi' | 'vara' | 'nakshatra' | 'yoga' | 'karana' | 'sunrise'
+  | 'special_yogas' | 'choghadiya' | 'hora' | 'inauspicious' | 'auspicious'
 
 export interface QueryPanchangaInput {
   /** Single date (YYYY-MM-DD). Defaults to today UTC if neither date nor start_date provided. */
@@ -81,6 +83,12 @@ interface PanchangaRow {
   observer_lon: string
   observer_alt_m: string
   ephemeris_version: string
+  // Enrichment columns — null until bootstrap_panchanga --rebuild populates them (migration 069)
+  special_yogas: string | null
+  choghadiya: string | null
+  hora: string | null
+  inauspicious: string | null
+  auspicious: string | null
 }
 
 const ALL_FIELDS: PanchangaField[] = ['tithi', 'vara', 'nakshatra', 'yoga', 'karana', 'sunrise']
@@ -178,6 +186,21 @@ function rowToContent(r: PanchangaRow, fields: PanchangaField[]): Record<string,
     out.karana = r.karana
     out.karana_position_in_month = r.karana_position_in_month
   }
+  if (fields.includes('special_yogas')) {
+    out.special_yogas = r.special_yogas != null ? JSON.parse(r.special_yogas) : null
+  }
+  if (fields.includes('choghadiya')) {
+    out.choghadiya = r.choghadiya != null ? JSON.parse(r.choghadiya) : null
+  }
+  if (fields.includes('hora')) {
+    out.hora = r.hora != null ? JSON.parse(r.hora) : null
+  }
+  if (fields.includes('inauspicious')) {
+    out.inauspicious = r.inauspicious != null ? JSON.parse(r.inauspicious) : null
+  }
+  if (fields.includes('auspicious')) {
+    out.auspicious = r.auspicious != null ? JSON.parse(r.auspicious) : null
+  }
 
   return out
 }
@@ -241,7 +264,12 @@ async function retrieveImpl(
       observer_lat::text AS observer_lat,
       observer_lon::text AS observer_lon,
       observer_alt_m::text AS observer_alt_m,
-      ephemeris_version
+      ephemeris_version,
+      special_yogas::text AS special_yogas,
+      choghadiya::text AS choghadiya,
+      hora::text AS hora,
+      inauspicious::text AS inauspicious,
+      auspicious::text AS auspicious
     FROM panchanga_daily
     WHERE ${where}
     ORDER BY date ASC
