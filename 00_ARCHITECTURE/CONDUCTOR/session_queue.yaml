@@ -1,7 +1,7 @@
 schema_version: '1.0'
 queue_name: panchang_ship_round
 generated_at: '2026-05-20'
-total_entries: 4
+total_entries: 8
 external_gates: {}
 entries:
 - session_id: PSHIP-S1
@@ -18,12 +18,12 @@ entries:
   - 00_ARCHITECTURE/PSHIP_FILE_INVENTORY.md
   - 00_ARCHITECTURE/PSHIP_CONFLICT_MAP.md
   status: passed
-  human_decision_prompt: "PLANNER_PROMPT_v2_0.md has a HIGH-risk conflict: both main
+  human_decision_prompt: 'PLANNER_PROMPT_v2_0.md has a HIGH-risk conflict: both main
     and the source branch inserted an R-TC rule at the same offset (line 678) with
-    different content, and both added a '4.25' few-shot example with different content.
-    Decision needed: (1) rename Panchang's R-TC to R-PD (Panchanga Disambiguation)
-    to avoid name clash; (2) renumber Panchang's 4.25 example to come after main's
-    4.25+. See PSHIP_CONFLICT_MAP.md §1 for full spec. Confirm before PSHIP-S2 proceeds."
+    different content, and both added a ''4.25'' few-shot example with different content.
+    Decision needed: (1) rename Panchang''s R-TC to R-PD (Panchanga Disambiguation)
+    to avoid name clash; (2) renumber Panchang''s 4.25 example to come after main''s
+    4.25+. See PSHIP_CONFLICT_MAP.md §1 for full spec. Confirm before PSHIP-S2 proceeds.'
 - session_id: PSHIP-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S2_v1_0.md
   branch: feature/panchang-ship
@@ -39,8 +39,9 @@ entries:
     && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
   expected_artifacts:
   - platform/src/components/shared/AppShellRail.tsx
-  status: pending
+  status: skipped
   human_decision_prompt: null
+  skip_reason: Superseded by hybrid re-scope (PSHIP-*H) per PANCHANG_RECONCILIATION_SPEC
 - session_id: PSHIP-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S3_v1_0.md
   branch: feature/panchang-ship
@@ -56,8 +57,9 @@ entries:
     npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip
   expected_artifacts:
   - platform/src/lib/retrieve/query_panchanga.ts
-  status: pending
+  status: skipped
   human_decision_prompt: null
+  skip_reason: Superseded by hybrid re-scope (PSHIP-*H) per PANCHANG_RECONCILIATION_SPEC
 - session_id: PSHIP-S4
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S4_v1_0.md
   branch: feature/panchang-ship
@@ -74,5 +76,65 @@ entries:
   expected_artifacts:
   - 00_ARCHITECTURE/PSHIP_SHIP_READINESS_v1_0.md
   - 00_ARCHITECTURE/PSHIP_PR_BODY.md
+  status: skipped
+  human_decision_prompt: null
+  skip_reason: Superseded by hybrid re-scope (PSHIP-*H) per PANCHANG_RECONCILIATION_SPEC
+- session_id: PSHIP-S2H
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S2H_v1_0.md
+  branch: feature/panchang-ship
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  depends_on:
+  - PSHIP-S1
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform/python-sidecar/panchang_engine
+    && python3 -m pytest -q && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform
+    && npx tsc --noEmit && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip
   status: pending
   human_decision_prompt: null
+- session_id: PSHIP-S3H
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S3H_v1_0.md
+  branch: feature/panchang-ship
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  depends_on:
+  - PSHIP-S2H
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform && npx tsc --noEmit
+    && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd
+    /Users/Dev/Vibe-Coding/Apps/PanchangShip && python3 platform/scripts/governance/schema_validator.py
+    && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
+  status: pending
+  human_decision_prompt: null
+- session_id: PSHIP-S4H
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S4H_v1_0.md
+  branch: feature/panchang-ship
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  depends_on:
+  - PSHIP-S3H
+  requires_brief_authoring: false
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform && npx tsc --noEmit
+    && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  status: pending
+  human_decision_prompt: null
+- session_id: PSHIP-S5H
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S5H_v1_0.md
+  branch: feature/panchang-ship
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  depends_on:
+  - PSHIP-S4H
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform && npx tsc --noEmit
+    && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd
+    /Users/Dev/Vibe-Coding/Apps/PanchangShip && python3 platform/scripts/governance/schema_validator.py
+    && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
+  status: pending
+  human_decision_prompt: null
+human_decision_prompt_PSHIP-S4H: 'Approve PSHIP-S4H planner change: extend R-PA with
+  13 triggers, add R-PCI, renumber few-shot, leave main''s R-TC untouched.'
