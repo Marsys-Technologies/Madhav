@@ -41,7 +41,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "npx jest --testPathPattern='recall|lastPrompt|last-prompt|useChatPreferences' --passWithNoTests"
     commit_template: "feat(chat-v2): ArrowUp in empty composer recalls last sent prompt"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T09:00:00Z"
 
   - id: X-S3
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/X-S3-citation-star-persistence.md

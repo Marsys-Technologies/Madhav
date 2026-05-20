@@ -31,3 +31,17 @@ Added mobile camera capture to the Chat V2 composer. Implementation: separate hi
 **Amendments:** A2 (parent-context test + click-path documented) | A3 (FLAGLESS — additive)
 
 ---
+
+## X-S2 — ArrowUp Recall Last Prompt
+
+**Status:** COMPLETED  
+**Commit:** ba85a0b  
+**Completed:** 2026-05-20T09:00:00Z
+
+Added `useLastPrompt(conversationId)` hook to `useChatPreferences.ts`. Per-conversation localStorage cache with key `marsys_chat_v2_last_prompt_<conversationId>`. Wired in `V2Composer`: `handleComposerKeyDown` handles ArrowUp (when empty) to restore last sent and Enter to save; send button's onClick also saves. 8 new tests in `recall_last_prompt.test.ts` — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → send message → clear composer → ArrowUp → message restored.
+
+**Amendments:** A2 (click-path documented, hook tests verify context chain) | A3 (FLAGLESS)
+
+---
