@@ -26,7 +26,28 @@ import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './t
 const TOOL_NAME = 'query_panchanga'
 const TOOL_VERSION = '1.0.0'
 
-export type PanchangaField = 'tithi' | 'vara' | 'nakshatra' | 'yoga' | 'karana' | 'sunrise'
+/**
+ * PSHIP-S3H enrichment fields (migration 069 — Option H hybrid):
+ *   special_yogas — detected special yogas for the day (Sarvartha Siddhi, Guru Pushya, etc.)
+ *   inauspicious  — inauspicious windows (Rahu Kalam, Yamagandam, Gulika, Dur Muhurta)
+ *   auspicious    — auspicious windows (Brahma Muhurta, Abhijit, Amrit Kalam)
+ *   choghadiya    — 8 day + 8 night Choghadiya segments
+ *   hora          — 24 planetary hours (Hora)
+ *
+ * All JSONB columns. NULL until bootstrap_panchanga.py --rebuild populates them.
+ */
+export type PanchangaField =
+  | 'tithi'
+  | 'vara'
+  | 'nakshatra'
+  | 'yoga'
+  | 'karana'
+  | 'sunrise'
+  | 'special_yogas'
+  | 'inauspicious'
+  | 'auspicious'
+  | 'choghadiya'
+  | 'hora'
 
 export interface QueryPanchangaInput {
   /** Single date (YYYY-MM-DD). Defaults to today UTC if neither date nor start_date provided. */
@@ -81,9 +102,18 @@ interface PanchangaRow {
   observer_lon: string
   observer_alt_m: string
   ephemeris_version: string
+  // PSHIP-S3H enrichment (migration 069) — JSONB, null until bootstrap --rebuild runs
+  special_yogas: unknown | null
+  inauspicious: unknown | null
+  auspicious: unknown | null
+  choghadiya: unknown | null
+  hora: unknown | null
 }
 
-const ALL_FIELDS: PanchangaField[] = ['tithi', 'vara', 'nakshatra', 'yoga', 'karana', 'sunrise']
+const ALL_FIELDS: PanchangaField[] = [
+  'tithi', 'vara', 'nakshatra', 'yoga', 'karana', 'sunrise',
+  'special_yogas', 'inauspicious', 'auspicious', 'choghadiya', 'hora',
+]
 
 function buildWhere(p: QueryPanchangaInput): { where: string; args: unknown[] } {
   const conditions: string[] = []
@@ -179,6 +209,24 @@ function rowToContent(r: PanchangaRow, fields: PanchangaField[]): Record<string,
     out.karana_position_in_month = r.karana_position_in_month
   }
 
+  // PSHIP-S3H enrichment fields (migration 069 — Option H hybrid)
+  // Values are null until bootstrap_panchanga.py --rebuild populates the 73K rows.
+  if (fields.includes('special_yogas') && r.special_yogas !== null) {
+    out.special_yogas = r.special_yogas
+  }
+  if (fields.includes('inauspicious') && r.inauspicious !== null) {
+    out.inauspicious = r.inauspicious
+  }
+  if (fields.includes('auspicious') && r.auspicious !== null) {
+    out.auspicious = r.auspicious
+  }
+  if (fields.includes('choghadiya') && r.choghadiya !== null) {
+    out.choghadiya = r.choghadiya
+  }
+  if (fields.includes('hora') && r.hora !== null) {
+    out.hora = r.hora
+  }
+
   return out
 }
 
@@ -241,7 +289,12 @@ async function retrieveImpl(
       observer_lat::text AS observer_lat,
       observer_lon::text AS observer_lon,
       observer_alt_m::text AS observer_alt_m,
-      ephemeris_version
+      ephemeris_version,
+      special_yogas,
+      inauspicious,
+      auspicious,
+      choghadiya,
+      hora
     FROM panchanga_daily
     WHERE ${where}
     ORDER BY date ASC
@@ -317,6 +370,11 @@ export const tool: RetrievalTool = {
     'referencing lunar phase (Purnima/Amavasya/Ekadashi), Moon-nakshatra-of-day ' +
     '(distinct from natal Moon nakshatra), vara/day-of-week in astrological context, ' +
     'yoga, karana, or muhurta inputs. Vara boundary is sunrise, not midnight. ' +
+    'PSHIP-S3H (migration 069): enrichment fields available when populated — ' +
+    'special_yogas (Sarvartha Siddhi, Amrit Siddhi, Guru Pushya, Ravi Pushya, etc.), ' +
+    'inauspicious (rahu_kalam, yamagandam, gulika_kalam, dur_muhurta), ' +
+    'auspicious (brahma_muhurta, abhijit, amrit_kalam), choghadiya (day+night), hora (24 hrs). ' +
+    'Include field groups in the fields[] param to retrieve them. ' +
     'Pairs with query_ephemeris under R-TC for any non-natal query — ephemeris gives ' +
     'transit positions, panchanga gives time-quality.',
   retrieve,
