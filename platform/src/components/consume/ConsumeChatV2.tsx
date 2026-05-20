@@ -13,7 +13,7 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2, ArrowLeft } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2, ArrowLeft, Camera } from 'lucide-react'
 import Link from 'next/link'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
@@ -814,7 +814,7 @@ interface AttachmentContextValue {
   removeAttachment: (token: string) => void
   clearAttachments: () => void
 }
-const AttachmentCtx = createContext<AttachmentContextValue>({
+export const AttachmentCtx = createContext<AttachmentContextValue>({
   attachments: [],
   addAttachment: () => {},
   removeAttachment: () => {},
@@ -992,6 +992,7 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   const [isRunning, setIsRunning] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
   const [composerValue, setComposerValue] = useState('')
   const [slashActiveIdx, setSlashActiveIdx] = useState(0)
@@ -1087,6 +1088,17 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
           onChange={handleFileChange}
           data-testid="v2-file-input"
         />
+        {/* X-S1: camera-only input for mobile — capture="environment" opens back camera directly */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          aria-label="Take photo"
+          onChange={handleFileChange}
+          data-testid="v2-camera-input"
+        />
 
         {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
         <div className="mx-auto max-w-4xl relative">
@@ -1128,6 +1140,17 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
                   data-testid="v2-attach-btn"
                 >
                   <Paperclip className="h-4 w-4" aria-hidden="true" />
+                </button>
+                {/* X-S1: camera shortcut — mobile only (md:hidden); desktop uses paperclip */}
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all hover:bg-zinc-800 hover:text-zinc-300"
+                  title="Take photo"
+                  aria-label="Take photo with camera"
+                  data-testid="v2-camera-btn"
+                >
+                  <Camera className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <span className="hidden md:inline pl-1 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
                   ↵ Send · ⇧↵ New line
