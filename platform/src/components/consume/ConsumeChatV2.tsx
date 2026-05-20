@@ -259,9 +259,9 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const dataParts = useDataParts(message)
   const prevIsStreamingRef = useRef(isStreaming)
 
-  // C.3: build signal_id → {snippet, layer} map from data-citation parts.
+  // C.3: build signal_id → {snippet, layer, confidence} map from data-citation parts.
   const citationRichMap = useMemo(() => {
-    const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
+    const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5'; confidence: number | undefined }>()
     for (const d of dataParts) {
       if (d.type === 'data-citation') {
         const data = d.data as Record<string, unknown>
@@ -269,6 +269,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
           result.set(data.signal_id, {
             snippet: typeof data.snippet === 'string' ? data.snippet : '',
             layer: (data.layer === 'L1' ? 'L1' : 'L2.5'),
+            confidence: typeof data.confidence === 'number' ? data.confidence : undefined,
           })
         }
       }
@@ -330,6 +331,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
             n={parseInt(m[1], 10)}
             signalId={m[2]}
             snippet={citationRichMap.get(m[2])?.snippet}
+            confidence={citationRichMap.get(m[2])?.confidence}
             onPin={enrichedOnPin}
           />
         )

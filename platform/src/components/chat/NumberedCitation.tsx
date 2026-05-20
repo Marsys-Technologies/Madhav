@@ -12,10 +12,23 @@ export interface NumberedCitationProps {
   n: number
   signalId: string
   snippet?: string
+  confidence?: number
   onPin?: (n: number, signalId: string) => void
 }
 
-export function NumberedCitation({ n, signalId, snippet, onPin }: NumberedCitationProps) {
+function confidenceColor(c: number): string {
+  if (c >= 0.8) return 'bg-green-500'
+  if (c >= 0.5) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+
+function confidenceLabel(c: number): string {
+  if (c >= 0.8) return 'high'
+  if (c >= 0.5) return 'medium'
+  return 'low'
+}
+
+export function NumberedCitation({ n, signalId, snippet, confidence, onPin }: NumberedCitationProps) {
   const [visible, setVisible] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tooltipId = `v2-citation-tooltip-${n}-${signalId}`
@@ -54,6 +67,16 @@ export function NumberedCitation({ n, signalId, snippet, onPin }: NumberedCitati
       >
         [{n}]
       </button>
+
+      {process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS === 'true' && confidence !== undefined && (
+        <span
+          className={`absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full ${confidenceColor(confidence)}`}
+          data-testid="v2-citation-confidence-dot"
+          data-confidence-band={confidenceLabel(confidence)}
+          aria-label={`Signal confidence: ${confidenceLabel(confidence)}`}
+          title={`Confidence: ${confidenceLabel(confidence)}`}
+        />
+      )}
 
       {visible && (
         <span

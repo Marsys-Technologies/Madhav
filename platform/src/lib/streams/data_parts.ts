@@ -92,6 +92,7 @@ export const CitationPartSchema = z.object({
   signal_id: z.string(),
   layer: z.enum(['L1', 'L2.5']).default('L2.5'),
   snippet: z.string().default(''),
+  confidence: z.number().min(0).max(1).optional(),
 })
 
 export type CitationPart = z.infer<typeof CitationPartSchema>
