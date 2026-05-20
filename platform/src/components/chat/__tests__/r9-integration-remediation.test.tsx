@@ -101,7 +101,7 @@ describe('ModelStylePicker persona group (R9-S3)', () => {
     emptyPersonas()
     render(
       <ModelStylePicker
-        stack="gemini-2.5-flash"
+        stack={'gemini' as import('@/lib/models/registry').ModelStack}
         style="acharya"
         onStackChange={vi.fn()}
         onStyleChange={vi.fn()}
@@ -115,7 +115,7 @@ describe('ModelStylePicker persona group (R9-S3)', () => {
     emptyPersonas()
     render(
       <ModelStylePicker
-        stack="gemini-2.5-flash"
+        stack={'gemini' as import('@/lib/models/registry').ModelStack}
         style="acharya"
         onStackChange={vi.fn()}
         onStyleChange={vi.fn()}
@@ -130,14 +130,14 @@ describe('ModelStylePicker persona group (R9-S3)', () => {
   it('renders persona names when personas are returned', () => {
     mockedUsePersonas.mockReturnValue({
       personas: [
-        { id: 'p1', name: 'Financial Focus', system_prompt: 'Focus on finances', default_style: null, default_stack: null, is_default: false },
-        { id: 'p2', name: 'Spiritual Mode', system_prompt: 'Spiritual reading', default_style: null, default_stack: null, is_default: false },
+        { id: 'p1', name: 'Financial Focus', system_prompt: 'Focus on finances', default_style: null, default_stack: null, is_default: false, user_id: 'u1', created_at: '2026-01-01', updated_at: '2026-01-01' },
+        { id: 'p2', name: 'Spiritual Mode', system_prompt: 'Spiritual reading', default_style: null, default_stack: null, is_default: false, user_id: 'u1', created_at: '2026-01-01', updated_at: '2026-01-01' },
       ],
       loading: false, reload: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(),
     })
     render(
       <ModelStylePicker
-        stack="gemini-2.5-flash"
+        stack={'gemini' as import('@/lib/models/registry').ModelStack}
         style="acharya"
         onStackChange={vi.fn()}
         onStyleChange={vi.fn()}
@@ -154,7 +154,7 @@ describe('ModelStylePicker persona group (R9-S3)', () => {
     expect(() =>
       render(
         <ModelStylePicker
-          stack="gemini-2.5-flash"
+          stack={'gemini' as import('@/lib/models/registry').ModelStack}
           style="acharya"
           onStackChange={vi.fn()}
           onStyleChange={vi.fn()}
