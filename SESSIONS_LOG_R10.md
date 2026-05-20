@@ -243,3 +243,17 @@ Extended `ValidatorFailureBand` with click-to-expand per-gate verdict list. Exte
 **Amendments:** A1 HARD GATE (NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES in deploy.yml) | A2 (FailureBandShell parent-context wrapper, click-path documented) | A3 (FLAGGED default true)
 
 ---
+
+## Y-S4 — Reasoning Step Labels
+
+**Status:** COMPLETED  
+**Commit:** 7ab7c6a  
+**Completed:** 2026-05-20T11:45:00Z
+
+Added left-margin step timeline to `ReasoningProgress`. `synthesis_prompt_v2.ts` exports `REASONING_STEPS_APPENDIX` instructing Claude to emit `### Step: <label>` markers at phase boundaries in its extended thinking (R7-S2 footnote block preserved verbatim — appendix is purely additive). `single_model_strategy.ts` appends the instructions when `R10_REASONING_STEPS=true`. `ReasoningProgress` parses `### Step:` lines from streaming `text` prop and renders a left-margin vertical timeline alongside the raw reasoning text. Active step (last seen while streaming) shows pulsing violet dot (`·`); completed steps show `✓`. Server-side flag only — confirmed no `NEXT_PUBLIC` prefix, no `deploy.yml` entry. 12/12 parent-context integration tests pass.
+
+**Click-path:** Chat V2 → synthesis query → reasoning accordion opens → left-margin timeline shows Signal Assembly → Cross-Domain Linking → Interpretation → Response with active pulsing then completing as text streams.
+
+**Amendments:** A1 (server-side flag — no deploy.yml entry, no NEXT_PUBLIC confirmed) | A2 (ReasoningProgress parent-context shell via vi.mock, click-path documented) | A3 (FLAGGED default true)
+
+---

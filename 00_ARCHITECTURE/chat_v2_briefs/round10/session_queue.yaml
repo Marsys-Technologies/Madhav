@@ -242,7 +242,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "grep -rn 'NEXT_PUBLIC.*REASONING_STEPS' platform/src --include='*.ts*' | wc -l | grep '^0$' && npx jest --testPathPattern='ReasoningProgress|reasoning.*step|step.*label' --passWithNoTests"
     commit_template: "feat(chat-v2): reasoning step labels — left-margin timeline in synthesis"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T11:45:00Z"
 
   - id: Y-S3
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S3-smooth-stream-tuning.md
