@@ -70,6 +70,7 @@ jobs:
             NEXT_PUBLIC_NIM_STACK_DEGRADED=false
             NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
 
       - name: Deploy web to Cloud Run
         id: deploy

@@ -7,6 +7,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { CodeBlock } from './CodeBlock'
 import { InteractiveTable } from './InteractiveTable'
+import { MermaidBlock } from './MermaidBlock'
 import { cn } from '@/lib/utils'
 import { StreamingDots } from './StreamingDots'
 
@@ -137,6 +138,10 @@ export const MARKDOWN_COMPONENTS = (isStreaming: boolean): AugmentedComponents =
     // Internal blocks captured server-side — must not appear in visible prose.
     if (lang === 'marsys_methodology_block' || lang === 'marsys_citations') return null
     const raw = String(children).replace(/\n$/, '')
+    // Route mermaid blocks to MermaidBlock when flag enabled.
+    if (lang === 'mermaid' && process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID === 'true') {
+      return <MermaidBlock code={raw} isStreaming={isStreaming} />
+    }
     return <CodeBlock code={raw} lang={lang} isStreaming={isStreaming} />
   },
   pre: ({ children }) => <>{children}</>,
