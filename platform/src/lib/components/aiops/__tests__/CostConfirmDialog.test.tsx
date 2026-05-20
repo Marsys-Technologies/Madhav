@@ -29,7 +29,7 @@ describe('CostConfirmDialog', () => {
         onCancel={vi.fn()}
       />,
     )
-    expect(screen.getByText(/ANTHROPIC/)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Anthropic/i })).toBeTruthy()
   })
 
   it('shows Anthropic restriction note for anthropic stack', () => {
@@ -48,7 +48,7 @@ describe('CostConfirmDialog', () => {
     render(
       <CostConfirmDialog targetStack="gpt" onConfirm={onConfirm} onCancel={vi.fn()} />,
     )
-    fireEvent.click(screen.getByText(/Confirm switch/i))
+    fireEvent.click(screen.getByText(/Set as default/i))
     expect(onConfirm).toHaveBeenCalledOnce()
   })
 

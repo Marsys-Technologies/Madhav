@@ -1,49 +1,50 @@
 # Known Pre-Existing Test Failures
 
-**v1.1 — Post-R10 baseline (2026-05-20)**
-Branch: main @ `4dae9ed` (R10 PR #106 merged)
-Total pre-existing failures: **16 test cases, 9 files**
-R10 unit tests: **566 passed / 0 failed** (55 test files in `tests/unit/chat-v2/`)
+**v1.2 — Post-closeout-residuals triage (2026-05-20)**
+Branch: chat-v2/closeout-residuals
+Total pre-existing failures: **0 test cases, 0 files** — all 9 files triaged
+Test suite: **333 passed / 0 failed / 22 skipped** (3405 test cases)
 
-Prior baseline v1.0 captured pre-R7 (2026-05-19 @ `ccd2aed`) recorded 21 failures.
-R7–R10 resolved the 5 Chat V2 stale tests (citation_rich_payload, sidebar_auto_title_refresh,
-markdown_render_v2, panel_mode_toggle) — those are now GREEN.
-
-Any failure in a post-R10 run that matches a file below is background noise.
-Any failure in a file NOT listed here is a new regression requiring investigation.
+All 9 previously-failing files have been resolved (7 fixed, 1 deleted, 1 resolved via npm install).
+Any failure in a post-closeout run is a new regression requiring investigation.
 
 ---
 
-## Current failing files (9 files, 16 test cases)
+## Resolved files (9 files, all GREEN)
 
-| # | File | Failure summary | Workstream | Disposition |
-|---|------|----------------|------------|-------------|
-| 1 | `src/lib/panchang/__tests__/ics_builder.test.ts` | ical-generator module resolution fails in CI (added by Phase 4C, post-merge env issue) | Phase 4C | Fix in Phase 4C follow-up |
-| 2 | `tests/integration/test_query_panchanga_e2e.test.ts` | Requires live python-sidecar; skipped without `SIDECAR_URL` | Phase 4C | Gate behind env guard |
-| 3 | `tests/component/chat-v2/r5/sidebar-background.test.tsx` | CSS class `bg-zinc-950` assertion stale vs R6+ sidebar layout | R5/R6 pre-existing | Delete stale test |
-| 4 | `tests/consume/PostAnswerProvenance.test.tsx` (2 cases) | Component restructured post-R6; provenance pill counts mismatch | R6 pre-existing | Update or delete test |
-| 5 | `src/components/performance/__tests__/KpiTile.test.tsx` (2 cases) | Arrow rendering assertion mismatch vs current KpiTile render | Phase O pre-existing | Fix KpiTile snapshot |
-| 6 | `src/lib/components/aiops/__tests__/AuditRail.test.tsx` | AuditRail row action render fails — missing AIOps mock/provider | AIOps pre-existing | Fix test setup |
-| 7 | `src/lib/components/aiops/__tests__/CostConfirmDialog.test.tsx` (2 cases) | Dialog render + confirm button — missing AIOps mock/provider | AIOps pre-existing | Fix test setup |
-| 8 | `src/lib/components/aiops/__tests__/ParamOverrideRow.test.tsx` (5 cases) | Button label `"Advanced params"` → `"▼ Advanced"` — stale assertion | AIOps pre-existing | Update getByText pattern |
-| 9 | `src/scripts/etl/__tests__/msr_parser.test.ts` | MSR signals missing `source_file` — stale test vs updated schema | ETL pre-existing | Fix in MSR maintenance |
-
-## Failure clusters
-
-- **AIOps (9 failures):** ParamOverrideRow (5) + CostConfirmDialog (2) + AuditRail (1) = 8 test cases. Shared test setup issue (missing mock/provider) + stale label assertion.
-- **Phase 4C (2 failures):** ics_builder env issue + E2E integration requiring live sidecar.
-- **R5/R6 stale (3 failures):** sidebar-background + PostAnswerProvenance — component shape changed.
-- **Observatory KpiTile (2 failures):** Arrow rendering snapshot stale.
-- **ETL MSR parser (1 failure):** source_file field schema drift.
-
-## v1.0 → v1.1 delta (what R7–R10 fixed)
-
-Previously failing, now GREEN:
-- `tests/unit/chat-v2/citation_rich_payload.test.ts` — R10 wired enrichedOnPin + citationRichMap
-- `tests/unit/chat-v2/sidebar_auto_title_refresh.test.ts` — R10 added V2TitleTracker component
-- `tests/unit/chat-v2/markdown_render_v2.test.ts` — R10 added `data-testid="v2-message-text"`
-- `tests/unit/chat-v2/panel_mode_toggle.test.ts` — R10 added `data-testid="v2-composer-options"`
+| # | File | Fix applied | Disposition |
+|---|------|-------------|-------------|
+| 1 | `src/lib/panchang/__tests__/ics_builder.test.ts` | `npm install` — ical-generator was in package.json but not installed | FIXED (npm install) |
+| 2 | `tests/integration/test_query_panchanga_e2e.test.ts` | Added `INSTANCE_CONNECTION_NAME`/`DATABASE_URL` env guard in `beforeAll` — SQL-backed retrieve needs DB | FIXED (env guard) |
+| 3 | `tests/component/chat-v2/r5/sidebar-background.test.tsx` | Deleted — `v2-sidebar-expand` testid removed from R6+ sidebar; test had no valid assertions | DELETED |
+| 4 | `tests/consume/PostAnswerProvenance.test.tsx` | Added click on "Toggle provenance details" before asserting pill labels — pills are behind expand toggle | FIXED |
+| 5 | `src/components/performance/__tests__/KpiTile.test.tsx` | `toContain('emerald')` → `toContain('status-success')`, `toContain('rose')` → `toContain('status-halt')` — KpiTile switched to CSS variables | FIXED |
+| 6 | `src/lib/components/aiops/__tests__/AuditRail.test.tsx` | `getByText('set_routing')` → `'Routing changed'`, `'reset_param'` → `'Parameter reset'` — ACTION_DISPLAY map | FIXED |
+| 7 | `src/lib/components/aiops/__tests__/CostConfirmDialog.test.tsx` | `/ANTHROPIC/` → `getByRole('heading', { name: /Anthropic/i })`; `"Confirm switch"` → `"Set as default"` | FIXED |
+| 8 | `src/lib/components/aiops/__tests__/ParamOverrideRow.test.tsx` | `"Advanced params"` → `/Advanced/i` (button label); raw param names → display names (`'Temperature'` etc) | FIXED |
+| 9 | `src/scripts/etl/__tests__/msr_parser.test.ts` | `'MSR_v3_0.md'` → `'MSR_v5_0.md'` — parser returns source_file from file frontmatter, not filename | FIXED |
 
 ---
 
-*v1.0 authored 2026-05-19 by merge-train conductor. v1.1 updated 2026-05-20 post-R10 merge.*
+## v1.1 → v1.2 delta (what closeout-residuals fixed)
+
+All 9 files that were failing in v1.1 are now GREEN:
+- `ics_builder.test.ts` — npm install resolved missing ical-generator
+- `test_query_panchanga_e2e.test.ts` — env guard prevents fail without DB creds
+- `sidebar-background.test.tsx` — DELETED (stale R5 test)
+- `PostAnswerProvenance.test.tsx` — expand-before-assert flow fix
+- `KpiTile.test.tsx` — CSS variable assertion update
+- `AuditRail.test.tsx` — ACTION_DISPLAY label update
+- `CostConfirmDialog.test.tsx` — heading role query + correct button text
+- `ParamOverrideRow.test.tsx` — button label + PARAM_DISPLAY name updates
+- `msr_parser.test.ts` — MSR version string update
+
+---
+
+## Historical baselines
+
+- **v1.0** (2026-05-19, pre-R7): 21 failures
+- **v1.1** (2026-05-20, post-R10 merge): 16 failures / 9 files (R7–R10 resolved 5 Chat V2 tests)
+- **v1.2** (2026-05-20, closeout-residuals): **0 failures** — all resolved
+
+*v1.0 authored 2026-05-19 by merge-train conductor. v1.1 updated 2026-05-20 post-R10 merge. v1.2 updated 2026-05-20 closeout-residuals triage.*

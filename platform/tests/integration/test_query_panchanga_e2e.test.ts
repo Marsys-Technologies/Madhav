@@ -61,6 +61,14 @@ beforeAll(async () => {
     return
   }
 
+  // The production query_panchanga tool is SQL-backed (main branch, Phase 4C merge decision).
+  // Without DB credentials, retrieve() will fail at the Cloud SQL connector level.
+  if (!process.env['INSTANCE_CONNECTION_NAME'] && !process.env['DATABASE_URL']) {
+    skipE2E = true
+    skipReason = 'INSTANCE_CONNECTION_NAME/DATABASE_URL not set — SQL-backed panchanga requires DB access'
+    return
+  }
+
   // If PYTHON_SIDECAR_URL is already set, use the live sidecar
   if (process.env['PYTHON_SIDECAR_URL']) {
     process.env['PYTHON_SIDECAR_URL'] = process.env['PYTHON_SIDECAR_URL']!

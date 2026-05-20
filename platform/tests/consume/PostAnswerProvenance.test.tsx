@@ -28,11 +28,12 @@ const fixture: ProvenanceEvent = {
 }
 
 describe('PostAnswerProvenance', () => {
-  it('renders the three pills with the right counts', () => {
+  it('renders the three pills with the right counts', async () => {
     render(<PostAnswerProvenance provenance={fixture} />)
-    expect(screen.getByLabelText(/models/i).textContent).toContain('2')
-    expect(screen.getByLabelText(/sources/i).textContent).toContain('2')
-    expect(screen.getByLabelText(/signals/i).textContent).toContain('1')
+    await userEvent.click(screen.getByLabelText('Toggle provenance details'))
+    expect(screen.getByLabelText(/Open provenance — models/i).textContent).toContain('2')
+    expect(screen.getByLabelText(/Open provenance — sources/i).textContent).toContain('2')
+    expect(screen.getByLabelText(/Open provenance — signals/i).textContent).toContain('1')
   })
 
   it('renders nothing when provenance is null', () => {
@@ -42,6 +43,7 @@ describe('PostAnswerProvenance', () => {
 
   it('astrological tab has no internal-jargon labels visible', async () => {
     render(<PostAnswerProvenance provenance={fixture} />)
+    await userEvent.click(screen.getByLabelText('Toggle provenance details'))
     await userEvent.click(screen.getByLabelText(/Open provenance — sources/i))
     // Tab content visible: assert no banned internal asset acronym appears
     // as a standalone label — internal IDs only show inside the per-item

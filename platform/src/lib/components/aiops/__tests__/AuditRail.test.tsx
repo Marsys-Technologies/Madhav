@@ -77,8 +77,8 @@ describe('AuditRail', () => {
     )
     render(<AuditRail />)
     await waitFor(() => expect(screen.queryByText('Loading…')).toBeFalsy())
-    expect(screen.getByText('set_routing')).toBeTruthy()
-    expect(screen.getByText('reset_param')).toBeTruthy()
+    expect(screen.getByText('Routing changed')).toBeTruthy()
+    expect(screen.getByText('Parameter reset')).toBeTruthy()
   })
 
   it('shows revert button only for revertible actions', async () => {
