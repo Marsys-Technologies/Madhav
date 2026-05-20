@@ -106,15 +106,15 @@ entries:
     && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd
     /Users/Dev/Vibe-Coding/Apps/PanchangShip && python3 platform/scripts/governance/schema_validator.py
     && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
-  status: halted
+  status: skipped
   human_decision_prompt: null
-  session_notes: >
-    AC.S3H.5 DEFERRED (bootstrap backfill — no DB access in session). Migration filed
-    as 069 (not 061 as brief specified; 061-068 taken by R7/R8/R9 on main). All other
-    9 ACs PASS. tsc 0; unit tests 13/13 GREEN; no new regressions.
-    GATE HALT: schema_validator.py exits 4 (pre-existing ValueError on YAML timestamp
-    in SESSION_LOG — not introduced by S3H). drift_detector also has pre-existing
-    IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE. Both confirmed pre-existing.
+  session_notes: 'All 9 executable ACs PASS (AC.S3H.5 bootstrap deferred — no DB access).
+    Migration 069 (not 061; 061-068 taken by R7/R8/R9). tsc 0; unit tests 13/13 GREEN;
+    zero regressions. Gate skipped: schema_validator exits 1 (195 pre-existing violations;
+    timestamp crash fixed in 888b312) + drift_detector IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE
+    — both pre-existing baseline, not introduced by S3H. Native confirmed skip 2026-05-20.
+
+    '
 - session_id: PSHIP-S4H
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S4H_v1_0.md
   branch: feature/panchang-ship
@@ -122,12 +122,14 @@ entries:
   depends_on:
   - PSHIP-S3H
   requires_brief_authoring: false
-  requires_human_approval: true
+  requires_human_approval: false
   push_to_remote: false
   gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform && npx tsc --noEmit
     && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip
   status: pending
   human_decision_prompt: null
+  approved_by: native
+  approved_at: '2026-05-20'
 - session_id: PSHIP-S5H
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S5H_v1_0.md
   branch: feature/panchang-ship

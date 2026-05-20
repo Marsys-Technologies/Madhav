@@ -325,3 +325,31 @@ ValueError: hour must be in 0..23
 - Fix the SESSION_LOG timestamp that schema_validator chokes on, then RESUME PSHIP-S3H
 
 ---
+
+## PSHIP-S4H — HALT — 2026-05-20T11:21:00Z
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S4H |
+| Failure class | human_approval_required |
+| Timestamp | 2026-05-20T11:21:00Z |
+| Last passed | PSHIP-S2H (PSHIP-S3H skipped) |
+| Queue position | 7 of 8 |
+| Resolution status | open |
+
+### Failure context
+
+PSHIP-S4H has requires_human_approval: true. This session extends PLANNER_PROMPT_v2_0.md — the live planner prompt that governs all Madhav queries. Human review required before automated execution.
+
+Decision needed: Approve PSHIP-S4H planner change: extend R-PA with 13 triggers, add R-PCI, renumber few-shot, leave main's R-TC untouched.
+
+### Gate output (truncated to 500 chars)
+
+(gate not run — human approval required before execution)
+
+### Suggested resolution paths
+
+- APPROVE PSHIP-S4H — orchestrator executes the session
+- SKIP PSHIP-S4H — orchestrator marks skipped + advances to PSHIP-S5H
+
+---

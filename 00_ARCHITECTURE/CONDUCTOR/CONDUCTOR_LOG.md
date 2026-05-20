@@ -868,3 +868,28 @@ all 4 sidecar-calling API routes.
 
 AC.S3H.1, AC.S3H.2, AC.S3H.3, AC.S3H.4, AC.S3H.5 (DEFERRED), AC.S3H.6, AC.S3H.7, AC.S3H.8, AC.S3H.9, AC.S3H.10
 
+
+## PSHIP-S3H — SKIPPED (gate baseline override) — 2026-05-20T11:20:00Z
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S3H |
+| Result | SKIPPED |
+| Timestamp | 2026-05-20T11:20:00Z |
+| Commits | 3d5b3d9, 12bee94, 246ca9b, 8359ba5, 7fe84c9, df34373, 888b312 (timestamp fix) |
+| Gate exit code | 1 (pre-existing baseline — native approved skip) |
+| Context sessions used | 2 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+schema_validator exits 1: 195 pre-existing violations (timestamp crash fixed in 888b312 by native). drift_detector: IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE (pre-existing). tsc --noEmit clean. npm test panchang 13/13 PASS. No new failures introduced.
+
+### Sub-agent summary
+
+All 9 executable ACs passed. AC.S3H.5 (DB backfill) deferred — no Cloud SQL access. Migration filed as 069 (061–068 taken on main). query_panchanga.ts extended with 5 JSONB columns. bootstrap_panchanga.py updated. Migration 069 creates extended schema. PSHIP_S3H_PARITY.md produced. D6 collision resolved cleanly.
+
+### Scope items completed
+
+AC.S3H.1 through AC.S3H.10 (AC.S3H.5 deferred)
+
+---
