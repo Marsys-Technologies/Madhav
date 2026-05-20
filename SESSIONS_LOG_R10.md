@@ -187,3 +187,17 @@ Added `snippet?: string` prop to `NumberedCitation`. Tooltip shows first 100 cha
 **Amendments:** A2 (CitationCtxShell parent-context wrapper, click-path documented) | A3 (FLAGLESS)
 
 ---
+
+## Y-S2 — Citation Freshness Badge
+
+**Status:** COMPLETED  
+**Commit:** 216f4c5  
+**Completed:** 2026-05-20T10:00:00Z
+
+Added `confidence?: number` prop to `NumberedCitation`. When `NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true` and confidence is defined, a 6px dot renders adjacent to the badge: green (≥0.8 high), yellow (0.5–0.79 medium), red (<0.5 low). `aria-label` + `title` carry the level. Extended `citationRichMap` in `ConsumeChatV2` to extract `confidence` from `data-citation` parts. Added optional `confidence: number` field to `CitationPartSchema` in `data_parts.ts` (additive, backward-compatible). **Caveat:** server does not yet emit `confidence` in `data-citation` events — field will be `undefined` in current production data, so no dots show in production until the server starts emitting it. Client code is ready. `NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true` added to deploy.yml (Amendment 1 HARD GATE). 7 new tests — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with `[^N]` citation badges → each badge has a small colored dot (green/yellow/red) reflecting signal confidence band → no dot when confidence unknown or flag=false.
+
+**Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true in deploy.yml — HARD GATE satisfied) | A2 (CitationCtxShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
+
+---

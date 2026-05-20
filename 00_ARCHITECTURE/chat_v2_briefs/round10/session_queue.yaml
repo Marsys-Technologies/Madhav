@@ -188,7 +188,8 @@ sessions:
     deploy_yml_flag: NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
     acceptance_check: "grep 'NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS' .github/workflows/deploy.yml && npx jest --testPathPattern='NumberedCitation|citation.*freshness|confidence.*badge' --passWithNoTests"
     commit_template: "feat(chat-v2): citation confidence badge — colored dot on NumberedCitation"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T10:00:00Z"
 
   - id: Y-S6
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S6-branch-on-regen.md
