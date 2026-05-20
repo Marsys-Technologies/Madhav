@@ -1926,6 +1926,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
               onClose={() => setPanelOpen(false)}
               scrollTarget={scrollTarget}
               onScrolled={() => setScrollTarget(null)}
+              conversationId={conversationId}
             />
           </div>
         </AssistantRuntimeProvider>
