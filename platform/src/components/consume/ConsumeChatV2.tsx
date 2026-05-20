@@ -27,7 +27,7 @@ import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
 import { TierPicker } from '@/components/consume/TierPicker'
-import { useChatPreferences } from '@/hooks/useChatPreferences'
+import { useChatPreferences, useLastPrompt } from '@/hooks/useChatPreferences'
 import type { AudienceTier } from '@/lib/prompts/types'
 import type { ModelStack } from '@/lib/models/registry'
 import {
@@ -998,6 +998,8 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   const [slashActiveIdx, setSlashActiveIdx] = useState(0)
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
+  const conversationId = useContext(ConversationIdCtx)
+  const [, saveLastPrompt] = useLastPrompt(conversationId)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
@@ -1066,6 +1068,28 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
     }
   }
 
+  // X-S2: ArrowUp recall + save last prompt on Enter/send
+  function handleComposerKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'ArrowUp' && composerValue === '') {
+      // Restore last sent message for this conversation
+      const key = `marsys_chat_v2_last_prompt_${conversationId ?? '__new__'}`
+      let last = ''
+      try { last = localStorage.getItem(key) ?? '' } catch {}
+      if (!last) return
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, 'value'
+      )?.set
+      nativeSetter?.call(textarea, last)
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+      setComposerValue(last)
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Save current value as last prompt before send clears the textarea
+      if (composerValue.trim()) saveLastPrompt(composerValue)
+    }
+  }
+
   return (
     <div
       ref={containerRef}
@@ -1123,7 +1147,10 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
               rows={3}
               data-testid="v2-composer-input"
               onPaste={handlePaste}
-              onChange={slashEnabled ? (e: React.ChangeEvent<HTMLTextAreaElement>) => setComposerValue(e.target.value) : undefined}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setComposerValue(e.target.value)
+              }}
+              onKeyDown={handleComposerKeyDown}
               aria-label="Message input"
               aria-multiline="true"
             />
@@ -1177,6 +1204,7 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
                       className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
                       aria-label="Send message"
                       data-testid="v2-send-btn"
+                      onClick={() => { if (composerValue.trim()) saveLastPrompt(composerValue) }}
                     >
                       <ArrowUp className="h-4 w-4" aria-hidden="true" />
                     </button>
