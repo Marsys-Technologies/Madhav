@@ -87,6 +87,41 @@ export type FeatureFlag =
   // Super-admin always sees cost; this flag gates it for lower tiers.
   // Env: MARSYS_FLAG_COST_VISIBILITY_FOR_USERS.
   | 'COST_VISIBILITY_FOR_USERS'
+  // Phase 5C — Dasha post-synthesis validator. Default false for safe rollout;
+  // flip CHECKPOINT_DASHA_ENABLED=true after hand-test verifies DSH.V.NNN citations
+  // resolve correctly in prod. FAIL_HARD default true once enabled — the whole
+  // point is to halt hallucinations, not just log them.
+  // Env: MARSYS_FLAG_CHECKPOINT_DASHA_ENABLED / MARSYS_FLAG_CHECKPOINT_DASHA_FAIL_HARD.
+  | 'CHECKPOINT_DASHA_ENABLED'
+  | 'CHECKPOINT_DASHA_FAIL_HARD'
+  // R8 — Capabilities Round flags (all default false; flip individually after smoke verification)
+  // R8-S1: Conversation branches persistence (REST API + useBranches hydration).
+  | 'R8_BRANCHES_ENABLED'
+  // R8-S3: Full-text search via pg_trgm across conversation bodies.
+  | 'R8_SEARCH_ENABLED'
+  // R8-S4: Pin/archive/folders for conversation organisation.
+  | 'R8_FOLDERS_ENABLED'
+  // R8-S5: Live token count + context % in Composer.
+  | 'R8_TOKENS_ENABLED'
+  // R8-S6: Inline slash command menu.
+  | 'R8_SLASH_ENABLED'
+  // R8-S7: Vision pipeline via Gemini adapter (default false — changes LLM cost profile).
+  | 'R8_VISION_ENABLED'
+  // R8-S8: Conversation export (MD / JSON / PDF).
+  | 'R8_EXPORT_ENABLED'
+  // R9-S1: Projects abstraction. Gates sidebar grouping, /api/projects/** routes,
+  // and synthesis prompt injection. Default false — production unaffected until
+  // explicitly enabled. Env: MARSYS_FLAG_R9_PROJECTS.
+  | 'R9_PROJECTS'
+  // R9-S2: Semantic conversation search. Requires pgvector + embedding backfill.
+  // Default false — flip after backfill job completes. Env: MARSYS_FLAG_R9_SEMANTIC_SEARCH.
+  | 'R9_SEMANTIC_SEARCH'
+  // R9-S3: Persona library. ModelStylePicker persona group + settings page.
+  // Default true (additive, no risk). Env: MARSYS_FLAG_R9_PERSONAS.
+  | 'R9_PERSONAS'
+  // R9-S4: Inline tool-flow timeline in AssistantMessage. Admin-only.
+  // Default false — flip for super_admin after smoke verification. Env: MARSYS_FLAG_R9_TOOL_FLOW.
+  | 'R9_TOOL_FLOW'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -145,6 +180,24 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   HISTORY_COMPRESSION_ENABLED: true,
   // γ6 — Cost visibility for non-admin users. Default false.
   COST_VISIBILITY_FOR_USERS: false,
+  // Phase 5C — Dasha validator. Default false (safe rollout).
+  // Flip CHECKPOINT_DASHA_ENABLED=true after prod hand-test.
+  // FAIL_HARD default true — once enabled, halt on violations.
+  CHECKPOINT_DASHA_ENABLED: false,
+  CHECKPOINT_DASHA_FAIL_HARD: true,
+  // R8 Capabilities Round — all default false; flip individually after smoke.
+  R8_BRANCHES_ENABLED: false,
+  R8_SEARCH_ENABLED: false,
+  R8_FOLDERS_ENABLED: false,
+  R8_TOKENS_ENABLED: false,
+  R8_SLASH_ENABLED: false,
+  R8_VISION_ENABLED: false,
+  R8_EXPORT_ENABLED: false,
+  // R9 flags — all default false/true as per master plan
+  R9_PROJECTS: false,
+  R9_SEMANTIC_SEARCH: false,
+  R9_PERSONAS: true,
+  R9_TOOL_FLOW: false,
 }
 
 // Numeric config keys (read via configService.getValue)

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { PanelLeft, FileText, X, Pencil, ChevronLeft } from 'lucide-react'
+import { ExportDropdown } from './ExportDropdown'
 import { cn } from '@/lib/utils'
 import { getHighlighter } from '@/lib/shiki'
 
@@ -91,6 +92,12 @@ export function ChatShell({
       className="relative flex h-[100dvh] w-full bg-background"
       style={{ ['--composer-h' as string]: '160px' }}
     >
+      <a
+        href="#chat-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-zinc-900 focus:text-amber-400 focus:rounded"
+      >
+        Skip to chat
+      </a>
       <aside
         aria-label="Conversations"
         className={cn(
@@ -121,7 +128,7 @@ export function ChatShell({
         </SheetContent>
       </Sheet>
 
-      <main className="relative flex h-full flex-1 flex-col overflow-hidden" aria-label="Chat">
+      <main id="chat-main" className="relative flex h-full flex-1 flex-col overflow-hidden" aria-label="Chat">
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 bg-background/60 px-3 backdrop-blur supports-backdrop-filter:bg-background/40">
           <button
             type="button"
@@ -198,6 +205,7 @@ export function ChatShell({
           </div>
 
           <div className="ml-auto flex items-center gap-1">
+            {conversationId && <ExportDropdown conversationId={conversationId} />}
             {headerActions}
             {rightPanel && (
               <button

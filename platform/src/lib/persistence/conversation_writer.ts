@@ -1,6 +1,7 @@
 import 'server-only'
 import type { UIMessage } from 'ai'
 import { query } from '@/lib/db/client'
+import { embedConversationMessage } from '@/lib/embeddings/embedConversationMessage'
 
 export interface WriteConversationMessagesParams {
   conversationId: string
@@ -59,7 +60,21 @@ export async function writeConversationMessages(
         JSON.stringify(metadata ?? {}),
       ],
     )
-    if (rows[0]) messageIds.push(rows[0].id)
+    const messageId = rows[0]?.id
+    if (messageId) {
+      messageIds.push(messageId)
+      // Non-blocking embed: extract first text part for embedding; errors are swallowed.
+      const textPart = (m.parts ?? []).find(
+        (p): p is { type: 'text'; text: string } => (p as { type: string }).type === 'text',
+      )
+      if (textPart?.text) {
+        Promise.resolve().then(() =>
+          embedConversationMessage(messageId, textPart.text).catch((err) => {
+            console.error('[embed] conversation_message embed failed', messageId, err)
+          }),
+        )
+      }
+    }
   }
 
   // Read-after-write: count rows in DB and compare against written messages.

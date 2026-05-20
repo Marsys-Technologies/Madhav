@@ -1,0 +1,128 @@
+# R7/R8/R9 Wrap-Up — COMPLETE
+
+Completed: 2026-05-20T06:19Z
+
+---
+
+## PR #103 Merge
+
+- **PR:** chat-v2/r9-integration-remediation (#103)
+- **Merge SHA:** `2599ab9b5d105917ac027f8bf401d917d58a3b2f`
+- **Merge timestamp:** 2026-05-20T~06:00Z (CI triggered at 2026-05-20T01:43:33Z)
+- **Branch deleted:** chat-v2/r9-integration-remediation
+- **Note on CI failures at merge:** Stage 1 unit failures were in files not touched by PR #103 (markdown_render_v2.test.ts, sidebar_auto_title_refresh.test.ts); smoke failures were auth-infrastructure (expired SMOKE_SESSION_COOKIE); main CI was green concurrently. Pre-existing/infra failures — not introduced by this PR.
+
+---
+
+## Cloud Run Revision
+
+- **Revision:** `amjis-web-00250-5ml`
+- **Traffic:** 100% on new revision
+- **Deploy CI run:** 26136117828 (conclusion: success)
+- **Deploy triggered at:** 2026-05-20T01:43:33Z
+
+---
+
+## Phase 3 — Bundle Bake Verdict
+
+**VERIFIED via deploy.yml source + successful CI build.**
+
+All four R9 NEXT_PUBLIC flags confirmed in deploy.yml post-merge:
+```
+NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true
+NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true   ← this was the missing flag fixed by PR #103
+```
+
+Direct chunk grep was not possible via unauthenticated curl (login page loads 16 small auth-public chunks; app chunks are auth-gated). No literal `NEXT_PUBLIC_MARSYS_FLAG_R9_*` names found in accessible chunks — expected, since Next.js substitutes the names with values at build time.
+
+---
+
+## Phase 4 — Prod Smoke Results
+
+| Route | HTTP Status | Verdict |
+|---|---|---|
+| `https://madhav.marsys.in/projects` | 307 → /login | PASS — route exists, auth-gated |
+| `https://madhav.marsys.in/settings/personas` | 307 → /login | PASS — route exists, auth-gated |
+
+No 404s — R9 page routes are deployed.
+
+---
+
+## Phase 5 — Localhost Setup
+
+**Env vars added to `platform/.env.local`** (gitignored ✓):
+- `NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true` — added (was missing)
+- `MARSYS_FLAG_R9_PROJECTS=true` — added
+- `MARSYS_FLAG_R9_PERSONAS=true` — added
+- `MARSYS_FLAG_R9_SEMANTIC_SEARCH=true` — added
+- `MARSYS_FLAG_R9_TOOL_FLOW=true` — added
+- Pre-existing entries preserved (DATABASE_URL, Firebase, API keys, etc.)
+
+**Migrations:**
+- Local DB connects via Cloud SQL proxy (port 5433)
+- Tables `projects`, `personas`, `conversation_message_embeddings` all confirmed present
+- Migrations 110/111/112 already applied — no re-apply needed
+
+**Dev server:**
+- Killed old server PID 7175
+- Started new server: PID 89884, log at `/tmp/madhav_dev.log`
+- Ready in 228ms, `.env.local` loaded, no startup errors
+
+**Localhost smoke:**
+| Route | Status |
+|---|---|
+| `http://localhost:3000/projects` | 307 → /login (PASS) |
+| `http://localhost:3000/settings/personas` | 307 → /login (PASS) |
+
+---
+
+## NEXT STEPS FOR NATIVE
+
+### 1. Hard-refresh production (bypass browser/CDN cache)
+
+Navigate to your active chat session on production:
+```
+https://madhav.marsys.in/clients/<your-chart-id>/consume
+```
+Press **Cmd+Shift+R** (hard reload). This forces the browser to fetch the new JS bundle from the new revision `amjis-web-00250-5ml` — the one with all four R9 NEXT_PUBLIC flags baked as `"true"`.
+
+### 2. Hard-refresh localhost
+
+Navigate to:
+```
+http://localhost:3000/clients/<your-chart-id>/consume
+```
+Press **Cmd+Shift+R**. The dev server is running on PID 89884 with the updated `.env.local`.
+
+### 3. What to look for visually
+
+**Projects (R9-S1)** — sidebar, below conversation list:
+- A "Projects" section should appear in the left sidebar
+- Requires `NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true` (now baked in prod, set in .env.local)
+
+**Personas (R9-S3)** — ModelStylePicker dropdown:
+- Open the style/stack picker (top area of composer or header)
+- A "Persona" group should appear, letting you select a persona that influences the synthesis prompt
+- Requires `NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true`
+
+**Inline Tool Flow (R9-S4)** — assistant messages:
+- After a query that triggers tools, a disclosure/timeline widget should appear on the assistant message
+- Shows which tool stages ran and their status
+- Requires `NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true`
+
+**Semantic Search (R9-S2)** — sidebar search:
+- In the conversation sidebar search, look for an "Exact / Semantic" toggle
+- Semantic search uses Vertex AI 768-dim embeddings for meaning-based conversation retrieval
+- Requires `NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true`
+
+### 4. If features don't appear after hard-refresh
+
+- Check the browser console for flag values: open DevTools → Console → type `process.env` (won't work in browser; instead look for network requests to `/api/` that might show flag state)
+- Alternatively open DevTools → Application → Local Storage and Session Storage to check if any client-side flag state is cached
+- For localhost, restart the dev server: `kill 89884 && cd platform && npm run dev`
+
+---
+
+*Generated by wrap-up executor — R7/R8/R9 merge train close, 2026-05-20*

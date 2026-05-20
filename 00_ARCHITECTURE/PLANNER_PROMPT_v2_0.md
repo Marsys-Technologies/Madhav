@@ -678,59 +678,160 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        Hypothesis: restores F022/F024 holistic graph-seed-hint pattern lost from
        commit 884b99c.
 
-  R-TC. TRANSIT-CONTEXT ROUTING — Panchang vs. Ephemeris disambiguation:
+  R-TC. TRANSIT-CONTEXT ENRICHMENT: For ANY query that is NOT pure-natal-only,
+       attach `query_ephemeris` to tool_calls at priority 2. The trigger is
+       any temporal anchor (now/past/future date or named event) — divisional
+       charts give the natal positions, ephemeris gives the present/historical/
+       future transit positions, and the synthesis layer needs BOTH to reason
+       about timing.
 
-       When the query is about transit-context or current sky state, route as follows:
+       Date param selection:
+         - "now" / "currently" / "today" / "at this point" / "in my life right now"
+           → params.date = today UTC (server fills CURRENT_DATE; planner emits
+             empty params {} which the tool defaults).
+         - LEL-known past event (marriage, job change, illness, etc.)
+           → also schedule lel_query at priority 1; the synthesis layer joins
+             query_ephemeris on the LEL event_date.
+         - Specific past or future date stated
+           → params.date = stated date (YYYY-MM-DD).
+         - Date range or implied range ("next 2 years", "2026-2028", "this quarter")
+           → params.start_date + params.end_date (YYYY-MM-DD).
+         - Named dasha period
+           → params.start_date + params.end_date matching the dasha window
+             (also schedule temporal with dasha_context_required:true).
 
-       (a) PANCHANG PATH → call `query_panchanga` (NOT `query_ephemeris`) when the query
-           mentions ANY of these terms or concepts:
-             tithi, nakshatra, yoga (Shubha, Siddhi, etc.), karana, vara, paksha, masa,
-             muhurat, choghadiya, hora, rahu kalam, yamagandam, gulika, abhijit,
-             brahma muhurta, amrit kalam, sarvartha siddhi, amrit siddhi, guru pushya,
-             ravi pushya, bhadra, panchaka, tripushkar,
-             OR asks "good day for X" / "auspicious time for Y" / "when should I do X" /
-             "is today auspicious" / "panchang for today" / "today's panchang".
-           Use `fields` projection to limit to the fields actually relevant:
-             - Auspicious-timing queries: fields = ["tithi", "nakshatra", "vara", "special_yogas", "auspicious", "inauspicious"]
-             - Planetary-position-at-sunrise queries: fields = ["planets", "tithi", "vara"]
-             - Full panchang: omit fields (returns all)
+       Exclusions (R-TC does NOT fire for):
+         - Pure natal positional queries: "what house is X in", "what is my Y",
+           "describe my Z", "what's my lagna lord" — no temporal anchor.
+         - Pure classical interpretation: "what does Saturn in 10H mean classically".
+         - Remedial codex lookup: "what gemstone for Venus".
+         - Multi-school triangulation queries (R31/R32 STOP at step 5; do NOT
+           append query_ephemeris when on the SCHOOL/CONVERGENCE PATH).
 
-       (b) EPHEMERIS PATH → call `query_ephemeris` (NOT `query_panchanga`) when the query
-           asks about:
-             raw planetary positions at a SPECIFIC MOMENT (not just sunrise),
-             planetary ingresses, exact degrees,
-             retrogrades (which planet, when does it station),
-             transit aspects at an arbitrary time,
-             a specific moment's chart (not a daily panchang overview).
+       Pairing with existing rules:
+         - R-TW1 (eclipse temporal scope): keep temporal for the eclipse window;
+           R-TC adds query_ephemeris for Sun/Moon positions at the eclipse moment.
+         - R-TW2 (antardasha date-range): keep time_window semantics; R-TC adds
+           the actual ephemeris lookup at the dasha window boundaries.
+         - R7c (transit ban on vector_search for pure-timing): unaffected;
+           query_ephemeris and vector_search serve different purposes.
+         - R-PA (panchanga anchor): when the query references panchanga elements
+           explicitly (Purnima, tithi, nakshatra-of-day, etc.), R-PA fires
+           query_panchanga alongside query_ephemeris. The two tools complement
+           each other — ephemeris gives transit positions, panchanga gives
+           time-quality.
 
-       (c) BOTH PATHS → emit BOTH tool_calls when the query asks about BOTH:
-             "Is Mars combust today [→ panchanga planets_at_sunrise] and what is its
-              exact ecliptic longitude at noon UTC [→ query_ephemeris]?"
-           This is the R-TC co-selection rule — both tools at priority 1 when both
-           data types are needed. Planner supports multi-tool emission per Phase 4A
-           precedent.
+       The default behavior is INCLUSION. When in doubt, attach query_ephemeris.
+       Synthesis tolerates extra context; missing transit context is the failure
+       mode that R-TC fixes.
 
-       R-TC does NOT override R7c (transit ban on vector_search/cgm_graph_walk).
+  R-PA. PANCHANGA ANCHOR: Attach `query_panchanga` (in addition to query_ephemeris
+       under R-TC) when the query references:
+         (a) Lunar phase / tithi by name: Purnima, Amavasya, Ekadashi, Chaturdashi,
+             Pratipada, "full moon", "new moon", "bright fortnight" (Shukla),
+             "dark fortnight" (Krishna), "waxing moon", "waning moon".
+         (b) Moon's nakshatra on a specific date (distinct from natal Moon
+             nakshatra — natal goes through msr_sql/chart_facts_query). Phrases
+             like "what nakshatra was the moon in on X", "Moon nakshatra today",
+             "when is the moon in Rohini next".
+         (c) Vara / day-of-week in astrological framing: "is Saturday Saturn's day",
+             "what's Mars's day", "auspicious for Mercury (Budhavara)".
+         (d) Yoga / karana by name.
+         (e) Muhurta / auspicious-day questions ("good day for marriage", "starting
+             a venture", "travel"). query_panchanga gives the inputs; synthesis
+             reasons over yoga + tithi + vara conjunction.
 
-  R-PCI. PANCHANG CONTEXT INHERITANCE — skip query_panchanga when context block present:
+       Priority:
+         - When query is explicitly about a panchanga element (e.g., "what tithi
+           was it on X?"): query_panchanga at priority 1, query_ephemeris at
+           priority 2.
+         - When query is a general non-natal question that happens to touch
+           time-quality: both at priority 2.
 
-       When the user's message body contains a <panchang_context> block (injected
-       by the /panchang AskMadhavLink deep-link), that block IS the L1.5 Panchang
-       state for the date/location specified within it.
+       Date param selection: same as R-TC (now / past LEL event / specific date /
+       range / named dasha period).
 
-       RULE: If <panchang_context> is present AND the <user_question> (or raw query)
-       asks about the SAME date/location as in the context block, do NOT emit
-       query_panchanga in tool_calls. The synthesis layer will cite from the injected
-       context using [PANCHANG:<field>] markers.
+       Exclusions:
+         - Pure natal queries about the native's birth nakshatra/lagna nakshatra
+           — those go through chart_facts_query and msr_sql.
+         - Multi-school triangulation queries (R31/R32 STOP at step 5).
 
-       Exception — DO still emit query_panchanga when:
-         (a) The user asks about a DIFFERENT date or location than the one in the block.
-         (b) The user explicitly requests "re-query" or "check again".
-         (c) The context block contains `"_truncated": true` — the payload was trimmed;
-             emit query_panchanga with appropriate fields to fill in the gap.
+       The vara_lord field can be used to filter to specific day-lord transits:
+       e.g., "Saturn-favorable days this year" → query_panchanga with
+       vara_lord="Saturn".
 
-       This rule saves one tool call per chat turn when Panchang context is injected.
-       R-PCI has HIGHER PRIORITY than R-TC for the same date/location match.
+  R-TE. TRANSIT EVENT SEARCH: For queries asking WHEN an event happens (versus
+       WHAT is happening at a date), attach `query_transit_event` at priority 1.
+       This is search-mode; R-TC (query_ephemeris lookup) and R-PA (panchanga
+       lookup) can also fire as priority-2 context if the search result will be
+       interpreted.
+
+       Trigger keywords:
+         - "when next" / "when will" / "next time" / "next occurrence"
+         - "when does X enter Y" / "Jupiter going into" / "ingress"
+         - "when X aspects Y" / "transit aspect" / "Saturn aspecting my"
+         - "when X conjuncts Y" / "Jupiter-Saturn conjunction" / "graha-yuddha"
+         - "when X retrograde" / "station retrograde" / "Mercury retrograde next"
+         - "when X turns direct" / "station direct"
+
+       Event-type selection:
+         - "ingress" — query mentions sign/zodiac entry: "enters Cancer",
+           "into Aries", "sign change"
+         - "station" — query mentions retrograde or direct: "Mercury retrograde
+           next", "Saturn stations direct"
+         - "aspect" — query mentions aspect/conjunction to a NATAL planet:
+           "Saturn aspecting my Moon", "transit Jupiter trine natal Sun"
+         - "conjunction" — query mentions two TRANSIT planets coming together:
+           "Jupiter-Saturn conjunction", "when do Mars and Saturn meet"
+
+       Date param selection:
+         - Default end_date = start_date + 1 year for ingress/station,
+           + 2 years for aspect/conjunction.
+         - "in 2027" / specific year → start_date + end_date both within year.
+         - "in my X dasha" → start_date + end_date matching dasha window.
+
+       Exclusions:
+         - Pure positional queries (WHAT, not WHEN): use query_ephemeris under R-TC.
+         - Eclipse search: continues to use temporal.eclipse_query (existing,
+           not duplicated in query_transit_event).
+         - Vedic special-aspect queries (Mars 4/8, Jupiter 5/9, Saturn 3/10):
+           emit aspect_degrees per planet's classical pattern, OR leave it to
+           synthesis to interpret 7th-aspect (180°) and let cgm_graph_walk
+           surface Vedic special-aspect membership separately.
+
+  R-DA. DASHA ANCHOR: Attach `query_dasha_periods` to tool_calls for any query
+       referencing Vimshottari, Yogini, or Chara dasha periods. The schedule
+       lives in chart_facts; the canonical 50-row FORENSIC §5.1 table is
+       reachable through this single tool — synthesis MUST NOT extrapolate
+       dasha sequences from pretrained knowledge.
+
+       Triggers:
+         (a) Mahadasha / MD / Vimshottari / current dasha / next dasha /
+             upcoming dasha / previous dasha / which dasha
+         (b) Antardasha / AD / Pratyantardasha / PD / Sookshma / Prana
+         (c) A specific dasha lord by name in temporal context
+             ("when is my Saturn dasha", "Mars antardasha")
+         (d) Yogini, Chara, or Narayana dasha system names
+
+       Priority:
+         - Pure dasha-lookup query → priority 1
+         - Predictive query mentioning dasha as a timing layer → priority 1
+         - General predictive (R-TC fires) → priority 2
+
+       Param selection:
+         - "current / now / today" → {} (no params; default returns active row + next 3 MDs)
+         - "next" / "upcoming" → {level:"M", next_count:1}
+         - "previous / past" → {level:"M", prev_count:1}
+         - Specific date → {as_of_date:"YYYY-MM-DD"}
+         - Specific lord → {md_lord:"<lord>"}
+         - Date range → {from_date:"...", to_date:"..."}
+
+       Exclusions:
+         - Pure natal MD-lord-significance query ("what does my Mercury MD lord
+           mean for my career") goes through chart_facts_query + msr_sql (the
+           natal karaka interpretation). R-DA still attaches at priority 3 for
+           cross-reference (date anchor) but the natal layer is the answer.
+         - Multi-school triangulation queries (R31/R32 STOP at step 5).
 
 Style rules (unchanged from v1.7):
 
@@ -771,14 +872,12 @@ PRIOR-TURN RELEVANCE SELECTION (Gate III, added v2.2):
 
 ## 4. Few-shot examples
 
-Twenty-seven examples covering all major query classes (4.1–4.11 from v2.0;
+Twenty-two examples covering all major query classes (4.1–4.11 from v2.0;
 4.12–4.17 added in v2.1 gap-closure patch for eclipse/antardasha
 time_window, karaka/yoga graph_seed_hints, discovery, cross_domain, and
 factual classes; 4.18 multi-domain lifetime predictive; 4.19–4.22 added
 in v2.0.1 planner-blind fix for query_signal_state, query_kp_ruling_planets,
-query_varshaphala, and a signal_state+lel_query combination example;
-4.23–4.24 added in v2.0.2 for M9 multi-school triangulation;
-4.25–4.27 added in v2.0.3 for Phase 4C-3 query_panchanga Panchang routing).
+query_varshaphala, and a signal_state+lel_query combination example).
 Each shown as `{ user_query, expected_plan }`. Every expected_plan includes
 `asset_bundle[]` and `tool_calls[]`; `synthesis_guidance` is present
 except in factual examples.
@@ -1794,107 +1893,146 @@ except in factual examples.
 }
 ```
 
-### 4.25 Panchang query — single date, auspicious timing (query_panchanga priority 1)
+### 4.25 R-TC transit-context — historical LEL event
+
+Query: "What was Saturn doing when I got married in 2008?"
 
 ```json
 {
-  "user_query": "What's today's tithi and is it a good day for buying property?",
-  "expected_plan": {
-    "query_class": "factual",
-    "query_intent_summary": "Today's tithi and auspiciousness assessment for property purchase.",
-    "asset_bundle": [
-      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: chart facts for context." },
-      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural topology floor." }
-    ],
-    "tool_calls": [
-      {
-        "tool_name": "query_panchanga",
-        "params": {
-          "date": "<today>",
-          "lat": 20.27,
-          "lon": 85.84,
-          "tz_offset_minutes": 330,
-          "fields": ["tithi", "nakshatra", "vara", "special_yogas", "inauspicious"]
-        },
-        "token_budget": 600, "priority": 1,
-        "reason": "Panchang query about a specific date — tithi, yogas, and inauspicious windows inform property purchase auspiciousness. fields projection skips Choghadiya and hora to control token budget."
-      }
-    ],
-    "expected_output_shape": "single_answer",
-    "prior_turn_relevance": { "used": 0, "reason": "Independent Panchang query.", "mode": "independent" }
-  }
+  "query_class": "predictive",
+  "query_intent_summary": "Saturn transit at marriage event — natal-vs-transit comparison.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Natal Saturn placement." },
+    { "asset_id": "LEL", "priority": 1, "reason": "Marriage event date." },
+    { "asset_id": "CGM", "priority": 2, "reason": "Saturn's natal aspect graph." }
+  ],
+  "tool_calls": [
+    { "tool_name": "lel_query", "params": {"category":"relationship","significance":"major"}, "token_budget": 600, "priority": 1, "reason": "Marriage event date from LEL." },
+    { "tool_name": "msr_sql", "params": {"planets":["Saturn"], "min_significance":0.6, "limit":20}, "token_budget": 1200, "priority": 1, "reason": "Natal Saturn signals." },
+    { "tool_name": "query_ephemeris", "params": {"planet":"Saturn"}, "token_budget": 400, "priority": 2, "reason": "R-TC transit Saturn position at marriage date (synthesis layer joins on lel_query result)." },
+    { "tool_name": "pattern_register", "params": {"planets":["Saturn"], "min_strength":0.6}, "token_budget": 800, "priority": 2, "reason": "R7a predictive cross-domain lens — Saturn-keyed patterns." }
+  ],
+  "synthesis_guidance": "Compare natal Saturn (msr_sql) against transit Saturn at marriage date (query_ephemeris joined to lel_query event_date). Surface dignity, sign, retrograde, and any Saturn-aspect activation patterns.",
+  "expected_output_shape": "time_indexed_prediction",
+  "history_mode": "synthesized",
+  "planets": ["Saturn"],
+  "houses": [],
+  "domains": ["relationships"],
+  "forward_looking": false,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent question — chart facts + LEL event are enough.", "mode": "independent" }
 }
 ```
 
-### 4.26 Panchang query — Rahu Kalam timing (query_panchanga priority 1)
+This example shows R-TC firing alongside R7a (predictive cross-domain lens) for a LEL-anchored historical-event transit query. The planner does NOT need to compute the marriage date itself — `lel_query` supplies it and the synthesis layer joins. `query_ephemeris` runs with `{planet:"Saturn"}` and an implicit `date = today UTC` fallback, BUT in this LEL-paired case the synthesis layer SHOULD pass the LEL event_date forward (the tool param schema supports `date` — planner can later set it explicitly when LEL is in the bundle and the date is resolvable pre-execution; for now the join happens at synthesis time).
+
+### 4.26 R-PA panchanga anchor — Purnima query
+
+Query: "When is the next Purnima after May 2026?"
 
 ```json
 {
-  "user_query": "When does Rahu Kalam end today in Bhubaneswar? And is there any Sarvartha Siddhi Yoga today?",
-  "expected_plan": {
-    "query_class": "factual",
-    "query_intent_summary": "Rahu Kalam window and Sarvartha Siddhi Yoga presence for today in Bhubaneswar.",
-    "asset_bundle": [
-      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." },
-      { "asset_id": "CGM",      "priority": 1, "reason": "Floor." }
-    ],
-    "tool_calls": [
-      {
-        "tool_name": "query_panchanga",
-        "params": {
-          "date": "<today>",
-          "lat": 20.27,
-          "lon": 85.84,
-          "tz_offset_minutes": 330,
-          "fields": ["inauspicious", "special_yogas", "vara", "tithi"]
-        },
-        "token_budget": 500, "priority": 1,
-        "reason": "Rahu Kalam and Sarvartha Siddhi are Panchang-layer facts — inauspicious + special_yogas fields are sufficient; fields projection skips hora and choghadiya."
-      }
-    ],
-    "expected_output_shape": "single_answer",
-    "prior_turn_relevance": { "used": 0, "reason": "Self-contained Panchang timing query.", "mode": "independent" }
-  }
+  "query_class": "factual",
+  "query_intent_summary": "Date of next full moon — pure panchanga lookup.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_panchanga",
+      "params": { "start_date": "2026-05-01", "end_date": "2026-07-31", "tithi": 15, "limit": 3 },
+      "token_budget": 400,
+      "priority": 1,
+      "reason": "R-PA explicit tithi=15 (Purnima) filter."
+    }
+  ],
+  "synthesis_guidance": "Return the first Purnima date in the result set.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query.", "mode": "independent" }
 }
 ```
 
-### 4.27 Mixed query — Panchang + planetary position (query_panchanga + query_ephemeris co-selected)
+This example shows R-PA firing without R-TC — a pure panchanga lookup requires no transit positions (the tithi already encodes the Sun-Moon elongation). query_ephemeris is NOT attached here because the query_intent is the tithi date, not the raw planet positions. When the user asks "what was the Moon nakshatra when I got married?" (LEL-anchored), both R-TC and R-PA fire: lel_query + query_panchanga (priority 1), query_ephemeris (priority 2).
+
+### 4.27 R-TE transit event search — Saturn aspects natal Moon
+
+Query: "When will Saturn next aspect my natal Moon?"
 
 ```json
 {
-  "user_query": "Is Mars combust today and what does the panchang look like overall?",
-  "expected_plan": {
-    "query_class": "cross_domain",
-    "query_intent_summary": "Mars combustion check plus today's full Panchang state.",
-    "asset_bundle": [
-      { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor: natal Mars position for combustion context." },
-      { "asset_id": "CGM",      "priority": 1, "reason": "Floor: structural map." }
-    ],
-    "tool_calls": [
-      {
-        "tool_name": "query_panchanga",
-        "params": {
-          "date": "<today>",
-          "lat": 20.27,
-          "lon": 85.84,
-          "tz_offset_minutes": 330
-        },
-        "token_budget": 800, "priority": 1,
-        "reason": "Panchang state for the day — five angas, timings, yogas, planets at sunrise (includes Mars combust flag)."
+  "query_class": "predictive",
+  "query_intent_summary": "Find future dates when transiting Saturn aspects the native's natal Moon position by degree+orb.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor; natal Moon longitude is in chart_facts." },
+    { "asset_id": "CGM", "priority": 2, "reason": "R7a: CGM ASPECTS_* edges give Vedic special-aspect membership for Saturn-Moon." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_transit_event",
+      "params": {
+        "event_type": "aspect",
+        "transit_planet": "Saturn",
+        "natal_planet": "Moon",
+        "aspect_degrees": [180, 90, 60, 120],
+        "orb_deg": 1.5,
+        "start_date": "2026-05-19",
+        "end_date": "2028-05-19"
       },
-      {
-        "tool_name": "msr_sql",
-        "params": { "planets": ["Mars"], "domains": [] },
-        "token_budget": 400, "priority": 2,
-        "reason": "Natal Mars signal context for interpreting combustion against chart background."
-      }
-    ],
-    "synthesis_guidance": "Address Mars combustion first (from planets_at_sunrise in Panchang), then summarise the five angas and any active special yogas. Keep the Panchang summary tight — the user wants both pieces.",
-    "planets": ["Mars"],
-    "prior_turn_relevance": { "used": 0, "reason": "Independent compound query.", "mode": "independent" }
-  }
+      "token_budget": 600,
+      "priority": 1,
+      "reason": "R-TE: WHEN-search for Saturn aspecting natal Moon. natal_planet=Moon triggers chart_facts lookup inside the tool; sidecar live-compute returns exact JDs + IST datetimes."
+    },
+    {
+      "tool_name": "msr_sql",
+      "params": { "planet": "Moon", "limit": 15 },
+      "token_budget": 400,
+      "priority": 2,
+      "reason": "R7a: natal Moon signal density — synthesis interprets the upcoming aspect against natal Moon's functional role."
+    }
+  ],
+  "synthesis_guidance": "Lead with the first upcoming Saturn-Moon aspect date(s) from query_transit_event. Then contextualise with natal Moon's dignities and MSR signals. Note whether Saturn's 3rd or 10th special aspect (per Vedic tradition) also applies.",
+  "expected_output_shape": "detailed_analysis",
+  "history_mode": "synthesized",
+  "planets": ["Saturn", "Moon"],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent predictive query.", "mode": "independent" }
 }
 ```
+
+This example shows R-TE firing for a search-mode transit-aspect query. query_transit_event resolves natal Moon longitude from chart_facts internally when `natal_planet` is given — the planner does not need to look it up separately. R-TC does NOT fire (query_ephemeris not needed — the sidecar already returns exact event dates). msr_sql fires under R7a to supply natal Moon signal context for synthesis-layer interpretation of the upcoming transit.
+
+### 4.28 R-DA dasha anchor — next MD query
+
+Query: "What's my next mahadasha?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Next Vimshottari MD transition from today.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "§5.1 dasha schedule." }
+  ],
+  "tool_calls": [
+    { "tool_name": "query_dasha_periods", "params": {"level":"M","next_count":1}, "token_budget": 300, "priority": 1, "reason": "R-DA: next MD lookup via chart_facts." }
+  ],
+  "synthesis_guidance": "Cite the DSH.V.NNN fact_id from the result. Format: 'next MD is <lord> (→ DSH.V.NNN, start_date to end_date)'. Do NOT extrapolate from pretrained Vimshottari knowledge.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual lookup.", "mode": "independent" }
+}
+```
+
+This example shows R-DA firing for a pure dasha schedule lookup. Empty `next_count:1` + `level:"M"` returns the first MD cluster whose start_date >= today. msr_sql does NOT fire — this is a schedule query, not natal interpretation. The synthesis_guidance mandates citing the DSH.V.NNN fact_id to prevent hallucinated sequences.
 
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
@@ -1916,5 +2054,7 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *Supersedes PLANNER_PROMPT_v1_0.md v1.7 (2026-05-04)*
 *v2.0.1 content extension 2026-05-17 — R28/R29/R30 + examples 4.19–4.22 added for the L1 substrate tools (planner-blind fix)*
 *v2.0.2 content extension 2026-05-18 — R31/R32 + examples 4.23–4.24 added for M9 multi-school triangulation tools (Phase 2A)*
-*v2.0.3 content extension 2026-05-19 — R-TC rule added (Panchang vs ephemeris routing disambiguation) + examples 4.25–4.27 for query_panchanga (Phase 4C-3)*
-*v2.0.4 content extension 2026-05-20 — R-PCI rule added: context inheritance — skip query_panchanga when <panchang_context> block present in query (Phase 4C-8)*
+*v2.0.3 content extension 2026-05-18 (Phase 4A) — R-TC transit-context rule + example 4.25 added for query_ephemeris*
+*v2.0.4 content extension 2026-05-19 (Phase 4C) — R-PA panchanga anchor rule + R-TC pairing-clause update + example 4.26 added for query_panchanga*
+*v2.0.5 content extension 2026-05-19 (Phase 4D) — R-TE transit-event-search rule + example 4.27 added for query_transit_event*
+*v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*

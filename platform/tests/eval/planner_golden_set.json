@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.2",
-  "description": "Golden test set for the MARSYS-JIS query planner. 64 labeled query → expected_tool_plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala.",
+  "description": "Golden test set for the MARSYS-JIS query planner. 82 labeled query → expected_tool-plan pairs across 11 categories. Used by W2-EVAL-B to score planner quality with tool_recall and tool_precision metrics. Extended at M9-D-S1 (2026-05-14) with 3 multi_school_triangulation entries (GT.050–052) and tools 27+28 in available_tools. Extended 2026-05-17 with 12 entries (GT.053–064) covering the 4 newly-wired LLM-first planner tools: lel_query, query_signal_state, query_kp_ruling_planets, query_varshaphala. Extended 2026-05-18 (Phase 4A) with 5 entries (GT.065–069) covering query_ephemeris + R-TC transit-context rule (4 positive + 1 negative NEGATIVE test). Extended 2026-05-19 (Phase 4B) with 4 entries (GT.070–073) covering derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with 4 entries (GT.074–077) covering query_panchanga + R-PA anchor rule. Extended 2026-05-19 (Phase 4D) with 5 entries (GT.078–082) covering query_transit_event + R-TE transit-event-search rule (4 positive + 1 negative NEGATIVE test). Extended 2026-05-19 (Phase 5A) with 4 entries (GT.083–086) covering query_dasha_periods + R-DA dasha-anchor rule (3 positive + 1 negative NEGATIVE test).",
   "native_context": {
     "name": "Abhisek Mohanty",
     "birth_date": "1984-02-05",
@@ -34,8 +34,11 @@
     "msr_sql",
     "multi_school_signal_lookup",
     "pattern_register",
+    "query_ephemeris",
     "query_kp_ruling_planets",
+    "query_panchanga",
     "query_signal_state",
+    "query_transit_event",
     "query_varshaphala",
     "remedial_codex_query",
     "resonance_register",
@@ -1591,6 +1594,375 @@
         "CGM"
       ],
       "notes": "2026-05-17 query_varshaphala golden entry 3. Open-horizon forward predictive question with no explicit year — exercises the plan.time_window fallback in query_varshaphala (RCS optimal_patterns line 3). Planner emits query_varshaphala with {} or {} + time_window-injected year=2027. temporal supplies the dasha+transit overlay for the next-year window. lel_query with {significance:'major'} grounds the forward read against ground-truth event base-rates. msr_sql for natal-signal context; pattern_register for forward_looking yogas. vector_search/cluster_atlas forbidden — wrong layers for a substrate-heavy annual prediction."
+    },
+    {
+      "id": "GT.065",
+      "query": "What was Mars doing when I changed jobs in 2018?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "lel_query",
+        "msr_sql",
+        "query_ephemeris",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "lel_query",
+        "msr_sql",
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "temporal"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "LEL"
+      ],
+      "notes": "Phase 4A R-TC golden entry 1. R-TC + R7a. Historical LEL-anchored transit query. lel_query supplies job-change date; query_ephemeris reads Mars transit position at that date; msr_sql gives natal Mars signals; pattern_register satisfies R7a predictive cross-domain lens. temporal is NOT needed (no eclipse/sade-sati/retrograde-window dependency)."
+    },
+    {
+      "id": "GT.066",
+      "query": "Where are the planets right now?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register",
+        "cluster_atlas"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4A R-TC golden entry 2. R-TC + R-FACT. Pure transit positional query. query_ephemeris with empty params defaults to today UTC for all 9 planets. R-FACT bans vector_search and registers; R-TC fires query_ephemeris."
+    },
+    {
+      "id": "GT.067",
+      "query": "Was Mercury retrograde in January 2019?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4A R-TC golden entry 3. R-TC + R-FACT. Date-range factual transit query. params: {start_date:'2019-01-01', end_date:'2019-01-31', planet:'Mercury'}. R-FACT bans registers; R-TC fires query_ephemeris."
+    },
+    {
+      "id": "GT.068",
+      "query": "What's the current transit picture for my career?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "msr_sql",
+        "query_ephemeris",
+        "pattern_register"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "query_ephemeris",
+        "pattern_register"
+      ],
+      "forbidden_tools": [],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
+      "notes": "Phase 4A R-TC golden entry 4. R-TC + R7a. Domain-scoped present-tense transit query. msr_sql with domain=career; query_ephemeris with empty params (today); pattern_register satisfies R7a."
+    },
+    {
+      "id": "GT.069",
+      "query": "What house is my Saturn in?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "msr_sql"
+      ],
+      "required_tools": [
+        "msr_sql"
+      ],
+      "forbidden_tools": [
+        "query_ephemeris",
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4A R-TC NEGATIVE golden entry. Pure natal positional query, NO temporal anchor. R-TC must NOT fire; query_ephemeris is forbidden. R-FACT enforces single-tool msr_sql."
+    },
+    {
+      "id": "GT.070",
+      "query": "Was Mercury combust during my January 2019 job interview?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "lel_query",
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "lel_query",
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [],
+      "required_asset_ids": [
+        "FORENSIC",
+        "LEL"
+      ],
+      "notes": "Phase 4B R-TC + LEL anchor. query_ephemeris surfaces is_combust + combust_orb_deg for the LEL event date. Synthesis joins on event_date."
+    },
+    {
+      "id": "GT.071",
+      "query": "Where will Jupiter be exalted next?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4B R-TC + dignity filter. Planner emits query_ephemeris with start_date=today, end_date=+5 years, planet=Jupiter; synthesis filters dignity='exalted'."
+    },
+    {
+      "id": "GT.072",
+      "query": "Which house is Saturn currently transiting in my chart?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4B R-TC + R-FACT. query_ephemeris returns whole_sign_house directly. No synthesis needed beyond surfacing the value."
+    },
+    {
+      "id": "GT.073",
+      "query": "When does Jupiter enter Aries in 2027?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "notes": "Phase 4B R-TC + sign_ingress filter. Planner emits query_ephemeris with start_date=2027-01-01, end_date=2027-12-31, planet=Jupiter. Synthesis filters sign_ingress_today=true AND sign='Aries' to find the exact ingress day."
+    },
+    {
+      "id": "GT.074",
+      "query": "What tithi was it on the day I got married in 2008?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["lel_query", "query_panchanga"],
+      "required_tools": ["lel_query", "query_panchanga"],
+      "forbidden_tools": ["vector_search", "pattern_register"],
+      "required_asset_ids": ["FORENSIC", "LEL"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-PA + LEL anchor. lel_query gets marriage date; query_panchanga returns tithi at sunrise on that date. R-FACT enforces single-tool synthesis (panchanga is the answer surface)."
+    },
+    {
+      "id": "GT.075",
+      "query": "When is the next Purnima?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_panchanga"],
+      "required_tools": ["query_panchanga"],
+      "forbidden_tools": ["vector_search", "pattern_register", "query_ephemeris"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-PA explicit Purnima keyword → query_panchanga with tithi=15. R-FACT bans registers; R-TC suspended because pure panchanga query — no transit positions needed."
+    },
+    {
+      "id": "GT.076",
+      "query": "What nakshatra is the Moon in today?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_panchanga"],
+      "required_tools": ["query_panchanga"],
+      "forbidden_tools": ["vector_search", "msr_sql"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Moon"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-PA Moon-nakshatra-of-day trigger. Distinct from natal Moon nakshatra (which goes through chart_facts_query). msr_sql FORBIDDEN — that would surface natal signals, not transit."
+    },
+    {
+      "id": "GT.077",
+      "query": "What was my birth nakshatra?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["chart_facts_query"],
+      "required_tools": ["chart_facts_query"],
+      "forbidden_tools": ["query_panchanga", "query_ephemeris"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Moon"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "NEGATIVE for R-PA. Pure natal query about birth nakshatra — chart_facts_query is the right surface (natal Moon nakshatra is a chart fact). query_panchanga FORBIDDEN — that would be the daily-Moon-nakshatra-at-sunrise, not natal."
+    },
+    {
+      "id": "GT.078",
+      "query": "When does Jupiter next enter Aries?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_transit_event"],
+      "required_tools": ["query_transit_event"],
+      "forbidden_tools": ["vector_search", "pattern_register"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Jupiter"],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-TE event_type=ingress, planet=Jupiter, target_sign=Aries. R-FACT enforces single-tool synthesis. query_ephemeris NOT needed — query_transit_event routes ingress to ephemeris_daily.sign_ingress_today directly."
+    },
+    {
+      "id": "GT.079",
+      "query": "When is Mercury retrograde next?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_transit_event"],
+      "required_tools": ["query_transit_event"],
+      "forbidden_tools": ["vector_search"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Mercury"],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-TE event_type=station, planet=Mercury, station_type=retrograde_start. Routes to retrogrades table. R-FACT bans registers."
+    },
+    {
+      "id": "GT.080",
+      "query": "When will Saturn aspect my natal Moon next?",
+      "query_class": "predictive",
+      "category": "predictive",
+      "expected_tools": ["query_transit_event", "msr_sql"],
+      "required_tools": ["query_transit_event", "msr_sql"],
+      "forbidden_tools": [],
+      "required_asset_ids": ["FORENSIC", "CGM"],
+      "planets": ["Saturn", "Moon"],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-TE event_type=aspect, transit_planet=Saturn, natal_planet=Moon, aspect_degrees=[180,90,60,120]. Tool resolves natal Moon longitude from chart_facts internally. msr_sql for natal Moon signals to interpret the upcoming aspect."
+    },
+    {
+      "id": "GT.081",
+      "query": "When do Jupiter and Saturn next conjunct?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_transit_event"],
+      "required_tools": ["query_transit_event"],
+      "forbidden_tools": ["vector_search"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Jupiter", "Saturn"],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-TE event_type=conjunction, planet_a=Jupiter, planet_b=Saturn. orb_deg default 1.0. Live-compute via sidecar /transit_search."
+    },
+    {
+      "id": "GT.082",
+      "query": "What sign is Jupiter in right now?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_ephemeris"],
+      "required_tools": ["query_ephemeris"],
+      "forbidden_tools": ["query_transit_event", "vector_search"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Jupiter"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "NEGATIVE for R-TE. WHAT-not-WHEN query — current Jupiter position is a lookup, not a search. query_ephemeris (R-TC) is the right surface. query_transit_event FORBIDDEN — search-mode does not fire for positional lookups."
+    },
+    {
+      "id": "GT.083",
+      "query": "What's my current mahadasha?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_dasha_periods"],
+      "required_tools": ["query_dasha_periods"],
+      "forbidden_tools": ["vector_search", "pattern_register"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-DA + R-FACT. Empty params return today's active row + next 3 MDs. msr_sql is NOT required (this is a pure schedule lookup, not natal interpretation)."
+    },
+    {
+      "id": "GT.084",
+      "query": "What is my next mahadasha after Mercury?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_dasha_periods"],
+      "required_tools": ["query_dasha_periods"],
+      "forbidden_tools": ["vector_search", "pattern_register", "msr_sql"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": [],
+      "domains": [],
+      "forward_looking": true,
+      "notes": "R-DA canonical failure-case test. CORRECT answer must cite Ketu MD via DSH.V.024+. msr_sql FORBIDDEN here — would surface signals associated with Mercury, not the schedule lookup. This is THE test that the campaign is designed to fix."
+    },
+    {
+      "id": "GT.085",
+      "query": "When was my Saturn mahadasha?",
+      "query_class": "factual",
+      "category": "factual",
+      "expected_tools": ["query_dasha_periods"],
+      "required_tools": ["query_dasha_periods"],
+      "forbidden_tools": ["vector_search"],
+      "required_asset_ids": ["FORENSIC"],
+      "planets": ["Saturn"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "R-DA with md_lord='Saturn' filter. Returns DSH.V.006-014 (Saturn MD 1991-2010). NEGATIVE for R7c — no transit ban issue since not predictive."
+    },
+    {
+      "id": "GT.086",
+      "query": "What does it mean that my current dasha lord is Mercury?",
+      "query_class": "interpretive",
+      "category": "interpretive",
+      "expected_tools": ["msr_sql", "chart_facts_query"],
+      "required_tools": ["msr_sql", "chart_facts_query"],
+      "forbidden_tools": [],
+      "required_asset_ids": ["FORENSIC", "MSR"],
+      "planets": ["Mercury"],
+      "domains": [],
+      "forward_looking": false,
+      "notes": "NEGATIVE for R-DA pure-lookup path. This is natal interpretation of MD-lord significance, NOT a schedule query. query_dasha_periods MAY attach at priority 3 for date anchor, but msr_sql + chart_facts_query are the primary surfaces. Tests that R-DA doesn't over-fire on interpretive queries."
     }
   ],
   "_schema_version": "1.2"

@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { UIMessage } from 'ai'
 import { motion, useReducedMotion } from 'framer-motion'
 import TextareaAutosize from 'react-textarea-autosize'
-import { FileText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { MessageActions } from './MessageActions'
+import { BranchPicker } from './BranchPicker'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -136,29 +137,12 @@ export function UserMessage({
         )}
         <div className="flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover/message:opacity-100 focus-within:opacity-100 has-[:focus]:opacity-100 data-[branch]:opacity-100" data-branch={branchTotal && branchTotal > 1 ? '' : undefined}>
           {branchTotal && branchTotal > 1 && typeof branchCurrent === 'number' && onStepBranch && (
-            <div className="flex items-center gap-0.5 rounded-md border border-border bg-background px-1 py-0.5 text-[11px] text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => onStepBranch(-1)}
-                disabled={branchCurrent <= 0}
-                aria-label="Previous version"
-                className="inline-flex min-h-9 min-w-9 items-center justify-center rounded hover:bg-muted hover:text-foreground disabled:opacity-30"
-              >
-                <ChevronLeft className="size-3" />
-              </button>
-              <span className="tabular-nums px-0.5">
-                {branchCurrent + 1}/{branchTotal}
-              </span>
-              <button
-                type="button"
-                onClick={() => onStepBranch(1)}
-                disabled={branchCurrent >= branchTotal - 1}
-                aria-label="Next version"
-                className="inline-flex min-h-9 min-w-9 items-center justify-center rounded hover:bg-muted hover:text-foreground disabled:opacity-30"
-              >
-                <ChevronRight className="size-3" />
-              </button>
-            </div>
+            <BranchPicker
+              currentBranch={branchCurrent + 1}
+              totalBranches={branchTotal}
+              onPrev={() => onStepBranch(-1)}
+              onNext={() => onStepBranch(1)}
+            />
           )}
           <MessageActions
             onCopy={text ? copy : undefined}

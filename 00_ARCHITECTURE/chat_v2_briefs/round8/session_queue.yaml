@@ -1,0 +1,100 @@
+---
+# R8 Session Queue — Chat V2 Capabilities Round
+# Conductor pattern: each session is self-contained; depends_on enforces order.
+# Run: open the worktree at /Users/Dev/Vibe-Coding/Apps/MadhavR8 and execute sessions in order.
+# Prerequisite: R7 must be merged to main before R8 PRs are opened.
+round: R8
+branch: chat-v2/round8-capabilities
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR8
+master_plan: 00_ARCHITECTURE/chat_v2_briefs/round8/R8_MASTER_PLAN_v1_0.md
+authored: 2026-05-20
+---
+
+sessions:
+  - id: R8-S1
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S1-branches-persistence.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && npx prisma migrate status && npx jest --testPathPattern=branches --passWithNoTests"
+    commit_template: "feat(chat-v2/r8-s1): conversation_branches table + GET/POST /api/conversations/[id]/branches + useBranches server mirror"
+    estimated_loc: "+120 (migration + route + hook update)"
+    risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: ddcb350
+
+  - id: R8-S2
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S2-branch-picker-ui.md
+    depends_on: [R8-S1]
+    acceptance_check: "cd platform && npx tsc --noEmit && npx jest --testPathPattern=BranchPicker && grep -q 'BranchPicker' src/components/chat/UserMessage.tsx"
+    commit_template: "feat(chat-v2/r8-s2): BranchPicker component — ‹ N/M › inline on edited messages"
+    estimated_loc: "+80 (new component + test)"
+    risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 757f34d
+
+  - id: R8-S3
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S3-sidebar-fts-search.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && test -f src/app/api/conversations/search/route.ts && npx jest --testPathPattern=conversations-search --passWithNoTests"
+    commit_template: "feat(chat-v2/r8-s3): pg_trgm FTS — conversation body search API + sidebar expand filter to body"
+    estimated_loc: "+90 (migration + route + sidebar update)"
+    risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 0816fd9
+
+  - id: R8-S4
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S4-pin-archive-folders.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && npx prisma migrate status && npx jest --testPathPattern=folders --passWithNoTests"
+    commit_template: "feat(chat-v2/r8-s4): pin/archive/folders — migrations + API routes + sidebar grouping (Pinned → Folders → Date buckets)"
+    estimated_loc: "+180 (3 migrations + API + sidebar UI)"
+    risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: b5ca24b
+
+  - id: R8-S5
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S5-token-estimate-composer.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && grep -q 'gpt-tokenizer' src/components/chat/Composer.tsx && npx jest --testPathPattern=useTokenCount --passWithNoTests"
+    commit_template: "feat(chat-v2/r8-s5): live token count + context % in Composer (gpt-tokenizer, lazy-loaded; amber/red thresholds)"
+    estimated_loc: "+60"
+    risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 18f5e44
+
+  - id: R8-S6
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S6-slash-command-menu.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && test -f src/components/chat/SlashCommandMenu.tsx && test -f src/lib/chat-commands.ts"
+    commit_template: "feat(chat-v2/r8-s6): inline slash command menu — /trigger + CommandPalette reuse + keyboard nav"
+    estimated_loc: "+100 (new component + shared commands lib)"
+    risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 237b366
+
+  - id: R8-S7
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S7-vision-pipeline.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && test -f src/lib/adapters/geminiVisionAdapter.ts && npx eslint src/lib/adapters/geminiVisionAdapter.ts --max-warnings 0"
+    commit_template: "feat(chat-v2/r8-s7): vision pipeline — GeminiVisionAdapter + image attachment routing through synthesis LLM"
+    estimated_loc: "+80"
+    risk: medium
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 6e074df
+
+  - id: R8-S8
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round8/R8-S8-pdf-md-export.md
+    depends_on: []
+    acceptance_check: "cd platform && npx tsc --noEmit && test -f src/app/api/conversations/[id]/export/route.ts && test -f src/components/chat/ExportDropdown.tsx"
+    commit_template: "feat(chat-v2/r8-s8): conversation export — MD/JSON/PDF via /api/conversations/[id]/export + Export button in ChatShell header"
+    estimated_loc: "+100"
+    risk: low
+    status: completed
+    completed_at: "2026-05-20"
+    commit: 5e248fc

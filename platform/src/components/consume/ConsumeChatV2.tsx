@@ -13,13 +13,16 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
 import { CommandPalette } from '@/components/chat/CommandPalette'
-import type { Command } from '@/components/chat/CommandPalette'
+import type { Command } from '@/lib/chat-commands'
+import { COMMANDS } from '@/lib/chat-commands'
+import { SlashCommandMenu } from '@/components/chat/SlashCommandMenu'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
@@ -60,10 +63,13 @@ export interface ConsumeChatProps {
   consumeUiV2Enabled?: boolean
   /** γ6: show per-message cost to non-admin users. Super-admin always sees cost. */
   costVisibilityEnabled?: boolean
+  /** R8-S6: enable inline slash command menu in composer */
+  slashEnabled?: boolean
 }
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
+import { CodeBlock } from '../chat/CodeBlock'
 import { CitationSidePanel } from '../chat/CitationSidePanel'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
 import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
@@ -168,10 +174,13 @@ interface V2PrefsCtxValue {
   activeTier: AudienceTier
   /** READ-ONLY: server-provided audience tier from chart_meta. The in-chat override is `activeTier` + `setActiveTierOverride`. */
   audienceTier: AudienceTier
+  /** R9-S3: Active persona ID; null means no persona selected. */
+  activePersonaId: string | null
   setStack: (s: ModelStack) => void
   setStyle: (s: StyleId) => void
   setLelEnabled: (v: boolean) => void
   setActiveTierOverride: (t: AudienceTier) => void
+  setActivePersonaId: (id: string | null) => void
 }
 const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   stack: 'gemini-2.5-flash' as ModelStack,
@@ -179,54 +188,74 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   lelEnabled: true,
   activeTier: 'client',
   audienceTier: 'client',
+  activePersonaId: null,
   setStack: () => {},
   setStyle: () => {},
   setLelEnabled: () => {},
   setActiveTierOverride: () => {},
+  setActivePersonaId: () => {},
 })
 
 // ─── Citation context ─────────────────────────────────────────────────────────
 
 interface CitationContextValue {
   onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
+  onStreamEnd: (citations: CitationPart[]) => void
+  onBadgeClick: (index: number) => void
 }
-const CitationCtx = createContext<CitationContextValue>({ onPin: () => {} })
+const CitationCtx = createContext<CitationContextValue>({
+  onPin: () => {},
+  onStreamEnd: () => {},
+  onBadgeClick: () => {},
+})
 
-function renderWithCitations(
-  text: string,
-  onPin: (n: number, signalId: string) => void,
-): (string | React.ReactElement)[] {
-  const pattern = /SIG\.MSR\.\d{3}(?!\d)/g
-  const parts: (string | React.ReactElement)[] = []
+/** Pre-process LLM response text before markdown rendering.
+ *
+ *  Primary path (new prompt format):
+ *    bare SIG.MSR.NNN → inline CITE badge marker
+ *
+ *  Defence-in-depth for legacy / prompt-drift:
+ *    custom sanskrit markup tags → bare inner term
+ *    (→ id1, id2, ...) wrappers  → badges for MSR ids, rest dropped
+ *
+ *  Returns processed text and unique MSR citation count. */
+function preprocessCitations(text: string): { processedText: string; count: number } {
   const seen: string[] = []
-  function getN(id: string): number {
-    const i = seen.indexOf(id)
-    if (i >= 0) return i + 1
-    seen.push(id)
-    return seen.length
+  function badge(sigId: string): string {
+    let i = seen.indexOf(sigId)
+    if (i < 0) { seen.push(sigId); i = seen.length - 1 }
+    return `\`CITE:${i + 1}:${sigId}\``
   }
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
-    const sigId = match[0]
-    const n = getN(sigId)
-    parts.push(<NumberedCitation key={`${sigId}-${match.index}`} n={n} signalId={sigId} onPin={onPin} />)
-    lastIndex = match.index + match[0].length
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
-  return parts
+
+  // Defence-in-depth: strip custom markup tags (prompt-drift safety net).
+  let result = text.replace(/‹sanskrit[^›]*›([\s\S]*?)‹\/sanskrit›/g, '$1')
+
+  // Defence-in-depth: collapse (→ ...) wrappers — extract MSR signals, drop others.
+  result = result.replace(/\(→\s*([^)]*)\)/g, (_match, contents: string) => {
+    const signals = [...contents.matchAll(/SIG\.MSR\.(\d{3})(?!\d)/g)].map(m => `SIG.MSR.${m[1]}`)
+    return signals.length > 0 ? signals.map(badge).join(' ') : ''
+  })
+
+  // Primary: replace bare SIG.MSR.NNN with inline CITE badge markers.
+  // Negative lookbehind skips IDs already wrapped by step 2 (CITE:N: prefix).
+  result = result.replace(/(?<!CITE:\d+:)SIG\.MSR\.\d{3}(?!\d)/g, badge)
+
+  return { processedText: result, count: seen.length }
 }
+
+export { preprocessCitations }
+
 
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
-  const { onPin } = useContext(CitationCtx)
+  const { onPin, onStreamEnd, onBadgeClick } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
+  const prevIsStreamingRef = useRef(isStreaming)
 
-  // C.3: build signal_id → {snippet, layer} map from data-citation parts (both sources via hook).
+  // C.3: build signal_id → {snippet, layer} map from data-citation parts.
   const citationRichMap = useMemo(() => {
     const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
     for (const d of dataParts) {
@@ -243,37 +272,82 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     return result
   }, [dataParts])
 
+  // R7-S4: collect all CitationPart objects from data parts for stream-end event.
+  const allCitationParts = useMemo(() => {
+    return dataParts
+      .filter(d => d.type === 'data-citation')
+      .map(d => {
+        const data = d.data as Record<string, unknown>
+        return {
+          type: 'citation' as const,
+          index: typeof data.index === 'number' ? data.index : 0,
+          signal_id: typeof data.signal_id === 'string' ? data.signal_id : '',
+          snippet: typeof data.snippet === 'string' ? data.snippet : '',
+          layer: (data.layer === 'L1' ? 'L1' : 'L2.5') as 'L1' | 'L2.5',
+        }
+      })
+      .filter(c => c.signal_id)
+      .sort((a, b) => a.index - b.index)
+  }, [dataParts])
+
+  // R7-S4: AC-1 — when streaming ends and citations exist, open the panel.
+  useEffect(() => {
+    if (prevIsStreamingRef.current && !isStreaming && allCitationParts.length > 0) {
+      onStreamEnd(allCitationParts)
+    }
+    prevIsStreamingRef.current = isStreaming
+  }, [isStreaming, allCitationParts, onStreamEnd])
+
   const enrichedOnPin = useCallback((n: number, signalId: string) => {
     const rich = citationRichMap.get(signalId)
     onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
-  }, [onPin, citationRichMap])
+    onBadgeClick(n)
+  }, [onPin, citationRichMap, onBadgeClick])
 
-  // D.1: extract citation chips (NumberedCitation elements) for footer rendering.
-  // MarkdownContent only accepts string children, so chips render below the text.
-  const citationChips = useMemo(() => {
-    const parts = renderWithCitations(text, enrichedOnPin)
-    return parts.filter((p): p is React.ReactElement => typeof p !== 'string')
-  }, [text, enrichedOnPin])
+  // Pre-process text: replace SIG.MSR.NNN → `CITE:N:SIG.MSR.NNN` inline markers.
+  const { processedText, count } = useMemo(
+    () => preprocessCitations(text),
+    [text],
+  )
 
   useEffect(() => {
-    onCitationCount?.(citationChips.length)
-  }, [citationChips.length, onCitationCount])
+    onCitationCount?.(count)
+  }, [count, onCitationCount])
+
+  // Custom code component: intercepts CITE:N:SIG patterns to render inline badges;
+  // all other code (inline or fenced) falls through to standard rendering.
+  const citeCodeComponent = useMemo(() => {
+    function CiteCode({ className: codeClass, children, ...rest }: React.ComponentPropsWithoutRef<'code'>) {
+      const raw = String(children ?? '')
+      const m = raw.match(/^CITE:(\d+):(SIG\.MSR\.\d{3})$/)
+      if (m) {
+        return (
+          <NumberedCitation
+            n={parseInt(m[1], 10)}
+            signalId={m[2]}
+            onPin={enrichedOnPin}
+          />
+        )
+      }
+      const lang = codeClass?.match(/language-(\w+)/)?.[1]
+      if (!lang) {
+        return <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.88em]" {...rest}>{children}</code>
+      }
+      if (lang === 'marsys_methodology_block') return null
+      return <CodeBlock code={raw.replace(/\n$/, '')} lang={lang} isStreaming={isStreaming} />
+    }
+    return CiteCode
+  }, [enrichedOnPin, isStreaming])
 
   return (
-    <div>
-      <MarkdownContent
-        streaming={isStreaming}
-        className="text-sm text-zinc-200"
-        data-testid="v2-message-text"
-      >
-        {text}
-      </MarkdownContent>
-      {citationChips.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="v2-citation-chips">
-          {citationChips}
-        </div>
-      )}
-    </div>
+    <MarkdownContent
+      streaming={isStreaming}
+      className="text-sm text-zinc-200"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      customComponents={{ code: citeCodeComponent as any }}
+    >
+      {processedText}
+    </MarkdownContent>
   )
 }
 
@@ -344,6 +418,85 @@ function V2RegenerateButton() {
     >
       <RotateCcw className="h-4 w-4" aria-hidden="true" />
     </button>
+  )
+}
+
+// ─── Truncation banner (R7-S5) ────────────────────────────────────────────────
+
+function TruncationContinueBanner() {
+  const message = useMessage()
+  const dataParts = useDataParts(message)
+  const conversationId = useContext(ConversationIdCtx)
+  const isStreaming = message.status?.type === 'running'
+
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
+  const [error, setError] = useState(false)
+
+  const isTruncated = useMemo(() => {
+    if (isStreaming) return false
+    // AC-1 primary signal: data-truncated part
+    if (dataParts.some(d => d.type === 'data-truncated')) return true
+    // AC-1 heuristic fallback: no truncated part, but last char is not sentence-ending
+    // and context_usage indicates >= 90% utilization
+    const textContent = message.content
+      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+      .map(p => p.text).join('') ?? ''
+    const lastChar = textContent.trimEnd().slice(-1)
+    if (/[.!?…]/.test(lastChar)) return false
+    const usagePart = dataParts.find(d => d.type === 'data-context-usage')
+    if (usagePart) {
+      const u = usagePart.data as { tokens_used?: number; tokens_limit?: number }
+      if (typeof u.tokens_used === 'number' && typeof u.tokens_limit === 'number' && u.tokens_limit > 0) {
+        return u.tokens_used / u.tokens_limit >= 0.90
+      }
+    }
+    return false
+  }, [isStreaming, dataParts, message.content])
+
+  if (!isTruncated || status === 'done') return null
+
+  const handleContinue = async () => {
+    if (status !== 'idle' || !conversationId) return
+    setStatus('loading')
+    setError(false)
+    try {
+      const r = await fetch('/api/chat/consume/continue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId, last_message_id: message.id }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      // Drain the stream so the server completes; the thread will update via its own subscription.
+      await r.body?.cancel()
+      setStatus('done')
+    } catch (err) {
+      console.error('Continue failed', err)
+      setError(true)
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 mt-1"
+      data-testid="v2-truncation-continue-banner"
+      aria-label="Response was truncated"
+    >
+      <span className="text-[10px] text-zinc-500 italic">Response truncated</span>
+      <button
+        type="button"
+        onClick={handleContinue}
+        disabled={status === 'loading'}
+        className="border border-zinc-600 text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 rounded px-2.5 py-1 text-xs font-medium transition-colors"
+        data-testid="v2-truncation-continue-btn"
+      >
+        {status === 'loading'
+          ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Loading" />
+          : 'Continue'
+        }
+      </button>
+      {error && <span className="text-[10px] text-red-400">Failed — try again</span>}
+    </div>
   )
 }
 
@@ -438,7 +591,7 @@ function V2Message() {
       <MessagePrimitive.If user>
         <div className="flex flex-col items-end gap-1">
           <div
-            className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm text-white max-w-[70%]"
+            className="v2-user-bubble rounded-2xl px-4 py-2.5 text-sm text-foreground max-w-[70%]"
             data-testid="v2-user-message"
           >
             {/* F.2: flat props — renderer receives {text,...} directly, not a nested part object */}
@@ -539,6 +692,9 @@ function V2Message() {
               Text: (props) => <V2AssistantText text={props.text} onCitationCount={handleCitationCount} />,
             }}
           />
+
+          {/* R7-S5: truncation continue banner — shown after stream ends if message was cut off */}
+          <TruncationContinueBanner />
 
           {/* γ4: validator soft-fail chip (below message body) */}
           {citationGate?.status === 'warn' && (
@@ -830,13 +986,15 @@ function AttachmentStrip({
 
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
-function V2Composer() {
+function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
+  const [composerValue, setComposerValue] = useState('')
+  const [slashActiveIdx, setSlashActiveIdx] = useState(0)
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
 
@@ -864,6 +1022,37 @@ function V2Composer() {
 
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
+  }
+
+  // Slash command detection
+  const slashQuery = slashEnabled ? (() => {
+    const m = composerValue.match(/(?:^| )\/(\w*)$/)
+    return m ? m[1] : null
+  })() : null
+  const slashFiltered = slashQuery !== null
+    ? COMMANDS.filter(c =>
+        c.name.toLowerCase().startsWith(slashQuery.toLowerCase()) ||
+        c.description.toLowerCase().includes(slashQuery.toLowerCase())
+      ).slice(0, 6)
+    : []
+  const slashOpen = slashEnabled && slashQuery !== null
+
+  function handleSlashSelect(cmd: typeof COMMANDS[0]) {
+    const textarea = containerRef.current?.querySelector('textarea')
+    if (!textarea) return
+    const newValue = composerValue.replace(
+      /(?:^|( ))\/\w*$/,
+      (_, space) => (space ?? '') + (cmd.template ?? '')
+    )
+    // Use native setter so React's synthetic event fires
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype, 'value'
+    )?.set
+    nativeSetter?.call(textarea, newValue)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    setComposerValue(newValue)
+    setSlashActiveIdx(0)
+    textarea.focus()
   }
 
   // Handle paste (images only — paste event carries DataTransfer items)
@@ -900,7 +1089,14 @@ function V2Composer() {
         />
 
         {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-4xl relative">
+          {slashOpen && (
+            <SlashCommandMenu
+              commands={slashFiltered}
+              activeIndex={slashActiveIdx}
+              onSelect={handleSlashSelect}
+            />
+          )}
           <div className="relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200">
             {/* β5: attachment strip inside pill top */}
             {attachments.length > 0 && (
@@ -910,11 +1106,12 @@ function V2Composer() {
             )}
 
             <ComposerPrimitive.Input
-              className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-zinc-100 placeholder-zinc-500 focus:outline-none"
+              className="w-full resize-none overflow-y-auto rounded-3xl bg-transparent px-5 py-4 text-[15px] leading-[1.55] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               placeholder="Ask about the chart…"
               rows={3}
               data-testid="v2-composer-input"
               onPaste={handlePaste}
+              onChange={slashEnabled ? (e: React.ChangeEvent<HTMLTextAreaElement>) => setComposerValue(e.target.value) : undefined}
               aria-label="Message input"
               aria-multiline="true"
             />
@@ -967,10 +1164,6 @@ function V2Composer() {
           </div>
         </div>
 
-        {/* O2: panel mode toggle — below pill */}
-        <div className="mx-auto max-w-4xl flex items-center pt-1.5" data-testid="v2-composer-options">
-          <PanelModeToggle />
-        </div>
       </ComposerPrimitive.Root>
     </div>
   )
@@ -1123,12 +1316,12 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
 // ─── C.3: Bottom-bar selectors ───────────────────────────────────────────────
 
 function V2BottomBar() {
-  const { stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled, setActiveTierOverride } =
+  const { stack, style, lelEnabled, activeTier, audienceTier, activePersonaId, setStack, setStyle, setLelEnabled, setActiveTierOverride, setActivePersonaId } =
     useContext(V2PrefsCtx)
 
   return (
     <div
-      className="mx-auto max-w-4xl w-full px-4 py-1 flex flex-wrap items-center gap-2 border-b border-zinc-800"
+      className="mx-auto max-w-4xl w-full px-4 py-1 flex items-center justify-between border-b border-zinc-800"
       data-testid="v2-bottom-bar"
     >
       <ModelStylePicker
@@ -1136,31 +1329,36 @@ function V2BottomBar() {
         style={style}
         onStackChange={setStack}
         onStyleChange={setStyle}
+        activePersonaId={activePersonaId}
+        onPersonaChange={setActivePersonaId}
       />
-      <button
-        type="button"
-        aria-pressed={lelEnabled}
-        onClick={() => setLelEnabled(!lelEnabled)}
-        className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
-          lelEnabled
-            ? 'border-[rgba(var(--brand-gold-rgb),0.35)] text-[rgba(var(--brand-gold-rgb),0.80)] bg-[rgba(var(--brand-gold-rgb),0.06)]'
-            : 'border-zinc-700 text-zinc-500 bg-transparent'
-        }`}
-        data-testid="v2-lel-toggle"
-        title={lelEnabled ? 'Life Events context enabled' : 'Life Events context disabled'}
-      >
-        Life Events: {lelEnabled ? 'On' : 'Off'}
-      </button>
-      {audienceTier === 'super_admin' && (
-        <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
-      )}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={lelEnabled}
+          onClick={() => setLelEnabled(!lelEnabled)}
+          className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+            lelEnabled
+              ? 'border-[rgba(var(--brand-gold-rgb),0.35)] text-[rgba(var(--brand-gold-rgb),0.80)] bg-[rgba(var(--brand-gold-rgb),0.06)]'
+              : 'border-zinc-700 text-zinc-500 bg-transparent'
+          }`}
+          data-testid="v2-lel-toggle"
+          title={lelEnabled ? 'Life Events context enabled' : 'Life Events context disabled'}
+        >
+          Life Events: {lelEnabled ? 'On' : 'Off'}
+        </button>
+        {audienceTier === 'super_admin' && (
+          <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
+        )}
+        <PanelModeToggle />
+      </div>
     </div>
   )
 }
 
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
-function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }) {
+function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean }) {
   return (
     <ThreadPrimitive.Root
       className="flex h-full flex-col flex-1 min-w-0"
@@ -1203,7 +1401,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
       </ThreadPrimitive.Viewport>
 
       <V2BottomBar />
-      <V2Composer />
+      <V2Composer slashEnabled={slashEnabled} />
     </ThreadPrimitive.Root>
   )
 }
@@ -1213,7 +1411,7 @@ function V2Thread({ chartId, chartName }: { chartId: string; chartName: string }
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [] }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
@@ -1224,11 +1422,13 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
   const [activeTier, setActiveTierOverride] = useState<AudienceTier>(audienceTier)
+  // R9-S3: Persona selection state — persists for the session; null = no persona active.
+  const [activePersonaId, setActivePersonaId] = useState<string | null>(null)
 
   const prefsCtxValue = useMemo<V2PrefsCtxValue>(() => ({
-    stack, style, lelEnabled, activeTier, audienceTier,
-    setStack, setStyle, setLelEnabled, setActiveTierOverride,
-  }), [stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled])
+    stack, style, lelEnabled, activeTier, audienceTier, activePersonaId,
+    setStack, setStyle, setLelEnabled, setActiveTierOverride, setActivePersonaId,
+  }), [stack, style, lelEnabled, activeTier, audienceTier, activePersonaId, setStack, setStyle, setLelEnabled])
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -1415,6 +1615,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           reloadTrigger={sidebarReloadTick}
           onRename={handleRenameConversation}
           onDelete={handleDeleteConversation}
+          showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
         />
       </div>
 
@@ -1428,6 +1629,17 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           className="flex items-center gap-3 border-b border-zinc-800 px-4 md:px-6 py-3 shrink-0"
           data-testid="v2-header"
         >
+          {/* Back to dashboard */}
+          <Link
+            href="/dashboard"
+            title="Back to dashboard"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors"
+            aria-label="Back to dashboard"
+            data-testid="v2-back-to-dashboard"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Link>
+
               {/* Mobile: open sidebar */}
           <button
             type="button"
@@ -1503,6 +1715,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             onQueryId={setLatestQueryId}
             onConversationId={setActiveConversationId}
             onTitle={handleTitleGenerated}
+            slashEnabled={slashEnabled}
           />
         </main>
       </div>
@@ -1525,6 +1738,7 @@ interface V2ChatRuntimeProps {
   initialMessages: UIMessage[] | undefined
   onConversationId?: (id: string) => void
   onTitle?: () => void
+  slashEnabled?: boolean
 }
 
 // ─── γ7: Session-storage key for stream-resume ───────────────────────────────
@@ -1539,28 +1753,42 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
-  // β4: Pinned citations state
-  const [pinnedCitations, setPinnedCitations] = useState<CitationPart[]>([])
-  const pinnedSet = useMemo(() => new Set(pinnedCitations.map(c => c.index)), [pinnedCitations])
+  // β4: Citation state — allCitations holds every citation from the latest complete message.
+  const [allCitations, setAllCitations] = useState<CitationPart[]>([])
+  const pinnedSet = useMemo(() => new Set(allCitations.map(c => c.index)), [allCitations])
+
+  // R7-S4: panel open/close state and scroll-to-row target.
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [scrollTarget, setScrollTarget] = useState<number | null>(null)
 
   const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
-    setPinnedCitations(prev => {
+    setAllCitations(prev => {
       if (prev.some(c => c.index === n)) return prev
       return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
     })
   }, [])
 
   const handleUnpin = useCallback((n: number) => {
-    setPinnedCitations(prev => prev.filter(c => c.index !== n))
+    setAllCitations(prev => prev.filter(c => c.index !== n))
   }, [])
 
-  const citationCtxValue = useMemo(() => ({ onPin: handlePin }), [handlePin])
+  const citationCtxValue = useMemo(() => ({
+    onPin: handlePin,
+    onStreamEnd: (citations: CitationPart[]) => {
+      setAllCitations(citations)
+      setPanelOpen(true)
+    },
+    onBadgeClick: (index: number) => {
+      setPanelOpen(true)
+      setScrollTarget(index)
+    },
+  }), [handlePin])
 
   // β5: attachment manager — tokens injected into each request body
   const attachmentManager = useAttachmentManager()
@@ -1582,13 +1810,16 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
 
   const panelOptInCtxValue = useMemo(() => ({ panelOptIn, setPanelOptIn }), [panelOptIn, setPanelOptIn])
 
-  const { stack, style, lelEnabled } = useContext(V2PrefsCtx)
+  const { stack, style, lelEnabled, activePersonaId: activePersonaIdCtx } = useContext(V2PrefsCtx)
   const stackRef = useRef(stack)
   stackRef.current = stack
   const styleRef = useRef(style)
   styleRef.current = style
   const lelEnabledRef = useRef(lelEnabled)
   lelEnabledRef.current = lelEnabled
+  // R9-S3: Track active persona via ref so the body() closure reads the latest value.
+  const activePersonaIdRef = useRef(activePersonaIdCtx)
+  activePersonaIdRef.current = activePersonaIdCtx
 
   const runtime = useChatRuntime({
     transport: new DefaultChatTransport({
@@ -1612,6 +1843,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           stack: stackRef.current,
           style: styleRef.current,
           lel_context_enabled: lelEnabledRef.current,
+          // R9-S3: Include active persona so synthesis can prepend its system_prompt.
+          ...(activePersonaIdRef.current ? { persona_id: activePersonaIdRef.current } : {}),
         }
       },
     }),
@@ -1633,11 +1866,15 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           {/* C.2 + W5 + E.1: unified runtime tracker — emits query_id, conversation_id, title in one subscribe loop */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
-            <V2Thread chartId={chartId} chartName={chartName} />
+            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} />
             <CitationSidePanel
-              citations={pinnedCitations}
+              citations={allCitations}
               pinned={pinnedSet}
               onUnpin={handleUnpin}
+              open={panelOpen}
+              onClose={() => setPanelOpen(false)}
+              scrollTarget={scrollTarget}
+              onScrolled={() => setScrollTarget(null)}
             />
           </div>
         </AssistantRuntimeProvider>

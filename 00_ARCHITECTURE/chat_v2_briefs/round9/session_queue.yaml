@@ -1,0 +1,54 @@
+---
+# R9 Session Queue — Chat V2 Elevation Round
+# Conductor pattern: each session is self-contained; depends_on enforces order.
+# Run: open the worktree at /Users/Dev/Vibe-Coding/Apps/MadhavR9 and execute sessions in order.
+# Prerequisites: R7 AND R8 must be merged to main before R9 PRs are opened.
+# Special: R9-S2 depends on R8-S3 (pg_trgm). Do not execute R9-S2 until R8-S3 is merged.
+round: R9
+branch: chat-v2/round9-elevation
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR9
+master_plan: 00_ARCHITECTURE/chat_v2_briefs/round9/R9_MASTER_PLAN_v1_0.md
+authored: 2026-05-20
+---
+
+sessions:
+  - id: R9-S1
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round9/R9-S1-projects-abstraction.md
+    depends_on: []
+    status: COMPLETE
+    commit: c712d59
+    acceptance_check: "cd platform && npx tsc --noEmit && npx prisma migrate status && test -f src/app/api/projects/route.ts && npx jest --testPathPattern=projects --passWithNoTests"
+    commit_template: "feat(chat-v2/r9-s1): Projects abstraction — 3 tables + /api/projects/** + synthesis prompt addition + sidebar project grouping"
+    estimated_loc: "+300 (migrations + API + UI)"
+    risk: high
+
+  - id: R9-S2
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round9/R9-S2-semantic-conversation-search.md
+    depends_on: [R8-S3]
+    status: BLOCKED
+    block_reason: "depends_on R8-S3 which has not merged to main as of 2026-05-20"
+    acceptance_check: "cd platform && npx tsc --noEmit && npx prisma migrate status && test -f src/lib/embeddings/embedConversationMessage.ts && grep -q 'semantic' src/app/api/conversations/search/route.ts"
+    commit_template: "feat(chat-v2/r9-s2): semantic conversation search — vector embeddings + hybrid trgm+cosine scoring + sidebar toggle"
+    estimated_loc: "+150 (migration + embedding pipeline + search API extension)"
+    risk: high
+    operator_prerequisite: "Verify pgvector extension installed in production Postgres before executing"
+
+  - id: R9-S3
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round9/R9-S3-persona-library.md
+    depends_on: []
+    status: COMPLETE
+    commit: 8b085aa
+    acceptance_check: "cd platform && npx tsc --noEmit && npx prisma migrate status && test -f src/app/api/personas/route.ts && grep -q 'Persona' src/components/chat/ModelStylePicker.tsx"
+    commit_template: "feat(chat-v2/r9-s3): persona library — personas table + CRUD API + ModelStylePicker group + settings/personas page"
+    estimated_loc: "+220 (migration + API + UI)"
+    risk: medium
+
+  - id: R9-S4
+    brief: 00_ARCHITECTURE/chat_v2_briefs/round9/R9-S4-inline-tool-flow-timeline.md
+    depends_on: []
+    status: COMPLETE
+    commit: 67c9734
+    acceptance_check: "cd platform && npx tsc --noEmit && test -f src/components/chat/InlineToolFlow.tsx && grep -q 'InlineToolFlow' src/components/chat/AssistantMessage.tsx"
+    commit_template: "feat(chat-v2/r9-s4): InlineToolFlow component — planner stage timeline inline in AssistantMessage (admin only, MARSYS_FLAG_R9_TOOL_FLOW)"
+    estimated_loc: "+90"
+    risk: low

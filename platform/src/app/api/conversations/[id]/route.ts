@@ -38,25 +38,64 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const user = await getServerUser()
   if (!user) return res.unauthenticated()
 
-  let body: { title?: string }
+  let body: {
+    title?: string
+    pinned?: boolean
+    archived?: boolean
+    folder_id?: string | null
+  }
   try {
     body = await req.json()
   } catch {
     return res.badRequest('invalid body')
   }
-  if (typeof body.title !== 'string') {
-    return res.badRequest('title required')
-  }
-  const title = body.title.trim().slice(0, 120)
-  if (!title) return res.badRequest('title required')
 
   try {
     const isSuperAdmin = await resolveAccess(user.uid)
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
 
-    await updateConversationTitle(id, title)
-    return Response.json({ ok: true, title })
+    // Title update (existing behaviour)
+    if (typeof body.title === 'string') {
+      const title = body.title.trim().slice(0, 120)
+      if (!title) return res.badRequest('title required')
+      await updateConversationTitle(id, title)
+      return Response.json({ ok: true, title })
+    }
+
+    // Pin / unpin
+    if (typeof body.pinned === 'boolean') {
+      await query('UPDATE conversations SET pinned=$1, updated_at=now() WHERE id=$2', [body.pinned, id])
+      return Response.json({ ok: true, pinned: body.pinned })
+    }
+
+    // Archive / unarchive
+    if (typeof body.archived === 'boolean') {
+      if (body.archived) {
+        await query("UPDATE conversations SET archived_at=now(), updated_at=now() WHERE id=$1", [id])
+      } else {
+        await query('UPDATE conversations SET archived_at=NULL, updated_at=now() WHERE id=$1', [id])
+      }
+      return Response.json({ ok: true, archived: body.archived })
+    }
+
+    // Move to folder or remove from folder
+    if ('folder_id' in body) {
+      if (body.folder_id === null || body.folder_id === undefined) {
+        await query('DELETE FROM conversation_folder_members WHERE conversation_id=$1', [id])
+      } else {
+        // Upsert: one folder per conversation (PK is conversation_id)
+        await query(
+          `INSERT INTO conversation_folder_members (conversation_id, folder_id)
+           VALUES ($1, $2)
+           ON CONFLICT (conversation_id) DO UPDATE SET folder_id=EXCLUDED.folder_id, added_at=now()`,
+          [id, body.folder_id]
+        )
+      }
+      return Response.json({ ok: true, folder_id: body.folder_id ?? null })
+    }
+
+    return res.badRequest('no recognized field to update')
   } catch {
     return res.dbError()
   }

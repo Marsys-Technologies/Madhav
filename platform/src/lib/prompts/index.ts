@@ -24,6 +24,8 @@ import { template as discoveryTemplate } from './templates/discovery'
 import { template as holisticTemplate } from './templates/holistic'
 import { template as remedialTemplate } from './templates/remedial'
 import { template as crossNativeTemplate } from './templates/cross_native'
+import { template as multiSchoolTemplate } from './templates/multi_school_triangulation'
+import { template as classicalGroundingTemplate } from './templates/classical_grounding'
 
 export type { QueryClass, AudienceTier, SynthesisStrategy, PromptTemplate, StyleSuffix } from './types'
 export { renderTemplate } from './types'
@@ -97,7 +99,7 @@ class PromptRegistryImpl implements PromptRegistry {
 }
 
 /**
- * Returns a fresh PromptRegistryImpl instance pre-loaded with all 8 Phase-3
+ * Returns a fresh PromptRegistryImpl instance pre-loaded with all 10
  * super_admin × single_model templates. Each call returns a new, independent
  * instance — useful for isolated testing or per-request registries.
  */
@@ -112,6 +114,8 @@ export function createRegistry(): PromptRegistry {
   registry.register(holisticTemplate)
   registry.register(remedialTemplate)
   registry.register(crossNativeTemplate)
+  registry.register(multiSchoolTemplate)         // NEW
+  registry.register(classicalGroundingTemplate)  // NEW
 
   return registry
 }
@@ -119,7 +123,7 @@ export function createRegistry(): PromptRegistry {
 let _defaultRegistry: PromptRegistry | undefined
 
 /**
- * Returns the singleton default registry, pre-loaded with all 8 Phase-3
+ * Returns the singleton default registry, pre-loaded with all 10
  * super_admin × single_model templates.
  */
 export function getDefaultRegistry(): PromptRegistry {

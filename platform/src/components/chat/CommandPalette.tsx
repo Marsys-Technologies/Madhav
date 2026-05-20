@@ -3,18 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { LucideIcon } from 'lucide-react'
 import { Search } from 'lucide-react'
+import type { Command } from '@/lib/chat-commands'
 
-export interface Command {
-  id: string
-  label: string
-  hint?: string
-  icon: LucideIcon
-  keywords?: string
-  run: () => void
-  section?: string
-}
+export type { Command }
 
 interface Props {
   open: boolean

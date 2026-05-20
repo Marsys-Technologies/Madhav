@@ -1,0 +1,430 @@
+{
+  "run_date": "2026-05-19T17:29:58.533858+00:00",
+  "base_url": "https://amjis-web-qm256lasva-el.a.run.app",
+  "planner_branch": "unspecified",
+  "judge_enabled": true,
+  "aggregate": {
+    "fixture_count": 24,
+    "ok_count": 21,
+    "error_count": 3,
+    "keyword_recall": 0.8913,
+    "signal_recall": 0.869,
+    "synthesis": 0.5171,
+    "weighted": 0.7141
+  },
+  "results": [
+    {
+      "fixture_id": "F001",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.78,
+        "weighted": 0.934
+      },
+      "response_excerpt": "For this factual query, the Causal Graph Model (CGM) provides the direct structural data of planetary placements, while the Master Signal Register (MSR) contextualizes the significance of that placeme",
+      "latency_ms": 32675,
+      "error": null
+    },
+    {
+      "fixture_id": "F002",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.85
+      },
+      "response_excerpt": "The 7th house is ruled by the sign Libra (\u2192 F.HSE.CUSP.07).\n\nTwo planets occupy the 7th house:\n*   **Saturn** is at 22\u00b0 27' of Libra (\u2192 F.CORE.SAT.DEG).\n*   **Mars** is at 16\u00b0 27' of Libra (\u2192 F.CORE.M",
+      "latency_ms": 20160,
+      "error": null
+    },
+    {
+      "fixture_id": "F003",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.4,
+        "weighted": 0.82
+      },
+      "response_excerpt": "Based on the provided chart data, this query is best addressed by consulting the Master Signal Register (MSR), which contains the synthesized dasha timings. The Causal Graph Model (CGM) and other synt",
+      "latency_ms": 26930,
+      "error": null
+    },
+    {
+      "fixture_id": "F004",
+      "type": "factual",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 0.8,
+        "weighted": 0.7067
+      },
+      "response_excerpt": "For this factual query, the primary source is the L1 FORENSIC data layer, which contains the precise astronomical values for the birth chart. The broader synthesis layers like the MSR (Master Signal R",
+      "latency_ms": 19323,
+      "error": null
+    },
+    {
+      "fixture_id": "F005",
+      "type": "signal_recall",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"PromptRegistry: no template found for (query_class=\\\"multi_school_triangulation\\\", audience_tier=\\\"super_admin\\\", strategy=\\\"single_model\\\")\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F006",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.75,
+        "signal_recall": 1.0,
+        "synthesis": 0.58,
+        "weighted": 0.841
+      },
+      "response_excerpt": "The yoga formed by Saturn exalted in the 7th house, a Kendra, is the Shasha Mahapurusha Yoga SIG.MSR.001. This is one of the five great yogas of character and destiny. In your chart, this placement is",
+      "latency_ms": 41391,
+      "error": null
+    },
+    {
+      "fixture_id": "F007",
+      "type": "signal_recall",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.3,
+        "weighted": 0.86
+      },
+      "response_excerpt": "The Saraswati Yoga in this chart is documented by signal SIG.MSR.007.\n\nThe three planets that form this yoga are Jupiter, Venus, and Mercury.\n\nAccording to the classical definition, these planets are ",
+      "latency_ms": 23119,
+      "error": null
+    },
+    {
+      "fixture_id": "F008",
+      "type": "signal_recall",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"PromptRegistry: no template found for (query_class=\\\"multi_school_triangulation\\\", audience_tier=\\\"super_admin\\\", strategy=\\\"single_model\\\")\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F009",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.5,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.5
+      },
+      "response_excerpt": "An analysis of the interplay between career and wealth in this chart reveals a deeply integrated and mutually reinforcing relationship. The primary synthesis artifacts guiding this interpretation are ",
+      "latency_ms": 51616,
+      "error": null
+    },
+    {
+      "fixture_id": "F010",
+      "type": "cross_domain",
+      "status": "error",
+      "planner_active": null,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.0,
+        "weighted": 0.0
+      },
+      "response_excerpt": "{\"error\":{\"code\":\"SYSTEM_INTERNAL\",\"message\":\"An unexpected server error occurred.\",\"retry\":false,\"detail\":\"PromptRegistry: no template found for (query_class=\\\"multi_school_triangulation\\\", audience_tier=\\\"super_admin\\\", strategy=\\\"single_model\\\")\"}}",
+      "latency_ms": 0,
+      "error": "HTTP 500: Internal Server Error"
+    },
+    {
+      "fixture_id": "F011",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.8,
+        "signal_recall": 1.0,
+        "synthesis": 0.56,
+        "weighted": 0.788
+      },
+      "response_excerpt": "An analysis of your 7th house in Libra reveals it to be one of the most complex and pivotal domains in your chart. A holistic review, drawing from the Master Signal Register (MSR), Causal Graph Model ",
+      "latency_ms": 58785,
+      "error": null
+    },
+    {
+      "fixture_id": "F012",
+      "type": "cross_domain",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.85
+      },
+      "response_excerpt": "This holistic analysis is grounded primarily in the Master Signal Register (MSR), which identifies the chart's structural epicenters, and the Unified Chart Narrative (UCN), which provides the interpre",
+      "latency_ms": 58136,
+      "error": null
+    },
+    {
+      "fixture_id": "F013",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 1.0,
+        "weighted": 1.0
+      },
+      "response_excerpt": "An analysis of the chart's timing, drawing primarily from the Master Signal Register (MSR) and the Causal Graph Model (CGM), provides a clear answer to your query regarding the major dasha transition.",
+      "latency_ms": 34211,
+      "error": null
+    },
+    {
+      "fixture_id": "F014",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.25,
+        "weighted": 0.35
+      },
+      "response_excerpt": "The primary signal flagging the upcoming Ketu \u2039sanskrit term=\"Mahadasha\" def=\"major planetary period governed by a single planet\" translit=\"Mah\u0101da\u015b\u0101\"\u203aMahadasha\u2039/sanskrit\u203a as a moksha-stack activation ",
+      "latency_ms": 46891,
+      "error": null
+    },
+    {
+      "fixture_id": "F015",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.6667,
+        "signal_recall": 1.0,
+        "synthesis": 1.0,
+        "weighted": 0.7667
+      },
+      "response_excerpt": "This query is best addressed by consulting the Master Signal Register (MSR) for pre-calculated transit periods and the Resonance Map (RM) for their interaction with the natal chart.\n\nYes, the native i",
+      "latency_ms": 31647,
+      "error": null
+    },
+    {
+      "fixture_id": "F016",
+      "type": "temporal",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.57,
+        "weighted": 0.785
+      },
+      "response_excerpt": "Answering your query requires a careful examination of eclipse cycles in relation to your natal chart. Your Rahu-Ketu axis is established with Rahu in the 2nd house in Taurus at 20\u00b0 04' (\u2192 F.D1.RA.DEG",
+      "latency_ms": 61813,
+      "error": null
+    },
+    {
+      "fixture_id": "F017",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.55,
+        "weighted": 0.865
+      },
+      "response_excerpt": "Based on the Jaimini system of astrology, the \u2039sanskrit term=\"Ishta Devata\" def=\"The personal guiding deity who leads the soul towards liberation (moksha).\" translit=\"I\u1e63\u1e6da-devat\u0101\"\u203aIshta Devata\u2039/sanskr",
+      "latency_ms": 33744,
+      "error": null
+    },
+    {
+      "fixture_id": "F018",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.75
+      },
+      "response_excerpt": "\u2039correction\u203a\noriginal: \"given Jupiter's... Phalita-weak Ishta/Kashta reading\"\ncorrected: \"The provided chart data does not contain an Ishta/Kashta Phala value for Jupiter. The primary Phalita planet i",
+      "latency_ms": 48879,
+      "error": null
+    },
+    {
+      "fixture_id": "F019",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 0.3333,
+        "signal_recall": 1.0,
+        "synthesis": 0.21,
+        "weighted": 0.2717
+      },
+      "response_excerpt": "Based on the synthesis of your chart's Causal Graph Model (CGM) and Resonance Map (RM), the current period is defined by a powerful Mercury-Saturn convergence SIG.MSR.400. The Master Signal Register (",
+      "latency_ms": 51458,
+      "error": null
+    },
+    {
+      "fixture_id": "F020",
+      "type": "remedial",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.5,
+        "weighted": 0.85
+      },
+      "response_excerpt": "Based on the synthesis of your chart's Causal Graph Model (CGM) and Resonance Map (RM), the remedial path for your \u2039sanskrit term=\"Atmakaraka\" def=\"The planet with the highest longitudinal degree, con",
+      "latency_ms": 52733,
+      "error": null
+    },
+    {
+      "fixture_id": "F021",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.44,
+        "weighted": 0.776
+      },
+      "response_excerpt": "Namaste Abhisek,\n\nThis reading provides a holistic synthesis of your birth chart's core architecture. The analysis integrates insights from the Master Signal Register (MSR) for pattern density, the Ca",
+      "latency_ms": 77909,
+      "error": null
+    },
+    {
+      "fixture_id": "F022",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 0.0,
+        "synthesis": 0.15,
+        "weighted": 0.36
+      },
+      "response_excerpt": "An analysis of this chart's spiritual and dharmic mission requires an integrated view across multiple layers of astrological data. The most relevant synthesis artifacts for this query are the Resonanc",
+      "latency_ms": 87320,
+      "error": null
+    },
+    {
+      "fixture_id": "F023",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 1.0,
+        "synthesis": 0.32,
+        "weighted": 0.592
+      },
+      "response_excerpt": "Namaste Abhisek Mohanty. This holistic reading of your birth chart is grounded in the synthesis of your natal placements (FORENSIC), the cross-divisional dignity matrix (CSI), and the Master Signal Re",
+      "latency_ms": 68565,
+      "error": null
+    },
+    {
+      "fixture_id": "F024",
+      "type": "holistic",
+      "status": "ok",
+      "planner_active": true,
+      "tools_used": [],
+      "tool_count": 0,
+      "scores": {
+        "keyword_recall": 1.0,
+        "signal_recall": 0.25,
+        "synthesis": 0.45,
+        "weighted": 0.48
+      },
+      "response_excerpt": "Namaste Abhisek Mohanty. This whole-chart reading synthesizes the core architecture of your destiny, drawing primarily from the Master Signal Register (MSR) for pattern density, the Causal Graph Model",
+      "latency_ms": 62281,
+      "error": null
+    }
+  ],
+  "cloud_run_revision": "amjis-web-00227-6bx",
+  "eval_judge": "gemini-2.5-flash-lite",
+  "eval_note": "Phase 4 post-merge rerun. Corrects Phase 4b stale-URL cascade (F019-F024 DNS failure). Gemini judge active \u2014 synthesis dimension real (not floored).",
+  "f018_cascade_diagnosis": "server-transient: stale revision URL caused transient DNS failure during Phase 4b run; reproduces clean in rerun",
+  "runner_patched": false
+}

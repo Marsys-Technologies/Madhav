@@ -13,6 +13,7 @@ interface Props {
   children: string
   className?: string
   streaming?: boolean
+  customComponents?: Partial<Components>
 }
 
 function extractLang(className: string | undefined): string | undefined {
@@ -21,7 +22,10 @@ function extractLang(className: string | undefined): string | undefined {
   return match ? match[1] : undefined
 }
 
-const MARKDOWN_COMPONENTS = (isStreaming: boolean): Components => ({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AugmentedComponents = Components & Record<string, any>
+
+export const MARKDOWN_COMPONENTS = (isStreaming: boolean): AugmentedComponents => ({
   p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
   a: ({ href, children }) => (
     <a
@@ -88,17 +92,30 @@ const MARKDOWN_COMPONENTS = (isStreaming: boolean): Components => ({
         </code>
       )
     }
-    // Methodology block is captured server-side and surfaced in the
-    // metadata strip; it must not appear in the visible prose.
-    if (lang === 'marsys_methodology_block') return null
+    // Internal blocks captured server-side — must not appear in visible prose.
+    if (lang === 'marsys_methodology_block' || lang === 'marsys_citations') return null
     const raw = String(children).replace(/\n$/, '')
     return <CodeBlock code={raw} lang={lang} isStreaming={isStreaming} />
   },
   pre: ({ children }) => <>{children}</>,
+  // GFM footnote reference: renders as amber superscript badge (R7-S2).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  footnoteReference: ({ node }: { node?: any }) => (
+    <sup>
+      <span className="inline-flex items-center rounded px-1 text-xs font-medium bg-amber-500/20 text-amber-400">
+        {node?.identifier ?? '?'}
+      </span>
+    </sup>
+  ),
+  // GFM footnote definition block: invisible (data flows via data parts, not footnote HTML).
+  footnoteDefinition: () => <span className="sr-only" />,
 })
 
-function MarkdownContentImpl({ children, className, streaming = false }: Props) {
-  const components = useMemo(() => MARKDOWN_COMPONENTS(streaming), [streaming])
+function MarkdownContentImpl({ children, className, streaming = false, customComponents }: Props) {
+  const components = useMemo(
+    () => ({ ...MARKDOWN_COMPONENTS(streaming), ...customComponents }) as AugmentedComponents,
+    [streaming, customComponents],
+  )
 
   return (
     <div

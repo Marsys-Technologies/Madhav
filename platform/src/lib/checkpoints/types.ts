@@ -118,6 +118,56 @@ export class CheckpointHaltError extends Error {
   }
 }
 
+// ── §5C Dasha validator types ─────────────────────────────────────────────────
+
+/** A single dasha-schedule claim extracted from synthesis text. */
+export interface DashaClaim {
+  /** Verbatim span from synthesis text */
+  span: string
+  /** Byte offset of span start */
+  start: number
+  /** Byte offset of span end */
+  end: number
+  /** Temporal qualifier found near the claim */
+  temporal: 'current' | 'next' | 'upcoming' | 'previous' | 'past' | 'future' | 'present' | 'incoming' | null
+  /** Dasha lord named in the claim */
+  lord: string
+  /** Dasha level */
+  level: 'MD' | 'AD' | 'PD' | 'SD' | 'PD2' | null
+  /** Whether a (→ DSH.V.NNN …) citation was found adjacent to the claim */
+  has_citation: boolean
+  /** The cited fact_id, if any (e.g. "DSH.V.024") */
+  cited_fact_id: string | null
+  /** The cited date range, if any */
+  cited_date_range: string | null
+}
+
+/** Verdict for a single claim */
+export type DashaClaimVerdict = 'pass' | 'warn' | 'halt'
+
+/** Annotated claim with verdict */
+export interface DashaClaimResult extends DashaClaim {
+  verdict: DashaClaimVerdict
+  /** Human-readable reason for halt or warn */
+  violation?: string
+}
+
+export interface CheckpointDashaInput {
+  query: string
+  query_plan: QueryPlan
+  synthesized_text: string
+}
+
+export interface CheckpointDashaResult extends CheckpointResult {
+  claims: DashaClaimResult[]
+  /** Number of dasha claims extracted */
+  claims_extracted: number
+  /** Number of claims that violated the gate */
+  violations_count: number
+  /** Whether the validator was skipped (non-dasha query or flag OFF) */
+  skipped_reason?: 'flag_off' | 'non_dasha_query'
+}
+
 // ── Skipped result factory ────────────────────────────────────────────────────
 
 export function skippedResult(checkpoint_id: string): CheckpointResult {

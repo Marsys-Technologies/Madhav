@@ -186,7 +186,7 @@ export const PipelinePlanSchema = z.object({
   ]).optional(),
 
   /** [PLANNER OUTPUT] Conversation history handling mode. */
-  history_mode: z.enum(['synthesized', 'research']).optional(),
+  history_mode: z.enum(['synthesized', 'research']).optional().catch(undefined),
 
   /** [PLANNER OUTPUT] Whether to route through the panel multi-LLM path. */
   panel_mode: z.boolean().optional(),

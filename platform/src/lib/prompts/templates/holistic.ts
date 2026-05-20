@@ -4,6 +4,7 @@ import {
   THREE_INTERPRETATION_GATE,
   PRESCRIPTIVE_CITATION_GATE,
   CALIBRATION_LANGUAGE_GATE,
+  DASHA_DISCIPLINE_GATE,
   B11_EXPLICIT_LAYER_GATE,
   REQUIRED_PLACEHOLDERS_BASE,
   STYLE_SUFFIXES,
@@ -11,7 +12,7 @@ import {
 
 export const template: PromptTemplate = {
   template_id: 'holistic_super_admin_single_model_v1',
-  version: '2.0',
+  version: '2.1',
   query_class: 'holistic',
   audience_tier: 'super_admin',
   strategy: 'single_model',
@@ -26,6 +27,8 @@ You are producing a whole-chart reading: the integrated, cross-layer synthesis o
 ${THREE_INTERPRETATION_GATE}
 
 ${CALIBRATION_LANGUAGE_GATE}
+
+${DASHA_DISCIPLINE_GATE}
 
 Rules for holistic responses:
 1. The Whole-Chart-Read Protocol (B.11) is mandatory for this query class. Sequence:

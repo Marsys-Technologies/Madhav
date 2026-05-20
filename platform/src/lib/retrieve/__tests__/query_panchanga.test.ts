@@ -1,78 +1,26 @@
-/**
- * __tests__/query_panchanga.test.ts
- *
- * Unit tests for query_panchanga RetrievalTool with mocked sidecar responses.
- * No live sidecar calls — all fetch calls are mocked.
- */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock the sidecar URL to be set so callSidecar doesn't abort on missing env
-process.env['PYTHON_SIDECAR_URL'] = 'http://localhost:8001'
+vi.mock('@/lib/storage', () => ({
+  getStorageClient: vi.fn(),
+}))
+vi.mock('@/lib/db/monitoring-write', () => ({
+  writeToolExecutionLog: vi.fn().mockResolvedValue(undefined),
+}))
 
-import { tool, RetrievalToolError } from '../query_panchanga'
+import { getStorageClient } from '@/lib/storage'
+import { writeToolExecutionLog } from '@/lib/db/monitoring-write'
+import { tool } from '../query_panchanga'
 import type { QueryPlan } from '../types'
 
-// Mock Panchang response from the sidecar (single-day)
-const MOCK_PANCHANG_DICT = {
-  date: '2026-05-19',
-  lat: 20.27,
-  lon: 85.84,
-  tz_offset_minutes: 330,
-  sunrise_utc: '2026-05-19T00:12:34Z',
-  sunset_utc: '2026-05-19T13:01:22Z',
-  moonrise_utc: '2026-05-19T04:30:00Z',
-  moonset_utc: '2026-05-19T17:45:00Z',
-  tithi: { id: 12, name: 'Shukla Dvadashi', end_utc: '2026-05-19T18:00:00Z' },
-  nakshatra: { id: 17, name: 'Anuradha', end_utc: '2026-05-19T22:00:00Z' },
-  yoga: { id: 5, name: 'Shobhana', end_utc: '2026-05-20T01:00:00Z' },
-  karana_first: { id: 4, name: 'Bava', end_utc: '2026-05-19T10:00:00Z' },
-  karana_second: { id: 5, name: 'Balava', end_utc: '2026-05-19T18:00:00Z' },
-  vara: { id: 3, name: 'Mangalavara', end_utc: '2026-05-20T00:12:34Z' },
-  paksha: 'shukla',
-  inauspicious: [
-    { label: 'rahu_kalam', start_utc: '2026-05-19T09:10:00Z', end_utc: '2026-05-19T10:38:00Z' },
-  ],
-  auspicious: [
-    { label: 'brahma_muhurta', start_utc: '2026-05-18T22:44:00Z', end_utc: '2026-05-19T00:12:00Z' },
-  ],
-  choghadiya: {
-    day: [{ label: 'Kaal', start_utc: '2026-05-19T00:12:00Z', end_utc: '2026-05-19T01:53:00Z' }],
-    night: [{ label: 'Labh', start_utc: '2026-05-19T13:01:00Z', end_utc: '2026-05-19T14:49:00Z' }],
-  },
-  hora: [
-    { label: 'hora_mars', start_utc: '2026-05-19T00:12:00Z', end_utc: '2026-05-19T01:12:00Z' },
-  ],
-  special_yogas: [
-    { yoga: 'amrit_siddhi', start_utc: '2026-05-19T00:12:34Z', end_utc: '2026-05-19T22:00:00Z', strength: 'high', stars: 5 },
-  ],
-  planets: {
-    sun: { name: 'Sun', longitude_sidereal: 34.5, sign_id: 1, sign_name: 'Mesha', nakshatra_id: 2, nakshatra_name: 'Bharani', nakshatra_pada: 2, retrograde: false, combust: false },
-    moon: { name: 'Moon', longitude_sidereal: 220.3, sign_id: 8, sign_name: 'Vrischika', nakshatra_id: 17, nakshatra_name: 'Anuradha', nakshatra_pada: 1, retrograde: false, combust: false },
-    mars: { name: 'Mars', longitude_sidereal: 80.0, sign_id: 3, sign_name: 'Mithuna', nakshatra_id: 6, nakshatra_name: 'Ardra', nakshatra_pada: 3, retrograde: true, combust: false },
-    mercury: { name: 'Mercury', longitude_sidereal: 18.0, sign_id: 1, sign_name: 'Mesha', nakshatra_id: 1, nakshatra_name: 'Ashwini', nakshatra_pada: 4, retrograde: false, combust: true },
-    jupiter: { name: 'Jupiter', longitude_sidereal: 82.0, sign_id: 3, sign_name: 'Mithuna', nakshatra_id: 7, nakshatra_name: 'Punarvasu', nakshatra_pada: 1, retrograde: false, combust: false },
-    venus: { name: 'Venus', longitude_sidereal: 62.0, sign_id: 3, sign_name: 'Mithuna', nakshatra_id: 6, nakshatra_name: 'Ardra', nakshatra_pada: 1, retrograde: false, combust: false },
-    saturn: { name: 'Saturn', longitude_sidereal: 320.0, sign_id: 11, sign_name: 'Kumbha', nakshatra_id: 24, nakshatra_name: 'Shatabhisha', nakshatra_pada: 4, retrograde: true, combust: false },
-    rahu: { name: 'Rahu', longitude_sidereal: 350.0, sign_id: 12, sign_name: 'Meena', nakshatra_id: 27, nakshatra_name: 'Revati', nakshatra_pada: 2, retrograde: true, combust: false },
-    ketu: { name: 'Ketu', longitude_sidereal: 170.0, sign_id: 6, sign_name: 'Kanya', nakshatra_id: 13, nakshatra_name: 'Hasta', nakshatra_pada: 2, retrograde: true, combust: false },
-  },
-  computation_version: '1.0.0-S2',
-  ephemeris_version: '2.10.03',
-}
-
-const MOCK_SIDECAR_RESPONSE = {
-  ok: true,
-  panchang: MOCK_PANCHANG_DICT,
-  cache_hit: false,
-}
+const mockQuery = vi.fn()
 
 const basePlan: QueryPlan = {
-  query_plan_id: '00000000-0000-0000-0000-000000000099',
-  query_text: "What is today's tithi?",
+  query_plan_id: '00000000-0000-0000-0000-000000000088',
+  query_text: 'panchanga test',
   query_class: 'factual',
   domains: [],
   forward_looking: false,
-  audience_tier: 'client',
+  audience_tier: 'super_admin',
   tools_authorized: ['query_panchanga'],
   history_mode: 'synthesized',
   panel_mode: false,
@@ -81,175 +29,141 @@ const basePlan: QueryPlan = {
   schema_version: '1.0',
 }
 
+const panchangaRow = {
+  date: '2026-05-19',
+  sunrise_utc: '2026-05-19 01:03:00',
+  sunrise_jd: '2461185.54374',
+  sunrise_ist: '06:33:00',
+  tithi: 22,
+  tithi_name: 'Krishna Saptami',
+  paksha: 'krishna',
+  tithi_fraction: '21.87432',
+  vara: 'Mangalavara',
+  vara_lord: 'Mars',
+  vara_index: 2,
+  moon_nakshatra: 'Shatabhisha',
+  moon_nakshatra_index: 23,
+  moon_nakshatra_pada: 3,
+  moon_longitude_deg: '314.27621',
+  sun_longitude_deg: '35.12345',
+  yoga: 'Vriddhi',
+  yoga_index: 11,
+  karana: 'Garaja',
+  karana_position_in_month: 42,
+  ayanamsha: 'lahiri',
+  observer_lat: '20.27021',
+  observer_lon: '85.82966',
+  observer_alt_m: '45.00',
+  ephemeris_version: 'pyswisseph-2.10.03.2+4C-panchanga-v1',
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url: string) => {
-      if (url.includes('/api/compute/panchanga/range')) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              ok: true,
-              panchangs: [MOCK_PANCHANG_DICT],
-              count: 1,
-            }),
-        })
-      }
-      if (url.includes('/api/compute/panchanga')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(MOCK_SIDECAR_RESPONSE),
-        })
-      }
-      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) })
-    }),
-  )
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
-
-describe('query_panchanga tool identity', () => {
-  it('has correct name and version', () => {
-    expect(tool.name).toBe('query_panchanga')
-    expect(tool.version).toBe('1.0.0')
-  })
-
-  it('has a non-empty description', () => {
-    expect(tool.description).toBeTruthy()
-    expect((tool.description ?? '').length).toBeGreaterThan(50)
-  })
-
-  it('description mentions key Panchang terms', () => {
-    const desc = tool.description ?? ''
-    expect(desc).toContain('tithi')
-    expect(desc).toContain('nakshatra')
-    expect(desc).toContain('Rahu Kalam')
-    expect(desc).toContain('auspicious')
+  vi.mocked(getStorageClient).mockReturnValue({
+    query: mockQuery,
+    transaction: vi.fn(),
+    readObject: vi.fn(),
+    writeObject: vi.fn(),
+    objectExists: vi.fn(),
+    readFile: vi.fn(),
+    fileExists: vi.fn(),
+    listFiles: vi.fn(),
   })
 })
 
-describe('retrieve() — single-day query', () => {
-  it('returns a ToolBundle with non-empty results', async () => {
-    const bundle = await tool.retrieve(basePlan, {
-      date: '2026-05-19',
-      lat: 20.27,
-      lon: 85.84,
-      tz_offset_minutes: 330,
+describe('query_panchanga tool', () => {
+  it('default params: SQL uses CURRENT_DATE with no extra filters', async () => {
+    mockQuery.mockResolvedValue({ rows: [panchangaRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan)
+
+    expect(bundle.results).toHaveLength(1)
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.tithi_name).toBe('Krishna Saptami')
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain('CURRENT_DATE')
+    expect(sql).not.toContain('tithi =')
+    expect(sql).not.toContain('moon_nakshatra =')
+
+    const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+    expect(sqlParams).toHaveLength(0)
+  })
+
+  it('filters by tithi=15 (Purnima): SQL contains tithi = $N', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    await tool.retrieve(basePlan, {
+      start_date: '2026-05-01',
+      end_date: '2026-07-31',
+      tithi: 15,
     })
-    expect(bundle).toBeDefined()
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain('date >= $1::date')
+    expect(sql).toContain('date <= $2::date')
+    expect(sql).toContain('tithi = $3')
+
+    const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+    expect(sqlParams[0]).toBe('2026-05-01')
+    expect(sqlParams[1]).toBe('2026-07-31')
+    expect(sqlParams[2]).toBe(15)
+  })
+
+  it('filters by date range + paksha: both clauses present', async () => {
+    mockQuery.mockResolvedValue({ rows: [panchangaRow], rowCount: 1 })
+
+    await tool.retrieve(basePlan, {
+      start_date: '2026-01-01',
+      end_date: '2026-12-31',
+      paksha: 'shukla',
+    })
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain('paksha = $3')
+
+    const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+    expect(sqlParams[2]).toBe('shukla')
+  })
+
+  it('filters by moon_nakshatra: SQL contains moon_nakshatra = $N', async () => {
+    mockQuery.mockResolvedValue({ rows: [panchangaRow], rowCount: 1 })
+
+    await tool.retrieve(basePlan, {
+      start_date: '2026-01-01',
+      end_date: '2026-12-31',
+      moon_nakshatra: 'Rohini',
+    })
+
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain('moon_nakshatra = $3')
+
+    const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+    expect(sqlParams[2]).toBe('Rohini')
+  })
+
+  it('returns diagnostic row when no rows match (confidence=0, note field)', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    const bundle = await tool.retrieve(basePlan, { date: '1800-01-01' })
+
+    expect(bundle.results).toHaveLength(1)
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.note).toContain('panchanga_daily empty or out-of-range')
+    expect(bundle.results[0].confidence).toBe(0)
+    expect(bundle.results[0].significance).toBe(0)
+  })
+
+  it('returns valid ToolBundle shape with tool_name, version, sha256 hash', async () => {
+    mockQuery.mockResolvedValue({ rows: [panchangaRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan)
+
     expect(bundle.tool_name).toBe('query_panchanga')
-    expect(bundle.results.length).toBeGreaterThan(0)
-  })
-
-  it('returns results including tithi, nakshatra, vara (five_angas section)', async () => {
-    const bundle = await tool.retrieve(basePlan, { date: '2026-05-19' })
-    const angaResult = bundle.results.find(r => r.content.includes('five_angas'))
-    expect(angaResult).toBeDefined()
-    const parsed = JSON.parse(angaResult!.content)
-    expect(parsed.tithi).toBeDefined()
-    expect(parsed.nakshatra).toBeDefined()
-    expect(parsed.vara).toBeDefined()
-  })
-
-  it('returns results including special_yogas section', async () => {
-    const bundle = await tool.retrieve(basePlan, { date: '2026-05-19' })
-    const yogaResult = bundle.results.find(r => r.content.includes('special_yogas'))
-    expect(yogaResult).toBeDefined()
-    const parsed = JSON.parse(yogaResult!.content)
-    expect(Array.isArray(parsed.special_yogas)).toBe(true)
-  })
-
-  it('includes diagnostics: latency_ms is finite', async () => {
-    const bundle = await tool.retrieve(basePlan, { date: '2026-05-19' })
-    expect(typeof bundle.latency_ms).toBe('number')
-    expect(isFinite(bundle.latency_ms)).toBe(true)
-    expect(bundle.latency_ms).toBeGreaterThanOrEqual(0)
-  })
-
-  it('result_hash starts with sha256:', async () => {
-    const bundle = await tool.retrieve(basePlan, { date: '2026-05-19' })
-    expect(bundle.result_hash).toMatch(/^sha256:[0-9a-f]{64}$/)
-  })
-
-  it('schema_version is 1.0', async () => {
-    const bundle = await tool.retrieve(basePlan, { date: '2026-05-19' })
+    expect(bundle.tool_version).toBe('1.0.0')
     expect(bundle.schema_version).toBe('1.0')
-  })
-
-  it('uses default location (Bhubaneswar) when lat/lon not provided', async () => {
-    const bundle = await tool.retrieve(basePlan, { date: '2026-05-19' })
-    const params = bundle.invocation_params as Record<string, unknown>
-    expect(params['lat']).toBe(20.27)
-    expect(params['lon']).toBe(85.84)
-  })
-
-  it('uses today as default date when date not provided', async () => {
-    const bundle = await tool.retrieve(basePlan, {})
-    const today = new Date().toISOString().slice(0, 10)
-    const params = bundle.invocation_params as Record<string, unknown>
-    expect(params['date']).toBe(today)
-  })
-
-  it('accepts chart_id param without error (4C-5 scope; ignored this session)', async () => {
-    const bundle = await tool.retrieve(basePlan, {
-      date: '2026-05-19',
-      chart_id: 'abhisek_mohanty',
-    })
-    expect(bundle).toBeDefined()
-    const params = bundle.invocation_params as Record<string, unknown>
-    expect(params['chart_id']).toBe('abhisek_mohanty')
-  })
-})
-
-describe('retrieve() — range query', () => {
-  it('calls the range endpoint when range param is provided', async () => {
-    const bundle = await tool.retrieve(basePlan, {
-      range: { from: '2026-05-19', to: '2026-05-19' },
-    })
-    expect(bundle).toBeDefined()
-    const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
-    expect(calls.some((c: unknown[]) => String(c[0]).includes('panchanga/range'))).toBe(true)
-  })
-
-  it('returns a results array with panchang_range section', async () => {
-    const bundle = await tool.retrieve(basePlan, {
-      range: { from: '2026-05-19', to: '2026-05-19' },
-    })
-    const rangeResult = bundle.results.find(r => r.content.includes('panchang_range'))
-    expect(rangeResult).toBeDefined()
-  })
-})
-
-describe('retrieve() — error handling', () => {
-  it('throws RetrievalToolError on sidecar HTTP error', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve({
-          ok: false,
-          status: 503,
-          json: () => Promise.resolve({ detail: 'Service unavailable' }),
-        }),
-      ),
-    )
-    await expect(
-      tool.retrieve(basePlan, { date: '2026-05-19' }),
-    ).rejects.toThrow(RetrievalToolError)
-  })
-
-  it('throws RetrievalToolError when PYTHON_SIDECAR_URL is not set', async () => {
-    const origUrl = process.env['PYTHON_SIDECAR_URL']
-    delete process.env['PYTHON_SIDECAR_URL']
-    try {
-      await expect(
-        tool.retrieve(basePlan, { date: '2026-05-19' }),
-      ).rejects.toThrow(RetrievalToolError)
-    } finally {
-      process.env['PYTHON_SIDECAR_URL'] = origUrl
-    }
+    expect(bundle.result_hash).toMatch(/^sha256:[0-9a-f]{64}$/)
+    expect(bundle.results[0].source_canonical_id).toBe('PANCHANGA_DAILY')
+    expect(bundle.results[0].confidence).toBe(1.0)
   })
 })

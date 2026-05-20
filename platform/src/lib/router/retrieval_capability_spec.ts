@@ -11,8 +11,8 @@
  * the matching pair to update.
  *
  * Source of truth for tool implementations: platform/src/lib/retrieve/index.ts
- * (RETRIEVAL_TOOLS registry, 18 tools as of 2026-05-10 — VARGA-ETL-FULL-S1-CPA
- * added cross_varga_dignity_query for the §3.15 CSI ledger).
+ * (RETRIEVAL_TOOLS registry, 28 tools as of 2026-05-19 — Phase 4C added
+ * query_panchanga for sunrise-anchored daily panchanga).
  */
 
 export type CostTier = 'low' | 'medium' | 'high'
@@ -228,17 +228,28 @@ const vector_search: RetrievalCapabilityEntry = {
 const chart_facts_query: RetrievalCapabilityEntry = {
   tool_name: 'chart_facts_query',
   description:
-    'PRIMARY tool for quantitative chart-fact retrieval — queries 795 chart_facts rows across 37 categories (shadbala, ashtakavarga, bhava bala, sahams, yogas, longevity indicators, upagrahas, mrityu bhaga, avastha, planet placements, house contents). Use for any strength ranking, BAV bindu count, yoga register lookup, or quantitative placement question.',
+    'PRIMARY tool for quantitative chart-fact retrieval — 795 chart_facts rows ' +
+    'across 37 categories: shadbala, ashtakavarga (BAV/SAV/Pinda), bhava_bala, ' +
+    'sahams, yogas, longevity indicators, upagrahas, mrityu_bhaga, avastha, ' +
+    'planet placements, house contents, AND DASHA SCHEDULES ' +
+    '(dasha_vimshottari with 50 rows covering 1984-2060, dasha_yogini, ' +
+    'dasha_chara). Use for any strength ranking, BAV bindu count, yoga register ' +
+    'lookup, quantitative placement question, OR specific historical dasha ' +
+    'period lookup. For "what is the current/next dasha?" semantic queries, ' +
+    'prefer query_dasha_periods (semantically richer; surfaces next_count + ' +
+    'prev_count + active-chain shortcuts).',
   data_surface:
     'L1 — chart_facts table (795 rows × 37 categories). Each row has category, planet, house, sign, nakshatra, divisional_chart, value, ranking_field.',
   supported_params:
-    '{ category?: string (e.g. "shadbala","ashtakavarga_bav","bhava_bala","saham","yoga","planet","house","longevity_indicator","upagraha","mrityu_bhaga","avastha"); planet?: string; house?: number; sign?: string; nakshatra?: string; divisional_chart?: string ("D1".."D60"); keyword?: string; rank_by?: string; limit?: number (default 10, range 5–20) }',
+    '{ category?: string|string[] (e.g. "shadbala","ashtakavarga_bav","bhava_bala","saham","yoga","planet","house","longevity_indicator","upagraha","mrityu_bhaga","avastha","dasha_vimshottari","dasha_yogini","dasha_chara"); planet?: string; house?: number; sign?: string; nakshatra?: string; divisional_chart?: string ("D1".."D60"); keyword?: string; rank_by?: string; as_of_date?: YYYY-MM-DD (filters dasha rows where start_date <= d < end_date); from_date?: YYYY-MM-DD (range start); to_date?: YYYY-MM-DD (range end); limit?: number (default 10) }',
   optimal_patterns: [
     'Strength ranking: {category:"shadbala", rank_by:"total_rupas", limit:9}',
     'BAV by planet+sign: {category:"ashtakavarga_bav", planet:"Mars", sign:"Capricorn"}',
     'Yoga register: {category:"yoga"}',
     'Saham lookup: {category:"saham", keyword:"Vivaha"}',
     'House contents: {category:"house", house:7}',
+    'Specific dasha row: {category:"dasha_vimshottari", as_of_date:"2008-04-15"} (returns Mercury MD/Mars AD row active on that date)',
+    'Historical MD lookup: {category:"dasha_vimshottari", keyword:"Saturn"} (returns rows where md_lord=Saturn)',
   ],
   cost_tier: 'low',
   requires_temporal: false,
@@ -608,6 +619,180 @@ const convergence_score_lookup: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Phase 4A — date-indexed ephemeris lookup
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_ephemeris: RetrievalCapabilityEntry = {
+  tool_name: 'query_ephemeris',
+  description:
+    'Date-indexed planetary positions PLUS Vedic-interpretable derived state from ' +
+    'the ephemeris_daily table (657K rows, 1900-2100, 9 grahas, Lahiri sidereal). ' +
+    'Returns per-planet per-day: longitude, sign, nakshatra+pada, retrograde, speed, ' +
+    'AND derived state: dignity (exalted/debilitated/own/mooltrikona/neutral), ' +
+    'combust state + orb degrees, vargottama (D1=D9 sign), ' +
+    'whole-sign-house (Parashari — anchored to native lagna = Aries), ' +
+    'bhava-chalit-house (Sripati-cusp-based — angular bhava for sandhi-planet ' +
+    'refinement; consult alongside whole-sign for planets within 3° of a sign boundary), ' +
+    'sign-ingress flag (entered new sign today), ' +
+    'graha-yuddha (within 1° of another planet — among Mars/Mercury/Jupiter/Venus/Saturn). ' +
+    'CANONICAL SURFACE for any transit-context query — both the raw positions AND ' +
+    'their Vedic interpretation. Default attached at priority 2 under R-TC for any ' +
+    'non-natal query. Use derived_fields:[] to skip derived columns for token-tight calls.',
+  data_surface:
+    'L1 — table ephemeris_daily (migrations 015 + 059 + 061). Fields: date, planet (lowercase: ' +
+    'sun..ketu), longitude_deg (sidereal Lahiri 0-360), latitude_deg, speed_deg_per_day, ' +
+    'is_retrograde, sign, sign_degree (0-30), nakshatra, nakshatra_pada (1-4), ' +
+    'ayanamsha (lahiri), ephemeris_version. ' +
+    'Phase 4B derived: dignity_d1, is_combust, combust_orb_deg, vargottama_today, ' +
+    'sign_ingress_today, whole_sign_house (1-12, Aries lagna), graha_yuddha_with. ' +
+    'Phase 4 §6.6: bhava_chalit_house (1-12, Sripati cusps, native Bhubaneswar lagna; ' +
+    'nullable until operator runs enrich --backfill-bhava-chalit post-migration 061).',
+  supported_params:
+    '{ date?: YYYY-MM-DD; start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'planet?: string; planets?: string[]; limit?: number (default 100, max 500); ' +
+    'derived_fields?: ("dignity"|"combust"|"vargottama"|"ingress"|"yuddha"|"house"|"house_bc")[] ' +
+    '(default ALL — empty array opts out). ' +
+    'house = Whole-Sign (Parashari); house_bc = Bhava-Chalit (Sripati cusp). ' +
+    'Date range: 1900-01-01 to 2100-12-31. Out-of-range returns diagnostic row. }',
+  optimal_patterns: [
+    'Transit at LEL event: {date:"2008-04-15", planet:"Saturn"} (returns Saturn at marriage with dignity + house + combust status)',
+    'Combust check: {start_date:"2018-06-01", end_date:"2018-07-31", planet:"Mercury"} (combust_orb_deg + is_combust per day)',
+    'Current transits with full state: {} (today UTC, all 9 grahas, all derived fields)',
+    'Sign-ingress scan: {start_date:"2026-01-01", end_date:"2026-12-31", planet:"Jupiter"} (sign_ingress_today=true marks each Jupiter sign-change in the year)',
+    'Token-tight raw positions: {date:"2026-05-19", derived_fields:[]}',
+    'Bhava-Chalit sandhi check: {date:"2018-06-15", planet:"Saturn", derived_fields:["house","house_bc"]} (compare whole_sign_house vs bhava_chalit_house — if they differ, Saturn is in sandhi)',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 4C — sunrise-anchored daily panchanga
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_panchanga: RetrievalCapabilityEntry = {
+  tool_name: 'query_panchanga',
+  description:
+    'Sunrise-anchored Vedic panchanga (tithi / vara / Moon nakshatra / yoga / karana) ' +
+    'from panchanga_daily — precomputed for Bhubaneswar observer (native birth location). ' +
+    '73K rows, 1900-2100. CANONICAL SURFACE for time-quality queries — anything ' +
+    'referencing lunar phase (Purnima/Amavasya/Ekadashi), Moon-nakshatra-of-day ' +
+    '(distinct from natal Moon nakshatra), vara/day-of-week in astrological context, ' +
+    'yoga, karana, or muhurta inputs. Vara boundary is sunrise, not midnight. ' +
+    'Pairs with query_ephemeris under R-TC for any non-natal query — ephemeris gives ' +
+    'transit positions, panchanga gives time-quality.',
+  data_surface:
+    'L1 — table panchanga_daily (migration 060). Fields: date, sunrise_utc, sunrise_jd, ' +
+    'sunrise_ist, tithi (1-30), tithi_name, paksha (shukla/krishna), tithi_fraction, ' +
+    'vara, vara_lord, vara_index (0=Sun..6=Saturn), moon_nakshatra, moon_nakshatra_pada, ' +
+    'moon_longitude_deg (sidereal Lahiri at sunrise), sun_longitude_deg, yoga, yoga_index, ' +
+    'karana, karana_position_in_month, ayanamsha, observer_lat/lon/alt.',
+  supported_params:
+    '{ date?: YYYY-MM-DD; start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'tithi?: number (1-30); tithi_name?: string (e.g. "Shukla Ekadashi"); ' +
+    'paksha?: "shukla"|"krishna"; moon_nakshatra?: string; vara_lord?: string; ' +
+    'yoga?: string; karana?: string; fields?: ("tithi"|"vara"|"nakshatra"|"yoga"|"karana"|"sunrise")[] ' +
+    '(default ALL); limit?: number (default 100, max 500) }',
+  optimal_patterns: [
+    'Panchanga on a specific event: {date:"2008-04-15"} (tithi + vara + nakshatra + yoga + karana at marriage)',
+    'Current day-quality: {} (defaults to today UTC, all fields)',
+    'Next Purnima: {start_date:"2026-05-19", end_date:"2026-07-31", tithi:15, limit:5}',
+    'All Ekadashi days in 2026: {start_date:"2026-01-01", end_date:"2026-12-31", tithi:11}',
+    'Moon-in-Rohini days: {start_date:"2026-01-01", end_date:"2026-12-31", moon_nakshatra:"Rohini"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 4D — transit event search (when does X happen?)
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_transit_event: RetrievalCapabilityEntry = {
+  tool_name: 'query_transit_event',
+  description:
+    'Find WHEN transit events happen (versus query_ephemeris which is WHAT on a ' +
+    'date). Four event classes: ingress (planet enters a sign — reads ' +
+    'ephemeris_daily.sign_ingress_today from §4.B), station (planet stations ' +
+    'retrograde/direct — reads retrogrades table), aspect (transit-to-natal by ' +
+    'degree+orb — live compute via sidecar), conjunction (two transit planets ' +
+    'within orb — live compute via sidecar). Lahiri sidereal. ' +
+    'Use whenever the query asks "when next" / "when will" / "next time" / ' +
+    '"when does X enter/aspect/conjunct/station". Pairs with query_ephemeris + ' +
+    'query_panchanga under R-TC/R-PA for context; R-TE handles the search trigger.',
+  data_surface:
+    'L1 — table ephemeris_daily (sign_ingress_today column + table-backed ingress rows) + ' +
+    'table retrogrades (station_type rows from migration 016). ' +
+    'Live compute — sidecar POST /transit_search using swe.solcross/mooncross ' +
+    'for Sun/Moon, day-step + bisection root-finding for other planets. ' +
+    'Window cap ±10 years for sidecar queries.',
+  supported_params:
+    '{ event_type: "ingress"|"station"|"aspect"|"conjunction" (required); ' +
+    'start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    'planet?: string (ingress); target_sign?: string (ingress); ' +
+    'station_type?: "retrograde_start"|"retrograde_end"|"both" (station); ' +
+    'transit_planet?: string (aspect); natal_planet?: string (aspect); ' +
+    'natal_longitude_deg?: number (aspect, alternative to natal_planet); ' +
+    'aspect_degrees?: number[] (aspect, default [0,60,90,120,180]); ' +
+    'orb_deg?: number (default 1.0, max 3.0); ' +
+    'planet_a?: string + planet_b?: string (conjunction); ' +
+    'limit?: number (default 50, max 200) }',
+  optimal_patterns: [
+    'Next Jupiter sign-ingress: {event_type:"ingress", planet:"Jupiter", start_date:"2026-05-19", limit:5}',
+    'Next Jupiter into Aries: {event_type:"ingress", planet:"Jupiter", target_sign:"Aries", start_date:"2026-05-19"}',
+    'Mercury retrograde periods 2026: {event_type:"station", planet:"Mercury", start_date:"2026-01-01", end_date:"2026-12-31"}',
+    'Saturn aspects to natal Moon next 2 years: {event_type:"aspect", transit_planet:"Saturn", natal_planet:"Moon", aspect_degrees:[180,90,60,120], orb_deg:1.5}',
+    'Next Jupiter-Saturn conjunction: {event_type:"conjunction", planet_a:"Jupiter", planet_b:"Saturn", start_date:"2026-05-19", orb_deg:1.0}',
+  ],
+  cost_tier: 'medium',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 5A — surgical dasha schedule lookup (30th tool)
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_dasha_periods: RetrievalCapabilityEntry = {
+  tool_name: 'query_dasha_periods',
+  description:
+    'Surgical dasha schedule lookup (Vimshottari / Yogini / Chara). Reads ' +
+    'chart_facts dasha rows with semantic helpers for active-chain / next-N / ' +
+    "prev-N / specific-lord queries. Default empty params returns today's " +
+    'active chain row + next 3 MD-transitions. CANONICAL SURFACE for any ' +
+    'query asking about current / next / upcoming / previous dasha periods. ' +
+    'Pairs with R-DA planner rule. Distinct from temporal.dasha_context_required ' +
+    '(which returns only the active 5-level chain at one date via sidecar); ' +
+    'this tool surfaces the full schedule from chart_facts with multi-MD ' +
+    'visibility.',
+  data_surface:
+    'L1 — chart_facts table (50 dasha_vimshottari rows covering 1984-02-05 → ' +
+    '2060-08-21, plus dasha_yogini and dasha_chara categories). ' +
+    'value_json: {md_lord, ad_lord, start_date, end_date}. ' +
+    'Source: FORENSIC §5.1 (Lahiri sidereal, GAP.09 resolved — FORENSIC dates ' +
+    'are canonical over JH dates).',
+  supported_params:
+    '{ system?: "vimshottari"|"yogini"|"chara" (default vimshottari); ' +
+    'level?: "M"|"A"|"P"|"all" (default all; "M" deduplicates to one row per MD cluster); ' +
+    'as_of_date?: YYYY-MM-DD (returns active row where start_date <= d < end_date); ' +
+    'next_count?: number (returns next N MD transitions after as_of_date or today); ' +
+    'prev_count?: number (returns prev N MD transitions before as_of_date or today); ' +
+    'md_lord?: string (filter by MD lord, ILIKE); ' +
+    'ad_lord?: string (filter by AD lord, ILIKE); ' +
+    'from_date?: YYYY-MM-DD; to_date?: YYYY-MM-DD; ' +
+    'limit?: number (default 30, max 100) }',
+  optimal_patterns: [
+    "Current dasha snapshot: {} (no params; returns today's active row + next 3 MDs)",
+    'What is my next MD?: {level:"M", next_count:1}',
+    'Specific date lookup: {as_of_date:"2008-04-15"} (returns the MD/AD running at marriage)',
+    'All Mercury MD rows: {md_lord:"Mercury"} (9 ADs under Mercury MD)',
+    'Historical MD scan: {level:"M", from_date:"1984-02-05", to_date:"2030-01-01"}',
+    'Yogini schedule: {system:"yogini", next_count:3}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: true,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -638,6 +823,10 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   classical_attribution_lookup,
   multi_school_signal_lookup,
   convergence_score_lookup,
+  query_ephemeris,      // Phase 4A
+  query_panchanga,      // Phase 4C
+  query_transit_event,  // Phase 4D
+  query_dasha_periods,  // Phase 5A
 ] as const
 
 /**

@@ -11,6 +11,27 @@ import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, cit
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
+
+/** Fetch signal name + description from l25_msr_signals for a list of signal IDs.
+ *  Returns a map signal_id → snippet string. Missing IDs get empty string. */
+async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string>> {
+  if (signalIds.length === 0) return new Map()
+  try {
+    const placeholders = signalIds.map((_, i) => `$${i + 1}`).join(', ')
+    const { rows } = await query<{ signal_id: string; name: string; description: string }>(
+      `SELECT signal_id, name, description FROM l25_msr_signals WHERE signal_id IN (${placeholders})`,
+      signalIds,
+    )
+    return new Map(rows.map(r => {
+      const full = r.name
+        ? (r.description ? `${r.name} — ${r.description}` : r.name)
+        : (r.description ?? '')
+      return [r.signal_id, full.length > 295 ? full.slice(0, 294) + '…' : full]
+    }))
+  } catch {
+    return new Map()
+  }
+}
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
@@ -47,6 +68,8 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { createOrchestrator } from '@/lib/synthesis/index'
+import { CheckpointHaltError } from '@/lib/checkpoints/types'
+import type { CheckpointDashaResult } from '@/lib/checkpoints/types'
 import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { compressHistory } from '@/lib/synthesis/history_compression'
 // PipelineError import removed — citation gate no longer throws post-stream (see citation_error trace event)
@@ -68,6 +91,8 @@ import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { fakeGcsRetrieve } from '@/lib/multimodal/fake_gcs_store'
 import { extractPdf } from '@/lib/multimodal/pdf_extractor'
+import { getProjectForConversation } from '@/lib/projects'
+import { getPersonaForSynthesis } from '@/lib/personas'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
 
@@ -144,6 +169,8 @@ interface RequestBody {
   lel_context_enabled?: boolean
   /** β5: file attachment tokens from the upload flow */
   attachments?: AttachmentRef[]
+  /** R9-S3: Active persona ID for synthesis prompt injection. */
+  persona_id?: string
 }
 
 // β5: Resolve attachment tokens to ModelMessage-compatible parts.
@@ -779,6 +806,43 @@ export async function POST(request: Request) {
         reason: 'Default 2-turn window — planner did not specify.',
       }
 
+  // R9-S3: Look up persona for synthesis injection (flag-gated).
+  let personaId: string | undefined
+  let personaSystemPrompt: string | undefined
+  if (configService.getFlag('R9_PERSONAS') && body.persona_id) {
+    try {
+      const persona = await getPersonaForSynthesis(body.persona_id, user.uid)
+      if (persona && persona.system_prompt.trim().length > 0) {
+        personaId = persona.id
+        personaSystemPrompt = persona.system_prompt
+      }
+    } catch {
+      // Non-fatal: persona lookup failure does not block synthesis
+    }
+  }
+
+  // R9-S1: Look up project context for prompt injection (flag-gated).
+  let projectId: string | undefined
+  let projectSystemPromptAddition: string | undefined
+  if (configService.getFlag('R9_PROJECTS') && finalConversationId) {
+    try {
+      const project = await getProjectForConversation(finalConversationId)
+      if (project) {
+        projectId = project.id
+        if (project.system_prompt_addition && project.system_prompt_addition.trim().length > 0) {
+          projectSystemPromptAddition = project.system_prompt_addition
+        }
+        if (project.chart_id) {
+          // chart_id retrieval deferred to R9-S2+
+          // Trace: project_chart_retrieval deferred
+          void project.chart_id // referenced to avoid lint unused-var
+        }
+      }
+    } catch {
+      // Non-fatal: project lookup failure does not block synthesis
+    }
+  }
+
   const orchestrator = createOrchestrator({ panel_opt_in: panelOptIn })
   const synthesisRequest = {
     query: queryText,
@@ -808,6 +872,13 @@ export async function POST(request: Request) {
     abortSignal: request.signal,
     // γ7: wire text-delta accumulator for stream-resume (pending_streams).
     onTextDelta: (d: string) => pendingStreamWriter.onTextDelta(d),
+    // R9-S3: Persona context (populated when MARSYS_FLAG_R9_PERSONAS=true and persona_id provided).
+    ...(personaId ? { persona_id: personaId } : {}),
+    ...(personaSystemPrompt ? { persona_system_prompt: personaSystemPrompt } : {}),
+    // R9-S1: Project context (populated when MARSYS_FLAG_R9_PROJECTS=true and
+    // conversation belongs to a project with a non-empty system_prompt_addition).
+    ...(projectId ? { project_id: projectId } : {}),
+    ...(projectSystemPromptAddition ? { project_system_prompt_addition: projectSystemPromptAddition } : {}),
     // AUDIT_ENABLED retired BHISMA-B1 §6.2: always-on; flag removed from type union.
     onAuditEvent: createAuditConsumer({
       query_text: queryText,
@@ -819,6 +890,25 @@ export async function POST(request: Request) {
     }),
   }
   let { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+    // §5C: CheckpointHaltError from checkpoint_dasha (or other checkpoints with FAIL_HARD).
+    // Not a provider error — do NOT attempt the QG6.1 model fallback.
+    // Return HTTP 422 immediately with structured violation detail.
+    if (primaryErr instanceof CheckpointHaltError) {
+      const dashaResult = primaryErr.result as CheckpointDashaResult
+      const violations = (dashaResult.claims ?? [])
+        .filter(c => c.verdict === 'halt')
+        .map(c => ({ span: c.span, lord: c.lord, temporal: c.temporal, violation: c.violation }))
+      return NextResponse.json(
+        {
+          error: 'VALIDATOR_FAILURE',
+          validator: primaryErr.checkpoint_id,
+          violations,
+          retry_count: 2,
+          message: `Synthesis violated DASHA DISCIPLINE GATE after 2 retries. The dasha schedule for this chart is in chart_facts category='dasha_vimshottari'; refetch via query_dasha_periods.`,
+        },
+        { status: 422 },
+      ) as unknown as Awaited<ReturnType<typeof orchestrator.synthesize>>
+    }
     // QG6.1 synthesis fallback: on provider error (429, 5xx, timeout), retry once
     // with the stack's fallback synthesis model. Only attempt if fallback differs from primary.
     const fallbackId = stackSynthFallback
@@ -893,6 +983,7 @@ export async function POST(request: Request) {
       // The seq is used by the resume endpoint to skip already-received events.
       pendingStreamWriter.onEvent()
       writer.merge(result.toUIMessageStream({
+        sendReasoning: true,  // R9: forward AI SDK reasoning parts to V2's ReasoningProgress
         originalMessages: messages,
         generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
         messageMetadata: ({ part }: { part: { type: string } }) => {
@@ -1152,14 +1243,16 @@ export async function POST(request: Request) {
           .map(p => p.text)
           .join('') ?? ''
         if (lastAssistantText) {
-          for (const c of extractCitations(lastAssistantText)) {
+          const citations = extractCitations(lastAssistantText)
+          const msrSnippets = await fetchMsrSnippets(citations.map(c => c.signal_id))
+          for (const c of citations) {
             writer.write({
               type: 'data-citation',
               data: citationPart({
                 index: c.index,
                 signal_id: c.signal_id,
                 layer: c.layer,
-                snippet: c.snippet,
+                snippet: msrSnippets.get(c.signal_id) ?? '',
               }),
             })
           }
