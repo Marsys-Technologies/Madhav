@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.26
+version: 5.27
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.27 (2026-05-20, PANCHANG-ENRICH-GOVCLOSE):
+    **CONCURRENT WORKSTREAM — Phase 4C chat-side enrichment merged to main via PR #110 (merge SHA 9bdcac24). Governance close only; no macro-phase change.**
+    Key outcomes: (1) CLAUDE.md §E Phase 4C entry updated — enrichment line appended (migration 069, 5 enrichment field groups, PLANNER_PROMPT v2.0.7 R-PA/(f)+(g) + R-PCI, bootstrap writer; post-merge operator steps PENDING). (2) SESSION_LOG appended (this entry). (3) No mirror pair touched — app code + planner prompt only; no Gemini-side mirror update required.
+    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C.4 CLOSED | 4C.5 CLOSED | 4C.6 CLOSED | 4C.7 CLOSED | 4C.8 CLOSED | 4C.9 CLOSED — WAVE 1 COMPLETE. ENRICHMENT SHIPPED (PR #110).
+    last_session_id (4C stream): PANCHANG-ENRICH-GOVCLOSE. next_session_id (4C stream): N/A — pending operator bootstrap runbook.
+    next_session_objective: "Operator applies migration 069 + runs bootstrap rebuild + staging swap. Wave 2 queue (M5-A, 4B, 4D) continues independently."
+    file_updated_at: 2026-05-20T18:30:00+05:30. file_updated_by_session: PANCHANG-ENRICH-GOVCLOSE.
   - v5.26 (2026-05-20, 4C-9):
     **CONCURRENT WORKSTREAM 4C-9 CLOSED. Wave 1 close: polish pass, Observatory panels, IS.8(b) red-team 5/5 PASS, CLAUDE.md v2.7, Phase 4C close artifact, PANCHANG_DAILY CURRENT_ENGINE_DIRECT, queue closed.**
     Key outcomes: (1) AC.4C9.1 PASS — polish pass (h-8→h-10 touch targets; deferred items in PHASE_4C_FOLLOWUPS_v1_0.md). (2) AC.4C9.2 PASS — PanchangLatencyPanel + PanchangCachePanel added to Observatory dashboard; 151 TS tests PASS. (3) AC.4C9.3 PASS — IS.8(b) red-team 5/5: RT.4C.1 WARN-acceptable (minor UI formatting, not engine logic); RT.4C.2-5 PASS; finding docs at 00_ARCHITECTURE/RED_TEAM/RT_4C_*_FINDING.md. (4) AC.4C9.4 PASS — all validators exit 0: schema_validator, drift_detector, mirror_enforcer, validate_queue.py. (5) AC.4C9.5 PASS — CLAUDE.md v2.7: Conductor added as sixth concurrent workstream; "Five workstreams" → "Six workstreams"; Phase 4C status updated to WAVE_1_COMPLETE_PENDING_PR; MP.1 mirror to .geminirules propagated same-session; mirror_enforcer exit 0. (6) AC.4C9.6 PASS — PHASE_4C_CLOSE_v1_0.md authored (432 total tests; 30/30 Drik parity; RT 5/5; deferred items; sub-phase commit index). (7) AC.4C9.7 PASS — PANCHANG_DAILY_v1_0 status IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT in CAPABILITY_MANIFEST.json; MP.2 mirror to .gemini/project_state.md propagated. (8) AC.4C9.8 PASS — CURRENT_STATE v5.26; Wave 1 close summary; next_session_objective = native opens split PR per HANDOFF_WAVE_1.md. (9) AC.4C9.9 PASS — SESSION_LOG appended. (10) AC.4C9.10 PASS — session_queue.yaml: 4C-9 → passed; Wave 1 closing marker added. (11) AC.4C9.11 PASS — HANDOFF_WAVE_1.md authored at worktree root. (12) AC.4C9.12 PASS — brief flipped COMPLETE; FINAL_SUMMARY emitted.

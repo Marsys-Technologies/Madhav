@@ -226,7 +226,7 @@ def _check_existing_rows(db_url: str, build_id: str) -> int | None:
     with psycopg2.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT DISTINCT build_id, COUNT(*) FROM panchanga_daily GROUP BY build_id"
+                "SELECT DISTINCT build_id, COUNT(*) FROM panchanga_daily_staging GROUP BY build_id"
             )
             rows = cur.fetchall()
 
@@ -236,14 +236,14 @@ def _check_existing_rows(db_url: str, build_id: str) -> int | None:
     for existing_build_id, count in rows:
         if existing_build_id == build_id:
             logger.info(
-                "panchanga_daily already has %d rows for build_id=%s; skipping.",
+                "panchanga_daily_staging already has %d rows for build_id=%s; skipping.",
                 count, build_id,
             )
             return count
         raise RuntimeError(
-            f"panchanga_daily already has {count} rows for build_id={existing_build_id!r}. "
+            f"panchanga_daily_staging already has {count} rows for build_id={existing_build_id!r}. "
             f"Refusing to overwrite with build_id={build_id!r}. "
-            "Delete the existing rows manually before re-running."
+            "Truncate panchanga_daily_staging manually before re-running."
         )
 
     return None
