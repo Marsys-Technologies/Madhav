@@ -80,14 +80,15 @@ Rationale: the toggle works correctly (badge hidden at false = the normal non-de
 
 Revisit trigger: if NIM degradation becomes frequent enough that the rebuild-to-flip latency causes real operator pain, implement the runtime health path then (design notes can start from the close-out prompt's Phase 4 spec).
 
-## Outstanding operator items (not blocking close-out)
+## Outstanding operator items (updated 2026-05-20 closeout-residuals)
 
-1. **Embedding backfill** — run `platform/scripts/backfill_conversation_embeddings.ts`
-   via Cloud SQL proxy to populate historical conversation embeddings.
-2. **Pre-existing test failures** — 9 stale test files; fix in dedicated follow-up sessions
-   (disposition per `KNOWN_PRE_EXISTING_FAILURES.md`).
-3. **Phase 4C Wave 2** — `feature/phase-4c-panchang` Wave 2 scope (4B sunrise derivation,
-   4D follow-up) pending separate planning session.
+1. **Embedding backfill** — **COMPLETE (2026-05-20)**. Script bug fixed (SQL column
+   `cm.content` → `jsonb_array_elements(parts_json)`). 73/73 messages embedded, 0 errors.
+   See `BACKFILL_RUN_REPORT.md`. `BACKFILL_SCRIPT_NOT_FOUND.md` → v2.0 RESOLVED.
+2. **Pre-existing test failures** — **COMPLETE (2026-05-20)**. All 9 stale test files
+   triaged: 8 fixed, 1 deleted. Suite: 333 files pass / 0 fail.
+   See `KNOWN_PRE_EXISTING_FAILURES.md` v1.2.
+3. **Phase 4C Wave 2** — pending separate planning session (unchanged).
 
 ---
 
