@@ -67,7 +67,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "npx jest --testPathPattern='StillWorking|stillWorking|still-working|AssistantMessage' --passWithNoTests"
     commit_template: "feat(chat-v2): still-working indicator after 25s of streaming silence"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T09:30:00Z"
 
   - id: X-S5
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/X-S5-skeleton-loaders.md

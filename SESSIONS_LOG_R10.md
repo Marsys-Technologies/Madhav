@@ -59,3 +59,17 @@ Added `useStarredCitations(conversationId)` hook backed by localStorage (`marsys
 **Amendments:** A2 (click-path documented, hook tests verify persistence chain) | A3 (FLAGLESS)
 
 ---
+
+## X-S4 — Still-Working Indicator
+
+**Status:** COMPLETED  
+**Commit:** c6be14b  
+**Completed:** 2026-05-20T09:30:00Z
+
+Created `StillWorkingIndicator.tsx` component. Shows animated dots + elapsed seconds after 25s of continuous streaming (`isStreaming && elapsed > 25s`). Auto-hides when streaming ends. `aria-live="polite"` for screen readers. Wired in `V2Message` (ConsumeChatV2) above `MessagePrimitive.Parts`. 7 new tests using `StreamingShell` parent context wrapper + fake timers — all pass.
+
+**Click-path:** Long query → streaming > 25s → "Still working… (Ns)" indicator appears → stream ends → indicator disappears.
+
+**Amendments:** A2 (parent-context test with StreamingShell + fake timers, click-path documented) | A3 (FLAGLESS)
+
+---
