@@ -151,3 +151,33 @@ executor: Claude Code (autonomous, native-authorized)
 - **BACKFILL_SCRIPT_NOT_FOUND.md:** Written ✓
 - **Cloud SQL proxy:** Left running (pre-existing process PID 87661; not started by this session)
 - **STATUS: COMPLETE ✓**
+
+---
+
+## Post-Merge Remediation — R9-S1/S3/S4 Integration Gaps (2026-05-20)
+
+Session: `chat-v2/r9-integration-remediation` branch, PR #103.
+
+**Trigger:** Post-operator-close-out verification revealed that R9-S1 (Projects sidebar),
+R9-S3 (Personas picker), and R9-S4 (InlineToolFlow) were not visible on production
+despite server-side flags being enabled.
+
+**Findings:** Two gap patterns:
+1. `NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS` and `NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW` were absent
+   from `deploy.yml` `build-args` → Next.js baked them as `false` in the client bundle.
+2. `activePersonaId`/`onPersonaChange` props were never threaded from `V2PrefsCtx` into
+   `V2BottomBar` → ModelStylePicker persona group never rendered (guarded on `onPersonaChange` being set).
+
+**Fixes applied:**
+- `deploy.yml`: added `NEXT_PUBLIC_MARSYS_FLAG_R9_{PROJECTS,PERSONAS,TOOL_FLOW}=true` to `build-args`
+- `ConsumeChatV2.tsx`: added `activePersonaId` state to `V2PrefsCtxValue`; threaded to `V2BottomBar`
+  → `ModelStylePicker`; added `persona_id` to runtime body closure
+- 12 unit tests added; 0 new regressions
+
+**FEEDBACK MEMORY CANDIDATE — to inform future autonomous stream completion claims:**
+> Autonomous stream completion claims must include "is the new component mounted somewhere
+> a user will see it" as a verifiable AC, not just "does the file exist." Specifically:
+> (1) Is `NEXT_PUBLIC_*` build-arg in `deploy.yml` for any client component using `process.env.NEXT_PUBLIC_*`?
+> (2) Is the optional prop that gates rendering actually passed from the parent/context?
+
+**STATUS: PR #103 open — ready for native review and merge.**
