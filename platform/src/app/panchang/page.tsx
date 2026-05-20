@@ -15,7 +15,7 @@
 import { Suspense } from 'react'
 import { format } from 'date-fns'
 import { PanchangClientView } from './components/PanchangClientView'
-import { mapSidecarResponse } from './hooks/usePanchangDay'
+import { mapSidecarResponse } from '@/lib/panchang/sidecar_mapper'
 import type { SearchParams } from 'next/dist/server/request/search-params'
 
 // Default location: Bhubaneswar (per brief D1 decisions + query_panchanga.ts constants)
