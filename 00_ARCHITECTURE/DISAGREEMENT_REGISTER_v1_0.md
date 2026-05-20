@@ -796,3 +796,126 @@ disagreement_register_entry:
     - path: 00_ARCHITECTURE/PHASE_M3_PLAN_v1_0.md
       linkage: cause
 ```
+
+## DIS.013 — Muntha value conflict: MSR.377 (Gemini/Virgo) vs FORENSIC §22 (Libra 7H)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.013
+  class: version_disagreement
+  opened_on: 2026-05-20
+  opened_by_session: Cowork_DailyConvergence_2026-05-20
+
+  parties: [MSR_v3_0, FORENSIC_v8_0]
+  description: >
+    SIG.MSR.377 ("Tajika — Muntha Position at Age 42 (2026)") is internally self-contradictory
+    AND disagrees with canonical L1. Its signal_name asserts "Muntha in Gemini 3H," while its own
+    supporting_rules and falsifier compute "Muntha = Virgo 6H," whereas FORENSIC §22 (canonical L1)
+    records VRS.MUNTHA.SIGN = Libra (7th House), Muntha-lord Venus. A three-way conflict on a single
+    canonical value. Surfaced during a daily transit-convergence reading when an external system
+    cited MSR.377's "Gemini 3H" value as a load-bearing pillar of a recommendation. Cannot be
+    silently resolved: MSR.377 is self-contradictory and a downstream consumer already relied on
+    the wrong value.
+  authoritative_side: none   # L1 FORENSIC is authoritative by B.1/B.8 precedence; recorded in resolution.
+  evidence_side_a:
+    source: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md (SIG.MSR.377)
+    excerpt: "signal_name: '...Muntha in Gemini 3H...'  /  supporting_rules + falsifier: 'age 42 = Muntha = Virgo 6H'"
+    sha256: 2459233c9de874ce60d39f53b80d70b465eda0ce01c807980b990b914ea9baad
+  evidence_side_b:
+    source: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md (§22)
+    excerpt: "VRS.MUNTHA.SIGN | Muntha | Libra (7th House); VRS.MUNTHA.LORD | Muntha Lord | Venus"
+    sha256: 5142ea52aea949b0a80ff05f0a330a7414d80bbb70b5e4cf7ef5c5998b2d6bc6
+
+  arbitration_steps_taken:
+    - step: reconciler_resolution
+      result: >
+        Recomputed Muntha. Aries Lagna at birth = Muntha Aries (age 0); Muntha advances one sign
+        per completed year. Age 42 → Aries + (42 mod 12 = 6) signs = Libra (7th house). FORENSIC §22
+        (Libra 7H, lord Venus) is correct; the date-centric matrix line "2026–2027 (Muntha Libra)"
+        independently agrees. MSR.377 is wrong in BOTH its signal_name (Gemini) and its body (Virgo).
+        L1 FORENSIC is authoritative per B.8; treat Muntha = Libra 7H. MSR.377 requires correction in
+        a proper execution session with schema_validator before close.
+      timestamp: 2026-05-20
+      session_id: Cowork_DailyConvergence_2026-05-20
+
+  status: open
+  resolution: >
+    PENDING FIX. FORENSIC §22 (Libra 7H, Venus) confirmed authoritative. Required remediation:
+    correct SIG.MSR.377 signal_name and supporting_rules/falsifier to "Muntha = Libra 7H, lord Venus,"
+    re-derive its interpretive note (7H/partnership-axis annual focus, not 3H), and re-run drift/schema
+    validators. Logged-only in this Cowork session; no canonical L1/L2.5 file was edited here.
+  resolved_on: null
+  resolved_by_session: null
+
+  state_hashes:
+    side_a_before: 2459233c9de874ce60d39f53b80d70b465eda0ce01c807980b990b914ea9baad
+    side_a_after: null
+    side_b_before: 5142ea52aea949b0a80ff05f0a330a7414d80bbb70b5e4cf7ef5c5998b2d6bc6
+    side_b_after: null
+
+  linked_artifacts:
+    - path: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
+      linkage: remediation
+    - path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+      linkage: evidence
+    - path: 025_HOLISTIC_SYNTHESIS/RM_v2_0.md
+      linkage: evidence          # RM.19 BB-progression-to-Gemini is correct and independent of the Muntha error
+```
+
+## DIS.014 — CGM edge error: Mars dignity in Libra mislabeled as "debilitation"
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.014
+  class: output_conflict
+  opened_on: 2026-05-20
+  opened_by_session: Cowork_DailyConvergence_2026-05-20
+
+  parties: [CGM_v9_0, classical-dignity]
+  description: >
+    The CGM edge annotation on DVS.D1.MARS → DVS.D9.MARS reads
+    "dignity_shift: debilitated → neutral (D1 Libra is Mars debilitation; D9 Pisces is neutral)."
+    This is astronomically false: Mars's debilitation sign is Cancer, not Libra. Libra is ruled by
+    Venus and is a neutral/enemy sign for Mars — not a debilitation. Noticed during a D9 / Pushkara
+    review of natal Mars. Cannot be silently resolved because the false dignity premise feeds
+    downstream D9 reasoning chains.
+  authoritative_side: n/a
+  evidence_side_a:
+    source: 025_HOLISTIC_SYNTHESIS/CGM_v9_0.md (edge DVS.D1.MARS→DVS.D9.MARS, ~line 3237)
+    excerpt: "dignity_shift: 'debilitated → neutral (D1 Libra is Mars debilitation; D9 Pisces is neutral)'"
+    sha256: 6ce049970f35803ce60fb3b7c2eb720faac6f386fb4662486941ef2f1a730dc4
+  evidence_side_b:
+    source: classical dignity (BPHS) + FORENSIC §3.5
+    excerpt: "Mars debilitation = Cancer; Mars exaltation = Capricorn; Libra (Venus-ruled) = neutral/enemy for Mars. FORENSIC D9.MARS = Pisces (Jupiter-ruled, friend-sign), confirmed."
+    sha256: 5142ea52aea949b0a80ff05f0a330a7414d80bbb70b5e4cf7ef5c5998b2d6bc6
+
+  arbitration_steps_taken:
+    - step: reconciler_resolution
+      result: >
+        Mars is NOT debilitated in Libra. The correct D1→D9 dignity shift for Mars is
+        "neutral/enemy (Libra, Venus-ruled) → friend-sign (Pisces, Jupiter-ruled)." The node sign
+        values (D1 Libra, D9 Pisces) are correct; only the dignity label is wrong. Substantively
+        favorable for the dharma reading — Mars's D9 expression is friendly/dharmic, not debilitated.
+      timestamp: 2026-05-20
+      session_id: Cowork_DailyConvergence_2026-05-20
+
+  status: open
+  resolution: >
+    PENDING FIX. Correct the CGM edge dignity_shift annotation to
+    "neutral/enemy (Libra) → friend-sign (Pisces)." Sign placements unaffected. Logged-only in this
+    Cowork session; CGM not edited here.
+  resolved_on: null
+  resolved_by_session: null
+
+  state_hashes:
+    side_a_before: 6ce049970f35803ce60fb3b7c2eb720faac6f386fb4662486941ef2f1a730dc4
+    side_a_after: null
+    side_b_before: null
+    side_b_after: null
+
+  linked_artifacts:
+    - path: 025_HOLISTIC_SYNTHESIS/CGM_v9_0.md
+      linkage: remediation
+    - path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+      linkage: evidence
+```

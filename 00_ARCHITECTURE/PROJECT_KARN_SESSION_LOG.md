@@ -1546,3 +1546,9 @@ First M3 session name: KARN-W9-M3-OPEN
 ═══════════════════════════════════════════════════
 
 ---
+
+## marsys-manifest-audit (scheduled, 2026-05-21)
+- entry_count fix: already correct (163 = 163, no change applied)
+- fingerprint mismatches: 12
+- missing files: 0
+- report: 00_ARCHITECTURE/MANIFEST_AUDIT_v1_0.md
