@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF_PSHIP_S5H_v1_0.md
 type: CLAUDECODE_BRIEF
 version: 1.0
-status: READY
+status: COMPLETE
 authored_by: Cowork 2026-05-20
 session_id: PSHIP-S5H
 session_name: PSHIP-S5H — Verification: key-enforced smoke + planner probe + GO/NO-GO + PR prep

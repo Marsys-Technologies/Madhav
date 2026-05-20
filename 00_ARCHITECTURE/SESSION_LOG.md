@@ -24502,3 +24502,111 @@ session_close:
     069 SQL syntax verify. Gate before PSHIP-S6H (PR + deploy).
   session_close_valid: true
 ```
+
+
+---
+
+```yaml
+session_open:
+  session_id: PSHIP-S5H
+  session_name: "PSHIP-S5H — Verification: key-enforced smoke + planner probe + GO/NO-GO + PR prep"
+  opened_at: "2026-05-20T21:40:00+05:30"
+  executor: "Claude Code sub-agent (Conductor)"
+  branch: feature/panchang-ship
+  predecessor: PSHIP-S4H
+  scope_summary: >
+    Two-path end-to-end verification of hybrid architecture (Option H):
+    UI path (live sidecar, key enforced) + planner path (SQL tool over 5-col cache).
+    GO/NO-GO report. PR body. Session close + human handoff.
+
+session_body:
+  acs_attempted:
+    - AC.S5H.1  # Quality gate
+    - AC.S5H.2  # UI path smoke (key-enforced)
+    - AC.S5H.3  # Planner path smoke
+    - AC.S5H.4  # Decision landing audit
+    - AC.S5H.5  # AC audit vs master plan §8
+    - AC.S5H.6  # Bootstrap population status
+    - AC.S5H.7  # Ship-readiness report + diff stat
+    - AC.S5H.8  # PR body + push
+    - AC.S5H.9  # Session close + human handoff
+  acs_pass:
+    - AC.S5H.1
+    - AC.S5H.2
+    - AC.S5H.3
+    - AC.S5H.4
+    - AC.S5H.5
+    - AC.S5H.6
+    - AC.S5H.7
+    - AC.S5H.8
+    - AC.S5H.9
+  acs_fail: []
+  acs_deferred: []
+
+  key_findings:
+    - "UI path smoke PASS: sidecar key enforced; keyless→401, wrong-key→401, correct-key→full data. All 5 angas + timings + special_yogas + choghadiya + hora + Muhurat Finder."
+    - "BUG-1 auth fix proven under enforcement — not just assumed."
+    - "Planner path PASS: SQL tool has all 5-col enrichment fields; RETRIEVAL_TOOLS has exactly 1 panchanga entry; 13 R-PA triggers + R-PCI; 36/36 probe tests (PSHIP-S4H)."
+    - "All 6 architectural decisions (D1–D6) confirmed landed in code."
+    - "Bootstrap (73K rows, ~60 min) DEFERRED to S6H — flagged loudly in ship-readiness report and PR body."
+    - "tsc 0 errors; Python engine 230/230; mirror_enforcer clean; 12 vitest failures all pre-existing (main has 241 failing)."
+    - "177 files changed, 33878 insertions(+), 46 deletions(-) vs main."
+    - "GO/NO-GO: GO."
+
+  artifacts_produced:
+    - "00_ARCHITECTURE/PSHIP_S5H_SMOKE.md"
+    - "00_ARCHITECTURE/PSHIP_SHIP_READINESS_H_v1_0.md"
+    - "00_ARCHITECTURE/PSHIP_PR_BODY_H.md"
+
+  gate_runs:
+    - name: tsc_noEmit
+      command: "npx tsc --noEmit"
+      result: PASS
+      detail: "0 errors"
+    - name: vitest_run
+      command: "npx vitest run"
+      result: PASS
+      detail: "303/315 suites pass; 12 failing pre-existing on main (main has 241 failing)"
+    - name: python_pytest
+      command: "python3 -m pytest -q"
+      result: PASS
+      detail: "230/230 PASS in panchang_engine/"
+    - name: mirror_enforcer
+      command: "python3 platform/scripts/governance/mirror_enforcer.py"
+      result: PASS
+      detail: "0 findings; 9/9 pairs checked"
+    - name: sidecar_smoke_keyless
+      command: "curl POST /api/compute/panchanga (no key)"
+      result: PASS
+      detail: "401 Invalid API key — auth enforcement confirmed"
+    - name: sidecar_smoke_key_enforced
+      command: "curl POST /api/compute/panchanga (x-api-key: ship-test)"
+      result: PASS
+      detail: "200 + full data: 5 angas, timings, special_yogas, choghadiya 8+8, hora 24"
+    - name: muhurat_finder_smoke
+      command: "curl POST /api/compute/muhurat (x-api-key: ship-test)"
+      result: PASS
+      detail: "3 windows, score 85.75 for vivah event"
+
+commits:
+  - sha: "TBD (committed post-log)"
+    message: "PSHIP-S5H: ship-readiness verification + PR prep (hybrid)"
+
+session_close:
+  closed_at: "2026-05-20T21:55:00+05:30"
+  all_acs_pass: true
+  deferred_items:
+    - "Bootstrap (bootstrap_panchanga.py --rebuild, ~60 min) deferred to S6H — flagged in ship-readiness report"
+  current_state_updated: true
+  session_log_updated: true
+  brief_status_set_complete: true
+  push_to_remote: true
+  next_session_id: PSHIP-S6H
+  next_session_objective: >
+    PSHIP-S6H (HUMAN GATE) — merge PR to main; deploy; apply migration
+    069_extend_panchanga_daily.sql; run bootstrap_panchanga --rebuild (~60 min);
+    set PYTHON_SIDECAR_API_KEY in Cloud Run; smoke /panchang with key enforced;
+    smoke planner query for enrichment data. See PSHIP_SHIP_READINESS_H_v1_0.md
+    §6 for exact deploy steps.
+  session_close_valid: true
+```

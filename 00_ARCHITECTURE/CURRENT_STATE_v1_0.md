@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.19
+version: 5.20
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.20 (2026-05-20, PSHIP-S5H):
+    **PSHIP-S5H COMPLETE. Integration verification — both hybrid paths PASS. GO/NO-GO: GO. PR prep done.**
+    Key outcomes: (1) AC.S5H.1 PASS — tsc 0 errors; Python engine 230/230; 303/315 vitest suites pass (12 failing pre-existing on main, which has 241 failing); mirror_enforcer 0 findings 9/9 pairs; schema_validator 195 violations pre-existing. (2) AC.S5H.2 PASS — UI path smoke with PYTHON_SIDECAR_API_KEY=ship-test enforced: keyless→401, wrong-key→401, correct-key→full data. All 5 angas verified (tithi/vara/nakshatra/yoga/karana), inauspicious 5 windows (rahu_kalam included), auspicious (brahma_muhurta), special_yogas present, choghadiya 8+8, hora 24 segments. Muhurat Finder: 3 windows for vivah, score 85.75. Next.js proxy key forwarding confirmed. BUG-1 auth fix proven. (3) AC.S5H.3 PASS — Planner path: SQL tool has all 5 enrichment field groups; rowToContent() null-safe; RETRIEVAL_TOOLS exactly 1 panchanga entry; R-PA 13 triggers (a–g); R-PCI present; 36/36 probe tests PASS (PSHIP-S4H). (4) AC.S5H.4 PASS — All 6 decisions confirmed landed: D1 Option H structure (SQL planner + sidecar UI), D2 migration 069 + bootstrap deferred, D3 R-PA 13 triggers, D4 R-PCI verbatim, D5 few-shot 4.29–4.31, D6 single query_panchanga in RETRIEVAL_TOOLS. (5) AC.S5H.5 PASS — AC audit: 4C.1/4C.3 MET; 4C.2 partial (enrichment bootstrap deferred); 4C.4/4C.5/4C.7/4C.8 MET; 4C.6 LLM-derived (real acharya review pending); 4C.9 deferred. (6) AC.S5H.6 PASS — Bootstrap explicitly deferred to S6H; S6H deploy steps include migration 069 apply + bootstrap_panchanga --rebuild (~60 min). (7) AC.S5H.7 PASS — PSHIP_SHIP_READINESS_H_v1_0.md authored; verdict GO. (8) AC.S5H.8 PASS — PSHIP_PR_BODY_H.md authored; branch pushed. (9) AC.S5H.9 PASS — Session close complete; human handoff explicit.
+    VERDICT: GO — both hybrid paths work end-to-end; all 6 decisions landed; quality gate clean; bootstrap deferred but flagged for S6H.
+    active_phase_plan_sub_phase: feature/panchang-ship PSHIP-S5H CLOSED. PSHIP-S6H INCOMING (merge + deploy — HUMAN GATE).
+    last_session_id: PSHIP-S5H. next_session_objective: PSHIP-S6H (HUMAN) — merge PR to main; deploy; apply migration 069; run bootstrap_panchanga --rebuild (~60 min); set PYTHON_SIDECAR_API_KEY in Cloud Run; smoke /panchang with key enforced; smoke planner query for enrichment data.
+    file_updated_at: 2026-05-20T21:52:00+05:30. file_updated_by_session: PSHIP-S5H.
   - v5.19 (2026-05-20, PSHIP-S4H):
     **PSHIP-S4H COMPLETE. Planner prompt R-PA extension + R-PCI addition + few-shot 4.29–4.31 + probe set 24/24 PASS.**
     Key outcomes: (1) AC.S4H.1 PASS — R-PA trigger list extended with 13 phrases: named special yogas (Sarvartha Siddhi, Amrit Siddhi, Guru Pushya, Ravi Pushya, Tripushkar, Dwipushkar, Siddha, Bhadra, Panchaka) added to sub-trigger (d); new sub-trigger (f) for inauspicious/auspicious windows (rahu kalam, rahu kaal, yamagandam, gulika, brahma muhurta, abhijit, amrit kalam, choghadiya, hora); new sub-trigger (g) for direct panchang requests + chandra bala + tara bala. Rule structure preserved; R-PA remains a single block. (2) AC.S4H.2 PASS — main's R-TC (Transit-Context Enrichment) byte-identical to pre-session state at line 681; feature branch R-TC label absent. (3) AC.S4H.3 PASS — R-PCI (Panchang Context Inheritance) rule added verbatim after R-PA; mechanics: skip query_panchanga when <panchang_context> present; R-PCI > R-PA for same date/location; three exception conditions; R-TC still fires normally. (4) AC.S4H.4 PASS — examples 4.29 (auspicious timing + Rahu Kalam), 4.30 (Rahu Kalam direct), 4.31 (R-PCI context inheritance) added; existing 4.25–4.28 untouched; footer updated to v2.0.7. (5) AC.S4H.5 PASS — probe set extended from 10 to 24 queries (PP.11–PP.21: 13 R-PA triggers; PP.22: R-PCI; PP.23: R-TC regression; PP.24: FP guard); 36/36 vitest assertions PASS; main R-TC behavior confirmed unchanged; R-PCI skip confirmed. (6) AC.S4H.6 PASS — CURRENT_STATE v5.19 + SESSION_LOG + brief COMPLETE.

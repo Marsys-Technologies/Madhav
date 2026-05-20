@@ -126,7 +126,7 @@ entries:
   push_to_remote: false
   gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform && npx tsc --noEmit
     && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip
-  status: pending
+  status: passed
   human_decision_prompt: null
   approved_by: native
   approved_at: '2026-05-20'
@@ -143,7 +143,7 @@ entries:
     && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd
     /Users/Dev/Vibe-Coding/Apps/PanchangShip && python3 platform/scripts/governance/schema_validator.py
     && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
-  status: pending
+  status: passed
   human_decision_prompt: null
 human_decision_prompt_PSHIP-S4H: 'Approve PSHIP-S4H planner change: extend R-PA with
   13 triggers, add R-PCI, renumber few-shot, leave main''s R-TC untouched.'

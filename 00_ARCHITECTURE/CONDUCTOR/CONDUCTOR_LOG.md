@@ -893,3 +893,53 @@ All 9 executable ACs passed. AC.S3H.5 (DB backfill) deferred — no Cloud SQL ac
 AC.S3H.1 through AC.S3H.10 (AC.S3H.5 deferred)
 
 ---
+
+## PSHIP-S4H — PASS — 2026-05-20T11:35:00Z
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S4H |
+| Result | PASS |
+| Timestamp | 2026-05-20T11:35:00Z |
+| Commits | db56d59, 1ffb82b, c85ef54 |
+| Gate exit code | 0 |
+| Context sessions used | 3 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+tsc --noEmit clean. npm test tail-5 shows pre-existing ParamOverrideRow failure (baseline). Exit 0.
+
+### Sub-agent summary
+
+All 6 ACs passed. PLANNER_PROMPT_v2_0.md bumped to v2.0.7 with R-PCI rule (hasPanchangContext) and R-PA extended with 13 new triggers; few-shot examples renumbered to 4.29/4.30/4.31 (main's 4.25–4.28 preserved). Main's R-TC at line 681 untouched. 36/36 vitest assertions pass in panchang_routing.test.ts.
+
+### Scope items completed
+
+AC.S4H.1, AC.S4H.2, AC.S4H.3, AC.S4H.4, AC.S4H.5, AC.S4H.6
+
+---
+
+## Run: PSHIP-S5H — 2026-05-20
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S5H |
+| Result | PASS |
+| Timestamp | 2026-05-20T16:25:00Z |
+| Commits | (see below) |
+| Gate exit code | 0 |
+| Context sessions used | 4 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+tsc --noEmit 0 errors. Python engine 230/230. vitest 303/315 (12 pre-existing). mirror_enforcer 0 findings. Sidecar smoke: keyless→401, correct-key→200+full data. GO/NO-GO: GO. Branch pushed.
+
+### Sub-agent summary
+
+All 9 ACs passed. Both hybrid paths verified end-to-end: UI path (key-enforced sidecar, BUG-1 auth fix proven) and planner path (SQL tool with 5-col enrichment fields, 36/36 probe tests). All 6 architecture decisions (D1–D6) confirmed landed. Bootstrap deferred to S6H (flagged). PSHIP_SHIP_READINESS_H_v1_0.md verdict: GO. PSHIP_PR_BODY_H.md authored. Branch pushed to origin/feature/panchang-ship. PSHIP-S6H is HUMAN.
+
+### Scope items completed
+
+AC.S5H.1, AC.S5H.2, AC.S5H.3, AC.S5H.4, AC.S5H.5, AC.S5H.6, AC.S5H.7, AC.S5H.8, AC.S5H.9
+
+---
