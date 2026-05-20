@@ -89,3 +89,17 @@ Created `SidebarSkeleton.tsx` (6 animate-pulse rows, aria-hidden) and `HeaderSke
 **Amendments:** A2 (SidebarShell + HeaderShell parent-context wrappers in tests, click-path documented) | A3 (FLAGLESS)
 
 ---
+
+## X-S6 — Auto-Scroll Discipline
+
+**Status:** COMPLETED  
+**Commit:** 7473cdd  
+**Completed:** 2026-05-20T09:07:00Z
+
+Created `useScrollDiscipline.ts` hook with IntersectionObserver on a bottom sentinel element. Sentinel's closest `[data-testid="v2-thread-viewport"]` is used as `root`, so visibility detection is relative to the scroll container. `ScrollToBottomButton` updated with optional `unreadCount` prop — shows "N new" label and adjusts layout when count > 0. `V2ScrollDiscipline` component mounts sentinel + button inside `ThreadPrimitive.Viewport`; uses `useThreadRuntime().subscribe()` to increment unread count on each streaming batch while not at bottom. `SCROLL_DISCIPLINE_ENABLED` module-level constant guards between new (IntersectionObserver-based) and old (ThreadPrimitive.ScrollToBottom asChild) behaviors. deploy.yml updated with `NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true` (Amendment 1 HARD GATE). 8 tests — all pass.
+
+**Click-path:** Send long query → while streaming, scroll up → auto-scroll stops → "↓ N new" button appears → click → scrolls to bottom and count resets.
+
+**Amendments:** A1 (deploy.yml NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true — HARD GATE satisfied) | A2 (ScrollViewportShell parent-context wrapper in tests, click-path documented) | A3 (FLAGGED, default true)
+
+---
