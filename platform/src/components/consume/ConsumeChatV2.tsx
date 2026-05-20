@@ -16,6 +16,7 @@ import type { UIMessage } from 'ai'
 import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2, ArrowLeft, Camera } from 'lucide-react'
 import Link from 'next/link'
 import { ShareButton } from '@/components/chat/ShareButton'
+import { StillWorkingIndicator } from '@/components/chat/StillWorkingIndicator'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
@@ -683,6 +684,9 @@ function V2Message() {
               ))}
             </div>
           )}
+
+          {/* X-S4: still-working indicator after 25s of streaming — reassures user on long queries */}
+          <StillWorkingIndicator isStreaming={isStreaming} />
 
           <MessagePrimitive.Parts
             components={{
