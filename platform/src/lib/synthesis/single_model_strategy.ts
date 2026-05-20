@@ -16,7 +16,8 @@
 
 import 'server-only'
 
-import { streamText, stepCountIs, smoothStream, tool } from 'ai'
+import { streamText, stepCountIs, tool } from 'ai'
+import { getSmoothStreamTransform } from '@/lib/streaming/smooth_stream'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceChunkItem } from '@/lib/trace/types'
 import type { ModelMessage, ToolSet } from 'ai'
@@ -492,7 +493,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       stopWhen: stepCountIs(5),
       maxOutputTokens: effectiveMaxTokens,
       temperature: synthesisTemperature,
-      experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
+      experimental_transform: getSmoothStreamTransform(),
       ...(abortSignal && { abortSignal }),
       maxRetries: synthesisMaxRetries,
       // γ7: accumulate text deltas for stream-resume (pending_streams table).
