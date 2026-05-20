@@ -45,3 +45,17 @@ Added `useLastPrompt(conversationId)` hook to `useChatPreferences.ts`. Per-conve
 **Amendments:** A2 (click-path documented, hook tests verify context chain) | A3 (FLAGLESS)
 
 ---
+
+## X-S3 — Citation Star Persistence
+
+**Status:** COMPLETED  
+**Commit:** a7ea69d  
+**Completed:** 2026-05-20T09:15:00Z
+
+Added `useStarredCitations(conversationId)` hook backed by localStorage (`marsys_chat_v2_starred_<conversationId>`). Modified `CitationSidePanel` to accept optional `conversationId` prop and use the hook instead of ephemeral local state. Passed `conversationId` from `V2ChatRuntime`. 10 new tests in `starred_citations.test.ts` — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with citations → open citation panel → star citation → refresh → reopen panel → star still active.
+
+**Amendments:** A2 (click-path documented, hook tests verify persistence chain) | A3 (FLAGLESS)
+
+---
