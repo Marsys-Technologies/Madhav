@@ -28,7 +28,7 @@ describe('ParamOverrideRow', () => {
       />,
     )
     expect(screen.queryByText('temperature')).toBeFalsy()
-    expect(screen.getByText(/Advanced params/i)).toBeTruthy()
+    expect(screen.getByText(/Advanced/i)).toBeTruthy()
   })
 
   it('expands to show all 4 param rows when clicked', async () => {
@@ -41,11 +41,11 @@ describe('ParamOverrideRow', () => {
         onUpdate={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByText(/Advanced params/i))
-    expect(screen.getByText('temperature')).toBeTruthy()
-    expect(screen.getByText('max_output_tokens')).toBeTruthy()
-    expect(screen.getByText('thinkingBudget')).toBeTruthy()
-    expect(screen.getByText('timeout_ms')).toBeTruthy()
+    fireEvent.click(screen.getByText(/Advanced/i))
+    expect(screen.getByText('Temperature')).toBeTruthy()
+    expect(screen.getByText('Max output tokens')).toBeTruthy()
+    expect(screen.getByText('Thinking budget')).toBeTruthy()
+    expect(screen.getByText('Timeout (ms)')).toBeTruthy()
   })
 
   it('shows all 4 inputs when expanded', async () => {
@@ -58,7 +58,7 @@ describe('ParamOverrideRow', () => {
         onUpdate={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByText(/Advanced params/i))
+    fireEvent.click(screen.getByText(/Advanced/i))
     const inputs = screen.getAllByRole('textbox')
     expect(inputs).toHaveLength(4)
   })
@@ -76,7 +76,7 @@ describe('ParamOverrideRow', () => {
         onUpdate={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByText(/Advanced params/i))
+    fireEvent.click(screen.getByText(/Advanced/i))
     expect(screen.getByText('reset')).toBeTruthy()
   })
 
@@ -90,7 +90,7 @@ describe('ParamOverrideRow', () => {
         onUpdate={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByText(/Advanced params/i))
+    fireEvent.click(screen.getByText(/Advanced/i))
     expect(screen.queryByText('reset')).toBeFalsy()
   })
 
@@ -107,7 +107,7 @@ describe('ParamOverrideRow', () => {
         onUpdate={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByText(/Advanced params/i))
+    fireEvent.click(screen.getByText(/Advanced/i))
     // Current value should be visible
     expect(screen.getByText('0.2')).toBeTruthy()
   })

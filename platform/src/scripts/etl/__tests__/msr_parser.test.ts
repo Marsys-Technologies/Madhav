@@ -42,7 +42,7 @@ describe('parseMsrSignals', () => {
 
   it('all signals have source_file', () => {
     for (const s of signals) {
-      expect(s.source_file).toBe('MSR_v3_0.md')
+      expect(s.source_file).toBe('MSR_v5_0.md')
     }
   })
 

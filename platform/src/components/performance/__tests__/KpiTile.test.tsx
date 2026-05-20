@@ -42,14 +42,14 @@ describe('KpiTile', () => {
     render(<KpiTile {...baseProps} delta={0.05} />)
     const arrow = screen.getByLabelText(/better/i)
     expect(arrow).toHaveTextContent('↑')
-    expect(arrow.className).toContain('emerald')
+    expect(arrow.className).toContain('status-success')
   })
 
   it('renders a red arrow for negative delta', () => {
     render(<KpiTile {...baseProps} delta={-0.05} />)
     const arrow = screen.getByLabelText(/worse/i)
     expect(arrow).toHaveTextContent('↓')
-    expect(arrow.className).toContain('rose')
+    expect(arrow.className).toContain('status-halt')
   })
 
   it('renders an em-dash arrow when delta is null (insufficient data)', () => {

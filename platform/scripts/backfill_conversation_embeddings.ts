@@ -7,13 +7,13 @@
  * text-multilingual-embedding-002 (768 dims) via ADC.
  *
  * Prerequisites:
- *   1. Cloud SQL proxy running locally on 5432 (or direct DB accessible via DATABASE_URL).
- *      gcloud sql connect / cloud-sql-proxy madhav-astrology:asia-south1:amjis-postgres
+ *   1. Cloud SQL proxy running locally on 5433 (or direct DB accessible via DATABASE_URL).
+ *      cloud-sql-proxy madhav-astrology:asia-south1:amjis-postgres --port=5433
  *   2. ADC auth: `gcloud auth application-default login`
  *   3. GCP_PROJECT and VERTEX_AI_LOCATION env vars set (or defaults below).
  *
  * Run from platform/ dir:
- *   DATABASE_URL="postgresql://amjis_app:<pw>@127.0.0.1:5432/amjis" \
+ *   DATABASE_URL="postgresql://amjis_app:<pw>@127.0.0.1:5433/amjis" \
  *   GCP_PROJECT=madhav-astrology \
  *   VERTEX_AI_LOCATION=asia-south1 \
  *   npx tsx scripts/backfill_conversation_embeddings.ts
@@ -78,12 +78,14 @@ async function sleep(ms: number) {
 async function main() {
   const client = await pool.connect()
   try {
-    // Count total un-embedded messages
+    // Count total un-embedded messages (text extracted from parts_json JSONB array)
     const { rows: [{ total }] } = await client.query<{ total: string }>(`
       SELECT count(*) AS total
       FROM conversation_messages cm
-      WHERE cm.content IS NOT NULL
-        AND cm.content <> ''
+      WHERE EXISTS (
+          SELECT 1 FROM jsonb_array_elements(cm.parts_json) AS elem
+          WHERE elem->>'type' = 'text' AND (elem->>'text') IS NOT NULL AND (elem->>'text') <> ''
+        )
         AND NOT EXISTS (
           SELECT 1 FROM conversation_message_embeddings e
           WHERE e.message_id = cm.id
@@ -102,10 +104,16 @@ async function main() {
 
     while (offset < totalInt) {
       const { rows } = await client.query<{ id: string; content: string }>(`
-        SELECT cm.id, cm.content
+        SELECT cm.id,
+               (SELECT elem->>'text'
+                FROM jsonb_array_elements(cm.parts_json) AS elem
+                WHERE elem->>'type' = 'text' AND (elem->>'text') IS NOT NULL AND (elem->>'text') <> ''
+                LIMIT 1) AS content
         FROM conversation_messages cm
-        WHERE cm.content IS NOT NULL
-          AND cm.content <> ''
+        WHERE EXISTS (
+            SELECT 1 FROM jsonb_array_elements(cm.parts_json) AS elem
+            WHERE elem->>'type' = 'text' AND (elem->>'text') IS NOT NULL AND (elem->>'text') <> ''
+          )
           AND NOT EXISTS (
             SELECT 1 FROM conversation_message_embeddings e
             WHERE e.message_id = cm.id
