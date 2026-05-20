@@ -1,0 +1,177 @@
+campaign_id: M5_COVERAGE_REMEDIATION
+spec_artifact: 00_ARCHITECTURE/CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md
+spec_version: "1.2"
+branch: feature/m5-coverage-remediation
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavCoverage
+authored_on: 2026-05-21
+merge_cadence: per_session_auto_merge_on_green_ci
+halt_policy: autonomous_with_gate_halts
+sessions:
+  - id: COV-S1
+    stream: cov
+    audit_section: "§G.1"
+    depends_on: []
+    gates: ["tsc", "vitest_changed", "lint"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["tsc errors", "vitest failures", "must_not_touch violation"]
+  - id: COV-S8
+    stream: cov
+    audit_section: "§G.8"
+    depends_on: []
+    gates: ["tsc", "vitest_changed", "lint", "smoke_planner_register_tools"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["tsc errors", "vitest failures", "discovery register read returns wrong version"]
+  - id: PERF-S1
+    stream: perf
+    audit_section: "§H.1"
+    depends_on: []
+    gates: ["tsc", "vitest_changed", "lint", "smoke_performance_route"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["tsc errors", "vitest failures", "perf KPI smoke regression"]
+  - id: ICR-S1
+    stream: icr
+    audit_section: "§N.6 ICR-S1"
+    depends_on: []
+    gates: ["tsc", "schema_validate"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["schema validation failure"]
+  - id: COV-S2
+    stream: cov
+    audit_section: "§G.2"
+    depends_on: ["COV-S1"]
+    gates: ["tsc", "vitest_changed", "manifest_audit"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["manifest_audit fingerprint divergence beyond known living-files set"]
+  - id: COV-S9
+    stream: cov
+    audit_section: "§G.9"
+    depends_on: ["COV-S1"]
+    gates: ["tsc", "vitest_changed", "migration_dry_run", "manifest_audit"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["migration dry run failure", "table row count regression"]
+  - id: COV-S10
+    stream: cov
+    audit_section: "§G.10"
+    depends_on: ["COV-S1"]
+    gates: ["tsc", "vitest_changed", "migration_dry_run"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["sade_sati_cycles table populate failure"]
+  - id: ICR-S2
+    stream: icr
+    audit_section: "§N.6 ICR-S2"
+    depends_on: ["ICR-S1"]
+    gates: ["tsc", "vitest_changed", "l1_truth_index_coverage_gte_95pct"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["L1 truth index coverage below 95%"]
+  - id: PERF-S2
+    stream: perf
+    audit_section: "§H.2"
+    depends_on: ["PERF-S1"]
+    gates: ["tsc", "vitest_changed", "asset_catalog_smoke"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["asset catalog renders fewer entries than manifest count"]
+  - id: COV-S3
+    stream: cov
+    audit_section: "§G.3"
+    depends_on: ["COV-S2"]
+    gates: ["tsc", "vitest_changed", "planner_golden_regression"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["planner golden set regression beyond ±2 points on recall or precision"]
+  - id: COV-S4
+    stream: cov
+    audit_section: "§G.4"
+    depends_on: ["COV-S2"]
+    gates: ["tsc", "vitest_changed", "sla_probe_new_tools"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["sidecar wrappers do not surface in planner manifest"]
+  - id: COV-S7
+    stream: cov
+    audit_section: "§G.7"
+    depends_on: ["COV-S1", "COV-S2", "COV-S3"]
+    gates: ["tsc", "vitest_changed", "synthetic_pr_coverage_gate_fails"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["CI gate does not fail on synthetic missing-manifest-entry PR"]
+  - id: ICR-S3
+    stream: icr
+    audit_section: "§N.6 ICR-S3"
+    depends_on: ["ICR-S2"]
+    gates: ["tsc", "vitest_changed", "intra_signal_munta_detected"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["MSR.377 intra-signal conflict not detected"]
+  - id: PERF-S3
+    stream: perf
+    audit_section: "§H.3"
+    depends_on: ["PERF-S1", "PERF-S2"]
+    gates: ["tsc", "vitest_changed", "retrieval_util_panel_smoke"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["zero-call detection does not surface known-orphan tools"]
+  - id: COV-S5
+    stream: cov
+    audit_section: "§G.5"
+    depends_on: ["COV-S9"]
+    gates: ["tsc", "vitest_changed", "ucn_cdlm_rm_parametric_smoke"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["parametric query against UCN/CDLM/RM returns empty for known seeded entries"]
+  - id: COV-S6
+    stream: cov
+    audit_section: "§G.6"
+    depends_on: ["COV-S2", "COV-S3"]
+    gates: ["tsc", "vitest_changed", "planner_golden_regression"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["promoted R-rule cluster regresses golden set"]
+  - id: ICR-S4
+    stream: icr
+    audit_section: "§N.6 ICR-S4"
+    depends_on: ["ICR-S3"]
+    gates: ["tsc", "vitest_changed", "munta_propose_patch_emitted"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["ICR-S4 emits patch with propagation chain mismatching audit §C.10", "NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH (always halts after this session — propose-patch artifacts in PROPOSED/ require native confirmation before ICR-S5 can resolve them)"]
+  - id: PERF-S4
+    stream: perf
+    audit_section: "§H.4"
+    depends_on: ["PERF-S3"]
+    gates: ["tsc", "vitest_changed", "freshness_diagnostics_smoke"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["freshness panel does not surface known-stale assets"]
+  - id: ICR-S5
+    stream: icr
+    audit_section: "§N.6 ICR-S5"
+    depends_on: ["ICR-S4", "PERF-S2"]
+    gates: ["tsc", "vitest_changed", "confirmation_ui_smoke", "atomic_apply_dry_run"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["atomic-apply dry run does not roll back on simulated mid-patch failure"]
+  - id: ICR-S6
+    stream: icr
+    audit_section: "§N.6 ICR-S6"
+    depends_on: ["ICR-S5"]
+    gates: ["tsc", "vitest_changed", "synthetic_pr_conflict_gate_fails", "scheduled_job_smoke"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["CI gate does not fail on synthetic conflict-introducing PR"]
+  - id: PERF-S5
+    stream: perf
+    audit_section: "§H.5"
+    depends_on: ["PERF-S4", "ICR-S5"]
+    gates: ["tsc", "vitest_changed", "conflict_panel_smoke"]
+    status: pending
+    attempt_count: 0
+    halt_conditions: ["panel does not render propose-patch artifacts from PROPOSED/"]
