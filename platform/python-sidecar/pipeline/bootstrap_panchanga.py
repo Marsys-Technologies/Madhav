@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import uuid
@@ -52,7 +53,8 @@ INSERT INTO panchanga_daily_staging (
     yoga, yoga_index,
     karana, karana_position_in_month,
     ayanamsha, observer_lat, observer_lon, observer_alt_m,
-    ephemeris_version, build_id
+    ephemeris_version, build_id,
+    special_yogas, choghadiya, hora, inauspicious, auspicious
 ) VALUES (
     %(date)s, %(sunrise_utc)s, %(sunrise_jd)s, %(sunrise_ist)s,
     %(tithi)s, %(tithi_name)s, %(paksha)s, %(tithi_fraction)s,
@@ -62,7 +64,9 @@ INSERT INTO panchanga_daily_staging (
     %(yoga)s, %(yoga_index)s,
     %(karana)s, %(karana_position_in_month)s,
     %(ayanamsha)s, %(observer_lat)s, %(observer_lon)s, %(observer_alt_m)s,
-    %(ephemeris_version)s, %(build_id)s
+    %(ephemeris_version)s, %(build_id)s,
+    %(special_yogas)s::jsonb, %(choghadiya)s::jsonb, %(hora)s::jsonb,
+    %(inauspicious)s::jsonb, %(auspicious)s::jsonb
 )
 ON CONFLICT (date) DO UPDATE SET
     sunrise_utc              = EXCLUDED.sunrise_utc,
@@ -89,7 +93,12 @@ ON CONFLICT (date) DO UPDATE SET
     observer_lon             = EXCLUDED.observer_lon,
     observer_alt_m           = EXCLUDED.observer_alt_m,
     ephemeris_version        = EXCLUDED.ephemeris_version,
-    build_id                 = EXCLUDED.build_id;
+    build_id                 = EXCLUDED.build_id,
+    special_yogas            = EXCLUDED.special_yogas,
+    choghadiya               = EXCLUDED.choghadiya,
+    hora                     = EXCLUDED.hora,
+    inauspicious             = EXCLUDED.inauspicious,
+    auspicious               = EXCLUDED.auspicious;
 """
 
 
@@ -132,10 +141,16 @@ def _compute_sunrise(swe: Any, year: int, month: int, day: int) -> tuple[float, 
     return sunrise_jd_utc, sunrise_utc
 
 
-def _compute_day(swe: Any, sunrise_jd_utc: float, sunrise_utc: datetime) -> dict[str, Any]:
+def _compute_day(swe: Any, sunrise_jd_utc: float, sunrise_utc: datetime, d: date) -> dict[str, Any]:
     """
-    Compute Sun + Moon longitudes at sunrise, derive all 5 panchanga elements.
-    Returns dict matching panchanga_daily schema (excluding date, build_id, provenance).
+    Compute Sun + Moon longitudes at sunrise, derive all 5 panchanga elements,
+    then append enrichment data (special_yogas, choghadiya, hora, inauspicious,
+    auspicious) by delegating to the panchang_engine — the same path the live UI
+    uses — to guarantee parity between the precomputed cache and on-demand results.
+
+    amrit_kalam / varjyam are known S1 stubs in the engine (return empty lists);
+    they will appear as [] in the inauspicious/auspicious JSONB until a future
+    engine version implements them. That is expected and documented in 4C-S1 notes.
     """
     flags = swe.FLG_SIDEREAL | swe.FLG_SWIEPH
     sun_pos, _ = swe.calc_ut(sunrise_jd_utc, swe.SUN, flags)
@@ -158,6 +173,14 @@ def _compute_day(swe: Any, sunrise_jd_utc: float, sunrise_utc: datetime) -> dict
     yoga_idx, yoga_name = compute_yoga(sun_lon, moon_lon)
     karana_pos, karana_name = compute_karana(tithi_frac)
 
+    # Enrichment — delegate to the high-level engine entry point so bootstrap
+    # output is byte-identical to what the live UI computes via compute_panchang().
+    # IST = UTC+330 minutes.
+    from panchang_engine import compute_panchang
+    from panchang_engine.serialize import panchang_to_dict
+    _pan = compute_panchang(d, OBSERVER_LAT, OBSERVER_LON, 330)
+    _enr = panchang_to_dict(_pan)
+
     return {
         "sunrise_utc": sunrise_utc.isoformat(sep=" "),
         "sunrise_jd": sunrise_jd_utc,
@@ -178,6 +201,12 @@ def _compute_day(swe: Any, sunrise_jd_utc: float, sunrise_utc: datetime) -> dict
         "yoga_index": yoga_idx,
         "karana": karana_name,
         "karana_position_in_month": karana_pos,
+        # Enrichment columns — serialized to JSON strings; SQL casts to JSONB.
+        "special_yogas": json.dumps(_enr["special_yogas"]),
+        "choghadiya":    json.dumps(_enr["choghadiya"]),
+        "hora":          json.dumps(_enr["hora"]),
+        "inauspicious":  json.dumps(_enr["inauspicious"]),
+        "auspicious":    json.dumps(_enr["auspicious"]),
     }
 
 
@@ -244,13 +273,17 @@ def run(
         if existing is not None:
             return existing
 
-    try:
-        import psycopg2
-        import psycopg2.extras
-        _use_psycopg2 = True
-    except ImportError:
-        import psycopg  # type: ignore[no-redef]
-        _use_psycopg2 = False
+    # DB driver only needed for real writes; skip the import entirely in dry-run
+    # so this script runs on machines without psycopg installed.
+    _use_psycopg2: bool = False
+    if not dry_run:
+        try:
+            import psycopg2
+            import psycopg2.extras
+            _use_psycopg2 = True
+        except ImportError:
+            import psycopg  # type: ignore[no-redef]
+            _use_psycopg2 = False
 
     def _flush(batch: list[dict[str, Any]]) -> int:
         if dry_run or not batch:
@@ -278,7 +311,7 @@ def run(
             logger.warning("Sunrise compute failed for %s: %s — skipping", d, exc)
             continue
 
-        row_data = _compute_day(swe, sunrise_jd_utc, sunrise_utc)
+        row_data = _compute_day(swe, sunrise_jd_utc, sunrise_utc, d)
         row_data["date"] = d
         row_data["ayanamsha"] = AYANAMSHA
         row_data["observer_lat"] = OBSERVER_LAT
