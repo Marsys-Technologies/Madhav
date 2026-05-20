@@ -25,6 +25,16 @@ export interface CapabilityManifestEntry {
   query_schema?: QuerySchema
   token_cost_hint?: TokenCostHint
   linked_data_asset_id?: string
+  /** JSON Schema for the tool's return value (COV-S1) */
+  output_schema?: Record<string, unknown>
+  /** Multi-asset tools: plural companion to the singular linked_data_asset_id (COV-S1) */
+  linked_data_asset_ids?: string[]
+  /** When true, COV-S3 compressor includes this tool in the planner manifest (COV-S1) */
+  expose_to_planner?: boolean
+  /** Planner few-shot examples (COV-S1) */
+  examples?: Array<{ query: string; expected_plan_fragment: string }>
+  /** COV-S6 R-rule migration target: gating rules expressed as condition/action pairs (COV-S1) */
+  gating_constraints?: Array<{ condition: string; action: string }>
   [k: string]: unknown
 }
 

@@ -7,6 +7,7 @@ import {
   compressedManifestToString,
   estimateTokens,
   type CapabilityManifest,
+  type CapabilityManifestEntry,
   type CompressedEntry,
 } from '@/lib/pipeline/manifest_compressor'
 
@@ -66,6 +67,23 @@ describe('manifest_compressor — primary-tool projection', () => {
     const entries: CompressedEntry[] = compressManifest(manifest)
     const reversed = [...entries].reverse()
     expect(compressedManifestToString(reversed)).toBe(compressedManifestToString(entries))
+  })
+
+  it('CapabilityManifestEntry accepts COV-S1 extension fields (type-check)', () => {
+    // This test is a compile-time type guard: if CapabilityManifestEntry is missing
+    // any of the 5 new optional fields, tsc --noEmit will fail.
+    const entry: CapabilityManifestEntry = {
+      canonical_id: 'TEST',
+      expose_to_planner: true,
+      output_schema: { type: 'object' },
+      linked_data_asset_ids: ['MSR_v3_0', 'UCN_v4_0'],
+      examples: [{ query: 'What is the lagna?', expected_plan_fragment: 'msr_sql(domains=["lagna"])' }],
+      gating_constraints: [{ condition: 'date_required', action: 'require_date_param' }],
+    }
+    expect(entry.expose_to_planner).toBe(true)
+    expect(entry.linked_data_asset_ids).toHaveLength(2)
+    expect(entry.examples).toHaveLength(1)
+    expect(entry.gating_constraints).toHaveLength(1)
   })
 
   it('skips entries without tool_name and entries not in the primary list', () => {
