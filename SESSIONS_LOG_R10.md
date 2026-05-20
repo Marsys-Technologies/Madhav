@@ -159,3 +159,17 @@ Created `InteractiveTable.tsx` with clickable column headers (asc/desc sort togg
 **Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true in deploy.yml — HARD GATE satisfied) | A2 (MarkdownShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
 
 ---
+
+## X-S11 — Mermaid Diagram Rendering
+
+**Status:** COMPLETED  
+**Commit:** 606b4a2  
+**Completed:** 2026-05-20T09:30:00Z
+
+Created `MermaidBlock.tsx` loaded via `next/dynamic({ ssr: false })` to keep the ~1MB mermaid bundle out of the initial page bundle. Stream-safe placeholder shown while `isStreaming=true`; actual diagram rendered after streaming ends via `mermaid.render()`. Error boundary falls back to raw code block on parse failure. `MarkdownContent` code handler routes `lang=mermaid` to `MermaidBlock` when `NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true` (flag read at render time). Mermaid pinned at `11.15.0` in `package.json`. `NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true` added to deploy.yml (Amendment 1 HARD GATE). 6 new tests (3 unit + 3 parent-context) — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with `` ```mermaid `` block → streaming active → "Rendering diagram…" placeholder visible → streaming ends → mermaid SVG diagram renders. When flag=false, block renders as standard fenced code.
+
+**Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true in deploy.yml — HARD GATE satisfied) | A2 (MarkdownShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
+
+---

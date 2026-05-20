@@ -161,7 +161,8 @@ sessions:
     deploy_yml_flag: NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
     acceptance_check: "grep 'NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID' .github/workflows/deploy.yml && npx jest --testPathPattern='MermaidBlock|mermaid|MarkdownContent' --passWithNoTests"
     commit_template: "feat(chat-v2): mermaid diagram rendering via lazy-loaded MermaidBlock"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T09:30:00Z"
 
   - id: Y-S1
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S1-citation-hover-snippet.md
