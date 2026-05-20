@@ -133,3 +133,15 @@ Migration `113_selective_share.sql`: added `hide_reasoning BOOLEAN NOT NULL DEFA
 **Amendments:** A1 (server-side flag confirmed, no NEXT_PUBLIC, no deploy.yml entry) | A2 (ShareButtonShell parent-context, checkboxes + fetch payload tested) | A3 (FLAGGED, default true, server-side)
 
 ---
+
+## X-S9 — Print-Friendly Share
+
+**Status:** COMPLETED  
+**Commit:** 3467eaa  
+**Completed:** 2026-05-20T09:45:00Z
+
+Added `print:hidden` to the footer (navigation chrome) and the "Shared conversation" label badge (UI-only). Added `print:text-black` on heading + main for legible dark-on-white printing. Added `print:max-w-none print:px-0` to the page wrapper for full paper width. Inline `<style>` block sets `body { font-size: 12pt }` under `@media print` to guarantee ≥12pt in print context. Single file changed: `platform/src/app/share/[slug]/page.tsx`. Zero visual change on screen. Typecheck: PASS.
+
+**Amendments:** A3 (FLAGLESS — additive CSS only)
+
+---
