@@ -17,8 +17,13 @@ entries:
   expected_artifacts:
   - 00_ARCHITECTURE/PSHIP_FILE_INVENTORY.md
   - 00_ARCHITECTURE/PSHIP_CONFLICT_MAP.md
-  status: in_flight
-  human_decision_prompt: null
+  status: passed
+  human_decision_prompt: "PLANNER_PROMPT_v2_0.md has a HIGH-risk conflict: both main
+    and the source branch inserted an R-TC rule at the same offset (line 678) with
+    different content, and both added a '4.25' few-shot example with different content.
+    Decision needed: (1) rename Panchang's R-TC to R-PD (Panchanga Disambiguation)
+    to avoid name clash; (2) renumber Panchang's 4.25 example to come after main's
+    4.25+. See PSHIP_CONFLICT_MAP.md §1 for full spec. Confirm before PSHIP-S2 proceeds."
 - session_id: PSHIP-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S2_v1_0.md
   branch: feature/panchang-ship
