@@ -3,7 +3,7 @@ stream: Chat V2 Round 9 — Elevation
 branch: chat-v2/round9-elevation
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR9
 authored: 2026-05-20
-status: STREAM_COMPLETE (S2 BLOCKED — see below)
+status: STREAM_COMPLETE (S2 BLOCKED — see below; post-merge remediation applied via PR #103)
 ---
 
 ## Sessions executed
@@ -42,3 +42,51 @@ Expected conflict point: `platform/src/app/api/conversations/search/route.ts` (s
 R9-S2 implementation happens post-rebase once R8-S3 is on main.
 
 See: `00_ARCHITECTURE/MERGE_TRAIN_ORDER_v1_0.md`
+
+---
+
+## POST-MERGE REMEDIATION — 2026-05-20
+
+**PR #103** (`chat-v2/r9-integration-remediation`) — "fix(chat-v2): R9-S1/S3/S4 integration gap remediation"
+
+The stream claimed S1/S3/S4 COMPLETE but post-merge verified diagnosis found two distinct gap patterns:
+
+### Gap 1 — NEXT_PUBLIC_ build-args missing from deploy.yml (R9-S1 + R9-S4)
+
+`ProjectsSection` (R9-S1) and `InlineToolFlow` (R9-S4) use `process.env.NEXT_PUBLIC_*` to gate rendering in client components. These constants are baked into the Next.js bundle at `next build` time via Docker `--build-arg`. The server-side flags (`MARSYS_FLAG_R9_PROJECTS=true`, `MARSYS_FLAG_R9_TOOL_FLOW=true`) were set via `gcloud run services update` but had no effect on the already-baked client bundle. Both features rendered `null` in production.
+
+**Fix**: Added `NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true`, `NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true`, `NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true` to `deploy.yml` `build-args` block.
+
+| Flag | Was | Now |
+|------|-----|-----|
+| `NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS` | unset (bundle false) | `true` in build-args |
+| `NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS` | unset (bundle true — uses `!== 'false'` logic) | `true` explicit |
+| `NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW` | unset (bundle false) | `true` in build-args |
+
+### Gap 2 — Persona props not threaded through V2PrefsCtx (R9-S3)
+
+`ModelStylePicker` has full persona code and guards its persona `DropdownMenuGroup` on `onPersonaChange` being set (line 96: `{showPersonas && onPersonaChange && (...)`). `V2PrefsCtx` / `V2BottomBar` never included `activePersonaId` or `setActivePersonaId`, so `onPersonaChange` was always `undefined` → persona group never rendered. `persona_id` was also absent from the `useChatRuntime` body closure.
+
+**Fix**: Added `activePersonaId: string | null` + `setActivePersonaId` to `V2PrefsCtxValue`; wired state through `prefsCtxValue` → `V2BottomBar` → `ModelStylePicker`; added `persona_id` to runtime body.
+
+### What was NOT missing
+
+- `/api/projects/**`, `/api/personas/**`, `/api/audit/[query_id]/trace` — all existed and returned correct auth errors
+- `ProjectsSection`, `NewProjectModal`, `ProjectBadge` — existed and were correctly mounted in `ConversationSidebarV2`
+- `InlineToolFlow` — existed and was correctly mounted in `AssistantMessage.tsx` (lines 12, 218)
+- Synthesis persona injection — existed in `single_model_strategy.ts` and was reading `persona_system_prompt` from the synthesis request
+
+### Test coverage added
+
+12 unit tests in `platform/src/components/chat/__tests__/r9-integration-remediation.test.tsx`:
+- InlineToolFlow: 5 tests (flag-gated null renders + disclosure button render)
+- ModelStylePicker persona group: 4 tests (prop-absent vs prop-present; persona names; crash-safety)
+- ProjectsSection sidebar gate: 3 tests (showProjects=true/false contract)
+
+Zero new regressions vs 21-failure KNOWN_PRE_EXISTING_FAILURES.md baseline.
+
+### Root cause note for future streams
+
+> A stream completion claim of "component X is mounted" is not sufficient verification.
+> Required: (1) is the `NEXT_PUBLIC_*` build-arg in `deploy.yml`? (2) is the optional
+> prop that gates the feature actually passed from the parent/context into the component?
