@@ -1,0 +1,135 @@
+# Muhurat scoring weights — auditable, per-event tunable
+# Edited in this file (NOT in code) so the rubric stays transparent.
+#
+# Structure:
+#   defaults: applied for any event not overridden
+#   events: per-event overrides; partial — missing keys inherit from defaults
+#
+# All weights sum to ~1.0 within positive contributors; avoid_penalty
+# remains a separate multiplicative knockout factor (non-negotiable per
+# PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md §4.4.1 — do NOT change avoid_penalty).
+#
+# Sources: MC = Muhurta Chintamani; BS = Brihat Samhita;
+#          MMP = Muhurta Martanda; DP = Drik Panchang convention.
+#
+# To tune: edit the relevant event block. Weights within positive contributors
+# (tithi, nakshatra, vara, yoga, planet, native) should still sum to ~1.0.
+# Restart the sidecar after editing (cache invalidated on restart).
+#
+# Version: 1.0 (Phase 4C-6-S2, 2026-05-20)
+
+defaults:
+  # Universal defaults — used when no per-event override is specified.
+  # Positive contributor sum: 0.20+0.30+0.10+0.15+0.10+0.10 = 0.95
+  # The 0.05 headroom is intentional — no day is cosmically perfect.
+  # Source: PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md §4.4.1.
+  tithi: 0.20
+  nakshatra: 0.30
+  vara: 0.10
+  yoga: 0.15
+  planet: 0.10
+  native: 0.10
+  avoid_penalty: 1.0  # Knockout — full negation when in compound inauspicious window.
+                      # NEVER change this value (master plan §4.4.1 hard constraint).
+
+events:
+  vivah:
+    # Marriage — nakshatra is paramount in classical muhurta for Vivah.
+    # MC 3.5 dedicates the longest enumeration to nakshatras (Rohini, Uttara
+    # Phalguni, Hasta, Uttara Ashadha, Revati are the most-cited); tithi runs
+    # second (Shukla paksha Dashami, Panchami etc.). Vara follows.
+    # Sum: 0.40+0.20+0.05+0.15+0.10+0.10 = 1.00
+    nakshatra: 0.40    # Highest weight — which star the Moon occupies on the wedding day
+                       # is the single most debated variable in classical vivah muhurta.
+    tithi: 0.20        # Shukla paksha Dashami, Panchami, Dvitiya etc. still matter greatly.
+    vara: 0.05         # Vara is important but secondary — Thu/Fri/Wed suffice; no override.
+    yoga: 0.15         # Sarvartha Siddhi, Amrit Siddhi add meaningful uplift.
+    planet: 0.10       # Non-combust Venus especially meaningful for marriage.
+    native: 0.10       # Tara Bala / Chandra Bala personal factor.
+    avoid_penalty: 1.0
+
+  griha_pravesh:
+    # Housewarming — vara carries more weight than for most events because the
+    # day of the week governs the household's presiding energy for its lifetime
+    # (MC 4.3: "the vara-lord governs the dwelling"). Tithi follows (stable,
+    # Shukla paksha tithis create a permanent home vibration). Nakshatra still
+    # matters for the Moon's quality on entry day.
+    # Sum: 0.20+0.25+0.25+0.10+0.10+0.10 = 1.00
+    vara: 0.20         # Day-lord governs home's presiding energy per MC 4.3.
+    tithi: 0.25        # Shukla Dashami, Tritiya, Panchami create auspicious permanence.
+    nakshatra: 0.25    # Rohini and Pushya are the canonical "stable home" nakshatras.
+    yoga: 0.10         # Yoga bonus is secondary for this practical event.
+    planet: 0.10       # Non-combust Jupiter for prosperity in the new home.
+    native: 0.10       # Personal Tara Bala.
+    avoid_penalty: 1.0
+
+  vyapara:
+    # Business start — Guru Pushya (Jupiter+Pushya, Thursday+Pushya) is the
+    # most widely cited multi-factor combination in Indian commerce muhurta.
+    # yoga weight is highest because of Tripushkar/Dwipushkar multiplier yogas
+    # that are specifically named for commercial acquisitions. Mercury's role
+    # as kāraka of commerce makes the planet factor meaningfully higher here.
+    # Sum: 0.25+0.15+0.25+0.15+0.10+0.10 = 1.00
+    yoga: 0.25         # Guru Pushya, Sarvartha Siddhi, Tripushkar are famously
+                       # commerce-amplifying; MC 5.1 names these explicitly.
+    planet: 0.15       # Non-combust Jupiter (wealth) and Mercury (commerce) both matter.
+    nakshatra: 0.25    # Pushya is supreme; Swati, Hasta, Revati also cited in MC 5.1.
+    tithi: 0.15        # Labha tithis (gain-oriented Shukla paksha) still contribute.
+    vara: 0.10         # Wednesday (Mercury) is ideal; Thursday (Jupiter) close second.
+    native: 0.10       # Personal factor.
+    avoid_penalty: 1.0
+
+  yatra:
+    # Travel — vara matters more than for domestic/contractual events because
+    # BS §Yatra chapter treats the day of the week as governing the direction
+    # of safe travel and journey luck. Nakshatra avoidance is key: Ardra, Moola,
+    # Ashlesha on a journey are explicitly prohibited (BS). The Moon's asterism
+    # determines safe passage; thus nakshatra stays high.
+    # Sum: 0.20+0.15+0.30+0.15+0.10+0.10 = 1.00
+    vara: 0.20         # Saturday strongly avoided (Saturn delays); Thursday/Friday excel.
+                       # BS §Yatra: vara determines directional auspiciousness.
+    tithi: 0.15        # Shukla paksha preferred for outward journeys (MC 6.1).
+    nakshatra: 0.30    # BS gives the longest nakshatra list for travel; Ashwini,
+                       # Mrigashira, Swati, Revati are premiere travel nakshatras.
+    yoga: 0.15         # Sarvartha Siddhi ensures success at destination.
+    planet: 0.10       # Non-combust Jupiter/Venus for safe passage.
+    native: 0.10       # Tara Bala personal factor.
+    avoid_penalty: 1.0
+
+  property_purchase:
+    # Property purchase — Tripushkar and Dwipushkar yogas are specifically named
+    # for purchases in MC §11 ("items purchased on this day triple / double").
+    # These are composite yogas (tithi × vara × nakshatra) but they surface in
+    # the yoga scoring channel; hence yoga weight is highest here. Fixed nakshatras
+    # (Rohini, Uttara Phalguni, Uttara Ashadha, Uttara Bhadrapada) provide stability
+    # for long-term holding — nakshatra stays high.
+    # Sum: 0.30+0.25+0.15+0.10+0.10+0.10 = 1.00
+    yoga: 0.30         # Tripushkar/Dwipushkar (MC §11) are the defining yogas for
+                       # purchases; higher weight than any other event category.
+    nakshatra: 0.25    # Fixed nakshatras (Rohini, Uttara Phalguni, Uttara Ashadha)
+                       # are especially prized for stable, permanent acquisitions.
+    tithi: 0.15        # Stable Shukla tithis (Dashami, Dvadashi as Tripushkar amplifier).
+    vara: 0.10         # Thursday/Wednesday preferred; Saturday avoided.
+    planet: 0.10       # Non-combust Jupiter (wealth accumulation) for real estate.
+    native: 0.10       # Personal Tara Bala.
+    avoid_penalty: 1.0
+
+  mantra_initiation:
+    # Spiritual initiation — the native's personal astrological alignment with the
+    # day matters most: diksha is a lifelong commitment whose fruit depends heavily
+    # on whether the Moon's asterism is favorable to the initiate (Tara Bala /
+    # Chandra Bala). Nakshatra carries the highest classical weight because Pushya,
+    # Punarvasu, Uttara Phalguni, Revati and Shravana are the canonical diksha stars
+    # (BS §Diksha; MC 8.1). The native factor is elevated specifically for this event
+    # because classical texts emphasize personal compatibility above generic
+    # auspiciousness for mantra initiation.
+    # Sum: 0.15+0.20+0.30+0.15+0.10+0.10 = 1.00
+    native: 0.20       # Personal Tara Bala — highest for any event; diksha is personal.
+                       # MC 8.1 and tantric traditions emphasize the initiate's
+                       # chart compatibility with the initiation date.
+    tithi: 0.15        # Ekadashi and Purnima are premier (MC 8.1); Shukla paksha overall.
+    nakshatra: 0.30    # Pushya (Guru's star), Punarvasu, Shravana (Vishnu) are supreme.
+    yoga: 0.15         # Guru Pushya, Amrit Siddhi add meaningful spiritual amplification.
+    planet: 0.10       # Non-combust Jupiter (guru-kāraka) especially significant.
+    vara: 0.10         # Thursday (Jupiter/Guru) is universally preferred for initiation.
+    avoid_penalty: 1.0

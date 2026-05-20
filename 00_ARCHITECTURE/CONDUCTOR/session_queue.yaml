@@ -1,0 +1,410 @@
+schema_version: '1.0'
+queue_name: wave_1_phase_4c
+generated_at: '2026-05-19'
+generated_by: CONDUCTOR-S0
+total_entries: 17
+notes: 'Wave 1: Phase 4C autonomy proving ground. 11 entries spanning phases 4C.1–4C.9.
+  Phase 4C.0 is COMPLETE (sealed 4C-0 on 2026-05-19). Only 4C-1-S1 has an authored
+  brief; all others require brief authoring halts. 4C-2 additionally requires the
+  phase_4b_closed external gate.
+
+  '
+external_gates:
+  phase_4b_closed:
+    description: 'Phase 4B ephemeris sunrise + MEAN_NODE rebuild must close before
+      4C.2 backfill. 4C.2 requires the rebuilt ephemeris_daily table with correct
+      MEAN_NODE Rahu values.
+
+      '
+    check_command: 'grep -q "phase_4b_status: CLOSED" /Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/CURRENT_STATE_v1_0.md'
+    blocker_human_prompt: 'Phase 4B is still PENDING. 4C.2 (Cloud SQL panchang_daily
+      schema + backfill) requires the rebuilt ephemeris_daily table with MEAN_NODE
+      Rahu fix applied. Defer 4C.2 until Phase 4B closes, or explicitly SKIP 4C-2
+      to proceed with the legacy TRUE_NODE ephemeris (not recommended — known Rahu
+      accuracy bug).
+
+      '
+    fix_note: Tightened 2026-05-19 from loose 4B.*CLOSED regex which falsely matched
+      M4-B-CLOSED. Now anchored to a phase-specific status field that only Phase 4B's
+      close session writes.
+entries:
+- session_id: 4C-1-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S1_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on: []
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: 'cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/sidecar/panchang_engine
+    && \
+
+    pytest -v tests/test_drik_parity.py && \
+
+    python /Users/Dev/Vibe-Coding/Apps/Panchang/platform/scripts/governance/schema_validator.py
+
+    '
+  expected_artifacts:
+  - platform/sidecar/panchang_engine/__init__.py
+  - platform/sidecar/panchang_engine/angas.py
+  - platform/sidecar/panchang_engine/tests/fixtures/drik_panchang_v1.json
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  human_decision_prompt: null
+- session_id: 4C-1-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-1-S1
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -v tests/test_drik_parity.py tests/test_special_yogas.py tests/test_muhurat.py
+    && python3 /Users/Dev/Vibe-Coding/Apps/Panchang/00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/python-sidecar/panchang_engine/special_yogas.py
+  - platform/python-sidecar/panchang_engine/tests/fixtures/drik_panchang_v2.json
+  - 00_ARCHITECTURE/PHASE_4C_1_CLOSE_v1_0.md
+  est_tokens: 140000
+  est_duration_min: 110
+  status: passed
+  human_decision_prompt: null
+- session_id: 4C-1-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-1-S2
+  requires_external_gate: null
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 100000
+  est_duration_min: 75
+  status: skipped
+  skip_reason: 4C-1-S2 closed 4C.1 cleanly with 30/30 gate; S3 polish not required
+  human_decision_prompt: '4C-1-S2 has closed. Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_1_S3_v1_0.md
+    covering: 30-day Drik validation gate run (all 30 days must pass tolerance), phase
+    4C.1 close artifact, gate command tuning if any days still fail tolerance. Final
+    gate: all 30 days PASS.
+
+    '
+- session_id: 4C-2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-1-S3
+  requires_external_gate: phase_4b_closed
+  requires_brief_authoring: true
+  requires_human_approval: true
+  push_to_remote: false
+  gate_command: ''
+  expected_artifacts: []
+  est_tokens: 130000
+  est_duration_min: 120
+  status: skipped
+  human_decision_prompt: '4C-1-S3 has closed AND phase_4b_closed gate is satisfied.
+    Cowork session needed to author CLAUDECODE_BRIEF_PHASE_4C_2_v1_0.md covering:
+    migration 060 (panchang_daily table), sidecar /api/compute/panchanga route extension,
+    panchang_engine wired into sidecar, and the ~292K row backfill job for Bhubaneswar
+    + Delhi 1900–2100. Gate: 100 sampled rows byte-for-byte match fresh re-computation.
+
+    '
+  skip_reason: Phase 4B not yet closed; engine-direct path via 4C-3 doesn't require
+    the panchang_daily SQL cache. Revisit 4C-2 when Phase 4B closes and ephemeris_daily
+    is rebuilt with MEAN_NODE Rahu.
+- session_id: 4C-3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-2
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -v tests/test_serialize.py && cd /Users/Dev/Vibe-Coding/Apps/Panchang
+    && npm test -- platform/tests/planner/test_panchang_routing.ts && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/lib/retrieve/query_panchanga.ts
+  - platform/tests/planner/panchang_probe_set.json
+  - platform/tests/planner/panchang_routing.test.ts
+  - platform/python-sidecar/panchang_engine/serialize.py
+  est_tokens: 110000
+  est_duration_min: 80
+  status: passed
+  closed_on: 2026-05-19
+  gate_results: serialize 13/13 PASS; planner routing 14/14 PASS; E2E 3/3 PASS; tsc
+    0 errors
+  human_decision_prompt: null
+- session_id: 4C-4-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S1_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-3
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/layout.tsx
+  - platform/src/app/panchang/page.tsx
+  - platform/src/app/panchang/components/PanchangHeader.tsx
+  - platform/src/app/panchang/components/PrimaryStrip.tsx
+  - platform/src/app/panchang/hooks/usePanchangDay.ts
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 27/27 PASS; validate_queue OK
+  human_decision_prompt: null
+- session_id: 4C-4-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S1
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/TimingsPanel.tsx
+  - platform/src/app/panchang/components/PlanetaryGrid.tsx
+  - platform/src/lib/format/dms.ts
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 33/33 PASS; TimingsPanel + PlanetaryGrid + DMS + zodiac glyphs
+    delivered
+  human_decision_prompt: null
+- session_id: 4C-4-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S2
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/SpecialYogasList.tsx
+  - platform/src/app/panchang/components/ChoghadiyaPanel.tsx
+  - platform/src/app/panchang/components/HoraPanel.tsx
+  - platform/src/components/ui/star-rating.tsx
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  human_decision_prompt: null
+- session_id: 4C-4-S4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S4_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S3
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/ActionBar.tsx
+  - 00_ARCHITECTURE/PHASE_4C_4_CLOSE_v1_0.md
+  - platform/tests/visual/4C4_close_report.md
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 57/57 PASS; validate_queue OK (after test fix commit df78ded)
+  human_decision_prompt: null
+- session_id: 4C-5
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_5_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-4-S4
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/lib/panchang
+    src/app/panchang && cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -q && cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/lib/panchang/tara_bala.ts
+  - platform/src/lib/panchang/chandra_bala.ts
+  - platform/src/app/panchang/hooks/useChartList.ts
+  - platform/python-sidecar/panchang_engine/tara_bala.py
+  est_tokens: 130000
+  est_duration_min: 100
+  status: passed
+  human_decision_prompt: null
+- session_id: 4C-6-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S1_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-5
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -q && cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/python-sidecar/panchang_engine/muhurat.py
+  - platform/python-sidecar/panchang_engine/tests/test_muhurat_scoring.py
+  est_tokens: 140000
+  est_duration_min: 110
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: pytest 196 passed (195+1 warning); validate_queue OK
+  human_decision_prompt: null
+- session_id: 4C-6-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S2_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S1
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform/python-sidecar/panchang_engine
+    && pytest -q && cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/python-sidecar/panchang_engine/config/muhurat_weights.yaml
+  - platform/python-sidecar/panchang_engine/config_loader.py
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: pytest 230 passed; validate_queue OK
+  human_decision_prompt: null
+- session_id: 4C-6-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S3_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S2
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/MuhuratFinderModal.tsx
+  - platform/src/app/panchang/components/MuhuratResultsList.tsx
+  - platform/src/app/panchang/hooks/useMuhuratFinder.ts
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 82 passed (6 test files); validate_queue OK (17 entries valid)
+  human_decision_prompt: null
+- session_id: 4C-6-S4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S4_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S3
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test && python3
+    00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - 00_ARCHITECTURE/PHASE_4C_6_CLOSE_v1_0.md
+  - platform/tests/visual/4C6_acharya_review.md
+  est_tokens: 120000
+  est_duration_min: 90
+  status: passed
+  closed_on: 2026-05-20
+  human_decision_prompt: null
+- session_id: 4C-7
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_7_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-6-S4
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 82/82 PASS (4 files); validate_queue OK
+  gate_result: PASS (82/82 tests + validate_queue OK)
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/lib/panchang
+    src/lib/security && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/lib/panchang/ics_builder.ts
+  - platform/src/lib/security/sign_url.ts
+  - platform/src/app/api/panchang/feed.ics/route.ts
+  est_tokens: 120000
+  est_duration_min: 90
+  human_decision_prompt: null
+- session_id: 4C-8
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_8_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-7
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 261/261 PASS (21 files); validate_queue OK
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
+    src/lib/synthesis && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - platform/src/app/panchang/components/AskMadhavLink.tsx
+  est_tokens: 120000
+  est_duration_min: 90
+  human_decision_prompt: null
+- session_id: 4C-9
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
+  branch: feature/phase-4c-panchang
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Panchang
+  depends_on:
+  - 4C-8
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 platform/scripts/governance/schema_validator.py
+    && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
+    && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
+  expected_artifacts:
+  - 00_ARCHITECTURE/PHASE_4C_CLOSE_v1_0.md
+  - HANDOFF_WAVE_1.md
+  - 00_ARCHITECTURE/RED_TEAM/RT_4C_1_FINDING.md
+  est_tokens: 130000
+  est_duration_min: 100
+  status: passed
+  human_decision_prompt: null
+  approved_at: '2026-05-20'
+  approved_by: native
+  closed_at: '2026-05-20'
+  closing_note: >
+    Wave 1 complete. All Phase 4C sessions passed or skipped. PHASE_4C_CLOSE_v1_0.md
+    sealed. HANDOFF_WAVE_1.md authored. Conductor queue empty. Native runs split-PR
+    procedure per HANDOFF_WAVE_1.md next.
+wave_1_expanded_at: '2026-05-19'
+wave_1_closed_at: '2026-05-20'
+wave_1_status: COMPLETE
+wave_1_closing_banner: >
+  QUEUE COMPLETE — Wave 1 closed. See HANDOFF_WAVE_1.md for next steps.
+  All 11 queue entries (4C-1-S1 through 4C-9) resolved as passed or skipped.
+  Wave 2 (M5-A, 4B, 4D) requires fresh brief authoring and a new queue section.
