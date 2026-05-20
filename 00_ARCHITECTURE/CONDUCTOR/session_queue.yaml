@@ -17,7 +17,7 @@ entries:
   expected_artifacts:
   - 00_ARCHITECTURE/PSHIP_FILE_INVENTORY.md
   - 00_ARCHITECTURE/PSHIP_CONFLICT_MAP.md
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 - session_id: PSHIP-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S2_v1_0.md

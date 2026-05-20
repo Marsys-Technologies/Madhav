@@ -1,0 +1,420 @@
+{
+  "_meta": {
+    "source": "panchang_engine self-consistency fixture (4C-1-S1)",
+    "note": "Self-consistency fixture seeded from compute_panchang output. Anga IDs and timings match the engine exactly. Drik cross-validation (anga IDs, sunrise, rahu kalam) performed by human review post-session. Any discrepancy from Drik is documented in _meta.drik_deltas.",
+    "location": "Bhubaneswar, IN (20.27N, 85.84E, tz +05:30)",
+    "captured_at": "2026-05-19T00:00:00Z",
+    "engine_version": "1.0.0-S1",
+    "ayanamsha": "Lahiri",
+    "sunrise_convention": "visible upper limb + atmospheric refraction (Drik standard)",
+    "expected_match_tolerance": {
+      "anga_id": "exact",
+      "anga_transition": "120 sec",
+      "sunrise_sunset": "30 sec",
+      "rahu_yama_gulika": "120 sec"
+    },
+    "drik_deltas": []
+  },
+  "entries": [
+    {
+      "date": "2025-01-14",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 16,
+        "tithi_name": "Krishna Pratipada",
+        "tithi_end_utc": "2025-01-14T21:51:41+00:00",
+        "nakshatra_id": 7,
+        "nakshatra_name": "Punarvasu",
+        "nakshatra_end_utc": "2025-01-14T04:47:01+00:00",
+        "yoga_id": 1,
+        "yoga_name": "Vishkambha",
+        "yoga_end_utc": "2025-01-14T21:28:16+00:00",
+        "karana_first_id": 2,
+        "karana_first_name": "Balava",
+        "karana_second_id": 3,
+        "karana_second_name": "Kaulava",
+        "vara_id": 3,
+        "vara_name": "Mangalavara",
+        "paksha": "krishna",
+        "sunrise_utc": "2025-01-14T00:54:48+00:00",
+        "sunset_utc": "2025-01-14T11:56:42+00:00",
+        "moonrise_utc": "2025-01-14T12:22:46+00:00",
+        "moonset_utc": "2025-01-14T01:15:25+00:00",
+        "rahu_kalam": {
+          "start_utc": "2025-01-14T09:11:13.500000+00:00",
+          "end_utc": "2025-01-14T10:33:57.750000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2025-01-14T03:40:16.500000+00:00",
+          "end_utc": "2025-01-14T05:03:00.750000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2025-01-14T06:25:45+00:00",
+          "end_utc": "2025-01-14T07:48:29.250000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2025-03-29",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 30,
+        "tithi_name": "Amavasya",
+        "tithi_end_utc": "2025-03-29T10:57:51+00:00",
+        "nakshatra_id": 26,
+        "nakshatra_name": "Uttara Bhadrapada",
+        "nakshatra_end_utc": "2025-03-29T13:56:40+00:00",
+        "yoga_id": 25,
+        "yoga_name": "Brahma",
+        "yoga_end_utc": "2025-03-29T16:33:22+00:00",
+        "karana_first_id": 9,
+        "karana_first_name": "Chatushpada",
+        "karana_second_id": 10,
+        "karana_second_name": "Naga",
+        "vara_id": 7,
+        "vara_name": "Shanivara",
+        "paksha": "krishna",
+        "sunrise_utc": "2025-03-29T00:12:50+00:00",
+        "sunset_utc": "2025-03-29T12:30:12+00:00",
+        "moonrise_utc": "2025-03-28T23:55:53+00:00",
+        "moonset_utc": "2025-03-29T12:29:29+00:00",
+        "rahu_kalam": {
+          "start_utc": "2025-03-29T03:17:10.500000+00:00",
+          "end_utc": "2025-03-29T04:49:20.750000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2025-03-29T07:53:41.250000+00:00",
+          "end_utc": "2025-03-29T09:25:51.500000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2025-03-29T00:12:50+00:00",
+          "end_utc": "2025-03-29T01:45:00.250000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2025-04-13",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 15,
+        "tithi_name": "Purnima",
+        "tithi_end_utc": "2025-04-13T00:22:15+00:00",
+        "nakshatra_id": 14,
+        "nakshatra_name": "Chitra",
+        "nakshatra_end_utc": "2025-04-13T15:40:51+00:00",
+        "yoga_id": 14,
+        "yoga_name": "Harshana",
+        "yoga_end_utc": "2025-04-13T16:09:12+00:00",
+        "karana_first_id": 1,
+        "karana_first_name": "Bava",
+        "karana_second_id": 2,
+        "karana_second_name": "Balava",
+        "vara_id": 1,
+        "vara_name": "Ravivara",
+        "paksha": "shukla",
+        "sunrise_utc": "2025-04-13T00:00:04+00:00",
+        "sunset_utc": "2025-04-13T12:34:30+00:00",
+        "moonrise_utc": "2025-04-13T12:55:52+00:00",
+        "moonset_utc": "2025-04-12T23:56:03+00:00",
+        "rahu_kalam": {
+          "start_utc": "2025-04-13T11:00:11.750000+00:00",
+          "end_utc": "2025-04-13T12:34:30+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2025-04-13T06:17:17+00:00",
+          "end_utc": "2025-04-13T07:51:35.250000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2025-04-13T09:25:53.500000+00:00",
+          "end_utc": "2025-04-13T11:00:11.750000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2025-08-09",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 15,
+        "tithi_name": "Purnima",
+        "tithi_end_utc": "2025-08-09T07:55:04+00:00",
+        "nakshatra_id": 22,
+        "nakshatra_name": "Shravana",
+        "nakshatra_end_utc": "2025-08-09T08:53:48+00:00",
+        "yoga_id": 4,
+        "yoga_name": "Saubhagya",
+        "yoga_end_utc": "2025-08-09T20:45:17+00:00",
+        "karana_first_id": 1,
+        "karana_first_name": "Bava",
+        "karana_second_id": 2,
+        "karana_second_name": "Balava",
+        "vara_id": 7,
+        "vara_name": "Shanivara",
+        "paksha": "shukla",
+        "sunrise_utc": "2025-08-08T23:54:25+00:00",
+        "sunset_utc": "2025-08-09T12:49:40+00:00",
+        "moonrise_utc": "2025-08-09T13:02:52+00:00",
+        "moonset_utc": "2025-08-08T23:37:06+00:00",
+        "rahu_kalam": {
+          "start_utc": "2025-08-09T03:08:13.750000+00:00",
+          "end_utc": "2025-08-09T04:45:08.125000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2025-08-09T07:58:56.875000+00:00",
+          "end_utc": "2025-08-09T09:35:51.250000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2025-08-08T23:54:25+00:00",
+          "end_utc": "2025-08-09T01:31:19.375000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2025-10-20",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 29,
+        "tithi_name": "Krishna Chaturdashi",
+        "tithi_end_utc": "2025-10-20T10:15:25+00:00",
+        "nakshatra_id": 13,
+        "nakshatra_name": "Hasta",
+        "nakshatra_end_utc": "2025-10-20T14:46:56+00:00",
+        "yoga_id": 27,
+        "yoga_name": "Vaidhriti",
+        "yoga_end_utc": "2025-10-20T21:04:54+00:00",
+        "karana_first_id": 8,
+        "karana_first_name": "Shakuni",
+        "karana_second_id": 9,
+        "karana_second_name": "Chatushpada",
+        "vara_id": 2,
+        "vara_name": "Somavara",
+        "paksha": "krishna",
+        "sunrise_utc": "2025-10-20T00:13:17+00:00",
+        "sunset_utc": "2025-10-20T11:49:18+00:00",
+        "moonrise_utc": "2025-10-19T23:03:00+00:00",
+        "moonset_utc": "2025-10-20T11:01:05+00:00",
+        "rahu_kalam": {
+          "start_utc": "2025-10-20T01:40:17.125000+00:00",
+          "end_utc": "2025-10-20T03:07:17.250000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2025-10-20T04:34:17.375000+00:00",
+          "end_utc": "2025-10-20T06:01:17.500000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2025-10-20T07:28:17.625000+00:00",
+          "end_utc": "2025-10-20T08:55:17.750000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2025-11-15",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 26,
+        "tithi_name": "Krishna Ekadashi",
+        "tithi_end_utc": "2025-11-15T21:07:51+00:00",
+        "nakshatra_id": 12,
+        "nakshatra_name": "Uttara Phalguni",
+        "nakshatra_end_utc": "2025-11-15T18:04:39+00:00",
+        "yoga_id": 27,
+        "yoga_name": "Vaidhriti",
+        "yoga_end_utc": "2025-11-15T00:55:43+00:00",
+        "karana_first_id": 1,
+        "karana_first_name": "Bava",
+        "karana_second_id": 2,
+        "karana_second_name": "Balava",
+        "vara_id": 7,
+        "vara_name": "Shanivara",
+        "paksha": "krishna",
+        "sunrise_utc": "2025-11-15T00:25:44+00:00",
+        "sunset_utc": "2025-11-15T11:36:30+00:00",
+        "moonrise_utc": "2025-11-14T20:10:48+00:00",
+        "moonset_utc": "2025-11-15T08:32:12+00:00",
+        "rahu_kalam": {
+          "start_utc": "2025-11-15T03:13:25.500000+00:00",
+          "end_utc": "2025-11-15T04:37:16.250000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2025-11-15T07:24:57.750000+00:00",
+          "end_utc": "2025-11-15T08:48:48.500000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2025-11-15T00:25:44+00:00",
+          "end_utc": "2025-11-15T01:49:34.750000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2026-01-26",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 8,
+        "tithi_name": "Shukla Ashtami",
+        "tithi_end_utc": "2026-01-26T15:48:32+00:00",
+        "nakshatra_id": 1,
+        "nakshatra_name": "Ashwini",
+        "nakshatra_end_utc": "2026-01-26T07:03:02+00:00",
+        "yoga_id": 22,
+        "yoga_name": "Sadhya",
+        "yoga_end_utc": "2026-01-26T03:41:34+00:00",
+        "karana_first_id": 7,
+        "karana_first_name": "Vishti",
+        "karana_second_id": 1,
+        "karana_second_name": "Bava",
+        "vara_id": 2,
+        "vara_name": "Somavara",
+        "paksha": "shukla",
+        "sunrise_utc": "2026-01-26T00:54:02+00:00",
+        "sunset_utc": "2026-01-26T12:04:21+00:00",
+        "moonrise_utc": "2026-01-26T05:39:17+00:00",
+        "moonset_utc": "2026-01-25T18:04:38+00:00",
+        "rahu_kalam": {
+          "start_utc": "2026-01-26T02:17:49.375000+00:00",
+          "end_utc": "2026-01-26T03:41:36.750000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2026-01-26T05:05:24.125000+00:00",
+          "end_utc": "2026-01-26T06:29:11.500000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2026-01-26T07:52:58.875000+00:00",
+          "end_utc": "2026-01-26T09:16:46.250000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2026-02-05",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 19,
+        "tithi_name": "Krishna Chaturthi",
+        "tithi_end_utc": "2026-02-05T18:52:43+00:00",
+        "nakshatra_id": 12,
+        "nakshatra_name": "Uttara Phalguni",
+        "nakshatra_end_utc": "2026-02-05T17:27:25+00:00",
+        "yoga_id": 7,
+        "yoga_name": "Sukarman",
+        "yoga_end_utc": "2026-02-05T18:34:17+00:00",
+        "karana_first_id": 1,
+        "karana_first_name": "Bava",
+        "karana_second_id": 2,
+        "karana_second_name": "Balava",
+        "vara_id": 5,
+        "vara_name": "Guruvara",
+        "paksha": "krishna",
+        "sunrise_utc": "2026-02-05T00:51:04+00:00",
+        "sunset_utc": "2026-02-05T12:10:18+00:00",
+        "moonrise_utc": "2026-02-04T14:33:59+00:00",
+        "moonset_utc": "2026-02-05T02:59:31+00:00",
+        "rahu_kalam": {
+          "start_utc": "2026-02-05T07:55:35.250000+00:00",
+          "end_utc": "2026-02-05T09:20:29.500000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2026-02-05T00:51:04+00:00",
+          "end_utc": "2026-02-05T02:15:58.250000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2026-02-05T03:40:52.500000+00:00",
+          "end_utc": "2026-02-05T05:05:46.750000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2026-05-19",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 3,
+        "tithi_name": "Shukla Tritiya",
+        "tithi_end_utc": "2026-05-19T08:48:56+00:00",
+        "nakshatra_id": 5,
+        "nakshatra_name": "Mrigashira",
+        "nakshatra_end_utc": "2026-05-19T03:11:44+00:00",
+        "yoga_id": 8,
+        "yoga_name": "Dhriti",
+        "yoga_end_utc": "2026-05-19T12:18:40+00:00",
+        "karana_first_id": 5,
+        "karana_first_name": "Garaja",
+        "karana_second_id": 6,
+        "karana_second_name": "Vanija",
+        "vara_id": 3,
+        "vara_name": "Mangalavara",
+        "paksha": "shukla",
+        "sunrise_utc": "2026-05-18T23:38:49+00:00",
+        "sunset_utc": "2026-05-19T12:47:34+00:00",
+        "moonrise_utc": "2026-05-19T01:45:06+00:00",
+        "moonset_utc": "2026-05-18T14:44:37+00:00",
+        "rahu_kalam": {
+          "start_utc": "2026-05-19T09:30:22.750000+00:00",
+          "end_utc": "2026-05-19T11:08:58.375000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2026-05-19T02:56:00.250000+00:00",
+          "end_utc": "2026-05-19T04:34:35.875000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2026-05-19T06:13:11.500000+00:00",
+          "end_utc": "2026-05-19T07:51:47.125000+00:00"
+        }
+      }
+    },
+    {
+      "date": "2026-08-15",
+      "lat": 20.27,
+      "lon": 85.84,
+      "tz_offset_minutes": 330,
+      "expected": {
+        "tithi_id": 3,
+        "tithi_name": "Shukla Tritiya",
+        "tithi_end_utc": "2026-08-15T11:59:24+00:00",
+        "nakshatra_id": 12,
+        "nakshatra_name": "Uttara Phalguni",
+        "nakshatra_end_utc": "2026-08-15T21:55:45+00:00",
+        "yoga_id": 20,
+        "yoga_name": "Shiva",
+        "yoga_end_utc": "2026-08-15T01:39:04+00:00",
+        "karana_first_id": 4,
+        "karana_first_name": "Taitila",
+        "karana_second_id": 5,
+        "karana_second_name": "Garaja",
+        "vara_id": 7,
+        "vara_name": "Shanivara",
+        "paksha": "shukla",
+        "sunrise_utc": "2026-08-14T23:56:14+00:00",
+        "sunset_utc": "2026-08-15T12:45:52+00:00",
+        "moonrise_utc": "2026-08-15T02:13:37+00:00",
+        "moonset_utc": "2026-08-14T13:56:49+00:00",
+        "rahu_kalam": {
+          "start_utc": "2026-08-15T03:08:38.500000+00:00",
+          "end_utc": "2026-08-15T04:44:50.750000+00:00"
+        },
+        "yamagandam": {
+          "start_utc": "2026-08-15T07:57:15.250000+00:00",
+          "end_utc": "2026-08-15T09:33:27.500000+00:00"
+        },
+        "gulika_kalam": {
+          "start_utc": "2026-08-14T23:56:14+00:00",
+          "end_utc": "2026-08-15T01:32:26.250000+00:00"
+        }
+      }
+    }
+  ]
+}
