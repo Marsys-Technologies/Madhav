@@ -257,6 +257,8 @@ Axis C.5 of the protocol mandates script execution at every session close. F.2 f
 
 Exit code 1/2/4+ in any script run → close fails, session halts. Exit code 3 without `known_residuals` block → close fails with `close_checklist_known_residuals_missing` HIGH. Exit code 3 with `known_residuals` block containing a HIGH/CRITICAL entry → close fails with `close_checklist_residual_severity_violation` HIGH.
 
+**GH-DRIFT-DETECTOR-FIX (2026-05-21) — drift_detector directory-entry hardening.** `drift_detector.py` crashed with `IsADirectoryError` when `CAPABILITY_MANIFEST.json` contained entries whose `path` resolved to a directory (e.g., `08_CLASSICAL_CROSS_REFERENCE/` registered with `representations: ["folder"]`). Fix applied in session GH-DRIFT-DETECTOR-FIX: `check_ca_filesystem_fingerprints` now guards `path_abs.is_dir()` before calling `compute_sha256`, emitting a LOW `directory_entry_skipped` finding and continuing. This is fix shape (b) per the brief. The exit-code-3 known_residuals discipline is NOT relaxed — the threshold remains exit ≤ 3 for findings-only; exit 4 (script error) still fails close. Directory entries that are intentional folder registrations will appear as LOW `directory_entry_skipped` findings; these may be added to the known_residuals whitelist at any session that encounters them.
+
 ---
 
 ## §G — Red-team cadence + learning_layer_stub validator class
