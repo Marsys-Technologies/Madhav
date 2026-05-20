@@ -145,3 +145,17 @@ Added `print:hidden` to the footer (navigation chrome) and the "Shared conversat
 **Amendments:** A3 (FLAGLESS — additive CSS only)
 
 ---
+
+## X-S10 — Interactive Tables (Sort + CSV)
+
+**Status:** COMPLETED  
+**Commit:** b0db7bb  
+**Completed:** 2026-05-20T09:05:00Z
+
+Created `InteractiveTable.tsx` with clickable column headers (asc/desc sort toggle, ▲/▼ indicator), numeric-aware sorting, and client-side CSV download (`marsys-table-<timestamp>.csv`). Updated `MarkdownContent.tsx` `table` handler: extracts headers and rows from the HAST `node` prop (via `extractHastTableData`), routes to `InteractiveTable` when flag=true and ≥3 data rows, falls through to static `<table>` otherwise. Flag read at render time (not module-load) so vitest `stubEnv` works cleanly. `NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true` added to deploy.yml (Amendment 1 HARD GATE). 10 new tests: 5 unit (sort/CSV), 4 parent-context via `MarkdownShell` (rendering, CSV button, sort-via-header, small-table passthrough), 1 CSV anchor spy — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with Markdown table (≥3 data rows) → click header → rows sort ascending (▲) → click again → descending (▼) → click "↓ CSV" → `marsys-table-<ts>.csv` downloaded client-side. Tables with <3 data rows render as static `<table>`.
+
+**Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true in deploy.yml — HARD GATE satisfied) | A2 (MarkdownShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
+
+---
