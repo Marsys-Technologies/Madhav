@@ -24388,3 +24388,117 @@ session_close:
     context-inheritance rule. Human gate required before commit.
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: PSHIP-S4H
+  opened_at: "2026-05-20T21:05:00+05:30"
+  branch: feature/panchang-ship
+  worktree: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  predecessor: PSHIP-S3H
+  scope: >
+    Planner prompt integration — extend R-PA with 13 trigger phrases, add R-PCI
+    (Panchang Context Inheritance) rule, renumber/add few-shot examples 4.29–4.31,
+    build probe set to 24 queries. Human gate cleared via queue commit 946b48f.
+  may_touch:
+    - 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
+    - platform/tests/planner/panchang_probe_set.json
+    - platform/tests/planner/panchang_routing.test.ts
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP_S4H_v1_0.md
+  must_not_touch:
+    - platform/src/lib/retrieve/query_panchanga.ts
+    - platform/supabase/migrations/
+    - platform/python-sidecar/pipeline/bootstrap_panchanga.py
+    - 00_ARCHITECTURE/CONDUCTOR/
+    - CLAUDE.md
+    - platform/src/app/panchang/
+    - platform/src/components/
+  pre_flight_checks:
+    - check: "SQL tool extended with S3H fields (choghadiya/special_yogas)"
+      result: PASS
+    - check: "PSHIP-S3H commits present on branch"
+      result: PASS — df34373 PSHIP-S3H close
+
+scope_items:
+  - id: AC.S4H.1
+    title: "Extend R-PA with 13 trigger phrases"
+    result: PASS
+    detail: >
+      R-PA sub-trigger (d) extended with named special yogas (Sarvartha Siddhi,
+      Amrit Siddhi, Guru Pushya, Ravi Pushya, Tripushkar, Dwipushkar, Siddha,
+      Bhadra, Panchaka). New sub-trigger (f) added for inauspicious/auspicious
+      windows (rahu kalam, rahu kaal, yamagandam, gulika, brahma muhurta, abhijit,
+      amrit kalam, choghadiya, hora). New sub-trigger (g) added for direct panchang
+      requests (panchang for today, today's panchang, chandra bala, tara bala).
+      Rule structure preserved; R-PA remains a single block.
+  - id: AC.S4H.2
+    title: "Main's R-TC left untouched"
+    result: PASS
+    detail: >
+      R-TC (Transit-Context Enrichment) at line 681 is byte-identical to its
+      pre-session state. Feature branch R-TC label absent from merged file.
+      Verified by grep and diff.
+  - id: AC.S4H.3
+    title: "R-PCI rule added verbatim after R-PA"
+    result: PASS
+    detail: >
+      R-PCI (Panchang Context Inheritance) new rule authored from RECONCILIATION_SPEC
+      §3.2 description (not in any prior branch — spec described intent only).
+      Rule placed between R-PA and R-TE. Covers: skip query_panchanga when
+      <panchang_context> present; R-PCI > R-PA for same date/location; three
+      exception conditions; R-TC still fires normally under R-PCI.
+  - id: AC.S4H.4
+    title: "Few-shot renumbered/added correctly"
+    result: PASS
+    detail: >
+      Existing examples 4.25–4.28 untouched. Three new examples added:
+      4.29 (R-PA auspicious timing + Rahu Kalam — Sarvartha Siddhi + inauspicious
+      fields); 4.30 (R-PA Rahu Kalam direct — minimal fields); 4.31 (R-PCI context
+      inheritance — empty tool_calls, cite from injected context). Footer updated
+      to v2.0.7. Total few-shot count: 31 (4.1–4.31).
+  - id: AC.S4H.5
+    title: "Planner probe set 24/24 PASS"
+    result: PASS
+    detail: >
+      probe set extended from 10 (4C-3) to 24 queries (PP.11–PP.21: 13 new R-PA
+      triggers; PP.22: R-PCI skip; PP.23: main R-TC regression; PP.24: FP guard).
+      panchang_routing.test.ts updated with R-PCI handler (hasPanchangContext),
+      extended PANCHANG_KEYWORDS, NONE-expected branch, regression + FP tests.
+      vitest: 36/36 PASS (gate command). Main's R-TC behavior confirmed unchanged;
+      R-PCI skip confirmed; false-positive 'sunrise' guard confirmed.
+  - id: AC.S4H.6
+    title: "Session close protocol"
+    result: PASS
+    detail: CURRENT_STATE v5.19; SESSION_LOG appended; brief status set COMPLETE.
+
+commits:
+  - sha: db56d59
+    message: "PSHIP-S4H: extend R-PA (13 triggers) + add R-PCI + add examples 4.29-4.31"
+  - sha: 1ffb82b
+    message: "PSHIP-S4H: planner probe set extended to 24 probes — 36/36 tests PASS"
+
+gate_runs:
+  - name: vitest panchang_routing.test.ts
+    command: "npx vitest run tests/planner/panchang_routing.test.ts"
+    result: PASS
+    detail: "36/36 tests pass (24 probe queries + 12 FP/FN checks)"
+
+session_close:
+  closed_at: "2026-05-20T21:20:00+05:30"
+  all_acs_pass: true
+  deferred_items: []
+  current_state_updated: true
+  session_log_updated: true
+  brief_status_set_complete: true
+  push_to_remote: false
+  next_session_id: PSHIP-S5H
+  next_session_objective: >
+    PSHIP-S5H — end-to-end integration verification: panchang_engine pytest
+    230/230, tsc 0, npm run build clean, planner routing tests pass, migration
+    069 SQL syntax verify. Gate before PSHIP-S6H (PR + deploy).
+  session_close_valid: true
+```

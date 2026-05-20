@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.18
+version: 5.19
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.19 (2026-05-20, PSHIP-S4H):
+    **PSHIP-S4H COMPLETE. Planner prompt R-PA extension + R-PCI addition + few-shot 4.29–4.31 + probe set 24/24 PASS.**
+    Key outcomes: (1) AC.S4H.1 PASS — R-PA trigger list extended with 13 phrases: named special yogas (Sarvartha Siddhi, Amrit Siddhi, Guru Pushya, Ravi Pushya, Tripushkar, Dwipushkar, Siddha, Bhadra, Panchaka) added to sub-trigger (d); new sub-trigger (f) for inauspicious/auspicious windows (rahu kalam, rahu kaal, yamagandam, gulika, brahma muhurta, abhijit, amrit kalam, choghadiya, hora); new sub-trigger (g) for direct panchang requests + chandra bala + tara bala. Rule structure preserved; R-PA remains a single block. (2) AC.S4H.2 PASS — main's R-TC (Transit-Context Enrichment) byte-identical to pre-session state at line 681; feature branch R-TC label absent. (3) AC.S4H.3 PASS — R-PCI (Panchang Context Inheritance) rule added verbatim after R-PA; mechanics: skip query_panchanga when <panchang_context> present; R-PCI > R-PA for same date/location; three exception conditions; R-TC still fires normally. (4) AC.S4H.4 PASS — examples 4.29 (auspicious timing + Rahu Kalam), 4.30 (Rahu Kalam direct), 4.31 (R-PCI context inheritance) added; existing 4.25–4.28 untouched; footer updated to v2.0.7. (5) AC.S4H.5 PASS — probe set extended from 10 to 24 queries (PP.11–PP.21: 13 R-PA triggers; PP.22: R-PCI; PP.23: R-TC regression; PP.24: FP guard); 36/36 vitest assertions PASS; main R-TC behavior confirmed unchanged; R-PCI skip confirmed. (6) AC.S4H.6 PASS — CURRENT_STATE v5.19 + SESSION_LOG + brief COMPLETE.
+    PLANNER_PROMPT_v2_0.md version: v2.0.7. Few-shot count: 4.1–4.31 (31 examples).
+    active_phase_plan_sub_phase: feature/panchang-ship PSHIP-S4H CLOSED. PSHIP-S5H INCOMING (integration verification pass).
+    last_session_id: PSHIP-S4H. next_session_objective: PSHIP-S5H — end-to-end verification: panchang_engine pytest 230/230, tsc 0, npm run build clean, planner routing tests pass, migration 069 SQL syntax verify.
+    file_updated_at: 2026-05-20T21:18:00+05:30. file_updated_by_session: PSHIP-S4H.
   - v5.18 (2026-05-20, PSHIP-S3H):
     **PSHIP-S3H COMPLETE. Query-tool reconciliation + migration 069 (5 JSONB columns) + bootstrap extension.**
     Key outcomes: (1) AC.S3H.1 PASS — RETRIEVAL_TOOLS has exactly one queryPanchanga (main's SQL tool); sidecar logic lives in /api/panchanga/ + lib/panchang/ (non-tool modules); tsc 0. (2) AC.S3H.2 PASS — migration 069_extend_panchanga_daily.sql authored; ADD COLUMN IF NOT EXISTS for special_yogas/inauspicious/auspicious/choghadiya/hora JSONB + GIN indexes; matches project migration conventions. (3) AC.S3H.3 PASS — bootstrap_panchanga.py extended with _compute_enrichment() calling panchang_engine.special_yogas + panchang_engine.timings; --rebuild flag added for backfill of existing 73K rows. (4) AC.S3H.4 PASS — SQL query_panchanga.ts returns 5 new field groups; PanchangaField type + ALL_FIELDS + rowToContent + SQL SELECT updated; graceful null handling pre-bootstrap. (5) AC.S3H.5 DEFERRED — DB access unavailable; --rebuild command documented in bootstrap --help and PSHIP_S3H_PARITY.md §4. (6) AC.S3H.6 PASS — 8 new enrichment field unit tests added; all 13 query_panchanga unit tests GREEN (+ 6 original). (7) AC.S3H.7 PASS — PSHIP_S3H_PARITY.md authored; architectural guarantee: bootstrap and sidecar call identical panchang_engine functions → outputs match. Native context (tara/chandra bala) intentional asymmetry documented. (8) AC.S3H.8 PASS — tsc 0; unit tests: 22 failing test files pre-existing (same count before + after; no new failures introduced). Validators fail on pre-existing issues (YAML timestamp in session_log; IsADirectoryError in drift_detector). (9) AC.S3H.9 PASS — All sidecar-calling API routes (/api/panchanga, /api/compute/muhurat, /api/panchang/ics, /api/panchang/feed.ics) send x-api-key: PYTHON_SIDECAR_API_KEY. (10) AC.S3H.10 PASS — CURRENT_STATE v5.18 + SESSION_LOG + brief COMPLETE.
