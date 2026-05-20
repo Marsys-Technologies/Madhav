@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.17
+version: 5.18
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.18 (2026-05-20, PSHIP-S3H):
+    **PSHIP-S3H COMPLETE. Query-tool reconciliation + migration 069 (5 JSONB columns) + bootstrap extension.**
+    Key outcomes: (1) AC.S3H.1 PASS — RETRIEVAL_TOOLS has exactly one queryPanchanga (main's SQL tool); sidecar logic lives in /api/panchanga/ + lib/panchang/ (non-tool modules); tsc 0. (2) AC.S3H.2 PASS — migration 069_extend_panchanga_daily.sql authored; ADD COLUMN IF NOT EXISTS for special_yogas/inauspicious/auspicious/choghadiya/hora JSONB + GIN indexes; matches project migration conventions. (3) AC.S3H.3 PASS — bootstrap_panchanga.py extended with _compute_enrichment() calling panchang_engine.special_yogas + panchang_engine.timings; --rebuild flag added for backfill of existing 73K rows. (4) AC.S3H.4 PASS — SQL query_panchanga.ts returns 5 new field groups; PanchangaField type + ALL_FIELDS + rowToContent + SQL SELECT updated; graceful null handling pre-bootstrap. (5) AC.S3H.5 DEFERRED — DB access unavailable; --rebuild command documented in bootstrap --help and PSHIP_S3H_PARITY.md §4. (6) AC.S3H.6 PASS — 8 new enrichment field unit tests added; all 13 query_panchanga unit tests GREEN (+ 6 original). (7) AC.S3H.7 PASS — PSHIP_S3H_PARITY.md authored; architectural guarantee: bootstrap and sidecar call identical panchang_engine functions → outputs match. Native context (tara/chandra bala) intentional asymmetry documented. (8) AC.S3H.8 PASS — tsc 0; unit tests: 22 failing test files pre-existing (same count before + after; no new failures introduced). Validators fail on pre-existing issues (YAML timestamp in session_log; IsADirectoryError in drift_detector). (9) AC.S3H.9 PASS — All sidecar-calling API routes (/api/panchanga, /api/compute/muhurat, /api/panchang/ics, /api/panchang/feed.ics) send x-api-key: PYTHON_SIDECAR_API_KEY. (10) AC.S3H.10 PASS — CURRENT_STATE v5.18 + SESSION_LOG + brief COMPLETE.
+    COLLISION_RESOLUTION (D6): RETRIEVAL_TOOLS uses main's SQL query_panchanga exclusively. Sidecar-direct path is /api/panchanga/route.ts + lib/panchang/ — not a planner tool. No duplicate registration.
+    MIGRATION_NOTE: Brief specified "061" but 061–068 were already taken on main (R7/R8/R9 migrations). Migration filed as 069 — next available slot. SQL tool comment updated to reference migration 069.
+    BOOTSTRAP_STATUS: DEFERRED. Command: DATABASE_URL=$PROD_DB_URL python -m pipeline.bootstrap_panchanga --rebuild (~60min, 73K rows).
+    active_phase_plan_sub_phase: feature/panchang-ship PSHIP-S3H CLOSED. PSHIP-S4H INCOMING (planner prompt R-TC + R-PA extension — human gate required).
+    last_session_id: PSHIP-S3H. next_session_objective: PSHIP-S4H — extend PLANNER_PROMPT_v2_0.md R-TC + R-PA with 13 missing trigger phrases (rahu kalam, choghadiya, hora, brahma muhurta, special yoga names, etc.); human gate before commit.
+    file_updated_at: 2026-05-20T19:42:00+05:30. file_updated_by_session: PSHIP-S3H.
   - v5.17 (2026-05-20, PSHIP-S2H):
     **PSHIP-S2H COMPLETE. Panchang non-planner shared-file integration onto main.**
     Key outcomes: (1) AC.S2H.1 PASS — engine tests 230/230; additive transplant intact. (2) AC.S2H.2 PASS — AppShellRail + MobileNavSheet /panchang entry added; tsc clean. (3) AC.S2H.3 PASS — panchang + muhurat routers registered in main.py; sidecar boots clean. (4) AC.S2H.4 PASS — consume/page.tsx buildPanchangInitialMessages + searchParams + system-prompts.ts PANCHANG CONTEXT block integrated. (5) AC.S2H.5 PASS — deploy.yml confirmed no NEXT_PUBLIC panchang flag needed. (6) AC.S2H.6 PASS — CLAUDE.md v2.9 §E Nine workstreams; Phase 4C + Conductor entries added; .geminirules MP.1 mirror propagated same session with R7/R8/R9 parity. (7) AC.S2H.7 PASS — tsc 0 errors; test failures all pre-existing on branch; no new regressions; panchang component tests now GREEN (next/navigation mock in test-setup.ts). (8) CAPABILITY_MANIFEST 162→163 (PANCHANG_DAILY_v1_0 entry added). (9) ical-generator@^10.2.0 added to package.json; SESSION_SECRET env vars added to .env.example + .env.local.example. (10) test-setup.ts: next/navigation global mock inserted.

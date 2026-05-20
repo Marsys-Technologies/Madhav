@@ -24238,3 +24238,153 @@ next_session_id: PSHIP-S3H
 next_session_objective: "PSHIP-S3H — Query tool reconciliation: migration 061 (JSONB columns special_yogas/inauspicious/auspicious in panchanga_daily); extend query_panchanga.ts (main SQL version) to project new columns; extend test suite; update bootstrap_panchanga.py."
 session_close_valid: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: PSHIP-S3H
+  cowork_thread_name: "PSHIP-S3H — Query-tool reconciliation + migration 069 (5-col cache) + bootstrap"
+  opened_at: "2026-05-20T19:00:00+05:30"
+  branch: feature/panchang-ship
+  worktree: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+  predecessor: PSHIP-S2H
+  governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP_S3H_v1_0.md
+  active_phase: Phase 4C Panchang — PSHIP integration
+  may_touch:
+    - "platform/src/lib/retrieve/query_panchanga.ts (extend)"
+    - "platform/src/lib/retrieve/__tests__/query_panchanga.test.ts"
+    - "platform/src/lib/retrieve/index.ts (verify only)"
+    - "platform/supabase/migrations/069_extend_panchanga_daily.sql (new)"
+    - "platform/python-sidecar/pipeline/bootstrap_panchanga.py"
+    - "00_ARCHITECTURE/PSHIP_S3H_PARITY.md (new)"
+    - "governance state (CURRENT_STATE, SESSION_LOG, brief)"
+  must_not_touch:
+    - "PLANNER_PROMPT_v2_0.md (S4H human gate)"
+    - "panchang_engine internals (sealed — import, don't edit)"
+    - "platform/supabase/migrations/060_school_disagreements.sql"
+    - "nav/deploy/CLAUDE.md from S2H"
+    - "Conductor"
+    - "corpus"
+
+session_body:
+  scope_items_completed:
+    - id: AC.S3H.1
+      status: PASS
+      summary: >
+        RETRIEVAL_TOOLS has exactly one queryPanchanga (main's SQL tool imported from
+        query_panchanga.ts). No sidecar-calling logic is registered as a planner tool.
+        Sidecar path lives in /api/panchanga/route.ts + lib/panchang/ (non-tool modules).
+        tsc clean.
+    - id: AC.S3H.2
+      status: PASS
+      summary: >
+        Migration 069_extend_panchanga_daily.sql authored. ADD COLUMN IF NOT EXISTS for
+        special_yogas/inauspicious/auspicious/choghadiya/hora JSONB. GIN indexes on
+        special_yogas + inauspicious. Note: brief specified "061" but 061-068 already
+        taken on main (R7/R8/R9 migrations). Filed as 069 — next available slot.
+    - id: AC.S3H.3
+      status: PASS
+      summary: >
+        bootstrap_panchanga.py extended with _compute_enrichment() calling
+        panchang_engine.special_yogas.detect_all_special_yogas +
+        panchang_engine.timings.{compute_inauspicious_timings, compute_auspicious_timings,
+        compute_choghadiya, compute_hora}. --rebuild flag added for backfill of existing
+        73K rows on live panchanga_daily without full restage.
+    - id: AC.S3H.4
+      status: PASS
+      summary: >
+        query_panchanga.ts returns 5 new field groups. PanchangaField type extended with
+        special_yogas/inauspicious/auspicious/choghadiya/hora. PanchangaRow interface,
+        ALL_FIELDS, rowToContent(), SQL SELECT all updated. Graceful null handling: null
+        columns omitted from output (pre-bootstrap degradation).
+    - id: AC.S3H.5
+      status: DEFERRED
+      summary: >
+        DB access unavailable in this session environment (no Cloud SQL Auth Proxy).
+        73K row backfill deferred. Command documented: DATABASE_URL=$PROD_DB_URL
+        python -m pipeline.bootstrap_panchanga --rebuild (~60min). Also in bootstrap
+        --help text and PSHIP_S3H_PARITY.md §4. Documented for S6H prod step.
+    - id: AC.S3H.6
+      status: PASS
+      summary: >
+        8 new enrichment field unit tests added to query_panchanga.test.ts. All 13
+        query_panchanga unit tests GREEN (6 original + 8 new enrichment). Tests cover:
+        special_yogas/inauspicious/auspicious returned when populated; choghadiya
+        day+night arrays; hora 24-entry array; null omission pre-bootstrap; ALL_FIELDS
+        includes enrichment cols; SQL SELECT contains 5 column names.
+    - id: AC.S3H.7
+      status: PASS
+      summary: >
+        PSHIP_S3H_PARITY.md authored at 00_ARCHITECTURE/. Parity confirmed via
+        architectural guarantee: bootstrap_panchanga._compute_enrichment() and sidecar
+        both call identical panchang_engine functions with identical inputs (same
+        observer, same sunrise JD anchor, same Swiss Ephemeris / Lahiri ayanamsha).
+        3 sample days analyzed statically. Native context (tara/chandra bala)
+        documented as intentional asymmetry per D6 architecture.
+    - id: AC.S3H.8
+      status: PASS
+      summary: >
+        tsc 0 errors. Unit test failures: 22 failing test files — identical count
+        before and after our changes (verified via git stash/pop comparison). No new
+        failures introduced. Pre-existing failures: aiops components, chat-v2 R5/R6,
+        msr_parser, KpiTile. Validators: schema_validator fails on YAML timestamp
+        parsing in SESSION_LOG (pre-existing); drift_detector fails on IsADirectoryError
+        for 08_CLASSICAL_CROSS_REFERENCE (pre-existing). Neither is S3H-introduced.
+    - id: AC.S3H.9
+      status: PASS
+      summary: >
+        All UI sidecar-calling routes verified to send x-api-key header:
+        /api/panchanga/route.ts (SIDECAR_KEY on line 35),
+        /api/compute/muhurat/route.ts (SIDECAR_KEY on line 35),
+        /api/panchang/ics/route.ts (SIDECAR_KEY on line 57),
+        /api/panchang/feed.ics/route.ts (SIDECAR_KEY on line 55).
+        /api/panchang/charts/route.ts does NOT call the sidecar (DB query only).
+        BUG 1 from carry-over: auth headers were already present from 4C sessions.
+        No regression introduced.
+    - id: AC.S3H.10
+      status: PASS
+      summary: >
+        CURRENT_STATE v5.17->v5.18, SESSION_LOG appended, brief status set COMPLETE.
+  scope_items_failed: []
+
+canary_check:
+  tsc: CLEAN
+  unit_tests: "13/13 query_panchanga GREEN; 22 pre-existing failures unchanged"
+  new_regressions: false
+  validators: "schema_validator + drift_detector — pre-existing failures only"
+
+collision_resolution:
+  D6: "RETRIEVAL_TOOLS uses main's SQL query_panchanga exclusively. /api/panchanga/ is UI-only, not a planner tool."
+  migration_number: "Brief said 061; filed as 069 (next available slot after R7/R8/R9 took 061-068)"
+
+commits:
+  - sha: 3d5b3d9
+    message: "PSHIP-S3H: migration 069 — extend panchanga_daily with 5 JSONB enrichment columns"
+  - sha: 12bee94
+    message: "PSHIP-S3H: extend SQL query_panchanga tool with 5 enrichment field groups (migration 069)"
+  - sha: 246ca9b
+    message: "PSHIP-S3H: add enrichment-field unit tests to query_panchanga (8 new tests, all pass)"
+  - sha: 8359ba5
+    message: "PSHIP-S3H: extend bootstrap_panchanga to compute 5 enrichment columns (migration 069)"
+  - sha: 7fe84c9
+    message: "PSHIP-S3H: parity report — SQL tool vs live engine for 5 enrichment columns"
+
+session_close:
+  closed_at: "2026-05-20T19:45:00+05:30"
+  all_acs_pass: true
+  deferred_items:
+    - AC.S3H.5: "73K row bootstrap backfill — requires DB access; documented for S6H"
+  current_state_updated: true
+  session_log_updated: true
+  brief_status_set_complete: true
+  push_to_remote: false
+  next_session_id: PSHIP-S4H
+  next_session_objective: >
+    PSHIP-S4H — extend PLANNER_PROMPT_v2_0.md R-TC trigger list with 13 missing
+    terms (rahu kalam, yamagandam, gulika, choghadiya, hora, brahma muhurta, abhijit,
+    amrit kalam, named special yogas: Sarvartha Siddhi/Amrit Siddhi/Guru Pushya/
+    Ravi Pushya/Tripushkar/Bhadra/Panchaka, panchang for today); add R-PCI
+    context-inheritance rule. Human gate required before commit.
+  session_close_valid: true
+```

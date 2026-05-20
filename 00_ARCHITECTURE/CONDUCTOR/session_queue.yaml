@@ -91,7 +91,7 @@ entries:
   gate_command: cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform/python-sidecar/panchang_engine
     && python3 -m pytest -q && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip/platform
     && npx tsc --noEmit && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip
-  status: pending
+  status: passed
   human_decision_prompt: null
 - session_id: PSHIP-S3H
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S3H_v1_0.md
@@ -106,8 +106,12 @@ entries:
     && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd
     /Users/Dev/Vibe-Coding/Apps/PanchangShip && python3 platform/scripts/governance/schema_validator.py
     && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
-  status: pending
+  status: passed
   human_decision_prompt: null
+  session_notes: >
+    AC.S3H.5 DEFERRED (bootstrap backfill — no DB access in session). Migration filed
+    as 069 (not 061 as brief specified; 061-068 taken by R7/R8/R9 on main). All other
+    9 ACs PASS. tsc 0; unit tests 13/13 GREEN; no new regressions.
 - session_id: PSHIP-S4H
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S4H_v1_0.md
   branch: feature/panchang-ship

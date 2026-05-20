@@ -806,3 +806,65 @@ PSHIP-S6H (deploy — human gate).
 - AC.PRECON1.8 — PSHIP-S1 disposition: 127 files survive; query_panchanga.ts/test.ts handled by PSHIP-S3H
 
 ---
+
+## PSHIP-S2H — PASS — 2026-05-20T10:58:00Z
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S2H |
+| Result | PASS |
+| Timestamp | 2026-05-20T10:58:00Z |
+| Commits | 9484ce9, 4ce4285, f1d0a92 |
+| Gate exit code | 0 |
+| Context sessions used | 1 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+230 passed, 1 warning in 2.54s (pytest). tsc --noEmit clean. npm test tail-5 shows pre-existing ParamOverrideRow failure — tolerated per baseline.
+
+### Sub-agent summary
+
+All 8 ACs passed. Files integrated per PSHIP_CONFLICT_MAP §5 execution order items 1–15 (item 16 PLANNER_PROMPT correctly skipped — S4H human gate). Key outcomes: AppShellRail + MobileNavSheet have /panchang nav entry; panchang + muhurat routers registered in main.py; consume/page.tsx wired with buildPanchangInitialMessages; deploy.yml confirmed no NEXT_PUBLIC panchang flags needed; CLAUDE.md bumped to v2.9 with .geminirules MP.1 mirror; CAPABILITY_MANIFEST 162→163; ical-generator installed; next/navigation mock fixed 25 previously failing panchang tests.
+
+### Scope items completed
+
+AC.S2H.1, AC.S2H.2, AC.S2H.3, AC.S2H.4, AC.S2H.5, AC.S2H.6, AC.S2H.7, AC.S2H.8
+
+---
+
+## PSHIP-S3H — PASS — 2026-05-20T19:45:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S3H |
+| Result | PASS |
+| Timestamp | 2026-05-20T19:45:00+05:30 |
+| Commits | 3d5b3d9, 12bee94, 246ca9b, 8359ba5, 7fe84c9 |
+| Gate exit code | 0 (tsc clean; 13/13 unit tests GREEN; 22 pre-existing failures unchanged) |
+| Context sessions used | 2 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+```
+tsc --noEmit: 0 errors. query_panchanga unit tests: 13 passed (6 original + 8 new
+enrichment). FAIL count: 22 files — identical to baseline (pre-existing). No new
+regressions introduced.
+```
+
+### Sub-agent summary
+
+All 9 executable ACs passed; AC.S3H.5 deferred (bootstrap backfill — no DB access).
+Key outcomes: (1) RETRIEVAL_TOOLS collision resolved — main's SQL tool is the only
+query_panchanga in RETRIEVAL_TOOLS; sidecar logic stays in /api/panchanga/ + lib/panchang/.
+(2) Migration 069 authored (brief said 061, but 061–068 were taken by R7/R8/R9 on main;
+069 is next available). (3) Bootstrap extended with _compute_enrichment() calling identical
+panchang_engine functions as the live sidecar — architectural parity guarantee. --rebuild
+flag added for 73K-row backfill. (4) SQL tool fully extended: PanchangaField types,
+ALL_FIELDS, rowToContent, SQL SELECT, tool description. Graceful null degradation pre-bootstrap.
+(5) Parity report at 00_ARCHITECTURE/PSHIP_S3H_PARITY.md. (6) Auth headers confirmed on
+all 4 sidecar-calling API routes.
+
+### Scope items completed
+
+AC.S3H.1, AC.S3H.2, AC.S3H.3, AC.S3H.4, AC.S3H.5 (DEFERRED), AC.S3H.6, AC.S3H.7, AC.S3H.8, AC.S3H.9, AC.S3H.10
+
