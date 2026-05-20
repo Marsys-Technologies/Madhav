@@ -103,3 +103,17 @@ Created `useScrollDiscipline.ts` hook with IntersectionObserver on a bottom sent
 **Amendments:** A1 (deploy.yml NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true — HARD GATE satisfied) | A2 (ScrollViewportShell parent-context wrapper in tests, click-path documented) | A3 (FLAGGED, default true)
 
 ---
+
+## X-S7 — Font-Size Control
+
+**Status:** COMPLETED  
+**Commit:** ffca13e  
+**Completed:** 2026-05-20T09:14:00Z
+
+Added `useTextScale()` hook to `useChatPreferences.ts`: global localStorage key `marsys_chat_v2_text_scale`, four scales `[0.875, 1.0, 1.125, 1.25]`, clamped at boundaries. `TEXT_SCALES` constant exported. Aa+/Aa− buttons added to `v2-header-actions` in `ConsumeChatV2` with `aria-label="Increase/Decrease text size"` and `aria-disabled` at boundary values. `--text-scale` CSS custom property set on `v2-chat-shell` div. `MarkdownContent` prose changed from `text-[15px]` to `fontSize: 'calc(15px * var(--text-scale, 1))'`. 11 tests — all pass.
+
+**Click-path:** Chat V2 → header → click Aa+ → prose text grows one step → at max, further click no-op → click Aa− → shrinks → scale persists across refresh.
+
+**Amendments:** A2 (FontScaleShell parent-context wrapper, click-path documented) | A3 (FLAGLESS)
+
+---
