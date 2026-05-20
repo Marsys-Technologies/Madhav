@@ -1,13 +1,17 @@
 'use client'
 
 /**
- * ReasoningProgress — γ2
+ * ReasoningProgress — γ2 + Y-S4
  *
  * Collapsible reasoning drawer with live token count + elapsed-time-in-thought.
  * - Elapsed timer starts on first reasoning character; stops when streaming ends.
  * - Auto-collapses when reasoning text exceeds COLLAPSE_THRESHOLD tokens at end of stream.
  * - < COLLAPSE_THRESHOLD: defaults to expanded.
  * - ≥ COLLAPSE_THRESHOLD: defaults to collapsed with a "Show N tokens of reasoning" affordance.
+ *
+ * Y-S4: When MARSYS_FLAG_R10_REASONING_STEPS is enabled, the component also
+ * renders a left-margin step timeline by parsing ### Step: <label> lines from
+ * the streaming reasoning text. Active step pulses; completed steps show ✓.
  *
  * The component is mounted as the `Reasoning` renderer inside MessagePrimitive.Parts.
  * It calls useMessagePartReasoning() for live status; the caller passes `text` as a prop.
@@ -22,6 +26,19 @@ function estimateTokens(text: string): number {
 }
 
 const COLLAPSE_THRESHOLD = 2000 // tokens
+
+const STEP_RX = /^### Step: (.+)$/m
+
+/** Parse all completed ### Step: <label> lines from reasoning text. */
+function parseStepLabels(text: string): string[] {
+  const lines = text.split('\n')
+  const steps: string[] = []
+  for (const line of lines) {
+    const m = line.match(/^### Step: (.+)$/)
+    if (m) steps.push(m[1].trim())
+  }
+  return steps
+}
 
 interface ReasoningProgressProps {
   /** The full accumulated reasoning text (from MessagePrimitive.Parts Reasoning renderer). */
@@ -84,6 +101,13 @@ export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProg
 
   const elapsedSec = (elapsedMs / 1000).toFixed(1)
   const collapseLabel = `Show ${tokenCount.toLocaleString()} tokens of reasoning`
+
+  // Y-S4: Parse step labels from streaming text.
+  // The server-side R10_REASONING_STEPS flag controls whether the synthesis prompt
+  // emits ### Step: markers. This component just renders whatever arrives.
+  const stepLabels = useMemo(() => parseStepLabels(text), [text])
+
+  void STEP_RX // referenced by parseStepLabels; silence lint
 
   return (
     <div
@@ -151,11 +175,64 @@ export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProg
       {!collapsed && (
         <div
           id="reasoning-content"
-          className="px-4 pb-3 pt-0 text-xs font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed border-t border-zinc-800"
+          className="border-t border-zinc-800"
           data-testid="reasoning-content"
-          aria-live={isStreaming ? 'polite' : undefined}
         >
-          {text}
+          {/* Y-S4: left-margin step timeline */}
+          {stepLabels.length > 0 && (
+            <div
+              className="flex gap-3 px-4 pt-3 pb-2"
+              data-testid="v2-reasoning-step-timeline"
+            >
+              {/* Vertical connector line */}
+              <div className="relative flex flex-col items-center" aria-hidden="true">
+                <div className="absolute top-2 bottom-2 left-1/2 -translate-x-1/2 w-px bg-zinc-700" />
+              </div>
+              {/* Step list */}
+              <ol className="space-y-2 text-[11px] relative z-10">
+                {stepLabels.map((label, i) => {
+                  const isActive = isStreaming && i === stepLabels.length - 1
+                  const isDone = !isActive
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2"
+                      data-testid={`v2-reasoning-step-${i}`}
+                    >
+                      {/* Tick mark */}
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] ${
+                          isActive
+                            ? 'border-violet-500 bg-violet-900/60 text-violet-300 animate-pulse'
+                            : isDone
+                            ? 'border-zinc-600 bg-zinc-800 text-zinc-400'
+                            : 'border-zinc-700 bg-transparent text-zinc-600'
+                        }`}
+                        data-testid={isActive ? 'v2-step-active-indicator' : isDone ? 'v2-step-done-indicator' : 'v2-step-pending-indicator'}
+                        aria-label={isActive ? 'active' : 'completed'}
+                      >
+                        {isActive ? '·' : '✓'}
+                      </span>
+                      {/* Label */}
+                      <span
+                        className={isActive ? 'text-violet-300 font-medium' : 'text-zinc-500'}
+                      >
+                        {label}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          )}
+
+          {/* Reasoning text */}
+          <div
+            className="px-4 pb-3 pt-0 text-xs font-mono text-zinc-400 whitespace-pre-wrap leading-relaxed"
+            aria-live={isStreaming ? 'polite' : undefined}
+          >
+            {text}
+          </div>
         </div>
       )}
     </div>

@@ -122,6 +122,9 @@ export type FeatureFlag =
   // R9-S4: Inline tool-flow timeline in AssistantMessage. Admin-only.
   // Default false — flip for super_admin after smoke verification. Env: MARSYS_FLAG_R9_TOOL_FLOW.
   | 'R9_TOOL_FLOW'
+  // R10-Y-S4: Reasoning step labels — ### Step: markers in synthesis prompt.
+  // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
+  | 'R10_REASONING_STEPS'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -198,6 +201,8 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R9_SEMANTIC_SEARCH: false,
   R9_PERSONAS: true,
   R9_TOOL_FLOW: false,
+  // R10-Y-S4: default true — additive step labels, no cost impact.
+  R10_REASONING_STEPS: true,
 }
 
 // Numeric config keys (read via configService.getValue)

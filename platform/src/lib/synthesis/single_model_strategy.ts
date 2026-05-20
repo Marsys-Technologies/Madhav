@@ -58,7 +58,7 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { checkB11Compliance } from './b11_guard'
-import { CITATION_APPENDIX } from './prompts/synthesis_prompt_v2'
+import { CITATION_APPENDIX, REASONING_STEPS_APPENDIX } from './prompts/synthesis_prompt_v2'
 import { getMaxRetries } from './provider_quirks'
 import type { Provider } from '@/lib/models/registry'
 
@@ -371,6 +371,11 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // references that the V2 renderer converts to numbered badges.
     // Post-§M.16: Chat V2 is the only path; citation appendix is always active.
     renderedPrompt += CITATION_APPENDIX
+
+    // Y-S4: append ### Step: marker instructions to guide reasoning timeline.
+    if (getFlag('R10_REASONING_STEPS')) {
+      renderedPrompt += REASONING_STEPS_APPENDIX
+    }
 
     const systemMessage: ModelMessage = supports(selected_model_id, 'prompt-caching')
       ? {

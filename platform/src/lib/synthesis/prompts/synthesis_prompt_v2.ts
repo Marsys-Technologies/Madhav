@@ -45,6 +45,22 @@ STRICT OUTPUT RULES — violations degrade the UI:
 • Do not invent SIG.MSR.NNN IDs. Only cite signal IDs that appear in the retrieved context.
 • Each [^N] must have a corresponding [^N]: SIG.MSR.NNN definition at the end.`
 
+export const REASONING_STEPS_APPENDIX = `
+
+---
+REASONING STEP LABELS (for internal thinking only):
+At the start of each major phase of your reasoning, emit a step label on its own line using this exact format:
+
+### Step: <label>
+
+Use these labels at the start of each phase:
+### Step: Signal Assembly
+### Step: Cross-Domain Linking
+### Step: Interpretation
+### Step: Response
+
+These markers appear in your thinking/reasoning block only. Do NOT emit ### Step: labels in your final answer prose.`
+
 export function consumeSystemPromptV2(
   chart: ChartContext,
   reports: ReportEntry[],
