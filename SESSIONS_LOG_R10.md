@@ -257,3 +257,17 @@ Added left-margin step timeline to `ReasoningProgress`. `synthesis_prompt_v2.ts`
 **Amendments:** A1 (server-side flag — no deploy.yml entry, no NEXT_PUBLIC confirmed) | A2 (ReasoningProgress parent-context shell via vi.mock, click-path documented) | A3 (FLAGGED default true)
 
 ---
+
+## Y-S3 — Smooth-Stream Tuning
+
+**Status:** COMPLETED  
+**Commit:** a5be7e2  
+**Completed:** 2026-05-20T12:20:00Z
+
+Extracted AI SDK `smoothStream({ delayInMs: 80, chunking: 'word' })` call from `single_model_strategy.ts` into a gated `getSmoothStreamTransform()` wrapper in `platform/src/lib/streaming/smooth_stream.ts`. When `R10_SMOOTH_STREAM_V2=true` (default), word-aware flush is applied eliminating mid-word flicker; when false, no transform is applied (raw chunks) for fast rollback. `MAX_WORD_BUFFER_MS=80` is the max latency guarantee. Added `platform/scripts/measure_smooth_stream.ts` benchmarking script. Baseline: 427 word-splits → 0 with flag=true, avg chunk 4→7 chars. Server-side flag only — no `NEXT_PUBLIC`, no `deploy.yml` entry confirmed. 4/4 tests pass.
+
+**Baseline metrics (measure_smooth_stream.ts):** flag=false: 503 chunks, avg 4 chars, 427 word-splits. flag=true: 285 chunks, avg 7 chars, 0 word-splits. Max latency: 80ms.
+
+**Amendments:** A1 (server-side flag — no deploy.yml entry, no NEXT_PUBLIC confirmed) | A3 (FLAGGED default true)
+
+---

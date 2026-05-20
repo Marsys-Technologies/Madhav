@@ -255,7 +255,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "grep -rn 'NEXT_PUBLIC.*SMOOTH_STREAM' platform/src --include='*.ts*' | wc -l | grep '^0$' && npx jest --testPathPattern='smooth.?stream|SmoothStream' --passWithNoTests"
     commit_template: "feat(streaming): word-aware chunk flushing in smooth_stream.ts"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T12:20:00Z"
 
   - id: Y-S5
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S5-stop-and-edit-while-streaming.md
