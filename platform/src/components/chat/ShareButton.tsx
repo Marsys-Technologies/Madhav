@@ -19,6 +19,9 @@ export function ShareButton({ conversationId }: Props) {
   const [copied, setCopied] = useState(false)
   const [open, setOpen] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
+  // X-S8: selective share checkboxes — default true = "show" (hide_* = false)
+  const [showReasoning, setShowReasoning] = useState(true)
+  const [showMethodology, setShowMethodology] = useState(true)
 
   // Fetch existing share state when the dropdown is opened the first time.
   const refresh = useCallback(async () => {
@@ -42,7 +45,14 @@ export function ShareButton({ conversationId }: Props) {
     if (!conversationId) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/conversations/${conversationId}/share`, { method: 'POST' })
+      const res = await fetch(`/api/conversations/${conversationId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hide_reasoning: !showReasoning,
+          hide_methodology: !showMethodology,
+        }),
+      })
       if (!res.ok) return
       const data = (await res.json()) as { slug: string }
       setSlug(data.slug)
@@ -145,15 +155,41 @@ export function ShareButton({ conversationId }: Props) {
               )}
             </>
           ) : (
-            <button
-              type="button"
-              onClick={createShare}
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-foreground px-2 py-1.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Share2 className="size-3.5" />}
-              Create share link
-            </button>
+            <div className="space-y-2">
+              {/* X-S8: selective share checkboxes */}
+              <div className="space-y-1 rounded-md border border-border bg-muted/20 px-3 py-2">
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={showReasoning}
+                    onChange={(e) => setShowReasoning(e.target.checked)}
+                    data-testid="v2-share-show-reasoning"
+                    className="rounded border-border"
+                  />
+                  Show reasoning
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={showMethodology}
+                    onChange={(e) => setShowMethodology(e.target.checked)}
+                    data-testid="v2-share-show-methodology"
+                    className="rounded border-border"
+                  />
+                  Show methodology
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={createShare}
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-foreground px-2 py-1.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+                data-testid="v2-share-create-btn"
+              >
+                {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Share2 className="size-3.5" />}
+                Create share link
+              </button>
+            </div>
           )}
         </div>
       </DropdownMenuContent>

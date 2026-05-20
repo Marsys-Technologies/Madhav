@@ -17,8 +17,10 @@ export default async function SharedConversationPage({
     conversation_id: string
     revoked_at: string | null
     expires_at: string | null
+    hide_reasoning: boolean
+    hide_methodology: boolean
   }>(
-    'SELECT * FROM conversation_shares WHERE slug=$1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())',
+    'SELECT conversation_id, revoked_at, expires_at, hide_reasoning, hide_methodology FROM conversation_shares WHERE slug=$1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())',
     [slug]
   )
   const share = shareResult.rows[0] ?? null
@@ -42,6 +44,11 @@ export default async function SharedConversationPage({
 
   const messages = await loadConversationMessages(conversation.id)
 
+  // X-S8: selective share — only apply when flag is enabled
+  const selectiveShareEnabled = process.env.MARSYS_FLAG_R10_SELECTIVE_SHARE === 'true'
+  const hideReasoning = selectiveShareEnabled && (share.hide_reasoning ?? false)
+  const hideMethodology = selectiveShareEnabled && (share.hide_methodology ?? false)
+
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-4 py-6">
       <header className="mb-6 border-b border-border pb-4">
@@ -56,7 +63,11 @@ export default async function SharedConversationPage({
         )}
       </header>
       <main className="flex-1">
-        <SharedConversation messages={messages} />
+        <SharedConversation
+          messages={messages}
+          hideReasoning={hideReasoning}
+          hideMethodology={hideMethodology}
+        />
       </main>
       <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground">
         <Link href="/" className="hover:text-foreground">
