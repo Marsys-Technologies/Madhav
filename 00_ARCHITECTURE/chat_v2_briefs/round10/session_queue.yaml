@@ -215,7 +215,8 @@ sessions:
     blocked_on_note: "Depends on R9-S2 semantic search route (now on main via PR #103). Verify ?semantic=true route exists on base before coding."
     acceptance_check: "npx jest --testPathPattern='search.*mode|mode.*toggle|ConversationSidebar.*search' --passWithNoTests"
     commit_template: "feat(chat-v2): exact/semantic search mode toggle in sidebar"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T10:30:00Z"
 
   - id: Y-S8
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S8-validator-per-gate-expander.md

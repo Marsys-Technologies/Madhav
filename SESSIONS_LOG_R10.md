@@ -215,3 +215,17 @@ Chat V2 already implements branch-on-regen via `BranchPickerPrimitive` (assistan
 **Amendments:** A2 (BranchingShell + structural source audits parent-context wrapper, click-path documented) | A3 (FLAGLESS)
 
 ---
+
+## Y-S7 — Search Mode Toggle
+
+**Status:** COMPLETED  
+**Commit:** 331352e  
+**Completed:** 2026-05-20T10:30:00Z
+
+Upgraded `ConversationSidebarV2` search mode toggle from a Sparkles icon button (with no explicit label) to a compact segmented control with "Exact" and "Semantic" text buttons. Added `data-testid="v2-search-mode-exact"` and `data-testid="v2-search-mode-semantic"`. The `?semantic=true` wiring and `semanticEnabled` state were already implemented from R9-S2. "Exact" is the default. Toggle only renders when `NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true`. 5 new parent-context tests in `ConversationSidebarV2` shell — all pass. Typecheck: PASS. Flagless.
+
+**Click-path:** Chat V2 sidebar → type ≥2 chars in search → "Exact | Semantic" segmented control visible → click "Semantic" → search fetch includes `?semantic=true` → click "Exact" → reverts to keyword-only.
+
+**Amendments:** A2 (ConversationSidebarV2 full parent-context shell, click-path documented) | A3 (FLAGLESS)
+
+---
