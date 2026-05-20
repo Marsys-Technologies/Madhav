@@ -122,12 +122,19 @@ export type FeatureFlag =
   // R9-S4: Inline tool-flow timeline in AssistantMessage. Admin-only.
   // Default false — flip for super_admin after smoke verification. Env: MARSYS_FLAG_R9_TOOL_FLOW.
   | 'R9_TOOL_FLOW'
+  // R10-Y-S5: Stop-and-edit while streaming. Client-side NEXT_PUBLIC flag.
+  // Default FALSE — high UX risk; opt-in by operator only.
+  | 'R10_EDIT_WHILE_STREAMING'
   // R10-Y-S3: Smooth-stream V2 — word-aware flush gated for rollback safety.
   // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
   | 'R10_SMOOTH_STREAM_V2'
   // R10-Y-S4: Reasoning step labels — ### Step: markers in synthesis prompt.
   // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
   | 'R10_REASONING_STEPS'
+  // R10-Y-S9: Single-retry on 5xx/timeout. Routes retry to next STACK_ROUTING stack.
+  // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
+  // Default false — cost risk (retry doubles LLM cost); opt-in only.
+  | 'R10_AUTO_RETRY'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -204,10 +211,14 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R9_SEMANTIC_SEARCH: false,
   R9_PERSONAS: true,
   R9_TOOL_FLOW: false,
+  // R10-Y-S5: default false — high UX risk; opt-in only.
+  R10_EDIT_WHILE_STREAMING: false,
   // R10-Y-S3: default true — word-aware chunking already active; gated for rollback.
   R10_SMOOTH_STREAM_V2: true,
   // R10-Y-S4: default true — additive step labels, no cost impact.
   R10_REASONING_STEPS: true,
+  // R10-Y-S9: default false — cost risk; opt-in only.
+  R10_AUTO_RETRY: false,
 }
 
 // Numeric config keys (read via configService.getValue)
