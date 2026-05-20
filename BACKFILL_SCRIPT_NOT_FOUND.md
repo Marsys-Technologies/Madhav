@@ -1,11 +1,29 @@
 ---
 artifact: BACKFILL_SCRIPT_NOT_FOUND.md
-version: "1.0"
-status: BLOCKED
+version: "2.0"
+status: RESOLVED
 produced_during: R9_Operator_Closeout
 produced_on: 2026-05-20
+resolved_on: 2026-05-20
 executor: Claude Code (autonomous, native-authorized)
 ---
+
+# Phase 7 RESOLVED — Backfill Complete
+
+## Resolution (2026-05-20)
+
+Script `platform/scripts/backfill_conversation_embeddings.ts` was found at the expected path and
+executed successfully. See BACKFILL_RUN_REPORT.md for full run details.
+
+**Results: 73/73 messages embedded, 0 errors, 0 remaining.**
+
+A bug in the script was fixed before running: the SQL queries referenced `cm.content` but the
+production schema uses `parts_json` (JSONB). Fixed to use `jsonb_array_elements(cm.parts_json)`
+matching the pattern in the live semantic search route.
+
+---
+
+# Original HALTED Record (2026-05-20, superseded)
 
 # Phase 7 HALTED — Backfill Script Not Found
 
