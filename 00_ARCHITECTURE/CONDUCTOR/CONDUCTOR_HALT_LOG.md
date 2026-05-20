@@ -186,3 +186,47 @@ TestingLibraryElementError: Unable to find a label with the text of: Personalise
 - ABANDON — orchestrator stops permanently
 
 ---
+
+## 4C-9 — HALT — 2026-05-20T05:19:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | 4C-9 |
+| Failure class | human_approval_required |
+| Timestamp | 2026-05-20T05:19:00+05:30 |
+| Last passed | 4C-8 |
+| Queue position | 17 of 17 |
+| Resolution status | open |
+
+### Failure context
+
+Entry has `requires_human_approval: true`. 4C-9 is the Wave 1 close session: polish, telemetry, red-team, CLAUDE.md amendment apply, Phase 4C close artifact, HANDOFF_WAVE_1.md. Human approval required before executing.
+
+**Decision prompt (verbatim):**
+4C-8 has closed. Phase 4C MVP is feature-complete. Approve to execute 4C-9 (Wave 1 close): polish, telemetry, red-team, CLAUDE.md amendment apply, Phase 4C close artifact, HANDOFF_WAVE_1.md. Reply APPROVE 4C-9, SKIP 4C-9, or ABANDON.
+
+### Gate output
+
+(gate not run — entry blocked on requires_human_approval)
+
+### Suggested resolution paths
+
+- APPROVE 4C-9 — set requires_human_approval: false in queue, then re-paste kickoff
+- SKIP 4C-9 — mark skipped + advance (wave would end without close artifacts)
+- ABANDON — orchestrator stops permanently
+
+---
+
+## 4C-9 — RESOLVED — 2026-05-20T06:22:00+05:30
+
+### Resolution
+
+4C-9 approved by native (requires_human_approval flipped false via approval script 2026-05-20). Sub-agent executed and completed all 12 ACs. Queue marked COMPLETE. Gate command had 2 pre-existing failures (schema_validator timestamp error + drift_detector directory error) — both confirmed pre-existing via git bisect; scoped-gate PASS applied per 4C-6-S4 precedent.
+
+| Field | Value |
+|---|---|
+| Prior halt | 4C-9 — HALT — human_approval_required |
+| Resolution | PASS (scoped-gate) |
+| Resolved at | 2026-05-20T06:22:00+05:30 |
+
+---
