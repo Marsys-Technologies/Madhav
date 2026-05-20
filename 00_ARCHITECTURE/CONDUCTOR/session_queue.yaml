@@ -106,12 +106,15 @@ entries:
     && npm test 2>&1 | tail -5 && cd /Users/Dev/Vibe-Coding/Apps/PanchangShip && cd
     /Users/Dev/Vibe-Coding/Apps/PanchangShip && python3 platform/scripts/governance/schema_validator.py
     && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
-  status: passed
+  status: halted
   human_decision_prompt: null
   session_notes: >
     AC.S3H.5 DEFERRED (bootstrap backfill — no DB access in session). Migration filed
     as 069 (not 061 as brief specified; 061-068 taken by R7/R8/R9 on main). All other
     9 ACs PASS. tsc 0; unit tests 13/13 GREEN; no new regressions.
+    GATE HALT: schema_validator.py exits 4 (pre-existing ValueError on YAML timestamp
+    in SESSION_LOG — not introduced by S3H). drift_detector also has pre-existing
+    IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE. Both confirmed pre-existing.
 - session_id: PSHIP-S4H
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PSHIP-S4H_v1_0.md
   branch: feature/panchang-ship

@@ -291,3 +291,37 @@ next ship session can be dispatched.
 | Resolved at | 2026-05-20T06:22:00+05:30 |
 
 ---
+
+## PSHIP-S3H — HALT — 2026-05-20T11:15:00Z
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S3H |
+| Failure class | gate_failed |
+| Timestamp | 2026-05-20T11:15:00Z |
+| Last passed | PSHIP-S2H |
+| Queue position | 6 of 8 |
+| Resolution status | open |
+
+### Failure context
+
+schema_validator.py exits with code 4: `ValueError: hour must be in 0..23` when parsing a YAML timestamp in SESSION_LOG. This is a **pre-existing failure** on the branch, confirmed by the sub-agent (present before S3H work began). drift_detector.py would additionally throw `IsADirectoryError` on `08_CLASSICAL_CROSS_REFERENCE` — also pre-existing.
+
+The sub-agent's own gate checks all PASSED: `tsc --noEmit` clean, `npm test` for query_panchanga 13/13 GREEN, zero new regressions. All 9 executable ACs completed (AC.S3H.5 bootstrap deferred — no DB access). Migration filed as 069 (061–068 taken by R7/R8/R9 on main).
+
+### Gate output (truncated to 500 chars)
+
+```
+ValueError: hour must be in 0..23
+  File "schema_validator.py", line 332, in validate_session_log_entries
+    data = yaml.safe_load(m.group(1))
+[exit code 4]
+```
+
+### Suggested resolution paths
+
+- RESUME PSHIP-S3H — orchestrator retries this entry (gate will still fail unless validator is fixed)
+- SKIP PSHIP-S3H — orchestrator marks skipped + advances (safe: all panchang ACs PASS; governance scripts fail pre-existing baseline)
+- Fix the SESSION_LOG timestamp that schema_validator chokes on, then RESUME PSHIP-S3H
+
+---

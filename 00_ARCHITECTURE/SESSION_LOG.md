@@ -22237,7 +22237,7 @@ Execute **M5-D-S2**: CF.M5C.2 CPT scaffold population using PRIOR_SPEC v1.1 froz
 ```yaml
 session_close:
   session_id: M5-D-S2
-  closed_at: 2026-05-13T29:00:00+05:30
+  closed_at: 2026-05-13T19:00:00+05:30
   files_touched:
     - path: 06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json
       mutation_type: modified
