@@ -72,6 +72,14 @@ Y-S5 (`EDIT_WHILE_STREAMING`) and Y-S9 (`AUTO_RETRY`) marked `completed` in
 This file seals the R7-R10 arc close-out. The close-out PR (`chat-v2/r7-r10-closeout`)
 lands this artifact plus all Phase 1-6 changes.
 
+## Phase 4 — NIM runtime health: ACCEPTED AS-IS (native decision 2026-05-20)
+
+The build-time NIM_STACK_DEGRADED toggle (NEXT_PUBLIC_NIM_STACK_DEGRADED, deploy.yml --build-arg, default false) is RETAINED as the degradation-signal mechanism. The runtime-health upgrade (/api/health/nim + useStackHealth hook) was scoped in the close-out prompt but is deliberately NOT implemented at this time.
+
+Rationale: the toggle works correctly (badge hidden at false = the normal non-degraded state). The only limitation is that flipping degradation state requires a rebuild, which is a quality-of-life gap, not a bug. Native has chosen to accept the stopgap rather than build runtime health in this close-out.
+
+Revisit trigger: if NIM degradation becomes frequent enough that the rebuild-to-flip latency causes real operator pain, implement the runtime health path then (design notes can start from the close-out prompt's Phase 4 spec).
+
 ## Outstanding operator items (not blocking close-out)
 
 1. **Embedding backfill** — run `platform/scripts/backfill_conversation_embeddings.ts`
