@@ -188,7 +188,8 @@ entries:
   est_duration_min: 90
   status: passed
   closed_on: '2026-05-20'
-  gate_results: vitest 33/33 PASS; TimingsPanel + PlanetaryGrid + DMS + zodiac glyphs delivered
+  gate_results: vitest 33/33 PASS; TimingsPanel + PlanetaryGrid + DMS + zodiac glyphs
+    delivered
   human_decision_prompt: null
 - session_id: 4C-4-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_4_S3_v1_0.md
@@ -341,7 +342,9 @@ entries:
   requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
-  status: PASS
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 82/82 PASS (4 files); validate_queue OK
   gate_result: PASS (82/82 tests + validate_queue OK)
   gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/lib/panchang
     src/lib/security && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
@@ -361,13 +364,15 @@ entries:
   requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
+  closed_on: '2026-05-20'
+  gate_results: vitest 261/261 PASS (21 files); validate_queue OK
   gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang/platform && npm test -- src/app/panchang
     src/lib/synthesis && python3 00_ARCHITECTURE/CONDUCTOR/validate_queue.py
   expected_artifacts:
   - platform/src/app/panchang/components/AskMadhavLink.tsx
   est_tokens: 120000
   est_duration_min: 90
-  status: pending
   human_decision_prompt: null
 - session_id: 4C-9
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
@@ -376,7 +381,7 @@ entries:
   depends_on:
   - 4C-8
   requires_brief_authoring: false
-  requires_human_approval: true
+  requires_human_approval: false
   push_to_remote: false
   gate_command: cd /Users/Dev/Vibe-Coding/Apps/Panchang && python3 platform/scripts/governance/schema_validator.py
     && python3 platform/scripts/governance/drift_detector.py && python3 platform/scripts/governance/mirror_enforcer.py
@@ -388,8 +393,7 @@ entries:
   est_tokens: 130000
   est_duration_min: 100
   status: pending
-  human_decision_prompt: '4C-8 has closed. Phase 4C MVP is feature-complete. Approve
-    to execute 4C-9 (Wave 1 close): polish, telemetry, red-team, CLAUDE.md amendment
-    apply, Phase 4C close artifact, HANDOFF_WAVE_1.md. Reply APPROVE 4C-9, SKIP 4C-9,
-    or ABANDON.'
+  human_decision_prompt: null
+  approved_at: '2026-05-20'
+  approved_by: native
 wave_1_expanded_at: '2026-05-19'
