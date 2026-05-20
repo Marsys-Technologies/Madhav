@@ -24,6 +24,7 @@ import { StackedDistributionBar } from '../StackedDistributionBar'
 import { EmptyObservatoryState } from '../EmptyObservatoryState'
 import { uiToApiFilters, uiToDashboardRange } from './filterAdapter'
 import { ObsPageShell, ObsCard, SectionLabel } from '../shared'
+import { PanchangLatencyPanel, PanchangCachePanel } from '../panchang'
 
 type GroupedBreakdowns = {
   provider: BreakdownsResponse | null
@@ -250,6 +251,14 @@ export function OverviewClient({
           </details>
         </>
       )}
+      {/* Phase 4C — Panchang cache + latency panels */}
+      <section data-testid="observatory-panchang-section">
+        <SectionLabel>Panchang</SectionLabel>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <PanchangLatencyPanel />
+          <PanchangCachePanel />
+        </div>
+      </section>
     </ObsPageShell>
   )
 }
