@@ -18,6 +18,8 @@ import Link from 'next/link'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { StillWorkingIndicator } from '@/components/chat/StillWorkingIndicator'
 import { HeaderSkeleton } from '@/components/chat/HeaderSkeleton'
+import { ScrollToBottomButton } from '@/components/chat/ScrollToBottomButton'
+import { useScrollDiscipline } from '@/hooks/useScrollDiscipline'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
@@ -1412,6 +1414,39 @@ function V2BottomBar() {
   )
 }
 
+// ─── X-S6: Scroll discipline — sentinel + unread count button ────────────────
+
+const SCROLL_DISCIPLINE_ENABLED = process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE === 'true'
+
+function V2ScrollDiscipline() {
+  const { isAtBottom, unreadCount, sentinelRef, incrementUnread, scrollToBottom } = useScrollDiscipline()
+  const runtime = useThreadRuntime()
+
+  useEffect(() => {
+    return runtime.subscribe(() => {
+      if (runtime.getState().isRunning && !isAtBottom) {
+        incrementUnread()
+      }
+    })
+  }, [runtime, isAtBottom, incrementUnread])
+
+  return (
+    <>
+      <div
+        ref={sentinelRef}
+        aria-hidden="true"
+        style={{ height: 1, flexShrink: 0 }}
+        data-testid="v2-scroll-sentinel"
+      />
+      <ScrollToBottomButton
+        visible={!isAtBottom}
+        unreadCount={unreadCount}
+        onClick={scrollToBottom}
+      />
+    </>
+  )
+}
+
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
 function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean }) {
@@ -1442,18 +1477,22 @@ function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: strin
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
 
-        <ThreadPrimitive.ScrollToBottom asChild>
-          <button
-            type="button"
-            className="fixed bottom-24 right-6 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
-            data-testid="v2-scroll-to-bottom"
-            aria-label="Scroll to bottom"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-              <path d="M8 12L2 6h12l-6 6z" />
-            </svg>
-          </button>
-        </ThreadPrimitive.ScrollToBottom>
+        {SCROLL_DISCIPLINE_ENABLED ? (
+          <V2ScrollDiscipline />
+        ) : (
+          <ThreadPrimitive.ScrollToBottom asChild>
+            <button
+              type="button"
+              className="fixed bottom-24 right-6 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
+              data-testid="v2-scroll-to-bottom"
+              aria-label="Scroll to bottom"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                <path d="M8 12L2 6h12l-6 6z" />
+              </svg>
+            </button>
+          </ThreadPrimitive.ScrollToBottom>
+        )}
       </ThreadPrimitive.Viewport>
 
       <V2BottomBar />
