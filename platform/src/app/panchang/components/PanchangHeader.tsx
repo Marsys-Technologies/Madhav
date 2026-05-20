@@ -194,7 +194,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
           <button
             onClick={handlePrevDay}
             aria-label="Previous day"
-            className="flex h-8 w-8 items-center justify-center rounded text-[rgba(212,175,55,0.60)] transition-colors hover:bg-[rgba(212,175,55,0.10)] hover:text-[var(--brand-gold)]"
+            className="flex h-10 w-10 items-center justify-center rounded text-[rgba(212,175,55,0.60)] transition-colors hover:bg-[rgba(212,175,55,0.10)] hover:text-[var(--brand-gold)]"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -205,7 +205,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
             type="date"
             value={currentDate}
             onChange={handleDateInput}
-            className="h-8 bg-transparent text-center text-sm font-medium cursor-pointer border-0 outline-none focus:ring-0 appearance-none"
+            className="h-10 bg-transparent text-center text-sm font-medium cursor-pointer border-0 outline-none focus:ring-0 appearance-none"
             style={{ color: 'var(--brand-gold)', minWidth: '9rem', maxWidth: '11rem' }}
             aria-label={displayDate}
           />
@@ -213,7 +213,7 @@ export function PanchangHeader({ initialDate, initialLocation, onChartIdChange }
           <button
             onClick={handleNextDay}
             aria-label="Next day"
-            className="flex h-8 w-8 items-center justify-center rounded text-[rgba(212,175,55,0.60)] transition-colors hover:bg-[rgba(212,175,55,0.10)] hover:text-[var(--brand-gold)]"
+            className="flex h-10 w-10 items-center justify-center rounded text-[rgba(212,175,55,0.60)] transition-colors hover:bg-[rgba(212,175,55,0.10)] hover:text-[var(--brand-gold)]"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
