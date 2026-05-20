@@ -173,3 +173,17 @@ Created `MermaidBlock.tsx` loaded via `next/dynamic({ ssr: false })` to keep the
 **Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true in deploy.yml — HARD GATE satisfied) | A2 (MarkdownShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
 
 ---
+
+## Y-S1 — Citation Hover Snippet
+
+**Status:** COMPLETED  
+**Commit:** 298a4e3  
+**Completed:** 2026-05-20T09:45:00Z
+
+Added `snippet?: string` prop to `NumberedCitation`. Tooltip shows first 100 chars of citation snippet (or `signalId` as fallback) after 350ms continuous hover; timer clears on `mouseLeave` preventing flash on rapid hover. `aria-describedby` links badge button to tooltip for a11y. `ConsumeChatV2` passes `citationRichMap.get(signalId)?.snippet` at the existing call site — snippet was already in `citationRichMap` from `data-citation` parts, so no context extension needed. Flagless. 7 new tests in `CitationCtxShell` parent-context wrapper — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with `[^N]` citation badge → hover for >350ms → tooltip appears with up to 100 chars of signal text → mouse leaves → tooltip disappears immediately. Rapid hover (<350ms) shows nothing.
+
+**Amendments:** A2 (CitationCtxShell parent-context wrapper, click-path documented) | A3 (FLAGLESS)
+
+---
