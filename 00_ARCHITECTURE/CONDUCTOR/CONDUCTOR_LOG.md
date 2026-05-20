@@ -713,6 +713,39 @@ All 12 ACs. Polish pass (touch targets 40px+, PHASE_4C_FOLLOWUPS_v1_0.md deferre
 
 ---
 
+## PSHIP-S1 — PASS — 2026-05-20T14:24:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S1 |
+| Result | PASS |
+| Timestamp | 2026-05-20T14:24:00+05:30 |
+| Commits | a51013f, 49ff0bd |
+| Gate exit code | 0 |
+| Context sessions used | 1 of 20 |
+
+### Gate output (truncated to 500 chars)
+
+```
+230 passed, 1 warning in 2.38s
+```
+
+### Sub-agent summary
+
+All 7 ACs completed. File inventory produced at 00_ARCHITECTURE/PSHIP_FILE_INVENTORY.md. 165 total files classified: 129 transplanted (A), 13 skipped (A-SKIP: CONDUCTOR files already on branch), 3 reclassified M (exist on current main: PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md, query_panchanga.ts, query_panchanga.test.ts), 22 shared files (M, PSHIP-S2 territory), 1 deleted-on-source (D). panchang_engine pytest 230/230 PASS. TS check deferred (no node_modules in worktree — expected until S2 npm install). Conflict map at 00_ARCHITECTURE/PSHIP_CONFLICT_MAP.md covers all 22 shared files with risk flags. HIGH-risk conflict found in PLANNER_PROMPT_v2_0.md — human decision required before S2 (see CONDUCTOR_HALT_LOG.md).
+
+### Scope items completed
+
+- AC.PSHIP1.1 — Pre-flight integrity check
+- AC.PSHIP1.2 — File inventory (PSHIP_FILE_INVENTORY.md)
+- AC.PSHIP1.3 — Conflict map (PSHIP_CONFLICT_MAP.md)
+- AC.PSHIP1.4 — panchang_engine pytest gate (230/230 PASS)
+- AC.PSHIP1.5 — TS structural check (module-resolution errors only — expected)
+- AC.PSHIP1.6 — Risk classification of all 22 shared files
+- AC.PSHIP1.7 — Session close protocol
+
+---
+
 ## WAVE 1 — QUEUE COMPLETE — 2026-05-20T06:22:00+05:30
 
 All 17 entries in session_queue.yaml resolved: passed or skipped.
@@ -725,5 +758,51 @@ All 17 entries in session_queue.yaml resolved: passed or skipped.
 | Sessions halted | 0 (4C-4-S4 gate repaired in-session; 4C-9 human-approval gate cleared by native) |
 | Final commit | ea99032 |
 | Wave closed | 2026-05-20 |
+
+---
+
+## PRECON-S1 — READ-ONLY ANALYSIS — 2026-05-20T15:10:00+05:30
+
+*NOT a Conductor-dispatched session. Direct Claude Code execution per native instruction.*
+
+| Field | Value |
+|---|---|
+| Session | PRECON-S1 |
+| Type | Read-only reconciliation analysis |
+| Result | COMPLETE |
+| Timestamp | 2026-05-20T15:10:00+05:30 |
+| Commits | (none — read-only; only spec file + governance docs written) |
+| Gate exit code | n/a |
+
+### Sub-agent summary
+
+PRECON-S1 executed all 8 analysis items from `CLAUDECODE_BRIEF_PRECON_S1_v1_0.md`.
+Read both branch versions of query_panchanga.ts, panchanga_daily migration, planner
+prompts (R-PA/R-TC blocks), and the full panchang_engine compute path via `git show`.
+
+**Finding:** main's panchanga_daily IS the 4C-2 deferred cache — already live, 73K rows,
+indexed. Feature branch's sidecar path provides richer daily data (special yogas, timings,
+planets) but lacks the SQL filter capability. The two tools are complementary, not
+substitutable. The original PSHIP-S2 halt's R-TC→R-PD rename proposal is superseded by
+a more complete integration architecture.
+
+**Recommendation:** Option H (hybrid) — keep main's SQL tool + extend precompute schema
+(migration 061 + bootstrap update for special yogas/timings); keep sidecar for UI path;
+integrate R-PCI from feature branch as novel rule; extend R-PA trigger list.
+
+**Re-scoped plan:** PSHIP-S2H (shared-file merge), PSHIP-S3H (query tool + schema
+extension), PSHIP-S4H (planner prompt — human gate), PSHIP-S5H (verification),
+PSHIP-S6H (deploy — human gate).
+
+### Scope items completed
+
+- AC.PRECON1.1 — Tool-diff table: full field delta, shared/main-only/ours-only
+- AC.PRECON1.2 — Compute-path comparison: main's precompute confirmed as 4C-2 cache; special yogas NOT in precompute
+- AC.PRECON1.3 — Routing-diff: R-PA coverage vs feature R-TC; 13 missing triggers identified; R-PCI novel
+- AC.PRECON1.4 — Net-new inventory: 10 categories, 60+ files confirmed absent on main
+- AC.PRECON1.5 — Collision inventory: 3 true collisions (query_panchanga.ts, PLANNER_PROMPT R-TC, test file)
+- AC.PRECON1.6 — Recommendation: Option H with rationale; Options R and L rejected
+- AC.PRECON1.7 — Re-scoped ship plan: 5 sessions (S2H–S6H), 3 autonomous / 2 human-gated
+- AC.PRECON1.8 — PSHIP-S1 disposition: 127 files survive; query_panchanga.ts/test.ts handled by PSHIP-S3H
 
 ---

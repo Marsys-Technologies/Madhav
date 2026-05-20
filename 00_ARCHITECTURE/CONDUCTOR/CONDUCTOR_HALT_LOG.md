@@ -217,6 +217,67 @@ Entry has `requires_human_approval: true`. 4C-9 is the Wave 1 close session: pol
 
 ---
 
+## PSHIP-S2 — HALT — 2026-05-20T14:24:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | PSHIP-S2 |
+| Failure class | sub_agent_halt |
+| Timestamp | 2026-05-20T14:24:00+05:30 |
+| Last passed | PSHIP-S1 |
+| Queue position | 2 of 4 |
+| Resolution status | open |
+
+### Failure context
+
+PSHIP-S1 sub-agent flagged `HALT_NEEDS_HUMAN` due to a HIGH-risk conflict requiring human decision before PSHIP-S2 can proceed.
+
+**Human decision needed (verbatim from sub-agent):**
+
+HIGH-risk conflict in 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md: both current main and the Panchang source branch independently inserted an R-TC rule at the same line-678 offset with DIFFERENT content. Main's R-TC = "Transit-Context Enrichment" (attach query_ephemeris for any temporal anchor). Panchang's R-TC = "Transit-Context Routing — Panchanga vs Ephemeris disambiguation" (when to use query_panchanga vs query_ephemeris). Additionally, both sides added a "4.25" few-shot example with different content (main: Saturn LEL event; panchang: single-date auspicious timing). Two decisions needed before PSHIP-S2 can proceed: (1) Rename Panchang's R-TC rule to R-PD (Panchanga Disambiguation) to avoid name clash — confirm this rename. (2) Renumber Panchang's 4.25 example to come after main's 4.25+N examples — confirm the final numbering. See PSHIP_CONFLICT_MAP.md §1 for full diff context and proposed integration spec.
+
+### Gate output (truncated to 500 chars)
+
+```
+230 passed, 1 warning in 2.38s  (PSHIP-S1 gate — exits 0)
+(PSHIP-S2 gate not run — halted before dispatch)
+```
+
+### Suggested resolution paths
+
+- RESUME PSHIP-S2 — after confirming both decisions: (1) R-TC→R-PD rename approved; (2) Panchang's 4.25 renumbered. Re-paste kickoff prompt; orchestrator retries PSHIP-S2.
+- SKIP PSHIP-S2 — mark skipped + advance (not recommended — shared-file merges would be unresolved)
+- ABANDON — orchestrator stops permanently; no further entries run
+
+---
+
+## PSHIP-S2 — PRECON-S1 ANALYSIS COMPLETE — 2026-05-20T15:10:00+05:30
+
+### Status
+
+PRECON-S1 (read-only reconciliation analysis) has completed. Produced:
+`00_ARCHITECTURE/PANCHANG_RECONCILIATION_SPEC_v1_0.md` — all 8 analysis items.
+
+The original PSHIP-S2 halt asked for two decisions (R-TC→R-PD rename + 4.25 renumber).
+PRECON-S1's analysis changes the question: the R-TC rename is no longer the right
+resolution. The spec recommends **Option H (hybrid)** with a different planner
+integration path. Native must review `PANCHANG_RECONCILIATION_SPEC_v1_0.md §9`
+(six decisions) before any ship session runs.
+
+**PSHIP-S2/S3/S4 are superseded.** The re-scoped plan is PSHIP-S2H through PSHIP-S6H
+(§7 of the spec). The Conductor session_queue.yaml requires re-authoring before the
+next ship session can be dispatched.
+
+| Field | Value |
+|---|---|
+| Analysis session | PRECON-S1 |
+| Output artifact | PANCHANG_RECONCILIATION_SPEC_v1_0.md |
+| Recommendation | Option H (hybrid) |
+| Native review required | §9 decisions D1–D6 |
+| PSHIP-S2 halt resolution | PENDING NATIVE REVIEW — not yet resumed |
+
+---
+
 ## 4C-9 — RESOLVED — 2026-05-20T06:22:00+05:30
 
 ### Resolution
