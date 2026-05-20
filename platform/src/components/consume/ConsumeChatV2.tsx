@@ -31,7 +31,7 @@ import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
 import { TierPicker } from '@/components/consume/TierPicker'
-import { useChatPreferences, useLastPrompt } from '@/hooks/useChatPreferences'
+import { useChatPreferences, useLastPrompt, useTextScale, TEXT_SCALES } from '@/hooks/useChatPreferences'
 import type { AudienceTier } from '@/lib/prompts/types'
 import type { ModelStack } from '@/lib/models/registry'
 import {
@@ -1513,6 +1513,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
   const [sidebarLoading, setSidebarLoading] = useState(false)
+  const [textScale, increaseTextScale, decreaseTextScale] = useTextScale()
   const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
@@ -1679,6 +1680,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <div
       className="relative flex h-dvh text-zinc-100"
       data-testid="v2-chat-shell"
+      style={{ ['--text-scale' as string]: textScale }}
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
       {!sidebarCollapsed && (
@@ -1782,8 +1784,29 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             </div>
           )}
 
-          {/* Right-side actions: Share + Trace (super_admin only) */}
+          {/* Right-side actions: Aa+/Aa− + Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
+            {/* X-S7: font-size controls */}
+            <button
+              type="button"
+              onClick={decreaseTextScale}
+              aria-label="Decrease text size"
+              aria-disabled={textScale === TEXT_SCALES[0]}
+              data-testid="v2-font-decrease"
+              className="flex h-7 items-center justify-center rounded px-1.5 text-[11px] font-semibold text-[color-mix(in_oklch,var(--brand-gold-cream)_50%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors disabled:opacity-40"
+            >
+              Aa−
+            </button>
+            <button
+              type="button"
+              onClick={increaseTextScale}
+              aria-label="Increase text size"
+              aria-disabled={textScale === TEXT_SCALES[TEXT_SCALES.length - 1]}
+              data-testid="v2-font-increase"
+              className="flex h-7 items-center justify-center rounded px-1.5 text-[11px] font-semibold text-[color-mix(in_oklch,var(--brand-gold-cream)_50%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors disabled:opacity-40"
+            >
+              Aa+
+            </button>
             <ConsumeReportLibraryV2 reports={reports} />
             <ShareButton conversationId={activeConversationId ?? undefined} />
             {audienceTier === 'super_admin' && (

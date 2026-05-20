@@ -123,11 +123,14 @@ function MarkdownContentImpl({ children, className, streaming = false, customCom
       aria-atomic="false"
       aria-busy={streaming}
       className={cn(
-        'chat-prose text-[15px] leading-[1.72] text-foreground',
+        'chat-prose leading-[1.72] text-foreground',
         '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
         className
       )}
-      style={streaming ? { contain: 'style' } : undefined}
+      style={{
+        fontSize: 'calc(15px * var(--text-scale, 1))',
+        ...(streaming ? { contain: 'style' } : {}),
+      }}
     >
       <Streamdown
         remarkPlugins={[remarkGfm, remarkMath]}
