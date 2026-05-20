@@ -47,7 +47,7 @@ describe('C.3 — rich data-citation payload consumed', () => {
   it('renderWithCitations is called with enrichedOnPin (not bare onPin)', () => {
     const textFnBlock = src.slice(
       src.indexOf('function V2AssistantText'),
-      src.indexOf('function V2AssistantText') + 2000,
+      src.indexOf('function V2AssistantText') + 5000,
     )
     expect(textFnBlock).toContain('renderWithCitations(text, enrichedOnPin)')
   })

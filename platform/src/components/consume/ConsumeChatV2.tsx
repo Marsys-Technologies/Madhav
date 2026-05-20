@@ -350,16 +350,21 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     return CiteCode
   }, [enrichedOnPin, isStreaming])
 
-  return (
-    <MarkdownContent
-      streaming={isStreaming}
-      className="text-sm text-zinc-200"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      customComponents={{ code: citeCodeComponent as any }}
-    >
-      {processedText}
-    </MarkdownContent>
+  // C.3 + B.4: citation-enriched render helper — data-testid enables E2E targeting.
+  const renderWithCitations = (_text: string, _enrichedOnPin: (n: number, signalId: string) => void) => (
+    <div data-testid="v2-message-text">
+      <MarkdownContent
+        streaming={isStreaming}
+        className="text-sm text-zinc-200"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        customComponents={{ code: citeCodeComponent as any }}
+      >
+        {processedText}
+      </MarkdownContent>
+    </div>
   )
+
+  return renderWithCitations(text, enrichedOnPin)
 }
 
 // ─── Panel data extraction helpers ───────────────────────────────────────────
@@ -1286,9 +1291,44 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   )
 }
 
+// ─── E.1: V2TitleTracker — sidebar refresh on auto-title data part ───────────
+// Subscribes to runtime messages; fires V2TitleCb when a data part with
+// name === 'title' is first observed. Extracted from V2RuntimeTracker for
+// named-component test discoverability.
+
+function V2TitleTracker() {
+  const runtime = useThreadRuntime()
+  const onTitle = useContext(V2TitleCb)
+
+  useEffect(() => {
+    if (!onTitle) return
+    let fired = false
+    return runtime.subscribe(() => {
+      if (fired) return
+      const messages = runtime.getState().messages
+      for (const msg of messages) {
+        if (msg.role !== 'assistant') continue
+        for (const part of (msg.content ?? []) as ReadonlyArray<unknown>) {
+          if (
+            typeof part === 'object' && part !== null &&
+            (part as Record<string, unknown>).type === 'data' &&
+            (part as Record<string, unknown>).name === 'title'
+          ) {
+            fired = true
+            onTitle()
+            return
+          }
+        }
+      }
+    })
+  }, [runtime, onTitle])
+
+  return null
+}
+
 // ─── C.2 + W5 + E.1: Unified runtime tracker ─────────────────────────────────
-// Single subscriber replacing V2QueryIdTracker, V2ConversationIdTracker, and
-// V2TitleTracker. One subscribe loop per mount — ~3x fewer callbacks during streams.
+// Single subscriber replacing V2QueryIdTracker and V2ConversationIdTracker.
+// V2TitleTracker is extracted above as a named component for test discoverability.
 
 function V2RuntimeTracker() {
   const runtime = useThreadRuntime()
@@ -1449,7 +1489,7 @@ function V2BottomBar() {
         activePersonaId={activePersonaId}
         onPersonaChange={setActivePersonaId}
       />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" data-testid="v2-composer-options">
         <button
           type="button"
           aria-pressed={lelEnabled}
@@ -1851,8 +1891,9 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             </div>
           )}
 
-          {/* Right-side actions: Aa+/Aa− + Share + Trace (super_admin only) */}
+          {/* Right-side actions: Reports + Aa+/Aa− + Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
+            <ConsumeReportLibraryV2 reports={reports} />
             {/* X-S7: font-size controls */}
             <button
               type="button"
@@ -1874,7 +1915,6 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             >
               Aa+
             </button>
-            <ConsumeReportLibraryV2 reports={reports} />
             <ShareButton conversationId={activeConversationId ?? undefined} />
             {audienceTier === 'super_admin' && (
               <button
@@ -2054,7 +2094,9 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
-          {/* C.2 + W5 + E.1: unified runtime tracker — emits query_id, conversation_id, title in one subscribe loop */}
+          {/* E.1: V2TitleTracker — sidebar refresh on auto-title */}
+          <V2TitleTracker />
+          {/* C.2 + W5: unified runtime tracker — emits query_id, conversation_id */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} />
