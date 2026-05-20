@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.27
+version: 5.28
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.28 (2026-05-21, PANCHANG-PROD-CLOSE):
+    **CONCURRENT WORKSTREAM — Phase 4C Wave 1 COMPLETE IN PRODUCTION. Operator steps closed; live enrichment dataset populated; FORENSIC-grounded engine spot-check PASS 5/5. Governance close only; no macro-phase change.**
+    Key outcomes: (1) Migration 069 verified applied on prod DB (5 JSONB columns present on `panchanga_daily`: auspicious, choghadiya, hora, inauspicious, special_yogas). (2) Bootstrap-to-staging completed under build_id `phase-4c-enrich-20260521-r2`: 73,414 rows × full enrichment, 1900-01-01 → 2100-12-31, single build_id, no stale partial runs. (3) Atomic staging→live swap committed clean (`INSERT 0 73414`); post-swap count = 73,414 ✓. (4) FORENSIC-grounded engine spot-check at native birth date 1984-02-05 PASS 5/5: tithi=Shukla Tritiya, vara=Ravivara, moon_nakshatra=Purva Bhadrapada, yoga=Shiva, karana=Garaja; hora_count=24; first_inauspicious_window=rahu_kalam. All five engine-derived values match FORENSIC v8.0 §15.1 ground truth. (5) Structural transit check PASS: next purnima after 2026-05-19 = 2026-05-31 (Shukla Purnima). (6) Prior build `phase-4c-20260519-153426` rolled_back; `build_manifests` audit trail clean (1 live build, 1 rolled_back). (7) Cloud Run revisions: `amjis-web-00258-9vq` + `amjis-sidecar-00224-4xs` both live on image SHA `1e5734b7…`, matching main HEAD. /panchang HTTP/2 307 → /login (expected auth-gated redirect; route healthy). (8) Local-git tidy-up: 3 commits land on main — e6acc98e (panchang/page.tsx import tidy: @/lib/panchang/sidecar_mapper consistency); 46f0b39f (docs(governance): open DIS.013 Muntha conflict + log 2026-05-21 manifest audit); 1e5734b7 (docs: add 5 governance + forensic artifacts: capability audit, Phase 5 brief, MSR drift handoff, PSHIP-109 forensic, UI verification report). (9) CLAUDE.md §E Phase 4C: WAVE_1_COMPLETE → COMPLETE with full close-out detail; CLAUDE.md v3.1 → v3.2. (10) No mirror pair touched — governance-only update; no Gemini-side mirror obligation per MP.1/MP.2 rules.
+    open_followups: (a) `bootstrap_panchanga.py` build_manifests auto-registration audit — prior build needed manual rollback because the writer didn't auto-register a build_manifests row; non-blocking maintenance item but should be closed before next ephemeris rebuild. (b) `PHASE_4C_PANCHANG_MASTER_PLAN_v1_0_DRAFT.md` remains untracked at 00_ARCHITECTURE/; awaits native seal-and-promote to non-DRAFT canonical form. (c) `git worktree prune` to retire stale `/Users/Dev/Vibe-Coding/Apps/Panchang/` and `/Users/Dev/Vibe-Coding/Apps/marsys-m6-prospective/` worktree registrations (both physically absent; only stale registrations remain). (d) Optional rotation of `amjis-db-password` Secret Manager value (DB_PASSWORD was momentarily visible in a Cowork session transcript while reading .env.rag for connection setup; file is in .gitignore, no GitHub exposure).
+    phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED (Phase 4B prereq; engine-direct in prod) | 4C.3 CLOSED | 4C.4 CLOSED | 4C.5 CLOSED | 4C.6 CLOSED | 4C.7 CLOSED | 4C.8 CLOSED | 4C.9 CLOSED — WAVE 1 COMPLETE IN PRODUCTION.
+    last_session_id (4C stream): PANCHANG-PROD-CLOSE. next_session_id (4C stream): N/A — Phase 4C Wave 1 closed.
+    next_session_objective: "Phase 4C complete. Project returns full attention to active phase per CLAUDE.md §F (M5-A). Wave 2 (4C.2 SQL cache after Phase 4B) remains gated."
+    file_updated_at: 2026-05-21T04:30:00+05:30. file_updated_by_session: PANCHANG-PROD-CLOSE.
   - v5.27 (2026-05-20, PANCHANG-ENRICH-GOVCLOSE):
     **CONCURRENT WORKSTREAM — Phase 4C chat-side enrichment merged to main via PR #110 (merge SHA 9bdcac24). Governance close only; no macro-phase change.**
     Key outcomes: (1) CLAUDE.md §E Phase 4C entry updated — enrichment line appended (migration 069, 5 enrichment field groups, PLANNER_PROMPT v2.0.7 R-PA/(f)+(g) + R-PCI, bootstrap writer; post-merge operator steps PENDING). (2) SESSION_LOG appended (this entry). (3) No mirror pair touched — app code + planner prompt only; no Gemini-side mirror update required.
