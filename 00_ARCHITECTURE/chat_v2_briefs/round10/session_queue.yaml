@@ -15,7 +15,8 @@ sessions:
     deploy_yml_required: true  # Amendment 4 — this IS the deploy.yml fix
     acceptance_check: "grep 'NEXT_PUBLIC_NIM_STACK_DEGRADED' .github/workflows/deploy.yml && git diff --stat HEAD | grep -c '|' | grep '^1$'"
     commit_template: "fix(deploy): add NEXT_PUBLIC_NIM_STACK_DEGRADED=false build-arg (Amendment 4 cleanup)"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T08:00:00Z"
 
   - id: X-S1
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/X-S1-camera-capture-mobile.md
