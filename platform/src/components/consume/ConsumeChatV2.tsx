@@ -69,6 +69,10 @@ export interface ConsumeChatProps {
   costVisibilityEnabled?: boolean
   /** R8-S6: enable inline slash command menu in composer */
   slashEnabled?: boolean
+  /** R8-S7: enable conversation export dropdown in header */
+  exportEnabled?: boolean
+  /** R8-S5: enable token count display in composer */
+  tokensEnabled?: boolean
 }
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
@@ -85,6 +89,9 @@ import { ValidatorFailureBand } from '../chat/ValidatorFailureBand'
 import { ValidatorFooterChip } from '../chat/ValidatorFooterChip'
 import type { PanelMemberPart, PanelMetaPart, PredictionCandidatePart, StagePart, ToolPart } from '@/lib/streams/data_parts'
 import { useDataParts } from '@/lib/chat-v2/useDataParts'
+import { InlineToolFlow } from '../chat/InlineToolFlow'
+import { ExportDropdown } from '../chat/ExportDropdown'
+import { useTokenCount } from '@/hooks/useTokenCount'
 import type { NormalizedDataPart } from '@/lib/chat-v2/useDataParts'
 import { StageStepper } from '../chat-v2/StageStepper'
 import { ToolCallCard } from '../chat-v2/ToolCallCard'
@@ -533,12 +540,10 @@ function V2Message() {
   const dataParts = useDataParts(message)
   const { panelMembers, panelMeta, isPanel } = usePanelData(dataParts)
   const meta = (message.metadata?.custom ?? {}) as Record<string, unknown>
+  // C.8: disclosure_tier, queryId, context_usage, provenance all live in metadata.custom (route wraps in custom: {})
   const isSuperAdmin = meta.disclosure_tier === 'super_admin'
-
-  // C.8: extract context_usage (from messageMetadata.start) and provenance (from finish or custom)
-  const rawMeta = message.metadata as Record<string, unknown> | undefined
-  const contextUsage = (rawMeta?.context_usage ?? meta.context_usage) as ContextUsageEvent | undefined ?? null
-  const provenance = (meta.provenance ?? rawMeta?.provenance) as ProvenanceEvent | null ?? null
+  const contextUsage = meta.context_usage as ContextUsageEvent | undefined ?? null
+  const provenance = meta.provenance as ProvenanceEvent | null ?? null
 
   // γ6: cost visibility from context (super_admin always sees cost regardless)
   const costVisible = useContext(CostVisibilityCtx)
@@ -837,6 +842,8 @@ function V2Message() {
             horizon={activePredCandidate.horizon}
           />
         )}
+        {/* R9: inline tool-flow timeline — admin-only; NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW gates internally */}
+        <InlineToolFlow queryId={(meta.queryId as string | null) ?? null} isAdmin={isSuperAdmin} />
       </MessagePrimitive.If>
     </MessagePrimitive.Root>
   )
@@ -1022,7 +1029,7 @@ function AttachmentStrip({
 
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
-function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
+function V2Composer({ slashEnabled = false, tokensEnabled = false }: { slashEnabled?: boolean; tokensEnabled?: boolean }) {
   // F.3: useThreadRuntime().subscribe() for run-state (deprecated primitive avoided)
   const runtime = useThreadRuntime()
   const [isRunning, setIsRunning] = useState(false)
@@ -1032,6 +1039,7 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   const isRunningRef = useRef(false)
   const [composerValue, setComposerValue] = useState('')
   const [slashActiveIdx, setSlashActiveIdx] = useState(0)
+  const { tokenCount, pctUsed } = useTokenCount(tokensEnabled ? composerValue : '')
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
   const conversationId = useContext(ConversationIdCtx)
@@ -1212,6 +1220,11 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
               aria-multiline="true"
             />
 
+            {tokensEnabled && (
+              <p className={cn('px-5 pb-0.5 text-[10px] transition-colors', pctUsed === null || pctUsed < 75 ? 'text-zinc-500' : pctUsed < 95 ? 'text-amber-400' : 'text-red-400')}>
+                {tokenCount === null ? '— tokens' : `${tokenCount} tokens · ${pctUsed}%`}
+              </p>
+            )}
             {/* Bottom row inside pill: paperclip + hints | send/stop */}
             <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-0.5">
               <div className="flex items-center gap-1">
@@ -1447,9 +1460,11 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
         const custom = meta?.custom as Record<string, unknown> | undefined
         const queryId = custom?.queryId as string | undefined
         if (queryId) {
-          const text = lastMsg.parts
-            .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-            .map(p => p.text)
+          // runtime.getState().messages returns ThreadMessage objects whose text
+          // lives in .content, not .parts. Guard with ?? [] to avoid crashes.
+          const text = (lastMsg.parts ?? (lastMsg as any).content ?? [])
+            .filter((p: { type: string }): p is { type: 'text'; text: string } => p.type === 'text')
+            .map((p: { text: string }) => p.text)
             .join('')
           const entry: PendingStreamEntry = {
             queryId,
@@ -1551,7 +1566,7 @@ function V2ScrollDiscipline() {
 
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
-function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean }) {
+function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean; tokensEnabled?: boolean }) {
   const [truncatedMsgId, setTruncatedMsgId] = useState<string | null>(null)
   return (
     <TruncatedMsgCtx.Provider value={truncatedMsgId}>
@@ -1601,7 +1616,7 @@ function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: strin
       </ThreadPrimitive.Viewport>
 
       <V2BottomBar />
-      <V2Composer slashEnabled={slashEnabled} />
+      <V2Composer slashEnabled={slashEnabled} tokensEnabled={tokensEnabled} />
     </ThreadPrimitive.Root>
     </SetTruncatedMsgCtx.Provider>
     </TruncatedMsgCtx.Provider>
@@ -1613,7 +1628,7 @@ function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: strin
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
   const [restoredKey, setRestoredKey] = useState(0)
@@ -1649,6 +1664,20 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       if (!isInput && (e.key === '?' || ((e.metaKey || e.ctrlKey) && e.key === '/'))) {
         e.preventDefault()
         setShortcutsOpen(o => !o)
+        return
+      }
+      if (!isInput && e.key === 'j') {
+        document.querySelector('[role="log"]')?.scrollBy({ top: 150, behavior: 'smooth' })
+        return
+      }
+      if (!isInput && e.key === 'k') {
+        document.querySelector('[role="log"]')?.scrollBy({ top: -150, behavior: 'smooth' })
+        return
+      }
+      if (!isInput && e.key === 'c') {
+        e.preventDefault()
+        const textarea = document.querySelector('textarea[data-testid="v2-composer-input"]') as HTMLTextAreaElement | null
+        textarea?.focus()
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -1891,9 +1920,12 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             </div>
           )}
 
-          {/* Right-side actions: Reports + Aa+/Aa− + Share + Trace (super_admin only) */}
+          {/* Right-side actions: Reports + Export + Aa+/Aa− + Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
             <ConsumeReportLibraryV2 reports={reports} />
+            {exportEnabled && activeConversationId && (
+              <ExportDropdown conversationId={activeConversationId} />
+            )}
             {/* X-S7: font-size controls */}
             <button
               type="button"
@@ -1947,6 +1979,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             onConversationId={setActiveConversationId}
             onTitle={handleTitleGenerated}
             slashEnabled={slashEnabled}
+            tokensEnabled={tokensEnabled}
           />
         </main>
       </div>
@@ -1970,6 +2003,7 @@ interface V2ChatRuntimeProps {
   onConversationId?: (id: string) => void
   onTitle?: () => void
   slashEnabled?: boolean
+  tokensEnabled?: boolean
 }
 
 // ─── γ7: Session-storage key for stream-resume ───────────────────────────────
@@ -1984,7 +2018,7 @@ interface PendingStreamEntry {
   receivedChars: number
 }
 
-function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
+function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false, tokensEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
   const chartIdRef = useRef(chartId)
   chartIdRef.current = chartId
   const conversationIdRef = useRef(conversationId)
@@ -2099,7 +2133,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           {/* C.2 + W5: unified runtime tracker — emits query_id, conversation_id */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
-            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} />
+            <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} tokensEnabled={tokensEnabled ?? false} />
             <CitationSidePanel
               citations={allCitations}
               pinned={pinnedSet}

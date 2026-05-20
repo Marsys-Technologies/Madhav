@@ -122,6 +122,9 @@ export default async function ConsumePage({
   const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
   const consumeUiV2Enabled = configService.getFlag('CONSUME_UI_V2_ENABLED')
   const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
+  const slashEnabled = configService.getFlag('R8_SLASH_ENABLED')
+  const exportEnabled = configService.getFlag('R8_EXPORT_ENABLED')
+  const tokensEnabled = configService.getFlag('R8_TOKENS_ENABLED')
   const audienceTier: AudienceTier = profile?.role === 'super_admin' ? 'super_admin' : 'client'
 
   // 4C-8: Read ?prompt + ?context for AskMadhavLink deep links from /panchang
@@ -148,6 +151,9 @@ export default async function ConsumePage({
       costVisibilityEnabled={costVisibilityEnabled}
       audienceTier={audienceTier}
       initialMessages={initialMessages}
+      slashEnabled={slashEnabled}
+      exportEnabled={exportEnabled}
+      tokensEnabled={tokensEnabled}
     />
   )
 }

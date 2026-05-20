@@ -958,8 +958,20 @@ export async function POST(request: Request) {
     })
   }
 
+  // Pre-generate the server-assigned message ID so it can be established via a
+  // manual `start` chunk BEFORE any data-stage events. Without this, data-stage
+  // writes call write() with the AI SDK's internal random ID, and the stream's
+  // own `start` chunk (with a different server ID) triggers a second pushMessage,
+  // leaving two assistant entries in chatHelpers.messages. joinExternalMessages
+  // then only merges metadata from the first (empty) entry — stripping custom.
+  const serverMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
+
   const uiStream = createUIMessageStream({
     execute: async ({ writer }) => {
+      // Establish the server-assigned message ID before any data events so
+      // subsequent write() calls use replaceMessage rather than pushMessage.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      writer.write({ type: 'start', messageId: serverMsgId } as any)
       writer.write({ type: 'data-stage', data: stagePart('classify', 'done', plannerLatencyMs) })
       writer.write({ type: 'data-stage', data: stagePart('compose_bundle', 'done', composeBundleMs) })
       for (const evt of toolEventLog) {
@@ -985,47 +997,51 @@ export async function POST(request: Request) {
       writer.merge(result.toUIMessageStream({
         sendReasoning: true,  // R9: forward AI SDK reasoning parts to V2's ReasoningProgress
         originalMessages: messages,
-        generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+        generateMessageId: () => serverMsgId,
         messageMetadata: ({ part }: { part: { type: string } }) => {
           if (part.type === 'start' && isFirstTurn) {
             return {
-              conversationId: finalConversationId,
-              model: modelId,
-              stack: selectedStack,
-              style,
-              disclosure_tier: audienceTier,
-              pipeline: 'v2',
-              queryId,
-              planning_model_id: plannerModelId,
-              planning_latency_ms: plannerLatencyMs,
-              // F014 fix: emit planner_active into SSE body so runner.py regex can detect it
-              planner_active: true,
-              // Gate III additions
-              query_class: plan.query_class,
-              context_usage: contextUsageMeta,
-              conversation_title: gateIIITitle ?? undefined,
+              custom: {
+                conversationId: finalConversationId,
+                model: modelId,
+                stack: selectedStack,
+                style,
+                disclosure_tier: audienceTier,
+                pipeline: 'v2',
+                queryId,
+                planning_model_id: plannerModelId,
+                planning_latency_ms: plannerLatencyMs,
+                planner_active: true,
+                query_class: plan.query_class,
+                context_usage: contextUsageMeta,
+                conversation_title: gateIIITitle ?? undefined,
+              },
             }
           }
           if (part.type === 'start') {
             return {
-              model: modelId,
-              stack: selectedStack,
-              style,
-              disclosure_tier: audienceTier,
-              pipeline: 'v2',
-              queryId,
-              planning_model_id: plannerModelId,
-              planning_latency_ms: plannerLatencyMs,
-              planner_active: true,
-              query_class: plan.query_class,
-              context_usage: contextUsageMeta,
+              custom: {
+                model: modelId,
+                stack: selectedStack,
+                style,
+                disclosure_tier: audienceTier,
+                pipeline: 'v2',
+                queryId,
+                planning_model_id: plannerModelId,
+                planning_latency_ms: plannerLatencyMs,
+                planner_active: true,
+                query_class: plan.query_class,
+                context_usage: contextUsageMeta,
+              },
             }
           }
           if (part.type === 'finish') {
             finishGuard()
             return {
-              methodology_block: methodologyBlockHolder?.value ?? null,
-              provenance: provenanceHolder.value,
+              custom: {
+                methodology_block: methodologyBlockHolder?.value ?? null,
+                provenance: provenanceHolder.value,
+              },
             }
           }
         },
