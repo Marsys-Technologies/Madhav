@@ -76,10 +76,19 @@ export type ObservabilityPart = z.infer<typeof ObservabilityPartSchema>
 
 // ── Citation gate part ────────────────────────────────────────────────────
 
+export const GateVerdictSchema = z.object({
+  name: z.string(),
+  verdict: z.enum(['PASS', 'FAIL', 'WARN']),
+  reason: z.string(),
+})
+
+export type GateVerdict = z.infer<typeof GateVerdictSchema>
+
 export const CitationGatePartSchema = z.object({
   type: z.literal('citation_gate'),
   status: z.enum(['pass', 'warn', 'fail']),
   issues: z.array(z.string()).optional(),
+  gates: z.array(GateVerdictSchema).optional(),
 })
 
 export type CitationGatePart = z.infer<typeof CitationGatePartSchema>

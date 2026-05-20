@@ -537,7 +537,7 @@ function V2Message() {
   // γ4: extract citation gate status from data parts
   const citationGate = useMemo(() => {
     const entry = dataParts.find(d => d.type === 'data-citation-gate')
-    return entry ? (entry.data as { status?: string; issues?: string[] }) : null
+    return entry ? (entry.data as { status?: string; issues?: string[]; gates?: Array<{ name: string; verdict: 'PASS' | 'FAIL' | 'WARN'; reason: string }> }) : null
   }, [dataParts])
 
   // O3: compute isStreaming for stage/tool gating
@@ -661,6 +661,7 @@ function V2Message() {
               issues={citationGate.issues ?? []}
               isSuperAdmin={isSuperAdmin}
               onOpenDetails={() => setDetailsOpen(true)}
+              gates={citationGate.gates}
             />
           )}
 
