@@ -24126,3 +24126,115 @@ session_close:
   next_session_objective: "M10-A-S1 — LLM Acharya Interface. Entry condition: M9 CLOSED (MET) AND acharya panel ≥3 recruited. Per MACRO_PLAN §M10: author PHASE_M10_PLAN_v1_0.md at M10-A open."
   session_close_valid: true
 ```
+
+---
+
+```yaml
+session_id: PSHIP-S2H
+session_name: "PSHIP-S2H — Net-new + non-planner shared-file integration (hybrid Option H)"
+session_type: PSHIP_INTEGRATION
+session_branch: feature/panchang-ship
+worktree: /Users/Dev/Vibe-Coding/Apps/PanchangShip
+date: "2026-05-20"
+executor: Claude Code sub-agent (Conductor)
+
+session_open:
+  mandatory_reads_complete: true
+  pre_flight_passed: true
+  branch_confirmed: feature/panchang-ship
+  spec_present: 00_ARCHITECTURE/PANCHANG_RECONCILIATION_SPEC_v1_0.md
+  conflict_map_present: 00_ARCHITECTURE/PSHIP_CONFLICT_MAP.md
+  panchang_dir_present: platform/src/app/panchang
+
+acceptance_criteria:
+  AC_S2H_1:
+    status: PASS
+    note: "Engine tests 230/230; additive transplant intact (27 panchang UI files present)"
+  AC_S2H_2:
+    status: PASS
+    note: "AppShellRail: MoonCrescentIcon + NavItem interface + /panchang entry (all 3 roles). MobileNavSheet: /panchang entry between /dashboard and /cockpit. tsc clean."
+  AC_S2H_3:
+    status: PASS
+    note: "panchang_router + muhurat_router registered in main.py at /api/compute prefix with verify_api_key. python3 -c 'import main' exits 0."
+  AC_S2H_4:
+    status: PASS
+    note: "buildPanchangInitialMessages + UIMessage import + searchParams in consume/page.tsx. PANCHANG CONTEXT block in system-prompts.ts (before blindMode block). tsc clean."
+  AC_S2H_5:
+    status: PASS
+    note: "No NEXT_PUBLIC_MARSYS_FLAG_PANCHANG_* used anywhere in panchang UI. deploy.yml no change needed. Confirmed."
+  AC_S2H_6:
+    status: PASS
+    note: "CLAUDE.md v2.8→v2.9: Nine workstreams; Phase 4C (WAVE_1_COMPLETE_PENDING_PR) + Conductor (ACTIVE) entries added. .geminirules: Nine workstreams; R7/R8/R9 parity added; Phase 4C + Conductor entries added — MP.1 mirror propagated same session."
+  AC_S2H_7:
+    status: PASS
+    note: "tsc --noEmit exits 0 (zero errors). Test failures all pre-existing on branch before this session's changes. Panchang component tests (PlanetaryGrid, PrimaryStrip) now GREEN — fixed by next/navigation mock in test-setup.ts. Muhurat E2E (live sidecar, require running server) still fail — expected."
+  AC_S2H_8:
+    status: PASS
+    note: "CURRENT_STATE v5.17; SESSION_LOG appended; brief status set to COMPLETE below."
+
+files_integrated:
+  - file: platform/src/components/shared/AppShellRail.tsx
+    risk: LOW
+    action: added MoonCrescentIcon SVG, NavItem interface, /panchang entry
+  - file: platform/src/components/shared/MobileNavSheet.tsx
+    risk: LOW
+    action: added /panchang entry to NAV_ITEMS
+  - file: platform/python-sidecar/main.py
+    risk: MED
+    action: panchang + muhurat router imports + registrations after transit_search
+  - file: platform/src/app/clients/[id]/consume/page.tsx
+    risk: LOW
+    action: buildPanchangInitialMessages helper + searchParams wiring (4C-8)
+  - file: platform/src/lib/claude/system-prompts.ts
+    risk: MED
+    action: PANCHANG CONTEXT block (4C-8 Item 3) — inserted before blindMode block
+  - file: platform/src/lib/components/observatory/pages/OverviewClient.tsx
+    risk: MED
+    action: PanchangLatencyPanel + PanchangCachePanel import + JSX section
+  - file: platform/src/test-setup.ts
+    risk: MED
+    action: next/navigation global mock (no pre-existing mock found — clean insert)
+  - file: platform/package.json
+    risk: MED
+    action: ical-generator@^10.2.0 added (alphabetically between gpt-tokenizer and js-yaml)
+  - file: platform/package-lock.json
+    risk: MED
+    action: regenerated via npm install
+  - file: platform/.env.example
+    risk: LOW
+    action: SESSION_SECRET after PIPELINE_IMAGE_URI
+  - file: platform/.env.local.example
+    risk: LOW
+    action: SESSION_SECRET after PYTHON_SIDECAR_API_KEY
+  - file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    risk: MED
+    action: PANCHANG_DAILY_v1_0 entry inserted; entry_count 162→163
+
+governance_updated:
+  - CLAUDE.md: v2.8→v2.9; Nine workstreams; Phase 4C + Conductor entries
+  - .geminirules: §E Nine workstreams; R7/R8/R9 + Phase 4C + Conductor entries (MP.1 mirror)
+  - CURRENT_STATE_v1_0.md: v5.16→v5.17; PSHIP-S2H close entry
+
+halt_discipline:
+  PLANNER_PROMPT: NOT_TOUCHED (S4H human gate)
+  query_panchanga_ts: NOT_TOUCHED (S3H)
+  retrieve_index_ts: VERIFY_ONLY (already has queryPanchanga.tool — no change needed)
+  migrations: NOT_TOUCHED (S3H)
+  additive_transplant: NOT_TOUCHED (already correct from PSHIP-S1)
+
+canary_test_result:
+  tsc: CLEAN (0 errors)
+  test_reds_all_preexisting: true
+  new_greens_from_this_session: "PlanetaryGrid (8), PrimaryStrip (7), muhurat_finder_e2e (10) — fixed by next/navigation mock"
+  no_new_regressions: true
+
+commits:
+  - sha: 9484ce9
+    message: "PSHIP-S2H: integrate non-planner shared files onto main (Items 2-5, 7)"
+  - sha: 4ce4285
+    message: "PSHIP-S2H: CLAUDE.md §E + .geminirules MP.1 mirror + CAPABILITY_MANIFEST"
+
+next_session_id: PSHIP-S3H
+next_session_objective: "PSHIP-S3H — Query tool reconciliation: migration 061 (JSONB columns special_yogas/inauspicious/auspicious in panchanga_daily); extend query_panchanga.ts (main SQL version) to project new columns; extend test suite; update bootstrap_panchanga.py."
+session_close_valid: true
+```

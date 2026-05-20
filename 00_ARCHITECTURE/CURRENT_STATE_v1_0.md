@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.16
+version: 5.17
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.17 (2026-05-20, PSHIP-S2H):
+    **PSHIP-S2H COMPLETE. Panchang non-planner shared-file integration onto main.**
+    Key outcomes: (1) AC.S2H.1 PASS — engine tests 230/230; additive transplant intact. (2) AC.S2H.2 PASS — AppShellRail + MobileNavSheet /panchang entry added; tsc clean. (3) AC.S2H.3 PASS — panchang + muhurat routers registered in main.py; sidecar boots clean. (4) AC.S2H.4 PASS — consume/page.tsx buildPanchangInitialMessages + searchParams + system-prompts.ts PANCHANG CONTEXT block integrated. (5) AC.S2H.5 PASS — deploy.yml confirmed no NEXT_PUBLIC panchang flag needed. (6) AC.S2H.6 PASS — CLAUDE.md v2.9 §E Nine workstreams; Phase 4C + Conductor entries added; .geminirules MP.1 mirror propagated same session with R7/R8/R9 parity. (7) AC.S2H.7 PASS — tsc 0 errors; test failures all pre-existing on branch; no new regressions; panchang component tests now GREEN (next/navigation mock in test-setup.ts). (8) CAPABILITY_MANIFEST 162→163 (PANCHANG_DAILY_v1_0 entry added). (9) ical-generator@^10.2.0 added to package.json; SESSION_SECRET env vars added to .env.example + .env.local.example. (10) test-setup.ts: next/navigation global mock inserted.
+    CONCURRENT_WORKSTREAM_NOTE: This session is on feature/panchang-ship (PSHIP integration branch), not main. Files integrated per PSHIP_CONFLICT_MAP §5 execution order items 1–15 (excluding #16 PLANNER_PROMPT — S4H human gate). Halt discipline respected: PLANNER_PROMPT, query_panchanga.ts, retrieve/index.ts, migrations all UNTOUCHED.
+    active_phase_plan_sub_phase: feature/panchang-ship PSHIP-S2H CLOSED. PSHIP-S3H INCOMING (query-tool reconciliation).
+    last_session_id: PSHIP-S2H. next_session_objective: PSHIP-S3H — migration 061 (JSONB columns for special_yogas/inauspicious/auspicious in panchanga_daily); extend query_panchanga.ts (main SQL version) + test suite; bootstrap_panchanga.py update.
+    file_updated_at: 2026-05-20T16:35:00+05:30. file_updated_by_session: PSHIP-S2H.
   - v5.16 (2026-05-14, M9-E-S1):
     **M9 MACRO-PHASE CLOSED. M10 INCOMING. IS.8(b) PASS 5/5. CLAUDECODE_BRIEF STATUS=COMPLETE. CAPABILITY_MANIFEST 160 ENTRIES.**
     Key outcomes: (1) AC.M9E.1 PASS — 10 disagreement rows; all fields populated. (2) AC.M9E.2 PASS — SCHOOL_DISAGREEMENT_REGISTER_v1_0.md: 10 worked examples; 5 disagreement classes: temporal_scope(3), magnitude_divergence(3), confidence_reduction(2), method_divergence(1), tradition_specificity(1). (3) AC.M9E.3 PASS (DEFERRED) — school_disagreement_register.json written; GCS upload deferred. (4) AC.M9E.4 PASS — Convergence stability: re-run byte-identical on all 5 domains × 6 key fields. (5) AC.M9E.5 PASS — IS.8(b) red-team PASS 5/5: RT.M9.1 factual accuracy (10/10 spot-check PASS), RT.M9.2 layer separation (no raw chart values), RT.M9.3 derivation ledger (all claims anchored to compute_convergence.py outputs), RT.M9.4 mirror discipline (both surfaces M9-D CLOSED), RT.M9.5 scope discipline (no M10 pre-built; no migrations above 060). 0 CRITICAL; 0 HIGH; 0 MEDIUM. (6) AC.M9E.6 PASS — M9_CLOSE_v1_0.md at 09_MULTI_SCHOOL_TRIANGULATION/; seal block present; NAP.M9.5 pre-authorized. (7) AC.M9E.7 PASS — CURRENT_STATE v5.16: M9 CLOSED / M10 INCOMING; red_team_counter=0. (8) AC.M9E.8 PASS — SESSION_LOG M9-E-S1 appended. (9) AC.M9E.9 PASS — CAPABILITY_MANIFEST 4 new M9-E entries; 160 total. (10) AC.M9E.10 PASS — MP.1+MP.2 mirrors propagated to M9-CLOSED state. (11) AC.M9E.11 PASS — CLAUDECODE_BRIEF.md status=COMPLETE; archived to 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M9_v1_0.md. (12) AC.M9E.12 PASS — MACRO_PLAN §M9 exit criteria a–d documented in M9_CLOSE §7 (a=PARTIAL MET, b–d=MET).

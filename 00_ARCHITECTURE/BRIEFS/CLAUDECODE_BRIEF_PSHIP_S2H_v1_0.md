@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF_PSHIP_S2H_v1_0.md
 type: CLAUDECODE_BRIEF
 version: 1.0
-status: READY
+status: COMPLETE
 authored_by: Cowork 2026-05-20
 session_id: PSHIP-S2H
 session_name: PSHIP-S2H — Net-new + non-planner shared-file integration (hybrid Option H)
