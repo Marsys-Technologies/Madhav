@@ -1,38 +1,40 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "created_at": "2026-05-19",
+  "updated_at": "2026-05-20",
   "created_by": "4C-3 session",
-  "purpose": "Validate planner routes Panchang queries to query_panchanga and non-Panchang queries to query_ephemeris. 10 curated queries covering auspicious timing, panchang elements, planetary positions, retrogrades, and mixed queries. Gate: 10/10 PASS for 4C.3 close.",
+  "updated_by": "PSHIP-S4H",
+  "purpose": "Validate planner routes Panchang queries to query_panchanga and non-Panchang queries to query_ephemeris. Original 10-query probe set (PP.01–PP.10) from 4C-3. Extended with 13 new R-PA trigger phrases (PP.11–PP.21), R-PCI context-inheritance probe (PP.22), main R-TC regression probe (PP.23), and false-positive check (PP.24). Gate: 24/24 PASS for PSHIP-S4H close.",
   "queries": [
     {
       "id": "PP.01",
       "query": "What's the tithi today?",
       "expected_tool": "query_panchanga",
-      "rationale": "Tithi is an anga — core Panchang element; R-TC Panchang path."
+      "rationale": "Tithi is an anga — core Panchang element; R-PA trigger."
     },
     {
       "id": "PP.02",
       "query": "Is today auspicious for starting a business?",
       "expected_tool": "query_panchanga",
-      "rationale": "Auspiciousness for an activity is a muhurat / special_yogas query — R-TC Panchang path."
+      "rationale": "Auspiciousness for an activity is a muhurat / special_yogas query — R-PA trigger."
     },
     {
       "id": "PP.03",
       "query": "What nakshatra is the moon in right now?",
       "expected_tool": "query_panchanga",
-      "rationale": "Moon's nakshatra at sunrise is in the panchang planets_at_sunrise section — R-TC Panchang path."
+      "rationale": "Moon's nakshatra at sunrise is in the panchang — R-PA trigger."
     },
     {
       "id": "PP.04",
       "query": "When does Rahu Kalam end today in Bhubaneswar?",
       "expected_tool": "query_panchanga",
-      "rationale": "Rahu Kalam is in panchang inauspicious timings — R-TC Panchang path."
+      "rationale": "Rahu Kalam is in panchang inauspicious timings — R-PA (f) trigger."
     },
     {
       "id": "PP.05",
       "query": "Is it a Guru Pushya yoga day this Thursday?",
       "expected_tool": "query_panchanga",
-      "rationale": "Guru Pushya is a special yoga — R-TC Panchang path."
+      "rationale": "Guru Pushya is a special yoga — R-PA (d) trigger."
     },
     {
       "id": "PP.06",
@@ -56,13 +58,97 @@
       "id": "PP.09",
       "query": "Is Mars combust today and what's the panchang look like?",
       "expected_tool_calls": ["query_ephemeris", "query_panchanga"],
-      "rationale": "Mixed query: combustion = ephemeris; panchang overview = query_panchanga. R-TC co-selection rule — both tools at priority 1."
+      "rationale": "Mixed query: combustion = ephemeris; panchang overview = query_panchanga. R-TC co-selection rule."
     },
     {
       "id": "PP.10",
       "query": "When's a good Tuesday for buying a vehicle next month?",
       "expected_tool": "query_panchanga",
-      "rationale": "Good day for activity = muhurat query, Tuesday = vara, vehicle purchase = event auspiciousness — R-TC Panchang path."
+      "rationale": "Good day for activity = muhurat query, Tuesday = vara, vehicle purchase = event auspiciousness — R-PA trigger."
+    },
+    {
+      "id": "PP.11",
+      "query": "What time is Yamagandam today?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Yamagandam is an inauspicious window — R-PA (f) new trigger."
+    },
+    {
+      "id": "PP.12",
+      "query": "Show me today's Choghadiya timings",
+      "expected_tool": "query_panchanga",
+      "rationale": "Choghadiya is a panchang timing table — R-PA (f) new trigger."
+    },
+    {
+      "id": "PP.13",
+      "query": "What hora is running right now?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Hora is a panchang timing element — R-PA (f) new trigger."
+    },
+    {
+      "id": "PP.14",
+      "query": "Is there a Brahma Muhurta tomorrow morning?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Brahma Muhurta is an auspicious window in panchang — R-PA (f) new trigger."
+    },
+    {
+      "id": "PP.15",
+      "query": "What is the Abhijit Muhurta time today?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Abhijit is an auspicious panchang window — R-PA (f) new trigger."
+    },
+    {
+      "id": "PP.16",
+      "query": "Is Sarvartha Siddhi Yoga present this Sunday?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Sarvartha Siddhi is a named special yoga — R-PA (d) new trigger."
+    },
+    {
+      "id": "PP.17",
+      "query": "When is the next Amrit Siddhi Yoga day this month?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Amrit Siddhi is a named special yoga — R-PA (d) new trigger."
+    },
+    {
+      "id": "PP.18",
+      "query": "Is Tripushkar Yoga active today?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Tripushkar is a named special yoga — R-PA (d) new trigger."
+    },
+    {
+      "id": "PP.19",
+      "query": "Give me the panchang for today",
+      "expected_tool": "query_panchanga",
+      "rationale": "Direct panchang data request — R-PA (g) new trigger."
+    },
+    {
+      "id": "PP.20",
+      "query": "What is today's panchang?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Direct panchang data request — R-PA (g) new trigger."
+    },
+    {
+      "id": "PP.21",
+      "query": "Is today good for me based on chandra bala?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Chandra bala requires Moon nakshatra from panchang — R-PA (g) new trigger."
+    },
+    {
+      "id": "PP.22",
+      "query": "<panchang_context date=\"2026-05-20\" location=\"Bhubaneswar\">\ntithi: Shukla Panchami (5) | vara: Mangalvara | yoga: Shobhana |\nnakshatra: Rohini | rahu_kalam: 15:00–16:30 IST\n</panchang_context>\n<user_question>Is this a good time to start a new project today?</user_question>",
+      "expected_tool": "NONE",
+      "rationale": "R-PCI: <panchang_context> block present — skip query_panchanga entirely; use injected context."
+    },
+    {
+      "id": "PP.23",
+      "query": "What is my current Jupiter mahadasha doing to my 10th house?",
+      "expected_tool": "query_ephemeris",
+      "rationale": "Non-natal temporal query with transit anchor — main's R-TC fires (query_ephemeris); this is NOT a panchang query. Regression test: main's R-TC behavior must be unchanged."
+    },
+    {
+      "id": "PP.24",
+      "query": "What's the exact sidereal longitude of Venus at sunrise today?",
+      "expected_tool": "query_ephemeris",
+      "rationale": "False-positive check: 'sunrise' appears in panchang context but this is a raw positional query — R-TC ephemeris path, NOT R-PA. The word 'sunrise' alone must not trigger R-PA."
     }
   ]
 }
