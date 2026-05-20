@@ -174,10 +174,13 @@ interface V2PrefsCtxValue {
   activeTier: AudienceTier
   /** READ-ONLY: server-provided audience tier from chart_meta. The in-chat override is `activeTier` + `setActiveTierOverride`. */
   audienceTier: AudienceTier
+  /** R9-S3: Active persona ID; null means no persona selected. */
+  activePersonaId: string | null
   setStack: (s: ModelStack) => void
   setStyle: (s: StyleId) => void
   setLelEnabled: (v: boolean) => void
   setActiveTierOverride: (t: AudienceTier) => void
+  setActivePersonaId: (id: string | null) => void
 }
 const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   stack: 'gemini-2.5-flash' as ModelStack,
@@ -185,10 +188,12 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   lelEnabled: true,
   activeTier: 'client',
   audienceTier: 'client',
+  activePersonaId: null,
   setStack: () => {},
   setStyle: () => {},
   setLelEnabled: () => {},
   setActiveTierOverride: () => {},
+  setActivePersonaId: () => {},
 })
 
 // ─── Citation context ─────────────────────────────────────────────────────────
@@ -1311,7 +1316,7 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
 // ─── C.3: Bottom-bar selectors ───────────────────────────────────────────────
 
 function V2BottomBar() {
-  const { stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled, setActiveTierOverride } =
+  const { stack, style, lelEnabled, activeTier, audienceTier, activePersonaId, setStack, setStyle, setLelEnabled, setActiveTierOverride, setActivePersonaId } =
     useContext(V2PrefsCtx)
 
   return (
@@ -1324,6 +1329,8 @@ function V2BottomBar() {
         style={style}
         onStackChange={setStack}
         onStyleChange={setStyle}
+        activePersonaId={activePersonaId}
+        onPersonaChange={setActivePersonaId}
       />
       <div className="flex items-center gap-2">
         <button
@@ -1415,11 +1422,13 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
   const [activeTier, setActiveTierOverride] = useState<AudienceTier>(audienceTier)
+  // R9-S3: Persona selection state — persists for the session; null = no persona active.
+  const [activePersonaId, setActivePersonaId] = useState<string | null>(null)
 
   const prefsCtxValue = useMemo<V2PrefsCtxValue>(() => ({
-    stack, style, lelEnabled, activeTier, audienceTier,
-    setStack, setStyle, setLelEnabled, setActiveTierOverride,
-  }), [stack, style, lelEnabled, activeTier, audienceTier, setStack, setStyle, setLelEnabled])
+    stack, style, lelEnabled, activeTier, audienceTier, activePersonaId,
+    setStack, setStyle, setLelEnabled, setActiveTierOverride, setActivePersonaId,
+  }), [stack, style, lelEnabled, activeTier, audienceTier, activePersonaId, setStack, setStyle, setLelEnabled])
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -1801,13 +1810,16 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
 
   const panelOptInCtxValue = useMemo(() => ({ panelOptIn, setPanelOptIn }), [panelOptIn, setPanelOptIn])
 
-  const { stack, style, lelEnabled } = useContext(V2PrefsCtx)
+  const { stack, style, lelEnabled, activePersonaId: activePersonaIdCtx } = useContext(V2PrefsCtx)
   const stackRef = useRef(stack)
   stackRef.current = stack
   const styleRef = useRef(style)
   styleRef.current = style
   const lelEnabledRef = useRef(lelEnabled)
   lelEnabledRef.current = lelEnabled
+  // R9-S3: Track active persona via ref so the body() closure reads the latest value.
+  const activePersonaIdRef = useRef(activePersonaIdCtx)
+  activePersonaIdRef.current = activePersonaIdCtx
 
   const runtime = useChatRuntime({
     transport: new DefaultChatTransport({
@@ -1831,6 +1843,8 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           stack: stackRef.current,
           style: styleRef.current,
           lel_context_enabled: lelEnabledRef.current,
+          // R9-S3: Include active persona so synthesis can prepend its system_prompt.
+          ...(activePersonaIdRef.current ? { persona_id: activePersonaIdRef.current } : {}),
         }
       },
     }),
