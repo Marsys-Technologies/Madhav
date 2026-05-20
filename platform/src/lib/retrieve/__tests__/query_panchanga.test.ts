@@ -166,4 +166,58 @@ describe('query_panchanga tool', () => {
     expect(bundle.results[0].source_canonical_id).toBe('PANCHANGA_DAILY')
     expect(bundle.results[0].confidence).toBe(1.0)
   })
+
+  it('enrichment fields present: special_yogas + inauspicious parsed from JSON text', async () => {
+    const enrichedRow = {
+      ...panchangaRow,
+      special_yogas: JSON.stringify([{ name: 'Guru Pushya', rating: 'excellent', start_ts: '2026-05-20T06:01:00', end_ts: '2026-05-20T18:30:00' }]),
+      choghadiya: null,
+      hora: null,
+      inauspicious: JSON.stringify({ rahu: { start: '09:00', end: '10:30' }, yama: { start: '12:00', end: '13:30' }, gulika: { start: '07:30', end: '09:00' }, dur_muhurta: [] }),
+      auspicious: null,
+    }
+    mockQuery.mockResolvedValue({ rows: [enrichedRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan, {
+      fields: ['special_yogas', 'inauspicious'],
+    })
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(Array.isArray(content.special_yogas)).toBe(true)
+    expect(content.special_yogas[0].name).toBe('Guru Pushya')
+    expect(content.inauspicious.rahu.start).toBe('09:00')
+    // choghadiya/hora/auspicious were not requested — must be absent
+    expect(content.choghadiya).toBeUndefined()
+    expect(content.hora).toBeUndefined()
+    expect(content.auspicious).toBeUndefined()
+    // 5-limb fields were not requested either
+    expect(content.tithi).toBeUndefined()
+  })
+
+  it('enrichment fields absent (pre-rebuild rows): fields return null gracefully', async () => {
+    const preRebuildRow = {
+      ...panchangaRow,
+      special_yogas: null,
+      choghadiya: null,
+      hora: null,
+      inauspicious: null,
+      auspicious: null,
+    }
+    mockQuery.mockResolvedValue({ rows: [preRebuildRow], rowCount: 1 })
+
+    const bundle = await tool.retrieve(basePlan, {
+      fields: ['special_yogas', 'choghadiya', 'hora', 'inauspicious', 'auspicious'],
+    })
+
+    const content = JSON.parse(bundle.results[0].content)
+    expect(content.special_yogas).toBeNull()
+    expect(content.choghadiya).toBeNull()
+    expect(content.hora).toBeNull()
+    expect(content.inauspicious).toBeNull()
+    expect(content.auspicious).toBeNull()
+    // 5-limb fields absent (not requested)
+    expect(content.tithi).toBeUndefined()
+    // result confidence is still 1.0 — null enrichment is not a tool error
+    expect(bundle.results[0].confidence).toBe(1.0)
+  })
 })

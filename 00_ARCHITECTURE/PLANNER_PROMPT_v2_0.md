@@ -740,6 +740,18 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
          (e) Muhurta / auspicious-day questions ("good day for marriage", "starting
              a venture", "travel"). query_panchanga gives the inputs; synthesis
              reasons over yoga + tithi + vara conjunction.
+         (f) Inauspicious period queries: "rahu kalam today", "what time is
+             yamagandam", "when is gulika kalam", "dur muhurta today". Include
+             `fields:["inauspicious"]` — these periods live in the `inauspicious`
+             JSONB column added by migration 069.
+         (g) Enrichment queries — choghadiya, hora, or special yogas: "choghadiya
+             now", "which hora is running", "brahma muhurta time", "abhijit muhurta",
+             "amrit kalam", "is there Sarvartha Siddhi yoga today", "Amrit Siddhi",
+             "Guru Pushya", "Ravi Pushya", "Tripushkar", "Dwipushkar", "Bhadra",
+             "Panchaka", "panchang for today". Include the matching field group(s):
+             `fields:["choghadiya"]`, `fields:["hora"]`, `fields:["special_yogas"]`,
+             or `fields:["inauspicious","auspicious"]`. For "panchang for today"
+             (full-detail request), include all field groups explicitly.
 
        Priority:
          - When query is explicitly about a panchanga element (e.g., "what tithi
@@ -759,6 +771,24 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        The vara_lord field can be used to filter to specific day-lord transits:
        e.g., "Saturn-favorable days this year" → query_panchanga with
        vara_lord="Saturn".
+
+  R-PCI. PANCHANG CONTEXT INHERITANCE: When a `<panchang_context>` block is
+       already injected into the current turn (by the turn-assembly layer before
+       the planner runs), the planner SKIPS a redundant `query_panchanga` call
+       for today's date. The injected block already contains the full panchanga
+       row for today, including any enrichment fields the assembly layer fetched.
+       R-PCI does NOT apply when:
+         - The query asks about a date other than today.
+         - The query asks about a date range.
+         - The query asks for an enrichment field group that is absent from the
+           injected block (e.g., block has only the 5 limbs but query needs
+           `inauspicious`). In that case attach query_panchanga with the missing
+           `fields` only.
+       Worked example — R-PCI suppression:
+         Turn context: `<panchang_context>{"date":"2026-05-20","tithi":8,...}</panchang_context>`
+         Query: "What's the Moon nakshatra today?"
+         → R-PCI fires: query_panchanga NOT attached. Synthesis reads `moon_nakshatra`
+           directly from `<panchang_context>`. No tool call emitted.
 
   R-TE. TRANSIT EVENT SEARCH: For queries asking WHEN an event happens (versus
        WHAT is happening at a date), attach `query_transit_event` at priority 1.
@@ -2034,6 +2064,116 @@ Query: "What's my next mahadasha?"
 
 This example shows R-DA firing for a pure dasha schedule lookup. Empty `next_count:1` + `level:"M"` returns the first MD cluster whose start_date >= today. msr_sql does NOT fire — this is a schedule query, not natal interpretation. The synthesis_guidance mandates citing the DSH.V.NNN fact_id to prevent hallucinated sequences.
 
+### 4.29 R-PA subclause (f) — inauspicious period query (rahu kalam)
+
+Query: "What time is rahu kalam today?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Today's rahu kalam window — inauspicious period lookup.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_panchanga",
+      "params": { "fields": ["inauspicious"] },
+      "token_budget": 200,
+      "priority": 1,
+      "reason": "R-PA subclause (f): rahu kalam trigger → inauspicious field group for today's date (CURRENT_DATE default)."
+    }
+  ],
+  "synthesis_guidance": "Extract inauspicious.rahu.{start,end} from the result and format as IST window. If null, note that bootstrap_panchanga --rebuild has not yet run.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": [],
+  "forward_looking": false,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query.", "mode": "independent" }
+}
+```
+
+R-PA subclause (f) fires because the query explicitly names an inauspicious period (rahu kalam). The `fields` param is set to `["inauspicious"]` — no other field groups are needed, keeping the token budget small. The 5-limb default is NOT returned (caller specified `fields` explicitly). query_ephemeris does NOT fire — this is a precomputed period, not a transit position lookup.
+
+### 4.30 R-PA subclause (g) — special yoga query (Guru Pushya this week)
+
+Query: "Is there a Guru Pushya yoga this week?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Check for Guru Pushya yoga in the current week — special_yogas lookup over a date range.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_panchanga",
+      "params": {
+        "start_date": "2026-05-19",
+        "end_date": "2026-05-25",
+        "fields": ["special_yogas"],
+        "limit": 7
+      },
+      "token_budget": 350,
+      "priority": 1,
+      "reason": "R-PA subclause (g): Guru Pushya is a special yoga trigger → special_yogas field group over a 7-day window."
+    }
+  ],
+  "synthesis_guidance": "Scan special_yogas arrays across the 7 rows for any entry with name='Guru Pushya'. Report the date and IST window if found; report absent if no row contains it. If special_yogas is null on all rows, note bootstrap_panchanga --rebuild pending.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": ["Jupiter", "Moon"],
+  "houses": [],
+  "domains": [],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query.", "mode": "independent" }
+}
+```
+
+R-PA subclause (g) fires because "Guru Pushya" is a named special yoga trigger. The 7-day window is derived from "this week". `fields:["special_yogas"]` limits the response payload — no limb data is returned since the query does not ask for tithi/nakshatra/etc. If the query had asked "is there a Guru Pushya yoga, and what's the tithi?" both `"special_yogas"` and `"tithi"` would appear in `fields`.
+
+### 4.31 R-PCI context inheritance — today's nakshatra already in turn context
+
+Turn context (injected by turn-assembly layer before planner runs):
+```
+<panchang_context>{"date":"2026-05-20","tithi":8,"tithi_name":"Shukla Ashtami","paksha":"shukla","vara":"Mangalavara","vara_lord":"Mars","moon_nakshatra":"Pushya","yoga":"Shiva","karana":"Bava","sunrise_ist":"06:01:00"}</panchang_context>
+```
+
+Query: "What's the Moon nakshatra today, and is Pushya a good nakshatra for starting a new project?"
+
+```json
+{
+  "query_class": "predictive",
+  "query_intent_summary": "Muhurta assessment for Pushya nakshatra today — context already injected, no panchanga tool needed.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor; natal chart for muhurta cross-check." },
+    { "asset_id": "MSR", "priority": 2, "reason": "R7a: Moon/nakshatra signals for auspiciousness synthesis." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "msr_sql",
+      "params": { "planet": "Moon", "limit": 10 },
+      "token_budget": 400,
+      "priority": 1,
+      "reason": "R7a: natal Moon + Pushya context for muhurta synthesis."
+    }
+  ],
+  "synthesis_guidance": "Read moon_nakshatra='Pushya' directly from <panchang_context>. Assess Pushya's general auspiciousness (Guru-ruled, considered highly auspicious for new ventures) and cross-check against natal Moon signals from msr_sql. Do NOT call query_panchanga — R-PCI: panchang context already injected.",
+  "expected_output_shape": "detailed_analysis",
+  "history_mode": "synthesized",
+  "planets": ["Moon"],
+  "houses": [],
+  "domains": ["career"],
+  "forward_looking": false,
+  "prior_turn_relevance": { "used": 1, "reason": "panchang_context block provides today's panchanga row.", "mode": "context_used" }
+}
+```
+
+R-PCI fires: `query_panchanga` is suppressed entirely because `<panchang_context>` already provides today's full panchanga row including `moon_nakshatra`. The planner reads the value directly from the injected block instead of emitting a tool call. msr_sql still fires under R7a to supply natal Moon signal context. The synthesis_guidance cites R-PCI explicitly so the synthesis layer knows the source of the nakshatra value.
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -2058,3 +2198,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.4 content extension 2026-05-19 (Phase 4C) — R-PA panchanga anchor rule + R-TC pairing-clause update + example 4.26 added for query_panchanga*
 *v2.0.5 content extension 2026-05-19 (Phase 4D) — R-TE transit-event-search rule + example 4.27 added for query_transit_event*
 *v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*
+*v2.0.7 content extension 2026-05-20 (Phase 4C enrichment) — R-PA subclauses (f)+(g) for inauspicious periods + choghadiya/hora/special yoga triggers; R-PCI panchang context inheritance rule; examples 4.29–4.31*
