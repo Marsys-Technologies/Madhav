@@ -155,6 +155,10 @@ function V2BranchPicker() {
 
 const CostVisibilityCtx = createContext<boolean>(false)
 
+// ─── Y-S5: Truncated-message context (stop-and-edit while streaming) ─────────
+const TruncatedMsgCtx = createContext<string | null>(null)
+const SetTruncatedMsgCtx = createContext<((id: string | null) => void) | null>(null)
+
 // ─── Conversation ID context (B.3: threads conversationId into V2Message for regenerate) ──
 const ConversationIdCtx = createContext<string | null>(null)
 
@@ -534,6 +538,10 @@ function V2Message() {
   // γ6: cost visibility from context (super_admin always sees cost regardless)
   const costVisible = useContext(CostVisibilityCtx)
 
+  // Y-S5: truncated-by-edit marker — set by handleStopAndEdit in V2Composer
+  const truncatedId = useContext(TruncatedMsgCtx)
+  const isTruncatedByEdit = truncatedId !== null && message.id === truncatedId
+
   // γ4: extract citation gate status from data parts
   const citationGate = useMemo(() => {
     const entry = dataParts.find(d => d.type === 'data-citation-gate')
@@ -748,6 +756,18 @@ function V2Message() {
                   )}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Y-S5: truncated-by-edit chip — shown when user stopped stream for editing */}
+          {isTruncatedByEdit && (
+            <div
+              className="flex items-center gap-1 self-start rounded-full border border-amber-500/30 bg-amber-900/20 px-2.5 py-0.5 text-[11px] text-amber-400"
+              data-testid="v2-truncated-by-edit-chip"
+              aria-label="Response stopped for editing"
+            >
+              <Square className="h-2.5 w-2.5 fill-current shrink-0" aria-hidden="true" />
+              Stopped for editing
             </div>
           )}
 
@@ -1010,7 +1030,8 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
   const conversationId = useContext(ConversationIdCtx)
-  const [, saveLastPrompt] = useLastPrompt(conversationId)
+  const [lastPrompt, saveLastPrompt] = useLastPrompt(conversationId)
+  const setTruncatedId = useContext(SetTruncatedMsgCtx)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
@@ -1099,6 +1120,26 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
       // Save current value as last prompt before send clears the textarea
       if (composerValue.trim()) saveLastPrompt(composerValue)
     }
+  }
+
+  // Y-S5: Abort stream + restore last prompt for editing.
+  // Reads the last assistant message ID from the runtime snapshot so the
+  // truncated chip can pin to that specific message even after re-sends.
+  function handleStopAndEdit() {
+    const messages = runtime.getState().messages
+    const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id ?? '__truncated__'
+    runtime.cancelRun()
+    setTruncatedId?.(lastAssistantId)
+    if (!lastPrompt) return
+    const textarea = containerRef.current?.querySelector('textarea')
+    if (!textarea) return
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype, 'value'
+    )?.set
+    nativeSetter?.call(textarea, lastPrompt)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    setComposerValue(lastPrompt)
+    textarea.focus()
   }
 
   return (
@@ -1197,17 +1238,31 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
 
               <div className="flex items-center gap-1">
                 {isRunning ? (
-                  <ComposerPrimitive.Cancel asChild>
+                  EDIT_WHILE_STREAMING_ENABLED ? (
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
-                      title="Stop generation"
-                      aria-label="Stop generating response"
-                      data-testid="v2-abort-btn"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 h-9 text-xs font-medium text-zinc-900 transition-all hover:opacity-80"
+                      title="Stop generation and restore prompt for editing"
+                      aria-label="Stop and edit"
+                      data-testid="v2-stop-and-edit-btn"
+                      onClick={handleStopAndEdit}
                     >
-                      <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      <Square className="h-3 w-3 fill-current shrink-0" aria-hidden="true" />
+                      Edit
                     </button>
-                  </ComposerPrimitive.Cancel>
+                  ) : (
+                    <ComposerPrimitive.Cancel asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
+                        title="Stop generation"
+                        aria-label="Stop generating response"
+                        data-testid="v2-abort-btn"
+                      >
+                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      </button>
+                    </ComposerPrimitive.Cancel>
+                  )
                 ) : (
                   <ComposerPrimitive.Send asChild>
                     <button
@@ -1422,6 +1477,9 @@ function V2BottomBar() {
 
 const SCROLL_DISCIPLINE_ENABLED = process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE === 'true'
 
+// ─── Y-S5: Stop-and-edit while streaming ─────────────────────────────────────
+const EDIT_WHILE_STREAMING_ENABLED = process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING === 'true'
+
 function V2ScrollDiscipline() {
   const { isAtBottom, unreadCount, sentinelRef, incrementUnread, scrollToBottom } = useScrollDiscipline()
   const runtime = useThreadRuntime()
@@ -1454,7 +1512,10 @@ function V2ScrollDiscipline() {
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
 function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean }) {
+  const [truncatedMsgId, setTruncatedMsgId] = useState<string | null>(null)
   return (
+    <TruncatedMsgCtx.Provider value={truncatedMsgId}>
+    <SetTruncatedMsgCtx.Provider value={setTruncatedMsgId}>
     <ThreadPrimitive.Root
       className="flex h-full flex-col flex-1 min-w-0"
       data-testid="v2-thread-root"
@@ -1502,6 +1563,8 @@ function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: strin
       <V2BottomBar />
       <V2Composer slashEnabled={slashEnabled} />
     </ThreadPrimitive.Root>
+    </SetTruncatedMsgCtx.Provider>
+    </TruncatedMsgCtx.Provider>
   )
 }
 
