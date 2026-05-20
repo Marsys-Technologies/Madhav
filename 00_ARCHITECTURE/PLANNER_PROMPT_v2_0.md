@@ -736,10 +736,27 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
              "when is the moon in Rohini next".
          (c) Vara / day-of-week in astrological framing: "is Saturday Saturn's day",
              "what's Mars's day", "auspicious for Mercury (Budhavara)".
-         (d) Yoga / karana by name.
+         (d) Yoga / karana by name — including named special yogas: Sarvartha Siddhi,
+             Amrit Siddhi, Guru Pushya, Ravi Pushya, Tripushkar, Dwipushkar, Siddha,
+             Bhadra (Vishti karana), Panchaka. Any query naming one of these yogas
+             explicitly triggers R-PA; query_panchanga returns the `special_yogas`
+             field to confirm presence + time window.
          (e) Muhurta / auspicious-day questions ("good day for marriage", "starting
              a venture", "travel"). query_panchanga gives the inputs; synthesis
              reasons over yoga + tithi + vara conjunction.
+         (f) Inauspicious and auspicious window queries: "rahu kalam", "rahu
+             kaal", "yamagandam", "gulika kalam", "brahma muhurta", "abhijit
+             muhurta", "amrit kalam", "choghadiya", "hora". These require the
+             `inauspicious` and `auspicious` fields from query_panchanga; include
+             `fields: ["inauspicious","auspicious"]` (or `fields: ["special_yogas"]`
+             for choghadiya/hora context) in params.
+         (g) Direct panchang-data requests: "panchang for today", "today's
+             panchang", "panchang for [date]", "what is today's panchang",
+             "give me the panchang". Fire R-PA at priority 1; omit query_ephemeris
+             unless the user also asks for planetary positions.
+             Also: "chandra bala", "tara bala" — native-context fields; include
+             `fields: ["inauspicious"]` to ensure the row is fetched; the synthesis
+             layer resolves tara/chandra bala from the Moon nakshatra field.
 
        Priority:
          - When query is explicitly about a panchanga element (e.g., "what tithi
@@ -759,6 +776,31 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        The vara_lord field can be used to filter to specific day-lord transits:
        e.g., "Saturn-favorable days this year" → query_panchanga with
        vara_lord="Saturn".
+
+  R-PCI. PANCHANG CONTEXT INHERITANCE: When the user query contains a
+       `<panchang_context>` block (injected by the /panchang page AskMadhavLink
+       component), SKIP the `query_panchanga` tool call entirely. Use the
+       injected context as authoritative L1.5 panchang data for that date and
+       location. R-PCI takes priority over R-PA when both would fire for the
+       same date and location.
+
+       Mechanics:
+         - Detect `<panchang_context>` XML block in the raw user message text.
+         - Treat all fields within it as if returned by query_panchanga at
+           priority 1 — do NOT re-fetch them via tool call.
+         - The synthesis layer cites injected fields using [PANCHANG:<field>]
+           markers (e.g., [PANCHANG:tithi], [PANCHANG:rahu_kalam]).
+
+       Exceptions — R-PA fires INSTEAD of R-PCI when:
+         1. The user asks about a DIFFERENT date or location than the one in
+            the `<panchang_context>` block.
+         2. The user explicitly asks to re-check or re-compute the panchang
+            ("get me fresh panchang data", "recompute this").
+         3. The `<panchang_context>` block is visibly truncated or malformed
+            (missing closing tag, obviously incomplete).
+
+       R-TC (query_ephemeris) still fires normally under R-PCI — planetary
+       transit positions are not covered by the injected panchang context.
 
   R-TE. TRANSIT EVENT SEARCH: For queries asking WHEN an event happens (versus
        WHAT is happening at a date), attach `query_transit_event` at priority 1.
@@ -2034,6 +2076,111 @@ Query: "What's my next mahadasha?"
 
 This example shows R-DA firing for a pure dasha schedule lookup. Empty `next_count:1` + `level:"M"` returns the first MD cluster whose start_date >= today. msr_sql does NOT fire — this is a schedule query, not natal interpretation. The synthesis_guidance mandates citing the DSH.V.NNN fact_id to prevent hallucinated sequences.
 
+### 4.29 R-PA panchanga anchor — auspicious timing (Sarvartha Siddhi + Rahu Kalam)
+
+Query: "Is there a good muhurta tomorrow for starting a new business? Any Rahu Kalam to avoid?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Tomorrow's panchang for muhurta assessment — special yogas, inauspicious windows.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_panchanga",
+      "params": {
+        "date": "2026-05-21",
+        "fields": ["tithi", "vara", "yoga", "nakshatra", "special_yogas", "inauspicious", "auspicious"]
+      },
+      "token_budget": 600,
+      "priority": 1,
+      "reason": "R-PA (f+g): muhurta + rahu kalam query — special_yogas and inauspicious fields required."
+    }
+  ],
+  "synthesis_guidance": "Lead with any Sarvartha Siddhi or Amrit Siddhi yoga presence and time window. State Rahu Kalam window explicitly. Assess tithi + vara + yoga conjunction for vyapara muhurta. Do NOT extrapolate yoga presence from pretrained knowledge — use tool result only.",
+  "expected_output_shape": "detailed_analysis",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": ["livelihood"],
+  "forward_looking": true,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query.", "mode": "independent" }
+}
+```
+
+This example shows R-PA firing for a combined muhurta + inauspicious-window query. The `fields` param requests `special_yogas` (for Sarvartha Siddhi detection) and `inauspicious` (for Rahu Kalam). R-TC does NOT fire — the query is about time-quality, not transit planetary positions. query_ephemeris would be added only if the user also asked "where is Jupiter today?" in the same turn.
+
+### 4.30 R-PA panchanga anchor — Rahu Kalam direct query
+
+Query: "What time is Rahu Kalam today?"
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Today's Rahu Kalam window — direct inauspicious timing lookup.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_panchanga",
+      "params": {
+        "date": "CURRENT_DATE",
+        "fields": ["vara", "inauspicious"]
+      },
+      "token_budget": 300,
+      "priority": 1,
+      "reason": "R-PA (f): explicit inauspicious window query — 'rahu kalam' trigger."
+    }
+  ],
+  "synthesis_guidance": "Extract rahu_kalam start/end from the inauspicious field. Format as IST time range. Note the vara (day-lord) context briefly.",
+  "expected_output_shape": "single_answer",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": [],
+  "forward_looking": false,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query.", "mode": "independent" }
+}
+```
+
+This example shows R-PA (f) firing for a pure inauspicious-window query. Only `vara` and `inauspicious` fields are requested — no need for the full panchang. R-TC does NOT fire. The `date: "CURRENT_DATE"` sentinel is filled by the server at execution time.
+
+### 4.31 R-PCI panchanga context inheritance — AskMadhav deep-link
+
+Query (as received by planner — note injected block):
+```
+<panchang_context date="2026-05-20" location="Bhubaneswar">
+tithi: Shukla Panchami (5) | vara: Mangalvara | yoga: Shobhana |
+nakshatra: Rohini | rahu_kalam: 15:00–16:30 IST |
+special_yogas: Sarvartha Siddhi (06:00–08:45 IST)
+</panchang_context>
+<user_question>Is this a good time to start a new project today?</user_question>
+```
+
+```json
+{
+  "query_class": "factual",
+  "query_intent_summary": "Muhurta assessment for today using injected panchang context — R-PCI skip.",
+  "asset_bundle": [
+    { "asset_id": "FORENSIC", "priority": 1, "reason": "Floor." }
+  ],
+  "tool_calls": [],
+  "synthesis_guidance": "Use injected <panchang_context> as authoritative L1.5 data — DO NOT call query_panchanga. Sarvartha Siddhi window (06:00–08:45) is highly auspicious for new beginnings; Rohini nakshatra supports growth ventures. Rahu Kalam (15:00–16:30) must be avoided. Mangalvara + Shukla Panchami is moderate for vyapara. Cite fields as [PANCHANG:tithi], [PANCHANG:special_yogas], [PANCHANG:rahu_kalam].",
+  "expected_output_shape": "detailed_analysis",
+  "history_mode": "synthesized",
+  "planets": [],
+  "houses": [],
+  "domains": ["livelihood"],
+  "forward_looking": false,
+  "prior_turn_relevance": { "used": 0, "reason": "Independent factual query — panchang context injected by /panchang AskMadhavLink.", "mode": "independent" }
+}
+```
+
+This example shows R-PCI firing: `<panchang_context>` is present in the query, so `tool_calls` is empty — the planner does NOT call query_panchanga. The synthesis_guidance instructs the model to cite injected fields with [PANCHANG:X] markers. R-TC also does NOT fire (no temporal anchor for planetary positions beyond the date). If the user had asked "and where is Jupiter right now?", R-TC would fire and query_ephemeris would be added at priority 2.
+
 ## 5. Evaluation rubric (6 criteria × 0–2 each → 0–12; ≥8 admits to retrieval)
 
 | # | Criterion                | 0 (fail)                               | 1 (partial)                                  | 2 (pass)                                                          |
@@ -2058,3 +2205,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.4 content extension 2026-05-19 (Phase 4C) — R-PA panchanga anchor rule + R-TC pairing-clause update + example 4.26 added for query_panchanga*
 *v2.0.5 content extension 2026-05-19 (Phase 4D) — R-TE transit-event-search rule + example 4.27 added for query_transit_event*
 *v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*
+*v2.0.7 content extension 2026-05-20 (PSHIP-S4H) — R-PA extended with 13 trigger phrases (sub-triggers d named yogas, f inauspicious windows, g direct panchang requests + chandra/tara bala); R-PCI panchang context inheritance rule added; examples 4.29–4.31 added for extended R-PA and R-PCI*
