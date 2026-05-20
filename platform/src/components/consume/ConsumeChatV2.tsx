@@ -329,6 +329,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
           <NumberedCitation
             n={parseInt(m[1], 10)}
             signalId={m[2]}
+            snippet={citationRichMap.get(m[2])?.snippet}
             onPin={enrichedOnPin}
           />
         )
