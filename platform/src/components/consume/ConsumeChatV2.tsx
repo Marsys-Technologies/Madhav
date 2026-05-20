@@ -17,6 +17,7 @@ import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, Ro
 import Link from 'next/link'
 import { ShareButton } from '@/components/chat/ShareButton'
 import { StillWorkingIndicator } from '@/components/chat/StillWorkingIndicator'
+import { HeaderSkeleton } from '@/components/chat/HeaderSkeleton'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
@@ -1472,6 +1473,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
+  const [sidebarLoading, setSidebarLoading] = useState(false)
   const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
@@ -1671,6 +1673,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           onRename={handleRenameConversation}
           onDelete={handleDeleteConversation}
           showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
+          onLoadingChange={setSidebarLoading}
         />
       </div>
 
@@ -1716,25 +1719,29 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
 
-          {/* Brand title + meta */}
-          <div className="min-w-0 flex-1 px-1.5">
-            <span
-              role="heading"
-              aria-level={1}
-              className="truncate font-serif text-[15px] font-medium text-foreground leading-tight block"
-              data-testid="v2-chart-name"
-            >
-              {chartName}
-            </span>
-            {chartMeta && (
+          {/* Brand title + meta — skeleton during initial sidebar load */}
+          {sidebarLoading ? (
+            <HeaderSkeleton />
+          ) : (
+            <div className="min-w-0 flex-1 px-1.5">
               <span
-                className="truncate text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] leading-none block mt-0.5"
-                data-testid="v2-chart-meta"
+                role="heading"
+                aria-level={1}
+                className="truncate font-serif text-[15px] font-medium text-foreground leading-tight block"
+                data-testid="v2-chart-name"
               >
-                {chartMeta}
+                {chartName}
               </span>
-            )}
-          </div>
+              {chartMeta && (
+                <span
+                  className="truncate text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] leading-none block mt-0.5"
+                  data-testid="v2-chart-meta"
+                >
+                  {chartMeta}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Right-side actions: Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">

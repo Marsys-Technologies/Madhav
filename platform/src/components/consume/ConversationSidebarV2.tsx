@@ -28,6 +28,7 @@ import {
 import { FolderGroup } from './FolderGroup'
 import { ArchivedView } from './ArchivedView'
 import { useFolders } from '@/hooks/useFolders'
+import { SidebarSkeleton } from '@/components/chat/SidebarSkeleton'
 import { useProjects } from '@/hooks/useProjects'
 import { ProjectsSection } from '@/components/sidebar/ProjectsSection'
 import { NewProjectModal } from '@/components/modals/NewProjectModal'
@@ -65,6 +66,8 @@ export interface ConversationSidebarV2Props {
   onDelete?: (id: string) => Promise<void> | void
   /** R9-S1: Show Projects section above conversations. Controlled by MARSYS_FLAG_R9_PROJECTS. */
   showProjects?: boolean
+  /** X-S5: Bubbles loading state changes to parent for HeaderSkeleton wiring. */
+  onLoadingChange?: (loading: boolean) => void
 }
 
 // ─── Date grouping ────────────────────────────────────────────────────────────
@@ -257,6 +260,7 @@ export function ConversationSidebarV2({
   onRename,
   onDelete,
   showProjects = false,
+  onLoadingChange,
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -298,6 +302,11 @@ export function ConversationSidebarV2({
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- triggered reload on title change */
     if (reloadTrigger !== undefined && reloadTrigger > 0) reload()
   }, [reloadTrigger, reload])
+
+  // X-S5: Bubble loading state to parent for HeaderSkeleton wiring.
+  useEffect(() => {
+    onLoadingChange?.(loading)
+  }, [loading, onLoadingChange])
 
   // Debounced FTS search — fires after 300ms of no keystroke, only when query >= 2 chars.
   useEffect(() => {
@@ -608,9 +617,7 @@ export function ConversationSidebarV2({
         {/* Normal mode (no search): Pinned → Folders → Date buckets */}
         {searchQuery.length === 0 && (
           <>
-            {loading && conversations.length === 0 && (
-              <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
-            )}
+            {loading && conversations.length === 0 && <SidebarSkeleton />}
 
             {!loading && filteredConversations.length === 0 && (
               <p className="px-3 py-4 text-xs text-zinc-600 text-center">
