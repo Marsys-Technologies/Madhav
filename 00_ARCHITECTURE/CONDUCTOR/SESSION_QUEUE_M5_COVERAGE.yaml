@@ -12,8 +12,8 @@ sessions:
     audit_section: "§G.1"
     depends_on: []
     gates: ["tsc", "vitest_changed", "lint"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["tsc errors", "vitest failures", "must_not_touch violation"]
   - id: COV-S8
     stream: cov
