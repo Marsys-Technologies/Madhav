@@ -16,7 +16,8 @@
 
 import 'server-only'
 
-import { streamText, stepCountIs, smoothStream, tool } from 'ai'
+import { streamText, stepCountIs, tool } from 'ai'
+import { getSmoothStreamTransform } from '@/lib/streaming/smooth_stream'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceChunkItem } from '@/lib/trace/types'
 import type { ModelMessage, ToolSet } from 'ai'
@@ -58,7 +59,7 @@ import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { checkB11Compliance } from './b11_guard'
-import { CITATION_APPENDIX } from './prompts/synthesis_prompt_v2'
+import { CITATION_APPENDIX, REASONING_STEPS_APPENDIX } from './prompts/synthesis_prompt_v2'
 import { getMaxRetries } from './provider_quirks'
 import type { Provider } from '@/lib/models/registry'
 
@@ -372,6 +373,11 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
     // Post-§M.16: Chat V2 is the only path; citation appendix is always active.
     renderedPrompt += CITATION_APPENDIX
 
+    // Y-S4: append ### Step: marker instructions to guide reasoning timeline.
+    if (getFlag('R10_REASONING_STEPS')) {
+      renderedPrompt += REASONING_STEPS_APPENDIX
+    }
+
     const systemMessage: ModelMessage = supports(selected_model_id, 'prompt-caching')
       ? {
           role: 'system',
@@ -487,7 +493,7 @@ export class SingleModelOrchestrator implements SynthesisOrchestrator {
       stopWhen: stepCountIs(5),
       maxOutputTokens: effectiveMaxTokens,
       temperature: synthesisTemperature,
-      experimental_transform: smoothStream({ delayInMs: 20, chunking: 'word' }),
+      experimental_transform: getSmoothStreamTransform(),
       ...(abortSignal && { abortSignal }),
       maxRetries: synthesisMaxRetries,
       // γ7: accumulate text deltas for stream-resume (pending_streams table).

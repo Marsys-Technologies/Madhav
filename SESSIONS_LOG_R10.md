@@ -1,0 +1,273 @@
+# Chat V2 Round 10 — Sessions Log
+
+Branch: chat-v2/round10 | Worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR10
+Stream type: sequential single-stream (21 sessions)
+Log started: 2026-05-20
+
+---
+
+## X-S0 — NIM_STACK_DEGRADED Build-Arg Cleanup
+
+**Status:** COMPLETED  
+**Commit:** 2efce23  
+**Completed:** 2026-05-20T08:00:00Z
+
+Added `NEXT_PUBLIC_NIM_STACK_DEGRADED=false` to the `--build-arg` block in `.github/workflows/deploy.yml`. The client-side flag at `platform/src/components/chat/ModelStylePicker.tsx:51` was absent from deploy.yml, meaning the NIM degradation badge was unreachable by operators (client-side flags are baked at Docker build time). Added at `=false` to preserve current off-by-default behavior while making it operator-flippable. Single file changed: `.github/workflows/deploy.yml`. Acceptance check PASS. Amendment 4 satisfied.
+
+**Amendments:** A3 (FLAGLESS — deploy.yml cleanup only) | A4 (NIM_STACK_DEGRADED entry — this IS the fix)
+
+---
+
+## X-S1 — Camera Capture on Mobile
+
+**Status:** COMPLETED  
+**Commit:** de0d4fd  
+**Completed:** 2026-05-20T08:45:00Z
+
+Added mobile camera capture to the Chat V2 composer. Implementation: separate hidden `<input type="file" accept="image/*" capture="environment" data-testid="v2-camera-input">` plus a mobile-only camera button (`md:hidden`, `data-testid="v2-camera-btn"`). Kept the existing general attachment input unchanged to preserve iOS Safari PDF upload compatibility (adding `capture=` to a mixed-type input restricts iOS to camera-only). Exported `AttachmentCtx` for test access. 5 new tests in `camera_capture.test.tsx` — all use `AttachmentCtx.Provider` parent context (Amendment 2 satisfied). Typecheck: PASS. New tests: 5/5 PASS. Pre-existing lint issues in ConsumeChatV2.tsx (16 errors at lines 1301+) are unchanged — zero new errors.
+
+**Click-path:** Chat V2 → attachment area → camera button (mobile only, md:hidden on desktop) → system sheet → Take Photo.
+
+**Amendments:** A2 (parent-context test + click-path documented) | A3 (FLAGLESS — additive)
+
+---
+
+## X-S2 — ArrowUp Recall Last Prompt
+
+**Status:** COMPLETED  
+**Commit:** ba85a0b  
+**Completed:** 2026-05-20T09:00:00Z
+
+Added `useLastPrompt(conversationId)` hook to `useChatPreferences.ts`. Per-conversation localStorage cache with key `marsys_chat_v2_last_prompt_<conversationId>`. Wired in `V2Composer`: `handleComposerKeyDown` handles ArrowUp (when empty) to restore last sent and Enter to save; send button's onClick also saves. 8 new tests in `recall_last_prompt.test.ts` — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → send message → clear composer → ArrowUp → message restored.
+
+**Amendments:** A2 (click-path documented, hook tests verify context chain) | A3 (FLAGLESS)
+
+---
+
+## X-S3 — Citation Star Persistence
+
+**Status:** COMPLETED  
+**Commit:** a7ea69d  
+**Completed:** 2026-05-20T09:15:00Z
+
+Added `useStarredCitations(conversationId)` hook backed by localStorage (`marsys_chat_v2_starred_<conversationId>`). Modified `CitationSidePanel` to accept optional `conversationId` prop and use the hook instead of ephemeral local state. Passed `conversationId` from `V2ChatRuntime`. 10 new tests in `starred_citations.test.ts` — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with citations → open citation panel → star citation → refresh → reopen panel → star still active.
+
+**Amendments:** A2 (click-path documented, hook tests verify persistence chain) | A3 (FLAGLESS)
+
+---
+
+## X-S4 — Still-Working Indicator
+
+**Status:** COMPLETED  
+**Commit:** c6be14b  
+**Completed:** 2026-05-20T09:30:00Z
+
+Created `StillWorkingIndicator.tsx` component. Shows animated dots + elapsed seconds after 25s of continuous streaming (`isStreaming && elapsed > 25s`). Auto-hides when streaming ends. `aria-live="polite"` for screen readers. Wired in `V2Message` (ConsumeChatV2) above `MessagePrimitive.Parts`. 7 new tests using `StreamingShell` parent context wrapper + fake timers — all pass.
+
+**Click-path:** Long query → streaming > 25s → "Still working… (Ns)" indicator appears → stream ends → indicator disappears.
+
+**Amendments:** A2 (parent-context test with StreamingShell + fake timers, click-path documented) | A3 (FLAGLESS)
+
+---
+
+## X-S5 — Skeleton Loaders
+
+**Status:** COMPLETED  
+**Commit:** d37a84a  
+**Completed:** 2026-05-20T08:45:00Z
+
+Created `SidebarSkeleton.tsx` (6 animate-pulse rows, aria-hidden) and `HeaderSkeleton.tsx` (two skeleton rects matching title/meta dimensions, aria-hidden). Wired `SidebarSkeleton` in `ConversationSidebarV2` replacing the "Loading…" paragraph when `loading && conversations.length === 0`. Added `onLoadingChange?: (loading: boolean) => void` prop to `ConversationSidebarV2Props` + a `useEffect` to bubble loading state changes to parent. In `ConsumeChatV2`: added `sidebarLoading` state, passed `onLoadingChange={setSidebarLoading}` to sidebar, and conditionally renders `<HeaderSkeleton />` vs the real title div based on `sidebarLoading`. 9 new tests in `skeleton_loaders.test.tsx` — all pass. Typecheck: PASS.
+
+**Decision:** HeaderSkeleton is wired to sidebar loading state (bubbled via `onLoadingChange`), not a separate data fetch, because `chartName` is always available as a prop but the conversation list requires a fetch. The skeleton thus covers the initial network round-trip that users experience on first load.
+
+**Click-path:** Load Chat V2 on slow/throttled network → sidebar begins fetch → SidebarSkeleton (6 pulse rows) appears in conversation list, HeaderSkeleton (shimmer rects) appears where title/meta normally render → fetch completes → real content loads in.
+
+**Amendments:** A2 (SidebarShell + HeaderShell parent-context wrappers in tests, click-path documented) | A3 (FLAGLESS)
+
+---
+
+## X-S6 — Auto-Scroll Discipline
+
+**Status:** COMPLETED  
+**Commit:** 7473cdd  
+**Completed:** 2026-05-20T09:07:00Z
+
+Created `useScrollDiscipline.ts` hook with IntersectionObserver on a bottom sentinel element. Sentinel's closest `[data-testid="v2-thread-viewport"]` is used as `root`, so visibility detection is relative to the scroll container. `ScrollToBottomButton` updated with optional `unreadCount` prop — shows "N new" label and adjusts layout when count > 0. `V2ScrollDiscipline` component mounts sentinel + button inside `ThreadPrimitive.Viewport`; uses `useThreadRuntime().subscribe()` to increment unread count on each streaming batch while not at bottom. `SCROLL_DISCIPLINE_ENABLED` module-level constant guards between new (IntersectionObserver-based) and old (ThreadPrimitive.ScrollToBottom asChild) behaviors. deploy.yml updated with `NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true` (Amendment 1 HARD GATE). 8 tests — all pass.
+
+**Click-path:** Send long query → while streaming, scroll up → auto-scroll stops → "↓ N new" button appears → click → scrolls to bottom and count resets.
+
+**Amendments:** A1 (deploy.yml NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true — HARD GATE satisfied) | A2 (ScrollViewportShell parent-context wrapper in tests, click-path documented) | A3 (FLAGGED, default true)
+
+---
+
+## X-S7 — Font-Size Control
+
+**Status:** COMPLETED  
+**Commit:** ffca13e  
+**Completed:** 2026-05-20T09:14:00Z
+
+Added `useTextScale()` hook to `useChatPreferences.ts`: global localStorage key `marsys_chat_v2_text_scale`, four scales `[0.875, 1.0, 1.125, 1.25]`, clamped at boundaries. `TEXT_SCALES` constant exported. Aa+/Aa− buttons added to `v2-header-actions` in `ConsumeChatV2` with `aria-label="Increase/Decrease text size"` and `aria-disabled` at boundary values. `--text-scale` CSS custom property set on `v2-chat-shell` div. `MarkdownContent` prose changed from `text-[15px]` to `fontSize: 'calc(15px * var(--text-scale, 1))'`. 11 tests — all pass.
+
+**Click-path:** Chat V2 → header → click Aa+ → prose text grows one step → at max, further click no-op → click Aa− → shrinks → scale persists across refresh.
+
+**Amendments:** A2 (FontScaleShell parent-context wrapper, click-path documented) | A3 (FLAGLESS)
+
+---
+
+## X-S8 — Selective Share
+
+**Status:** COMPLETED  
+**Commit:** df07703  
+**Completed:** 2026-05-20T09:30:00Z
+
+Migration `113_selective_share.sql`: added `hide_reasoning BOOLEAN NOT NULL DEFAULT FALSE` and `hide_methodology BOOLEAN NOT NULL DEFAULT FALSE` to `conversation_shares`. Share API route POST accepts these fields guarded by `MARSYS_FLAG_R10_SELECTIVE_SHARE` (server-side). Share page queries both fields and passes them to `SharedConversation`. `filterMessages()` utility in `platform/src/lib/share/filterMessages.ts` strips reasoning parts (`type='reasoning'`) and Methodology sections. `ShareButton` now shows two checkboxes (both checked by default) and passes `hide_*` flags to POST body. 8 tests — all pass.
+
+**Amendment 1 confirmed:** `MARSYS_FLAG_R10_SELECTIVE_SHARE` appears in 2 files, both server-side (API route + Next.js server page). No `NEXT_PUBLIC_` prefix, no client component usage, no deploy.yml build-arg.
+
+**Click-path:** Chat V2 → Share → checkboxes "Show reasoning" + "Show methodology" (checked by default) → uncheck "Show reasoning" → Create Link → recipient sees response only, no reasoning steps.
+
+**Amendments:** A1 (server-side flag confirmed, no NEXT_PUBLIC, no deploy.yml entry) | A2 (ShareButtonShell parent-context, checkboxes + fetch payload tested) | A3 (FLAGGED, default true, server-side)
+
+---
+
+## X-S9 — Print-Friendly Share
+
+**Status:** COMPLETED  
+**Commit:** 3467eaa  
+**Completed:** 2026-05-20T09:45:00Z
+
+Added `print:hidden` to the footer (navigation chrome) and the "Shared conversation" label badge (UI-only). Added `print:text-black` on heading + main for legible dark-on-white printing. Added `print:max-w-none print:px-0` to the page wrapper for full paper width. Inline `<style>` block sets `body { font-size: 12pt }` under `@media print` to guarantee ≥12pt in print context. Single file changed: `platform/src/app/share/[slug]/page.tsx`. Zero visual change on screen. Typecheck: PASS.
+
+**Amendments:** A3 (FLAGLESS — additive CSS only)
+
+---
+
+## X-S10 — Interactive Tables (Sort + CSV)
+
+**Status:** COMPLETED  
+**Commit:** b0db7bb  
+**Completed:** 2026-05-20T09:05:00Z
+
+Created `InteractiveTable.tsx` with clickable column headers (asc/desc sort toggle, ▲/▼ indicator), numeric-aware sorting, and client-side CSV download (`marsys-table-<timestamp>.csv`). Updated `MarkdownContent.tsx` `table` handler: extracts headers and rows from the HAST `node` prop (via `extractHastTableData`), routes to `InteractiveTable` when flag=true and ≥3 data rows, falls through to static `<table>` otherwise. Flag read at render time (not module-load) so vitest `stubEnv` works cleanly. `NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true` added to deploy.yml (Amendment 1 HARD GATE). 10 new tests: 5 unit (sort/CSV), 4 parent-context via `MarkdownShell` (rendering, CSV button, sort-via-header, small-table passthrough), 1 CSV anchor spy — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with Markdown table (≥3 data rows) → click header → rows sort ascending (▲) → click again → descending (▼) → click "↓ CSV" → `marsys-table-<ts>.csv` downloaded client-side. Tables with <3 data rows render as static `<table>`.
+
+**Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true in deploy.yml — HARD GATE satisfied) | A2 (MarkdownShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
+
+---
+
+## X-S11 — Mermaid Diagram Rendering
+
+**Status:** COMPLETED  
+**Commit:** 606b4a2  
+**Completed:** 2026-05-20T09:30:00Z
+
+Created `MermaidBlock.tsx` loaded via `next/dynamic({ ssr: false })` to keep the ~1MB mermaid bundle out of the initial page bundle. Stream-safe placeholder shown while `isStreaming=true`; actual diagram rendered after streaming ends via `mermaid.render()`. Error boundary falls back to raw code block on parse failure. `MarkdownContent` code handler routes `lang=mermaid` to `MermaidBlock` when `NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true` (flag read at render time). Mermaid pinned at `11.15.0` in `package.json`. `NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true` added to deploy.yml (Amendment 1 HARD GATE). 6 new tests (3 unit + 3 parent-context) — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with `` ```mermaid `` block → streaming active → "Rendering diagram…" placeholder visible → streaming ends → mermaid SVG diagram renders. When flag=false, block renders as standard fenced code.
+
+**Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true in deploy.yml — HARD GATE satisfied) | A2 (MarkdownShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
+
+---
+
+## Y-S1 — Citation Hover Snippet
+
+**Status:** COMPLETED  
+**Commit:** 298a4e3  
+**Completed:** 2026-05-20T09:45:00Z
+
+Added `snippet?: string` prop to `NumberedCitation`. Tooltip shows first 100 chars of citation snippet (or `signalId` as fallback) after 350ms continuous hover; timer clears on `mouseLeave` preventing flash on rapid hover. `aria-describedby` links badge button to tooltip for a11y. `ConsumeChatV2` passes `citationRichMap.get(signalId)?.snippet` at the existing call site — snippet was already in `citationRichMap` from `data-citation` parts, so no context extension needed. Flagless. 7 new tests in `CitationCtxShell` parent-context wrapper — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with `[^N]` citation badge → hover for >350ms → tooltip appears with up to 100 chars of signal text → mouse leaves → tooltip disappears immediately. Rapid hover (<350ms) shows nothing.
+
+**Amendments:** A2 (CitationCtxShell parent-context wrapper, click-path documented) | A3 (FLAGLESS)
+
+---
+
+## Y-S2 — Citation Freshness Badge
+
+**Status:** COMPLETED  
+**Commit:** 216f4c5  
+**Completed:** 2026-05-20T10:00:00Z
+
+Added `confidence?: number` prop to `NumberedCitation`. When `NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true` and confidence is defined, a 6px dot renders adjacent to the badge: green (≥0.8 high), yellow (0.5–0.79 medium), red (<0.5 low). `aria-label` + `title` carry the level. Extended `citationRichMap` in `ConsumeChatV2` to extract `confidence` from `data-citation` parts. Added optional `confidence: number` field to `CitationPartSchema` in `data_parts.ts` (additive, backward-compatible). **Caveat:** server does not yet emit `confidence` in `data-citation` events — field will be `undefined` in current production data, so no dots show in production until the server starts emitting it. Client code is ready. `NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true` added to deploy.yml (Amendment 1 HARD GATE). 7 new tests — all pass. Typecheck: PASS.
+
+**Click-path:** Chat V2 → response with `[^N]` citation badges → each badge has a small colored dot (green/yellow/red) reflecting signal confidence band → no dot when confidence unknown or flag=false.
+
+**Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true in deploy.yml — HARD GATE satisfied) | A2 (CitationCtxShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
+
+---
+
+## Y-S6 — Branch on Regenerate
+
+**Status:** COMPLETED  
+**Commit:** 9c56207  
+**Completed:** 2026-05-20T10:15:00Z
+
+Chat V2 already implements branch-on-regen via `BranchPickerPrimitive` (assistant-ui) + `messageRuntime.reload()`. The brief assumed `useBranches.archiveBranch` would be wired to `MessageActions`, but Chat V2 uses assistant-ui's native thread branching — the correct mechanism for LLM response branches. `V2RegenerateButton` (ConsumeChatV2:388) awaits DB truncation via `/api/chat/consume/regenerate` BEFORE calling `messageRuntime.reload()`, ensuring archive-then-regenerate order. `BranchPickerPrimitive.Root hideWhenSingleBranch` shows "N/M" navigation after the first reload. No prior response is ever lost. No source changes required — behavior was already correct. Session adds 7 new parent-context + structural tests. Typecheck: PASS. Flagless.
+
+**Click-path:** Chat V2 → receive response → click V2RegenerateButton → DB truncated → `reload()` creates new branch → `BranchPickerPrimitive` shows "1 / 2" → click ‹ → original response visible.
+
+**Amendments:** A2 (BranchingShell + structural source audits parent-context wrapper, click-path documented) | A3 (FLAGLESS)
+
+---
+
+## Y-S7 — Search Mode Toggle
+
+**Status:** COMPLETED  
+**Commit:** 331352e  
+**Completed:** 2026-05-20T10:30:00Z
+
+Upgraded `ConversationSidebarV2` search mode toggle from a Sparkles icon button (with no explicit label) to a compact segmented control with "Exact" and "Semantic" text buttons. Added `data-testid="v2-search-mode-exact"` and `data-testid="v2-search-mode-semantic"`. The `?semantic=true` wiring and `semanticEnabled` state were already implemented from R9-S2. "Exact" is the default. Toggle only renders when `NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true`. 5 new parent-context tests in `ConversationSidebarV2` shell — all pass. Typecheck: PASS. Flagless.
+
+**Click-path:** Chat V2 sidebar → type ≥2 chars in search → "Exact | Semantic" segmented control visible → click "Semantic" → search fetch includes `?semantic=true` → click "Exact" → reverts to keyword-only.
+
+**Amendments:** A2 (ConversationSidebarV2 full parent-context shell, click-path documented) | A3 (FLAGLESS)
+
+---
+
+## Y-S8 — Validator Per-Gate Expander
+
+**Status:** COMPLETED  
+**Commit:** a7efb7c  
+**Completed:** 2026-05-20T11:23:00Z
+
+Extended `ValidatorFailureBand` with click-to-expand per-gate verdict list. Extended `CitationGatePartSchema` / `GateVerdictSchema` in `data_parts.ts` with optional `gates: Array<{name, verdict, reason}>`. `ConsumeChatV2` passes `gates={citationGate.gates}` to the band. When flag is enabled and gates array is non-empty, clicking the header expands a per-gate list with colored verdict badges (FAIL=red, WARN=yellow, PASS=green) and reason text; clicking again collapses it. Backward-compatible: no gates prop / empty array / flag disabled → collapsed band as before. `NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true` added to deploy.yml. 8/8 tests pass in `validator_gate_expander.test.tsx`. Typecheck: PASS.
+
+**Click-path:** Chat V2 → receive response where validator rejected a gate → `ValidatorFailureBand` appears collapsed → click header → per-gate list expands showing FAIL/WARN/PASS badges with gate names (monospace) and reason strings → click again → collapses. "Details" button preserved throughout.
+
+**Amendments:** A1 HARD GATE (NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES in deploy.yml) | A2 (FailureBandShell parent-context wrapper, click-path documented) | A3 (FLAGGED default true)
+
+---
+
+## Y-S4 — Reasoning Step Labels
+
+**Status:** COMPLETED  
+**Commit:** 7ab7c6a  
+**Completed:** 2026-05-20T11:45:00Z
+
+Added left-margin step timeline to `ReasoningProgress`. `synthesis_prompt_v2.ts` exports `REASONING_STEPS_APPENDIX` instructing Claude to emit `### Step: <label>` markers at phase boundaries in its extended thinking (R7-S2 footnote block preserved verbatim — appendix is purely additive). `single_model_strategy.ts` appends the instructions when `R10_REASONING_STEPS=true`. `ReasoningProgress` parses `### Step:` lines from streaming `text` prop and renders a left-margin vertical timeline alongside the raw reasoning text. Active step (last seen while streaming) shows pulsing violet dot (`·`); completed steps show `✓`. Server-side flag only — confirmed no `NEXT_PUBLIC` prefix, no `deploy.yml` entry. 12/12 parent-context integration tests pass.
+
+**Click-path:** Chat V2 → synthesis query → reasoning accordion opens → left-margin timeline shows Signal Assembly → Cross-Domain Linking → Interpretation → Response with active pulsing then completing as text streams.
+
+**Amendments:** A1 (server-side flag — no deploy.yml entry, no NEXT_PUBLIC confirmed) | A2 (ReasoningProgress parent-context shell via vi.mock, click-path documented) | A3 (FLAGGED default true)
+
+---
+
+## Y-S3 — Smooth-Stream Tuning
+
+**Status:** COMPLETED  
+**Commit:** a5be7e2  
+**Completed:** 2026-05-20T12:20:00Z
+
+Extracted AI SDK `smoothStream({ delayInMs: 80, chunking: 'word' })` call from `single_model_strategy.ts` into a gated `getSmoothStreamTransform()` wrapper in `platform/src/lib/streaming/smooth_stream.ts`. When `R10_SMOOTH_STREAM_V2=true` (default), word-aware flush is applied eliminating mid-word flicker; when false, no transform is applied (raw chunks) for fast rollback. `MAX_WORD_BUFFER_MS=80` is the max latency guarantee. Added `platform/scripts/measure_smooth_stream.ts` benchmarking script. Baseline: 427 word-splits → 0 with flag=true, avg chunk 4→7 chars. Server-side flag only — no `NEXT_PUBLIC`, no `deploy.yml` entry confirmed. 4/4 tests pass.
+
+**Baseline metrics (measure_smooth_stream.ts):** flag=false: 503 chunks, avg 4 chars, 427 word-splits. flag=true: 285 chunks, avg 7 chars, 0 word-splits. Max latency: 80ms.
+
+**Amendments:** A1 (server-side flag — no deploy.yml entry, no NEXT_PUBLIC confirmed) | A3 (FLAGGED default true)
+
+---

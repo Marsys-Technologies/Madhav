@@ -13,9 +13,13 @@ import { AssistantRuntimeProvider } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from 'ai'
-import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2, ArrowLeft } from 'lucide-react'
+import { PanelLeft, Paperclip, Square, ArrowUp, PlusCircle, Keyboard, Pencil, RotateCcw, Info, Copy, Loader2, ArrowLeft, Camera } from 'lucide-react'
 import Link from 'next/link'
 import { ShareButton } from '@/components/chat/ShareButton'
+import { StillWorkingIndicator } from '@/components/chat/StillWorkingIndicator'
+import { HeaderSkeleton } from '@/components/chat/HeaderSkeleton'
+import { ScrollToBottomButton } from '@/components/chat/ScrollToBottomButton'
+import { useScrollDiscipline } from '@/hooks/useScrollDiscipline'
 import { TraceDrawer } from '@/components/consume/TraceDrawer'
 import { ConsumeReportLibraryV2 } from '@/components/consume/ConsumeReportLibraryV2'
 import { ConversationSidebarV2 } from '@/components/consume/ConversationSidebarV2'
@@ -27,7 +31,7 @@ import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
 import { TierPicker } from '@/components/consume/TierPicker'
-import { useChatPreferences } from '@/hooks/useChatPreferences'
+import { useChatPreferences, useLastPrompt, useTextScale, TEXT_SCALES } from '@/hooks/useChatPreferences'
 import type { AudienceTier } from '@/lib/prompts/types'
 import type { ModelStack } from '@/lib/models/registry'
 import {
@@ -151,6 +155,10 @@ function V2BranchPicker() {
 
 const CostVisibilityCtx = createContext<boolean>(false)
 
+// ─── Y-S5: Truncated-message context (stop-and-edit while streaming) ─────────
+const TruncatedMsgCtx = createContext<string | null>(null)
+const SetTruncatedMsgCtx = createContext<((id: string | null) => void) | null>(null)
+
 // ─── Conversation ID context (B.3: threads conversationId into V2Message for regenerate) ──
 const ConversationIdCtx = createContext<string | null>(null)
 
@@ -255,9 +263,9 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
   const dataParts = useDataParts(message)
   const prevIsStreamingRef = useRef(isStreaming)
 
-  // C.3: build signal_id → {snippet, layer} map from data-citation parts.
+  // C.3: build signal_id → {snippet, layer, confidence} map from data-citation parts.
   const citationRichMap = useMemo(() => {
-    const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5' }>()
+    const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5'; confidence: number | undefined }>()
     for (const d of dataParts) {
       if (d.type === 'data-citation') {
         const data = d.data as Record<string, unknown>
@@ -265,6 +273,7 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
           result.set(data.signal_id, {
             snippet: typeof data.snippet === 'string' ? data.snippet : '',
             layer: (data.layer === 'L1' ? 'L1' : 'L2.5'),
+            confidence: typeof data.confidence === 'number' ? data.confidence : undefined,
           })
         }
       }
@@ -325,6 +334,8 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
           <NumberedCitation
             n={parseInt(m[1], 10)}
             signalId={m[2]}
+            snippet={citationRichMap.get(m[2])?.snippet}
+            confidence={citationRichMap.get(m[2])?.confidence}
             onPin={enrichedOnPin}
           />
         )
@@ -339,16 +350,21 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     return CiteCode
   }, [enrichedOnPin, isStreaming])
 
-  return (
-    <MarkdownContent
-      streaming={isStreaming}
-      className="text-sm text-zinc-200"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      customComponents={{ code: citeCodeComponent as any }}
-    >
-      {processedText}
-    </MarkdownContent>
+  // C.3 + B.4: citation-enriched render helper — data-testid enables E2E targeting.
+  const renderWithCitations = (_text: string, _enrichedOnPin: (n: number, signalId: string) => void) => (
+    <div data-testid="v2-message-text">
+      <MarkdownContent
+        streaming={isStreaming}
+        className="text-sm text-zinc-200"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        customComponents={{ code: citeCodeComponent as any }}
+      >
+        {processedText}
+      </MarkdownContent>
+    </div>
   )
+
+  return renderWithCitations(text, enrichedOnPin)
 }
 
 // ─── Panel data extraction helpers ───────────────────────────────────────────
@@ -527,10 +543,14 @@ function V2Message() {
   // γ6: cost visibility from context (super_admin always sees cost regardless)
   const costVisible = useContext(CostVisibilityCtx)
 
+  // Y-S5: truncated-by-edit marker — set by handleStopAndEdit in V2Composer
+  const truncatedId = useContext(TruncatedMsgCtx)
+  const isTruncatedByEdit = truncatedId !== null && message.id === truncatedId
+
   // γ4: extract citation gate status from data parts
   const citationGate = useMemo(() => {
     const entry = dataParts.find(d => d.type === 'data-citation-gate')
-    return entry ? (entry.data as { status?: string; issues?: string[] }) : null
+    return entry ? (entry.data as { status?: string; issues?: string[]; gates?: Array<{ name: string; verdict: 'PASS' | 'FAIL' | 'WARN'; reason: string }> }) : null
   }, [dataParts])
 
   // O3: compute isStreaming for stage/tool gating
@@ -654,6 +674,7 @@ function V2Message() {
               issues={citationGate.issues ?? []}
               isSuperAdmin={isSuperAdmin}
               onOpenDetails={() => setDetailsOpen(true)}
+              gates={citationGate.gates}
             />
           )}
 
@@ -683,6 +704,9 @@ function V2Message() {
               ))}
             </div>
           )}
+
+          {/* X-S4: still-working indicator after 25s of streaming — reassures user on long queries */}
+          <StillWorkingIndicator isStreaming={isStreaming} />
 
           <MessagePrimitive.Parts
             components={{
@@ -737,6 +761,18 @@ function V2Message() {
                   )}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Y-S5: truncated-by-edit chip — shown when user stopped stream for editing */}
+          {isTruncatedByEdit && (
+            <div
+              className="flex items-center gap-1 self-start rounded-full border border-amber-500/30 bg-amber-900/20 px-2.5 py-0.5 text-[11px] text-amber-400"
+              data-testid="v2-truncated-by-edit-chip"
+              aria-label="Response stopped for editing"
+            >
+              <Square className="h-2.5 w-2.5 fill-current shrink-0" aria-hidden="true" />
+              Stopped for editing
             </div>
           )}
 
@@ -814,7 +850,7 @@ interface AttachmentContextValue {
   removeAttachment: (token: string) => void
   clearAttachments: () => void
 }
-const AttachmentCtx = createContext<AttachmentContextValue>({
+export const AttachmentCtx = createContext<AttachmentContextValue>({
   attachments: [],
   addAttachment: () => {},
   removeAttachment: () => {},
@@ -992,11 +1028,15 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   const [isRunning, setIsRunning] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const isRunningRef = useRef(false)
   const [composerValue, setComposerValue] = useState('')
   const [slashActiveIdx, setSlashActiveIdx] = useState(0)
 
   const { attachments, addAttachment, removeAttachment } = useContext(AttachmentCtx)
+  const conversationId = useContext(ConversationIdCtx)
+  const [lastPrompt, saveLastPrompt] = useLastPrompt(conversationId)
+  const setTruncatedId = useContext(SetTruncatedMsgCtx)
 
   useEffect(() => {
     const unsub = runtime.subscribe(() => {
@@ -1065,6 +1105,48 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
     }
   }
 
+  // X-S2: ArrowUp recall + save last prompt on Enter/send
+  function handleComposerKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'ArrowUp' && composerValue === '') {
+      // Restore last sent message for this conversation
+      const key = `marsys_chat_v2_last_prompt_${conversationId ?? '__new__'}`
+      let last = ''
+      try { last = localStorage.getItem(key) ?? '' } catch {}
+      if (!last) return
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, 'value'
+      )?.set
+      nativeSetter?.call(textarea, last)
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+      setComposerValue(last)
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Save current value as last prompt before send clears the textarea
+      if (composerValue.trim()) saveLastPrompt(composerValue)
+    }
+  }
+
+  // Y-S5: Abort stream + restore last prompt for editing.
+  // Reads the last assistant message ID from the runtime snapshot so the
+  // truncated chip can pin to that specific message even after re-sends.
+  function handleStopAndEdit() {
+    const messages = runtime.getState().messages
+    const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id ?? '__truncated__'
+    runtime.cancelRun()
+    setTruncatedId?.(lastAssistantId)
+    if (!lastPrompt) return
+    const textarea = containerRef.current?.querySelector('textarea')
+    if (!textarea) return
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype, 'value'
+    )?.set
+    nativeSetter?.call(textarea, lastPrompt)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    setComposerValue(lastPrompt)
+    textarea.focus()
+  }
+
   return (
     <div
       ref={containerRef}
@@ -1086,6 +1168,17 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
           aria-label="Attach file"
           onChange={handleFileChange}
           data-testid="v2-file-input"
+        />
+        {/* X-S1: camera-only input for mobile — capture="environment" opens back camera directly */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          aria-label="Take photo"
+          onChange={handleFileChange}
+          data-testid="v2-camera-input"
         />
 
         {/* C.4: brand pill wrapper — paperclip + textarea + hints + send inside the pill */}
@@ -1111,7 +1204,10 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
               rows={3}
               data-testid="v2-composer-input"
               onPaste={handlePaste}
-              onChange={slashEnabled ? (e: React.ChangeEvent<HTMLTextAreaElement>) => setComposerValue(e.target.value) : undefined}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setComposerValue(e.target.value)
+              }}
+              onKeyDown={handleComposerKeyDown}
               aria-label="Message input"
               aria-multiline="true"
             />
@@ -1129,6 +1225,17 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
                 >
                   <Paperclip className="h-4 w-4" aria-hidden="true" />
                 </button>
+                {/* X-S1: camera shortcut — mobile only (md:hidden); desktop uses paperclip */}
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-all hover:bg-zinc-800 hover:text-zinc-300"
+                  title="Take photo"
+                  aria-label="Take photo with camera"
+                  data-testid="v2-camera-btn"
+                >
+                  <Camera className="h-4 w-4" aria-hidden="true" />
+                </button>
                 <span className="hidden md:inline pl-1 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
                   ↵ Send · ⇧↵ New line
                 </span>
@@ -1136,17 +1243,31 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
 
               <div className="flex items-center gap-1">
                 {isRunning ? (
-                  <ComposerPrimitive.Cancel asChild>
+                  EDIT_WHILE_STREAMING_ENABLED ? (
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
-                      title="Stop generation"
-                      aria-label="Stop generating response"
-                      data-testid="v2-abort-btn"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 h-9 text-xs font-medium text-zinc-900 transition-all hover:opacity-80"
+                      title="Stop generation and restore prompt for editing"
+                      aria-label="Stop and edit"
+                      data-testid="v2-stop-and-edit-btn"
+                      onClick={handleStopAndEdit}
                     >
-                      <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      <Square className="h-3 w-3 fill-current shrink-0" aria-hidden="true" />
+                      Edit
                     </button>
-                  </ComposerPrimitive.Cancel>
+                  ) : (
+                    <ComposerPrimitive.Cancel asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 transition-all hover:opacity-80"
+                        title="Stop generation"
+                        aria-label="Stop generating response"
+                        data-testid="v2-abort-btn"
+                      >
+                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      </button>
+                    </ComposerPrimitive.Cancel>
+                  )
                 ) : (
                   <ComposerPrimitive.Send asChild>
                     <button
@@ -1154,6 +1275,7 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
                       className="brand-cta inline-flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
                       aria-label="Send message"
                       data-testid="v2-send-btn"
+                      onClick={() => { if (composerValue.trim()) saveLastPrompt(composerValue) }}
                     >
                       <ArrowUp className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1169,9 +1291,44 @@ function V2Composer({ slashEnabled = false }: { slashEnabled?: boolean }) {
   )
 }
 
+// ─── E.1: V2TitleTracker — sidebar refresh on auto-title data part ───────────
+// Subscribes to runtime messages; fires V2TitleCb when a data part with
+// name === 'title' is first observed. Extracted from V2RuntimeTracker for
+// named-component test discoverability.
+
+function V2TitleTracker() {
+  const runtime = useThreadRuntime()
+  const onTitle = useContext(V2TitleCb)
+
+  useEffect(() => {
+    if (!onTitle) return
+    let fired = false
+    return runtime.subscribe(() => {
+      if (fired) return
+      const messages = runtime.getState().messages
+      for (const msg of messages) {
+        if (msg.role !== 'assistant') continue
+        for (const part of (msg.content ?? []) as ReadonlyArray<unknown>) {
+          if (
+            typeof part === 'object' && part !== null &&
+            (part as Record<string, unknown>).type === 'data' &&
+            (part as Record<string, unknown>).name === 'title'
+          ) {
+            fired = true
+            onTitle()
+            return
+          }
+        }
+      }
+    })
+  }, [runtime, onTitle])
+
+  return null
+}
+
 // ─── C.2 + W5 + E.1: Unified runtime tracker ─────────────────────────────────
-// Single subscriber replacing V2QueryIdTracker, V2ConversationIdTracker, and
-// V2TitleTracker. One subscribe loop per mount — ~3x fewer callbacks during streams.
+// Single subscriber replacing V2QueryIdTracker and V2ConversationIdTracker.
+// V2TitleTracker is extracted above as a named component for test discoverability.
 
 function V2RuntimeTracker() {
   const runtime = useThreadRuntime()
@@ -1332,7 +1489,7 @@ function V2BottomBar() {
         activePersonaId={activePersonaId}
         onPersonaChange={setActivePersonaId}
       />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" data-testid="v2-composer-options">
         <button
           type="button"
           aria-pressed={lelEnabled}
@@ -1356,10 +1513,49 @@ function V2BottomBar() {
   )
 }
 
+// ─── X-S6: Scroll discipline — sentinel + unread count button ────────────────
+
+const SCROLL_DISCIPLINE_ENABLED = process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE === 'true'
+
+// ─── Y-S5: Stop-and-edit while streaming ─────────────────────────────────────
+const EDIT_WHILE_STREAMING_ENABLED = process.env.NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING === 'true'
+
+function V2ScrollDiscipline() {
+  const { isAtBottom, unreadCount, sentinelRef, incrementUnread, scrollToBottom } = useScrollDiscipline()
+  const runtime = useThreadRuntime()
+
+  useEffect(() => {
+    return runtime.subscribe(() => {
+      if (runtime.getState().isRunning && !isAtBottom) {
+        incrementUnread()
+      }
+    })
+  }, [runtime, isAtBottom, incrementUnread])
+
+  return (
+    <>
+      <div
+        ref={sentinelRef}
+        aria-hidden="true"
+        style={{ height: 1, flexShrink: 0 }}
+        data-testid="v2-scroll-sentinel"
+      />
+      <ScrollToBottomButton
+        visible={!isAtBottom}
+        unreadCount={unreadCount}
+        onClick={scrollToBottom}
+      />
+    </>
+  )
+}
+
 // ─── Thread ───────────────────────────────────────────────────────────────────
 
 function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean }) {
+  const [truncatedMsgId, setTruncatedMsgId] = useState<string | null>(null)
   return (
+    <TruncatedMsgCtx.Provider value={truncatedMsgId}>
+    <SetTruncatedMsgCtx.Provider value={setTruncatedMsgId}>
     <ThreadPrimitive.Root
       className="flex h-full flex-col flex-1 min-w-0"
       data-testid="v2-thread-root"
@@ -1386,23 +1582,29 @@ function V2Thread({ chartId, chartName, slashEnabled = false }: { chartId: strin
 
         <ThreadPrimitive.Messages components={{ Message: V2Message }} />
 
-        <ThreadPrimitive.ScrollToBottom asChild>
-          <button
-            type="button"
-            className="fixed bottom-24 right-6 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
-            data-testid="v2-scroll-to-bottom"
-            aria-label="Scroll to bottom"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-              <path d="M8 12L2 6h12l-6 6z" />
-            </svg>
-          </button>
-        </ThreadPrimitive.ScrollToBottom>
+        {SCROLL_DISCIPLINE_ENABLED ? (
+          <V2ScrollDiscipline />
+        ) : (
+          <ThreadPrimitive.ScrollToBottom asChild>
+            <button
+              type="button"
+              className="fixed bottom-24 right-6 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-zinc-300 shadow-lg hover:bg-zinc-600 transition-all opacity-80 hover:opacity-100"
+              data-testid="v2-scroll-to-bottom"
+              aria-label="Scroll to bottom"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                <path d="M8 12L2 6h12l-6 6z" />
+              </svg>
+            </button>
+          </ThreadPrimitive.ScrollToBottom>
+        )}
       </ThreadPrimitive.Viewport>
 
       <V2BottomBar />
       <V2Composer slashEnabled={slashEnabled} />
     </ThreadPrimitive.Root>
+    </SetTruncatedMsgCtx.Provider>
+    </TruncatedMsgCtx.Provider>
   )
 }
 
@@ -1417,6 +1619,8 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
+  const [sidebarLoading, setSidebarLoading] = useState(false)
+  const [textScale, increaseTextScale, decreaseTextScale] = useTextScale()
   const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
@@ -1583,6 +1787,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <div
       className="relative flex h-dvh text-zinc-100"
       data-testid="v2-chat-shell"
+      style={{ ['--text-scale' as string]: textScale }}
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
       {!sidebarCollapsed && (
@@ -1616,6 +1821,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           onRename={handleRenameConversation}
           onDelete={handleDeleteConversation}
           showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
+          onLoadingChange={setSidebarLoading}
         />
       </div>
 
@@ -1661,29 +1867,54 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
 
-          {/* Brand title + meta */}
-          <div className="min-w-0 flex-1 px-1.5">
-            <span
-              role="heading"
-              aria-level={1}
-              className="truncate font-serif text-[15px] font-medium text-foreground leading-tight block"
-              data-testid="v2-chart-name"
-            >
-              {chartName}
-            </span>
-            {chartMeta && (
+          {/* Brand title + meta — skeleton during initial sidebar load */}
+          {sidebarLoading ? (
+            <HeaderSkeleton />
+          ) : (
+            <div className="min-w-0 flex-1 px-1.5">
               <span
-                className="truncate text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] leading-none block mt-0.5"
-                data-testid="v2-chart-meta"
+                role="heading"
+                aria-level={1}
+                className="truncate font-serif text-[15px] font-medium text-foreground leading-tight block"
+                data-testid="v2-chart-name"
               >
-                {chartMeta}
+                {chartName}
               </span>
-            )}
-          </div>
+              {chartMeta && (
+                <span
+                  className="truncate text-[9px] font-semibold uppercase tracking-[0.20em] text-[rgba(var(--brand-gold-rgb),0.38)] leading-none block mt-0.5"
+                  data-testid="v2-chart-meta"
+                >
+                  {chartMeta}
+                </span>
+              )}
+            </div>
+          )}
 
-          {/* Right-side actions: Share + Trace (super_admin only) */}
+          {/* Right-side actions: Reports + Aa+/Aa− + Share + Trace (super_admin only) */}
           <div className="flex shrink-0 items-center gap-1" data-testid="v2-header-actions">
             <ConsumeReportLibraryV2 reports={reports} />
+            {/* X-S7: font-size controls */}
+            <button
+              type="button"
+              onClick={decreaseTextScale}
+              aria-label="Decrease text size"
+              aria-disabled={textScale === TEXT_SCALES[0]}
+              data-testid="v2-font-decrease"
+              className="flex h-7 items-center justify-center rounded px-1.5 text-[11px] font-semibold text-[color-mix(in_oklch,var(--brand-gold-cream)_50%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors disabled:opacity-40"
+            >
+              Aa−
+            </button>
+            <button
+              type="button"
+              onClick={increaseTextScale}
+              aria-label="Increase text size"
+              aria-disabled={textScale === TEXT_SCALES[TEXT_SCALES.length - 1]}
+              data-testid="v2-font-increase"
+              className="flex h-7 items-center justify-center rounded px-1.5 text-[11px] font-semibold text-[color-mix(in_oklch,var(--brand-gold-cream)_50%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors disabled:opacity-40"
+            >
+              Aa+
+            </button>
             <ShareButton conversationId={activeConversationId ?? undefined} />
             {audienceTier === 'super_admin' && (
               <button
@@ -1863,7 +2094,9 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
           <V2StreamResumeTracker chartId={chartId} conversationId={conversationId} />
-          {/* C.2 + W5 + E.1: unified runtime tracker — emits query_id, conversation_id, title in one subscribe loop */}
+          {/* E.1: V2TitleTracker — sidebar refresh on auto-title */}
+          <V2TitleTracker />
+          {/* C.2 + W5: unified runtime tracker — emits query_id, conversation_id */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
             <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} />
@@ -1875,6 +2108,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
               onClose={() => setPanelOpen(false)}
               scrollTarget={scrollTarget}
               onScrolled={() => setScrollTarget(null)}
+              conversationId={conversationId}
             />
           </div>
         </AssistantRuntimeProvider>

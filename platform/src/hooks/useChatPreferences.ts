@@ -51,6 +51,100 @@ export function useDraft(
 
   return [draft, setDraft, clearDraft]
 }
+// ── useTextScale ─────────────────────────────────────────────────────────────
+
+const TEXT_SCALE_KEY = 'marsys_chat_v2_text_scale'
+const TEXT_SCALES = [0.875, 1.0, 1.125, 1.25] as const
+export type TextScale = typeof TEXT_SCALES[number]
+
+/**
+ * X-S7: Global text-scale preference for the chat prose.
+ * Persisted in localStorage. Returns [scale, increase, decrease].
+ * Clamped — does not wrap around.
+ */
+export function useTextScale(): [TextScale, () => void, () => void] {
+  const [scale, setScaleState] = useState<TextScale>(() => {
+    if (typeof window === 'undefined') return 1.0
+    try {
+      const v = parseFloat(localStorage.getItem(TEXT_SCALE_KEY) ?? '')
+      return (TEXT_SCALES as readonly number[]).includes(v) ? (v as TextScale) : 1.0
+    } catch { return 1.0 }
+  })
+
+  const setScale = useCallback((next: TextScale) => {
+    setScaleState(next)
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem(TEXT_SCALE_KEY, String(next)) } catch {}
+  }, [])
+
+  const increase = useCallback(() => {
+    setScaleState(cur => {
+      const idx = TEXT_SCALES.indexOf(cur)
+      const next = idx < TEXT_SCALES.length - 1 ? TEXT_SCALES[idx + 1] : cur
+      if (next !== cur) {
+        try { localStorage.setItem(TEXT_SCALE_KEY, String(next)) } catch {}
+      }
+      return next
+    })
+  }, [])
+
+  const decrease = useCallback(() => {
+    setScaleState(cur => {
+      const idx = TEXT_SCALES.indexOf(cur)
+      const next = idx > 0 ? TEXT_SCALES[idx - 1] : cur
+      if (next !== cur) {
+        try { localStorage.setItem(TEXT_SCALE_KEY, String(next)) } catch {}
+      }
+      return next
+    })
+  }, [])
+
+  return [scale, increase, decrease]
+}
+
+export { TEXT_SCALES }
+
+// ── useLastPrompt ─────────────────────────────────────────────────────────────
+
+function lastPromptKey(conversationId: string | null): string {
+  return `marsys_chat_v2_last_prompt_${conversationId ?? '__new__'}`
+}
+
+/**
+ * X-S2: Per-conversation last-sent prompt cache in localStorage.
+ * Returns [lastPrompt, saveLastPrompt] where:
+ *   - lastPrompt: the most recently saved prompt for this conversation
+ *   - saveLastPrompt: call with the sent text to persist it
+ * SSR-safe: all localStorage access is guarded.
+ */
+export function useLastPrompt(conversationId: string | null): [string, (v: string) => void] {
+  const key = lastPromptKey(conversationId)
+
+  const [lastPrompt, setLastPrompt] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try { return localStorage.getItem(key) ?? '' } catch { return '' }
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLastPrompt(localStorage.getItem(key) ?? '')
+    } catch {
+      setLastPrompt('')
+    }
+  }, [key])
+
+  const saveLastPrompt = useCallback((v: string) => {
+    if (!v.trim()) return
+    setLastPrompt(v)
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem(key, v) } catch {}
+  }, [key])
+
+  return [lastPrompt, saveLastPrompt]
+}
+
 import {
   DEFAULT_STACK_ID,
   STACK_ROUTING,

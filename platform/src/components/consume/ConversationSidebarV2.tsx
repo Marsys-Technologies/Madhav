@@ -28,6 +28,7 @@ import {
 import { FolderGroup } from './FolderGroup'
 import { ArchivedView } from './ArchivedView'
 import { useFolders } from '@/hooks/useFolders'
+import { SidebarSkeleton } from '@/components/chat/SidebarSkeleton'
 import { useProjects } from '@/hooks/useProjects'
 import { ProjectsSection } from '@/components/sidebar/ProjectsSection'
 import { NewProjectModal } from '@/components/modals/NewProjectModal'
@@ -65,6 +66,8 @@ export interface ConversationSidebarV2Props {
   onDelete?: (id: string) => Promise<void> | void
   /** R9-S1: Show Projects section above conversations. Controlled by MARSYS_FLAG_R9_PROJECTS. */
   showProjects?: boolean
+  /** X-S5: Bubbles loading state changes to parent for HeaderSkeleton wiring. */
+  onLoadingChange?: (loading: boolean) => void
 }
 
 // ─── Date grouping ────────────────────────────────────────────────────────────
@@ -257,6 +260,7 @@ export function ConversationSidebarV2({
   onRename,
   onDelete,
   showProjects = false,
+  onLoadingChange,
 }: ConversationSidebarV2Props) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -298,6 +302,11 @@ export function ConversationSidebarV2({
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- triggered reload on title change */
     if (reloadTrigger !== undefined && reloadTrigger > 0) reload()
   }, [reloadTrigger, reload])
+
+  // X-S5: Bubble loading state to parent for HeaderSkeleton wiring.
+  useEffect(() => {
+    onLoadingChange?.(loading)
+  }, [loading, onLoadingChange])
 
   // Debounced FTS search — fires after 300ms of no keystroke, only when query >= 2 chars.
   useEffect(() => {
@@ -540,19 +549,34 @@ export function ConversationSidebarV2({
             />
           </div>
           {semanticSearchAvailable && (
-            <button
-              type="button"
-              onClick={() => setSemanticEnabled(v => !v)}
-              title={semanticEnabled ? 'Semantic search ON' : 'Semantic search OFF'}
-              aria-pressed={semanticEnabled}
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors ${
-                semanticEnabled
-                  ? 'bg-indigo-600/30 text-indigo-400'
-                  : 'text-zinc-600 hover:text-zinc-400'
-              }`}
-            >
-              <Sparkles className="h-3 w-3" aria-hidden />
-            </button>
+            <div className="flex shrink-0 overflow-hidden rounded border border-zinc-800 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setSemanticEnabled(false)}
+                data-testid="v2-search-mode-exact"
+                aria-pressed={!semanticEnabled}
+                className={`px-1.5 py-0.5 transition-colors ${
+                  !semanticEnabled
+                    ? 'bg-zinc-700 text-zinc-200'
+                    : 'text-zinc-600 hover:text-zinc-400'
+                }`}
+              >
+                Exact
+              </button>
+              <button
+                type="button"
+                onClick={() => setSemanticEnabled(true)}
+                data-testid="v2-search-mode-semantic"
+                aria-pressed={semanticEnabled}
+                className={`px-1.5 py-0.5 transition-colors ${
+                  semanticEnabled
+                    ? 'bg-indigo-600/30 text-indigo-400'
+                    : 'text-zinc-600 hover:text-zinc-400'
+                }`}
+              >
+                Semantic
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -608,9 +632,7 @@ export function ConversationSidebarV2({
         {/* Normal mode (no search): Pinned → Folders → Date buckets */}
         {searchQuery.length === 0 && (
           <>
-            {loading && conversations.length === 0 && (
-              <p className="px-3 py-2 text-xs text-zinc-500">Loading…</p>
-            )}
+            {loading && conversations.length === 0 && <SidebarSkeleton />}
 
             {!loading && filteredConversations.length === 0 && (
               <p className="px-3 py-4 text-xs text-zinc-600 text-center">

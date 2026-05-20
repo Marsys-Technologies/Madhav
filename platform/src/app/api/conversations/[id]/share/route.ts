@@ -35,8 +35,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       created_at: string
       expires_at: string | null
       revoked_at: string | null
+      hide_reasoning: boolean
+      hide_methodology: boolean
     }>(
-      'SELECT slug, created_at, expires_at, revoked_at FROM conversation_shares WHERE conversation_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
+      'SELECT slug, created_at, expires_at, revoked_at, hide_reasoning, hide_methodology FROM conversation_shares WHERE conversation_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
       [id]
     )
 
@@ -46,10 +48,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }
 }
 
-export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
   const user = await getServerUser()
   if (!user) return res.unauthenticated()
+
+  let hideReasoning = false
+  let hideMethodology = false
+  if (process.env.MARSYS_FLAG_R10_SELECTIVE_SHARE === 'true') {
+    try {
+      const body = await req.json() as { hide_reasoning?: boolean; hide_methodology?: boolean }
+      hideReasoning = body.hide_reasoning === true
+      hideMethodology = body.hide_methodology === true
+    } catch {}
+  }
 
   try {
     const isSuperAdmin = await resolveAccess(user.uid)
@@ -65,8 +77,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
     const slug = generateSlug()
     await query(
-      'INSERT INTO conversation_shares (conversation_id, slug, created_by) VALUES ($1,$2,$3) RETURNING *',
-      [id, slug, user.uid]
+      'INSERT INTO conversation_shares (conversation_id, slug, created_by, hide_reasoning, hide_methodology) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [id, slug, user.uid, hideReasoning, hideMethodology]
     )
 
     return Response.json({ slug })

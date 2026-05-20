@@ -3,6 +3,7 @@
 /**
  * Citations side panel for the V2 chat interface.
  * R7-S4: auto-opens after streaming ends with all citations.
+ * X-S3: star state persisted to localStorage via useStarredCitations.
  * Pin icon per row replaces the old "pinned-only" filter — every row is
  * always shown; starred rows are visually highlighted.
  */
@@ -10,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { CitationPart } from '@/lib/citations/citation_data_part'
+import { useStarredCitations } from '@/hooks/useStarredCitations'
 
 export interface CitationSidePanelProps {
   citations: CitationPart[]
@@ -23,6 +25,8 @@ export interface CitationSidePanelProps {
   scrollTarget?: number | null
   /** Called after the scroll animation is triggered so the parent can clear scrollTarget. */
   onScrolled?: () => void
+  /** X-S3: conversationId for localStorage-backed star persistence. Null uses __new__ key. */
+  conversationId?: string | null
 }
 
 export function CitationSidePanel({
@@ -31,21 +35,14 @@ export function CitationSidePanel({
   onClose,
   scrollTarget,
   onScrolled,
+  conversationId = null,
 }: CitationSidePanelProps) {
   const sortedCitations = [...citations].sort((a, b) => a.index - b.index)
   const listRef = useRef<HTMLUListElement>(null)
   const [flashIndex, setFlashIndex] = useState<number | null>(null)
   const [mobileCollapsed, setMobileCollapsed] = useState(false)
-  // AC-3: starred state is local to the panel; does not gate visibility or remove rows.
-  const [starredSet, setStarredSet] = useState<Set<number>>(new Set())
-
-  const toggleStar = (n: number) => {
-    setStarredSet(prev => {
-      const next = new Set(prev)
-      if (next.has(n)) next.delete(n); else next.add(n)
-      return next
-    })
-  }
+  // X-S3: starred state persisted to localStorage per conversationId
+  const [starredSet, toggleStar] = useStarredCitations(conversationId)
 
   // Scroll-to-row + flash
   useEffect(() => {
