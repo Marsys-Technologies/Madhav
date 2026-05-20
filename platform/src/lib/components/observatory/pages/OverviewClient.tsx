@@ -24,6 +24,7 @@ import { StackedDistributionBar } from '../StackedDistributionBar'
 import { EmptyObservatoryState } from '../EmptyObservatoryState'
 import { uiToApiFilters, uiToDashboardRange } from './filterAdapter'
 import { ObsPageShell, ObsCard, SectionLabel } from '../shared'
+import { PanchangLatencyPanel, PanchangCachePanel } from '../panchang'
 
 type GroupedBreakdowns = {
   provider: BreakdownsResponse | null
@@ -250,6 +251,16 @@ export function OverviewClient({
           </details>
         </>
       )}
+
+      {/* ── Panchang Module telemetry (Phase 4C-9) ───────────────────────────── */}
+      {/* Always rendered — independent of LLM Observatory data / filter state.  */}
+      <section data-testid="observatory-panchang-section" className="flex flex-col gap-3">
+        <SectionLabel>Panchang Module</SectionLabel>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <PanchangLatencyPanel />
+          <PanchangCachePanel />
+        </div>
+      </section>
     </ObsPageShell>
   )
 }
