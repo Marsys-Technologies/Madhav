@@ -117,3 +117,19 @@ Added `useTextScale()` hook to `useChatPreferences.ts`: global localStorage key 
 **Amendments:** A2 (FontScaleShell parent-context wrapper, click-path documented) | A3 (FLAGLESS)
 
 ---
+
+## X-S8 — Selective Share
+
+**Status:** COMPLETED  
+**Commit:** df07703  
+**Completed:** 2026-05-20T09:30:00Z
+
+Migration `113_selective_share.sql`: added `hide_reasoning BOOLEAN NOT NULL DEFAULT FALSE` and `hide_methodology BOOLEAN NOT NULL DEFAULT FALSE` to `conversation_shares`. Share API route POST accepts these fields guarded by `MARSYS_FLAG_R10_SELECTIVE_SHARE` (server-side). Share page queries both fields and passes them to `SharedConversation`. `filterMessages()` utility in `platform/src/lib/share/filterMessages.ts` strips reasoning parts (`type='reasoning'`) and Methodology sections. `ShareButton` now shows two checkboxes (both checked by default) and passes `hide_*` flags to POST body. 8 tests — all pass.
+
+**Amendment 1 confirmed:** `MARSYS_FLAG_R10_SELECTIVE_SHARE` appears in 2 files, both server-side (API route + Next.js server page). No `NEXT_PUBLIC_` prefix, no client component usage, no deploy.yml build-arg.
+
+**Click-path:** Chat V2 → Share → checkboxes "Show reasoning" + "Show methodology" (checked by default) → uncheck "Show reasoning" → Create Link → recipient sees response only, no reasoning steps.
+
+**Amendments:** A1 (server-side flag confirmed, no NEXT_PUBLIC, no deploy.yml entry) | A2 (ShareButtonShell parent-context, checkboxes + fetch payload tested) | A3 (FLAGGED, default true, server-side)
+
+---

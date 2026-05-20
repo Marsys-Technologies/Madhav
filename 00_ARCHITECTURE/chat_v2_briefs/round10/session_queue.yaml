@@ -120,7 +120,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "grep -rn 'MARSYS_FLAG_R10_SELECTIVE_SHARE' platform/src --include='*.ts*' | grep -v 'use client' && npx jest --testPathPattern='share|Share|SelectiveShare' --passWithNoTests"
     commit_template: "feat(chat-v2): selective share — hide reasoning/methodology from shared links"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T09:30:00Z"
 
   - id: X-S9
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/X-S9-print-friendly-share.md
