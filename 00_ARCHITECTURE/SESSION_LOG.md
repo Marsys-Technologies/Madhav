@@ -12454,7 +12454,8 @@ red_team:
     AXIS-4_ll1_two_pass_approval_surrogate_disclosure:
       verdict: PASS_WITH_CAVEATS
       checks_performed:
-        - surrogate role flagged in 6 places: frontmatter `pass_1_reviewer_kind: surrogate-for-Gemini`; §1 surrogate-reviewer disclosure paragraph; §3 rubric-applied statement "the same heuristic Gemini would apply"; §5 approval_chain `surrogate_disclosure` field; §6 R.LL1TPA.1 carry-forward; §7 changelog
+        - |
+          surrogate role flagged in 6 places: frontmatter `pass_1_reviewer_kind: surrogate-for-Gemini`; §1 surrogate-reviewer disclosure paragraph; §3 rubric-applied statement "the same heuristic Gemini would apply"; §5 approval_chain `surrogate_disclosure` field; §6 R.LL1TPA.1 carry-forward; §7 changelog
         - demotion rule application: §1 states "0 demotions in pass_1 review"; verified — all 30 eligible signals satisfy mean≥0.4 AND var≤0.3
         - Tier-C joint-firing flag: 3 markers in NAP_M4_5_DOSSIER (matches §3 SIG.MSR.118/.119/.143 deep-dive)
         - all 30 eligible signal IDs present in NAP dossier text (cross-reference verified by regex)
@@ -21970,11 +21971,12 @@ session_close:
     - MP.1: .geminirules — M5-C CLOSED; NAP.M5.2 APPROVED; M5-D INCOMING; red_team_counter 1→2
     - MP.2: .gemini/project_state.md — M5-C-S2 deliverables block; M5-C CLOSED; next→M5-D-S1
   nap_adjudications:
-    - NAP.M5.2: APPROVED (native phrase "I will go with all your recommendations" 2026-05-13)
-        §11.1: Option C — Dirichlet(2.4,2.1,1.5) Σα=6 LOW/diffuse
-        §11.2: keep 0.05 — Beta(0.5,9.5)
-        §11.3: keep FIXED — cross-domain edges not updated in M5-D
-        §11.4: 8 SPR.* + 2 PSY.* training events; Ketu MD 0; priors purely classical
+    - |
+      NAP.M5.2: APPROVED (native phrase "I will go with all your recommendations" 2026-05-13)
+      §11.1: Option C — Dirichlet(2.4,2.1,1.5) Σα=6 LOW/diffuse
+      §11.2: keep 0.05 — Beta(0.5,9.5)
+      §11.3: keep FIXED — cross-domain edges not updated in M5-D
+      §11.4: 8 SPR.* + 2 PSY.* training events; Ketu MD 0; priors purely classical
   acceptance_criteria_status:
     AC.M5C.1: PASS (from M5-C-S1 — PRIOR_SPEC_v1_0.md authored, v1.0 DRAFT)
     AC.M5C.2: PASS (from M5-C-S1 — two-pass review conducted)
@@ -22158,6 +22160,31 @@ Execute **M5-D-S2**: CF.M5C.2 CPT scaffold population using PRIOR_SPEC v1.1 froz
 
 ## M5-D-S2 — DBN Fit: CPT Prior Population + Bayesian Update + Posterior Differentiation
 
+```yaml
+session_open:
+  session_id: M5-D-S2
+  session_name: "M5-D-S2 — DBN Fit: CPT Prior Population + Bayesian Update + Posterior Differentiation"
+  date: 2026-05-13
+  macro_phase: M5
+  sub_phase: M5-D
+  cowork_thread_name: "Madhav M5-D-S2 — DBN Fit: CPT Prior Population + Bayesian Update"
+  predecessor: M5-D-S1
+  red_team_counter_at_open: 0
+  is_8a_due: false
+  may_touch:
+    - 06_LEARNING_LAYER/dbn/
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .geminirules
+    - .gemini/project_state.md
+  must_not_touch:
+    - 06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md
+    - 06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/production/
+    - 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_*.md
+```
+
+
 **Session ID:** M5-D-S2
 **Cowork thread:** Madhav M5-D-S2 — DBN Fit: CPT Prior Population + Bayesian Update
 **Opened:** 2026-05-13
@@ -22237,7 +22264,7 @@ Execute **M5-D-S2**: CF.M5C.2 CPT scaffold population using PRIOR_SPEC v1.1 froz
 ```yaml
 session_close:
   session_id: M5-D-S2
-  closed_at: 2026-05-13T29:00:00+05:30
+  closed_at: "2026-05-13T29:00:00+05:30"
   files_touched:
     - path: 06_LEARNING_LAYER/dbn/cpt/dasha_to_domain.json
       mutation_type: modified
@@ -25243,7 +25270,7 @@ session_open:
   executor: "Claude Code sub-agent (Conductor)"
   worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
   branch: feature/phase-4c-panchang
-  predecessor: 4C-6-S1 (prior 4C-6 sessions: S1 muhurat backend; S2 weights; S3 Muhurat Finder UI)
+  predecessor: "4C-6-S1 (prior 4C-6 sessions: S1 muhurat backend; S2 weights; S3 Muhurat Finder UI)"
   governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PHASE_4C_6_S4_v1_0.md
   may_touch:
     - platform/tests/{integration,visual,perf}/4C6_*
@@ -25708,22 +25735,22 @@ session_close:
 
 ## Phase 4C Wave 1 Close Summary
 
-**Date:** 2026-05-20 | **Closed by:** 4C-9
+# **Date:** 2026-05-20 | **Closed by:** 4C-9
 
-Phase 4C (Panchang Module) Wave 1 complete. All 9 sessions closed (4C-0 through 4C-9).
-4C-2 (SQL cache layer) gated on Phase 4B — not a Wave 1 blocker. Conductor queue empty.
+# Phase 4C (Panchang Module) Wave 1 complete. All 9 sessions closed (4C-0 through 4C-9).
+# 4C-2 (SQL cache layer) gated on Phase 4B — not a Wave 1 blocker. Conductor queue empty.
 
-**Deliverables shipped on `feature/phase-4c-panchang`:**
-- panchang_engine v1.0.0-S3 (Swiss Ephemeris; 30/30 Drik parity; 230 sidecar tests)
-- query_panchanga RetrievalTool (engine-direct; expose_to_chat confirmed)
-- /panchang UI (PrimaryStrip + PlanetaryGrid + SpecialYogasList + Personalise overlay)
-- Muhurat Finder (6 events × YAML weights × 90-day range; acharya CANARY PASS)
-- iCal export + HMAC-signed 90-day subscribable feed
-- AskMadhavLink + 10 KB context injection + planner bypass rule
-- Observatory telemetry panels for panchang sidecar latency + cache status
-- IS.8(b) red-team PASS 5/5; PHASE_4C_CLOSE_v1_0.md sealed
+# **Deliverables shipped on `feature/phase-4c-panchang`:**
+# - panchang_engine v1.0.0-S3 (Swiss Ephemeris; 30/30 Drik parity; 230 sidecar tests)
+# - query_panchanga RetrievalTool (engine-direct; expose_to_chat confirmed)
+# - /panchang UI (PrimaryStrip + PlanetaryGrid + SpecialYogasList + Personalise overlay)
+# - Muhurat Finder (6 events × YAML weights × 90-day range; acharya CANARY PASS)
+# - iCal export + HMAC-signed 90-day subscribable feed
+# - AskMadhavLink + 10 KB context injection + planner bypass rule
+# - Observatory telemetry panels for panchang sidecar latency + cache status
+# - IS.8(b) red-team PASS 5/5; PHASE_4C_CLOSE_v1_0.md sealed
 
-**Native next step:** Split-PR per HANDOFF_WAVE_1.md (cherry-pick Conductor → PR 1; Phase 4C → PR 2).
+# **Native next step:** Split-PR per HANDOFF_WAVE_1.md (cherry-pick Conductor → PR 1; Phase 4C → PR 2).
 ```
 
 ---
