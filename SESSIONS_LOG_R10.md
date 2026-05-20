@@ -17,3 +17,17 @@ Added `NEXT_PUBLIC_NIM_STACK_DEGRADED=false` to the `--build-arg` block in `.git
 **Amendments:** A3 (FLAGLESS — deploy.yml cleanup only) | A4 (NIM_STACK_DEGRADED entry — this IS the fix)
 
 ---
+
+## X-S1 — Camera Capture on Mobile
+
+**Status:** COMPLETED  
+**Commit:** de0d4fd  
+**Completed:** 2026-05-20T08:45:00Z
+
+Added mobile camera capture to the Chat V2 composer. Implementation: separate hidden `<input type="file" accept="image/*" capture="environment" data-testid="v2-camera-input">` plus a mobile-only camera button (`md:hidden`, `data-testid="v2-camera-btn"`). Kept the existing general attachment input unchanged to preserve iOS Safari PDF upload compatibility (adding `capture=` to a mixed-type input restricts iOS to camera-only). Exported `AttachmentCtx` for test access. 5 new tests in `camera_capture.test.tsx` — all use `AttachmentCtx.Provider` parent context (Amendment 2 satisfied). Typecheck: PASS. New tests: 5/5 PASS. Pre-existing lint issues in ConsumeChatV2.tsx (16 errors at lines 1301+) are unchanged — zero new errors.
+
+**Click-path:** Chat V2 → attachment area → camera button (mobile only, md:hidden on desktop) → system sheet → Take Photo.
+
+**Amendments:** A2 (parent-context test + click-path documented) | A3 (FLAGLESS — additive)
+
+---

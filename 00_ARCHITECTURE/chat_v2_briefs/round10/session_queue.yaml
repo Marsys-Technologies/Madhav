@@ -28,7 +28,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "grep -rn 'capture=\"environment\"' platform/src/components/chat-v2/composer/ && npx jest --testPathPattern='composer|attachment|capture' --passWithNoTests"
     commit_template: "feat(chat-v2): camera capture on mobile via capture=\"environment\" on file input"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T08:45:00Z"
 
   - id: X-S2
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/X-S2-recall-last-prompt.md
