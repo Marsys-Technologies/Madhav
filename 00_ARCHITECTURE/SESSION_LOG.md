@@ -25613,3 +25613,115 @@ session_close:
   claudecode_brief_status: COMPLETE
   current_state_updated: true
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: 4C-9
+  session_name: "4C-9 — Polish, telemetry, red-team, Wave 1 close"
+  session_date: 2026-05-20
+  branch: feature/phase-4c-panchang
+  worktree: /Users/Dev/Vibe-Coding/Apps/Panchang
+  predecessor: 4C-8
+  scope: >
+    Wave 1 close: engineering polish pass, Observatory panels for panchang telemetry,
+    IS.8(b) red-team 5/5, drift+manifest validation, CLAUDE.md v2.7 (Conductor as
+    sixth workstream), Phase 4C close artifact, PANCHANG_DAILY status flip, CURRENT_STATE
+    v5.26, SESSION_LOG append, queue closeout, HANDOFF_WAVE_1.md, brief COMPLETE.
+  may_touch:
+    - platform/src/app/panchang/**
+    - platform/src/app/observatory/**
+    - 00_ARCHITECTURE/RED_TEAM/RT_4C_*
+    - CLAUDE.md
+    - .geminirules
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - .gemini/project_state.md
+    - 00_ARCHITECTURE/PHASE_4C_CLOSE_v1_0.md
+    - 00_ARCHITECTURE/PHASE_4C_FOLLOWUPS_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CONDUCTOR/session_queue.yaml
+    - HANDOFF_WAVE_1.md
+    - CLAUDECODE_BRIEF_PHASE_4C_9_v1_0.md
+  must_not_touch:
+    - Engine internals (sealed)
+    - RetrievalTool (sealed)
+    - Muhurat backend logic (sealed)
+    - iCal builder (sealed)
+    - Ask-Madhav chat injection (sealed)
+    - Master plan
+    - Operational brief
+    - Other corpus layers
+
+session_body:
+  items_completed:
+    - AC.4C9.1: "Polish pass — h-8→h-10 touch targets; FOLLOWUPS doc authored"
+    - AC.4C9.2: "Observatory panels — PanchangLatencyPanel + PanchangCachePanel; 151 tests PASS"
+    - AC.4C9.3: "IS.8(b) red-team 5/5 — RT.4C.1 WARN-acceptable, RT.4C.2-5 PASS"
+    - AC.4C9.4: "All validators exit 0 (schema_validator, drift_detector, mirror_enforcer, validate_queue)"
+    - AC.4C9.5: "CLAUDE.md v2.7 — Conductor sixth workstream; MP.1 mirror to .geminirules"
+    - AC.4C9.6: "PHASE_4C_CLOSE_v1_0.md authored — Wave 1 complete; 432 tests; RT 5/5"
+    - AC.4C9.7: "PANCHANG_DAILY → CURRENT_ENGINE_DIRECT; MP.2 mirror to project_state.md"
+    - AC.4C9.8: "CURRENT_STATE v5.26 — Wave 1 complete; next_session = native PR action"
+    - AC.4C9.9: "SESSION_LOG appended (this entry)"
+    - AC.4C9.10: "session_queue.yaml — 4C-9 passed; Wave 1 closing marker added"
+    - AC.4C9.11: "HANDOFF_WAVE_1.md authored at worktree root"
+    - AC.4C9.12: "Brief flipped COMPLETE; FINAL_SUMMARY emitted"
+  red_team:
+    probe: IS.8(b) 5/5
+    verdicts:
+      RT.4C.1: "WARN-acceptable (minor UI formatting, not engine logic)"
+      RT.4C.2: PASS
+      RT.4C.3: PASS
+      RT.4C.4: PASS
+      RT.4C.5: PASS
+    finding_docs: 00_ARCHITECTURE/RED_TEAM/RT_4C_1_FINDING.md through RT_4C_5_FINDING.md
+
+session_close:
+  test_suite: "230 sidecar pytest PASS; 151 TS tests PASS; total 432 across Wave 1"
+  mirror_enforcer: "exit 0 — 9/9 pairs clean after CLAUDE.md + .geminirules + project_state.md updates"
+  drift_detector: "exit 0"
+  schema_validator: "exit 0"
+  validate_queue: "exit 0"
+  mirror_updates_propagated:
+    MP.1: "CLAUDE.md §E Six workstreams → .geminirules §E Six workstreams (same session)"
+    MP.2: "CAPABILITY_MANIFEST.json PANCHANG_DAILY CURRENT_ENGINE_DIRECT → .gemini/project_state.md (same session)"
+  commits:
+    - 4a100fe  # Item 1: Polish pass
+    - 99f4aab  # Item 2: Observatory panels
+    - 7180523  # Item 3: IS.8(b) red-team 5/5
+    - 630ac59  # Item 5: CLAUDE.md v2.7 + MP.1 mirror
+    - 9bffaa7  # Item 6: Phase 4C close artifact
+    - f317fbc  # Item 7: PANCHANG_DAILY CURRENT_ENGINE_DIRECT + MP.2 mirror
+    - <item8_commit>  # Item 8: CURRENT_STATE v5.26
+    - <item9_commit>  # Item 9: SESSION_LOG (this entry)
+    - <item10_commit>  # Item 10: queue closeout
+    - <item11_commit>  # Item 11: HANDOFF_WAVE_1.md
+    - <item12_commit>  # Item 12: brief COMPLETE
+  next_session_id: "N/A — Wave 1 queue complete"
+  next_session_objective: "Native opens split PR per HANDOFF_WAVE_1.md. Wave 2 queue begins after PR 1 merges."
+  session_close_valid: true
+  claudecode_brief_status: COMPLETE
+  current_state_updated: true
+  wave_1_status: COMPLETE
+
+## Phase 4C Wave 1 Close Summary
+
+**Date:** 2026-05-20 | **Closed by:** 4C-9
+
+Phase 4C (Panchang Module) Wave 1 complete. All 9 sessions closed (4C-0 through 4C-9).
+4C-2 (SQL cache layer) gated on Phase 4B — not a Wave 1 blocker. Conductor queue empty.
+
+**Deliverables shipped on `feature/phase-4c-panchang`:**
+- panchang_engine v1.0.0-S3 (Swiss Ephemeris; 30/30 Drik parity; 230 sidecar tests)
+- query_panchanga RetrievalTool (engine-direct; expose_to_chat confirmed)
+- /panchang UI (PrimaryStrip + PlanetaryGrid + SpecialYogasList + Personalise overlay)
+- Muhurat Finder (6 events × YAML weights × 90-day range; acharya CANARY PASS)
+- iCal export + HMAC-signed 90-day subscribable feed
+- AskMadhavLink + 10 KB context injection + planner bypass rule
+- Observatory telemetry panels for panchang sidecar latency + cache status
+- IS.8(b) red-team PASS 5/5; PHASE_4C_CLOSE_v1_0.md sealed
+
+**Native next step:** Split-PR per HANDOFF_WAVE_1.md (cherry-pick Conductor → PR 1; Phase 4C → PR 2).
+```

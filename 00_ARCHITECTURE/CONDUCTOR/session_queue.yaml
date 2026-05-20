@@ -392,8 +392,19 @@ entries:
   - 00_ARCHITECTURE/RED_TEAM/RT_4C_1_FINDING.md
   est_tokens: 130000
   est_duration_min: 100
-  status: pending
+  status: passed
   human_decision_prompt: null
   approved_at: '2026-05-20'
   approved_by: native
+  closed_at: '2026-05-20'
+  closing_note: >
+    Wave 1 complete. All Phase 4C sessions passed or skipped. PHASE_4C_CLOSE_v1_0.md
+    sealed. HANDOFF_WAVE_1.md authored. Conductor queue empty. Native runs split-PR
+    procedure per HANDOFF_WAVE_1.md next.
 wave_1_expanded_at: '2026-05-19'
+wave_1_closed_at: '2026-05-20'
+wave_1_status: COMPLETE
+wave_1_closing_banner: >
+  QUEUE COMPLETE — Wave 1 closed. See HANDOFF_WAVE_1.md for next steps.
+  All 11 queue entries (4C-1-S1 through 4C-9) resolved as passed or skipped.
+  Wave 2 (M5-A, 4B, 4D) requires fresh brief authoring and a new queue section.
