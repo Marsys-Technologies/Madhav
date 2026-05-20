@@ -549,19 +549,34 @@ export function ConversationSidebarV2({
             />
           </div>
           {semanticSearchAvailable && (
-            <button
-              type="button"
-              onClick={() => setSemanticEnabled(v => !v)}
-              title={semanticEnabled ? 'Semantic search ON' : 'Semantic search OFF'}
-              aria-pressed={semanticEnabled}
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors ${
-                semanticEnabled
-                  ? 'bg-indigo-600/30 text-indigo-400'
-                  : 'text-zinc-600 hover:text-zinc-400'
-              }`}
-            >
-              <Sparkles className="h-3 w-3" aria-hidden />
-            </button>
+            <div className="flex shrink-0 overflow-hidden rounded border border-zinc-800 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setSemanticEnabled(false)}
+                data-testid="v2-search-mode-exact"
+                aria-pressed={!semanticEnabled}
+                className={`px-1.5 py-0.5 transition-colors ${
+                  !semanticEnabled
+                    ? 'bg-zinc-700 text-zinc-200'
+                    : 'text-zinc-600 hover:text-zinc-400'
+                }`}
+              >
+                Exact
+              </button>
+              <button
+                type="button"
+                onClick={() => setSemanticEnabled(true)}
+                data-testid="v2-search-mode-semantic"
+                aria-pressed={semanticEnabled}
+                className={`px-1.5 py-0.5 transition-colors ${
+                  semanticEnabled
+                    ? 'bg-indigo-600/30 text-indigo-400'
+                    : 'text-zinc-600 hover:text-zinc-400'
+                }`}
+              >
+                Semantic
+              </button>
+            </div>
           )}
         </div>
       </div>
