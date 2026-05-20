@@ -229,7 +229,8 @@ sessions:
     deploy_yml_flag: NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
     acceptance_check: "grep 'NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES' .github/workflows/deploy.yml && npx jest --testPathPattern='ValidatorFailure|validator.*gate|per.?gate' --passWithNoTests"
     commit_template: "feat(chat-v2): validator failure band — expandable per-gate list"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T11:23:00Z"
 
   - id: Y-S4
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S4-reasoning-step-labels.md

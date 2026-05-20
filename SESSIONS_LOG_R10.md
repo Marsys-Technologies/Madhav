@@ -229,3 +229,17 @@ Upgraded `ConversationSidebarV2` search mode toggle from a Sparkles icon button 
 **Amendments:** A2 (ConversationSidebarV2 full parent-context shell, click-path documented) | A3 (FLAGLESS)
 
 ---
+
+## Y-S8 — Validator Per-Gate Expander
+
+**Status:** COMPLETED  
+**Commit:** a7efb7c  
+**Completed:** 2026-05-20T11:23:00Z
+
+Extended `ValidatorFailureBand` with click-to-expand per-gate verdict list. Extended `CitationGatePartSchema` / `GateVerdictSchema` in `data_parts.ts` with optional `gates: Array<{name, verdict, reason}>`. `ConsumeChatV2` passes `gates={citationGate.gates}` to the band. When flag is enabled and gates array is non-empty, clicking the header expands a per-gate list with colored verdict badges (FAIL=red, WARN=yellow, PASS=green) and reason text; clicking again collapses it. Backward-compatible: no gates prop / empty array / flag disabled → collapsed band as before. `NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true` added to deploy.yml. 8/8 tests pass in `validator_gate_expander.test.tsx`. Typecheck: PASS.
+
+**Click-path:** Chat V2 → receive response where validator rejected a gate → `ValidatorFailureBand` appears collapsed → click header → per-gate list expands showing FAIL/WARN/PASS badges with gate names (monospace) and reason strings → click again → collapses. "Details" button preserved throughout.
+
+**Amendments:** A1 HARD GATE (NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES in deploy.yml) | A2 (FailureBandShell parent-context wrapper, click-path documented) | A3 (FLAGGED default true)
+
+---
