@@ -201,7 +201,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "npx jest --testPathPattern='branch.*regen|regen.*branch|MessageActions|useBranches' --passWithNoTests"
     commit_template: "feat(chat-v2): branch-on-regen — archive prior response before regenerating"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T10:15:00Z"
 
   - id: Y-S7
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S7-search-mode-toggle.md

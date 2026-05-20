@@ -201,3 +201,17 @@ Added `confidence?: number` prop to `NumberedCitation`. When `NEXT_PUBLIC_MARSYS
 **Amendments:** A1 (NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true in deploy.yml — HARD GATE satisfied) | A2 (CitationCtxShell parent-context wrapper, click-path documented) | A3 (FLAGGED, default true)
 
 ---
+
+## Y-S6 — Branch on Regenerate
+
+**Status:** COMPLETED  
+**Commit:** 9c56207  
+**Completed:** 2026-05-20T10:15:00Z
+
+Chat V2 already implements branch-on-regen via `BranchPickerPrimitive` (assistant-ui) + `messageRuntime.reload()`. The brief assumed `useBranches.archiveBranch` would be wired to `MessageActions`, but Chat V2 uses assistant-ui's native thread branching — the correct mechanism for LLM response branches. `V2RegenerateButton` (ConsumeChatV2:388) awaits DB truncation via `/api/chat/consume/regenerate` BEFORE calling `messageRuntime.reload()`, ensuring archive-then-regenerate order. `BranchPickerPrimitive.Root hideWhenSingleBranch` shows "N/M" navigation after the first reload. No prior response is ever lost. No source changes required — behavior was already correct. Session adds 7 new parent-context + structural tests. Typecheck: PASS. Flagless.
+
+**Click-path:** Chat V2 → receive response → click V2RegenerateButton → DB truncated → `reload()` creates new branch → `BranchPickerPrimitive` shows "1 / 2" → click ‹ → original response visible.
+
+**Amendments:** A2 (BranchingShell + structural source audits parent-context wrapper, click-path documented) | A3 (FLAGLESS)
+
+---
