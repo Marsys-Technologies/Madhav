@@ -10,6 +10,22 @@ _Last updated: 2026-05-14 at M9-A-S1 (**M9 MACRO-PHASE OPEN — Multi-School Tri
 - **Next governance action:** Execute `Madhav_M2A_Exec_6` — B.4 RAG Query Engine + Gemini two-pass carry-forward. Carry-forward priorities: (1) native pastes cgm_edge_proposals_v1_0.md to Gemini, commits raw response, Claude reconciler runs Tasks 4a/4b; (2) write_chunks_to_db() for 234 CGM chunks; (3) B.4 RAG Query Engine per PHASE_B_PLAN §B.4.
 - **Steps remaining:** **0 (governance rebuild complete).** Steady-state governance discipline fully active. M2 active execution: B.0 closed, M2A Plan produced, B.1 complete, B.2 complete, B.3 complete, **B.3.5 complete** (M2A Foundation Stack 5/5 sessions done).
 
+## Concurrent Workstream — Phase 4C Panchang (ACTIVE 2026-05-19 — 4C.3 CLOSED)
+
+**WAVE 1 COMPLETE 2026-05-20 at session 4C-9. All 9 sessions (4C-0 through 4C-9) closed. Split-PR to main pending.** Concurrent workstream alongside the M-phase main thread. Phase 4C — Panchang Module — delivered the `query_panchanga` RetrievalTool, the `PANCHANG_DAILY` L1.5 data asset, and the `/panchang` UI surface (Muhurat Finder + iCal export + Ask-Madhav deep links).
+
+- **Brief artifact:** `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` (status CURRENT; canonical_id `PHASE_4C_PANCHANG_BRIEF_v1_0`).
+- **Governing plan:** `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md` (v1.0; status CURRENT).
+- **Parent campaign:** `00_ARCHITECTURE/PHASE_4_EPHEMERIS_ACCESSIBILITY_MASTER_PLAN_v1_0.md` (v1.0; 4A CLOSED, 4B PENDING, 4C WAVE_1_COMPLETE, 4D PENDING).
+- **Worktree:** `/Users/Dev/Vibe-Coding/Apps/Panchang/`. **Branch:** `feature/phase-4c-panchang`.
+- **Phase 4C sub-phase status:** 4C.0 CLOSED | 4C.1 CLOSED (30/30 Drik parity; engine v1.0.0-S3; 230 sidecar pytest PASS) | 4C.2 GATED (phase_4b_prerequisite) | 4C.3 CLOSED (query_panchanga RetrievalTool live; engine-direct) | 4C.4 CLOSED (/panchang UI scaffold) | 4C.5 CLOSED (Personalise overlay; Tara Bala + Chandra Bala) | 4C.6 CLOSED (Muhurat Finder; 6 events; YAML weights; acharya CANARY PASS) | 4C.7 CLOSED (iCal export + HMAC-signed 90-day subscribable feed) | 4C.8 CLOSED (AskMadhavLink + context injection + planner bypass) | 4C.9 CLOSED (polish; Observatory panels; IS.8(b) red-team 5/5 PASS; CLAUDE.md v2.7; Wave 1 close).
+- **CAPABILITY_MANIFEST entry:** `PANCHANG_DAILY_v1_0` — status CURRENT_ENGINE_DIRECT (flipped at 4C-9; will become CURRENT when 4C-2 cache layer lands post-Phase 4B). `runtime_path: engine_direct`. 432 total tests PASS (230 engine pytest + 151 TS + 12 E2E + 39 ical/hmac).
+- **Layer:** PANCHANG_DAILY is L1.5 — deterministic facts only; no interpretation at this layer.
+- **IS.8(b) red-team:** PASS 5/5 (RT.4C.1 WARN-acceptable; RT.4C.2-5 PASS). Finding docs at `00_ARCHITECTURE/RED_TEAM/RT_4C_*_FINDING.md`.
+- **Deferred:** 4C-2 SQL cache layer (gated on Phase 4B); v2 polish items in `00_ARCHITECTURE/PHASE_4C_FOLLOWUPS_v1_0.md`; real acharya panel review (M10-territory).
+- **Next action (native):** Split-PR per `HANDOFF_WAVE_1.md` — cherry-pick Conductor commits as PR 1; Phase 4C close as PR 2.
+- **Mirror pair:** MP.1 + MP.2 (this block ↔ Claude-side `CLAUDE.md §E` and `CAPABILITY_MANIFEST.json`). Propagated same-session at 4C-9 close (this update).
+
 ## Concurrent Workstream — Phase O Observatory (CLOSED 2026-05-03 — COMPLETE)
 
 **OPENED 2026-05-02 at PHASE_O_S0_1_OBSERVATORY_GOVERNANCE_BOOTSTRAP. CLOSED 2026-05-03 at USTAD_S4_6_ANOMALY_O4_CLOSE — Phase O macro-phase COMPLETE.** Concurrent workstream alongside the M-phase main thread. Phase O — LLM Cost & Usage Observatory — provides super-admin-only observability over LLM spend across all five providers (Anthropic, OpenAI, Gemini, DeepSeek, NIM) and all pipeline stages (classify, compose, retrieve, synthesize, audit).

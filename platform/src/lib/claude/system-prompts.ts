@@ -68,6 +68,20 @@ Quality standard: Acharya-grade. Be precise about confidence levels.
 Available reports:
 ${reports.map(r => `- ${r.domain}: ${r.title} (v${r.version})`).join('\n')}${STYLE_SUFFIX[style]}`
 
+  // 4C-8 (Item 3): Panchang context-block awareness
+  systemPrompt += `
+
+---
+PANCHANG CONTEXT (when present):
+If the user's message contains a <panchang_context> block, treat that as
+authoritative L1.5 Panchang state for the date/location specified within.
+Cite from this context using [PANCHANG:<field>] markers (e.g. [PANCHANG:tithi],
+[PANCHANG:nakshatra]). You do NOT need to call query_panchanga for this
+exchange unless the user asks about a different date or location than the one
+in the context block. The <user_question> tag contains the user's visible
+question; the <panchang_context> block is a hidden L1.5 data payload.
+---`
+
   if (blindMode) {
     systemPrompt += `
 

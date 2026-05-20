@@ -5,13 +5,93 @@ import { ConsumeChat } from '@/components/consume/ConsumeChat'
 import { listConversations } from '@/lib/conversations'
 import { configService } from '@/lib/config/index'
 import type { AudienceTier } from '@/lib/prompts/types'
+import type { UIMessage } from 'ai'
+
+/**
+ * Build an initialMessages array from ?prompt + ?context URL params.
+ *
+ * When the /panchang page's AskMadhavLink navigates here, it passes:
+ *   ?prompt=<url-encoded visible question>
+ *   ?context=<url-encoded JSON panchang context>
+ *
+ * We inject those as a single UIMessage with role=user whose content is:
+ *
+ *   <panchang_context>
+ *   <!-- AUTO-INJECTED FROM /panchang ON YYYY-MM-DD -->
+ *   { ...full panchang JSON... }
+ *   </panchang_context>
+ *
+ *   <user_question>
+ *   {the visible prompt}
+ *   </user_question>
+ *
+ * The synthesis prompt recognises <panchang_context> blocks and cites them
+ * without re-calling query_panchanga for the same date/location.
+ *
+ * Phase: 4C-8 (Item 2)
+ */
+function buildPanchangInitialMessages(
+  prompt: string | undefined,
+  contextJson: string | undefined,
+): UIMessage[] | undefined {
+  if (!prompt) return undefined
+
+  let content: string
+
+  if (contextJson) {
+    let parsedDate = ''
+    try {
+      const parsed = JSON.parse(contextJson) as Record<string, unknown>
+      parsedDate = parsed['date'] as string ?? ''
+    } catch {
+      // malformed context — skip the wrapper, just use the prompt
+      return [
+        {
+          id: crypto.randomUUID(),
+          role: 'user',
+          content: prompt,
+          parts: [{ type: 'text', text: prompt }],
+        } as UIMessage,
+      ]
+    }
+
+    const dateLine = parsedDate
+      ? `<!-- AUTO-INJECTED FROM /panchang ON ${parsedDate} -->`
+      : '<!-- AUTO-INJECTED FROM /panchang -->'
+
+    content = [
+      `<panchang_context>`,
+      dateLine,
+      contextJson,
+      `</panchang_context>`,
+      ``,
+      `<user_question>`,
+      prompt,
+      `</user_question>`,
+    ].join('\n')
+  } else {
+    content = prompt
+  }
+
+  return [
+    {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content,
+      parts: [{ type: 'text', text: content }],
+    } as UIMessage,
+  ]
+}
 
 export default async function ConsumePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { id } = await params
+  const sp = await searchParams
 
   const user = await getServerUser()
   if (!user) redirect('/login')
@@ -44,6 +124,11 @@ export default async function ConsumePage({
   const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
   const audienceTier: AudienceTier = profile?.role === 'super_admin' ? 'super_admin' : 'client'
 
+  // 4C-8: Read ?prompt + ?context for AskMadhavLink deep links from /panchang
+  const promptParam = typeof sp['prompt'] === 'string' ? sp['prompt'] : undefined
+  const contextParam = typeof sp['context'] === 'string' ? sp['context'] : undefined
+  const initialMessages = buildPanchangInitialMessages(promptParam, contextParam)
+
   return (
     <ConsumeChat
       chartId={id}
@@ -62,6 +147,7 @@ export default async function ConsumePage({
       consumeUiV2Enabled={consumeUiV2Enabled}
       costVisibilityEnabled={costVisibilityEnabled}
       audienceTier={audienceTier}
+      initialMessages={initialMessages}
     />
   )
 }

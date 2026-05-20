@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-05-19",
+  "created_by": "4C-3 session",
+  "purpose": "Validate planner routes Panchang queries to query_panchanga and non-Panchang queries to query_ephemeris. 10 curated queries covering auspicious timing, panchang elements, planetary positions, retrogrades, and mixed queries. Gate: 10/10 PASS for 4C.3 close.",
+  "queries": [
+    {
+      "id": "PP.01",
+      "query": "What's the tithi today?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Tithi is an anga — core Panchang element; R-TC Panchang path."
+    },
+    {
+      "id": "PP.02",
+      "query": "Is today auspicious for starting a business?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Auspiciousness for an activity is a muhurat / special_yogas query — R-TC Panchang path."
+    },
+    {
+      "id": "PP.03",
+      "query": "What nakshatra is the moon in right now?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Moon's nakshatra at sunrise is in the panchang planets_at_sunrise section — R-TC Panchang path."
+    },
+    {
+      "id": "PP.04",
+      "query": "When does Rahu Kalam end today in Bhubaneswar?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Rahu Kalam is in panchang inauspicious timings — R-TC Panchang path."
+    },
+    {
+      "id": "PP.05",
+      "query": "Is it a Guru Pushya yoga day this Thursday?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Guru Pushya is a special yoga — R-TC Panchang path."
+    },
+    {
+      "id": "PP.06",
+      "query": "Where is Saturn right now in my chart?",
+      "expected_tool": "query_ephemeris",
+      "rationale": "Current Saturn position (transit) — R-TC ephemeris path; raw planetary position."
+    },
+    {
+      "id": "PP.07",
+      "query": "When does Jupiter go retrograde next?",
+      "expected_tool": "query_ephemeris",
+      "rationale": "Retrograde station timing — R-TC ephemeris path; not a Panchang element."
+    },
+    {
+      "id": "PP.08",
+      "query": "What's the sidereal longitude of the Sun at noon UTC on 2026-06-21?",
+      "expected_tool": "query_ephemeris",
+      "rationale": "Sidereal longitude at a specific non-sunrise moment — R-TC ephemeris path."
+    },
+    {
+      "id": "PP.09",
+      "query": "Is Mars combust today and what's the panchang look like?",
+      "expected_tool_calls": ["query_ephemeris", "query_panchanga"],
+      "rationale": "Mixed query: combustion = ephemeris; panchang overview = query_panchanga. R-TC co-selection rule — both tools at priority 1."
+    },
+    {
+      "id": "PP.10",
+      "query": "When's a good Tuesday for buying a vehicle next month?",
+      "expected_tool": "query_panchanga",
+      "rationale": "Good day for activity = muhurat query, Tuesday = vara, vehicle purchase = event auspiciousness — R-TC Panchang path."
+    }
+  ]
+}

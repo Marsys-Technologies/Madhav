@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "halt_entry_schema.json",
+  "title": "ConductorHaltEntry",
+  "description": "Schema for a single entry appended to CONDUCTOR_HALT_LOG.md. Informational — used for documentation and future machine parsing.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "failure_class",
+    "timestamp",
+    "last_passed",
+    "queue_position",
+    "resolution_status",
+    "failure_context"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "session_id of the queue entry that triggered this halt."
+    },
+    "failure_class": {
+      "type": "string",
+      "description": "Category of the halt.",
+      "enum": [
+        "gate_failed",
+        "sub_agent_halt",
+        "human_approval_required",
+        "requires_brief_authoring",
+        "queue_blocked",
+        "orchestrator_handoff"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the halt was emitted.",
+      "format": "date-time"
+    },
+    "last_passed": {
+      "type": "string",
+      "description": "session_id of the most recently passed entry before this halt, or 'none'."
+    },
+    "queue_position": {
+      "type": "string",
+      "description": "Human-readable position of the halted entry, e.g. '3 of 11'."
+    },
+    "resolution_status": {
+      "type": "string",
+      "description": "Whether this halt has been resolved.",
+      "enum": [
+        "open",
+        "resumed",
+        "skipped",
+        "abandoned"
+      ]
+    },
+    "failure_context": {
+      "type": "string",
+      "description": "Gate stderr (up to 1000 chars) or sub-agent human_decision_needed text explaining why the halt occurred."
+    },
+    "gate_output": {
+      "type": "string",
+      "description": "Gate stdout (up to 500 chars), or '(gate not run)' if the gate was not reached."
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Added when the halt is resolved: what action was taken and by whom."
+    }
+  }
+}
