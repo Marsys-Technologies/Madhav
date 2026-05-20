@@ -80,7 +80,8 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "npx jest --testPathPattern='Skeleton|skeleton|SidebarSkeleton|HeaderSkeleton' --passWithNoTests"
     commit_template: "feat(chat-v2): skeleton loaders for sidebar and header loading states"
-    status: pending
+    status: completed
+    completed_at: "2026-05-20T08:45:00Z"
 
   - id: X-S6
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/X-S6-auto-scroll-discipline.md

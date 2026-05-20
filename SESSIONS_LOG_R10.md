@@ -73,3 +73,19 @@ Created `StillWorkingIndicator.tsx` component. Shows animated dots + elapsed sec
 **Amendments:** A2 (parent-context test with StreamingShell + fake timers, click-path documented) | A3 (FLAGLESS)
 
 ---
+
+## X-S5 — Skeleton Loaders
+
+**Status:** COMPLETED  
+**Commit:** d37a84a  
+**Completed:** 2026-05-20T08:45:00Z
+
+Created `SidebarSkeleton.tsx` (6 animate-pulse rows, aria-hidden) and `HeaderSkeleton.tsx` (two skeleton rects matching title/meta dimensions, aria-hidden). Wired `SidebarSkeleton` in `ConversationSidebarV2` replacing the "Loading…" paragraph when `loading && conversations.length === 0`. Added `onLoadingChange?: (loading: boolean) => void` prop to `ConversationSidebarV2Props` + a `useEffect` to bubble loading state changes to parent. In `ConsumeChatV2`: added `sidebarLoading` state, passed `onLoadingChange={setSidebarLoading}` to sidebar, and conditionally renders `<HeaderSkeleton />` vs the real title div based on `sidebarLoading`. 9 new tests in `skeleton_loaders.test.tsx` — all pass. Typecheck: PASS.
+
+**Decision:** HeaderSkeleton is wired to sidebar loading state (bubbled via `onLoadingChange`), not a separate data fetch, because `chartName` is always available as a prop but the conversation list requires a fetch. The skeleton thus covers the initial network round-trip that users experience on first load.
+
+**Click-path:** Load Chat V2 on slow/throttled network → sidebar begins fetch → SidebarSkeleton (6 pulse rows) appears in conversation list, HeaderSkeleton (shimmer rects) appears where title/meta normally render → fetch completes → real content loads in.
+
+**Amendments:** A2 (SidebarShell + HeaderShell parent-context wrappers in tests, click-path documented) | A3 (FLAGLESS)
+
+---
