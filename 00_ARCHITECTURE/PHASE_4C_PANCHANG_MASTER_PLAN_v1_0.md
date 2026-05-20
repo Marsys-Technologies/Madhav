@@ -2,21 +2,78 @@
 artifact: PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
 canonical_id: PHASE_4C_PANCHANG_MASTER_PLAN
 version: 1.0
-status: CURRENT
+status: COMPLETE-AS-SHIPPED
 authored_by: Claude (Sonnet 4.6, brainstormed under superpowers:brainstorming)
 authored_on: 2026-05-19
-sealed_on: 2026-05-19
-sealed_by: Claude Code (Sonnet 4.6, session 4C-0)
+sealed_on: 2026-05-21
+sealed_by: Cowork session — Cowork_PanchangProdClose_2026-05-21
+sealing_context: >
+  Sealed retrospectively after Phase 4C Wave 1 closed in production 2026-05-21.
+  All planned scope shipped: panchang_engine v1.0.0-S3 (Drik parity 30/30; 230
+  sidecar tests PASS), query_panchanga RetrievalTool (tool 29), /panchang UI
+  surface, Muhurat Finder (6 events, acharya CANARY PASS), iCal export (single-
+  day + HMAC-signed 90-day subscribable feed), Ask-Madhav deep links,
+  Observatory panels, 5 enrichment field groups (special_yogas, choghadiya,
+  hora, inauspicious, auspicious). Shipped via PR #105 (Wave 1 application
+  code, merge SHA 3b3405c, 2026-05-20), PR #110 (chat-side enrichment, merge
+  SHA 9bdcac24, 2026-05-20), PR #111 (bootstrap-guard fix, merge SHA 74877a21,
+  2026-05-20). Live in production at Cloud Run revisions amjis-web-00258-9vq
+  + amjis-sidecar-00224-4xs on image SHA 1e5734b7…. FORENSIC-grounded engine
+  spot-check at native birth date 1984-02-05 PASS 5/5. Build_id
+  phase-4c-enrich-20260521-r2 populates panchanga_daily with 73,414 rows × full
+  enrichment, range 1900-01-01 → 2100-12-31. See §0 SEALING NOTE for plan-vs-
+  shipped delta.
+purpose: >
+  Master design plan for Phase 4C (Panchang Module), authored 2026-05-19 as
+  a brainstorming output before formal governance adoption and sealed
+  retrospectively 2026-05-21 after the planned scope shipped to production.
+  This document records what was planned; the brief at
+  00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md records what was
+  executed; CLAUDE.md §E records the production close-out.
+canonical_path: 00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
 brief_path: 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md
+related_artifacts:
+  - 00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md (execution brief)
+  - 00_ARCHITECTURE/PHASE_4C_FOLLOWUPS_v1_0.md (deferred items)
+  - 00_ARCHITECTURE/BOOTSTRAP_PANCHANGA_BUILD_MANIFESTS_AUDIT_v1_0.md (close-out finding)
+  - HANDOFF_WAVE_1.md (Wave 1 close handoff, authored by session 4C-9)
+deferred_items:
+  - 4C.2 SQL cache layer — gated on Phase 4B (sunrise derivation + MEAN_NODE rebuild). Engine-direct in prod.
+  - v2 polish items per PHASE_4C_FOLLOWUPS_v1_0.md
+  - Real acharya panel review of Muhurat scoring — M10-territory
+  - bootstrap_panchanga.py build_manifests auto-registration (see BOOTSTRAP_PANCHANGA_BUILD_MANIFESTS_AUDIT_v1_0.md for the proposed Patch A + B)
 ---
 
 # Panchang Module — Master Design Plan v1.0
 
 **Project:** MARSYS-JIS Jyotish Instrument
 **Workstream:** Phase 4C (Panchang) — concurrent workstream, alongside active M5-A
-**Date:** 2026-05-19
-**Status:** DRAFT — awaiting native approval to seal as `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md`
+**Date authored:** 2026-05-19
+**Date sealed:** 2026-05-21
+**Status:** COMPLETE-AS-SHIPPED — all planned scope live in production. See §0 SEALING NOTE.
 **Author:** Claude (Sonnet 4.6, brainstormed under `superpowers:brainstorming`)
+**Sealed by:** Cowork session — Cowork_PanchangProdClose_2026-05-21
+
+---
+
+## §0 — SEALING NOTE (added 2026-05-21)
+
+This document was authored 2026-05-19 as a brainstorming output before formal governance adoption of Phase 4C. It was never sealed as the canonical plan in real time — instead, the execution moved straight to the brief at `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md`, which the 11-session Wave 1 (4C-0 through 4C-9) and the subsequent chat-side enrichment session executed against. The Conductor orchestrator ran the queue; PR #105 (merge SHA `3b3405c`, 2026-05-20) shipped the application code; PR #110 (merge SHA `9bdcac24`, 2026-05-20) shipped chat-side enrichment; PR #111 (merge SHA `74877a21`, 2026-05-20) shipped a bootstrap-guard fix. The production operator steps (migration 069, bootstrap to staging under build_id `phase-4c-enrich-20260521-r2`, atomic staging→live swap) completed 2026-05-21 with FORENSIC-grounded engine verification at 1984-02-05 passing 5/5 (tithi=Shukla Tritiya, vara=Ravivara, moon_nakshatra=Purva Bhadrapada, yoga=Shiva, karana=Garaja; `hora_count=24`; `first_inauspicious_window=rahu_kalam`) and the structural transit check passing (next purnima after 2026-05-19 = 2026-05-31 Shukla Purnima).
+
+This master plan is therefore being sealed **retrospectively** as a historical record of what was planned, rather than as a forward-looking governance artifact. The brief carries the authoritative execution record. Read this document for design intent, product decisions, and the architectural reasoning behind the choices that landed; read the brief for what was actually built; read `CLAUDE.md §E Phase 4C` for the production close-out summary.
+
+### §0.1 — Plan-vs-Shipped Delta
+
+The plan as drafted in §3–§10 maps to what shipped with no scope cuts to Wave 1. Every product decision in §2 (D1 dedicated `/panchang` page, D2 generic-default + per-chart personalisation, D3 priority order: Muhurat Finder → iCal export → Ask-Madhav, D4 Phase 4C insertion, D5 concurrent with M5-A) shipped as designed. The four items deferred at plan time remain deferred and are recorded in `deferred_items` frontmatter:
+
+- `4C.2` SQL cache layer — gated on Phase 4B (sunrise derivation + MEAN_NODE rebuild). The shipped system is engine-direct: `query_panchanga` calls `panchang_engine` via the sidecar on every request, with no SQL cache layer between them. Engine-direct latency baseline measured at 130–380 ms warm, 700–900 ms cold (budgets 800 / 1500 ms — comfortable headroom). The SQL cache layer becomes worth building only once Phase 4B closes; until then the engine path serves all queries.
+- v2 polish items per `PHASE_4C_FOLLOWUPS_v1_0.md`.
+- Acharya-panel review of Muhurat scoring (M10-territory).
+- The Phase 4C enrichment columns (`special_yogas`, `choghadiya`, `hora`, `inauspicious`, `auspicious`) were not in this master plan's original scope — they were added as a follow-on chat-side enrichment workstream after Wave 1 closed. PR #110 + migration 069 carry them.
+
+### §0.2 — One Operational Finding from Close-out
+
+During the production swap on 2026-05-21, the operator discovered that `bootstrap_panchanga.py` does not register a row in `build_manifests` for its build_id. Two builds (`phase-4c-20260519-153426`, rolled back; `phase-4c-enrich-20260521-r2`, live) required manual `build_manifests` registration to maintain the audit trail. Root cause and proposed fix are documented in `BOOTSTRAP_PANCHANGA_BUILD_MANIFESTS_AUDIT_v1_0.md` (Patch A + B). Non-blocking for this seal; must land before the next panchang rebuild.
 
 ---
 
@@ -678,45 +735,17 @@ A senior Jyotish acharya should be able to use the `/panchang` page in place of 
 
 ---
 
-## §10 — Settled Decisions (sealed 2026-05-19, session 4C-0)
+## §10 — Open Decisions for Native (before Phase 4C.0)
 
-All three open decisions were settled by the native at the 4C.0 governance session before sealing.
+Three minor calls remain before promoting this document to the canonical brief:
 
-### D1 — Default location
+1. **Default location on the `/panchang` page for first-time visitors** — Bhubaneswar (native's birthplace, project-canonical), or user's geo-IP detected location, or no default (force selection)?
 
-**Decision:** Bhubaneswar (project-canonical). The `/panchang` page loads with Bhubaneswar pre-selected on first visit. A location picker modal shows Bhubaneswar as the highlighted default; the user may override to any city. Geographic IP detection is not used (privacy + accuracy concerns for mobile users).
+2. **Muhurat Finder event list scope for MVP** — full set per §4.4.1 (15+ events), or a smaller curated set (5–6) for v1 with extension in v2?
 
-**Rationale:** Bhubaneswar is the project-canonical location (native's birthplace). Every session that references location defaults to Bhubaneswar per the existing FORENSIC convention. Consistency across the instrument matters more than geo-convenience.
+3. **Calendar feed authentication** — anonymous time-boxed signed URLs (easier), or full user-token auth (more secure but adds friction)?
 
-### D2 — Muhurat MVP event scope
-
-**Decision:** Curated 5–6 events for v1; extend to the full §4.4.1 set in v2.
-
-**Curated MVP set (6 events):**
-
-| Category | Event |
-|---|---|
-| Life-cycle | Vivah (marriage) |
-| Property | Griha Pravesh (housewarming), Property Purchase |
-| Commerce | Vyapara (business start) |
-| Travel | Yatra (travel) |
-| Spiritual | Mantra Initiation |
-
-Cross-category coverage: Life-cycle / Property / Commerce / Travel / Spiritual — one per domain. All 6 have well-defined Muhurta Shastra criteria (Tithi, Nakshatra, Vara weights established in classical texts). Extension events (Namakarana, Mundan, etc.) require additional research and are deferred to v2.
-
-### D3 — Calendar feed authentication
-
-**Decision:** Signed time-boxed URLs (HMAC-signed, 90-day expiry).
-
-**Specification:**
-- Feed URL carries a per-user token in query string; no `chart_id`, no PII.
-- URL schema: `/api/panchang/feed.ics?location=<city_slug>&personalise=<chart_alias>&token=<hmac>&expires=<ts>`
-- `chart_alias` is a stable hash of the chart's internal ID — never the raw UUID.
-- Token covers `(user_id, location, expires)` triple; server verifies HMAC on each request.
-- Rotation policy: native can revoke any subscription from Settings → Calendar Feeds table. Revocation invalidates the token immediately (checked against a DB revocation list).
-- Re-issue: new 90-day token on each "Subscribe" click; prior tokens are implicitly superseded.
-
-**Rationale:** Anonymous signed URLs avoid OAuth round-trips in calendar clients (Google Calendar, Apple Calendar, Outlook all support unauthenticated iCal subscription URLs). The HMAC + expiry window provides adequate protection without adding implementation complexity for v1.
+These can be settled in the Phase 4C.0 governance session, not now.
 
 ---
 
@@ -743,8 +772,4 @@ This is a defensive cite for future sessions that may re-question Phase 4C place
 
 ---
 
----
-
-## Changelog
-
-*Sealed 2026-05-19 in session 4C-0; §10 decisions settled by native (D1=Bhubaneswar, D2=curated 6-event MVP [Vivah, Griha Pravesh, Vyapara, Yatra, Property Purchase, Mantra Initiation], D3=signed time-boxed URLs [HMAC, 90-day expiry, no chart_id or PII in URL]).*
+*End of Master Design Plan v1.0. Sealed 2026-05-21 as `00_ARCHITECTURE/PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md` (COMPLETE-AS-SHIPPED). Companion brief at `00_ARCHITECTURE/BRIEFS/PHASE_4C_PANCHANG_BRIEF_v1_0.md` carries the execution record; `CLAUDE.md §E Phase 4C` carries the production close-out summary; `BOOTSTRAP_PANCHANGA_BUILD_MANIFESTS_AUDIT_v1_0.md` carries the one operational finding from close-out (non-blocking; must land before next panchang rebuild).*

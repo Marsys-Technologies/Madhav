@@ -1861,15 +1861,15 @@
     },
     {
       "canonical_id": "CLAUDECODE_BRIEF_M9",
-      "path": "CLAUDECODE_BRIEF.md",
+      "path": "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_M9_v1_0.md",
       "version": "1.0",
-      "status": "ACTIVE",
+      "status": "ARCHIVED",
       "layer": "governance",
       "expose_to_chat": false,
       "representations": [
-        "file"
+        "markdown"
       ],
-      "notes": "Active M9 brief; all 5 sessions (M9-A through M9-E); all NAP gates pre-authorized",
+      "notes": "M9 brief archived; all 5 sessions (M9-A through M9-E) complete; NAP gates pre-authorized. Path corrected 2026-05-21 — root CLAUDECODE_BRIEF.md is ephemeral (not committed).",
       "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14"
     },
     {
