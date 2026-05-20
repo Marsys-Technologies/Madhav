@@ -66,6 +66,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
             NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
 
       - name: Deploy web to Cloud Run
         id: deploy
