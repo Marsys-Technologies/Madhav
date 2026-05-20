@@ -269,7 +269,9 @@ sessions:
     deploy_yml_flag: NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
     acceptance_check: "grep 'NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING' .github/workflows/deploy.yml && git diff platform/src/lib/citations/preprocessCitations.ts | wc -l | grep '^0$' && npx jest --testPathPattern='stopAndEdit|stop.*edit|edit.*streaming' --passWithNoTests"
     commit_template: "feat(chat-v2): stop-and-edit while streaming [default false]"
-    status: pending
+    status: completed
+    completed_at: 2026-05-20
+    notes: "Implemented in R10 sessions. stop_and_edit.test.tsx: 8 tests pass. NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false in deploy.yml."
 
   - id: Y-S9
     brief: 00_ARCHITECTURE/chat_v2_briefs/round10/Y-S9-stream-failure-auto-retry.md
@@ -281,7 +283,9 @@ sessions:
     deploy_yml_required: false
     acceptance_check: "grep -rn 'NEXT_PUBLIC.*AUTO_RETRY' platform/src --include='*.ts*' | wc -l | grep '^0$' && grep -n 'is_retry' platform/src/lib/adapters/retry_wrapper.ts && npx jest --testPathPattern='retry_wrapper|retryWrapper|auto.?retry' --passWithNoTests"
     commit_template: "feat(streaming): single-retry on 5xx/timeout via retry_wrapper.ts [default false]"
-    status: pending
+    status: completed
+    completed_at: 2026-05-20
+    notes: "Implemented in R10 sessions. retry_wrapper.ts + retry_wrapper.test.ts: 7 tests pass. Server-side only — no NEXT_PUBLIC, no deploy.yml entry (by design)."
 
 # ─── POST-QUEUE: AMENDMENT 5 COVERAGE GATE ───────────────────────────────────
 # Run AFTER Y-S9 completes and BEFORE opening the PR to main.
