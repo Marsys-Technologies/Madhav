@@ -24,7 +24,7 @@ def fetch_asset(
 ) -> tuple[str, str]:
     """
     Download one asset from GCS to <dest_root>/<asset_path>.
-    asset_path is the relative path (e.g. '025_HOLISTIC_SYNTHESIS/MSR_v3_0.md').
+    asset_path is the relative path (e.g. '025_HOLISTIC_SYNTHESIS/MSR_v5_0.md').
     GCS object key mirrors the asset_path under the bucket root.
 
     Returns (local_abs_path, sha256_hex).

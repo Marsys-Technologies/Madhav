@@ -73,7 +73,7 @@ async function main(): Promise<void> {
 
   const output = {
     generated_at: new Date().toISOString(),
-    corpus_version: 'MSR_v3_0.md',
+    corpus_version: 'MSR_v5_0.md',
     conflict_count: conflicts.length,
     conflicts,
   };
