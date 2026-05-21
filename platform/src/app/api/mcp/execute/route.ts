@@ -48,6 +48,7 @@ import {
 } from '@/lib/mcp/epistemics'
 import { generateSuggestedFollowups } from '@/lib/mcp/suggested_followups'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
+import { logPrediction } from '@/lib/mcp/ppl_writer'
 import type { McpCitation } from '@/lib/mcp/types'
 import type { ToolBundle } from '@/lib/retrieve/index'
 
@@ -519,6 +520,66 @@ export async function POST(request: Request) {
     // Suggested follow-ups
     const suggestedFollowups = generateSuggestedFollowups(plan, domainsTouched)
 
+    // ── PPL auto-logging for predictive calls (G4 / MCP_BRIEF §4.1) ───────────
+    //
+    // Per PPL discipline rule #4: "held-out prospective data is sacrosanct;
+    // the model never sees outcome before prediction." Logging happens here,
+    // SERVER-SIDE, before the response is returned to the caller. This ensures
+    // governance compliance regardless of what the MCP client does with the result.
+    //
+    // Auto-logging criteria:
+    //   1. mode === "predictive" (explicit predictive mode from caller), OR
+    //   2. plan.forward_looking === true (planner classified as forward-looking)
+    //
+    // Each forward-looking domain covered by the synthesis gets one PPL entry.
+    // Confidence derives from epistemics. horizon_days from plan if available.
+    // falsifier is set to "[AUTO_LOGGED — native to specify falsifier]" as a
+    // placeholder: the caller should call log_prediction() directly with a
+    // proper falsifier for governance quality.
+    //
+    // Auto-logged entries are included in predictions_logged[] so the caller
+    // can surface them and prompt the native to supply proper falsifiers.
+
+    const predictionsLogged: string[] = []
+
+    const isExplicitPredictive = modeParam === 'predictive'
+    const isPlanForwardLooking = plan.forward_looking === true
+
+    if ((isExplicitPredictive || isPlanForwardLooking) && !isSurgical) {
+      // Determine which domains to log (use plan.domains; fall back to one generic entry).
+      const logDomains = domainsTouched.length > 0 ? domainsTouched : ['general']
+
+      // Derive horizon from plan.time_window.end or from horizon_days.
+      const horizonStr =
+        plan.time_window?.end ??
+        (epistemics.horizon_days
+          ? new Date(Date.now() + epistemics.horizon_days * 86_400_000)
+              .toISOString()
+              .slice(0, 10)
+          : null)
+
+      for (const domain of logDomains) {
+        try {
+          const predictionId = await logPrediction({
+            horizon: horizonStr ?? '[horizon_unspecified — native to fill]',
+            domain,
+            prediction_text: answerText.slice(0, 500),
+            confidence: epistemics.confidence_band ?? 'medium',
+            falsifier: '[AUTO_LOGGED — native to specify falsifier]',
+            source: {
+              key_id: keyId,
+              trace_id: queryId,
+              caller_context: `auto_logged; mode=${modeParam}; query_class=${plan.query_class}`,
+            },
+          })
+          predictionsLogged.push(predictionId)
+        } catch (pplErr) {
+          // Non-fatal: PPL write failure logged but does not block the response.
+          console.error('[mcp:execute] PPL auto-log failed for domain', domain, pplErr)
+        }
+      }
+    }
+
     emit({ event: 'done', query_id: queryId })
 
     return NextResponse.json(
@@ -529,7 +590,7 @@ export async function POST(request: Request) {
         result: { answer_markdown: answerText },
         citations,
         plan,
-        predictions_logged: [],  // PPL wired in MCP-4-S1
+        predictions_logged: predictionsLogged,
         synthesis_audit: synthesisAudit,
         suggested_followups: suggestedFollowups,
         warnings,
