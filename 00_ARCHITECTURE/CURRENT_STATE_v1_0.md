@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.30
+version: 5.31
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,11 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.31 (2026-05-21, MSR-HYGIENE-S1):
+    **HYGIENE — MSR version-state repair. No macro-phase change. Closes orphan supersession_banner_mismatch for MSR_v3_0.md and MSR_v4_0.md.**
+    Key outcomes: (1) MSR_v3_0.md (3.1, 514 signals): status flipped CURRENT → SUPERSEDED; superseded_by: MSR_v4_0.md; banner added; relocated via git mv to 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/. (2) MSR_v4_0.md (4.0, 543 signals): status flipped CURRENT → SUPERSEDED; superseded_by: MSR_v5_0.md; banner added; relocated via git mv to 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/. (3) CAPABILITY_MANIFEST.json MSR entry: fingerprint refreshed m8f-s1-msr-v4-543signals → m9a-s1-msr-v5-573signals; predecessor path updated to archived location; updated_by audit string appended. (4) CLAUDE.md §D snapshot row: MSR_v3_0.md / 3.1 / 514 → MSR_v5_0.md / 5.0 / 573. (5) Mirror: .geminirules + .gemini/project_state.md updated to adapted parity. (6) drift_detector + schema_validator pre-existing crash residuals confirmed pre-dates this session.
+    files_touched: ["99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md", "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "CLAUDE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".geminirules", ".gemini/project_state.md"]
+    open_followups: (a) DIS.013 MSR.377 signal_name patch targets MSR_v5_0.md — was previously cross-referenced against v3/v4 paths. (b) CANONICAL_ARTIFACTS_v1_0.md §1 MSR row cosmetic residual — known; not a live governance surface.
   - v5.30 (2026-05-21, GH-DRIFT-DETECTOR-FIX):
     **GOVERNANCE HYGIENE — drift_detector.py directory-entry crash fixed. Exit 4 (script error) → Exit 1 (findings-only). No macro-phase change.**
     Key outcomes: (1) AC.1 PASS — IsADirectoryError crash diagnosed: CAPABILITY_MANIFEST.json entry `08_CLASSICAL_CROSS_REFERENCE` has `path: "08_CLASSICAL_CROSS_REFERENCE/"` (representations: folder); drift_detector §H.3.2 check called compute_sha256 on a directory without guarding. (2) AC.2 PASS — Fix shape (b) applied: added `path_abs.is_dir()` guard in `check_ca_filesystem_fingerprints` before `compute_sha256` call; directory entries now emit LOW `directory_entry_skipped` finding and continue. (3) AC.3 PASS — drift_detector exits 1 post-fix (342 findings; 1 CRITICAL pre-existing phantom_reference for CLAUDECODE_BRIEF_M9→CLAUDECODE_BRIEF.md absent in worktree; 86 HIGH; 252 MEDIUM; 3 LOW directory_entry_skipped). Exit 4 eliminated. (4) AC.4 PASS — schema_validator exits 4 (same as main baseline — pre-existing YAML errors in SESSION_LOG; not a regression); mirror_enforcer exits 0 (unchanged). (5) AC.5 PASS — ONGOING_HYGIENE_POLICIES §F appended with directory-hardening documentation. (6) AC.6 PASS — CURRENT_STATE v5.30; SESSION_LOG GH-DRIFT-DETECTOR-FIX entry; .gemini/project_state.md adapted-parity update. (7) AC.7 PASS — Triple validator run: drift_detector exit 1, schema_validator exit 4 (pre-existing baseline), mirror_enforcer exit 0. (8) AC.8 PASS — Branch governance-hygiene/drift-detector-fix; worktree /Users/Dev/Vibe-Coding/Apps/MadhavGH1; PR opened against main. (9) AC.9 PASS — Brief status flipped ACTIVE→COMPLETE. (10) AC.10 PASS — Final summary emitted.

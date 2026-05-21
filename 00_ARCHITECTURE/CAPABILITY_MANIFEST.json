@@ -168,7 +168,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "m8f-s1-msr-v4-543signals",
+      "fingerprint": "m9a-s1-msr-v5-573signals",
       "native_id": "abhisek",
       "preferred_for": [
         "factual",
@@ -177,9 +177,9 @@
       ],
       "cost_weight": 0.9,
       "signal_count": 573,
-      "predecessor": "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
+      "predecessor": "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
       "updated_at": "2026-05-14",
-      "updated_by": "M9-A-S1"
+      "updated_by": "M9-A-S1, fingerprint-refresh MSR-HYGIENE-S1 2026-05-21"
     },
     {
       "canonical_id": "RED_TEAM_L2_5_v1_0",

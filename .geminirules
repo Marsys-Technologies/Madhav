@@ -137,7 +137,7 @@ Daily sessions. Closed-artifact-per-session discipline. Red-team passes at three
 - **L1 (Facts Layer)**: single ground-truth canonical data (e.g., `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md`, `01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md`). **DO NOT EDIT.** L1 is Claude-resident; Gemini consumes at L4.
 - **L2 (Analytical Layer)**: derived matrices (Houses, Planets, Signs, Dashas, Divisionals).
 - **L2.5 (Holistic Synthesis)**: canonical versioned paths per CANONICAL_ARTIFACTS §1 + MP.5 mirror:
-  - MSR → `025_HOLISTIC_SYNTHESIS/MSR_v3_0.md` (499 signals)
+  - MSR → `025_HOLISTIC_SYNTHESIS/MSR_v5_0.md` (573 signals) [v3_0 + v4_0 archived to 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/ — MSR-HYGIENE-S1 2026-05-21]
   - UCN → `025_HOLISTIC_SYNTHESIS/UCN_v4_0.md`
   - CDLM → `025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md`
   - CGM → `025_HOLISTIC_SYNTHESIS/CGM_v9_0.md` (234 nodes, 8-karaka; CGM_v2_0.md SUPERSEDED at B.3.5 close)

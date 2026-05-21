@@ -25846,3 +25846,102 @@ session_close:
     Operator runs migration 069 + bootstrap rebuild after deploy completes.
     feature/panchang-enrichment branch proposed for deletion (local + origin) — awaiting Abhisek OK.
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: MSR-HYGIENE-S1
+  session_type: governance_hygiene
+  opened_at: "2026-05-21"
+  branch: main
+  macro_phase: M5
+  active_sub_phase: concurrent_hygiene
+  cowork_thread_name: "MSR-HYGIENE-S1 — MSR version-state repair"
+  may_touch:
+    - "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+    - "025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+    - "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+    - "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "CLAUDE.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  must_not_touch:
+    - "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
+  objective: >
+    MSR_v3_0.md and MSR_v4_0.md both declare status:CURRENT despite MSR_v5_0.md being
+    the authoritative CURRENT per CAPABILITY_MANIFEST.json. Apply §A archival treatment
+    retroactively: banner + frontmatter flip (CURRENT→SUPERSEDED) + git mv to
+    99_ARCHIVE/025_HOLISTIC_SYNTHESIS/. Refresh CAPABILITY_MANIFEST fingerprint.
+    Update CLAUDE.md §D snapshot row. Mirror discipline: .geminirules + .gemini/project_state.md.
+
+session_body:
+  actions_taken:
+    - "State check: confirmed MSR_v3_0.md + MSR_v4_0.md in 025_HOLISTIC_SYNTHESIS/ with status:CURRENT"
+    - "MSR_v3_0.md: status CURRENT→SUPERSEDED, superseded_by: MSR_v4_0.md, superseded_on: 2026-05-21, banner added line 1"
+    - "MSR_v4_0.md: status CURRENT→SUPERSEDED, superseded_by: MSR_v5_0.md, superseded_on: 2026-05-21, banner added line 1"
+    - "git mv 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md → 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+    - "git mv 025_HOLISTIC_SYNTHESIS/MSR_v4_0.md → 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+    - "CAPABILITY_MANIFEST.json MSR entry: fingerprint m8f-s1-msr-v4-543signals → m9a-s1-msr-v5-573signals; predecessor path updated to archived location; updated_by audit appended"
+    - "CLAUDE.md §D row: MSR_v3_0.md / 3.1 / 514 signals → MSR_v5_0.md / 5.0 / 573 signals"
+    - "CURRENT_STATE_v1_0.md: v5.28→v5.29; changelog entry MSR-HYGIENE-S1 prepended"
+    - ".geminirules L2.5 MSR pointer: MSR_v3_0.md (499 signals) → MSR_v5_0.md (573 signals)"
+    - ".gemini/project_state.md: L2.5 MSR corpus state line updated; _Last updated header updated"
+  ac_results:
+    AC.1: "PASS — v3+v4 frontmatter status:SUPERSEDED + superseded_by + superseded_on:2026-05-21"
+    AC.2: "PASS — banner line 1 added to both files"
+    AC.3: "PASS — git mv used; history preserved"
+    AC.4: "PASS — zero files in 025_HOLISTIC_SYNTHESIS/ named MSR_v3* or MSR_v4*"
+    AC.5: "PASS — exactly one file has status:CURRENT + canonical_id:MSR → MSR_v5_0.md"
+    AC.6: "PASS — fingerprint refreshed to m9a-s1-msr-v5-573signals"
+    AC.7: "PASS — CLAUDE.md §D MSR row updated to v5.0 / 573 signals / MSR_v5_0.md"
+    AC.8: "PASS — CURRENT_STATE v5.28→v5.29; changelog entry with files_touched list"
+    AC.9: "PASS — this SESSION_LOG entry"
+    AC.10: "PASS — .geminirules + .gemini/project_state.md updated same session"
+    AC.11: "PRE_EXISTING_RESIDUAL — drift_detector crashes on IsADirectoryError for 08_CLASSICAL_CROSS_REFERENCE; confirmed pre-existing via git stash test; not introduced by this session"
+    AC.12: "PRE_EXISTING_RESIDUAL — schema_validator crashes on YAML timestamp ValueError in SESSION_LOG; confirmed pre-existing via git stash test; not introduced by this session"
+    AC.13: "PASS — single commit with prescribed message"
+
+session_close:
+  closed_at: "2026-05-21"
+  outcome: success
+  files_touched:
+    - "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+    - "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "CLAUDE.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+  known_residuals:
+    - id: "drift_detector_crash_08_CLASSICAL_CROSS_REFERENCE"
+      severity: PRE_EXISTING
+      description: "drift_detector.py IsADirectoryError on 08_CLASSICAL_CROSS_REFERENCE path; pre-dates this session"
+    - id: "schema_validator_crash_yaml_timestamp"
+      severity: PRE_EXISTING
+      description: "schema_validator.py ValueError on YAML timestamp in SESSION_LOG; pre-dates this session"
+  mirror_updates_propagated:
+    - pair: MP.1
+      from: "CLAUDE.md §D MSR row"
+      to: ".geminirules L2.5 MSR pointer"
+      type: adapted_parity
+    - pair: MP.2
+      from: "CURRENT_STATE_v1_0.md v5.29 changelog"
+      to: ".gemini/project_state.md _Last updated + L2.5 MSR corpus state"
+      type: adapted_parity
+  current_state_updated: true
+  session_log_appended: true
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  halts_encountered: []
+  close_criteria_met: true
+  handoff_notes: >
+    MSR_v3_0.md and MSR_v4_0.md now correctly SUPERSEDED and archived.
+    MSR_v5_0.md is the sole CURRENT. No edits to MSR_v5_0.md in this session.
+    DIS.013 MSR.377 signal_name patch (from M5 Coverage Conductor ICR-S5) targets
+    MSR_v5_0.md — the correct current canonical path.
+```
