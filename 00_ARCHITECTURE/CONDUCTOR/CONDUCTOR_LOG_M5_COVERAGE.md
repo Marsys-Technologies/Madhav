@@ -28,3 +28,4 @@
 | 2026-05-21T02:40:00Z | COV-S7 | 1 | success | 2b9ec783 | https://github.com/amonty84/Madhav/pull/125 | tsc:PASS vitest:4/4 synthetic_pr_coverage_gate_fails:PASS CI:all-green (continue-on-error for pre-existing gaps) | null |
 | 2026-05-21T02:55:00Z | ICR-S3 | 1 | success | b6598d8a | https://github.com/amonty84/Madhav/pull/126 | tsc:PASS vitest:13/13 intra_signal_munta_detected:PASS (DIS.013 MSR.377 conflict_class:A) CI:all-green | null |
 | 2026-05-21T03:08:00Z | PERF-S3 | 1 | success | dcf1859a | https://github.com/amonty84/Madhav/pull/128 | tsc:PASS vitest:8/8 retrieval_util_panel_smoke:PASS CI:all-green | null |
+| 2026-05-21T09:30:00Z | COV-S5 | 1 | success | a136e111 | https://github.com/amonty84/Madhav/pull/129 | tsc:PASS vitest:27/27 ucn_cdlm_rm_parametric_smoke:PASS CI:all-green | null |
