@@ -16,6 +16,8 @@ import { QueryLogTable } from './QueryLogTable'
 import { JudgeRunModal } from './JudgeRunModal'
 import { TracePanelLauncher } from './TracePanelLauncher'
 import { AssetCatalogSection } from './AssetCatalogSection'
+import { RetrievalUtilizationSection } from './RetrievalUtilizationSection'
+import { PlannerRoutingSection } from './PlannerRoutingSection'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -250,6 +252,18 @@ export function PerformanceClient() {
       </section>
 
       <AssetCatalogSection />
+
+      {/* PERF-S3: Retrieval Utilization — real data wiring is PERF-S4 */}
+      <RetrievalUtilizationSection
+        tools={[]}
+        callData={{}}
+      />
+
+      {/* PERF-S3: Planner Routing — real data wiring is PERF-S4 */}
+      <PlannerRoutingSection
+        routingData={{}}
+        coverageStats={{ totalAssets: 0, assetsWithTool: 0, toolsWithManifest: 0, plannerVisibleTools: 0 }}
+      />
 
       <section className="space-y-3">
         <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Query log</h2>
