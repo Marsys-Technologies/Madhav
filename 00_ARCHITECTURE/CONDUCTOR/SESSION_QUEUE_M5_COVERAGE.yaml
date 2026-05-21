@@ -23,8 +23,11 @@ sessions:
     audit_section: "§G.8"
     depends_on: []
     gates: ["tsc", "vitest_changed", "lint", "smoke_planner_register_tools"]
-    status: in_progress
+    status: completed
     attempt_count: 1
+    completed_at: "2026-05-21T00:40:00Z"
+    merge_commit: 2b2eca104318c293c896766802047c6a6d5b5cf1
+    pr_url: https://github.com/amonty84/Madhav/pull/116
     halt_conditions: ["tsc errors", "vitest failures", "discovery register read returns wrong version"]
   - id: PERF-S1
     stream: perf
