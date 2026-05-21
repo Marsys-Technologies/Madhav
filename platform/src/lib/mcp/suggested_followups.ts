@@ -47,7 +47,7 @@ const CLASS_TEMPLATES: Partial<Record<string, string>> = {
   discovery:     'What are the top three contradictions or tensions in the chart today?',
   remedial:      'How do these prescriptions interact with the current planetary period?',
   classical_grounding: 'How does the multi-school consensus compare on this point?',
-  multi_school_triangulation: 'Which school's reading has the strongest historical validation in the life event log?',
+  multi_school_triangulation: 'Which school reading has the strongest historical validation in the life event log?',
 }
 
 // ── Domain follow-up templates ────────────────────────────────────────────────
