@@ -34,8 +34,8 @@ sessions:
     audit_section: "§H.1"
     depends_on: []
     gates: ["tsc", "vitest_changed", "lint", "smoke_performance_route"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["tsc errors", "vitest failures", "perf KPI smoke regression"]
   - id: ICR-S1
     stream: icr
