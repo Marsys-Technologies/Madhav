@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.40
+version: 5.41
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.41 (2026-05-21, WRAPUP-S4):
+    **CONCURRENT SESSION — WRAPUP-S4 close-out. Packet A COMPLETE (F.2 fix shipped 2ddaf4a8); Packet B COMPLETE (F.1 Opt D sidecar uplift 0a4bd3c3 + amjis-sidecar-00270-vj9); Packet C COMPLETE (F.1 Opt A cache read-path 1f9a8802, 18/18 tests); Packet D COMPLETE (PR #142 NEEDS_REVISION, 4 blockers). No macro-phase change.**
+    Key outcomes: (A) F.2 ConsumeChatV2 fix shipped — destructured `initialMessages: initialMessagesProp` in function signature + seeded `useState(initialMessagesProp)`; type-check clean; commit 2ddaf4a8 + cherry-pick to main; Cloud Run auto-deploy triggers from push. (B) F.1 Opt D shipped — gcloud sidecar already had timeout=300 + memory=1Gi; applied cpu=2 + min-instances=1 via `gcloud run services update amjis-sidecar` (revision amjis-sidecar-00270-vj9); deploy.yml flags parameter added commit 0a4bd3c3 for persistence across future CI deploys. (C) F.1 Opt A shipped — panchang_daily_reader.py (haversine fence, 10 km radius from 20.27°N 85.84°E), _CachedPanchang proxy classes exposing tithi/nakshatra/vara/special_yogas/inauspicious/sunrise/sunset from DB rows, find_muhurat_from_cache() (cache-path scoring, no swe calls), routers/muhurat.py cache-first path with engine-direct fallback; 18/18 tests PASS; commit 1f9a8802. Known limitation: planet bonus = 0 on cache path (panchanga_daily does not store per-planet combust states; ~5-10% of score, acceptable tradeoff). (D) PR #142 review brief produced at /tmp/pr142_review_brief.md — NEEDS_REVISION, 4 blockers: (1) ICR gate hardcodes MSR_v3_0.md (89% corpus coverage); (2) RESOLVED_DIR points to root-level non-existent path vs canonical 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/; (3) ROOT_FILE_POLICY violation (root-level RESOLVED/ created); (4) DIS.013 applied to superseded MSR_v3_0.md. Native must address blockers before merge.
+    files_touched: ["platform/src/components/consume/ConsumeChatV2.tsx", ".github/workflows/deploy.yml", "platform/python-sidecar/panchang_engine/panchang_daily_reader.py", "platform/python-sidecar/panchang_engine/muhurat.py", "platform/python-sidecar/routers/muhurat.py", "platform/python-sidecar/tests/test_muhurat_cache.py", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (concurrent wrapup session; no macro-phase change).
+    last_session_id: WRAPUP-S4. predecessor_session: WRAPUP-S3.
+    next_session_objective: "Resolve PR #142 blockers (4 items: MSR version, RESOLVED_DIR path, ROOT_FILE_POLICY, DIS.013 stale edit) then merge; open M6-A-S1 per PHASE_M6_PLAN_v1_0.md. Carry-forwards: SESSION_LOG L26406–26734 conflict markers (dedicated hygiene session); governance-hygiene/learning-layer-frontmatter D.1+D.2 pending."
+    file_updated_at: 2026-05-21T23:30:00+05:30. file_updated_by_session: WRAPUP-S4.
   - v5.40 (2026-05-21, WRAPUP-S3):
     **CONCURRENT SESSION — WRAPUP-S3 close-out. Packet A HALTED (F.2 root cause shifted — initialMessages prop silently dropped in ConsumeChatV2, crash source unclear); Packet B COMPLETE (F.1 brief committed c5149251); Packet C COMPLETE (M5 Coverage PR #142 opened, halted for native review); Packet D carry-forwards noted. No macro-phase change.**
     Key outcomes: (A) Packet A HALTED: F.2 investigation found the crash is NOT in context JSON parsing (already has try/catch at consume/page.tsx:43–56, added in 4C-8). Root cause shifted: ConsumeChatV2.tsx:1631 does not destructure initialMessages from props; local useState(undefined) shadows the prop (line 1633), silently dropping the deeplink context on every nav. The "Something went wrong" crash source is unclear in current code — may be pre-4C-8 or from DB chart_id lookup. Proposed fix: add initialMessages: initialMessagesProp to ConsumeChatV2 destructuring + seed useState from prop. HALTED per brief halt condition ("crash not where expected → halt before patching"); awaiting native direction. (B) Packet B COMPLETE: F.1 Muhurat Finder root cause confirmed — 90 sequential synchronous compute_panchang() calls + Cloud Run 60s default timeout; ~1,260 Swiss Ephemeris calls per 90-day scan; brief at 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md (commit c5149251 main). Recommendation: Option A (SQL cache read-path via panchanga_daily) + Option D (infra uplift --timeout=300 --cpu=2 --memory=1Gi --min-instances=1). Fix is follow-up session after native selects design option. (C) Packet C COMPLETE: fix/phase-4c-prod-findings pushed to remote, PR #142 opened (M5 Coverage Remediation — 21 sessions COV/PERF/ICR). Rebase skipped — add/add conflicts for every M5 campaign commit because all individual PRs (#115–#134) were already squash-merged to main. PR halted for native review. (D) Carry-forwards noted: governance-hygiene/learning-layer-frontmatter D.1+D.2 still pending native resolution; SESSION_LOG conflict markers L26406–26734 need dedicated governance hygiene session.
@@ -4063,7 +4071,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: WRAPUP-S3                    # WRAPUP-S3 2026-05-21: F.2 HALTED (initialMessages prop drop found), F.1 brief committed (c5149251), M5 Coverage PR #142 opened; predecessor CV2-FINAL-CLOSE
+  last_session_id: WRAPUP-S4                    # WRAPUP-S4 2026-05-21: F.2 fix 2ddaf4a8, F.1 Opt D 0a4bd3c3 (amjis-sidecar-00270-vj9), F.1 Opt A 1f9a8802 (18/18 tests), PR #142 NEEDS_REVISION (4 blockers); predecessor WRAPUP-S3
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
     # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
     # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
@@ -4901,13 +4909,20 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    WRAPUP-S3 carry-forwards: (1) F.2 fix — native approves initialMessages prop fix direction
-    (ConsumeChatV2:1631 doesn't destructure prop; useState(undefined) shadows it at line 1633);
-    fix session applies 2-line change + build verify + push. (2) F.1 fix — native selects design
-    option from 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md; Recommendation is
-    Option A (SQL cache read-path) + Option D (infra --timeout=300 --cpu=2 --memory=1Gi
-    --min-instances=1); fix session implements chosen option. (3) M5 Coverage PR #142 —
-    native reviews and merges fix/phase-4c-prod-findings (M5 Coverage 21 sessions). Then:
+    WRAPUP-S4 carry-forwards: (1) PR #142 NEEDS_REVISION — 4 blockers must be fixed before merge:
+    (a) ICR gate hardcodes MSR_v3_0.md (must update to MSR_v5_0.md / 573 signals);
+    (b) RESOLVED_DIR path wrong (root-level vs canonical 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/);
+    (c) ROOT_FILE_POLICY violation (root-level RESOLVED/ dir created by PR);
+    (d) DIS.013 edit applied to superseded MSR_v3_0.md (correct MSR_v5_0.md already has fix at 2a662ca7).
+    Fix PR #142 then merge. (2) SESSION_LOG L26406–26734 conflict markers: dedicated governance hygiene
+    session. (3) governance-hygiene/learning-layer-frontmatter D.1+D.2: pending native resolution. Then:
+    === Predecessor next_session_objective (CV2-FINAL-CLOSE → M6-A-S1) preserved for audit ===
+    M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
+    Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
+    Entry gate: M5 MACRO-PHASE CLOSED ✓ (this update 2026-05-14); M5_CLOSE_v1_0.md sealed ✓;
+    IS.8(b) PASS 5/5 ✓; NAP.M5.4 APPROVED ✓; red_team_counter = 0 ✓.
+    M6-A-S1 scope: Author PHASE_M6_PLAN_v1_0.md (analogue of PHASE_M5_PLAN); declare M6 sub-phases
+    and AC ledger; address M6 carry-forwards (CF.M5.1–9, priority CF.M5.6 first live LL.8 update);
     === Predecessor next_session_objective (CV2-FINAL-CLOSE → M6-A-S1) preserved for audit ===
     M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
     Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
@@ -5766,8 +5781,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-21T22:10:00+05:30
-  file_updated_by_session: WRAPUP-S3
+  file_updated_at: 2026-05-21T23:45:00+05:30
+  file_updated_by_session: WRAPUP-S4
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

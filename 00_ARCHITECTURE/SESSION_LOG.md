@@ -27068,3 +27068,118 @@ session_close:
     governance-hygiene/learning-layer-frontmatter D.1+D.2: pending native resolution.
     SESSION_LOG L26406–26734 conflict markers: pending dedicated governance hygiene session.
 ```
+
+---
+
+## WRAPUP-S4 — F.2 + F.1 (Opt A+D) shipped; PR #142 review brief
+
+```yaml
+session_open:
+  session_id: WRAPUP-S4
+  opened_at: 2026-05-21T22:30:00+05:30
+  cowork_thread_name: "WRAPUP-S4 — F.2 surgical fix + F.1 Option D + Option A + PR #142 review brief"
+  predecessor_session: WRAPUP-S3
+  active_macro_phase: M6 INCOMING
+  active_phase_plan: null (concurrent wrapup; no macro-phase change)
+  may_touch:
+    - platform/src/components/consume/ConsumeChatV2.tsx
+    - platform/python-sidecar/panchang_engine/muhurat.py
+    - platform/python-sidecar/panchang_engine/panchang_daily_reader.py
+    - platform/python-sidecar/routers/muhurat.py
+    - platform/python-sidecar/tests/test_muhurat_cache.py
+    - .github/workflows/deploy.yml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md (END-OF-FILE APPEND ONLY)
+    - .gemini/project_state.md
+  must_not_touch:
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 99_ARCHIVE/**
+    - CLAUDE.md
+    - SESSION_LOG.md L26406-26734
+    - F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md
+    - PR #142 (no auto-merge, no comments)
+  handshake_valid: true
+```
+
+### Body
+
+**Packet A — F.2 ConsumeChatV2 initialMessages prop fix (COMPLETE)**
+
+Root cause (confirmed from WRAPUP-S3): ConsumeChatV2.tsx:1631 destructures props but omits `initialMessages`; line 1633 then declares `const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)` which shadows the dropped prop. Deeplink panchang context is silently discarded on every mount.
+
+Fix (2-line surgical change):
+- Line 1631: Added `initialMessages: initialMessagesProp` to destructuring params
+- Line 1633: Changed `useState(undefined)` → `useState(initialMessagesProp)`
+
+The `setInitialMessages` call-sites at lines 1724/1741/1743/1746/1754 (conversation-restore overrides) are unaffected. Type-check clean (pre-existing plan_escalation.test.ts TS error unrelated). Commit `2ddaf4a8` cherry-picked from feature/phase-4c-prod-fixes → main. Cloud Run auto-deploy triggered on push.
+
+**Packet B — F.1 Option D sidecar infra uplift (COMPLETE)**
+
+Discovery: gcloud describe showed sidecar already had `timeout=300` + `memory=1Gi` (previously set). Only `cpu=1` → `cpu=2` and `min-instances=0` → `min-instances=1` were missing.
+
+Applied immediately: `gcloud run services update amjis-sidecar --region asia-south1 --cpu=2 --min-instances=1`. New revision: `amjis-sidecar-00270-vj9`.
+
+Persistent: The actual deploy step lives in `.github/workflows/deploy.yml` `deploy-sidecar` job (deploy-cloudrun@v2 action), not in `platform/cloudbuild-sidecar.yaml` (which only builds the Docker image). Added `flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=1` to the action's `with:` block. Commit `0a4bd3c3`.
+
+**Packet C — F.1 Option A cache read-path (COMPLETE)**
+
+New files:
+- `panchang_daily_reader.py`: haversine fence (10 km, 20.27°N 85.84°E), `fetch_panchanga_range()` (single SELECT, psycopg v3/v2 fallback, JSONB deserialization, all exceptions → None cache-miss)
+- `_CachedAnga`, `_CachedTiming`, `_CachedPlanet`, `_CachedPanchang` proxy classes in muhurat.py exposing tithi/nakshatra/vara/special_yogas/inauspicious/sunrise/sunset from DB rows
+- `find_muhurat_from_cache()`: cache-path scoring with existing pure-Python `score_muhurat()` — zero swe calls
+- `routers/muhurat.py`: cache-first path (Bhubaneswar fence + DB available), engine-direct fallback with logger.info recording which path taken
+- `tests/test_muhurat_cache.py`: 18 tests, all PASS
+
+Known limitation: planet bonus = 0 on cache path (panchanga_daily does not store per-planet combust states, ~5-10% of score weight). Acceptable tradeoff for 90-day scan: single SELECT ~1-5 ms vs 30-90 s engine-direct. Commit `1f9a8802`.
+
+**Packet D — PR #142 review brief (COMPLETE)**
+
+Sub-agent produced `/tmp/pr142_review_brief.md`. Verdict: **NEEDS_REVISION** — 4 blockers:
+1. ICR gate (`icr_gate.ts`, `run_icr_detector.ts`, `scheduled_icr_scan.ts`) hardcodes `MSR_v3_0.md` (514 signals, superseded) — must resolve to `MSR_v5_0.md` (573 signals); silently scans only 89% of live corpus
+2. `RESOLVED_DIR` in `icr_gate.ts` points to root-level `RESOLVED/` (does not exist) vs canonical `00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/`
+3. ROOT_FILE_POLICY violation: PR creates root-level `RESOLVED/DIS.013_MSR_377_resolved.yaml` with stale `status: proposed`
+4. DIS.013 correction applied to superseded `MSR_v3_0.md` — canonical `MSR_v5_0.md` already carries the correct Libra 7H value (commit `2a662ca7`); PR's edit is incorrect and targets a read-only artifact
+
+No DB migration, no flag flip required post-merge. Native must address 4 blockers first.
+
+```yaml
+session_close:
+  session_id: WRAPUP-S4
+  closed_at: 2026-05-21T23:45:00+05:30
+  acceptance_criteria_met: true
+  packets_status:
+    A: COMPLETE (commit 2ddaf4a8 — F.2 ConsumeChatV2 initialMessages prop fix)
+    B: COMPLETE (commit 0a4bd3c3 — sidecar cpu=2 + min-instances=1; revision amjis-sidecar-00270-vj9)
+    C: COMPLETE (commit 1f9a8802 — panchanga_daily cache read-path, 18/18 tests PASS)
+    D: COMPLETE (/tmp/pr142_review_brief.md — NEEDS_REVISION, 4 blockers)
+    E: COMPLETE (CURRENT_STATE v5.41, SESSION_LOG append, MP.2 mirror)
+  files_modified:
+    - platform/src/components/consume/ConsumeChatV2.tsx
+    - .github/workflows/deploy.yml
+    - platform/python-sidecar/panchang_engine/panchang_daily_reader.py (NEW)
+    - platform/python-sidecar/panchang_engine/muhurat.py
+    - platform/python-sidecar/routers/muhurat.py
+    - platform/python-sidecar/tests/test_muhurat_cache.py (NEW)
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  governance_scripts_run: false
+  mirror_updates_propagated:
+    mp2_current_state: true
+    mp2_session_log: true
+    mp2_project_state: true
+  carry_forwards:
+    - PR #142: 4 blockers to fix before merge (MSR version, RESOLVED_DIR path, ROOT_FILE_POLICY, DIS.013 stale edit)
+    - SESSION_LOG L26406-26734 conflict markers: dedicated governance hygiene session
+    - governance-hygiene/learning-layer-frontmatter D.1+D.2: pending native resolution
+  close_criteria_met: true
+  handoff_notes: >
+    F.2 fix is live in main — Cloud Run will auto-deploy next push. Smoke with
+    /clients/[id]/consume?prompt=x&context=%7B%22date%22%3A%222026-05-21%22%7D
+    to confirm deeplink context renders without crash.
+    F.1: Bhubaneswar 90-day Muhurat scan now hits panchanga_daily SQL cache
+    (single SELECT) instead of 90× Swiss Ephemeris calls. Planet bonus = 0
+    on cache path (acceptable). Sidecar revision amjis-sidecar-00270-vj9 live.
+    PR #142: address 4 blockers (see Packet D) then merge.
+    Next: M6-A-S1 once PR #142 is resolved.
+```
