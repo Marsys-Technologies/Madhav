@@ -1,6 +1,6 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.3
+version: 2.4
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 planner_blind_fix:
@@ -10,6 +10,13 @@ planner_blind_fix:
     causing them to be visible-but-rarely-selected. Also added four
     worked examples 4.19–4.22 mirroring the existing R27 lel_query
     pattern. Content extension only — no version bump beyond 2.0.1.
+cov_s6_amendment:
+  - 2026-05-21 v2.4 — R28/R29/R30 migrated to CAPABILITY_MANIFEST.json gating_constraints
+    (canonical_ids: RETRIEVAL_TOOL_query_signal_state, RETRIEVAL_TOOL_query_kp_ruling_planets,
+    RETRIEVAL_TOOL_query_varshaphala). Each R-rule retained as documentation; manifest
+    entries carry machine-readable preferred_when/avoid_when conditions. manifest_compressor.ts
+    extended (buildGatingHint) to emit gating hints into tool descriptions for planner LLM.
+    Test: platform/tests/manifest/compressor_gating.test.ts.
 gate_iii_amendment:
   - 2026-05-12 Gate III §3.8 PRIOR-TURN RELEVANCE — planner now emits
     prior_turn_relevance: { used, reason, mode }. Mode bias: "independent"
@@ -406,6 +413,9 @@ ASSET BUNDLE RULES (what canonical documents to load):
        purely historical interpretation of events that already occurred —
        use lel_query for that. Hypothesis: closes planner-blind gap on
        date-indexed signal-state queries.
+       *(also declared in CAPABILITY_MANIFEST.json gating_constraints for
+       machine-readable enforcement — canonical_id RETRIEVAL_TOOL_query_signal_state,
+       migrated COV-S6)*
   R29. For FACTUAL or PREDICTIVE queries that ask about KP (Krishnamurti
        Paddhati) sub-lords, ruling-planet chains, sub-sub-lords, or
        nakshatra-sub-lord substrate ("what is my Moon's sub-lord", "KP
@@ -422,6 +432,9 @@ ASSET BUNDLE RULES (what canonical documents to load):
        'lahiri'). DO NOT add query_kp_ruling_planets when the query names a
        non-KP school exclusively (Parashari-only, Jaimini-only).
        Hypothesis: closes planner-blind gap on KP-substrate queries.
+       *(also declared in CAPABILITY_MANIFEST.json gating_constraints for
+       machine-readable enforcement — canonical_id RETRIEVAL_TOOL_query_kp_ruling_planets,
+       migrated COV-S6)*
   R30. KEYWORD TRIGGERS — when ANY of these appear in a PREDICTIVE query,
        R30 fires unconditionally:
          • "Varshaphala" / "varshaphala" / "Tajika annual" / "Tajika reading"
@@ -461,6 +474,9 @@ ASSET BUNDLE RULES (what canonical documents to load):
        Hypothesis: closes planner-blind gap on annual/Tajika queries;
        resolves R27-vs-R30 priority conflict by explicit co-selection
        language. Validated against GT.062-064.
+       *(also declared in CAPABILITY_MANIFEST.json gating_constraints for
+       machine-readable enforcement — canonical_id RETRIEVAL_TOOL_query_varshaphala,
+       migrated COV-S6)*
 
   R31. KEYWORD TRIGGERS for multi_school_signal_lookup — when ANY of these
        phrases appear in the query, R31 fires unconditionally regardless of

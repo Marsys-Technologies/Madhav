@@ -2429,9 +2429,169 @@
       "produced_during": "COV-S5 2026-05-21",
       "notes": "COV-S5 L2.5 structural graph tool. Reads RM_v2_0.md at runtime; no DB dependency. See R-RM in PLANNER_PROMPT_v2_0.md.",
       "expose_to_planner": true
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_signal_state",
+      "tool_name": "query_signal_state",
+      "tool_description": "Date-indexed MSR signal state lookup (active/dormant/ripening) from signal_states table. Returns per-signal computed activation state under current dasha/transit conditions. Use to check which signals are currently lit, ripening, or dormant at a specific date. Complements msr_sql (static signal data) with dynamic activation state.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart ID (defaults to native)"
+          },
+          "query_date": {
+            "type": "string",
+            "description": "Reference date YYYY-MM-DD (defaults to today)"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End of date range YYYY-MM-DD (optional)"
+          },
+          "signal_ids": {
+            "type": "array",
+            "description": "Specific MSR.NNN signal IDs to filter (optional)"
+          },
+          "states": {
+            "type": "array",
+            "description": "Subset of ['lit','dormant','ripening'] to filter"
+          },
+          "dasha_system": {
+            "type": "string",
+            "description": "Dasha system override (optional)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max rows (default 50)"
+          }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "MSR",
+      "linked_data_asset_ids": ["MSR"],
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "expose_to_planner": true,
+      "representations": ["sql"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "COV-S6 2026-05-21",
+      "notes": "R28: use for PREDICTIVE queries asking what signals are currently active, lit, ripening, or dormant. See R28 in PLANNER_PROMPT_v2_0.md. gating_constraints migrated from R28 (COV-S6).",
+      "gating_constraints": {
+        "preferred_when": [
+          "PREDICTIVE query asks what signals are currently active, lit, ripening, or dormant at a specific date",
+          "Query contains: 'what signals are lit right now', 'what's ripening', 'what's dormant', 'what's active at [date]'",
+          "INTERPRETIVE query anchors on a specific date and needs date-indexed signal activation context"
+        ],
+        "avoid_when": [
+          "Query is about historical events that already occurred — use lel_query instead",
+          "Query is purely natal/positional with no date anchor"
+        ]
+      }
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_kp_ruling_planets",
+      "tool_name": "query_kp_ruling_planets",
+      "tool_description": "Engine-computed KP (Krishnamurti Paddhati) ruling-planet table from kp_sublords substrate (swisseph-Lahiri). Returns star lord / sub lord / sub-sub lord chain for each graha. Distinct from kp_query (which reads FORENSIC chart_facts). Use when sidecar-computed KP sublord data is required or for non-FORENSIC/forward-looking KP queries.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "planet": {
+            "type": "string",
+            "description": "Planet name filter (optional — returns all 9 if omitted)"
+          },
+          "include_sub_sub": {
+            "type": "boolean",
+            "description": "Whether to include sub-sub lord level"
+          },
+          "ayanamsha": {
+            "type": "string",
+            "description": "Ayanamsha system (defaults to 'lahiri')"
+          }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "FORENSIC",
+      "linked_data_asset_ids": ["FORENSIC"],
+      "layer": "L1",
+      "expose_to_chat": true,
+      "expose_to_planner": true,
+      "representations": ["sql"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "COV-S6 2026-05-21",
+      "notes": "R29: use for KP sub-lord, ruling-planet chain, or nakshatra-sub-lord queries. See R29 in PLANNER_PROMPT_v2_0.md. gating_constraints migrated from R29 (COV-S6).",
+      "gating_constraints": {
+        "preferred_when": [
+          "FACTUAL or PREDICTIVE query asks about KP sub-lords, ruling-planet chains, or sub-sub-lords",
+          "Query contains: 'sub-lord', 'KP ruling planets', 'nakshatra-sub-lord', 'who rules X in KP'",
+          "KP is one of multiple schools being queried side-by-side (lower priority then)"
+        ],
+        "avoid_when": [
+          "Query names only a non-KP school exclusively (Parashari-only, Jaimini-only)",
+          "Query is FORENSIC-anchored KP lookup — use kp_query instead"
+        ]
+      }
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_varshaphala",
+      "tool_name": "query_varshaphala",
+      "tool_description": "Varshaphala (Tajika) annual-chart lookup from varshaphala table. Returns Solar Return UTC, Ascendant sign/degree, and 9-graha sidereal positions for one year or a year range. Engine-computed via pyswisseph + Lahiri; covers 1984-2061 for the native. Year-lord (Varshesha) and Muntha are synthesis-layer responsibilities, not in substrate.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "description": "Single year (e.g. 2026)"
+          },
+          "year_start": {
+            "type": "integer",
+            "description": "Start year for range queries"
+          },
+          "year_end": {
+            "type": "integer",
+            "description": "End year for range queries"
+          },
+          "planet": {
+            "type": "string",
+            "description": "Planet filter (optional)"
+          },
+          "ayanamsha": {
+            "type": "string",
+            "description": "Ayanamsha system (defaults to 'lahiri')"
+          }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "FORENSIC",
+      "linked_data_asset_ids": ["FORENSIC"],
+      "layer": "L1",
+      "expose_to_chat": true,
+      "expose_to_planner": true,
+      "representations": ["sql"],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "COV-S6 2026-05-21",
+      "notes": "R30: fire when query contains Varshaphala/Tajika annual/solar return keywords, a 4-digit year 1984-2061, or multi-year span. See R30 in PLANNER_PROMPT_v2_0.md. gating_constraints migrated from R30 (COV-S6).",
+      "gating_constraints": {
+        "preferred_when": [
+          "PREDICTIVE query contains: 'Varshaphala', 'Tajika annual', 'annual chart', 'solar return', 'year ahead', 'next year', 'this year', or a 4-digit year (1984-2061)",
+          "Query asks about annual planetary positions, Solar Return Ascendant, or year-specific chart placements",
+          "Multi-year span query: 'compare my 2024 and 2028', 'annual charts from X to Y'"
+        ],
+        "avoid_when": [
+          "Pure dasha projection query with no annual frame",
+          "Eclipse query — use temporal + msr_sql instead",
+          "Sade-sati or transit-window scan without annual framing"
+        ]
+      }
     }
   ],
-  "last_updated_by": "COV-S5",
-  "last_session": "COV-S5-feature/m5-coverage-remediation",
+  "last_updated_by": "COV-S6",
+  "last_session": "COV-S6-feature/m5-coverage-remediation",
   "last_updated": "2026-05-21"
 }

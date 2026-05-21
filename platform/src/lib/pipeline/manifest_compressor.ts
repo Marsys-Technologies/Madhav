@@ -36,8 +36,18 @@ export interface CapabilityManifestEntry {
   expose_to_planner?: boolean
   /** Planner few-shot examples (COV-S1) */
   examples?: Array<{ query: string; expected_plan_fragment: string }>
-  /** COV-S6 R-rule migration target: gating rules expressed as condition/action pairs (COV-S1) */
-  gating_constraints?: Array<{ condition: string; action: string }>
+  /**
+   * COV-S6 R-rule migration target: gating rules as preferred/avoid condition sets.
+   * These are derived from the R-rules in PLANNER_PROMPT_v2_0.md and are machine-readable
+   * equivalents of those rules. The compressor appends a brief hint to the tool description
+   * so the planner LLM sees them at inference time.
+   *
+   * Supersedes the legacy Array<{ condition, action }> format from COV-S1.
+   */
+  gating_constraints?: {
+    preferred_when?: string[]
+    avoid_when?: string[]
+  } | Array<{ condition: string; action: string }>
   [k: string]: unknown
 }
 
@@ -49,7 +59,7 @@ export interface CapabilityManifest {
 export interface CompressedEntry {
   /** tool_name */
   t: string
-  /** ≤60-word description (COV-S3 raised from ≤15 words) */
+  /** ≤60-word description + optional gating hint (COV-S3 raised from ≤15 words; COV-S6 appends gating) */
   d: string
   /** param names only (not full schema) */
   p: string[]
@@ -98,6 +108,27 @@ function pickDescription(e: CapabilityManifestEntry, maxWords = DESCRIPTION_MAX_
   return words.slice(0, maxWords).join(' ')
 }
 
+/**
+ * Build a compact gating hint string from COV-S6 gating_constraints.
+ * Only emitted when the entry uses the { preferred_when, avoid_when } object form.
+ * Legacy Array<{ condition, action }> form is silently ignored (no hint emitted).
+ *
+ * The hint is appended to the tool description so the planner LLM sees it inline.
+ * Format: " Preferred when: [cond1; cond2]. Avoid when: [cond1]." (single-line).
+ * Each condition list is truncated to the first entry to keep token cost minimal.
+ */
+export function buildGatingHint(gc: CapabilityManifestEntry['gating_constraints']): string {
+  if (!gc || Array.isArray(gc)) return ''
+  const parts: string[] = []
+  if (gc.preferred_when && gc.preferred_when.length > 0) {
+    parts.push(`Preferred when: ${gc.preferred_when[0].trimEnd().replace(/\.$/, '')}.`)
+  }
+  if (gc.avoid_when && gc.avoid_when.length > 0) {
+    parts.push(`Avoid when: ${gc.avoid_when[0].trimEnd().replace(/\.$/, '')}.`)
+  }
+  return parts.length > 0 ? ' ' + parts.join(' ') : ''
+}
+
 function pickParams(e: CapabilityManifestEntry): string[] {
   const props = e.query_schema?.properties ?? {}
   return Object.keys(props)
@@ -116,9 +147,11 @@ export function compressManifest(manifest: CapabilityManifest): CompressedEntry[
   for (const entry of manifest.entries ?? []) {
     if (!entry.tool_name) continue
     if (!entry.expose_to_planner) continue
+    const baseDesc = pickDescription(entry)
+    const gatingHint = buildGatingHint(entry.gating_constraints)
     result.push({
       t: entry.tool_name,
-      d: pickDescription(entry),
+      d: (baseDesc + gatingHint).trim(),
       p: pickParams(entry),
       c: (entry.token_cost_hint ?? 'med') as TokenCostHint,
       a: entry.linked_data_asset_id ?? '',
