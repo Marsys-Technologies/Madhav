@@ -33,3 +33,6 @@
 | 2026-05-21T09:58:00Z | ICR-S4 | 1 | success | 7272b684 | https://github.com/amonty84/Madhav/pull/131 | tsc:PASS vitest:9/9 munta_propose_patch_emitted:PASS CI:all-green | null (propose_patch_pending informational — see halt log) |
 | 2026-05-21T10:10:00Z | PERF-S4 | 1 | success | 243a83b6 | https://github.com/amonty84/Madhav/pull/132 | tsc:PASS vitest:14/14 freshness_diagnostics_smoke:PASS CI:all-green | null |
 | 2026-05-21T10:35:00Z | ICR-S5 | 1 | success | e065991e | https://github.com/amonty84/Madhav/pull/133 | tsc:PASS vitest:43/43 atomic_apply_dry_run:PASS confirmation_ui_smoke:PASS CI:all-green | null |
+| 2026-05-21T10:55:00Z | ICR-S6 | 1 | success | 5187b258 | https://github.com/amonty84/Madhav/pull/134 | tsc:PASS vitest:56/56 synthetic_pr_conflict_gate_fails:PASS scheduled_job_smoke:PASS CI:all-green | null |
+| 2026-05-21T10:55:00Z | PERF-S5 | 1 | success | 5187b258 | https://github.com/amonty84/Madhav/pull/134 | tsc:PASS vitest:56/56 conflict_panel_smoke:PASS CI:all-green | null |
+| 2026-05-21T10:55:00Z | CAMPAIGN_CLOSE | — | COMPLETE | 5187b258 | — | 21/21 sessions completed across COV/PERF/ICR streams | M5_COVERAGE_REMEDIATION campaign complete |
