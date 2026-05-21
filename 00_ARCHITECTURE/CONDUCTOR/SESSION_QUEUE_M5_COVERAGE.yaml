@@ -45,8 +45,8 @@ sessions:
     audit_section: "§N.6 ICR-S1"
     depends_on: []
     gates: ["tsc", "schema_validate"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["schema validation failure"]
   - id: COV-S2
     stream: cov
