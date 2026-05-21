@@ -53,7 +53,7 @@ function buildProposedYaml(overrides: {
 /**
  * Set up a minimal tmp repo layout:
  *   <root>/PROPOSED/DIS.013_MSR_377_proposed.yaml
- *   <root>/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md  (contains current_value)
+ *   <root>/025_HOLISTIC_SYNTHESIS/MSR_v5_0.md  (contains current_value)
  */
 function setupTmpRepo(opts: {
   currentValue?: string
@@ -79,7 +79,7 @@ function setupTmpRepo(opts: {
   // Create synthesis file
   const synthDir = path.join(repoRoot, '025_HOLISTIC_SYNTHESIS')
   mkdirSync(synthDir, { recursive: true })
-  const targetPath = path.join(synthDir, 'MSR_v3_0.md')
+  const targetPath = path.join(synthDir, 'MSR_v5_0.md')
   const targetContent = opts.targetContent ?? `SIG.MSR.377:\n  signal_name: "${currentValue}"\n  signal_type: tajika-pattern\n`
   writeFileSync(targetPath, targetContent, 'utf-8')
 
@@ -109,9 +109,9 @@ function tracked<T extends { repoRoot: string }>(setup: T): T {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('resolveTargetPath', () => {
-  it('resolves MSR.* to MSR_v3_0.md', () => {
+  it('resolves MSR.* to MSR_v5_0.md', () => {
     const result = resolveTargetPath('MSR.377', '/repo')
-    expect(result).toBe('/repo/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md')
+    expect(result).toBe('/repo/025_HOLISTIC_SYNTHESIS/MSR_v5_0.md')
   })
 
   it('resolves UCN.* to UCN_v4_0.md', () => {
@@ -139,11 +139,11 @@ describe('atomicApply (dry run)', () => {
     if (result.ok) {
       expect(result.resolved_path).toContain('RESOLVED')
       expect(result.resolved_path).toContain('DIS.013_MSR_377_resolved.yaml')
-      expect(result.backup_path).toContain('MSR_v3_0.md.icr_bak')
+      expect(result.backup_path).toContain('MSR_v5_0.md.icr_bak')
     }
 
     // Dry run: no files written
-    expect(existsSync(path.join(repoRoot, 'RESOLVED'))).toBe(false)
+    expect(existsSync(path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'RESOLVED'))).toBe(false)
     expect(existsSync(proposedPath)).toBe(true) // PROPOSED/ artifact untouched
   })
 

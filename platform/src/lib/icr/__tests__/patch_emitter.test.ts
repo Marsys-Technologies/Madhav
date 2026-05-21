@@ -157,13 +157,13 @@ describe('serializeProposePatch', () => {
 describe('emitProposePatch', () => {
   it('writes a file to PROPOSED/ with the correct filename', () => {
     const writtenPath = emitProposePatch(tmpRoot, FAKE_CONFLICT_DIS013, BASE_PATCH_DIS013);
-    const expectedPath = path.join(tmpRoot, 'PROPOSED', 'DIS.013_MSR_377_proposed.yaml');
+    const expectedPath = path.join(tmpRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'PROPOSED', 'DIS.013_MSR_377_proposed.yaml');
     expect(writtenPath).toBe(expectedPath);
     expect(existsSync(expectedPath)).toBe(true);
   });
 
   it('creates PROPOSED/ directory if it does not exist', () => {
-    const proposedDir = path.join(tmpRoot, 'PROPOSED');
+    const proposedDir = path.join(tmpRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'PROPOSED');
     expect(existsSync(proposedDir)).toBe(false);
     emitProposePatch(tmpRoot, FAKE_CONFLICT_DIS013, BASE_PATCH_DIS013);
     expect(existsSync(proposedDir)).toBe(true);
