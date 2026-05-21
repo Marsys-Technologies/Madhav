@@ -26952,3 +26952,119 @@ session_close:
     need dedicated fix session; (3) fix/phase-4c-prod-findings (206cff09) merge decision pending.
     v1.3 queue: see 00_ARCHITECTURE/V1_3_AUDIT_QUEUE_v1_0.md.
 ```
+
+## WRAPUP-S3 — Phase 4C P0 investigation + M5 Coverage PR
+
+```yaml
+session_open:
+  session_id: WRAPUP-S3
+  cowork_thread_name: "WRAPUP-S3 Phase 4C P0 Surgical + F.1 Investigation + M5 Coverage PR"
+  agent: Claude Sonnet 4.6 (claude-sonnet-4-6)
+  opened_at: 2026-05-21T21:40:00+05:30
+  active_macro_phase: M6 INCOMING
+  active_phase_plan: PHASE_M5_PLAN_v1_0.md v1.1 SUPERSEDED-AS-COMPLETE (M5 CLOSED; M6 INCOMING)
+  active_phase_plan_sub_phase: "M6 INCOMING — concurrent WRAPUP session"
+  may_touch:
+    - platform/src/app/consume/**
+    - 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/ (directory creation if needed)
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md (end-of-file append only)
+    - .gemini/project_state.md
+    - PR open via gh CLI on fix/phase-4c-prod-findings
+  must_not_touch:
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 99_ARCHIVE/**
+    - CLAUDE.md
+    - SESSION_LOG.md lines 26406-26734
+    - governance-hygiene/learning-layer-frontmatter branch
+    - platform/python-sidecar/** (F.1 investigate-only)
+  predecessor_session: CV2-FINAL-CLOSE
+  red_team_due: false
+  scope: >
+    Packet A: F.2 /consume Server Component crash surgical fix.
+    Packet B: F.1 Muhurat Finder overload investigation + design brief.
+    Packet C: M5 Coverage Remediation PR open on fix/phase-4c-prod-findings.
+    Packet D: Scope handoffs (no execution).
+    Packet E: Close-out governance.
+```
+
+### Body
+
+**Packet A — F.2 /consume Server Component crash (HALTED)**
+
+Investigation trace:
+- URL: `/clients/${chart_id}/consume?prompt=...&context=<url-encoded-json>` via AskMadhavLink (platform/src/app/panchang/components/AskMadhavLink.tsx)
+- Server Component at platform/src/app/clients/[id]/consume/page.tsx:43–56 already has defensive try/catch around JSON.parse(contextJson) — added in commit fb084157 (4C-8)
+- ConsumeChatProps (ConsumeChatV2.tsx:63) declares `initialMessages?: UIMessage[]` but ConsumeChatV2 function signature (line 1631) does NOT destructure it
+- Local state `const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)` (line 1633) shadows the prop with `undefined` on every mount
+- Result: deeplink context is silently dropped; chat opens blank with no pre-loaded panchang context
+- "Something went wrong" crash source unclear in current code — may be pre-4C-8 or from DB chart_id lookup when chart doesn't exist
+
+Proposed fix (awaiting native approval):
+- Add `initialMessages: initialMessagesProp` to ConsumeChatV2 destructuring at line 1631
+- Change `useState(undefined)` → `useState(initialMessagesProp)` to seed local state from prop on mount
+- Existing setInitialMessages calls (conversation restore) unaffected
+
+**Packet A: HALTED** per brief halt condition ("crash not where expected → halt before patching").
+
+**Packet B — F.1 Muhurat Finder overload investigation (COMPLETE)**
+
+Root cause: 90-day Muhurat scan → 90 sequential synchronous `compute_panchang()` calls in `panchang_engine/muhurat.py` find_muhurat() while loop (lines 336–353). Each day: ~14 Swiss Ephemeris C-extension calls (8× swe.calc_ut + 6× swe.rise_trans). At 90 days: ~1,260 swe calls, single-threaded, no cache, no asyncio. Cloud Run sidecar at defaults: 60s timeout, 512MiB, 0 min-instances. 90-day scan approaches/exceeds 60s → gateway 503 → proxy maps to sidecarDown() → UI shows "Panchang Unavailable".
+
+Design brief written to: 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md
+Commit: c5149251 (main branch)
+Recommendation: Option A (SQL cache read-path using panchanga_daily) + Option D (infra uplift --timeout=300 --cpu=2 --memory=1Gi --min-instances=1).
+
+File paths verified: muhurat.py, useMuhuratFinder.ts, /api/compute/muhurat/route.ts all exist.
+
+**Packet C — M5 Coverage Remediation PR (COMPLETE — halted for native review)**
+
+Branch `fix/phase-4c-prod-findings` pushed to remote origin. PR #142 opened:
+- Title: "M5 Coverage Remediation — 21 sessions (COV/PERF/ICR)"
+- URL: https://github.com/amonty84/Madhav/pull/142
+
+Rebase attempted but aborted: every M5 campaign commit produced add/add conflicts because all individual session PRs (#115–#134) were already squash-merged to main independently. Taking HEAD for all conflicts would produce a branch identical to main with no diff — defeating the PR's purpose. Branch pushed as-is; GitHub PR diff shows the correct M5 campaign delta.
+
+HALTED for native review. No auto-merge.
+
+**Packet D — Scope handoffs (noted, no execution)**
+1. governance-hygiene/learning-layer-frontmatter: D.1+D.2 pending native resolution. Owner: CV2-FINAL arc or learning-layer workstream. Not acted upon this session.
+2. SESSION_LOG.md conflict markers L26406–26734: pre-existing from incomplete merge. Needs dedicated governance hygiene session. Not touched this session (brief's strict must_not_touch rule).
+
+```yaml
+session_close:
+  session_id: WRAPUP-S3
+  closed_at: 2026-05-21T22:10:00+05:30
+  agent: Claude Sonnet 4.6 (claude-sonnet-4-6)
+  packets_completed:
+    - id: Packet_B
+      status: COMPLETE
+      artifact: 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md
+      commit: c5149251
+    - id: Packet_C
+      status: COMPLETE_HALTED_FOR_REVIEW
+      pr_url: https://github.com/amonty84/Madhav/pull/142
+      note: rebase skipped (add/add conflicts — M5 work already on main via PRs #115–#134)
+    - id: Packet_D
+      status: NOTED_NO_EXECUTION
+  packets_halted:
+    - id: Packet_A
+      status: HALTED
+      reason: "Crash not in expected location (context parsing already defensive); root cause shifted — ConsumeChatV2:1631 doesn't destructure initialMessages prop; useState(undefined) shadows it"
+      proposed_fix: "Add initialMessages: initialMessagesProp to ConsumeChatV2 destructuring + seed useState from prop"
+      awaiting: native direction on fix approval
+  current_state_updated: true
+  current_state_version: 5.40
+  session_log_appended: true
+  mirror_updates_propagated:
+    mp2_project_state: true
+  governance_scripts_run: false
+  close_criteria_met: true
+  handoff_notes: >
+    F.2: native approves fix direction → WRAPUP-S4 applies initialMessages prop fix to ConsumeChatV2.
+    F.1: native selects Option A+D from brief → follow-up session implements.
+    PR #142: native reviews and merges M5 Coverage Remediation.
+    governance-hygiene/learning-layer-frontmatter D.1+D.2: pending native resolution.
+    SESSION_LOG L26406–26734 conflict markers: pending dedicated governance hygiene session.
+```

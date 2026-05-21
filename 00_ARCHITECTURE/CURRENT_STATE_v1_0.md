@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.39
+version: 5.40
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.40 (2026-05-21, WRAPUP-S3):
+    **CONCURRENT SESSION — WRAPUP-S3 close-out. Packet A HALTED (F.2 root cause shifted — initialMessages prop silently dropped in ConsumeChatV2, crash source unclear); Packet B COMPLETE (F.1 brief committed c5149251); Packet C COMPLETE (M5 Coverage PR #142 opened, halted for native review); Packet D carry-forwards noted. No macro-phase change.**
+    Key outcomes: (A) Packet A HALTED: F.2 investigation found the crash is NOT in context JSON parsing (already has try/catch at consume/page.tsx:43–56, added in 4C-8). Root cause shifted: ConsumeChatV2.tsx:1631 does not destructure initialMessages from props; local useState(undefined) shadows the prop (line 1633), silently dropping the deeplink context on every nav. The "Something went wrong" crash source is unclear in current code — may be pre-4C-8 or from DB chart_id lookup. Proposed fix: add initialMessages: initialMessagesProp to ConsumeChatV2 destructuring + seed useState from prop. HALTED per brief halt condition ("crash not where expected → halt before patching"); awaiting native direction. (B) Packet B COMPLETE: F.1 Muhurat Finder root cause confirmed — 90 sequential synchronous compute_panchang() calls + Cloud Run 60s default timeout; ~1,260 Swiss Ephemeris calls per 90-day scan; brief at 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md (commit c5149251 main). Recommendation: Option A (SQL cache read-path via panchanga_daily) + Option D (infra uplift --timeout=300 --cpu=2 --memory=1Gi --min-instances=1). Fix is follow-up session after native selects design option. (C) Packet C COMPLETE: fix/phase-4c-prod-findings pushed to remote, PR #142 opened (M5 Coverage Remediation — 21 sessions COV/PERF/ICR). Rebase skipped — add/add conflicts for every M5 campaign commit because all individual PRs (#115–#134) were already squash-merged to main. PR halted for native review. (D) Carry-forwards noted: governance-hygiene/learning-layer-frontmatter D.1+D.2 still pending native resolution; SESSION_LOG conflict markers L26406–26734 need dedicated governance hygiene session.
+    files_touched: ["00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (concurrent wrapup session; no macro-phase change).
+    last_session_id: WRAPUP-S3. predecessor_session: CV2-FINAL-CLOSE.
+    next_session_objective: "Native decides F.2 fix direction (approve initialMessages prop fix in ConsumeChatV2 → follow-up WRAPUP-S4 applies it); native selects F.1 design option from brief → follow-up session implements; review and merge M5 Coverage PR #142; then open M6-A-S1 per PHASE_M6_PLAN_v1_0.md."
+    file_updated_at: 2026-05-21T22:10:00+05:30. file_updated_by_session: WRAPUP-S3.
   - v5.39 (2026-05-21, CV2-FINAL-CLOSE):
     **GOVERNANCE — CV2-FINAL orchestrator arc COMPLETE. E.1–E.4 merge train closed (PRs #138–#141 squash-merged to main). Drift: 360→256 findings. Schema: 61 violations (stable). Mirror: exit=0. F.1 smokes deferred (Chrome MCP unavailable). C.1 worktree already cleaned. CLAUDECODE_BRIEF.md v4.1 flipped to COMPLETE. No macro-phase change.**
     files_touched: ["00_ARCHITECTURE/CONDUCTOR/cv2final/CV2_FINAL_SUMMARY.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md", "CLAUDECODE_BRIEF.md"]
@@ -4055,7 +4063,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: CV2-FINAL-CLOSE              # CV2-FINAL governance arc COMPLETE 2026-05-21; all 21 packets terminal; predecessor M5-E-S2 preserved in audit trail
+  last_session_id: WRAPUP-S3                    # WRAPUP-S3 2026-05-21: F.2 HALTED (initialMessages prop drop found), F.1 brief committed (c5149251), M5 Coverage PR #142 opened; predecessor CV2-FINAL-CLOSE
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
     # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
     # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
@@ -4893,6 +4901,14 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    WRAPUP-S3 carry-forwards: (1) F.2 fix — native approves initialMessages prop fix direction
+    (ConsumeChatV2:1631 doesn't destructure prop; useState(undefined) shadows it at line 1633);
+    fix session applies 2-line change + build verify + push. (2) F.1 fix — native selects design
+    option from 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md; Recommendation is
+    Option A (SQL cache read-path) + Option D (infra --timeout=300 --cpu=2 --memory=1Gi
+    --min-instances=1); fix session implements chosen option. (3) M5 Coverage PR #142 —
+    native reviews and merges fix/phase-4c-prod-findings (M5 Coverage 21 sessions). Then:
+    === Predecessor next_session_objective (CV2-FINAL-CLOSE → M6-A-S1) preserved for audit ===
     M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
     Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
     Entry gate: M5 MACRO-PHASE CLOSED ✓ (this update 2026-05-14); M5_CLOSE_v1_0.md sealed ✓;
@@ -5750,8 +5766,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-21T23:30:00+05:30
-  file_updated_by_session: CV2-FINAL-CLOSE
+  file_updated_at: 2026-05-21T22:10:00+05:30
+  file_updated_by_session: WRAPUP-S3
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
