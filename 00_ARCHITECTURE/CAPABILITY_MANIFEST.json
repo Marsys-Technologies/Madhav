@@ -1075,7 +1075,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state | dasha_state). 81 entries (9 MD \u00d7 9 AD). All fitted_value=null; M5-D fitting required."
+      "notes": "P(domain_state | dasha_state). 81 entries (9 MD × 9 AD). All fitted_value=null; M5-D fitting required."
     },
     {
       "canonical_id": "CPT_PERSISTENCE",
@@ -1091,7 +1091,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains \u00d7 9 transitions). Symmetric priors; per-domain differentiation in M5-D."
+      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains × 9 transitions). Symmetric priors; per-domain differentiation in M5-D."
     },
     {
       "canonical_id": "CPT_CROSS_DOMAIN",
@@ -1128,8 +1128,8 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_lel_query",
       "tool_name": "lel_query",
-      "tool_description": "Retrieves ground-truth life events from LEL \u2014 recorded dates categories chart states",
-      "description": "Queries life_events table \u2014 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "tool_description": "Retrieves ground-truth life events from LEL — recorded dates categories chart states",
+      "description": "Queries life_events table — 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
       "query_schema": {
         "type": "object",
         "properties": {
@@ -1162,7 +1162,8 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-A",
-      "notes": "Direct life_events table retrieval. Use instead of timeline_query when the query is about known historical events, not future projections. Always preferred for predictive queries to prevent fabricating event dates."
+      "notes": "Direct life_events table retrieval. Use instead of timeline_query when the query is about known historical events, not future projections. Always preferred for predictive queries to prevent fabricating event dates.",
+      "expose_to_planner": true
     },
     {
       "canonical_id": "M5_D_CLOSE",
@@ -1194,7 +1195,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S1",
-      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD\u2192ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in \u00a73.2b."
+      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD→ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in §3.2b."
     },
     {
       "canonical_id": "LL8_PARAM_REGISTER",
@@ -1273,7 +1274,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "M8 phase plan \u2014 governs all M8 sessions"
+      "note": "M8 phase plan — governs all M8 sessions"
     },
     {
       "canonical_id": "08_CLASSICAL_CROSS_REFERENCE",
@@ -1318,7 +1319,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "v1.1 \u2014 L8 prefix block added for M8 classical corpus",
+      "note": "v1.1 — L8 prefix block added for M8 classical corpus",
       "updated_at": "2026-05-14",
       "updated_by": "M9-A-S1",
       "notes": "L9/ prefix added at M9-A-S1"
@@ -1340,7 +1341,8 @@
       "tool_description": "Semantic search over classical Jyotish text corpus (pgvector cosine similarity). Returns top-K chunks with chapter, verse_range, confidence_baseline.",
       "produced_during": "M8-A-S1",
       "updated_during": "M8-E-S1",
-      "note": "Full impl M8-E-S1: Vertex AI text-embedding-004 (768-dim) + pgvector cosine; GoogleAuth ADC; 10 unit tests PASS"
+      "note": "Full impl M8-E-S1: Vertex AI text-embedding-004 (768-dim) + pgvector cosine; GoogleAuth ADC; 10 unit tests PASS",
+      "expose_to_planner": true
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_classical_attribution_lookup",
@@ -1356,10 +1358,11 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "tool_name": "classical_attribution_lookup",
       "tool_number": 26,
-      "tool_description": "Structured lookup: MSR signal_ids \u2192 classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
+      "tool_description": "Structured lookup: MSR signal_ids → classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
       "produced_during": "M8-A-S1",
       "updated_during": "M8-E-S1",
-      "note": "Full impl M8-E-S1: JOIN classical_attributions\u2192classical_chunks\u2192classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS"
+      "note": "Full impl M8-E-S1: JOIN classical_attributions→classical_chunks→classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS",
+      "expose_to_planner": true
     },
     {
       "id": "INGESTION_SCRIPT_ingest_bphs",
@@ -1474,7 +1477,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Full attribution pass: Vertex AI text-embedding-004 \u00d7 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge \u2192 classical_attributions table"
+      "note": "Full attribution pass: Vertex AI text-embedding-004 × 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge → classical_attributions table"
     },
     {
       "id": "ATTRIBUTION_SCRIPT_build_registry_from_db",
@@ -1490,7 +1493,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Reads classical_attributions table \u2192 produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM"
+      "note": "Reads classical_attributions table → produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM"
     },
     {
       "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY",
@@ -1535,7 +1538,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal \u00d7 text \u00d7 verse breakdown"
+      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal × text × verse breakdown"
     },
     {
       "canonical_id": "FINDINGS_CLASSICAL_CLAIM",
@@ -1625,7 +1628,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence \u22650.60"
+      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence ≥0.60"
     },
     {
       "canonical_id": "NADI_SIGNAL_EXTRACTION",
@@ -1655,7 +1658,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "29 net-new signal proposal SIG.MSR.515\u2013543; dedup argument vs existing 514; AC.M8F.5 PASS"
+      "note": "29 net-new signal proposal SIG.MSR.515–543; dedup argument vs existing 514; AC.M8F.5 PASS"
     },
     {
       "canonical_id": "CLASSICAL_TEXT_SEARCH_TOOL",
@@ -1730,7 +1733,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "GT.047\u2013GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
+      "note": "GT.047–GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
     },
     {
       "canonical_id": "TRANSLATION_CROSS_CHECK",
@@ -1760,7 +1763,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "20 findings (4\u00d75 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS"
+      "note": "20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS"
     },
     {
       "canonical_id": "M8_CLOSE",
@@ -1817,7 +1820,7 @@
         "folder"
       ],
       "interface_version": "1.0",
-      "notes": "M9 multi-school triangulation layer; 7 schools \u00d7 5 domains \u00d7 543+ signals",
+      "notes": "M9 multi-school triangulation layer; 7 schools × 5 domains × 543+ signals",
       "produced_during": "M9-A-S1 2026-05-14"
     },
     {
@@ -1830,7 +1833,7 @@
       "representations": [
         "file"
       ],
-      "notes": "Per-school signal coverage classification: 573 signals \u00d7 7 schools = 4011 rows",
+      "notes": "Per-school signal coverage classification: 573 signals × 7 schools = 4011 rows",
       "produced_during": "M9-A-S1 2026-05-14"
     },
     {
@@ -1843,7 +1846,7 @@
       "representations": [
         "file"
       ],
-      "notes": "15 Yogini signals SIG.MSR.544\u2013558; current Yogini: Bhramari (Mars; active)",
+      "notes": "15 Yogini signals SIG.MSR.544–558; current Yogini: Bhramari (Mars; active)",
       "produced_during": "M9-A-S1 2026-05-14"
     },
     {
@@ -1856,7 +1859,7 @@
       "representations": [
         "file"
       ],
-      "notes": "15 Tajika signals SIG.MSR.559\u2013573; solar_return_scope: true; CF.M9.1 pending",
+      "notes": "15 Tajika signals SIG.MSR.559–573; solar_return_scope: true; CF.M9.1 pending",
       "produced_during": "M9-A-S1 2026-05-14"
     },
     {
@@ -1912,7 +1915,7 @@
       "canonical_id": "SCHOOLS_CONVERGENCE_CALCULATOR",
       "path": "platform/src/lib/schools/convergence_calculator.ts",
       "type": "typescript_module",
-      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() \u2014 NAP.M9.2+NAP.M9.3",
+      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() — NAP.M9.2+NAP.M9.3",
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
@@ -1922,7 +1925,7 @@
       "canonical_id": "SCHOOLS_RUNNER",
       "path": "platform/src/lib/schools/school_runner.ts",
       "type": "typescript_module",
-      "description": "runSchoolsForDomain() + runFullTriangulation() \u2014 orchestrates all 7 engines in parallel",
+      "description": "runSchoolsForDomain() + runFullTriangulation() — orchestrates all 7 engines in parallel",
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
@@ -2008,7 +2011,7 @@
       "type": "script",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "M9-C: Executes all 7 school engines \u00d7 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
+      "description": "M9-C: Executes all 7 school engines × 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14"
     },
@@ -2019,7 +2022,7 @@
       "type": "analysis_document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; \u00a71-\u00a711 authored; acharya-grade verdicts per school per domain",
+      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; §1-§11 authored; acharya-grade verdicts per school per domain",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
       "key_finding": "5/5 domains HIGH convergence (6/6 effective schools); CAREER+SPIRITUAL+PSYCHOLOGICAL positive; HEALTH+RELATIONSHIP neutral"
@@ -2053,7 +2056,7 @@
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] \u2014 reduced confidence 0.35-0.50"
+      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] — reduced confidence 0.35-0.50"
     },
     {
       "id": "M9C_KP_JSON",
@@ -2084,7 +2087,7 @@
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] \u2014 reduced confidence 0.45"
+      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] — reduced confidence 0.45"
     },
     {
       "id": "M9C_YOGINI_JSON",
@@ -2125,7 +2128,7 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Tabular convergence metrics: per-domain convergence table + 7\u00d75 per-school score matrix with pending flags.",
+      "description": "Tabular convergence metrics: per-domain convergence table + 7×5 per-school score matrix with pending flags.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14"
     },
@@ -2136,7 +2139,7 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Acharya-grade narrative \u00a71\u2013\u00a79: executive finding, per-domain convergence analysis, divergence analysis, precision signals for query routing, pending resolutions.",
+      "description": "Acharya-grade narrative §1–§9: executive finding, per-domain convergence analysis, divergence analysis, precision signals for query routing, pending resolutions.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14"
     },
@@ -2180,7 +2183,7 @@
       "type": "eval",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Planner golden set extended: GT.050\u2013052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
+      "description": "Planner golden set extended: GT.050–052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14"
     },
@@ -2213,7 +2216,7 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "10 worked examples \u00a72; resolution protocol \u00a73; school-level summary \u00a74. 0 genuine chart contradictions across all 10 disagreements.",
+      "description": "10 worked examples §2; resolution protocol §3; school-level summary §4. 0 genuine chart contradictions across all 10 disagreements.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14"
     },
@@ -2224,14 +2227,14 @@
       "type": "document",
       "layer": "governance",
       "status": "CLOSED",
-      "description": "M9 macro-phase sealing artifact: \u00a70 session arc, \u00a71 AC ledger (all sub-phases), \u00a72 IS.8(b) red-team PASS 5/5, \u00a73 MSR evolution, \u00a74 convergence summary, \u00a75 disagreement summary, \u00a76 carry-forwards, \u00a77 exit criteria a\u2013d, \u00a78 seal block.",
+      "description": "M9 macro-phase sealing artifact: §0 session arc, §1 AC ledger (all sub-phases), §2 IS.8(b) red-team PASS 5/5, §3 MSR evolution, §4 convergence summary, §5 disagreement summary, §6 carry-forwards, §7 exit criteria a–d, §8 seal block.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_multi_school_signal_lookup",
       "tool_name": "multi_school_signal_lookup",
-      "tool_description": "Cross-school signal coverage \u2014 what each Jyotish school says about a topic",
+      "tool_description": "Cross-school signal coverage — what each Jyotish school says about a topic",
       "description": "Queries school_signal_coverage + l25_msr_signals to report per-school signal coverage (primary/secondary/silent) for a given topic or domain. Returns results_by_school with matching_signals per school. 7 schools: parashari, jaimini, tajika, kp, nadi, bnn, yogini.",
       "query_schema": {
         "type": "object",
@@ -2261,12 +2264,13 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "Phase-2A-M9 2026-05-18",
-      "notes": "M9 multi-school triangulation tool. Use when query asks how multiple schools read a topic. See R31 in PLANNER_PROMPT_v2_0.md."
+      "notes": "M9 multi-school triangulation tool. Use when query asks how multiple schools read a topic. See R31 in PLANNER_PROMPT_v2_0.md.",
+      "expose_to_planner": true
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_convergence_score_lookup",
       "tool_name": "convergence_score_lookup",
-      "tool_description": "Inter-school convergence scores \u2014 HIGH/MEDIUM/LOW agreement across all schools",
+      "tool_description": "Inter-school convergence scores — HIGH/MEDIUM/LOW agreement across all schools",
       "description": "Returns convergence scores per domain from convergence_scores table. Fields: domain, convergence_level (HIGH|MEDIUM|LOW), schools_agreeing, mean_domain_score, std_domain_score, direction, convergence_narrative. Populated from 09_MULTI_SCHOOL_TRIANGULATION/convergence.",
       "query_schema": {
         "type": "object",
@@ -2296,7 +2300,8 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "Phase-2A-M9 2026-05-18",
-      "notes": "M9 convergence tool. Use when query mentions convergence score, school agreement, or divergence. See R32 in PLANNER_PROMPT_v2_0.md."
+      "notes": "M9 convergence tool. Use when query mentions convergence score, school agreement, or divergence. See R32 in PLANNER_PROMPT_v2_0.md.",
+      "expose_to_planner": true
     },
     {
       "canonical_id": "PANCHANG_DAILY_v1_0",
@@ -2320,7 +2325,7 @@
       "description": "Daily Panchang state (5 angas, timings, special yogas, planetary positions) computed deterministically from Swiss Ephemeris + Muhurta Shastra lookup tables for any (date, lat, lon) tuple. Schema doc at 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md; data in Cloud SQL panchang_daily table. Computed by platform/sidecar/panchang_engine. Callable via query_panchanga RetrievalTool (Phase 4C-3). Engine v1.0.0-S3; 30/30 Drik parity; 230 sidecar tests PASS.",
       "produced_during": "Phase-4C-0 2026-05-19",
       "produced_on": "2026-05-19",
-      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED\u2192IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT\u2192CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); \u2192CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED \u2192 IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT \u2192 CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B)."
+      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED→IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT→CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); →CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED → IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B)."
     }
   ],
   "last_updated_by": "4C-9",

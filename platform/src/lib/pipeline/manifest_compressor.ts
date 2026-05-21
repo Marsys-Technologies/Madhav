@@ -1,12 +1,15 @@
 /**
- * manifest_compressor.ts — compresses CAPABILITY_MANIFEST.json primary-tool
- * entries into the planner-ready CompressedEntry[] form.
+ * manifest_compressor.ts — compresses CAPABILITY_MANIFEST.json entries marked
+ * `expose_to_planner: true` into the planner-ready CompressedEntry[] form.
  *
  * Pure: no filesystem access here. Callers load the manifest and pass it in.
  *
  * Output of `compressedManifestToString()` is the planner's `<manifest>` block.
- * Target: ≤3000 tokens (≤12 000 chars at the 4-chars-per-token estimate fixed
- * by W2-MANIFEST §Hard constraints) for the 8 primary tools.
+ * Token budget: ≤ MANIFEST_TOKEN_BUDGET (default 12 000 tokens) for all tools
+ * combined; per-tool description capped at DESCRIPTION_MAX_WORDS (default 60).
+ *
+ * COV-S3 cutover: filtering is now declarative (expose_to_planner === true)
+ * rather than the former hardcoded PRIMARY_TOOL_NAMES list.
  */
 
 export type TokenCostHint = 'low' | 'med' | 'hi'
@@ -46,21 +49,26 @@ export interface CapabilityManifest {
 export interface CompressedEntry {
   /** tool_name */
   t: string
-  /** ≤15-word description */
+  /** ≤60-word description (COV-S3 raised from ≤15 words) */
   d: string
   /** param names only (not full schema) */
   p: string[]
   /** token_cost_hint */
   c: TokenCostHint
-  /** linked_data_asset_id */
+  /** linked_data_asset_id (primary asset; prefer linked_data_asset_ids[] for multi-asset tools) */
   a: string
 }
 
+/** Total planner manifest block token budget (W2-MANIFEST hard constraint, raised COV-S3). */
+export const MANIFEST_TOKEN_BUDGET = 12_000
+
+/** Per-tool description word cap (COV-S3 raised from 15 to 60). */
+export const DESCRIPTION_MAX_WORDS = 60
+
 /**
- * The 8 primary tools the LLM-first planner is allowed to call. Listed in the
- * canonical order W2-MANIFEST AC.M.1 prescribes; `compressManifest()` emits
- * entries in this order, then `compressedManifestToString()` re-sorts
- * alphabetically for determinism.
+ * @deprecated COV-S3: compressManifest() now filters by expose_to_planner === true.
+ * Retained for backward compatibility with existing tests and golden regression baselines.
+ * Do not add new tools here; instead set expose_to_planner: true in manifest_overrides.yaml.
  */
 export const PRIMARY_TOOL_NAMES: readonly string[] = [
   'remedial_codex_query',
@@ -72,7 +80,6 @@ export const PRIMARY_TOOL_NAMES: readonly string[] = [
   'cgm_graph_walk',
   'vector_search',
   'lel_query',
-  // Phase 2A M9 tools (multi-school triangulation) — added 2026-05-18
   'multi_school_signal_lookup',
   'convergence_score_lookup',
 ] as const
@@ -85,11 +92,10 @@ export function estimateTokens(s: string): number {
   return Math.ceil(s.length / 4)
 }
 
-function pickDescription(e: CapabilityManifestEntry): string {
+function pickDescription(e: CapabilityManifestEntry, maxWords = DESCRIPTION_MAX_WORDS): string {
   const candidate = (e.tool_description ?? e.description ?? '').trim()
-  // Cap at 15 words to honour the CompressedEntry.d contract.
   const words = candidate.split(/\s+/).filter(Boolean)
-  return words.slice(0, 15).join(' ')
+  return words.slice(0, maxWords).join(' ')
 }
 
 function pickParams(e: CapabilityManifestEntry): string[] {
@@ -98,22 +104,20 @@ function pickParams(e: CapabilityManifestEntry): string[] {
 }
 
 /**
- * Filter the manifest down to its 8 primary-tool entries and project each into
- * a CompressedEntry. Entries missing a `tool_name` are ignored. Entries whose
- * `tool_name` is not one of the 8 primary tools are also ignored.
+ * Filter the manifest to entries where `expose_to_planner === true` and project
+ * each into a CompressedEntry. Entries missing a `tool_name` are ignored.
+ *
+ * COV-S3: filtering is declarative — set expose_to_planner: true in
+ * manifest_overrides.yaml to include a tool; the Manifest Builder propagates
+ * it to CAPABILITY_MANIFEST.json at next CI regeneration.
  */
 export function compressManifest(manifest: CapabilityManifest): CompressedEntry[] {
-  const byTool = new Map<string, CapabilityManifestEntry>()
-  for (const entry of manifest.entries ?? []) {
-    if (entry.tool_name) byTool.set(entry.tool_name, entry)
-  }
-
   const result: CompressedEntry[] = []
-  for (const name of PRIMARY_TOOL_NAMES) {
-    const entry = byTool.get(name)
-    if (!entry) continue
+  for (const entry of manifest.entries ?? []) {
+    if (!entry.tool_name) continue
+    if (!entry.expose_to_planner) continue
     result.push({
-      t: name,
+      t: entry.tool_name,
       d: pickDescription(entry),
       p: pickParams(entry),
       c: (entry.token_cost_hint ?? 'med') as TokenCostHint,
