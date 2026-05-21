@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-05-21T08:39:06.325Z",
+  "corpus_version": "MSR_v3_0.md",
+  "conflict_count": 6,
+  "conflicts": [
+    {
+      "conflict_id": "DIS.AUTO.214",
+      "conflict_class": "A",
+      "signal_ids_affected": [
+        "MSR.214"
+      ],
+      "description": "signal_name asserts sign(s) [Aries, Leo] but falsifier confirms [Aries] — sign/house mismatch within the same signal.",
+      "detected_at": "2026-05-21T08:39:06.323Z",
+      "evidence": "signal_name: \"D10 — Sun+Mars in D10 9H Aries (Dharmic Trine from D10 Lagna Leo): Dharmic-Martial-Career Fusion\" | falsifier: \"Sun in Aries D10 (exalted); Mars in Aries D10 (own sign). D10 Lagna Leo; 9H from Leo = Aries — confirmed. Positions from v6.0 §3.5.\" | mismatched signs in signal_name not confirmed by falsifier: [Leo]"
+    },
+    {
+      "conflict_id": "DIS.AUTO.328",
+      "conflict_class": "A",
+      "signal_ids_affected": [
+        "MSR.328"
+      ],
+      "description": "signal_name asserts sign(s) [Taurus, Leo, Scorpio, Aquarius] but falsifier confirms [Aquarius] — sign/house mismatch within the same signal.",
+      "detected_at": "2026-05-21T08:39:06.325Z",
+      "evidence": "signal_name: \"Jaimini — Fixed-Sign Yoga: 3 of 4 Fixed Signs Occupied (Taurus+Leo+Scorpio+Aquarius Configuration)\" | falsifier: \"Rahu = Taurus (fixed), Ketu = Scorpio (fixed), Moon = Aquarius (fixed), Leo (5H) = empty. 3/4 fixed signs occupied = confirmed from v6.0 §2.1.\" | mismatched signs in signal_name not confirmed by falsifier: [Taurus, Leo, Scorpio]"
+    },
+    {
+      "conflict_id": "DIS.AUTO.348",
+      "conflict_class": "A",
+      "signal_ids_affected": [
+        "MSR.348"
+      ],
+      "description": "signal_name asserts sign(s) [Gemini, Capricorn] but falsifier confirms [Gemini] — sign/house mismatch within the same signal.",
+      "detected_at": "2026-05-21T08:39:06.325Z",
+      "evidence": "signal_name: \"Jaimini — Navamsha Karakamsa Integration: Mercury Vargottama in D9 Capricorn + Karakamsa Gemini = Mercury-Twin Confirmation of Soul-Path\" | falsifier: \"Mercury Vargottama in D1 Capricorn = D9 Capricorn = confirmed from v6.0 §3.2. Moon (AK) in D9 Gemini = Karakamsa = Gemini = confirmed from v6.0 §3.5. Gemini's lord = Mercury = confirmed. Mercury as MD lord 2010-2027 = confirmed from MATRIX_DASHA_PERIODS.\" | mismatched signs in signal_name not confirmed by falsifier: [Capricorn]"
+    },
+    {
+      "conflict_id": "DIS.AUTO.349",
+      "conflict_class": "A",
+      "signal_ids_affected": [
+        "MSR.349"
+      ],
+      "description": "signal_name asserts sign(s) [Aries, Cancer, Libra, Capricorn] but falsifier confirms [Cancer] — sign/house mismatch within the same signal.",
+      "detected_at": "2026-05-21T08:39:06.325Z",
+      "evidence": "signal_name: \"Jaimini — Rashi Drishti Convergence on Capricorn 10H: Receives Jaimini Aspects from Aries+Cancer+Libra (All Movable Signs) = 10H is Chart's Most-Aspected House via Jaimini\" | falsifier: \"Capricorn = movable = confirmed. Fixed signs in chart: Taurus 2H (Rahu) + Scorpio 8H (Ketu) + Aquarius 11H (Moon) + Leo 5H (empty). Adjacent-preceding for each: Taurus's adjacent = Aries (movable, excluded); Scorpio's adjacent = Libra (movable, excluded); Aquarius's adjacent = Capricorn (movable, EXCLUDED = Moon does NOT aspect 10H); Leo's adjacent = Cancer (movable, excluded). Rahu → aspects Capricorn = confirmed. Ketu → aspects Capricorn = confirmed. Leo (empty) → aspects Capricorn = confirmed. Moon → does NOT aspect Capricorn (adjacent) = confirmed.\" | mismatched signs in signal_name not confirmed by falsifier: [Aries, Libra, Capricorn]"
+    },
+    {
+      "conflict_id": "DIS.013",
+      "conflict_class": "A",
+      "signal_ids_affected": [
+        "MSR.377"
+      ],
+      "description": "signal_name asserts sign(s) [Gemini] but falsifier confirms [Virgo] — sign/house mismatch within the same signal.",
+      "detected_at": "2026-05-21T08:39:06.325Z",
+      "evidence": "signal_name: \"Tajika — Muntha Position at Age 42 (2026): Muntha in Gemini 3H = UL/Spouse-Domain Annual Activation\" | falsifier: \"Muntha calculation: Age 42 mod 12 = 6 (remainder after 3 complete 12-year cycles); 6th sign from Aries = Virgo (Aries=1, Taurus=2, Gemini=3, Cancer=4, Leo=5, Virgo=6). Muntha at 42 = Virgo 6H = confirmed. Standard Tajika Muntha formula confirmed.\" | mismatched signs in signal_name not confirmed by falsifier: [Gemini]"
+    },
+    {
+      "conflict_id": "DIS.AUTO.393",
+      "conflict_class": "A",
+      "signal_ids_affected": [
+        "MSR.393"
+      ],
+      "description": "signal_name asserts sign(s) [Taurus, Scorpio] but falsifier confirms [Libra] — sign/house mismatch within the same signal.",
+      "detected_at": "2026-05-21T08:39:06.325Z",
+      "evidence": "signal_name: \"Meta-Convergence — Nodal Axis Four-System Lock: Rahu (Taurus 2H) + Ketu (Scorpio 8H) Confirmed Across Parashari + Jaimini + KP + Sensitive Points\" | falsifier: \"Rahu Taurus 2H exalted = confirmed. Ketu Scorpio 8H exalted = confirmed. Jaimini Rahu quadruple aspect = confirmed in MSR.327. Ketu Jaimini aspects = confirmed in MSR.331. KP cusp 2 sub = Rahu = confirmed from v6.0 §4.1. Bhrigu Bindu = Rahu-Moon midpoint = Libra 7H = confirmed from v7.0. Four systems verified.\" | mismatched signs in signal_name not confirmed by falsifier: [Taurus, Scorpio]"
+    }
+  ]
+}
