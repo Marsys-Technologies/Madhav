@@ -134,6 +134,53 @@ describe('writeConsumePerformanceRow', () => {
     // synthesis_status is param $13
     expect(params[12]).toBe('success')
   })
+
+  // PERF-S1 fix (b): per-tool score map
+  it('populates retrieval_scores as JSON object for tools with scores (PERF-S1 fix b)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] })
+    await writeConsumePerformanceRow(makeInput())
+    const params = mockQuery.mock.calls[1][1] as unknown[]
+    // retrieval_scores is param $22 (index 21)
+    const scores = JSON.parse(params[21] as string) as Record<string, number>
+    // msr_sql has significance 0.9; vector_search has significance 0.7
+    expect(scores['msr_sql']).toBe(0.9)
+    expect(scores['vector_search']).toBe(0.7)
+  })
+
+  // PERF-S1 fix (d): latency_complete flag
+  it('sets latency_complete=true when timestamps are valid (PERF-S1 fix d)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] })
+    await writeConsumePerformanceRow(makeInput())
+    const params = mockQuery.mock.calls[1][1] as unknown[]
+    // latency_complete is param $24 (index 23)
+    expect(params[23]).toBe(true)
+  })
+
+  it('sets latency_complete=false and latency_total_ms=null for invalid timestamps (PERF-S1 fix d)', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] })
+    await writeConsumePerformanceRow(
+      makeInput({
+        synthesis_event: {
+          event_type: 'synthesis_complete',
+          query_plan_id: 'pp-1',
+          bundle_id: 'b-1',
+          synthesis_prompt_version: 'v1',
+          synthesizer_model_id: 'gemini-2.5-pro',
+          finish_reason: 'stop',
+          validator_votes: {},
+          started_at: 'not-a-date',
+          finished_at: 'also-not-a-date',
+          input_tokens: 1000,
+          output_tokens: 200,
+          final_output: 'Jupiter activates the 10th house.',
+        },
+      })
+    )
+    const params = mockQuery.mock.calls[1][1] as unknown[]
+    // latency_total_ms is param $10 (index 9); latency_complete is param $24 (index 23)
+    expect(params[9]).toBeNull()
+    expect(params[23]).toBe(false)
+  })
 })
 
 describe('writeEvalRun / writeEvalPerformanceRow / finalizeEvalRun', () => {

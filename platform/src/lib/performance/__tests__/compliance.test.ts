@@ -141,6 +141,60 @@ describe('detectB11Violation', () => {
       })
     ).toBe(false)
   })
+
+  // PERF-S1: post-M9 tools added to L2_5_TOOLS
+  it('returns false when multi_school_signal_lookup fired (M9 addition)', () => {
+    expect(
+      detectB11Violation({ toolResults: [{ tool_name: 'multi_school_signal_lookup' }] })
+    ).toBe(false)
+  })
+
+  it('returns false when convergence_score_lookup fired (M9 addition)', () => {
+    expect(
+      detectB11Violation({ toolResults: [{ tool_name: 'convergence_score_lookup' }] })
+    ).toBe(false)
+  })
+
+  it('returns false when query_signal_state fired (M3 addition)', () => {
+    expect(
+      detectB11Violation({ toolResults: [{ tool_name: 'query_signal_state' }] })
+    ).toBe(false)
+  })
+
+  it('returns false when query_kp_ruling_planets fired (M3 addition)', () => {
+    expect(
+      detectB11Violation({ toolResults: [{ tool_name: 'query_kp_ruling_planets' }] })
+    ).toBe(false)
+  })
+
+  it('returns false when query_varshaphala fired (M3 addition)', () => {
+    expect(
+      detectB11Violation({ toolResults: [{ tool_name: 'query_varshaphala' }] })
+    ).toBe(false)
+  })
+
+  it('returns false when cross_varga_dignity_query fired (M3 addition)', () => {
+    expect(
+      detectB11Violation({ toolResults: [{ tool_name: 'cross_varga_dignity_query' }] })
+    ).toBe(false)
+  })
+
+  it('L2_5_TOOLS set contains at least 14 entries (original 8 + 6 post-M3/M9 additions)', () => {
+    // Validate the set size by checking all 14 known tools are recognized.
+    const l2_5_tools = [
+      'msr_sql', 'query_msr_aggregate', 'pattern_register', 'resonance_register',
+      'cluster_atlas', 'contradiction_register', 'temporal', 'cgm_graph_walk',
+      'multi_school_signal_lookup', 'convergence_score_lookup',
+      'query_signal_state', 'query_kp_ruling_planets', 'query_varshaphala',
+      'cross_varga_dignity_query',
+    ]
+    for (const tool of l2_5_tools) {
+      expect(
+        detectB11Violation({ toolResults: [{ tool_name: tool }] }),
+        `Expected ${tool} to be recognized as L2.5`
+      ).toBe(false)
+    }
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,21 +206,44 @@ describe('parseCitations', () => {
     expect(parseCitations('Plain prose without markers.')).toEqual([])
   })
 
-  it('parses an L1 citation', () => {
+  it('parses an L1 citation (arrow format)', () => {
     const out = parseCitations('Sun at 10° (→ FORENSIC: Sun natal longitude).')
     expect(out).toHaveLength(1)
     expect(out[0].source_layer).toBe('L1')
   })
 
-  it('parses an L2.5 citation', () => {
+  it('parses an L2.5 citation (arrow format)', () => {
     const out = parseCitations('Pattern fires (→ MSR/signal/P-001).')
     expect(out).toHaveLength(1)
     expect(out[0].source_layer).toBe('L2_5')
   })
 
-  it('parses multiple mixed citations', () => {
+  it('parses multiple mixed citations (arrow format)', () => {
     const out = parseCitations('A (→ FORENSIC: x) and B (→ MSR/y) and C (→ 03_DOMAIN_REPORTS/z).')
     expect(out).toHaveLength(3)
     expect(out.map((c) => c.source_layer)).toEqual(['L1', 'L2_5', 'L3'])
+  })
+
+  // PERF-S1 fix (e): GFM footnote format (R7+ citations)
+  it('parses a GFM footnote citation (footnote format, L1)', () => {
+    const text = 'Jupiter is strong[^1].\n\n[^1]: FORENSIC: Jupiter natal longitude.'
+    const out = parseCitations(text)
+    expect(out).toHaveLength(1)
+    expect(out[0].source_layer).toBe('L1')
+  })
+
+  it('parses a GFM footnote citation (footnote format, L2.5)', () => {
+    const text = 'Pattern is active[^1].\n\n[^1]: MSR/signal/P-001.'
+    const out = parseCitations(text)
+    expect(out).toHaveLength(1)
+    expect(out[0].source_layer).toBe('L2_5')
+  })
+
+  it('parses mixed arrow + footnote citations', () => {
+    const text = 'A (→ FORENSIC: x). B is notable[^1].\n\n[^1]: MSR/signal/P-002.'
+    const out = parseCitations(text)
+    expect(out).toHaveLength(2)
+    expect(out[0].source_layer).toBe('L1')
+    expect(out[1].source_layer).toBe('L2_5')
   })
 })

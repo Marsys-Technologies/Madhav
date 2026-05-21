@@ -46,6 +46,10 @@ export function PerformanceClient() {
   const [traceQueryId, setTraceQueryId] = React.useState<string | null>(null)
   const [traceOpen, setTraceOpen] = React.useState(false)
 
+  // PERF-S1 fix (f): track when data was last successfully fetched.
+  const lastFetchedAtRef = React.useRef<number | null>(null)
+  const [fetchedAgoLabel, setFetchedAgoLabel] = React.useState<string>('never')
+
   const window = React.useMemo(() => resolveWindow(preset, customRange), [preset, customRange])
 
   React.useEffect(() => {
@@ -66,6 +70,29 @@ export function PerformanceClient() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   })
+
+  // PERF-S1 fix (f): update lastFetchedAtRef when kpisQ data arrives.
+  React.useEffect(() => {
+    if (kpisQ.data != null) {
+      lastFetchedAtRef.current = Date.now()
+    }
+  }, [kpisQ.data])
+
+  // Tick every 10s to update the "Updated Xs ago" label.
+  React.useEffect(() => {
+    function computeLabel(): string {
+      const ts = lastFetchedAtRef.current
+      if (ts == null) return 'never'
+      const diffS = Math.floor((Date.now() - ts) / 1000)
+      if (diffS < 5) return 'just now'
+      if (diffS < 60) return `${diffS}s ago`
+      return `${Math.floor(diffS / 60)}m ago`
+    }
+    setFetchedAgoLabel(computeLabel())
+    const id = setInterval(() => setFetchedAgoLabel(computeLabel()), 10_000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpisQ.data])
 
   const queriesQ = useQuery({
     queryKey: ['perf-queries', window.start, window.end, source, page],
@@ -100,7 +127,11 @@ export function PerformanceClient() {
             Super-admin · Gate I ·{' '}
             {kpisQ.isFetching
               ? 'updating…'
-              : <span style={{ color: 'var(--status-success)' }}>live</span>}
+              : (
+                <span style={{ color: 'var(--status-success)' }}>
+                  Updated {fetchedAgoLabel}
+                </span>
+              )}
           </p>
         </div>
         <button
