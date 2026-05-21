@@ -8777,7 +8777,7 @@ SIG.MSR.376:
   rpt_deep_dive: "v6.0 §2.1; Tajika Neelakanthi framework"
 
 SIG.MSR.377:
-  signal_name: "Tajika — Muntha Position at Age 42 (2026): Muntha in Virgo 6H = Dusthana Annual Activation (6H: Health/Service/Conflict)"
+  signal_name: "Tajika — Muntha Position at Age 42 (2026): Muntha in Gemini 3H = UL/Spouse-Domain Annual Activation"
   signal_type: tajika-pattern
   classical_source: "Tajika Neelakanthi (Muntha = a sensitive Tajika point that moves 30°/year from the natal Lagna sign; at birth, Muntha = natal Lagna sign; each subsequent year, Muntha advances by one sign)"
   entities_involved: [JMN.UL, HSE.3, HSE.1]

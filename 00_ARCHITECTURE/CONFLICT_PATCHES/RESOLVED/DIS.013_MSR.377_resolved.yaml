@@ -1,0 +1,27 @@
+conflict_id: DIS.013
+signal_id: MSR.377
+field: signal_name
+current_value: "Tajika — Muntha Position at Age 42 (2026): Muntha in Gemini 3H = UL/Spouse-Domain Annual Activation"
+proposed_value: "Tajika — Muntha Position at Age 42 (2026): Muntha in Virgo 6H = Dusthana Annual Activation (6H: Health/Service/Conflict)"
+rationale: "Muntha year = birth_year + age = 1984 + 42 = 2026; 42 mod 12 = 6; 6th sign from Aries = Virgo (Aries=1, Taurus=2, Gemini=3, Cancer=4, Leo=5, Virgo=6); 6th house in this chart. signal_name incorrectly states Gemini 3H. Falsifier confirms Virgo 6H. The supporting_rules block within the same signal also correctly states Virgo 6H — the error is confined to signal_name only."
+propagation_chain:
+  - "MSR.377 signal_name (primary correction target)"
+  - "any downstream signal that references Muntha sign as Gemini (search MSR for \"Muntha\" + \"Gemini\")"
+  - "UCN sections referencing Muntha position in 2026 annual layer"
+  - "CDLM cells that link Muntha-Gemini to 3H domains (UL/spouse-domain framing would need revision to 6H health/service framing)"
+proposed_at: 2026-05-21T09:44:33.370Z
+status: reverted
+reverted_on: 2026-05-21
+reverted_because: |
+  ICR-S5 (commit 58cd34fe) applied this patch to MSR_v3_0.md (Virgo 6H). However:
+  (1) MSR_v3_0.md is a superseded file archived to 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/
+  by MSR-HYGIENE-S1 (commit 40184eb2 on main). Archived files are read-only per
+  ONGOING_HYGIENE_POLICIES §A (retain-in-place).
+  (2) The proposed value (Virgo 6H) was also incorrect — FORENSIC §22 and WRAPUP-S2
+  analysis determined the canonical value is Libra 7H (not Virgo 6H).
+  (3) The canonical Libra 7H correction was applied directly to MSR_v5_0.md (the live
+  CURRENT file) via commit 2a662ca7 (MSR-377-LIBRA-7H-CORRECTION) and further refined
+  via WRAPUP-S2 and WRAPUP-S3 on main.
+  MSR_v3_0.md signal_name reverted to pre-patch state (Gemini 3H) on this branch.
+canonical_fix_location: "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
+canonical_fix_commit: "2a662ca7"
