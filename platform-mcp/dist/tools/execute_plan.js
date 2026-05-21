@@ -30,11 +30,56 @@ const ExecutePlanInputSchema = z.object({
  * @param getPrincipal Callback that returns the resolved principal for this request.
  */
 export function registerExecutePlan(server, getPrincipal) {
-    // PLACEHOLDER description — full §4.6 description lands in MCP-2-S2.
-    const placeholderDescription = 'Executes an explicit PipelinePlan (from plan_query, optionally edited). ' +
-        'Enables plan inspection + modification + re-execution workflows. [Full ' +
-        'description: MCP-2-S2]';
-    server.tool('execute_plan', placeholderDescription, ExecutePlanInputSchema.shape, async (args) => {
+    // §4.6-standard description — authored MCP-2-S2.
+    //
+    // What it does: Executes an explicit PipelinePlan object — typically the
+    // output of plan_query, optionally edited by the caller — and runs the full
+    // MARSYS-JIS pipeline from arbitration onward (retrieval → synthesis →
+    // epistemics). This is the second half of the differential-analysis workflow:
+    // generate a plan with plan_query, edit it, then execute with this tool and
+    // compare the result against the unmodified run.
+    //
+    // When to prefer: Use execute_plan when you need precise control over which
+    // retrieval tools fire and in what priority order. The platform re-validates
+    // the plan against PipelinePlanSchema before execution and re-checks
+    // audience-tier-permitted tools — a client-tier caller cannot escalate
+    // privileges by editing the plan. The B.11 Whole-Chart-Read floor is still
+    // enforced for holistic queries even on edited plans. Use ask_madhav instead
+    // when you do not need to inspect or modify the plan first.
+    //
+    // Input shape hints:
+    //   plan — a PipelinePlan object, typically from plan_query output. Must be
+    //     a structurally valid PipelinePlan; invalid plans return {ok: false,
+    //     error: {class: "validation", ...}}. Editing tool_calls[] is the most
+    //     common modification (add, remove, or reprioritize tools).
+    //
+    // Output shape preview: same envelope as ask_madhav — {ok, answer_markdown,
+    //   citations[], trace_id, plan, synthesis_audit, suggested_followups[]}.
+    //
+    // Example: execute_plan({plan: {...planFromPlanQuery, tool_calls: [
+    //   {tool: "msr_sql", priority: 1}, {tool: "cgm_graph_walk", priority: 1}]}})
+    //   → {ok: true, answer_markdown: "...", citations: [...], trace_id: "qry_..."}
+    const fullDescription = 'What it does: Executes an explicit PipelinePlan object — typically the ' +
+        'output of plan_query, optionally edited — and runs the full MARSYS-JIS ' +
+        'pipeline from arbitration onward (retrieval → synthesis → epistemics). ' +
+        'This is the second half of the differential-analysis workflow: generate ' +
+        'a plan with plan_query, edit it, then execute with this tool and compare.\n\n' +
+        'When to prefer: Use execute_plan when you need precise control over which ' +
+        'retrieval tools fire and in what priority order. The platform re-validates ' +
+        'the plan against PipelinePlanSchema and re-checks audience-tier-permitted ' +
+        'tools — no privilege escalation via plan editing. The B.11 Whole-Chart-Read ' +
+        'floor is still enforced for holistic queries even on edited plans. Use ' +
+        'ask_madhav instead when you do not need to inspect or modify the plan first.\n\n' +
+        'Input shape hints: plan — a PipelinePlan object from plan_query output. ' +
+        'Must be structurally valid; invalid plans return {ok: false, error: ' +
+        '{class: "validation", ...}}. Editing tool_calls[] is the most common ' +
+        'modification (add, remove, or reprioritize retrieval tools).\n\n' +
+        'Output shape preview: same envelope as ask_madhav — {ok, answer_markdown, ' +
+        'citations[], trace_id, plan, synthesis_audit, suggested_followups[]}.\n\n' +
+        'Example: execute_plan({plan: {...planFromPlanQuery, tool_calls: [' +
+        '{tool: "msr_sql", priority: 1}, {tool: "cgm_graph_walk", priority: 1}]}}) ' +
+        '→ {ok: true, answer_markdown: "...", citations: [...], trace_id: "qry_..."}';
+    server.tool('execute_plan', fullDescription, ExecutePlanInputSchema.shape, async (args) => {
         const principal = getPrincipal();
         const { status, envelope } = await callPlatform({
             tool: 'execute_plan',

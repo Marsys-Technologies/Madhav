@@ -5,8 +5,17 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - Three tools registered: ask_madhav, plan_query, execute_plan.
- *   (Tier 3 primitives, read_asset, get_trace, list_recent_queries land in MCP-3.)
+ * - 19 tools registered as of MCP-4-S1 (16 read + 3 write).
+ *
+ * Tool count (v1, all registered as of MCP-4-S1):
+ *   Tier 1: ask_madhav
+ *   Tier 2: plan_query, execute_plan
+ *   Tier 3 (10): query_chart_facts, query_signals, query_dasha_periods,
+ *                query_panchanga, query_ephemeris, query_transit_event,
+ *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
+ *   Tier 4 (1): read_asset
+ *   Tier 5 (2): get_trace, list_recent_queries
+ *   Tier 6 — Write tools (3, MCP-4-S1): log_prediction, record_outcome, flag_disagreement
  *
  * Cloud Run configuration (amjis-mcp service):
  *   Memory: 512 MB, Min instances: 1, Concurrency: 80, Region: asia-south1.
@@ -16,9 +25,29 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express from 'express';
 import { validateMcpKeyFromHeader } from './auth.js';
+import { registerResources } from './resources/index.js';
 import { registerAskMadhav } from './tools/ask_madhav.js';
 import { registerPlanQuery } from './tools/plan_query.js';
 import { registerExecutePlan } from './tools/execute_plan.js';
+// MCP-3-S1: Tier 3 surgical primitives
+import { registerQueryChartFacts } from './tools/query_chart_facts.js';
+import { registerQuerySignals } from './tools/query_signals.js';
+import { registerQueryDashaPeriods } from './tools/query_dasha_periods.js';
+import { registerQueryPanchanga } from './tools/query_panchanga.js';
+import { registerQueryEphemeris } from './tools/query_ephemeris.js';
+import { registerQueryTransitEvent } from './tools/query_transit_event.js';
+import { registerLelQuery } from './tools/lel_query.js';
+import { registerVectorSearch } from './tools/vector_search.js';
+import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js';
+import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js';
+// MCP-3-S2: Tier 4 + Tier 5 tools
+import { registerReadAsset } from './tools/read_asset.js';
+import { registerGetTrace } from './tools/get_trace.js';
+import { registerListRecentQueries } from './tools/list_recent_queries.js';
+// MCP-4-S1: Tier 6 write tools (PPL + disagreement)
+import { registerLogPrediction } from './tools/log_prediction.js';
+import { registerRecordOutcome } from './tools/record_outcome.js';
+import { registerFlagDisagreement } from './tools/flag_disagreement.js';
 const app = express();
 app.use(express.json());
 // ── MCP endpoint ──────────────────────────────────────────────────────────────
@@ -46,10 +75,37 @@ app.post('/mcp', async (req, res) => {
         version: '1.0.0',
     });
     const getPrincipal = () => principal;
+    // Register MCP resources (marsys://chart-overview, marsys://house-rules).
+    // Resources are read once at session attach — they orient Claude to the
+    // singleton chart and operating discipline without burning per-turn tool calls.
+    registerResources(server);
     // Register Tier 1 + Tier 2 tools.
     registerAskMadhav(server, getPrincipal);
     registerPlanQuery(server, getPrincipal);
     registerExecutePlan(server, getPrincipal);
+    // Register Tier 3 surgical primitives (MCP-3-S1).
+    registerQueryChartFacts(server, getPrincipal);
+    registerQuerySignals(server, getPrincipal);
+    registerQueryDashaPeriods(server, getPrincipal);
+    registerQueryPanchanga(server, getPrincipal);
+    registerQueryEphemeris(server, getPrincipal);
+    registerQueryTransitEvent(server, getPrincipal);
+    registerLelQuery(server, getPrincipal);
+    registerVectorSearch(server, getPrincipal);
+    registerGetCgmSubgraph(server, getPrincipal);
+    registerCrossSchoolLookup(server, getPrincipal);
+    // Register Tier 4 raw-asset tool (MCP-3-S2).
+    registerReadAsset(server, getPrincipal);
+    // Register Tier 5 observability tools (MCP-3-S2).
+    registerGetTrace(server, getPrincipal);
+    registerListRecentQueries(server, getPrincipal);
+    // Register Tier 6 write tools (MCP-4-S1):
+    //   log_prediction  — PPL interim substrate (mcp_predictions table, migration 071)
+    //   record_outcome  — outcome recording against prior predictions
+    //   flag_disagreement — governance disagreement register (mcp_disagreements table)
+    registerLogPrediction(server, getPrincipal);
+    registerRecordOutcome(server, getPrincipal);
+    registerFlagDisagreement(server, getPrincipal);
     // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
     const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
