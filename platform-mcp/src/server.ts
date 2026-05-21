@@ -70,9 +70,22 @@ app.use(express.json())
  */
 app.post('/mcp', async (req: Request, res: Response) => {
   // Validate the Bearer key before doing any work.
-  const principal: Principal | null = await validateMcpKeyFromHeader(
-    req.headers['authorization']
-  )
+  //
+  // Auth source priority:
+  //   1. Authorization: Bearer <key> header (preferred — Claude Code via .mcp.json,
+  //      direct API clients, anything that supports custom headers).
+  //   2. ?api_key=<key> URL query parameter (fallback — Claude.ai's "Add custom
+  //      connector" UI has no Bearer field as of 2026-05; this lets users embed
+  //      the key in the connector URL itself).
+  //
+  // Trade-off: URL-embedded tokens leak into logs/referrers. Acceptable per
+  // D12 (full-transparency tier) for personal/super_admin keys; do NOT use this
+  // path for client-tier or shared keys.
+  const headerAuth = req.headers['authorization']
+  const queryKey = typeof req.query['api_key'] === 'string' ? req.query['api_key'] : undefined
+  const authHeader = headerAuth ?? (queryKey ? `Bearer ${queryKey}` : undefined)
+
+  const principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
 
   if (!principal) {
     res.status(401).json({ error: 'Unauthorized', message: 'Invalid or missing Bearer API key' })
