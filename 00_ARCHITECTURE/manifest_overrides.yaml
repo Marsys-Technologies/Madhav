@@ -225,3 +225,601 @@ additional_entries:
     expose_to_chat: false
     category: "register_data"
     native_id: "abhisek"
+
+  # ── COV-S2: Retrieval tool manifest entries (25 of 30 — 5 already exist) ──
+
+  - canonical_id: "RETRIEVAL_TOOL_msr_sql"
+    tool_name: "msr_sql"
+    tool_description: "Primary MSR signal retrieval from Cloud SQL msr_signals table. Filters by signal_type (yoga, aspect, graha, etc.), temporal_activation (natal-permanent, dasha-conditional, etc.), valence (benefic, malefic, mixed), entities_involved, and dasha_activation lords. Returns a full ToolBundle of matching MSR signals with confidence, layer, and domain metadata. Use for any query requiring direct MSR corpus access filtered by astrological category. The canonical L2.5 synthesis signal store covering all 514 MSR signals across the native's chart."
+    query_schema:
+      type: object
+      properties:
+        signal_type:
+          type: array
+          description: "yoga|aspect|graha|house|rashi|nakshatra|dasha|transit|composite"
+        temporal_activation:
+          type: array
+          description: "natal-permanent|dasha-conditional|transit-conditional|composite"
+        valence:
+          type: array
+          description: "benefic|malefic|mixed|neutral"
+        entities_involved_any:
+          type: array
+          description: "Entity IDs (e.g. GRH.SUN, HSE.07, DSH.MD.KETU)"
+        dasha_activation:
+          type: array
+          description: "Dasha lord names (e.g. Ketu, Mercury) — prepended with DSH.MD."
+    linked_data_asset_ids: ["MSR"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L2.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_pattern_register"
+    tool_name: "pattern_register"
+    tool_description: "L3.5 Discovery Layer pattern register. Reads PATTERN_REGISTER_v1_0.json from the repository and filters PatternEntry records to match the incoming QueryPlan. Each entry encodes a recurring astrological pattern observed across the native's chart with confidence and domain tags. Use for queries about recurring themes, structural patterns, and cross-domain regularities surfaced by the Discovery Layer. Returns a validated ToolBundle. Feature-flag guarded: DISCOVERY_PATTERNS_ENABLED."
+    query_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: "CAREER|HEALTH|RELATIONSHIP|SPIRITUAL|PSYCHOLOGICAL"
+        min_confidence:
+          type: number
+          description: "0.0–1.0 minimum confidence threshold"
+        pattern_id:
+          type: string
+          description: "Specific PAT.NNN pattern ID"
+    linked_data_asset_ids: ["PATTERN_REGISTER_JSON"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L3.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_resonance_register"
+    tool_name: "resonance_register"
+    tool_description: "L3.5 Discovery Layer resonance register. Reads RESONANCE_REGISTER_v1_0.json and filters ResonanceEntry records matching the QueryPlan. Resonance entries encode cross-domain signal amplification patterns — cases where signals from different astrological layers reinforce each other with measurable strength. Use for queries about amplified themes, resonance scores, or cross-layer coherence. Returns a validated ToolBundle. Feature-flag guarded: DISCOVERY_RESONANCE_ENABLED."
+    query_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: "CAREER|HEALTH|RELATIONSHIP|SPIRITUAL|PSYCHOLOGICAL"
+        min_confidence:
+          type: number
+          description: "0.0–1.0 minimum confidence threshold"
+    linked_data_asset_ids: ["RESONANCE_REGISTER_JSON"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L3.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_cluster_atlas"
+    tool_name: "cluster_atlas"
+    tool_description: "L3.5 Discovery Layer cluster atlas. Reads CLUSTER_ATLAS_v1_0.json and filters ClusterEntry records — groups of MSR signals that co-activate around related themes. Each cluster has a label, member signal IDs, and a confidence score. Use for queries about thematic signal clusters or when the planner needs to retrieve a coherent group of related signals without enumerating them individually. Returns a validated ToolBundle. Feature-flag guarded: DISCOVERY_CLUSTERS_ENABLED."
+    query_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: "CAREER|HEALTH|RELATIONSHIP|SPIRITUAL|PSYCHOLOGICAL"
+        cluster_id:
+          type: string
+          description: "Specific CLU.NNN cluster ID"
+        min_confidence:
+          type: number
+          description: "0.0–1.0 minimum confidence threshold"
+    linked_data_asset_ids: ["CLUSTER_ATLAS_JSON"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L3.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_contradiction_register"
+    tool_name: "contradiction_register"
+    tool_description: "L3.5 Discovery Layer contradiction register. Reads CONTRADICTION_REGISTER_v1_0.json and filters ContradictionEntry records — known signal contradictions where two or more MSR signals make conflicting claims. Each entry carries the contradicting signal IDs, contradiction class, resolution strategy, and confidence. Use when queries require surfacing known tensions or conflicts within the native's chart interpretation. Returns a validated ToolBundle. Feature-flag guarded: DISCOVERY_CONTRADICTIONS_ENABLED."
+    query_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: "CAREER|HEALTH|RELATIONSHIP|SPIRITUAL|PSYCHOLOGICAL"
+        contradiction_class:
+          type: string
+          description: "intra_signal|inter_signal|L1_conflict"
+    linked_data_asset_ids: ["CONTRADICTION_REGISTER_JSON"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L3.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_temporal"
+    tool_name: "temporal"
+    tool_description: "Live transit and ephemeris data via Python sidecar HTTP call. Returns current planetary transits for the native, including sign positions, retrograde status, and active transit-to-natal aspects at the time of query. Gracefully degrades when the sidecar is unavailable. Use for present-tense transit queries or when the question concerns what is happening in the sky right now relative to the native's natal chart. Distinct from query_ephemeris (table-backed date lookups)."
+    query_schema:
+      type: object
+      properties:
+        include_aspects:
+          type: boolean
+          description: "Whether to include transit-to-natal aspects (default true)"
+    linked_data_asset_ids: ["EPHEMERIS_DAILY"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_msr_aggregate"
+    tool_name: "query_msr_aggregate"
+    tool_description: "Cross-native MSR aggregate query stub. Designed for multi-native deployment (cross-chart comparisons, cohort aggregates). Not yet deployed — returns a structured 'not deployed' status response immediately without I/O. Do not use for single-native queries; use msr_sql instead. This tool is a placeholder for the M10 multi-native research layer when aggregate statistics across native cohorts become available."
+    query_schema:
+      type: object
+      properties:
+        aggregate_type:
+          type: string
+          description: "count|mean|distribution — placeholder, not executed"
+    linked_data_asset_ids: ["MSR"]
+    expose_to_planner: false
+    token_cost_hint: low
+    layer: "L2.5"
+    expose_to_chat: false
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_cgm_graph_walk"
+    tool_name: "cgm_graph_walk"
+    tool_description: "BFS traversal over the CGM cross-domain graph (l25_cgm_nodes + l25_cgm_edges). Starts from seed nodes supplied in QueryPlan.graph_seed_hints and expands up to graph_traversal_depth levels, batch-fetching edges and node metadata per level. Returns multi-hop CGM paths revealing how chart factors connect across domains. Use for queries about cross-domain linkages, synthesis pathways, or 'how does X connect to Y'. Feature-flag guarded: CGM_GRAPH_WALK_ENABLED. Returns empty ToolBundle if flag is off or no seeds supplied."
+    query_schema:
+      type: object
+      properties:
+        seed_node_ids:
+          type: array
+          description: "Starting CGM node IDs for BFS expansion"
+        max_depth:
+          type: integer
+          description: "Maximum traversal depth (default 2, max 4)"
+    linked_data_asset_ids: ["CGM"]
+    expose_to_planner: true
+    token_cost_hint: high
+    layer: "L2.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_manifest_query"
+    tool_name: "manifest_query"
+    tool_description: "Queries CAPABILITY_MANIFEST.json to surface relevant artifacts for a question. Uses deterministic keyword scoring — no LLM call. Returns artifact metadata (path, canonical_id, layer, description) matching the query context. Use when the planner needs to discover which L1-L8 assets or tools are relevant to a topic before fetching content. Feature-flag guarded: MANIFEST_QUERY_ENABLED. Gracefully degrades on file-read or parse failure."
+    query_schema:
+      type: object
+      properties:
+        keywords:
+          type: array
+          description: "Topic keywords for artifact matching"
+        layer_filter:
+          type: array
+          description: "Restrict to specific layers: L1|L2.5|L3|L3.5|L4|L5|L6|L7|L8"
+    linked_data_asset_ids: ["CAPABILITY_MANIFEST"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L0"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_vector_search"
+    tool_name: "vector_search"
+    tool_description: "Semantic similarity search over rag_embeddings + rag_chunks using pgvector cosine distance. Embeds the query text via Vertex AI text-multilingual-embedding-002 (768 dims, ADC auth), then runs nearest-neighbour SQL against the native's embedding store. Secondary tool — supplements primary retrieval and is skipped when VECTOR_SEARCH_ENABLED is off. Gracefully degrades on Vertex AI or DB failure. Use for open-ended content retrieval when keyword-based tools are insufficient."
+    query_schema:
+      type: object
+      properties:
+        query_text:
+          type: string
+          description: "Natural language query text to embed and search"
+        top_k:
+          type: integer
+          description: "Number of nearest chunks to return (default 5, max 20)"
+        doc_type_filter:
+          type: string
+          description: "Optional: restrict to domain_report|l4_remedial|l5_timeline|classical"
+    linked_data_asset_ids: ["RAG_CHUNKS"]
+    expose_to_planner: true
+    token_cost_hint: high
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_kp_query"
+    tool_name: "kp_query"
+    tool_description: "KP (Krishnamurti Paddhati) cusp and planet significator lookup. Returns star lord, sub lord, and sub-sub lord chains for cusps 1-12 and all 9 planets from the FORENSIC chart_facts §4. Use for any KP-system house occupation, signification, or ruling planet query. Reads FORENSIC-anchored data via chart_facts table. Distinct from query_kp_ruling_planets (which reads kp_sublords — the swisseph-Lahiri substrate); prefer kp_query when chart_id is FORENSIC-anchored."
+    query_schema:
+      type: object
+      properties:
+        cusp:
+          type: integer
+          description: "House cusp number 1-12"
+        planet:
+          type: string
+          description: "Planet name (Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|Rahu|Ketu)"
+        include_sub_sub:
+          type: boolean
+          description: "Whether to include sub-sub lord (default false)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_saham_query"
+    tool_name: "saham_query"
+    tool_description: "Tajika Saham (Lot/Arabic Part) lookup from the native's chart. Returns any of the 36 Sahams with their longitude, nakshatra, sign, house, and traditional meaning. Use for questions about specific Sahams: Saham Vivaha (marriage), Raja (power), Putra (children), Mrityu (mortality), Karma, Artha, Labha, and others. Data is FORENSIC-anchored from chart_facts. All 36 Sahams are precomputed and available without sidecar calls."
+    query_schema:
+      type: object
+      properties:
+        saham_name:
+          type: string
+          description: "Specific Saham name (e.g. Vivaha, Raja, Putra)"
+        include_all:
+          type: boolean
+          description: "Return all 36 Sahams (default false)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_divisional_query"
+    tool_name: "divisional_query"
+    tool_description: "Divisional chart (varga) placement lookup. Returns house positions and planet placements in any divisional chart: D1 (rashi), D9 (navamsha), D10 (dasamsha), D7 (saptamsha), D2 (hora), D12 (dwadasamsha), D3 (drekkana), D60 (shashtiamsha), and others. FORENSIC-anchored from chart_facts. Use for questions comparing placements across different varga charts, or when varga-specific house/sign positions are required."
+    query_schema:
+      type: object
+      properties:
+        divisional_chart:
+          type: string
+          description: "D1|D9|D10|D7|D2|D12|D3|D60|D4|D6|D8|D16|D20|D24|D27|D30|D40|D45"
+        planet:
+          type: string
+          description: "Planet name filter (optional)"
+        house:
+          type: integer
+          description: "House number filter 1-12 (optional)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_chart_facts_query"
+    tool_name: "chart_facts_query"
+    tool_description: "Parametric retrieval over chart_facts — primary gateway for all quantitative chart-fact queries. 795 rows across 37 categories: planetary strengths (Shadbala, Ashtakavarga), BAV bindus, house placements, sahams, yogas, aspects (including special Parashari/Jaimini), longevity indicators (Ayurdaya methods), and more. FORENSIC-anchored, no migrations needed. Use when the query requires structured quantitative chart data: bindus, strength scores, yoga membership, aspect orbs."
+    query_schema:
+      type: object
+      properties:
+        category:
+          type: string
+          description: "Chart fact category (strength|bav|yoga|aspect|saham|longevity|placement|...)"
+        planet:
+          type: string
+          description: "Planet name filter"
+        house:
+          type: integer
+          description: "House number filter 1-12"
+        sign:
+          type: string
+          description: "Sign name filter"
+        keyword:
+          type: string
+          description: "Free-text keyword match against fact name"
+        vargottama_only:
+          type: boolean
+          description: "Restrict to vargottama planets only"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_cross_varga_dignity_query"
+    tool_name: "cross_varga_dignity_query"
+    tool_description: "Returns the §3.15 CSI cross-divisional dignity ledger — per-planet D1/D9/D10 dignity states and vargottama status. Each planet gets a three-state dignity profile: exalted/own/mooltrikona/neutral/debilitated across the three primary vargas. Priority-1 for queries mentioning navamsha comparison, strength across charts, vargottama, or three-state dignity. FORENSIC-anchored. Use before msr_sql for dignity-related queries to get the canonical quantitative basis."
+    query_schema:
+      type: object
+      properties:
+        planet:
+          type: string
+          description: "Planet name (optional — returns all planets if omitted)"
+        varga:
+          type: string
+          description: "D1|D9|D10 — filter to specific varga"
+        min_dignity:
+          type: string
+          description: "exalted|own|mooltrikona — return only planets at or above this dignity"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_domain_report_query"
+    tool_name: "domain_report_query"
+    tool_description: "Queries rag_chunks where doc_type='domain_report' to return L3 domain-report content for specified domains. Nine domain reports: career_dharma, children, financial, health_longevity, parents, psychology_mind, relationships, spiritual, travel. Each domain report is a curated L3 synthesis of relevant chart signals. Use when the query is domain-specific and requires the pre-synthesized domain narrative rather than raw signals."
+    query_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: "career_dharma|children|financial|health_longevity|parents|psychology_mind|relationships|spiritual|travel"
+        domains:
+          type: array
+          description: "Multiple domains (alternative to single domain)"
+        top_k:
+          type: integer
+          description: "Number of chunks to return (default 5)"
+    linked_data_asset_ids: ["DOMAIN_REPORT"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L3"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_remedial_codex_query"
+    tool_name: "remedial_codex_query"
+    tool_description: "L4 remedial prescriptions from rag_chunks (doc_type='l4_remedial'). Returns planetary propitiation protocols, gemstone recommendations, mantra assignments, yantra prescriptions, devata associations, and dinacharya (daily practice) guidelines. Structured by practice_type: gemstone|mantra|yantra|devata|dinacharya|propit. Use for queries about remedies, mitigation strategies, or spiritual practices indicated by the native's chart."
+    query_schema:
+      type: object
+      properties:
+        planet:
+          type: string
+          description: "Planet name — filter remedies for a specific graha"
+        practice_type:
+          type: string
+          description: "gemstone|mantra|yantra|devata|dinacharya|propit"
+        domain:
+          type: string
+          description: "Optional domain context for remedy selection"
+    linked_data_asset_ids: ["REMEDIAL_CODEX_v2_0"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L4"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_timeline_query"
+    tool_name: "timeline_query"
+    tool_description: "L5 lifetime timeline content from rag_chunks (doc_type='l5_timeline'). Returns dasha phase arc narratives, event windows, and structural inflection points across the native's lifetime. Important constraint: the next MD after Mercury MD is KETU MD (2027-08-21 to 2034-08-21) — never suggest Saturn MD as upcoming (it was historical 1992-2010). Use for long-arc predictive queries about life phase themes, not for event-date lookups (use lel_query for ground-truth events)."
+    query_schema:
+      type: object
+      properties:
+        dasha_lord:
+          type: string
+          description: "Dasha lord name filter (Sun|Moon|Mars|Rahu|Jupiter|Saturn|Mercury|Ketu|Venus)"
+        time_window:
+          type: string
+          description: "ISO date range for relevant timeline content"
+    linked_data_asset_ids: ["LEL"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_signal_state"
+    tool_name: "query_signal_state"
+    tool_description: "Signal state lookup from signal_states table (migration 023). Returns per-signal computed state (active/dormant/pending) and metadata for MSR signals whose activation status is periodically computed. Always-on (no feature flag); degrades gracefully when table is empty. Use to check whether a specific signal is currently active under present dasha/transit conditions before including it in synthesis. Complements msr_sql (which returns static signal data) with dynamic activation state."
+    query_schema:
+      type: object
+      properties:
+        signal_ids:
+          type: array
+          description: "Specific MSR.NNN signal IDs to check"
+        state_filter:
+          type: string
+          description: "active|dormant|pending — filter by activation state"
+        domain:
+          type: string
+          description: "Optional domain filter"
+    linked_data_asset_ids: ["MSR"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L2.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_kp_ruling_planets"
+    tool_name: "query_kp_ruling_planets"
+    tool_description: "Engine-computed KP (Krishnamurti Paddhati) ruling-planet table from kp_sublords (swisseph-Lahiri substrate). Returns star lord / sub lord / sub-sub lord chain for each of the 9 grahas at the native chart moment. Distinct from kp_query (which reads FORENSIC §4 chart_facts). This tool uses the engine-computed kp_sublords table rather than hand-curated chart_facts. Prefer kp_query when chart_id is FORENSIC-anchored; use this tool when sidecar-computed sublord data is required."
+    query_schema:
+      type: object
+      properties:
+        planet:
+          type: string
+          description: "Planet name filter (optional — returns all 9 if omitted)"
+        include_sub_sub:
+          type: boolean
+          description: "Whether to include sub-sub lord level"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_varshaphala"
+    tool_name: "query_varshaphala"
+    tool_description: "Varshaphala (Tajika) annual-chart lookup from the varshaphala table. Returns Solar Return UTC, Ascendant sign/degree, and 9-graha sidereal positions for one year or a year range. Substrate is engine-computed via pyswisseph + Lahiri; covers 1984-2061 for the native chart. Year-lord (Varshesha) and Muntha are NOT included — they live at the synthesis layer. Use for questions about annual chart placements, Solar Return Ascendant, or year-specific planetary positions."
+    query_schema:
+      type: object
+      properties:
+        year:
+          type: integer
+          description: "Single year (e.g. 2026)"
+        year_start:
+          type: integer
+          description: "Start year for range queries"
+        year_end:
+          type: integer
+          description: "End year for range queries"
+        planet:
+          type: string
+          description: "Planet filter (optional)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_ephemeris"
+    tool_name: "query_ephemeris"
+    tool_description: "Date-indexed planetary positions plus Vedic-interpretable derived state from ephemeris_daily (657K rows, 1900-2100, 9 grahas, Lahiri sidereal). Per-planet per-day: longitude, sign, nakshatra+pada, retrograde, speed, dignity (exalted/debilitated/own/mooltrikona/neutral), combust state + orb, vargottama (D1=D9 sign), whole-sign house (Parashari, FORENSIC Asc). Use for WHAT is happening on a specific date. Distinct from query_transit_event (WHEN events happen) and temporal (live sidecar)."
+    query_schema:
+      type: object
+      properties:
+        date:
+          type: string
+          description: "Single date YYYY-MM-DD"
+        start_date:
+          type: string
+          description: "Range start YYYY-MM-DD"
+        end_date:
+          type: string
+          description: "Range end YYYY-MM-DD"
+        planet:
+          type: string
+          description: "Single planet name"
+        planets:
+          type: array
+          description: "Multiple planet names"
+        derived_fields:
+          type: array
+          description: "dignity|combust|vargottama|ingress|yuddha|house — defaults to all"
+        limit:
+          type: integer
+          description: "Max rows (1-500, default 100)"
+    linked_data_asset_ids: ["EPHEMERIS_DAILY"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_panchanga"
+    tool_name: "query_panchanga"
+    tool_description: "Sunrise-anchored Vedic panchanga (tithi/vara/Moon nakshatra/yoga/karana) from panchanga_daily. 73K rows, 1900-2100, precomputed for Bhubaneswar observer. Canonical surface for time-quality queries: lunar phase (Purnima/Amavasya/Ekadashi), Moon-nakshatra-of-day, vara (day-of-week in astrological context), yoga (Vishkambha through Vaidhriti), karana. Also carries enrichment: special_yogas, choghadiya, hora, inauspicious/auspicious windows, Muhurat data."
+    query_schema:
+      type: object
+      properties:
+        date:
+          type: string
+          description: "Single date YYYY-MM-DD"
+        start_date:
+          type: string
+          description: "Range start YYYY-MM-DD"
+        end_date:
+          type: string
+          description: "Range end YYYY-MM-DD"
+        tithi_name:
+          type: string
+          description: "Filter by tithi name (e.g. Purnima, Amavasya, Ekadashi)"
+        nakshatra:
+          type: string
+          description: "Filter by Moon nakshatra"
+        vara:
+          type: string
+          description: "Filter by vara/weekday (Ravivara|Somavara|...)"
+    linked_data_asset_ids: ["PANCHANGA_DAILY"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_transit_event"
+    tool_name: "query_transit_event"
+    tool_description: "Find WHEN transit events happen — answers 'on what date does X occur?' versus query_ephemeris which answers 'what is happening on date D?'. Four event classes: ingress (planet enters a sign, reads ephemeris_daily.sign_ingress_today), station (planet stations retrograde/direct, reads retrogrades table), aspect (transit-to-natal by degree+orb, live sidecar compute), conjunction (two transit planets within orb, live sidecar compute). Date range: 1900-2100 for table-backed; sidecar-dependent for live compute."
+    query_schema:
+      type: object
+      properties:
+        event_class:
+          type: string
+          description: "ingress|station|aspect|conjunction"
+        planet:
+          type: string
+          description: "Transit planet name"
+        sign:
+          type: string
+          description: "Target sign for ingress queries"
+        start_date:
+          type: string
+          description: "Search window start YYYY-MM-DD"
+        end_date:
+          type: string
+          description: "Search window end YYYY-MM-DD"
+        orb_degrees:
+          type: number
+          description: "Aspect orb in degrees (default 1.0)"
+    linked_data_asset_ids: ["EPHEMERIS_DAILY"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_dasha_periods"
+    tool_name: "query_dasha_periods"
+    tool_description: "Surgical Vimshottari / Yogini / Chara dasha schedule lookup from chart_facts dasha rows. 50 Vimshottari rows covering 1984-02-05 through 2060-08-21. Semantic helpers: active-chain (current MD/AD/PD), next-N (upcoming periods), prev-N (past periods), specific-lord (all periods for a given dasha lord). Default empty params returns today's active row plus next 3 MDs. Canonical lookup for dasha timing — never compute dasha dates from scratch."
+    query_schema:
+      type: object
+      properties:
+        query_type:
+          type: string
+          description: "active_chain|next_n|prev_n|specific_lord"
+        dasha_lord:
+          type: string
+          description: "Dasha lord name for specific_lord query"
+        n:
+          type: integer
+          description: "Number of periods to return for next_n/prev_n (default 3)"
+        as_of_date:
+          type: string
+          description: "Reference date YYYY-MM-DD (default today)"
+        system:
+          type: string
+          description: "vimshottari|yogini|chara (default vimshottari)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S2"
