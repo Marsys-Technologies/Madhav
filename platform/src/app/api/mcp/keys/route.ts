@@ -15,6 +15,7 @@ import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { query } from '@/lib/db/client'
 import { generateMcpKey } from '@/lib/mcp/auth'
+import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { res } from '@/lib/errors'
 import type { McpApiKeyRow, McpKeyCreatedResponse } from '@/lib/mcp/types'
 
@@ -84,6 +85,15 @@ export async function POST(request: Request) {
     if (!rows[0]) return res.notFound('user')
   } catch {
     return res.dbError()
+  }
+
+  // Rate limiting on key creation: admin-level but low-volume; use uid as the rate-limit key.
+  const rateLimitResult = await checkRateLimit(`admin:${auth.user.uid}`)
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      buildRateLimitErrorEnvelope(rateLimitResult.reason ?? 'rate_limit'),
+      { status: 429, headers: { 'Retry-After': String(rateLimitResult.retry_after_seconds ?? 60) } }
+    )
   }
 
   // Determine env tag

@@ -47,6 +47,7 @@ import {
   buildSynthesisAudit,
 } from '@/lib/mcp/epistemics'
 import { generateSuggestedFollowups } from '@/lib/mcp/suggested_followups'
+import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import type { McpCitation } from '@/lib/mcp/types'
 import type { ToolBundle } from '@/lib/retrieve/index'
 
@@ -255,6 +256,15 @@ export async function POST(request: Request) {
   }
 
   const audienceTier: 'client' | 'super_admin' = audienceTierHeader === 'super_admin' ? 'super_admin' : 'client'
+
+  // Rate limiting: conservative 4000-token estimate for ask_madhav/execute_plan (actual deducted post-synthesis via trace logger).
+  const rateLimitResult = await checkRateLimit(keyId, 4000)
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      buildRateLimitErrorEnvelope(rateLimitResult.reason ?? 'rate_limit'),
+      { status: 429, headers: { 'Retry-After': String(rateLimitResult.retry_after_seconds ?? 60) } }
+    )
+  }
 
   // Parse body
   let body: { tool: string; params: Record<string, unknown> }

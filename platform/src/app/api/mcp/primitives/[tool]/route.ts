@@ -30,6 +30,7 @@ import {
   isAllowedSurgicalTool,
   MCP_TO_RETRIEVAL_TOOL,
 } from '@/lib/mcp/primitives_registry'
+import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { traceEmitter } from '@/lib/trace/emitter'
 
 export const maxDuration = 60
@@ -88,6 +89,15 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const audienceTier: 'client' | 'super_admin' =
     audienceTierHeader === 'super_admin' ? 'super_admin' : 'client'
+
+  // Rate limiting: primitives are lightweight (no LLM calls) — skip token pre-check.
+  const rateLimitResult = await checkRateLimit(keyId)
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      buildRateLimitErrorEnvelope(rateLimitResult.reason ?? 'rate_limit'),
+      { status: 429, headers: { 'Retry-After': String(rateLimitResult.retry_after_seconds ?? 60) } }
+    )
+  }
 
   // Resolve dynamic route segment: the MCP-facing tool name
   const { tool: mcpToolName } = await params
