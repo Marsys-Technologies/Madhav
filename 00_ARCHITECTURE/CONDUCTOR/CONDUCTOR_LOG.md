@@ -26,6 +26,288 @@ Each entry contains:
 
 <!-- Conductor appends entries below this line. Do not edit above. -->
 
+## MCP — MCP-4-S2 (red-team) — PASS — 2026-05-21T08:22:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-4-S2 |
+| Result | PASS |
+| Timestamp | 2026-05-21T08:22:00+05:30 |
+| Commits | 33b9ed55, e90ff8dd |
+| Gate exit code | 0 |
+| Context sessions used | 8 of 20 |
+
+### Gate output
+
+```
+GATE PASS
+GATE_EXIT=0
+```
+
+### Red-team findings summary
+
+0 class-1 findings. 2 class-2, 3 class-3. MCP surface is sound. Known post-merge items:
+- Class-2: recordOutcome allows cross-key outcome recording (governance gap, not security breach per D12)
+- Class-2: mode=factual does not bypass B.11 floor (B.11 runs for all modes); AC.1.5 unreachable as written
+- Auth PBKDF2+timing-safe ✓, revoked-key SQL ✓, Object.hasOwn() whitelist ✓, SAFE_ASSET_MAP path traversal ✓, plan.audience_tier overwritten from DB ✓, rate limiting fires before tool execution ✓, PPL logs before response ✓
+
+### Scope items completed
+
+- AC.MCP_4_S2.1 — G1–G12 governance checks
+- AC.MCP_4_S2.2 — SEC.1–SEC.8 security checks
+- AC.MCP_4_S2.3 — MCP_RED_TEAM_v1_0.md authored (0 class-1, PASS)
+
+---
+
+## MCP — MCP-4-S1 — PASS — 2026-05-21T08:05:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-4-S1 |
+| Result | PASS |
+| Timestamp | 2026-05-21T08:05:00+05:30 |
+| Commits | b2224e7f, 7ebf1321, 30f9fd5a, 768cd1f6, acbfd07f, c281dd02 |
+| Gate exit code | 0 |
+| Context sessions used | 7 of 20 |
+
+### Gate output
+
+```
+Platform files OK / Platform TSC OK
+Test Files 8 passed (8) | Tests 80 passed (80)
+MCP tool files OK
+GATE_EXIT=0
+```
+
+### Sub-agent summary
+
+Write tools implemented. Key deviation from sub-brief: predictions stored in mcp_predictions Postgres table (migration 071) rather than LEL markdown — per CLAUDE.md §E PPL substrate guidance. flag_disagreement writes to mcp_disagreements table (also migration 071). Both tables include TODO(MCP-MIGRATION) comments for when 06_LEARNING_LAYER/ scaffolds. Total tool count: 19 (16 read + 3 write). 15 new tests; 80 total passing.
+
+### Scope items completed
+
+- AC.MCP_4_S1.1 — Migration 071 (mcp_predictions + mcp_disagreements tables)
+- AC.MCP_4_S1.2 — ppl_writer.ts (write + read functions for both tables)
+- AC.MCP_4_S1.3 — /api/mcp/writes/[action]/route.ts dispatcher
+- AC.MCP_4_S1.4 — log_prediction, record_outcome, flag_disagreement tools with §4.6 descriptions
+- AC.MCP_4_S1.5 — 15 new vitest tests (80 total passing)
+- AC.MCP_4_S1.6 — Gate PASS; brief COMPLETE
+
+---
+
+## MCP — MCP-3-S2 — PASS — 2026-05-21T07:48:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-3-S2 |
+| Result | PASS |
+| Timestamp | 2026-05-21T07:48:00+05:30 |
+| Commits | a5e79f64, 1d8d83f3, 7dbfaa4f, 4b14be0a, 563d78fe, 08463070, 64177b1f |
+| Gate exit code | 0 |
+| Context sessions used | 6 of 20 |
+
+### Gate output
+
+```
+Platform files OK / Platform TSC OK
+Test Files 6 passed (6) | Tests 65 passed (65)
+MCP tool files OK
+GATE_EXIT=0
+```
+
+### Sub-agent summary
+
+All 16 v1 tools now registered in server.ts. Per-key rate limiter: in-process rolling-window Map for RPM (60 RPM default) + DB-backed daily token budget (500k/day default). Wired into /api/mcp/execute, /api/mcp/primitives/[tool], /api/mcp/keys POST. Three new platform endpoints: /api/mcp/asset, /api/mcp/trace/[trace_id], /api/mcp/recent. client.ts updated with 3 new helpers. 17 new tests (rate_limiter: 10, recent: 7); 65 total passing.
+
+### Scope items completed
+
+- AC.MCP_3_S2.1 — rate_limiter.ts (in-process RPM + DB daily budget)
+- AC.MCP_3_S2.2 — Rate limiter wired into all 3 MCP entry routes
+- AC.MCP_3_S2.3 — /api/mcp/recent GET endpoint
+- AC.MCP_3_S2.4 — read_asset tool + /api/mcp/asset POST endpoint
+- AC.MCP_3_S2.5 — get_trace + list_recent_queries + /api/mcp/trace/[trace_id]
+- AC.MCP_3_S2.6 — 17 new tests (65 total passing)
+- AC.MCP_3_S2.7 — Gate PASS; all 16 tools registered; brief COMPLETE
+
+---
+
+## MCP — MCP-3-S1 — PASS — 2026-05-21T07:32:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-3-S1 |
+| Result | PASS |
+| Timestamp | 2026-05-21T07:32:00+05:30 |
+| Commits | a20b6015, 44d6a022, 24ff88fa, ee9e899e, 35573d63 |
+| Gate exit code | 0 |
+| Context sessions used | 5 of 20 |
+
+### Gate output
+
+```
+Files OK / Platform TSC OK
+Test Files 4 passed (4) | Tests 48 passed (48)
+Tool files OK
+GATE_EXIT=0
+```
+
+### Sub-agent summary
+
+10 surgical primitives wired: dispatcher at /api/mcp/primitives/[tool]/route.ts enforces whitelist via isAllowedSurgicalTool() (Object.hasOwn() — prototype-safe), calls tool.retrieve(), logs trace step tagged source:mcp_primitive, returns surgical:true epistemics. primitives_registry.ts is single source of truth. 10 MCP tool wrappers all carry §4.6-standard descriptions (5 blocks each). server.ts registers all 13 tools. 12 new vitest tests (primitives.test.ts); total 48 passing.
+
+### Scope items completed
+
+- AC.MCP_3_S1.1 — primitives_registry.ts with whitelist and isAllowedSurgicalTool()
+- AC.MCP_3_S1.2 — /api/mcp/primitives/[tool]/route.ts dispatcher
+- AC.MCP_3_S1.3 — 10 MCP tool wrappers + server.ts updated (13 tools total)
+- AC.MCP_3_S1.4 — 12 vitest tests (48 total passing)
+- AC.MCP_3_S1.5 — Gate PASS (files, both tsc, 10 tools, vitest)
+
+---
+
+## MCP — MCP-2-S2 — PASS — 2026-05-21T07:52:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-2-S2 |
+| Result | PASS |
+| Timestamp | 2026-05-21T07:52:00+05:30 |
+| Commits | 03235288, fa1910af, 8da02990, 89c1898e, 7fbd469f |
+| Gate exit code | 0 |
+| Context sessions used | 4 of 20 |
+
+### Gate output
+
+```
+Content checks OK
+GATE_EXIT=0
+```
+
+### Sub-agent summary
+
+All 5 scope items. §4.6-standard descriptions (120-180 words, 5 blocks each) for ask_madhav, plan_query, execute_plan. chart-overview.md at 1313 words from FORENSIC L1 data; uncertain values marked [EXTERNAL_COMPUTATION_REQUIRED] per B.10. house-rules.md at 1058 words. resources/index.ts created with registerResources() using MCP SDK ResourceTemplate API; server.ts updated. Only platform-mcp/ files modified.
+
+### Scope items completed
+
+- AC.MCP_2_S2.1 — §4.6 descriptions for 3 Tier-1/2 tools (all exceed 120 words, 5 blocks each)
+- AC.MCP_2_S2.2 — chart-overview.md (1313 words, 6 sections, FORENSIC-grounded)
+- AC.MCP_2_S2.3 — house-rules.md (1058 words, 6 sections)
+- AC.MCP_2_S2.4 — resources/index.ts + server.ts updated
+- AC.MCP_2_S2.5 — Gate PASS (word counts, grep checks, tsc clean)
+
+---
+
+## MCP — MCP-2-S1 — PASS — 2026-05-21T07:22:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-2-S1 |
+| Result | PASS |
+| Timestamp | 2026-05-21T07:22:00+05:30 |
+| Commits | c4190fdd, e88445ea, 54782ef3, 236c4c06, 175ce614, de0ca6d1, 5d9fce14, 9c2e19e3, 5117a636, d34ca9ce, e1b73929, 098f3893 |
+| Gate exit code | 0 |
+| Context sessions used | 3 of 20 |
+
+### Gate output
+
+```
+Files OK
+TSC PASS (no output)
+GATE_EXIT=0
+```
+
+### Sub-agent summary
+
+platform-mcp/ Node service fully scaffolded. Key decisions: (1) auth.ts uses call-through pattern to /api/mcp/keys/validate — no direct DB from MCP sidecar. (2) server.ts uses stateless per-request McpServer instances (enforces D10). (3) dist/ committed alongside src/ for Dockerfile. Tool descriptions are placeholders — full §4.6 descriptions land in MCP-2-S2. platform/src/app/api/mcp/keys/validate/route.ts added.
+
+### Scope items completed
+
+- AC.MCP_2_S1.1 — platform-mcp/ scaffold (package.json ESM, tsconfig strict)
+- AC.MCP_2_S1.2 — npm install; @modelcontextprotocol/sdk present
+- AC.MCP_2_S1.3 — types.ts (all interfaces, no `any`)
+- AC.MCP_2_S1.4 — client.ts (callPlatform, callPlatformPlan, callPlatformPrimitive)
+- AC.MCP_2_S1.5 — ask_madhav tool
+- AC.MCP_2_S1.6 — plan_query tool
+- AC.MCP_2_S1.7 — execute_plan tool
+- AC.MCP_2_S1.8 — server.ts + auth.ts call-through
+- AC.MCP_2_S1.9 — Dockerfile + cloudbuild.yaml (amjis-mcp, asia-south1, min-instances=1)
+- AC.MCP_2_S1.10 — README.md (16 tools + 2 resources documented)
+- AC.MCP_2_S1.11 — tsc --noEmit exit 0; npm run build exit 0
+
+---
+
+## MCP — MCP-1-S1 — PASS — 2026-05-21T06:51:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-1-S1 |
+| Result | PASS |
+| Timestamp | 2026-05-21T06:51:00+05:30 |
+| Commits | 82436844 → e6381ac2 (11 commits) + b627af85 (orchestrator TS+gate fix) |
+| Gate exit code | 0 |
+| Context sessions used | 2 of 20 |
+
+### Gate output
+
+```
+Files OK
+TSC OK
+Test Files  3 passed (3)
+Tests  36 passed (36)
+```
+
+### Orchestrator note
+
+Gate command originally used `npx jest` but project uses vitest. Orchestrator corrected the gate command in session_queue_MCP.yaml (all 4 occurrences) and committed the fix (b627af85). Also fixed a TypeScript error in execute.integration.test.ts (`NODE_ENV` read-only assignment). 36 vitest tests all pass.
+
+### Scope items completed
+
+- AC.MCP_1_S1.1 — Migration 070 mcp_api_keys table
+- AC.MCP_1_S1.2 — TypeScript types (McpEnvelope, McpPrincipal, etc.)
+- AC.MCP_1_S1.3 — Auth library (PBKDF2-SHA256)
+- AC.MCP_1_S1.4 — Epistemics/envelope builders
+- AC.MCP_1_S1.5 — Suggested followups generator
+- AC.MCP_1_S1.6 — /api/mcp/execute endpoint
+- AC.MCP_1_S1.7 — /api/mcp/keys CRUD
+- AC.MCP_1_S1.8 — Admin UI /admin/mcp/keys
+- AC.MCP_1_S1.9 — Unit tests (36 PASS)
+- AC.MCP_1_S1.10 — Integration test for /api/mcp/execute
+- AC.MCP_1_S1.11 — README for platform/src/lib/mcp/
+
+---
+
+## MCP — MCP-0-AUTHOR — PASS — 2026-05-21T06:10:00+05:30
+
+| Field | Value |
+|---|---|
+| Session | MCP-0-AUTHOR |
+| Result | PASS |
+| Timestamp | 2026-05-21T06:10:00+05:30 |
+| Commits | 887f851, 71b1981, 9185cab, 89bd796, 64f011e, c1954d6, 1ad60c8 |
+| Gate exit code | 0 |
+| Context sessions used | 1 of 20 |
+
+### Gate output
+
+```
+GATE PASS — all 7 briefs exist and contain session_id: / ## §3 / ## §5
+```
+
+### Sub-agent summary
+
+All 7 sub-briefs authored from MCP_BRIEF_v1_0.md per §3 of the session brief. Each matches the CLAUDECODE_BRIEF_MCP_1_S1 reference style: frontmatter with all required keys, §0–§6 sections, scope items with AC IDs, commit cadence instructions, may_touch/must_not_touch path lists, and FINAL_SUMMARY template. Gate command (7 file-existence + session_id/§3/§5 section checks) passes. MCP-2-S1 key design decision: MCP server auth delegates key validation to platform via /api/mcp/keys/validate call-through (avoids direct DB access from the MCP sidecar). Queue advances to MCP-1-S1.
+
+### Scope items completed
+
+- AC.MCP_0.1 — CLAUDECODE_BRIEF_MCP_2_S1_v1_0.md authored
+- AC.MCP_0.2 — CLAUDECODE_BRIEF_MCP_2_S2_v1_0.md authored
+- AC.MCP_0.3 — CLAUDECODE_BRIEF_MCP_3_S1_v1_0.md authored
+- AC.MCP_0.4 — CLAUDECODE_BRIEF_MCP_3_S2_v1_0.md authored
+- AC.MCP_0.5 — CLAUDECODE_BRIEF_MCP_4_S1_v1_0.md authored
+- AC.MCP_0.6 — CLAUDECODE_BRIEF_MCP_4_S2_v1_0.md authored
+- AC.MCP_0.7 — CLAUDECODE_BRIEF_MCP_MERGE_v1_0.md authored
+
+---
+
 ## 4C-1-S1 — PASS — 2026-05-19T18:45:00+05:30
 
 | Field | Value |

@@ -1,0 +1,55 @@
+/**
+ * /api/mcp/keys/validate — Bearer token validation endpoint for the MCP server.
+ *
+ * Called by platform-mcp/src/auth.ts to validate an incoming Bearer key from
+ * an external client before forwarding the request to /api/mcp/execute.
+ *
+ * Auth model: the MCP server calls this endpoint using the same
+ * X-MCP-Internal-Token service-to-service header it uses for /api/mcp/execute.
+ * This ensures only the trusted amjis-mcp service can call the validation endpoint.
+ *
+ * Request:
+ *   GET /api/mcp/keys/validate
+ *   Authorization: Bearer <external-api-key>
+ *   X-MCP-Internal-Token: <service-secret>
+ *
+ * Response (200 always; check valid field):
+ *   { valid: true,  user_uid, audience_tier, key_id }  — on success
+ *   { valid: false, error: "reason" }                  — on failure
+ */
+
+import 'server-only'
+import { NextResponse } from 'next/server'
+import { validateMcpKey } from '@/lib/mcp/auth'
+
+function validateServiceToken(req: Request): boolean {
+  const token = req.headers.get('x-mcp-internal-token')
+  const expected = process.env.MCP_INTERNAL_TOKEN
+  if (!expected) {
+    if (process.env.NODE_ENV === 'development') return true
+    return false
+  }
+  return token === expected
+}
+
+export async function GET(request: Request) {
+  // Service-to-service auth
+  if (!validateServiceToken(request)) {
+    return NextResponse.json({ valid: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Validate the Bearer key in the Authorization header
+  const authHeader = request.headers.get('authorization')
+  const principal = await validateMcpKey(authHeader)
+
+  if (!principal) {
+    return NextResponse.json({ valid: false, error: 'Invalid or revoked API key' })
+  }
+
+  return NextResponse.json({
+    valid: true,
+    user_uid: principal.user_uid,
+    audience_tier: principal.audience_tier,
+    key_id: principal.key_id,
+  })
+}

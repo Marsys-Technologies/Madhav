@@ -1,0 +1,15 @@
+# .gcloudignore — files excluded from Cloud Build uploads
+.gcloudignore
+.git
+.gitignore
+node_modules/
+dist/
+.env*
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+.nyc_output/
+README.md
+*.md
+tsconfig.json

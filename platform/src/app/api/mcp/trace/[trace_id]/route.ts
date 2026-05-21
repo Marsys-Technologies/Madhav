@@ -1,0 +1,164 @@
+/**
+ * /api/mcp/trace/[trace_id] — Full query trace step ledger for a prior MCP call.
+ *
+ * GET — Returns all query_trace_steps rows for a given trace_id (query_id).
+ * Used by the get_trace MCP tool.
+ *
+ * Per D12 (full transparency): no tier-based redaction. All authenticated callers
+ * receive full step payloads including prompts, retrieval results, and payloads.
+ * Do not issue API keys to principals who should not have full trace visibility.
+ *
+ * Auth model (two-layer, same as /api/mcp/execute):
+ *   Layer 1: X-MCP-Internal-Token — service-to-service secret.
+ *   Layer 2: X-MCP-User, X-MCP-Audience-Tier, X-MCP-Key-Id — resolved principal.
+ *
+ * Returns: {ok: true, result: { trace_id, steps: TraceStep[], step_count, latency_ms_total }}
+ */
+
+import 'server-only'
+import { NextResponse } from 'next/server'
+import { query } from '@/lib/db/client'
+import { buildEnvelope, buildErrorEnvelope, buildEpistemicsBlock } from '@/lib/mcp/epistemics'
+
+// ── Service-to-service token validation ─────────────────────────────────────
+
+function validateServiceToken(req: Request): boolean {
+  const token = req.headers.get('x-mcp-internal-token')
+  const expected = process.env.MCP_INTERNAL_TOKEN
+  if (!expected) {
+    if (process.env.NODE_ENV === 'development') return true
+    console.error('[mcp:trace] MCP_INTERNAL_TOKEN not set in production')
+    return false
+  }
+  return token === expected
+}
+
+// ── TraceStep shape (matches query_trace_steps schema) ───────────────────────
+
+interface TraceStep {
+  query_id: string
+  step_seq: number
+  step_name: string
+  step_type: string
+  status: string
+  started_at: string | null
+  completed_at: string | null
+  latency_ms: number | null
+  parallel_group: string | null
+  data_summary: Record<string, unknown> | null
+  payload: Record<string, unknown> | null
+  user_id: string | null
+}
+
+// ── Route params ─────────────────────────────────────────────────────────────
+
+interface RouteParams {
+  params: Promise<{ trace_id: string }>
+}
+
+// ── GET handler ──────────────────────────────────────────────────────────────
+
+export async function GET(request: Request, { params }: RouteParams) {
+  // Layer 1: service-to-service auth
+  if (!validateServiceToken(request)) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'auth',
+        message: 'Invalid service token',
+        remediation: 'MCP server must pass MCP_INTERNAL_TOKEN header',
+      }),
+      { status: 401 }
+    )
+  }
+
+  // Layer 2: resolved principal headers
+  const userUid = request.headers.get('x-mcp-user')
+  const audienceTierHeader = request.headers.get('x-mcp-audience-tier') as
+    | 'client'
+    | 'super_admin'
+    | null
+  const keyId = request.headers.get('x-mcp-key-id')
+
+  if (!userUid || !audienceTierHeader || !keyId) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'auth',
+        message: 'Missing principal headers (X-MCP-User, X-MCP-Audience-Tier, X-MCP-Key-Id)',
+      }),
+      { status: 401 }
+    )
+  }
+
+  const audienceTier: 'client' | 'super_admin' =
+    audienceTierHeader === 'super_admin' ? 'super_admin' : 'client'
+
+  const { trace_id } = await params
+
+  if (!trace_id || trace_id.length < 8) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'validation',
+        message: 'trace_id is required and must be a valid UUID',
+        remediation: 'Pass the trace_id from a prior ask_madhav or other MCP tool response',
+      }),
+      { status: 400 }
+    )
+  }
+
+  try {
+    const { rows } = await query<TraceStep>(
+      `SELECT
+         query_id, step_seq, step_name, step_type, status,
+         started_at::text AS started_at, completed_at::text AS completed_at,
+         latency_ms, parallel_group, data_summary, payload, user_id
+       FROM query_trace_steps
+       WHERE query_id = $1
+       ORDER BY step_seq ASC`,
+      [trace_id]
+    )
+
+    if (rows.length === 0) {
+      return NextResponse.json(
+        buildErrorEnvelope({
+          error_class: 'validation',
+          message: `No trace found for trace_id: ${trace_id}`,
+          remediation: 'Verify the trace_id from a prior MCP response envelope',
+        }),
+        { status: 404 }
+      )
+    }
+
+    // Compute total latency from step latencies
+    const totalLatencyMs = rows.reduce((sum, step) => sum + (step.latency_ms ?? 0), 0)
+
+    return NextResponse.json(
+      buildEnvelope({
+        trace_id,
+        audience_tier: audienceTier,
+        epistemics: buildEpistemicsBlock({ surgical: true, confidence_band: 'high' }),
+        result: {
+          trace_id,
+          steps: rows,
+          step_count: rows.length,
+          latency_ms_total: totalLatencyMs,
+        },
+        citations: [],
+        plan: null,
+        predictions_logged: [],
+        synthesis_audit: null,
+        suggested_followups: [],
+        warnings: [],
+      })
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[mcp:trace] DB query failed', msg)
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'internal',
+        message: `Failed to retrieve trace: ${msg}`,
+      }),
+      { status: 500 }
+    )
+  }
+}
