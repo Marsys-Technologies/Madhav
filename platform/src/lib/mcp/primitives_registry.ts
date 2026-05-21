@@ -58,9 +58,12 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
 /**
  * Type guard: returns true if the given MCP tool name is in the surgical
  * primitive whitelist. Used by the dispatcher to reject unlisted tool names.
+ *
+ * Uses Object.hasOwn() rather than `in` to avoid prototype-pollution false
+ * positives (e.g. "__proto__" is a prototype property on all plain objects).
  */
 export function isAllowedSurgicalTool(
   mcpToolName: string
 ): mcpToolName is keyof typeof MCP_TO_RETRIEVAL_TOOL {
-  return mcpToolName in MCP_TO_RETRIEVAL_TOOL
+  return Object.hasOwn(MCP_TO_RETRIEVAL_TOOL, mcpToolName)
 }
