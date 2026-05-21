@@ -17,3 +17,4 @@
 | 2026-05-21T00:40:00Z | COV-S8 | 1 | success | 2b2eca10 | https://github.com/amonty84/Madhav/pull/116 | tsc:PASS vitest:6/6 lint:EXIT0 CI:all-green | null |
 | 2026-05-21T00:55:00Z | PERF-S1 | 1 | success | 013fc90a | https://github.com/amonty84/Madhav/pull/117 | tsc:PASS vitest:79/79 lint:EXIT0 CI:all-green | null |
 | 2026-05-21T01:10:00Z | ICR-S1 | 1 | success | 1dee9cc9 | https://github.com/amonty84/Madhav/pull/118 | tsc:PASS vitest:4/4 schema_validate:PASS CI:all-green | null |
+| 2026-05-21T01:40:00Z | COV-S2 | 1 | success | 03439cc3 | https://github.com/amonty84/Madhav/pull/119 | tsc:PASS vitest:4/4 manifest_audit:PASS CI:all-green | null |
