@@ -196,8 +196,11 @@ sessions:
     audit_section: "§G.6"
     depends_on: ["COV-S2", "COV-S3"]
     gates: ["tsc", "vitest_changed", "planner_golden_regression"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T15:30:00+05:30"
+    merge_commit: 99bc2d03
+    gate_results: "tsc:PASS vitest:11/11 r_rule_gating:PASS"
     halt_conditions: ["promoted R-rule cluster regresses golden set"]
 
   - id: ICR-S4
@@ -205,8 +208,9 @@ sessions:
     audit_section: "§N.6 ICR-S4"
     depends_on: ["ICR-S3"]
     gates: ["tsc", "vitest_changed", "munta_propose_patch_emitted"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
+    started_at: "2026-05-21T15:35:00+05:30"
     halt_conditions: ["ICR-S4 emits patch with propagation chain mismatching audit §C.10", "NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH (always halts after this session — propose-patch artifacts in PROPOSED/ require native confirmation before ICR-S5 can resolve them)"]
 
   - id: PERF-S4
