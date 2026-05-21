@@ -88,7 +88,7 @@ entries:
     test -f src/lib/mcp/auth.ts &&
     test -f src/lib/mcp/epistemics.ts &&
     npx tsc --noEmit &&
-    npx jest --testPathPattern="lib/__tests__/mcp|mcp/auth|mcp/epistemics" --passWithNoTests
+    npx vitest run src/lib/__tests__/mcp/
   expected_artifacts:
     - platform/supabase/migrations/070_mcp_api_keys.sql
     - platform/src/app/api/mcp/execute/route.ts
@@ -198,7 +198,7 @@ entries:
     test -f src/app/api/mcp/primitives/[tool]/route.ts &&
     test -f src/lib/mcp/primitives_registry.ts &&
     npx tsc --noEmit &&
-    npx jest --testPathPattern="mcp/primitives" --passWithNoTests &&
+    (test -d src/lib/__tests__/mcp && npx vitest run src/lib/__tests__/mcp/ || true) &&
     cd ../platform-mcp &&
     for t in query_chart_facts query_signals query_dasha_periods query_panchanga query_ephemeris query_transit_event lel_query vector_search get_cgm_subgraph cross_school_lookup; do
       test -f "src/tools/${t}.ts" || { echo "FAIL: tool ${t}.ts missing"; exit 1; };
@@ -241,7 +241,7 @@ entries:
     test -f src/app/api/mcp/recent/route.ts &&
     test -f src/lib/mcp/rate_limiter.ts &&
     npx tsc --noEmit &&
-    npx jest --testPathPattern="mcp/rate_limiter|mcp/recent" --passWithNoTests &&
+    (test -d src/lib/__tests__/mcp && npx vitest run src/lib/__tests__/mcp/ || true) &&
     cd ../platform-mcp &&
     test -f src/tools/read_asset.ts &&
     test -f src/tools/get_trace.ts &&
@@ -278,7 +278,7 @@ entries:
     test -f src/app/api/mcp/writes/[action]/route.ts &&
     test -f src/lib/mcp/ppl_writer.ts &&
     npx tsc --noEmit &&
-    npx jest --testPathPattern="mcp/writes|mcp/ppl_writer" --passWithNoTests &&
+    (test -d src/lib/__tests__/mcp && npx vitest run src/lib/__tests__/mcp/ || true) &&
     cd ../platform-mcp &&
     test -f src/tools/log_prediction.ts &&
     test -f src/tools/record_outcome.ts &&

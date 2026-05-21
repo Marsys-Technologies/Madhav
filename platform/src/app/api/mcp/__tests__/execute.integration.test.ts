@@ -134,7 +134,7 @@ describe('/api/mcp/execute', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Ensure development mode so service token validation passes
-    process.env.NODE_ENV = 'test'
+    ;(process.env as Record<string, string>).NODE_ENV = 'test'
     // Set internal token for tests
     process.env.MCP_INTERNAL_TOKEN = 'test-internal-token'
 
