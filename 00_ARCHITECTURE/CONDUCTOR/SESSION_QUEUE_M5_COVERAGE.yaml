@@ -158,8 +158,8 @@ sessions:
     audit_section: "§H.3"
     depends_on: ["PERF-S1", "PERF-S2"]
     gates: ["tsc", "vitest_changed", "retrieval_util_panel_smoke"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["zero-call detection does not surface known-orphan tools"]
   - id: COV-S5
     stream: cov
