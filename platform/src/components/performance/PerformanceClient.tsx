@@ -18,6 +18,9 @@ import { TracePanelLauncher } from './TracePanelLauncher'
 import { AssetCatalogSection } from './AssetCatalogSection'
 import { RetrievalUtilizationSection } from './RetrievalUtilizationSection'
 import { PlannerRoutingSection } from './PlannerRoutingSection'
+import { FreshnessSection } from './FreshnessSection'
+import { DiagnosticsSection } from './DiagnosticsSection'
+import { ManifestDriftSection } from './ManifestDriftSection'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -264,6 +267,15 @@ export function PerformanceClient() {
         routingData={{}}
         coverageStats={{ totalAssets: 0, assetsWithTool: 0, toolsWithManifest: 0, plannerVisibleTools: 0 }}
       />
+
+      {/* PERF-S4: Freshness panel — real data wiring via computeFreshnessFromManifest() server-side */}
+      <FreshnessSection assets={[]} />
+
+      {/* PERF-S4: Diagnostics panel — real data wiring is PERF-S5 */}
+      <DiagnosticsSection toolDiagnostics={[]} recentFailures={[]} />
+
+      {/* PERF-S4: Manifest Drift — real data wiring is PERF-S5 */}
+      <ManifestDriftSection driftReport={null} />
 
       <section className="space-y-3">
         <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Query log</h2>
