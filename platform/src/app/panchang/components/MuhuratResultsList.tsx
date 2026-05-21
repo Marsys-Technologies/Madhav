@@ -117,7 +117,7 @@ function badgeStyle(key: string, score: number): React.CSSProperties {
 }
 
 // Native client ID for Ask-Madhav deep link (mirrors ActionBar.tsx)
-const NATIVE_CLIENT_ID = 'abhisek_mohanty_primary'
+const NATIVE_CLIENT_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
