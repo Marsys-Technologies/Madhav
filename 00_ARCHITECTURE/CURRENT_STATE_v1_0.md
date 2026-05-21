@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.35
+version: 5.37
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,22 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.37 (2026-05-21, WRAPUP-S1):
+    **CONCURRENT SESSION — WRAPUP-S1 close-out. CLAUDECODE_BRIEF.md v3→v4, Tajika audit committed, Packet C halted. No macro-phase change.**
+    Key outcomes: (A) CLAUDECODE_BRIEF.md persisted v3.0→v4.0 (commit 74034221) — CV2-FINAL orchestrator state reflects shipped work (PRs #135/#136/#137, R8 flags, B.5 audit). (B) Phase 4C Prod Smoke Findings investigation: PHASE_4C_PROD_SMOKE_FINDINGS_v1_0.md does not exist; fix/phase-4c-prod-findings branch (HEAD 206cff09, 17 unmerged commits) contains M5 Coverage Remediation (PERF/COV/ICR), NOT Phase 4C fixes; F.1/F.2 UNADDRESSED. (C) Packet C HALTED — Case C-2: P0 crashes (Muhurat Finder + Ask-Madhav deeplinks) not addressed on fix branch or main. User decision required: (a) merge M5 Coverage as independent workstream + author Phase 4C Fix Plan separately, (b) defer M5 merge, or (c) investigate whether F.1/F.2 are actually live. (D) Tajika class-of-error audit: 27 signals audited (SIG.MSR.376–387 §14 + SIG.MSR.559–573 §IX). 25 VERIFIED, 1 WRONG: SIG.MSR.387 carries pre-DIS.013 "Virgo 6H" residual (age-41 Muntha) not purged when SIG.MSR.377 was corrected. Audit doc committed at 00_ARCHITECTURE/AUDIT/TAJIKA_CLASS_AUDIT_v1_0.md (commit f0505e64). SIG.MSR.387 needs dedicated grounded-rewrite session. (E) CURRENT_STATE v5.37 + SESSION_LOG appended. MP.2 mirror updated.
+    files_touched: ["CLAUDECODE_BRIEF.md", "00_ARCHITECTURE/AUDIT/TAJIKA_CLASS_AUDIT_v1_0.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (concurrent wrapup session; no macro-phase change).
+    last_session_id: WRAPUP-S1. predecessor_session: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21.
+    next_session_objective: "User decides Packet C fate (M5 Coverage branch merge). Author MSR-387-LIBRA-7H-SYNTHESIS-FIX session for SIG.MSR.387 (Virgo→Libra 7H, 3 lines, same DIS.013 correction class). Remaining governance hygiene: GH-FP-BACKFILL, GH-PHANTOM-REF-FIX, GH-PATH-FIX. Phase 4C Fix Plan needed if F.1/F.2 confirmed live in prod."
+    file_updated_at: 2026-05-21T21:00:00+05:30. file_updated_by_session: WRAPUP-S1.
+  - v5.36 (2026-05-21, M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21):
+    **CONCURRENT WORKSTREAM — M5 Coverage Remediation Campaign: COMPLETE (2026-05-21). 21 sessions shipped (COV×10, PERF×5, ICR×6). DIS.013 formally sealed. No macro-phase change.**
+    Key outcomes: (1) DIS.013 resolved via direct MSR rewrite in MSR-377-LIBRA-7H-CORRECTION session (commit 2a662ca7); RESOLVED audit artifact created at 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/DIS.013_MSR.377_resolved.yaml. (2) All 21 campaign PRs merged to main: COV-S1 (#115), COV-S8 (#116), PERF-S1 (#117), ICR-S1 (#118), COV-S2 (#119), COV-S9 (#120), ICR-S2 (#121), COV-S10 (#122), COV-S3 (#123), COV-S4 (#124), PERF-S2 (#125), ICR-S3 (#126), PERF-S3 (#128), COV-S5 (#129), COV-S6 (#130), ICR-S4 (#131), PERF-S4 (#132), ICR-S5 (#133), ICR-S6+PERF-S5 (#134). (3) CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md flipped status CURRENT→SUPERSEDED-AS-COMPLETE with final_defect_disposition. (4) V1_3_AUDIT_QUEUE_v1_0.md created with 3 carry-forward items. (5) CURRENT_STATE v5.36. SESSION_LOG appended. MP.1+MP.2 mirrors updated.
+    files_touched: ["00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/DIS.013_MSR.377_resolved.yaml", "00_ARCHITECTURE/CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md", "00_ARCHITECTURE/V1_3_AUDIT_QUEUE_v1_0.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "CLAUDE.md", ".geminirules", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M5-A INCOMING (campaign close session; no macro-phase change).
+    last_session_id: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21. predecessor_session: MSR-377-LIBRA-7H-CORRECTION.
+    next_session_objective: "Resume M5-A scope per PHASE_M5_PLAN_v1_0.md. Remaining governance hygiene: GH-FP-BACKFILL (H.3.2), GH-PHANTOM-REF-FIX (H.3.7), GH-PATH-FIX (H.3.1). CV2-FINAL brief still ACTIVE_ORCHESTRATOR with T.3/C.1/C.2 pending. WRAPUP-S1: SIG.MSR.387 WRONG (Virgo 6H residual) needs dedicated rewrite session; Packet C halted (Case C-2 / PHASE_4C_PROD_SMOKE_FINDINGS file not found)."
+    file_updated_at: 2026-05-21T20:25:00+05:30. file_updated_by_session: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21.
   - v5.35 (2026-05-21, MSR-377-LIBRA-7H-CORRECTION):
     **ICR — SIG.MSR.377 full rewrite. DIS.013 closed. No macro-phase change.**
     Key outcomes: (1) SIG.MSR.377 in MSR_v5_0.md fully rewritten: signal_name, supporting_rules, falsifier, entities_involved, domains_affected, v6_ids_consumed, confidence, provenance all grounded in L1 FORENSIC §22 (VRS.MUNTHA.SIGN = Libra 7th House, VRS.MUNTHA.LORD = Venus). All Gemini/Virgo/Mercury-ruled references purged. (2) DERIVATION_LEDGER entry DL.MSR.377.1 added citing FORENSIC lines 1480–1481. (3) DIS.013 in DISAGREEMENT_REGISTER marked closed with full audit trail; disqualifying L1 fact: FORENSIC §22 line 1480 VRS.MUNTHA.SIGN = Libra (7th House). (4) ICR-S4 proposed patch (PROPOSED/DIS.013_MSR.377_proposed.yaml) marked rejected — partial fix only (signal_name swap without body correction); preserved as audit artifact. (5) CURRENT_STATE v5.35 + SESSION_LOG appended.

@@ -26462,3 +26462,76 @@ session_close:
     (PROPOSED/DIS.013_MSR.377_proposed.yaml) preserved with status: rejected. Single commit
     + push to origin/main completes this session.
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: WRAPUP-S1
+  cowork_thread_name: "WRAPUP-S1: CLAUDECODE_BRIEF persist + Phase 4C findings audit + Tajika sweep"
+  opened_on: "2026-05-21"
+  phase: "M6 INCOMING (concurrent wrapup session)"
+  predecessor_session: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21
+  session_type: governance_wrapup
+  scope_declaration:
+    may_touch:
+      - CLAUDECODE_BRIEF.md
+      - 00_ARCHITECTURE/AUDIT/TAJIKA_CLASS_AUDIT_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - .gemini/project_state.md
+    must_not_touch:
+      - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+      - 99_ARCHIVE/**
+      - PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
+      - PHASE_4C_FIX_PLAN_v1_0.md
+      - CLAUDE.md
+```
+
+**Session body:**
+
+- Packet A: CLAUDECODE_BRIEF.md v3.0→v4.0 diff verified clean (frontmatter + packet_status only). Stale .git/index.lock removed. Committed 74034221 + pushed to origin/main.
+- Packet B: Sub-agent investigation of Phase 4C prod findings. Finding: PHASE_4C_PROD_SMOKE_FINDINGS_v1_0.md does NOT exist in the repo at any path or in git history. fix/phase-4c-prod-findings (HEAD 206cff09) contains M5 Coverage Remediation (PERF/COV/ICR, 17 commits), NOT Phase 4C fixes. F.1–F.9 as documented findings were never committed. Report saved to /tmp/wrapup_s1_packet_b_report.md.
+- Packet C: HALTED — Case C-2 triggered. F.1 (Muhurat Finder crash) + F.2 (Ask-Madhav deeplinks crash) UNADDRESSED on both branches. User decision required: (a) merge M5 Coverage as independent workstream + author separate Phase 4C Fix Plan, (b) defer M5 merge, or (c) investigate whether F.1/F.2 are actually live in prod (Phase 4C closed 5/5 red-team + 232 tests — possible findings were implicitly addressed).
+- Packet D: Tajika class-of-error audit (27 signals: SIG.MSR.376–387 §14 + SIG.MSR.559–573 §IX). Results: 25 VERIFIED, 1 WRONG (SIG.MSR.387 carries "Virgo 6H" residual = pre-DIS.013 age-41 Muntha value; SIG.MSR.377 was corrected to Libra 7H but synthesis signal .387 was missed). 0 UNVERIFIABLE, 0 independent INCLUSIVE_COUNTING_BUG (subsumed into WRONG for .387). Audit doc created at 00_ARCHITECTURE/AUDIT/TAJIKA_CLASS_AUDIT_v1_0.md and committed f0505e64. MSR_v5_0.md NOT modified (read-only per halt rules).
+- Packet E: CURRENT_STATE v5.36→v5.37. SESSION_LOG appended. MP.2 mirror updated (see below).
+
+```yaml
+session_close:
+  session_id: WRAPUP-S1
+  closed_on: "2026-05-21"
+  acceptance_criteria_met: true
+  all_ac_passed: [AC.A, AC.A2, AC.B, AC.D]
+  all_ac_halted: [AC.C-pre, AC.C-PR, AC.C-post]
+  halt_reason: "Packet C Case C-2: PHASE_4C_PROD_SMOKE_FINDINGS_v1_0.md not found; fix branch contains M5 Coverage work (unrelated); F.1/F.2 unaddressed. User decision required before merge."
+  files_modified:
+    - CLAUDECODE_BRIEF.md
+    - 00_ARCHITECTURE/AUDIT/TAJIKA_CLASS_AUDIT_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  commits_produced:
+    - sha: "74034221"
+      message: "gov(cv2final): persist orchestrator state v3.0→v4.0"
+    - sha: "f0505e64"
+      message: "audit: Tajika class-of-error sweep (MSR.376–MSR.387) — read-only, no MSR edits"
+  validators_run:
+    drift_detector: skipped (governance/audit files only; no CAPABILITY_MANIFEST change)
+    schema_validator: skipped (no schema structure changed)
+    mirror_enforcer: skipped (no mirror-pair artifacts in primary scope; MP.2 updated below)
+  known_residuals:
+    - SIG.MSR.387 WRONG (Virgo 6H) — needs dedicated grounded-rewrite session MSR-387-SYNTHESIS-FIX
+    - fix/phase-4c-prod-findings branch (206cff09) unmerged — awaiting user decision
+    - Phase 4C P0 crashes (F.1/F.2) status unknown — needs investigation or Fix Plan
+  mirror_updates_propagated: "MP.2 — CURRENT_STATE update reflected in .gemini/project_state.md (adapted parity)"
+  current_state_version: 5.37
+  session_log_appended: true
+  close_criteria_met: true
+  handoff_notes: >
+    Three open decisions for user: (1) Packet C — decide whether to merge M5 Coverage branch
+    (fix/phase-4c-prod-findings, 17 commits, 206cff09) as independent work or defer pending
+    Phase 4C Fix Plan; (2) SIG.MSR.387 rewrite session (Virgo 6H → Libra 7H, 3 line fix,
+    same DIS.013 correction class as SIG.MSR.377); (3) Phase 4C F.1/F.2 P0 crash
+    investigation — confirm whether Muhurat Finder + Ask-Madhav deeplinks are actually
+    broken in current prod or were addressed implicitly.
+```
