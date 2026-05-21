@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.43
+version: 5.44
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.44 (2026-05-22, NATIVE-CLIENT-ID-FIX):
+    **NATIVE_CLIENT_ID corrected in MuhuratResultsList.tsx. F.2 E2E unblocked. No macro-phase change.**
+    Key outcomes: (A) MuhuratResultsList.tsx NATIVE_CLIENT_ID fixed: 'abhisek_mohanty_primary' → '362f9f17-95a5-490b-a5a7-027d3e0efda0'. Ask-Madhav deeplinks from Muhurat results page now navigate to correct client UUID. (B) Build pre-existing residual confirmed (Turbopack symlink crash on python-sidecar/venv/bin/python — pre-existing; identical failure on main without this change). (C) Commit 246b35c6 pushed to main; Cloud Run auto-deploy triggered. (D) F.2 E2E smoke: Chrome MCP smoke pending new revision serving 100% traffic. (E) ActionBar.tsx has same NATIVE_CLIENT_ID='abhisek_mohanty_primary' at line 25 — identified as same-class bug; out-of-scope per session must_not_touch; carry to next operator session.
+    files_touched: ["platform/src/app/panchang/components/MuhuratResultsList.tsx", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (operator fix session; no macro-phase change).
+    last_session_id: NATIVE-CLIENT-ID-FIX. predecessor_session: PHASE-4C-CLOSE.
+    next_session_objective: "Smoke F.2 E2E manually on new revision (amjis-web-00314 or newer). Then: operator apply migrations 070+071; deploy amjis-mcp; resolve PR #142 4 blockers; open M6-A-S1. Carry-forward: ActionBar.tsx NATIVE_CLIENT_ID same bug (line 25) — fix in same pass."
+    file_updated_at: 2026-05-22T00:30:00+05:30. file_updated_by_session: NATIVE-CLIENT-ID-FIX.
   - v5.43 (2026-05-21, PHASE-4C-CLOSE):
     **CONCURRENT SESSION — PHASE-4C-CLOSE orchestration complete. F.1 Muhurat Finder overload fixed (Option A SQL cache + Option D infra uplift). F.2 Ask-Madhav initialMessages prop drop fixed. Bonus: _score_breakdown numeric-only dict (toFixed crash). All deployed to Cloud Run. Smokes: F.1 PASS / R8 PASS. No macro-phase change.**
     Key outcomes: (A) F.1 Option A ALREADY SHIPPED by WRAPUP-S4 (commit 1f9a8802) — cache-first hot path in routers/muhurat.py; panchanga_daily_reader.py + find_muhurat_from_cache() active. (B) F.1 Option D ALREADY SHIPPED by WRAPUP-S4 (commit 0a4bd3c3) — sidecar deploy flags timeout=300 cpu=2 memory=1Gi min-instances=1. (C) F.2 fix ALREADY SHIPPED by WRAPUP-S4 (commit 2ddaf4a8) — ConsumeChatV2 destructures initialMessages:initialMessagesProp + seeds useState. This session: (D) F.2 tests — 5 source-level guard tests pass (commit 84b02408). (E) Validator triple PASS — schema=62/exit1, drift=256/exit2, mirror=0/exit0. (F) Push + CI + Deploy — amjis-web-00310-kgd + amjis-sidecar-00276-smw live on main. (G) Bonus fix — _score_breakdown() was returning verbose dict with list/bool/None values; UI called .toFixed(2) on all, throwing TypeError on first real result (masked pre-F.1 by timeout). Fix: return only {tithi,nakshatra,vara,yoga,planet,tara_bala}:float matching labelForBreakdownKey(). 18/18 sidecar tests pass. Commit 14fee006. Deployed: amjis-web-00312-wff + amjis-sidecar-00278-hw2. (H) P8 smokes — F.1 PASS (10 Muhurat windows, score 85.75, breakdown badges, cache path sub-second, 0 console errors). F.2 E2E blocked by pre-existing NATIVE_CLIENT_ID='abhisek_mohanty_primary' (non-UUID) bug from 4C-8; real UUID=362f9f17-95a5-490b-a5a7-027d3e0efda0. R8 PASS (consume loads, all chrome visible, 1 pre-existing 503 /api/folders). (I) PR #142 left open (needs native resolution of 4 blockers per WRAPUP-S4 review).
@@ -4087,7 +4095,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: WRAPUP-S4                    # WRAPUP-S4 2026-05-21: F.2 fix 2ddaf4a8, F.1 Opt D 0a4bd3c3 (amjis-sidecar-00270-vj9), F.1 Opt A 1f9a8802 (18/18 tests), PR #142 NEEDS_REVISION (4 blockers); predecessor WRAPUP-S3
+  last_session_id: NATIVE-CLIENT-ID-FIX         # NATIVE-CLIENT-ID-FIX 2026-05-22: MuhuratResultsList.tsx NATIVE_CLIENT_ID corrected (abhisek_mohanty_primary → 362f9f17-95a5-490b-a5a7-027d3e0efda0); commit 246b35c6; F.2 E2E unblocked; predecessor PHASE-4C-CLOSE
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
     # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
     # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
@@ -4925,13 +4933,14 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    WRAPUP-S4 carry-forwards: (1) PR #142 NEEDS_REVISION — 4 blockers must be fixed before merge:
-    (a) ICR gate hardcodes MSR_v3_0.md (must update to MSR_v5_0.md / 573 signals);
-    (b) RESOLVED_DIR path wrong (root-level vs canonical 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/);
-    (c) ROOT_FILE_POLICY violation (root-level RESOLVED/ dir created by PR);
-    (d) DIS.013 edit applied to superseded MSR_v3_0.md (correct MSR_v5_0.md already has fix at 2a662ca7).
-    Fix PR #142 then merge. (2) SESSION_LOG L26406–26734 conflict markers: dedicated governance hygiene
-    session. (3) governance-hygiene/learning-layer-frontmatter D.1+D.2: pending native resolution. Then:
+    NATIVE-CLIENT-ID-FIX carry-forwards: (1) F.2 E2E smoke: manually verify /panchang/muhurat →
+    submit search → click Ask-Madhav deeplink → confirm /consume renders with prefilled prompt + correct
+    native context (362f9f17-95a5-490b-a5a7-027d3e0efda0). New revision: amjis-web-00314-wjk or newer.
+    (2) ActionBar.tsx NATIVE_CLIENT_ID='abhisek_mohanty_primary' at line 25 — same class bug; fix in next
+    operator session (may_touch: ActionBar.tsx only). (3) PR #142 NEEDS_REVISION — 4 blockers:
+    (a) ICR gate hardcodes MSR_v3_0.md; (b) RESOLVED_DIR path wrong; (c) ROOT_FILE_POLICY violation;
+    (d) DIS.013 on superseded MSR_v3_0.md. Fix then merge. (4) Operator: apply migrations 070+071.
+    (5) Deploy amjis-mcp via platform-mcp/cloudbuild.yaml. Then open M6-A-S1. Then:
     === Predecessor next_session_objective (CV2-FINAL-CLOSE → M6-A-S1) preserved for audit ===
     M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
     Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."
@@ -5797,8 +5806,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-21T23:45:00+05:30
-  file_updated_by_session: WRAPUP-S4
+  file_updated_at: 2026-05-22T00:30:00+05:30
+  file_updated_by_session: NATIVE-CLIENT-ID-FIX
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the

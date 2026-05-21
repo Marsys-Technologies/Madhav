@@ -27306,3 +27306,92 @@ session_close:
     wrong client ID (abhisek_mohanty_primary → needs UUID fix in MuhuratResultsList.tsx).
     Next priority: fix NATIVE_CLIENT_ID, resolve PR #142 blockers, open M6-A-S1.
 ```
+
+```yaml
+session_open:
+  session_id: NATIVE-CLIENT-ID-FIX
+  session_type: operator_fix
+  branch: main
+  cowork_thread_name: "NATIVE-CLIENT-ID-FIX — Correct Muhurat Ask-Madhav deeplink UUID"
+  session_date: 2026-05-22
+  operator: Claude Sonnet 4.6
+  purpose: >
+    Fix hardcoded NATIVE_CLIENT_ID='abhisek_mohanty_primary' in MuhuratResultsList.tsx
+    to correct UUID 362f9f17-95a5-490b-a5a7-027d3e0efda0. Unblocks F.2 E2E smoke.
+  predecessor_session: PHASE-4C-CLOSE
+  active_macro_phase: M6 INCOMING
+  may_touch:
+    - platform/src/app/panchang/components/MuhuratResultsList.tsx
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  must_not_touch:
+    - any other file
+    - SESSION_LOG.md L26406-26734
+    - platform/src/app/panchang/components/ActionBar.tsx
+
+session_body:
+  steps_executed:
+    - id: S1
+      status: DONE
+      summary: "Located MuhuratResultsList.tsx. NATIVE_CLIENT_ID confirmed hardcoded string at line 120."
+    - id: S2
+      status: DONE
+      summary: "Replaced 'abhisek_mohanty_primary' with '362f9f17-95a5-490b-a5a7-027d3e0efda0' at line 120."
+    - id: S3
+      status: DONE
+      summary: "Build check: pre-existing Turbopack symlink crash (python-sidecar/venv/bin/python). Confirmed identical on stash/restore — pre-existing residual. TypeScript check shows 1 pre-existing unrelated error."
+    - id: S4
+      status: DONE
+      summary: "Commit 246b35c6 to main. Pushed origin main."
+    - id: S5
+      status: DONE
+      summary: "Cloud Run watch: new revision amjis-web-00314-wjk detected (pre-existing from yesterday). Cloud Build trigger pending for 246b35c6 push."
+    - id: S6
+      status: PENDING_MANUAL_SMOKE
+      summary: "F.2 E2E: Cloud Build not yet triggered as of session close. Manual smoke required after auto-deploy: /panchang/muhurat → submit → Ask-Madhav → confirm UUID in URL."
+
+  key_findings:
+    - id: FIND.1
+      type: bug_fixed
+      description: >
+        MuhuratResultsList.tsx NATIVE_CLIENT_ID was 'abhisek_mohanty_primary' (slug, not UUID).
+        Ask-Madhav deeplinks routed to /clients/abhisek_mohanty_primary/consume causing Server
+        Component UUID cast failure. Fixed to 362f9f17-95a5-490b-a5a7-027d3e0efda0.
+    - id: FIND.2
+      type: same_class_bug_noted
+      description: >
+        ActionBar.tsx line 25 has identical NATIVE_CLIENT_ID='abhisek_mohanty_primary' bug.
+        Out-of-scope per must_not_touch. Carry to next operator session.
+
+session_close:
+  session_id: NATIVE-CLIENT-ID-FIX
+  close_timestamp: 2026-05-22T00:30:00+05:30
+  all_acceptance_criteria_met: true
+  commits_this_session:
+    - sha: 246b35c6
+      message: "fix(panchang): correct NATIVE_CLIENT_ID for native chart UUID"
+      branch: main
+  cloud_run_revisions:
+    amjis_web: amjis-web-00314-wjk (pre-existing; 246b35c6 deploy pending)
+  current_state_updated: true
+  current_state_version: "5.44"
+  governance_scripts_run: false
+  mirror_updates_propagated:
+    mp2_current_state: true
+    mp2_session_log: true
+    mp2_project_state: true
+  carry_forwards:
+    - "F.2 E2E smoke: manually verify Ask-Madhav deeplink navigates to UUID-based URL after Cloud Run deploys 246b35c6"
+    - "ActionBar.tsx NATIVE_CLIENT_ID='abhisek_mohanty_primary' line 25 — same class bug, next operator session"
+    - "PR #142: 4 blockers pending native resolution"
+    - "Migrations 070+071: pending operator apply"
+    - "amjis-mcp Cloud Run deploy: pending"
+  close_criteria_met: true
+  handoff_notes: >
+    NATIVE_CLIENT_ID fixed in MuhuratResultsList.tsx (abhisek_mohanty_primary → UUID).
+    Commit 246b35c6 pushed. Cloud Run auto-deploy will pick up the change.
+    ActionBar.tsx has the same bug at line 25 — not in this session's scope; fix next.
+    After deploy: smoke /panchang/muhurat → Ask-Madhav → verify URL contains
+    /clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume.
+```
