@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.42
+version: 5.43
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.43 (2026-05-21, PHASE-4C-CLOSE):
+    **CONCURRENT SESSION — PHASE-4C-CLOSE orchestration complete. F.1 Muhurat Finder overload fixed (Option A SQL cache + Option D infra uplift). F.2 Ask-Madhav initialMessages prop drop fixed. Bonus: _score_breakdown numeric-only dict (toFixed crash). All deployed to Cloud Run. Smokes: F.1 PASS / R8 PASS. No macro-phase change.**
+    Key outcomes: (A) F.1 Option A ALREADY SHIPPED by WRAPUP-S4 (commit 1f9a8802) — cache-first hot path in routers/muhurat.py; panchanga_daily_reader.py + find_muhurat_from_cache() active. (B) F.1 Option D ALREADY SHIPPED by WRAPUP-S4 (commit 0a4bd3c3) — sidecar deploy flags timeout=300 cpu=2 memory=1Gi min-instances=1. (C) F.2 fix ALREADY SHIPPED by WRAPUP-S4 (commit 2ddaf4a8) — ConsumeChatV2 destructures initialMessages:initialMessagesProp + seeds useState. This session: (D) F.2 tests — 5 source-level guard tests pass (commit 84b02408). (E) Validator triple PASS — schema=62/exit1, drift=256/exit2, mirror=0/exit0. (F) Push + CI + Deploy — amjis-web-00310-kgd + amjis-sidecar-00276-smw live on main. (G) Bonus fix — _score_breakdown() was returning verbose dict with list/bool/None values; UI called .toFixed(2) on all, throwing TypeError on first real result (masked pre-F.1 by timeout). Fix: return only {tithi,nakshatra,vara,yoga,planet,tara_bala}:float matching labelForBreakdownKey(). 18/18 sidecar tests pass. Commit 14fee006. Deployed: amjis-web-00312-wff + amjis-sidecar-00278-hw2. (H) P8 smokes — F.1 PASS (10 Muhurat windows, score 85.75, breakdown badges, cache path sub-second, 0 console errors). F.2 E2E blocked by pre-existing NATIVE_CLIENT_ID='abhisek_mohanty_primary' (non-UUID) bug from 4C-8; real UUID=362f9f17-95a5-490b-a5a7-027d3e0efda0. R8 PASS (consume loads, all chrome visible, 1 pre-existing 503 /api/folders). (I) PR #142 left open (needs native resolution of 4 blockers per WRAPUP-S4 review).
+    files_touched: ["platform/python-sidecar/panchang_engine/muhurat.py", "platform/src/components/consume/__tests__/ConsumeChatV2.deeplink.test.tsx", "CLAUDECODE_BRIEF.md", "00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/phase4c_close/P8_SMOKE_RESULTS.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (concurrent close-out session; no macro-phase change).
+    last_session_id: PHASE-4C-CLOSE. predecessor_session: MCP-POST-MERGE-OPERATOR.
+    next_session_objective: "Operator: apply migrations 070+071; deploy amjis-mcp; fix NATIVE_CLIENT_ID in MuhuratResultsList.tsx (use 362f9f17-95a5-490b-a5a7-027d3e0efda0); resolve PR #142 4 blockers then merge; open M6-A-S1."
+    file_updated_at: 2026-05-22T00:15:00+05:30. file_updated_by_session: PHASE-4C-CLOSE.
   - v5.42 (2026-05-21, MCP-POST-MERGE-OPERATOR):
     **CONCURRENT WORKSTREAM — MCP workstream COMPLETE. PR #127 (squash-merge 13387429) governance close-out. CLAUDE.md §E updated (Ten→Eleven workstreams, MCP row inserted). MCP_BRIEF_v1_0.md sealed DRAFT→CURRENT. amjis-mcp Cloud Run deployable via platform-mcp/cloudbuild.yaml. Migrations 070+071 pending operator apply.**
     Key outcomes: (A) CLAUDE.md §E: "Ten workstreams" → "Eleven workstreams"; MCP concurrent workstream row inserted after Conductor entry. (B) MCP_BRIEF_v1_0.md: status DRAFT→CURRENT; sealed_on 2026-05-21; sealed_by Conductor run 2026-05-21 (9-for-9, PR #127). (C) 19 tools shipped: 1 ask_madhav, 2 plan-introspection, 10 surgical primitives, 1 read_asset, 2 observability, 3 write tools. 80 vitest tests. 0 class-1 red-team findings. (D) Migrations 070_mcp_api_keys + 071_mcp_predictions_disagreements pending prod apply. (E) amjis-mcp Cloud Run deploy pending (platform-mcp/cloudbuild.yaml). (F) MCP_PLATFORM_IMPROVEMENTS_BRIEF remains DRAFT (separate future workstream).

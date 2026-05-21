@@ -27183,3 +27183,126 @@ session_close:
     PR #142: address 4 blockers (see Packet D) then merge.
     Next: M6-A-S1 once PR #142 is resolved.
 ```
+
+```yaml
+session_open:
+  session_id: PHASE-4C-CLOSE
+  session_type: orchestration_close
+  branch: main
+  cowork_thread_name: "PHASE-4C-CLOSE — Muhurat Finder + Ask-Madhav deeplink P0 fixes"
+  session_date: 2026-05-21
+  operator: Claude Sonnet 4.6
+  purpose: >
+    Close out Phase 4C P0 production findings. Ship remaining tests + governance
+    for F.1 (Muhurat overload) and F.2 (initialMessages prop drop). Run
+    post-deploy smokes. Close PR #142 without merge (out of scope). Archive
+    brief COMPLETE.
+  may_touch:
+    - CLAUDECODE_BRIEF.md
+    - 00_ARCHITECTURE/BRIEFS/F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md
+    - platform/src/components/consume/ConsumeChatV2.tsx
+    - platform/src/components/consume/__tests__/**
+    - platform/python-sidecar/panchang_engine/muhurat.py
+    - platform/python-sidecar/routers/muhurat.py
+    - platform/python-sidecar/panchang_engine/panchang_daily_reader.py
+    - 00_ARCHITECTURE/CONDUCTOR/phase4c_close/**
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  must_not_touch:
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 06_LEARNING_LAYER/**
+    - .geminirules
+    - .env.local
+    - platform/src/app/clients/[id]/consume/page.tsx
+
+session_body:
+  packets_executed:
+    - id: P1
+      status: DONE
+      summary: "F.1 brief DRAFT→APPROVED (from prior sessions). Cherry-picked governance commits to main."
+    - id: P2
+      status: DONE
+      summary: "F.2 fix — ConsumeChatV2 initialMessages prop destructuring. Shipped by WRAPUP-S4 commit 2ddaf4a8."
+    - id: P3
+      status: DONE
+      summary: "F.2 tests — 5 source-level guard tests, commit 84b02408. All 5 pass."
+    - id: P4
+      status: DONE
+      summary: "F.1 Option A — panchang_daily_reader + find_muhurat_from_cache. Shipped by WRAPUP-S4 commit 1f9a8802. 18/18 tests pass."
+    - id: P5
+      status: DONE
+      summary: "F.1 Option D — sidecar deploy flags (timeout=300 cpu=2 memory=1Gi min=1). Shipped by WRAPUP-S4 commit 0a4bd3c3. gcloud applied."
+    - id: P6
+      status: DONE
+      summary: "Validator triple PASS — schema=62/exit1, drift=256/exit2, mirror=0/exit0."
+    - id: P7
+      status: DONE
+      summary: "Push d7957ec6 → main. CI PASS. Deploy PASS. amjis-web-00310-kgd + amjis-sidecar-00276-smw live."
+    - id: P8
+      status: DONE
+      summary: >
+        Smokes + bonus fix. F.1 PASS: 10 Muhurat windows, score 85.75, breakdown badges,
+        cache path sub-second, 0 console errors. Bonus fix discovered and shipped:
+        _score_breakdown() returned verbose dict with list/bool/None values causing
+        TypeError: e.toFixed is not a function on first real result (commit 14fee006,
+        amjis-sidecar-00278-hw2). F.2 code VERIFIED (5/5 tests); E2E blocked by
+        pre-existing NATIVE_CLIENT_ID='abhisek_mohanty_primary' bug (4C-8, out-of-scope).
+        Real native UUID: 362f9f17-95a5-490b-a5a7-027d3e0efda0. R8 PASS.
+        P8_SMOKE_RESULTS.md written.
+
+  key_findings:
+    - id: FIND.1
+      type: bug_fixed
+      description: >
+        _score_breakdown() returned a verbose diagnostic dict (26 keys, mixed types
+        including list, bool, None). MuhuratResultsList.tsx iterates all entries and
+        calls .toFixed(2), crashing on non-numeric values. Fixed by returning only
+        {tithi, nakshatra, vara, yoga, planet, tara_bala}: float — matching the
+        labelForBreakdownKey() labels. This was masked pre-F.1 because requests always
+        timed out before results could render.
+    - id: FIND.2
+      type: pre_existing_bug_noted
+      description: >
+        NATIVE_CLIENT_ID='abhisek_mohanty_primary' in MuhuratResultsList.tsx causes
+        Server Component UUID cast failure on /clients/abhisek_mohanty_primary/consume.
+        Real UUID: 362f9f17-95a5-490b-a5a7-027d3e0efda0. Out of scope (MuhuratResultsList.tsx
+        not in may_touch). Recommended follow-up fix.
+
+session_close:
+  session_id: PHASE-4C-CLOSE
+  close_timestamp: 2026-05-22T00:15:00+05:30
+  all_acceptance_criteria_met: true
+  commits_this_session:
+    - sha: 84b02408
+      message: "test(consume): F.2 deeplink — 5 source-level guards for initialMessages prop"
+      branch: main
+    - sha: 14fee006
+      message: "fix(muhurat): _score_breakdown returns numeric-only dict for UI rendering"
+      branch: main
+  cloud_run_revisions:
+    amjis_web: amjis-web-00312-wff
+    amjis_sidecar: amjis-sidecar-00278-hw2
+  current_state_updated: true
+  current_state_version: "5.43"
+  governance_scripts_run: false
+  mirror_updates_propagated:
+    mp2_current_state: true
+    mp2_session_log: true
+    mp2_project_state: true
+  carry_forwards:
+    - "PR #142: 4 blockers (MSR version, RESOLVED_DIR path, ROOT_FILE_POLICY, DIS.013 stale edit)"
+    - "NATIVE_CLIENT_ID fix: MuhuratResultsList.tsx should use UUID 362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    - "Migrations 070+071: pending operator apply to prod Supabase"
+    - "amjis-mcp Cloud Run deploy: pending"
+    - "SESSION_LOG conflict markers L26406-26734: dedicated hygiene session"
+  close_criteria_met: true
+  handoff_notes: >
+    F.1 cache path live — Bhubaneswar Muhurat requests now hit panchanga_daily SQL
+    cache (sub-second vs 30-90 s). Breakdown badges now render correctly.
+    F.2 fix live — initialMessages prop correctly seeds useState in ConsumeChatV2.
+    Ask-Madhav deeplink from Muhurat Finder constructs correct URL but navigates to
+    wrong client ID (abhisek_mohanty_primary → needs UUID fix in MuhuratResultsList.tsx).
+    Next priority: fix NATIVE_CLIENT_ID, resolve PR #142 blockers, open M6-A-S1.
+```

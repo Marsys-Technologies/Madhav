@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF.md
 canonical_id: CLAUDECODE_BRIEF
 version: 5.0
-status: IN_PROGRESS
+status: COMPLETE
 authored_by: Cowork (Claude Sonnet 4.6) 2026-05-21
 authored_for_session: PHASE-4C-CLOSE
 purpose: >
@@ -27,12 +27,12 @@ packet_status:
   P4:  DONE       # F.1 fix Option A — panchang_daily_reader + muhurat cache path — commit 1f9a8802; 18/18 tests pass
   P5:  DONE       # F.1 fix Option D — deploy.yml flags — commit 0a4bd3c3 (on main); gcloud applied, revision amjis-sidecar-00270-vj9
   P6:  DONE       # Validator triple PASS — schema=62/exit1, drift=256/exit2, mirror=0/exit0
-  P7:  PENDING    # Push to origin/main, CI watch, Cloud Build deploy
-  P8:  PENDING    # Chrome MCP smokes (F.1+F.2+R8)
-  P9:  PENDING    # Final summary + CURRENT_STATE v5.41 + brief COMPLETE
+  P7:  DONE       # Push d7957ec6 → origin/main; CI PASS (#26241518813); Deploy PASS (#26241518818); amjis-web-00310-kgd; amjis-sidecar-00276-smw (cpu=2 mem=1Gi timeout=300 min=1 verified)
+  P8:  DONE       # Smokes: F.1 PASS (cache+render); F.2 code OK/E2E blocked pre-existing NATIVE_CLIENT_ID bug; R8 PASS. Bonus fix: _score_breakdown numeric-only (commit 14fee006)
+  P9:  DONE       # CURRENT_STATE v5.43 + SESSION_LOG + MP.2 mirror + brief COMPLETE
   P10: PENDING    # Close PR #142 without merge; archive dead branch
 
-last_completed_packet: P3
+last_completed_packet: P9
 last_halt: null
 session_resumed_count: 0
 
