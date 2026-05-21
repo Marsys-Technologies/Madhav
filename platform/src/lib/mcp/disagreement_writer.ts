@@ -144,7 +144,7 @@ export async function flagDisagreement(entry: DisagreementEntry): Promise<string
         entry.class,
         entry.description,
         entry.source_session,
-        entry.proposed_resolution,
+        entry.proposed_resolution ?? null,  // normalize undefined → null for DB
         entry.source.key_id,
         entry.source.trace_id,
       ]

@@ -122,6 +122,9 @@ export async function POST(request: Request, { params }: RouteParams) {
   // Resolve action from URL segment.
   const { action } = await params
 
+  // Trace ID for write operations (no pipeline trace; use a UUID for audit correlation).
+  const traceId = crypto.randomUUID()
+
   if (!isAllowedAction(action)) {
     return NextResponse.json(
       buildErrorEnvelope({
@@ -193,6 +196,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       const prediction_id = await logPrediction(predictionEntry)
       return NextResponse.json(
         buildEnvelope({
+          trace_id: traceId,
           audience_tier: audienceTier,
           epistemics,
           result: { prediction_id },
@@ -245,6 +249,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       const result = await recordOutcome(outcomeEntry)
       return NextResponse.json(
         buildEnvelope({
+          trace_id: traceId,
           audience_tier: audienceTier,
           epistemics,
           result: { linked_to: outcomeEntry.prediction_id, found: result.ok },
@@ -302,6 +307,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       const disagreement_id = await flagDisagreement(disagreementEntry)
       return NextResponse.json(
         buildEnvelope({
+          trace_id: traceId,
           audience_tier: audienceTier,
           epistemics,
           result: { disagreement_id },

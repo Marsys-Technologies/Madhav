@@ -49,7 +49,7 @@ import {
 import { generateSuggestedFollowups } from '@/lib/mcp/suggested_followups'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { logPrediction } from '@/lib/mcp/ppl_writer'
-import type { McpCitation } from '@/lib/mcp/types'
+import type { McpCitation, PplEntry } from '@/lib/mcp/types'
 import type { ToolBundle } from '@/lib/retrieve/index'
 
 export const maxDuration = 120
@@ -540,7 +540,7 @@ export async function POST(request: Request) {
     // Auto-logged entries are included in predictions_logged[] so the caller
     // can surface them and prompt the native to supply proper falsifiers.
 
-    const predictionsLogged: string[] = []
+    const predictionsLogged: PplEntry[] = []
 
     const isExplicitPredictive = modeParam === 'predictive'
     const isPlanForwardLooking = plan.forward_looking === true
@@ -558,6 +558,8 @@ export async function POST(request: Request) {
               .slice(0, 10)
           : null)
 
+      const emittedAt = new Date().toISOString()
+
       for (const domain of logDomains) {
         try {
           const predictionId = await logPrediction({
@@ -572,7 +574,18 @@ export async function POST(request: Request) {
               caller_context: `auto_logged; mode=${modeParam}; query_class=${plan.query_class}`,
             },
           })
-          predictionsLogged.push(predictionId)
+          // Build a PplEntry for the envelope so the caller can surface it.
+          predictionsLogged.push({
+            pred_id: predictionId,
+            emitted_at: emittedAt,
+            mode: 'predictive',
+            query: queryText.slice(0, 500),
+            confidence: epistemics.confidence_band === 'high' ? 0.8
+              : epistemics.confidence_band === 'medium' ? 0.6 : 0.4,
+            horizon_days: epistemics.horizon_days,
+            falsifier: '[AUTO_LOGGED — native to specify falsifier]',
+            trace_id: queryId,
+          })
         } catch (pplErr) {
           // Non-fatal: PPL write failure logged but does not block the response.
           console.error('[mcp:execute] PPL auto-log failed for domain', domain, pplErr)
