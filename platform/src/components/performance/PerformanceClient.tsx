@@ -18,6 +18,7 @@ import { TracePanelLauncher } from './TracePanelLauncher'
 import { AssetCatalogSection } from './AssetCatalogSection'
 import { RetrievalUtilizationSection } from './RetrievalUtilizationSection'
 import { PlannerRoutingSection } from './PlannerRoutingSection'
+import { FreshnessDiagnosticsSection } from './FreshnessDiagnosticsSection'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -281,6 +282,11 @@ export function PerformanceClient() {
       <section className="space-y-3">
         <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Planner Routing</h2>
         <PlannerRoutingSection />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Freshness &amp; Diagnostics</h2>
+        <FreshnessDiagnosticsSection />
       </section>
 
       <JudgeRunModal
