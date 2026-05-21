@@ -62,7 +62,7 @@ entries:
     - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_MERGE_v1_0.md
   est_tokens: 90000
   est_duration_min: 45
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ entries:
     - platform/src/lib/__tests__/mcp/epistemics.test.ts
   est_tokens: 130000
   est_duration_min: 90
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
