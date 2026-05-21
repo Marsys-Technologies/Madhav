@@ -58,5 +58,8 @@ platform/scripts/eval/*_stderr.log
 # Personal sadhana / spiritual practice notes (not for git)
 /99_PERSONAL_SADHANA/
 
+# MCP key setup script — contains live API key, must never be committed
+scripts/setup_mcp_env.sh
+
 # Post-merge smoke test scratch space
 /post_merge_smoke/

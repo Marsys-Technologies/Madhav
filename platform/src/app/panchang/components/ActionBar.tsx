@@ -22,7 +22,7 @@ import { resolveLocation, resolveChartId } from './PanchangHeader'
 
 // Native's chart client ID — used for Ask-Madhav deep link.
 // Phase 4C-8 will enhance this with full context-block deep-linking.
-const NATIVE_CLIENT_ID = 'abhisek_mohanty_primary'
+const NATIVE_CLIENT_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 interface ActionBarProps {
   /** ISO date string for the currently displayed Panchang day (YYYY-MM-DD) */

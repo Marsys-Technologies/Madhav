@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "marsys-jis": {
+      "url": "https://amjis-mcp-qm256lasva-el.a.run.app",
+      "headers": {
+        "Authorization": "Bearer ${MARSYS_MCP_KEY}"
+      }
+    }
+  }
+}
