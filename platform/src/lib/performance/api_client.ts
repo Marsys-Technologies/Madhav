@@ -118,6 +118,15 @@ export async function fetchQueryLog(filters: QueryLogFilters): Promise<QueryLogR
   return r.json()
 }
 
+export type { AssetCatalogResponse, AssetCatalogEntry } from '@/lib/performance/asset_health'
+import type { AssetCatalogResponse } from '@/lib/performance/asset_health'
+
+export async function fetchAssets(): Promise<AssetCatalogResponse> {
+  const r = await fetch('/api/performance/assets', { credentials: 'include' })
+  if (!r.ok) throw new Error(`asset catalog fetch failed: ${r.status}`)
+  return r.json()
+}
+
 export async function fetchEvalRuns(page = 1, pageSize = 20): Promise<EvalRunListResponse> {
   const url = new URL('/api/performance/eval-runs', window.location.origin)
   url.searchParams.set('page', String(page))
