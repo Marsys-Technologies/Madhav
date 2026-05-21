@@ -38,11 +38,11 @@ packet_status:
   T.1:  DONE           # PR #139 — gh-path-fix; MSR path+fingerprint_sha256 fixed
   T.2:  DONE           # PR #140 — gh-phantom-ref-fix; 6 phantom refs eliminated
   T.3:  DONE           # PR #141 opened — governance-hygiene/gh-fp-backfill; fingerprint backfill
-  E.1:  PENDING        # merge PR #138 (D.3 learning-layer-frontmatter)
-  E.2:  PENDING        # merge PR #139 (T.1 gh-path-fix)
-  E.3:  PENDING        # merge PR #140 (T.2 gh-phantom-ref-fix)
-  E.4:  PENDING        # merge PR #141 (T.3 gh-fp-backfill)
-  F.1:  PENDING        # Chrome MCP smokes for B.2 + B.4
+  E.1:  DONE           # merged PR #138 commit bb4e7c11; CURRENT_STATE v5.38 (pre-populated by WRAPUP-S2)
+  E.2:  DONE           # merged PR #139 commit a2a0012f
+  E.3:  DONE           # merged PR #140 commit 91ede83b; 6 phantom refs eliminated
+  E.4:  DONE           # merged PR #141 commit 35bc824f; ~119 fingerprints backfilled
+  F.1:  SKIP_DEFERRED  # Chrome MCP unavailable (browser profile lock); F1_SMOKE_DEFERRED.md written
   C.1:  PENDING        # remove MadhavCV2Wrap worktree + cv2/wrapup-governance branch
   C.2:  PENDING        # CV2_FINAL_SUMMARY.md + flip brief COMPLETE + push
 
