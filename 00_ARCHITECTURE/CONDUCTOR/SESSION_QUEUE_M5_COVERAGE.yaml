@@ -169,8 +169,8 @@ sessions:
     audit_section: "§G.5"
     depends_on: ["COV-S9"]
     gates: ["tsc", "vitest_changed", "ucn_cdlm_rm_parametric_smoke"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["parametric query against UCN/CDLM/RM returns empty for known seeded entries"]
   - id: COV-S6
     stream: cov
