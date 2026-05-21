@@ -112,6 +112,10 @@ function toolStepType(toolName: string): TraceStep['step_type'] {
   if (['multi_school_signal_lookup', 'convergence_score_lookup'].includes(toolName)) {
     return 'sql'
   }
+  // COV-S4 sidecar compute tools — sidecar-backed, classified as gcs (default)
+  if (['query_muhurat', 'query_jaimini_drishti', 'query_v7_additions'].includes(toolName)) {
+    return 'gcs'
+  }
   return 'gcs'
 }
 

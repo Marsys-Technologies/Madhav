@@ -823,3 +823,75 @@ additional_entries:
     expose_to_chat: true
     native_id: "abhisek"
     produced_during: "M5-A-COV-S2"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_muhurat"
+    tool_name: "query_muhurat"
+    tool_description: "Auspicious muhurat window finder — calls panchang_engine via sidecar POST /api/compute/muhurat. Supports 6 MVP events: vivah (marriage), griha_pravesh (house warming), vyapara (business start), yatra (travel), property_purchase, mantra_initiation. Returns top_n windows ranked by composite score (tithi, vara, nakshatra, yoga, karana, hora). Optional chart_id enables Tara Bala and Chandra Bala native overlay. Date range max 90 days; top_n max 90. Default location: Bhubaneswar (20.27N, 85.84E, IST)."
+    query_schema:
+      type: object
+      properties:
+        event:
+          type: string
+          description: "vivah|griha_pravesh|vyapara|yatra|property_purchase|mantra_initiation"
+        date_from:
+          type: string
+          description: "Range start YYYY-MM-DD"
+        date_to:
+          type: string
+          description: "Range end YYYY-MM-DD (max 90 days from date_from)"
+        lat:
+          type: number
+          description: "Observer latitude (default 20.27 Bhubaneswar)"
+        lon:
+          type: number
+          description: "Observer longitude (default 85.84 Bhubaneswar)"
+        tz_offset_minutes:
+          type: integer
+          description: "UTC offset in minutes (default 330 = IST)"
+        chart_id:
+          type: string
+          description: "Optional native chart ID for Tara Bala overlay"
+        top_n:
+          type: integer
+          description: "Number of top windows to return (default 10, max 90)"
+    linked_data_asset_ids: ["PANCHANGA_DAILY"]
+    expose_to_planner: true
+    token_cost_hint: med
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S4"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_jaimini_drishti"
+    tool_name: "query_jaimini_drishti"
+    tool_description: "Jaimini drishti (special aspect) analysis — sidecar POST /jaimini_drishti. Computes sign-to-sign special aspects per Jaimini system: movable signs aspect fixed signs (not adjacent), fixed signs aspect movable signs (not adjacent), dual signs aspect dual signs (not adjacent). Distinct from Parashari graha drishti. Use for Jaimini-specific chart questions about aspect relationships, Chara Karakas, Arudha Padas, or Pada Lagna analysis. Sidecar endpoint currently stub — returns not_implemented until M6 Jaimini module."
+    query_schema:
+      type: object
+      properties:
+        params:
+          type: object
+          description: "Arbitrary params forwarded to the sidecar (schema TBD at implementation)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: false
+    token_cost_hint: med
+    layer: "L1"
+    expose_to_chat: false
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S4"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_v7_additions"
+    tool_name: "query_v7_additions"
+    tool_description: "v7 additions capability surface — sidecar POST /v7_additions. Reserved capability slot for compute features added in engine v7. Exact scope defined at M6 planning. Currently a stub returning not_implemented. Use this tool when a query explicitly targets v7 engine capabilities not covered by existing panchanga, ephemeris, muhurat, or transit tools."
+    query_schema:
+      type: object
+      properties:
+        params:
+          type: object
+          description: "Arbitrary params forwarded to the sidecar (schema TBD at implementation)"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: false
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: false
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S4"

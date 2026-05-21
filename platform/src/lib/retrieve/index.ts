@@ -12,6 +12,7 @@
  * Phase 4A: query_ephemeris — date-indexed ephemeris lookup (1 tool; closes ephemeris-accessibility gap)
  * Phase 4C: query_panchanga — sunrise-anchored daily panchanga (1 tool; 28th total)
  * Phase 4D: query_transit_event — transit event search: when does X happen? (1 tool; 29th total)
+ * COV-S4: query_muhurat, query_jaimini_drishti, query_v7_additions — sidecar wrappers (tools 31-33)
  */
 
 import * as msrSql from './msr_sql'
@@ -71,6 +72,11 @@ import * as queryTransitEvent from './query_transit_event'
 // Phase 5A — surgical dasha schedule lookup (30th tool)
 import * as queryDashaPeriods from './query_dasha_periods'
 
+// COV-S4 — sidecar wrappers for three orphaned endpoints (tools 31-33)
+import * as queryMuhurat from './query_muhurat'
+import * as queryJaiminiDrishti from './query_jaimini_drishti'
+import * as queryV7Additions from './query_v7_additions'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -105,6 +111,9 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryPanchanga.tool,
   queryTransitEvent.tool,
   queryDashaPeriods.tool,
+  queryMuhurat.tool,
+  queryJaiminiDrishti.tool,
+  queryV7Additions.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
