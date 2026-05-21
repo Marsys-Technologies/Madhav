@@ -109,8 +109,11 @@ sessions:
     audit_section: "§G.3"
     depends_on: ["COV-S2"]
     gates: ["tsc", "vitest_changed", "planner_golden_regression"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T02:30:00Z"
+    merge_commit: e9cf20dc4b8f5a2e9d1c7f0b6e2d4c1a9f3e5b7d
+    pr_url: https://github.com/amonty84/Madhav/pull/123
     halt_conditions: ["planner golden set regression beyond ±2 points on recall or precision"]
   - id: COV-S4
     stream: cov
