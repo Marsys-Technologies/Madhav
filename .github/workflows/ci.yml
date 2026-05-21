@@ -54,6 +54,22 @@ jobs:
       - name: Run coverage gate
         run: python3 platform/scripts/governance/coverage_gate.py --repo-root .
 
+  icr-gate:
+    name: ICR Conflict Gate (Class A — no new unresolved conflicts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+        working-directory: platform
+      - name: Run ICR conflict gate
+        run: npx tsx scripts/governance/icr_gate.ts
+        working-directory: platform
+
   planner-regression:
     name: Planner Regression Gate
     runs-on: ubuntu-latest
