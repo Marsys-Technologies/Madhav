@@ -6,13 +6,8 @@ worktree: /Users/Dev/Vibe-Coding/Apps/MadhavCoverage
 authored_on: 2026-05-21
 merge_cadence: per_session_auto_merge_on_green_ci
 halt_policy: autonomous_with_gate_halts
-# Stream isolation (adopted 2026-05-21): each stream works in its own git worktree.
-# main is untouched until PRs are explicitly merged. Sessions within a stream run
-# sequentially; streams are parallel-safe across worktrees.
-stream_worktrees:
-  cov:  /Users/Dev/Vibe-Coding/Apps/MadhavCOV   # branch: feature/m5-cov-stream
-  perf: /Users/Dev/Vibe-Coding/Apps/MadhavPERF  # branch: feature/m5-perf-stream
-  icr:  /Users/Dev/Vibe-Coding/Apps/MadhavICR   # branch: feature/m5-icr-stream (HALTED)
+# NOTE: stream-worktree isolation model paused 2026-05-21 — worktrees to be
+# provisioned fresh when campaign resumes (one per stream, from origin/main).
 sessions:
   - id: COV-S1
     stream: cov
