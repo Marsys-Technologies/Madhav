@@ -6,7 +6,14 @@ Endpoint: POST /api/compute/muhurat
 
 Accepts event + date range + location + optional chart_id.
 Returns top_n MuhuratWindow objects with breakdown, star rating, and score.
+
+WRAPUP-S4 Packet C: cache-first hot path for Bhubaneswar (native) requests.
+When DATABASE_URL is set and lat/lon is within 10 km of Bhubaneswar, the
+endpoint reads from panchanga_daily SQL cache (single SELECT) instead of
+calling find_muhurat() which invokes compute_panchang() 90× synchronously.
+On any cache miss or failure, falls back to engine-direct transparently.
 """
+import logging
 import os
 from datetime import date as DateType
 from typing import Optional
@@ -14,9 +21,17 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from panchang_engine.muhurat import find_muhurat, is_supported_event, EVENTS_MVP
+from panchang_engine.muhurat import (
+    find_muhurat,
+    find_muhurat_from_cache,
+    is_supported_event,
+    EVENTS_MVP,
+)
+from panchang_engine.panchang_daily_reader import is_bhubaneswar
 from panchang_engine.types import NatalChart, MuhuratWindow
 from panchang_engine.exceptions import PanchangEngineError, OutOfRangeError, ValidationError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -155,24 +170,62 @@ async def compute_muhurat_endpoint(req: MuhuratRequest):
     if req.chart_id:
         native_chart = _fetch_native_chart(req.chart_id)
 
-    # Run muhurat finder
-    try:
-        windows = find_muhurat(
-            req.event,
-            req.date_from,
-            req.date_to,
-            lat=req.lat,
-            lon=req.lon,
-            tz_offset_minutes=req.tz_offset_minutes,
-            native_chart=native_chart,
-            top_n=req.top_n,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-    except (ValidationError, OutOfRangeError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-    except PanchangEngineError as exc:
-        raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
+    # ---------------------------------------------------------------------------
+    # Cache-first hot path (Bhubaneswar / native use case)
+    # ---------------------------------------------------------------------------
+    # For requests from within 10 km of Bhubaneswar when DATABASE_URL is set,
+    # read from panchanga_daily SQL cache (single SELECT) instead of calling
+    # find_muhurat() which computes Swiss Ephemeris 90× synchronously.
+    # Any cache miss or failure silently falls through to engine-direct.
+    # ---------------------------------------------------------------------------
+    db_url = os.environ.get("DATABASE_URL", "")
+    windows = None
+    cache_used = False
+
+    if db_url and is_bhubaneswar(req.lat, req.lon):
+        try:
+            windows = find_muhurat_from_cache(
+                req.event,
+                req.date_from,
+                req.date_to,
+                lat=req.lat,
+                lon=req.lon,
+                db_url=db_url,
+                native_chart=native_chart,
+                top_n=req.top_n,
+            )
+            if windows is not None:
+                cache_used = True
+        except Exception:  # noqa: BLE001
+            windows = None  # fall through to engine-direct
+
+    # ---------------------------------------------------------------------------
+    # Engine-direct fallback (non-Bhubaneswar, DB unavailable, or cache miss)
+    # ---------------------------------------------------------------------------
+    if windows is None:
+        try:
+            windows = find_muhurat(
+                req.event,
+                req.date_from,
+                req.date_to,
+                lat=req.lat,
+                lon=req.lon,
+                tz_offset_minutes=req.tz_offset_minutes,
+                native_chart=native_chart,
+                top_n=req.top_n,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        except (ValidationError, OutOfRangeError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        except PanchangEngineError as exc:
+            raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
+
+    logger.info(
+        "muhurat path: %s | event=%s dates=%s–%s lat=%.4f lon=%.4f",
+        "cache" if cache_used else "engine-direct",
+        req.event, req.date_from, req.date_to, req.lat, req.lon,
+    )
 
     return {
         "ok":               True,
