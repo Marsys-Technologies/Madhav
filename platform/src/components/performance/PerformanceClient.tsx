@@ -15,6 +15,7 @@ import { KpiTile } from './KpiTile'
 import { QueryLogTable } from './QueryLogTable'
 import { JudgeRunModal } from './JudgeRunModal'
 import { TracePanelLauncher } from './TracePanelLauncher'
+import { AssetCatalogSection } from './AssetCatalogSection'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -263,6 +264,11 @@ export function PerformanceClient() {
             setTraceOpen(true)
           }}
         />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Asset Catalog</h2>
+        <AssetCatalogSection />
       </section>
 
       <JudgeRunModal
