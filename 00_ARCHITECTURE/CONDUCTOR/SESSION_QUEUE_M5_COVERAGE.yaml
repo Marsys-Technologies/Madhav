@@ -205,8 +205,8 @@ sessions:
     audit_section: "§H.4"
     depends_on: ["PERF-S3"]
     gates: ["tsc", "vitest_changed", "freshness_diagnostics_smoke"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["freshness panel does not surface known-stale assets"]
   - id: ICR-S5
     stream: icr
