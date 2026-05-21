@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.45
+version: 5.46
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -63,6 +63,15 @@ changelog:
     carry_forwards: ["supabase 064/066/067/068/069 migrations NOT applied (R8 features broken in prod: branches, search, pin/archive; PERF-S1 columns); apply in dedicated session before M6-A-S1", "amjis-mcp authenticated smoke: requires minted API key at /admin/mcp/keys", "F.2 E2E smoke: manually verify ActionBar Ask-Madhav deeplink navigates to UUID-based URL after Cloud Run deploys", "M6-A-S1: open per PHASE_M6_PLAN_v1_0.md (separate conversation)"]
     next_session_objective: "Apply unapplied supabase migrations 064/066/067/068/069 (R8 feature + PERF-S1 migrations; critical for branches/search/pin-archive in prod). Then open M6-A-S1."
     file_updated_at: 2026-05-22T01:30:00+05:30. file_updated_by_session: CLOSEOUT-2026-05-22.
+  - v5.46 (2026-05-22, R8-MIGRATIONS-APPLY):
+    **OPERATOR FOLLOW-UP — Applied 6 unapplied R8/PERF supabase migrations; F.2 E2E smoke PASS. Resolves CLOSEOUT-2026-05-22 carry-forwards #1 + #2. No macro-phase change.**
+    Key outcomes: (A) Packet A PASS — All 6 supabase migrations applied and verified: 064_query_trace_steps_user_id (query_trace_steps.user_id column); 065_msr_signals_domains_affected (idempotent — l25_msr_signals.domains_affected already present); 066_conversation_branches (conversation_branches table); 067_pg_trgm_conversation_messages (pg_trgm extension + idx_conv_messages_body_trgm GIN index); 068_pin_archive_folders (conversation_folders + conversation_folder_members tables + conversations.pinned column — note: brief assumed 'folders'/'conversation_folder_assignments'; actual names differ); 069_performance_wiring_fixes (performance_queries: retrieval_scores + compose_bundle_latency_ms + latency_complete). All post-apply verifications PASS. (B) Packet B PASS — F.2 E2E smoke: /panchang rendered (5 angas: Shukla Panchami / Pushya / Ganda / Balava / Guruvara); Ask-Madhav button clicked; URL navigated to /clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume?prompt=...&context=... (UUID correct); /consume rendered without error boundary; panchang_context injected; console clean (0 errors). Revision tested: amjis-web-00324-xd9 (≥ fix revision amjis-web-00314-wjk). Verdict: PASS. (C) Packet C — MIGRATIONS_APPLIED_LOG.md updated: 5 migrations moved from NOT_APPLIED section to Applied table; 1 idempotent (065). CURRENT_STATE v5.46. SESSION_LOG appended. .gemini/project_state.md MP.2 mirror.
+    files_touched: ["MIGRATIONS_APPLIED_LOG.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (operator follow-up session; no macro-phase change).
+    last_session_id: R8-MIGRATIONS-APPLY. predecessor_session: CLOSEOUT-2026-05-22.
+    carry_forwards: ["amjis-mcp authenticated smoke: requires minted API key at /admin/mcp/keys", "M6-A-S1: open per PHASE_M6_PLAN_v1_0.md (separate conversation)"]
+    next_session_objective: "Open M6-A-S1 per PHASE_M6_PLAN_v1_0.md. R8 features (branches, FTS search, pin/archive/folders) and PERF-S1 columns are now live in prod schema."
+    file_updated_at: 2026-05-22T02:10:00+05:30. file_updated_by_session: R8-MIGRATIONS-APPLY.
   - v5.44 (2026-05-22, NATIVE-CLIENT-ID-FIX):
     **NATIVE_CLIENT_ID corrected in MuhuratResultsList.tsx. F.2 E2E unblocked. No macro-phase change.**
     Key outcomes: (A) MuhuratResultsList.tsx NATIVE_CLIENT_ID fixed: 'abhisek_mohanty_primary' → '362f9f17-95a5-490b-a5a7-027d3e0efda0'. Ask-Madhav deeplinks from Muhurat results page now navigate to correct client UUID. (B) Build pre-existing residual confirmed (Turbopack symlink crash on python-sidecar/venv/bin/python — pre-existing; identical failure on main without this change). (C) Commit 246b35c6 pushed to main; Cloud Run auto-deploy triggered. (D) F.2 E2E smoke: Chrome MCP smoke pending new revision serving 100% traffic. (E) ActionBar.tsx has same NATIVE_CLIENT_ID='abhisek_mohanty_primary' at line 25 — identified as same-class bug; out-of-scope per session must_not_touch; carry to next operator session.

@@ -27477,3 +27477,84 @@ session_close:
     Next: apply 5 missing R8/PERF supabase migrations (064/066/067/068/069);
     then open M6-A-S1.
 ```
+
+## R8-MIGRATIONS-APPLY — R8/PERF Migrations Apply + F.2 E2E Smoke
+
+```yaml
+session_open:
+  session_id: R8-MIGRATIONS-APPLY
+  open_timestamp: 2026-05-22T02:00:00+05:30
+  cowork_thread_name: "R8-MIGRATIONS-APPLY + F2-E2E-SMOKE — CLOSEOUT-2026-05-22 follow-up"
+  active_phase_plan: PHASE_M5_PLAN_v1_0.md (M6 INCOMING)
+  may_touch:
+    - MIGRATIONS_APPLIED_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md (EOF append only)
+    - .gemini/project_state.md
+    - Cloud SQL prod schema via psql (append-only ops)
+    - Browser session via Chrome MCP (read-only)
+    - /tmp diagnostic files
+  must_not_touch:
+    - migration file contents
+    - any application code
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 99_ARCHIVE/**
+    - CLAUDE.md
+    - SESSION_LOG.md L26406-L26734 (conflict markers)
+    - any Cloud Run service via gcloud
+  pre_flight:
+    git_status: "One unstaged change (platform-mcp/cloudbuild.yaml — pre-existing, out of scope)"
+    db_connection: "PASS — amjis @ 127.0.0.1:5433 as amjis_app"
+    proxy_status: PASS
+    cloud_run_revision: amjis-web-00324-xd9
+```
+
+**Packet A — R8/PERF migrations apply**
+
+| Migration | Status | Result |
+|-----------|--------|--------|
+| 064_query_trace_steps_user_id.sql | APPLIED | query_trace_steps.user_id column verified |
+| 065_msr_signals_domains_affected.sql | APPLIED (idempotent) | l25_msr_signals.domains_affected already present; IF NOT EXISTS; PASS |
+| 066_conversation_branches.sql | APPLIED | conversation_branches table verified via to_regclass |
+| 067_pg_trgm_conversation_messages.sql | APPLIED | pg_trgm extension + idx_conv_messages_body_trgm GIN index verified |
+| 068_pin_archive_folders.sql | APPLIED | conversation_folders + conversation_folder_members + conversations.pinned verified (table names differ from brief assumptions — actual: conversation_folders/conversation_folder_members) |
+| 069_performance_wiring_fixes.sql | APPLIED | performance_queries: retrieval_scores + compose_bundle_latency_ms + latency_complete all verified |
+
+Packet A verdict: **PASS** — all 6 migrations applied; all post-apply verifications PASS.
+
+**Packet B — F.2 E2E smoke on /panchang**
+
+| Step | Result |
+|------|--------|
+| Navigate /panchang; page renders 5 angas | PASS — Shukla Panchami / Pushya / Ganda / Balava / Guruvara |
+| Click "Ask Madhav about this day" button | PASS |
+| URL navigates to UUID-based /consume | PASS — `/clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume?prompt=...` |
+| /consume renders, no error boundary | PASS |
+| Prompt prefilled; panchang_context injected | PASS |
+| Console clean | PASS — 0 errors/warnings |
+
+Packet B verdict: **PASS** — ActionBar.tsx fix (commit 6d22356a) confirmed in prod. Revision amjis-web-00324-xd9.
+
+```yaml
+session_close:
+  session_id: R8-MIGRATIONS-APPLY
+  close_timestamp: 2026-05-22T02:10:00+05:30
+  acceptance_criteria_met: true
+  migrations_applied: [064, 065, 066, 067, 068, 069]
+  migrations_skipped: []
+  f2_smoke_verdict: PASS
+  current_state_version: 5.46
+  session_log_updated: true
+  mirror_updates_propagated:
+    - MP.2: .gemini/project_state.md adapted-parity update
+  carry_forwards:
+    - "amjis-mcp authenticated smoke: requires minted API key at /admin/mcp/keys"
+    - "M6-A-S1: open per PHASE_M6_PLAN_v1_0.md (separate conversation)"
+  close_criteria_met: true
+  handoff_notes: >
+    6 supabase migrations now applied in prod. R8 features (conversation branches,
+    sidebar FTS search, pin/archive/folders) and PERF-S1 (performance tab columns)
+    are live in the prod schema. F.2 smoke confirms ActionBar UUID fix working.
+    2 carry-forwards remain from CLOSEOUT-2026-05-22: amjis-mcp authenticated smoke
+    + M6-A-S1 kickoff.
+```

@@ -109,22 +109,11 @@ executor: Claude Code (autonomous, native-authorized)
 | 071_mcp_predictions_disagreements.sql | 2026-05-21 | MCP_WORKSTREAM | mcp_predictions, mcp_disagreements | Applied during MCP workstream |
 | 070_capability_tool_registry.sql | 2026-05-22 | CLOSEOUT-2026-05-22 | capability_tool_registry, capability_asset_tool_bindings | COV-S2 workstream |
 | 071_sade_sati_cycles.sql | 2026-05-22 | CLOSEOUT-2026-05-22 | sade_sati_cycles | M5-Coverage workstream |
-
----
-
-## NOT APPLIED — carry-forward (out of scope for CLOSEOUT-2026-05-22)
-
-These supabase migrations exist on disk but are NOT applied in prod. They are R8 feature migrations and M5-PERF migrations that were authored but never operator-applied.
-
-| File | Status | Target Objects | Impact |
-|------|--------|----------------|--------|
-| 064_query_trace_steps_user_id.sql | **NOT_APPLIED** | query_trace_steps.user_id | R8-adjacent; `/api/predictions` ownership check may be affected |
-| 066_conversation_branches.sql | **NOT_APPLIED** | conversation_branches table | R8-S1 branches persistence broken in prod |
-| 067_pg_trgm_conversation_messages.sql | **NOT_APPLIED** | pg_trgm extension + GIN index | R8-S3 conversation search non-functional |
-| 068_pin_archive_folders.sql | **NOT_APPLIED** | conversation_folders, conversation_folder_members, conversations.pinned | R8-S4 pin/archive/folder features broken in prod |
-| 069_performance_wiring_fixes.sql | **NOT_APPLIED** | performance_queries: retrieval_scores, compose_bundle_latency_ms, latency_complete | PERF-S1 wiring incomplete |
-
-**Recommended follow-up session:** Apply these 5 migrations in a dedicated supabase-064-069-backfill session. Apply order: 064 → 066 → 067 → 068 → 069.
+| 064_query_trace_steps_user_id.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | query_trace_steps.user_id | R8-adjacent; column verified present post-apply |
+| 066_conversation_branches.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | conversation_branches (table) | R8-S1 branches persistence; verified via to_regclass |
+| 067_pg_trgm_conversation_messages.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | pg_trgm extension + idx_conv_messages_body_trgm (GIN index) | R8-S3 sidebar FTS search; both objects verified |
+| 068_pin_archive_folders.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | conversation_folders, conversation_folder_members (tables), conversations.pinned (column) | R8-S4 pin/archive/folders; note: table names differ from brief assumptions; all 3 objects verified |
+| 069_performance_wiring_fixes.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | performance_queries: retrieval_scores (jsonb), compose_bundle_latency_ms (int), latency_complete (bool) | PERF-S1 wiring; all 3 columns verified |
 
 ---
 
