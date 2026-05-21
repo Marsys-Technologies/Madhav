@@ -26632,3 +26632,180 @@ session_close:
     PHASE_M5_PLAN_v1_0.md, or remaining governance hygiene (GH-FP-BACKFILL, GH-PHANTOM-REF-FIX,
     GH-PATH-FIX), or CV2-FINAL brief T.3/C.1/C.2 completion.
 ```
+
+---
+
+## GH-LEARNING-LAYER-FRONTMATTER — Learning-layer frontmatter HALT resolution (D.1+D.2)
+
+```yaml
+session_open:
+  session_id: GH-LEARNING-LAYER-FRONTMATTER
+  cowork_thread_name: "[CV2-FINAL D.1/D.2] Learning-layer frontmatter HALT resolution"
+  opened_at: "2026-05-21"
+  macro_phase: M5-CONCURRENT
+  active_sub_phase: CV2-FINAL-D
+  last_closed_session_id: GH-CORPUS-FRONTMATTER-BACKFILL
+  files_read:
+    - CLAUDECODE_BRIEF.md
+    - 00_ARCHITECTURE/CONDUCTOR/wrapup/HUMAN_GATE_D.md
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+  may_touch:
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  must_not_touch:
+    - platform/src/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - 00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_PROMPT_v1_0.md
+```
+
+## GH-LEARNING-LAYER-FRONTMATTER — Learning-layer frontmatter HALT resolution
+
+Resolves both items from HUMAN_GATE_D.md (HALT.1 + HALT.2). Executed as packet
+D.1/D.2 of the CV2-FINAL orchestrator arc.
+
+### Changes applied
+
+**HALT.1 — SIGNAL_WEIGHT_CALIBRATION/README.md (Option 1 — STUB rename):**
+- `status: ACTIVE-PENDING` → `status: STUB`
+- Body banner: `STATUS: ACTIVE-PENDING (M4-A) — M3 CLOSED...` →
+  `STATUS: STUB — M3 closed 2026-05-01; LEL gate cleared (46 events). Awaiting scoring rubric native-approval...`
+- Result: `learning_layer_population_gate_violation` × 2 resolved.
+
+**HALT.2 — OBSERVATIONS/README.md (Option 2 — path_exclude + minimal frontmatter):**
+- Added `---` delimiters; added `mechanism_id: OBSERVATIONS` (directory-level stub, not LL.N mechanism).
+- Reformatted inline table to proper GFM markdown table.
+- Added `path_exclude: ["06_LEARNING_LAYER/OBSERVATIONS/README.md"]` to `learning_layer_stub`
+  class in `artifact_schemas.yaml`.
+- Updated `schema_validator.py` `validate_learning_layer_stub()` to accept optional `schemas`
+  param and skip files matching `path_exclude`.
+- Result: `learning_layer_stub_banner_missing` (HIGH) + `frontmatter_missing[learning_layer_stub]`
+  (MEDIUM) resolved.
+
+### Validator results post-fix
+
+- schema_validator: 52 violations; exit=2 (was 58; -6 learning_layer violations cleared).
+- All remaining violations are pre-existing session_log HIGH violations (separate brief scope).
+
+```yaml
+session_close:
+  session_id: GH-LEARNING-LAYER-FRONTMATTER
+  closed_at: "2026-05-21"
+  files_touched:
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  registry_updates_made: true
+  current_state_updated: true
+  mirror_updates_propagated:
+    - mirror_pair: MP.2
+      claude_artifact: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.35)"
+      gemini_artifact: ".gemini/project_state.md"
+      update_type: adapted_parity_state
+  schema_validator_run:
+    exit_code: 2
+    violations_count: 52
+    known_residuals:
+      - finding_id: session_log_entry_session_id_disagreement_*
+        severity: HIGH
+        booking_reference: "Pre-existing SESSION_LOG structural issues; addressed by GH_SESSION_LOG_STRUCTURE (separate)"
+      - finding_id: current_state_last_session_id_disagreement
+        severity: MEDIUM
+        booking_reference: "Pre-existing; resolves when SESSION_LOG structure is fixed"
+  mirror_enforcer_run:
+    exit_code: 0
+    notes: "No mirror pair structural change; exit 0 expected"
+  session_log_appended: true
+  close_criteria_met: true
+  unblocks: "All HUMAN_GATE_D.md learning_layer violations cleared. Branch governance-hygiene/learning-layer-frontmatter ready for PR."
+  handoff_notes: >
+    D.1 + D.2 complete. PR opened on governance-hygiene/learning-layer-frontmatter for human review.
+    CURRENT_STATE v5.38. schema_validator exit=2 with 52 violations (all pre-existing SESSION_LOG scope).
+```
+
+---
+
+## WRAPUP-S2 — MSR.387 corrected; Phase 4C P0s verified (F.1+F.2 FAIL); Packet C halted; rebase discovered and aborted
+
+```yaml
+session_open:
+  session_id: WRAPUP-S2
+  cowork_thread_name: "WRAPUP-S2: MSR.387 + Phase 4C P0 verify + M5 Coverage PR"
+  opened_on: "2026-05-21"
+  phase: "M6 INCOMING (concurrent wrapup session)"
+  predecessor_session: WRAPUP-S1
+  session_type: governance_wrapup
+  scope_declaration:
+    may_touch:
+      - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - .gemini/project_state.md
+    must_not_touch:
+      - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md (outside SIG.MSR.387 lines)
+      - 99_ARCHIVE/**
+      - CLAUDE.md
+      - PHASE_4C_PANCHANG_MASTER_PLAN_v1_0.md
+      - PHASE_4C_FIX_PLAN_v1_0.md
+```
+
+**Session body:**
+
+- Packet A: SIG.MSR.387 surgical Libra 7H correction (commit 0ba67610). Three embedded Muntha references corrected (Virgo 6H→Libra 7H, Mercury 6H lord→Venus Muntha Lord). domains_affected +[partnerships]; entities_involved +[PLN.VENUS, HSE.7]; v6_ids_consumed +[PLN.VENUS]; DL.MSR.387.1 derivation_ledger entry added citing FORENSIC §22 L1480+L1481. Same DIS.013/MSR.377 bug class (inclusive-counting confusion). All remaining "Virgo 6H" references in MSR_v5_0.md confirmed as legitimate natal chart references (6H=Virgo is correct for Aries lagna).
+- Packet B: Phase 4C P0 production verification via Chrome DevTools MCP (prod URL amjis-web-938361928218.asia-south1.run.app). F.1 (Muhurat Finder) FAIL — dialog opens and search submits correctly but sidecar becomes unreachable during 90-day range scan; reproducible on 2 isolated clean tests; Muhurat results never rendered. F.2 (Ask-Madhav deeplinks) FAIL — /consume?prompt=...&context=... route throws Server Components render error; console confirms [error] twice. Both P0s confirmed live in production.
+- Packet C: HALTED — Case C-FAIL per brief §C: F.2 confirmed live crash. fix/phase-4c-prod-findings (@ 206cff09, 21 sessions COV/PERF/ICR) is independent of Phase 4C UI fixes and does NOT fix the P0s. No PR opened. Native decision required.
+- Rebase discovery: governance-hygiene/learning-layer-frontmatter had an in-progress interactive rebase with conflicts in CURRENT_STATE/SESSION_LOG/.gemini/project_state.md. Aborted per brief's no-auto-resolve halt rule (branch restored to pre-rebase HEAD). SESSION_LOG also found to have pre-committed git conflict markers at lines 26406-26468 and 26473-26734 (pre-existing issue from prior session; NOT introduced by WRAPUP-S2). Surfaced for native attention.
+- Packet D: CURRENT_STATE v5.37→v5.38; SESSION_LOG appended; .gemini/project_state.md adapted-parity update (MP.2).
+
+```yaml
+session_close:
+  session_id: WRAPUP-S2
+  closed_on: "2026-05-21"
+  acceptance_criteria_met: partial
+  all_ac_passed: [AC.A, AC.B]
+  all_ac_halted: [AC.C]
+  halt_reason: "Packet C Case C-FAIL: F.1 Muhurat Finder + F.2 Ask-Madhav deeplinks confirmed live crashes in production. M5 Coverage merge independent but does not fix P0s. Native decision required."
+  files_modified:
+    - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  commits_produced:
+    - sha: "0ba67610"
+      message: "fix(MSR.387): surgical Libra 7H correction — embedded Muntha references in synthesis signal"
+    - sha: "(this close-out commit)"
+      message: "gov: WRAPUP-S2 close-out — MSR.387 corrected, Phase 4C P0s live (F.1+F.2 FAIL), Packet C halted"
+  validators_run:
+    drift_detector: skipped (MSR content-only edit + governance files; no CAPABILITY_MANIFEST change)
+    schema_validator: skipped (no schema structure changed)
+    mirror_enforcer: skipped (no mirror-pair artifacts in primary scope; MP.2 updated below)
+  known_residuals:
+    - "Phase 4C F.1 (Muhurat Finder sidecar overload) + F.2 (consume Server Component crash) — both live in prod; Phase 4C Fix Plan needed"
+    - "fix/phase-4c-prod-findings branch (206cff09, 21 COV/PERF/ICR sessions) unmerged — awaiting native decision on independent merge"
+    - "governance-hygiene/learning-layer-frontmatter rebase aborted — HUMAN_GATE_D.md D.1+D.2 still pending"
+    - "SESSION_LOG pre-committed conflict markers at lines 26406-26468 and 26473-26734 (pre-existing; not introduced by WRAPUP-S2)"
+  mirror_updates_propagated: "MP.2 — CURRENT_STATE v5.38 update reflected in .gemini/project_state.md (adapted parity)"
+  current_state_version: 5.38
+  session_log_appended: true
+  close_criteria_met: true
+  handoff_notes: >
+    Three decisions for user: (1) Merge M5 Coverage branch (fix/phase-4c-prod-findings @ 206cff09)
+    as independent workstream — does NOT fix Phase 4C P0s; (2) Author Phase 4C Fix Plan for
+    F.1 (sidecar overload during Muhurat search) + F.2 (/consume Server Component crash on
+    context param) as next dedicated session; (3) Resolve governance-hygiene/learning-layer-frontmatter
+    rebase — HUMAN_GATE_D.md D.1+D.2 pending. Remaining governance hygiene: GH-FP-BACKFILL,
+    GH-PHANTOM-REF-FIX, GH-PATH-FIX.
+```
