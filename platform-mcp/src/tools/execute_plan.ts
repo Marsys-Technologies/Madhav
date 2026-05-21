@@ -21,8 +21,10 @@ import type { Principal } from '../types.js'
 // ── Input schema ──────────────────────────────────────────────────────────────
 
 const ExecutePlanInputSchema = z.object({
+  // The plan is a JSON object (PipelinePlan); we accept it as an unknown
+  // value here and let the platform re-validate against PipelinePlanSchema.
   plan: z
-    .record(z.unknown())
+    .unknown()
     .describe(
       'A PipelinePlan object, typically from plan_query output (optionally edited).'
     ),
