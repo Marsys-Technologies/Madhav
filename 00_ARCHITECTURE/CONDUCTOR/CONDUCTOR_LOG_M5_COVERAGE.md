@@ -26,3 +26,4 @@
 | 2026-05-21T07:30:00Z | ICR-S2 (halt resolution) | — | resolved | — | — | criterion_redefined:Option_C | halt resolved: classical-text citations now count as grounded |
 | 2026-05-21T07:47:00Z | PERF-S2 | 1 | success | 401e6b46 | https://github.com/amonty84/Madhav/pull/125 | tsc:PASS vitest:16/16 lint:EXIT0 | null |
 | 2026-05-21T02:40:00Z | COV-S7 | 1 | success | 2b9ec783 | https://github.com/amonty84/Madhav/pull/125 | tsc:PASS vitest:4/4 synthetic_pr_coverage_gate_fails:PASS CI:all-green (continue-on-error for pre-existing gaps) | null |
+| 2026-05-21T02:55:00Z | ICR-S3 | 1 | success | b6598d8a | https://github.com/amonty84/Madhav/pull/126 | tsc:PASS vitest:13/13 intra_signal_munta_detected:PASS (DIS.013 MSR.377 conflict_class:A) CI:all-green | null |
