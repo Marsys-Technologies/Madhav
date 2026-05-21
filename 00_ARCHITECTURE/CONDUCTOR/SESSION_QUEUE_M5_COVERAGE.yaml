@@ -222,8 +222,11 @@ sessions:
     audit_section: "§H.4"
     depends_on: ["PERF-S3"]
     gates: ["tsc", "vitest_changed", "freshness_diagnostics_smoke"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T16:15:00+05:30"
+    merge_commit: 88b9948d
+    gate_results: "tsc:PASS vitest:8/8 freshness_diagnostics_smoke:PASS"
     halt_conditions: ["freshness panel does not surface known-stale assets"]
 
   - id: ICR-S5
@@ -231,8 +234,11 @@ sessions:
     audit_section: "§N.6 ICR-S5"
     depends_on: ["ICR-S4", "PERF-S2"]
     gates: ["tsc", "vitest_changed", "confirmation_ui_smoke", "atomic_apply_dry_run"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T16:30:00+05:30"
+    merge_commit: 58cd34fe
+    gate_results: "tsc:PASS vitest:8/8 atomic_apply_dry_run:PASS DIS.013_applied:Virgo_6H_confirmed"
     halt_conditions: ["atomic-apply dry run does not roll back on simulated mid-patch failure"]
 
   - id: ICR-S6
