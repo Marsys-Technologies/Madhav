@@ -68,7 +68,7 @@ See `FILE_REGISTRY_v1_13.md §9.2–§9.15` — unchanged.
 
 | Path | Version | Status | Role |
 |---|---|---|---|
-| `platform/src/lib/rag/routerClient.ts` | 1.0 | CURRENT | TypeScript shim for POST /rag/route. Exports: `QueryPlanType` (string union, 6 values including "exploratory"); `QueryPlan` interface (7 fields per schema); `ragRoute(query: string): Promise<QueryPlan>` calling POST with JSON body `{query}`. Reads `NEXT_PUBLIC_SIDECAR_URL` + `SIDECAR_API_KEY` from env. Mirrors retrieveClient.ts pattern. |
+| platform/src/lib/rag/routerClient.ts | 1.0 | DELETED (Pipeline-Transform-S1 2026-05-11) | TypeScript shim for POST /rag/route — deleted when legacy RAG route removed. |
 
 ### §9.16.5 — Evaluation artifacts
 
