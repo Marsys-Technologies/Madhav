@@ -143,7 +143,7 @@ def scan_b_p6_uvc_conflict() -> list[dict[str, Any]]:
 
 def scan_c_rahu_as_pk() -> list[dict[str, Any]]:
     """
-    Scan MSR_v3_0.md for signals where interpretation inverts under 7-karaka vs 8-karaka.
+    Scan MSR_v5_0.md for signals where interpretation inverts under 7-karaka vs 8-karaka.
     Targets signals in PK-sensitive domains that explicitly reference Rahu as PK
     or note dual-karaka system divergence.
     """
