@@ -1628,9 +1628,9 @@ function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = fa
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false, initialMessages: initialMessagesProp }: ConsumeChatProps) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
-  const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(undefined)
+  const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(initialMessagesProp)
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
