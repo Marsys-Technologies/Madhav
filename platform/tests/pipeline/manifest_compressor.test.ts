@@ -50,11 +50,15 @@ describe('manifest_compressor — expose_to_planner projection (COV-S3)', () => 
     }
   })
 
-  it(`description is ≤${DESCRIPTION_MAX_WORDS} words for every entry`, () => {
+  it(`base description (before gating hint) is ≤${DESCRIPTION_MAX_WORDS} words for every entry`, () => {
+    // COV-S6: the full d field may exceed DESCRIPTION_MAX_WORDS when a gating hint is appended.
+    // The word cap applies to the BASE description only (before " Preferred when:" / " Avoid when:").
     const manifest = loadLiveManifest()
     const entries = compressManifest(manifest)
     for (const entry of entries) {
-      const wordCount = entry.d.split(/\s+/).filter(Boolean).length
+      // Strip the gating hint suffix (starts with " Preferred when:" or " Avoid when:")
+      const baseOnly = entry.d.split(' Preferred when:')[0].split(' Avoid when:')[0]
+      const wordCount = baseOnly.split(/\s+/).filter(Boolean).length
       expect(wordCount).toBeLessThanOrEqual(DESCRIPTION_MAX_WORDS)
     }
   })
