@@ -59,8 +59,8 @@ def load_manifest_as_ca(repo_root: pathlib.Path) -> CanonicalArtifacts:
             "path": entry.get("path", ""),
             "status": entry.get("status", "CURRENT"),
             "version": str(entry.get("version", "")),
-            # manifest uses "fingerprint"; _ca_loader uses "fingerprint_sha256"
-            "fingerprint_sha256": entry.get("fingerprint", ""),
+            # prefer fingerprint_sha256 (authoritative); fall back to legacy fingerprint field
+            "fingerprint_sha256": entry.get("fingerprint_sha256") or entry.get("fingerprint", ""),
             "layer": entry.get("layer", ""),
             "expose_to_chat": entry.get("expose_to_chat", False),
             "native_id": entry.get("native_id", ""),

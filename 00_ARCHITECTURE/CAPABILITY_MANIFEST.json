@@ -179,7 +179,10 @@
       "signal_count": 573,
       "predecessor": "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
       "updated_at": "2026-05-14",
-      "updated_by": "M9-A-S1, fingerprint-refresh MSR-HYGIENE-S1 2026-05-21"
+      "updated_by": "M9-A-S1, fingerprint-refresh MSR-HYGIENE-S1 2026-05-21",
+      "fingerprint_sha256": "0dc272e03ecb109d34afa7bbf513687819eed8bf24ff525c85cb547ca83ec697",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RED_TEAM_L2_5_v1_0",
@@ -275,7 +278,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "b1f8048aadb65d0455db4bf6f3bc4751d6a1f69039ecedb28128321079988221",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "647d9a17581894ddd07a384c511e510682d66cff694fa7e2b337d16d101dc706",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
@@ -295,7 +301,10 @@
         "career",
         "domain_specific"
       ],
-      "cost_weight": 0.7
+      "cost_weight": 0.7,
+      "fingerprint_sha256": "cdf52ee4041791753cd6d931890fdb213004b00d31e722d04256740d79e564ef",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_CHILDREN_v1_0",
@@ -309,7 +318,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "51cde6430ebb1ec6c310aa836b6057e2db9a879acd3edcb6264aa7d901693d4f",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "17b651aa36a1539c496eaaa75623140dde71b36af9ff4905cdf1a7efe38a1301",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_CHILDREN_v1_1",
@@ -323,7 +335,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "b6ffadd036b04554824eebdb58bc3996a750de054b3f41587ced2b701f9ad326",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "d47d8f5ddd16c22d7ea7bce83653a588411aa778d967bc358e332e1e0e62299c",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_FINANCIAL_v2_0",
@@ -337,7 +352,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "b780b32aa93d725d794dc1baf6f20f8522d2cef983cb757bb19a23df823cd8bb",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "c2218ec25cb7637b35b327a6602ea17b3d9864fb9778f895ec1749769f13d75d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_FINANCIAL_v2_1",
@@ -357,7 +375,10 @@
         "financial",
         "domain_specific"
       ],
-      "cost_weight": 0.7
+      "cost_weight": 0.7,
+      "fingerprint_sha256": "215e54b7394d2bbfb8dc4b4a1660660dc16511d81225f25f8f9442f667afc39c",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_0",
@@ -371,7 +392,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "079c598162059ff22d277b266e60bb088926b00fc925f6f629c82f33d79312c0",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "b6fa182c4bcde906a218796328a81c5f227852d9dcb2cf3ca2c851b8a5b7bbc6",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
@@ -391,7 +415,10 @@
         "health",
         "domain_specific"
       ],
-      "cost_weight": 0.7
+      "cost_weight": 0.7,
+      "fingerprint_sha256": "c722d9f2a0305e687814b8db398815a15ca1f2e85d3e4abbf0829a88e94e2623",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_PARENTS_v1_0",
@@ -405,7 +432,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "6a5b737674194d4b9fb71d55764301b89520d18f54f0aaba425541ee8a2f8c6e",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "3e18ccb5a39d49d2b7d04072c50a2f7cdf933e86147cf47c515896f918d7f523",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_PARENTS_v1_1",
@@ -419,7 +449,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "033b94042df5c58c455896d8e5e35eb2844d17924100eada736996b6b45dc45b",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "06f938f059c0c971c03b70fb64cbaf91b25509dd90e66c73437fd122598b3478",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_0",
@@ -433,7 +466,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "81d0a1044b1fef16eb57b250d68cc0b44e004ca7d46b7287b75f3b05eff3d9b3",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "36d60c229c0e4e8cde85d483eb42977bc6ebd0a6e564762592b662f60dd7954f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
@@ -447,7 +483,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "6ef5e2202e8609bf22a22c9adc18e7ffab8d7047e21fe90082f69bb9753ff6a8",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "053d414ef88f719a0514eab372ee1b83c424666b01ebcd48652c0f4e896dd871",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
@@ -461,7 +500,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "dd22afd58ee58fc117b81e4887cc1b01964880c82633db90be78169e229642b5",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "c86effd31f547660b28706e046a08d613b67d826797ad795e55193168d2747ab",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
@@ -481,7 +523,10 @@
         "relationships",
         "domain_specific"
       ],
-      "cost_weight": 0.7
+      "cost_weight": 0.7,
+      "fingerprint_sha256": "97d285b3562b76c61772afaa88742ec315e61fee8edcb84f5e113078a9a77c34",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_SPIRITUAL_v1_0",
@@ -495,7 +540,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "0c7d05fa7143931c9ea79351332b30030395355f4933980aa8e4416793cb018b",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "6a0505ff8923d5ab73f6ad7a4853fd1be3db12a723dc33c4e93c235b4ab0c683",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_SPIRITUAL_v1_1",
@@ -509,7 +557,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "35f4e125d64442010f413161e90e7be23150df67196b50693921837ded7b07af",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "103edbb5927c9cd874f30c9b7daa9bbaf20c6aaab7d0eff21857db659013da27",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_TRAVEL_v1_0",
@@ -523,7 +574,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "6c018cb7c824ac103ce268f85e7e887f7a99d7f437293e94ffdab7c3ef36400f",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "2652762e82ab9ae772983f3dc6aeef8d76edd3f2c51e79ea1596226559568cd2",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "REPORT_TRAVEL_v1_1",
@@ -537,7 +591,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "d06cad2a1146cfb70b60b05af2f1179f878f9a08dd652d1d2af61566a809c57b",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "964a1951ce70b550065c9e83d73d8bf80f32dff8554a3aecb6f81636a59620be",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
@@ -761,7 +818,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "2ad3a5b80577b6dfd3e1d26e2a480e2ab62ec814b61fe952b5f29ffd12a5c79d",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "93eb7d2b3bb6e0e7f9724ecd729408adc1fec92fa5ba559ddea81bbde65c5157",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
@@ -901,7 +961,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "d328860e1a98b639c559036594cc7f880033baa288301fafaa3b6dddf5c561dd",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "55c23858f1bcca725dcc1bc4dd33100ebaed2c157ef203a94e7671635a184d7b",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PREDICTION_SCHEMA_v0_1",
@@ -915,7 +978,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "1db6a742f1fde19507b6c4c7ad1679c70f50f3286673a95960afea5f79f7da96",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "bf1189997a5d8e80798a7dde27d69f39d2f1d24bf845a64e768783b0328f9654",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
@@ -929,7 +995,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "0ed502f6994726f37f7d5e34997e0411d937188674b1022429234e3bcc820e4e",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "e7003c5911edd8f74b4fb0a7d7fd46add4812fe8c46254e5f54513be366f8e36",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PROMPT_REGISTRY_INDEX",
@@ -943,7 +1012,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "74ffef4271ca6168227e22af21099cc187490401431f13c57aa6ded119e9c71b",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "ee986600a0eecf33e2b61645056a7b76dea88019981280980b7aa2d5d87c846b",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PREDICTION_LEDGER_JSONL",
@@ -957,7 +1029,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "47ac93ebb6449f8c94a17758baf8c993ee09238f48a3b97ae6c270bc45113627",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "ac8a87cc55bbbe6d9d14ef4dd2229e701189507b01d6ecbffa51bcd5e41c701f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PATTERN_REGISTER_JSON",
@@ -971,7 +1046,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "729d850720a4986389c451b3e0c425dc05c9f31ebb60dbe281ad387d275ec7a5",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "11ed5d57d48c23a4e3f9795df6107c9497cc6d988da2239ab3e5866cafd851fc",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RESONANCE_REGISTER_JSON",
@@ -985,7 +1063,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "ac9f284bd591dc69c7ebf4bba3104b9f64c266f4340524eec46590203d23154d",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "92a6cde8cb869ff0b525477667a423852917573f0f1ffe9af3223fea1250e6ef",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CONTRADICTION_REGISTER_JSON",
@@ -999,7 +1080,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "1e2fd304e400aee529eb3800f0e5facf4755de9bdb6e09878c11a6528ed80f68",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "11c551afab85e6272d9f5569551ed5425f893edc44ee52852774caad5710857f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLUSTER_ATLAS_JSON",
@@ -1013,7 +1097,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "59d5d90c1759dce79ed83e4c47134b5d37b9ff36f926a1f639f7add0a50b233f",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "fa1dbd13991f06f6980e54ce586d1f1b40dbe969517ba0c5e6101de60e9a18d4",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "DISCOVERY_REGISTERS_INDEX",
@@ -1027,7 +1114,10 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "f6891c9a2813a1e7c94c4d8eed6ba39d577575218109dddc0a29fec182f61f07",
-      "native_id": "abhisek"
+      "native_id": "abhisek",
+      "fingerprint_sha256": "dd3eb54f70c2adb10ef91bca41b0ede2eeb955de1329b87e3f4dca38c832ad4e",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "DBN_TOPOLOGY_v1_0",
@@ -1043,7 +1133,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "DBN topology first draft. DRAFT status until NAP.M5.1 native approval gate. Pre-registration timestamp = commit of M5-B-S1. Held-out partition sacrosanct until M5-D."
+      "notes": "DBN topology first draft. DRAFT status until NAP.M5.1 native approval gate. Pre-registration timestamp = commit of M5-B-S1. Held-out partition sacrosanct until M5-D.",
+      "fingerprint_sha256": "907b05f7e9abc6bada10736122243e930369c02d304a77948582e0d076fd9b7f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CPT_NATAL_TO_DOMAIN",
@@ -1059,7 +1152,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_activation | natal_signal). 44 entries. All fitted_value=null; M5-D fitting required."
+      "notes": "P(domain_activation | natal_signal). 44 entries. All fitted_value=null; M5-D fitting required.",
+      "fingerprint_sha256": "e4c80f07b830fd044fc3d9ef2caba3e879efd45e1839faac45218c675cdeeddd",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CPT_DASHA_TO_DOMAIN",
@@ -1075,7 +1171,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state | dasha_state). 81 entries (9 MD \u00d7 9 AD). All fitted_value=null; M5-D fitting required."
+      "notes": "P(domain_state | dasha_state). 81 entries (9 MD × 9 AD). All fitted_value=null; M5-D fitting required.",
+      "fingerprint_sha256": "cf3e776d9edcd7de01305d0c7257df4551aed7bca0a4a3a54e0049a2375dca69",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CPT_PERSISTENCE",
@@ -1091,7 +1190,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains \u00d7 9 transitions). Symmetric priors; per-domain differentiation in M5-D."
+      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains × 9 transitions). Symmetric priors; per-domain differentiation in M5-D.",
+      "fingerprint_sha256": "562a8d7d1d00f7f54221d46f009540f14467ea9a902434ffe85e4e5761463e21",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CPT_CROSS_DOMAIN",
@@ -1107,7 +1209,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "Cross-domain conditional edges at same time-slice t. 3 active edges + 1 deferred. All fitted_value=null; M5-D fitting required."
+      "notes": "Cross-domain conditional edges at same time-slice t. 3 active edges + 1 deferred. All fitted_value=null; M5-D fitting required.",
+      "fingerprint_sha256": "60be44ff92247b728145480ad81ca1ffbf129b8fcbdef2fcf89233bfa860b31d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CPT_OBSERVATION",
@@ -1123,13 +1228,16 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(EVENT_OCCURRED | domain_state). 4 entries (one per domain). Symmetric priors; per-domain differentiation in M5-D."
+      "notes": "P(EVENT_OCCURRED | domain_state). 4 entries (one per domain). Symmetric priors; per-domain differentiation in M5-D.",
+      "fingerprint_sha256": "fe0d4d0649f130db881dc821b6416a95fa07615ec61c99bae65328b209dc1629",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_lel_query",
       "tool_name": "lel_query",
-      "tool_description": "Retrieves ground-truth life events from LEL \u2014 recorded dates categories chart states",
-      "description": "Queries life_events table \u2014 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "tool_description": "Retrieves ground-truth life events from LEL — recorded dates categories chart states",
+      "description": "Queries life_events table — 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
       "query_schema": {
         "type": "object",
         "properties": {
@@ -1180,7 +1288,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-D-S5",
-      "notes": "M5-D sub-phase sealing artifact. IS.8(b)-class RT PASS 8/8. DBN fit: mean_lift=1.145, beat_fraction=5/5. Sealed 2026-05-13."
+      "notes": "M5-D sub-phase sealing artifact. IS.8(b)-class RT PASS 8/8. DBN fit: mean_lift=1.145, beat_fraction=5/5. Sealed 2026-05-13.",
+      "fingerprint_sha256": "94721418675d7121fc0b4dfedc64da8b6304bad46d06af2b872fe44c74f7c53e",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "LL8_SPEC",
@@ -1196,7 +1307,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S1",
-      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD\u2192ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in \u00a73.2b."
+      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD→ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in §3.2b.",
+      "fingerprint_sha256": "f3877f50c2fb7517a3908989b14376e407a7a219483b77a89d7b79a6509a8c0d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "LL8_PARAM_REGISTER",
@@ -1212,7 +1326,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S1",
-      "notes": "LL.8 Bayesian update parameter register (active). update_count=0; initialized 2026-05-14. Supersedes parameter_register_stub.json."
+      "notes": "LL.8 Bayesian update parameter register (active). update_count=0; initialized 2026-05-14. Supersedes parameter_register_stub.json.",
+      "fingerprint_sha256": "a463e98723bc51d31d56627af6dd792755ed45afc6605e7e3fe71dedd7e79971",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "LL9_SPEC",
@@ -1228,7 +1345,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-A-S1",
-      "notes": "LL.9 Counterfactual Learning from Misses specification. SCAFFOLD status; activates at M6 open."
+      "notes": "LL.9 Counterfactual Learning from Misses specification. SCAFFOLD status; activates at M6 open.",
+      "fingerprint_sha256": "8226eeafeb135eb5fad8d7a4459001c05cfec3796606e10e05abfea30671c4a8",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "LL9_MISS_REGISTRY",
@@ -1244,7 +1364,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-A-S1",
-      "notes": "LL.9 miss registry stub. Dormant until M6 open; no entries expected during M5."
+      "notes": "LL.9 miss registry stub. Dormant until M6 open; no entries expected during M5.",
+      "fingerprint_sha256": "4a878e351c439859b78634800d69671fba16b1320c3bf85566481448ece922d7",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "M5_CLOSE",
@@ -1260,7 +1383,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S2",
-      "notes": "M5 macro-phase sealing artifact. IS.8(b) PASS 5/5. Full AC ledger, LL table, PPL checkpoint, NAP registry, carry-forwards, topology risk register. NAP.M5.4 APPROVED. Successor: M6 INCOMING."
+      "notes": "M5 macro-phase sealing artifact. IS.8(b) PASS 5/5. Full AC ledger, LL table, PPL checkpoint, NAP registry, carry-forwards, topology risk register. NAP.M5.4 APPROVED. Successor: M6 INCOMING.",
+      "fingerprint_sha256": "5b8a7d4729cd20437bfa72b51b472c14b3234523265587b22fcc88393c2386f0",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PHASE_M8_PLAN",
@@ -1275,7 +1401,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "M8 phase plan \u2014 governs all M8 sessions"
+      "note": "M8 phase plan — governs all M8 sessions",
+      "fingerprint_sha256": "74d89d028cc23d11817fcaf29a444635b7155f2c85738d5e7c0377ca594e9069",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "08_CLASSICAL_CROSS_REFERENCE",
@@ -1305,7 +1434,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "14-text tier list with source URLs; procurement gap log"
+      "note": "14-text tier list with source URLs; procurement gap log",
+      "fingerprint_sha256": "ca88d98eb9a038d01c12a2296cd1f47524b6ea7307c62cd941296b9bb7f31c71",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "GCS_LAYOUT",
@@ -1320,10 +1452,13 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "v1.1 \u2014 L8 prefix block added for M8 classical corpus",
+      "note": "v1.1 — L8 prefix block added for M8 classical corpus",
       "updated_at": "2026-05-14",
       "updated_by": "M9-A-S1",
-      "notes": "L9/ prefix added at M9-A-S1"
+      "notes": "L9/ prefix added at M9-A-S1",
+      "fingerprint_sha256": "e036c95878a61f20bd691cb818ca4e2f18908c391b4ad08ccef5c849aebec0e0",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_classical_text_search",
@@ -1343,7 +1478,10 @@
       "produced_during": "M8-A-S1",
       "updated_during": "M8-E-S1",
       "note": "Full impl M8-E-S1: Vertex AI text-embedding-004 (768-dim) + pgvector cosine; GoogleAuth ADC; 10 unit tests PASS",
-      "expose_to_planner": true
+      "expose_to_planner": true,
+      "fingerprint_sha256": "24c7b6bcee717dc9b3dd814912eb42ea3f79177933c050a87415b3542f77f879",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_classical_attribution_lookup",
@@ -1359,11 +1497,14 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "tool_name": "classical_attribution_lookup",
       "tool_number": 26,
-      "tool_description": "Structured lookup: MSR signal_ids \u2192 classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
+      "tool_description": "Structured lookup: MSR signal_ids → classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
       "produced_during": "M8-A-S1",
       "updated_during": "M8-E-S1",
-      "note": "Full impl M8-E-S1: JOIN classical_attributions\u2192classical_chunks\u2192classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS",
-      "expose_to_planner": true
+      "note": "Full impl M8-E-S1: JOIN classical_attributions→classical_chunks→classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS",
+      "expose_to_planner": true,
+      "fingerprint_sha256": "9713bc92831f35697df7100a04af7512602e6b4b655e6dd3beeab294f287dea3",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_bphs",
@@ -1372,7 +1513,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "BPHS ingestion script; archive.org djvu.txt source; 1032 chunks; 100% embedded",
-      "produced_during": "M8-B-S1"
+      "produced_during": "M8-B-S1",
+      "fingerprint_sha256": "5c8682f93c999077492ef2edb2d7fb15d10d84096bfc570284b575b4db18ce8e",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_phaladeepika",
@@ -1381,7 +1525,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Phaladeepika ingestion script; archive.org in.ernet.dli.2015.406048 source; 926 chunks; 100% embedded",
-      "produced_during": "M8-B-S1"
+      "produced_during": "M8-B-S1",
+      "fingerprint_sha256": "3d849df60567924688be327cf6637fd63c2ddcc6e213801f0658ddef8f22d6b0",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_UTILS_ingest_utils",
@@ -1390,7 +1537,10 @@
       "version": "1.1",
       "status": "CURRENT",
       "description": "Shared ingestion utils: chunk_text, clean_html, embed_batch (dynamic batching; 8k approx token budget; 15-chunk cap), db_upsert_text, db_bulk_insert_chunks, db_update_embeddings, gcs_upload_jsonl",
-      "produced_during": "M8-B-S1"
+      "produced_during": "M8-B-S1",
+      "fingerprint_sha256": "5fb7ba519db16c2f6f2b657011dd2b76210ef0d453e1133da6a90563622a989c",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_saravali",
@@ -1399,7 +1549,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Saravali ingestion; dual-source strategy; 796 chunks; 100% embedded",
-      "produced_during": "M8-C-S1"
+      "produced_during": "M8-C-S1",
+      "fingerprint_sha256": "a7b4822cf4d1cb020066738aea521c548a950ef60903ca84a61f5935d365ec5e",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_uttara_kalamrita",
@@ -1408,7 +1561,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Uttara Kalamrita ingestion; 239 chunks; 100% embedded",
-      "produced_during": "M8-C-S1"
+      "produced_during": "M8-C-S1",
+      "fingerprint_sha256": "b50ee7dcb6ab658a8868c8533f96b950a2ffaef4947b3d275484a68fe6bef373",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_jaimini_sutra",
@@ -1417,7 +1573,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Jaimini Sutra ingestion; Jaiminisutras1955EditionByBSRao; 181 chunks; 100% embedded",
-      "produced_during": "M8-C-S1"
+      "produced_during": "M8-C-S1",
+      "fingerprint_sha256": "3fcb9d70bbe2def81dfa9a9477d08ff2a576c1e5be786a204e825214c607fa1d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_prashna_marga",
@@ -1426,7 +1585,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Prashna Marga ingestion; PrasnaMargaBVR 2-vol; 758 chunks; 100% embedded",
-      "produced_during": "M8-D-S1"
+      "produced_during": "M8-D-S1",
+      "fingerprint_sha256": "71ca842b13a7638193e658c8434a3a7b59e012ec5f231d35477ab80cb75b3e2d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_hora_sara",
@@ -1435,7 +1597,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Hora Sara ingestion; HoraSaraRSanthanamEng; 295 chunks; 100% embedded",
-      "produced_during": "M8-D-S1"
+      "produced_during": "M8-D-S1",
+      "fingerprint_sha256": "3a7aaf85e7770c634d8c81f840e080a53224b72de7258bd0cbf5c7396ef44fe7",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_kp_texts",
@@ -1444,7 +1609,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "KP Readers Vols 1-4 ingestion; kp-readers; 1646 chunks; 100% embedded",
-      "produced_during": "M8-D-S1"
+      "produced_during": "M8-D-S1",
+      "fingerprint_sha256": "072137efdfd539d7d7a130d7e1fbba46970a677a5f321f10180c8c09230eedbe",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_brihat_jataka",
@@ -1453,7 +1621,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Brihat Jataka ingestion; Swami Vijnananda; 520 chunks; 100% embedded",
-      "produced_during": "M8-D-S1"
+      "produced_during": "M8-D-S1",
+      "fingerprint_sha256": "587abf550dffb56c64ee1dd62b5062ca53113ede2b6e84d563a35d145144c28d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "INGESTION_SCRIPT_ingest_brihat_samhita",
@@ -1462,7 +1633,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "description": "Brihat Samhita ingestion; V. Subrahmanya Sastri; 757 chunks; 98.4% embedded",
-      "produced_during": "M8-D-S1"
+      "produced_during": "M8-D-S1",
+      "fingerprint_sha256": "a52b16321bada0f3958f241cc3775bc0848e51096a2ccc090877fdb08c566157",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "ATTRIBUTION_SCRIPT_run_attribution_pass",
@@ -1478,7 +1652,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Full attribution pass: Vertex AI text-embedding-004 \u00d7 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge \u2192 classical_attributions table"
+      "note": "Full attribution pass: Vertex AI text-embedding-004 × 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge → classical_attributions table",
+      "fingerprint_sha256": "b15e3ee46b98e18ac4e69f1965f9a1f123ca1f3f2131eed912f0711638f7aff3",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "ATTRIBUTION_SCRIPT_build_registry_from_db",
@@ -1494,7 +1671,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Reads classical_attributions table \u2192 produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM"
+      "note": "Reads classical_attributions table → produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM",
+      "fingerprint_sha256": "1b455c2eebae9f3571e46dc33b9c73887af757cf67174f2036159359c69b4269",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY",
@@ -1509,7 +1689,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Machine-readable attribution registry: 420 records (407+ rows); coverage_by_tier + attribution_type_summary + per-signal attributions"
+      "note": "Machine-readable attribution registry: 420 records (407+ rows); coverage_by_tier + attribution_type_summary + per-signal attributions",
+      "fingerprint_sha256": "e348536b13a076e7ab9c61dda74479c7c1e0a7416ac5f32e06df82c849c0fc2d",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLASSICAL_ATTRIBUTION_REGISTRY_MD",
@@ -1524,7 +1707,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Narrative companion to CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json; type/tier breakdowns + sample records"
+      "note": "Narrative companion to CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json; type/tier breakdowns + sample records",
+      "fingerprint_sha256": "dc14a76a3c33e0d0df955b1f46ae5af88548ed6968404ac27c9b885e37c1e86c",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "FINDINGS_M5_CROSS_REF",
@@ -1539,7 +1725,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal \u00d7 text \u00d7 verse breakdown"
+      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal × text × verse breakdown",
+      "fingerprint_sha256": "2e1dea225f9f5c8a42d0a684f2e33e147dea3b087edb00412d96199ac356c9ad",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "FINDINGS_CLASSICAL_CLAIM",
@@ -1554,7 +1743,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Classical claim inventory: per-text confirms/contradicts/partial/extends/silent counts; interpretation section"
+      "note": "Classical claim inventory: per-text confirms/contradicts/partial/extends/silent counts; interpretation section",
+      "fingerprint_sha256": "24c4c7cfb4e6edd9b0263aa19a61fdc2495b64a9eed29d5847821e1e1cf9af77",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "INGEST_BHRIGU_NANDI_NADI",
@@ -1569,7 +1761,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "Ingestion script for Bhrigu Nandi Nadi tier-4 text; 391 chunks 100% embedded"
+      "note": "Ingestion script for Bhrigu Nandi Nadi tier-4 text; 391 chunks 100% embedded",
+      "fingerprint_sha256": "2623ad600ff93b3c16553140f9c2156cedb6052f1f17b33411c2afe331b71d64",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "INGEST_CHANDRA_KALA_NADI",
@@ -1584,7 +1779,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "Ingestion script for Chandra Kala Nadi tier-4 text; 658 chunks 100% embedded"
+      "note": "Ingestion script for Chandra Kala Nadi tier-4 text; 658 chunks 100% embedded",
+      "fingerprint_sha256": "1717f95b772092b107f6a260e517a33c0f3cd4cd189260e89d8636b6e7b18b3a",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "INGEST_DHRUVA_NADI_SAMPLER",
@@ -1599,7 +1797,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "Ingestion script for Dhruva Nadi sampler tier-4 text; 150 chunks 100% embedded"
+      "note": "Ingestion script for Dhruva Nadi sampler tier-4 text; 150 chunks 100% embedded",
+      "fingerprint_sha256": "fcaac8b2345a2a93727cf6f1c64e15a03520a3905baf6d735b48fcb85cd8e26f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RUN_NADI_SIGNAL_EXTRACTION",
@@ -1614,7 +1815,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "Gemini 2.5-flash extraction script; 107 BNN + 4 Nadi signals extracted"
+      "note": "Gemini 2.5-flash extraction script; 107 BNN + 4 Nadi signals extracted",
+      "fingerprint_sha256": "a9d1574dbb9f001866bfa800907d4f0b3d7d081a595f173bda21648e88d0674e",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "BNN_SIGNAL_EXTRACTION",
@@ -1629,7 +1833,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence \u22650.60"
+      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence ≥0.60",
+      "fingerprint_sha256": "33301a723994c899116afc98aef64a8408ccc486bca5094255a050e3b4ee5f8e",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "NADI_SIGNAL_EXTRACTION",
@@ -1644,7 +1851,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "4 Nadi signals from Chandra Kala Nadi (2) + Dhruva Nadi (2)"
+      "note": "4 Nadi signals from Chandra Kala Nadi (2) + Dhruva Nadi (2)",
+      "fingerprint_sha256": "1ac56ed9d720077f88675555860e9f5c27af15c56f905f29f92ed5f1b95ef300",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "MSR_EXPANSION_PROPOSAL",
@@ -1659,7 +1869,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "29 net-new signal proposal SIG.MSR.515\u2013543; dedup argument vs existing 514; AC.M8F.5 PASS"
+      "note": "29 net-new signal proposal SIG.MSR.515–543; dedup argument vs existing 514; AC.M8F.5 PASS",
+      "fingerprint_sha256": "df929534ed05b2b1a8052994f935e2b0e4e0a7516c955ba6996f38fe74a04b70",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLASSICAL_TEXT_SEARCH_TOOL",
@@ -1674,7 +1887,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "RetrievalTool wrapper for classical_text_search (Tool 25); registered in RETRIEVAL_TOOLS; AC.M8G.1 PASS"
+      "note": "RetrievalTool wrapper for classical_text_search (Tool 25); registered in RETRIEVAL_TOOLS; AC.M8G.1 PASS",
+      "fingerprint_sha256": "91805af0ac04a36da46141e7f099225208a348d0d00b1c5d559aa8dffde8ab47",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLASSICAL_ATTRIBUTION_LOOKUP_TOOL",
@@ -1689,7 +1905,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "RetrievalTool wrapper for classical_attribution_lookup (Tool 26); registered in RETRIEVAL_TOOLS; AC.M8G.2 PASS"
+      "note": "RetrievalTool wrapper for classical_attribution_lookup (Tool 26); registered in RETRIEVAL_TOOLS; AC.M8G.2 PASS",
+      "fingerprint_sha256": "51376e55a854a4e069b0e6b7deea49706d0e364fd64e3ca2812933d0124c6992",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLASSICAL_DISCLOSURE_FILTER",
@@ -1704,7 +1923,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "applyClassicalDisclosureFilter() + formatClassicalCitationForSynthesis(); NAP.M8.2 enforcement; AC.M8G.5 PASS"
+      "note": "applyClassicalDisclosureFilter() + formatClassicalCitationForSynthesis(); NAP.M8.2 enforcement; AC.M8G.5 PASS",
+      "fingerprint_sha256": "8c1212275278dfc23c798e8bf34e881a970ec1529cd1dff29ef92e01757b2154",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLASSICAL_PIPELINE_INTEGRATION_TEST",
@@ -1719,7 +1941,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "11 integration tests; all passing; AC.M8G.6 PASS (tsc 0 errors on M8-G files)"
+      "note": "11 integration tests; all passing; AC.M8G.6 PASS (tsc 0 errors on M8-G files)",
+      "fingerprint_sha256": "3b399eca68a83aef1088cb0bcc37066f19e474078b41d9d66b071962eaaffbc0",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PLANNER_GOLDEN_SET_M8G",
@@ -1734,7 +1959,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "GT.047\u2013GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS"
+      "note": "GT.047–GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS",
+      "fingerprint_sha256": "3c6c76f3198b84fb5952cc6c1c5fb3b053bc8f1eefb63fcb7a355bf10af6c090",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "TRANSLATION_CROSS_CHECK",
@@ -1749,7 +1977,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "8 non-English texts cross-checked; 0 SIGNIFICANT_VARIANCE; 0 confidence downgrades; AC.M8H.1 PASS"
+      "note": "8 non-English texts cross-checked; 0 SIGNIFICANT_VARIANCE; 0 confidence downgrades; AC.M8H.1 PASS",
+      "fingerprint_sha256": "216bd266ce9ec6673515f8d43c5b0ed47c3042098ef2b1b88d5c75791732d0a2",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "ACHARYA_REVIEW_SAMPLE",
@@ -1764,7 +1995,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "20 findings (4\u00d75 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS"
+      "note": "20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS",
+      "fingerprint_sha256": "d3eedf22a6aba9bd30fd557b396b77395a05a222fc0371dfffbdd5066919f95b",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "M8_CLOSE",
@@ -1779,7 +2013,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "M8 macro-phase sealing artifact; IS.8(a)+(b) red-team PASS 5/5; all exit criteria MET; AC.M8H.3+4 PASS"
+      "note": "M8 macro-phase sealing artifact; IS.8(a)+(b) red-team PASS 5/5; all exit criteria MET; AC.M8H.3+4 PASS",
+      "fingerprint_sha256": "a79fb4f9533caa98c9ae2c1e06da0b72aa274f943b7b35e57149fb46e11592dc",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLAUDECODE_BRIEF_M8",
@@ -1794,7 +2031,10 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "M8 CLAUDECODE_BRIEF archived at M8 close; AC.M8H.9 PASS"
+      "note": "M8 CLAUDECODE_BRIEF archived at M8 close; AC.M8H.9 PASS",
+      "fingerprint_sha256": "3d2d121206126b2d501c5ee51221a104d9cc4a68026bbdbc12e90c16acab1c08",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PHASE_M9_PLAN",
@@ -1808,7 +2048,10 @@
       ],
       "interface_version": "1.0",
       "notes": "M9 multi-school triangulation plan; 5 sub-sessions M9-A through M9-E",
-      "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14"
+      "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14",
+      "fingerprint_sha256": "9ba61c6048ffe7541664ed4f652e4cc5298ad98cfa4c533028d3945bed725619",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "09_MULTI_SCHOOL_TRIANGULATION",
@@ -1821,7 +2064,7 @@
         "folder"
       ],
       "interface_version": "1.0",
-      "notes": "M9 multi-school triangulation layer; 7 schools \u00d7 5 domains \u00d7 543+ signals",
+      "notes": "M9 multi-school triangulation layer; 7 schools × 5 domains × 543+ signals",
       "produced_during": "M9-A-S1 2026-05-14"
     },
     {
@@ -1834,8 +2077,11 @@
       "representations": [
         "file"
       ],
-      "notes": "Per-school signal coverage classification: 573 signals \u00d7 7 schools = 4011 rows",
-      "produced_during": "M9-A-S1 2026-05-14"
+      "notes": "Per-school signal coverage classification: 573 signals × 7 schools = 4011 rows",
+      "produced_during": "M9-A-S1 2026-05-14",
+      "fingerprint_sha256": "6cafe2556eaeb678652ba6ca0bba4747ebe80a7d293cf3a745cd0d22d1590975",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "YOGINI_SIGNAL_EXTRACTION",
@@ -1847,8 +2093,11 @@
       "representations": [
         "file"
       ],
-      "notes": "15 Yogini signals SIG.MSR.544\u2013558; current Yogini: Bhramari (Mars; active)",
-      "produced_during": "M9-A-S1 2026-05-14"
+      "notes": "15 Yogini signals SIG.MSR.544–558; current Yogini: Bhramari (Mars; active)",
+      "produced_during": "M9-A-S1 2026-05-14",
+      "fingerprint_sha256": "0b1b5e9e0bdce6f4f9fccb1839abf83637ec52203919f2b9b9328be3d1eaa098",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "TAJIKA_SIGNAL_EXTRACTION",
@@ -1860,8 +2109,11 @@
       "representations": [
         "file"
       ],
-      "notes": "15 Tajika signals SIG.MSR.559\u2013573; solar_return_scope: true; CF.M9.1 pending",
-      "produced_during": "M9-A-S1 2026-05-14"
+      "notes": "15 Tajika signals SIG.MSR.559–573; solar_return_scope: true; CF.M9.1 pending",
+      "produced_during": "M9-A-S1 2026-05-14",
+      "fingerprint_sha256": "c2864e2c87fcab9b132d3fd3c6bb793170539324b505254419bef24d73a5fe55",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "CLAUDECODE_BRIEF_M9",
@@ -1873,8 +2125,11 @@
       "representations": [
         "markdown"
       ],
-      "notes": "M9 brief archived; all 5 sessions (M9-A through M9-E) complete; NAP gates pre-authorized. Path corrected 2026-05-21 \u2014 root CLAUDECODE_BRIEF.md is ephemeral (not committed).",
-      "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14"
+      "notes": "M9 brief archived; all 5 sessions (M9-A through M9-E) complete; NAP gates pre-authorized. Path corrected 2026-05-21 — root CLAUDECODE_BRIEF.md is ephemeral (not committed).",
+      "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14",
+      "fingerprint_sha256": "9cc11a3543d84870c5126132fe8fb066980ae43b668f472c65adc75637e74804",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "TOOL_27_MULTI_SCHOOL_SIGNAL_LOOKUP",
@@ -1887,7 +2142,10 @@
         "file"
       ],
       "notes": "Tool 27 stub; full impl at M9-D-S1; queries school_signal_coverage",
-      "produced_during": "M9-A-S1 2026-05-14"
+      "produced_during": "M9-A-S1 2026-05-14",
+      "fingerprint_sha256": "ab78b7368a70f57d1a1ee8582e8bc510bbcda9b635f003f2490a8f2ecf2d57cb",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "TOOL_28_CONVERGENCE_SCORE_LOOKUP",
@@ -1900,7 +2158,10 @@
         "file"
       ],
       "notes": "Tool 28 stub; full impl at M9-D-S1; queries convergence_scores",
-      "produced_during": "M9-A-S1 2026-05-14"
+      "produced_during": "M9-A-S1 2026-05-14",
+      "fingerprint_sha256": "cf41b746ca268bf20931e06bc6851eecc47aa624c3916e1fabe9a326aee3e7eb",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "SCHOOLS_TYPES",
@@ -1910,27 +2171,36 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "0230ed34013ae27d2413eaa84415d475b85f8c0c27839c9fc29deb8a72f118aa",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "SCHOOLS_CONVERGENCE_CALCULATOR",
       "path": "platform/src/lib/schools/convergence_calculator.ts",
       "type": "typescript_module",
-      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() \u2014 NAP.M9.2+NAP.M9.3",
+      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() — NAP.M9.2+NAP.M9.3",
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "2f11df51a3d1a8618c179d581081fb704e149472ab70f5d06fa4aa92dc31a178",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "SCHOOLS_RUNNER",
       "path": "platform/src/lib/schools/school_runner.ts",
       "type": "typescript_module",
-      "description": "runSchoolsForDomain() + runFullTriangulation() \u2014 orchestrates all 7 engines in parallel",
+      "description": "runSchoolsForDomain() + runFullTriangulation() — orchestrates all 7 engines in parallel",
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "984bc310e1a30f5c07ab0d4c14519f1bb7c0eabe296455a521c93ce4b3e7e486",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "M9B_UNIT_TESTS",
@@ -1940,7 +2210,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "PENDING_CI_REGENERATION",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "PARASHARI_ENGINE_SPEC",
@@ -1949,7 +2222,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "917833fe087c1a9f04c9c0d9a48964e82ccf0bef88c356e4e3af59cfe11ce013",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "JAIMINI_ENGINE_SPEC",
@@ -1958,7 +2234,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "375a9b181df938617dfe9672bf57a98ad07a95d71ad84ffd98734d6494fb9ce3",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "TAJIKA_ENGINE_SPEC",
@@ -1967,7 +2246,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "aaf9c576faae185d9c6516479e78d28170faa8917c107b53128a0c155aaf35bc",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "KP_ENGINE_SPEC",
@@ -1976,7 +2258,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "1d9cf56c75cf7d76e2ee4264a781d8e5284e79a3df0b2bd3a053a7fd1d0831e4",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "NADI_ENGINE_SPEC",
@@ -1985,7 +2270,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "0da4f6a1a8d83e73a9a972648a52594a76a76432057b2905a0ad8b1bf111345f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "BNN_ENGINE_SPEC",
@@ -1994,7 +2282,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "7a50c32493415865ea4498e1ab561519fbbb0c7af2ab867dd9cbbdd7da43f0c5",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "YOGINI_ENGINE_SPEC",
@@ -2003,7 +2294,10 @@
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "49516820c61b96a75ba1acd78cbc4a435aa9d03b2e0217b4d7b540849117f567",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_RUNNER_SCRIPT",
@@ -2012,9 +2306,12 @@
       "type": "script",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "M9-C: Executes all 7 school engines \u00d7 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
+      "description": "M9-C: Executes all 7 school engines × 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
       "produced_during": "M9-C-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "d36a05a0f1f07a50e4a184fd6544b32b5827ef26ca1385660d1a4c366a9ffc22",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_MULTI_SCHOOL_ANALYSIS",
@@ -2023,10 +2320,13 @@
       "type": "analysis_document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; \u00a71-\u00a711 authored; acharya-grade verdicts per school per domain",
+      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; §1-§11 authored; acharya-grade verdicts per school per domain",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "key_finding": "5/5 domains HIGH convergence (6/6 effective schools); CAREER+SPIRITUAL+PSYCHOLOGICAL positive; HEALTH+RELATIONSHIP neutral"
+      "key_finding": "5/5 domains HIGH convergence (6/6 effective schools); CAREER+SPIRITUAL+PSYCHOLOGICAL positive; HEALTH+RELATIONSHIP neutral",
+      "fingerprint_sha256": "0dcd6bcb4f0550f8da862d5ad987ea797821d856c752ac62b464bf6331fec770",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_PARASHARI_JSON",
@@ -2036,7 +2336,10 @@
       "layer": "L9",
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "2d880a1a922588e92982bd9e569acbe82e81f6309158afc8561faef623c2a831",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_JAIMINI_JSON",
@@ -2046,7 +2349,10 @@
       "layer": "L9",
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "30724889a199e7032e44cd6324aa582fcab58fe92e7e1f2a3d91cff08a0d0d23",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_TAJIKA_JSON",
@@ -2057,7 +2363,10 @@
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] \u2014 reduced confidence 0.35-0.50"
+      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] — reduced confidence 0.35-0.50",
+      "fingerprint_sha256": "ebbc5636899b59574c85f906445ca7bce76be88f4ec8017cf5ac58ca4937f534",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_KP_JSON",
@@ -2067,7 +2376,10 @@
       "layer": "L9",
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "2694d2b006f26f4d080834aa172400d5bcd24987aad34055b3f7abe6cc731fe6",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_NADI_JSON",
@@ -2077,7 +2389,10 @@
       "layer": "L9",
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "bbc191cb339891e375235eacb2befa6adae2eeee4894910607eb283abacd1bd9",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_BNN_JSON",
@@ -2088,7 +2403,10 @@
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] \u2014 reduced confidence 0.45"
+      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] — reduced confidence 0.45",
+      "fingerprint_sha256": "1243d77f4b3f51d3a73788e335ef1b49edc6c17d8622115bd5a930df66135fc5",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9C_YOGINI_JSON",
@@ -2098,7 +2416,10 @@
       "layer": "L9",
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
-      "produced_on": "2026-05-14"
+      "produced_on": "2026-05-14",
+      "fingerprint_sha256": "a7dcb368ac5cbae7eb130d2e1433b7430bd633a8f63133cb182a3fc367d3fff9",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_COMPUTE_CONVERGENCE_SCRIPT",
@@ -2110,7 +2431,10 @@
       "description": "Python script: reads 7-school JSON outputs, computes per-domain convergence metrics (mean, std, convergence_level, isDivergent), writes convergence_scores.json + CONVERGENCE_METRICS_v1_0.md + CONVERGENCE_FINDINGS_v1_0.md",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "41aa27bcd499df40f03b317e65cc8bb5222ef148056a1fcb31af87b54470ab51",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_CONVERGENCE_SCORES_JSON",
@@ -2122,7 +2446,10 @@
       "description": "Machine-readable convergence scores: 5 domains, per-school scores, convergence_level, mean/std, isDivergent flags. Seed data for convergence_scores DB table (AC.M9D.2 deferred).",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "935747fdc744c3d3758d9c6a65243c61ed3dff987671de1e6a3c199c377c296a",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_CONVERGENCE_METRICS_MD",
@@ -2131,10 +2458,13 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Tabular convergence metrics: per-domain convergence table + 7\u00d75 per-school score matrix with pending flags.",
+      "description": "Tabular convergence metrics: per-domain convergence table + 7×5 per-school score matrix with pending flags.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "273d1fc2997a62bfb39d5e1eedf089654dc0bc0be1250556183e6a1719406038",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_CONVERGENCE_FINDINGS_MD",
@@ -2143,10 +2473,13 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Acharya-grade narrative \u00a71\u2013\u00a79: executive finding, per-domain convergence analysis, divergence analysis, precision signals for query routing, pending resolutions.",
+      "description": "Acharya-grade narrative §1–§9: executive finding, per-domain convergence analysis, divergence analysis, precision signals for query routing, pending resolutions.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "6c9fbb987ee4fd52565fa6a45960a57a1184831ac0495428b58d7d17d06e50fb",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_TOOL_27_IMPL",
@@ -2158,7 +2491,10 @@
       "description": "Tool 27 full implementation (replaces M9-A stub): DB query against school_signal_coverage JOIN l25_msr_signals for topic-based per-school signal lookup with coverage_type + confidence.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "ab78b7368a70f57d1a1ee8582e8bc510bbcda9b635f003f2490a8f2ecf2d57cb",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_TOOL_28_IMPL",
@@ -2170,7 +2506,10 @@
       "description": "Tool 28 full implementation (replaces M9-A stub): queries convergence_scores DB table; falls back to JSON file when DB unavailable. Returns ConvergenceScoreLookupOutput with summary.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "cf41b746ca268bf20931e06bc6851eecc47aa624c3916e1fabe9a326aee3e7eb",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_INTEGRATION_TESTS",
@@ -2182,7 +2521,10 @@
       "description": "17 integration tests: Tool 27+28 output shape, DB mock, empty-domain guard, summary computation, convergence formula correctness, QueryClass registration (pipeline/types, domain_labels, class_suggestions, planner golden set).",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "ab54f0a2728e8040d416a712b69b4a938d49c32f5b43cb25c4210d1884e05e14",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9D_PLANNER_GOLDEN_ENTRIES",
@@ -2191,10 +2533,13 @@
       "type": "eval",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Planner golden set extended: GT.050\u2013052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
+      "description": "Planner golden set extended: GT.050–052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "3c6c76f3198b84fb5952cc6c1c5fb3b053bc8f1eefb63fcb7a355bf10af6c090",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9E_DISAGREEMENT_SCRIPT",
@@ -2206,7 +2551,10 @@
       "description": "Python script: loads 7-school JSON outputs; identifies 10 inter-school disagreements (direction + magnitude + temporal + confidence); writes school_disagreement_register.json + SCHOOL_DISAGREEMENT_REGISTER_v1_0.md",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "b724e6ff171480234a3f4088761a554528f193d8d3aa1558cf7ce97c6d7cb989",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9E_DISAGREEMENT_REGISTER_JSON",
@@ -2218,7 +2566,10 @@
       "description": "10 disagreement rows: temporal_scope(3), magnitude_divergence(3), confidence_reduction(2), method_divergence(1), tradition_specificity(1). CONCURRENT/DEFERRED/TEMPORAL_COMPLEMENT verdicts.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "dc7b6a621c490fc535278eead2f82c84b425bfcdaf6ecc909aa16d843dbc5c03",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9E_DISAGREEMENT_REGISTER_MD",
@@ -2227,10 +2578,13 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "10 worked examples \u00a72; resolution protocol \u00a73; school-level summary \u00a74. 0 genuine chart contradictions across all 10 disagreements.",
+      "description": "10 worked examples §2; resolution protocol §3; school-level summary §4. 0 genuine chart contradictions across all 10 disagreements.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "e3d6008ba4fcf9458a50b5c85e02643bc84ab09f37f0327910137793bc3e49f0",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "id": "M9E_M9_CLOSE",
@@ -2239,15 +2593,18 @@
       "type": "document",
       "layer": "governance",
       "status": "CLOSED",
-      "description": "M9 macro-phase sealing artifact: \u00a70 session arc, \u00a71 AC ledger (all sub-phases), \u00a72 IS.8(b) red-team PASS 5/5, \u00a73 MSR evolution, \u00a74 convergence summary, \u00a75 disagreement summary, \u00a76 carry-forwards, \u00a77 exit criteria a\u2013d, \u00a78 seal block.",
+      "description": "M9 macro-phase sealing artifact: §0 session arc, §1 AC ledger (all sub-phases), §2 IS.8(b) red-team PASS 5/5, §3 MSR evolution, §4 convergence summary, §5 disagreement summary, §6 carry-forwards, §7 exit criteria a–d, §8 seal block.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14",
-      "version": "1.0"
+      "version": "1.0",
+      "fingerprint_sha256": "85f217031fd4aa3d06966b29f83d8190046f72c2d290bb59964d876e68ab107f",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_multi_school_signal_lookup",
       "tool_name": "multi_school_signal_lookup",
-      "tool_description": "Cross-school signal coverage \u2014 what each Jyotish school says about a topic",
+      "tool_description": "Cross-school signal coverage — what each Jyotish school says about a topic",
       "description": "Queries school_signal_coverage + l25_msr_signals to report per-school signal coverage (primary/secondary/silent) for a given topic or domain. Returns results_by_school with matching_signals per school. 7 schools: parashari, jaimini, tajika, kp, nadi, bnn, yogini.",
       "query_schema": {
         "type": "object",
@@ -2284,7 +2641,7 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_convergence_score_lookup",
       "tool_name": "convergence_score_lookup",
-      "tool_description": "Inter-school convergence scores \u2014 HIGH/MEDIUM/LOW agreement across all schools",
+      "tool_description": "Inter-school convergence scores — HIGH/MEDIUM/LOW agreement across all schools",
       "description": "Returns convergence scores per domain from convergence_scores table. Fields: domain, convergence_level (HIGH|MEDIUM|LOW), schools_agreeing, mean_domain_score, std_domain_score, direction, convergence_narrative. Populated from 09_MULTI_SCHOOL_TRIANGULATION/convergence.",
       "query_schema": {
         "type": "object",
@@ -2340,12 +2697,15 @@
       "description": "Daily Panchang state (5 angas, timings, special yogas, planetary positions) computed deterministically from Swiss Ephemeris + Muhurta Shastra lookup tables for any (date, lat, lon) tuple. Schema doc at 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md; data in Cloud SQL panchang_daily table. Computed by platform/sidecar/panchang_engine. Callable via query_panchanga RetrievalTool (Phase 4C-3). Engine v1.0.0-S3; 30/30 Drik parity; 230 sidecar tests PASS.",
       "produced_during": "Phase-4C-0 2026-05-19",
       "produced_on": "2026-05-19",
-      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED\u2192IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT\u2192CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); \u2192CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED \u2192 IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT \u2192 CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B)."
+      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED→IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT→CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); →CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED → IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B).",
+      "fingerprint_sha256": "af68f246c795adc15639879efbd150b835c3eadb6411e1c3d22c89f9bcfdc69c",
+      "last_verified_session": "GH-FP-BACKFILL",
+      "last_verified_on": "2026-05-21"
     },
     {
       "canonical_id": "UCN_WALK_TOOL",
       "tool_name": "query_ucn_walk",
-      "tool_description": "UCN walk \u2014 scan UCN_v4_0.md for MSR signal references near a seed or full-dump all section/signal associations",
+      "tool_description": "UCN walk — scan UCN_v4_0.md for MSR signal references near a seed or full-dump all section/signal associations",
       "description": "File-based walk over UCN_v4_0.md. Parses MSR.NNN anchors and section headings; returns Array<{ signal_id, confluence_type, domain }>. Full-dump mode (no params) returns all signal-section associations. Seeded mode filters by seed_signal_id. Use when a query asks for UCN narrative context around a specific MSR signal or to enumerate which UCN sections reference a particular signal.",
       "query_schema": {
         "type": "object",
@@ -2379,7 +2739,7 @@
     {
       "canonical_id": "CDLM_LOOKUP_TOOL",
       "tool_name": "query_cdlm_lookup",
-      "tool_description": "CDLM lookup \u2014 parse 81-cell CDLM_v1_1.md cross-domain linkage matrix filtered by domain pair or signal ID",
+      "tool_description": "CDLM lookup — parse 81-cell CDLM_v1_1.md cross-domain linkage matrix filtered by domain pair or signal ID",
       "description": "File-based lookup over CDLM_v1_1.md (81 cells). Parses YAML-in-markdown cells; returns Array<{ domain_pair, row_domain, col_domain, linkage_type, strength, direction, valence, signal_ids, key_finding }>. Filter by domain_a, domain_b, signal_id, or full-dump (no params). Use when a query asks about cross-domain interactions, linkage types, or which domains a specific MSR signal bridges.",
       "query_schema": {
         "type": "object",
@@ -2417,8 +2777,8 @@
     {
       "canonical_id": "RM_WALK_TOOL",
       "tool_name": "query_rm_walk",
-      "tool_description": "RM walk \u2014 scan RM_v2_0.md (35 element blocks) filtered by MSR anchor or RM ID",
-      "description": "File-based walk over RM_v2_0.md (35 Resonance Map element blocks RM.01\u2013RM.35). Returns Array<{ rm_id, signal_id, resonance_type, strength, domains, msr_anchors, net_resonance }>. Seeded mode filters by seed_signal_id (MSR.NNN anchor match or direct RM.NN ID). Full-dump (no params) returns all 35 elements. Use when a query asks about resonance patterns, net resonance classifications, or which RM elements are associated with a specific MSR signal.",
+      "tool_description": "RM walk — scan RM_v2_0.md (35 element blocks) filtered by MSR anchor or RM ID",
+      "description": "File-based walk over RM_v2_0.md (35 Resonance Map element blocks RM.01–RM.35). Returns Array<{ rm_id, signal_id, resonance_type, strength, domains, msr_anchors, net_resonance }>. Seeded mode filters by seed_signal_id (MSR.NNN anchor match or direct RM.NN ID). Full-dump (no params) returns all 35 elements. Use when a query asks about resonance patterns, net resonance classifications, or which RM elements are associated with a specific MSR signal.",
       "query_schema": {
         "type": "object",
         "properties": {
@@ -2508,7 +2868,7 @@
           "INTERPRETIVE query anchors on a specific date and needs date-indexed signal activation context"
         ],
         "avoid_when": [
-          "Query is about historical events that already occurred \u2014 use lel_query instead",
+          "Query is about historical events that already occurred — use lel_query instead",
           "Query is purely natal/positional with no date anchor"
         ]
       },
@@ -2523,7 +2883,7 @@
         "properties": {
           "planet": {
             "type": "string",
-            "description": "Planet name filter (optional \u2014 returns all 9 if omitted)"
+            "description": "Planet name filter (optional — returns all 9 if omitted)"
           },
           "include_sub_sub": {
             "type": "boolean",
@@ -2559,7 +2919,7 @@
         ],
         "avoid_when": [
           "Query names only a non-KP school exclusively (Parashari-only, Jaimini-only)",
-          "Query is FORENSIC-anchored KP lookup \u2014 use kp_query instead"
+          "Query is FORENSIC-anchored KP lookup — use kp_query instead"
         ]
       },
       "version": "1.0"
@@ -2617,7 +2977,7 @@
         ],
         "avoid_when": [
           "Pure dasha projection query with no annual frame",
-          "Eclipse query \u2014 use temporal + msr_sql instead",
+          "Eclipse query — use temporal + msr_sql instead",
           "Sade-sati or transit-window scan without annual framing"
         ]
       },
