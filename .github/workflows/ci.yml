@@ -80,3 +80,33 @@ jobs:
         # Pure data assertions on MODELS/STACK_ROUTING/FAMILY_WORKER.
         # Guards against deepseek-v4-flash re-entering routing tables.
         run: npx vitest run tests/planner --reporter=verbose
+
+  coverage-gate:
+    name: Coverage Gate (COV-S7)
+    runs-on: ubuntu-latest
+    # continue-on-error during M5 coverage remediation campaign: the gate surfaces
+    # pre-existing gaps documented in CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md §C.
+    # These gaps are the campaign's target; the gate must NOT block campaign PRs that fix them.
+    # Remove continue-on-error once all COV-stream sessions complete and the baseline is clean.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      - name: Coverage gate — manifest + asset binding check
+        # Fails if any tool in RETRIEVAL_TOOLS[] has no manifest entry (exit 1)
+        # or any canonical asset layer dir has no tool_name binding (exit 2)
+        # or both (exit 3). Exit 0 = all checks pass. See COV-S7_BRIEF_v1_0.md.
+        run: python platform/scripts/governance/coverage_gate.py
