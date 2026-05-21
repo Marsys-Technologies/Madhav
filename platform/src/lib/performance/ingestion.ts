@@ -21,7 +21,8 @@ import { detectB10Violation, detectB11Violation, parseCitations } from './compli
  * how to handle them.
  */
 
-const RETRIEVAL_TOP_SCORE_TOOLS = new Set(['vector_search'])
+// PERF-S1: per-tool top-score capture now covers ALL tools, not just vector_search.
+// The original RETRIEVAL_TOP_SCORE_TOOLS set is removed; see retrieval_scores ingestion below.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Consume-query writer (W2)
@@ -34,6 +35,17 @@ export interface ConsumePerformanceInput {
   validator_results: ValidationResult[]
   disclosure_tier: string
   synthesis_event: SynthesisAuditEvent
+  /**
+   * Bundle-assembly stage latency in milliseconds (PERF-S1, fix c).
+   * Available in route.ts as `composeBundleMs` but not yet threaded through the
+   * audit-consumer path — the audit consumer is called from a synthesis event
+   * callback that does not receive stage timings.
+   *
+   * TODO (PERF-S2 candidate): Thread composeBundleMs from route.ts into the
+   * AuditConsumerContext so it is available here. Until then, callers that do
+   * not have access to the value should omit this field; the column will be null.
+   */
+  compose_bundle_latency_ms?: number | null
 }
 
 /**
@@ -59,8 +71,13 @@ export async function writeConsumePerformanceRow(input: ConsumePerformanceInput)
     const retrievalLatencyMs = tool_results.reduce((s, r) => s + (r.latency_ms ?? 0), 0)
     const synthesisLatencyMs =
       Date.parse(synthesis_event.finished_at) - Date.parse(synthesis_event.started_at)
-    const totalLatencyMs =
-      (planningLatencyMs ?? 0) + retrievalLatencyMs + (Number.isFinite(synthesisLatencyMs) ? synthesisLatencyMs : 0)
+    // PERF-S1 fix (d): preserve null instead of silently coercing to 0.
+    // latencyComplete=false signals that the total is unreliable due to bad timestamps.
+    const synthesisLatencyValid = Number.isFinite(synthesisLatencyMs)
+    const totalLatencyMs = synthesisLatencyValid
+      ? (planningLatencyMs ?? 0) + retrievalLatencyMs + synthesisLatencyMs
+      : null
+    const latencyComplete = synthesisLatencyValid
 
     const finalOutput = synthesis_event.final_output ?? ''
     const citationObjects = parseCitations(finalOutput)
@@ -80,14 +97,22 @@ export async function writeConsumePerformanceRow(input: ConsumePerformanceInput)
         (t.results[0].significance ?? t.results[0].confidence ?? 0) > 0
     )
 
+    // PERF-S1 fix (b): capture per-tool top-1 score across ALL tools, not just vector_search.
+    // retrieval_scores is a JSON object mapping tool_name → top-1 score.
+    // retrieval_score_top1 is kept for backwards compatibility (schema column remains).
+    const retrievalScoresMap: Record<string, number> = {}
     let retrievalScoreTop1: number | null = null
     for (const t of tool_results) {
-      if (!RETRIEVAL_TOP_SCORE_TOOLS.has(t.tool_name)) continue
       const top = t.results[0]
       if (!top) continue
-      const score = top.significance ?? top.confidence ?? 0
+      const score = top.significance ?? top.confidence ?? null
+      if (score === null) continue
+      retrievalScoresMap[t.tool_name] = score
       if (retrievalScoreTop1 === null || score > retrievalScoreTop1) retrievalScoreTop1 = score
     }
+    const retrievalScores = Object.keys(retrievalScoresMap).length > 0
+      ? JSON.stringify(retrievalScoresMap)
+      : null
 
     const b10 = detectB10Violation({ synthesisText: finalOutput, citationObjects })
     const b11 = detectB11Violation({ toolResults: tool_results })
@@ -116,37 +141,42 @@ export async function writeConsumePerformanceRow(input: ConsumePerformanceInput)
         latency_planner_ms, latency_retrieval_ms, latency_synthesis_ms, latency_total_ms,
         citations_present, citation_count, synthesis_status, validator_verdict, disclosure_tier,
         b10_violation, b11_violation, retrieval_hit, retrieval_score_top1,
-        plan_accuracy_label, plan_accuracy_source, is_prediction, prediction_outcome_state
+        plan_accuracy_label, plan_accuracy_source, is_prediction, prediction_outcome_state,
+        retrieval_scores, compose_bundle_latency_ms, latency_complete
       ) VALUES (
         $1, NULL, 'consume', $2, $3, $4,
         $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14, $15,
         $16, $17, $18, $19,
-        'unjudged', NULL, $20, $21
+        'unjudged', NULL, $20, $21,
+        $22, $23, $24
       )`,
       [
-        auditEventId,
-        input.query_plan.query_text,
-        queryClass,
-        planType,
-        JSON.stringify(toolsSelected),
-        plannerConfidence,
-        planningLatencyMs,
-        retrievalLatencyMs,
-        Number.isFinite(synthesisLatencyMs) ? synthesisLatencyMs : null,
-        Number.isFinite(totalLatencyMs) ? totalLatencyMs : null,
-        citationsPresent,
-        citationCount,
-        synthesisStatus,
-        validatorVerdict,
-        input.disclosure_tier,
-        b10,
-        b11,
-        retrievalHit,
-        retrievalScoreTop1,
-        isPrediction,
-        isPrediction ? 'pending' : 'n_a',
+        auditEventId,                                          // $1
+        input.query_plan.query_text,                           // $2
+        queryClass,                                            // $3
+        planType,                                              // $4
+        JSON.stringify(toolsSelected),                         // $5
+        plannerConfidence,                                     // $6
+        planningLatencyMs,                                     // $7
+        retrievalLatencyMs,                                    // $8
+        synthesisLatencyValid ? synthesisLatencyMs : null,     // $9
+        totalLatencyMs,                                        // $10 (null when latency incomplete)
+        citationsPresent,                                      // $11
+        citationCount,                                         // $12
+        synthesisStatus,                                       // $13
+        validatorVerdict,                                      // $14
+        input.disclosure_tier,                                 // $15
+        b10,                                                   // $16
+        b11,                                                   // $17
+        retrievalHit,                                          // $18
+        retrievalScoreTop1,                                    // $19
+        isPrediction,                                          // $20
+        isPrediction ? 'pending' : 'n_a',                     // $21
+        retrievalScores,                                       // $22 (PERF-S1 fix b)
+        input.compose_bundle_latency_ms ?? null,               // $23 (PERF-S1 fix c)
+        latencyComplete,                                       // $24 (PERF-S1 fix d)
       ]
     )
   } catch (err) {
