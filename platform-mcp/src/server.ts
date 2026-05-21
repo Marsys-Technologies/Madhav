@@ -18,6 +18,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
+import { registerResources } from './resources/index.js'
 import { registerAskMadhav } from './tools/ask_madhav.js'
 import { registerPlanQuery } from './tools/plan_query.js'
 import { registerExecutePlan } from './tools/execute_plan.js'
@@ -57,6 +58,11 @@ app.post('/mcp', async (req: Request, res: Response) => {
   })
 
   const getPrincipal = (): Principal => principal
+
+  // Register MCP resources (marsys://chart-overview, marsys://house-rules).
+  // Resources are read once at session attach — they orient Claude to the
+  // singleton chart and operating discipline without burning per-turn tool calls.
+  registerResources(server)
 
   // Register Tier 1 + Tier 2 tools.
   registerAskMadhav(server, getPrincipal)
