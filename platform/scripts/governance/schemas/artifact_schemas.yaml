@@ -168,6 +168,8 @@ session_log_entry:
 learning_layer_stub:
   path_glob:
     - "06_LEARNING_LAYER/*/README.md"
+  path_exclude:
+    - "06_LEARNING_LAYER/OBSERVATIONS/README.md"
   required_frontmatter:
     - artifact
     - mechanism_id           # LL.1 .. LL.10

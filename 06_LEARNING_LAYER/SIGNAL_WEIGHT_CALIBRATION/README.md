@@ -3,7 +3,7 @@ artifact: 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
 mechanism_id: LL.1
 mechanism_name: Signal weight calibration
 version: 1.0
-status: ACTIVE-PENDING
+status: STUB
 expose_to_chat: false
 native_id: "abhisek"
 layer: "L6"
@@ -20,7 +20,7 @@ provenance: 00_ARCHITECTURE/LEARNING_LAYER_SCAFFOLD_DECISION_v1_0.md §3.2
 # LL.1 — Signal Weight Calibration
 
 ```
-STATUS: ACTIVE-PENDING (M4-A) — M3 CLOSED 2026-05-01. LEL gate CLEARED (46 events). Awaiting calibration scoring rubric native-approval (Track T3 output) before first signal_weights/ write. Population begins at M4-B.
+STATUS: STUB — M3 closed 2026-05-01; LEL gate cleared (46 events). Awaiting scoring rubric native-approval (Track T3 output) before first signal_weights/ write. Population begins at M4-B.
 ```
 
 ---

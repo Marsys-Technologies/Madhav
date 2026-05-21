@@ -795,16 +795,23 @@ def validate_files_touched_completeness(close_data: dict, ca) -> List[Violation]
 _LL_STATUS_BANNER_RE = re.compile(r"^STATUS:\s*(STUB|ACTIVE)\s*[—-]\s*.*$", re.MULTILINE)
 
 
-def validate_learning_layer_stub(repo_root: pathlib.Path) -> List[Violation]:
+def validate_learning_layer_stub(repo_root: pathlib.Path, schemas: dict | None = None) -> List[Violation]:
     """§G of ONGOING_HYGIENE_POLICIES_v1_0.md + LL_SCAFFOLD_DECISION §5.7:
     learning_layer_stub class — STATUS-banner regex, population gate, and
     classical-priors-locked guard for 06_LEARNING_LAYER/** mechanism stubs.
+    Honors path_exclude from artifact_schemas.yaml learning_layer_stub class.
     """
     violations: List[Violation] = []
     ll_root = repo_root / "06_LEARNING_LAYER"
     if not ll_root.is_dir():
         return violations
+    if schemas is None:
+        schemas = load_schemas()
+    excluded = schemas.get("learning_layer_stub", {}).get("path_exclude", [])
     for readme in ll_root.glob("*/README.md"):
+        rel_path = str(readme.relative_to(repo_root))
+        if rel_path in excluded:
+            continue
         try:
             text = readme.read_text(encoding="utf-8")
         except Exception as e:
@@ -1133,7 +1140,7 @@ def main() -> int:
         else:
             violations = run_corpus(args.repo_root)
             # Step 12 extension: learning_layer_stub class + mirror structural blocks
-            violations.extend(validate_learning_layer_stub(args.repo_root))
+            violations.extend(validate_learning_layer_stub(args.repo_root, load_schemas()))
             try:
                 ca = load_canonical_artifacts(args.repo_root)
                 violations.extend(validate_mirror_structural_block(args.repo_root, ca))
