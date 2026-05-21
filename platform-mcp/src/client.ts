@@ -199,3 +199,129 @@ export async function callPlatformPrimitive(
     identityToken,
   })
 }
+
+/**
+ * Call /api/mcp/asset to read a canonical artifact by canonical_id.
+ * Used by the read_asset MCP tool.
+ *
+ * @param params    { canonical_id, section? }
+ * @param principal The resolved principal.
+ * @returns         The HTTP status code and parsed McpEnvelope.
+ */
+export async function callPlatformAsset(
+  params: { canonical_id: string; section?: string },
+  principal: Principal
+): Promise<PlatformCallResult> {
+  const identityToken = await fetchIdentityToken()
+  return platformFetch({
+    url: `${PLATFORM_URL}/api/mcp/asset`,
+    body: params,
+    principal,
+    identityToken,
+  })
+}
+
+/**
+ * Call /api/mcp/trace/{trace_id} to retrieve the full step ledger for a trace.
+ * Used by the get_trace MCP tool.
+ *
+ * @param traceId   The trace ID (query_id) from a prior MCP response.
+ * @param principal The resolved principal.
+ * @returns         The HTTP status code and parsed McpEnvelope.
+ */
+export async function callPlatformTrace(
+  traceId: string,
+  principal: Principal
+): Promise<PlatformCallResult> {
+  const identityToken = await fetchIdentityToken()
+  const url = `${PLATFORM_URL}/api/mcp/trace/${encodeURIComponent(traceId)}`
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${identityToken}`,
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Audience-Tier': principal.audience_tier,
+        'X-MCP-Key-Id': principal.key_id,
+      },
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      status: 503,
+      envelope: buildClientErrorEnvelope(`Platform unreachable: ${message}`),
+    }
+  }
+
+  let envelope: McpEnvelope
+  try {
+    envelope = (await response.json()) as McpEnvelope
+  } catch {
+    return {
+      status: 502,
+      envelope: buildClientErrorEnvelope('Platform returned non-JSON response'),
+    }
+  }
+
+  return { status: response.status, envelope }
+}
+
+/**
+ * Call /api/mcp/recent to retrieve recent MCP query history for the calling principal.
+ * Used by the list_recent_queries MCP tool.
+ *
+ * @param params    { limit?, since? }
+ * @param principal The resolved principal.
+ * @returns         The HTTP status code and parsed McpEnvelope.
+ */
+export async function callPlatformRecent(
+  params: { limit?: number; since?: string },
+  principal: Principal
+): Promise<PlatformCallResult> {
+  const identityToken = await fetchIdentityToken()
+
+  const searchParams = new URLSearchParams()
+  if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
+  if (params.since) searchParams.set('since', params.since)
+
+  const queryString = searchParams.toString()
+  const url = `${PLATFORM_URL}/api/mcp/recent${queryString ? `?${queryString}` : ''}`
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${identityToken}`,
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Audience-Tier': principal.audience_tier,
+        'X-MCP-Key-Id': principal.key_id,
+      },
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      status: 503,
+      envelope: buildClientErrorEnvelope(`Platform unreachable: ${message}`),
+    }
+  }
+
+  let envelope: McpEnvelope
+  try {
+    envelope = (await response.json()) as McpEnvelope
+  } catch {
+    return {
+      status: 502,
+      envelope: buildClientErrorEnvelope('Platform returned non-JSON response'),
+    }
+  }
+
+  return { status: response.status, envelope }
+}
