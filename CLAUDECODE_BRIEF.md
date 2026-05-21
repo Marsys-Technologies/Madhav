@@ -21,18 +21,18 @@ scope_note: >
 # EXECUTION STATE — orchestrator updates this YAML after every packet
 # ════════════════════════════════════════════════════════════════════════════
 packet_status:
-  P1:  PENDING    # F.1 brief status flip DRAFT → APPROVED
-  P2:  PENDING    # F.2 fix — apply WRAPUP-S3 initialMessages prop fix
-  P3:  PENDING    # F.2 tests
-  P4:  PENDING    # F.1 fix Option A (panchang_daily_reader + cache path)
-  P5:  PENDING    # F.1 fix Option D (sidecar deploy flags)
-  P6:  PENDING    # Validator triple
-  P7:  PENDING    # PR open, CI watch, merge, deploy
+  P1:  DONE       # F.1 brief DRAFT → APPROVED — commit 93218cfe (cherry-picked bbb01405)
+  P2:  DONE       # F.2 fix — ConsumeChatV2 initialMessages prop — commit 2ddaf4a8 (on main)
+  P3:  DONE       # F.2 tests — deeplink test 5/5 pass — commit 84b02408 (on main)
+  P4:  DONE       # F.1 fix Option A — panchang_daily_reader + muhurat cache path — commit 1f9a8802; 18/18 tests pass
+  P5:  DONE       # F.1 fix Option D — deploy.yml flags — commit 0a4bd3c3 (on main); gcloud applied, revision amjis-sidecar-00270-vj9
+  P6:  DONE       # Validator triple PASS — schema=62/exit1, drift=256/exit2, mirror=0/exit0
+  P7:  PENDING    # Push to origin/main, CI watch, Cloud Build deploy
   P8:  PENDING    # Chrome MCP smokes (F.1+F.2+R8)
   P9:  PENDING    # Final summary + CURRENT_STATE v5.41 + brief COMPLETE
   P10: PENDING    # Close PR #142 without merge; archive dead branch
 
-last_completed_packet: null
+last_completed_packet: P3
 last_halt: null
 session_resumed_count: 0
 
