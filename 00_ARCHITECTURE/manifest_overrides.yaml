@@ -734,6 +734,16 @@ additional_entries:
   - canonical_id: "RETRIEVAL_TOOL_query_panchanga"
     tool_name: "query_panchanga"
     tool_description: "Sunrise-anchored Vedic panchanga (tithi/vara/Moon nakshatra/yoga/karana) from panchanga_daily. 73K rows, 1900-2100, precomputed for Bhubaneswar observer. Canonical surface for time-quality queries: lunar phase (Purnima/Amavasya/Ekadashi), Moon-nakshatra-of-day, vara (day-of-week in astrological context), yoga (Vishkambha through Vaidhriti), karana. Also carries enrichment: special_yogas, choghadiya, hora, inauspicious/auspicious windows, Muhurat data."
+    gating_constraints:
+      - type: query_type_match
+        query_type: panchang
+        action: prefer
+      - type: query_type_match
+        query_type: tithi_lookup
+        action: prefer
+      - type: query_type_match
+        query_type: muhurat
+        action: prefer
     query_schema:
       type: object
       properties:
@@ -827,6 +837,13 @@ additional_entries:
   - canonical_id: "RETRIEVAL_TOOL_query_muhurat"
     tool_name: "query_muhurat"
     tool_description: "Auspicious muhurat window finder — calls panchang_engine via sidecar POST /api/compute/muhurat. Supports 6 MVP events: vivah (marriage), griha_pravesh (house warming), vyapara (business start), yatra (travel), property_purchase, mantra_initiation. Returns top_n windows ranked by composite score (tithi, vara, nakshatra, yoga, karana, hora). Optional chart_id enables Tara Bala and Chandra Bala native overlay. Date range max 90 days; top_n max 90. Default location: Bhubaneswar (20.27N, 85.84E, IST)."
+    gating_constraints:
+      - type: query_type_match
+        query_type: muhurat
+        action: prefer
+      - type: query_type_match
+        query_type: auspicious_timing
+        action: prefer
     query_schema:
       type: object
       properties:
@@ -865,6 +882,10 @@ additional_entries:
   - canonical_id: "RETRIEVAL_TOOL_query_jaimini_drishti"
     tool_name: "query_jaimini_drishti"
     tool_description: "Jaimini drishti (special aspect) analysis — sidecar POST /jaimini_drishti. Computes sign-to-sign special aspects per Jaimini system: movable signs aspect fixed signs (not adjacent), fixed signs aspect movable signs (not adjacent), dual signs aspect dual signs (not adjacent). Distinct from Parashari graha drishti. Use for Jaimini-specific chart questions about aspect relationships, Chara Karakas, Arudha Padas, or Pada Lagna analysis. Sidecar endpoint currently stub — returns not_implemented until M6 Jaimini module."
+    gating_constraints:
+      - type: query_type_match
+        query_type: jaimini
+        action: prefer
     query_schema:
       type: object
       properties:
@@ -882,6 +903,13 @@ additional_entries:
   - canonical_id: "RETRIEVAL_TOOL_query_v7_additions"
     tool_name: "query_v7_additions"
     tool_description: "v7 additions capability surface — sidecar POST /v7_additions. Reserved capability slot for compute features added in engine v7. Exact scope defined at M6 planning. Currently a stub returning not_implemented. Use this tool when a query explicitly targets v7 engine capabilities not covered by existing panchanga, ephemeris, muhurat, or transit tools."
+    gating_constraints:
+      - type: query_type_match
+        query_type: divisional_chart
+        action: prefer
+      - type: query_type_match
+        query_type: v7_capability
+        action: prefer
     query_schema:
       type: object
       properties:

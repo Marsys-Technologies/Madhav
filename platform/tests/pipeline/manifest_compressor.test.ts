@@ -84,7 +84,7 @@ describe('manifest_compressor — expose_to_planner projection (COV-S3)', () => 
       output_schema: { type: 'object' },
       linked_data_asset_ids: ['MSR_v3_0', 'UCN_v4_0'],
       examples: [{ query: 'What is the lagna?', expected_plan_fragment: 'msr_sql(domains=["lagna"])' }],
-      gating_constraints: [{ condition: 'date_required', action: 'require_date_param' }],
+      gating_constraints: [{ type: 'query_type_match', query_type: 'panchang', action: 'prefer' }],
     }
     expect(entry.expose_to_planner).toBe(true)
     expect(entry.linked_data_asset_ids).toHaveLength(2)

@@ -36,8 +36,17 @@ export interface CapabilityManifestEntry {
   expose_to_planner?: boolean
   /** Planner few-shot examples (COV-S1) */
   examples?: Array<{ query: string; expected_plan_fragment: string }>
-  /** COV-S6 R-rule migration target: gating rules expressed as condition/action pairs (COV-S1) */
-  gating_constraints?: Array<{ condition: string; action: string }>
+  /**
+   * COV-S6 R-rule migration target: gating rules expressed as typed condition/action pairs.
+   * Each entry has at minimum `type` and `action`; `type: 'query_type_match'` entries
+   * also carry `query_type` (the query class that triggers the constraint).
+   */
+  gating_constraints?: Array<{
+    type: string
+    action: string
+    query_type?: string
+    [k: string]: unknown
+  }>
   [k: string]: unknown
 }
 
@@ -57,6 +66,11 @@ export interface CompressedEntry {
   c: TokenCostHint
   /** linked_data_asset_id (primary asset; prefer linked_data_asset_ids[] for multi-asset tools) */
   a: string
+  /**
+   * COV-S6: R-rule gating constraints passed through from the manifest entry.
+   * Omitted when the entry has no gating_constraints (keeps the compressed output compact).
+   */
+  g?: CapabilityManifestEntry['gating_constraints']
 }
 
 /** Total planner manifest block token budget (W2-MANIFEST hard constraint, raised COV-S3). */
@@ -116,13 +130,17 @@ export function compressManifest(manifest: CapabilityManifest): CompressedEntry[
   for (const entry of manifest.entries ?? []) {
     if (!entry.tool_name) continue
     if (!entry.expose_to_planner) continue
-    result.push({
+    const compressed: CompressedEntry = {
       t: entry.tool_name,
       d: pickDescription(entry),
       p: pickParams(entry),
       c: (entry.token_cost_hint ?? 'med') as TokenCostHint,
       a: entry.linked_data_asset_id ?? '',
-    })
+    }
+    if (entry.gating_constraints && entry.gating_constraints.length > 0) {
+      compressed.g = entry.gating_constraints
+    }
+    result.push(compressed)
   }
   return result
 }
