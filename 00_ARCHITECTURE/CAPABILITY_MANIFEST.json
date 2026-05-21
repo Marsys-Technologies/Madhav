@@ -2326,9 +2326,112 @@
       "produced_during": "Phase-4C-0 2026-05-19",
       "produced_on": "2026-05-19",
       "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED→IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT→CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); →CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED → IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B)."
+    },
+    {
+      "canonical_id": "UCN_WALK_TOOL",
+      "tool_name": "query_ucn_walk",
+      "tool_description": "UCN walk — scan UCN_v4_0.md for MSR signal references near a seed or full-dump all section/signal associations",
+      "description": "File-based walk over UCN_v4_0.md. Parses MSR.NNN anchors and section headings; returns Array<{ signal_id, confluence_type, domain }>. Full-dump mode (no params) returns all signal-section associations. Seeded mode filters by seed_signal_id. Use when a query asks for UCN narrative context around a specific MSR signal or to enumerate which UCN sections reference a particular signal.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "seed_signal_id": {
+            "type": "string",
+            "description": "MSR signal ID to filter by (e.g. 'MSR.413'). Omit for full-dump."
+          },
+          "depth": {
+            "type": "number",
+            "description": "Walk depth (accepted, currently unused; reserved for future structured-table version)."
+          }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "UCN",
+      "cost_weight": 0.3,
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "COV-S5 2026-05-21",
+      "notes": "COV-S5 L2.5 structural graph tool. Reads UCN_v4_0.md at runtime; no DB dependency. See R-UCN in PLANNER_PROMPT_v2_0.md.",
+      "expose_to_planner": true
+    },
+    {
+      "canonical_id": "CDLM_LOOKUP_TOOL",
+      "tool_name": "query_cdlm_lookup",
+      "tool_description": "CDLM lookup — parse 81-cell CDLM_v1_1.md cross-domain linkage matrix filtered by domain pair or signal ID",
+      "description": "File-based lookup over CDLM_v1_1.md (81 cells). Parses YAML-in-markdown cells; returns Array<{ domain_pair, row_domain, col_domain, linkage_type, strength, direction, valence, signal_ids, key_finding }>. Filter by domain_a, domain_b, signal_id, or full-dump (no params). Use when a query asks about cross-domain interactions, linkage types, or which domains a specific MSR signal bridges.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "domain_a": {
+            "type": "string",
+            "description": "Row domain filter (case-insensitive prefix match, e.g. 'Career', 'Wealth')."
+          },
+          "domain_b": {
+            "type": "string",
+            "description": "Column domain filter (case-insensitive prefix match)."
+          },
+          "signal_id": {
+            "type": "string",
+            "description": "MSR signal ID to filter by (e.g. 'MSR.413'); returns cells whose msr_anchors contain this ID."
+          }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "CDLM",
+      "cost_weight": 0.3,
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "COV-S5 2026-05-21",
+      "notes": "COV-S5 L2.5 structural graph tool. Reads CDLM_v1_1.md at runtime; no DB dependency. See R-CDLM in PLANNER_PROMPT_v2_0.md.",
+      "expose_to_planner": true
+    },
+    {
+      "canonical_id": "RM_WALK_TOOL",
+      "tool_name": "query_rm_walk",
+      "tool_description": "RM walk — scan RM_v2_0.md (35 element blocks) filtered by MSR anchor or RM ID",
+      "description": "File-based walk over RM_v2_0.md (35 Resonance Map element blocks RM.01–RM.35). Returns Array<{ rm_id, signal_id, resonance_type, strength, domains, msr_anchors, net_resonance }>. Seeded mode filters by seed_signal_id (MSR.NNN anchor match or direct RM.NN ID). Full-dump (no params) returns all 35 elements. Use when a query asks about resonance patterns, net resonance classifications, or which RM elements are associated with a specific MSR signal.",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "seed_signal_id": {
+            "type": "string",
+            "description": "Filter by MSR anchor (e.g. 'MSR.413') or direct RM ID (e.g. 'RM.01'). Omit for full-dump."
+          },
+          "depth": {
+            "type": "number",
+            "description": "Walk depth (accepted, currently unused; reserved for future structured-table version)."
+          }
+        }
+      },
+      "token_cost_hint": "low",
+      "linked_data_asset_id": "RM",
+      "cost_weight": 0.3,
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "native_id": "abhisek",
+      "produced_during": "COV-S5 2026-05-21",
+      "notes": "COV-S5 L2.5 structural graph tool. Reads RM_v2_0.md at runtime; no DB dependency. See R-RM in PLANNER_PROMPT_v2_0.md.",
+      "expose_to_planner": true
     }
   ],
-  "last_updated_by": "4C-9",
-  "last_session": "Phase-4C-9-Wave1-close",
-  "last_updated": "2026-05-20"
+  "last_updated_by": "COV-S5",
+  "last_session": "COV-S5-feature/m5-coverage-remediation",
+  "last_updated": "2026-05-21"
 }

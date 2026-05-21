@@ -863,6 +863,63 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
            cross-reference (date anchor) but the natal layer is the answer.
          - Multi-school triangulation queries (R31/R32 STOP at step 5).
 
+  R-UCN. UCN WALK: Attach `query_ucn_walk` to tool_calls when the query asks
+         for the Unified Chart Narrative context around a specific signal or
+         section, or asks which UCN parts reference a given MSR signal.
+
+         Triggers:
+           (a) "UCN context for MSR.NNN" / "which UCN section mentions MSR.NNN"
+           (b) "unified chart narrative" / "UCN" combined with a signal ID
+           (c) Holistic/synthesis queries where the planner determines UCN
+               coverage of a specific MSR signal is needed for the answer
+
+         Param selection:
+           - Specific signal → { seed_signal_id: "MSR.NNN" }
+           - General UCN survey → {} (full-dump returns all signal-section pairs)
+
+         Exclusions:
+           - Do NOT attach for general holistic queries already covered by
+             msr_sql + cgm_graph_walk; R-UCN is for UCN-specific narrative
+             coverage, not general signal retrieval.
+
+  R-CDLM. CDLM LOOKUP: Attach `query_cdlm_lookup` when the query asks about
+          cross-domain interactions, linkage types between two domains, or
+          which CDLM cells reference a specific MSR signal.
+
+          Triggers:
+            (a) "cross-domain" / "how does X domain affect Y domain"
+            (b) "linkage type" / "CDLM" / "domain pair"
+            (c) "which domains does MSR.NNN bridge"
+
+          Param selection:
+            - Two-domain query → { domain_a: "Career", domain_b: "Wealth" }
+            - One domain (all outgoing links) → { domain_a: "Career" }
+            - Signal-anchored → { signal_id: "MSR.NNN" }
+            - Full CDLM survey → {} (returns all 81 cells)
+
+          Exclusions:
+            - Do NOT use for general career or wealth queries; R-CDLM fires
+              only when the cross-domain LINKAGE STRUCTURE is the answer.
+
+  R-RM. RESONANCE MAP WALK: Attach `query_rm_walk` when the query asks about
+        resonance patterns, net resonance classifications, or which RM element
+        is associated with a specific MSR signal or planet.
+
+        Triggers:
+          (a) "resonance map" / "RM.NN" / "net resonance"
+          (b) "resonance pattern for Mercury/Saturn/..." (any graha name)
+          (c) "which RM elements reference MSR.NNN"
+          (d) "STRONGLY AMPLIFIED" / "TENSION-BEARING" resonance classification
+
+        Param selection:
+          - Specific signal or RM ID → { seed_signal_id: "MSR.NNN" or "RM.NN" }
+          - Full RM survey → {} (returns all 35 element blocks)
+
+        Exclusions:
+          - Do NOT attach for natal signal queries already covered by msr_sql;
+            R-RM fires only when resonance classifications or RM-specific
+            structure is needed.
+
 Style rules (unchanged from v1.7):
 
   S1. `query_intent_summary` is a neutral gloss, not a re-quote.
@@ -2199,3 +2256,4 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.5 content extension 2026-05-19 (Phase 4D) — R-TE transit-event-search rule + example 4.27 added for query_transit_event*
 *v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*
 *v2.0.7 content extension 2026-05-20 (Phase 4C enrichment) — R-PA subclauses (f)+(g) for inauspicious periods + choghadiya/hora/special yoga triggers; R-PCI panchang context inheritance rule; examples 4.29–4.31*
+*v2.0.8 content extension 2026-05-21 (COV-S5) — R-UCN, R-CDLM, R-RM routing rules for query_ucn_walk, query_cdlm_lookup, query_rm_walk (L2.5 structural graph tools, tools 34–36)*
