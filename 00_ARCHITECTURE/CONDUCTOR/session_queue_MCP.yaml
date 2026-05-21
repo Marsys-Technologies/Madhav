@@ -99,7 +99,7 @@ entries:
     - platform/src/lib/__tests__/mcp/epistemics.test.ts
   est_tokens: 130000
   est_duration_min: 90
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ entries:
     - platform-mcp/cloudbuild.yaml
   est_tokens: 140000
   est_duration_min: 100
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ entries:
     - platform-mcp/src/resources/index.ts
   est_tokens: 110000
   est_duration_min: 70
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ entries:
     - platform-mcp/src/tools/cross_school_lookup.ts
   est_tokens: 150000
   est_duration_min: 110
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ entries:
     - platform-mcp/src/tools/list_recent_queries.ts
   est_tokens: 110000
   est_duration_min: 75
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -292,7 +292,7 @@ entries:
     - platform-mcp/src/tools/flag_disagreement.ts
   est_tokens: 120000
   est_duration_min: 80
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -320,7 +320,7 @@ entries:
     - 00_ARCHITECTURE/MCP_RED_TEAM_v1_0.md
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -347,5 +347,5 @@ entries:
     - 00_ARCHITECTURE/MCP_WORKSTREAM_COMPLETE.md
   est_tokens: 40000
   est_duration_min: 15
-  status: pending
+  status: in_flight
   human_decision_prompt: null
