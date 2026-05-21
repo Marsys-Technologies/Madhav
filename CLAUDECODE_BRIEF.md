@@ -1,7 +1,7 @@
 ---
 artifact: CLAUDECODE_BRIEF.md
 canonical_id: CLAUDECODE_BRIEF
-version: 4.0
+version: 4.1
 status: ACTIVE_ORCHESTRATOR
 authored_by: Cowork (Claude Sonnet 4.6) 2026-05-21
 authored_for_session: CV2-FINAL
@@ -10,8 +10,10 @@ purpose: >
   open governance PRs (#135, #136, #137) into main, executes operator gate B
   (Cloud Run R8 flags + Cloud Build + panchang bootstrap audit), resolves the
   HUMAN_GATE_D learning-layer frontmatter items, executes three drift-triage fix
-  sessions (T.1–T.3), and cleans up the MadhavCV2Wrap worktree.
+  sessions (T.1–T.3), merges the four triage/governance PRs (#138–#141) via
+  E.1–E.4 serial train, and cleans up the MadhavCV2Wrap worktree.
   Operates from `/Users/Dev/Vibe-Coding/Apps/Madhav` (main checkout).
+# v4.1 changelog: added E.1–E.4 merge train (PRs #138–#141) + F.1 Chrome MCP smokes; updated execution_order + merge_policy
 
 scope_note: >
   CV2-FINAL arc only. Does NOT touch M5 campaign branches, ICR branches,
@@ -35,13 +37,18 @@ packet_status:
   D.3:  DONE           # PR #138 opened — governance-hygiene/learning-layer-frontmatter
   T.1:  DONE           # PR #139 — gh-path-fix; MSR path+fingerprint_sha256 fixed
   T.2:  DONE           # PR #140 — gh-phantom-ref-fix; 6 phantom refs eliminated
-  T.3:  IN_PROGRESS    # sub-agent dispatched; compute ~100 fingerprints → PR (open_pr_only)
+  T.3:  DONE           # PR #141 opened — governance-hygiene/gh-fp-backfill; fingerprint backfill
+  E.1:  PENDING        # merge PR #138 (D.3 learning-layer-frontmatter)
+  E.2:  PENDING        # merge PR #139 (T.1 gh-path-fix)
+  E.3:  PENDING        # merge PR #140 (T.2 gh-phantom-ref-fix)
+  E.4:  PENDING        # merge PR #141 (T.3 gh-fp-backfill)
+  F.1:  PENDING        # Chrome MCP smokes for B.2 + B.4
   C.1:  PENDING        # remove MadhavCV2Wrap worktree + cv2/wrapup-governance branch
   C.2:  PENDING        # CV2_FINAL_SUMMARY.md + flip brief COMPLETE + push
 
-last_completed_packet: M.3
+last_completed_packet: T.3
 last_halt: null
-session_resumed_count: 2
+session_resumed_count: 3
 
 execution_order:
   - M.1
@@ -58,17 +65,26 @@ execution_order:
   - T.1
   - T.2
   - T.3
+  - E.1
+  - E.2
+  - E.3
+  - E.4
+  - F.1
   - C.1
   - C.2
 
 merge_policy:
-  M.1: auto_merge      # PR was already reviewed; squash + delete branch
+  M.1: auto_merge            # PR was already reviewed; squash + delete branch
   M.2: auto_merge
   M.3: auto_merge
-  D.3: open_pr_only    # governance trail PR — human review before merge
-  T.1: open_pr_only    # path-fix PR
-  T.2: open_pr_only    # phantom-ref PR
-  T.3: open_pr_only    # fingerprint-backfill PR
+  D.3: open_pr_only          # governance trail PR — human review before merge
+  T.1: open_pr_only          # path-fix PR
+  T.2: open_pr_only          # phantom-ref PR
+  T.3: open_pr_only          # fingerprint-backfill PR
+  E.1: auto_merge_serial     # override: merge train — PR #138
+  E.2: auto_merge_serial     # override: merge train — PR #139
+  E.3: auto_merge_serial     # override: merge train — PR #140
+  E.4: auto_merge_serial     # override: merge train — PR #141
 ---
 
 # CV2-FINAL Orchestrator Brief
