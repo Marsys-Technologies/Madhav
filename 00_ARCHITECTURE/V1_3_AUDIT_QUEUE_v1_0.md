@@ -22,6 +22,9 @@ mirror_obligations:
 changelog:
   - v1.0 (2026-05-21, M5_COVERAGE_CAMPAIGN_CLOSE): Initial queue; 3 carry-forward items
     deferred from M5 Coverage Campaign close.
+  - v1.0.1 (2026-05-21, M5_COVERAGE_CAMPAIGN_CLOSE post-seal): Added Item 4 (CF.V13.4) —
+    §N detector leaf vs networked signal classification, surfaced via MSR.387 manual fix
+    verification. Queue now carries 4 items across 8–11 estimated sessions.
 ---
 
 # V1.3 Audit Queue v1.0
@@ -114,6 +117,44 @@ a regression run. Deferred per ICR-S6 scope agreement.
 
 ---
 
+## Item 4 — §N Detector Refinement: Leaf vs Networked Signal Classification
+
+**ID:** CF.V13.4
+**Surfaced at:** M5 Coverage Campaign close (2026-05-21) — MSR.387 manual fix verification
+**Severity:** LOW
+
+**Description:**
+The §N detector's propagation walker currently treats every signal as networked — it
+walks UCN/CGM/RM cross-refs unconditionally during an apply pass. For "leaf" signals
+(those with no inbound references in UCN/CGM/RM), this propagation pass is wasted work:
+there is nothing to walk. The detector should classify signals before walking and skip
+the propagation pass for leaves.
+
+**Proof case:** MSR.387's manual fix at commit `0ba67610` (M5 close 2026-05-21,
+"Muntha embedded references — Virgo 6H → Libra 7H") had zero downstream cross-refs.
+Verified via `git grep "MSR.387"` against UCN_v4_0.md, CGM_v9_0.md, and RM_v2_0.md —
+all three returned empty. The single-file edit to MSR_v5_0.md was sufficient and
+complete; a propagation walk would have been a no-op. Contrast with MSR.377 (DIS.013),
+which is networked and required the full ICR-S5 atomic-apply path across multiple
+surfaces.
+
+**Scope of work:**
+- Add a `classify_signal(signal_id)` function to the §N detector that returns
+  `"leaf"` or `"networked"` by grepping UCN/CGM/RM (and any future cross-ref-bearing
+  surfaces) for inbound references
+- Branch the apply path: leaf signals get a single-file edit + `transaction_journal`
+  entry with `propagation: none (leaf)`; networked signals continue through the
+  existing full atomic-apply walker
+- Unit tests: MSR.387 as the leaf gold standard; MSR.377 as the networked gold
+  standard; one synthetic signal added to UCN mid-test to confirm reclassification
+  on re-scan
+
+**Why deferred:** Optimization, not a correctness gap. The current implementation
+walks every signal but the walker is idempotent and fast — wasted work, not wrong
+work. Improvement reduces apply latency and clarifies the transaction journal.
+
+---
+
 ## Summary Table
 
 | ID | Item | Source Session | Severity | Est. Sessions |
@@ -121,8 +162,9 @@ a regression run. Deferred per ICR-S6 scope agreement.
 | CF.V13.1 | MSR signal-grounding gap (419/573 signals) | ICR-S2 | HIGH | 5–8 |
 | CF.V13.2 | bootstrap build_manifests auto-registration | Phase 4C close | MEDIUM | 1 |
 | CF.V13.3 | PLANNER_PROMPT pending-patch warning R-rule | ICR campaign scoping | LOW | 1 |
+| CF.V13.4 | §N detector leaf vs networked signal classification | M5 close (MSR.387 fix) | LOW | 1 |
 
-**Total carry-forward:** 3 items across 7–10 estimated sessions.
+**Total carry-forward:** 4 items across 8–11 estimated sessions.
 **V1.2 audit shipped:** 55 defects across 21 sessions (COV×10, PERF×5, ICR×6).
 
 ---
