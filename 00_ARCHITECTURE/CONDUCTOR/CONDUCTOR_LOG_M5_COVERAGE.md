@@ -25,3 +25,4 @@
 | 2026-05-21T07:00:00Z | COV-S4 | 1 | success | ecee542d | https://github.com/amonty84/Madhav/pull/124 | tsc:PASS vitest:9/9 sla_probe_new_tools:PASS lint:EXIT0 CI:all-green | null |
 | 2026-05-21T07:30:00Z | ICR-S2 (halt resolution) | — | resolved | — | — | criterion_redefined:Option_C | halt resolved: classical-text citations now count as grounded |
 | 2026-05-21T07:47:00Z | PERF-S2 | 1 | success | 401e6b46 | https://github.com/amonty84/Madhav/pull/125 | tsc:PASS vitest:16/16 lint:EXIT0 | null |
+| 2026-05-21T02:40:00Z | COV-S7 | 1 | success | 2b9ec783 | https://github.com/amonty84/Madhav/pull/125 | tsc:PASS vitest:4/4 synthetic_pr_coverage_gate_fails:PASS CI:all-green (continue-on-error for pre-existing gaps) | null |
