@@ -26809,3 +26809,146 @@ session_close:
     rebase — HUMAN_GATE_D.md D.1+D.2 pending. Remaining governance hygiene: GH-FP-BACKFILL,
     GH-PHANTOM-REF-FIX, GH-PATH-FIX.
 ```
+
+---
+
+## CV2-FINAL-CLOSE — CV2-FINAL orchestrator arc COMPLETE; all 21 packets terminal
+
+```yaml
+session_open:
+  session_id: CV2-FINAL-CLOSE
+  cowork_thread_name: "CV2-FINAL-CLOSE: E.1–E.4 merge train + C.1+C.2 seal"
+  opened_on: "2026-05-21"
+  phase: "M6 INCOMING (concurrent governance arc closure)"
+  predecessor_session: WRAPUP-S2
+  session_type: governance_conductor_arc_close
+  scope_declaration:
+    may_touch:
+      - 00_ARCHITECTURE/CONDUCTOR/cv2final/**
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - .gemini/project_state.md
+      - CLAUDECODE_BRIEF.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - platform/scripts/governance/drift_detector.py
+      - platform/scripts/governance/manifest_reader.py
+      - platform/scripts/governance/schema_validator.py
+      - platform/scripts/governance/schemas/artifact_schemas.yaml
+      - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+      - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+      - CLAUDE.md
+      - .geminirules
+      - 00_ARCHITECTURE/FILE_REGISTRY_v1_14.md
+    must_not_touch:
+      - platform/src/**
+      - 01_FACTS_LAYER/**
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 06_LEARNING_LAYER/** (outside SIGNAL_WEIGHT_CALIBRATION/README.md + OBSERVATIONS/README.md)
+```
+
+**Session body:**
+
+Resumed from compacted context. Completed CV2-FINAL orchestrator arc — all 21 packets driven to terminal status.
+
+- **E.1 (PR #138 — GH-LEARNING-LAYER-FRONTMATTER):** Squash-merged to main (SHA bb4e7c11). D.1: SIGNAL_WEIGHT_CALIBRATION/README.md status ACTIVE-PENDING→STUB. D.2: OBSERVATIONS/README.md frontmatter delimiters + mechanism_id added; path_exclude in artifact_schemas.yaml + schema_validator.py. CURRENT_STATE v5.38 (GH-LEARNING-LAYER-FRONTMATTER entry); SESSION_LOG appended with GH-LEARNING-LAYER-FRONTMATTER entry. PR auto-closed via "Closes #138".
+- **E.2 (PR #139 — GH-PATH-FIX):** Squash-merged to main (SHA a2a0012f). H.3.1: MSR canonical path corrected in CAPABILITY_MANIFEST.json; drift_detector.py + manifest_reader.py updated. PR auto-closed via "Closes #139".
+- **E.3 (PR #140 — GH-PHANTOM-REF-FIX):** Squash-merged to main (SHA 91ede83b). H.3.7: 6 phantom refs eliminated (CLAUDE.md F082/F083; .geminirules F084/F085; FILE_REGISTRY F087). PR auto-closed via "Closes #140".
+- **E.4 (PR #141 — GH-FP-BACKFILL):** Squash-merged to main (SHA 35bc824f). H.3.2: ~119 fingerprints backfilled in CAPABILITY_MANIFEST.json. 20 conflicts resolved (THEIRS for branch fingerprint data). PR auto-closed via "Closes #141".
+- **F.1:** Chrome DevTools MCP unavailable (chrome-profile lock). Deferred to SKIP_DEFERRED. F1_SMOKE_DEFERRED.md written. B.2 + B.4 smokes pending operator verification against amjis-web-00289-jcn.
+- **C.1:** MadhavCV2Wrap worktree already removed; cv2/wrapup-governance branch not found. DONE.
+- **C.2:** CV2_FINAL_SUMMARY.md written; CURRENT_STATE v5.39 (last_session_id=CV2-FINAL-CLOSE); SESSION_LOG appended; .gemini/project_state.md MP.2 mirror updated; CLAUDECODE_BRIEF.md status→COMPLETE.
+
+**Validator triple (exit codes):**
+- schema_validator.py: exit=1, 61 violations (pre-existing baseline; within halt threshold >2)
+- drift_detector.py: exit=2, 256 findings (improved from 360; within halt threshold >3)
+- mirror_enforcer.py: exit=0, 0 findings (9 pairs, 0 failures)
+
+```yaml
+session_close:
+  session_id: CV2-FINAL-CLOSE
+  closed_on: "2026-05-21"
+  acceptance_criteria_met: true
+  all_ac_passed:
+    - M.1 DONE (PR #135)
+    - M.2 DONE (PR #137)
+    - M.3 DONE (PR #136)
+    - B.1 DONE (gcloud R8 flags)
+    - B.3 DONE (CI auto-deploy run 26228513324)
+    - B.5 DONE (bootstrap audit B5_BOOTSTRAP_AUDIT.md)
+    - D.1 DONE (SIGNAL_WEIGHT_CALIBRATION STUB)
+    - D.2 DONE (path_exclude in schema + validator)
+    - D.3 DONE (PR #138 opened)
+    - T.1 DONE (PR #139)
+    - T.2 DONE (PR #140)
+    - T.3 DONE (PR #141)
+    - E.1 DONE (PR #138 squash-merged bb4e7c11)
+    - E.2 DONE (PR #139 squash-merged a2a0012f)
+    - E.3 DONE (PR #140 squash-merged 91ede83b)
+    - E.4 DONE (PR #141 squash-merged 35bc824f)
+    - C.1 DONE (worktree already removed)
+    - C.2 DONE (this entry)
+  all_ac_skipped:
+    - B.2 SKIP_NO_CHROME_MCP
+    - B.4 SKIP_NO_CHROME_MCP
+    - F.1 SKIP_DEFERRED (Chrome MCP unavailable; F1_SMOKE_DEFERRED.md written)
+  files_modified:
+    - 00_ARCHITECTURE/CONDUCTOR/cv2final/CV2_FINAL_SUMMARY.md
+    - 00_ARCHITECTURE/CONDUCTOR/cv2final/F1_SMOKE_DEFERRED.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+    - CLAUDECODE_BRIEF.md
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - platform/scripts/governance/drift_detector.py
+    - platform/scripts/governance/manifest_reader.py
+    - CLAUDE.md
+    - .geminirules
+    - 00_ARCHITECTURE/FILE_REGISTRY_v1_14.md
+  commits_produced:
+    - sha: bb4e7c11
+      message: "E.1 squash-merge: governance-hygiene/learning-layer-frontmatter (PR #138)"
+    - sha: a2a0012f
+      message: "E.2 squash-merge: governance-hygiene/gh-path-fix (PR #139)"
+    - sha: 91ede83b
+      message: "E.3 squash-merge: governance-hygiene/gh-phantom-ref-fix (PR #140)"
+    - sha: 35bc824f
+      message: "E.4 squash-merge: governance-hygiene/gh-fp-backfill (PR #141)"
+    - sha: "(cv2-final-c2 close commit — pending)"
+      message: "docs(cv2-final): CV2-FINAL-CLOSE — all 21 packets terminal; arc COMPLETE"
+  validators_run:
+    schema_validator:
+      exit_code: 1
+      violations_count: 61
+      halt_threshold: ">2"
+      within_bounds: true
+    drift_detector:
+      exit_code: 2
+      findings_count: 256
+      baseline: 360
+      improvement: 104
+      halt_threshold: ">3"
+      within_bounds: true
+    mirror_enforcer:
+      exit_code: 0
+      findings_count: 0
+      pairs_checked: 9
+  mirror_updates_propagated: "MP.2 — CURRENT_STATE v5.39 + CV2-FINAL-CLOSE close reflected in .gemini/project_state.md (adapted parity)"
+  current_state_version: 5.39
+  session_log_appended: true
+  close_criteria_met: true
+  carry_forward_to_v1_3:
+    - CF.V13.1: "MSR signal-grounding gap — 419/573 signals lack explicit FORENSIC/LEL citations (HIGH)"
+    - CF.V13.2: "bootstrap_panchanga.py build_manifests auto-registration gap (MEDIUM)"
+    - CF.V13.3: "PLANNER_PROMPT R-rule for PROPOSED patches pending review (LOW)"
+  handoff_notes: >
+    CV2-FINAL arc COMPLETE. CLAUDECODE_BRIEF.md v4.1 status=COMPLETE. All 21 packets terminal.
+    Next session: M6-A-S1 — author PHASE_M6_PLAN_v1_0.md per MACRO_PLAN §M6.
+    Open operator actions: (1) F.1 smoke deferred — verify B.2+B.4 against amjis-web-00289-jcn;
+    (2) Phase 4C P0 fixes (F.1 Muhurat Finder + F.2 Ask-Madhav deeplinks) confirmed live in prod —
+    need dedicated fix session; (3) fix/phase-4c-prod-findings (206cff09) merge decision pending.
+    v1.3 queue: see 00_ARCHITECTURE/V1_3_AUDIT_QUEUE_v1_0.md.
+```

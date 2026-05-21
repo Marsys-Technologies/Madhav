@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.38
+version: 5.39
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.39 (2026-05-21, CV2-FINAL-CLOSE):
+    **GOVERNANCE — CV2-FINAL orchestrator arc COMPLETE. E.1–E.4 merge train closed (PRs #138–#141 squash-merged to main). Drift: 360→256 findings. Schema: 61 violations (stable). Mirror: exit=0. F.1 smokes deferred (Chrome MCP unavailable). C.1 worktree already cleaned. CLAUDECODE_BRIEF.md v4.1 flipped to COMPLETE. No macro-phase change.**
+    files_touched: ["00_ARCHITECTURE/CONDUCTOR/cv2final/CV2_FINAL_SUMMARY.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md", "CLAUDECODE_BRIEF.md"]
+    active_phase_plan_sub_phase: M5-A INCOMING (CV2-FINAL arc closed; no macro-phase change).
+    last_session_id: CV2-FINAL-CLOSE. predecessor_session: WRAPUP-S2.
+    next_session_objective: "Open M5-A-S1 per PHASE_M5_PLAN_v1_0.md §3. Priority: LL.8+LL.9 scaffold; CF.LL7.1; R.LL1TPA.1; MP.1+MP.2 mirror catch-up; PPL cadence plan (NAP.M5.0)."
+    file_updated_at: 2026-05-21T23:00:00+05:30. file_updated_by_session: CV2-FINAL-CLOSE.
   - v5.38 (2026-05-21, GH-LEARNING-LAYER-FRONTMATTER):
     **GOVERNANCE HYGIENE — Learning-layer frontmatter HALT resolution (CV2-FINAL E.1 merge). 2 residual learning_layer violations from HUMAN_GATE_D resolved. (1) SIGNAL_WEIGHT_CALIBRATION/README.md: status ACTIVE-PENDING → STUB; STATUS body banner updated. (2) OBSERVATIONS/README.md: frontmatter --- delimiters added; mechanism_id: OBSERVATIONS added. (3) artifact_schemas.yaml: path_exclude added to learning_layer_stub class. (4) schema_validator.py: validate_learning_layer_stub honors path_exclude. Post-fix: 52 violations (was 58); all learning_layer violations cleared. No macro-phase change.**
     files_touched: ["06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md", "06_LEARNING_LAYER/OBSERVATIONS/README.md", "platform/scripts/governance/schemas/artifact_schemas.yaml", "platform/scripts/governance/schema_validator.py", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
@@ -4048,7 +4055,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: M5-E-S2                     # M5 macro-phase CLOSED; M5-E-S1 preserved in audit trail
+  last_session_id: CV2-FINAL-CLOSE              # CV2-FINAL governance arc COMPLETE 2026-05-21; all 21 packets terminal; predecessor M5-E-S2 preserved in audit trail
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
     # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
     # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
@@ -5743,8 +5750,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-19T15:25:00+05:30
-  file_updated_by_session: CONDUCTOR-S0
+  file_updated_at: 2026-05-21T23:30:00+05:30
+  file_updated_by_session: CV2-FINAL-CLOSE
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
