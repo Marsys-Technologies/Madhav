@@ -156,6 +156,7 @@ jobs:
           service: amjis-sidecar
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
+          flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=1
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:latest
             ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
