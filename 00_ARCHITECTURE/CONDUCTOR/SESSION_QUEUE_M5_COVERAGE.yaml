@@ -23,8 +23,8 @@ sessions:
     audit_section: "§G.8"
     depends_on: []
     gates: ["tsc", "vitest_changed", "lint", "smoke_planner_register_tools"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["tsc errors", "vitest failures", "discovery register read returns wrong version"]
   - id: PERF-S1
     stream: perf
