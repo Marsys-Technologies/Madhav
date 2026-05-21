@@ -23,9 +23,8 @@ sessions:
     audit_section: "§G.8"
     depends_on: []
     gates: ["tsc", "vitest_changed", "lint", "smoke_planner_register_tools"]
-    status: halted
+    status: pending
     attempt_count: 0
-    halt_reason: "spec_version_mismatch — §G.8 does not exist in audit v1.0; queue requires v1.2"
     halt_conditions: ["tsc errors", "vitest failures", "discovery register read returns wrong version"]
   - id: PERF-S1
     stream: perf
