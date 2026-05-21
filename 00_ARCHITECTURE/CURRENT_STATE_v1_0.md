@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.29
+version: 5.30
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.30 (2026-05-21, GH-DRIFT-DETECTOR-FIX):
+    **GOVERNANCE HYGIENE — drift_detector.py directory-entry crash fixed. Exit 4 (script error) → Exit 1 (findings-only). No macro-phase change.**
+    Key outcomes: (1) AC.1 PASS — IsADirectoryError crash diagnosed: CAPABILITY_MANIFEST.json entry `08_CLASSICAL_CROSS_REFERENCE` has `path: "08_CLASSICAL_CROSS_REFERENCE/"` (representations: folder); drift_detector §H.3.2 check called compute_sha256 on a directory without guarding. (2) AC.2 PASS — Fix shape (b) applied: added `path_abs.is_dir()` guard in `check_ca_filesystem_fingerprints` before `compute_sha256` call; directory entries now emit LOW `directory_entry_skipped` finding and continue. (3) AC.3 PASS — drift_detector exits 1 post-fix (342 findings; 1 CRITICAL pre-existing phantom_reference for CLAUDECODE_BRIEF_M9→CLAUDECODE_BRIEF.md absent in worktree; 86 HIGH; 252 MEDIUM; 3 LOW directory_entry_skipped). Exit 4 eliminated. (4) AC.4 PASS — schema_validator exits 4 (same as main baseline — pre-existing YAML errors in SESSION_LOG; not a regression); mirror_enforcer exits 0 (unchanged). (5) AC.5 PASS — ONGOING_HYGIENE_POLICIES §F appended with directory-hardening documentation. (6) AC.6 PASS — CURRENT_STATE v5.30; SESSION_LOG GH-DRIFT-DETECTOR-FIX entry; .gemini/project_state.md adapted-parity update. (7) AC.7 PASS — Triple validator run: drift_detector exit 1, schema_validator exit 4 (pre-existing baseline), mirror_enforcer exit 0. (8) AC.8 PASS — Branch governance-hygiene/drift-detector-fix; worktree /Users/Dev/Vibe-Coding/Apps/MadhavGH1; PR opened against main. (9) AC.9 PASS — Brief status flipped ACTIVE→COMPLETE. (10) AC.10 PASS — Final summary emitted.
+    active_phase_plan_sub_phase: M5-A INCOMING (concurrent governance-hygiene session; no macro-phase change).
+    last_session_id: GH-DRIFT-DETECTOR-FIX. predecessor_session: PR-111-REMEDIATION (SESSION_HALT that spawned this brief).
+    next_session_objective: "Native reviews and merges PR for governance-hygiene/drift-detector-fix. Remaining hygiene briefs: GH_SESSION_LOG_STRUCTURE + GH_CORPUS_FRONTMATTER_BACKFILL."
+    file_updated_at: 2026-05-21T04:45:00+05:30. file_updated_by_session: GH-DRIFT-DETECTOR-FIX.
   - v5.29 (2026-05-21, PR-111-REMEDIATION):
     **CONCURRENT WORKSTREAM — Chat V2 R10 post-COMPLETE remediation. PR #111 governance gaps closed. No macro-phase change; M5 remains active.**
     Key outcomes: (1) PR #111 (merge SHA 74877a21) context: chat-v2 UI gap remediation (Checks 10/12/13/15/18/19/20/25 fixed; 23/24 deferred) + panchang bootstrap guard fix (panchanga_daily_staging query). (2) AC.1 PASS — 2 missing NEXT_PUBLIC R10 build-args added to platform/cloudbuild.yaml: SCROLL_DISCIPLINE + VALIDATOR_GATES (both default-true, client-side; now present in Cloud Build pipeline). (3) AC.2 PASS — UI_REMEDIATION_COMPLETE.md + UI_REMEDIATION_LOG.md relocated from project root to 00_ARCHITECTURE/chat_v2_briefs/pr_111_remediation/ via git mv (ROOT_FILE_POLICY violation closed). (4) AC.8 PASS — CI_INVESTIGATION.md authored; 2 failing checks classified as out-of-scope residuals (mobile/a11y source-structure assertions require platform/src/** + smoke auth-secrets infra gap). (5) AC.3 PASS — this CURRENT_STATE v5.29 entry. (6) AC.4 PASS — SESSION_LOG appended (this entry). (7) AC.5 PASS — CLAUDE.md §E Chat V2 R10 entry updated with post-COMPLETE remediation paragraph. (8) AC.6 PASS — .gemini/project_state.md updated (MP.2 adapted-parity mirror). (9) AC.7 PASS — all three governance validators exit 0 (schema_validator, drift_detector, mirror_enforcer). (10) AC.10 PASS — CLAUDECODE_BRIEF.md status flipped COMPLETE. Branch chat-v2/pr-111-remediation; PR #112 merged to main.

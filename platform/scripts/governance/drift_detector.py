@@ -233,6 +233,16 @@ def check_ca_filesystem_fingerprints(repo_root: pathlib.Path, ca) -> List[Findin
         if not path_rel:
             continue
         path_abs = repo_root / path_rel
+        if path_abs.is_dir():
+            findings.append(Finding(
+                cls="directory_entry_skipped",
+                severity="LOW",
+                canonical_id=cid,
+                surfaces_involved=[path_rel],
+                evidence=f"path '{path_rel}' resolves to a directory; fingerprint check skipped (representations includes 'folder')",
+                suggested_remediation="Directory entries are intentional folder registrations in the manifest; no action needed",
+            ))
+            continue
         observed = compute_sha256(path_abs)
         if observed is None:
             findings.append(Finding(
