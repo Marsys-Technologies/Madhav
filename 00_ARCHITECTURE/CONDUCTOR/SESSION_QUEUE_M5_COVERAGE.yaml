@@ -34,8 +34,11 @@ sessions:
     audit_section: "§H.1"
     depends_on: []
     gates: ["tsc", "vitest_changed", "lint", "smoke_performance_route"]
-    status: in_progress
+    status: completed
     attempt_count: 1
+    completed_at: "2026-05-21T00:55:00Z"
+    merge_commit: 013fc90a9f7ab1e525e6769e134e0a2a1da1331f
+    pr_url: https://github.com/amonty84/Madhav/pull/117
     halt_conditions: ["tsc errors", "vitest failures", "perf KPI smoke regression"]
   - id: ICR-S1
     stream: icr
