@@ -5,8 +5,16 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - Three tools registered: ask_madhav, plan_query, execute_plan.
- *   (Tier 3 primitives, read_asset, get_trace, list_recent_queries land in MCP-3.)
+ * - 16 v1 tools registered (3 Tier-1/2, 10 Tier-3 primitives, 1 Tier-4, 2 Tier-5).
+ *
+ * Tool count (v1, all registered as of MCP-3-S2):
+ *   Tier 1: ask_madhav
+ *   Tier 2: plan_query, execute_plan
+ *   Tier 3 (10): query_chart_facts, query_signals, query_dasha_periods,
+ *                query_panchanga, query_ephemeris, query_transit_event,
+ *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
+ *   Tier 4 (1): read_asset
+ *   Tier 5 (2): get_trace, list_recent_queries
  *
  * Cloud Run configuration (amjis-mcp service):
  *   Memory: 512 MB, Min instances: 1, Concurrency: 80, Region: asia-south1.
@@ -33,6 +41,10 @@ import { registerLelQuery } from './tools/lel_query.js'
 import { registerVectorSearch } from './tools/vector_search.js'
 import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js'
 import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
+// MCP-3-S2: Tier 4 + Tier 5 tools
+import { registerReadAsset } from './tools/read_asset.js'
+import { registerGetTrace } from './tools/get_trace.js'
+import { registerListRecentQueries } from './tools/list_recent_queries.js'
 import type { Principal } from './types.js'
 
 const app = express()
@@ -91,6 +103,13 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerVectorSearch(server, getPrincipal)
   registerGetCgmSubgraph(server, getPrincipal)
   registerCrossSchoolLookup(server, getPrincipal)
+
+  // Register Tier 4 raw-asset tool (MCP-3-S2).
+  registerReadAsset(server, getPrincipal)
+
+  // Register Tier 5 observability tools (MCP-3-S2).
+  registerGetTrace(server, getPrincipal)
+  registerListRecentQueries(server, getPrincipal)
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({
