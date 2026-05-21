@@ -136,7 +136,7 @@ _Last updated: 2026-05-21 at GH-CORPUS-FRONTMATTER-BACKFILL (**GOVERNANCE HYGIEN
 
 **Next session:** M5-E-S2 — IS.8(b) macro-phase-close red-team (5 axes, all must PASS); PPL volume checkpoint; `M5_CLOSE_v1_0.md` authored (§0–§8); CURRENT_STATE flip M5→M6 INCOMING (v5.2→v5.3); NAP.M5.4 PRE-APPROVED. Trigger: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M5-E-S2." red_team_counter entering M5-E-S2: 0.
 
-**M5-A deliverables (closed):** LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_updater_v1_0.md` + `ll9_counterfactual_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed); LL.2 per-edge promotion campaign authored; PPL retroactive protocol; held-out partition declared (9 events sacrosanct until M5-D); PRED.015–018 added; LEL v1.7; DIS.009 RESOLVED_R1; JH export schedule. Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
+**M5-A deliverables (closed):** LL.8+LL.9 scaffold (`06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md` + `06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md`); CF.LL7.1 confirmed 0-of-8 flips (OPEN_ITEM.P1.1 = MSR.145 has no CDLM cell — M5-B expansion target); MSR reconciliation (514 signals confirmed); LL.2 per-edge promotion campaign authored; PPL retroactive protocol; held-out partition declared (9 events sacrosanct until M5-D); PRED.015–018 added; LEL v1.7; DIS.009 RESOLVED_R1; JH export schedule. Consult `CURRENT_STATE_v1_0.md §2` for full canonical state.
 
 ## (Predecessor) Active Phase: M4 Calibration + LEL Ground-Truth Spine — CLOSED 2026-05-02
 
