@@ -82,8 +82,8 @@ export function getConflictSummary(repoRoot: string): ConflictSummaryReport {
     ? (raw as unknown as ConflictRecord[])
     : []
 
-  const proposedIds = collectIds(path.join(repoRoot, 'PROPOSED'))
-  const resolvedIds = collectIds(path.join(repoRoot, 'RESOLVED'))
+  const proposedIds = collectIds(path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'PROPOSED'))
+  const resolvedIds = collectIds(path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'RESOLVED'))
 
   let resolved_count = 0
   let proposed_count = 0

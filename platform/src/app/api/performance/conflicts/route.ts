@@ -76,8 +76,8 @@ export async function GET(): Promise<NextResponse> {
 
   try {
     const repoRoot = process.cwd()
-    const proposedDir = path.join(repoRoot, 'PROPOSED')
-    const resolvedDir = path.join(repoRoot, 'RESOLVED')
+    const proposedDir = path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'PROPOSED')
+    const resolvedDir = path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'RESOLVED')
 
     const proposed = readArtifactsFromDir(proposedDir, 'proposed')
     const resolved = readArtifactsFromDir(resolvedDir, 'resolved')

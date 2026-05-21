@@ -231,8 +231,8 @@ def scan_corpus(root: str) -> tuple[list[Document], int]:
 
 
 def _parse_msr_signals(repo_root: Path) -> list[Signal]:
-    """Parse all 499 MSR signals from MSR_v3_0.md."""
-    msr_path = repo_root / "025_HOLISTIC_SYNTHESIS" / "MSR_v3_0.md"
+    """Parse all 573 MSR signals from MSR_v5_0.md."""
+    msr_path = repo_root / "025_HOLISTIC_SYNTHESIS" / "MSR_v5_0.md"
     if not msr_path.exists():
         return []
     text = msr_path.read_text(encoding="utf-8")
@@ -290,10 +290,10 @@ def write_manifest(
             f"STOP: current_document_count={current_document_count} ≠ 35. "
             "Check FILE_REGISTRY parsing or corpus scan."
         )
-    if signal_count < 499:
+    if signal_count < 573:
         raise RuntimeError(
-            f"STOP: signal_count={signal_count} < 499. "
-            "MSR_v3_0.md parse incomplete."
+            f"STOP: signal_count={signal_count} < 573. "
+            "MSR_v5_0.md parse incomplete."
         )
     null_layer_docs = [d.path for d in documents if not d.layer]
     if null_layer_docs:

@@ -1,7 +1,7 @@
 """
 validators.p5_signal_id_resolution — P5 signal ID resolution validator.
 Phase B.1. Per M2A_EXEC_PLAN_v1_0.md §PLAN B.1 Task 1.5 + PHASE_B_PLAN_v1_0.md §E.6.
-Validates that all SIG.MSR.NNN IDs in chunk content resolve against MSR_v3_0.md registry.
+Validates that all SIG.MSR.NNN IDs in chunk content resolve against MSR_v5_0.md registry.
 """
 from __future__ import annotations
 
@@ -18,14 +18,14 @@ _SIGNAL_ID_PATTERN = re.compile(r"\bSIG\.MSR\.(\d{3}[a-z]?)\b")
 _MSR_PATH = (
     Path(__file__).parent.parent.parent.parent.parent
     / "025_HOLISTIC_SYNTHESIS"
-    / "MSR_v3_0.md"
+    / "MSR_v5_0.md"
 )
 
 
 def _build_signal_registry() -> set[str]:
-    """Scan MSR_v3_0.md and cache all SIG.MSR.NNN IDs."""
+    """Scan MSR_v5_0.md and cache all SIG.MSR.NNN IDs."""
     if not _MSR_PATH.exists():
-        alt = Path(__file__).parents[5] / "025_HOLISTIC_SYNTHESIS" / "MSR_v3_0.md"
+        alt = Path(__file__).parents[5] / "025_HOLISTIC_SYNTHESIS" / "MSR_v5_0.md"
         path = alt if alt.exists() else _MSR_PATH
     else:
         path = _MSR_PATH

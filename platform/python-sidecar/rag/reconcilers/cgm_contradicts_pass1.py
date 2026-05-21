@@ -31,7 +31,7 @@ from typing import Any
 import psycopg
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
-_MSR_PATH = _PROJECT_ROOT / "025_HOLISTIC_SYNTHESIS" / "MSR_v3_0.md"
+_MSR_PATH = _PROJECT_ROOT / "025_HOLISTIC_SYNTHESIS" / "MSR_v5_0.md"
 _RESPONSES_DIR = _PROJECT_ROOT / "035_DISCOVERY_LAYER" / "PROMPTS" / "claude" / "responses"
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

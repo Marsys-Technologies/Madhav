@@ -2,7 +2,7 @@
 chunkers.msr_signal — Doc-type 1: MSR Signal chunker.
 Phase B.2. Per M2A_EXEC_PLAN_v1_0.md §PLAN B.2 Task 1.1 + chunker_spec_v1_0.md §1 Doc-Type 1.
 Spec ref: chunker_spec_v1_0.md §1 Doc-Type 1.
-Boundary: ^SIG\\.MSR\\.\\d{3}[a-z]?:$ — one chunk per signal. Target: 514 chunks (v3.1).
+Boundary: ^SIG\\.MSR\\.\\d{3}[a-z]?:$ — one chunk per signal. Target: 573 chunks (v5.0).
 """
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ from rag.validators import p5_signal_id_resolution as p5
 logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 800
-SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
-SOURCE_VERSION = "3.1"
+SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
+SOURCE_VERSION = "5.0"
 LAYER = "L2.5"
 
 _BOUNDARY = re.compile(r"^(SIG\.MSR\.\d{3}[a-z]?):\s*$", re.MULTILINE)
@@ -32,7 +32,7 @@ _BOUNDARY = re.compile(r"^(SIG\.MSR\.\d{3}[a-z]?):\s*$", re.MULTILINE)
 
 def _parse_signals(msr_path: Path) -> list[tuple[str, str, dict[str, Any]]]:
     """
-    Parse MSR_v3_0.md into (signal_id, raw_yaml_body, parsed_dict) tuples.
+    Parse MSR_v5_0.md into (signal_id, raw_yaml_body, parsed_dict) tuples.
     signal_id = 'SIG.MSR.001'; raw_yaml_body = indented YAML text for that signal.
     """
     text = msr_path.read_text(encoding="utf-8")
@@ -61,13 +61,13 @@ def _parse_signals(msr_path: Path) -> list[tuple[str, str, dict[str, Any]]]:
 
 def chunk_msr_signals(repo_root: str) -> list[Chunk]:
     """
-    Parse MSR_v3_0.md and produce one Chunk per signal.
+    Parse MSR_v5_0.md and produce one Chunk per signal.
     Applies P1 (layer separation), P2 (citation), P5 (signal ID resolution) gating.
     Stop condition: raises RuntimeError if chunk count ≠ 514.
     """
     msr_path = Path(repo_root) / SOURCE_FILE
     if not msr_path.exists():
-        raise FileNotFoundError(f"MSR_v3_0.md not found at {msr_path}")
+        raise FileNotFoundError(f"MSR_v5_0.md not found at {msr_path}")
 
     signals = _parse_signals(msr_path)
     chunks: list[Chunk] = []
@@ -145,11 +145,11 @@ def chunk_msr_signals(repo_root: str) -> list[Chunk]:
         logger.error("%d MSR signals blocked by P5 (unresolvable signal_id)", p5_blocks)
 
     total_parsed = len(signals)
-    if len(chunks) != 514:
+    if len(chunks) != 573:
         raise RuntimeError(
-            f"STOP: MSR chunk count {len(chunks)} ≠ 514 "
+            f"STOP: MSR chunk count {len(chunks)} ≠ 573 "
             f"(parsed={total_parsed}, p1_violations={p1_violations}, p5_blocks={p5_blocks}). "
-            "Check MSR_v3_0.md parse or validator gating."
+            "Check MSR_v5_0.md parse or validator gating."
         )
 
     logger.info("msr_signal: %d chunks parsed from %d signals", len(chunks), total_parsed)

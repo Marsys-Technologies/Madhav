@@ -1,5 +1,5 @@
 """
-pipeline.extractors.msr_extractor — Extract MSR signals from MSR_v3_0.md.
+pipeline.extractors.msr_extractor — Extract MSR signals from MSR_v5_0.md.
 Phase 14D Stream B. Calls _parse_signals from rag.chunkers.msr_signal.
 """
 from __future__ import annotations
@@ -12,9 +12,9 @@ from rag.chunkers.msr_signal import _parse_signals
 
 log = logging.getLogger(__name__)
 
-SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
-SOURCE_VERSION = "3.1"
-EXPECTED_COUNT = 514
+SOURCE_FILE = "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
+SOURCE_VERSION = "5.0"
+EXPECTED_COUNT = 573
 
 _VALENCE_MAP: dict[str, str] = {
     "benefic": "positive",
@@ -50,7 +50,7 @@ def _extract_entities(entities: list[Any]) -> tuple[list[str], list[int], list[s
 
 def extract_msr_signals(repo_root: str) -> list[dict[str, Any]]:
     """
-    Parse MSR_v3_0.md and return one dict per signal matching the l25_msr_signals schema.
+    Parse MSR_v5_0.md and return one dict per signal matching the l25_msr_signals schema.
 
     Args:
         repo_root: Absolute path to the repository root.
@@ -59,12 +59,12 @@ def extract_msr_signals(repo_root: str) -> list[dict[str, Any]]:
         List of exactly 499 signal dicts.
 
     Raises:
-        FileNotFoundError: If MSR_v3_0.md is not found.
+        FileNotFoundError: If MSR_v5_0.md is not found.
         ValueError: If the parsed count is not exactly 499.
     """
     msr_path = Path(repo_root) / SOURCE_FILE
     if not msr_path.exists():
-        raise FileNotFoundError(f"MSR_v3_0.md not found at {msr_path}")
+        raise FileNotFoundError(f"MSR_v5_0.md not found at {msr_path}")
 
     raw_signals = _parse_signals(msr_path)
     rows: list[dict[str, Any]] = []
@@ -125,7 +125,7 @@ def extract_msr_signals(repo_root: str) -> list[dict[str, Any]]:
             "signs_involved": signs,
             "entities_involved": entities_raw,
             "description": name,
-            "source_section": f"MSR_v3_0 §{sig_id}",
+            "source_section": f"MSR_v5_0 §{sig_id}",
             "provenance": provenance,
             # New source fields for msr_signals (raw, not normalized)
             "signal_type": signal_type_raw,
@@ -142,7 +142,7 @@ def extract_msr_signals(repo_root: str) -> list[dict[str, Any]]:
     if len(rows) != EXPECTED_COUNT:
         raise ValueError(
             f"MSR extractor expected {EXPECTED_COUNT} signals, got {len(rows)}. "
-            "Check MSR_v3_0.md parse."
+            "Check MSR_v5_0.md parse."
         )
 
     log.info("msr_extractor: extracted %d signals", len(rows))
