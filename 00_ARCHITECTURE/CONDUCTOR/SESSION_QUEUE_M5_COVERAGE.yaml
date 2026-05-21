@@ -208,10 +208,14 @@ sessions:
     audit_section: "§N.6 ICR-S4"
     depends_on: ["ICR-S3"]
     gates: ["tsc", "vitest_changed", "munta_propose_patch_emitted"]
-    status: in_progress
+    status: completed
     attempt_count: 1
     started_at: "2026-05-21T15:35:00+05:30"
+    completed_at: "2026-05-21T15:44:00+05:30"
+    merge_commit: a8dd8a2d
+    gate_results: "tsc:PASS vitest:20/20 munta_propose_patch_emitted:PASS (PROPOSED/DIS.013_MSR_377_proposed.yaml written; Gemini→Virgo correction; 4-tier propagation chain)"
     halt_conditions: ["ICR-S4 emits patch with propagation chain mismatching audit §C.10", "NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH (always halts after this session — propose-patch artifacts in PROPOSED/ require native confirmation before ICR-S5 can resolve them)"]
+    halt_triggered: "NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH — PROPOSED/DIS.013_MSR_377_proposed.yaml requires native review before ICR-S5 can apply correction to MSR_v3_0.md"
 
   - id: PERF-S4
     stream: perf
