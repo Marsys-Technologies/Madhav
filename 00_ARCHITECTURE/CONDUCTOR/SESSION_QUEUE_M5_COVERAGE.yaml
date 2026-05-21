@@ -136,8 +136,8 @@ sessions:
     audit_section: "§G.7"
     depends_on: ["COV-S1", "COV-S2", "COV-S3"]
     gates: ["tsc", "vitest_changed", "synthetic_pr_coverage_gate_fails"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["CI gate does not fail on synthetic missing-manifest-entry PR"]
   - id: ICR-S3
     stream: icr
