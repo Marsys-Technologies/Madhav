@@ -71,14 +71,14 @@ describe('checkRateLimit — RPM window', () => {
 
   it('61st call in the same window is denied (RPM default = 60)', async () => {
     const key_id = freshKey()
-    let lastResult = { allowed: true, reason: undefined as string | undefined, retry_after_seconds: undefined as number | undefined }
+    let lastResult: import('@/lib/mcp/rate_limiter').RateLimitResult = { allowed: true }
     for (let i = 0; i < 61; i++) {
       lastResult = await checkRateLimit(key_id)
     }
     expect(lastResult.allowed).toBe(false)
     expect(lastResult.reason).toBe('rpm_exceeded')
     expect(typeof lastResult.retry_after_seconds).toBe('number')
-    expect(lastResult.retry_after_seconds).toBeGreaterThan(0)
+    expect((lastResult.retry_after_seconds ?? 0)).toBeGreaterThan(0)
   })
 })
 
