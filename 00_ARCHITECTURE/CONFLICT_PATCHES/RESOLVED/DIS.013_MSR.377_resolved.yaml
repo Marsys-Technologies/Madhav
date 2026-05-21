@@ -1,0 +1,68 @@
+conflict_id: DIS.013
+conflict_class: A
+signal_ids_affected:
+  - MSR.377
+resolution_path: direct_rewrite
+  # ICR-S4 proposed patch (DIS.013_MSR.377_proposed.yaml) was rejected: it was a
+  # partial fix (signal_name swap only; body retained Virgo 6H / Mercury content).
+  # A full signal rewrite was performed directly in session MSR-377-LIBRA-7H-CORRECTION.
+resolved_in_session: MSR-377-LIBRA-7H-CORRECTION
+resolved_on: "2026-05-21"
+resolved_by: "M5_COVERAGE_CAMPAIGN_CLOSE"
+applied_at: "2026-05-21T18:45:00+05:30"
+applied_by: "M5_COVERAGE_CAMPAIGN_CLOSE"
+commit_sha: "2a662ca7"
+status: resolved
+
+authoritative_l1_fact:
+  source: "01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md"
+  section: "§22 Varsha Pravesh (VP) — Tajika Annual Charts"
+  line_vrs_muntha_sign: 1480
+  line_vrs_muntha_lord: 1481
+  value_sign: "Libra (7th House)"
+  value_lord: "Venus"
+
+before:
+  signal_name: "Tajika — Muntha Position at Age 42 (2026): Muntha in Gemini 3H = UL/Spouse-Domain Annual Activation"
+  body_error: >
+    Signal body referenced Virgo 6H (Mercury-ruled), contradicting the L1 FORENSIC value
+    of Libra 7H. Also included Mercury as the Muntha lord, contradicting FORENSIC
+    VRS.MUNTHA.LORD = Venus. The erroneous Gemini/Virgo placement appeared to originate
+    from an alternative Muntha formula (Age mod 12 from Aries Lagna = Virgo, or a miscount
+    landing on Gemini).
+
+after:
+  signal_name: "Tajika — Muntha Position at Age 42 (2026–27): Muntha in Libra 7H = Partnership/Public-Domain Annual Activation (Venus-ruled, maraka axis)"
+  body_corrected: true
+  entities_involved: [JMN.UL, HSE.7, PLN.VENUS]
+  derivation_ledger_entry: DL.MSR.377.1
+  confidence: 0.88
+
+propagation_chain:
+  tier_1:
+    - MSR.377  # primary signal — fully rewritten
+  tier_2: []   # no explicit UCN edge blocks reference MSR.377
+  tier_3: []   # no CDLM entries for MSR.377
+  tier_4: []   # no RM resonance entries for MSR.377
+  tier_5: []
+
+icr_proposed_patch:
+  path: 00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml
+  status: rejected
+  rejection_reason: >
+    Partial fix only: signal_name corrected from "Gemini 3H" to "Libra 7H" but entire
+    signal body left with Virgo 6H and Mercury-ruled content. Full rewrite required.
+  preserved_as: audit_artifact
+
+dis_013_in_disagreement_register:
+  status: closed
+  closed_by_session: MSR-377-LIBRA-7H-CORRECTION
+  register_path: 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+
+campaign_context:
+  campaign: M5 Coverage Remediation Campaign
+  stream: ICR (Integrity/Conflict Resolution)
+  session_that_detected: ICR-S3 (Class A conflict detector implementation)
+  session_that_proposed_patch: ICR-S4
+  session_that_resolved: MSR-377-LIBRA-7H-CORRECTION (direct rewrite)
+  campaign_close_session: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21

@@ -2,7 +2,18 @@
 artifact: CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md
 canonical_id: CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT
 version: 1.2
-status: CURRENT
+status: SUPERSEDED-AS-COMPLETE
+closed_by: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21
+closed_on: "2026-05-21"
+final_defect_disposition:
+  shipped: 55
+  carry_forward: 3
+  total: 58
+  carry_forward_items:
+    - "MSR signal-grounding gap: 419/573 signals lack explicit FORENSIC/LEL citations (surfaced ICR-S2)"
+    - "Bootstrap build_manifests auto-registration audit (open follow-up Phase 4C close)"
+    - "PLANNER_PROMPT R-rule: warn when cited signal has pending PROPOSED patch"
+  carry_forward_queue: "00_ARCHITECTURE/V1_3_AUDIT_QUEUE_v1_0.md"
 authored_on: 2026-05-21
 authored_by: Cowork session — Capability-Coverage-and-Performance-Audit
 role: >

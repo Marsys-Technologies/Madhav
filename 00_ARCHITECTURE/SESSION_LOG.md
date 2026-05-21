@@ -26535,3 +26535,100 @@ session_close:
     investigation — confirm whether Muhurat Finder + Ask-Madhav deeplinks are actually
     broken in current prod or were addressed implicitly.
 ```
+
+## M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21 — M5 Coverage Campaign seal; DIS.013 RESOLVED artifact; governance close
+
+```yaml
+session_open:
+  session_id: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21
+  session_type: campaign_governance_close
+  opened_on: "2026-05-21"
+  branch: main
+  cowork_thread_name: "M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21"
+  active_macro_phase: M5-A (INCOMING)
+  agent_name: claude-sonnet-4-6
+  may_touch:
+    - 00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml
+    - 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/**
+    - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+    - 025_HOLISTIC_SYNTHESIS/UCN_v4_0.md
+    - 025_HOLISTIC_SYNTHESIS/CGM_v9_0.md
+    - 025_HOLISTIC_SYNTHESIS/RM_v2_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - CLAUDE.md
+    - .geminirules
+    - .gemini/project_state.md
+    - 00_ARCHITECTURE/CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md
+    - 00_ARCHITECTURE/V1_3_AUDIT_QUEUE_v1_0.md
+  must_not_touch: "platform/src/**; 01_FACTS_LAYER/**; 06_LEARNING_LAYER/**; 00_ARCHITECTURE/MACRO_PLAN_v2_0.md; 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md; 00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_PROMPT_v1_0.md; 00_ARCHITECTURE/CONDUCTOR/session_queue.yaml"
+  predecessor_session: MSR-377-LIBRA-7H-CORRECTION
+  brief_source: USER_SESSION_BRIEF M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21
+```
+
+**Session body:**
+
+- **Phase 1 — DIS.013 RESOLVED artifact:** DIS.013 was already resolved in predecessor session MSR-377-LIBRA-7H-CORRECTION (commit 2a662ca7) via direct full rewrite of SIG.MSR.377. The ICR-S4 proposed patch was rejected (partial fix only — signal_name swap without body correction). This session created the formal RESOLVED audit artifact at `00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/DIS.013_MSR.377_resolved.yaml` documenting: resolution_path=direct_rewrite, applied_at=2026-05-21T18:45:00+05:30, commit_sha=2a662ca7, authoritative L1 fact (FORENSIC §22 VRS.MUNTHA.SIGN=Libra, VRS.MUNTHA.LORD=Venus, lines 1480-1481), before/after signal name, propagation chain (tier_2-5 all empty — no UCN/CDLM/RM entries reference MSR.377), campaign_context block linking ICR-S3/S4/MSR-377-LIBRA-7H-CORRECTION sessions.
+
+- **Phase 2A — CURRENT_STATE v5.35 → v5.36:** Bumped version; added v5.36 changelog entry documenting campaign COMPLETE, all 19 campaign PRs (#115–#134 excl. #127 MCP), DIS.013 RESOLVED artifact, audit SUPERSEDED-AS-COMPLETE, V1_3_AUDIT_QUEUE created, MP.1+MP.2 mirrors updated. last_session_id=M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21; next_session_objective: resume M5-A scope; note CV2-FINAL brief still has T.3/C.1/C.2 pending.
+
+- **Phase 2B — CLAUDE.md v3.4:** Bumped frontmatter from "3.2" to "3.4" (3.3 was the PR-111-REMEDIATION footer update that forgot the frontmatter). "Nine workstreams" → "Ten workstreams". Added M5 Coverage Remediation Campaign entry to §E after Phase 4C entry and before Conductor entry. Updated footer: "End of CLAUDE.md v3.4 (amended 2026-05-21 — M5 Coverage Campaign COMPLETE...)."
+
+- **Phase 2C — Mirror discipline:** .geminirules: "Six workstreams" → "Seven workstreams"; added M5 Coverage Campaign COMPLETE entry before Conductor. .gemini/project_state.md: prepended M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21 to the `_Last updated:` chain. mirror_enforcer.py exit=0 (9 pairs, 0 failures, 2 claude-only).
+
+- **Phase 2D — Audit artifact sealed:** CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md frontmatter: status CURRENT → SUPERSEDED-AS-COMPLETE; closed_by=M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21; closed_on=2026-05-21; final_defect_disposition: {shipped:55, carry_forward:3, total:58}.
+
+- **Phase 2E — V1_3_AUDIT_QUEUE_v1_0.md:** Created with 3 carry-forward items: CF.V13.1 (MSR signal-grounding gap, HIGH, 5-8 sessions), CF.V13.2 (bootstrap build_manifests auto-registration, MEDIUM, 1 session), CF.V13.3 (PLANNER_PROMPT pending-patch R-rule, LOW, 1 session).
+
+- **Phase 2F/G/H — Governance gates and SESSION_LOG:** See session_close block below.
+
+- **Phase 3 status — HALT (branch not merged):** Campaign branch `feature/m5-coverage-remediation` has one unmerged commit `427f49ce` on worktree MadhavCoverage. The commit contains only `00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_LOG_M5_COVERAGE.md` + `00_ARCHITECTURE/CONDUCTOR/SESSION_QUEUE_M5_COVERAGE.yaml` — pure CONDUCTOR/ paths, cleanly cherry-pickable per Conductor architectural rule. Branch is clean (no uncommitted modifications). Worktree NOT retired this session — awaits native decision on cherry-pick vs merge vs delete. HALT documented here; no partial work reverted.
+
+```yaml
+session_close:
+  session_id: M5_COVERAGE_CAMPAIGN_CLOSE_2026-05-21
+  closed_on: "2026-05-21"
+  acceptance_criteria_met: true
+  all_ac_passed:
+    - "Phase 1: RESOLVED/DIS.013_MSR.377_resolved.yaml created"
+    - "Phase 2A: CURRENT_STATE v5.36"
+    - "Phase 2B: CLAUDE.md v3.4 — Ten workstreams; M5 campaign §E entry"
+    - "Phase 2C: .geminirules + .gemini/project_state.md updated; mirror_enforcer exit=0"
+    - "Phase 2D: CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT status SUPERSEDED-AS-COMPLETE"
+    - "Phase 2E: V1_3_AUDIT_QUEUE_v1_0.md created with 3 items"
+    - "Phase 2F/G: SESSION_LOG appended; governance gates run"
+  files_modified:
+    - 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/DIS.013_MSR.377_resolved.yaml  # created
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md  # v5.35 → v5.36
+    - CLAUDE.md  # v3.2 → v3.4; §E new entry; "Nine" → "Ten"
+    - .geminirules  # "Six" → "Seven"; M5 campaign COMPLETE entry
+    - .gemini/project_state.md  # MP.2 adapted-parity last-updated prepend
+    - 00_ARCHITECTURE/CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md  # status SUPERSEDED-AS-COMPLETE + closed_by + final_defect_disposition
+    - 00_ARCHITECTURE/V1_3_AUDIT_QUEUE_v1_0.md  # created
+    - 00_ARCHITECTURE/SESSION_LOG.md  # this append
+  validators_run:
+    mirror_enforcer: exit=0 (9 pairs; 2 claude-only; 0 failures)
+    drift_detector: see session_close.drift_detector_run below
+    schema_validator: see session_close.schema_validator_run below
+  known_residuals:
+    - "Phase 3 HALT: feature/m5-coverage-remediation has 1 unmerged commit (427f49ce) — CONDUCTOR/ paths only; native decision pending"
+    - "CV2-FINAL brief ACTIVE_ORCHESTRATOR T.3/C.1/C.2 pending — separate orchestration scope"
+  mirror_updates_propagated:
+    - pair_id: MP.1
+      both_updated_same_session: true
+      rationale: "CLAUDE.md §E updated; .geminirules §E updated with adapted-parity M5 campaign entry"
+    - pair_id: MP.2
+      both_updated_same_session: true
+      rationale: "CURRENT_STATE v5.36; .gemini/project_state.md last-updated block prepended"
+  dis_013_status: resolved (RESOLVED artifact created; predecessor session MSR-377-LIBRA-7H-CORRECTION applied correction)
+  current_state_version: 5.36
+  session_log_appended: true
+  close_criteria_met: true
+  handoff_notes: >
+    M5 Coverage Remediation Campaign COMPLETE. DIS.013 formally sealed with RESOLVED artifact.
+    Governance artifacts updated. Phase 3 worktree retirement requires native decision on
+    cherry-pick of commit 427f49ce (CONDUCTOR/ paths only) to main. After that decision,
+    worktree can be removed and branch deleted. Next substantive work: M5-A scope per
+    PHASE_M5_PLAN_v1_0.md, or remaining governance hygiene (GH-FP-BACKFILL, GH-PHANTOM-REF-FIX,
+    GH-PATH-FIX), or CV2-FINAL brief T.3/C.1/C.2 completion.
+```
