@@ -216,8 +216,8 @@ sessions:
     audit_section: "§N.6 ICR-S5"
     depends_on: ["ICR-S4", "PERF-S2"]
     gates: ["tsc", "vitest_changed", "confirmation_ui_smoke", "atomic_apply_dry_run"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["atomic-apply dry run does not roll back on simulated mid-patch failure"]
   - id: ICR-S6
     stream: icr
