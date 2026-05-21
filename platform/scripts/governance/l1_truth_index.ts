@@ -2,7 +2,7 @@
 /**
  * l1_truth_index.ts — CLI runner for the L1 Truth Index Scorer
  *
- * ICR-S2 (2026-05-21): Reads MSR_v3_0.md, scores each signal for L1
+ * ICR-S2 (2026-05-21): Reads MSR_v5_0.md, scores each signal for L1
  * (FORENSIC/LEL) grounding, and writes a coverage report.
  *
  * Usage:
@@ -25,7 +25,7 @@ import { parseMsrFile, computeReport } from '../../src/lib/icr/l1_truth_index';
 const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname);
 const REPO_ROOT = resolve(SCRIPT_DIR, '..', '..', '..');
 
-const MSR_PATH = resolve(REPO_ROOT, '025_HOLISTIC_SYNTHESIS', 'MSR_v3_0.md');
+const MSR_PATH = resolve(REPO_ROOT, '025_HOLISTIC_SYNTHESIS', 'MSR_v5_0.md');
 const REPORT_PATH = resolve(REPO_ROOT, '06_LEARNING_LAYER', 'L1_TRUTH_INDEX_REPORT_v1_0.md');
 
 // ─────────────────────────────────────────────────────────────────────────────
