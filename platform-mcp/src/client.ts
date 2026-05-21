@@ -272,6 +272,29 @@ export async function callPlatformTrace(
 }
 
 /**
+ * Call /api/mcp/writes/{action} for write operations (log_prediction, record_outcome,
+ * flag_disagreement). Used by the write MCP tools (MCP-4-S1).
+ *
+ * @param action    One of: log_prediction, record_outcome, flag_disagreement.
+ * @param params    Action-specific parameters (entry body).
+ * @param principal The resolved principal.
+ * @returns         The HTTP status code and parsed McpEnvelope.
+ */
+export async function callPlatformWrites(
+  action: 'log_prediction' | 'record_outcome' | 'flag_disagreement',
+  params: Record<string, unknown>,
+  principal: Principal
+): Promise<PlatformCallResult> {
+  const identityToken = await fetchIdentityToken()
+  return platformFetch({
+    url: `${PLATFORM_URL}/api/mcp/writes/${encodeURIComponent(action)}`,
+    body: params,
+    principal,
+    identityToken,
+  })
+}
+
+/**
  * Call /api/mcp/recent to retrieve recent MCP query history for the calling principal.
  * Used by the list_recent_queries MCP tool.
  *

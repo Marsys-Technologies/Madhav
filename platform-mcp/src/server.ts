@@ -5,9 +5,9 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 16 v1 tools registered (3 Tier-1/2, 10 Tier-3 primitives, 1 Tier-4, 2 Tier-5).
+ * - 19 tools registered as of MCP-4-S1 (16 read + 3 write).
  *
- * Tool count (v1, all registered as of MCP-3-S2):
+ * Tool count (v1, all registered as of MCP-4-S1):
  *   Tier 1: ask_madhav
  *   Tier 2: plan_query, execute_plan
  *   Tier 3 (10): query_chart_facts, query_signals, query_dasha_periods,
@@ -15,6 +15,7 @@
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
  *   Tier 4 (1): read_asset
  *   Tier 5 (2): get_trace, list_recent_queries
+ *   Tier 6 — Write tools (3, MCP-4-S1): log_prediction, record_outcome, flag_disagreement
  *
  * Cloud Run configuration (amjis-mcp service):
  *   Memory: 512 MB, Min instances: 1, Concurrency: 80, Region: asia-south1.
@@ -45,6 +46,10 @@ import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerGetTrace } from './tools/get_trace.js'
 import { registerListRecentQueries } from './tools/list_recent_queries.js'
+// MCP-4-S1: Tier 6 write tools (PPL + disagreement)
+import { registerLogPrediction } from './tools/log_prediction.js'
+import { registerRecordOutcome } from './tools/record_outcome.js'
+import { registerFlagDisagreement } from './tools/flag_disagreement.js'
 import type { Principal } from './types.js'
 
 const app = express()
@@ -110,6 +115,14 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Register Tier 5 observability tools (MCP-3-S2).
   registerGetTrace(server, getPrincipal)
   registerListRecentQueries(server, getPrincipal)
+
+  // Register Tier 6 write tools (MCP-4-S1):
+  //   log_prediction  — PPL interim substrate (mcp_predictions table, migration 071)
+  //   record_outcome  — outcome recording against prior predictions
+  //   flag_disagreement — governance disagreement register (mcp_disagreements table)
+  registerLogPrediction(server, getPrincipal)
+  registerRecordOutcome(server, getPrincipal)
+  registerFlagDisagreement(server, getPrincipal)
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({
