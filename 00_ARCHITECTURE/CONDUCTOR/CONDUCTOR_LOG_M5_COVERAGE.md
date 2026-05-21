@@ -29,3 +29,4 @@
 | 2026-05-21T02:55:00Z | ICR-S3 | 1 | success | b6598d8a | https://github.com/amonty84/Madhav/pull/126 | tsc:PASS vitest:13/13 intra_signal_munta_detected:PASS (DIS.013 MSR.377 conflict_class:A) CI:all-green | null |
 | 2026-05-21T03:08:00Z | PERF-S3 | 1 | success | dcf1859a | https://github.com/amonty84/Madhav/pull/128 | tsc:PASS vitest:8/8 retrieval_util_panel_smoke:PASS CI:all-green | null |
 | 2026-05-21T09:30:00Z | COV-S5 | 1 | success | a136e111 | https://github.com/amonty84/Madhav/pull/129 | tsc:PASS vitest:27/27 ucn_cdlm_rm_parametric_smoke:PASS CI:all-green | null |
+| 2026-05-21T09:45:00Z | COV-S6 | 1 | success | d7548ddf | https://github.com/amonty84/Madhav/pull/130 | tsc:PASS vitest:22/22 planner_golden_regression:PASS(2/2) CI:all-green | null |
