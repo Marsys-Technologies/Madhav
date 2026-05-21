@@ -32,3 +32,4 @@
 | 2026-05-21T09:45:00Z | COV-S6 | 1 | success | d7548ddf | https://github.com/amonty84/Madhav/pull/130 | tsc:PASS vitest:22/22 planner_golden_regression:PASS(2/2) CI:all-green | null |
 | 2026-05-21T09:58:00Z | ICR-S4 | 1 | success | 7272b684 | https://github.com/amonty84/Madhav/pull/131 | tsc:PASS vitest:9/9 munta_propose_patch_emitted:PASS CI:all-green | null (propose_patch_pending informational — see halt log) |
 | 2026-05-21T10:10:00Z | PERF-S4 | 1 | success | 243a83b6 | https://github.com/amonty84/Madhav/pull/132 | tsc:PASS vitest:14/14 freshness_diagnostics_smoke:PASS CI:all-green | null |
+| 2026-05-21T10:35:00Z | ICR-S5 | 1 | success | e065991e | https://github.com/amonty84/Madhav/pull/133 | tsc:PASS vitest:43/43 atomic_apply_dry_run:PASS confirmation_ui_smoke:PASS CI:all-green | null |
