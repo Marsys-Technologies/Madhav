@@ -1,0 +1,351 @@
+schema_version: '1.0'
+queue_name: mcp_server_workstream
+generated_at: '2026-05-21'
+generated_by: Cowork session (MCP setup)
+total_entries: 9
+notes: >
+  MCP — MARSYS-JIS Model Context Protocol Server. 1 brief-authoring session
+  (MCP-0-AUTHOR) + 6 implementation sessions (MCP-1-S1, MCP-2-S1, MCP-2-S2,
+  MCP-3-S1, MCP-3-S2, MCP-4-S1) + 1 red-team session (MCP-4-S2) +
+  1 terminal merge (MCP-MERGE). Sequential single-stream execution; STRICT
+  halt policy. MCP-MERGE has requires_human_approval: false — explicit
+  native override of the Wave 1 invariant "PR-to-main always human-gated"
+  per native ruling 2026-05-21 (user explicitly authorised "all sessions
+  autonomously" and "bypass permissions"). Sub-agents that hit unresolvable
+  blockers still halt via HALT_NEEDS_HUMAN.
+
+  MCP-0-AUTHOR is the brief-authoring meta-session: it reads
+  MCP_BRIEF_v1_0.md + MCP_BRIEF_MCP_1_S1_v1_0.md (the reference standard)
+  and authors the remaining 7 sub-briefs. This pattern lets Cowork avoid
+  pre-authoring all sub-briefs in one chat — the Conductor scales it via
+  sub-agent.
+
+external_gates: {}
+
+entries:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-0-AUTHOR — Brief authoring meta-session
+# Sub-agent reads MCP_BRIEF_v1_0.md (the master) + CLAUDECODE_BRIEF_MCP_1_S1
+# (the reference) and authors the remaining 7 implementation briefs.
+# No application code changes; only governance authoring under 00_ARCHITECTURE/BRIEFS/.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-0-AUTHOR
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_0_AUTHOR_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: []
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_2_S1_v1_0.md &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_2_S2_v1_0.md &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_3_S1_v1_0.md &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_3_S2_v1_0.md &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_4_S1_v1_0.md &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_4_S2_v1_0.md &&
+    test -f 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_MERGE_v1_0.md &&
+    for f in 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_{2_S1,2_S2,3_S1,3_S2,4_S1,4_S2,MERGE}_v1_0.md; do
+      grep -q "session_id:" "$f" && grep -q "## §3" "$f" && grep -q "## §5" "$f" || { echo "FAIL: $f missing required sections"; exit 1; };
+    done
+  expected_artifacts:
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_2_S1_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_2_S2_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_3_S1_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_3_S2_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_4_S1_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_4_S2_v1_0.md
+    - 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_MERGE_v1_0.md
+  est_tokens: 90000
+  est_duration_min: 45
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-1-S1 — Foundation: platform endpoint + auth + admin UI
+# Migration 070 (mcp_api_keys), /api/mcp/execute, /api/mcp/keys CRUD, auth lib,
+# epistemics envelope builder, synthesis_audit field, suggested_followups.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-1-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_1_S1_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-0-AUTHOR]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP/platform &&
+    test -f supabase/migrations/070_mcp_api_keys.sql &&
+    test -f src/app/api/mcp/execute/route.ts &&
+    test -f src/app/api/mcp/keys/route.ts &&
+    test -f src/lib/mcp/auth.ts &&
+    test -f src/lib/mcp/epistemics.ts &&
+    npx tsc --noEmit &&
+    npx jest --testPathPattern="lib/__tests__/mcp|mcp/auth|mcp/epistemics" --passWithNoTests
+  expected_artifacts:
+    - platform/supabase/migrations/070_mcp_api_keys.sql
+    - platform/src/app/api/mcp/execute/route.ts
+    - platform/src/app/api/mcp/keys/route.ts
+    - platform/src/lib/mcp/auth.ts
+    - platform/src/lib/mcp/epistemics.ts
+    - platform/src/lib/__tests__/mcp/auth.test.ts
+    - platform/src/lib/__tests__/mcp/epistemics.test.ts
+  est_tokens: 130000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-2-S1 — MCP server scaffold (platform-mcp/) + tier-1/tier-2 tools
+# @modelcontextprotocol/sdk HTTP/SSE server. Tools: ask_madhav, plan_query,
+# execute_plan. Cloud Run deploy config. Service-to-service identity wiring.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-2-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_2_S1_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-1-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP &&
+    test -f platform-mcp/package.json &&
+    test -f platform-mcp/src/server.ts &&
+    test -f platform-mcp/src/tools/ask_madhav.ts &&
+    test -f platform-mcp/src/tools/plan_query.ts &&
+    test -f platform-mcp/src/tools/execute_plan.ts &&
+    test -f platform-mcp/Dockerfile &&
+    test -f platform-mcp/cloudbuild.yaml &&
+    cd platform-mcp && npx tsc --noEmit
+  expected_artifacts:
+    - platform-mcp/package.json
+    - platform-mcp/src/server.ts
+    - platform-mcp/src/tools/ask_madhav.ts
+    - platform-mcp/src/tools/plan_query.ts
+    - platform-mcp/src/tools/execute_plan.ts
+    - platform-mcp/src/client.ts
+    - platform-mcp/Dockerfile
+    - platform-mcp/cloudbuild.yaml
+  est_tokens: 140000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-2-S2 — Tool descriptions + MCP resources (chart-overview + house-rules)
+# §4.6-standard descriptions for the 3 Tier-1/2 tools. Initial drafts of the
+# two MCP resources. Resources are LIVE files the native can edit post-merge.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-2-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_2_S2_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-2-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP &&
+    test -f platform-mcp/resources/chart-overview.md &&
+    test -f platform-mcp/resources/house-rules.md &&
+    [ $(wc -w < platform-mcp/resources/chart-overview.md) -ge 500 ] &&
+    [ $(wc -w < platform-mcp/resources/house-rules.md) -ge 300 ] &&
+    grep -q "What it does" platform-mcp/src/tools/ask_madhav.ts &&
+    grep -q "When to prefer" platform-mcp/src/tools/ask_madhav.ts &&
+    cd platform-mcp && npx tsc --noEmit
+  expected_artifacts:
+    - platform-mcp/resources/chart-overview.md
+    - platform-mcp/resources/house-rules.md
+    - platform-mcp/src/tools/ask_madhav.ts
+    - platform-mcp/src/tools/plan_query.ts
+    - platform-mcp/src/tools/execute_plan.ts
+    - platform-mcp/src/resources/index.ts
+  est_tokens: 110000
+  est_duration_min: 70
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-3-S1 — 10 surgical primitives + /api/mcp/primitives/[tool] dispatcher
+# query_chart_facts, query_signals, query_dasha_periods, query_panchanga,
+# query_ephemeris, query_transit_event, lel_query, vector_search,
+# get_cgm_subgraph, cross_school_lookup.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-3-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_3_S1_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-2-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP/platform &&
+    test -f src/app/api/mcp/primitives/[tool]/route.ts &&
+    test -f src/lib/mcp/primitives_registry.ts &&
+    npx tsc --noEmit &&
+    npx jest --testPathPattern="mcp/primitives" --passWithNoTests &&
+    cd ../platform-mcp &&
+    for t in query_chart_facts query_signals query_dasha_periods query_panchanga query_ephemeris query_transit_event lel_query vector_search get_cgm_subgraph cross_school_lookup; do
+      test -f "src/tools/${t}.ts" || { echo "FAIL: tool ${t}.ts missing"; exit 1; };
+    done &&
+    npx tsc --noEmit
+  expected_artifacts:
+    - platform/src/app/api/mcp/primitives/[tool]/route.ts
+    - platform/src/lib/mcp/primitives_registry.ts
+    - platform-mcp/src/tools/query_chart_facts.ts
+    - platform-mcp/src/tools/query_signals.ts
+    - platform-mcp/src/tools/query_dasha_periods.ts
+    - platform-mcp/src/tools/query_panchanga.ts
+    - platform-mcp/src/tools/query_ephemeris.ts
+    - platform-mcp/src/tools/query_transit_event.ts
+    - platform-mcp/src/tools/lel_query.ts
+    - platform-mcp/src/tools/vector_search.ts
+    - platform-mcp/src/tools/get_cgm_subgraph.ts
+    - platform-mcp/src/tools/cross_school_lookup.ts
+  est_tokens: 150000
+  est_duration_min: 110
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-3-S2 — read_asset, get_trace, list_recent_queries + rate limiting
+# Asset read tool, trace observability tools, per-key rate limiter middleware.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-3-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_3_S2_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-3-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP/platform &&
+    test -f src/app/api/mcp/recent/route.ts &&
+    test -f src/lib/mcp/rate_limiter.ts &&
+    npx tsc --noEmit &&
+    npx jest --testPathPattern="mcp/rate_limiter|mcp/recent" --passWithNoTests &&
+    cd ../platform-mcp &&
+    test -f src/tools/read_asset.ts &&
+    test -f src/tools/get_trace.ts &&
+    test -f src/tools/list_recent_queries.ts &&
+    npx tsc --noEmit
+  expected_artifacts:
+    - platform/src/app/api/mcp/recent/route.ts
+    - platform/src/lib/mcp/rate_limiter.ts
+    - platform-mcp/src/tools/read_asset.ts
+    - platform-mcp/src/tools/get_trace.ts
+    - platform-mcp/src/tools/list_recent_queries.ts
+  est_tokens: 110000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-4-S1 — Writes: log_prediction, record_outcome, flag_disagreement
+# Wires into PPL substrate (interim path: LIFE_EVENT_LOG prediction subsection
+# per CLAUDE.md §E — PPL formal substrate lands later in M-arc).
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-4-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_4_S1_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-3-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP/platform &&
+    test -f src/app/api/mcp/writes/[action]/route.ts &&
+    test -f src/lib/mcp/ppl_writer.ts &&
+    npx tsc --noEmit &&
+    npx jest --testPathPattern="mcp/writes|mcp/ppl_writer" --passWithNoTests &&
+    cd ../platform-mcp &&
+    test -f src/tools/log_prediction.ts &&
+    test -f src/tools/record_outcome.ts &&
+    test -f src/tools/flag_disagreement.ts &&
+    npx tsc --noEmit
+  expected_artifacts:
+    - platform/src/app/api/mcp/writes/[action]/route.ts
+    - platform/src/lib/mcp/ppl_writer.ts
+    - platform-mcp/src/tools/log_prediction.ts
+    - platform-mcp/src/tools/record_outcome.ts
+    - platform-mcp/src/tools/flag_disagreement.ts
+  est_tokens: 120000
+  est_duration_min: 80
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-4-S2 — Red-team pass per §IS.8(b)
+# Sub-agent runs a red-team checklist against the MCP surface. Findings
+# documented in 00_ARCHITECTURE/MCP_RED_TEAM_v1_0.md. PASS = no class-1
+# findings. Class-1 findings → sub-agent HALT_NEEDS_HUMAN.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-4-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_4_S2_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-4-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP &&
+    test -f 00_ARCHITECTURE/MCP_RED_TEAM_v1_0.md &&
+    grep -q "class-1 findings: 0" 00_ARCHITECTURE/MCP_RED_TEAM_v1_0.md &&
+    grep -q "red-team status: PASS" 00_ARCHITECTURE/MCP_RED_TEAM_v1_0.md
+  expected_artifacts:
+    - 00_ARCHITECTURE/MCP_RED_TEAM_v1_0.md
+  est_tokens: 90000
+  est_duration_min: 60
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP-MERGE — Terminal entry: push, open PR, enable auto-merge
+# Native override of "PR-to-main always human-gated" invariant per
+# user authorisation 2026-05-21 (Cowork session). Halts only if gh fails.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- session_id: MCP-MERGE
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_MERGE_v1_0.md
+  branch: feature/mcp-server
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCP
+  depends_on: [MCP-0-AUTHOR, MCP-1-S1, MCP-2-S1, MCP-2-S2, MCP-3-S1, MCP-3-S2, MCP-4-S1, MCP-4-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false  # native override per user authorisation 2026-05-21
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCP &&
+    git push -u origin feature/mcp-server &&
+    gh pr view feature/mcp-server --json state,number 2>/dev/null | grep -q '"number"' &&
+    gh pr view feature/mcp-server --json autoMergeRequest,state | grep -E '"state":"MERGED"|"autoMergeRequest":\{'
+  expected_artifacts:
+    - 00_ARCHITECTURE/MCP_WORKSTREAM_COMPLETE.md
+  est_tokens: 40000
+  est_duration_min: 15
+  status: pending
+  human_decision_prompt: null
