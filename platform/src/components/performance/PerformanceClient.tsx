@@ -16,6 +16,8 @@ import { QueryLogTable } from './QueryLogTable'
 import { JudgeRunModal } from './JudgeRunModal'
 import { TracePanelLauncher } from './TracePanelLauncher'
 import { AssetCatalogSection } from './AssetCatalogSection'
+import { RetrievalUtilizationSection } from './RetrievalUtilizationSection'
+import { PlannerRoutingSection } from './PlannerRoutingSection'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -269,6 +271,16 @@ export function PerformanceClient() {
       <section className="space-y-3">
         <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Asset Catalog</h2>
         <AssetCatalogSection />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Retrieval Utilization</h2>
+        <RetrievalUtilizationSection />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Planner Routing</h2>
+        <PlannerRoutingSection />
       </section>
 
       <JudgeRunModal
