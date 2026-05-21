@@ -21,6 +21,7 @@ import { PlannerRoutingSection } from './PlannerRoutingSection'
 import { FreshnessSection } from './FreshnessSection'
 import { DiagnosticsSection } from './DiagnosticsSection'
 import { ManifestDriftSection } from './ManifestDriftSection'
+import { ConflictPanel } from './ConflictPanel'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -51,6 +52,19 @@ export function PerformanceClient() {
   const [judgeOpen, setJudgeOpen] = React.useState(false)
   const [traceQueryId, setTraceQueryId] = React.useState<string | null>(null)
   const [traceOpen, setTraceOpen] = React.useState(false)
+  const [proposedCount, setProposedCount] = React.useState(0)
+
+  // ICR-S5: fetch proposed conflict patch count for ConflictPanel
+  React.useEffect(() => {
+    fetch('/api/icr/patches')
+      .then((r) => r.json())
+      .then((data: { proposed?: string[] }) => {
+        setProposedCount(data.proposed?.length ?? 0)
+      })
+      .catch(() => {
+        // Non-fatal — panel renders with 0 if fetch fails
+      })
+  }, [])
 
   // PERF-S1 fix (f): track when data was last successfully fetched.
   const lastFetchedAtRef = React.useRef<number | null>(null)
@@ -276,6 +290,9 @@ export function PerformanceClient() {
 
       {/* PERF-S4: Manifest Drift — real data wiring is PERF-S5 */}
       <ManifestDriftSection driftReport={null} />
+
+      {/* ICR-S5: Conflict Resolution stub — full panel ships in PERF-S5 */}
+      <ConflictPanel proposedCount={proposedCount} />
 
       <section className="space-y-3">
         <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Query log</h2>
