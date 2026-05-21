@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_BHISMA_PROTOCOL
 canonical_id: PROJECT_BHISMA_PROTOCOL
 version: 1.0
 status: CURRENT

@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_KARN_SESSION_LOG
 canonical_id: PROJECT_KARN_SESSION_LOG
 version: rolling
 status: LIVE

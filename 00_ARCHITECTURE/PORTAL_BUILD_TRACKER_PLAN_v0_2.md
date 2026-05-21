@@ -1,5 +1,6 @@
 ---
 artifact: PORTAL_BUILD_TRACKER_PLAN_v0_2.md
+version: 0.2
 status: APPROVED_FOR_IMPLEMENTATION
 authored_by: Claude Code Opus 4.6 (Madhav_PORTAL_BUILD_TRACKER_PLAN_v0_2)
 authored_on: 2026-04-26

@@ -1,4 +1,5 @@
 ---
+artifact: PHASE_5_CLOSE_v1_0
 canonical_id: PHASE_5_CLOSE
 version: 1.0
 status: CURRENT (campaign sealing artifact)

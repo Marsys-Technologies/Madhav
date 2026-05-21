@@ -1,4 +1,5 @@
 ---
+artifact: PHASE_14B_BUILD_PIPELINE_REPORT_v1_0
 report_id: PHASE_14B_BUILD_PIPELINE_REPORT
 version: 1.0
 generated: 2026-04-28

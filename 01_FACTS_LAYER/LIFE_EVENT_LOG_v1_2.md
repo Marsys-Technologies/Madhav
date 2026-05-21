@@ -1,4 +1,5 @@
 ---
+artifact: LIFE_EVENT_LOG_v1_2
 document: LIFE EVENT LOG — ABHISEK MOHANTY
 project: MARSYS-JIS (Abhisek Mohanty Jyotish Intelligence System)
 layer: L1 (Facts Layer)

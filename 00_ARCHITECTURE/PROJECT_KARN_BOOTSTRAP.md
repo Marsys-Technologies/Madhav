@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_KARN_BOOTSTRAP
 canonical_id: PROJECT_KARN_BOOTSTRAP
 version: 1.1
 status: CURRENT

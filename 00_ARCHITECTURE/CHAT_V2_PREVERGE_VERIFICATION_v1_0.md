@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_PREVERGE_VERIFICATION_v1_0
 name: Chat V2 Pre-Merge Verification Report v1.0
 canonical_id: CHAT_V2_PREVERGE_VERIFICATION_v1_0
 version: 1.0

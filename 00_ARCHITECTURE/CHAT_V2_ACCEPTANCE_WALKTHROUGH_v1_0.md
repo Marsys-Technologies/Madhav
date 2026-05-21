@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_ACCEPTANCE_WALKTHROUGH_v1_0
 canonical_id: CHAT_V2_ACCEPTANCE_WALKTHROUGH
 version: 1.0
 status: CURRENT

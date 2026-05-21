@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_STAGING_E2E_REPORT
 canonical_id: CHAT_V2_STAGING_E2E_REPORT
 version: 1.0
 status: CURRENT

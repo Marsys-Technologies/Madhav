@@ -1,4 +1,5 @@
 ---
+artifact: FORENSIC_ASTROLOGICAL_DATA_v8_0
 document: Forensic Astrological Data
 canonical_id: FORENSIC
 subject: Abhisek Mohanty

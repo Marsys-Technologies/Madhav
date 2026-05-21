@@ -1,3 +1,12 @@
+---
+artifact: UI_VERIFICATION_LOCALHOST_2026-05-20_v1_0
+version: 1.0
+status: CURRENT
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Existing file body untouched.
+---
+
 # UI Verification Report — Chat V2 R7–R10
 **Environment:** localhost:3000  
 **URL:** http://localhost:3000/clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume  

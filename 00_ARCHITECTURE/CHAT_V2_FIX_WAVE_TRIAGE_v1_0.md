@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_FIX_WAVE_TRIAGE_v1_0
 id: CHAT_V2_FIX_WAVE_TRIAGE
 version: 1.0
 status: CURRENT

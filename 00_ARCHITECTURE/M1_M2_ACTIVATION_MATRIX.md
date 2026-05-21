@@ -1,4 +1,6 @@
 ---
+artifact: M1_M2_ACTIVATION_MATRIX
+version: 1.0
 canonical_id: M1_M2_ACTIVATION_MATRIX
 status: LIVING
 authored_at: 2026-04-30T00:00:00Z

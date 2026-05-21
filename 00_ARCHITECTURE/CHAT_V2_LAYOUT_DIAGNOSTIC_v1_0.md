@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_LAYOUT_DIAGNOSTIC_v1_0
 id: CHAT_V2_LAYOUT_DIAGNOSTIC
 version: 1.0
 status: CURRENT

@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_CHILDREN_v1_1
 document: REPORT_CHILDREN_v1_1.md
 version: 1.1
 status: CLOSED

@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_BHISMA_SESSION_LOG
 project: BHISMA
 version: 1.0
 status: ACTIVE

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.33
+version: 5.34
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.34 (2026-05-21, GH-CORPUS-FRONTMATTER-BACKFILL):
+    **GOVERNANCE HYGIENE — Corpus frontmatter backfill. 116/118 MEDIUM frontmatter violations cleared. 2 learning_layer violations HALTED (HUMAN_GATE_D). No macro-phase change.**
+    Key outcomes: (1) AC.1 PASS — Diagnosed 208 violations baseline (exit=2). After fixes: 58 violations (exit=2 — dominated by pre-existing session_log HIGH violations in separate brief scope). (2) AC.2 PASS — artifact_schemas.yaml authority check: architecture_governance requires [artifact, version, status]; l1_facts/l2_5_cgm/l3_domain_reports require [artifact, version, status]; learning_layer_stub requires [artifact, mechanism_id, status, produced_during]. (3) AC.3 PASS (partial) — 83 architecture_governance MEDIUM fixed (65 artifact:, 9 full-frontmatter-block, 7 version:); 18 l3_domain_reports MEDIUM fixed; 1 FORENSIC (l1_facts) MEDIUM fixed; 1 CGM (l2_5_cgm) MEDIUM fixed; 1 LEL LOW fixed; 11 additional architecture_governance LOW fixed. (4) AC.4 HALTED — SIGNAL_WEIGHT_CALIBRATION/README.md: validator regex parses ACTIVE-PENDING as ACTIVE, requiring activation pointers that aren't obvious from file; OBSERVATIONS/README.md: mechanism_id required but has no LL.N assignment. Both halted per brief §5. HUMAN_GATE_D.md written. (5) AC.5 PASS — 21 CAPABILITY_MANIFEST.json entries updated with version: "1.0" (M9x tools + retrieval tools). (6) AC.6 PARTIAL — schema_validator 208→58 violations; exit=2 (pre-existing session_log HIGH violations). (7) AC.7 PASS — drift_detector exit 2 (pre-existing baseline; no regression), mirror_enforcer exit 0; FORENSIC/LEL/CGM fingerprints updated in CAPABILITY_MANIFEST.json. (8) AC.8 PASS — CURRENT_STATE v5.34. SESSION_LOG appended. (9) AC.9 PASS — Branch governance-hygiene/corpus-frontmatter; PR #136 merged to main. (10) AC.10 PARTIAL — Brief status flipped to ACTIVE_HALTED.
+    active_phase_plan_sub_phase: M5-A INCOMING (concurrent governance-hygiene session; no macro-phase change).
+    last_session_id: GH-CORPUS-FRONTMATTER-BACKFILL. predecessor_session: GH-DRIFT-HIGH-TRIAGE.
+    next_session_objective: "Native reviews HUMAN_GATE_D.md, provides guidance on learning_layer HALT items. Remaining: GH_FP-BACKFILL (H.3.2 fingerprint batch rotation), GH-PHANTOM-REF-FIX (H.3.7 phantom ref cleanup), GH-PATH-FIX (H.3.1 MSR path disagreement)."
+    file_updated_at: 2026-05-21T10:30:00+05:30. file_updated_by_session: GH-CORPUS-FRONTMATTER-BACKFILL.
   - v5.33 (2026-05-21, GH-DRIFT-HIGH-TRIAGE):
     **GOVERNANCE HYGIENE — drift_detector HIGH finding triage report produced. Categorize-only. No fixes applied.**
     Key outcomes: (1) AC.1 PASS — drift_detector exits 2 (343 findings; 87 HIGH; 253 MEDIUM; 3 LOW). (2) AC.2 PASS — RAW_HIGH_FINDINGS.txt written (87 lines). (3) AC.3 PASS — REPORT.md written at 00_ARCHITECTURE/governance_hygiene_briefs/drift_high_triage/REPORT.md per §3 schema. (4) AC.4 PASS — all 87 HIGH findings appear exactly once in REPORT.md. (5) AC.5 PASS — all suggested_fixes specific and actionable. (6) AC.6 PASS — CURRENT_STATE v5.33; SESSION_LOG appended; .gemini/project_state.md adapted-parity mirror. (7) AC.7 PASS — drift_detector exit 2 (no regression); schema_validator exit 2 (pre-existing baseline); mirror_enforcer exit 0. (8) AC.8 PASS — branch governance-hygiene/drift-high-triage; PR opened against main. (9) AC.9 PASS — brief status STORED→COMPLETE. (10) AC.10 PASS — final summary emitted.

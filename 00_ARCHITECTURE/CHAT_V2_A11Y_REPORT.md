@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_A11Y_REPORT
 title: Chat V2 Accessibility Report
 version: 1.0
 status: CURRENT

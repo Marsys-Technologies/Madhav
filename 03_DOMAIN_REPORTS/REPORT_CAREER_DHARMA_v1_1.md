@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_CAREER_DHARMA_v1_1
 document: CAREER & DHARMA DOMAIN REPORT
 subject: Abhisek Mohanty
 scope: Career, professional dharma, vocational identity, institutional positioning, entrepreneurial arc, dharmic purpose

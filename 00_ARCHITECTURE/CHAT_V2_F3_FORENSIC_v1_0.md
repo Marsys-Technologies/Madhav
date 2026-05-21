@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_F3_FORENSIC_v1_0
 canonical_id: CHAT_V2_F3_FORENSIC
 version: 1.0
 status: DRAFT

@@ -1,4 +1,5 @@
 ---
+artifact: ASSET_INVENTORY_REPORT_v1_0
 report_id: ASSET_INVENTORY_REPORT_v1_0
 version: 1.0
 generated_at: 2026-04-28

@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_ACCEPTANCE_WALKTHROUGH_v2_0
 name: Chat V2 Acceptance Walkthrough v2.0
 canonical_id: CHAT_V2_ACCEPTANCE_WALKTHROUGH_v2_0
 version: 2.1

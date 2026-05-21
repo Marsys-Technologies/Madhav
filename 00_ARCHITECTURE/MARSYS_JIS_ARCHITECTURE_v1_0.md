@@ -1,5 +1,6 @@
 ---
 artifact: MARSYS_JIS_ARCHITECTURE_v1_0.md
+version: 1.0
 status: APPROVED (2026-04-27, native; pending formal adoption via ND.2 or PHASE_B amendment v1.0.4)
 revision: v1.0 (2026-04-27 initial; same-session §19 question resolution per native approval)
 authored_by: Cowork (Claude Opus 4.7)

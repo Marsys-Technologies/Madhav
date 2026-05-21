@@ -1,3 +1,13 @@
+---
+artifact: FILE_REGISTRY_v1_1
+version: 1.1
+status: SUPERSEDED
+backfill_note: >
+  Frontmatter relocated to top of file by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Original artifact/version/status block was present but below a prose SUPERSEDED banner,
+  making it invisible to the frontmatter parser (regex requires --- at file start).
+---
+
 > **SUPERSEDED** — see `FILE_REGISTRY_v1_2.md` for current. Retained for lineage tracing only. Superseded 2026-04-24 at Step 5A of the Step 0→15 governance rebuild.
 
 ---

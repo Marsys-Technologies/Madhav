@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_PSYCHOLOGY_MIND_v1_0
 document: REPORT_PSYCHOLOGY_MIND_v1_0.md
 version: 1.0
 status: SUPERSEDED

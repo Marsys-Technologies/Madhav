@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_PLAN_v1_0
 name: CHAT V2 BIG BANG — MASTER PLAN
 canonical_id: CHAT_V2_PLAN
 version: 1.1

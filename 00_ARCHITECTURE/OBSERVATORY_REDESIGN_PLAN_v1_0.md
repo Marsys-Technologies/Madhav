@@ -1,4 +1,5 @@
 ---
+artifact: OBSERVATORY_REDESIGN_PLAN_v1_0
 canonical_id: OBSERVATORY_REDESIGN_PLAN
 version: 1.0
 status: CURRENT

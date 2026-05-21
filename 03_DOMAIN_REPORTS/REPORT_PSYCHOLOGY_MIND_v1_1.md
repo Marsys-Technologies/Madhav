@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_PSYCHOLOGY_MIND_v1_1
 document: REPORT_PSYCHOLOGY_MIND_v1_1.md
 version: 1.1
 status: CURRENT

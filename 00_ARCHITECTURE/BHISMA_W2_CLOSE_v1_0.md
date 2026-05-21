@@ -1,4 +1,5 @@
 ---
+artifact: BHISMA_W2_CLOSE_v1_0
 title: "BHISMA Wave 2 — Wave Close Artifact"
 canonical_id: BHISMA_W2_CLOSE
 version: 1.0

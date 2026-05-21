@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_MASTER_GATE_EVIDENCE_v1_0
 canonical_id: CHAT_V2_MASTER_GATE_EVIDENCE
 version: 1.0
 status: CURRENT

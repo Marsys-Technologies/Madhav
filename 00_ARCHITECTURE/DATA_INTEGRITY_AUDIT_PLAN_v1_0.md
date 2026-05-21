@@ -1,3 +1,13 @@
+---
+artifact: DATA_INTEGRITY_AUDIT_PLAN_v1_0
+version: 1.0
+status: CURRENT
+authored_by: backfill GH-CORPUS-FRONTMATTER-BACKFILL 2026-05-21
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Existing file body untouched.
+---
+
 # Data Integrity Audit Plan v1.0
 
 ## 1. Project Overview and Audit Goals

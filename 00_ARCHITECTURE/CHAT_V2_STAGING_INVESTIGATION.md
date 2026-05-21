@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_STAGING_INVESTIGATION
 title: Chat-v2 §M.3 — Staging Environment Investigation
 canonical_id: CHAT_V2_STAGING_INVESTIGATION
 version: 1.0

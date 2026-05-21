@@ -1,4 +1,11 @@
 ---
+artifact: REPORT_HEALTH_LONGEVITY_v1_0
+version: 1.0
+status: SUPERSEDED
+backfill_note: >
+  Top-level artifact/version/status backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Status SUPERSEDED because REPORT_HEALTH_LONGEVITY_v1_1.md supersedes this file.
+  Original nested document_metadata block preserved below.
 document_metadata:
   document: REPORT_HEALTH_LONGEVITY_v1_0.md
   subject: Abhisek Mohanty — b. 1984-02-05, 10:43 IST, Bhubaneswar

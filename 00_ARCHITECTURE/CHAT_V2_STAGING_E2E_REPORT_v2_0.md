@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_STAGING_E2E_REPORT_v2_0
 name: Chat V2 Staging E2E Report v2.0
 canonical_id: CHAT_V2_STAGING_E2E_REPORT_v2_0
 version: 2.0

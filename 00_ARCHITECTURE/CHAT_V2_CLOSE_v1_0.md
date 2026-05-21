@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_CLOSE_v1_0
 canonical_id: CHAT_V2_CLOSE
 version: 1.0
 status: CURRENT

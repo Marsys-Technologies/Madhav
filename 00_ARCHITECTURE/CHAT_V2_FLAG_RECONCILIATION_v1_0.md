@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_FLAG_RECONCILIATION_v1_0
 canonical_id: CHAT_V2_FLAG_RECONCILIATION
 version: 1.0
 status: CURRENT

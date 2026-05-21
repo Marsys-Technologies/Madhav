@@ -1,4 +1,5 @@
 ---
+artifact: MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0
 canonical_id: MSR_COMPUTED_VALUE_DRIFT_HANDOFF
 version: 1.0
 status: HANDOFF — context transfer for a new conversation

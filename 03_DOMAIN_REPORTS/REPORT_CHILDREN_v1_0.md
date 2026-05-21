@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_CHILDREN_v1_0
 document: REPORT_CHILDREN_v1_0.md
 version: 1.0
 status: SUPERSEDED

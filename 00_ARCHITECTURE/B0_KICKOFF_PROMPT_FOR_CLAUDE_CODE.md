@@ -1,3 +1,12 @@
+---
+artifact: B0_KICKOFF_PROMPT_FOR_CLAUDE_CODE
+version: 1.0
+status: CURRENT
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Existing file body untouched.
+---
+
 # Phase B.0 Kickoff — Instructions for Claude Code
 
 **Paste the content below (everything from "ROLE" onward) into Claude Code as a single prompt.**

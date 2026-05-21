@@ -1,5 +1,6 @@
 ---
 artifact: PANEL_SYNTHESIS_ADDENDUM_v0_1.md
+version: 0.1
 status: SUPERSEDED (2026-04-27 — content absorbed into MARSYS_JIS_ARCHITECTURE_v1_0.md §10 Synthesis Strategies; retained in place for historical audit and provenance)
 revision: v0.1 (2026-04-27 initial) → v0.2 (2026-04-27 same-session amendment incorporating six architectural fixes from external critique pass — see §17 changelog)
 authored_by: Cowork (Claude Opus 4.7)

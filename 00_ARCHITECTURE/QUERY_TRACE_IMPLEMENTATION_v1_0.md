@@ -1,4 +1,5 @@
 ---
+artifact: QUERY_TRACE_IMPLEMENTATION_v1_0
 title: Query Trace — Implementation Reference
 version: 1.0.0
 status: CURRENT

@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF.md
 canonical_id: CLAUDECODE_BRIEF
 version: 3.0
-status: COMPLETE
+status: ACTIVE_ORCHESTRATOR
 authored_by: Cowork (Claude Opus 4.7) 2026-05-21
 authored_for_session: CHATV2-WRAPUP-ORCHESTRATOR
 purpose: >
@@ -30,12 +30,12 @@ packet_status:
   A.2:  DONE           # rebase + merge PR #113 (governance-hygiene/drift-detector-fix)
   B:    INFO_EMITTED   # operator gate — emit HUMAN_GATE_B.md (non-blocking)
   C:    PR_OPEN        # Run 2 — GH_SESSION_LOG_STRUCTURE
-  D:    PR_OPEN        # Run 3 — GH_CORPUS_FRONTMATTER_BACKFILL
-  E.1:  DONE           # author GH_DRIFT_HIGH_TRIAGE_BRIEF_v1_0.md
-  E.2:  PR_OPEN        # launch Run 4 — drift HIGH triage (categorize phase only)
-  F.2:  DONE           # investigate 2 failing CI checks from PR #111
-  F.3:  FINAL          # cleanup — convert this brief to FINAL_WRAPUP_SUMMARY.md
-last_completed_packet: FINAL
+  D:    PENDING        # Run 3 — GH_CORPUS_FRONTMATTER_BACKFILL
+  E.1:  PENDING        # author GH_DRIFT_HIGH_TRIAGE_BRIEF_v1_0.md
+  E.2:  PENDING        # launch Run 4 — drift HIGH triage (categorize phase only)
+  F.2:  PENDING        # investigate 2 failing CI checks from PR #111
+  F.3:  PENDING        # cleanup — convert this brief to FINAL_WRAPUP_SUMMARY.md
+last_completed_packet: C
 last_halt: null         # set to {packet, reason, next_action, halt_file_path} on halt
 session_started_at: null
 session_resumed_count: 1
