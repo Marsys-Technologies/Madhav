@@ -9024,23 +9024,36 @@ SIG.MSR.387:
   signal_name: "Tajika — Section Synthesis: Varshaphal as Annual Resolution Layer = Mercury-Saturn Pair as Most Potent Tajika Annual Focus 2024-2027"
   signal_type: tajika-pattern
   classical_source: "Tajika Neelakanthi (annual chart analysis integrates Varshesha, Muntha, Ithasala/Ishrafa yogas, Mudda Dasha, and Tri-Pataki to give a year-by-year view of the native's life)"
-  entities_involved: [PLN.MERCURY, PLN.SATURN, PLN.SUN]
+  entities_involved: [PLN.MERCURY, PLN.SATURN, PLN.SUN, PLN.VENUS, HSE.7]
   strength_score: 0.82
   valence: benefic
   temporal_activation: annual
   supporting_rules:
     - SYNTHESIS of §14 Tajika signals (MSR.376-386):
-    - Framework established: Varshaphal Lagna for Singapore coordinates, Muntha at age 42 = Virgo 6H, Mudda Dasha sequence from Varshesha, Tri-Pataki activation sectors
+    - Framework established: Varshaphal Lagna for Singapore coordinates, Muntha at age 42 = Libra 7H (Venus-ruled, partnership/maraka axis), Mudda Dasha sequence from Varshesha, Tri-Pataki activation sectors
     - Mercury-Saturn pair is the dominant Tajika focus 2024-2027 because: (a) Vimshottari MD=Mercury, AD=Saturn; (b) these are the two planets most likely to serve as Varshesha in the current period; (c) Mercury-Saturn Ithasala = career-structure yoga = when it appears in annual charts, career achievement is delivered
-    - Muntha in 6H at age 42 = caution: health and opposition management needed in the 2026 Varsha year; Mercury as 6H sign lord = the challenges are Mercury-navigable (analytical, communication-based resolution)
+    - Muntha in Libra 7H at age 42 = partnership/marriage and public-dealings as the dominant Varshaphal arena for 2026-27; Venus as Muntha Lord = relationship and commerce as the field of action. 7H is also maraka, so health remains a secondary attention vector per classical Tajika. Venus as Muntha Lord (Libra ruler) = the year's themes are Venus-navigable: harmony, partnership, balance, aesthetic intelligence
     - Key Tajika limitation: all specific signals in §14 are FRAMEWORK signals requiring per-year Varshaphal calculation for confirmation; the analytical foundations are laid here for future year-specific readings
     - Classical verdict: the Tajika system adds a one-year-resolution layer that confirms Mercury-Saturn as the active planetary pair for 2024-2027, consistent with Vimshottari dasha, Sade Sati setting phase, and current transit configurations
     - The three-system convergence (Vimshottari + Tajika + Sade Sati) on Mercury-Saturn as the primary planetary pair for this period = high confidence in Mercury-discipline-as-delivery as the dominant mode of the 2024-2027 period
-  falsifier: "Synthesis of confirmed frameworks in MSR.376-386. Mercury MD + Saturn AD = confirmed from MATRIX_DASHA_PERIODS. Muntha at 42 = Virgo 6H = confirmed calculation. Tajika-specific signals are framework-level pending per-year Varshaphal calculations."
+  falsifier: "Synthesis of confirmed frameworks in MSR.376-386. Mercury MD + Saturn AD = confirmed from MATRIX_DASHA_PERIODS. Muntha at 42 = Libra 7H = confirmed via FORENSIC §22 L1480 VRS.MUNTHA.SIGN; cross-checked via L1481 VRS.MUNTHA.LORD = Venus (Libra ruler). Tajika-specific signals are framework-level pending per-year Varshaphal calculations."
   provenance: v1_0-confirmed-by-v8
-  domains_affected: [career, wealth, health]
+  domains_affected: [career, partnerships, wealth, health]
   confidence: 0.79
-  v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.SUN]
+  v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.SUN, PLN.VENUS]
+  derivation_ledger:
+    - ledger_id: DL.MSR.387.1
+      claim: "Muntha in Libra 7H for Varshphal 2026-27; Venus as Muntha Lord"
+      l1_sources:
+        - id: VRS.MUNTHA.SIGN
+          path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+          line: 1480
+          value: "Libra (7th House)"
+        - id: VRS.MUNTHA.LORD
+          path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+          line: 1481
+          value: "Venus"
+      computation_check: "Aries + (42 mod 12 = 6) = Libra; Lord of Libra = Venus. Matches L1. Same class as DIS.013/MSR.377 prior error — inclusive-counting confusion now resolved."
   rpt_deep_dive: "MSR.376-386 (full §14 Tajika section)"
 
 SIG.MSR.388:
