@@ -53,15 +53,63 @@ export function registerAskMadhav(
   server: McpServer,
   getPrincipal: () => Principal
 ): void {
-  // PLACEHOLDER description — full §4.6 description lands in MCP-2-S2.
-  const placeholderDescription =
-    'Runs the full MARSYS-JIS pipeline for the question and returns a ' +
-    'synthesized answer with citations, trace ID, and epistemics. [Full ' +
-    'description authoring: MCP-2-S2]'
+  // §4.6-standard description — authored MCP-2-S2.
+  //
+  // What it does: Runs the full MARSYS-JIS astrological pipeline end-to-end —
+  // planner selects retrieval tools, tools execute in parallel, results are
+  // synthesized against the 514-signal MSR corpus, and the answer is returned
+  // with Markdown prose, citations, trace ID, synthesis audit, and epistemics.
+  // The Whole-Chart-Read discipline (B.11) is enforced by default: at least
+  // one L2.5 synthesis tool always fires, guaranteeing holistic grounding.
+  //
+  // When to prefer: Use ask_madhav for any question requiring interpretation,
+  // synthesis, or prediction. Prefer query_chart_facts or query_signals when
+  // the question is a single fact lookup and you want the raw value without
+  // synthesis overhead. Prefer plan_query + execute_plan for differential
+  // analysis (inspect the plan before committing to execution).
+  //
+  // Input shape hints:
+  //   query — the question in plain English; no chart_id needed (singleton chart).
+  //   mode — optional; defaults to "auto" (planner chooses query_class). Use
+  //     "holistic" to force B.11 holistic read; "predictive" to trigger PPL
+  //     logging; other modes mirror the query_class enum on PipelinePlan.
+  //   context_hint — optional single-paragraph summary of prior conversation
+  //     context; fed to the planner but not persisted (MCP is stateless per D10).
+  //
+  // Output shape preview: {ok, answer_markdown, citations[], trace_id, plan,
+  //   epistemics, synthesis_audit, suggested_followups[], predictions_logged[]}.
+  //
+  // Example: ask_madhav({query: "What does my 10th house say about career in
+  //   the current Saturn antardasha?", mode: "auto"}) →
+  //   {ok: true, answer_markdown: "Saturn as Amatyakaraka...", citations:
+  //   ["SIG.MSR.234", "SIG.MSR.512"], trace_id: "qry_2026-05-21_a4f3e2",
+  //   synthesis_audit: {holistic_read_passed: true, ...}, ...}
+  const fullDescription =
+    'What it does: Runs the full MARSYS-JIS astrological pipeline end-to-end — ' +
+    'planner selects retrieval tools, tools execute in parallel, results are ' +
+    'synthesized against the 514-signal MSR corpus, and the answer is returned ' +
+    'with Markdown prose, citations, trace ID, synthesis audit, and epistemics. ' +
+    'The Whole-Chart-Read discipline (B.11) is enforced by default: at least ' +
+    'one L2.5 synthesis tool always fires.\n\n' +
+    'When to prefer: Use ask_madhav for any question requiring interpretation, ' +
+    'synthesis, or prediction. Prefer query_chart_facts or query_signals for ' +
+    'single fact lookups. Prefer plan_query + execute_plan for differential ' +
+    'analysis (inspect the plan before committing to execution).\n\n' +
+    'Input shape hints: query — the question in plain English; no chart_id (singleton). ' +
+    'mode — optional; defaults to "auto". Use "holistic" to force B.11 holistic read; ' +
+    '"predictive" to trigger PPL logging. context_hint — optional summary of prior ' +
+    'conversation context; fed to the planner but not persisted (stateless per D10).\n\n' +
+    'Output shape preview: {ok, answer_markdown, citations[], trace_id, plan, ' +
+    'epistemics, synthesis_audit, suggested_followups[], predictions_logged[]}.\n\n' +
+    'Example: ask_madhav({query: "What does my 10th house say about career in ' +
+    'the current Saturn antardasha?", mode: "auto"}) → ' +
+    '{ok: true, answer_markdown: "Saturn as Amatyakaraka...", ' +
+    'citations: ["SIG.MSR.234", "SIG.MSR.512"], trace_id: "qry_...", ' +
+    'synthesis_audit: {holistic_read_passed: true, ...}}'
 
   server.tool(
     'ask_madhav',
-    placeholderDescription,
+    fullDescription,
     AskMadhavInputSchema.shape,
     async (args: AskMadhavInput) => {
       const principal = getPrincipal()
