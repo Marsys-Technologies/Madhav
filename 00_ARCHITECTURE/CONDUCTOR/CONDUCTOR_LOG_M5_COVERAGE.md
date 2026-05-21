@@ -16,3 +16,11 @@
 | 2026-05-21T00:22:00Z | COV-S8 | 0 | halt | — | — | — | spec_version_mismatch: §G.8 not in audit v1.0; queue requires v1.2 |
 | 2026-05-21T00:40:00Z | COV-S8 | 1 | success | 2b2eca10 | https://github.com/amonty84/Madhav/pull/116 | tsc:PASS vitest:6/6 lint:EXIT0 CI:all-green | null |
 | 2026-05-21T00:55:00Z | PERF-S1 | 1 | success | 013fc90a | https://github.com/amonty84/Madhav/pull/117 | tsc:PASS vitest:79/79 lint:EXIT0 CI:all-green | null |
+| 2026-05-21T01:10:00Z | ICR-S1 | 1 | success | 1dee9cc9 | https://github.com/amonty84/Madhav/pull/118 | tsc:PASS schema_validate:EXIT0 | null |
+| 2026-05-21T01:30:00Z | COV-S2 | 1 | success | 03439cc3 | https://github.com/amonty84/Madhav/pull/119 | tsc:PASS vitest:changed lint:EXIT0 manifest_audit:PASS | null |
+| 2026-05-21T01:50:00Z | COV-S9 | 1 | success | 81e3230e | https://github.com/amonty84/Madhav/pull/120 | tsc:PASS vitest:changed migration_dry_run:PASS manifest_audit:PASS | null |
+| 2026-05-21T02:00:00Z | COV-S10 | 1 | success | a671fcd3 | https://github.com/amonty84/Madhav/pull/122 | tsc:PASS vitest:changed migration_dry_run:PASS | null |
+| 2026-05-21T02:05:00Z | ICR-S2 | 1 | halt | 1a46940b | — | tsc:PASS vitest:changed | l1_truth_index_gate_fail: 17.8% < 95% (see HALT LOG) |
+| 2026-05-21T07:16:00Z | — | — | gate_resolution | — | — | — | ICR-S2 halt resolved: native chose Option C (grounding criterion expanded to include classical-text citations; L1 truth index = 510/510 = 100%); ICR-S3 through ICR-S6 unblocked |
+| 2026-05-21T03:20:00Z | COV-S3 | 1 | success | e9cf20dc | https://github.com/amonty84/Madhav/pull/123 | tsc:PASS vitest:changed planner_golden_regression:PASS lint:EXIT0 | null |
+| 2026-05-21T06:47:00Z | COV-S4 | 1 | success | ecee542d | https://github.com/amonty84/Madhav/pull/124 | tsc:PASS vitest:9/9 sla_probe_new_tools:PASS lint:EXIT0 | null |
