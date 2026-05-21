@@ -23,7 +23,7 @@ import { IntraSignalDetector } from '../../src/lib/icr/detector';
 const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname);
 const REPO_ROOT = resolve(SCRIPT_DIR, '..', '..', '..');
 
-const MSR_PATH = resolve(REPO_ROOT, '025_HOLISTIC_SYNTHESIS', 'MSR_v3_0.md');
+const MSR_PATH = resolve(REPO_ROOT, '025_HOLISTIC_SYNTHESIS', 'MSR_v5_0.md');
 const FORENSIC_PATH = resolve(
   REPO_ROOT,
   '01_FACTS_LAYER',

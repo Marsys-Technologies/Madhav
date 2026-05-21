@@ -24,7 +24,7 @@ export type ApplyResult =
  */
 export function resolveTargetPath(signalId: string, repoRoot: string): string | null {
   if (signalId.startsWith('MSR.')) {
-    return path.join(repoRoot, '025_HOLISTIC_SYNTHESIS', 'MSR_v3_0.md')
+    return path.join(repoRoot, '025_HOLISTIC_SYNTHESIS', 'MSR_v5_0.md')
   }
   if (signalId.startsWith('UCN.')) {
     return path.join(repoRoot, '025_HOLISTIC_SYNTHESIS', 'UCN_v4_0.md')
@@ -95,7 +95,7 @@ export function atomicApply(
   }
 
   // Compute paths for dry-run return
-  const resolvedDir = path.join(repoRoot, 'RESOLVED')
+  const resolvedDir = path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'RESOLVED')
   const resolvedName = path.basename(proposedPath).replace('_proposed.yaml', '_resolved.yaml')
   const resolvedPath = path.join(resolvedDir, resolvedName)
   const backupPath = targetPath + '.icr_bak'

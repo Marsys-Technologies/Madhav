@@ -94,7 +94,7 @@ export function emitProposePatch(
   conflict: ConflictRecord,
   patch: Omit<ProposePatch, 'proposed_at' | 'status'>,
 ): string {
-  const proposedDir = path.join(repoRoot, 'PROPOSED');
+  const proposedDir = path.join(repoRoot, '00_ARCHITECTURE', 'CONFLICT_PATCHES', 'PROPOSED');
   mkdirSync(proposedDir, { recursive: true });
 
   const filename = proposedFilename(conflict.conflict_id, patch.signal_id);
