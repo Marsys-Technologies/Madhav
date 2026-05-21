@@ -1,9 +1,9 @@
 /**
  * GET /api/icr/patches
- * Lists YAML filenames from PROPOSED/, RESOLVED/, REJECTED/ subdirs of
- * 00_ARCHITECTURE/CONFLICT_PATCHES/.
+ * Lists and parses YAML files from PROPOSED/, RESOLVED/, REJECTED/ subdirs of
+ * 00_ARCHITECTURE/CONFLICT_PATCHES/. Returns full PatchSummary objects.
  *
- * ICR-S5 (2026-05-21)
+ * ICR-S5 (2026-05-21) — extended in PERF-S5 to return structured PatchSummary[]
  */
 
 import { NextResponse } from 'next/server';
@@ -19,22 +19,104 @@ const CONFLICT_PATCHES_DIR = path.join(
   'CONFLICT_PATCHES',
 );
 
-function listYamls(subdir: string): string[] {
+export interface PatchSummary {
+  filename: string;
+  conflict_id: string;
+  signal_ids_affected: string[];
+  patch_description: string;
+  authored_on: string;
+  before: string;
+  after: string;
+  status: string;
+}
+
+/**
+ * Parse a YAML string into a PatchSummary using simple line-by-line parsing
+ * (no external YAML library — same approach as atomic_apply.ts).
+ */
+function parseYaml(content: string, filename: string, fallbackStatus: string): PatchSummary {
+  const lines = content.split('\n');
+
+  function scalarField(key: string): string {
+    for (const line of lines) {
+      const match = line.match(new RegExp(`^${key}:\\s*(.+)$`));
+      if (match) {
+        // Strip surrounding quotes if present
+        return match[1].replace(/^["']|["']$/g, '').trim();
+      }
+    }
+    return '';
+  }
+
+  function listField(key: string): string[] {
+    const result: string[] = [];
+    let inList = false;
+    for (const line of lines) {
+      if (line.match(new RegExp(`^${key}:\\s*$`))) {
+        inList = true;
+        continue;
+      }
+      if (inList) {
+        const item = line.match(/^\s+-\s+(.+)$/);
+        if (item) {
+          result.push(item[1].replace(/^["']|["']$/g, '').trim());
+        } else if (line.match(/^\S/)) {
+          // New top-level key — end of list
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
+  return {
+    filename,
+    conflict_id: scalarField('conflict_id'),
+    signal_ids_affected: listField('signal_ids_affected'),
+    patch_description: scalarField('patch_description'),
+    authored_on: scalarField('authored_on'),
+    before: scalarField('before'),
+    after: scalarField('after'),
+    status: scalarField('status') || fallbackStatus,
+  };
+}
+
+function listAndParseYamls(subdir: string, fallbackStatus: string): PatchSummary[] {
   const dirPath = path.join(CONFLICT_PATCHES_DIR, subdir);
+  let files: string[] = [];
   try {
-    return fs
+    files = fs
       .readdirSync(dirPath)
       .filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
   } catch {
     // Directory may not exist yet — return empty array
     return [];
   }
+
+  return files.map((filename) => {
+    try {
+      const content = fs.readFileSync(path.join(dirPath, filename), 'utf-8');
+      return parseYaml(content, filename, fallbackStatus);
+    } catch {
+      // If file can't be read, return a minimal record
+      return {
+        filename,
+        conflict_id: filename,
+        signal_ids_affected: [],
+        patch_description: '(unreadable)',
+        authored_on: '',
+        before: '',
+        after: '',
+        status: fallbackStatus,
+      };
+    }
+  });
 }
 
 export async function GET() {
-  const proposed = listYamls('PROPOSED');
-  const resolved = listYamls('RESOLVED');
-  const rejected = listYamls('REJECTED');
+  const proposed = listAndParseYamls('PROPOSED', 'PROPOSED');
+  const resolved = listAndParseYamls('RESOLVED', 'RESOLVED');
+  const rejected = listAndParseYamls('REJECTED', 'REJECTED');
 
   return NextResponse.json({ proposed, resolved, rejected });
 }

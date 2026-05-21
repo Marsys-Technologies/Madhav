@@ -81,6 +81,30 @@ jobs:
         # Guards against deepseek-v4-flash re-entering routing tables.
         run: npx vitest run tests/planner --reporter=verbose
 
+  icr-pr-gate:
+    name: ICR PR Gate (synthetic smoke)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: ICR gate — synthetic conflict detection smoke
+        # Runs the gate against a synthetic MSR fragment containing one citation-free
+        # signal. Gate must exit non-zero (detecting the violation) — tested via vitest
+        # in tests/icr/icr_pr_gate.test.ts. This CI step runs a dry-run to ensure
+        # the script is importable and executes without syntax errors.
+        run: |
+          npx tsx scripts/governance/icr_pr_gate.ts --dry-run --synthetic
+          echo "icr_pr_gate_importable: PASS"
+
   coverage-gate:
     name: Coverage Gate (COV-S7)
     runs-on: ubuntu-latest
