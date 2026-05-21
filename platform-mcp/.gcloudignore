@@ -12,4 +12,3 @@ coverage/
 .nyc_output/
 README.md
 *.md
-tsconfig.json

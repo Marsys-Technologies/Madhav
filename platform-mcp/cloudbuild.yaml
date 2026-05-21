@@ -17,17 +17,7 @@
 #   is configured on the amjis-web service.
 
 steps:
-  # Step 1: Install all dependencies (dev deps needed for tsc)
-  - name: 'node:20-alpine'
-    entrypoint: npm
-    args: ['ci']
-
-  # Step 2: Compile TypeScript → dist/
-  - name: 'node:20-alpine'
-    entrypoint: npm
-    args: ['run', 'build']
-
-  # Step 3: Build Docker image
+  # Step 1: Build Docker image (multi-stage — TS compile happens inside Docker)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -35,21 +25,18 @@ steps:
       - 'gcr.io/$PROJECT_ID/amjis-mcp:$COMMIT_SHA'
       - '.'
 
-  # Step 4: Push Docker image to Container Registry
+  # Step 2: Push Docker image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/$PROJECT_ID/amjis-mcp:$COMMIT_SHA'
 
-  # Step 5: Deploy to Cloud Run
+  # Step 3: Deploy to Cloud Run
   #   Service: amjis-mcp (sibling to amjis-web + amjis-sidecar)
   #   Region: asia-south1 (same as platform services)
   #   Memory: 512 MB (thin adapter — all logic runs on platform)
   #   Min instances: 1 (avoid cold start on first MCP call)
   #   Concurrency: 80 (default Cloud Run concurrency)
-  #
-  # OPERATOR NOTE: Replace PLATFORM_URL value before first deploy.
-  # MCP_INTERNAL_TOKEN should be set via Cloud Run secrets, not inline here.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -63,8 +50,10 @@ steps:
       - '--min-instances=1'
       - '--concurrency=80'
       - '--allow-unauthenticated'
-      # OPERATOR: Replace placeholder with actual amjis-web Cloud Run URL.
-      - '--set-env-vars=PLATFORM_URL=https://amjis-web-PLACEHOLDER-el.a.run.app'
+      - '--set-env-vars=PLATFORM_URL=$_PLATFORM_URL'
 
 images:
   - 'gcr.io/$PROJECT_ID/amjis-mcp:$COMMIT_SHA'
+
+substitutions:
+  _PLATFORM_URL: https://amjis-web-qm256lasva-el.a.run.app

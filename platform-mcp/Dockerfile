@@ -1,22 +1,18 @@
-# platform-mcp — MARSYS-JIS MCP Server
-# Node 20 Alpine image. The MCP server is a thin adapter; all heavy logic runs
-# on the platform (amjis-web). 512 MB RAM is sufficient.
+# platform-mcp — MARSYS-JIS MCP Server (multi-stage build)
+# Stage 1: compile TypeScript; Stage 2: production-only deps + compiled output.
+
+FROM node:20-alpine AS builder
+WORKDIR /build
+COPY package*.json ./
+RUN npm ci
+COPY tsconfig.json ./
+COPY src/ ./src/
+RUN npm run build
 
 FROM node:20-alpine
-
 WORKDIR /app
-
-# Copy package files first to leverage Docker layer caching
 COPY package*.json ./
-
-# Install production dependencies only (dev deps are not needed at runtime)
 RUN npm ci --omit=dev
-
-# Copy compiled TypeScript output (built before Docker build via cloudbuild.yaml)
-COPY dist/ ./dist/
-
-# Cloud Run default port
+COPY --from=builder /build/dist ./dist
 EXPOSE 8080
-
-# Start the MCP server
 CMD ["node", "dist/server.js"]
