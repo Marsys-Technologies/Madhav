@@ -6,7 +6,18 @@ before: "Tajika — Muntha Position at Age 42 (2026): Muntha in Gemini 3H = UL/S
 after: "Tajika — Muntha Position at Age 42 (2026): Muntha in Libra 7H = UL/Spouse-Domain Annual Activation"
 authored_by: ICR-S4
 authored_on: "2026-05-21"
-status: PROPOSED
+status: rejected
+rejection_reason: >
+  Patch was a partial fix only: it corrected signal_name from "Gemini 3H" to
+  "Libra 7H" but left the entire signal body — supporting_rules, falsifier,
+  entities_involved, domains_affected, v6_ids_consumed — populated with Virgo 6H
+  and Mercury-ruled content, which is also wrong. The authoritative L1 is
+  FORENSIC §22 VRS.MUNTHA.SIGN = Libra (7th House); VRS.MUNTHA.LORD = Venus
+  (line 1480-1481). A full signal rewrite was required, not a signal_name swap.
+  Patch artifact preserved as audit trail; DIS.013 closed via direct MSR_v5_0.md
+  rewrite in session MSR-377-LIBRA-7H-CORRECTION (2026-05-21).
+rejected_on: "2026-05-21"
+rejected_by_session: MSR-377-LIBRA-7H-CORRECTION
 propagation_chain:
   tier_1:
     - MSR.377

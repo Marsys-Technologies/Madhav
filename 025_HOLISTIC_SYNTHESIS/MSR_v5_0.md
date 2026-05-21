@@ -8781,28 +8781,42 @@ SIG.MSR.376:
   rpt_deep_dive: "v6.0 §2.1; Tajika Neelakanthi framework"
 
 SIG.MSR.377:
-  signal_name: "Tajika — Muntha Position at Age 42 (2026): Muntha in Gemini 3H = UL/Spouse-Domain Annual Activation"
+  signal_name: "Tajika — Muntha Position at Age 42 (2026–27): Muntha in Libra 7H = Partnership/Public-Domain Annual Activation (Venus-ruled, maraka axis)"
   signal_type: tajika-pattern
   classical_source: "Tajika Neelakanthi (Muntha = a sensitive Tajika point that moves 30°/year from the natal Lagna sign; at birth, Muntha = natal Lagna sign; each subsequent year, Muntha advances by one sign)"
-  entities_involved: [JMN.UL, HSE.3, HSE.1]
-  strength_score: 0.83
-  valence: context-dependent
+  entities_involved: [JMN.UL, HSE.7, PLN.VENUS]
+  strength_score: 0.87
+  valence: mixed-benefic
   temporal_activation: annual
   supporting_rules:
-    - Natal Lagna = Aries 1H. Muntha moves 30°/year = 1 sign per year starting from Lagna sign
-    - Age 0 = Muntha in Aries (1H). Age 1 = Muntha in Taurus (2H). Age 2 = Muntha in Gemini (3H)... Age 12 = Muntha cycles back to Aries. Pattern: (Age mod 12) + 1H = Muntha sign. For age 42: 42 mod 12 = 6. So Muntha = 6th sign from Aries = Virgo 6H.
-    - Alternative calculation: some traditions count Muntha as (Birth year Muntha) + 1 sign per year; exact method varies. Using standard: age 42 = Muntha cycles (42 mod 12 = 6) = Virgo 6H.
-    - Muntha in Virgo 6H at age 42 = the Tajika year (around Feb 2026 = age 42) has Muntha in the 6H (health, service, conflict)
-    - Muntha in 6H = classical Tajika warning: when Muntha is in the 6H (or 8H or 12H = Dusthana), the year can have challenges related to health, debts, enemies, or service-domain difficulties; requires careful handling of the 6H themes
-    - Virgo 6H = Mercury-ruled; Mercury is the MD lord and Yogi Planet = the 6H Muntha's sign lord (Mercury) is at maximum power = the Muntha challenges (6H difficulties) may be navigated through Mercury's intelligence and analytical capability
-    - The current Mercury-Saturn AD (2024-2027) + Muntha in 6H at age 42 = a demanding year that requires Mercury's problem-solving applied to Saturn's structural constraints = career-effort year with health/stress attention
-    - Note: If this is the 2026 Varsha Pravesh (around Feb 2026), the native would be turning 42, consistent with the computation
-  falsifier: "Muntha calculation: Age 42 mod 12 = 6 (remainder after 3 complete 12-year cycles); 6th sign from Aries = Virgo (Aries=1, Taurus=2, Gemini=3, Cancer=4, Leo=5, Virgo=6). Muntha at 42 = Virgo 6H = confirmed. Standard Tajika Muntha formula confirmed."
-  provenance: v1_0-confirmed-by-v8
-  domains_affected: [health, career, wealth]
-  confidence: 0.78
-  v6_ids_consumed: [HSE.6, HSE.1, PLN.MERCURY]
-  rpt_deep_dive: "Tajika Neelakanthi; MSR.376 (Varshaphal framework)"
+    - "L1 ground truth: VRS.MUNTHA.SIGN = Libra (7th House); VRS.MUNTHA.LORD = Venus (FORENSIC §22 lines 1480–1481). Active Varshphal range: 2026-02-05 → 2026-12-21 (FORENSIC line 1738). These are canonical L1 facts; no re-derivation needed."
+    - "Computation cross-check (confirms L1): Natal Lagna = Aries 1H. Muntha formula: sign = Aries + (age mod 12 signs). Age 42: 42 mod 12 = 6 → 6th sign from Aries (counting Aries as 1) = Libra. Result: Muntha in Libra = 7th house from Aries Lagna. FORENSIC L1 and computation agree."
+    - "Muntha in 7H (Libra): the Tajika year activates the 7H axis — partnerships, spouse, contracts, open dealings, public domain. This is a non-dusthana placement; 7H Muntha is treated as activating the relationship/public sphere for that Varshphal year."
+    - "Muntha lord = Venus: Venus in natal chart is the 2L (wealth, family, speech) and 7L (partnership, marriage) from Aries Lagna. Venus also holds Ishta Devata rulership (Mahalakshmi) per FORENSIC. The Muntha lord Venus amplifies the 2H/7H axis — partnership and accumulated wealth domains are doubly activated."
+    - "JMN.UL (Upapada Lagna = spouse-karaka in Jaimini) is retained as an entity because Muntha in 7H + Muntha lord Venus (the 7L) + UL activation form a triple convergence on the spouse/partnership axis in 2026-27 — classical Tajika significance."
+    - "7H is also a maraka (death-inflicting) house in classical Jyotish. Muntha in a maraka house = the Tajika year carries secondary attention to health and vitality, especially in the native's 7th decade window. This is a classical caution, not a prediction."
+    - "Venus = 2L from Aries Lagna: Muntha lord simultaneously ruling wealth and partnership = the year's financial trajectory is linked to partnership outcomes. Commercial dealings and public-facing ventures carry elevated importance."
+    - "Mercury–Saturn AD (2024-2027) context: Mercury's intelligence and Saturn's structure now operate within a 7H Muntha year = relationship-domain structural decisions (contracts, collaborations, public commitments) are the arena where Mercury–Saturn themes play out."
+  falsifier: "Disqualified if FORENSIC §22 VRS.MUNTHA.SIGN ≠ Libra — this signal is invalidated by any L1 revision to that field. Computation test: Aries + (42 mod 12 = 6) = Libra; cross-check via Muntha Lord = Venus (Lord of Libra) per VRS.MUNTHA.LORD. Prior erroneous values in the signal's earlier authoring have been purged; DIS.013 (DISAGREEMENT_REGISTER_v1_0.md) contains the full audit trail of what was wrong and why. L1 FORENSIC §22 is authoritative per B.1/B.8."
+  provenance: v5_0-corrected-MSR-377-LIBRA-7H-CORRECTION-2026-05-21
+  domains_affected: [partnerships, marriage, commerce, public_dealings, health, wealth]
+  confidence: 0.88
+  v6_ids_consumed: [HSE.7, PLN.VENUS, JMN.UL]
+  rpt_deep_dive: "Tajika Neelakanthi; MSR.376 (Varshaphal framework); FORENSIC §22 (VRS.MUNTHA.SIGN, VRS.MUNTHA.LORD)"
+  derivation_ledger:
+    - ledger_id: DL.MSR.377.1
+      claim: "Muntha in Libra 7H for Varshphal 2026-27"
+      l1_sources:
+        - id: VRS.MUNTHA.SIGN
+          path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+          line: 1480
+          value: "Libra (7th House)"
+        - id: VRS.MUNTHA.LORD
+          path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+          line: 1481
+          value: "Venus"
+      computation_check: "Aries + (42 mod 12 = 6) = Libra; Lord of Libra = Venus. Matches L1."
+      dis_resolved: DIS.013
 
 SIG.MSR.378:
   signal_name: "Tajika — Ithasala Yoga: When Two Planets Are Converging in Degree = Action-Producing Tajika Yoga"

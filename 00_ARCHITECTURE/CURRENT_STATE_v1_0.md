@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.34
+version: 5.35
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.35 (2026-05-21, MSR-377-LIBRA-7H-CORRECTION):
+    **ICR — SIG.MSR.377 full rewrite. DIS.013 closed. No macro-phase change.**
+    Key outcomes: (1) SIG.MSR.377 in MSR_v5_0.md fully rewritten: signal_name, supporting_rules, falsifier, entities_involved, domains_affected, v6_ids_consumed, confidence, provenance all grounded in L1 FORENSIC §22 (VRS.MUNTHA.SIGN = Libra 7th House, VRS.MUNTHA.LORD = Venus). All Gemini/Virgo/Mercury-ruled references purged. (2) DERIVATION_LEDGER entry DL.MSR.377.1 added citing FORENSIC lines 1480–1481. (3) DIS.013 in DISAGREEMENT_REGISTER marked closed with full audit trail; disqualifying L1 fact: FORENSIC §22 line 1480 VRS.MUNTHA.SIGN = Libra (7th House). (4) ICR-S4 proposed patch (PROPOSED/DIS.013_MSR.377_proposed.yaml) marked rejected — partial fix only (signal_name swap without body correction); preserved as audit artifact. (5) CURRENT_STATE v5.35 + SESSION_LOG appended.
+    files_touched: ["025_HOLISTIC_SYNTHESIS/MSR_v5_0.md", "00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md", "00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    active_phase_plan_sub_phase: M5-A INCOMING (ICR correction session; no macro-phase change).
+    last_session_id: MSR-377-LIBRA-7H-CORRECTION. predecessor_session: GH-CORPUS-FRONTMATTER-BACKFILL.
+    next_session_objective: "Resume M5-A scope or remaining governance hygiene briefs per POST_MERGE_OPERATOR_CHECKLIST.md."
+    file_updated_at: 2026-05-21T18:45:00+05:30. file_updated_by_session: MSR-377-LIBRA-7H-CORRECTION.
   - v5.34 (2026-05-21, GH-CORPUS-FRONTMATTER-BACKFILL):
     **GOVERNANCE HYGIENE — Corpus frontmatter backfill. 116/118 MEDIUM frontmatter violations cleared. 2 learning_layer violations HALTED (HUMAN_GATE_D). No macro-phase change.**
     Key outcomes: (1) AC.1 PASS — Diagnosed 208 violations baseline (exit=2). After fixes: 58 violations (exit=2 — dominated by pre-existing session_log HIGH violations in separate brief scope). (2) AC.2 PASS — artifact_schemas.yaml authority check: architecture_governance requires [artifact, version, status]; l1_facts/l2_5_cgm/l3_domain_reports require [artifact, version, status]; learning_layer_stub requires [artifact, mechanism_id, status, produced_during]. (3) AC.3 PASS (partial) — 83 architecture_governance MEDIUM fixed (65 artifact:, 9 full-frontmatter-block, 7 version:); 18 l3_domain_reports MEDIUM fixed; 1 FORENSIC (l1_facts) MEDIUM fixed; 1 CGM (l2_5_cgm) MEDIUM fixed; 1 LEL LOW fixed; 11 additional architecture_governance LOW fixed. (4) AC.4 HALTED — SIGNAL_WEIGHT_CALIBRATION/README.md: validator regex parses ACTIVE-PENDING as ACTIVE, requiring activation pointers that aren't obvious from file; OBSERVATIONS/README.md: mechanism_id required but has no LL.N assignment. Both halted per brief §5. HUMAN_GATE_D.md written. (5) AC.5 PASS — 21 CAPABILITY_MANIFEST.json entries updated with version: "1.0" (M9x tools + retrieval tools). (6) AC.6 PARTIAL — schema_validator 208→58 violations; exit=2 (pre-existing session_log HIGH violations). (7) AC.7 PASS — drift_detector exit 2 (pre-existing baseline; no regression), mirror_enforcer exit 0; FORENSIC/LEL/CGM fingerprints updated in CAPABILITY_MANIFEST.json. (8) AC.8 PASS — CURRENT_STATE v5.34. SESSION_LOG appended. (9) AC.9 PASS — Branch governance-hygiene/corpus-frontmatter; PR #136 merged to main. (10) AC.10 PARTIAL — Brief status flipped to ACTIVE_HALTED.

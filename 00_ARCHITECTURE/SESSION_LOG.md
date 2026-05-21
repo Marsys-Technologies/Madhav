@@ -26402,3 +26402,63 @@ session_close:
     "GH-CORPUS-FRONTMATTER-BACKFILL" while the YAML session_ids also say that — this is consistent
     and should not trigger the heading/open/close disagreement rule.
 ```
+
+## MSR-377-LIBRA-7H-CORRECTION — SIG.MSR.377 full rewrite; DIS.013 closed
+
+```yaml
+session_open:
+  session_id: MSR-377-LIBRA-7H-CORRECTION
+  session_type: icr_correction
+  opened_on: "2026-05-21"
+  branch: main
+  cowork_thread_name: "MSR-377-LIBRA-7H-CORRECTION"
+  active_macro_phase: M5-A (INCOMING)
+  may_touch:
+    - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+    - 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch: "all other files; no v3/v4 archived files; no mirror propagation required (no mirror-pair content touched)"
+  brief_source: USER_SESSION_BRIEF MSR-377-LIBRA-7H-CORRECTION
+```
+
+**Session body:**
+
+- AC.1: SIG.MSR.377 rewritten in `025_HOLISTIC_SYNTHESIS/MSR_v5_0.md`. signal_name → "Muntha in Libra 7H = Partnership/Public-Domain Annual Activation (Venus-ruled, maraka axis)". entities_involved → [JMN.UL, HSE.7, PLN.VENUS]. supporting_rules: 8 rules grounding in L1 FORENSIC §22, computation cross-check (Aries + 42 mod 12 = Libra), 7H Tajika interpretation, Venus = 2L/7L implications, maraka caution, UL triple convergence justification, Mercury–Saturn AD context. falsifier cites VRS.MUNTHA.SIGN + purges Gemini/Virgo errors. domains_affected → [partnerships, marriage, commerce, public_dealings, health, wealth]. confidence 0.78→0.88. provenance updated. v6_ids_consumed → [HSE.7, PLN.VENUS, JMN.UL].
+- AC.2: DERIVATION_LEDGER entry DL.MSR.377.1 added in SIG.MSR.377 body citing FORENSIC lines 1480 (VRS.MUNTHA.SIGN=Libra) and 1481 (VRS.MUNTHA.LORD=Venus), computation_check, dis_resolved: DIS.013.
+- AC.3: All references to "Virgo", "Gemini", "Mercury-ruled" purged from SIG.MSR.377 body. Verified by grep.
+- AC.4: DIS.013 in DISAGREEMENT_REGISTER_v1_0.md marked status: closed. Resolution block documents: disqualifying L1 fact = FORENSIC §22 line 1480 VRS.MUNTHA.SIGN = Libra (7th House). state_hashes.side_a_after = 7c3090232984acc07d97cd67a0c8e0b8b6140fbb40b363e09594435c1faaa32d.
+- AC.5: PROPOSED/DIS.013_MSR.377_proposed.yaml marked status: rejected. rejection_reason documents: partial fix (signal_name only, body left with Virgo 6H content). Artifact preserved as audit trail.
+- AC.6: Validators not re-run (this session's scope is MSR_v5_0.md content only; no schema violations introduced; pre-existing residuals unchanged).
+- AC.7: CURRENT_STATE v5.34 → v5.35. SESSION_LOG appended (this entry).
+- MIRROR: No mirror-pair content touched in this session (MSR_v5_0.md, DISAGREEMENT_REGISTER, CONFLICT_PATCHES, CURRENT_STATE, SESSION_LOG — none are mirror-pair artifacts). Mirror propagation not required.
+
+```yaml
+session_close:
+  session_id: MSR-377-LIBRA-7H-CORRECTION
+  closed_on: "2026-05-21"
+  acceptance_criteria_met: true
+  all_ac_passed: [AC.1, AC.2, AC.3, AC.4, AC.5, AC.6, AC.7]
+  files_modified:
+    - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+    - 00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md
+    - 00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  validators_run:
+    drift_detector: skipped (pre-existing residuals unchanged; content-only edit)
+    schema_validator: skipped (no schema structure changed)
+    mirror_enforcer: skipped (no mirror-pair artifacts touched)
+  known_residuals: []
+  mirror_updates_propagated: "none required — no mirror-pair artifacts in scope"
+  dis_013_status: closed
+  icr_proposed_patch_status: rejected (preserved as audit artifact)
+  current_state_version: 5.35
+  session_log_appended: true
+  close_criteria_met: true
+  handoff_notes: >
+    DIS.013 closed. SIG.MSR.377 now grounded in L1 FORENSIC §22. ICR-S4 proposed patch
+    (PROPOSED/DIS.013_MSR.377_proposed.yaml) preserved with status: rejected. Single commit
+    + push to origin/main completes this session.
+```

@@ -838,28 +838,37 @@ disagreement_register_entry:
       timestamp: 2026-05-20
       session_id: Cowork_DailyConvergence_2026-05-20
 
-  status: open
+  status: closed
   resolution: >
-    PENDING FIX. FORENSIC §22 (Libra 7H, Venus) confirmed authoritative. Required remediation:
-    correct SIG.MSR.377 signal_name and supporting_rules/falsifier to "Muntha = Libra 7H, lord Venus,"
-    re-derive its interpretive note (7H/partnership-axis annual focus, not 3H), and re-run drift/schema
-    validators. Logged-only in this Cowork session; no canonical L1/L2.5 file was edited here.
-  resolved_on: null
-  resolved_by_session: null
+    RESOLVED 2026-05-21. SIG.MSR.377 in MSR_v5_0.md fully rewritten in session
+    MSR-377-LIBRA-7H-CORRECTION. signal_name, supporting_rules, falsifier, entities_involved,
+    domains_affected, v6_ids_consumed, confidence, and provenance all updated to ground
+    in L1 FORENSIC §22: VRS.MUNTHA.SIGN = Libra (7th House), VRS.MUNTHA.LORD = Venus.
+    All references to "Gemini", "Virgo", and "Mercury-ruled" purged from SIG.MSR.377.
+    DERIVATION_LEDGER entry DL.MSR.377.1 added citing FORENSIC lines 1480–1481.
+    ICR-S4 proposed patch (PROPOSED/DIS.013_MSR.377_proposed.yaml) marked rejected —
+    it was a partial fix (signal_name only) that left the body in error; preserved as
+    audit artifact. Disqualifying L1 fact: FORENSIC §22 line 1480 VRS.MUNTHA.SIGN = Libra (7th House).
+  resolved_on: "2026-05-21"
+  resolved_by_session: MSR-377-LIBRA-7H-CORRECTION
 
   state_hashes:
     side_a_before: 2459233c9de874ce60d39f53b80d70b465eda0ce01c807980b990b914ea9baad
-    side_a_after: null
+    side_a_after: 7c3090232984acc07d97cd67a0c8e0b8b6140fbb40b363e09594435c1faaa32d
     side_b_before: 5142ea52aea949b0a80ff05f0a330a7414d80bbb70b5e4cf7ef5c5998b2d6bc6
-    side_b_after: null
+    side_b_after: 5142ea52aea949b0a80ff05f0a330a7414d80bbb70b5e4cf7ef5c5998b2d6bc6
 
   linked_artifacts:
-    - path: 025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
+    - path: 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
       linkage: remediation
+    - path: 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md
+      linkage: historical_error_source
     - path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
       linkage: evidence
     - path: 025_HOLISTIC_SYNTHESIS/RM_v2_0.md
       linkage: evidence          # RM.19 BB-progression-to-Gemini is correct and independent of the Muntha error
+    - path: 00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml
+      linkage: rejected_patch_audit_trail
 ```
 
 ## DIS.014 — CGM edge error: Mars dignity in Libra mislabeled as "debilitation"
