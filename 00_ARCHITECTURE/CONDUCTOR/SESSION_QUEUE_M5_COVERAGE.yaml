@@ -147,16 +147,19 @@ sessions:
     audit_section: "§N.6 ICR-S3"
     depends_on: ["ICR-S2"]
     gates: ["tsc", "vitest_changed", "intra_signal_munta_detected"]
-    status: in_progress
+    status: completed
     attempt_count: 1
+    completed_at: "2026-05-21T02:55:00Z"
+    merge_commit: b6598d8a
+    pr_url: https://github.com/amonty84/Madhav/pull/126
     halt_conditions: ["MSR.377 intra-signal conflict not detected"]
   - id: PERF-S3
     stream: perf
     audit_section: "§H.3"
     depends_on: ["PERF-S1", "PERF-S2"]
     gates: ["tsc", "vitest_changed", "retrieval_util_panel_smoke"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["zero-call detection does not surface known-orphan tools"]
   - id: COV-S5
     stream: cov
