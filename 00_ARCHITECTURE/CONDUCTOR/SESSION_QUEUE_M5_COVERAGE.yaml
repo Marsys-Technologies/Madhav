@@ -136,8 +136,11 @@ sessions:
     audit_section: "§H.2"
     depends_on: ["PERF-S1"]
     gates: ["tsc", "vitest_changed", "asset_catalog_smoke"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T07:50:00+05:30"
+    merge_commit: 233e37f96da5fe8fef3358f2234e197f6b9ae26b
+    gate_results: "tsc:PASS vitest:61/61 asset_catalog_smoke:PASS"
     halt_conditions: ["asset catalog renders fewer entries than manifest count"]
 
   - id: COV-S7
@@ -145,8 +148,11 @@ sessions:
     audit_section: "§G.7"
     depends_on: ["COV-S1", "COV-S2", "COV-S3"]
     gates: ["tsc", "vitest_changed", "synthetic_pr_coverage_gate_fails"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T08:27:00+05:30"
+    merge_commit: fb852ee2
+    gate_results: "tsc:PASS vitest:3/3 synthetic_pr_coverage_gate_fails:PASS coverage_gate_live:EXIT0"
     halt_conditions: ["CI gate does not fail on synthetic missing-manifest-entry PR"]
 
   - id: ICR-S3
@@ -154,8 +160,11 @@ sessions:
     audit_section: "§N.6 ICR-S3"
     depends_on: ["ICR-S2"]
     gates: ["tsc", "vitest_changed", "intra_signal_munta_detected"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T14:10:00+05:30"
+    merge_commit: 553727f9
+    gate_results: "tsc:PASS vitest:5/5 intra_signal_munta_detected:PASS (6 conflicts found, DIS.013/MSR.377 confirmed)"
     halt_conditions: ["MSR.377 intra-signal conflict not detected"]
 
   - id: PERF-S3
@@ -163,8 +172,11 @@ sessions:
     audit_section: "§H.3"
     depends_on: ["PERF-S1", "PERF-S2"]
     gates: ["tsc", "vitest_changed", "retrieval_util_panel_smoke"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T14:19:00+05:30"
+    merge_commit: b33e1f96
+    gate_results: "tsc:PASS vitest:6/6 retrieval_util_panel_smoke:PASS"
     halt_conditions: ["zero-call detection does not surface known-orphan tools"]
 
   - id: COV-S5
@@ -172,8 +184,11 @@ sessions:
     audit_section: "§G.5"
     depends_on: ["COV-S9"]
     gates: ["tsc", "vitest_changed", "ucn_cdlm_rm_parametric_smoke"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T14:55:00+05:30"
+    merge_commit: 14cf7065
+    gate_results: "tsc:PASS vitest:20/20 ucn_cdlm_rm_parametric_smoke:PASS"
     halt_conditions: ["parametric query against UCN/CDLM/RM returns empty for known seeded entries"]
 
   - id: COV-S6
