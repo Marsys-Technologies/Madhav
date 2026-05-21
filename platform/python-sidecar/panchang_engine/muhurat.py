@@ -164,43 +164,18 @@ def _score_breakdown(
             native_chart.birth_nakshatra_id, panchang.nakshatra.id
         )
 
-    # Inauspicious window indicator (for transparency, not a score factor here)
-    inauspicious_labels = [
-        getattr(t, "label", str(t)) for t in panchang.inauspicious
-    ]
-
-    return {
-        "tithi_id":        panchang.tithi.id,
-        "tithi_name":      panchang.tithi.name,
-        "tithi_score":     round(tithi_raw, 3),
-        "tithi_weight":    weights["tithi"],
-        "tithi_contrib":   round(weights["tithi"] * tithi_raw, 4),
-        "nakshatra_id":    panchang.nakshatra.id,
-        "nakshatra_name":  panchang.nakshatra.name,
-        "nakshatra_score": round(nakshatra_raw, 3),
-        "nakshatra_weight":weights["nakshatra"],
-        "nakshatra_contrib": round(weights["nakshatra"] * nakshatra_raw, 4),
-        "vara_id":         panchang.vara.id,
-        "vara_name":       panchang.vara.name,
-        "vara_score":      round(vara_raw, 3),
-        "vara_weight":     weights["vara"],
-        "vara_contrib":    round(weights["vara"] * vara_raw, 4),
-        "yoga_score":      round(yoga_raw, 3),
-        "yoga_weight":     weights["yoga"],
-        "yoga_contrib":    round(weights["yoga"] * yoga_raw, 4),
-        "active_auspicious_yogas": [y.get("name", "") for y in auspicious_yogas],
-        "planet_score":    round(planet_raw, 3),
-        "planet_weight":   weights["planet"],
-        "planet_contrib":  round(weights["planet"] * planet_raw, 4),
-        "jupiter_combust": jupiter.combust if jupiter else None,
-        "venus_combust":   venus.combust if venus else None,
-        "native_score":    round(native_raw, 3),
-        "native_weight":   weights["native"],
-        "native_contrib":  round(weights["native"] * native_raw, 4) if native_chart else 0.0,
-        "native_chart_present": native_chart is not None,
-        "inauspicious_windows": inauspicious_labels,
-        "knockout": _in_inauspicious(panchang),
+    # Return simple {factor: weighted_contribution} dict — all values are floats.
+    # Keys match labelForBreakdownKey() in the UI (MuhuratResultsList.tsx).
+    result: dict = {
+        "tithi":     round(weights["tithi"]     * tithi_raw,     4),
+        "nakshatra": round(weights["nakshatra"] * nakshatra_raw, 4),
+        "vara":      round(weights["vara"]      * vara_raw,      4),
+        "yoga":      round(weights["yoga"]      * yoga_raw,      4),
+        "planet":    round(weights["planet"]    * planet_raw,    4),
     }
+    if native_chart:
+        result["tara_bala"] = round(weights["native"] * native_raw, 4)
+    return result
 
 
 # ---------------------------------------------------------------------------
