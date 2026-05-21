@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.41
+version: 5.42
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.42 (2026-05-21, MCP-POST-MERGE-OPERATOR):
+    **CONCURRENT WORKSTREAM — MCP workstream COMPLETE. PR #127 (squash-merge 13387429) governance close-out. CLAUDE.md §E updated (Ten→Eleven workstreams, MCP row inserted). MCP_BRIEF_v1_0.md sealed DRAFT→CURRENT. amjis-mcp Cloud Run deployable via platform-mcp/cloudbuild.yaml. Migrations 070+071 pending operator apply.**
+    Key outcomes: (A) CLAUDE.md §E: "Ten workstreams" → "Eleven workstreams"; MCP concurrent workstream row inserted after Conductor entry. (B) MCP_BRIEF_v1_0.md: status DRAFT→CURRENT; sealed_on 2026-05-21; sealed_by Conductor run 2026-05-21 (9-for-9, PR #127). (C) 19 tools shipped: 1 ask_madhav, 2 plan-introspection, 10 surgical primitives, 1 read_asset, 2 observability, 3 write tools. 80 vitest tests. 0 class-1 red-team findings. (D) Migrations 070_mcp_api_keys + 071_mcp_predictions_disagreements pending prod apply. (E) amjis-mcp Cloud Run deploy pending (platform-mcp/cloudbuild.yaml). (F) MCP_PLATFORM_IMPROVEMENTS_BRIEF remains DRAFT (separate future workstream).
+    files_touched: ["CLAUDE.md", "00_ARCHITECTURE/BRIEFS/MCP_BRIEF_v1_0.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (concurrent MCP post-merge operator session; no macro-phase change).
+    last_session_id: MCP-POST-MERGE-OPERATOR. predecessor_session: WRAPUP-S4.
+    next_session_objective: "Operator apply migrations 070+071 to prod Supabase; deploy amjis-mcp via platform-mcp/cloudbuild.yaml; mint API key at /admin/mcp/keys; register amjis-mcp in claude.ai/settings/connectors. Then resolve PR #142 blockers and open M6-A-S1."
+    file_updated_at: 2026-05-21T23:55:00+05:30. file_updated_by_session: MCP-POST-MERGE-OPERATOR.
   - v5.41 (2026-05-21, WRAPUP-S4):
     **CONCURRENT SESSION — WRAPUP-S4 close-out. Packet A COMPLETE (F.2 fix shipped 2ddaf4a8); Packet B COMPLETE (F.1 Opt D sidecar uplift 0a4bd3c3 + amjis-sidecar-00270-vj9); Packet C COMPLETE (F.1 Opt A cache read-path 1f9a8802, 18/18 tests); Packet D COMPLETE (PR #142 NEEDS_REVISION, 4 blockers). No macro-phase change.**
     Key outcomes: (A) F.2 ConsumeChatV2 fix shipped — destructured `initialMessages: initialMessagesProp` in function signature + seeded `useState(initialMessagesProp)`; type-check clean; commit 2ddaf4a8 + cherry-pick to main; Cloud Run auto-deploy triggers from push. (B) F.1 Opt D shipped — gcloud sidecar already had timeout=300 + memory=1Gi; applied cpu=2 + min-instances=1 via `gcloud run services update amjis-sidecar` (revision amjis-sidecar-00270-vj9); deploy.yml flags parameter added commit 0a4bd3c3 for persistence across future CI deploys. (C) F.1 Opt A shipped — panchang_daily_reader.py (haversine fence, 10 km radius from 20.27°N 85.84°E), _CachedPanchang proxy classes exposing tithi/nakshatra/vara/special_yogas/inauspicious/sunrise/sunset from DB rows, find_muhurat_from_cache() (cache-path scoring, no swe calls), routers/muhurat.py cache-first path with engine-direct fallback; 18/18 tests PASS; commit 1f9a8802. Known limitation: planet bonus = 0 on cache path (panchanga_daily does not store per-planet combust states; ~5-10% of score, acceptable tradeoff). (D) PR #142 review brief produced at /tmp/pr142_review_brief.md — NEEDS_REVISION, 4 blockers: (1) ICR gate hardcodes MSR_v3_0.md (89% corpus coverage); (2) RESOLVED_DIR points to root-level non-existent path vs canonical 00_ARCHITECTURE/CONFLICT_PATCHES/RESOLVED/; (3) ROOT_FILE_POLICY violation (root-level RESOLVED/ created); (4) DIS.013 applied to superseded MSR_v3_0.md. Native must address blockers before merge.

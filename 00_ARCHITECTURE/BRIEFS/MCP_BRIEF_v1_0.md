@@ -2,11 +2,11 @@
 artifact: MCP_BRIEF_v1_0.md
 canonical_id: MCP_BRIEF
 version: 1.0
-status: DRAFT
+status: CURRENT
 authored_by: Claude (Cowork session, Sonnet)
 authored_on: 2026-05-21
-sealed_on: TBD (awaiting native approval)
-sealed_by: TBD
+sealed_on: 2026-05-21
+sealed_by: Conductor run 2026-05-21 (9-for-9, PR #127)
 brief_path: 00_ARCHITECTURE/BRIEFS/MCP_BRIEF_v1_0.md
 parent_plan: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md (concurrent workstream — does not modify the macro arc)
 related_artifacts:
