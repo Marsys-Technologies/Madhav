@@ -1,7 +1,7 @@
 ---
 artifact: CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md
 canonical_id: CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT
-version: 1.0
+version: 1.2
 status: CURRENT
 authored_on: 2026-05-21
 authored_by: Cowork session — Capability-Coverage-and-Performance-Audit
@@ -43,6 +43,11 @@ related:
   - platform/src/lib/performance/ingestion.ts
   - platform/src/components/performance/PerformanceClient.tsx
 changelog:
+  - v1.2 (2026-05-21): added §G.8–G.10 (COV-S8–S10), §C.8–C.10, §N (ICR
+    stream, six sessions ICR-S1 through ICR-S6), §H.5 (PERF-S5 conflict
+    panel). Promoted from v1.0 to v1.2 to match campaign queue spec_version.
+    Total sessions: COV 1–10, PERF 1–5, ICR 1–6 = 21 sessions across three
+    parallel streams.
   - v1.0 (2026-05-21): initial audit + plan. Diagnostic of supply side
     (manifest + retrieval-tool registry), demand side (planner +
     manifest_compressor + PLANNER_PROMPT), and the /performance dashboard
@@ -52,7 +57,7 @@ changelog:
     decisions pending on three items in §I.
 ---
 
-# Capability Coverage and Performance Audit v1.0
+# Capability Coverage and Performance Audit v1.2
 
 ## §A — Mission
 
@@ -210,6 +215,39 @@ folder                       files  manifest  tool exposure                     
 The two GAPs at the asset-folder level are `00_NAK/` (intent unclear; native decision needed in §I) and `06_LEARNING_LAYER/` (no retrieval tool exposes learning-layer assets; this is structurally correct for an active substrate but should be revisited when LL.7+ outputs are stable and may add interpretive value to user queries).
 
 UCN, CDLM, and RM at L2.5 are AMBER because they have only `vector_search` (a generic secondary tool) reaching them; no dedicated tool surfaces the structural content of the Union of Confluences Network, the Cross-Domain Linkage Matrix, or the Resonance Map. The asset metadata in `manifest_overrides.yaml` lists them as `preferred_for: [interpretive, cross_domain, holistic]` — but the planner has no tool through which to act on that preference.
+
+### §C.8 — Intra-signal conflict inventory
+
+At the time of this audit, **one confirmed Class A (intra-signal) conflict** exists in the signal corpus: MSR.377 (Varshaphala Muntha, 2026 solar year), where the signal's `claim` text disagrees with the FORENSIC citation it cites. This conflict is tracked as **DIS.013** in `00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md`. The ICR stream (§N) is the systematic workflow for detecting, classifying, and resolving this class of defect.
+
+Based on Class A prevalence patterns in comparable signal corpora (≈1–2% of signals), an estimated **3–5 additional Class A conflicts** are expected to surface when the automated detector (ICR-S3) performs a full scan of all 514 MSR signals. These are speculative until ICR-S3 completes; only the MSR.377 / DIS.013 conflict is confirmed.
+
+### §C.9 — Inter-signal conflict inventory
+
+**Two confirmed Class B (inter-signal) conflicts** are known at the time of this audit, both surfaced via the `contradiction_register` retrieval tool. Neither has been promoted to a DISAGREEMENT_REGISTER entry yet; ICR-S3's Class B extension will formalize them.
+
+Based on Class B prevalence patterns (independent signal pairs making incompatible claims about the same chart entity), an estimated **8–12 additional Class B conflicts** are expected across the full 514-signal corpus once systematic pairwise cross-checking is implemented. These are advisory estimates; ICR-S3 will produce the authoritative count.
+
+Class C conflicts (MSR signal claim contradicts a FORENSIC field directly) have not been systematically checked. That check is within ICR-S3's scope.
+
+### §C.10 — Propagation chain model
+
+When an MSR signal is corrected via a propose-patch artifact (§N.3), downstream artifacts that reference that signal must also be reviewed and potentially updated. The canonical propagation chain is:
+
+```
+Tier 1 (mandatory): the MSR signal itself — corrected claim text + updated fingerprint
+Tier 2 (mandatory): UCN edges that reference the signal_id — any Confluence node whose
+          `signal_refs[]` includes the corrected signal; the edge weight or confluence
+          assessment may change
+Tier 3 (advisory):  CDLM links that reference affected UCN edge IDs — cross-domain
+          linkages built on the now-corrected confluence
+Tier 4 (advisory):  RM resonance paths that reference affected CDLM link IDs — resonance
+          amplification factors that may shift
+Tier 5 (advisory):  synthesis cache entries and prediction_ledger rows grounded on the
+          corrected signal — any prediction whose evidence chain included the signal
+```
+
+The `propose_patch` YAML artifact emitted by ICR-S4 must include a `propagation_chain` list enumerating every affected node at Tier 1 and Tier 2 (mandatory), and may enumerate Tiers 3–5 as advisory items. A patch whose `propagation_chain` omits Tier 2 UCN references fails the `munta_propose_patch_emitted` gate. Tiers 3–5 are surfaced in the Conflict panel (PERF-S5) for native review but do not block atomic apply. The ICR-S4 acceptance gate verifies that the MSR.377 patch lists all UCN edges whose `signal_refs` includes `MSR.377`.
 
 ## §D — Performance tab findings
 
@@ -414,6 +452,41 @@ Each session is a single closed brief targeting Anti-Gravity (Claude Code) per t
 
 **Acceptance:** Synthetic PR adding a tool without a manifest entry fails CI. Synthetic PR adding an asset folder with no reachability fails CI. The scheduled audit's verdict adds two new categories: `COVERAGE_GATE_MANIFEST` and `COVERAGE_GATE_ASSETS`.
 
+### §G.8 — COV-S8: Discovery register version audit and smoke gate
+
+**Goal:** Verify that the planner's tool discovery register reads the correct `interface_version` from `CAPABILITY_MANIFEST.json` after COV-S1's schema extension, and that adding new optional fields in COV-S1 does not accidentally trigger an `interface_version` bump. COV-S1 extends the manifest schema with new optional fields; by the project's versioning discipline, an additive backward-compatible change does not change `interface_version`. This session adds an explicit smoke test that reads the manifest through the same code path that `manifest_compressor.ts` uses at runtime (`manifest_reader.py` → `compressManifest()`) and asserts the returned `interface_version` matches the value declared in the manifest JSON. The test must catch any mismatch introduced by build-pipeline changes.
+
+**Files:** `platform/scripts/governance/schema_validator.py` (add version-read assertion alongside the existing fingerprint checks); `platform/tests/governance/smoke_planner_register_tools.ts` (new — imports `compressManifest`, calls it with the live manifest file, and asserts `interface_version` matches the manifest-level field; also asserts the compressed block contains at least the three baseline tools from v1.0 — `lel_query`, `multi_school_signal_lookup`, `convergence_score_lookup`).
+
+**Acceptance:** `smoke_planner_register_tools.ts` passes under `vitest run` without modification on any branch that does not explicitly bump `interface_version`. `manifest_reader.py` exits 0 after COV-S1's schema changes. No regression in the `schema_validator.py` exit code on the existing suite. The smoke test is added to the `vitest_changed` gate set so that any future manifest schema change must re-pass it.
+
+### §G.9 — COV-S9: Tool-coverage metadata migration (Postgres tables)
+
+**Goal:** Reflect the manifest tool-binding fields added in COV-S1 (`expose_to_planner`, `tool_name`, `query_schema`, `output_schema`, `linked_data_asset_ids`, `cost_weight`) in two new Postgres tables so the Performance tab (PERF-S2 / PERF-S3) can query coverage metrics live from the database rather than reading the JSON file at request time. The two tables are:
+
+- **`capability_tool_registry`** — one row per wired retrieval tool. Columns: `tool_name` (PK, text), `expose_to_planner` (boolean), `description` (text), `query_schema` (jsonb), `output_schema` (jsonb), `cost_weight` (numeric), `linked_data_asset_ids` (text[]), `created_at` (timestamptz), `updated_at` (timestamptz).
+- **`capability_asset_tool_bindings`** — many-to-many join between asset canonical_ids and tool_names. Columns: `asset_canonical_id` (text), `tool_name` (text), `binding_source` (text — `manifest | override | inferred`), `created_at` (timestamptz). Composite PK on `(asset_canonical_id, tool_name)`.
+
+A seed script populates both tables from `CAPABILITY_MANIFEST.json` and `manifest_overrides.yaml` at migration time. The seed script is re-runnable (upsert semantics) and is the canonical way to update the tables when the manifest changes.
+
+**Files:** `platform/supabase/migrations/<next_number>_capability_tool_registry.sql` (new migration; use the next available migration number after verifying the latest in `platform/supabase/migrations/`); `platform/scripts/governance/seed_tool_registry.ts` (new seed script that reads the manifest + overrides and upserts into both tables); `platform/src/lib/types/capability_tool_registry.ts` (new — TypeScript types matching the two tables, generated from the migration); unit tests for the seed script.
+
+**Acceptance:** Migration dry-run (`supabase db diff --use-migra` or equivalent) exits 0. After apply, `capability_tool_registry` has ≥ 30 rows (one per wired tool after COV-S2). `capability_asset_tool_bindings` has ≥ 5 rows covering the five manifest entries that carry `tool_name` as of v1.0. No row-count regression on any existing table (`panchanga_daily`, `ephemeris_daily`, `performance_queries`, etc.). Seed script idempotent: running it twice produces the same table state.
+
+### §G.10 — COV-S10: Sade Sati cycle table: migration and population
+
+**Goal:** Create the `sade_sati_cycles` table and populate it for the native (Abhisek Mohanty). Sade Sati is the 7.5-year period when Saturn transits the natal Moon sign and the two adjacent signs (preceding and following), each transit approximately 2.5 years. The native's natal Moon sign must be confirmed from `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md` at session open before any computation proceeds (do not assume; read the file). Computation draws from `ephemeris_daily` (Saturn longitude column), which is already populated with 657k+ rows from 1900–2100 by `bootstrap_ephemeris.py`.
+
+The table schema: `id` (uuid PK), `native_id` (text, FK-style reference — use the canonical native identifier from FORENSIC), `start_date` (date), `end_date` (date), `phase` (text — `rising | peak | setting`), `moon_sign` (text — the natal Moon sign, constant for all rows for a given native), `saturn_sign` (text — the sign Saturn occupies during this phase), `severity_weight` (numeric — see note below), `computation_source` (text — `ephemeris_daily`), `created_at` (timestamptz).
+
+Severity weight convention: `rising` = 0.7, `peak` = 1.0 (Saturn directly over natal Moon sign), `setting` = 0.7. These are conventional Jyotish weightings; the session must not invent alternative values without FORENSIC support.
+
+The population script reads Saturn longitude from `ephemeris_daily`, groups consecutive days where Saturn occupies the same sign, and identifies runs that cover the natal Moon sign ± one sign. Each such run becomes a row with the appropriate `phase`. Rows must span at least 1984-01-01 to 2100-12-31 for the native.
+
+**Files:** `platform/supabase/migrations/<next_number>_sade_sati_cycles.sql` (new migration, after COV-S9's migration number); a population script at `platform/scripts/data/populate_sade_sati.py` or `populate_sade_sati.ts`; unit/integration tests; `platform/src/lib/types/sade_sati_cycles.ts` (TypeScript types).
+
+**Acceptance:** Migration dry-run exits 0. After apply and population, `sade_sati_cycles` has ≥ 3 rows for the native covering the 1984–2100 period (there should be approximately 8–9 complete Sade Sati cycles in a 116-year window). Each row carries all required columns with non-null values. The native's natal Moon sign in the rows matches the FORENSIC record read at session open. No row-count regression on any existing table. Population script is idempotent.
+
 ## §H — Remediation plan: Performance tab (four sessions)
 
 The Performance tab is transformed in-place at `/performance` per the native's stated preference (existing surface, not a new one). The four sessions ship sequentially: PERF-S1 is the data-wiring prerequisite; PERF-S2 and PERF-S3 are UI; PERF-S4 is the final polish.
@@ -477,6 +550,28 @@ The Performance tab is transformed in-place at `/performance` per the native's s
 **Files:** `FreshnessSection.tsx`, `DiagnosticsSection.tsx`, extended Query Log component; aggregators for trace-step diagnostics.
 
 **Acceptance:** Freshness panel surfaces stale assets. Per-tool error/empty rates visible. Manifest fingerprint drift surfaces on page load. Per-conversation drilldown navigable. All sections lazy-loaded for sub-second page load.
+
+### §H.5 — PERF-S5: Performance tab Conflict panel (full)
+
+**Goal:** Ship the full Conflict panel in the Performance tab. The panel exposes the ICR stream's propose-patch artifacts to the native for review and action. It is the primary interface through which the native confirms, rejects, or escalates every intra-signal conflict patch produced by ICR-S4. The stub section wired in ICR-S5 is expanded here into a complete, production-ready panel.
+
+**Panel layout:**
+
+- **Pending patches table** — one row per YAML file present in `00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/`. Columns: `conflict_id` (text), `class` (A / B / C badge), `signals_affected` (comma-joined signal IDs), `proposed_change` (expandable diff preview — collapsed by default, expand on row click), `propagation_chain_depth` (integer — count of tiers listed in the artifact's `propagation_chain`), `authored_by` (text), `authored_on` (date). Row actions: **Confirm**, **Reject**, **Escalate to L1 Review**. Empty state: "No pending conflicts" with a green checkmark badge.
+
+- **History table** — one row per YAML in `RESOLVED/` and `REJECTED/` directories. Columns: `conflict_id`, `class`, `resolution` (`resolved | rejected`), `resolved_by` (operator identifier), `resolved_at` (timestamp). Paginated at 25 rows; oldest first.
+
+- **Confirm action** — calls `POST /api/icr/confirm` (route authored in ICR-S5) with the patch file path and `action: confirm`. The API moves the YAML atomically from `PROPOSED/` to `RESOLVED/` (the atomic-apply logic is tested for rollback correctness in ICR-S5). On success: row disappears from Pending, appears in History with `resolved`.
+
+- **Reject action** — a confirm dialog ("Reject this patch? Add a reason (optional):") then calls `POST /api/icr/confirm` with `action: reject`. API writes the YAML to `REJECTED/` with a `rejected_at` and optional `reject_reason` appended to the file. On success: row moves to History with `rejected`.
+
+- **Escalate to L1 Review action** — moves the YAML to `L1_REVIEW/` and creates a new `DISAGREEMENT_REGISTER_v1_0.md` entry in the same atomic operation (DIS.N+1). A modal prompts for a short escalation note; the note is written into the DISAGREEMENT_REGISTER entry as `escalation_note`. On success: row disappears from Pending.
+
+**Files:** `platform/src/components/performance/ConflictPanel.tsx` (new — full implementation, replacing the ICR-S5 stub); `platform/src/app/api/icr/confirm/route.ts` (extended from ICR-S5 to handle `action: reject` and `action: escalate`); integration into `PerformanceClient.tsx` as a new top-level section below the existing four KPI tiles; unit tests for the route; a `conflict_panel_smoke` test that mounts the panel with a synthetic PROPOSED/ artifact and verifies all three action paths render correctly.
+
+**Data source:** `PROPOSED/`, `RESOLVED/`, `REJECTED/` directories read server-side via the `/api/icr/confirm` route's companion `GET /api/icr/patches` endpoint (new in this session). The endpoint returns the list of artifacts grouped by directory. All file I/O is server-side; the client receives JSON, not raw YAML.
+
+**Acceptance:** ConflictPanel renders all YAML files in `PROPOSED/` with correct columns. Empty-state "No pending conflicts" renders when `PROPOSED/` is empty. Confirm action moves artifact atomically (rollback tested via ICR-S5's dry-run harness). Reject action writes to `REJECTED/` with optional reason. Escalate writes to `L1_REVIEW/` and creates a `DISAGREEMENT_REGISTER` entry. History table renders `RESOLVED/` + `REJECTED/` files. `conflict_panel_smoke` gate passes. Panel does not crash on an empty `PROPOSED/` directory.
 
 ## §I — Open native decisions
 
@@ -550,7 +645,150 @@ Source files cited in this audit, by section:
 
 ## §M — Changelog
 
+- **v1.2 (2026-05-21)** — Promoted to v1.2 to match campaign queue `spec_version`. Added §G.8 (COV-S8: discovery register version smoke gate), §G.9 (COV-S9: tool-coverage metadata Postgres migration), §G.10 (COV-S10: Sade Sati cycle table migration and population). Added §C.8 (intra-signal conflict inventory), §C.9 (inter-signal conflict inventory), §C.10 (propagation chain model). Added §N (ICR: Intra-Signal Conflict Resolution stream) — §N.1 mission, §N.2 conflict taxonomy (Class A/B/C), §N.3 propose-patch protocol, §N.4 L1 truth index, §N.5 Muntha conflict DIS.013 narrative, §N.6 six-session ICR plan (ICR-S1 through ICR-S6). Added §H.5 (PERF-S5: Performance tab Conflict panel, full implementation). Total remediation sessions across all streams: 21 (COV-S1–S10, PERF-S1–S5, ICR-S1–S6).
+
 - **v1.0 (2026-05-21)** — Initial audit + plan. Three parallel research streams executed against `main`. Forty-one defects identified (6 P0, 12 P1, 23 P2). Two parallel session streams proposed in §G (Capability, seven sessions) and §H (Performance, four sessions). Three open native decisions surfaced in §I.
+
+## §N — ICR: Intra-Signal Conflict Resolution stream
+
+### §N.1 — ICR mission
+
+The M5 audit revealed that signal-layer artifacts (MSR, FORENSIC, UCN, CDLM) sometimes carry conflicting claims about the same astrological entity. The canonical example is **DIS.013**: MSR.377 (Muntha signal for Varshaphala 2026) contradicts the FORENSIC ground truth for the native's Varshaphala Muntha position — the signal's claim text and its cited FORENSIC source point to different Muntha placements.
+
+Without a principled conflict-detection and resolution workflow, these contradictions silently produce inconsistent synthesis outputs: two signals that disagree can both be surfaced to the planner, both carry non-zero resonance weights, and the native receives a response that is internally incoherent without any diagnostic signal. This failure mode is invisible to the operator because neither the Performance tab nor the planner routing layer surfaces it.
+
+The ICR stream builds the end-to-end workflow: **detect** conflicts via automated cross-checking against L1 facts → **classify** by severity → **propose a patch** artifact for native review → **native confirms or rejects** via the Performance tab Conflict panel (PERF-S5) → **atomic apply** moves the patch to RESOLVED/ → **CI gate** prevents future PRs from introducing new ungrounded signals. Six sessions (ICR-S1 through ICR-S6) close this workflow from schema scaffolding through production CI enforcement.
+
+### §N.2 — Conflict taxonomy
+
+Three conflict classes, ordered by detection difficulty and remediation impact:
+
+**Class A — Intra-signal conflict.** A single MSR signal's `claim` text contradicts the specific FORENSIC or LEL fact it cites in its own `sources` block. Example: MSR.377 claims Muntha is in sign X; its `sources` entry cites `FORENSIC §7.4` which states Muntha is in sign Y. Detectable by automated cross-reference of `claim` text against the cited source field. Severity: high when the `claim` is load-bearing for synthesis; medium otherwise. **MSR.377 / DIS.013 is a confirmed Class A conflict.**
+
+**Class B — Inter-signal conflict.** Two separate MSR signals make mutually incompatible claims about the same planet, house, nakshatra, or astrological construct in the same chart layer. Example: Signal A says Jupiter is exalted in Karka; Signal B says Jupiter is debilitated in Makara — these cannot both be true for the same native in the same chart context. Detectable by pairwise contradiction analysis across the `claim` corpus, seeded by `contradiction_register` entries. Severity: high when both signals appear in a synthesis bundle for the same query; medium when they appear in separate contexts.
+
+**Class C — L1 conflict.** An MSR signal's claim directly contradicts a field in the FORENSIC ground truth without the FORENSIC citation appearing in the signal's own `sources` block — meaning the signal simply got it wrong independently of its cited sources. Example: MSR says Sun is in Capricorn; FORENSIC says Sun is in Aquarius. This is the highest severity class: the signal is not merely self-inconsistent but contradicts the canonical L1 record. **Always native-review-required** regardless of synthesis context. Every Class C conflict produces a DISAGREEMENT_REGISTER entry at detection time, not at propose-patch time.
+
+### §N.3 — Propose-patch protocol
+
+The propose-patch protocol is the interface between automated conflict detection and human decision. It ensures no automated process modifies the signal corpus without the native's explicit confirmation.
+
+**Step 1 — Emit:** When ICR-S3 or ICR-S4 detects and classifies a conflict, the emitter writes a YAML artifact to `00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/` with the following structure:
+
+```yaml
+conflict_id: DIS.013           # matching DISAGREEMENT_REGISTER entry
+class: A                       # A | B | C
+signal_ids_affected:
+  - MSR.377
+proposed_change:               # diff-format string showing exact text change
+  before: "<current claim text>"
+  after: "<corrected claim text>"
+propagation_chain:             # per §C.10 model
+  tier_1:
+    - MSR.377
+  tier_2:
+    - UCN_EDGE_<id>            # all UCN edges whose signal_refs include MSR.377
+  tier_3_advisory:
+    - CDLM_LINK_<id>
+  tier_4_advisory: []
+  tier_5_advisory: []
+confidence: 0.92               # detector confidence that this patch is correct
+authored_by: ICR-S4-detector
+authored_on: 2026-05-21
+status: PROPOSED
+```
+
+**Step 2 — Await:** The artifact is NOT applied automatically. It waits in `PROPOSED/` until the native acts via the Conflict panel (PERF-S5). The session log records a `propose_patch_pending` halt, which is not a failure — it is the designed checkpoint.
+
+**Step 3 — Confirm:** The native clicks Confirm in the Conflict panel. The `/api/icr/confirm` route moves the YAML from `PROPOSED/` to `RESOLVED/` in a filesystem transaction. A `resolved_at` timestamp and `resolved_by` field are appended. The corrected claim is applied to the MSR signal in a second atomic step within the same transaction; if either step fails, the entire transaction rolls back.
+
+**Step 4 — Reject:** The native clicks Reject. The YAML moves from `PROPOSED/` to `REJECTED/` with an optional `reject_reason`. The MSR signal is untouched.
+
+**Step 5 — Escalate:** The native clicks Escalate to L1 Review. The YAML moves from `PROPOSED/` to `L1_REVIEW/`. A new DISAGREEMENT_REGISTER entry is created (if one does not already exist for this conflict_id) with the escalation note. The signal remains untouched. L1 review means the conflict requires manual inspection of the underlying FORENSIC data before a resolution can be proposed.
+
+### §N.4 — L1 truth index
+
+The **L1 truth index** is the fraction of MSR signals that carry at least one grounding fact from the FORENSIC ground truth or the Life Event Log (LEL):
+
+```
+L1_truth_index = (signals with ≥1 FORENSIC or LEL citation in sources[]) / (total signals)
+```
+
+At 514 total signals (MSR v3.1), the **target is ≥ 95%** — meaning at most 25 signals may lack any grounding fact. Signals that are purely interpretive (e.g., classical yoga assessments grounded in FORENSIC planetary positions transitively) count toward the numerator only if their `sources` block explicitly lists the FORENSIC field or LEL entry that anchors the interpretation.
+
+The L1 truth index score is computed by ICR-S2 and emitted as a report at `06_LEARNING_LAYER/L1_TRUTH_INDEX_REPORT_v1_0.md`. If the score is below 95%, the `l1_truth_index_coverage_gte_95pct` gate fails and the ICR stream halts; the native must approve a remediation plan for the below-threshold signals before ICR-S3 opens.
+
+The index is also re-computed by the ICR-S6 CI gate on every PR that touches `MSR_v3_0.md`, and by the scheduled weekly scan (ICR-S6's job).
+
+### §N.5 — Muntha conflict (DIS.013)
+
+MSR.377 is the Varshaphala Muntha signal for the native's 2026 solar year. The Muntha (sometimes called the annual progressed ascendant) advances one sign per year from the natal ascendant in Varshaphala practice; the exact sign depends on the native's birth details and the computation method (mean vs. true Muntha). MSR.377's `claim` block states a specific sign and house; its `sources` block cites `FORENSIC §7.4` (Varshaphala subsection). An automated cross-check at audit time revealed that the claim text and the cited FORENSIC field disagree on the Muntha's sign placement.
+
+This conflict is recorded as **DIS.013** in `00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md`. At the time of the audit, DIS.013 was opened as a Class A conflict. It is the smoke-test case for the ICR stream: ICR-S3 must detect it, ICR-S4 must emit a patch for it, and native confirmation is required before ICR-S5 can proceed. If the detector fails to surface DIS.013, the `intra_signal_munta_detected` gate fails and the stream halts.
+
+The patch ICR-S4 proposes for MSR.377 must carry a full propagation chain per §C.10: Tier 1 (MSR.377 claim correction), Tier 2 (all UCN edges whose `signal_refs` list includes `MSR.377`), and advisory Tiers 3–5. The `munta_propose_patch_emitted` gate verifies the propagation chain structure before halting for native review.
+
+### §N.6 — ICR session plan (six sessions)
+
+The ICR stream is a third parallel remediation stream running alongside the Capability (§G) and Performance (§H) streams. ICR-S1 and COV-S1 can open simultaneously; ICR-S2 through ICR-S5 run sequentially; ICR-S6 is the final CI-hardening session.
+
+#### §N.6 ICR-S1 — Schema + detector scaffolding
+
+**Goal:** Author the conflict-detection data model, directory structure, and detector scaffolding. Establish the TypeScript types for conflict records and propose-patch artifacts. Implement the YAML schema validator for artifacts in `PROPOSED/`. Verify that the `00_ARCHITECTURE/CONFLICT_PATCHES/` directory structure (PROPOSED/, RESOLVED/, REJECTED/, L1_REVIEW/) is already on disk (scaffolded in an earlier session); if any subdirectory is missing, create it. No detector logic ships in this session — only types, interfaces, and the schema validator.
+
+**Files:** `platform/src/lib/icr/types.ts` (new — `ConflictRecord`, `ProposePathArtifact`, `ConflictClass`, `PatchStatus` types); `platform/src/lib/icr/detector.ts` (new — `ConflictDetector` class with interface defined but `detect()` method returning an empty array; placeholder for ICR-S3 implementation); `platform/scripts/governance/schema_validator_icr.py` (new — reads every YAML in `PROPOSED/` and validates against the propose-patch JSON Schema defined in §N.3; exits 0 on empty directory, exits non-zero on schema violation, exits 0 on all-valid artifacts).
+
+**Acceptance:** `tsc --noEmit` clean with new types in place. `schema_validate` (`schema_validator_icr.py`) exits 0 on an empty `PROPOSED/` directory. `schema_validate` exits non-zero on a synthetically malformed YAML (test in unit test; do not leave malformed YAML in PROPOSED/ after test). `CONFLICT_PATCHES/` subdirectory structure confirmed present on disk.
+
+#### §N.6 ICR-S2 — L1 truth index computation
+
+**Goal:** Implement the L1 truth index scorer. For each of the 514 MSR signals in `025_HOLISTIC_SYNTHESIS/MSR_v3_0.md`, determine whether the signal's `sources` block contains at least one citation to a FORENSIC field or LEL entry. A citation counts if it references any of: `FORENSIC §<section>`, `FORENSIC_ASTROLOGICAL_DATA_v8_0`, `LIFE_EVENT_LOG`, `LEL`, or a canonical LEL event ID. Emit a coverage report listing: total signals, grounded signals, ungrounded signals (with signal IDs and claim text), and the index score as a fraction and percentage.
+
+**Files:** `platform/scripts/governance/l1_truth_index.ts` (new — reads `MSR_v3_0.md` via a markdown parser, extracts each signal's `sources` block, scores against the grounding criteria, outputs JSON + human-readable summary); a vitest unit test with a synthetic 10-signal fixture (5 grounded, 5 not) that verifies the scorer produces 50% on the fixture; output report written to `06_LEARNING_LAYER/L1_TRUTH_INDEX_REPORT_v1_0.md` (new artifact, frontmatter-bearing, version 1.0).
+
+**Acceptance:** Scorer runs without error on the full MSR v3.1 corpus. Coverage report written to `06_LEARNING_LAYER/L1_TRUTH_INDEX_REPORT_v1_0.md`. If score ≥ 95%: `l1_truth_index_coverage_gte_95pct` gate passes; ICR-S3 may open. If score < 95%: gate fails; the report lists all below-threshold signal IDs; ICR stream halts for native remediation decision before ICR-S3 opens.
+
+#### §N.6 ICR-S3 — Intra-signal conflict detector (Muntha smoke test)
+
+**Goal:** Implement the Class A conflict detector in `platform/src/lib/icr/detector.ts`. The detector reads every MSR signal, extracts the `claim` and `sources` fields, fetches the cited FORENSIC or LEL fields (via the manifest or direct file read), and checks for textual contradictions using a structured comparison (not LLM-based — deterministic field lookup). At minimum, the detector must recognize when a signal's claim text asserts a sign placement that differs from the cited FORENSIC field's value. The primary smoke test is MSR.377 (DIS.013, Muntha conflict): the detector must emit a `ConflictRecord` for this signal with `class: A` and `signal_ids_affected: [MSR.377]`.
+
+**Files:** `platform/src/lib/icr/detector.ts` (implement `detect()` method); `platform/src/lib/icr/forensic_reader.ts` (new — thin reader that extracts specific FORENSIC field values by section reference, used by the detector); a vitest unit test with a synthetic MSR fragment that contains a known mismatch (verifies the detector emits a conflict); a governance script `platform/scripts/governance/run_icr_detector.ts` that runs the detector against the live corpus and writes output JSON to `06_LEARNING_LAYER/ICR_DETECTOR_OUTPUT_v1_0.json`.
+
+**Acceptance:** Detector exits with ≥ 1 conflict detected. `intra_signal_munta_detected` gate: the output JSON contains a `ConflictRecord` where `signal_ids_affected` includes `MSR.377` and `class === 'A'`. Detector output serialized to `06_LEARNING_LAYER/ICR_DETECTOR_OUTPUT_v1_0.json` for ICR-S4 consumption. Unit test passes on synthetic fixture. `tsc --noEmit` clean.
+
+#### §N.6 ICR-S4 — Propose-patch emitter (Muntha)
+
+**Goal:** For each `ConflictRecord` in the ICR-S3 detector output, compute the full propose-patch artifact and write it to `PROPOSED/`. For MSR.377 specifically: the patch proposes a specific text correction to the Muntha claim, with `before` and `after` strings derived from the discrepancy the detector found. The patch must carry a complete `propagation_chain` per §C.10: Tier 1 (MSR.377), Tier 2 (all UCN edges whose `signal_refs` includes `MSR.377`). Tiers 3–5 advisory. The patch file is named `DIS.013_MSR.377_proposed.yaml`. This session ends with a **NATIVE_REVIEW_REQUIRED** halt — no auto-apply.
+
+**Files:** `platform/src/lib/icr/propose_patch.ts` (new — reads detector output JSON, queries UCN edges for each affected signal, constructs the `ProposePathArtifact`, validates against the schema from ICR-S1, writes YAML to `PROPOSED/`); `platform/src/lib/icr/ucn_edge_reader.ts` (new — reads `025_HOLISTIC_SYNTHESIS/UCN_v4_0.md` to extract edges referencing a given signal_id); YAML artifact written to `00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml`.
+
+**Acceptance:** At least one YAML file present in `PROPOSED/` after the session runs. `munta_propose_patch_emitted` gate: `DIS.013_MSR.377_proposed.yaml` exists in `PROPOSED/`, passes `schema_validator_icr.py`, and contains a `propagation_chain.tier_2` list that is non-empty (at least one UCN edge referenced). The propagation chain matches the §C.10 model (all tiers present in the YAML, advisory tiers may be empty lists). Session halt recorded as `propose_patch_pending` in `CONDUCTOR_HALT_LOG.md` — this is a designed checkpoint, not a failure. `NATIVE_REVIEW_REQUIRED_ON_PROPOSE_PATCH` halt flag set. `tsc --noEmit` clean.
+
+#### §N.6 ICR-S5 — Confirmation UI + atomic apply
+
+**Goal:** Build the native confirmation workflow. Two surfaces: (a) API route that handles confirm/reject/escalate actions; (b) a stub UI section in PerformanceClient that will be expanded to the full Conflict panel in PERF-S5. The session's primary deliverable is the API layer and its atomic-apply guarantees.
+
+**API:** `platform/src/app/api/icr/confirm/route.ts` — a `POST` handler accepting `{ patch_file: string, action: 'confirm' | 'reject' | 'escalate', reason?: string }`. For `confirm`: read YAML from `PROPOSED/`, apply the text correction to the MSR signal file (a filesystem write), then move the YAML to `RESOLVED/`, all in a transaction with rollback if any step fails. For `reject`: move YAML to `REJECTED/` with appended `reject_reason`. For `escalate`: move to `L1_REVIEW/`, create a DISAGREEMENT_REGISTER stub entry. Companion `GET /api/icr/patches` handler returning `{ proposed: [...], resolved: [...], rejected: [...] }` for the UI.
+
+**UI stub:** `platform/src/components/performance/ConflictPanel.tsx` — a minimal stub rendering a "Conflict (N pending)" heading and a placeholder "Full panel coming in PERF-S5" note. Mounted in `PerformanceClient.tsx` as a new section below the existing KPIs.
+
+**Atomic-apply dry-run test:** A vitest integration test that calls the `confirm` handler with a synthetic PROPOSED/ artifact, simulates a filesystem failure mid-way through the two-step transaction (write MSR correction → move YAML), and verifies the YAML has not moved to RESOLVED/ and the MSR file is unchanged after the simulated failure.
+
+**Files:** `platform/src/app/api/icr/confirm/route.ts`; `platform/src/components/performance/ConflictPanel.tsx` (stub); `PerformanceClient.tsx` (mount new section); `platform/tests/icr/atomic_apply.test.ts` (new).
+
+**Acceptance:** `atomic_apply_dry_run` gate: simulated mid-apply failure leaves both PROPOSED/ and MSR signal unchanged (full rollback). `confirmation_ui_smoke`: ConflictPanel stub renders without error in a mounted component test. API route validates the patch file path is within `PROPOSED/` (path traversal prevention). `tsc --noEmit` clean.
+
+#### §N.6 ICR-S6 — CI gate + scheduled scan
+
+**Goal:** Add enforcement infrastructure that prevents future conflicts from accumulating silently. Two mechanisms:
+
+1. **Pre-merge CI gate:** A GitHub Actions check that fires on any PR touching `MSR_v3_0.md`. The check runs `l1_truth_index.ts` on the PR's version of the file and fails if the score drops below 95%. It also runs a structural validator that checks every new signal added in the PR has a non-empty `sources` block with at least one FORENSIC or LEL citation (not necessarily a fully resolved cross-check — just structural completeness). A synthetic test PR that adds a citation-free signal must fail this check.
+
+2. **Scheduled weekly scan:** A GitHub Actions workflow that runs on Sunday 02:00 UTC. It executes `run_icr_detector.ts` against main and, if any new ConflictRecords appear beyond what is already in `PROPOSED/`, `RESOLVED/`, or `REJECTED/`, writes new YAML artifacts to `PROPOSED/` and sends a `CONDUCTOR_HALT_LOG.md` notification. The scan is idempotent: running it twice on the same corpus produces the same set of artifacts with no duplicates.
+
+**Files:** `platform/scripts/governance/icr_pr_gate.ts` (new — CI check script); `.github/workflows/icr_weekly_scan.yml` (new — scheduled workflow); `.github/workflows/ci.yml` or equivalent (updated to call `icr_pr_gate.ts` on MSR-touching PRs); unit tests for the gate script using a synthetic MSR fragment.
+
+**Acceptance:** `synthetic_pr_conflict_gate_fails` gate: a test invocation of `icr_pr_gate.ts` with a synthetic MSR fragment containing a citation-free signal exits non-zero. `scheduled_job_smoke` gate: a dry-run invocation of the weekly scan script (with `--dry-run` flag, no actual PROPOSED/ writes) exits 0 and prints the list of conflicts it would emit. `tsc --noEmit` clean. All existing CI checks remain green after workflow update.
 
 ---
 
