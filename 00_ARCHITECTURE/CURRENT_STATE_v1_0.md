@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.31
+version: 5.32
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.32 (2026-05-21, GH-SESSION-LOG-STRUCTURE):
+    **GOVERNANCE HYGIENE — SESSION_LOG structural heading repair. 36 HIGH session_id_disagreement_heading violations → 0. No macro-phase change.**
+    Key outcomes: (1) AC.1 PASS — baseline: 202 violations, 39 HIGH (36 session_id_disagreement_heading + 3 learning_layer); root cause: non-matching H2 headings causing YAML block bleed between entries. (2) AC.2 PASS — validator rule studied: entries split by `^## [A-Za-z0-9_.\-]+\s+—`; last session_open/close in each entry body checked against heading ID. (3) AC.3 PASS — 23 heading renames + 28 heading insertions for CONDUCTOR-S0 / M5-E-S2 / Madhav sub-sessions; 2 orphan close-only entries repaired with stub session_open. (4) AC.4 PASS — session_id_disagreement_heading_* HIGH count = 0. (5) AC.6 PASS — only headings/structure changed, no body rewrites. (6) AC.7 PASS — this entry + SESSION_LOG + .gemini/project_state.md mirror. (7) AC.8 PASS — exit=2, count=198 < 202 baseline; no CRITICAL violations; HIGH 39→3 (only pre-existing learning_layer).
+    active_phase_plan_sub_phase: M5-A INCOMING (concurrent governance-hygiene session; no macro-phase change).
+    last_session_id: GH-SESSION-LOG-STRUCTURE. predecessor_session: MSR-HYGIENE-S1.
+    next_session_objective: "Native reviews and merges PRs for governance-hygiene/session-log-structure + governance-hygiene/drift-detector-fix. Remaining hygiene brief: GH_CORPUS_FRONTMATTER_BACKFILL."
+    file_updated_at: 2026-05-21T09:30:00+05:30. file_updated_by_session: GH-SESSION-LOG-STRUCTURE.
   - v5.31 (2026-05-21, MSR-HYGIENE-S1):
     **HYGIENE — MSR version-state repair. No macro-phase change. Closes orphan supersession_banner_mismatch for MSR_v3_0.md and MSR_v4_0.md.**
     Key outcomes: (1) MSR_v3_0.md (3.1, 514 signals): status flipped CURRENT → SUPERSEDED; superseded_by: MSR_v4_0.md; banner added; relocated via git mv to 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/. (2) MSR_v4_0.md (4.0, 543 signals): status flipped CURRENT → SUPERSEDED; superseded_by: MSR_v5_0.md; banner added; relocated via git mv to 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/. (3) CAPABILITY_MANIFEST.json MSR entry: fingerprint refreshed m8f-s1-msr-v4-543signals → m9a-s1-msr-v5-573signals; predecessor path updated to archived location; updated_by audit string appended. (4) CLAUDE.md §D snapshot row: MSR_v3_0.md / 3.1 / 514 → MSR_v5_0.md / 5.0 / 573. (5) Mirror: .geminirules + .gemini/project_state.md updated to adapted parity. (6) drift_detector + schema_validator pre-existing crash residuals confirmed pre-dates this session.
