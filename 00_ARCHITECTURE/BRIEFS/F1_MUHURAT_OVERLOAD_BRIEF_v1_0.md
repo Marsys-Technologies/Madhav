@@ -1,11 +1,25 @@
 ---
 canonical_id: F1_MUHURAT_OVERLOAD_BRIEF
-version: 1.0.0
-status: DRAFT
+version: 1.0.1
+status: APPROVED
 authored: 2026-05-21
+approved: 2026-05-21
+approved_by: native (via PHASE-4C-CLOSE orchestration prompt)
+approved_options: "Option A (SQL cache read-path via panchanga_daily) + Option D (sidecar timeout/cpu/memory/min-instances uplift)"
 ---
 
 # F.1 Muhurat Finder Overload — Root Cause + Design Brief
+
+## §APPROVAL_RECORD
+
+**Approved:** 2026-05-21
+**Approved by:** Native (via PHASE-4C-CLOSE orchestration prompt, session PHASE-4C-CLOSE)
+**Options approved:** Option A + Option D
+**Option A rationale:** Eliminates all 90×14 Swiss Ephemeris calls for the dominant Bhubaneswar/IST use case; panchanga_daily already contains all required enrichment columns (migration 069, 73,414 rows bootstrapped under phase-4c-enrich-20260521-r2). Engine-direct fallback retained for non-Bhubaneswar locations.
+**Option D rationale:** Infrastructure-only, no code change, eliminates the 60-second timeout-induced 503 and cold-start failures documented in SIDECAR_500_INVESTIGATION_REPORT_v1_0.md.
+**Options deferred:** Option B (asyncio — swisseph thread-safety unconfirmed), Option C (window cap — degrades UX), Option E (muhurat_scores table — Phase 4D scope).
+
+---
 
 ## FINDINGS
 
