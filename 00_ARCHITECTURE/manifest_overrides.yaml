@@ -895,3 +895,69 @@ additional_entries:
     expose_to_chat: false
     native_id: "abhisek"
     produced_during: "M5-A-COV-S4"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_ucn_walk"
+    tool_name: "query_ucn_walk"
+    tool_description: "Extracts structural slices from the UCN (Unified Chart Narrative) — the L2.5 document that synthesizes all planetary and house signals into a unified reading. Use when the query requires accessing specific narrative sections about a planet, house, yoga, or life domain as synthesized at the holistic level."
+    query_schema:
+      type: object
+      properties:
+        seed:
+          type: string
+          description: "Section keyword to find — e.g. Mercury, Saturn, Lagna, marriage"
+        max_chars:
+          type: integer
+          description: "Max characters to return (default 2000, max 4000)"
+        part:
+          type: string
+          description: "Which Part to search in: I | II | III | IV | all (default all)"
+      required: [seed]
+    linked_data_asset_ids: ["UCN"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L2.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S5"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_cdlm_lookup"
+    tool_name: "query_cdlm_lookup"
+    tool_description: "Looks up a specific domain-pair cell in the CDLM (Cross-Domain Linkage Matrix) — the L2.5 document mapping structural interdependencies between the 9 life domains. Use when the query involves cross-domain questions (e.g., how career affects health, how wealth affects relationships)."
+    query_schema:
+      type: object
+      properties:
+        domain_from:
+          type: string
+          description: "Source domain ID: D1..D9 or a domain name like career, wealth"
+        domain_to:
+          type: string
+          description: "Target domain ID: D1..D9 or a domain name like health, relationship"
+      required: [domain_from, domain_to]
+    linked_data_asset_ids: ["CDLM"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L2.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S5"
+
+  - canonical_id: "RETRIEVAL_TOOL_query_rm_walk"
+    tool_name: "query_rm_walk"
+    tool_description: "Retrieves resonance entries from the RM (Resonance Map) — the L2.5 document recording structural amplification patterns between planetary configurations. Use when the query requires understanding how multiple signals reinforce or cancel each other at the synthesis level."
+    query_schema:
+      type: object
+      properties:
+        rm_seed:
+          type: string
+          description: "RM entry ID e.g. RM.1, RM.15, or a theme keyword like Mercury, 9H"
+        max_chars:
+          type: integer
+          description: "Max chars (default 2000)"
+      required: [rm_seed]
+    linked_data_asset_ids: ["RM"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L2.5"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "M5-A-COV-S5"

@@ -13,6 +13,7 @@
  * Phase 4C: query_panchanga — sunrise-anchored daily panchanga (1 tool; 28th total)
  * Phase 4D: query_transit_event — transit event search: when does X happen? (1 tool; 29th total)
  * COV-S4: query_muhurat, query_jaimini_drishti, query_v7_additions — sidecar wrappers (tools 31-33)
+ * COV-S5: query_ucn_walk, query_cdlm_lookup, query_rm_walk — L2.5 structural tools (tools 34-36)
  */
 
 import * as msrSql from './msr_sql'
@@ -77,6 +78,11 @@ import * as queryMuhurat from './query_muhurat'
 import * as queryJaiminiDrishti from './query_jaimini_drishti'
 import * as queryV7Additions from './query_v7_additions'
 
+// COV-S5 — L2.5 Holistic Synthesis structural tools (tools 34-36)
+import * as queryUcnWalk from './query_ucn_walk'
+import * as queryCdlmLookup from './query_cdlm_lookup'
+import * as queryRmWalk from './query_rm_walk'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -114,6 +120,9 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryMuhurat.tool,
   queryJaiminiDrishti.tool,
   queryV7Additions.tool,
+  queryUcnWalk.tool,
+  queryCdlmLookup.tool,
+  queryRmWalk.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

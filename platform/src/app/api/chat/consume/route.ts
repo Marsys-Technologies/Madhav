@@ -116,6 +116,10 @@ function toolStepType(toolName: string): TraceStep['step_type'] {
   if (['query_muhurat', 'query_jaimini_drishti', 'query_v7_additions'].includes(toolName)) {
     return 'gcs'
   }
+  // COV-S5 L2.5 file-based structural tools — classified as gcs (file reads)
+  if (['query_ucn_walk', 'query_cdlm_lookup', 'query_rm_walk'].includes(toolName)) {
+    return 'gcs'
+  }
   return 'gcs'
 }
 
@@ -123,6 +127,10 @@ function inferLayer(toolName: string): 'L1' | 'L2.5' {
   if (['msr_sql', 'query_msr_aggregate', 'pattern_register', 'resonance_register',
        'cluster_atlas', 'contradiction_register', 'temporal', 'cgm_graph_walk',
        'multi_school_signal_lookup', 'convergence_score_lookup'].includes(toolName)) {
+    return 'L2.5'
+  }
+  // COV-S5 — UCN, CDLM, RM are all L2.5 Holistic Synthesis documents
+  if (['query_ucn_walk', 'query_cdlm_lookup', 'query_rm_walk'].includes(toolName)) {
     return 'L2.5'
   }
   return 'L1'
