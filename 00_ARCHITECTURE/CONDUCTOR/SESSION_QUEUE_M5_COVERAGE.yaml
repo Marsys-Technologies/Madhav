@@ -158,16 +158,19 @@ sessions:
     audit_section: "§H.3"
     depends_on: ["PERF-S1", "PERF-S2"]
     gates: ["tsc", "vitest_changed", "retrieval_util_panel_smoke"]
-    status: in_progress
+    status: completed
     attempt_count: 1
+    completed_at: "2026-05-21T03:08:00Z"
+    merge_commit: dcf1859a
+    pr_url: https://github.com/amonty84/Madhav/pull/128
     halt_conditions: ["zero-call detection does not surface known-orphan tools"]
   - id: COV-S5
     stream: cov
     audit_section: "§G.5"
     depends_on: ["COV-S9"]
     gates: ["tsc", "vitest_changed", "ucn_cdlm_rm_parametric_smoke"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["parametric query against UCN/CDLM/RM returns empty for known seeded entries"]
   - id: COV-S6
     stream: cov
