@@ -20,6 +20,7 @@ import { RetrievalUtilizationSection } from './RetrievalUtilizationSection'
 import { PlannerRoutingSection } from './PlannerRoutingSection'
 import { FreshnessDiagnosticsSection } from './FreshnessDiagnosticsSection'
 import { ConflictResolutionSection } from './ConflictResolutionSection'
+import { ConflictSummarySection } from './ConflictSummarySection'
 
 function pct(v: number | null | undefined, digits = 1): string {
   if (v == null) return '—'
@@ -288,6 +289,11 @@ export function PerformanceClient() {
       <section className="space-y-3">
         <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Freshness &amp; Diagnostics</h2>
         <FreshnessDiagnosticsSection />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="bt-label bt-label-upper" style={{ color: 'var(--brand-gold)' }}>Conflict Summary (ICR)</h2>
+        <ConflictSummarySection />
       </section>
 
       <section className="space-y-3">
