@@ -26402,3 +26402,104 @@ session_close:
     "GH-CORPUS-FRONTMATTER-BACKFILL" while the YAML session_ids also say that — this is consistent
     and should not trigger the heading/open/close disagreement rule.
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: GH-LEARNING-LAYER-FRONTMATTER
+  cowork_thread_name: "[CV2-FINAL D.1/D.2] Learning-layer frontmatter HALT resolution"
+  opened_at: "2026-05-21"
+  macro_phase: M5-CONCURRENT
+  active_sub_phase: CV2-FINAL-D
+  last_closed_session_id: GH-CORPUS-FRONTMATTER-BACKFILL
+  files_read:
+    - CLAUDECODE_BRIEF.md
+    - 00_ARCHITECTURE/CONDUCTOR/wrapup/HUMAN_GATE_D.md
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+  may_touch:
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  must_not_touch:
+    - platform/src/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+    - 00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_PROMPT_v1_0.md
+```
+
+## GH-LEARNING-LAYER-FRONTMATTER — Learning-layer frontmatter HALT resolution
+
+Resolves both items from HUMAN_GATE_D.md (HALT.1 + HALT.2). Executed as packet
+D.1/D.2 of the CV2-FINAL orchestrator arc.
+
+### Changes applied
+
+**HALT.1 — SIGNAL_WEIGHT_CALIBRATION/README.md (Option 1 — STUB rename):**
+- `status: ACTIVE-PENDING` → `status: STUB`
+- Body banner: `STATUS: ACTIVE-PENDING (M4-A) — M3 CLOSED...` →
+  `STATUS: STUB — M3 closed 2026-05-01; LEL gate cleared (46 events). Awaiting scoring rubric native-approval...`
+- Result: `learning_layer_population_gate_violation` × 2 resolved.
+
+**HALT.2 — OBSERVATIONS/README.md (Option 2 — path_exclude + minimal frontmatter):**
+- Added `---` delimiters; added `mechanism_id: OBSERVATIONS` (directory-level stub, not LL.N mechanism).
+- Reformatted inline table to proper GFM markdown table.
+- Added `path_exclude: ["06_LEARNING_LAYER/OBSERVATIONS/README.md"]` to `learning_layer_stub`
+  class in `artifact_schemas.yaml`.
+- Updated `schema_validator.py` `validate_learning_layer_stub()` to accept optional `schemas`
+  param and skip files matching `path_exclude`.
+- Result: `learning_layer_stub_banner_missing` (HIGH) + `frontmatter_missing[learning_layer_stub]`
+  (MEDIUM) resolved.
+
+### Validator results post-fix
+
+- schema_validator: 52 violations; exit=2 (was 58; -6 learning_layer violations cleared).
+- All remaining violations are pre-existing session_log HIGH violations (separate brief scope).
+
+```yaml
+session_close:
+  session_id: GH-LEARNING-LAYER-FRONTMATTER
+  closed_at: "2026-05-21"
+  files_touched:
+    - 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/README.md
+    - 06_LEARNING_LAYER/OBSERVATIONS/README.md
+    - platform/scripts/governance/schemas/artifact_schemas.yaml
+    - platform/scripts/governance/schema_validator.py
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - .gemini/project_state.md
+  registry_updates_made: true
+  current_state_updated: true
+  mirror_updates_propagated:
+    - mirror_pair: MP.2
+      claude_artifact: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.35)"
+      gemini_artifact: ".gemini/project_state.md"
+      update_type: adapted_parity_state
+  schema_validator_run:
+    exit_code: 2
+    violations_count: 52
+    known_residuals:
+      - finding_id: session_log_entry_session_id_disagreement_*
+        severity: HIGH
+        booking_reference: "Pre-existing SESSION_LOG structural issues; addressed by GH_SESSION_LOG_STRUCTURE (separate)"
+      - finding_id: current_state_last_session_id_disagreement
+        severity: MEDIUM
+        booking_reference: "Pre-existing; resolves when SESSION_LOG structure is fixed"
+  mirror_enforcer_run:
+    exit_code: 0
+    notes: "No mirror pair structural change; exit 0 expected"
+  session_log_appended: true
+  close_criteria_met: true
+  unblocks: "All HUMAN_GATE_D.md learning_layer violations cleared. Branch governance-hygiene/learning-layer-frontmatter ready for PR."
+  handoff_notes: >
+    D.1 + D.2 complete. PR opened on governance-hygiene/learning-layer-frontmatter for human review.
+    CURRENT_STATE v5.35. schema_validator exit=2 with 52 violations (all pre-existing SESSION_LOG scope).
+```
