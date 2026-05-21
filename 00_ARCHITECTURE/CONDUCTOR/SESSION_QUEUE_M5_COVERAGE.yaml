@@ -147,8 +147,8 @@ sessions:
     audit_section: "§N.6 ICR-S3"
     depends_on: ["ICR-S2"]
     gates: ["tsc", "vitest_changed", "intra_signal_munta_detected"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["MSR.377 intra-signal conflict not detected"]
   - id: PERF-S3
     stream: perf
