@@ -180,8 +180,8 @@ sessions:
     audit_section: "§G.6"
     depends_on: ["COV-S2", "COV-S3"]
     gates: ["tsc", "vitest_changed", "planner_golden_regression"]
-    status: pending
-    attempt_count: 0
+    status: in_progress
+    attempt_count: 1
     halt_conditions: ["promoted R-rule cluster regresses golden set"]
   - id: ICR-S4
     stream: icr
