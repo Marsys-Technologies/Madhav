@@ -22,6 +22,17 @@ import { registerResources } from './resources/index.js'
 import { registerAskMadhav } from './tools/ask_madhav.js'
 import { registerPlanQuery } from './tools/plan_query.js'
 import { registerExecutePlan } from './tools/execute_plan.js'
+// MCP-3-S1: Tier 3 surgical primitives
+import { registerQueryChartFacts } from './tools/query_chart_facts.js'
+import { registerQuerySignals } from './tools/query_signals.js'
+import { registerQueryDashaPeriods } from './tools/query_dasha_periods.js'
+import { registerQueryPanchanga } from './tools/query_panchanga.js'
+import { registerQueryEphemeris } from './tools/query_ephemeris.js'
+import { registerQueryTransitEvent } from './tools/query_transit_event.js'
+import { registerLelQuery } from './tools/lel_query.js'
+import { registerVectorSearch } from './tools/vector_search.js'
+import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js'
+import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
 import type { Principal } from './types.js'
 
 const app = express()
@@ -68,6 +79,18 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerAskMadhav(server, getPrincipal)
   registerPlanQuery(server, getPrincipal)
   registerExecutePlan(server, getPrincipal)
+
+  // Register Tier 3 surgical primitives (MCP-3-S1).
+  registerQueryChartFacts(server, getPrincipal)
+  registerQuerySignals(server, getPrincipal)
+  registerQueryDashaPeriods(server, getPrincipal)
+  registerQueryPanchanga(server, getPrincipal)
+  registerQueryEphemeris(server, getPrincipal)
+  registerQueryTransitEvent(server, getPrincipal)
+  registerLelQuery(server, getPrincipal)
+  registerVectorSearch(server, getPrincipal)
+  registerGetCgmSubgraph(server, getPrincipal)
+  registerCrossSchoolLookup(server, getPrincipal)
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({
