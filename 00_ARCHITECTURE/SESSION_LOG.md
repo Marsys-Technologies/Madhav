@@ -27395,3 +27395,85 @@ session_close:
     After deploy: smoke /panchang/muhurat → Ask-Madhav → verify URL contains
     /clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume.
 ```
+
+## CLOSEOUT-2026-05-22 — Phase 4C + MCP + Migrations + PR #142
+
+```yaml
+session_open:
+  session_id: CLOSEOUT-2026-05-22
+  open_timestamp: 2026-05-22T01:00:00+05:30
+  cowork_thread_name: "CLOSEOUT-2026-05-22 — Phase 4C + Migration + MCP + PR #142"
+  active_phase_plan: PHASE_M5_PLAN_v1_0.md (M6 INCOMING)
+  may_touch:
+    - MIGRATIONS_APPLIED_LOG.md
+    - 00_ARCHITECTURE/MIGRATION_DIRECTORY_POLICY_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md (EOF append only)
+    - .gemini/project_state.md
+    - platform/src/app/panchang/components/ActionBar.tsx
+    - Cloud SQL prod schema via psql (append-only ops)
+    - Cloud Run amjis-mcp service via gcloud
+    - Local git branch fix/phase-4c-prod-findings (delete)
+    - /tmp diagnostic files
+  must_not_touch:
+    - 99_ARCHIVE/**
+    - CLAUDE.md
+    - 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
+    - SESSION_LOG.md L26406-L26734 (conflict markers)
+    - Any migration file content
+    - platform/supabase/migrations/ directory name
+    - PR #142 on GitHub (already closed)
+  pre_flight:
+    git_status: "untracked governance artifacts + modified CLAUDECODE_BRIEF.md (prior session status=COMPLETE)"
+    db_connection: "PASS — postgresql://amjis_app @ 127.0.0.1:5433"
+    proxy_status: "UP"
+```
+
+**Packet A PASS** — Prod migration audit: 109 public tables. 6 migrations audited. 2 pre-existing APPLIED (070_mcp_api_keys, 071_mcp_predictions_disagreements). 4 NOT_APPLIED: 070_capability_tool_registry, 071_sade_sati_cycles, 113_selective_share, 114_truncated_by_user_edit. Report at /tmp/prod_migration_state.md.
+
+**Packet B PASS** — 4 migrations applied via psql ON_ERROR_STOP=1. All post-apply verifications PASS (to_regclass + information_schema.columns). capability_tool_registry + capability_asset_tool_bindings + sade_sati_cycles tables created. conversation_shares.hide_reasoning + hide_methodology + audit_events.truncated_by_user_edit columns added.
+
+**Packet C PASS** — MIGRATIONS_APPLIED_LOG.md rewritten as v2.0 comprehensive ledger. Covers all 114 platform/migrations + all 18 supabase/migrations. 5 unapplied R8/PERF supabase migrations documented as carry-forward (064, 066, 067, 068, 069 — R8 branches/search/pin-archive + PERF-S1 columns; not in scope for this session). Committed `6d22356a`.
+
+**Packet D PASS** — amjis-mcp service already existed (amjis-mcp-00004-8jd, healthy). Cloud Build submitted from platform-mcp/ with COMMIT_SHA=6d22356a. Revision amjis-mcp-00006-79n deployed. Health /health = 200 `{"status":"ok"}`. URL: https://amjis-mcp-qm256lasva-el.a.run.app. Authenticated tool-call smoke: PARTIAL_SMOKE_OPERATOR_TODO (requires minted API key at /admin/mcp/keys).
+
+**Packet E PASS** — ActionBar.tsx NATIVE_CLIENT_ID fixed (line 25): 'abhisek_mohanty_primary' → '362f9f17-95a5-490b-a5a7-027d3e0efda0'. Both panchang Ask-Madhav deeplinks (ActionBar + MuhuratResultsList) now use correct client UUID. Committed in `6d22356a`. Cloud Run auto-deploy will pick up change.
+
+**Packet F PASS** — MadhavFix4C worktree removed (`git worktree remove`). fix/phase-4c-prod-findings local branch force-deleted (was 9d76915b; in reflog 90 days). Remote branch already absent. PR #142 not re-opened.
+
+**Packet G PASS** — MIGRATION_DIRECTORY_POLICY_v1_0.md authored at 00_ARCHITECTURE/. platform/migrations/ declared canonical (next: 115); platform/supabase/migrations/ frozen. Future rename deferred. Committed in `6d22356a`.
+
+**Bonus** — .mcp.json, MCP_ACTIVATION_PROMPT_v1_0.md, MCP_POST_MERGE_PROMPT_v1_0.md, phase4c_close smoke screenshots committed (governance artifacts left untracked by prior sessions). scripts/setup_mcp_env.sh added to .gitignore (contains live API key mcp_prod_eZzHrD2C...).
+
+```yaml
+session_close:
+  session_id: CLOSEOUT-2026-05-22
+  close_timestamp: 2026-05-22T01:30:00+05:30
+  all_acceptance_criteria_met: true
+  commits_this_session:
+    - sha: 6d22356a
+      message: "fix(panchang): correct NATIVE_CLIENT_ID in ActionBar.tsx + migrations ledger + policy"
+      branch: main
+  cloud_run_revisions:
+    amjis_mcp: amjis-mcp-00006-79n (just deployed, 6d22356a build)
+    amjis_web: amjis-web-00314-wjk (pending auto-deploy of ActionBar fix)
+  current_state_updated: true
+  current_state_version: "5.45"
+  governance_scripts_run: false
+  mirror_updates_propagated:
+    mp2_current_state: true
+    mp2_session_log: true
+    mp2_project_state: true
+  carry_forwards:
+    - "supabase 064/066/067/068/069 migrations NOT applied — R8 features (branches, search, pin/archive) broken in prod + PERF-S1 columns missing; apply before M6-A-S1"
+    - "amjis-mcp authenticated smoke: mint API key at /admin/mcp/keys; register at claude.ai/settings/connectors"
+    - "F.2 E2E smoke: manually verify ActionBar Ask-Madhav deeplink navigates to /clients/362f9f17.../consume after Cloud Run deploys 6d22356a"
+    - "M6-A-S1: open in separate conversation per PHASE_M6_PLAN_v1_0.md"
+  close_criteria_met: true
+  handoff_notes: >
+    All deferred operator items from NATIVE-CLIENT-ID-FIX + MCP-POST-MERGE-OPERATOR closed.
+    4 migrations applied; amjis-mcp deployed healthy at amjis-mcp-00006-79n.
+    ActionBar.tsx UUID fixed. PR #142 branch deleted.
+    Next: apply 5 missing R8/PERF supabase migrations (064/066/067/068/069);
+    then open M6-A-S1.
+```

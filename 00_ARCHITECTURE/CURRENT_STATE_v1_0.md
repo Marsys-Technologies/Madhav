@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.44
+version: 5.45
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.45 (2026-05-22, CLOSEOUT-2026-05-22):
+    **CLOSEOUT — Phase 4C + MCP migrations + PR #142 + ActionBar fix. All deferred operator items from prior sessions closed. No macro-phase change.**
+    Key outcomes: (A) Packet A PASS — prod migration audit complete; 109 public tables; 6 migrations audited (2 APPLIED pre-session, 4 NOT_APPLIED). (B) Packet B PASS — 4 migrations applied: 070_capability_tool_registry (capability_tool_registry + capability_asset_tool_bindings), 071_sade_sati_cycles (sade_sati_cycles), 113_selective_share (conversation_shares.hide_reasoning + hide_methodology), 114_truncated_by_user_edit (audit_events.truncated_by_user_edit). All post-apply verifications PASS. (C) Packet C PASS — MIGRATIONS_APPLIED_LOG.md rewritten as comprehensive v2.0 ledger covering all 114 platform/migrations + all supabase/migrations. 5 unapplied R8/PERF supabase migrations (064, 066, 067, 068, 069) documented as carry-forward. (D) Packet D PASS — amjis-mcp Cloud Build submitted from platform-mcp/ with COMMIT_SHA=6d22356a; revision amjis-mcp-00006-79n live; health /health = 200 OK; authenticated tool-call smoke flagged PARTIAL_SMOKE_OPERATOR_TODO (requires minted API key). (E) Packet E PASS — ActionBar.tsx NATIVE_CLIENT_ID fixed 'abhisek_mohanty_primary' → '362f9f17-95a5-490b-a5a7-027d3e0efda0'. Both panchang Ask-Madhav deeplinks now use correct UUID. (F) Packet F PASS — MadhavFix4C worktree removed; fix/phase-4c-prod-findings local branch deleted (9d76915b in reflog). PR #142 was already closed on origin; no re-open. (G) Packet G PASS — MIGRATION_DIRECTORY_POLICY_v1_0.md authored; platform/migrations/ declared canonical (next: 115); platform/supabase/migrations/ frozen. (H) Bonus — .mcp.json + MCP_ACTIVATION/POST_MERGE prompts + phase4c_close smoke screenshots committed (governance artifacts from prior sessions). scripts/setup_mcp_env.sh added to .gitignore (contains live API key). Commits: 6d22356a (Packets C/E/G + governance files). Cloud Run: amjis-mcp-00006-79n.
+    files_touched: ["MIGRATIONS_APPLIED_LOG.md", "platform/src/app/panchang/components/ActionBar.tsx", "00_ARCHITECTURE/MIGRATION_DIRECTORY_POLICY_v1_0.md", ".mcp.json", ".gitignore", "00_ARCHITECTURE/CONDUCTOR/MCP_ACTIVATION_PROMPT_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/MCP_POST_MERGE_PROMPT_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/phase4c_close/smoke_muhurat_dialog.png", "00_ARCHITECTURE/CONDUCTOR/phase4c_close/smoke_panchang_f1.png", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (operator closeout session; no macro-phase change).
+    last_session_id: CLOSEOUT-2026-05-22. predecessor_session: NATIVE-CLIENT-ID-FIX.
+    carry_forwards: ["supabase 064/066/067/068/069 migrations NOT applied (R8 features broken in prod: branches, search, pin/archive; PERF-S1 columns); apply in dedicated session before M6-A-S1", "amjis-mcp authenticated smoke: requires minted API key at /admin/mcp/keys", "F.2 E2E smoke: manually verify ActionBar Ask-Madhav deeplink navigates to UUID-based URL after Cloud Run deploys", "M6-A-S1: open per PHASE_M6_PLAN_v1_0.md (separate conversation)"]
+    next_session_objective: "Apply unapplied supabase migrations 064/066/067/068/069 (R8 feature + PERF-S1 migrations; critical for branches/search/pin-archive in prod). Then open M6-A-S1."
+    file_updated_at: 2026-05-22T01:30:00+05:30. file_updated_by_session: CLOSEOUT-2026-05-22.
   - v5.44 (2026-05-22, NATIVE-CLIENT-ID-FIX):
     **NATIVE_CLIENT_ID corrected in MuhuratResultsList.tsx. F.2 E2E unblocked. No macro-phase change.**
     Key outcomes: (A) MuhuratResultsList.tsx NATIVE_CLIENT_ID fixed: 'abhisek_mohanty_primary' → '362f9f17-95a5-490b-a5a7-027d3e0efda0'. Ask-Madhav deeplinks from Muhurat results page now navigate to correct client UUID. (B) Build pre-existing residual confirmed (Turbopack symlink crash on python-sidecar/venv/bin/python — pre-existing; identical failure on main without this change). (C) Commit 246b35c6 pushed to main; Cloud Run auto-deploy triggered. (D) F.2 E2E smoke: Chrome MCP smoke pending new revision serving 100% traffic. (E) ActionBar.tsx has same NATIVE_CLIENT_ID='abhisek_mohanty_primary' at line 25 — identified as same-class bug; out-of-scope per session must_not_touch; carry to next operator session.

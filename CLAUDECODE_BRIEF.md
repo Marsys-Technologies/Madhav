@@ -30,7 +30,7 @@ packet_status:
   P7:  DONE       # Push d7957ec6 → origin/main; CI PASS (#26241518813); Deploy PASS (#26241518818); amjis-web-00310-kgd; amjis-sidecar-00276-smw (cpu=2 mem=1Gi timeout=300 min=1 verified)
   P8:  DONE       # Smokes: F.1 PASS (cache+render); F.2 code OK/E2E blocked pre-existing NATIVE_CLIENT_ID bug; R8 PASS. Bonus fix: _score_breakdown numeric-only (commit 14fee006)
   P9:  DONE       # CURRENT_STATE v5.43 + SESSION_LOG + MP.2 mirror + brief COMPLETE
-  P10: PENDING    # Close PR #142 without merge; archive dead branch
+  P10: DONE       # PR #142 closed; fix/phase-4c-prod-findings remote branch deleted
 
 last_completed_packet: P9
 last_halt: null
