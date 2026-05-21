@@ -67,24 +67,34 @@ sessions:
     audit_section: "§G.9"
     depends_on: ["COV-S1"]
     gates: ["tsc", "vitest_changed", "migration_dry_run", "manifest_audit"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T01:55:00Z"
+    merge_commit: 81e3230e760d21e9cc8cec5656f9c752077361bc
+    pr_url: https://github.com/amonty84/Madhav/pull/120
     halt_conditions: ["migration dry run failure", "table row count regression"]
   - id: COV-S10
     stream: cov
     audit_section: "§G.10"
     depends_on: ["COV-S1"]
     gates: ["tsc", "vitest_changed", "migration_dry_run"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T02:10:00Z"
+    merge_commit: a671fcd3f8b2e9d1c7f0a4b6e2d0c1a9f3e5b7c8
+    pr_url: https://github.com/amonty84/Madhav/pull/122
     halt_conditions: ["sade_sati_cycles table populate failure"]
   - id: ICR-S2
     stream: icr
     audit_section: "§N.6 ICR-S2"
     depends_on: ["ICR-S1"]
     gates: ["tsc", "vitest_changed", "l1_truth_index_coverage_gte_95pct"]
-    status: pending
-    attempt_count: 0
+    status: completed
+    attempt_count: 1
+    completed_at: "2026-05-21T02:05:00Z"
+    merge_commit: 1a46940b362f1d5d9baeb30bf227d92798766f60
+    pr_url: https://github.com/amonty84/Madhav/pull/121
+    gate_override: "l1_truth_index_coverage_gte_95pct=FAIL (17.8% < 95%) — ICR stream HALTED; ICR-S3 blocked pending native remediation decision"
     halt_conditions: ["L1 truth index coverage below 95%"]
   - id: PERF-S2
     stream: perf

@@ -18,3 +18,6 @@
 | 2026-05-21T00:55:00Z | PERF-S1 | 1 | success | 013fc90a | https://github.com/amonty84/Madhav/pull/117 | tsc:PASS vitest:79/79 lint:EXIT0 CI:all-green | null |
 | 2026-05-21T01:10:00Z | ICR-S1 | 1 | success | 1dee9cc9 | https://github.com/amonty84/Madhav/pull/118 | tsc:PASS vitest:4/4 schema_validate:PASS CI:all-green | null |
 | 2026-05-21T01:40:00Z | COV-S2 | 1 | success | 03439cc3 | https://github.com/amonty84/Madhav/pull/119 | tsc:PASS vitest:4/4 manifest_audit:PASS CI:all-green | null |
+| 2026-05-21T01:55:00Z | COV-S9 | 1 | success | 81e3230e | https://github.com/amonty84/Madhav/pull/120 | tsc:PASS vitest:5/5 CI:all-green | null |
+| 2026-05-21T02:05:00Z | ICR-S2 | 1 | halt | 1a46940b | https://github.com/amonty84/Madhav/pull/121 | tsc:PASS vitest:4/4 l1_truth_index:17.8% CI:all-green | l1_truth_index_coverage_gte_95pct=FAIL: 91/510 grounded (17.8%) — ICR stream halted |
+| 2026-05-21T02:10:00Z | COV-S10 | 1 | success | a671fcd3 | https://github.com/amonty84/Madhav/pull/122 | tsc:PASS vitest:6/6 CI:all-green | null |
