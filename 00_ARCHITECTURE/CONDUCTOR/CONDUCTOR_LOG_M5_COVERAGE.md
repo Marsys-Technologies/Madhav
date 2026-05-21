@@ -23,3 +23,5 @@
 | 2026-05-21T02:10:00Z | COV-S10 | 1 | success | a671fcd3 | https://github.com/amonty84/Madhav/pull/122 | tsc:PASS vitest:6/6 CI:all-green | null |
 | 2026-05-21T02:30:00Z | COV-S3 | 1 | success | e9cf20dc | https://github.com/amonty84/Madhav/pull/123 | tsc:PASS vitest:15/15 planner_golden_regression:PASS CI:all-green | null |
 | 2026-05-21T07:00:00Z | COV-S4 | 1 | success | ecee542d | https://github.com/amonty84/Madhav/pull/124 | tsc:PASS vitest:9/9 sla_probe_new_tools:PASS lint:EXIT0 CI:all-green | null |
+| 2026-05-21T07:30:00Z | ICR-S2 (halt resolution) | — | resolved | — | — | criterion_redefined:Option_C | halt resolved: classical-text citations now count as grounded |
+| 2026-05-21T07:47:00Z | PERF-S2 | 1 | success | 401e6b46 | https://github.com/amonty84/Madhav/pull/125 | tsc:PASS vitest:16/16 lint:EXIT0 | null |
