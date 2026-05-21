@@ -1,0 +1,20 @@
+no required checks reported on the 'fix/panchang-bootstrap-guard-target' branch
+Stage 3 — E2E (Chromium)	fail	1m17s	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042643892	
+smoke	fail	3m9s	https://github.com/amonty84/Madhav/actions/runs/26186224567/job/77042359160	
+Stage 10 — Chaos / Fault Injection [pre-merge]	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042783309	
+Stage 11 — Security [pre-merge]	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042884945	
+Stage 12 — Mobile (Playwright)	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042885522	
+Stage 13 — Mutation (Stryker) [weekly/pre-merge]	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042783239	
+Stage 14 — Cross-browser Smoke (staging) [pre-merge]	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042885113	
+Stage 15 — Synthetic Monitoring [post-merge via Cloud Scheduler]	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042644654	
+Stage 4 — E2E (Firefox + WebKit)	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042884913	
+Stage 5 — Visual Regression	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042885096	
+Stage 2 — Component + Integration	pass	43s	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042643890	
+Stage 6 — Accessibility (axe-core)	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042885614	
+Stage 7 — Performance	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042885005	
+Stage 8 — Load / Stress (k6) [pre-merge only]	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042885185	
+Stage 9 — Provider Drift (weekly)	skipping	0	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042644560	
+Planner Regression Gate	pass	42s	https://github.com/amonty84/Madhav/actions/runs/26186224568/job/77042359128	
+Stage 1 — Lint + Typecheck + Unit	pass	1m33s	https://github.com/amonty84/Madhav/actions/runs/26186224569/job/77042359305	
+TypeScript (src only)	pass	54s	https://github.com/amonty84/Madhav/actions/runs/26186224568/job/77042359151	
+Unit Tests	pass	3m17s	https://github.com/amonty84/Madhav/actions/runs/26186224568/job/77042359105	
