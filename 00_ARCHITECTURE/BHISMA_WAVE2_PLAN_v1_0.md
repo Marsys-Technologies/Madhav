@@ -1,4 +1,5 @@
 ---
+artifact: BHISMA_WAVE2_PLAN_v1_0
 title: "BHISMA Wave 2: Universal Query Engine & Observability Architecture"
 version: 1.0
 status: CURRENT

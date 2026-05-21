@@ -1,4 +1,5 @@
 ---
+artifact: RUNBOOK_EPHEMERIS_REBUILD_v1_0
 canonical_id: RUNBOOK_EPHEMERIS_REBUILD
 version: 1.0
 status: CURRENT

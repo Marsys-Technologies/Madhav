@@ -1,3 +1,12 @@
+---
+artifact: CLAUDE
+version: 1.0
+status: CURRENT
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  This is the 00_ARCHITECTURE folder-instructions file for Claude Code.
+---
+
 # 00_ARCHITECTURE — Instructions
 
 This folder contains the project's governing documents.

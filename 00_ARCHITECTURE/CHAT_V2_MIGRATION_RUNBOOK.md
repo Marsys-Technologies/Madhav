@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_MIGRATION_RUNBOOK
 canonical_id: CHAT_V2_MIGRATION_RUNBOOK
 version: 1.0
 status: PENDING_OPERATOR

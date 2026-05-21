@@ -1,4 +1,5 @@
 ---
+artifact: BHISMA_PARALLEL_ISOLATION_SETUP
 canonical_id: BHISMA_PARALLEL_ISOLATION_SETUP
 version: 1.0
 status: CURRENT

@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_PARENTS_v1_0
 document: REPORT_PARENTS_v1_0.md
 version: 1.0.1
 status: SUPERSEDED

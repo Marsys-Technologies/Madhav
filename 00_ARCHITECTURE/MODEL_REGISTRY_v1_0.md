@@ -1,4 +1,5 @@
 ---
+artifact: MODEL_REGISTRY_v1_0
 title: "MARSYS-JIS Model Registry"
 canonical_id: MODEL_REGISTRY
 version: 1.0

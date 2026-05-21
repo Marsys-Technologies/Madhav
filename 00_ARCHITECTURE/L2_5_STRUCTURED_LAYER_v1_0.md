@@ -1,4 +1,5 @@
 ---
+artifact: L2_5_STRUCTURED_LAYER_v1_0
 canonical_id: L2_5_STRUCTURED_LAYER
 version: 1.0
 status: CURRENT

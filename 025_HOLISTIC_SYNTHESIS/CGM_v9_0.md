@@ -1,4 +1,5 @@
 ---
+artifact: CGM_v9_0
 document: CGM_v9_0
 version: "9.1"
 status: CURRENT

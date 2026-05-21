@@ -1,5 +1,6 @@
 ---
 artifact: CLAUDECODE_BRIEF_PORTAL_BUILD_TRACKER_IMPL_v0_1_HOLD.md
+version: 0.1
 status: HELD_PENDING_LATER_ACTIVATION
 held_on: 2026-04-26
 held_by: Cowork (Claude Opus 4.7) during conversation "Madhav M2A-Exec-7 — B.4 Task 3 (Gemini SUPPORTS two-pass)"

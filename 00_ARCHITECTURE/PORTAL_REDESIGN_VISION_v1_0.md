@@ -1,4 +1,5 @@
 ---
+artifact: PORTAL_REDESIGN_VISION_v1_0
 artifact_id: PORTAL_REDESIGN_VISION
 version: 1.0.3
 status: CURRENT

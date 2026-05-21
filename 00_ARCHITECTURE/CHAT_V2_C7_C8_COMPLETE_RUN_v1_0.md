@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_C7_C8_COMPLETE_RUN_v1_0
 name: Chat V2 C.7 + C.8 Complete Run
 canonical_id: CHAT_V2_C7_C8_COMPLETE_RUN_v1_0
 version: 1.0

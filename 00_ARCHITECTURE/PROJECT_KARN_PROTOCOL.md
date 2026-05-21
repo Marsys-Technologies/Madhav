@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_KARN_PROTOCOL
 canonical_id: PROJECT_KARN_PROTOCOL
 version: 1.2
 status: CURRENT

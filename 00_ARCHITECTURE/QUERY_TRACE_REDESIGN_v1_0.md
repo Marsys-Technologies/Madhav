@@ -1,4 +1,5 @@
 ---
+artifact: QUERY_TRACE_REDESIGN_v1_0
 canonical_id: QUERY_TRACE_REDESIGN
 version: 1.0
 status: CURRENT

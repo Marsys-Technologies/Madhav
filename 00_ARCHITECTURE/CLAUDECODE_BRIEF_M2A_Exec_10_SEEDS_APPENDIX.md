@@ -1,5 +1,6 @@
 ---
 artifact: CLAUDECODE_BRIEF_M2A_Exec_10_SEEDS_APPENDIX.md
+version: 1.0
 status: AUTHORED
 status_set_authored_on: 2026-04-27
 parent_brief: CLAUDECODE_BRIEF.md (Madhav_M2A_Exec_10, status: AUTHORED 2026-04-27)

@@ -1,3 +1,12 @@
+---
+artifact: GANGA_OVERNIGHT_RUN_v1_0
+version: 1.0
+status: CURRENT
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Existing file body untouched.
+---
+
 # GANGA OVERNIGHT SEQUENTIAL RUN — v1.0
 # 8 Sessions · Commit-per-session · Unattended · Bypass permissions ON
 # Paste this entire file into Google Anti-Gravity IDE (Claude Code Extension)

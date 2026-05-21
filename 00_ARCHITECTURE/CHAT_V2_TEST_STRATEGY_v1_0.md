@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_TEST_STRATEGY_v1_0
 name: CHAT V2 BIG BANG — TEST STRATEGY
 canonical_id: CHAT_V2_TEST_STRATEGY
 version: 1.0

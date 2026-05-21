@@ -1,5 +1,6 @@
 ---
 artifact: MARSYS_JIS_PROJECT_PLAN_v1_0.md
+version: 1.0
 status: DRAFT
 revision: v1.0 (2026-04-27 initial)
 authored_by: Cowork (Claude Opus 4.7)

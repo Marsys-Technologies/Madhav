@@ -1,4 +1,5 @@
 ---
+artifact: PHASE_14D_L2_5_PARITY_REPORT_v1_0
 report_id: PHASE_14D_L2_5_PARITY_REPORT
 version: 1.0
 status: COMPLETE

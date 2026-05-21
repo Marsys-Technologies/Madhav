@@ -1,4 +1,5 @@
 ---
+artifact: PHASE_B_PLAN_v1_0_RECONCILER_PASS_v1_0
 document: PHASE_B_PLAN_v1_0_RECONCILER_PASS
 project_name: MARSYS-JIS
 version: 1.0.0

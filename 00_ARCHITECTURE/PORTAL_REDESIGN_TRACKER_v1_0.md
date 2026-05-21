@@ -1,4 +1,5 @@
 ---
+artifact: PORTAL_REDESIGN_TRACKER_v1_0
 artifact_id: PORTAL_REDESIGN_TRACKER
 version: 1.0.12
 status: ARCHIVED

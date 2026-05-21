@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_C7_AUTH_RUN_v1_0
 canonical_id: CHAT_V2_C7_AUTH_RUN
 version: 1.0
 status: COMPLETE

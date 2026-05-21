@@ -1,4 +1,5 @@
 ---
+artifact: PHASE_5_DASHA_CORRECTNESS_MASTER_PLAN_v1_0
 canonical_id: PHASE_5_DASHA_CORRECTNESS_MASTER_PLAN
 version: 1.0
 status: CLOSED — §5A CLOSED; §5B CLOSED; §5C CLOSED (campaign complete 2026-05-19)

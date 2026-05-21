@@ -1,4 +1,5 @@
 ---
+artifact: RETENTION_POLICY_v1_0
 title: "BHISMA Wave 2 — Monitoring Data Retention & Archival Policy"
 canonical_id: RETENTION_POLICY
 version: 1.0

@@ -1,5 +1,6 @@
 ---
 artifact: CLAUDECODE_BRIEF_PORTAL_QUALITY_v0_1.md
+version: 0.1
 status: DRAFT
 status_set_drafted_on: 2026-04-27
 session_id: Madhav_PORTAL_QUALITY_v0_1

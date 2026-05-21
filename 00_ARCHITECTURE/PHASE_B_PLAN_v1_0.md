@@ -1,3 +1,12 @@
+---
+artifact: PHASE_B_PLAN_v1_0
+version: 1.0
+status: SUPERSEDED
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Existing file body untouched. Status SUPERSEDED per CLAUDE.md §E (M2 closed 2026-05-01).
+---
+
 # MARSYS-JIS Corpus Activation — Phase B Plan v1.0 (B-PRIMARY, M2-SCOPED)
 
 **Status:** APPROVED FOR EXECUTION — Phase B.0 pending start.

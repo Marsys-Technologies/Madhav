@@ -1,3 +1,12 @@
+---
+artifact: PROJECT_ARCHITECTURE_v2_1
+version: 2.1
+status: SUPERSEDED
+backfill_note: >
+  Frontmatter backfilled by governance hygiene pass following PR #111 SESSION_HALT.md AC.7.
+  Existing file body untouched.
+---
+
 > **SUPERSEDED** — see `PROJECT_ARCHITECTURE_v2_2.md` for current. Retained for historical reference only. Do not cite v2.1 as authoritative. Superseded 2026-04-24 at Step 5A of the Step 0 → Step 15 governance rebuild.
 
 ---

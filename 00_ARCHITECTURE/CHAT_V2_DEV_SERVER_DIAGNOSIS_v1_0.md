@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_DEV_SERVER_DIAGNOSIS_v1_0
 name: Chat V2 Dev Server Diagnosis
 canonical_id: CHAT_V2_DEV_SERVER_DIAGNOSIS_v1_0
 version: 1.0

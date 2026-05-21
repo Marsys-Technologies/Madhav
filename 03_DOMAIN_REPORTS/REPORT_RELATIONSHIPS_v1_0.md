@@ -1,4 +1,5 @@
 ---
+artifact: REPORT_RELATIONSHIPS_v1_0
 document: REPORT_RELATIONSHIPS_v1_0.md
 version: 1.0
 status: CLOSED

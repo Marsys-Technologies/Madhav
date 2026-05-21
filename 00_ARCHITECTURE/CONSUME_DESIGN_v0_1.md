@@ -1,5 +1,6 @@
 ---
 artifact: CONSUME_DESIGN_v0_1.md
+version: 0.1
 status: SUPERSEDED (2026-04-27 — content absorbed and refined into MARSYS_JIS_ARCHITECTURE_v1_0.md; retained in place for historical audit and provenance)
 revision: v0.1 (2026-04-26 initial) → extended same-session 2026-04-26 with §11 Layer Anatomy + §12 Algorithm Walkthrough + §13 Layer Epistemology
 authored_by: Cowork (Claude Opus 4.7)

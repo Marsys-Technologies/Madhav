@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_ARCHITECTURE_v2_2
 document: PROJECT MASTER ARCHITECTURE BLUEPRINT
 project_name: Abhisek Mohanty — Jyotish Intelligence System (MARSYS-JIS)
 subject: Abhisek Mohanty (b. 1984-02-05, 10:43 IST, Bhubaneswar)

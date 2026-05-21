@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_ROUND_6_PLAN_v1_0
 name: CHAT V2 ROUND 6 — F.3 FIX-WAVE + AUTOMATED SMOKE GATE
 canonical_id: CHAT_V2_ROUND_6_PLAN
 version: 1.0

@@ -1,4 +1,5 @@
 ---
+artifact: PORTAL_REDESIGN_R5_REPORT_v1_0
 artifact_id: PORTAL_REDESIGN_R5_REPORT
 version: 1.0.0
 status: COMPLETE

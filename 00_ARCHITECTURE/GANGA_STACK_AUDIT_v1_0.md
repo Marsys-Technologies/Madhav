@@ -1,4 +1,5 @@
 ---
+artifact: GANGA_STACK_AUDIT_v1_0
 title: "GANGA Gate G0 — LLM Stack Audit"
 canonical_id: GANGA_STACK_AUDIT
 version: 1.0

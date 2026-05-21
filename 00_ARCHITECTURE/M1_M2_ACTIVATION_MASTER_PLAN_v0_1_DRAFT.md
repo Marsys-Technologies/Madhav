@@ -1,4 +1,5 @@
 ---
+artifact: M1_M2_ACTIVATION_MASTER_PLAN_v0_1_DRAFT
 canonical_id: M1_M2_ACTIVATION_MASTER_PLAN
 version: 0.1-DRAFT
 status: DRAFT_PLANNING

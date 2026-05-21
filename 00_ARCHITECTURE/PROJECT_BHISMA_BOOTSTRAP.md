@@ -1,4 +1,5 @@
 ---
+artifact: PROJECT_BHISMA_BOOTSTRAP
 canonical_id: PROJECT_BHISMA_BOOTSTRAP
 version: 1.0
 status: CURRENT

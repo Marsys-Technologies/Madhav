@@ -1,4 +1,5 @@
 ---
+artifact: CHAT_V2_VERIFICATION_AUDIT_v1_0
 canonical_id: CHAT_V2_VERIFICATION_AUDIT
 version: 1.0
 status: DRAFT

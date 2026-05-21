@@ -1,4 +1,5 @@
 ---
+artifact: SYNTHESIS_PROMPT_v1_0
 title: "MARSYS-JIS Synthesis Prompt Governance"
 version: 1.0
 status: CURRENT

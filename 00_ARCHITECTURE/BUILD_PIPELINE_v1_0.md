@@ -1,4 +1,5 @@
 ---
+artifact: BUILD_PIPELINE_v1_0
 canonical_id: BUILD_PIPELINE_v1_0
 version: 1.0
 status: CURRENT
