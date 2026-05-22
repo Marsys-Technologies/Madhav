@@ -155,6 +155,10 @@ export type FeatureFlag =
   //   Default true. Rollback: set MARSYS_FLAG_R11C_SMOOTH_STREAM_V3=false → Y-S3 behavior.
   //   Env: MARSYS_FLAG_R11C_SMOOTH_STREAM_V3
   | 'R11C_SMOOTH_STREAM_V3'
+  // R11C_TOOL_CARDS: inline ToolCallCard with verb labels + progressive input reveal.
+  //   Client-side NEXT_PUBLIC flag. Default true.
+  //   Env: NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS
+  | 'R11C_TOOL_CARDS'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -248,6 +252,10 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R11V2_CAPABILITY_TELEMETRY: false,
   // R11C_SMOOTH_STREAM_V3: rate-target ~40 cps. Default true. Rollback: set env=false.
   R11C_SMOOTH_STREAM_V3: true,
+  // R11C_TOOL_CARDS: inline ToolCallCard with verb labels + progressive input reveal.
+  //   Client-side NEXT_PUBLIC flag (UI component). Default true.
+  //   Env: NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS
+  R11C_TOOL_CARDS: true,
 }
 
 // Numeric config keys (read via configService.getValue)

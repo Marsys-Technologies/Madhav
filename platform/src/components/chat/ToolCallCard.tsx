@@ -1,8 +1,21 @@
 'use client'
 
+/**
+ * ToolCallCard — C-S5 R11.C
+ *
+ * Inline tool call card with:
+ *   - Icon + verb label (from tool_verbs.ts): "Looked up panchang" / "Looking up panchang…"
+ *   - Progressive input reveal during streaming (state=input-streaming → partial JSON shown)
+ *   - Marsys gold accent (NOT coral)
+ *   - Gated by MARSYS_FLAG_R11C_TOOL_CARDS (default true)
+ *
+ * Kept as ToolCallCard — do NOT rename or create InlineToolCard.tsx.
+ */
+
 import { useState, memo } from 'react'
-import { ChevronDown, Wrench, CircleCheck, CircleAlert, Loader2 } from 'lucide-react'
+import { ChevronDown, CircleCheck, CircleAlert, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getToolVerb } from './tool_verbs'
 
 export interface ToolCallCardProps {
   toolName: string
@@ -25,6 +38,14 @@ function ToolCallCardImpl({ toolName, state, input, output, errorText }: ToolCal
   const isRunning = state === 'input-streaming' || state === 'input-available'
   const isError = state === 'output-error'
 
+  // C-S5: verb label from mapping (e.g., "Looked up panchang" / "Looking up panchang…")
+  const verbEntry = getToolVerb(toolName)
+  const verbLabel = isError
+    ? `Error — ${verbEntry.done}`
+    : isRunning
+    ? verbEntry.running
+    : verbEntry.done
+
   return (
     <div className={cn(
       'my-3 overflow-hidden rounded-xl border border-border/60 bg-muted/30 border-l-2 transition-colors duration-150',
@@ -35,18 +56,24 @@ function ToolCallCardImpl({ toolName, state, input, output, errorText }: ToolCal
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50"
+        data-tool-name={toolName}
+        data-tool-state={state}
       >
         {isRunning ? (
-          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <Loader2 className="size-3.5 animate-spin text-[var(--brand-gold)]/70" aria-label="Running" />
         ) : isError ? (
-          <CircleAlert className="size-3.5 text-destructive" />
+          <CircleAlert className="size-3.5 text-destructive" aria-label="Error" />
         ) : (
-          <CircleCheck className="size-3.5 text-muted-foreground" />
+          <CircleCheck className="size-3.5 text-[var(--brand-gold)]/70" aria-label="Done" />
         )}
-        <Wrench className="size-3 text-muted-foreground" />
-        <span className="font-mono text-muted-foreground">
-          {isRunning ? 'Running' : isError ? 'Error in' : 'Used'}{' '}
-          <span className="text-foreground">{toolName}</span>
+        <span
+          className={cn(
+            'font-sans text-xs',
+            isRunning ? 'text-muted-foreground' : isError ? 'text-destructive/80' : 'text-muted-foreground/80',
+          )}
+          data-testid="tool-card-verb-label"
+        >
+          {verbLabel}
         </span>
         <ChevronDown
           className={cn(
