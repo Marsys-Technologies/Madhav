@@ -102,6 +102,7 @@ import { CorrectionNotice } from './CorrectionNotice'
 import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 import { cn } from '@/lib/utils'
+import { MultiProviderParityToggle } from './MultiProviderParityToggle'
 import type { Report, ConversationModule } from '@/lib/db/types'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
@@ -1523,6 +1524,8 @@ function V2BottomBar() {
           <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
         )}
         <PanelModeToggle />
+        {/* A-S11: Multi-Provider Parity runtime toggle (hidden when env-var false) */}
+        <MultiProviderParityToggle />
       </div>
     </div>
   )
