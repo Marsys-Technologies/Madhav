@@ -56,9 +56,29 @@ export class GoogleAdapter implements CapabilityAdapter {
     yield* migrationAdapter.stubChat(request, 'google');
   }
 
-  thinking(_request: ThinkingRequest): ThinkingResponse {
-    // R11.C — Gemini thinkingBudget (integer 0–24576 in generation config)
-    throw new CapabilityUnsupportedError('thinking', 'google');
+  thinking(request: ThinkingRequest): ThinkingResponse {
+    // R11.C — Gemini thinkingBudget (integer 0–24576 in generation config).
+    // Gemini 2.5 Pro uses thinkingConfig: { thinkingBudget: N } in generation config.
+    // Default: 24576 (preserved from registry.ts — DO NOT CHANGE default).
+    // Effort → budgetTokens mapping for adaptive budgets:
+    //   low → 8192, medium → 24576 (default), high → 32768 (Gemini 2.5 Pro max)
+    const GEMINI_DEFAULT_BUDGET = 24576;
+    const effortToBudget: Record<string, number> = {
+      low: 8192,
+      medium: GEMINI_DEFAULT_BUDGET,
+      high: 32768,
+    };
+    const effort = request.effort ?? 'medium';
+    const budget = request.budgetTokens ?? effortToBudget[effort];
+    return {
+      mode: 'native_budget',
+      effort,
+      budgetTokens: budget,
+      providerPayload: {
+        // Gemini 2.5 generation config shape
+        thinkingConfig: { thinkingBudget: budget },
+      },
+    };
   }
 
   cache(_request: CacheRequest): CacheResponse {

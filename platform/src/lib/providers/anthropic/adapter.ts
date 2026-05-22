@@ -71,14 +71,30 @@ export class AnthropicAdapter implements CapabilityAdapter {
     yield* migrationAdapter.stubChat(request, 'anthropic');
   }
 
-  thinking(_request: ThinkingRequest): ThinkingResponse {
+  thinking(request: ThinkingRequest): ThinkingResponse {
     // R11.C — Adaptive Thinking Budget (Anthropic)
-    throw new CapabilityUnsupportedError(
-      'thinking',
-      'anthropic',
-    );
-    // Implementation note for R11.C: map effort to thinking.budget_tokens
-    // { low: 1024, medium: 8192, high: 16384 } for Sonnet/Opus 4.6+
+    // Anthropic API shape: { type: 'enabled', effort: 'low'|'medium'|'high' }
+    // for Opus 4.6+ / Sonnet 4.6+ (effort-based API).
+    // For older models: { type: 'enabled', budget_tokens: N }
+    // Effort → budget_tokens fallback mapping (used if effort API unsupported):
+    //   low → 1024, medium → 8192, high → 32768
+    const effort = request.effort ?? 'medium';
+    const effortToBudget: Record<string, number> = {
+      low: 1024,
+      medium: 8192,
+      high: 32768,
+    };
+    return {
+      mode: 'native_effort',
+      effort,
+      budgetTokens: request.budgetTokens ?? effortToBudget[effort],
+      providerPayload: {
+        // effort-based API (Opus 4.6+, Sonnet 4.6+)
+        thinking: { type: 'enabled', effort },
+        // budget_tokens fallback (legacy models)
+        thinking_budget_fallback: { type: 'enabled', budget_tokens: request.budgetTokens ?? effortToBudget[effort] },
+      },
+    };
   }
 
   cache(_request: CacheRequest): CacheResponse {
