@@ -117,12 +117,16 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
     } catch { }
   }, [text])
 
+  // R11.B B-S3: when .consume-shell.r11b-active is present, CSS rules target
+  // .v2-assistant-message-wrapper to remove card chrome (bubble-less).
+  // max-width 48rem column is applied at the .v2-message-row level in globals.css.
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="group/message mx-auto w-full max-w-3xl px-6"
+      className="group/message mx-auto w-full max-w-3xl px-6 v2-assistant-message-wrapper"
+      data-role="assistant-message"
     >
       <span role="status" aria-live="polite" className="sr-only">{announceText}</span>
       <div className="flex items-start gap-3.5">

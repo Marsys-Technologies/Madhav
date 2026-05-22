@@ -245,12 +245,15 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           onSelect={selectSlashCommand}
         />
       )}
+      {/* consume-composer-card: base class for CSS targeting.
+          R11.B B-S4: .consume-shell.r11b-active .consume-composer-card overrides in globals.css
+          (1.5rem radius, no shadow, bg matches canvas, gold focus border). */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={cn(
-          'relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200',
+          'consume-composer-card relative flex flex-col rounded-3xl border border-[rgba(var(--brand-gold-rgb),0.35)] bg-background shadow-sm transition-all duration-200',
           isFocused && 'border-[rgba(var(--brand-gold-rgb),0.75)] shadow-[0_0_0_3px_rgba(var(--brand-gold-rgb),0.15)]',
           isDragOver && 'border-[rgba(var(--brand-gold-rgb),0.90)] ring-4 ring-[var(--brand-gold)]/20 shadow-lg',
           disabled && 'opacity-60'

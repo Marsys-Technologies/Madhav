@@ -77,6 +77,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=false
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=false
 
       - name: Deploy web to Cloud Run
         id: deploy

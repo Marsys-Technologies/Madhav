@@ -166,10 +166,13 @@ function ConversationItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* conversation-list-item: R11.B B-S5 CSS target.
+          .consume-shell.r11b-active .conversation-list-item overrides padding/radius
+          to Claude-compact (8px 12px, 8px border-radius). */}
       <button
         type="button"
         onClick={() => onSelect(conv.id)}
-        className={`w-full text-left px-3 py-2 pr-7 text-xs rounded-md transition-colors truncate ${
+        className={`conversation-list-item w-full text-left px-3 py-2 pr-7 text-xs rounded-md transition-colors truncate ${
           active
             ? 'bg-indigo-600/20 text-indigo-300'
             : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'

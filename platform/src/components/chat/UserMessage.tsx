@@ -128,6 +128,11 @@ export function UserMessage({
         {text && (
           <div
             className={cn(
+              // Base bubble — Marsys glassmorphic dark with gold speech-tail (v2-user-bubble).
+              // v2-user-bubble--r11b-shape: shape variant activated by .consume-shell.r11b-active
+              // (border-radius 1rem, max-width 80%, padding 12/14, right-aligned).
+              // Speech-tail ::after + gold hairline border preserved in both states.
+              'v2-user-bubble v2-user-bubble--r11b-shape',
               'rounded-2xl border border-border/80 bg-muted/50 px-4 py-2.5 text-[15px] leading-[1.6]',
               'text-foreground'
             )}

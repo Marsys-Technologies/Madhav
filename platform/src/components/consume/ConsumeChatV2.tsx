@@ -78,8 +78,7 @@ import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CodeBlock } from '../chat/CodeBlock'
-import { CitationSidePanel } from '../chat/CitationSidePanel'
-import type { CitationPart } from '@/lib/citations/citation_data_part'
+// B-S7: side panel deleted — inline citation parity; NumberedCitation is the sole citation surface.
 import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
 import { PanelConfidenceRibbon } from '../chat/PanelConfidenceRibbon'
 import { PanelDissentTabs } from '../chat/PanelDissentTabs'
@@ -103,6 +102,12 @@ import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 import { cn } from '@/lib/utils'
 import { MultiProviderParityToggle } from './MultiProviderParityToggle'
+import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
+
+// R11.B — Look-and-Feel umbrella flag (NEXT_PUBLIC, build-time)
+const R11B_LOOK_AND_FEEL_ENV =
+  typeof process !== 'undefined' &&
+  process.env.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL === 'true'
 import type { Report, ConversationModule } from '@/lib/db/types'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
@@ -212,18 +217,9 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   setActivePersonaId: () => {},
 })
 
-// ─── Citation context ─────────────────────────────────────────────────────────
-
-interface CitationContextValue {
-  onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
-  onStreamEnd: (citations: CitationPart[]) => void
-  onBadgeClick: (index: number) => void
-}
-const CitationCtx = createContext<CitationContextValue>({
-  onPin: () => {},
-  onStreamEnd: () => {},
-  onBadgeClick: () => {},
-})
+// ─── B-S7: Citation side panel retired ───────────────────────────────────────
+// Citations are now inline-only via NumberedCitation. No side panel, no ctx.
+// onPin back-compat in NumberedCitation maps to onActivate.
 
 /** Pre-process LLM response text before markdown rendering.
  *
@@ -265,12 +261,9 @@ export { preprocessCitations }
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
-  const { onPin, onStreamEnd, onBadgeClick } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
-  const prevIsStreamingRef = useRef(isStreaming)
-
   // C.3: build signal_id → {snippet, layer, confidence} map from data-citation parts.
   const citationRichMap = useMemo(() => {
     const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5'; confidence: number | undefined }>()
@@ -288,38 +281,6 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     }
     return result
   }, [dataParts])
-
-  // R7-S4: collect all CitationPart objects from data parts for stream-end event.
-  const allCitationParts = useMemo(() => {
-    return dataParts
-      .filter(d => d.type === 'data-citation')
-      .map(d => {
-        const data = d.data as Record<string, unknown>
-        return {
-          type: 'citation' as const,
-          index: typeof data.index === 'number' ? data.index : 0,
-          signal_id: typeof data.signal_id === 'string' ? data.signal_id : '',
-          snippet: typeof data.snippet === 'string' ? data.snippet : '',
-          layer: (data.layer === 'L1' ? 'L1' : 'L2.5') as 'L1' | 'L2.5',
-        }
-      })
-      .filter(c => c.signal_id)
-      .sort((a, b) => a.index - b.index)
-  }, [dataParts])
-
-  // R7-S4: AC-1 — when streaming ends and citations exist, open the panel.
-  useEffect(() => {
-    if (prevIsStreamingRef.current && !isStreaming && allCitationParts.length > 0) {
-      onStreamEnd(allCitationParts)
-    }
-    prevIsStreamingRef.current = isStreaming
-  }, [isStreaming, allCitationParts, onStreamEnd])
-
-  const enrichedOnPin = useCallback((n: number, signalId: string) => {
-    const rich = citationRichMap.get(signalId)
-    onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
-    onBadgeClick(n)
-  }, [onPin, citationRichMap, onBadgeClick])
 
   // Pre-process text: replace SIG.MSR.NNN → `CITE:N:SIG.MSR.NNN` inline markers.
   const { processedText, count } = useMemo(
@@ -344,7 +305,6 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
             signalId={m[2]}
             snippet={citationRichMap.get(m[2])?.snippet}
             confidence={citationRichMap.get(m[2])?.confidence}
-            onPin={enrichedOnPin}
           />
         )
       }
@@ -356,10 +316,10 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       return <CodeBlock code={raw.replace(/\n$/, '')} lang={lang} isStreaming={isStreaming} />
     }
     return CiteCode
-  }, [enrichedOnPin, isStreaming])
+  }, [citationRichMap, isStreaming])
 
   // C.3 + B.4: citation-enriched render helper — data-testid enables E2E targeting.
-  const renderWithCitations = (_text: string, _enrichedOnPin: (n: number, signalId: string) => void) => (
+  return (
     <div data-testid="v2-message-text">
       <MarkdownContent
         streaming={isStreaming}
@@ -371,8 +331,6 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       </MarkdownContent>
     </div>
   )
-
-  return renderWithCitations(text, enrichedOnPin)
 }
 
 // ─── Panel data extraction helpers ───────────────────────────────────────────
@@ -609,15 +567,18 @@ function V2Message() {
     setCitationCount(n)
   }, [])
 
+  // R11.B B-S3: .v2-message-row class enables CSS targeting.
+  // Under .consume-shell.r11b-active, this column is pinned to max-width 48rem (768px)
+  // via globals.css .consume-shell.r11b-active .v2-message-row rule.
   return (
     <MessagePrimitive.Root
-      className="group flex w-full max-w-4xl mx-auto flex-col gap-1 px-4 py-3"
+      className="group flex w-full max-w-4xl mx-auto flex-col gap-1 px-4 py-3 v2-message-row"
       data-testid="v2-message"
     >
       <MessagePrimitive.If user>
         <div className="flex flex-col items-end gap-1">
           <div
-            className="v2-user-bubble rounded-2xl px-4 py-2.5 text-sm text-foreground max-w-[70%]"
+            className="v2-user-bubble v2-user-bubble--r11b-shape rounded-2xl px-4 py-2.5 text-sm text-foreground max-w-[70%]"
             data-testid="v2-user-message"
           >
             {/* F.2: flat props — renderer receives {text,...} directly, not a nested part object */}
@@ -1646,6 +1607,11 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [activeTier, setActiveTierOverride] = useState<AudienceTier>(audienceTier)
   // R9-S3: Persona selection state — persists for the session; null = no persona active.
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null)
+  // R11.B — multi-provider parity hook (A-S11). Combined with build-time flag to gate r11b-active.
+  const isParityActive = useMultiProviderParity()
+  // r11b-active class activates the Look-and-Feel layer (typography, shapes, chrome).
+  // Both conditions must be true: build-time kill-switch AND user runtime toggle.
+  const r11bActive = R11B_LOOK_AND_FEEL_ENV && isParityActive
 
   const prefsCtxValue = useMemo<V2PrefsCtxValue>(() => ({
     stack, style, lelEnabled, activeTier, audienceTier, activePersonaId,
@@ -1817,8 +1783,12 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
     <V2PrefsCtx.Provider value={prefsCtxValue}>
     <div
-      className="relative flex h-dvh text-zinc-100"
+      className={cn(
+        'relative flex h-dvh text-zinc-100 consume-shell',
+        r11bActive && 'r11b-active',
+      )}
       data-testid="v2-chat-shell"
+      data-r11b-active={r11bActive ? 'true' : 'false'}
       style={{ ['--text-scale' as string]: textScale }}
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
@@ -2027,37 +1997,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
-  // β4: Citation state — allCitations holds every citation from the latest complete message.
-  const [allCitations, setAllCitations] = useState<CitationPart[]>([])
-  const pinnedSet = useMemo(() => new Set(allCitations.map(c => c.index)), [allCitations])
-
-  // R7-S4: panel open/close state and scroll-to-row target.
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [scrollTarget, setScrollTarget] = useState<number | null>(null)
-
-  const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
-    setAllCitations(prev => {
-      if (prev.some(c => c.index === n)) return prev
-      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
-    })
-  }, [])
-
-  const handleUnpin = useCallback((n: number) => {
-    setAllCitations(prev => prev.filter(c => c.index !== n))
-  }, [])
-
-  const citationCtxValue = useMemo(() => ({
-    onPin: handlePin,
-    onStreamEnd: (citations: CitationPart[]) => {
-      setAllCitations(citations)
-      setPanelOpen(true)
-    },
-    onBadgeClick: (index: number) => {
-      setPanelOpen(true)
-      setScrollTarget(index)
-    },
-  }), [handlePin])
-
+  // B-S7: Citation side panel retired. Citations are inline-only via NumberedCitation.
   // β5: attachment manager — tokens injected into each request body
   const attachmentManager = useAttachmentManager()
   const attachmentsRef = useRef(attachmentManager.attachments)
@@ -2126,7 +2066,6 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     <V2TitleCb.Provider value={onTitle ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
-    <CitationCtx.Provider value={citationCtxValue}>
       <AttachmentCtx.Provider value={attachmentManager}>
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
@@ -2136,21 +2075,11 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           {/* C.2 + W5: unified runtime tracker — emits query_id, conversation_id */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
+            {/* B-S7: side panel retired — citations are inline-only via NumberedCitation */}
             <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} tokensEnabled={tokensEnabled ?? false} />
-            <CitationSidePanel
-              citations={allCitations}
-              pinned={pinnedSet}
-              onUnpin={handleUnpin}
-              open={panelOpen}
-              onClose={() => setPanelOpen(false)}
-              scrollTarget={scrollTarget}
-              onScrolled={() => setScrollTarget(null)}
-              conversationId={conversationId}
-            />
           </div>
         </AssistantRuntimeProvider>
       </AttachmentCtx.Provider>
-    </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
     </V2TitleCb.Provider>

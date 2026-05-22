@@ -750,3 +750,270 @@ body {
   0%, 100% { opacity: 0.3; transform: scale(1); }
   50%       { opacity: 0.9; transform: scale(1.35); }
 }
+
+/* ============================================================
+   R11.B — Look-and-Feel typography stack (B-S1)
+   Gated by .consume-shell.r11b-active — applied when:
+     - MARSYS_FLAG_R11B_LOOK_AND_FEEL=true (NEXT_PUBLIC build-arg, default false) AND
+     - useMultiProviderParity() hook returns true (A-S11 runtime toggle)
+   The class .r11b-active is set on the .consume-shell root by ConsumeChatV2.tsx.
+   Marsys palette (gold/charcoal/ink tokens) is NEVER touched by this block.
+   ============================================================ */
+
+/* Typography token declarations */
+.consume-shell.r11b-active {
+  /* System-serif stack — Claude's reading feel, no CDN load */
+  --font-body-serif: ui-serif, Georgia, "Iowan Old Style", "Source Serif Pro", serif;
+  /* System-sans — stays for chrome/buttons/labels */
+  --font-chrome-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* System-mono — code blocks */
+  --font-code-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code",
+    Menlo, Consolas, "Courier New", monospace;
+}
+
+/* Body text inside assistant message body — adopt serif */
+.consume-shell.r11b-active .message-body,
+.consume-shell.r11b-active [data-message-role="assistant"] .prose,
+.consume-shell.r11b-active .v2-assistant-message .prose {
+  font-family: var(--font-body-serif);
+  font-size: 1rem;         /* 16px baseline — legible serif body */
+  line-height: 1.75;       /* Generous leading for long-form text */
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Headings inside assistant prose — slightly heavier serif */
+.consume-shell.r11b-active .prose h1,
+.consume-shell.r11b-active .prose h2,
+.consume-shell.r11b-active .prose h3,
+.consume-shell.r11b-active .prose h4,
+.consume-shell.r11b-active .prose h5,
+.consume-shell.r11b-active .prose h6 {
+  font-family: var(--font-body-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Blockquotes — serif, slightly muted */
+.consume-shell.r11b-active .prose blockquote {
+  font-family: var(--font-body-serif);
+  font-style: italic;
+  color: var(--muted-foreground);
+  border-left: 2px solid color-mix(in oklch, var(--brand-gold) 40%, transparent);
+  padding-left: 1rem;
+  margin: 1rem 0;
+}
+
+/* Code blocks — system-mono (overrides serif for code) */
+.consume-shell.r11b-active .prose code,
+.consume-shell.r11b-active .prose pre,
+.consume-shell.r11b-active .prose pre code,
+.consume-shell.r11b-active code,
+.consume-shell.r11b-active pre {
+  font-family: var(--font-code-mono);
+  font-size: 0.875rem;     /* 14px — mono legibility */
+  line-height: 1.6;
+}
+
+/* Chrome elements — sidebar, buttons, labels, inputs stay sans-serif */
+.consume-shell.r11b-active [data-sidebar],
+.consume-shell.r11b-active nav,
+.consume-shell.r11b-active button,
+.consume-shell.r11b-active label,
+.consume-shell.r11b-active input,
+.consume-shell.r11b-active textarea,
+.consume-shell.r11b-active [role="menuitem"],
+.consume-shell.r11b-active [role="menu"],
+.consume-shell.r11b-active .brand-cta {
+  font-family: var(--font-chrome-sans);
+}
+
+/* User bubble — sans chrome feel (contrasts with serif assistant) */
+.consume-shell.r11b-active [data-message-role="user"],
+.consume-shell.r11b-active .v2-user-bubble {
+  font-family: var(--font-chrome-sans);
+  font-size: 0.9375rem;    /* 15px — slightly smaller than assistant body */
+  line-height: 1.6;
+}
+
+/* R11.B user-bubble shape constants (B-S2).
+   Activated by .consume-shell.r11b-active.
+   Claude shape: border-radius 1rem, max-width 80%, padding 12px 14px, right-aligned.
+   Marsys speech-tail (::after) and gold hairline border are preserved verbatim. */
+.consume-shell.r11b-active .v2-user-bubble,
+.consume-shell.r11b-active .v2-user-bubble--r11b-shape {
+  border-radius: 1rem;           /* Claude's constant: 16px rounded bubble */
+  max-width: 80%;                /* Claude's constant: wider than legacy 70% */
+  padding: 12px 14px;            /* Claude's constant: 12/14 not 10/16 */
+  margin-left: auto;             /* Right-align within flex column */
+}
+
+/* ============================================================
+   R11.B — Message container shape (B-S3)
+   AssistantMessage: bubble-less (no bg/border at message level).
+   Message stream column pinned to 48rem (768px) centered.
+   Action bar hover-reveal.
+   ============================================================ */
+
+/* Asymmetric pattern — assistant message: no card chrome.
+   Bubble-less: background/border/padding removed at the message level.
+   (Text content itself is unstyled; prose classes handle spacing.)
+   Target: .v2-assistant-message or the group/message wrapper when r11b-active. */
+.consume-shell.r11b-active .v2-assistant-message-wrapper,
+.consume-shell.r11b-active [data-testid="v2-assistant-message"] {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* Message stream: pin to max-width 48rem (768px) centered column.
+   Overrides Tailwind max-w-4xl (896px) on the message wrapper.
+   r11b-active wraps both user + assistant turns. */
+.consume-shell.r11b-active .v2-message-row {
+  max-width: 48rem;              /* Claude's signature 768px column */
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Increase gap between message turns under r11b (gap-8 = 2rem) */
+.consume-shell.r11b-active [data-testid="v2-thread-root"] .v2-message-gap {
+  margin-bottom: 2rem;
+}
+
+/* ============================================================
+   R11.B — Composer chrome (B-S4)
+   Claude-minimal shape: 1.5rem radius, no shadow, bg matches canvas.
+   Marsys gold focus border + .brand-cta send button preserved.
+   ============================================================ */
+
+/* Minimal rounded composer under r11b-active */
+.consume-shell.r11b-active .consume-composer-card {
+  border-radius: 1.5rem;         /* Claude's minimal shape constant */
+  box-shadow: none;              /* Remove shadow — fades into canvas */
+  background: oklch(0.08 0.008 75);  /* Near-canvas bg, slightly lifted */
+  border-color: color-mix(in oklch, var(--brand-gold) 22%, transparent);
+  transition: border-color 0.15s ease;
+}
+
+/* Focus-within: gold border emphasis (Marsys brand preserved) */
+.consume-shell.r11b-active .consume-composer-card:focus-within {
+  border-color: var(--brand-gold);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--brand-gold) 12%, transparent);
+}
+
+/* Drag-over: keep strong gold ring */
+.consume-shell.r11b-active .consume-composer-card:has([data-drag-over="true"]) {
+  border-color: var(--brand-gold);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-gold) 18%, transparent);
+}
+
+/* ============================================================
+   R11.B — Sidebar chrome (B-S5)
+   Claude-compact conversation items: 8/12 padding, 8px radius.
+   Near-ink surface, gold-hairlines, .brand-cta New Chat preserved.
+   ============================================================ */
+
+/* Compact conversation items under r11b-active */
+.consume-shell.r11b-active .conversation-list-item {
+  padding: 8px 12px;             /* Claude's compact shape constant */
+  border-radius: 8px;            /* Claude's 8px item radius */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sidebar width — expand slightly for comfortable reading */
+.consume-shell.r11b-active [data-sidebar] {
+  width: 17rem;                  /* 272px — within the 256–288px target range */
+  min-width: 17rem;
+}
+
+/* ============================================================
+   R11.B — Markdown content typescale (B-S6)
+   Claude typescale: 1rem body / 1.65 leading / serif.
+   h1-h3: 28-30/22-24/18-19px / weight 600.
+   Code blocks: 14px mono, bg var(--card), 8px radius.
+   ============================================================ */
+
+/* Body typescale */
+.consume-shell.r11b-active .markdown-content {
+  font-size: 1rem;               /* 16px baseline */
+  line-height: 1.65;             /* Claude's body leading */
+  font-family: var(--font-body-serif, ui-serif, Georgia, serif);
+}
+
+/* Heading scale */
+.consume-shell.r11b-active .markdown-content h1 {
+  font-size: 1.75rem;            /* ~28px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+.consume-shell.r11b-active .markdown-content h2 {
+  font-size: 1.375rem;           /* ~22px */
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+.consume-shell.r11b-active .markdown-content h3 {
+  font-size: 1.125rem;           /* ~18px */
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+.consume-shell.r11b-active .markdown-content h4,
+.consume-shell.r11b-active .markdown-content h5,
+.consume-shell.r11b-active .markdown-content h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Code blocks — system-mono at 14px */
+.consume-shell.r11b-active .markdown-content pre {
+  font-family: var(--font-code-mono, ui-monospace, Menlo, monospace);
+  font-size: 0.875rem;           /* 14px */
+  line-height: 1.6;
+  background: var(--card);       /* Uses consume-shell --card token, NOT a new value */
+  border-radius: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+}
+
+/* Inline code */
+.consume-shell.r11b-active .markdown-content code:not(pre code) {
+  font-family: var(--font-code-mono, ui-monospace, Menlo, monospace);
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--card) 80%, transparent);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+
+/* Lists */
+.consume-shell.r11b-active .markdown-content ul,
+.consume-shell.r11b-active .markdown-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+.consume-shell.r11b-active .markdown-content li {
+  margin-bottom: 0.375rem;
+  line-height: 1.65;
+}
+
+/* Blockquotes */
+.consume-shell.r11b-active .markdown-content blockquote {
+  border-left: 2px solid color-mix(in oklch, var(--brand-gold) 40%, transparent);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
