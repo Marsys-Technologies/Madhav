@@ -61,6 +61,7 @@ export async function upsertChartFacts(
           source_section, build_id, provenance, is_stale)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
        ON CONFLICT (fact_id) DO UPDATE SET
+         category        = EXCLUDED.category,
          value_text      = EXCLUDED.value_text,
          value_number    = EXCLUDED.value_number,
          value_json      = EXCLUDED.value_json,
