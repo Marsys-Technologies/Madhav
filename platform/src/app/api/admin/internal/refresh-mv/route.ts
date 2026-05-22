@@ -26,14 +26,16 @@ const ALLOWED_VIEWS = new Set([
 
 function validateAuth(request: Request): boolean {
   const cronSecret = process.env['MARSYS_CRON_SECRET']
+  const customHeader = request.headers.get('X-Marsys-Cron-Secret')
+  const authHeader = request.headers.get('Authorization') ?? ''
+  console.log('[auth-debug] cronSecret set:', !!cronSecret, 'len:', cronSecret?.length ?? 0, 'customHeader set:', !!customHeader, 'authHeader prefix:', authHeader.slice(0, 10))
+
   if (!cronSecret) return false
 
   // Primary: X-Marsys-Cron-Secret custom header (avoids Authorization header conflicts)
-  const customHeader = request.headers.get('X-Marsys-Cron-Secret')
   if (customHeader === cronSecret) return true
 
   // Fallback: standard Authorization Bearer (for local/CI use where scheduler isn't involved)
-  const authHeader = request.headers.get('Authorization') ?? ''
   if (authHeader === `Bearer ${cronSecret}`) return true
 
   return false
