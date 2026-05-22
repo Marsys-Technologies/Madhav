@@ -953,6 +953,8 @@ export async function POST(request: Request) {
               } else if (event.type === 'thinking_delta') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 writer.write({ type: 'reasoning', delta: event.thinking, id: adapterMsgId } as any)
+              } else if (event.type === 'error') {
+                console.error('[adapter-dispatch] adapter error event stack=%s error=%s', adapterId, event.error)
               }
             }
           } catch (adapterErr) {
