@@ -883,3 +883,30 @@ body {
 .consume-shell.r11b-active [data-testid="v2-thread-root"] .v2-message-gap {
   margin-bottom: 2rem;
 }
+
+/* ============================================================
+   R11.B — Composer chrome (B-S4)
+   Claude-minimal shape: 1.5rem radius, no shadow, bg matches canvas.
+   Marsys gold focus border + .brand-cta send button preserved.
+   ============================================================ */
+
+/* Minimal rounded composer under r11b-active */
+.consume-shell.r11b-active .consume-composer-card {
+  border-radius: 1.5rem;         /* Claude's minimal shape constant */
+  box-shadow: none;              /* Remove shadow — fades into canvas */
+  background: oklch(0.08 0.008 75);  /* Near-canvas bg, slightly lifted */
+  border-color: color-mix(in oklch, var(--brand-gold) 22%, transparent);
+  transition: border-color 0.15s ease;
+}
+
+/* Focus-within: gold border emphasis (Marsys brand preserved) */
+.consume-shell.r11b-active .consume-composer-card:focus-within {
+  border-color: var(--brand-gold);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--brand-gold) 12%, transparent);
+}
+
+/* Drag-over: keep strong gold ring */
+.consume-shell.r11b-active .consume-composer-card:has([data-drag-over="true"]) {
+  border-color: var(--brand-gold);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-gold) 18%, transparent);
+}
