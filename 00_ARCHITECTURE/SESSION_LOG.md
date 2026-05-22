@@ -27558,3 +27558,80 @@ session_close:
     2 carry-forwards remain from CLOSEOUT-2026-05-22: amjis-mcp authenticated smoke
     + M6-A-S1 kickoff.
 ```
+
+```yaml
+session_open:
+  session_id: MCPT-v3.4-S2
+  cowork_thread_name: "MCPT v3.4-S2 — Final Red-Team + Seal + Merge Prep"
+  predecessor_session: R8-MIGRATIONS-APPLY
+  worktree: MadhavMCPT-FIN
+  branch: feature/mcpt-final
+  open_timestamp: 2026-05-22T00:00:00+05:30
+  phase: MCP Transformation v3.4 (Final)
+  scope: >
+    Red-team (8 threat probes), sealing artifact MCPT_CLOSE_v1_0.md,
+    governance updates (CURRENT_STATE v5.48, CLAUDE.md §E status update,
+    mirror surfaces MP.1+MP.2, SESSION_LOG), merge preparation.
+    HALT at REQUIRES_NATIVE_APPROVAL gate — no push to main without APPROVE_MAIN_MERGE.
+  may_touch:
+    - "00_ARCHITECTURE/MCP_RED_TEAM_v2_0.md"
+    - "00_ARCHITECTURE/MCPT_CLOSE_v1_0.md"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "CLAUDE.md"
+    - ".geminirules"
+    - ".gemini/project_state.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+  must_not_touch:
+    - "platform/**"
+    - "platform-mcp/**"
+    - "00_ARCHITECTURE/BRIEFS/**"
+    - "00_ARCHITECTURE/CONDUCTOR/**"
+
+session_body:
+  red_team_result:
+    class_1_findings: 0
+    class_2_findings: 3
+    verdict: CLEARED
+    findings:
+      - id: FINDING-T1
+        threat: T.1 Tier escalation
+        class: 2
+        description: flag_disagreement write tool lacks super_admin tier guard in writes route handler
+      - id: FINDING-T3
+        threat: T.3 URL-key leak
+        class: 2
+        description: URL api_key param accepted for all tiers without tier-level enforcement
+      - id: FINDING-T8
+        threat: T.8 Prompt injection
+        class: 2
+        description: house-rules variants lack explicit prompt injection warning section
+  sealing_artifact: 00_ARCHITECTURE/MCPT_CLOSE_v1_0.md
+  governance_updates:
+    - "CURRENT_STATE_v1_0.md: v5.48 appended"
+    - "CLAUDE.md §E: MCP Transformation STATUS ACTIVE → COMPLETE (pending main merge)"
+    - ".geminirules: MCPT-v3.4-S2 mirror update appended (MP.1)"
+    - ".gemini/project_state.md: MCPT v3.4-S2 mirror section added (MP.2)"
+    - "SESSION_LOG.md: this entry (OPEN — will seal at APPROVE_MAIN_MERGE close)"
+  merge_prepared: true
+  merge_status: HALTED — REQUIRES_NATIVE_APPROVAL
+
+session_close:
+  close_timestamp: OPEN — awaiting APPROVE_MAIN_MERGE
+  acceptance_criteria_met: partial (red-team + seal + governance done; merge pending)
+  current_state_version: 5.48
+  session_log_updated: true
+  mirror_updates_propagated:
+    - MP.1: .geminirules MCPT-v3.4-S2 entry appended
+    - MP.2: .gemini/project_state.md MCPT mirror section added
+  carry_forwards:
+    - "APPROVE_MAIN_MERGE: operator sends signal → git merge --no-ff feature/mcpt-final → main → git push → Cloud Run deploy → smoke test"
+    - "v3.5 queue: 8 items in MCPT_CLOSE_v1_0.md §6"
+  close_criteria_met: false — HALTED at REQUIRES_NATIVE_APPROVAL gate per spec
+  handoff_notes: >
+    v3.4-S2 red-team CLEARED (0 class-1). All 17 MCPT sessions closed. Sealing artifacts
+    committed to feature/mcpt-final. Merge prepared and aborted (per spec — do not push
+    until APPROVE_MAIN_MERGE received). Operator action: send APPROVE_MAIN_MERGE.
+    After merge: apply migrations 072–080 if not yet applied; rebuild amjis-mcp Cloud Run;
+    run smoke test (GET /health + authenticated tool call); finalize this SESSION_LOG entry
+    by setting close_timestamp and close_criteria_met: true.
+```

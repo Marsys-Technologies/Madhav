@@ -345,3 +345,7 @@ These asymmetries are declared per-pair in `CANONICAL_ARTIFACTS_v1_0.md §2 know
 ### Resolution of GA.7 (Grounding Audit)
 
 At registry date 2026-04-23, the prior reference to `twinkly-puzzling-quokka.md` in this file was dropped in favor of the authoritative `PHASE_B_PLAN_v1_0.md` v1.0.2 pointer and the `MACRO_PLAN_v2_0.md` pointer. `twinkly-puzzling-quokka.md` is not a canonical plan file; the authoritative M2 plan is `PHASE_B_PLAN_v1_0.md` v1.0.2. The drift detector's phantom-reference scan now catches any recurrence automatically.
+
+### MCPT v3.4-S2 Mirror Update (2026-05-22)
+
+MCP Transformation v3.1 COMPLETE (pending main merge). All 17 sessions closed across 4 phases (v3.1.0 Foundation, v3.2 Classical Grounding, v3.3 Depth Backfill, v3.4 Epistemic + Red-Team). Red-team CLEARED: 0 class-1 findings, 3 class-2 non-blocking (FINDING-T1: flag_disagreement lacks super_admin tier guard; FINDING-T3: URL api_key param accepted for all tiers; FINDING-T8: house-rules lacks prompt injection section). feature/mcpt-final ready for operator APPROVE_MAIN_MERGE. Sealing artifact: `00_ARCHITECTURE/MCPT_CLOSE_v1_0.md`. CURRENT_STATE v5.48 appended. CLAUDE.md §E concurrent workstream #13 STATUS: ACTIVE → COMPLETE (pending main merge 2026-05-22). MP.1 + MP.2 mirror update: this entry (project_state.md MP.2) + .geminirules entry (MP.1).
