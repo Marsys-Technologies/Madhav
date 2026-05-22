@@ -43,7 +43,15 @@ entries:
     git log --oneline main | grep -q "MCPT: final seal"
   est_tokens: 150000
   est_duration_min: 180
-  status: pending
+  status: PASS
+  completed_at: '2026-05-22'
+  merge_sha: 30174c5d
+  push_sha: 02362281
+  result: >
+    APPROVE_MAIN_MERGE received. feature/mcpt-final merged to main (SHA 30174c5d).
+    Post-merge governance seal committed (SHA 02362281). SESSION_LOG closed.
+    CURRENT_STATE v5.49. MCPT_CLOSE_v1_0.md merge evidence added.
+    Operator actions pending: apply migrations 072–080; verify CloudBuild deploy.
   human_decision_prompt: |
     MCP Transformation red-team complete with 0 class-1 findings.
     feature/mcpt-final ready to merge to main.

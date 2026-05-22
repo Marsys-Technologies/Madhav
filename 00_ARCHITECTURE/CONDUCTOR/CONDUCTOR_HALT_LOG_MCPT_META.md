@@ -155,6 +155,28 @@ Format per entry:
     4. Reply: RESUME v3.3-S1 --bootstrap-complete
        (This skip-gate variant marks S1 passed after manual operator verification)
 
+## MCPT-FINAL — v3.4-S2 MAIN MERGE — 2026-05-22
+
+```yaml
+phase: v3.4 (Final)
+session_id: v3.4-S2
+failure_class: REQUIRES_NATIVE_APPROVAL (not a failure — expected human gate)
+arc_progress: 17 of 17 sessions passed
+timestamp: 2026-05-22
+status: RESOLVED — APPROVED AND MERGED
+resolution: >
+  Operator sent APPROVE_MAIN_MERGE. Claude Code sub-agent executed:
+  (1) git checkout main && git pull origin main
+  (2) git merge --no-ff origin/feature/mcpt-final (CLAUDE.md conflict resolved)
+  (3) CLAUDE.md conflict: R11v2 → SUBSTRATE COMPLETE + honesty amendment;
+      MCPT Transformation → STATUS COMPLETE (2026-05-22); bumped v3.6 → v3.7.
+  (4) Merge SHA 30174c5d committed; pushed to origin/main (exit 0)
+  (5) Governance seal: SESSION_LOG closed, CURRENT_STATE v5.49, MCPT_CLOSE merge evidence
+  (6) Post-governance SHA 02362281 pushed.
+  session_queue_MCPT_FINAL.yaml v3.4-S2: status → PASS
+  operator_actions_still_required: [migrations 072–080, CloudBuild verify, post-deploy smoke]
+```
+
 ## R11META — R11.B MERGE HALT — 2026-05-22
 
 ```yaml
