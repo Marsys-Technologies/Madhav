@@ -78,8 +78,7 @@ import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
 import { NumberedCitation } from '../chat/NumberedCitation'
 import { CodeBlock } from '../chat/CodeBlock'
-import { CitationSidePanel } from '../chat/CitationSidePanel'
-import type { CitationPart } from '@/lib/citations/citation_data_part'
+// B-S7: side panel deleted — inline citation parity; NumberedCitation is the sole citation surface.
 import { PerMessageDetailsDrawer } from '../chat/PerMessageDetailsDrawer'
 import { PanelConfidenceRibbon } from '../chat/PanelConfidenceRibbon'
 import { PanelDissentTabs } from '../chat/PanelDissentTabs'
@@ -218,18 +217,9 @@ const V2PrefsCtx = createContext<V2PrefsCtxValue>({
   setActivePersonaId: () => {},
 })
 
-// ─── Citation context ─────────────────────────────────────────────────────────
-
-interface CitationContextValue {
-  onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void
-  onStreamEnd: (citations: CitationPart[]) => void
-  onBadgeClick: (index: number) => void
-}
-const CitationCtx = createContext<CitationContextValue>({
-  onPin: () => {},
-  onStreamEnd: () => {},
-  onBadgeClick: () => {},
-})
+// ─── B-S7: Citation side panel retired ───────────────────────────────────────
+// Citations are now inline-only via NumberedCitation. No side panel, no ctx.
+// onPin back-compat in NumberedCitation maps to onActivate.
 
 /** Pre-process LLM response text before markdown rendering.
  *
@@ -271,12 +261,9 @@ export { preprocessCitations }
 interface V2AssistantTextProps { text: string; onCitationCount?: (n: number) => void }
 
 function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
-  const { onPin, onStreamEnd, onBadgeClick } = useContext(CitationCtx)
   const message = useMessage()
   const isStreaming = message.status?.type === 'running'
   const dataParts = useDataParts(message)
-  const prevIsStreamingRef = useRef(isStreaming)
-
   // C.3: build signal_id → {snippet, layer, confidence} map from data-citation parts.
   const citationRichMap = useMemo(() => {
     const result = new Map<string, { snippet: string; layer: 'L1' | 'L2.5'; confidence: number | undefined }>()
@@ -294,38 +281,6 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
     }
     return result
   }, [dataParts])
-
-  // R7-S4: collect all CitationPart objects from data parts for stream-end event.
-  const allCitationParts = useMemo(() => {
-    return dataParts
-      .filter(d => d.type === 'data-citation')
-      .map(d => {
-        const data = d.data as Record<string, unknown>
-        return {
-          type: 'citation' as const,
-          index: typeof data.index === 'number' ? data.index : 0,
-          signal_id: typeof data.signal_id === 'string' ? data.signal_id : '',
-          snippet: typeof data.snippet === 'string' ? data.snippet : '',
-          layer: (data.layer === 'L1' ? 'L1' : 'L2.5') as 'L1' | 'L2.5',
-        }
-      })
-      .filter(c => c.signal_id)
-      .sort((a, b) => a.index - b.index)
-  }, [dataParts])
-
-  // R7-S4: AC-1 — when streaming ends and citations exist, open the panel.
-  useEffect(() => {
-    if (prevIsStreamingRef.current && !isStreaming && allCitationParts.length > 0) {
-      onStreamEnd(allCitationParts)
-    }
-    prevIsStreamingRef.current = isStreaming
-  }, [isStreaming, allCitationParts, onStreamEnd])
-
-  const enrichedOnPin = useCallback((n: number, signalId: string) => {
-    const rich = citationRichMap.get(signalId)
-    onPin(n, signalId, rich?.snippet ?? '', rich?.layer ?? 'L2.5')
-    onBadgeClick(n)
-  }, [onPin, citationRichMap, onBadgeClick])
 
   // Pre-process text: replace SIG.MSR.NNN → `CITE:N:SIG.MSR.NNN` inline markers.
   const { processedText, count } = useMemo(
@@ -350,7 +305,6 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
             signalId={m[2]}
             snippet={citationRichMap.get(m[2])?.snippet}
             confidence={citationRichMap.get(m[2])?.confidence}
-            onPin={enrichedOnPin}
           />
         )
       }
@@ -362,10 +316,10 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       return <CodeBlock code={raw.replace(/\n$/, '')} lang={lang} isStreaming={isStreaming} />
     }
     return CiteCode
-  }, [enrichedOnPin, isStreaming])
+  }, [citationRichMap, isStreaming])
 
   // C.3 + B.4: citation-enriched render helper — data-testid enables E2E targeting.
-  const renderWithCitations = (_text: string, _enrichedOnPin: (n: number, signalId: string) => void) => (
+  return (
     <div data-testid="v2-message-text">
       <MarkdownContent
         streaming={isStreaming}
@@ -377,8 +331,6 @@ function V2AssistantText({ text, onCitationCount }: V2AssistantTextProps) {
       </MarkdownContent>
     </div>
   )
-
-  return renderWithCitations(text, enrichedOnPin)
 }
 
 // ─── Panel data extraction helpers ───────────────────────────────────────────
@@ -2045,37 +1997,7 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
 
-  // β4: Citation state — allCitations holds every citation from the latest complete message.
-  const [allCitations, setAllCitations] = useState<CitationPart[]>([])
-  const pinnedSet = useMemo(() => new Set(allCitations.map(c => c.index)), [allCitations])
-
-  // R7-S4: panel open/close state and scroll-to-row target.
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [scrollTarget, setScrollTarget] = useState<number | null>(null)
-
-  const handlePin = useCallback((n: number, signalId: string, snippet = '', layer: 'L1' | 'L2.5' = 'L2.5') => {
-    setAllCitations(prev => {
-      if (prev.some(c => c.index === n)) return prev
-      return [...prev, { type: 'citation' as const, index: n, signal_id: signalId, layer, snippet }]
-    })
-  }, [])
-
-  const handleUnpin = useCallback((n: number) => {
-    setAllCitations(prev => prev.filter(c => c.index !== n))
-  }, [])
-
-  const citationCtxValue = useMemo(() => ({
-    onPin: handlePin,
-    onStreamEnd: (citations: CitationPart[]) => {
-      setAllCitations(citations)
-      setPanelOpen(true)
-    },
-    onBadgeClick: (index: number) => {
-      setPanelOpen(true)
-      setScrollTarget(index)
-    },
-  }), [handlePin])
-
+  // B-S7: Citation side panel retired. Citations are inline-only via NumberedCitation.
   // β5: attachment manager — tokens injected into each request body
   const attachmentManager = useAttachmentManager()
   const attachmentsRef = useRef(attachmentManager.attachments)
@@ -2144,7 +2066,6 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
     <V2TitleCb.Provider value={onTitle ?? null}>
     <PanelOptInCtx.Provider value={panelOptInCtxValue}>
     <ConversationIdCtx.Provider value={conversationId}>
-    <CitationCtx.Provider value={citationCtxValue}>
       <AttachmentCtx.Provider value={attachmentManager}>
         <AssistantRuntimeProvider runtime={runtime}>
           {/* γ7: track session-storage pending-stream entry for stream-resume */}
@@ -2154,21 +2075,11 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
           {/* C.2 + W5: unified runtime tracker — emits query_id, conversation_id */}
           <V2RuntimeTracker />
           <div className="flex h-full overflow-hidden">
+            {/* B-S7: side panel retired — citations are inline-only via NumberedCitation */}
             <V2Thread chartId={chartId} chartName={chartName} slashEnabled={slashEnabled ?? false} tokensEnabled={tokensEnabled ?? false} />
-            <CitationSidePanel
-              citations={allCitations}
-              pinned={pinnedSet}
-              onUnpin={handleUnpin}
-              open={panelOpen}
-              onClose={() => setPanelOpen(false)}
-              scrollTarget={scrollTarget}
-              onScrolled={() => setScrollTarget(null)}
-              conversationId={conversationId}
-            />
           </div>
         </AssistantRuntimeProvider>
       </AttachmentCtx.Provider>
-    </CitationCtx.Provider>
     </ConversationIdCtx.Provider>
     </PanelOptInCtx.Provider>
     </V2TitleCb.Provider>

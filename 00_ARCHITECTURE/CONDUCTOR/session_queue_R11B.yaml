@@ -162,7 +162,8 @@ entries:
     - platform/src/app/globals.css
   est_tokens: 80000
   est_duration_min: 55
-  status: in_flight
+  status: passed
+  passed_at: '2026-05-22T15:21:00Z'
 
 - session_id: B-S7
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S7-inline-citation-parity.md
@@ -186,7 +187,8 @@ entries:
     - platform/src/components/consume/ConsumeChatV2.tsx
   est_tokens: 110000
   est_duration_min: 80
-  status: pending
+  status: passed
+  passed_at: '2026-05-22T15:30:00Z'
 
 - session_id: B-S8
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S8-brand-preservation-audit.md
