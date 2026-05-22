@@ -51,7 +51,7 @@ function formatSSE(event: string, data: unknown): string {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ): Promise<Response> {
   // Auth check
   if (!validateInternalToken(req)) {
@@ -63,7 +63,7 @@ export async function POST(
     return NextResponse.json({ error: 'Missing principal headers' }, { status: 401 })
   }
 
-  const bundleName = params.name
+  const { name: bundleName } = await params
 
   let body: Record<string, unknown>
   try {
