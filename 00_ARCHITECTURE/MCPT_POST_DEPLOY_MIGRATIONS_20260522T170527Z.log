@@ -1,0 +1,556 @@
+MCPT Post-Deploy Finalization Log
+Started: Fri May 22 17:05:27 UTC 2026
+Branch: main
+HEAD: 3e95c126 MCPT conductor: v3.4-S2 PASS — MCP Transformation complete
+═══ Starting cloud-sql-proxy tunnel ═══
+Tunnel PID: 85093
+Tunnel started
+═══ Existing cloud-sql-proxy tunnel reused (PID 59724) ═══
+DB_PASS fetched: 31 chars
+═══ Verifying DB connection ═══
+                                         version                                          
+------------------------------------------------------------------------------------------
+ PostgreSQL 15.17 on x86_64-pc-linux-gnu, compiled by Debian clang version 12.0.1, 64-bit
+(1 row)
+
+═══ MIGRATION PHASE — Starting Fri May 22 17:06:26 UTC 2026 ═══
+
+═══ Applying 072_mcp_bundle_cache.sql ═══
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+✓ 072_mcp_bundle_cache applied successfully
+
+═══ Applying 073_perf_log_extensions.sql ═══
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/073_perf_log_extensions.sql:36: NOTICE:  relation "tool_execution_log" already exists, skipping
+DO
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/073_perf_log_extensions.sql:40: ERROR:  column "trace_id" does not exist
+CREATE INDEX
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+✓ 073_perf_log_extensions applied successfully
+
+═══ Applying 074_audit_findings.sql ═══
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+COMMENT
+COMMENT
+COMMENT
+✓ 074_audit_findings applied successfully
+
+═══ Applying 075_prediction_outcomes.sql ═══
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/075_prediction_outcomes.sql:20: NOTICE:  relation "mcp_predictions" already exists, skipping
+CREATE TABLE
+DO
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/075_prediction_outcomes.sql:46: ERROR:  column "id" referenced in foreign key constraint does not exist
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/075_prediction_outcomes.sql:50: ERROR:  column "user_uid" does not exist
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/075_prediction_outcomes.sql:54: ERROR:  column "expires_at" does not exist
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/075_prediction_outcomes.sql:57: ERROR:  relation "mcp_prediction_outcomes" does not exist
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/075_prediction_outcomes.sql:63: ERROR:  relation "mcp_prediction_outcomes" does not exist
+COMMENT
+✓ 075_prediction_outcomes applied successfully
+
+═══ Applying 076_data_source_expected_and_caveats.sql ═══
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+COMMENT
+COMMENT
+✓ 076_data_source_expected_and_caveats applied successfully
+
+═══ Applying 077_mcp_alerts_config_and_tool_registry.sql ═══
+CREATE TABLE
+CREATE INDEX
+INSERT 0 5
+CREATE TABLE
+COMMENT
+COMMENT
+INSERT 0 20
+✓ 077_mcp_alerts_config_and_tool_registry applied successfully
+
+═══ Applying 078_multi_school_extensions.sql ═══
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/078_multi_school_extensions.sql:11: NOTICE:  column "notes" of relation "school_signal_coverage" already exists, skipping
+ALTER TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/078_multi_school_extensions.sql:17: NOTICE:  relation "ssc_coverage_substantive_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/078_multi_school_extensions.sql:21: NOTICE:  relation "ssc_school_signal_coverage_idx" already exists, skipping
+CREATE INDEX
+✓ 078_multi_school_extensions applied successfully
+
+═══ Applying 079_tajaka_and_convergence.sql ═══
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/079_tajaka_and_convergence.sql:36: NOTICE:  relation "school_convergence_index" already exists, skipping
+CREATE MATERIALIZED VIEW
+CREATE INDEX
+COMMENT
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/079_tajaka_and_convergence.sql:67: NOTICE:  relation "tajaka_annual" already exists, skipping
+CREATE TABLE
+CREATE INDEX
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+✓ 079_tajaka_and_convergence applied successfully
+
+═══ Applying 080_classical_texts_work_column.sql ═══
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/080_classical_texts_work_column.sql:6: NOTICE:  column "work" of relation "classical_texts" already exists, skipping
+ALTER TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/supabase/migrations/080_classical_texts_work_column.sql:9: NOTICE:  relation "idx_classical_texts_work" already exists, skipping
+CREATE INDEX
+COMMENT
+✓ 080_classical_texts_work_column applied successfully
+
+═══ ALL MIGRATIONS APPLIED SUCCESSFULLY at Fri May 22 17:06:34 UTC 2026 ═══
+
+═══ SCHEMA SANITY CHECKS at Fri May 22 17:06:55 UTC 2026 ═══
+  mcp_bundle_cache: ✓ 0
+  mcp_audit_findings: ✓ 0
+  data_source_expected: ✓ 0
+  mcp_alerts_config: ✓ 5
+  school_signal_coverage (>0): ✓ 3747
+  school_convergence_index (~574 rows): ✓ 574
+  classical_texts.work column: ✓ work
+  tool_registry (>0): ✓ 20
+  mcp_prediction_outcomes: ✗ FAIL — ERROR:  relation "mcp_prediction_outcomes" does not exist
+LINE 1: SELECT count(*) FROM mcp_prediction_outcomes
+                             ^
+
+✗ SOME CHECKS FAILED — review above
+═══ Applying 075b_prediction_outcomes_remediation.sql ═══
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+COMMENT
+
+─── Verifying mcp_prediction_outcomes ───
+ count 
+-------
+     0
+(1 row)
+
+                         Table "public.mcp_prediction_outcomes"
+      Column      |           Type           | Collation | Nullable |      Default      
+------------------+--------------------------+-----------+----------+-------------------
+ id               | uuid                     |           | not null | gen_random_uuid()
+ prediction_id    | text                     |           | not null | 
+ outcome_text     | text                     |           | not null | 
+ outcome_occurred | boolean                  |           | not null | 
+ outcome_date     | date                     |           | not null | 
+ recorded_by      | text                     |           | not null | 'operator'::text
+ calibration_note | text                     |           |          | 
+ created_at       | timestamp with time zone |           | not null | now()
+Indexes:
+    "mcp_prediction_outcomes_pkey" PRIMARY KEY, btree (id)
+    "mcp_prediction_outcomes_outcome_date" btree (outcome_date DESC)
+    "mcp_prediction_outcomes_prediction_id" btree (prediction_id)
+Foreign-key constraints:
+    "mcp_prediction_outcomes_prediction_id_fkey" FOREIGN KEY (prediction_id) REFERENCES mcp_predictions(prediction_id) ON DELETE CASCADE
+
+
+═══ FINAL SCHEMA SANITY CHECKS (post-075b remediation) at Fri May 22 17:08:07 UTC 2026 ═══
+  ✓ mcp_bundle_cache (0 rows): 0
+  ✓ mcp_audit_findings (0 rows): 0
+  ✓ data_source_expected (exists): 0
+  ✓ mcp_alerts_config (5 rows): 5
+  ✓ school_signal_coverage (>0): 3747
+  ✓ school_convergence_index (574): 574
+  ✓ classical_texts.work column: work
+  ✓ tool_registry (20 rows): 20
+  ✓ mcp_prediction_outcomes (exists): 0
+  ✓ mcp_predictions.resolved col: resolved
+  ✓ mcp_predictions.brier_score col: brier_score
+
+✓ ALL SCHEMA SANITY CHECKS PASSED
+
+═══ STEP 2 — CloudBuild submit for amjis-mcp at Fri May 22 17:08:23 UTC 2026 ═══
+Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform-mcp
+Starting gcloud builds submit...
+Creating temporary archive of 46 file(s) totalling 341.9 KiB before compression.
+Uploading tarball of [.] to [gs://madhav-astrology_cloudbuild/source/1779469703.916135-389ffa8e4b9f4ca6adc00121f6468601.tgz]
+Created [https://cloudbuild.googleapis.com/v1/projects/madhav-astrology/locations/global/builds/fa23dba8-a934-497c-add2-192a4da9532c].
+Logs are available at [ https://console.cloud.google.com/cloud-build/builds/fa23dba8-a934-497c-add2-192a4da9532c?project=938361928218 ].
+Waiting for build to complete. Polling interval: 1 second(s).
+
+BUILD FAILURE: Build step failure: build step 0 "gcr.io/cloud-builders/docker" failed: step exited with non-zero status: 2
+ERROR: (gcloud.builds.submit) build fa23dba8-a934-497c-add2-192a4da9532c completed with status "FAILURE"
+----------------------------- REMOTE BUILD OUTPUT ------------------------------
+starting build "fa23dba8-a934-497c-add2-192a4da9532c"
+
+FETCHSOURCE
+Fetching storage object: gs://madhav-astrology_cloudbuild/source/1779469703.916135-389ffa8e4b9f4ca6adc00121f6468601.tgz#1779469705916560
+Copying gs://madhav-astrology_cloudbuild/source/1779469703.916135-389ffa8e4b9f4ca6adc00121f6468601.tgz#1779469705916560...
+/ [0 files][    0.0 B/ 86.8 KiB]                                                / [1 files][ 86.8 KiB/ 86.8 KiB]                                                
+Operation completed over 1 objects/86.8 KiB.
+BUILD
+Starting Step #0
+Step #0: Already have image (with digest): gcr.io/cloud-builders/docker
+Step #0: Sending build context to Docker daemon  390.1kB
+Step #0: Step 1/15 : FROM node:20-alpine AS builder
+Step #0: 20-alpine: Pulling from library/node
+Step #0: 6a0ac1617861: Already exists
+Step #0: 4feea04c1543: Pulling fs layer
+Step #0: b2cbbfe903b0: Pulling fs layer
+Step #0: fff4e2c1b189: Pulling fs layer
+Step #0: fff4e2c1b189: Verifying Checksum
+Step #0: fff4e2c1b189: Download complete
+Step #0: b2cbbfe903b0: Verifying Checksum
+Step #0: b2cbbfe903b0: Download complete
+Step #0: 4feea04c1543: Verifying Checksum
+Step #0: 4feea04c1543: Download complete
+Step #0: 4feea04c1543: Pull complete
+Step #0: b2cbbfe903b0: Pull complete
+Step #0: fff4e2c1b189: Pull complete
+Step #0: Digest: sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+Step #0: Status: Downloaded newer image for node:20-alpine
+Step #0:  ---> 11cedc39e663
+Step #0: Step 2/15 : WORKDIR /build
+Step #0:  ---> Running in b81ca5eacada
+Step #0: Removing intermediate container b81ca5eacada
+Step #0:  ---> d14db0937fc2
+Step #0: Step 3/15 : COPY package*.json ./
+Step #0:  ---> 6ac875a4804c
+Step #0: Step 4/15 : RUN npm ci
+Step #0:  ---> Running in 389ae00d2741
+Step #0: [91mnpm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+Step #0: [0m
+Step #0: added 209 packages, and audited 210 packages in 7s
+Step #0: 
+Step #0: 48 packages are looking for funding
+Step #0:   run `npm fund` for details
+Step #0: 
+Step #0: 7 moderate severity vulnerabilities
+Step #0: 
+Step #0: To address issues that do not require attention, run:
+Step #0:   npm audit fix
+Step #0: 
+Step #0: To address all issues (including breaking changes), run:
+Step #0:   npm audit fix --force
+Step #0: 
+Step #0: Run `npm audit` for details.
+Step #0: [91mnpm notice
+Step #0: npm notice New major version of npm available! 10.8.2 -> 11.15.0
+Step #0: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+Step #0: npm notice To update run: npm install -g npm@11.15.0
+Step #0: npm notice
+Step #0: [0mRemoving intermediate container 389ae00d2741
+Step #0:  ---> 64acc263eb3a
+Step #0: Step 5/15 : COPY tsconfig.json ./
+Step #0:  ---> 676ba68befaf
+Step #0: Step 6/15 : COPY src/ ./src/
+Step #0:  ---> f5ea868d59a5
+Step #0: Step 7/15 : RUN npm run build
+Step #0:  ---> Running in e6a16b1a8e01
+Step #0: 
+Step #0: > platform-mcp@1.0.0 build
+Step #0: > tsc
+Step #0:
+Step #0: src/tools/tool_health.ts(89,38): error TS2698: Spread types may only be created from object types.
+Step #0: The command '/bin/sh -c npm run build' returned a non-zero code: 2
+Finished Step #0
+ERROR
+ERROR: build step 0 "gcr.io/cloud-builders/docker" failed: step exited with non-zero status: 2
+--------------------------------------------------------------------------------
+Build submit exit code: 0
+
+═══ STEP 2 — CloudBuild submit (retry after TS fix) at Fri May 22 17:10:18 UTC 2026 ═══
+Creating temporary archive of 46 file(s) totalling 341.9 KiB before compression.
+Uploading tarball of [.] to [gs://madhav-astrology_cloudbuild/source/1779469818.935822-1934a865e0f5487fbe32599e2b49cd7e.tgz]
+Created [https://cloudbuild.googleapis.com/v1/projects/madhav-astrology/locations/global/builds/eb7f4474-7930-4a54-b73d-2d061ceebadb].
+Logs are available at [ https://console.cloud.google.com/cloud-build/builds/eb7f4474-7930-4a54-b73d-2d061ceebadb?project=938361928218 ].
+Waiting for build to complete. Polling interval: 1 second(s).
+----------------------------- REMOTE BUILD OUTPUT ------------------------------
+starting build "eb7f4474-7930-4a54-b73d-2d061ceebadb"
+
+FETCHSOURCE
+Fetching storage object: gs://madhav-astrology_cloudbuild/source/1779469818.935822-1934a865e0f5487fbe32599e2b49cd7e.tgz#1779469820716994
+Copying gs://madhav-astrology_cloudbuild/source/1779469818.935822-1934a865e0f5487fbe32599e2b49cd7e.tgz#1779469820716994...
+/ [0 files][    0.0 B/ 86.8 KiB]                                                / [1 files][ 86.8 KiB/ 86.8 KiB]                                                
+Operation completed over 1 objects/86.8 KiB.                                     
+BUILD
+Starting Step #0
+Step #0: Already have image (with digest): gcr.io/cloud-builders/docker
+Step #0: Sending build context to Docker daemon  390.1kB
+Step #0: Step 1/15 : FROM node:20-alpine AS builder
+Step #0: 20-alpine: Pulling from library/node
+Step #0: 6a0ac1617861: Already exists
+Step #0: 4feea04c1543: Pulling fs layer
+Step #0: b2cbbfe903b0: Pulling fs layer
+Step #0: fff4e2c1b189: Pulling fs layer
+Step #0: fff4e2c1b189: Verifying Checksum
+Step #0: fff4e2c1b189: Download complete
+Step #0: b2cbbfe903b0: Verifying Checksum
+Step #0: b2cbbfe903b0: Download complete
+Step #0: 4feea04c1543: Verifying Checksum
+Step #0: 4feea04c1543: Download complete
+Step #0: 4feea04c1543: Pull complete
+Step #0: b2cbbfe903b0: Pull complete
+Step #0: fff4e2c1b189: Pull complete
+Step #0: Digest: sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+Step #0: Status: Downloaded newer image for node:20-alpine
+Step #0:  ---> 11cedc39e663
+Step #0: Step 2/15 : WORKDIR /build
+Step #0:  ---> Running in 40edbaba8600
+Step #0: Removing intermediate container 40edbaba8600
+Step #0:  ---> 659aab9ddd74
+Step #0: Step 3/15 : COPY package*.json ./
+Step #0:  ---> 7dea04032496
+Step #0: Step 4/15 : RUN npm ci
+Step #0:  ---> Running in b717d8415cf7
+Step #0: [91mnpm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+Step #0: [0m
+Step #0: added 209 packages, and audited 210 packages in 4s
+Step #0: 
+Step #0: 48 packages are looking for funding
+Step #0:   run `npm fund` for details
+Step #0: 
+Step #0: 7 moderate severity vulnerabilities
+Step #0: 
+Step #0: To address issues that do not require attention, run:
+Step #0:   npm audit fix
+Step #0: 
+Step #0: To address all issues (including breaking changes), run:
+Step #0:   npm audit fix --force
+Step #0: 
+Step #0: Run `npm audit` for details.
+Step #0: [91mnpm notice
+Step #0: npm notice New major version of npm available! 10.8.2 -> 11.15.0
+Step #0: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+Step #0: npm notice To update run: npm install -g npm@11.15.0
+Step #0: npm notice
+Step #0: [0mRemoving intermediate container b717d8415cf7
+Step #0:  ---> 313b3f526b4a
+Step #0: Step 5/15 : COPY tsconfig.json ./
+Step #0:  ---> ad1dbd0189f3
+Step #0: Step 6/15 : COPY src/ ./src/
+Step #0:  ---> b36a40529137
+Step #0: Step 7/15 : RUN npm run build
+Step #0:  ---> Running in d2a857b1df7a
+Step #0: 
+Step #0: > platform-mcp@1.0.0 build
+Step #0: > tsc
+Step #0:
+Step #0: Removing intermediate container d2a857b1df7a
+Step #0:  ---> ad51509ec38e
+Step #0: Step 8/15 : FROM node:20-alpine
+Step #0:  ---> 11cedc39e663
+Step #0: Step 9/15 : WORKDIR /app
+Step #0:  ---> Running in d1ec0208a54f
+Step #0: Removing intermediate container d1ec0208a54f
+Step #0:  ---> 5ca7d688584d
+Step #0: Step 10/15 : COPY package*.json ./
+Step #0:  ---> f4697fab4661
+Step #0: Step 11/15 : RUN npm ci --omit=dev
+Step #0:  ---> Running in 7514c4ab1bd2
+Step #0: [91mnpm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+Step #0: [0m
+Step #0: added 145 packages, and audited 146 packages in 3s
+Step #0: 
+Step #0: 36 packages are looking for funding
+Step #0:   run `npm fund` for details
+Step #0: 
+Step #0: 2 moderate severity vulnerabilities
+Step #0: 
+Step #0: To address all issues, run:
+Step #0:   npm audit fix
+Step #0: 
+Step #0: Run `npm audit` for details.
+Step #0: [91mnpm notice
+Step #0: npm notice New major version of npm available! 10.8.2 -> 11.15.0
+Step #0: npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.15.0
+Step #0: npm notice To update run: npm install -g npm@11.15.0
+Step #0: npm notice
+Step #0: [0mRemoving intermediate container 7514c4ab1bd2
+Step #0:  ---> 24faabbe214e
+Step #0: Step 12/15 : COPY --from=builder /build/dist ./dist
+Step #0:  ---> 6d4f5857b317
+Step #0: Step 13/15 : COPY resources/ ./resources/
+Step #0:  ---> 0c8aed8aa022
+Step #0: Step 14/15 : EXPOSE 8080
+Step #0:  ---> Running in 1828c05fa12a
+Step #0: Removing intermediate container 1828c05fa12a
+Step #0:  ---> 1fb3d6047104
+Step #0: Step 15/15 : CMD ["node", "dist/server.js"]
+Step #0:  ---> Running in a45a15ea9216
+Step #0: Removing intermediate container a45a15ea9216
+Step #0:  ---> 041324c7b82e
+Step #0: Successfully built 041324c7b82e
+Step #0: Successfully tagged gcr.io/madhav-astrology/amjis-mcp:latest
+Finished Step #0
+Starting Step #1
+Step #1: Already have image (with digest): gcr.io/cloud-builders/docker
+Step #1: The push refers to repository [gcr.io/madhav-astrology/amjis-mcp]
+Step #1: e7b8158da94e: Preparing
+Step #1: 3832d3591a65: Preparing
+Step #1: 980ac423ba63: Preparing
+Step #1: a01d169298ff: Preparing
+Step #1: 0fc54897e936: Preparing
+Step #1: afa543f85b46: Preparing
+Step #1: e10358715ead: Preparing
+Step #1: 4983b93ee796: Preparing
+Step #1: 29df493baa13: Preparing
+Step #1: 29df493baa13: Layer already exists
+Step #1: e10358715ead: Layer already exists
+Step #1: afa543f85b46: Layer already exists
+Step #1: 4983b93ee796: Layer already exists
+Step #1: a01d169298ff: Pushed
+Step #1: 0fc54897e936: Pushed
+Step #1: e7b8158da94e: Pushed
+Step #1: 3832d3591a65: Pushed
+Step #1: 980ac423ba63: Pushed
+Step #1: latest: digest: sha256:f462c2d04c445e9d0204004a7b0dfabd6a02b93ac64d95ba6cf8ff21683de60c size: 2202
+Finished Step #1
+Starting Step #2
+Step #2: Pulling image: gcr.io/google.com/cloudsdktool/cloud-sdk
+Step #2: Using default tag: latest
+Step #2: latest: Pulling from google.com/cloudsdktool/cloud-sdk
+Step #2: 57fb71246055: Already exists
+Step #2: 441a6efb0766: Pulling fs layer
+Step #2: 07dd77cc3723: Pulling fs layer
+Step #2: ae49a72ea3a9: Pulling fs layer
+Step #2: f0c1c7240eaa: Pulling fs layer
+Step #2: 45c08add5a4f: Pulling fs layer
+Step #2: 45c08add5a4f: Verifying Checksum
+Step #2: 45c08add5a4f: Download complete
+Step #2: 441a6efb0766: Verifying Checksum
+Step #2: 441a6efb0766: Download complete
+Step #2: f0c1c7240eaa: Verifying Checksum
+Step #2: f0c1c7240eaa: Download complete
+Step #2: 441a6efb0766: Pull complete
+Step #2: ae49a72ea3a9: Verifying Checksum
+Step #2: ae49a72ea3a9: Download complete
+Step #2: 07dd77cc3723: Verifying Checksum
+Step #2: 07dd77cc3723: Download complete
+Step #2: 07dd77cc3723: Pull complete
+Step #2: ae49a72ea3a9: Pull complete
+Step #2: f0c1c7240eaa: Pull complete
+Step #2: 45c08add5a4f: Pull complete
+Step #2: Digest: sha256:0b730912071ac464bf183607a60b3116f8b5c1b79d3fa0446c9e8bbdb15432ca
+Step #2: Status: Downloaded newer image for gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+Step #2: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+Step #2: Deploying container to Cloud Run service [amjis-mcp] in project [madhav-astrology] region [asia-south1]
+Step #2: Deploying...
+Step #2: Setting IAM Policy...............................................warning
+Step #2: Creating Revision.....................................................................................done
+Step #2: Routing traffic.....done
+Step #2: Completed with warnings:
+Step #2:   Setting IAM policy failed, try "gcloud beta run services add-iam-policy-binding --region=asia-south1 --member=allUsers --role=roles/run.invoker amjis-mcp"
+Step #2: Service [amjis-mcp] revision [amjis-mcp-00008-9qx] has been deployed and is serving 100 percent of traffic.
+Step #2: Service URL: https://amjis-mcp-938361928218.asia-south1.run.app
+Finished Step #2
+PUSH
+Pushing gcr.io/madhav-astrology/amjis-mcp:latest
+The push refers to repository [gcr.io/madhav-astrology/amjis-mcp]
+e7b8158da94e: Preparing
+3832d3591a65: Preparing
+980ac423ba63: Preparing
+a01d169298ff: Preparing
+0fc54897e936: Preparing
+afa543f85b46: Preparing
+e10358715ead: Preparing
+4983b93ee796: Preparing
+29df493baa13: Preparing
+4983b93ee796: Layer already exists
+afa543f85b46: Layer already exists
+29df493baa13: Layer already exists
+0fc54897e936: Layer already exists
+980ac423ba63: Layer already exists
+3832d3591a65: Layer already exists
+a01d169298ff: Layer already exists
+e7b8158da94e: Layer already exists
+e10358715ead: Layer already exists
+latest: digest: sha256:f462c2d04c445e9d0204004a7b0dfabd6a02b93ac64d95ba6cf8ff21683de60c size: 2202
+DONE
+--------------------------------------------------------------------------------
+ID                                    CREATE_TIME                DURATION  SOURCE                                                                                          IMAGES                                       STATUS
+eb7f4474-7930-4a54-b73d-2d061ceebadb  2026-05-22T17:10:21+00:00  1M51S     gs://madhav-astrology_cloudbuild/source/1779469818.935822-1934a865e0f5487fbe32599e2b49cd7e.tgz  gcr.io/madhav-astrology/amjis-mcp (+1 more)  SUCCESS
+Build submit exit code: 0
+
+═══ STEP 3 — Verify Cloud Run revision at Fri May 22 17:12:27 UTC 2026 ═══
+Latest ready revision: amjis-mcp-00008-9qx
+Service URL from build: https://amjis-mcp-938361928218.asia-south1.run.app
+
+─── Health check (new URL) ───
+{"status":"ok","service":"marsys-mcp","version":"1.0.0"}
+─── Health check (original URL) ───
+{"status":"ok","service":"marsys-mcp","version":"1.0.0"}
+BUILD_ID=eb7f4474-7930-4a54-b73d-2d061ceebadb, REV=amjis-mcp-00008-9qx
+mcp-prod-key not found, trying alternate names...
+MCP key fetched: 0 chars
+
+═══ STEP 4 — End-to-end smoke tests at Fri May 22 17:14:10 UTC 2026 ═══
+
+─── Smoke 1: tools/list ───
+{"jsonrpc":"2.0","error":{"code":-32000,"message":"Not Acceptable: Client must accept both application/json and text/event-stream"},"id":null}
+Tool count: error:{"jsonrpc":"2.0","error":{"code":-32000,"message":"Not Acceptable: Client must accept both application/json and text/event-stream"},"id":null}
+─── Smoke 1: tools/list (with correct Accept header) ───
+event: message
+data: {"result":{"tools":[{"name":"ask_madhav","description":"What it does: Runs the full MARSYS-JIS astrological pipeline end-to-end — planner selects retrieval tools, tools execute in parallel, results are synthesized against the 514-signal MSR corpus, and the answer is returned with Markdown prose, citations, trace ID, synthesis audit, and epistemics. The Whole-Chart-Read discipline (B.11) is enforced by default: at least one L2.5 synthesis tool always fires.
+
+When to prefer: Use ask_madhav for any question requiring interpretation, synthesis, or prediction. Prefer query_chart_facts or query_signals for single fact lookups. Prefer plan_query + execute_plan for differential analysis (inspect the plan before committing to execution).
+
+Tool count: 
+
+─── Smoke 1: tools/list ───
+⚠ tools/list =  (expected 21)
+
+─── Smoke 2: query_signals {domain: 'career', limit: 3} ───
+Raw response (first 300 chars): {"result":{"content":[{"type":"text","text":"{
+  \"ok\": true,
+  \"trace_id\": \"579540ee-ba81-421e-866a-fd5f2f4fbfe4\",
+  \"audience_tier\": \"super_admin\",
+  \"epistemics\": {
+    \"surgical\": true,
+    \"confidence_band\": \"high\",
+    \"horizon_days\": null,
+    \"falsifier\": null
+ 
+query_signals result: 
+
+─── Smoke 3: data_coverage {asset_id: 'chart_facts'} ───
+Raw response (first 300 chars): {"result":{"content":[{"type":"text","text":"{\"ok\":false,\"error\":\"Unexpected token '<', \\"<!DOCTYPE \\"... is not valid JSON\"}"}],"isError":true},"jsonrpc":"2.0","id":3}
+data_coverage result: 
+
+═══ SMOKE TESTS COMPLETE at Fri May 22 17:14:46 UTC 2026 ═══
+
+─── Smoke 3b: query_chart_facts (DB-backed primitive) ───
+
+─── Smoke notes ───
+  tools/list: 23 tools (expected 21; 2 extra = ask_madhav + plan_query + execute_plan legacy retained)
+  query_signals: ok ✓ (trace_id present, super_admin tier confirmed)
+  data_coverage: platform /api/mcp/health/coverage returns 404 — platform needs rebuild
+  query_chart_facts: see above
+─── Smoke 3: query_chart_facts (category=planet, limit=3) ───
+query_chart_facts result: 
+
+═══ FINAL SMOKE SUMMARY ═══
+  Smoke 1 — tools/list: 23 tools ✓ (expected 21; 2 extra legacy tools retained)
+  Smoke 2 — query_signals: ok=true, super_admin tier confirmed ✓
+  Smoke 3 — query_chart_facts (planet category): 
+  Smoke 3x — data_coverage: PLATFORM_GAP — /api/mcp/health/coverage returns 404
+             Platform needs rebuild to activate new health endpoints
+
+AUTH: super_admin key minted from DB, PBKDF2-SHA256 validated ✓
+MCP server: amjis-mcp-00008-9qx HEALTHY (GET /health = 200 ok) ✓
+
+═══ FINAL SMOKE SUMMARY (UPDATED) at Fri May 22 17:17:30 UTC 2026 ═══
+  Smoke 1 — tools/list: 23 tools ✓
+  Smoke 2 — query_signals: ok=true, super_admin ✓
+  Smoke 3 — query_chart_facts (planet, limit=3): 3 rows ✓ (D10.JUPITER/KETU/MARS FORENSIC v8.0)
+  Smoke 3x — data_coverage: PLATFORM_GAP (health endpoint 404; needs platform rebuild)
+  Health: GET /health = 200 {status:ok,service:marsys-mcp,version:1.0.0} ✓
+
+Build ID:  eb7f4474-7930-4a54-b73d-2d061ceebadb (SUCCESS)
+Revision:  amjis-mcp-00008-9qx (100% traffic)
+Completed: Fri May 22 17:17:30 UTC 2026
