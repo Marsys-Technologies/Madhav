@@ -30,7 +30,6 @@ import { query } from '@/lib/db/client'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { PipelinePlanSchema } from '@/lib/pipeline/types'
-import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 import { getTool } from '@/lib/retrieve/index'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
@@ -38,7 +37,7 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { createOrchestrator } from '@/lib/synthesis/index'
 import { traceEmitter } from '@/lib/trace/emitter'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
-import { DEFAULT_STACK_ID, getModelMeta, DEFAULT_MODEL_ID } from '@/lib/models/registry'
+import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { configService } from '@/lib/config/index'
 import {
   buildEnvelope,
@@ -408,26 +407,12 @@ export async function POST(request: Request) {
     const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
     plan.manifest_fingerprint = manifest.fingerprint
 
-    // Budget arbitration
+    // Resolve synthesis model ID (still needed for orchestrator.synthesize).
     const modelId = await getEffectiveModel(DEFAULT_STACK_ID, 'synthesis', 'primary', request)
-    const modelMeta = getModelMeta(modelId) ?? getModelMeta(DEFAULT_MODEL_ID)!
-    const arbitrated = arbitrateBudgets(
-      plan.tool_calls.map(tc => ({
-        tool_name: tc.tool_name,
-        priority: tc.priority,
-        token_budget: tc.token_budget,
-      })),
-      {
-        synthesis_model_max_context: modelMeta.maxInputTokens ?? 128_000,
-        system_prompt_reserve: 800,
-        synthesis_guidance_reserve: plan.synthesis_guidance ? 200 : 0,
-        safety_margin: 0.85,
-        min_tokens_per_tool: 200,
-      }
-    )
-    for (let i = 0; i < plan.tool_calls.length; i++) {
-      plan.tool_calls[i].token_budget = arbitrated[i].token_budget
-    }
+
+    // F.7 fix (MCPT v3.1.0-S1): token-budget allocation call removed from MCP path.
+    // Token budgets are passed through as-is from the planner plan.
+    // The allocation helper is retained for the /consume (web) path only.
 
     let toolsAuthorized = Array.from(new Set(plan.tool_calls.map(tc => tc.tool_name)))
 

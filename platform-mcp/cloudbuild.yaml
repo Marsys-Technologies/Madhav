@@ -51,6 +51,7 @@ steps:
       - '--concurrency=80'
       - '--allow-unauthenticated'
       - '--set-env-vars=PLATFORM_URL=$_PLATFORM_URL'
+      - '--update-secrets=MCP_INTERNAL_TOKEN=mcp-internal-token:latest'
 
 images:
   - 'gcr.io/$PROJECT_ID/amjis-mcp:${_TAG}'

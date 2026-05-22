@@ -76,6 +76,8 @@ const LL1_PRODUCTION_WEIGHTS = new Map<string, number>([
 // Source: ll1_weights_promoted_v1_0.json summary.zero_ll1_weight_domains (updated M5-B-S2).
 const ZERO_LL1_WEIGHT_DOMAINS = new Set(['career', 'spiritual', 'psychological', 'financial', 'family'])
 
+const DEFAULT_LIMIT = 100
+
 const SQL = `
   SELECT * FROM msr_signals
   WHERE native_id = $1
@@ -88,7 +90,7 @@ const SQL = `
     AND ($8::text[] IS NULL OR valence = ANY($8::text[]))
     AND ($9::text[] IS NULL OR entities_involved ?| $9::text[])
   ORDER BY (confidence * significance) DESC
-  LIMIT 100
+  LIMIT $10
 `.trim()
 
 async function retrieve(plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle> {
@@ -132,9 +134,20 @@ async function retrieveImpl(
         ? FINANCE_WEALTH_CONFIDENCE_FLOOR
         : DEFAULT_CONFIDENCE_FLOOR
 
+  // F.2 fix: add params fallbacks for fields that were previously read from
+  // plan.* only, which silently ignored MCP surgical-primitive params.
+  // Priority: params.* wins over plan.* (caller intent > plan derivation).
+  const paramsDomain = params?.domain as string | string[] | undefined
+  const paramsDomains: string[] = paramsDomain
+    ? (Array.isArray(paramsDomain) ? paramsDomain : [paramsDomain])
+    : []
+  const effectiveDomains = paramsDomains.length > 0 ? paramsDomains : plan.domains
+
+  const paramsLimit = params?.limit as number | undefined
+
   // Build nullable array params — pass null when the filter is unused so that
   // the SQL `IS NULL OR ... ANY(...)` clause becomes a no-op.
-  const domainFilter: string[] | null = plan.domains.length > 0 ? plan.domains : null
+  const domainFilter: string[] | null = effectiveDomains.length > 0 ? effectiveDomains : null
   const planetFilter: string[] | null =
     plan.planets && plan.planets.length > 0 ? plan.planets : null
   const forwardLookingFilter: boolean | null = plan.forward_looking ? true : null
@@ -158,6 +171,8 @@ async function retrieveImpl(
   ]
   const entitiesFilter: string[] | null = rawEntities.length > 0 ? rawEntities : null
 
+  const queryLimit = (paramsLimit && paramsLimit > 0) ? paramsLimit : DEFAULT_LIMIT
+
   let { rows } = await getStorageClient().query<MsrSignal>(SQL, [
     nativeId,
     domainFilter,
@@ -168,6 +183,7 @@ async function retrieveImpl(
     temporalFilter,
     valenceFilter,
     entitiesFilter,
+    queryLimit,
   ])
 
   // UQE-7 (W2-BUGS B2W-2/3) — domain-only fallback. When a planet filter
@@ -185,6 +201,7 @@ async function retrieveImpl(
       temporalFilter,
       valenceFilter,
       entitiesFilter,
+      queryLimit,
     ])
     rows = fallback.rows
     fallback_used = true
