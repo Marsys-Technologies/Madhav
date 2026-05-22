@@ -82,7 +82,7 @@ entries:
     - platform/src/lib/providers/anthropic/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S3
@@ -106,7 +106,7 @@ entries:
     - platform/src/lib/providers/google/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S4
@@ -130,7 +130,7 @@ entries:
     - platform/src/lib/providers/openai/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S5
@@ -154,7 +154,7 @@ entries:
     - platform/src/lib/providers/deepseek/manifest.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S6
@@ -177,7 +177,7 @@ entries:
     - platform/src/lib/providers/nvidia/manifest.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S7
@@ -200,7 +200,7 @@ entries:
     - platform/src/app/api/chat/consume/route.ts
   est_tokens: 100000
   est_duration_min: 70
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S8
@@ -226,7 +226,7 @@ entries:
     - platform/src/app/globals.css
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S9
@@ -252,7 +252,7 @@ entries:
     - platform/src/app/api/chat/consume/route.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S10
@@ -280,7 +280,7 @@ entries:
     - platform/src/lib/providers/nvidia/adapter.ts
   est_tokens: 110000
   est_duration_min: 80
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S11
@@ -299,7 +299,7 @@ entries:
     grep -n "MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY" src/lib/config/feature_flags.ts &&
     grep -n "NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY" ../.github/workflows/deploy.yml &&
     grep -n "MultiProviderParityToggle" src/components/consume/ConsumeChatV2.tsx &&
-    npx vitest run tests/unit/chat-v2/useMultiProviderParity tests/components/consume/MultiProviderParityToggle
+    npx vitest run tests/lib/chat-v2/useMultiProviderParity tests/components/consume/MultiProviderParityToggle
   expected_artifacts:
     - platform/src/lib/chat-v2/useMultiProviderParity.ts
     - platform/src/components/consume/MultiProviderParityToggle.tsx
@@ -308,7 +308,7 @@ entries:
     - platform/src/components/consume/ConsumeChatV2.tsx
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S12
@@ -335,7 +335,7 @@ entries:
     - platform/tests/observatory/capability_telemetry.integration.test.ts
   est_tokens: 100000
   est_duration_min: 70
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: R11A-MERGE
