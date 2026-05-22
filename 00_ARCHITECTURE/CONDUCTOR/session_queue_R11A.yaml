@@ -58,7 +58,7 @@ entries:
     - platform/src/lib/providers/types.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: in_flight
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S2
@@ -82,7 +82,7 @@ entries:
     - platform/src/lib/providers/anthropic/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 
 - session_id: A-S3
@@ -106,7 +106,7 @@ entries:
     - platform/src/lib/providers/google/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 
 - session_id: A-S4
@@ -130,7 +130,7 @@ entries:
     - platform/src/lib/providers/openai/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 
 - session_id: A-S5
@@ -154,7 +154,7 @@ entries:
     - platform/src/lib/providers/deepseek/manifest.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 
 - session_id: A-S6
@@ -177,7 +177,7 @@ entries:
     - platform/src/lib/providers/nvidia/manifest.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: pending
+  status: in_flight
   human_decision_prompt: null
 
 - session_id: A-S7
