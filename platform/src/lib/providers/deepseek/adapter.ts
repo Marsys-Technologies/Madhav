@@ -77,9 +77,32 @@ export class DeepSeekAdapter implements CapabilityAdapter {
   }
 
   cache(_request: CacheRequest): CacheResponse {
-    // DeepSeek: implicit caching (prompt_cache_hit_tokens in usage)
-    // R11.D — telemetry capture for implicit cache hits
-    throw new CapabilityUnsupportedError('cache', 'deepseek');
+    // R11.D — DeepSeek implicit cache telemetry (D-S4).
+    //
+    // DeepSeek caches implicitly — no API markers, no cachedContent creation.
+    // The `prompt_cache_hit_tokens` field appears in the usage response when
+    // tokens were served from cache. Capture and forward to Observatory.
+    //
+    // DeepSeek usage response shape:
+    //   { prompt_tokens, completion_tokens, prompt_cache_hit_tokens, prompt_cache_miss_tokens }
+    //
+    // Cost model (DeepSeek V3, 2024):
+    //   cache hit:  0.014 USD / 1M tokens (vs. 0.27 USD / 1M for cache miss)
+    //   ~19.3x cheaper on cache hits
+    //
+    // No request modifications needed — DeepSeek auto-determines cache eligibility.
+    return {
+      mode: 'implicit',
+      breakpointPositions: [],  // no explicit positions
+      providerPayload: {
+        // Usage field: prompt_cache_hit_tokens
+        prompt_cache_hit_tokens: 'usage.prompt_cache_hit_tokens',
+        // Also available: prompt_cache_miss_tokens
+        prompt_cache_miss_tokens: 'usage.prompt_cache_miss_tokens',
+        // Cost ratio for cache hits vs. standard input tokens
+        cachedTokenCostFraction: 0.014 / 0.27,  // ~0.052
+      },
+    };
   }
 
   tools(_request: ToolsRequest): ToolsResponse {
