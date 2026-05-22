@@ -50,6 +50,12 @@ import { registerListRecentQueries } from './tools/list_recent_queries.js'
 import { registerLogPrediction } from './tools/log_prediction.js'
 import { registerRecordOutcome } from './tools/record_outcome.js'
 import { registerFlagDisagreement } from './tools/flag_disagreement.js'
+// MCPT v3.1.0-S2: Tier 2 composite bundles
+import { registerHolisticBundle } from './tools/holistic_bundle_tool.js'
+import { registerMultiSchoolBundle } from './tools/multi_school_bundle_tool.js'
+// MCPT v3.1.0-S4: Perf system tools
+import { registerToolHealth } from './tools/tool_health.js'
+import { registerDataCoverage } from './tools/data_coverage.js'
 import type { Principal } from './types.js'
 
 const app = express()
@@ -136,6 +142,18 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerLogPrediction(server, getPrincipal)
   registerRecordOutcome(server, getPrincipal)
   registerFlagDisagreement(server, getPrincipal)
+
+  // Register Tier 2 bundles (MCPT v3.1.0-S2):
+  //   holistic_bundle     — 8-tool parallel holistic read (SSE-capable)
+  //   multi_school_bundle — cross-school convergence + per-school evidence (SSE-capable)
+  registerHolisticBundle(server, getPrincipal)
+  registerMultiSchoolBundle(server, getPrincipal)
+
+  // Register Tier 5 perf system tools (MCPT v3.1.0-S4):
+  //   tool_health   — aggregate health metrics (super_admin + acharya only)
+  //   data_coverage — expected vs actual row counts per tool/category (super_admin + acharya only)
+  registerToolHealth(server, getPrincipal)
+  registerDataCoverage(server, getPrincipal)
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({

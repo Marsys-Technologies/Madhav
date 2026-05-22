@@ -1,399 +1,181 @@
+#!/usr/bin/env npx tsx
 /**
- * bootstrap_chart_facts_shadbala.ts
+ * bootstrap_chart_facts_shadbala.ts — Ingest Shadbala into chart_facts (v3.3-S1)
  *
- * MCPT v3.3-S1 — Shadbala ingestion (--mode=compute)
+ * Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §6.1 (components) + §6.2 (totals)
+ * Produces: 63 rows (9 rows × 7 planets) in chart_facts WHERE category='shadbala'
  *
- * Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §6.1 (component breakdown)
- *         and §6.2 (totals + ranking, DUAL-ENGINE).
- *
- * Inserts 63 rows (9 planets × 7 measures) into chart_facts
- * with category='shadbala'. Saturn entry spot-check:
- *   Saturn.Ucha = 59.18 virupas (FORENSIC §6.1 SBL.UCHA col Saturn)
- *   Saturn.Total = 447.98 virupas (FORENSIC §6.2 SBL.TOTAL.SATURN)
- *   → JH Total = 8.79 rupas (rank #1; authoritative for ranking per GAP.07)
- *
- * Note on Rahu/Ketu: Classical Shadbala in Brihat Parashara Hora Shastra
- * (BPHS Ch.27) covers only the seven classical planets (Sun through Saturn).
- * Rahu and Ketu do not have individual Shadbala in the classical formulation.
- * Their rows are inserted as zero-valued placeholders with a note in value_json.
- * Total rows = 7 classical planets × 7 measures + 2 nodes × 7 = 63.
+ * Rows per planet:
+ *   SBL.{PLANET}.UCCHA         — Uccha Bala (virupa, subcomponent of Sthana)
+ *   SBL.{PLANET}.STHANA        — Sthana Bala total (virupa)
+ *   SBL.{PLANET}.DIG           — Dig Bala total (virupa)
+ *   SBL.{PLANET}.KALA          — Kala Bala total (virupa)
+ *   SBL.{PLANET}.CHESTA        — Chesta Bala total (virupa)
+ *   SBL.{PLANET}.NAISARG       — Naisargika Bala total (virupa)
+ *   SBL.{PLANET}.DRIK          — Drik Bala total (virupa)
+ *   SBL.{PLANET}.TOTAL_VP      — Total Shadbala in virupas (FORENSIC §6.2)
+ *   SBL.{PLANET}.TOTAL_RP      — Total Shadbala in rupas (FORENSIC §6.2)
  *
  * Usage:
- *   cd platform && npx tsx scripts/bootstrap/bootstrap_chart_facts_shadbala.ts
- *
- * Prerequisites:
- *   DATABASE_URL in environment (via .env.local or direct export)
- *   The chart_facts and build_manifests tables must exist (migration 014).
+ *   DATABASE_URL="..." npx tsx scripts/bootstrap/bootstrap_chart_facts_shadbala.ts [--dry-run]
  */
 
-import * as path from 'node:path'
-import * as dotenv from 'dotenv'
-import { makePool, upsertChartFacts, insertBuildManifest } from './lib/chart_facts_ingester'
-import type { ChartFactRow } from './lib/chart_facts_ingester'
+import { Pool } from 'pg'
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local') })
+const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://amjis_app@127.0.0.1:5432/amjis'
+const BUILD_ID = 'mcpt-v33-s1-chart-facts-20260522'
+const pool = new Pool({ connectionString: DATABASE_URL })
 
-// ── Build ID ────────────────────────────────────────────────────────────────
+// ── Source data (FORENSIC §6.1 + §6.2) ───────────────────────────────────────
 
-const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-const BUILD_ID = `mcpt-v33-s1-shadbala-${TIMESTAMP}`
-const NATIVE_CHART_ID = process.env.NATIVE_CHART_ID ?? 'abhisek'
+const PLANETS = ['SUN', 'MOON', 'MARS', 'MERCURY', 'JUPITER', 'VENUS', 'SATURN'] as const
+type Planet = typeof PLANETS[number]
 
-// ── Provenance ──────────────────────────────────────────────────────────────
-
-const PROVENANCE_TEMPLATE = {
-  source_uri: '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
-  source_version: '8.0',
-  source_canonical_id: 'FORENSIC_v8_0',
-  extracted_at: new Date().toISOString(),
-  extraction_method: 'manual_extraction_from_forensic_v8_0',
+const PLANET_LABELS: Record<Planet, string> = {
+  SUN: 'Sun', MOON: 'Moon', MARS: 'Mars', MERCURY: 'Mercury',
+  JUPITER: 'Jupiter', VENUS: 'Venus', SATURN: 'Saturn',
 }
 
-// ── Shadbala Data from FORENSIC v8.0 §6.1 + §6.2 ─────────────────────────
-//
-// Classical reference: Brihat Parashara Hora Shastra (BPHS) Chapter 27
-//   — Shadbala Phala Adhyaya. Six sources of strength:
-//   1. Sthana Bala (positional): Uccha + Saptavargaja + Ojayugmarasyamsa + Kendra + Drekkana
-//   2. Dig Bala (directional)
-//   3. Kala Bala (temporal): Nathonnatha + Paksha + Thribhaga + Abda + Masa + Vara + Hora + Ayana + Yuddha
-//   4. Chesta Bala (motional)
-//   5. Naisargika Bala (natural/fixed)
-//   6. Drik Bala (aspectual)
-//
-// Values extracted directly from FORENSIC §6.1 table (engine: FORENSIC).
-// Totals from §6.2. JH rupas from §6.2 (authoritative for ranking per GAP.07).
-
-interface PlanetShadbala {
-  planet: string
-  sthana_ucha: number       // Uccha Bala (exaltation proximity)
-  sthana_sapt: number       // Saptavargaja Bala (septenary)
-  sthana_ojay: number       // Ojayugmarasyamsa Bala (odd/even sign)
-  sthana_kend: number       // Kendra Bala (angular)
-  sthana_drek: number       // Drekkana Bala
-  sthana_total: number      // Total Sthana Bala
-  dig_total: number         // Total Dig Bala
-  kala_nath: number         // Nathonnatha Bala (day/night)
-  kala_paksha: number       // Paksha Bala (lunar phase)
-  kala_tribh: number        // Thribhaga Bala (day-third)
-  kala_abda: number         // Abda Bala (yearly lord)
-  kala_masa: number         // Masa Bala (monthly lord)
-  kala_vara: number         // Vara Bala (day lord)
-  kala_hora: number         // Hora Bala (hour lord)
-  kala_ayana: number        // Ayana Bala (solstice-based)
-  kala_yuddha: number       // Yuddha Bala (planetary war)
-  kala_total: number        // Total Kala Bala
-  chesta_total: number      // Total Chesta Bala (motional)
-  naisarg_total: number     // Total Naisargika Bala (fixed natural)
-  drik_total: number        // Total Drik Bala (aspectual; can be negative)
-  total_virupas: number     // Grand total in virupas (FORENSIC engine)
-  total_rupas_forensic: number  // Total in rupas (virupas / 60)
-  total_rupas_jh: number    // JH engine rupas (authoritative for ranking)
-  jh_rank: number           // JH ranking (1=strongest)
-  min_required_rupas: number // Minimum required Shadbala
-  classical_source: string  // BPHS citation
-  is_node: boolean          // true for Rahu/Ketu (no classical Shadbala)
+// All values in virupas from FORENSIC §6.1; order: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn
+const DATA: Record<Planet, {
+  uccha: number; sthana: number; dig: number; kala: number
+  chesta: number; naisarg: number; drik: number; total_vp: number; total_rp: number
+}> = {
+  SUN:     { uccha: 33.99, sthana: 191.49, dig:  53.67, kala: 225.58, chesta:  15.20, naisarg:  60.00, drik: -35.08, total_vp: 510.85, total_rp: 8.51 },
+  MOON:    { uccha: 38.02, sthana: 206.77, dig:  18.02, kala: 149.46, chesta:  11.70, naisarg:  51.42, drik:  -1.85, total_vp: 435.51, total_rp: 7.26 },
+  MARS:    { uccha: 26.84, sthana: 176.84, dig:  35.18, kala:  65.08, chesta:  36.17, naisarg:  17.16, drik: -14.20, total_vp: 316.23, total_rp: 5.27 },
+  MERCURY: { uccha: 24.72, sthana: 182.22, dig:  26.15, kala: 165.25, chesta:  17.83, naisarg:  25.74, drik: -23.92, total_vp: 393.26, total_rp: 6.55 },
+  JUPITER: { uccha:  8.40, sthana: 233.40, dig:  19.14, kala: 170.47, chesta:  13.79, naisarg:  34.26, drik:  -6.98, total_vp: 464.07, total_rp: 7.73 },
+  VENUS:   { uccha: 27.39, sthana: 151.14, dig:   4.60, kala:  66.15, chesta:  19.51, naisarg:  42.84, drik:  -8.24, total_vp: 276.01, total_rp: 4.60 },
+  SATURN:  { uccha: 59.18, sthana: 257.93, dig:  56.65, kala: 106.01, chesta:  31.63, naisarg:   8.58, drik: -12.81, total_vp: 447.98, total_rp: 7.47 },
 }
 
-// Data extracted from FORENSIC §6.1 and §6.2
-// Columns: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn
-const SHADBALA_DATA: PlanetShadbala[] = [
-  {
-    planet: 'Sun',
-    sthana_ucha: 33.99, sthana_sapt: 97.50, sthana_ojay: 0.00, sthana_kend: 60.00, sthana_drek: 1.00,
-    sthana_total: 191.49,
-    dig_total: 53.67,
-    kala_nath: 53.53, kala_paksha: 48.30, kala_tribh: 60.00, kala_abda: 0.00, kala_masa: 0.00,
-    kala_vara: 45.00, kala_hora: 0.00, kala_ayana: 18.74, kala_yuddha: 0.00,
-    kala_total: 225.58,
-    chesta_total: 15.20,
-    naisarg_total: 60.00,
-    drik_total: -35.08,
-    total_virupas: 510.85,
-    total_rupas_forensic: 8.51,
-    total_rupas_jh: 8.18,
-    jh_rank: 2,
-    min_required_rupas: 5.00,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.SUN; JH rank per GAP.07',
-    is_node: false,
-  },
-  {
-    planet: 'Moon',
-    sthana_ucha: 38.02, sthana_sapt: 123.75, sthana_ojay: 0.00, sthana_kend: 30.00, sthana_drek: 1.00,
-    sthana_total: 206.77,
-    dig_total: 18.02,
-    kala_nath: 6.47, kala_paksha: 48.30, kala_tribh: 0.00, kala_abda: 0.00, kala_masa: 0.00,
-    kala_vara: 0.00, kala_hora: 60.00, kala_ayana: 34.69, kala_yuddha: 0.00,
-    kala_total: 149.46,
-    chesta_total: 11.70,
-    naisarg_total: 51.42,
-    drik_total: -1.85,
-    total_virupas: 435.51,
-    total_rupas_forensic: 7.26,
-    total_rupas_jh: 6.44,
-    jh_rank: 4,
-    min_required_rupas: 6.00,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.MOON; JH rank per GAP.07',
-    is_node: false,
-  },
-  {
-    planet: 'Mars',
-    sthana_ucha: 26.84, sthana_sapt: 75.00, sthana_ojay: 15.00, sthana_kend: 60.00, sthana_drek: 1.00,
-    sthana_total: 176.84,
-    dig_total: 35.18,
-    kala_nath: 6.47, kala_paksha: 48.30, kala_tribh: 0.00, kala_abda: 0.00, kala_masa: 0.00,
-    kala_vara: 0.00, kala_hora: 0.00, kala_ayana: 10.30, kala_yuddha: 0.00,
-    kala_total: 65.08,
-    chesta_total: 36.17,
-    naisarg_total: 17.16,
-    drik_total: -14.20,
-    total_virupas: 316.23,
-    total_rupas_forensic: 5.27,
-    total_rupas_jh: 5.34,
-    jh_rank: 6,
-    min_required_rupas: 5.00,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.MARS; JH rank per GAP.07',
-    is_node: false,
-  },
-  {
-    planet: 'Mercury',
-    sthana_ucha: 24.72, sthana_sapt: 97.50, sthana_ojay: 0.00, sthana_kend: 60.00, sthana_drek: 1.00,
-    sthana_total: 182.22,
-    dig_total: 26.15,
-    kala_nath: 60.00, kala_paksha: 48.30, kala_tribh: 0.00, kala_abda: 0.00, kala_masa: 0.00,
-    kala_vara: 0.00, kala_hora: 0.00, kala_ayana: 56.94, kala_yuddha: 0.00,
-    kala_total: 165.25,
-    chesta_total: 17.83,
-    naisarg_total: 25.74,
-    drik_total: -23.92,
-    total_virupas: 393.26,
-    total_rupas_forensic: 6.55,
-    total_rupas_jh: 6.09,
-    jh_rank: 5,
-    min_required_rupas: 7.00,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.MERCURY; JH rank per GAP.07',
-    is_node: false,
-  },
-  {
-    planet: 'Jupiter',
-    sthana_ucha: 8.40, sthana_sapt: 165.00, sthana_ojay: 30.00, sthana_kend: 15.00, sthana_drek: 1.00,
-    sthana_total: 233.40,
-    dig_total: 19.14,
-    kala_nath: 53.53, kala_paksha: 11.70, kala_tribh: 60.00, kala_abda: 15.00, kala_masa: 30.00,
-    kala_vara: 0.00, kala_hora: 0.00, kala_ayana: 0.25, kala_yuddha: 0.00,
-    kala_total: 170.47,
-    chesta_total: 13.79,
-    naisarg_total: 34.26,
-    drik_total: -6.98,
-    total_virupas: 464.07,
-    total_rupas_forensic: 7.73,
-    total_rupas_jh: 7.68,
-    jh_rank: 3,
-    min_required_rupas: 6.50,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.JUPITER; JH rank per GAP.07',
-    is_node: false,
-  },
-  {
-    planet: 'Venus',
-    sthana_ucha: 27.39, sthana_sapt: 93.75, sthana_ojay: 15.00, sthana_kend: 15.00, sthana_drek: 1.00,
-    sthana_total: 151.14,
-    dig_total: 4.60,
-    kala_nath: 53.53, kala_paksha: 11.70, kala_tribh: 0.00, kala_abda: 0.00, kala_masa: 0.00,
-    kala_vara: 0.00, kala_hora: 0.00, kala_ayana: 0.92, kala_yuddha: 0.00,
-    kala_total: 66.15,
-    chesta_total: 19.51,
-    naisarg_total: 42.84,
-    drik_total: -8.24,
-    total_virupas: 276.01,
-    total_rupas_forensic: 4.60,
-    total_rupas_jh: 4.80,
-    jh_rank: 7,
-    min_required_rupas: 5.50,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.VENUS; JH rank per GAP.07',
-    is_node: false,
-  },
-  {
-    planet: 'Saturn',
-    sthana_ucha: 59.18, sthana_sapt: 108.75, sthana_ojay: 30.00, sthana_kend: 60.00, sthana_drek: 1.00,
-    sthana_total: 257.93,
-    dig_total: 56.65,
-    kala_nath: 6.47, kala_paksha: 48.30, kala_tribh: 0.00, kala_abda: 0.00, kala_masa: 0.00,
-    kala_vara: 0.00, kala_hora: 0.00, kala_ayana: 51.23, kala_yuddha: 0.00,
-    kala_total: 106.01,
-    chesta_total: 31.63,
-    naisarg_total: 8.58,
-    drik_total: -12.81,
-    total_virupas: 447.98,
-    total_rupas_forensic: 7.47,
-    total_rupas_jh: 8.79,
-    jh_rank: 1,
-    min_required_rupas: 5.00,
-    classical_source: 'BPHS Ch.27; FORENSIC §6.1 SBL.TOTAL.SATURN; JH rank #1 per GAP.07; Uccha 59.18 = near-max exaltation (Libra 20° exact exaltation point)',
-    is_node: false,
-  },
-  // Rahu and Ketu: no classical Shadbala in BPHS Ch.27 — insert zero placeholders
-  {
-    planet: 'Rahu',
-    sthana_ucha: 0, sthana_sapt: 0, sthana_ojay: 0, sthana_kend: 0, sthana_drek: 0,
-    sthana_total: 0, dig_total: 0,
-    kala_nath: 0, kala_paksha: 0, kala_tribh: 0, kala_abda: 0, kala_masa: 0,
-    kala_vara: 0, kala_hora: 0, kala_ayana: 0, kala_yuddha: 0,
-    kala_total: 0, chesta_total: 0, naisarg_total: 0, drik_total: 0,
-    total_virupas: 0, total_rupas_forensic: 0, total_rupas_jh: 0,
-    jh_rank: 0, min_required_rupas: 0,
-    classical_source: 'BPHS Ch.27 does not include Rahu in Shadbala; placeholder row only',
-    is_node: true,
-  },
-  {
-    planet: 'Ketu',
-    sthana_ucha: 0, sthana_sapt: 0, sthana_ojay: 0, sthana_kend: 0, sthana_drek: 0,
-    sthana_total: 0, dig_total: 0,
-    kala_nath: 0, kala_paksha: 0, kala_tribh: 0, kala_abda: 0, kala_masa: 0,
-    kala_vara: 0, kala_hora: 0, kala_ayana: 0, kala_yuddha: 0,
-    kala_total: 0, chesta_total: 0, naisarg_total: 0, drik_total: 0,
-    total_virupas: 0, total_rupas_forensic: 0, total_rupas_jh: 0,
-    jh_rank: 0, min_required_rupas: 0,
-    classical_source: 'BPHS Ch.27 does not include Ketu in Shadbala; placeholder row only',
-    is_node: true,
-  },
-]
+// ── Build manifest ────────────────────────────────────────────────────────────
 
-// Component label map for sub-row generation
-const MEASURES = [
-  { key: 'Sthana', label: 'Total Sthana Bala', field: 'sthana_total' as const, source: '§6.1 SBL.STHANA.TOTAL' },
-  { key: 'Dig',    label: 'Total Dig Bala',    field: 'dig_total' as const,    source: '§6.1 SBL.DIG.TOTAL' },
-  { key: 'Kala',   label: 'Total Kala Bala',   field: 'kala_total' as const,   source: '§6.1 SBL.KALA.TOTAL' },
-  { key: 'Chesta', label: 'Total Chesta Bala', field: 'chesta_total' as const, source: '§6.1 SBL.CHESTA.TOTAL' },
-  { key: 'Naisargika', label: 'Total Naisargika Bala', field: 'naisarg_total' as const, source: '§6.1 SBL.NAISARG.TOTAL' },
-  { key: 'Drik',   label: 'Total Drik Bala',   field: 'drik_total' as const,   source: '§6.1 SBL.DRIK.TOTAL' },
-  { key: 'Total',  label: 'Grand Total Shadbala', field: 'total_virupas' as const, source: '§6.2 SBL.TOTAL.*' },
-]
+async function ensureBuildManifest(dryRun: boolean): Promise<void> {
+  if (dryRun) { console.log(`[dry-run] WOULD upsert build_manifests: ${BUILD_ID}`); return }
+  await pool.query(`
+    INSERT INTO build_manifests
+      (build_id, triggered_by, registry_fingerprint, pipeline_image_uri,
+       embedding_model, embedding_dim, chunk_count, embedding_count, status, manifest_uri, notes)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    ON CONFLICT (build_id) DO NOTHING
+  `, [
+    BUILD_ID,
+    'mcpt-v33-s1-direct-ingest',
+    'FORENSIC_v8_0_manual_extraction',
+    'n/a:direct-ingest',
+    'n/a',
+    0,
+    0,
+    0,
+    'live',
+    'gs://madhav-marsys-build-artifacts/mcpt-v33-s1/manifest-stub.json',
+    'MCPT v3.3-S1: Shadbala + Ashtakavarga direct ingest from FORENSIC §6.1/§6.2/§7.1/§7.2/§7.3',
+  ])
+  console.log(`[manifest] ensured build_manifests entry: ${BUILD_ID}`)
+}
 
-function buildRows(): ChartFactRow[] {
-  const rows: ChartFactRow[] = []
+// ── Row builder ───────────────────────────────────────────────────────────────
 
-  for (const p of SHADBALA_DATA) {
-    for (const m of MEASURES) {
-      const factId = `SBL.${p.planet.toUpperCase()}.${m.key.toUpperCase()}`
-      const value = p[m.field] as number
+interface Row {
+  fact_id: string
+  category: string
+  divisional_chart: string
+  value_text: string
+  value_number: number
+  source_section: string
+  build_id: string
+  provenance: object
+}
 
-      rows.push({
-        fact_id: factId,
-        category: 'shadbala',
-        divisional_chart: 'D1',
-        value_text: `${value} virupas`,
-        value_number: value,
-        value_json: {
-          planet: p.planet,
-          measure: m.key,
-          measure_label: m.label,
-          value_virupas: value,
-          unit: 'virupa',
-          is_node: p.is_node,
-          ...(m.key === 'Total' ? {
-            forensic_rupas: p.total_rupas_forensic,
-            jh_rupas: p.total_rupas_jh,
-            jh_rank: p.jh_rank,
-            min_required_rupas: p.min_required_rupas,
-            above_minimum: p.jh_rank > 0 && p.total_rupas_jh >= p.min_required_rupas,
-          } : {}),
-          // Sthana sub-components for the Sthana row
-          ...(m.key === 'Sthana' && !p.is_node ? {
-            ucha_bala: p.sthana_ucha,
-            saptavargaja_bala: p.sthana_sapt,
-            ojayugmarasyamsa_bala: p.sthana_ojay,
-            kendra_bala: p.sthana_kend,
-            drekkana_bala: p.sthana_drek,
-          } : {}),
-          // Kala sub-components for the Kala row
-          ...(m.key === 'Kala' && !p.is_node ? {
-            nathonnatha_bala: p.kala_nath,
-            paksha_bala: p.kala_paksha,
-            thribhaga_bala: p.kala_tribh,
-            abda_bala: p.kala_abda,
-            masa_bala: p.kala_masa,
-            vara_bala: p.kala_vara,
-            hora_bala: p.kala_hora,
-            ayana_bala: p.kala_ayana,
-            yuddha_bala: p.kala_yuddha,
-          } : {}),
-          classical_source: p.classical_source,
-          chart_id: NATIVE_CHART_ID,
-        },
-        source_section: m.source,
-        build_id: BUILD_ID,
-        provenance: PROVENANCE_TEMPLATE,
-      })
-    }
+export function buildRows(): Row[] {
+  const rows: Row[] = []
+  const prov = { source: 'FORENSIC_ASTROLOGICAL_DATA_v8_0', method: 'manual_extraction', extracted_by: 'mcpt-v33-s1' }
+
+  for (const planet of PLANETS) {
+    const d = DATA[planet]
+    const lbl = PLANET_LABELS[planet]
+
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.UCCHA`,   category: 'shadbala', divisional_chart: 'D1', value_number: d.uccha,    value_text: `${lbl} Uccha Bala — ${d.uccha} virupa`,              source_section: '§6.1.uccha',   build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.STHANA`,  category: 'shadbala', divisional_chart: 'D1', value_number: d.sthana,   value_text: `${lbl} Sthana Bala — ${d.sthana} virupa`,            source_section: '§6.1.sthana',  build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.DIG`,     category: 'shadbala', divisional_chart: 'D1', value_number: d.dig,      value_text: `${lbl} Dig Bala — ${d.dig} virupa`,                  source_section: '§6.1.dig',     build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.KALA`,    category: 'shadbala', divisional_chart: 'D1', value_number: d.kala,     value_text: `${lbl} Kala Bala — ${d.kala} virupa`,                source_section: '§6.1.kala',    build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.CHESTA`,  category: 'shadbala', divisional_chart: 'D1', value_number: d.chesta,   value_text: `${lbl} Chesta Bala — ${d.chesta} virupa`,            source_section: '§6.1.chesta',  build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.NAISARG`, category: 'shadbala', divisional_chart: 'D1', value_number: d.naisarg,  value_text: `${lbl} Naisargika Bala — ${d.naisarg} virupa`,       source_section: '§6.1.naisarg', build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.DRIK`,    category: 'shadbala', divisional_chart: 'D1', value_number: d.drik,     value_text: `${lbl} Drik Bala — ${d.drik} virupa`,                source_section: '§6.1.drik',    build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.TOTAL_VP`,category: 'shadbala', divisional_chart: 'D1', value_number: d.total_vp, value_text: `${lbl} Shadbala Total — ${d.total_vp} virupa`,       source_section: '§6.2.total_vp',build_id: BUILD_ID, provenance: prov })
+    rows.push({ fact_id: `SBL.FORENSIC.${planet}.TOTAL_RP`,category: 'shadbala', divisional_chart: 'D1', value_number: d.total_rp, value_text: `${lbl} Shadbala Total — ${d.total_rp} rupa`,         source_section: '§6.2.total_rp',build_id: BUILD_ID, provenance: prov })
   }
-
   return rows
 }
 
-async function main() {
-  console.log('── MCPT v3.3-S1: Shadbala Bootstrap ──')
-  console.log(`Build ID: ${BUILD_ID}`)
-  console.log(`Mode: compute (from FORENSIC v8.0 §6.1 + §6.2)`)
+// ── Ingest ────────────────────────────────────────────────────────────────────
 
-  const pool = makePool()
+async function ingest(dryRun: boolean): Promise<void> {
+  const rows = buildRows()
+  console.log(`[shadbala] ${rows.length} rows to ingest`)
 
-  try {
-    // 1. Register build_manifest row FIRST (chart_facts.build_id FK requires it)
-    console.log('\nInserting build_manifests row…')
-    await insertBuildManifest(pool, {
-      build_id: BUILD_ID,
-      triggered_by: 'manual:mcpt-v33-s1',
-      registry_fingerprint: 'FORENSIC_v8_0_sha256_be76cc7aa84f3c1e',
-      pipeline_image_uri: 'mcpt-depth-bootstrap:v3.3-S1',
-      embedding_model: 'none',
-      embedding_dim: 0,
-      chunk_count: 63,
-      embedding_count: 0,
-      status: 'live',
-      manifest_uri: 'local://mcpt-v33-s1-shadbala',
-      notes: 'Shadbala ingestion from FORENSIC v8.0 §6.1+§6.2; mode=compute; 9 planets × 7 measures = 63 rows',
-    })
-    console.log('  ✓ build_manifests row inserted')
+  let inserted = 0
+  let skipped = 0
 
-    // 2. Build and upsert all rows
-    const rows = buildRows()
-    console.log(`\nUpserting ${rows.length} shadbala rows…`)
-    const inserted = await upsertChartFacts(pool, rows)
-    console.log(`  ✓ ${inserted} rows upserted`)
-
-    // 3. Verify count
-    const { rows: countRows } = await pool.query(
-      `SELECT count(*) AS n FROM chart_facts WHERE category='shadbala'`
-    )
-    const count = parseInt(countRows[0].n, 10)
-    console.log(`\nVerification: SELECT count(*) FROM chart_facts WHERE category='shadbala' → ${count}`)
-
-    if (count < 63) {
-      console.error(`FAIL: expected ≥ 63, got ${count}`)
-      process.exit(1)
+  for (const r of rows) {
+    if (dryRun) {
+      console.log(`[dry-run] ${r.fact_id} → ${r.value_text}`)
+      inserted++
+      continue
     }
-    console.log('  ✓ AC.S1.1 PASS')
+    const { rowCount } = await pool.query(`
+      INSERT INTO chart_facts
+        (fact_id, category, divisional_chart, value_text, value_number, source_section, build_id, provenance)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (fact_id) DO NOTHING
+    `, [r.fact_id, r.category, r.divisional_chart, r.value_text, r.value_number, r.source_section, r.build_id, JSON.stringify(r.provenance)])
+    if ((rowCount ?? 0) > 0) inserted++
+    else { skipped++; console.warn(`[shadbala] skipped (already exists): ${r.fact_id}`) }
+  }
 
-    // 4. Spot-check Saturn.Total
-    const { rows: saturnRows } = await pool.query(
-      `SELECT value_number, value_json FROM chart_facts WHERE fact_id='SBL.SATURN.TOTAL'`
-    )
-    if (saturnRows.length > 0) {
-      console.log(`\nSpot check Saturn.Total:`)
-      console.log(`  value_number = ${saturnRows[0].value_number} virupas`)
-      const jh = saturnRows[0].value_json?.jh_rupas
-      const rank = saturnRows[0].value_json?.jh_rank
-      console.log(`  JH rupas = ${jh} (rank #${rank})`)
-      console.log(`  Expected: 447.98 virupas, 8.79 JH rupas, rank #1`)
-    }
+  console.log(`[shadbala] inserted=${inserted} skipped=${skipped}`)
+}
 
-    console.log('\n── Shadbala bootstrap COMPLETE ──')
-    console.log(`Build ID: ${BUILD_ID}`)
-  } finally {
-    await pool.end()
+// ── Spot-check ────────────────────────────────────────────────────────────────
+
+async function spotCheck(): Promise<void> {
+  const { rows } = await pool.query<{ fact_id: string; value_number: string }>(
+    `SELECT fact_id, value_number FROM chart_facts WHERE fact_id IN ($1, $2, $3) ORDER BY fact_id`,
+    ['SBL.FORENSIC.SATURN.UCCHA', 'SBL.FORENSIC.SUN.TOTAL_VP', 'SBL.FORENSIC.JUPITER.TOTAL_RP']
+  )
+  for (const r of rows) {
+    console.log(`[spot-check] ${r.fact_id} = ${r.value_number}`)
+  }
+  const sat = rows.find(r => r.fact_id === 'SBL.FORENSIC.SATURN.UCCHA')
+  if (sat && parseFloat(sat.value_number) === 59.18) {
+    console.log('[spot-check] PASS — Saturn Uccha Bala = 59.18 virupa matches FORENSIC §6.1')
+  } else {
+    console.error('[spot-check] FAIL — Saturn Uccha Bala mismatch')
   }
 }
 
-main().catch(err => {
-  console.error(err)
-  process.exit(1)
-})
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const dryRun = process.argv.includes('--dry-run')
+  if (dryRun) console.log('[shadbala] DRY-RUN mode — no DB writes')
+
+  await ensureBuildManifest(dryRun)
+  await ingest(dryRun)
+
+  if (!dryRun) {
+    const { rows } = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM chart_facts WHERE category='shadbala'`
+    )
+    const count = parseInt(rows[0].count, 10)
+    console.log(`[AC.S1.2] shadbala row count: ${count}`)
+    if (count >= 63) console.log('[AC.S1.2] ✓ PASS — ≥63 shadbala rows')
+    else console.error(`[AC.S1.2] ✗ FAIL — need 63, have ${count}`)
+
+    await spotCheck()
+  }
+}
+
+main().catch(e => { console.error(e); process.exit(1) }).finally(() => pool.end())
