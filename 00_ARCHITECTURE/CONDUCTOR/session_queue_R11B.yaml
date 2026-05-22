@@ -56,7 +56,8 @@ entries:
     - .github/workflows/deploy.yml
   est_tokens: 80000
   est_duration_min: 55
-  status: in_flight
+  status: passed
+  passed_at: '2026-05-22T15:07:00Z'
 
 - session_id: B-S2
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S2-user-bubble-dimensions.md
@@ -76,7 +77,7 @@ entries:
     - platform/src/app/globals.css
   est_tokens: 70000
   est_duration_min: 45
-  status: pending
+  status: in_flight
 
 - session_id: B-S3
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S3-message-container-shape.md

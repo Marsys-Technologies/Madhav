@@ -836,3 +836,15 @@ body {
   font-size: 0.9375rem;    /* 15px — slightly smaller than assistant body */
   line-height: 1.6;
 }
+
+/* R11.B user-bubble shape constants (B-S2).
+   Activated by .consume-shell.r11b-active.
+   Claude shape: border-radius 1rem, max-width 80%, padding 12px 14px, right-aligned.
+   Marsys speech-tail (::after) and gold hairline border are preserved verbatim. */
+.consume-shell.r11b-active .v2-user-bubble,
+.consume-shell.r11b-active .v2-user-bubble--r11b-shape {
+  border-radius: 1rem;           /* Claude's constant: 16px rounded bubble */
+  max-width: 80%;                /* Claude's constant: wider than legacy 70% */
+  padding: 12px 14px;            /* Claude's constant: 12/14 not 10/16 */
+  margin-left: auto;             /* Right-align within flex column */
+}

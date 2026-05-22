@@ -623,7 +623,7 @@ function V2Message() {
       <MessagePrimitive.If user>
         <div className="flex flex-col items-end gap-1">
           <div
-            className="v2-user-bubble rounded-2xl px-4 py-2.5 text-sm text-foreground max-w-[70%]"
+            className="v2-user-bubble v2-user-bubble--r11b-shape rounded-2xl px-4 py-2.5 text-sm text-foreground max-w-[70%]"
             data-testid="v2-user-message"
           >
             {/* F.2: flat props — renderer receives {text,...} directly, not a nested part object */}
