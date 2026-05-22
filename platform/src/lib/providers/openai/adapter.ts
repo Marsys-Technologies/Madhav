@@ -54,8 +54,8 @@ export class OpenAIAdapter implements CapabilityAdapter {
    * No thinking_delta events — OpenAI GPT family has no native thinking API.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     try {
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const stream = await client.chat.completions.create({
         model: request.model,
         max_tokens: request.maxTokens ?? 4096,

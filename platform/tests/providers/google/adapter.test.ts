@@ -52,8 +52,10 @@ describe('GoogleAdapter', () => {
     expect(r.unsupportedInputModalities).toHaveLength(0);
   });
 
-  it('thinking() throws CapabilityUnsupportedError', () => {
-    expect(() => adapter.thinking({ extendedThinkingMode: 'native_budget' })).toThrow(CapabilityUnsupportedError);
+  it('thinking() returns ThinkingResponse with mode=native_budget', () => {
+    const result = adapter.thinking({ extendedThinkingMode: 'native_budget' });
+    expect(result).toBeDefined();
+    expect(result.mode).toBe('native_budget');
   });
 
   it('computerUse() throws CapabilityUnsupportedError', async () => {

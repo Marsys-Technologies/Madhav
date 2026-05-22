@@ -49,8 +49,10 @@ describe('DeepSeekAdapter', () => {
     expect(r.unsupportedInputModalities).toHaveLength(4);
   });
 
-  it('thinking() throws CapabilityUnsupportedError', () => {
-    expect(() => adapter.thinking({ extendedThinkingMode: 'inline_blocks' })).toThrow(CapabilityUnsupportedError);
+  it('thinking() returns ThinkingResponse with mode=inline_blocks', () => {
+    const result = adapter.thinking({ extendedThinkingMode: 'inline_blocks' });
+    expect(result).toBeDefined();
+    expect(result.mode).toBe('inline_blocks');
   });
 
   it('webSearch() throws CapabilityUnsupportedError', () => {

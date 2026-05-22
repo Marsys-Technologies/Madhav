@@ -56,11 +56,11 @@ export class NVIDIAAdapter implements CapabilityAdapter {
    * (NVIDIA NIM does not support extended thinking in Marsys baseline config).
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    const client = new OpenAI({
-      apiKey: process.env.NVIDIA_NIM_API_KEY,
-      baseURL: 'https://integrate.api.nvidia.com/v1',
-    });
     try {
+      const client = new OpenAI({
+        apiKey: process.env.NVIDIA_NIM_API_KEY,
+        baseURL: 'https://integrate.api.nvidia.com/v1',
+      });
       const stream = await client.chat.completions.create({
         model: request.model,
         max_tokens: request.maxTokens ?? 4096,

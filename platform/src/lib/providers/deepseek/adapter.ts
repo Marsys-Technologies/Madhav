@@ -107,6 +107,10 @@ export class DeepSeekAdapter implements CapabilityAdapter {
             type: 'message_stop',
             stopReason: part.finishReason ?? 'end_turn',
           };
+        } else if (part.type === 'error') {
+          const raw = (part as unknown as { error?: unknown }).error;
+          const errMsg = raw instanceof Error ? raw.message : String(raw ?? 'unknown error');
+          yield { type: 'error', error: errMsg };
         }
       }
     } catch (err) {

@@ -112,25 +112,27 @@ describe('AnthropicAdapter', () => {
     });
   });
 
+  describe('capability method responses', () => {
+    it('thinking() returns ThinkingResponse with mode=native_effort', () => {
+      const result = adapter.thinking({ extendedThinkingMode: 'native_effort' });
+      expect(result).toBeDefined();
+      expect(result.mode).toBe('native_effort');
+    });
+
+    it('cache() returns CacheResponse with mode=explicit_4bp', () => {
+      const result = adapter.cache({ cacheMode: 'explicit_4bp' });
+      expect(result).toBeDefined();
+      expect(result.mode).toBe('explicit_4bp');
+    });
+
+    it('tools() returns ToolsResponse with mode=stop_reason', () => {
+      const result = adapter.tools({ toolLoopMode: 'stop_reason', tools: [], maxIterations: 8 });
+      expect(result).toBeDefined();
+      expect(result.mode).toBe('stop_reason');
+    });
+  });
+
   describe('unsupported capabilities throw CapabilityUnsupportedError', () => {
-    it('thinking()', () => {
-      expect(() => adapter.thinking({ extendedThinkingMode: 'native_effort' })).toThrow(
-        CapabilityUnsupportedError,
-      );
-    });
-
-    it('cache()', () => {
-      expect(() => adapter.cache({ cacheMode: 'explicit_4bp' })).toThrow(
-        CapabilityUnsupportedError,
-      );
-    });
-
-    it('tools()', () => {
-      expect(() =>
-        adapter.tools({ toolLoopMode: 'stop_reason', tools: [], maxIterations: 8 }),
-      ).toThrow(CapabilityUnsupportedError);
-    });
-
     it('webSearch()', () => {
       expect(() => adapter.webSearch({ query: 'test' })).toThrow(CapabilityUnsupportedError);
     });
