@@ -207,7 +207,13 @@ entries:
     - platform/tests/visual/R11B_brand_preservation.spec.ts
   est_tokens: 70000
   est_duration_min: 50
-  status: pending
+  status: passed
+  passed_at: '2026-05-22T15:35:00Z'
+  notes: >
+    Playwright spec created. CSS-only tests (no live browser required) verified
+    inline — globals.css has r11b-active rules for all B-S1..B-S7 elements.
+    Visual snapshot test skipped (no SMOKE_SESSION_COOKIE). Gate criterion
+    (file existence) PASS.
 
 - session_id: R11B-MERGE
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/R11B_MERGE-auto-pr-merge.md
