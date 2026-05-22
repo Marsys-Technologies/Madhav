@@ -1202,6 +1202,11 @@ export async function POST(request: Request) {
         // O1: emit cost data part so PerMessageDetailsDrawer populates during the live session.
         const synthUsage = usageHolder?.value
         if (synthUsage) {
+          // D-S3: OpenAI automatic cache telemetry — capture cached_tokens from
+          // usage.prompt_tokens_details.cached_tokens (populated when stream_options.include_usage=true).
+          // For OpenAI, synthUsage.cacheReadInputTokens maps to prompt_tokens_details.cached_tokens.
+          // Anthropic: usage.cache_read_input_tokens → cacheReadInputTokens.
+          // Both providers route through the same cache_read_tokens slot below.
           const pricing = getModelPricingSync(modelId)
           const dollars = computeCostUsd(pricing, {
             input_tokens: synthUsage.inputTokens ?? 0,

@@ -79,8 +79,33 @@ export class OpenAIAdapter implements CapabilityAdapter {
   }
 
   cache(_request: CacheRequest): CacheResponse {
-    // R11.D — OpenAI: automatic caching (no explicit breakpoints; no setup needed)
-    throw new CapabilityUnsupportedError('cache', 'openai');
+    // R11.D — OpenAI: automatic caching (D-S3).
+    //
+    // OpenAI auto-caches without any explicit markers or setup API calls.
+    // The mode is 'automatic' — no request modifications needed.
+    //
+    // Cache telemetry: the response usage object includes:
+    //   usage.prompt_tokens_details.cached_tokens
+    //
+    // This field is captured by the route layer and forwarded to Observatory.
+    // Cost model: cached_tokens cost 25% of standard input token price (25% hit cost).
+    //
+    // Activation: OpenAI caches when context >= 1024 tokens (as of 2024).
+    // No TTL setting available; OpenAI manages eviction automatically.
+    return {
+      mode: 'automatic',
+      breakpointPositions: [],  // no explicit positions for automatic caching
+      providerPayload: {
+        // Usage telemetry field in response
+        cached_tokens: 'usage.prompt_tokens_details.cached_tokens',
+        // Prompt caching cost: 25% of standard input token price
+        cachedTokenCostFraction: 0.25,
+        // Activation threshold (OpenAI manages this automatically)
+        minContextTokens: 1024,
+        // stream_options: { include_usage: true } is required for usage reporting
+        requireStreamUsage: true,
+      },
+    };
   }
 
   tools(_request: ToolsRequest): ToolsResponse {
