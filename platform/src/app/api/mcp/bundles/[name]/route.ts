@@ -89,7 +89,7 @@ export async function POST(
 
       try {
         if (bundleName === 'holistic_bundle') {
-          const { executeHolisticBundle } = await import('../../../../../../lib/mcp/bundle_adapters.js')
+          const { executeHolisticBundle } = await import('../../../../../lib/mcp/bundle_adapters.js')
           await executeHolisticBundle(
             {
               query_text: (body['query_text'] as string) ?? '',
@@ -105,7 +105,7 @@ export async function POST(
             }
           )
         } else {
-          const { executeMultiSchoolBundle } = await import('../../../../../../lib/mcp/bundle_adapters.js')
+          const { executeMultiSchoolBundle } = await import('../../../../../lib/mcp/bundle_adapters.js')
           await executeMultiSchoolBundle(
             {
               claim: (body['claim'] as string) ?? '',
