@@ -25,6 +25,7 @@
 import type { CapabilityAdapter } from './adapter';
 import { CapabilityUnsupportedError } from './adapter';
 import type { ProviderCapabilities } from './capabilities';
+import { logCapabilityPath as emitCapabilityPath } from '../observatory/capability_telemetry';
 import { AnthropicAdapter } from './anthropic/adapter';
 import { ANTHROPIC_MANIFEST } from './anthropic/manifest';
 import { GoogleAdapter } from './google/adapter';
@@ -161,19 +162,43 @@ export async function dispatch<K extends keyof CapabilityAdapter>(
     throw new TypeError(`[dispatcher] "${capability}" is not a method on CapabilityAdapter`);
   }
 
+  const startMs = Date.now();
+  const manifestSupport = getManifest(stackId)[capability as keyof ProviderCapabilities] ?? null;
+
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = (method as (req: typeof request) => unknown).call(adapter, request);
     // Await if the result is a Promise
+    let resolved: Awaited<ReturnType<Extract<CapabilityAdapter[K], (...args: unknown[]) => unknown>>>;
     if (result instanceof Promise) {
-      return (await result) as Awaited<
-        ReturnType<Extract<CapabilityAdapter[K], (...args: unknown[]) => unknown>>
-      >;
+      resolved = (await result) as typeof resolved;
+    } else {
+      resolved = result as typeof resolved;
     }
-    return result as Awaited<
-      ReturnType<Extract<CapabilityAdapter[K], (...args: unknown[]) => unknown>>
-    >;
+
+    // A-S9: telemetry emit on success
+    logCapabilityPath(String(capability), stackId, Date.now() - startMs);
+    emitCapabilityPath({
+      stackId,
+      capability: capability as keyof CapabilityAdapter,
+      manifestSupport: manifestSupport as string | boolean | number | null,
+      success: true,
+      durationMs: Date.now() - startMs,
+    });
+
+    return resolved;
   } catch (e) {
+    // A-S9: telemetry emit on failure
+    const errorClass = e instanceof Error ? e.constructor.name : 'UnknownError';
+    emitCapabilityPath({
+      stackId,
+      capability: capability as keyof CapabilityAdapter,
+      manifestSupport: manifestSupport as string | boolean | number | null,
+      success: false,
+      durationMs: Date.now() - startMs,
+      errorClass,
+    });
+
     if (e instanceof CapabilityUnsupportedError) {
       throw new CapabilityUnsupportedOnStackError(String(capability), stackId, e);
     }
@@ -224,18 +249,29 @@ export function getSwitchStackHint(
 // ---------------------------------------------------------------------------
 
 /**
- * Stub for A-S9 telemetry. Called after every successful dispatch.
- * A-S9 replaces this stub with an actual Observatory log call.
+ * Thin public hook called after every dispatch() call.
+ * Delegates to capability_telemetry.ts for the actual Observatory record.
+ * The granular record (with manifest support + error class) is emitted
+ * directly by dispatch() via emitCapabilityPath; this hook is for
+ * external callers that need a simpler interface.
  *
  * @param capability — the capability method that was dispatched
  * @param stackId — the stack the call was routed to
  * @param durationMs — call duration for latency tracking
  */
 export function logCapabilityPath(
-  _capability: string,
-  _stackId: StackId,
-  _durationMs: number,
+  capability: string,
+  stackId: StackId,
+  durationMs: number,
 ): void {
-  // A-S9 implements this: calls capability_telemetry.ts logCapabilityEvent()
-  // when MARSYS_FLAG_R11V2_CAPABILITY_TELEMETRY=true
+  // A-S9: wired to capability_telemetry.ts emitCapabilityPath via dispatch().
+  // This public stub is kept for callers that want to emit a simplified record
+  // (e.g., streaming methods that bypass dispatch()).
+  emitCapabilityPath({
+    stackId,
+    capability: capability as keyof CapabilityAdapter,
+    manifestSupport: null, // Simplified path — caller may not have manifest context
+    success: true,
+    durationMs,
+  });
 }

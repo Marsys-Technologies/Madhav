@@ -721,6 +721,24 @@ body {
   box-shadow: 0 0 0 3px rgba(var(--brand-gold-rgb), 0.08);
 }
 
+/* Capability hint chip — A-S8 (UI Capability-Availability Surface)
+   Rendered by CapabilityHint when the active stack doesn't support a capability.
+   Gold hairline border, muted text, small pill shape. Scoped to .consume-shell
+   to avoid leaking into other surfaces. */
+.consume-shell .capability-hint-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklch, var(--brand-gold) 28%, transparent);
+  background: color-mix(in oklch, var(--brand-gold-deep) 8%, transparent);
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;   /* 11px */
+  line-height: 1.4;
+  user-select: none;
+}
+
 /* AI avatar streaming pulse — referenced as animate-[avatar-pulse_...] in JSX */
 @keyframes avatar-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(var(--brand-gold-rgb), 0.2); }
