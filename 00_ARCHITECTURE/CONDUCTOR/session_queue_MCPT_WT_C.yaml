@@ -1,0 +1,51 @@
+schema_version: '1.0'
+queue_name: mcpt_wt_c_jaim_kp
+project: MCP Transformation
+generated_at: '2026-05-22'
+generated_by: Cowork session (Opus 4.7) — MCPT setup
+worktree: C (Jaimini + KP)
+worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-JK
+branch: feature/mcpt-jaim-kp
+total_entries: 2
+notes: >
+  WT-C executes v3.2-S2 (Jaimini Sutram + KP Reader indexing) followed by v3.2-S4
+  (multi-school table backfill for Jaimini + KP). S4 sequential after S2 (same WT).
+  Rebases against feature/mcpt-bphs at S2 start to pick up shared chunker/embedder libs.
+
+external_gates: {}
+
+entries:
+
+- session_id: v3.2-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S2_v1_0.md
+  branch: feature/mcpt-jaim-kp
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-JK
+  depends_on: []
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-JK &&
+    test -f platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts &&
+    test -f platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM classical_texts WHERE work='Jaimini Sutram'" | grep -qE "^\s+[3-9][0-9]{2,}" &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM classical_texts WHERE work LIKE 'KP Reader%'" | grep -qE "^\s+1[5-9][0-9]{2}|^\s+[2-9][0-9]{3,}"
+  est_tokens: 130000
+  est_duration_min: 360
+  status: pending
+
+- session_id: v3.2-S4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S4_v1_0.md
+  branch: feature/mcpt-jaim-kp
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-JK
+  depends_on: [v3.2-S2]
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-JK &&
+    test -f platform/supabase/migrations/078_multi_school_extensions.sql &&
+    test -f platform/scripts/bootstrap/bootstrap_multi_school_jaimini.ts &&
+    test -f platform/scripts/bootstrap/bootstrap_multi_school_kp.ts &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM multi_school_signals WHERE jaimini_stance IS NOT NULL" | tail -1 | awk '{ if ($1 > 0) exit 0; else exit 1 }'
+  est_tokens: 110000
+  est_duration_min: 180
+  status: pending

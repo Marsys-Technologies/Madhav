@@ -1,0 +1,50 @@
+schema_version: '1.0'
+queue_name: mcpt_final
+project: MCP Transformation
+generated_at: '2026-05-22'
+generated_by: Cowork session (Opus 4.7) — MCPT setup
+worktree: FINAL
+worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN
+branch: feature/mcpt-final
+total_entries: 1
+notes: >
+  FINAL queue. Runs v3.4-S2 (red-team + final seal + merge to main) solo against the
+  fully-merged feature/mcpt-final branch. SOLE entry with requires_human_approval: true
+  per PROJECT_MEMORY §3 — native approves the main merge after red-team passes.
+  Conductor halts with REQUIRES_NATIVE_APPROVAL after preparing the merge commit;
+  native explicitly approves (APPROVE_MAIN_MERGE signal); Conductor executes push.
+
+external_gates:
+  main_merge_approval:
+    description: Native approval gate for the final merge to main (the only human-gated step)
+    halt_class: REQUIRES_NATIVE_APPROVAL
+
+entries:
+
+- session_id: v3.4-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V34_S2_v1_0.md
+  branch: feature/mcpt-final
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN
+  depends_on: []
+  cross_wt_dependencies:
+    - {wt: A, session_id: v3.1.0-S6}
+    - {wt: D, session_id: v3.2-S5}
+    - {wt: E, session_id: v3.3-S4}
+    - {wt: F, session_id: v3.4-S1}
+  requires_external_gate: main_merge_approval
+  requires_human_approval: true
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN &&
+    test -f 00_ARCHITECTURE/MCP_RED_TEAM_v2_0.md &&
+    test -f 00_ARCHITECTURE/MCPT_CLOSE_v1_0.md &&
+    grep -q "0 class-1" 00_ARCHITECTURE/MCP_RED_TEAM_v2_0.md &&
+    grep -qE "MCP Transformation.*COMPLETE|MCPT.*COMPLETE" CLAUDE.md &&
+    git log --oneline main | grep -q "MCPT: final seal"
+  est_tokens: 150000
+  est_duration_min: 180
+  status: pending
+  human_decision_prompt: |
+    MCP Transformation red-team complete with 0 class-1 findings.
+    feature/mcpt-final ready to merge to main.
+    Reply APPROVE_MAIN_MERGE to push; REJECT to halt + open v3.5 follow-ups.

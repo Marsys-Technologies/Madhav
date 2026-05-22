@@ -1,0 +1,55 @@
+schema_version: '1.0'
+queue_name: mcpt_wt_d_tajaka
+project: MCP Transformation
+generated_at: '2026-05-22'
+generated_by: Cowork session (Opus 4.7) — MCPT setup
+worktree: D (Tajaka)
+worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-TAJ
+branch: feature/mcpt-tajaka
+total_entries: 2
+notes: >
+  WT-D executes v3.2-S3 (Tajaka Neelakanthi indexing) then v3.2-S5 (Tajaka tables +
+  school_convergence_index + v3.2 merge to feature/mcpt-final). S5 is the terminal
+  merge for the v3.2 phase across all three v3.2 worktrees (B + C + D merge here).
+  WT-D rebases against feature/mcpt-bphs at S3 start for shared helpers.
+
+external_gates: {}
+
+entries:
+
+- session_id: v3.2-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S3_v1_0.md
+  branch: feature/mcpt-tajaka
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-TAJ
+  depends_on: []
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-TAJ &&
+    test -f platform/scripts/bootstrap/bootstrap_classical_texts_tajaka.ts &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM classical_texts WHERE work='Tajaka Neelakanthi'" | grep -qE "^\s+[4-9][0-9]{2,}|^\s+[1-9][0-9]{3,}"
+  est_tokens: 90000
+  est_duration_min: 180
+  status: pending
+
+- session_id: v3.2-S5
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S5_v1_0.md
+  branch: feature/mcpt-tajaka
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-TAJ
+  depends_on: [v3.2-S3, v3.2-S4]
+  cross_wt_dependencies:
+    - {wt: B, session_id: v3.2-S1}
+    - {wt: C, session_id: v3.2-S4}
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-TAJ &&
+    test -f platform/supabase/migrations/079_tajaka_and_convergence.sql &&
+    test -f platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts &&
+    git log --oneline feature/mcpt-final | grep -q "MCPT v3.2: BPHS" &&
+    git log --oneline feature/mcpt-final | grep -q "MCPT v3.2: Jaim+KP" &&
+    git log --oneline feature/mcpt-final | grep -q "MCPT v3.2: Tajaka" &&
+    test "$(ls platform/supabase/migrations/ | sort -n | uniq -d | wc -l)" = "0"
+  est_tokens: 120000
+  est_duration_min: 240
+  status: pending

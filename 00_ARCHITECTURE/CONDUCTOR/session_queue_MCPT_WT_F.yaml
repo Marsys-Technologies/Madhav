@@ -1,0 +1,36 @@
+schema_version: '1.0'
+queue_name: mcpt_wt_f_grounding
+project: MCP Transformation
+generated_at: '2026-05-22'
+generated_by: Cowork session (Opus 4.7) — MCPT setup
+worktree: F (MSR grounding + calibration MV)
+worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-GRD
+branch: feature/mcpt-grounding
+total_entries: 1
+notes: >
+  WT-F executes v3.4-S1: long-running MSR signal-grounding pass (Track A) + perf brief
+  Phase P6 calibration view + dashboard tab (Track B). Single entry; merges into
+  feature/mcpt-final at session close. Expect 6–10 hours of wall-clock time including
+  operator review of grounding candidates. Sub-agent supports partial completion if
+  operator review backlog exceeds session window.
+
+external_gates: {}
+
+entries:
+
+- session_id: v3.4-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V34_S1_v1_0.md
+  branch: feature/mcpt-grounding
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-GRD
+  depends_on: []
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-GRD &&
+    test -f platform/scripts/grounding/msr_grounding_pipeline.ts &&
+    test -f platform/src/lib/perf/wilson.sql &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*)*100/(SELECT count(*) FROM msr_signals) FROM msr_signals WHERE source_citation IS NOT NULL" | tail -1 | awk '{ if ($1 >= 95) exit 0; else exit 1 }' &&
+    git log --oneline feature/mcpt-final | grep -q "MCPT v3.4-S1: grounding"
+  est_tokens: 180000
+  est_duration_min: 480
+  status: pending

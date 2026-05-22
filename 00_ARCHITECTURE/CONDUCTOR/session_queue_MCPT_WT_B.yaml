@@ -1,0 +1,40 @@
+schema_version: '1.0'
+queue_name: mcpt_wt_b_bphs
+project: MCP Transformation
+generated_at: '2026-05-22'
+generated_by: Cowork session (Opus 4.7) — MCPT setup
+worktree: B (BPHS indexing)
+worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS
+branch: feature/mcpt-bphs
+total_entries: 1
+notes: >
+  WT-B executes v3.2-S1: BPHS indexing into classical_texts. Single-entry queue.
+  IMPORTANT: WT-B authors the shared chunker + embedder libs as its FIRST commit
+  before BPHS ingestion logic — so WT-C (Jaim+KP) and WT-D (Tajaka) can rebase
+  against those shared helpers within the same hour. The sub-agent commits the
+  helpers first, pushes, then proceeds with BPHS-specific work.
+  Merge to feature/mcpt-final happens in v3.2-S5 (WT-D's terminal entry).
+
+external_gates: {}
+
+entries:
+
+- session_id: v3.2-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCPT_V32_S1_v1_0.md
+  branch: feature/mcpt-bphs
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS
+  depends_on: []
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-BPHS &&
+    test -f platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts &&
+    test -f platform/scripts/bootstrap/lib/classical_text_chunker.ts &&
+    test -f platform/scripts/bootstrap/lib/classical_text_embedder.ts &&
+    test -f 00_ARCHITECTURE/BRIEFS/SOURCE_INVENTORY_BPHS_v1_0.md &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM classical_texts WHERE work='BPHS'" | grep -qE "^\s+[1-9][0-9]{3,}" &&
+    psql "$DATABASE_URL_PROD" -c "SELECT count(*) FROM build_manifests WHERE asset_id='classical_texts' AND build_id LIKE 'mcpt-v32-bphs-%'" | grep -q "1"
+  est_tokens: 100000
+  est_duration_min: 240
+  status: pending
