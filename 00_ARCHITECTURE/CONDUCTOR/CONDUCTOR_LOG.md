@@ -1009,3 +1009,26 @@ All 17 entries in session_queue.yaml resolved: passed or skipped.
 | Wave closed | 2026-05-20 |
 
 ---
+
+## R11.A — A-S0 PASS — 2026-05-22
+
+| Field | Value |
+|---|---|
+| session_id | A-S0 |
+| phase | R11.A — Foundation (Multi-Provider Parity arc) |
+| brief | 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-A/A-S0-capability-manifest-schema.md |
+| status | PASS |
+| gate_exit | 0 |
+| commit | 426b7c86 |
+
+**Scope items completed:**
+- AC.1: `capabilities.ts` exports `ProviderCapabilities` interface (18 fields from CAPABILITY_MATRIX §9)
+- AC.2: All fields strictly typed — string-unions, booleans, positive integer; no `any`
+- AC.3: `manifest-validator.ts` exports `validateManifest(m: unknown): ProviderCapabilities` assertion function
+- AC.4: 22 vitest tests pass (5 valid-manifest variants × 5 providers + 12 invalid-manifest error paths)
+- AC.5: Three R11V2 flags registered in `feature_flags.ts` — `R11V2_MULTI_PROVIDER_PARITY` (false), `R11V2_USE_ADAPTERS` (false), `R11V2_CAPABILITY_TELEMETRY` (false)
+- AC.6: No regressions (existing test suite unaffected)
+
+**Infrastructure fix applied:** Queue gate commands corrected from `npx jest --testPathPattern=` to `npx vitest run <path>` (project uses vitest, not jest; all 13 gate commands updated). This fix was applied by the Conductor as a systematic correction to avoid false HALTs on all downstream sessions.
+
+---
