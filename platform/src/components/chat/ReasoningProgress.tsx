@@ -43,10 +43,21 @@ function parseStepLabels(text: string): string[] {
 interface ReasoningProgressProps {
   /** The full accumulated reasoning text (from MessagePrimitive.Parts Reasoning renderer). */
   text: string
+  /**
+   * C-S3: Whether the first text_delta has arrived for this message.
+   * When this flips false → true, the reasoning block auto-collapses (unless the
+   * user has manually toggled it during this message lifetime).
+   *
+   * Sources:
+   *   - Anthropic: first text content block delta
+   *   - Gemini: first text part in the UIMessage
+   *   - DeepSeek: first text part after extractReasoningMiddleware extraction
+   */
+  hasFirstTextDelta?: boolean
   'data-testid'?: string
 }
 
-export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProgressProps) {
+export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testid': testId }: ReasoningProgressProps) {
   const { status } = useMessagePartReasoning()
   const isStreaming = status.type === 'running'
 
@@ -57,6 +68,17 @@ export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProg
   // On mobile viewports (<768px), defaults to collapsed regardless of length.
   const [collapsed, setCollapsed] = useState(false)
   const hasAutoCollapsed = useRef(false)
+  /**
+   * C-S3: Track whether the user has manually toggled within this message
+   * lifetime. When true, the auto-collapse heuristics (token count + first
+   * text_delta) are suppressed so user intent is preserved.
+   */
+  const userHasToggled = useRef(false)
+
+  const handleToggle = () => {
+    userHasToggled.current = true
+    setCollapsed((c) => !c)
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -67,12 +89,32 @@ export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProg
 
   // Auto-collapse at end of stream if text is long (only fires once)
   useEffect(() => {
-    if (wasStreaming.current && !isStreaming && isLong && !hasAutoCollapsed.current) {
+    if (wasStreaming.current && !isStreaming && isLong && !hasAutoCollapsed.current && !userHasToggled.current) {
       hasAutoCollapsed.current = true
       setCollapsed(true)
     }
     wasStreaming.current = isStreaming
   }, [isStreaming, isLong])
+
+  /**
+   * C-S3: Auto-collapse when first text_delta arrives.
+   * This fires when the model transitions from "thinking" to "writing", which
+   * is the natural moment to collapse the reasoning block so the user's
+   * attention shifts to the response text.
+   *
+   * Suppressed if:
+   *   - User has manually toggled (userHasToggled.current)
+   *   - Already auto-collapsed by the end-of-stream heuristic
+   */
+  const prevHasFirstTextDelta = useRef(hasFirstTextDelta)
+  useEffect(() => {
+    const flipped = !prevHasFirstTextDelta.current && hasFirstTextDelta
+    prevHasFirstTextDelta.current = hasFirstTextDelta
+    if (flipped && !userHasToggled.current && !hasAutoCollapsed.current) {
+      hasAutoCollapsed.current = true
+      setCollapsed(true)
+    }
+  }, [hasFirstTextDelta])
 
   // Elapsed timer — counts seconds while streaming, freezes on stop.
   const startRef = useRef<number | null>(null)
@@ -117,7 +159,7 @@ export function ReasoningProgress({ text, 'data-testid': testId }: ReasoningProg
       {/* Header */}
       <button
         type="button"
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={handleToggle}
         className="flex w-full items-center justify-between px-4 py-2 text-xs text-zinc-400 hover:bg-zinc-800/40 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
         aria-expanded={!collapsed}
         aria-controls="reasoning-content"

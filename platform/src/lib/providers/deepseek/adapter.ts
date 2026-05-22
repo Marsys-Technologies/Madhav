@@ -58,9 +58,22 @@ export class DeepSeekAdapter implements CapabilityAdapter {
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {
-    // R11.C — DeepSeek: inline_blocks mode (thinking: true/false toggle)
-    // extractReasoningMiddleware parses <think>...</think> at stream level
-    throw new CapabilityUnsupportedError('thinking', 'deepseek');
+    // R11.C — DeepSeek: inline_blocks mode.
+    // DeepSeek R1 uses <think>...</think> blocks extracted by extractReasoningMiddleware
+    // from the AI SDK. The "thinking toggle" is simply enabling extractReasoningMiddleware
+    // on the stream; there is no dedicated thinking API parameter.
+    //
+    // The existing <think> extraction (middleware) is preserved and unchanged per brief.
+    // This method just signals to the synthesis layer that inline_blocks mode is active.
+    return {
+      mode: 'inline_blocks',
+      effort: _request.effort ?? 'medium',
+      providerPayload: {
+        // Signal to synthesis: use extractReasoningMiddleware
+        extractReasoningMiddleware: true,
+        // DeepSeek has no budget_tokens concept; effort is advisory only.
+      },
+    };
   }
 
   cache(_request: CacheRequest): CacheResponse {

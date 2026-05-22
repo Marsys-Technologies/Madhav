@@ -59,8 +59,18 @@ export class NVIDIAAdapter implements CapabilityAdapter {
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {
-    // NVIDIA NIM baseline: no extended thinking support
-    throw new CapabilityUnsupportedError('thinking', 'nvidia');
+    // R11.C — NVIDIA NIM: no extended thinking in Marsys baseline config.
+    // NIM is a model-hosting layer; thinking depends on the hosted model.
+    // The Marsys NIM config (Llama 3.1/3.3, Mistral) does not enable thinking.
+    // Capability hint in UI surfaces "Switch to Anthropic/Gemini for adaptive thinking."
+    //
+    // Returns null mode so synthesis layer can surface capability hint.
+    return {
+      mode: null,
+      providerPayload: {
+        hint: 'R11C_HINT_SWITCH_TO_THINKING_PROVIDER',
+      },
+    };
   }
 
   cache(_request: CacheRequest): CacheResponse {

@@ -56,9 +56,26 @@ export class OpenAIAdapter implements CapabilityAdapter {
     yield* migrationAdapter.stubChat(request, 'openai');
   }
 
-  thinking(_request: ThinkingRequest): ThinkingResponse {
-    // R11.C — GPT: polyfill_cot ("think step by step" in system prompt)
-    throw new CapabilityUnsupportedError('thinking', 'openai');
+  thinking(request: ThinkingRequest): ThinkingResponse {
+    // R11.C — GPT: polyfill_cot ("think step by step" in system prompt).
+    // OpenAI GPT-4.1 family has no native thinking API (o-series retired from Marsys).
+    // The CoT nudge is injected as a system-prompt prefix by the synthesis layer.
+    // "think step by step before answering" suffices; no provider-level API change.
+    const effort = request.effort ?? 'medium';
+    // CoT prompt intensity varies by effort level.
+    const cotPhrases: Record<string, string> = {
+      low: 'think briefly before answering.',
+      medium: 'think step by step before answering.',
+      high: 'think very carefully and thoroughly, step by step, before answering.',
+    };
+    return {
+      mode: 'polyfill_cot',
+      effort,
+      providerPayload: {
+        // Injected as a system-prompt prefix by the synthesis layer.
+        systemPromptPrefix: cotPhrases[effort] ?? cotPhrases.medium,
+      },
+    };
   }
 
   cache(_request: CacheRequest): CacheResponse {

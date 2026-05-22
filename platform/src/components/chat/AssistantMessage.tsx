@@ -7,11 +7,25 @@ import { cn } from '@/lib/utils'
 import { StreamingMarkdown } from './StreamingMarkdown'
 import { ToolCallCard } from './ToolCallCard'
 import { StreamingDots } from './StreamingDots'
+import { PreTokenIndicator } from './PreTokenIndicator'
 import { MessageActions } from './MessageActions'
 import { DisclosureTierBadge } from '@/components/disclosure/DisclosureTierBadge'
 import { InlineToolFlow } from './InlineToolFlow'
 import type { Rating } from '@/hooks/useFeedback'
 import type { AudienceTier } from '@/lib/prompts/types'
+
+/**
+ * Returns true if the model ID string suggests a thinking-capable provider.
+ * Used by PreTokenIndicator to show "Thinking… Ns" vs plain dot.
+ *
+ * Thinking-capable: Anthropic (claude-*), Google (gemini-*), DeepSeek (deepseek-*)
+ * Non-thinking: OpenAI (gpt-*), NVIDIA NIM (llama-*, mistral-*, *, no prefix match)
+ */
+function modelHasThinking(modelId: string | undefined): boolean {
+  if (!modelId) return false
+  const lower = modelId.toLowerCase()
+  return lower.startsWith('claude') || lower.startsWith('gemini') || lower.startsWith('deepseek')
+}
 
 function extractText(message: UIMessage): string {
   return message.parts
@@ -81,6 +95,11 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
     if (p.type === 'reasoning') return true
     return false
   })
+  // hasFirstTextDelta: true once any text part has non-empty content.
+  // Used by PreTokenIndicator to unmount after the first token arrives.
+  const hasFirstTextDelta = message.parts.some(
+    p => p.type === 'text' && (p as { text: string }).text.length > 0
+  )
   const meta = (message.metadata ?? {}) as Record<string, unknown>
   const wasTruncated = !isStreaming && meta.truncated === true
   // Prefer server's canonical names; fall back to legacy *_id keys for
@@ -123,7 +142,13 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
           ✦
         </div>
         <div className="min-w-0 flex-1">
-          {!hasAnyContent && isStreaming && isLast && (
+          {isStreaming && isLast && !hasFirstTextDelta && (
+            <PreTokenIndicator
+              hasFirstTextDelta={hasFirstTextDelta}
+              hasThinking={modelHasThinking(modelLabel)}
+            />
+          )}
+          {!hasAnyContent && isStreaming && isLast && hasFirstTextDelta && (
             <div className="py-2">
               <StreamingDots />
             </div>
