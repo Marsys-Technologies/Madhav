@@ -164,13 +164,16 @@ function MarkdownContentImpl({ children, className, streaming = false, customCom
     [streaming, customComponents],
   )
 
+  // markdown-content: R11.B B-S6 CSS target.
+  // .consume-shell.r11b-active .markdown-content overrides typescale in globals.css
+  // (1rem body / 1.65 leading, serif h1-h3, mono code at 14px/8px radius).
   return (
     <div
       aria-live={streaming ? 'polite' : 'off'}
       aria-atomic="false"
       aria-busy={streaming}
       className={cn(
-        'chat-prose leading-[1.72] text-foreground',
+        'markdown-content chat-prose leading-[1.72] text-foreground',
         '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
         className
       )}
