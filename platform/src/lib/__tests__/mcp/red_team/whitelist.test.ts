@@ -64,8 +64,8 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
     }
   })
 
-  it('RT-04h: whitelist maps 10 MCP names, no more, no less', () => {
-    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(10)
+  it('RT-04h: whitelist maps 11 MCP names, no more, no less', () => {
+    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(11)
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {

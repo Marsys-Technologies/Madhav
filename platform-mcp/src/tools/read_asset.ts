@@ -52,7 +52,7 @@ synthesis layer document, not just a signal-level query result.
 When to prefer: Prefer read_asset when you need to read an entire document —
 e.g., the full CGM for a comprehensive graph overview, or the full FORENSIC for
 a complete birth-data audit. Prefer query_signals or query_chart_facts for
-targeted fact lookups within documents. Prefer ask_madhav for any question
+targeted fact lookups within documents. Prefer holistic_bundle for any question
 requiring synthesis across multiple documents.
 
 Input shape hints: canonical_id — one of the supported canonical IDs listed

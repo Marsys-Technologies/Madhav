@@ -11,7 +11,7 @@
  * When to prefer: Use vector_search when you need "documents similar to X" —
  * e.g., "find signals that discuss Saturn's separation anxiety pattern" — rather
  * than a structured filter query. Prefer query_signals for structured MSR lookups
- * with exact domain/confidence/dasha_lord filters. Prefer ask_madhav when you want
+ * with exact domain/confidence/dasha_lord filters. Prefer holistic_bundle when you want
  * the semantically similar content synthesized into an answer.
  *
  * Input shape hints:
@@ -58,7 +58,7 @@ export function registerVectorSearch(
     'domain reports, L1 facts) using Vertex AI 768-dim embeddings and returns top-K chunks ' +
     'ranked by cosine similarity. Tagged surgical: true. ' +
     'When to prefer: Use for "find content similar to X" queries. Prefer query_signals ' +
-    'for structured MSR lookups with exact filters. Prefer ask_madhav when synthesis is needed. ' +
+    'for structured MSR lookups with exact filters. Prefer holistic_bundle when synthesis is needed. ' +
     'Input shape hints: text (required) is the semantic query; doc_type is an optional array ' +
     'of document type filters; top_k defaults to 10 (max 50). ' +
     'Output shape preview: {ok, result: {chunks: VectorChunk[]}, trace_id, epistemics: {surgical: true}}. ' +

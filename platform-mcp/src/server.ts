@@ -5,17 +5,17 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 19 tools registered as of MCP-4-S1 (16 read + 3 write).
+ * - 21 tools registered (v3.5, per arch §3.7).
  *
- * Tool count (v1, all registered as of MCP-4-S1):
- *   Tier 1: ask_madhav
- *   Tier 2: plan_query, execute_plan
- *   Tier 3 (10): query_chart_facts, query_signals, query_dasha_periods,
+ * Tool count (v3.5, 21 tools per MCP arch §3.7):
+ *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
+ *   Tier 3 surgical primitives (10): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
- *   Tier 4 (1): read_asset
- *   Tier 5 (2): get_trace, list_recent_queries
- *   Tier 6 — Write tools (3, MCP-4-S1): log_prediction, record_outcome, flag_disagreement
+ *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
+ *   Tier 5 observability (2): get_trace, list_recent_queries
+ *   Tier 5 perf (2): tool_health, data_coverage
+ *   Tier 6 writes (3): log_prediction, record_outcome, flag_disagreement
  *
  * Cloud Run configuration (amjis-mcp service):
  *   Memory: 512 MB, Min instances: 1, Concurrency: 80, Region: asia-south1.
@@ -28,10 +28,7 @@ import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import { registerResources } from './resources/index.js'
-import { registerAskMadhav } from './tools/ask_madhav.js'
-import { registerPlanQuery } from './tools/plan_query.js'
-import { registerExecutePlan } from './tools/execute_plan.js'
-// MCP-3-S1: Tier 3 surgical primitives
+// Tier 3: surgical primitives
 import { registerQueryChartFacts } from './tools/query_chart_facts.js'
 import { registerQuerySignals } from './tools/query_signals.js'
 import { registerQueryDashaPeriods } from './tools/query_dasha_periods.js'
@@ -42,18 +39,20 @@ import { registerLelQuery } from './tools/lel_query.js'
 import { registerVectorSearch } from './tools/vector_search.js'
 import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js'
 import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
-// MCP-3-S2: Tier 4 + Tier 5 tools
+// Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
+import { registerReadClassicalText } from './tools/read_classical_text.js'
+// Tier 5: observability + perf
 import { registerGetTrace } from './tools/get_trace.js'
 import { registerListRecentQueries } from './tools/list_recent_queries.js'
-// MCP-4-S1: Tier 6 write tools (PPL + disagreement)
+// Tier 6: write tools
 import { registerLogPrediction } from './tools/log_prediction.js'
 import { registerRecordOutcome } from './tools/record_outcome.js'
 import { registerFlagDisagreement } from './tools/flag_disagreement.js'
-// MCPT v3.1.0-S2: Tier 2 composite bundles
+// Tier 2: composite bundles (MCPT v3.1.0-S2)
 import { registerHolisticBundle } from './tools/holistic_bundle_tool.js'
 import { registerMultiSchoolBundle } from './tools/multi_school_bundle_tool.js'
-// MCPT v3.1.0-S4: Perf system tools
+// Perf system (MCPT v3.1.0-S4)
 import { registerToolHealth } from './tools/tool_health.js'
 import { registerDataCoverage } from './tools/data_coverage.js'
 import type { Principal } from './types.js'
@@ -84,17 +83,28 @@ app.post('/mcp', async (req: Request, res: Response) => {
   //      connector" UI has no Bearer field as of 2026-05; this lets users embed
   //      the key in the connector URL itself).
   //
-  // Trade-off: URL-embedded tokens leak into logs/referrers. Acceptable per
-  // D12 (full-transparency tier) for personal/super_admin keys; do NOT use this
-  // path for client-tier or shared keys.
+  // T.3 (red-team class-2): URL-key form restricted to super_admin tier only.
+  // URL-embedded tokens leak into logs and referrers; acceptable only for the
+  // fully-trusted super_admin audience. Client/acharya callers must use the
+  // Authorization header.
   const headerAuth = req.headers['authorization']
   const queryKey = typeof req.query['api_key'] === 'string' ? req.query['api_key'] : undefined
+  const fromUrlParam = !headerAuth && !!queryKey
   const authHeader = headerAuth ?? (queryKey ? `Bearer ${queryKey}` : undefined)
 
   const principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
 
   if (!principal) {
     res.status(401).json({ error: 'Unauthorized', message: 'Invalid or missing Bearer API key' })
+    return
+  }
+
+  // T.3: URL-key auth is restricted to super_admin tier.
+  if (fromUrlParam && principal.audience_tier !== 'super_admin') {
+    res.status(401).json({
+      error: 'Unauthorized',
+      message: 'URL-key auth (?api_key=) restricted to super_admin tier; use Authorization header',
+    })
     return
   }
 
@@ -106,17 +116,16 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   const getPrincipal = (): Principal => principal
 
-  // Register MCP resources (marsys://chart-overview, marsys://house-rules).
+  // Register MCP resources (marsys://chart-overview, marsys://house-rules, etc.).
   // Resources are read once at session attach — they orient Claude to the
   // singleton chart and operating discipline without burning per-turn tool calls.
   registerResources(server)
 
-  // Register Tier 1 + Tier 2 tools.
-  registerAskMadhav(server, getPrincipal)
-  registerPlanQuery(server, getPrincipal)
-  registerExecutePlan(server, getPrincipal)
+  // Register Tier 2 bundles.
+  registerHolisticBundle(server, getPrincipal)
+  registerMultiSchoolBundle(server, getPrincipal)
 
-  // Register Tier 3 surgical primitives (MCP-3-S1).
+  // Register Tier 3 surgical primitives.
   registerQueryChartFacts(server, getPrincipal)
   registerQuerySignals(server, getPrincipal)
   registerQueryDashaPeriods(server, getPrincipal)
@@ -128,32 +137,20 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerGetCgmSubgraph(server, getPrincipal)
   registerCrossSchoolLookup(server, getPrincipal)
 
-  // Register Tier 4 raw-asset tool (MCP-3-S2).
+  // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
+  registerReadClassicalText(server, getPrincipal)
 
-  // Register Tier 5 observability tools (MCP-3-S2).
+  // Register Tier 5 observability + perf tools.
   registerGetTrace(server, getPrincipal)
   registerListRecentQueries(server, getPrincipal)
+  registerToolHealth(server, getPrincipal)
+  registerDataCoverage(server, getPrincipal)
 
-  // Register Tier 6 write tools (MCP-4-S1):
-  //   log_prediction  — PPL interim substrate (mcp_predictions table, migration 071)
-  //   record_outcome  — outcome recording against prior predictions
-  //   flag_disagreement — governance disagreement register (mcp_disagreements table)
+  // Register Tier 6 write tools.
   registerLogPrediction(server, getPrincipal)
   registerRecordOutcome(server, getPrincipal)
   registerFlagDisagreement(server, getPrincipal)
-
-  // Register Tier 2 bundles (MCPT v3.1.0-S2):
-  //   holistic_bundle     — 8-tool parallel holistic read (SSE-capable)
-  //   multi_school_bundle — cross-school convergence + per-school evidence (SSE-capable)
-  registerHolisticBundle(server, getPrincipal)
-  registerMultiSchoolBundle(server, getPrincipal)
-
-  // Register Tier 5 perf system tools (MCPT v3.1.0-S4):
-  //   tool_health   — aggregate health metrics (super_admin + acharya only)
-  //   data_coverage — expected vs actual row counts per tool/category (super_admin + acharya only)
-  registerToolHealth(server, getPrincipal)
-  registerDataCoverage(server, getPrincipal)
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({

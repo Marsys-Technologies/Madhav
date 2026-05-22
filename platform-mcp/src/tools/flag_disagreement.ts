@@ -17,7 +17,7 @@
  *
  * When to prefer: Use this tool when you encounter any of these situations:
  * (1) An MSR signal contradicts FORENSIC L1 data (class: "factual").
- * (2) Two ask_madhav responses on the same question yield conflicting
+ * (2) Two holistic_bundle responses on the same question yield conflicting
  *     conclusions in the same session (class: "output_conflict").
  * (3) This MARSYS session's output conflicts with a prior session's finding
  *     that you have context about (class: "interpretive").
@@ -119,6 +119,28 @@ export function registerFlagDisagreement(
     FlagDisagreementInputSchema.shape,
     async (input: FlagDisagreementInput) => {
       const principal = getPrincipal()
+
+      // T.1: flag_disagreement is a governance write tool restricted to super_admin.
+      // Acharya and client tiers can note conflicts in their responses but cannot
+      // write to the formal governance register — that requires operator trust.
+      if (principal.audience_tier !== 'super_admin') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                ok: false,
+                error: {
+                  class: 'TIER_FORBIDDEN',
+                  message: 'flag_disagreement requires super_admin tier. ' +
+                    'Acharya/client callers: note the conflict in your response instead.',
+                },
+              }, null, 2),
+            },
+          ],
+          isError: true,
+        }
+      }
 
       const result = await callPlatformWrites(
         'flag_disagreement',

@@ -1,28 +1,29 @@
 /**
- * primitives_registry.ts — Surgical primitive whitelist for MCP Tier 3 tools.
+ * primitives_registry.ts — Surgical primitive whitelist for MCP Tier 3 + Tier 4 tools.
  *
- * Single source of truth for which retrieval tools are exposed as MCP surgical
- * primitives. The dispatcher (/api/mcp/primitives/[tool]/route.ts) uses
+ * Single source of truth for which retrieval tools are exposed as MCP primitives.
+ * The dispatcher (/api/mcp/primitives/[tool]/route.ts) uses
  * isAllowedSurgicalTool() to reject tool names not in this whitelist with a
  * {ok: false, error: {class: "validation"}} envelope.
  *
  * Surgical primitives bypass the planner and B.11 floor. They are tagged
  * surgical: true in the epistemics block per MCP_BRIEF §4.1 Tier 3.
  *
- * MCP_BRIEF §4.1 — 10 exposed primitives:
- *   query_chart_facts → chart_facts_query
- *   query_signals     → msr_sql
- *   query_dasha_periods → query_dasha_periods
- *   query_panchanga   → query_panchanga
- *   query_ephemeris   → query_ephemeris
- *   query_transit_event → query_transit_event
- *   lel_query         → lel_query
- *   vector_search     → vector_search
- *   get_cgm_subgraph  → cgm_graph_walk
- *   cross_school_lookup → multi_school_signal_lookup
+ * MCP arch §3.7 — 10 Tier 3 primitives + 1 Tier 4 raw-asset read:
+ *   query_chart_facts    → chart_facts_query
+ *   query_signals        → msr_sql
+ *   query_dasha_periods  → query_dasha_periods
+ *   query_panchanga      → query_panchanga
+ *   query_ephemeris      → query_ephemeris
+ *   query_transit_event  → query_transit_event
+ *   lel_query            → lel_query
+ *   vector_search        → vector_search
+ *   get_cgm_subgraph     → cgm_graph_walk
+ *   cross_school_lookup  → multi_school_signal_lookup
+ *   read_classical_text  → classical_text_search  (Tier 4 raw-asset read)
  */
 
-/** The 10 underlying retrieval tool names exposed as surgical primitives. */
+/** The underlying retrieval tool names exposed as MCP primitives. */
 export const SURGICAL_TOOLS = [
   'chart_facts_query',
   'msr_sql',
@@ -34,6 +35,7 @@ export const SURGICAL_TOOLS = [
   'vector_search',
   'cgm_graph_walk',
   'multi_school_signal_lookup',
+  'classical_text_search',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -53,6 +55,7 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   vector_search: 'vector_search',
   get_cgm_subgraph: 'cgm_graph_walk',
   cross_school_lookup: 'multi_school_signal_lookup',
+  read_classical_text: 'classical_text_search',
 }
 
 /**

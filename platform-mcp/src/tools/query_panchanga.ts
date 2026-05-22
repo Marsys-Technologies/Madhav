@@ -11,7 +11,7 @@
  *
  * When to prefer: Use for date-specific panchang questions ("What are today's
  * auspicious windows?", "What is the nakshatra on 2026-05-21?"). Prefer
- * ask_madhav when you need interpretation of the panchang in light of the chart
+ * holistic_bundle when you need interpretation of the panchang in light of the chart
  * (e.g., "How does today's Rahu Kalam interact with my natal Rahu?").
  *
  * Input shape hints:
@@ -55,7 +55,7 @@ export function registerQueryPanchanga(
     'plus hora, choghadiya, muhurat windows, and inauspicious periods (Rahu Kalam etc.) for any date. ' +
     'Data is pre-computed in the panchanga_daily table (1900–2100). Tagged surgical: true. ' +
     'When to prefer: Use for date-specific panchang questions ("What is today\'s nakshatra?"). ' +
-    'Prefer ask_madhav when you also need chart-level interpretation of the panchang. ' +
+    'Prefer holistic_bundle when you also need chart-level interpretation of the panchang. ' +
     'Input shape hints: date is required (YYYY-MM-DD); observer is optional lat/lon ' +
     '(defaults to native\'s birth location: Bhubaneswar lat 20.29 lon 85.82). ' +
     'Output shape preview: {ok, result: {tithi, vara, nakshatra, yoga, karana, hora[], choghadiya[], ...}}. ' +

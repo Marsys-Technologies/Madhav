@@ -10,7 +10,7 @@
  *
  * When to prefer: Use get_cgm_subgraph when you want to map the topology of how
  * signals connect across domains — e.g., "what signals are connected to SIG.MSR.234
- * within 2 hops?" Prefer ask_madhav when you want the cross-domain connections
+ * within 2 hops?" Prefer holistic_bundle when you want the cross-domain connections
  * synthesized into a holistic answer. Prefer query_signals for flat signal lookups
  * without graph structure.
  *
@@ -59,7 +59,7 @@ export function registerGetCgmSubgraph(
     'and returns a subgraph of connected signals/domains up to N hops, with edges ' +
     'typed by link relationship (amplifies, contradicts, shares_ruler, etc.). ' +
     'When to prefer: Use to map cross-domain signal topology ("what connects to SIG.MSR.234?"). ' +
-    'Prefer ask_madhav when the cross-domain connections need to be synthesized into a holistic answer. ' +
+    'Prefer holistic_bundle when the cross-domain connections need to be synthesized into a holistic answer. ' +
     'Input shape hints: node_id (required) is the seed — a signal ID or CGM entity ID; ' +
     'hops (default 2) controls traversal depth (max 5); edge_types is an optional filter array. ' +
     'Output shape preview: {ok, result: {nodes: CgmNode[], edges: CgmEdge[]}, trace_id, epistemics: {surgical: true}}. ' +

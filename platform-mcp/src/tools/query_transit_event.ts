@@ -10,7 +10,7 @@
  *
  * When to prefer: Use when you need the specific date(s) a transit occurs
  * rather than a day-by-day position scan. Prefer query_ephemeris for daily
- * positional data over a range. Prefer ask_madhav when you also need synthesis
+ * positional data over a range. Prefer holistic_bundle when you also need synthesis
  * of what the transit means for the native's chart and life domains.
  *
  * Input shape hints:
@@ -59,7 +59,7 @@ export function registerQueryTransitEvent(
     'conjunctions, degree crossings) within a date range and returns exact event dates. ' +
     'When to prefer: Use for "When does Saturn enter Aquarius?" style questions. ' +
     'Prefer query_ephemeris for day-by-day position scanning. ' +
-    'Prefer ask_madhav when the transit meaning for the native\'s chart is also needed. ' +
+    'Prefer holistic_bundle when the transit meaning for the native\'s chart is also needed. ' +
     'Input shape hints: planet (required) is the transiting graha; ' +
     'target (required) is the sign/house/degree being transited; ' +
     'date_range {start, end} (required) narrows the search window. ' +

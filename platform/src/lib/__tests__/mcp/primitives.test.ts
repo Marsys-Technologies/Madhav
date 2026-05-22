@@ -23,9 +23,9 @@ import {
 } from '@/lib/mcp/primitives_registry'
 
 describe('primitives_registry — isAllowedSurgicalTool', () => {
-  it('returns true for all 10 MCP-facing tool names', () => {
+  it('returns true for all 11 MCP-facing tool names', () => {
     const mcpToolNames = Object.keys(MCP_TO_RETRIEVAL_TOOL)
-    expect(mcpToolNames).toHaveLength(10)
+    expect(mcpToolNames).toHaveLength(11)
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
@@ -39,13 +39,13 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
     expect(isAllowedSurgicalTool('__proto__')).toBe(false)
   })
 
-  it('MCP_TO_RETRIEVAL_TOOL maps all 10 entries to valid SURGICAL_TOOLS members', () => {
+  it('MCP_TO_RETRIEVAL_TOOL maps all 11 entries to valid SURGICAL_TOOLS members', () => {
     for (const [, retrievalName] of Object.entries(MCP_TO_RETRIEVAL_TOOL)) {
       expect(SURGICAL_TOOLS).toContain(retrievalName)
     }
   })
 
-  it('all 10 expected MCP primitive names are present in the whitelist', () => {
+  it('all 11 expected MCP tool names are present in the whitelist', () => {
     const expected = [
       'query_chart_facts',
       'query_signals',
@@ -57,6 +57,7 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
       'vector_search',
       'get_cgm_subgraph',
       'cross_school_lookup',
+      'read_classical_text',
     ]
     for (const name of expected) {
       expect(isAllowedSurgicalTool(name)).toBe(true)

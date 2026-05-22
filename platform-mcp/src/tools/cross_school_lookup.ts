@@ -9,7 +9,7 @@
  *
  * When to prefer: Use cross_school_lookup when the question is explicitly about
  * multi-school convergence ("Do all four schools agree that 7th lord in 6th house
- * indicates partnership stress?"). Prefer ask_madhav when you want the multi-school
+ * indicates partnership stress?"). Prefer holistic_bundle when you want the multi-school
  * data synthesized alongside the native's actual chart signals. Prefer query_signals
  * to retrieve signals already tagged with school convergence fields.
  *
@@ -58,7 +58,7 @@ export function registerCrossSchoolLookup(
     'What it does: Checks an astrological claim against Parashara, Jaimini, KP, and Tajaka ' +
     'and returns where each school agrees, disagrees, or is silent, with a convergence score. ' +
     'When to prefer: Use when the question is explicitly about multi-school convergence on a rule. ' +
-    'Prefer ask_madhav when multi-school data needs synthesis against the native\'s chart. ' +
+    'Prefer holistic_bundle when multi-school data needs synthesis against the native\'s chart. ' +
     'Prefer query_signals to find signals already tagged with school convergence metadata. ' +
     'Input shape hints: claim (required) is a declarative astrological statement; ' +
     'schools (optional) is an array of school names to check (default: all four). ' +

@@ -10,11 +10,11 @@
  * Operational implication: do not issue API keys to principals you would
  * not trust with full prompt and signal-ID visibility.
  *
- * When to prefer: Use get_trace after an ask_madhav call when you want to
+ * When to prefer: Use get_trace after an holistic_bundle call when you want to
  * understand what retrieval tools fired, which signals were retrieved, how
  * long each stage took, and what the synthesis prompt contained. Essential
  * for differential analysis (plan → edit → execute → compare traces).
- * Do NOT use get_trace for answering chart questions — use ask_madhav for that.
+ * Do NOT use get_trace for answering chart questions — use holistic_bundle for that.
  *
  * Input: trace_id — the trace_id from any prior MCP tool response.
  * Output: {ok, result: {trace_id, steps: TraceStep[], step_count, latency_ms_total}}.
@@ -41,14 +41,14 @@ query. Every pipeline stage is included: classify (planner output), compose_bund
 (LLM prompt + completion), and done. Includes stage inputs, outputs, latencies,
 and token estimates per step.
 
-When to prefer: Use get_trace after an ask_madhav call when you need to debug
+When to prefer: Use get_trace after an holistic_bundle call when you need to debug
 what happened, verify which L2.5 tools fired, inspect the exact synthesis prompt,
 or understand per-stage latency and token consumption. Use for differential analysis
 workflows (plan → edit → execute → compare traces). Do NOT use get_trace to answer
-chart questions — that is ask_madhav's job.
+chart questions — that is holistic_bundle's job.
 
 Input shape hints: trace_id — the trace_id field from any prior MCP tool response
-envelope (e.g., from ask_madhav, execute_plan, or a primitive tool call).
+envelope (e.g., from holistic_bundle, execute_plan, or a primitive tool call).
 
 Output shape preview: {ok, result: {trace_id, steps: [{step_name, step_type,
 status, latency_ms, data_summary, payload},...], step_count, latency_ms_total},

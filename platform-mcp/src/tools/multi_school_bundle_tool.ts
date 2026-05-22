@@ -47,7 +47,7 @@ cached 5 minutes.
 
 When to prefer: Use multi_school_bundle when the question explicitly concerns whether
 Parashara, Jaimini, KP, and Tajaka schools agree or disagree on a specific rule or
-claim. Prefer ask_madhav when you want the multi-school data synthesized alongside the
+claim. Prefer holistic_bundle when you want the multi-school data synthesized alongside the
 native's actual signals. Prefer query_signals + cross_school_lookup directly when you
 need raw school-level data without the bundle orchestration.
 

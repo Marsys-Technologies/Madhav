@@ -9,7 +9,7 @@
  *
  * When to prefer: Use query_dasha_periods when the question is precisely "what dasha
  * is active on date X?" or "give me the full dasha timeline from 2020 to 2030".
- * Prefer ask_madhav when you also want synthesis — e.g., "what does this dasha
+ * Prefer holistic_bundle when you also want synthesis — e.g., "what does this dasha
  * mean for career in light of the chart?" Prefer query_chart_facts with
  * category:"dasha_vimshottari" for raw DB rows without the structured period wrapper.
  *
@@ -54,7 +54,7 @@ export function registerQueryDashaPeriods(
     'What it does: Returns the Vimshottari dasha schedule for the native\'s chart — ' +
     'Mahadasha, Antardasha, Pratyantar — with exact start/end dates, bypassing synthesis. ' +
     'When to prefer: Use for "what dasha is active on date X?" without synthesis overhead. ' +
-    'Prefer ask_madhav when you also need interpretation of what the period means. ' +
+    'Prefer holistic_bundle when you also need interpretation of what the period means. ' +
     'Input shape hints: at — single ISO date lookup; range — {start, end} for a date window; ' +
     'system defaults to "vimshottari". All params optional; omitting all returns full sequence. ' +
     'Output shape preview: {ok, result: {periods: DashaPeriod[]}, trace_id, epistemics: {surgical: true}}. ' +

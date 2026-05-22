@@ -8,9 +8,9 @@
  * surgical: true in the epistemics block.
  *
  * When to prefer: Use query_signals when you need raw signal data from the MSR corpus
- * rather than synthesized prose. Prefer over ask_madhav when the goal is "give me
+ * rather than synthesized prose. Prefer over holistic_bundle when the goal is "give me
  * all forward-looking signals in the career domain" as a structured list. Prefer
- * ask_madhav when interpretation or cross-domain synthesis is also required.
+ * holistic_bundle when interpretation or cross-domain synthesis is also required.
  *
  * Input shape hints:
  *   domain — optional; e.g. "career", "health", "relationships", "spiritual".
@@ -61,7 +61,7 @@ export function registerQuerySignals(
     'What it does: Queries the MSR signal corpus (499+ astrological signals) with structured ' +
     'filters and returns raw signal rows without synthesis. ' +
     'When to prefer: Use for "give me all forward-looking career signals" style queries. ' +
-    'Prefer ask_madhav when interpretation or cross-domain synthesis is also needed. ' +
+    'Prefer holistic_bundle when interpretation or cross-domain synthesis is also needed. ' +
     'Input shape hints: all params optional; domain filters by Jyotish domain; ' +
     'dasha_lord filters by activating dasha; min_confidence is a 0–1 float; ' +
     'forward_looking:true limits to prospective signals. ' +

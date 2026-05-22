@@ -15,7 +15,7 @@
  *
  * When to prefer: Call this tool whenever you are making a time-indexed,
  * testable astrological prediction in a session. This is a governance
- * obligation, not optional. Any predictive ask_madhav call (mode="predictive")
+ * obligation, not optional. Any predictive holistic_bundle call (mode="predictive")
  * triggers this automatically server-side, but you can also call it directly
  * for predictions you formulate yourself from synthesized data. Do NOT wait
  * until after discussing outcomes to log — PPL discipline requires predictions

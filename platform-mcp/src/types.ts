@@ -10,12 +10,9 @@
 
 // ── Tool call types ───────────────────────────────────────────────────────────
 
-/** The tool name discriminant for the /api/mcp/execute endpoint. */
-export type McpToolName = 'ask_madhav' | 'plan_query' | 'execute_plan'
-
-/** Body sent to /api/mcp/execute or /api/mcp/plan. */
+/** Body sent to a legacy /api/mcp/execute or /api/mcp/plan call. Kept for reference only. */
 export interface McpToolCall {
-  tool: McpToolName
+  tool: string
   params: Record<string, unknown>
 }
 
@@ -23,7 +20,7 @@ export interface McpToolCall {
 
 /** Mandatory ethics/epistemics block on every MCP response (MCP_BRIEF D7). */
 export interface EpistemicsBlock {
-  /** True for surgical primitive calls; false for ask_madhav full-pipeline calls. */
+  /** True for surgical primitive calls (primitives, bundles, reads); false for legacy full-pipeline calls. */
   surgical: boolean
   /** Calibrated confidence band for the answer. */
   confidence_band: 'high' | 'medium' | 'low'
@@ -43,7 +40,7 @@ export interface EpistemicsBlock {
 
 /**
  * Audit block proving B.11 Whole-Chart-Read floor was honored.
- * Present on ask_madhav and execute_plan responses.
+ * Present on holistic-synthesis responses.
  */
 export interface SynthesisAuditBlock {
   /** L2.5 tools that actually fired in this pipeline run. */

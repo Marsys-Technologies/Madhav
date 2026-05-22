@@ -10,7 +10,7 @@
  * When to prefer: Use for precise positional questions ("What sign was Saturn in
  * during March 2025?", "Was Mars retrograde on date X?"). Prefer query_transit_event
  * when you want to find a specific transit occurrence rather than a positional scan.
- * Prefer ask_madhav when you need the positional data synthesized against the chart.
+ * Prefer holistic_bundle when you need the positional data synthesized against the chart.
  *
  * Input shape hints:
  *   planet — required; Jyotish planet name: "Sun", "Moon", "Mars", "Mercury",
@@ -54,7 +54,7 @@ export function registerQueryEphemeris(
     'retrograde status, speed) from the ephemeris_daily table for a given planet and date range. ' +
     'When to prefer: Use for "What sign was Saturn in during Q1 2025?" or retrograde status checks. ' +
     'Prefer query_transit_event for "when does X enter Y?" searches. ' +
-    'Prefer ask_madhav when positional data needs chart synthesis. ' +
+    'Prefer holistic_bundle when positional data needs chart synthesis. ' +
     'Input shape hints: planet is one of the 9 Jyotish grahas; ' +
     'date_range {start, end} is required; max ~1 year range recommended. ' +
     'Output shape preview: {ok, result: {positions: EphemerisRow[]}, trace_id, epistemics: {surgical: true}}. ' +

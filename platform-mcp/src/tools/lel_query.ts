@@ -9,7 +9,7 @@
  *
  * When to prefer: Use lel_query to retrieve verified, witnessed life events when
  * the question is "what documented events happened during this period?" Prefer
- * ask_madhav when you need the events interpreted in light of current chart state.
+ * holistic_bundle when you need the events interpreted in light of current chart state.
  * Prefer query_dasha_periods to find the dasha active during an event period, then
  * use lel_query to retrieve events from that same period.
  *
@@ -58,7 +58,7 @@ export function registerLelQuery(
     '5 period summaries, 6 chronic patterns — with optional category, date range, ' +
     'and significance filters. Returns raw event records as ground-truth data. ' +
     'When to prefer: Use to retrieve verified life events for calibration ("what career ' +
-    'events happened 2015–2020?"). Prefer ask_madhav when interpretation is also needed. ' +
+    'events happened 2015–2020?"). Prefer holistic_bundle when interpretation is also needed. ' +
     'Input shape hints: all params optional; category filters by event type; ' +
     'date_range {start, end} filters by occurrence date; min_significance is a 0–1 float. ' +
     'Output shape preview: {ok, result: {events: LelEvent[]}, trace_id, epistemics: {surgical: true}}. ' +

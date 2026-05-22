@@ -10,9 +10,9 @@
  *
  * When to prefer: Use list_recent_queries when you want an overview of recent
  * MCP activity for this API key — e.g., "what have I called in the last 7 days?"
- * or "find the trace_id from the ask_madhav call I made yesterday." For inspecting
+ * or "find the trace_id from the holistic_bundle call I made yesterday." For inspecting
  * a specific call in detail, follow up with get_trace(trace_id). For current chart
- * analysis, use ask_madhav.
+ * analysis, use holistic_bundle.
  *
  * Input: limit (default 20, max 100), since (ISO date string, default 7 days ago).
  * Output: {ok, result: {queries: [{trace_id, created_at, tool, source, query_summary}]}}.
@@ -42,7 +42,7 @@ When to prefer: Use list_recent_queries when you want an audit of what this API
 key has called recently, need to find a trace_id from a prior session for follow-up
 investigation with get_trace, or want to understand usage patterns and cost behavior
 for this key. For inspecting a specific call in full detail, pass the trace_id to
-get_trace. For answering chart questions, use ask_madhav. This tool does not
+get_trace. For answering chart questions, use holistic_bundle. This tool does not
 answer astrological questions — it is purely for MCP usage audit and navigation.
 
 Input shape hints: limit — integer between 1 and 100 (default 20). since — ISO

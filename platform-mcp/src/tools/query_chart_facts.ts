@@ -9,7 +9,7 @@
  *
  * When to prefer: Use query_chart_facts when the question is a single fact
  * lookup ("What is Saturn's shadbala?" / "Which planets are in house 7?").
- * Prefer ask_madhav when synthesis or interpretation is needed alongside the fact.
+ * Prefer holistic_bundle when synthesis or interpretation is needed alongside the fact.
  * Prefer query_signals when you need MSR signal corpus data rather than raw chart facts.
  *
  * Input shape hints:
