@@ -31,7 +31,7 @@ entries:
     - platform/src/components/dev/R11BHealthCheck.tsx
   est_tokens: 60000
   est_duration_min: 40
-  status: pending
+  status: in_flight
 
 - session_id: B-S1
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S1-typography-stack.md
