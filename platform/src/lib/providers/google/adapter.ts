@@ -39,6 +39,7 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { GOOGLE_MANIFEST } from './manifest';
+import { migrationAdapter } from '../migration-adapter';
 
 export class GoogleAdapter implements CapabilityAdapter {
   readonly providerId = 'google';
@@ -48,18 +49,11 @@ export class GoogleAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — R11.A skeleton.
-   * Full Gemini SDK integration wired in A-S7 (dispatcher).
-   * thinkingBudget is passed via request.thinkingConfig.providerPayload
-   * when R11.C ships.
+   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
+   * R11.C will wire in the actual Gemini SDK stream.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    if (!request.messages || request.messages.length === 0) {
-      yield { type: 'error', error: 'GoogleAdapter.chat: no messages provided' };
-      return;
-    }
-    yield { type: 'text_delta', text: '' };
-    yield { type: 'message_stop', stopReason: 'STOP' };
+    yield* migrationAdapter.stubChat(request, 'google');
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {

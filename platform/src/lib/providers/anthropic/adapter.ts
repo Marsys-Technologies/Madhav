@@ -49,6 +49,7 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { ANTHROPIC_MANIFEST } from './manifest';
+import { migrationAdapter } from '../migration-adapter';
 
 export class AnthropicAdapter implements CapabilityAdapter {
   readonly providerId = 'anthropic';
@@ -58,28 +59,16 @@ export class AnthropicAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat.
-   * In R11.A this is a skeleton — the actual Anthropic SDK call will be wired
-   * to the existing anthropic_observed.ts in A-S7 (dispatcher integration).
-   * For now it yields a single text_delta and stops.
+   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
    *
-   * NOTE: In production (behind MARSYS_FLAG_R11V2_USE_ADAPTERS=true), the
-   * dispatcher will delegate to this method for Anthropic stacks.
+   * The migration adapter bridges the existing Anthropic pipeline into the
+   * unified ChatEvent shape. R11.C will replace this with a direct
+   * anthropic_observed.ts streaming call.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    // R11.A skeleton: validate request shape, then yield a stub event.
-    // Full implementation wired in dispatcher integration (A-S7).
-    if (!request.messages || request.messages.length === 0) {
-      yield { type: 'error', error: 'AnthropicAdapter.chat: no messages provided' };
-      return;
-    }
-    // Stub: signal that the adapter is present and routing would work.
-    // Replaced by actual anthropic_observed.ts integration in A-S7.
-    yield { type: 'text_delta', text: '' };
-    yield {
-      type: 'message_stop',
-      stopReason: 'end_turn',
-    };
+    // A-S10: delegate to migration adapter stub.
+    // R11.C wires in the actual anthropic_observed.ts stream.
+    yield* migrationAdapter.stubChat(request, 'anthropic');
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {

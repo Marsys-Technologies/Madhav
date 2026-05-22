@@ -38,6 +38,7 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { OPENAI_MANIFEST } from './manifest';
+import { migrationAdapter } from '../migration-adapter';
 
 export class OpenAIAdapter implements CapabilityAdapter {
   readonly providerId = 'openai';
@@ -47,17 +48,12 @@ export class OpenAIAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — R11.A skeleton.
-   * Note: production implementation must include stream_options: { include_usage: true }
+   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
+   * Production note: R11.C must include stream_options: { include_usage: true }
    * for accurate token reporting through the Observatory.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    if (!request.messages || request.messages.length === 0) {
-      yield { type: 'error', error: 'OpenAIAdapter.chat: no messages provided' };
-      return;
-    }
-    yield { type: 'text_delta', text: '' };
-    yield { type: 'message_stop', stopReason: 'stop' };
+    yield* migrationAdapter.stubChat(request, 'openai');
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {

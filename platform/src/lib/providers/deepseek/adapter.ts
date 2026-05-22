@@ -39,6 +39,7 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { DEEPSEEK_MANIFEST } from './manifest';
+import { migrationAdapter } from '../migration-adapter';
 
 export class DeepSeekAdapter implements CapabilityAdapter {
   readonly providerId = 'deepseek';
@@ -48,20 +49,12 @@ export class DeepSeekAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — R11.A skeleton.
-   *
-   * Production note: this adapter must apply extractReasoningMiddleware from
-   * the AI SDK to extract <think>...</think> blocks from the raw stream.
-   * The extracted reasoning maps to ChatEvent { type: 'thinking_delta', thinking: ... }.
+   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
+   * Production note: R11.C wires extractReasoningMiddleware from the AI SDK
+   * to extract <think>...</think> blocks → ChatEvent { type: 'thinking_delta' }.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    if (!request.messages || request.messages.length === 0) {
-      yield { type: 'error', error: 'DeepSeekAdapter.chat: no messages provided' };
-      return;
-    }
-    // extractReasoningMiddleware integration wired in A-S7
-    yield { type: 'text_delta', text: '' };
-    yield { type: 'message_stop', stopReason: 'stop' };
+    yield* migrationAdapter.stubChat(request, 'deepseek');
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {

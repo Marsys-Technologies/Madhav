@@ -41,6 +41,7 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { NVIDIA_MANIFEST } from './manifest';
+import { migrationAdapter } from '../migration-adapter';
 
 export class NVIDIAAdapter implements CapabilityAdapter {
   readonly providerId = 'nvidia';
@@ -50,16 +51,11 @@ export class NVIDIAAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — R11.A skeleton.
-   * Full NIM API integration wired in A-S7 (dispatcher).
+   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
+   * R11.C wires NIM API streaming; NVIDIA planner routing preserved.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    if (!request.messages || request.messages.length === 0) {
-      yield { type: 'error', error: 'NVIDIAAdapter.chat: no messages provided' };
-      return;
-    }
-    yield { type: 'text_delta', text: '' };
-    yield { type: 'message_stop', stopReason: 'stop' };
+    yield* migrationAdapter.stubChat(request, 'nvidia');
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {
