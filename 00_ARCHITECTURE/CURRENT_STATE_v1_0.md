@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.46
+version: 5.50
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.50 (2026-05-22, R11V2-DISPATCH-WIRING-COMPLETE):
+    **R11 v2 dispatch wiring COMPLETE — && false gate removed, real SDK calls in all 5 adapters, MARSYS_FLAG_R11V2_USE_ADAPTERS=true live. Production revision amjis-web-00339-7nc.**
+    Key outcomes: (A) PR #149 squash-merged (SHA 77205869): removed && false dead-code gate from route.ts:908; real streamText SDK calls in AnthropicAdapter/GoogleAdapter/DeepSeekAdapter + raw openai stream in OpenAIAdapter/NvidiaAdapter; MigrationAdapter.stubChat() retired. (B) Build fixes merged to main: PR #150 (02cf6659) @supabase/supabase-js→pg in mv_refresh.ts; direct commits 267ce29e (Next.js 16 async params in bundles/[name]/route.ts), 913c7d27 (ES2018 tsconfig target — regex dotAll flag), 7bb7b0f1 (bundle_adapters.js correct 5-level path). (C) Production revision: amjis-web-00339-7nc deployed 2026-05-22; 100% traffic. (D) MARSYS_FLAG_R11V2_USE_ADAPTERS=true flipped in Cloud Run env-vars. (E) Production smoke: zero errors/warnings in 10-min log window post-deploy. (F) STREAM_R11V2_COMPLETE.md §5 amended: dispatch wiring close-out documented. (G) CLAUDE.md v3.8 §E R11 v2 STATUS: SUBSTRATE COMPLETE DISPATCH WIRING DEFERRED → COMPLETE. (H) MP.1+MP.2 mirrors updated same session.
+    files_touched: ["CLAUDE.md", "00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", ".geminirules", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (concurrent workstream R11v2 close; no macro-phase change).
+    last_session_id: R11V2-DISPATCH-WIRING-COMPLETE. predecessor_session: MCPT-v3.4-S2-MERGE-COMPLETE.
+    carry_forwards: ["MARSYS_FLAG_R11C_STREAMING_THINKING: flip individually post-smoke (operator gate)", "MARSYS_FLAG_R11D_PROMPT_CACHING: flip individually post-smoke (operator gate)", "MARSYS_FLAG_R11E_AGENTIC_TOOLS: flip individually post-smoke (operator gate)", "R11.F–K deferred arc remains in MULTI_PROVIDER_PARITY_ROADMAP.md as future planning material"]
+    next_session_objective: "Operator flips R11C/R11D/R11E flags individually post-smoke. All R11 v2 active arc deliverables now live in production. Next project session: M6-A-S1."
+    file_updated_at: 2026-05-22. file_updated_by_session: R11V2-DISPATCH-WIRING-COMPLETE.
   - v5.49 (2026-05-22, MCPT-v3.4-S2-MERGE-COMPLETE):
     **MCP Transformation COMPLETE — feature/mcpt-final merged to main (SHA 30174c5d). All 17 sessions closed. CLAUDE.md v3.7 with R11v2 honesty amendment + MCPT COMPLETE. Operator action required: apply migrations 072–080 + verify CloudBuild deploy.**
     Key outcomes: (A) APPROVE_MAIN_MERGE received — git merge --no-ff feature/mcpt-final executed on main. (B) Merge SHA: 30174c5d. Pushed to origin/main successfully. (C) CLAUDE.md conflict resolved → v3.7: R11v2 bullet updated to SUBSTRATE COMPLETE + honesty amendment text; MCPT Transformation bullet updated to STATUS COMPLETE (2026-05-22) with final deliverable counts. (D) CloudBuild NOT YET TRIGGERED at close time (most recent build 2026-05-21T20:07:42Z — operator must verify or manually trigger). (E) MCP health endpoint pre-deploy: {"status":"ok","service":"marsys-mcp","version":"1.0.0"} — running pre-merge revision. (F) Migrations 072–080: NONE applied to production (0/9 — all pending operator action). (G) SESSION_LOG v3.4-S2 entry sealed: close_timestamp 2026-05-22, close_criteria_met true. (H) MCPT_CLOSE_v1_0.md §7 updated with merge evidence.

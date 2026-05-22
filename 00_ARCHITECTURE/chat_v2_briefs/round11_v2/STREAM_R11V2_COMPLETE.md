@@ -1,13 +1,15 @@
 ---
 artifact: STREAM_R11V2_COMPLETE.md
 project_name: Claude Takeover
-status: SEALED
+status: COMPLETE
 authored_on: 2026-05-22
 authored_by: Meta-Conductor (Level 0) — R11 v2 arc closure §3.D
+amended_on: 2026-05-22
+amended_by: Claude Code dispatch-wiring session
 purpose: >
   Governance seal for the Claude Takeover Multi-Provider Parity active arc
-  (R11.A through R11.E). Records merge SHAs, session counts, test counts,
-  and the final main HEAD at arc closure.
+  (R11.A through R11.E plus dispatch wiring). Records merge SHAs, session counts,
+  test counts, and the final production revision at arc completion.
 ---
 
 # Claude Takeover — Active Arc Complete (R11.A through R11.E)
@@ -54,9 +56,27 @@ Executed via Pattern 2+ parallel topology under a single Meta-Conductor session:
 
 All flags default false. Operator flips individually in Cloud Run env-vars after smoke testing each phase.
 
-## §5 — Deferred arc
+## §5 — Dispatch wiring close-out (2026-05-22 amendment)
 
-R11.F through R11.K (server-side tools, memory, multi-modal, artifacts, computer use) are DEFERRED to a future arc per native scope decision 2026-05-22. Scope content remains in `MULTI_PROVIDER_PARITY_ROADMAP.md §3` as future planning material.
+**Status correction:** The original arc seal (2026-05-22) documented that `route.ts:908` had a `&& false` dead-code gate making adapter dispatch permanently unreachable. All 5 provider `chat()` methods delegated to `migrationAdapter.stubChat()` producing synthetic empty responses.
+
+**Dispatch wiring shipped in PR #149** (squash merge commit `77205869`, 2026-05-22):
+- Removed `&& false` gate from `route.ts` dispatch block
+- Implemented real SDK calls in all 5 provider adapters:
+  - `AnthropicAdapter`: `streamText` + `@ai-sdk/anthropic`, `reasoning-delta` → `thinking_delta`
+  - `GoogleAdapter`: `streamText` + `@ai-sdk/google`, `reasoning-delta` → `thinking_delta`
+  - `DeepSeekAdapter`: `streamText` + `@ai-sdk/deepseek`, `reasoning-delta` → `thinking_delta`, error part handling
+  - `OpenAIAdapter`: raw `openai` stream, no thinking delta
+  - `NvidiaAdapter`: raw `openai` stream (NIM base URL), no thinking delta
+- Retired `MigrationAdapter.stubChat()` — zero callers after real implementations landed
+- Updated test suite: foundation-smoke accepts `error` events as terminal (test env has no API keys)
+- Additional build fixes merged: `@supabase/supabase-js` → `pg` client (PR #150), Next.js 16 async params (direct commit `267ce29e`), ES2018 tsconfig target (direct commit `913c7d27`), `bundle_adapters.js` correct path (direct commit `7bb7b0f1`)
+- Final main HEAD: `7bb7b0f1`
+- Production revision: `amjis-web-00339-7nc` (deployed 2026-05-22)
+- `MARSYS_FLAG_R11V2_USE_ADAPTERS=true` flipped in Cloud Run 2026-05-22
+- Production smoke: zero errors/warnings in 10-min log window post-deploy
+
+**Deferred arc:** R11.F through R11.K (server-side tools, memory, multi-modal, artifacts, computer use) remain DEFERRED per native scope decision 2026-05-22. Scope content in `MULTI_PROVIDER_PARITY_ROADMAP.md §3`.
 
 ## §6 — Known infrastructure notes
 

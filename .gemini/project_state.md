@@ -349,3 +349,19 @@ At registry date 2026-04-23, the prior reference to `twinkly-puzzling-quokka.md`
 ### MCPT v3.4-S2 Mirror Update (2026-05-22)
 
 MCP Transformation v3.1 COMPLETE (pending main merge). All 17 sessions closed across 4 phases (v3.1.0 Foundation, v3.2 Classical Grounding, v3.3 Depth Backfill, v3.4 Epistemic + Red-Team). Red-team CLEARED: 0 class-1 findings, 3 class-2 non-blocking (FINDING-T1: flag_disagreement lacks super_admin tier guard; FINDING-T3: URL api_key param accepted for all tiers; FINDING-T8: house-rules lacks prompt injection section). feature/mcpt-final ready for operator APPROVE_MAIN_MERGE. Sealing artifact: `00_ARCHITECTURE/MCPT_CLOSE_v1_0.md`. CURRENT_STATE v5.48 appended. CLAUDE.md §E concurrent workstream #13 STATUS: ACTIVE → COMPLETE (pending main merge 2026-05-22). MP.1 + MP.2 mirror update: this entry (project_state.md MP.2) + .geminirules entry (MP.1).
+
+### R11 v2 Dispatch Wiring Complete — Mirror Update (2026-05-22)
+
+Chat V2 R11 v2 Multi-Provider Parity (Claude Takeover) arc COMPLETE. Dispatch wiring shipped and live in production. Key facts for Gemini-side state sync:
+
+- **Governance seal:** `00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md` amended with §5 dispatch wiring close-out.
+- **Dead-code gate removed:** PR #149 (squash SHA `77205869`) removed `&& false` from `route.ts:908`; real SDK calls replace `stubChat()` in all 5 providers.
+- **Build fixes** (all merged to main): PR #150 (`02cf6659`) — `@supabase/supabase-js→pg` in `mv_refresh.ts`; commit `267ce29e` — Next.js 16 async params; commit `913c7d27` — ES2018 tsconfig target; commit `7bb7b0f1` — `bundle_adapters.js` correct import path.
+- **Final main HEAD:** `7bb7b0f1`. **Production revision:** `amjis-web-00339-7nc` (deployed 2026-05-22, 100% traffic).
+- **Live flags:** `MARSYS_FLAG_R11V2_USE_ADAPTERS=true` (server-side Cloud Run); `MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true` + `MARSYS_FLAG_R11B_LOOK_AND_FEEL=true` (baked NEXT_PUBLIC build-args).
+- **Production smoke:** zero errors/warnings in 10-min post-deploy log window.
+- **CLAUDE.md v3.8** §E R11 v2 bullet STATUS: `SUBSTRATE COMPLETE, DISPATCH WIRING DEFERRED` → `COMPLETE (2026-05-22)`.
+- **CURRENT_STATE v5.50** appended (changelog entry R11V2-DISPATCH-WIRING-COMPLETE).
+- **Concurrent workstream #12** (R11 v2) now COMPLETE. Remaining per-phase flags (R11C/R11D/R11E) flip individually at operator discretion post-smoke. Deferred arc R11.F–K remains in `MULTI_PROVIDER_PARITY_ROADMAP.md`.
+
+MP.1 + MP.2 mirror update: .geminirules footer entry (MP.1) + this section (MP.2) updated same session.
