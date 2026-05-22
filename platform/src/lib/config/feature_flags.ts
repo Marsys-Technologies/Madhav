@@ -159,6 +159,22 @@ export type FeatureFlag =
   //   Client-side NEXT_PUBLIC flag. Default true.
   //   Env: NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS
   | 'R11C_TOOL_CARDS'
+  // R11D_ANTHROPIC_CACHE: Anthropic 4-breakpoint cache_control (D-S1).
+  //   Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg required.
+  //   Default false initially; flip true after Observatory verification.
+  //   Env: MARSYS_FLAG_R11D_ANTHROPIC_CACHE
+  | 'R11D_ANTHROPIC_CACHE'
+  // R11D_GEMINI_CACHE: Google cachedContent API (D-S2).
+  //   Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg required.
+  //   Default false; requires ≥32,768 tokens in system+RAG to be effective.
+  //   Env: MARSYS_FLAG_R11D_GEMINI_CACHE
+  | 'R11D_GEMINI_CACHE'
+  // R11D_PROMPT_LAYOUT: Cache-aware prompt assembly order (D-S5).
+  //   Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg required.
+  //   When true: tools → system → RAG → messages (optimal for all 4 provider cache modes).
+  //   When false: prior assembly order unchanged.
+  //   Env: MARSYS_FLAG_R11D_PROMPT_LAYOUT
+  | 'R11D_PROMPT_LAYOUT'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -256,6 +272,15 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   //   Client-side NEXT_PUBLIC flag (UI component). Default true.
   //   Env: NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS
   R11C_TOOL_CARDS: true,
+  // R11D_ANTHROPIC_CACHE: 4-breakpoint cache_control. Default false until Observatory verified.
+  //   Flip via MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true.
+  R11D_ANTHROPIC_CACHE: false,
+  // R11D_GEMINI_CACHE: Google cachedContent API. Default false.
+  //   Flip via MARSYS_FLAG_R11D_GEMINI_CACHE=true after min-token check passes.
+  R11D_GEMINI_CACHE: false,
+  // R11D_PROMPT_LAYOUT: cache-aware assembly order. Default false.
+  //   Flip via MARSYS_FLAG_R11D_PROMPT_LAYOUT=true after snapshot verification.
+  R11D_PROMPT_LAYOUT: false,
 }
 
 // Numeric config keys (read via configService.getValue)
