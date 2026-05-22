@@ -64,7 +64,8 @@ import { configService } from '@/lib/config/index'
 // When false (default for R11.A), legacy single-shot pipeline is used unchanged.
 import type { StackId } from '@/lib/providers/dispatcher'
 import { getAdapter } from '@/lib/providers/dispatcher'
-import type { ChatRequest, ChatMessage } from '@/lib/providers/types'
+import type { ChatRequest } from '@/lib/providers/types'
+import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/adapter-dispatch-helpers'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
@@ -913,19 +914,18 @@ export async function POST(request: Request) {
     }
     const adapterId = STACK_TO_ADAPTER[selectedStack] as StackId | undefined
     if (adapterId) {
-      // Convert AI-SDK ModelMessage[] → adapter ChatMessage[]
-      const adapterMessages: ChatMessage[] = trimmedConversationHistory.map(m => ({
-        role: m.role as ChatMessage['role'],
-        content: Array.isArray(m.content)
-          ? m.content
-              .map((p: unknown) => {
-                const part = p as { type?: string; text?: string }
-                return part.type === 'text' ? (part.text ?? '') : ''
-              })
-              .join('')
-          : ((m.content as string) ?? ''),
-      }))
-      const adapterChatReq: ChatRequest = { messages: adapterMessages, model: modelId }
+      // Bug A+B fix: use helper that appends current user turn and filters empty content parts.
+      const adapterMessages = buildAdapterMessages(trimmedConversationHistory, queryText)
+      // Bug C fix: pass bundle assets + synthesis guidance as system context.
+      const bundleSystemContent = (bundle.assets as Array<{ content: string }>)
+        .map(a => a.content)
+        .filter(Boolean)
+        .join('\n\n')
+      const systemContent = [
+        bundleSystemContent,
+        plan.synthesis_guidance ? `SYNTHESIS GUIDANCE:\n${plan.synthesis_guidance}` : '',
+      ].filter(Boolean).join('\n\n---\n\n') || undefined
+      const adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
       const adapter = getAdapter(adapterId)
       const adapterMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
       const adapterStartMs = Date.now()
