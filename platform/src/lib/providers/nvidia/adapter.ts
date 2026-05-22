@@ -78,9 +78,46 @@ export class NVIDIAAdapter implements CapabilityAdapter {
     throw new CapabilityUnsupportedError('cache', 'nvidia');
   }
 
-  tools(_request: ToolsRequest): ToolsResponse {
-    // R11.E — NIM: OpenAI-compat finish_reason=tool_calls loop
-    throw new CapabilityUnsupportedError('tools', 'nvidia');
+  tools(request: ToolsRequest): ToolsResponse {
+    // R11.E — NVIDIA NIM agentic loop (model-dependent) (E-S5).
+    //
+    // NVIDIA NIM hosts many open-weight models. Tool-loop support depends on
+    // the active hosted model:
+    //   - llama-3.1-70b-instruct: supports OpenAI-compat function calling
+    //   - llama-3.3-70b-instruct: supports OpenAI-compat function calling
+    //   - mistral-7b-instruct-v0.3: limited/no tool support
+    //
+    // For models that support tool calling: uses finish_reason === 'tool_calls'
+    // (OpenAI-compat). For models that don't: throws CapabilityUnsupportedError
+    // so the dispatcher surfaces a "switch stack" hint.
+    //
+    // The NVIDIA_PLANNER_ENABLED planner routing (existing behavior) is orthogonal
+    // to this — it routes certain query classes to NIM regardless of stack selection.
+    // The agentic loop is only active when NIM is the explicitly selected stack.
+    const maxIterations = request.maxIterations ?? 8;
+    return {
+      mode: 'finish_reason_tool_calls',
+      maxIterations,
+      tools: request.tools,
+      providerPayload: {
+        terminationSignal: 'finish_reason_tool_calls',
+        terminationValue: 'tool_calls',
+        // Supported NIM models for tool calling
+        supportedModels: [
+          'meta/llama-3.1-70b-instruct',
+          'meta/llama-3.1-8b-instruct',
+          'meta/llama-3.3-70b-instruct',
+        ],
+        // Models that do NOT support tool calling — throw CapabilityUnsupportedError
+        unsupportedModels: [
+          'mistralai/mistral-7b-instruct-v0.3',
+          'mistralai/mixtral-8x7b-instruct-v0.1',
+        ],
+        // NVIDIA_PLANNER_ENABLED routing is preserved (orthogonal to this)
+        preservePlannerRouting: true,
+        supportsInterleavedTextTool: false,
+      },
+    };
   }
 
   webSearch(_request: WebSearchRequest): Promise<WebSearchResult> {
