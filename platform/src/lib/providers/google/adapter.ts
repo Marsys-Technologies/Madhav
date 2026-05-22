@@ -117,9 +117,30 @@ export class GoogleAdapter implements CapabilityAdapter {
     };
   }
 
-  tools(_request: ToolsRequest): ToolsResponse {
-    // R11.E — Gemini finish_reason=function_calls loop
-    throw new CapabilityUnsupportedError('tools', 'google');
+  tools(request: ToolsRequest): ToolsResponse {
+    // R11.E — Gemini finish_reason=function_calls agentic loop (E-S2).
+    //
+    // Gemini terminates a tool-use turn with finish_reason === 'FUNCTION_CALL'
+    // (SDK enum value) which normalizes to 'function_calls' in our unified layer.
+    // The loop reuses agentic_loop.ts engine with GOOGLE_LOOP_CONFIG.
+    //
+    // Function call format: functionCalls[] array in the response candidate.
+    // Interleaved text+tool ordering is preserved by Gemini 2.5 Pro.
+    const maxIterations = request.maxIterations ?? 8;
+    return {
+      mode: 'finish_reason_function_calls',
+      maxIterations,
+      tools: request.tools,
+      providerPayload: {
+        // Google SDK finish_reason signals for tool-use (loop continues while this is observed)
+        terminationSignal: 'finish_reason_function_calls',
+        terminationValues: ['FUNCTION_CALL', 'function_calls'],
+        // Tool declaration format for Gemini: functionDeclarations array in tools[]
+        toolFormat: 'functionDeclarations',
+        // Interleaved text+tool supported by Gemini 2.5 Pro (E-S6)
+        supportsInterleavedTextTool: true,
+      },
+    };
   }
 
   webSearch(_request: WebSearchRequest): Promise<WebSearchResult> {
