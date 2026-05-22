@@ -4,9 +4,9 @@
  * POST handler invoked by Cloud Scheduler to refresh a named materialized view.
  * The viewName is passed as a query parameter: ?view=mv_tool_metrics_24h
  *
- * Auth: OIDC token from Cloud Scheduler service account, validated by checking
- * the token's email claim against MARSYS_SCHEDULER_SA env var.
- * Falls back to MARSYS_CRON_SECRET for local/CI use.
+ * Auth: MARSYS_CRON_SECRET (from mcpt-scheduler-secret in Secret Manager).
+ * Checked via X-Marsys-Cron-Secret header (Cloud Scheduler) or
+ * Authorization: Bearer header (local/CI).
  *
  * MCPT v3.7 — operational gap closure Phase C.
  */
@@ -26,16 +26,12 @@ const ALLOWED_VIEWS = new Set([
 
 function validateAuth(request: Request): boolean {
   const cronSecret = process.env['MARSYS_CRON_SECRET']
-  const customHeader = request.headers.get('X-Marsys-Cron-Secret')
-  const authHeader = request.headers.get('Authorization') ?? ''
-  console.log('[auth-debug] cronSecret set:', !!cronSecret, 'len:', cronSecret?.length ?? 0, 'customHeader set:', !!customHeader, 'authHeader prefix:', authHeader.slice(0, 10))
-
   if (!cronSecret) return false
 
-  // Primary: X-Marsys-Cron-Secret custom header (avoids Authorization header conflicts)
+  const customHeader = request.headers.get('X-Marsys-Cron-Secret')
   if (customHeader === cronSecret) return true
 
-  // Fallback: standard Authorization Bearer (for local/CI use where scheduler isn't involved)
+  const authHeader = request.headers.get('Authorization') ?? ''
   if (authHeader === `Bearer ${cronSecret}`) return true
 
   return false
@@ -73,11 +69,3 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(_request: Request) {
-  return new Response(JSON.stringify({
-    cronSecretSet: !!process.env['MARSYS_CRON_SECRET'],
-    cronSecretLen: process.env['MARSYS_CRON_SECRET']?.length ?? 0,
-    cronSecretFirst4: process.env['MARSYS_CRON_SECRET']?.slice(0, 4) ?? '',
-    nodeEnv: process.env['NODE_ENV'],
-  }), { status: 200, headers: { 'Content-Type': 'application/json' } })
-}
