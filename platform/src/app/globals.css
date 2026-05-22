@@ -910,3 +910,24 @@ body {
   border-color: var(--brand-gold);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand-gold) 18%, transparent);
 }
+
+/* ============================================================
+   R11.B — Sidebar chrome (B-S5)
+   Claude-compact conversation items: 8/12 padding, 8px radius.
+   Near-ink surface, gold-hairlines, .brand-cta New Chat preserved.
+   ============================================================ */
+
+/* Compact conversation items under r11b-active */
+.consume-shell.r11b-active .conversation-list-item {
+  padding: 8px 12px;             /* Claude's compact shape constant */
+  border-radius: 8px;            /* Claude's 8px item radius */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sidebar width — expand slightly for comfortable reading */
+.consume-shell.r11b-active [data-sidebar] {
+  width: 17rem;                  /* 272px — within the 256–288px target range */
+  min-width: 17rem;
+}

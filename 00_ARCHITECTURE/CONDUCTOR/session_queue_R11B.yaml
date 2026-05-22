@@ -120,7 +120,8 @@ entries:
     - platform/src/app/globals.css
   est_tokens: 80000
   est_duration_min: 55
-  status: in_flight
+  status: passed
+  passed_at: '2026-05-22T15:13:00Z'
 
 - session_id: B-S5
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S5-sidebar-chrome.md
@@ -140,7 +141,7 @@ entries:
     - platform/src/app/globals.css
   est_tokens: 70000
   est_duration_min: 50
-  status: pending
+  status: in_flight
 
 - session_id: B-S6
   brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S6-markdown-content-typescale.md
