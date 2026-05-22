@@ -48,7 +48,9 @@ describe('NVIDIAAdapter', () => {
     expect(r.unsupportedInputModalities).toContain('pdf');
   });
 
-  it('thinking() throws CapabilityUnsupportedError', () => {
-    expect(() => adapter.thinking({ extendedThinkingMode: null })).toThrow(CapabilityUnsupportedError);
+  it('thinking() returns ThinkingResponse with mode=null (NVIDIA has no native thinking)', () => {
+    const result = adapter.thinking({ extendedThinkingMode: null });
+    expect(result).toBeDefined();
+    expect(result.mode).toBeNull();
   });
 });

@@ -11,6 +11,7 @@
  * the stack picker.
  */
 
+import OpenAI from 'openai';
 import type { CapabilityAdapter } from '../adapter';
 import { CapabilityUnsupportedError } from '../adapter';
 import type { ProviderCapabilities } from '../capabilities';
@@ -41,7 +42,6 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { NVIDIA_MANIFEST } from './manifest';
-import { migrationAdapter } from '../migration-adapter';
 
 export class NVIDIAAdapter implements CapabilityAdapter {
   readonly providerId = 'nvidia';
@@ -51,11 +51,50 @@ export class NVIDIAAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
-   * R11.C wires NIM API streaming; NVIDIA planner routing preserved.
+   * Primary streaming chat — real NVIDIA NIM API implementation.
+   * NIM uses an OpenAI-compatible endpoint; no thinking_delta events
+   * (NVIDIA NIM does not support extended thinking in Marsys baseline config).
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    yield* migrationAdapter.stubChat(request, 'nvidia');
+    try {
+      const client = new OpenAI({
+        apiKey: process.env.NVIDIA_NIM_API_KEY,
+        baseURL: 'https://integrate.api.nvidia.com/v1',
+      });
+      const stream = await client.chat.completions.create({
+        model: request.model,
+        max_tokens: request.maxTokens ?? 4096,
+        messages: request.messages.map((m) => ({
+          role: m.role,
+          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+        })),
+        stream: true,
+        stream_options: { include_usage: true },
+      });
+
+      for await (const chunk of stream) {
+        const choice = chunk.choices?.[0];
+        const content = choice?.delta?.content;
+        if (content) {
+          yield { type: 'text_delta', text: content };
+        }
+        const finishReason = choice?.finish_reason;
+        if (finishReason) {
+          yield { type: 'message_stop', stopReason: finishReason };
+        }
+        const usage = chunk.usage;
+        if (usage) {
+          yield {
+            type: 'usage',
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+          };
+        }
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      yield { type: 'error', error };
+    }
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {

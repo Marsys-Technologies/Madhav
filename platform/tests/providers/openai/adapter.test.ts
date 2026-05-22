@@ -54,7 +54,9 @@ describe('OpenAIAdapter', () => {
     expect(r.unsupportedInputModalities).toContain('video');
   });
 
-  it('thinking() throws CapabilityUnsupportedError', () => {
-    expect(() => adapter.thinking({ extendedThinkingMode: 'polyfill_cot' })).toThrow(CapabilityUnsupportedError);
+  it('thinking() returns ThinkingResponse with mode=polyfill_cot', () => {
+    const result = adapter.thinking({ extendedThinkingMode: 'polyfill_cot' });
+    expect(result).toBeDefined();
+    expect(result.mode).toBe('polyfill_cot');
   });
 });

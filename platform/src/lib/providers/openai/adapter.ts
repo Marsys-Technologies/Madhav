@@ -8,6 +8,7 @@
  *   - structured outputs use response_format: { type: 'json_schema', strict: true }
  */
 
+import OpenAI from 'openai';
 import type { CapabilityAdapter } from '../adapter';
 import { CapabilityUnsupportedError } from '../adapter';
 import type { ProviderCapabilities } from '../capabilities';
@@ -38,7 +39,6 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { OPENAI_MANIFEST } from './manifest';
-import { migrationAdapter } from '../migration-adapter';
 
 export class OpenAIAdapter implements CapabilityAdapter {
   readonly providerId = 'openai';
@@ -48,12 +48,49 @@ export class OpenAIAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
-   * Production note: R11.C must include stream_options: { include_usage: true }
-   * for accurate token reporting through the Observatory.
+   * Primary streaming chat — real OpenAI SDK implementation.
+   * Uses stream_options: { include_usage: true } for accurate token reporting
+   * through the Observatory (R11.D cache telemetry requirement).
+   * No thinking_delta events — OpenAI GPT family has no native thinking API.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    yield* migrationAdapter.stubChat(request, 'openai');
+    try {
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const stream = await client.chat.completions.create({
+        model: request.model,
+        max_tokens: request.maxTokens ?? 4096,
+        messages: request.messages.map((m) => ({
+          role: m.role,
+          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+        })),
+        stream: true,
+        stream_options: { include_usage: true },
+      });
+
+      for await (const chunk of stream) {
+        const choice = chunk.choices?.[0];
+        const content = choice?.delta?.content;
+        if (content) {
+          yield { type: 'text_delta', text: content };
+        }
+        const finishReason = choice?.finish_reason;
+        if (finishReason) {
+          yield { type: 'message_stop', stopReason: finishReason };
+        }
+        const usage = chunk.usage;
+        if (usage) {
+          yield {
+            type: 'usage',
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+            cacheReadTokens: usage.prompt_tokens_details?.cached_tokens ?? 0,
+          };
+        }
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      yield { type: 'error', error };
+    }
   }
 
   thinking(request: ThinkingRequest): ThinkingResponse {

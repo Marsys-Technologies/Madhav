@@ -64,6 +64,7 @@ import { configService } from '@/lib/config/index'
 // When false (default for R11.A), legacy single-shot pipeline is used unchanged.
 import type { StackId } from '@/lib/providers/dispatcher'
 import { getAdapter } from '@/lib/providers/dispatcher'
+import type { ChatRequest, ChatMessage } from '@/lib/providers/types'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
@@ -899,24 +900,77 @@ export async function POST(request: Request) {
       disclosure_tier: audienceTier,
     }),
   }
-  // R11 v2 — Capability Dispatcher gate (A-S7)
+  // R11 v2 — Capability Dispatcher gate (A-S7 + dispatch-wiring)
   // When MARSYS_FLAG_R11V2_USE_ADAPTERS=true, the chat call routes through the
-  // capability dispatcher to the per-provider adapter instead of the legacy
-  // orchestrator path. For R11.A, flag defaults to false — legacy path unchanged.
-  // The migration adapter (A-S10) provides the legacy bridge under the new interface.
-  // Full adapter-routing integration completes in A-S10 + the next phase (R11.B+).
-  if (configService.getFlag('R11V2_USE_ADAPTERS') && false) {
-    // Adapter dispatch path (placeholder — A-S10 wires real integration):
-    // const stackId = getEffectiveStack(stackSynthPrimary) as StackId;
-    // const adapter = getAdapter(stackId);
-    // const chatStream = adapter.chat({ messages: synthesisRequest.conversation_history, model: modelId });
-    // ... process chatStream events into uiStream ...
-    // This branch is unreachable (&&false) until A-S10 integration is verified.
-    void getAdapter; // suppress unused import lint
-    void (null as unknown as StackId); // suppress type-only import lint
+  // capability dispatcher to the per-provider adapter instead of the legacy orchestrator path.
+  if (configService.getFlag('R11V2_USE_ADAPTERS')) {
+    const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
+      anthropic: 'anthropic',
+      gemini: 'google',
+      gpt: 'openai',
+      deepseek: 'deepseek',
+      nim: 'nvidia',
+    }
+    const adapterId = STACK_TO_ADAPTER[selectedStack] as StackId | undefined
+    if (adapterId) {
+      // Convert AI-SDK ModelMessage[] → adapter ChatMessage[]
+      const adapterMessages: ChatMessage[] = trimmedConversationHistory.map(m => ({
+        role: m.role as ChatMessage['role'],
+        content: Array.isArray(m.content)
+          ? m.content
+              .map((p: unknown) => {
+                const part = p as { type?: string; text?: string }
+                return part.type === 'text' ? (part.text ?? '') : ''
+              })
+              .join('')
+          : ((m.content as string) ?? ''),
+      }))
+      const adapterChatReq: ChatRequest = { messages: adapterMessages, model: modelId }
+      const adapter = getAdapter(adapterId)
+      const adapterMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
+      const adapterStartMs = Date.now()
+      const adapterStream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          writer.write({ type: 'start', messageId: adapterMsgId } as any)
+          writer.write({ type: 'data-stage', data: stagePart('classify', 'done', plannerLatencyMs) })
+          writer.write({ type: 'data-stage', data: stagePart('compose_bundle', 'done', composeBundleMs) })
+          for (const evt of toolEventLog) {
+            writer.write({
+              type: 'data-tool',
+              data: { type: 'tool', name: evt.name, status: evt.status, ms: evt.ms, ok_count: evt.ok_count, err_count: evt.err_count },
+            })
+          }
+          writer.write({ type: 'data-stage', data: stagePart('tool_fetch', 'done', toolFetchMs) })
+          writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
+          pendingStreamWriter.onEvent()
+          try {
+            for await (const event of adapter.chat(adapterChatReq)) {
+              if (event.type === 'text_delta') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                writer.write({ type: 'text-delta', delta: event.text, id: adapterMsgId } as any)
+                pendingStreamWriter.onTextDelta(event.text)
+              } else if (event.type === 'thinking_delta') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                writer.write({ type: 'reasoning', delta: event.thinking, id: adapterMsgId } as any)
+              }
+            }
+          } catch (adapterErr) {
+            console.error('[adapter-dispatch] stream error stack=%s', adapterId, adapterErr)
+          }
+          writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - adapterStartMs) })
+          writer.write({
+            type: 'data-observability',
+            data: observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` }),
+          })
+          emit({ event: 'done', query_id: queryId })
+        },
+      })
+      return createUIMessageStreamResponse({ stream: adapterStream })
+    }
   }
 
-  let { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+  const { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
     // §5C: CheckpointHaltError from checkpoint_dasha (or other checkpoints with FAIL_HARD).
     // Not a provider error — do NOT attempt the QG6.1 model fallback.
     // Return HTTP 422 immediately with structured violation detail.

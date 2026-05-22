@@ -48,8 +48,9 @@ import type {
   StructuredOutputsRequest,
   StructuredOutputsResponse,
 } from '../types';
+import { streamText } from 'ai';
+import { anthropic as anthropicProvider } from '@ai-sdk/anthropic';
 import { ANTHROPIC_MANIFEST } from './manifest';
-import { migrationAdapter } from '../migration-adapter';
 
 export class AnthropicAdapter implements CapabilityAdapter {
   readonly providerId = 'anthropic';
@@ -59,16 +60,78 @@ export class AnthropicAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
+   * Primary streaming chat — real Anthropic implementation via Vercel AI SDK.
    *
-   * The migration adapter bridges the existing Anthropic pipeline into the
-   * unified ChatEvent shape. R11.C will replace this with a direct
-   * anthropic_observed.ts streaming call.
+   * Uses streamText() + @ai-sdk/anthropic and translates the fullStream
+   * parts into the unified ChatEvent shape. Supports extended thinking when
+   * request.thinkingConfig is set (providerOptions.anthropic.thinking).
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    // A-S10: delegate to migration adapter stub.
-    // R11.C wires in the actual anthropic_observed.ts stream.
-    yield* migrationAdapter.stubChat(request, 'anthropic');
+    // Separate system messages from the conversation messages
+    const systemContent =
+      request.system ??
+      (request.messages.find((m) => m.role === 'system')?.content as string | undefined);
+
+    const conversationMessages = request.messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content as string,
+      }));
+
+    // Build provider options — include thinking config if set
+    const thinkingProviderOption =
+      request.thinkingConfig?.providerPayload?.['thinking'] as Record<string, unknown> | undefined;
+    const providerOptions = thinkingProviderOption
+      ? { anthropic: { thinking: thinkingProviderOption } }
+      : undefined;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const streamParams: any = {
+        model: anthropicProvider(request.model),
+        messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
+        maxOutputTokens: request.maxTokens ?? 8192,
+      };
+      if (systemContent) streamParams.system = systemContent;
+      if (request.temperature !== undefined) streamParams.temperature = request.temperature;
+      if (providerOptions) streamParams.providerOptions = providerOptions;
+
+      const result = streamText(streamParams);
+
+      for await (const part of result.fullStream) {
+        if (part.type === 'text-delta') {
+          yield { type: 'text_delta', text: part.text };
+        } else if (part.type === 'reasoning-delta') {
+          // Extended thinking — Vercel AI SDK surfaces as 'reasoning-delta' parts with .text
+          yield { type: 'thinking_delta', thinking: (part as unknown as { text: string }).text };
+        } else if (part.type === 'finish') {
+          const usage = part.totalUsage;
+          yield {
+            type: 'usage',
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+            cacheReadTokens:
+              (usage as unknown as { inputTokenDetails?: { cacheReadTokens?: number } })
+                .inputTokenDetails?.cacheReadTokens ?? 0,
+            cacheCreationTokens:
+              (usage as unknown as { inputTokenDetails?: { cacheWriteTokens?: number } })
+                .inputTokenDetails?.cacheWriteTokens ?? 0,
+          };
+          yield {
+            type: 'message_stop',
+            stopReason: part.finishReason ?? 'end_turn',
+          };
+        } else if (part.type === 'error') {
+          const raw = (part as unknown as { error?: unknown }).error;
+          const errMsg = raw instanceof Error ? raw.message : String(raw ?? 'unknown error');
+          yield { type: 'error', error: errMsg };
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      yield { type: 'error', error: message };
+    }
   }
 
   thinking(request: ThinkingRequest): ThinkingResponse {
