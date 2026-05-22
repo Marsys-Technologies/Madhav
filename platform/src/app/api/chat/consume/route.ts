@@ -970,7 +970,7 @@ export async function POST(request: Request) {
     }
   }
 
-  let { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
+  const { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
     // §5C: CheckpointHaltError from checkpoint_dasha (or other checkpoints with FAIL_HARD).
     // Not a provider error — do NOT attempt the QG6.1 model fallback.
     // Return HTTP 422 immediately with structured violation detail.

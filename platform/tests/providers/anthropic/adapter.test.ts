@@ -160,9 +160,8 @@ describe('AnthropicAdapter', () => {
     });
 
     it('computerUse()', async () => {
-      await expect(adapter.computerUse({ task: 'click submit' }).next()).rejects.toThrow(
-        CapabilityUnsupportedError,
-      );
+      const iter = adapter.computerUse({ task: 'click submit' })[Symbol.asyncIterator]();
+      await expect(iter.next()).rejects.toThrow(CapabilityUnsupportedError);
     });
 
     it('structuredOutputs()', () => {

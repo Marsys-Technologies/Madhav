@@ -59,6 +59,7 @@ describe('GoogleAdapter', () => {
   });
 
   it('computerUse() throws CapabilityUnsupportedError', async () => {
-    await expect(adapter.computerUse({ task: 'test' }).next()).rejects.toThrow(CapabilityUnsupportedError);
+    const iter = adapter.computerUse({ task: 'test' })[Symbol.asyncIterator]();
+    await expect(iter.next()).rejects.toThrow(CapabilityUnsupportedError);
   });
 });

@@ -82,21 +82,23 @@ export class GoogleAdapter implements CapabilityAdapter {
       : undefined;
 
     try {
-      const result = streamText({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const streamParams: any = {
         model: googleProvider(request.model),
-        ...(systemContent ? { system: systemContent } : {}),
         messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
-        maxTokens: request.maxTokens ?? 8192,
-        ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
-        ...(providerOptions ? { providerOptions } : {}),
-      });
+        maxOutputTokens: request.maxTokens ?? 8192,
+      };
+      if (systemContent) streamParams.system = systemContent;
+      if (request.temperature !== undefined) streamParams.temperature = request.temperature;
+      if (providerOptions) streamParams.providerOptions = providerOptions;
+      const result = streamText(streamParams);
 
       for await (const part of result.fullStream) {
         if (part.type === 'text-delta') {
-          yield { type: 'text_delta', text: part.textDelta };
-        } else if (part.type === 'reasoning') {
-          // Extended thinking — Vercel AI SDK surfaces Gemini thought parts as 'reasoning'
-          yield { type: 'thinking_delta', thinking: part.textDelta };
+          yield { type: 'text_delta', text: part.text };
+        } else if (part.type === 'reasoning-delta') {
+          // Extended thinking — Vercel AI SDK surfaces Gemini thought parts as 'reasoning-delta'
+          yield { type: 'thinking_delta', thinking: (part as unknown as { text: string }).text };
         } else if (part.type === 'finish') {
           yield {
             type: 'usage',
