@@ -116,6 +116,7 @@ jobs:
             NVIDIA_NIM_API_KEY=NVIDIA_NIM_API_KEY:latest
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:latest
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:latest
+            MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
 
       - name: Show deployment URL
         env:
