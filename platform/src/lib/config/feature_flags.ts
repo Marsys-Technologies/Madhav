@@ -164,6 +164,11 @@ export type FeatureFlag =
   //   Default false initially; flip true after Observatory verification.
   //   Env: MARSYS_FLAG_R11D_ANTHROPIC_CACHE
   | 'R11D_ANTHROPIC_CACHE'
+  // R11D_GEMINI_CACHE: Google cachedContent API (D-S2).
+  //   Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg required.
+  //   Default false; requires ≥32,768 tokens in system+RAG to be effective.
+  //   Env: MARSYS_FLAG_R11D_GEMINI_CACHE
+  | 'R11D_GEMINI_CACHE'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -264,6 +269,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // R11D_ANTHROPIC_CACHE: 4-breakpoint cache_control. Default false until Observatory verified.
   //   Flip via MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true.
   R11D_ANTHROPIC_CACHE: false,
+  // R11D_GEMINI_CACHE: Google cachedContent API. Default false.
+  //   Flip via MARSYS_FLAG_R11D_GEMINI_CACHE=true after min-token check passes.
+  R11D_GEMINI_CACHE: false,
 }
 
 // Numeric config keys (read via configService.getValue)

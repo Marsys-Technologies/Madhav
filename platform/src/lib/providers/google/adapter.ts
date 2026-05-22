@@ -81,9 +81,40 @@ export class GoogleAdapter implements CapabilityAdapter {
     };
   }
 
-  cache(_request: CacheRequest): CacheResponse {
-    // R11.D — Google cachedContent API (separate creation step)
-    throw new CapabilityUnsupportedError('cache', 'google');
+  cache(request: CacheRequest): CacheResponse {
+    // R11.D — Google cachedContent API (D-S2).
+    //
+    // Gemini caching uses a separate cachedContent object creation step:
+    //   1. POST /v1beta/cachedContents with { systemInstruction, contents, ttl }
+    //   2. Reference the returned `name` in subsequent generateContent calls
+    //      via { cachedContent: "cachedContents/abc123" }
+    //
+    // MARSYS canonical cache content: synthesis system prompt + RAG bundle.
+    // TTL: 600s (10 min) — longer than Anthropic's 5-min to absorb slow-cadence
+    // multi-turn sessions.
+    //
+    // Minimum cache size: ≥32,768 tokens (Gemini API requirement).
+    // The R11.D route layer must check this before calling caches.create().
+    //
+    // cachedContentTokenCount flows to Observatory via extractGeminiCacheMetrics().
+    return {
+      mode: 'cached_content_api',
+      breakpointPositions: request.breakpointPositions ?? [],
+      providerPayload: {
+        // TTL in seconds
+        ttlSeconds: 600,
+        // Minimum token threshold for cache creation
+        minTokensForCache: 32768,
+        // Display name for audit trail
+        displayName: 'marsys-synthesis-cache',
+        // Cache scope: system prompt + RAG bundle (static-within-session content)
+        cacheScope: ['systemInstruction', 'ragBundle'],
+        // SDK call reference
+        sdkMethod: 'genai.caches.create',
+        // Usage field in response: usageMetadata.cachedContentTokenCount
+        usageField: 'cachedContentTokenCount',
+      },
+    };
   }
 
   tools(_request: ToolsRequest): ToolsResponse {
