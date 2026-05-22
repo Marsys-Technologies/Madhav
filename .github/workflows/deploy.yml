@@ -88,7 +88,9 @@ jobs:
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ github.sha }}
           env_vars: |
             NODE_ENV=production
-            ADAPTERS_ENABLED=true
+            MARSYS_FLAG_R11V2_USE_ADAPTERS=true
+            MARSYS_FLAG_R11D_PROMPT_LAYOUT=true
+            MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true
             CONSUME_UI_V2_ENABLED=true
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
