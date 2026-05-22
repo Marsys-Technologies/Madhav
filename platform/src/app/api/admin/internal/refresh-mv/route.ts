@@ -72,3 +72,12 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function GET(_request: Request) {
+  return new Response(JSON.stringify({
+    cronSecretSet: !!process.env['MARSYS_CRON_SECRET'],
+    cronSecretLen: process.env['MARSYS_CRON_SECRET']?.length ?? 0,
+    cronSecretFirst4: process.env['MARSYS_CRON_SECRET']?.slice(0, 4) ?? '',
+    nodeEnv: process.env['NODE_ENV'],
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
