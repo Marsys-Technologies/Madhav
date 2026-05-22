@@ -105,9 +105,33 @@ export class DeepSeekAdapter implements CapabilityAdapter {
     };
   }
 
-  tools(_request: ToolsRequest): ToolsResponse {
-    // R11.E — DeepSeek: OpenAI-compat tool loop (finish_reason=tool_calls)
-    throw new CapabilityUnsupportedError('tools', 'deepseek');
+  tools(request: ToolsRequest): ToolsResponse {
+    // R11.E — DeepSeek OpenAI-compat tool loop with reasoning preservation (E-S4).
+    //
+    // DeepSeek V3 uses OpenAI-compatible function calling.
+    // finish_reason === 'tool_calls' signals that tool execution is needed.
+    //
+    // CRITICAL: extractReasoningMiddleware from the AI SDK is preserved throughout
+    // loop iterations. The middleware extracts <think>...</think> blocks from the
+    // raw stream and converts them to reasoning_content → ChatEvent 'thinking_delta'.
+    // The loop engine must ensure the middleware wraps each iteration's stream,
+    // not just the first call.
+    //
+    // DeepSeek uses OpenAI-compat function calling format (tools[].function).
+    const maxIterations = request.maxIterations ?? 8;
+    return {
+      mode: 'finish_reason_tool_calls',
+      maxIterations,
+      tools: request.tools,
+      providerPayload: {
+        terminationSignal: 'finish_reason_tool_calls',
+        terminationValue: 'tool_calls',
+        // Preserve <think> extraction across all loop iterations
+        extractReasoningMiddleware: true,
+        // No interleaved text+tool in DeepSeek (OpenAI-compat format)
+        supportsInterleavedTextTool: false,
+      },
+    };
   }
 
   webSearch(_request: WebSearchRequest): Promise<WebSearchResult> {
