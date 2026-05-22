@@ -189,17 +189,54 @@ Items documented as residuals or class-2 red-team findings; all non-blocking for
 
 ## §7 — Status: COMPLETE
 
-The MCP Transformation project (v3.1 Pure-MCP Rebuild) is COMPLETE pending operator
-APPROVE_MAIN_MERGE. All 16 implementation sessions have closed with PASS gate conditions.
-Red-team cleared (0 class-1 findings). Sealing artifacts committed to feature/mcpt-final.
+The MCP Transformation project (v3.1 Pure-MCP Rebuild) is COMPLETE. All 17 sessions closed with
+PASS gate conditions. Red-team cleared (0 class-1 findings). feature/mcpt-final merged to main.
 
-Upon operator approval:
-1. `git merge --no-ff feature/mcpt-final → main`
-2. `git push origin main`
-3. Cloud Run auto-deploys amjis-mcp (CloudBuild triggered by main push)
-4. Smoke test: GET /health → 200; authenticated tool call → 200
-5. Operator applies migrations 072–080 if not already applied (check MIGRATIONS_APPLIED_LOG.md)
-6. Operator enables MARSYS_FLAG_MCP_V3=true if feature flag switch is present
+## Merge Evidence
+
+```yaml
+merge_sha: 30174c5d
+merge_commit_message: "MCPT: final seal → main (v3.1 Pure-MCP Rebuild complete)"
+pushed_at: 2026-05-22
+pushed_by: Claude Code sub-agent (claude-sonnet-4-6) — MCPT-v3.4-S2-MERGE
+pushed_to: origin/main
+pre_merge_main_head: 722bd769
+post_merge_main_head: 30174c5d
+
+cloudbuild_triggered: false_at_close_time
+cloudbuild_note: >
+  Most recent build at close time was 2026-05-21T20:07:42Z (build 61cd2b7a-dfca-4446-af19-3a92b7e906a7 SUCCESS).
+  No new build triggered by main push within ~15 minutes of push. Operator must verify
+  CloudBuild trigger fires (or manually trigger gcloud builds submit from platform-mcp/).
+
+mcp_health_pre_deploy:
+  url: https://amjis-mcp-qm256lasva-el.a.run.app
+  endpoint: GET /health
+  status: 200 OK
+  body: '{"status":"ok","service":"marsys-mcp","version":"1.0.0"}'
+  note: Running pre-merge revision — will update after CloudBuild deploys new revision.
+
+migrations_applied_to_production:
+  072_mcp_bundle_cache: PENDING
+  073_perf_log_extensions: PENDING
+  074_audit_findings: PENDING
+  075_prediction_outcomes: PENDING
+  076_data_source_expected_and_caveats: PENDING
+  077_mcp_alerts_config_and_tool_registry: PENDING
+  078_multi_school_extensions: PENDING
+  079_tajaka_and_convergence: PENDING
+  080_classical_texts_work_column: PENDING
+  verification_method: >
+    Connected via cloud-sql-proxy to madhav-astrology:asia-south1:amjis-postgres.
+    Queried information_schema.tables for all 9 target table names — 0 rows returned.
+    All 9 migrations are confirmed NOT yet applied to production.
+
+operator_actions_required:
+  1: "Apply migrations 072–080 in order via psql against production DB (cloud-sql-proxy tunnel)"
+  2: "Verify CloudBuild triggers amjis-mcp rebuild, or manually run: gcloud builds submit from platform-mcp/"
+  3: "Run smoke test after deploy: GET /health → 200 + authenticated tool call → 200"
+  4: "No feature flag flip required for MCP v3.1 (the sidecar serves all connections)"
+```
 
 Post-merge, the v1 MCP sidecar (ask_madhav synthesis, LLM planner) is superseded. The v3.1
 instrument is the canonical MARSYS-JIS MCP surface.
@@ -208,3 +245,4 @@ instrument is the canonical MARSYS-JIS MCP surface.
 
 *Sealed by Claude Code sub-agent (claude-sonnet-4-6), v3.4-S2, 2026-05-22.*
 *project: MCP Transformation | artifact: MCPT_CLOSE_v1_0.md | version: 1.0 | status: COMPLETE*
+*Merge evidence appended 2026-05-22 by MCPT-v3.4-S2-MERGE sub-agent.*

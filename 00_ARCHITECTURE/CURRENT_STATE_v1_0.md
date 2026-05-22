@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.49 (2026-05-22, MCPT-v3.4-S2-MERGE-COMPLETE):
+    **MCP Transformation COMPLETE — feature/mcpt-final merged to main (SHA 30174c5d). All 17 sessions closed. CLAUDE.md v3.7 with R11v2 honesty amendment + MCPT COMPLETE. Operator action required: apply migrations 072–080 + verify CloudBuild deploy.**
+    Key outcomes: (A) APPROVE_MAIN_MERGE received — git merge --no-ff feature/mcpt-final executed on main. (B) Merge SHA: 30174c5d. Pushed to origin/main successfully. (C) CLAUDE.md conflict resolved → v3.7: R11v2 bullet updated to SUBSTRATE COMPLETE + honesty amendment text; MCPT Transformation bullet updated to STATUS COMPLETE (2026-05-22) with final deliverable counts. (D) CloudBuild NOT YET TRIGGERED at close time (most recent build 2026-05-21T20:07:42Z — operator must verify or manually trigger). (E) MCP health endpoint pre-deploy: {"status":"ok","service":"marsys-mcp","version":"1.0.0"} — running pre-merge revision. (F) Migrations 072–080: NONE applied to production (0/9 — all pending operator action). (G) SESSION_LOG v3.4-S2 entry sealed: close_timestamp 2026-05-22, close_criteria_met true. (H) MCPT_CLOSE_v1_0.md §7 updated with merge evidence.
+    files_touched: ["CLAUDE.md", "00_ARCHITECTURE/SESSION_LOG.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/MCPT_CLOSE_v1_0.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (no macro-phase change).
+    last_session_id: MCPT-v3.4-S2. predecessor_session: R8-MIGRATIONS-APPLY.
+    carry_forwards: ["Operator: apply migrations 072–080 on production DB", "Operator: verify CloudBuild triggers amjis-mcp deploy (or manually trigger)", "Operator: smoke test after deploy (GET /health + authenticated tool call)", "v3.5 queue: 8 items in MCPT_CLOSE_v1_0.md §6"]
+    next_session_objective: "Operator applies migrations 072–080; verifies CloudBuild deploy; runs smoke test. MCP Transformation fully complete. Next project work: R11v2 dispatch wiring (R11V2_DISPATCH_WIRING_BRIEF_v1_0.md) or M5 macro-phase work."
+    file_updated_at: 2026-05-22. file_updated_by_session: MCPT-v3.4-S2-MERGE.
   - v5.48 (2026-05-22, MCPT-v3.4-S2-HALT):
     **MCP Transformation CLOSED — feature/mcpt-final has all 17 sessions' deliverables. Awaiting operator APPROVE_MAIN_MERGE for final push to main + production deploy.**
     Key outcomes: (A) Red-team PASS — 0 class-1 findings, 3 class-2 non-blocking; MCP_RED_TEAM_v2_0.md written. (B) Sealing artifact MCPT_CLOSE_v1_0.md written — 2,717 chart_facts rows (27 categories), 4,589 rag_chunks, 573/573 MSR signals grounded (100%), 574 school_convergence_index rows, 21 tools, 5 resources. (C) CLAUDE.md §E MCP Transformation STATUS updated: ACTIVE → COMPLETE (pending main merge). (D) CURRENT_STATE v5.48 appended. (E) SESSION_LOG appended (open — will seal at merge close). (F) .geminirules + .gemini/project_state.md MP.1+MP.2 mirrors updated.
