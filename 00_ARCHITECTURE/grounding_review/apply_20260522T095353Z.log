@@ -1,0 +1,12 @@
+[apply] loaded 573 rows from msr_grounding_candidates_2026-05-22T09-43-13_llm_reviewed.csv
+TypeError: Cannot read properties of undefined (reading 'trim')
+    at buildCitation (/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/scripts/grounding/apply_grounded_citations.ts:91:29)
+    at applyGroundedCitations (/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/scripts/grounding/apply_grounded_citations.ts:140:22)
+    at main (/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/scripts/grounding/apply_grounded_citations.ts:215:24)
+    at <anonymous> (/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/scripts/grounding/apply_grounded_citations.ts:236:1)
+    at Object.<anonymous> (/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/scripts/grounding/apply_grounded_citations.ts:238:28)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object.transformer (/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/platform/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)

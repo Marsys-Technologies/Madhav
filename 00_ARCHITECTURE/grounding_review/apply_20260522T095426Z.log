@@ -1,0 +1,11 @@
+[apply] loaded 573 rows from msr_grounding_candidates_2026-05-22T09-43-13_llm_reviewed.csv
+
+[apply] Results:
+  Applied:            498
+  Skipped (defer):    13
+  Skipped (reject):   1
+  Skipped (no decision): 61
+  Errors:             0
+
+[stats] msr_signals grounding: 498/573 (86.9%)
+[AC.S1.1] ✗ NOT YET — need 545 grounded (have 498)

@@ -74,7 +74,7 @@ function splitCsvLine(line: string): string[] {
 
 function parseCsv(filePath: string): CsvRow[] {
   const text = fs.readFileSync(filePath, 'utf8')
-  const lines = text.split('\n').filter(Boolean)
+  const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(Boolean)
   if (lines.length < 2) return []
   const headers = lines[0].split(',')
   return lines.slice(1).map((line) => {
@@ -88,7 +88,7 @@ function parseCsv(filePath: string): CsvRow[] {
 // ── Citation builder ──────────────────────────────────────────────────────────
 
 function buildCitation(row: CsvRow): string | null {
-  if (row.override_citation.trim()) return row.override_citation.trim()
+  if (row.override_citation?.trim()) return row.override_citation.trim()
 
   const n = row.accepted_candidate
   if (!['1','2','3'].includes(n)) return null
@@ -184,7 +184,7 @@ export async function queryGroundingStats(): Promise<{
       count(*) FILTER (WHERE source_citation IS NOT NULL
                          AND source_citation != '')        AS grounded
     FROM msr_signals
-    WHERE native_id = 'abhisek'
+    WHERE native_id = 'abhisek_mohanty'
   `)
   const total   = parseInt(rows[0].total, 10)
   const grounded = parseInt(rows[0].grounded, 10)
