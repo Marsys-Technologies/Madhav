@@ -1,91 +1,57 @@
 /**
  * resources/index.ts — MCP resource registration for MARSYS-JIS.
  *
- * Registers two MCP resources that Claude reads once at session attach:
- *   - marsys://chart-overview  (~1300 words, L1-grounded chart summary)
- *   - marsys://house-rules     (~1000 words, acharya-grade operating manual)
+ * Registers 5 MCP resources that Claude auto-loads at session attach (arch §4):
+ *   - marsys://chart-snapshot    (~2.5k tokens, structured L1 facts, NEW in v3.1)
+ *   - marsys://chart-overview    (~3k tokens, synthesis themes from L2.5)
+ *   - marsys://house-rules       (tier-conditioned operating manual)
+ *   - marsys://capabilities      (tool + data coverage snapshot; S3=placeholder, S4=live)
+ *   - marsys://school-conventions (~2.5k tokens, 4-school reference, static)
  *
- * Together these replace 5-10 tool calls of orientation per session
- * (MCP_BRIEF §4.5). Resources are served as text/markdown. The files
- * are loaded synchronously at registration time; the MCP server restarts
- * on Cloud Run update, so stale content is not a runtime risk.
+ * MCPT v3.1.0-S3 (rewrites chart-overview + house-rules; adds 3 new resources)
  *
- * Authored: MCP-2-S2 (2026-05-21)
+ * Prior: v1 registered chart-overview + house-rules as static markdown files
+ * (2 resources). v3.1 registers 5 resources with dynamic generation + tier conditioning.
  */
 
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { readFileSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { join, dirname } from 'path'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-
-// Resolve the resources/ directory relative to this source file.
-// In the compiled output (dist/), __dirname is platform-mcp/dist/resources/
-// and the markdown files live at platform-mcp/resources/ — two levels up from
-// dist/resources/. Adjust if the tsconfig outDir changes.
-const RESOURCES_DIR = join(__dirname, '..', '..', 'resources')
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { registerChartSnapshot } from './chart_snapshot.js'
+import { registerChartOverview } from './chart_overview.js'
+import { registerHouseRules } from './house_rules.js'
+import { registerCapabilities } from './capabilities.js'
+import { registerSchoolConventions } from './school_conventions.js'
 
 /**
- * Load a markdown resource file synchronously.
- * Throws clearly if the file is missing — fail-fast is preferable to serving
- * empty or stale content.
- */
-function loadMarkdown(filename: string): string {
-  const fullPath = join(RESOURCES_DIR, filename)
-  return readFileSync(fullPath, 'utf-8')
-}
-
-/**
- * Register both MARSYS-JIS MCP resources on the given server.
+ * Register all 5 MARSYS-JIS MCP resources on the given server.
  *
- * Call this once per McpServer instance, alongside the tool registrations,
- * before connecting the transport.
+ * Call once per McpServer instance, alongside tool registrations, before
+ * connecting the transport.
  *
  * @param server  The McpServer instance to register resources on.
  */
 export function registerResources(server: McpServer): void {
-  const chartOverview = loadMarkdown('chart-overview.md')
-  const houseRules = loadMarkdown('house-rules.md')
+  // 1. chart-snapshot: structured L1 facts (~2.5k tokens, NEW in v3.1)
+  //    Generated at attach time from chart_facts + dasha + panchang.
+  //    No synthesis — pure facts only.
+  registerChartSnapshot(server)
 
-  // ── Resource 1: marsys://chart-overview ──────────────────────────────────
-  // Compact, L1-grounded summary of Abhisek's natal chart. Contains:
-  // birth data, lagna + key placements, planets-by-house grid, active dasha
-  // state, top 5 forward-looking L2.5 themes, one-paragraph synthesis.
-  // Regenerate when FORENSIC_ASTROLOGICAL_DATA bumps to a new version.
+  // 2. chart-overview: L2.5 synthesis themes (~3k tokens for admin/acharya, ~800 for client)
+  //    Top 5 MSR themes + top 2 CDLM contradictions + CGM anchor + LEL life-phase.
+  //    Falls back to static markdown if dynamic generation fails.
+  registerChartOverview(server)
 
-  server.resource(
-    'chart-overview',
-    new ResourceTemplate('marsys://chart-overview', { list: undefined }),
-    async (_uri) => ({
-      contents: [
-        {
-          uri: 'marsys://chart-overview',
-          mimeType: 'text/markdown',
-          text: chartOverview,
-        },
-      ],
-    })
-  )
+  // 3. house-rules: tier-conditioned operating manual
+  //    Loaded from house_rules_variants/{tier}.md at server start.
+  //    Defaults to super_admin variant for the resource endpoint.
+  registerHouseRules(server)
 
-  // ── Resource 2: marsys://house-rules ─────────────────────────────────────
-  // Operating manual for acharya-grade interpretation in this corpus. Contains:
-  // school commitments (Parashara primary, Jaimini/KP/Tajaka secondary),
-  // terminology conventions + citation protocol, quality bars, disclosure tier,
-  // tool-deferral guidance, escalation rules.
-  // Update as the discipline evolves.
+  // 4. capabilities: tool + data coverage snapshot
+  //    S3: PLACEHOLDER with hardcoded tool descriptions + "perf data pending S4" note.
+  //    S4: replaces with live tool_health() + data_coverage() calls.
+  registerCapabilities(server)
 
-  server.resource(
-    'house-rules',
-    new ResourceTemplate('marsys://house-rules', { list: undefined }),
-    async (_uri) => ({
-      contents: [
-        {
-          uri: 'marsys://house-rules',
-          mimeType: 'text/markdown',
-          text: houseRules,
-        },
-      ],
-    })
-  )
+  // 5. school-conventions: 4-school static reference (~2.5k tokens)
+  //    Uniform across all tiers. Covers Parashara/Jaimini/KP/Tajaka authoritative scope,
+  //    output forms, known disagreements, and tool routing by school.
+  registerSchoolConventions(server)
 }
