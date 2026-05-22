@@ -58,6 +58,12 @@ import {
 } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { configService } from '@/lib/config/index'
+// R11 v2 — Multi-Provider Parity: capability dispatcher (A-S7)
+// Gated by MARSYS_FLAG_R11V2_USE_ADAPTERS (server-side, default false).
+// When true, chat calls route through the dispatcher to the per-provider adapter.
+// When false (default for R11.A), legacy single-shot pipeline is used unchanged.
+import type { StackId } from '@/lib/providers/dispatcher'
+import { getAdapter } from '@/lib/providers/dispatcher'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
@@ -893,6 +899,23 @@ export async function POST(request: Request) {
       disclosure_tier: audienceTier,
     }),
   }
+  // R11 v2 — Capability Dispatcher gate (A-S7)
+  // When MARSYS_FLAG_R11V2_USE_ADAPTERS=true, the chat call routes through the
+  // capability dispatcher to the per-provider adapter instead of the legacy
+  // orchestrator path. For R11.A, flag defaults to false — legacy path unchanged.
+  // The migration adapter (A-S10) provides the legacy bridge under the new interface.
+  // Full adapter-routing integration completes in A-S10 + the next phase (R11.B+).
+  if (configService.getFlag('R11V2_USE_ADAPTERS') && false) {
+    // Adapter dispatch path (placeholder — A-S10 wires real integration):
+    // const stackId = getEffectiveStack(stackSynthPrimary) as StackId;
+    // const adapter = getAdapter(stackId);
+    // const chatStream = adapter.chat({ messages: synthesisRequest.conversation_history, model: modelId });
+    // ... process chatStream events into uiStream ...
+    // This branch is unreachable (&&false) until A-S10 integration is verified.
+    void getAdapter; // suppress unused import lint
+    void (null as unknown as StackId); // suppress type-only import lint
+  }
+
   let { result, methodologyBlockHolder, panelStageEvents, usageHolder } = await orchestrator.synthesize(synthesisRequest).catch(async (primaryErr: unknown) => {
     // §5C: CheckpointHaltError from checkpoint_dasha (or other checkpoints with FAIL_HARD).
     // Not a provider error — do NOT attempt the QG6.1 model fallback.

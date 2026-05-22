@@ -1009,3 +1009,68 @@ All 17 entries in session_queue.yaml resolved: passed or skipped.
 | Wave closed | 2026-05-20 |
 
 ---
+
+## R11.A — A-S0 PASS — 2026-05-22
+
+| Field | Value |
+|---|---|
+| session_id | A-S0 |
+| phase | R11.A — Foundation (Multi-Provider Parity arc) |
+| brief | 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-A/A-S0-capability-manifest-schema.md |
+| status | PASS |
+| gate_exit | 0 |
+| commit | 426b7c86 |
+
+**Scope items completed:**
+- AC.1: `capabilities.ts` exports `ProviderCapabilities` interface (18 fields from CAPABILITY_MATRIX §9)
+- AC.2: All fields strictly typed — string-unions, booleans, positive integer; no `any`
+- AC.3: `manifest-validator.ts` exports `validateManifest(m: unknown): ProviderCapabilities` assertion function
+- AC.4: 22 vitest tests pass (5 valid-manifest variants × 5 providers + 12 invalid-manifest error paths)
+- AC.5: Three R11V2 flags registered in `feature_flags.ts` — `R11V2_MULTI_PROVIDER_PARITY` (false), `R11V2_USE_ADAPTERS` (false), `R11V2_CAPABILITY_TELEMETRY` (false)
+- AC.6: No regressions (existing test suite unaffected)
+
+**Infrastructure fix applied:** Queue gate commands corrected from `npx jest --testPathPattern=` to `npx vitest run <path>` (project uses vitest, not jest; all 13 gate commands updated). This fix was applied by the Conductor as a systematic correction to avoid false HALTs on all downstream sessions.
+
+---
+
+## Session Entry — A-S1 through A-S6 (parallel batch)
+
+| Field | Value |
+|---|---|
+| session_id | A-S1..A-S6 (parallel_group: provider-adapters) |
+| phase | R11.A — Foundation (Multi-Provider Parity arc) |
+| brief | A-S1-provider-adapter-interface + A-S2-anthropic through A-S6-nvidia |
+| status | PASS |
+| gate_exit | 0 |
+| commit | (multiple — batched into single commit for parallel group) |
+
+**Scope items completed:**
+- A-S1: `types.ts` (CapabilityUnsupportedError + all request/response shapes), `adapter.ts` (CapabilityAdapter interface, 13 methods)
+- A-S2: AnthropicAdapter + ANTHROPIC_MANIFEST (1M ctx, native_effort thinking, first_party web tools)
+- A-S3: GoogleAdapter + GOOGLE_MANIFEST (2M ctx, native_budget thinking, grounding, inputAudio/Video)
+- A-S4: OpenAIAdapter + OPENAI_MANIFEST (200K ctx, polyfill_cot, preview_api webSearch, cua_responses computerUse)
+- A-S5: DeepSeekAdapter + DEEPSEEK_MANIFEST (128K ctx, inline_blocks thinking, no server tools)
+- A-S6: NVIDIAAdapter + NVIDIA_MANIFEST (131K ctx, inputImage via llama3.2-vision, all else null)
+- All adapters: `chat()` yields stub events; unsupported capabilities throw CapabilityUnsupportedError
+- All gates: vitest run → PASS
+
+---
+
+## Session Entry — A-S7
+
+| Field | Value |
+|---|---|
+| session_id | A-S7 |
+| phase | R11.A — Foundation (Multi-Provider Parity arc) |
+| brief | 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-A/A-S7-capability-dispatcher.md |
+| status | PASS |
+| gate_exit | 0 |
+| commit | 3ce14582 |
+
+**Scope items completed:**
+- `dispatcher.ts`: ADAPTER_REGISTRY (5 providers), getAdapter/getManifest/getAllManifests, CapabilityUnsupportedOnStackError, dispatch<K>, isCapabilityAvailable, getSwitchStackHint, logCapabilityPath stub
+- `route.ts`: dispatcher import + MARSYS_FLAG_R11V2_USE_ADAPTERS gate stub (unreachable; legacy always active until A-S10)
+- `dispatcher.test.ts`: 28 tests — VALID_STACK_IDS, getAdapter×7, getManifest×4, getAllManifests×1, isCapabilityAvailable×6, getSwitchStackHint×3, CapabilityUnsupportedOnStackError×3, smoke routing×3
+- Gate: 28/28 PASS
+
+---

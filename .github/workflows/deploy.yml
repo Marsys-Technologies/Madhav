@@ -75,6 +75,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=false
 
       - name: Deploy web to Cloud Run
         id: deploy

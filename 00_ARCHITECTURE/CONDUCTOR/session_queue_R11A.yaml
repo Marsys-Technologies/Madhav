@@ -28,14 +28,14 @@ entries:
     test -f src/lib/providers/capabilities.ts &&
     test -f src/lib/providers/manifest-validator.ts &&
     grep -n "MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY" src/lib/config/feature_flags.ts &&
-    npx jest --testPathPattern="capabilities|manifest-validator|A-S0" --passWithNoTests
+    npx vitest run tests/providers/capabilities.test.ts
   expected_artifacts:
     - platform/src/lib/providers/capabilities.ts
     - platform/src/lib/providers/manifest-validator.ts
     - platform/src/lib/config/feature_flags.ts
   est_tokens: 80000
   est_duration_min: 50
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S1
@@ -52,13 +52,13 @@ entries:
     test -f src/lib/providers/adapter.ts &&
     test -f src/lib/providers/types.ts &&
     npx tsc --noEmit 2>&1 | grep -E "error.*providers/(adapter|types)" && exit 1 ||
-    npx jest --testPathPattern="adapter-interface|A-S1" --passWithNoTests
+    npx vitest run tests/providers/
   expected_artifacts:
     - platform/src/lib/providers/adapter.ts
     - platform/src/lib/providers/types.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S2
@@ -76,13 +76,13 @@ entries:
     test -f src/lib/providers/anthropic/adapter.ts &&
     test -f src/lib/providers/anthropic/manifest.ts &&
     grep -n "ANTHROPIC_MANIFEST\|validateManifest" src/lib/providers/anthropic/manifest.ts &&
-    npx jest --testPathPattern="providers/anthropic|A-S2" --passWithNoTests
+    npx vitest run tests/providers/anthropic/
   expected_artifacts:
     - platform/src/lib/providers/anthropic/adapter.ts
     - platform/src/lib/providers/anthropic/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S3
@@ -100,13 +100,13 @@ entries:
     test -f src/lib/providers/google/adapter.ts &&
     test -f src/lib/providers/google/manifest.ts &&
     grep -n "GOOGLE_MANIFEST\|thinkingBudget" src/lib/providers/google/adapter.ts &&
-    npx jest --testPathPattern="providers/google|A-S3" --passWithNoTests
+    npx vitest run tests/providers/google/
   expected_artifacts:
     - platform/src/lib/providers/google/adapter.ts
     - platform/src/lib/providers/google/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S4
@@ -124,13 +124,13 @@ entries:
     test -f src/lib/providers/openai/adapter.ts &&
     test -f src/lib/providers/openai/manifest.ts &&
     grep -n "OPENAI_MANIFEST\|stream_options" src/lib/providers/openai/adapter.ts &&
-    npx jest --testPathPattern="providers/openai|A-S4" --passWithNoTests
+    npx vitest run tests/providers/openai/
   expected_artifacts:
     - platform/src/lib/providers/openai/adapter.ts
     - platform/src/lib/providers/openai/manifest.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S5
@@ -148,13 +148,13 @@ entries:
     test -f src/lib/providers/deepseek/adapter.ts &&
     test -f src/lib/providers/deepseek/manifest.ts &&
     grep -n "extractReasoningMiddleware\|<think>" src/lib/providers/deepseek/adapter.ts &&
-    npx jest --testPathPattern="providers/deepseek|A-S5" --passWithNoTests
+    npx vitest run tests/providers/deepseek/
   expected_artifacts:
     - platform/src/lib/providers/deepseek/adapter.ts
     - platform/src/lib/providers/deepseek/manifest.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S6
@@ -171,13 +171,13 @@ entries:
     cd /Users/Dev/Vibe-Coding/Apps/MadhavR11A/platform &&
     test -f src/lib/providers/nvidia/adapter.ts &&
     test -f src/lib/providers/nvidia/manifest.ts &&
-    npx jest --testPathPattern="providers/nvidia|A-S6" --passWithNoTests
+    npx vitest run tests/providers/nvidia/
   expected_artifacts:
     - platform/src/lib/providers/nvidia/adapter.ts
     - platform/src/lib/providers/nvidia/manifest.ts
   est_tokens: 80000
   est_duration_min: 55
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S7
@@ -194,13 +194,13 @@ entries:
     test -f src/lib/providers/dispatcher.ts &&
     grep -n "MARSYS_FLAG_R11V2_USE_ADAPTERS" src/app/api/chat/consume/route.ts &&
     grep -rn "NEXT_PUBLIC.*USE_ADAPTERS" src --include="*.ts*" && exit 1 ||
-    npx jest --testPathPattern="dispatcher|A-S7" --passWithNoTests
+    npx vitest run tests/providers/dispatcher.test.ts
   expected_artifacts:
     - platform/src/lib/providers/dispatcher.ts
     - platform/src/app/api/chat/consume/route.ts
   est_tokens: 100000
   est_duration_min: 70
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S8
@@ -218,7 +218,7 @@ entries:
     test -f src/lib/chat-v2/useProviderManifest.ts &&
     test -f src/lib/providers/manifest-helpers.ts &&
     grep -n "capability-hint-chip" src/app/globals.css &&
-    npx jest --testPathPattern="CapabilityHint|useProviderManifest|A-S8" --passWithNoTests
+    npx vitest run tests/components/chat/CapabilityHint tests/unit/chat-v2/useProviderManifest
   expected_artifacts:
     - platform/src/components/chat/CapabilityHint.tsx
     - platform/src/lib/chat-v2/useProviderManifest.ts
@@ -226,7 +226,7 @@ entries:
     - platform/src/app/globals.css
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S9
@@ -244,7 +244,7 @@ entries:
     grep -rn "NEXT_PUBLIC.*CAPABILITY_TELEMETRY" src --include="*.ts*" && exit 1 ||
     grep -n "data-capability-path\|CapabilityPathPart" src/lib/streams/data_parts.ts &&
     grep -n "logCapabilityPath" src/lib/providers/dispatcher.ts &&
-    npx jest --testPathPattern="capability_telemetry|A-S9" --passWithNoTests
+    npx vitest run tests/observatory/capability_telemetry
   expected_artifacts:
     - platform/src/lib/observatory/capability_telemetry.ts
     - platform/src/lib/streams/data_parts.ts
@@ -252,7 +252,7 @@ entries:
     - platform/src/app/api/chat/consume/route.ts
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S10
@@ -270,7 +270,7 @@ entries:
     for p in anthropic google openai deepseek nvidia; do
       grep -n "MigrationAdapter\|migration-adapter" src/lib/providers/$p/adapter.ts || exit 1;
     done &&
-    npx jest --testPathPattern="migration-adapter|A-S10" --passWithNoTests
+    npx vitest run tests/providers/migration-adapter.test.ts
   expected_artifacts:
     - platform/src/lib/providers/migration-adapter.ts
     - platform/src/lib/providers/anthropic/adapter.ts
@@ -280,7 +280,7 @@ entries:
     - platform/src/lib/providers/nvidia/adapter.ts
   est_tokens: 110000
   est_duration_min: 80
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S11
@@ -299,7 +299,7 @@ entries:
     grep -n "MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY" src/lib/config/feature_flags.ts &&
     grep -n "NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY" ../.github/workflows/deploy.yml &&
     grep -n "MultiProviderParityToggle" src/components/consume/ConsumeChatV2.tsx &&
-    npx jest --testPathPattern="useMultiProviderParity|MultiProviderParityToggle|A-S11" --passWithNoTests
+    npx vitest run tests/lib/chat-v2/useMultiProviderParity tests/components/consume/MultiProviderParityToggle
   expected_artifacts:
     - platform/src/lib/chat-v2/useMultiProviderParity.ts
     - platform/src/components/consume/MultiProviderParityToggle.tsx
@@ -308,7 +308,7 @@ entries:
     - platform/src/components/consume/ConsumeChatV2.tsx
   est_tokens: 90000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: A-S12
@@ -326,7 +326,7 @@ entries:
       test -f src/lib/providers/$p/adapter.ts || exit 1;
       test -f src/lib/providers/$p/manifest.ts || exit 1;
     done &&
-    npx jest --testPathPattern="providers|capability_telemetry|CapabilityHint|foundation-smoke" --passWithNoTests
+    npx vitest run tests/providers/ tests/observatory/capability_telemetry tests/components/chat/CapabilityHint
   expected_artifacts:
     - platform/tests/providers/foundation-smoke.test.ts
     - platform/tests/providers/adapter-contract.test.ts
@@ -335,7 +335,7 @@ entries:
     - platform/tests/observatory/capability_telemetry.integration.test.ts
   est_tokens: 100000
   est_duration_min: 70
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 - session_id: R11A-MERGE

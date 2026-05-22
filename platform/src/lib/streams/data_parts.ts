@@ -213,6 +213,23 @@ export const ContextUsagePartSchema = z.object({
 
 export type ContextUsagePart = z.infer<typeof ContextUsagePartSchema>
 
+// ── Capability path part (A-S9) ───────────────────────────────────────────
+// Emitted by route.ts after each dispatcher.dispatch() call within a turn.
+// Carries per-capability telemetry to the client for downstream Observatory
+// aggregation. Gated by MARSYS_FLAG_R11V2_CAPABILITY_TELEMETRY (server-side).
+
+export const CapabilityPathPartSchema = z.object({
+  type: z.literal('data-capability-path'),
+  stackId: z.string().min(1),
+  capability: z.string().min(1),
+  manifestSupport: z.union([z.string(), z.boolean(), z.number(), z.null()]),
+  success: z.boolean(),
+  durationMs: z.number().nonnegative(),
+  errorClass: z.string().optional(),
+})
+
+export type CapabilityPathPart = z.infer<typeof CapabilityPathPartSchema>
+
 // ── Union ─────────────────────────────────────────────────────────────────
 
 export const DataPartSchema = z.discriminatedUnion('type', [
@@ -231,6 +248,7 @@ export const DataPartSchema = z.discriminatedUnion('type', [
   TitlePartSchema,
   TruncatedPartSchema,
   ContextUsagePartSchema,
+  CapabilityPathPartSchema,
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
