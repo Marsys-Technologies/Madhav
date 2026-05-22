@@ -312,11 +312,11 @@ Eleven phases total. Sequential within each phase; phases run in declared order.
 
 | Phase | Sessions | Est. hours | Cumulative hours | Provider scope | Risk | Commitment status |
 |---|---|---|---|---|---|---|
-| R11.A | 14 | 14-18 | 14-18 | All 5 | Medium-low | **ACTIVE** |
-| R11.B | 10 | 10-13 | 24-31 | All 5 | Low-medium | **ACTIVE** |
-| R11.C | 8 | 8-12 | 32-43 | All 5 | Medium | **ACTIVE** |
-| R11.D | 7 | 8-12 | 40-55 | All 5 | Medium-high | **ACTIVE** |
-| R11.E | 10 | 12-16 | 52-71 | All 5 | HIGH | **ACTIVE — terminal active phase** |
+| R11.A | 14 | 14-18 | 14-18 | All 5 | Medium-low | **COMPLETE 2026-05-22** — merge SHA f2df0524 (PR #143) |
+| R11.B | 10 | 10-13 | 24-31 | All 5 | Low-medium | **COMPLETE 2026-05-22** — merge SHA 24a21dda (PR #145) |
+| R11.C | 8 | 8-12 | 32-43 | All 5 | Medium | **COMPLETE 2026-05-22** — merge SHA d268d429 (PR #144) |
+| R11.D | 7 | 8-12 | 40-55 | All 5 | Medium-high | **COMPLETE 2026-05-22** — merge SHA e9cbffc9 (PR #146) |
+| R11.E | 10 | 12-16 | 52-71 | All 5 | HIGH | **COMPLETE 2026-05-22** — merge SHA 5d0064f9 (PR #147) |
 | R11.F | 14 | 16-22 | 68-93 | All 5 (2 hide-and-hint) | Medium-high | **DEFERRED 2026-05-22** |
 | R11.G | 11 | 12-16 | 80-109 | All 5 | Medium | **DEFERRED 2026-05-22** |
 | R11.H | ~12-15 | TBD | TBD | All 5 | BLOCKED on Learning Layer | **DEFERRED 2026-05-22** + BLOCKED |

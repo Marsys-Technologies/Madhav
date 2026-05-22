@@ -70,13 +70,13 @@ These are UI-only capabilities. The active provider does not influence rendering
 
 | Capability | Anthropic | Google | OpenAI | DeepSeek | NVIDIA | Marsys ship |
 |---|---|---|---|---|---|---|
-| Serif body + sans chrome + mono code typography | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.B |
-| Bubble-less assistant + Claude-shaped user bubble | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.B |
-| 768px centered reading column | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.B |
-| Hover-reveal action bar | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.B |
-| Minimal-shape composer (rounded, no shadow, fades-in) | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.B |
-| Claude-typescale markdown rendering (h1-h3, code blocks) | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.B |
-| Runtime user toggle (Classic ⇄ Claude-parity mode) | ★ provider-agnostic | ★ | ★ | ★ | ★ | 🚧 R11.A |
+| Serif body + sans chrome + mono code typography | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.B (shipped 2026-05-22) |
+| Bubble-less assistant + Claude-shaped user bubble | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.B (shipped 2026-05-22) |
+| 768px centered reading column | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.B (shipped 2026-05-22) |
+| Hover-reveal action bar | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.B (shipped 2026-05-22) |
+| Minimal-shape composer (rounded, no shadow, fades-in) | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.B (shipped 2026-05-22) |
+| Claude-typescale markdown rendering (h1-h3, code blocks) | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.B (shipped 2026-05-22) |
+| Runtime user toggle (Classic ⇄ Claude-parity mode) | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R11.A (shipped 2026-05-22) |
 | Camera capture on mobile | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R10 X-S1 |
 | Font-size control | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R10 X-S7 |
 | Selective share + print-friendly | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R10 X-S8/X-S9 |
@@ -90,7 +90,7 @@ These are UI-only capabilities. The active provider does not influence rendering
 | Slash command menu | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R8-S6 |
 | Token estimate in composer | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R8-S5 |
 | Conversation export (MD/JSON/PDF) | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R8-S8 |
-| Inline citation (superscript + hover preview + click-out) | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ Y-S1+Y-S2 + 🚧 R11.B extends to URL click-out |
+| Inline citation (superscript + hover preview + click-out) | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ Y-S1+Y-S2 + ✓ R11.B (shipped 2026-05-22) extends to URL click-out |
 | Citation freshness badge | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R10 Y-S2 |
 | Validator per-gate expander | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R10 Y-S8 |
 
@@ -98,34 +98,34 @@ These are UI-only capabilities. The active provider does not influence rendering
 
 | Capability | Anthropic | Google | OpenAI | DeepSeek | NVIDIA | Marsys ship |
 |---|---|---|---|---|---|---|
-| Pre-token "Thinking… Ns" indicator | ★ visible thinking blocks | ★ native `thinking` parts | ▶ no thinking; show elapsed counter only | ★ inline `<think>` blocks | — (depends on model) | 🚧 R11.C |
-| Smooth-stream rate-target (~30-50 cps uniform) | ★ provider-agnostic (server adapter) | ★ | ★ | ★ | ★ | 🚧 R11.C (extends Y-S3 word-aware) |
-| Extended thinking visible to user | ★ `thinking` content blocks | ★ native `thinking` UIMessage parts | — (o-series deprecated in codebase) | ★ `<think>` middleware extracts | — | ✓ R10 Y-S4 (Anthropic + Gemini + DeepSeek paths) + 🚧 R11.C auto-collapse |
-| Adaptive thinking budget | ★ `thinking.effort` (Opus 4.6+, Sonnet 4.6+) | ★ `thinkingBudget: 24576` integer | — | ▶ `thinking: true/false` toggle | — | 🚧 R11.C (per-provider adapter) |
-| Extended thinking auto-collapse on first text_delta | ★ provider-agnostic | ★ | n/a | ★ | n/a | 🚧 R11.C |
-| Inline tool-use cards mid-stream | ★ progressive `input_json_delta` | ○ progressive functionCall args | ○ progressive `tool_calls.function.arguments` | ○ OpenAI-compat | depends | ✓ ToolCallCard (Apr 29) + 🚧 R11.C tightens + verifies inline stream order |
+| Pre-token "Thinking… Ns" indicator | ★ visible thinking blocks | ★ native `thinking` parts | ▶ no thinking; show elapsed counter only | ★ inline `<think>` blocks | — (depends on model) | ✓ R11.C (shipped 2026-05-22) |
+| Smooth-stream rate-target (~30-50 cps uniform) | ★ provider-agnostic (server adapter) | ★ | ★ | ★ | ★ | ✓ R11.C (shipped 2026-05-22) (extends Y-S3 word-aware) |
+| Extended thinking visible to user | ★ `thinking` content blocks | ★ native `thinking` UIMessage parts | — (o-series deprecated in codebase) | ★ `<think>` middleware extracts | — | ✓ R10 Y-S4 (Anthropic + Gemini + DeepSeek paths) + ✓ R11.C (shipped 2026-05-22) auto-collapse |
+| Adaptive thinking budget | ★ `thinking.effort` (Opus 4.6+, Sonnet 4.6+) | ★ `thinkingBudget: 24576` integer | — | ▶ `thinking: true/false` toggle | — | ✓ R11.C (shipped 2026-05-22) (per-provider adapter) |
+| Extended thinking auto-collapse on first text_delta | ★ provider-agnostic | ★ | n/a | ★ | n/a | ✓ R11.C (shipped 2026-05-22) |
+| Inline tool-use cards mid-stream | ★ progressive `input_json_delta` | ○ progressive functionCall args | ○ progressive `tool_calls.function.arguments` | ○ OpenAI-compat | depends | ✓ ToolCallCard (Apr 29) + ✓ R11.C (shipped 2026-05-22) tightens + verifies inline stream order |
 | Streaming refusals | ★ native streamed refusal | ○ | ○ | ○ | ○ | ✓ existing |
-| Stop button morph + partial-turn retention | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R6.5 + 🚧 R11.C verifies persistence to DB |
-| Smooth-streaming with thinking interleaved | ★ Claude 4.x interleaved thinking | ★ Gemini 2.5 Pro thinking-during-tool | — | ○ | — | 🚧 R11.C |
+| Stop button morph + partial-turn retention | ★ provider-agnostic | ★ | ★ | ★ | ★ | ✓ R6.5 + ✓ R11.C (shipped 2026-05-22) verifies persistence to DB |
+| Smooth-streaming with thinking interleaved | ★ Claude 4.x interleaved thinking | ★ Gemini 2.5 Pro thinking-during-tool | — | ○ | — | ✓ R11.C (shipped 2026-05-22) |
 
 ### A.3 Caching + cache-aware prompt layout
 
 | Capability | Anthropic | Google | OpenAI | DeepSeek | NVIDIA | Marsys ship |
 |---|---|---|---|---|---|---|
-| Explicit prompt caching (per-block markers) | ★ `cache_control: { type: 'ephemeral' }`, up to 4 breakpoints, 5-min/1-hour TTL, 10% hit cost | ★ `cachedContent` API (separate creation step), TTL configurable, ~25% hit cost | — (automatic; no markers needed) | — (implicit) | — | 🚧 R11.D |
-| Automatic prompt caching | — | — | ★ on by default, 25% hit cost reported | ★ implicit, `prompt_cache_hit_tokens` reported | n/a | 🚧 R11.D (telemetry capture) |
-| Cache-aware prompt layout (tools → system → messages) | ★ Anthropic-canonical | ▶ `systemInstruction` single block (no breakpoint placement) | ▶ implicit; no explicit ordering required | ▶ implicit | depends | 🚧 R11.D |
-| Cache hit-rate observability | ★ `usage.cache_creation_input_tokens` / `cache_read_input_tokens` | ★ `cachedContentTokenCount` in usage | ★ `prompt_tokens_details.cached_tokens` in usage | ★ `prompt_cache_hit_tokens` | depends | 🚧 R11.D (Observatory wiring) |
+| Explicit prompt caching (per-block markers) | ★ `cache_control: { type: 'ephemeral' }`, up to 4 breakpoints, 5-min/1-hour TTL, 10% hit cost | ★ `cachedContent` API (separate creation step), TTL configurable, ~25% hit cost | — (automatic; no markers needed) | — (implicit) | — | ✓ R11.D (shipped 2026-05-22) |
+| Automatic prompt caching | — | — | ★ on by default, 25% hit cost reported | ★ implicit, `prompt_cache_hit_tokens` reported | n/a | ✓ R11.D (shipped 2026-05-22) (telemetry capture) |
+| Cache-aware prompt layout (tools → system → messages) | ★ Anthropic-canonical | ▶ `systemInstruction` single block (no breakpoint placement) | ▶ implicit; no explicit ordering required | ▶ implicit | depends | ✓ R11.D (shipped 2026-05-22) |
+| Cache hit-rate observability | ★ `usage.cache_creation_input_tokens` / `cache_read_input_tokens` | ★ `cachedContentTokenCount` in usage | ★ `prompt_tokens_details.cached_tokens` in usage | ★ `prompt_cache_hit_tokens` | depends | ✓ R11.D (shipped 2026-05-22) (Observatory wiring) |
 
 ### A.4 Adaptive tool sequencing (multi-step agentic loops)
 
 | Capability | Anthropic | Google | OpenAI | DeepSeek | NVIDIA | Marsys ship |
 |---|---|---|---|---|---|---|
-| Multi-step tool loop keyed on stop signal | ★ `while (stop_reason === 'tool_use')` canonical | ★ `while (finish_reason === 'function_calls')` | ★ `while (finish_reason === 'tool_calls')` + Responses API native loop | ○ OpenAI-compat | depends on hosted model | 🚧 R11.E |
-| Interleaved text + tool in same turn | ★ Claude 4.x | ★ Gemini 2.5 | ○ Responses API | ○ | depends | 🚧 R11.E |
-| Tool error recovery (model sees error, retries / pivots) | ★ native | ★ native | ★ native | ○ | ○ | 🚧 R11.E |
-| Tool selection observability | ★ via thinking blocks | ★ via thinking parts | ○ via reasoning_content (when available) | ★ via `<think>` blocks | — | 🚧 R11.E |
-| Iteration cap safety | ★ provider-agnostic loop logic | ★ | ★ | ★ | ★ | 🚧 R11.E (8-iteration default) |
+| Multi-step tool loop keyed on stop signal | ★ `while (stop_reason === 'tool_use')` canonical | ★ `while (finish_reason === 'function_calls')` | ★ `while (finish_reason === 'tool_calls')` + Responses API native loop | ○ OpenAI-compat | depends on hosted model | ✓ R11.E (shipped 2026-05-22) |
+| Interleaved text + tool in same turn | ★ Claude 4.x | ★ Gemini 2.5 | ○ Responses API | ○ | depends | ✓ R11.E (shipped 2026-05-22) |
+| Tool error recovery (model sees error, retries / pivots) | ★ native | ★ native | ★ native | ○ | ○ | ✓ R11.E (shipped 2026-05-22) |
+| Tool selection observability | ★ via thinking blocks | ★ via thinking parts | ○ via reasoning_content (when available) | ★ via `<think>` blocks | — | ✓ R11.E (shipped 2026-05-22) |
+| Iteration cap safety | ★ provider-agnostic loop logic | ★ | ★ | ★ | ★ | ✓ R11.E (shipped 2026-05-22) (8-iteration default) |
 
 ## §5 — Cluster B: Server-Side Tools
 
@@ -226,9 +226,9 @@ Provider-agnostic since rendering is client-side; provider only needs to emit ar
 | Capability | Anthropic | Google | OpenAI | DeepSeek | NVIDIA | Marsys ship |
 |---|---|---|---|---|---|---|
 | Per-request input/output token reporting | ★ | ★ | ★ | ★ | ★ | ✓ Observatory (Phase O) |
-| Cache hit/miss reporting | ★ explicit | ★ explicit | ★ implicit | ★ implicit | depends | ✓ partial (anthropic_observed.ts wires `cache_creation_input_tokens` + `cache_read_input_tokens`) + 🚧 R11.D extends to all 5 |
+| Cache hit/miss reporting | ★ explicit | ★ explicit | ★ implicit | ★ implicit | depends | ✓ partial (anthropic_observed.ts wires `cache_creation_input_tokens` + `cache_read_input_tokens`) + ✓ R11.D (shipped 2026-05-22) extends to all 5 |
 | Reasoning-token reporting | n/a | ★ `thoughtsTokenCount` | n/a | n/a | n/a | ✓ Gemini path; n/a others |
-| Per-tool cost attribution | depends | depends | depends | depends | depends | 🚧 R11.D |
+| Per-tool cost attribution | depends | depends | depends | depends | depends | ✓ R11.D (shipped 2026-05-22) |
 
 ### E.2 Safety + classifiers
 

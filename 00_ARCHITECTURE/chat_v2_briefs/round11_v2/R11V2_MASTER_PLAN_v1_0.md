@@ -38,11 +38,11 @@ Read these three documents in order before reading individual phase plans:
 
 | Phase | Scope | Sessions | Est. hours | Status |
 |---|---|---|---|---|
-| **R11.A** | Foundation (capability adapter substrate + 5 provider skeletons + dispatcher + telemetry + runtime toggle) | 14 | 14-18 | **PLAN_AUTHORED — ready to launch** |
-| R11.B | Visual + Look-and-Feel parity (Marsys-skin + Claude-rendering) | 10 | 10-13 | PLAN_PENDING (authored just-before-launch after R11.A merges) |
-| R11.C | Streaming + Thinking (per-provider) | 8 | 8-12 | PLAN_PENDING |
-| R11.D | Caching + Cache-aware prompt layout (per-provider) | 7 | 8-12 | PLAN_PENDING |
-| R11.E | Adaptive Tool Sequencing (per-provider) | 10 | 12-16 | PLAN_PENDING — terminal active phase |
+| **R11.A** | Foundation (capability adapter substrate + 5 provider skeletons + dispatcher + telemetry + runtime toggle) | 14 | 14-18 | **COMPLETE 2026-05-22** — PR #143 (f2df0524) |
+| R11.B | Visual + Look-and-Feel parity (Marsys-skin + Claude-rendering) | 10 | 10-13 | **COMPLETE 2026-05-22** — PR #145 (24a21dda) |
+| R11.C | Streaming + Thinking (per-provider) | 8 | 8-12 | **COMPLETE 2026-05-22** — PR #144 (d268d429) |
+| R11.D | Caching + Cache-aware prompt layout (per-provider) | 7 | 8-12 | **COMPLETE 2026-05-22** — PR #146 (e9cbffc9) |
+| R11.E | Adaptive Tool Sequencing (per-provider) | 10 | 12-16 | **COMPLETE 2026-05-22** — PR #147 (5d0064f9) |
 | R11.F | Server-Side Tools (web search, fetch, code execution per-provider) | 14 | 16-22 | **DEFERRED 2026-05-22** — future arc |
 | R11.G | Memory + Projects + Deep Context | 11 | 12-16 | **DEFERRED 2026-05-22** — future arc |
 | R11.H | Learning-Layer Adaptation | ~12-15 | TBD | **DEFERRED 2026-05-22** + BLOCKED on Learning Layer scaffold |
