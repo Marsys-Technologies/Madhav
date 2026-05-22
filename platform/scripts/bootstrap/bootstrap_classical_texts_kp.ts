@@ -86,7 +86,7 @@ const VOL_IDX = args.findIndex(a => a === '--volumes');
 const VOLUMES: number[] =
   VOL_IDX >= 0
     ? args[VOL_IDX + 1].split(',').map(v => parseInt(v.trim(), 10))
-    : [1, 2, 3, 4];
+    : [1, 2, 3, 4, 5, 6];
 
 // ── KP Volume metadata ─────────────────────────────────────────────────────────
 
@@ -126,6 +126,20 @@ const KP_VOLUMES: KPVolumeSpec[] = [
     title: 'Marriage, Married Life & Children',
     filename: 'kp_reader_vol4_djvu.txt',
     sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.4 (archive.org kp-readers)',
+  },
+  {
+    vol: 5,
+    workKey: 'KP_VOL5',
+    title: 'Transit (Gocharapala Nirnayam)',
+    filename: 'kp_reader_vol5_djvu.txt',
+    sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.5 (archive.org kp-readers)',
+  },
+  {
+    vol: 6,
+    workKey: 'KP_VOL6',
+    title: 'Horary Astrology',
+    filename: 'kp_reader_vol6_djvu.txt',
+    sourceEdition: 'K.S. Krishnamurti, KP Reader Vol.6 (archive.org kp-readers)',
   },
 ];
 
