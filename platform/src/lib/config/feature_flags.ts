@@ -92,6 +92,52 @@ export type FeatureFlag =
   // enqueue → Cloud Run Job execute → build_events rows → cockpit SSE).
   // Env: MARSYS_FLAG_BUILD_TRIGGER_ENABLED
   | 'BUILD_TRIGGER_ENABLED'
+  // R8 — Capabilities Round flags (all default false; flip individually after smoke verification)
+  // R8-S1: Conversation branches persistence (REST API + useBranches hydration).
+  | 'R8_BRANCHES_ENABLED'
+  // R8-S3: Full-text search via pg_trgm across conversation bodies.
+  | 'R8_SEARCH_ENABLED'
+  // R8-S4: Pin/archive/folders for conversation organisation.
+  | 'R8_FOLDERS_ENABLED'
+  // R8-S5: Live token count + context % in Composer.
+  | 'R8_TOKENS_ENABLED'
+  // R8-S6: Inline slash command menu.
+  | 'R8_SLASH_ENABLED'
+  // R8-S7: Vision pipeline via Gemini adapter (default false — changes LLM cost profile).
+  | 'R8_VISION_ENABLED'
+  // R8-S8: Conversation export (MD / JSON / PDF).
+  | 'R8_EXPORT_ENABLED'
+  // R9-S1: Projects abstraction. Gates sidebar grouping, /api/projects/** routes,
+  // and synthesis prompt injection. Default false — production unaffected until
+  // explicitly enabled. Env: MARSYS_FLAG_R9_PROJECTS.
+  | 'R9_PROJECTS'
+  // R9-S2: Semantic conversation search. Requires pgvector + embedding backfill.
+  // Default false — flip after backfill job completes. Env: MARSYS_FLAG_R9_SEMANTIC_SEARCH.
+  | 'R9_SEMANTIC_SEARCH'
+  // R9-S3: Persona library. ModelStylePicker persona group + settings page.
+  // Default true (additive, no risk). Env: MARSYS_FLAG_R9_PERSONAS.
+  | 'R9_PERSONAS'
+  // R9-S4: Inline tool-flow timeline in AssistantMessage. Admin-only.
+  // Default false — flip for super_admin after smoke verification. Env: MARSYS_FLAG_R9_TOOL_FLOW.
+  | 'R9_TOOL_FLOW'
+  // R10-Y-S5: Stop-and-edit while streaming. Client-side NEXT_PUBLIC flag.
+  // Default FALSE — high UX risk; opt-in by operator only.
+  | 'R10_EDIT_WHILE_STREAMING'
+  // R10-Y-S3: Smooth-stream V2 — word-aware flush gated for rollback safety.
+  // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
+  | 'R10_SMOOTH_STREAM_V2'
+  // R10-Y-S4: Reasoning step labels — ### Step: markers in synthesis prompt.
+  // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
+  | 'R10_REASONING_STEPS'
+  // R10-Y-S9: Single-retry on 5xx/timeout. Routes retry to next STACK_ROUTING stack.
+  // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
+  // Default false — cost risk (retry doubles LLM cost); opt-in only.
+  | 'R10_AUTO_RETRY'
+  // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true (foundation sealed 2026-05-22).
+  // Gates the v3.1 tool surface (21 tools, holistic_bundle, multi_school_bundle,
+  // tier-conditioned house-rules, perf system, operator dashboard) vs the v1 path.
+  // Env: MARSYS_FLAG_MCP_V3_ENABLED (server-side only — sidecar-scoped flag).
+  | 'MCP_V3_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -153,6 +199,30 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // Platform Modernization 4.build_trigger — kill-switch default OFF until
   // end-to-end smoke is green. Flip via MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true.
   BUILD_TRIGGER_ENABLED: false,
+  // R8 Capabilities Round — all default false; flip individually after smoke.
+  R8_BRANCHES_ENABLED: false,
+  R8_SEARCH_ENABLED: false,
+  R8_FOLDERS_ENABLED: false,
+  R8_TOKENS_ENABLED: false,
+  R8_SLASH_ENABLED: false,
+  R8_VISION_ENABLED: false,
+  R8_EXPORT_ENABLED: false,
+  // R9 flags — all default false/true as per master plan
+  R9_PROJECTS: false,
+  R9_SEMANTIC_SEARCH: false,
+  R9_PERSONAS: true,
+  R9_TOOL_FLOW: false,
+  // R10-Y-S5: default false — high UX risk; opt-in only.
+  R10_EDIT_WHILE_STREAMING: false,
+  // R10-Y-S3: default true — word-aware chunking already active; gated for rollback.
+  R10_SMOOTH_STREAM_V2: true,
+  // R10-Y-S4: default true — additive step labels, no cost impact.
+  R10_REASONING_STEPS: true,
+  // R10-Y-S9: default false — cost risk; opt-in only.
+  R10_AUTO_RETRY: false,
+  // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true — foundation sealed 2026-05-22.
+  // Override via MARSYS_FLAG_MCP_V3_ENABLED=false to revert to v1 path (emergency only).
+  MCP_V3_ENABLED: true,
 }
 
 // Numeric config keys (read via configService.getValue)

@@ -1,7 +1,10 @@
 ---
 artifact: CLAUDECODE_BRIEF_MCP_V3_0_v1_0.md
-status: ACTIVE
+status: COMPLETE
 version: 1.0
+completed_on: 2026-05-22
+completed_by_session: v3.1.0-S6
+sealing_artifact: 00_ARCHITECTURE/MCPT_V310_CLOSE.md
 authored_by: Claude (Cowork session, Opus 4.7)
 authored_on: 2026-05-22
 parent_architecture: 00_ARCHITECTURE/MCP_ARCH_v3_PROPOSAL_2026-05-22.md (v3.1)
