@@ -150,6 +150,16 @@ export type FeatureFlag =
   //   Default false until A-S9 telemetry wiring is verified and Observatory tables are updated.
   //   Env: MARSYS_FLAG_R11V2_CAPABILITY_TELEMETRY
   | 'R11V2_CAPABILITY_TELEMETRY'
+  // R11B.B-S1: R11B_LOOK_AND_FEEL — umbrella gate for the R11.B visual layer.
+  //   Client-side NEXT_PUBLIC flag (deploy.yml build-arg required — Amendment 1).
+  //   Default false. When true AND useMultiProviderParity() hook returns true,
+  //   ConsumeChatV2 adds .r11b-active to the .consume-shell root, activating
+  //   the typography stack (B-S1), user-bubble shape (B-S2), message container
+  //   layout (B-S3), composer chrome (B-S4), sidebar chrome (B-S5), markdown
+  //   typescale (B-S6), and inline citation parity (B-S7).
+  //   Flip to true after the full R11.B smoke pass (R11B-MERGE gate).
+  //   Env: NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL
+  | 'R11B_LOOK_AND_FEEL'
   // R11C_SMOOTH_STREAM_V3: rate-target ~40 cps layer on top of Y-S3 word-aware flush.
   //   Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg required.
   //   Default true. Rollback: set MARSYS_FLAG_R11C_SMOOTH_STREAM_V3=false → Y-S3 behavior.
@@ -291,6 +301,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R11V2_USE_ADAPTERS: false,
   // R11V2_CAPABILITY_TELEMETRY: flipped true after A-S9 Observatory wiring verified.
   R11V2_CAPABILITY_TELEMETRY: false,
+  // R11.B Look-and-Feel umbrella gate — default false until full smoke (R11B-MERGE gate).
+  // NEXT_PUBLIC (client-side); deploy.yml build-arg: NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL.
+  R11B_LOOK_AND_FEEL: false,
   // R11C_SMOOTH_STREAM_V3: rate-target ~40 cps. Default true. Rollback: set env=false.
   R11C_SMOOTH_STREAM_V3: true,
   // R11C_TOOL_CARDS: inline ToolCallCard with verb labels + progressive input reveal.

@@ -750,3 +750,89 @@ body {
   0%, 100% { opacity: 0.3; transform: scale(1); }
   50%       { opacity: 0.9; transform: scale(1.35); }
 }
+
+/* ============================================================
+   R11.B — Look-and-Feel typography stack (B-S1)
+   Gated by .consume-shell.r11b-active — applied when:
+     - MARSYS_FLAG_R11B_LOOK_AND_FEEL=true (NEXT_PUBLIC build-arg, default false) AND
+     - useMultiProviderParity() hook returns true (A-S11 runtime toggle)
+   The class .r11b-active is set on the .consume-shell root by ConsumeChatV2.tsx.
+   Marsys palette (gold/charcoal/ink tokens) is NEVER touched by this block.
+   ============================================================ */
+
+/* Typography token declarations */
+.consume-shell.r11b-active {
+  /* System-serif stack — Claude's reading feel, no CDN load */
+  --font-body-serif: ui-serif, Georgia, "Iowan Old Style", "Source Serif Pro", serif;
+  /* System-sans — stays for chrome/buttons/labels */
+  --font-chrome-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* System-mono — code blocks */
+  --font-code-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code",
+    Menlo, Consolas, "Courier New", monospace;
+}
+
+/* Body text inside assistant message body — adopt serif */
+.consume-shell.r11b-active .message-body,
+.consume-shell.r11b-active [data-message-role="assistant"] .prose,
+.consume-shell.r11b-active .v2-assistant-message .prose {
+  font-family: var(--font-body-serif);
+  font-size: 1rem;         /* 16px baseline — legible serif body */
+  line-height: 1.75;       /* Generous leading for long-form text */
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Headings inside assistant prose — slightly heavier serif */
+.consume-shell.r11b-active .prose h1,
+.consume-shell.r11b-active .prose h2,
+.consume-shell.r11b-active .prose h3,
+.consume-shell.r11b-active .prose h4,
+.consume-shell.r11b-active .prose h5,
+.consume-shell.r11b-active .prose h6 {
+  font-family: var(--font-body-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Blockquotes — serif, slightly muted */
+.consume-shell.r11b-active .prose blockquote {
+  font-family: var(--font-body-serif);
+  font-style: italic;
+  color: var(--muted-foreground);
+  border-left: 2px solid color-mix(in oklch, var(--brand-gold) 40%, transparent);
+  padding-left: 1rem;
+  margin: 1rem 0;
+}
+
+/* Code blocks — system-mono (overrides serif for code) */
+.consume-shell.r11b-active .prose code,
+.consume-shell.r11b-active .prose pre,
+.consume-shell.r11b-active .prose pre code,
+.consume-shell.r11b-active code,
+.consume-shell.r11b-active pre {
+  font-family: var(--font-code-mono);
+  font-size: 0.875rem;     /* 14px — mono legibility */
+  line-height: 1.6;
+}
+
+/* Chrome elements — sidebar, buttons, labels, inputs stay sans-serif */
+.consume-shell.r11b-active [data-sidebar],
+.consume-shell.r11b-active nav,
+.consume-shell.r11b-active button,
+.consume-shell.r11b-active label,
+.consume-shell.r11b-active input,
+.consume-shell.r11b-active textarea,
+.consume-shell.r11b-active [role="menuitem"],
+.consume-shell.r11b-active [role="menu"],
+.consume-shell.r11b-active .brand-cta {
+  font-family: var(--font-chrome-sans);
+}
+
+/* User bubble — sans chrome feel (contrasts with serif assistant) */
+.consume-shell.r11b-active [data-message-role="user"],
+.consume-shell.r11b-active .v2-user-bubble {
+  font-family: var(--font-chrome-sans);
+  font-size: 0.9375rem;    /* 15px — slightly smaller than assistant body */
+  line-height: 1.6;
+}

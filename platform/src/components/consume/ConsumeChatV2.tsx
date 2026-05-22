@@ -103,6 +103,12 @@ import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 import { cn } from '@/lib/utils'
 import { MultiProviderParityToggle } from './MultiProviderParityToggle'
+import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
+
+// R11.B — Look-and-Feel umbrella flag (NEXT_PUBLIC, build-time)
+const R11B_LOOK_AND_FEEL_ENV =
+  typeof process !== 'undefined' &&
+  process.env.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL === 'true'
 import type { Report, ConversationModule } from '@/lib/db/types'
 
 // ─── Upload / attachment types ────────────────────────────────────────────────
@@ -1646,6 +1652,11 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [activeTier, setActiveTierOverride] = useState<AudienceTier>(audienceTier)
   // R9-S3: Persona selection state — persists for the session; null = no persona active.
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null)
+  // R11.B — multi-provider parity hook (A-S11). Combined with build-time flag to gate r11b-active.
+  const isParityActive = useMultiProviderParity()
+  // r11b-active class activates the Look-and-Feel layer (typography, shapes, chrome).
+  // Both conditions must be true: build-time kill-switch AND user runtime toggle.
+  const r11bActive = R11B_LOOK_AND_FEEL_ENV && isParityActive
 
   const prefsCtxValue = useMemo<V2PrefsCtxValue>(() => ({
     stack, style, lelEnabled, activeTier, audienceTier, activePersonaId,
@@ -1817,8 +1828,12 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
     <V2PrefsCtx.Provider value={prefsCtxValue}>
     <div
-      className="relative flex h-dvh text-zinc-100"
+      className={cn(
+        'relative flex h-dvh text-zinc-100 consume-shell',
+        r11bActive && 'r11b-active',
+      )}
       data-testid="v2-chat-shell"
+      data-r11b-active={r11bActive ? 'true' : 'false'}
       style={{ ['--text-scale' as string]: textScale }}
     >
       {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
