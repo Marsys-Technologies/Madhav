@@ -260,9 +260,74 @@ Authored at `00_ARCHITECTURE/CONDUCTOR/KICKOFF_MCPT_WT_{A,B,C,D,E,F,FINAL}.md`. 
 
 ---
 
-## §12 — One-paragraph TL;DR
+## §12 — Strategy 3: meta-Conductor (recommended operator mode)
 
-MCP Transformation is 17 sessions across 4 phases executing in 6 parallel worktrees over ~5 wall-clock days under Conductor orchestration in Claude Code (Antigravity IDE) — Cowork is for planning, not implementation. Wave 0 stages source data and runs `SETUP_WORKTREES_MCPT.sh` to create six branches + worktrees. Wave 1 (Day 1) kicks off all six worktrees in parallel: v3.1.0-S1 foundation code fixes; v3.2-S1/S2/S3 classical-text indexing (BPHS, Jaim+KP, Tajaka) on separate branches; v3.3-S1 depth backfill (shadbala+ashtakavarga); v3.4-S1 MSR signal-grounding long-running batch. Wave 2 (Day 2) runs v3.1.0-S2/S3/S4 as sub-agent fan-outs inside WT-A while v3.2-S4 multi-school tables, v3.3-S2 KP/upagraha backfill, and v3.4-S1 continue elsewhere. Wave 3 (Day 3) handles cross-worktree dependency: v3.3-S3 Tajaka varshphal waits for v3.2-S3 + v3.2-S5 Tajaka work to merge into `feature/mcpt-final`, then rebases. Wave 4 (Day 4) executes the wave-collector merges in strict order (A→C→D→B→E→F) into `feature/mcpt-final`. Wave 5/FINAL (Day 5) runs v3.4-S2 red-team solo against the fully-merged branch and — pending 0 class-1 findings + native approval (the sole human-gated entry) — merges to main. Migrations 072–079 are pre-reserved to eliminate conflicts. Briefs are pre-authored to eliminate brief-authoring halts. `--dangerously-skip-permissions` is set on every sub-agent spawn for autonomous execution. The Conductor itself runs in Claude Code in Antigravity per worktree; expect ~2 Conductor chats per worktree across the run (re-paste kickoff at ORCHESTRATOR HANDOFF banner). Total: 17 sessions → 5 days at 6-WT parallel ≈ 70% wall-clock reduction vs sequential 17 days.
+§3 above describes the distributed wave model: one Antigravity Claude Code chat per worktree, six chats running in parallel, operator orchestrates worktree-to-worktree dependencies by opening chats in order. That model preserves clean separation per worktree but demands 7 chat opens across 4 days plus mental tracking of which worktree is doing what.
+
+**The meta-Conductor mode collapses that to 2 chats for the entire project.**
+
+| Mode | Chats operator opens | Cross-WT coordination | Wall-clock |
+|---|---|---|---|
+| **Distributed (§3)** | 7 (one per worktree + FINAL) | Operator-managed (open WT-X chat after WT-Y merges) | ~3.5–4 days |
+| **Meta-Conductor (§13)** | **2** (META chat + WT-F sibling) | Conductor-managed (META reads queues across worktrees) | ~3 days (faster — no operator-action lag between waves) |
+
+### How meta-mode works
+
+One Antigravity Claude Code chat opens at `/Users/Dev/Vibe-Coding/Apps/Madhav` (the main repo, not any worktree). The operator pastes `00_ARCHITECTURE/CONDUCTOR/KICKOFF_MCPT_META.md`. That kickoff turns the chat into a *meta-Conductor* that:
+
+1. Reads all 6 in-scope queue files (WT-A, B, C, D, E + FINAL — skips WT-F).
+2. Builds a unified dependency-resolved schedule across worktrees, honoring both `depends_on` (same-WT) and `cross_wt_dependencies` (cross-WT).
+3. Spawns sub-agents in **batch parallelism**: up to 5 concurrent sub-agents per batch, one per distinct worktree (never two into the same worktree — git index contention). Each sub-agent prompt is prefixed with `cd <worktree_path>` so it operates in the right tree.
+4. Runs each session's gate command in the meta chat after the sub-agent returns; updates the queue's status field on PASS; appends to `CONDUCTOR_LOG_MCPT_META.md` (consolidated log) and `CONDUCTOR_HALT_LOG_MCPT_META.md`.
+5. At v3.4-S2 (the sole human-gated entry), halts with `REQUIRES_NATIVE_APPROVAL`; operator replies `APPROVE_MAIN_MERGE`; meta spawns the push-to-main + deploy + smoke sub-agent.
+
+### Why WT-F runs as a sibling chat
+
+v3.4-S1's MSR grounding pipeline is ~8 hours wall-clock (longest single session in the project). If included in the meta-Conductor's batch scheduling, it would gate the meta's next batch for 8 hours since Claude Code's Task tool blocks until all parallel sub-agents return. Solution: WT-F runs in a separate Antigravity chat (`MadhavMCPT-GRD` workspace, paste `KICKOFF_MCPT_WT_F.md`). It executes independently. The meta-Conductor doesn't spawn its sub-agent but does verify v3.4-S1's merge commit lands on `feature/mcpt-final` before allowing v3.4-S2 to start.
+
+### Operator workflow
+
+**Day 1 morning** — open 2 chats, total ~2 minutes of operator setup:
+
+1. **META chat:** Antigravity workspace at `/Users/Dev/Vibe-Coding/Apps/Madhav`. Open Claude Code chat with `--dangerously-skip-permissions`. Paste `KICKOFF_MCPT_META.md`. Walk away.
+2. **WT-F chat:** Antigravity workspace at `/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-GRD`. Open Claude Code chat with `--dangerously-skip-permissions`. Paste `KICKOFF_MCPT_WT_F.md`. Walk away.
+
+**Day 1 afternoon through Day 3** — operator active touchpoints:
+- Stage source data progressively into `00_ARCHITECTURE/SOURCE_DATA/`. As each subdir fills, type `RESUME <session_id>` in META chat for the corresponding halted session.
+- Re-paste META kickoff in a fresh Antigravity chat on ORCHESTRATOR_HANDOFF (expected: 0–1 times, worst case 2; the META chat's context fills after ~18-20 sub-agents, and the project has ~16 in meta scope).
+
+**Day 3** — final touchpoint:
+- At v3.4-S2's `REQUIRES_NATIVE_APPROVAL` halt, review the red-team output + sealing artifact preview + merge diff summary; reply `APPROVE_MAIN_MERGE`. Project closes.
+
+### When to fall back to distributed mode (§3)
+
+The per-worktree kickoffs (`KICKOFF_MCPT_WT_{A..F}.md`) remain in place as fallbacks. Use them if:
+
+- Meta-mode hits persistent ORCHESTRATOR_HANDOFF storms (unlikely — total sub-agent count fits the budget).
+- You want to debug a single worktree in isolation (open that WT's chat, paste its kickoff, run just its queue).
+- The meta-Conductor itself fails for any reason mid-project (e.g., Antigravity bug). Distributed mode is recoverable from any queue state because each per-WT queue's `status` field is the source of truth.
+
+### Logs in meta-mode
+
+| Log | Path | Content |
+|---|---|---|
+| Meta consolidated log | `00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_LOG_MCPT_META.md` | Every session that META spawned, with result, timestamp, worktree, commits, gate output |
+| Meta halt log | `00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_HALT_LOG_MCPT_META.md` | Open + resolved halts in meta scope |
+| WT-F sibling logs | `/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-GRD/00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_LOG.md` and `CONDUCTOR_HALT_LOG.md` | v3.4-S1's standalone run history |
+
+### Critical invariants in meta-mode
+
+- Meta-Conductor never edits application code. Only its sub-agents do.
+- Meta-Conductor never spawns concurrent sub-agents into the same worktree (git index contention).
+- Meta-Conductor never spawns WT-F's v3.4-S1 (sibling chat owns it).
+- Meta-Conductor never skips a gate. Sub-agent says PASS but gate exits non-zero → HALT.
+- v3.4-S2 is the ONLY entry that requires native approval. Everything else proceeds autonomously.
+
+---
+
+## §13 — One-paragraph TL;DR
+
+MCP Transformation is 17 sessions across 4 phases executing in 6 parallel worktrees over ~3–4 wall-clock days under Conductor orchestration in Claude Code (Antigravity IDE) — Cowork is for planning, not implementation. **Two execution modes are supported: meta-Conductor (§12, recommended — 2 chats: META + WT-F sibling) and distributed (§3 — 7 chats, one per worktree).** Wave 0 stages source data and runs `SETUP_WORKTREES_MCPT.sh` to create six branches + worktrees. In meta-mode (recommended), the operator opens 2 Antigravity Claude Code chats Day 1 morning: META at the main Madhav repo (paste `KICKOFF_MCPT_META.md`; orchestrates 16 of 17 sessions across 5 worktrees + FINAL) and WT-F at `MadhavMCPT-GRD` (paste `KICKOFF_MCPT_WT_F.md`; runs v3.4-S1's 8-hour MSR-grounding pipeline solo). META spawns sub-agents in batch parallelism (up to 5 concurrent, one per distinct worktree; never two into the same worktree) with `cd <worktree_path>` prefixes; resolves cross-worktree dependencies internally by reading all 6 in-scope queue files. Distributed mode (§3) is the fallback / debugging path: per-worktree kickoffs (`KICKOFF_MCPT_WT_{A..F}.md`) remain in place and can be used to run any single worktree in isolation. The dependency spine is the same in both modes: v3.1.0-S1 → {S2,S3,S4} → S5 → S6 in WT-A; v3.2-{S1,S2,S3} → S4 → S5 (which also wave-collector merges all 3 v3.2 branches into `feature/mcpt-final`); v3.3-S1 → S2 → S3 (cross-WT-waits on v3.2-S5) → S4 in WT-E; v3.4-S1 standalone in WT-F; v3.4-S2 solo in FINAL after every other terminal merge lands, with native approval (the sole human-gated entry) gating the merge to main. Migrations 072–079 are pre-reserved to eliminate conflicts; briefs are pre-authored to eliminate brief-authoring halts; `--dangerously-skip-permissions` is set on every Claude Code chat at launch for autonomous execution. Expected ORCHESTRATOR_HANDOFF events in meta-mode: 0–1 (worst case 2). Total: 17 sessions → 3 days wall-clock at meta-mode ≈ 82% reduction vs sequential 17 days, ≈ 25% faster than distributed mode (no operator-action lag between waves).
 
 ---
 
