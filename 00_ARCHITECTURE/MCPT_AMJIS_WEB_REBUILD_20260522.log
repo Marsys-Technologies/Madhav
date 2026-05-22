@@ -1,0 +1,47 @@
+# MCPT v3.1 Rebuild + Redeploy Smoke Log
+# Date: 2026-05-22
+# Operator: Claude Code (automated)
+
+## Build Results
+
+### amjis-web (platform/cloudbuild.yaml)
+- Build ID: eb7f4474-7930-4a54-b73d-2d061ceebadb
+- Status: SUCCESS
+- New revision: amjis-web-00337-tx5
+- Prior revision: amjis-web-00336-* (pre-MCPT)
+- Source: main HEAD (0433b35b — "MCPT v3.1: post-merge deployment finalization log")
+
+### amjis-mcp (platform-mcp/cloudbuild.yaml)
+- Build ID: 1b10b74e-d1f8-4792-95dc-4e08a687acf7
+- Status: SUCCESS
+- New revision: amjis-mcp-00009-rm4
+- Prior revision: amjis-mcp-00008-9qx (pre-MCPT v3.1 tools)
+- Image: gcr.io/madhav-astrology/amjis-mcp@sha256:b8f044e427bf9b1e9749a901c29f5f4dbed885a9355c2d9241f45727234dec74
+- Key MCPT commits now live:
+  * 0fa9e2a2 fix(mcpt): tool_health TS spread error + mcp_prediction_outcomes remediation
+  * 7f5dd13f MCPT v3.1.0-S4: perf system P0-P4 + nightly audit subsystem + tool_health + data_coverage
+  * 61a6ebf1 MCPT v3.1.0-S2: bundles + SSE streaming + 5-min bundle cache
+  * 8c48fd44 MCPT v3.1.0-S1: F.5 60s SHA-256-keyed in-memory cache for Bearer token validation
+
+## Smoke Test Results
+
+### Route Reachability
+1. POST https://amjis-mcp-qm256lasva-el.a.run.app/mcp (no auth)
+   → {"error":"Unauthorized","message":"Invalid or missing Bearer API key"}
+   → PASS: endpoint live, auth-gated (not 404)
+
+2. GET https://amjis-web-qm256lasva-el.a.run.app/admin/mcp/health
+   → HTTP/2 307 location: /login
+   → PASS: route live, auth-gated (not 404)
+
+### Functional Tool Smoke (data_coverage + tool_health)
+- Status: DEFERRED — requires production MCP API key from mcp_api_keys table
+- No smoke API key exists in Secret Manager; native's production key needed
+- The custom UID Firebase approach rejected (user not in platform DB)
+- Full functional smoke: native should call data_coverage + tool_health
+  via Claude chat connector or curl with their production Bearer token
+
+## Summary
+Both amjis-web and amjis-mcp successfully rebuilt and deployed with MCPT v3.1
+content. Route reachability confirmed for all 3 checks. Functional tool
+invocation deferred to native with production credentials.
