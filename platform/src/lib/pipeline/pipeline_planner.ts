@@ -238,6 +238,30 @@ function buildM9FewShotMessages(manifestStr: string): Array<{ role: 'user' | 'as
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Extract the first balanced JSON object `{...}` from a string.
+ *  Returns the original string unchanged if no object is found. */
+function extractFirstJsonObject(text: string): string {
+  const start = text.indexOf('{')
+  if (start === -1) return text
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (escaped) { escaped = false; continue }
+    if (ch === '\\' && inString) { escaped = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{') depth++
+    else if (ch === '}') { depth--; if (depth === 0) return text.slice(start, i + 1) }
+  }
+  return text
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Public entrypoint
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -512,8 +536,11 @@ export async function callPipelinePlanner(
     })
     throw new PipelinePlannerError(errMsg)
   }
-  // Strip optional ```json ... ``` fences that some models wrap output in.
-  const jsonText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+  // Strip optional ```json ... ``` fences and extract the first balanced JSON object.
+  // Some LLMs (including sonnet-4.x) append explanatory text after the closing }
+  // which causes "Unexpected non-whitespace character after JSON at position N".
+  const fenceStripped = rawText.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/m, '').trim()
+  const jsonText = extractFirstJsonObject(fenceStripped)
   let rawPlannerArgs: unknown
   try {
     rawPlannerArgs = JSON.parse(jsonText)
