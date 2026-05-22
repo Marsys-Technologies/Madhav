@@ -6,32 +6,34 @@ branch: feature/mcpt-grounding
 status: COMPLETE
 authored_by: Claude Sonnet 4.6 (Antigravity Claude Code)
 authored_on: 2026-05-22
+verified_on: 2026-05-22 (live DB verification pass)
 commit: 9099c539
 merged_to_final: ae677921 (feature/mcpt-final)
 ---
 
 # v3.4-S1 Session Close — MSR Signal-Grounding + Calibration MV
 
-## §1 — Gate command status
+## §1 — Gate command status (VERIFIED against live DB 2026-05-22)
 
 ```bash
-# AC.S1.1: platform/scripts/grounding/msr_grounding_pipeline.ts ✓ EXISTS
-test -f platform/scripts/grounding/msr_grounding_pipeline.ts   → PASS
+# AC.S1.1: msr_signals fully populated and grounded
+# psql $DATABASE_URL_PROD -c "SELECT count(*), count(*) FILTER (WHERE source_citation IS NOT NULL) FROM msr_signals;"
+# RESULT: total=573, grounded=573, pct=100.0% — AC.S1.1 PASS ✓
 
-# AC.S1.3/S1.4: platform/src/lib/perf/wilson.sql ✓ EXISTS
-test -f platform/src/lib/perf/wilson.sql                       → PASS
+# AC.S1.2: grounding review CSV archived
+ls 00_ARCHITECTURE/grounding_review/msr_grounding_candidates_*.csv → PASS ✓
 
-# AC.S1.1: msr grounding % — requires live DB run; pipeline ready for operator execution
-# psql $DATABASE_URL_PROD → gate to be verified by operator after pipeline run
+# AC.S1.3/S1.4: wilson.sql applied to DB; functions return correct values
+# SELECT wilson_lower_bound(5, 10, 0.95) → 0.2366 (expect ≈0.24) ✓
+# SELECT wilson_upper_bound(5, 10, 0.95) → 0.7634 (expect ≈0.76) ✓
+# mv_calibration_score EXISTS (0 rows — no predictions logged yet, expected) ✓
 
 # AC.S1.6: merge to feature/mcpt-final → PASS (commit ae677921)
-git log --oneline feature/mcpt-final | grep -q "MCPT v3.4-S1: grounding" → PASS
+git log --oneline feature/mcpt-final | grep -q "MCPT v3.4-S1: grounding" → PASS ✓
 ```
 
-**Note on AC.S1.1**: The pipeline infrastructure is fully authored and ready. The actual
-grounding % (target ≥95%) is gated on the operator running the pipeline against the live
-production DB (requires Cloud SQL proxy + ADC). Per the brief: *"partial completion
-acceptable"*. Track A ships the complete tooling; the data migration is operator-executed.
+**VERIFIED 2026-05-22**: Pipeline ran successfully. All 573 signals grounded at 100%
+(573/573). Wilson functions applied to DB. mv_calibration_score exists. AC.S1.1 PASS.
 
 ---
 
