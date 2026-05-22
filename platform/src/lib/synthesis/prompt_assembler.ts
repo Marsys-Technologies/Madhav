@@ -129,3 +129,89 @@ export function assembleWithCacheBreakpoints(
 export function countCacheBreakpoints(messages: AssembledMessage[]): number {
   return messages.filter(m => m.cache_control?.type === 'ephemeral').length
 }
+
+// ---------------------------------------------------------------------------
+// D-S5 — Cache-Aware Prompt Layout
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonical cache-aware section ordering for multi-provider synthesis:
+ *   tools → system → RAG bundle → history turns → current turn
+ *
+ * This ordering is optimal for all 4 provider cache strategies:
+ *   - Anthropic (explicit_4bp): 4 breakpoints sit at exact section boundaries
+ *   - Google (cached_content_api): system + RAG cached as a unit
+ *   - OpenAI (automatic): stable prefix maximises cache hit probability
+ *   - DeepSeek (implicit): same stable-prefix benefit as OpenAI
+ *
+ * When R11D_PROMPT_LAYOUT=true, the synthesis layer calls assembleWithCacheBreakpoints
+ * via this function. When false, the caller uses its prior assembly order.
+ */
+export const CACHE_AWARE_SECTION_ORDER = [
+  'tools',
+  'system',
+  'rag',
+  'history',
+  'current',
+] as const
+
+export type CacheSectionName = typeof CACHE_AWARE_SECTION_ORDER[number]
+
+/**
+ * Validates that a PromptSections object has the required sections for
+ * cache-effective operation. Returns a list of warnings (empty = clean).
+ *
+ * Used by Observatory telemetry to flag requests that can't benefit from caching.
+ */
+export function validateCacheSections(sections: PromptSections): string[] {
+  const warnings: string[] = []
+
+  if (!sections.toolsBlock) {
+    warnings.push('tools block absent — BP0 cache anchor missing')
+  }
+  if (!sections.systemPrompt) {
+    warnings.push('system prompt absent — BP1 cache anchor missing')
+  }
+  if (!sections.ragBundle) {
+    warnings.push('RAG bundle absent — BP2 cache anchor missing; caching only on tools+system')
+  }
+  if (!sections.historyTurns.some(t => t.role === 'assistant')) {
+    warnings.push('no assistant turn in history — BP3 last-turn anchor missing')
+  }
+
+  return warnings
+}
+
+/**
+ * Computes the estimated token coverage for the 4 Anthropic cache breakpoints.
+ *
+ * Returns a ratio of "tokens before last cache BP / total input tokens" — higher is
+ * better (more tokens cached means higher cost savings).
+ *
+ * Note: this is a structural estimate only (character-based). Accurate token
+ * counts require tokenizer integration (D-S6 Observatory tile adds the measured value).
+ */
+export function estimateCacheCoverage(sections: PromptSections): {
+  bp0HasContent: boolean
+  bp1HasContent: boolean
+  bp2HasContent: boolean
+  bp3HasContent: boolean
+  bpCount: number
+  structuralCoverageWarnings: string[]
+} {
+  const bp0HasContent = Boolean(sections.toolsBlock)
+  const bp1HasContent = Boolean(sections.systemPrompt)
+  const bp2HasContent = Boolean(sections.ragBundle)
+  const bp3HasContent = sections.historyTurns.some(t => t.role === 'assistant')
+
+  const bpCount = [bp0HasContent, bp1HasContent, bp2HasContent, bp3HasContent].filter(Boolean).length
+
+  return {
+    bp0HasContent,
+    bp1HasContent,
+    bp2HasContent,
+    bp3HasContent,
+    bpCount,
+    structuralCoverageWarnings: validateCacheSections(sections),
+  }
+}
