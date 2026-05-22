@@ -1,0 +1,511 @@
+schema_version: '1.0'
+queue_name: r11cde_streaming_caching_agentic
+generated_at: '2026-05-22'
+generated_by: Cowork session (R11 v2 Pattern 2+ scoping)
+total_entries: 27
+notes: >
+  R11.CDE composite stream-2. Walks R11.C (8 entries) → R11.D (8) → R11.E (11)
+  sequentially in one worktree. Three intermediate MERGEs (R11C-MERGE,
+  R11D-MERGE, R11E-MERGE) each open separate PRs to main. Concurrent with R11.B
+  stream-1. File-scope discipline: stream-2 touches provider adapters + route
+  + streaming/synthesis/observatory. Stream-2 MUST NOT touch UI components or
+  globals.css (stream-1 territory).
+
+external_gates: {}
+
+entries:
+
+# ─────────────────────────── R11.C — Streaming + Thinking ───────────────────────────
+
+- session_id: C-S0
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S0-streaming-capability-check.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: []
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    npx jest --testPathPattern="streaming-capability-check|C-S0" --passWithNoTests
+  expected_artifacts: [platform/tests/providers/streaming-capability-check.test.ts]
+  est_tokens: 50000
+  est_duration_min: 35
+  status: pending
+
+- session_id: C-S1
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S1-pre-token-thinking-indicator.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S0]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    test -f src/components/chat/PreTokenIndicator.tsx &&
+    grep -n "PreTokenIndicator" src/components/chat/AssistantMessage.tsx &&
+    npx jest --testPathPattern="PreTokenIndicator|C-S1" --passWithNoTests
+  expected_artifacts: [platform/src/components/chat/PreTokenIndicator.tsx, platform/src/components/chat/AssistantMessage.tsx]
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: C-S2
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S2-smooth-stream-rate-target.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -rn "NEXT_PUBLIC.*SMOOTH_STREAM_V3" src --include="*.ts*" && exit 1 ||
+    grep -n "TARGET_CPS" src/lib/streaming/smooth_stream.ts &&
+    npx jest --testPathPattern="smooth.?stream|C-S2" --passWithNoTests
+  expected_artifacts: [platform/src/lib/streaming/smooth_stream.ts]
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: C-S3
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S3-ext-thinking-auto-collapse.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "hasFirstTextDelta" src/components/chat/ReasoningProgress.tsx &&
+    npx jest --testPathPattern="ReasoningProgress|C-S3" --passWithNoTests
+  expected_artifacts: [platform/src/components/chat/ReasoningProgress.tsx]
+  est_tokens: 60000
+  est_duration_min: 45
+  status: pending
+
+- session_id: C-S4
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S4-adaptive-thinking-budgets.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S3]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    for p in anthropic google openai deepseek nvidia; do grep -n "thinking" src/lib/providers/$p/adapter.ts || exit 1; done &&
+    npx jest --testPathPattern="thinking-config|C-S4" --passWithNoTests
+  expected_artifacts: [platform/src/lib/synthesis/thinking_config.ts]
+  est_tokens: 90000
+  est_duration_min: 65
+  status: pending
+
+- session_id: C-S5
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S5-inline-tool-cards.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S4]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    test -f src/components/chat/ToolCallCard.tsx &&
+    test ! -f src/components/chat/InlineToolCard.tsx &&
+    grep -n "NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS" ../.github/workflows/deploy.yml &&
+    npx jest --testPathPattern="ToolCallCard|C-S5" --passWithNoTests
+  expected_artifacts: [platform/src/components/chat/ToolCallCard.tsx, platform/src/components/chat/tool_verbs.ts]
+  est_tokens: 80000
+  est_duration_min: 60
+  status: pending
+
+- session_id: C-S6
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/C-S6-stop-and-retain-partial.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S5]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    test -f tests/e2e/chat-v2/stop-and-retain-r11c.spec.ts &&
+    npx jest --testPathPattern="C-S6" --passWithNoTests
+  expected_artifacts: [platform/tests/e2e/chat-v2/stop-and-retain-r11c.spec.ts]
+  est_tokens: 60000
+  est_duration_min: 45
+  status: pending
+
+- session_id: R11C-MERGE
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/R11C_MERGE-auto-pr-merge.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [C-S0, C-S1, C-S2, C-S3, C-S4, C-S5, C-S6]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE &&
+    git push -u origin chat-v2/round11-cde-c 2>&1 | head -3 &&
+    gh pr view chat-v2/round11-cde-c --json state,number 2>/dev/null | grep -q '"number"' &&
+    gh pr view chat-v2/round11-cde-c --json autoMergeRequest,state | grep -E '"state":"MERGED"|"autoMergeRequest":\{'
+  expected_artifacts: []
+  est_tokens: 40000
+  est_duration_min: 15
+  status: pending
+
+# ─────────────────────────── R11.D — Caching ───────────────────────────
+
+- session_id: D-S0
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S0-caching-capability-check.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [R11C-MERGE]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    npx jest --testPathPattern="caching-capability-check|D-S0" --passWithNoTests
+  expected_artifacts: [platform/tests/providers/caching-capability-check.test.ts]
+  est_tokens: 50000
+  est_duration_min: 30
+  status: pending
+
+- session_id: D-S1
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S1-anthropic-4bp-cache.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S0]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -rn "NEXT_PUBLIC.*ANTHROPIC_CACHE" src --include="*.ts*" && exit 1 ||
+    grep -n "cache_control" src/lib/providers/anthropic/adapter.ts &&
+    npx jest --testPathPattern="D-S1|anthropic.*cache" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/anthropic/adapter.ts, platform/src/lib/synthesis/prompt_assembler.ts, platform/src/lib/observatory/cache_metrics.ts]
+  est_tokens: 100000
+  est_duration_min: 70
+  status: pending
+
+- session_id: D-S2
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S2-gemini-cachedcontent.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "cachedContent" src/lib/providers/google/adapter.ts &&
+    npx jest --testPathPattern="D-S2|gemini.*cache" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/google/adapter.ts, platform/src/lib/providers/google/cached_content.ts]
+  est_tokens: 90000
+  est_duration_min: 60
+  status: pending
+
+- session_id: D-S3
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S3-openai-automatic-cache-telemetry.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "cached_tokens" src/lib/providers/openai/adapter.ts &&
+    npx jest --testPathPattern="D-S3|openai.*cache" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/openai/adapter.ts]
+  est_tokens: 50000
+  est_duration_min: 35
+  status: pending
+
+- session_id: D-S4
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S4-deepseek-implicit-cache-telemetry.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S3]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "prompt_cache_hit_tokens" src/lib/providers/deepseek/adapter.ts &&
+    npx jest --testPathPattern="D-S4|deepseek.*cache" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/deepseek/adapter.ts]
+  est_tokens: 50000
+  est_duration_min: 35
+  status: pending
+
+- session_id: D-S5
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S5-cache-aware-prompt-layout.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S4]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -rn "NEXT_PUBLIC.*PROMPT_LAYOUT" src --include="*.ts*" && exit 1 ||
+    npx jest --testPathPattern="D-S5|prompt-layout" --passWithNoTests
+  expected_artifacts: [platform/src/lib/synthesis/prompt_assembler.ts]
+  est_tokens: 80000
+  est_duration_min: 60
+  status: pending
+
+- session_id: D-S6
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/D-S6-observatory-cache-tile.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S5]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    test -f src/components/observatory/CacheMetricsTile.tsx &&
+    npx jest --testPathPattern="CacheMetricsTile|D-S6" --passWithNoTests
+  expected_artifacts: [platform/src/components/observatory/CacheMetricsTile.tsx]
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: R11D-MERGE
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/R11D_MERGE-auto-pr-merge.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [D-S0, D-S1, D-S2, D-S3, D-S4, D-S5, D-S6]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE &&
+    git push -u origin chat-v2/round11-cde-d 2>&1 | head -3 &&
+    gh pr view chat-v2/round11-cde-d --json state,number 2>/dev/null | grep -q '"number"' &&
+    gh pr view chat-v2/round11-cde-d --json autoMergeRequest,state | grep -E '"state":"MERGED"|"autoMergeRequest":\{'
+  expected_artifacts: []
+  est_tokens: 40000
+  est_duration_min: 15
+  status: pending
+
+# ─────────────────────────── R11.E — Adaptive Tool Sequencing ───────────────────────────
+
+- session_id: E-S0
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S0-tool-loop-capability-check.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [R11D-MERGE]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    npx jest --testPathPattern="tool-loop-capability-check|E-S0" --passWithNoTests
+  expected_artifacts: [platform/tests/providers/tool-loop-capability-check.test.ts]
+  est_tokens: 50000
+  est_duration_min: 30
+  status: pending
+
+- session_id: E-S1
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S1-anthropic-stop-reason-loop.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S0]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -rn "NEXT_PUBLIC.*ANTHROPIC_LOOP" src --include="*.ts*" && exit 1 ||
+    grep -n "stop_reason.*tool_use\|while.*tool_use" src/lib/synthesis/agentic_loop.ts &&
+    npx jest --testPathPattern="E-S1|anthropic.*loop" --passWithNoTests
+  expected_artifacts: [platform/src/lib/synthesis/agentic_loop.ts, platform/src/lib/providers/anthropic/adapter.ts]
+  est_tokens: 110000
+  est_duration_min: 80
+  status: pending
+
+- session_id: E-S2
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S2-gemini-function-calls-loop.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "finish_reason.*function_calls" src/lib/providers/google/adapter.ts src/lib/synthesis/agentic_loop.ts &&
+    npx jest --testPathPattern="E-S2|gemini.*loop" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/google/adapter.ts]
+  est_tokens: 90000
+  est_duration_min: 65
+  status: pending
+
+- session_id: E-S3
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S3-openai-tool-calls-loop.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "finish_reason.*tool_calls\|Responses" src/lib/providers/openai/adapter.ts &&
+    npx jest --testPathPattern="E-S3|openai.*loop" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/openai/adapter.ts]
+  est_tokens: 90000
+  est_duration_min: 65
+  status: pending
+
+- session_id: E-S4
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S4-deepseek-loop.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S3]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "extractReasoningMiddleware" src/lib/providers/deepseek/adapter.ts &&
+    npx jest --testPathPattern="E-S4|deepseek.*loop" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/deepseek/adapter.ts]
+  est_tokens: 80000
+  est_duration_min: 55
+  status: pending
+
+- session_id: E-S5
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S5-nvidia-loop.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S4]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    npx jest --testPathPattern="E-S5|nvidia.*loop" --passWithNoTests
+  expected_artifacts: [platform/src/lib/providers/nvidia/adapter.ts]
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: E-S6
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S6-interleaved-text-tool.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S5]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    npx jest --testPathPattern="E-S6|interleaved" --passWithNoTests
+  expected_artifacts: [platform/tests/synthesis/interleaved-text-tool.test.ts]
+  est_tokens: 60000
+  est_duration_min: 45
+  status: pending
+
+- session_id: E-S7
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S7-tool-error-recovery.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S6]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    npx jest --testPathPattern="E-S7|tool-error-recovery" --passWithNoTests
+  expected_artifacts: [platform/tests/synthesis/tool-error-recovery.test.ts]
+  est_tokens: 60000
+  est_duration_min: 45
+  status: pending
+
+- session_id: E-S8
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S8-iteration-cap-safety.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S7]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    grep -n "MAX_ITERATIONS\|AgenticLoopCapExceeded" src/lib/synthesis/agentic_loop.ts &&
+    npx jest --testPathPattern="E-S8|iteration-cap" --passWithNoTests
+  expected_artifacts: [platform/src/lib/synthesis/agentic_loop.ts]
+  est_tokens: 50000
+  est_duration_min: 35
+  status: pending
+
+- session_id: E-S9
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/E-S9-tool-loop-observability.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S8]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE/platform &&
+    test -f src/components/observatory/ToolLoopMetricsTile.tsx &&
+    npx jest --testPathPattern="E-S9|tool_loop_metrics" --passWithNoTests
+  expected_artifacts: [platform/src/components/observatory/ToolLoopMetricsTile.tsx, platform/src/lib/observatory/tool_loop_metrics.ts]
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: R11E-MERGE
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-CDE/R11E_MERGE-auto-pr-merge.md
+  branch: chat-v2/round11-cde
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE
+  depends_on: [E-S0, E-S1, E-S2, E-S3, E-S4, E-S5, E-S6, E-S7, E-S8, E-S9]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11CDE &&
+    git push -u origin chat-v2/round11-cde-e 2>&1 | head -3 &&
+    gh pr view chat-v2/round11-cde-e --json state,number 2>/dev/null | grep -q '"number"' &&
+    gh pr view chat-v2/round11-cde-e --json autoMergeRequest,state | grep -E '"state":"MERGED"|"autoMergeRequest":\{'
+  expected_artifacts: []
+  est_tokens: 40000
+  est_duration_min: 15
+  status: pending

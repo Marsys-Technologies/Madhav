@@ -1,0 +1,223 @@
+schema_version: '1.0'
+queue_name: r11b_look_and_feel
+generated_at: '2026-05-22'
+generated_by: Cowork session (R11 v2 Pattern 2+ scoping)
+total_entries: 10
+notes: >
+  R11.B — Look-and-Feel. 9 implementation sessions (B-S0..B-S8) + 1 terminal
+  merge (R11B-MERGE). Sequential within phase. Stream-1 of Pattern 2+ parallel
+  launch — runs concurrently with R11.CDE (stream-2). File-scope discipline:
+  stream-1 touches UI components + globals.css only. NEVER touches provider
+  adapters, route.ts, streaming/, synthesis/ (stream-2 territory).
+
+external_gates: {}
+
+entries:
+
+- session_id: B-S0
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S0-adapter-health-check.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: []
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    test -f src/components/dev/R11BHealthCheck.tsx &&
+    npx jest --testPathPattern="R11BHealthCheck|B-S0" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/dev/R11BHealthCheck.tsx
+  est_tokens: 60000
+  est_duration_min: 40
+  status: pending
+
+- session_id: B-S1
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S1-typography-stack.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S0]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    grep -n "MARSYS_FLAG_R11B_LOOK_AND_FEEL" src/lib/config/feature_flags.ts &&
+    grep -n "NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL" ../.github/workflows/deploy.yml &&
+    grep -n "r11b-active" src/app/globals.css &&
+    npx jest --testPathPattern="typography|B-S1" --passWithNoTests
+  expected_artifacts:
+    - platform/src/app/globals.css
+    - platform/src/components/consume/ConsumeChatV2.tsx
+    - platform/src/lib/config/feature_flags.ts
+    - .github/workflows/deploy.yml
+  est_tokens: 80000
+  est_duration_min: 55
+  status: pending
+
+- session_id: B-S2
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S2-user-bubble-dimensions.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S1]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    grep -n "v2-user-bubble--r11b-shape\|r11b-active .v2-user-bubble" src/components/chat/UserMessage.tsx src/app/globals.css &&
+    npx jest --testPathPattern="UserMessage|B-S2" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/chat/UserMessage.tsx
+    - platform/src/app/globals.css
+  est_tokens: 70000
+  est_duration_min: 45
+  status: pending
+
+- session_id: B-S3
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S3-message-container-shape.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S2]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    grep -n "r11b-active.*AssistantMessage\|max-width.*48rem" src/components/chat/AssistantMessage.tsx src/components/consume/ConsumeChatV2.tsx src/app/globals.css &&
+    npx jest --testPathPattern="AssistantMessage|message-container|B-S3" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/chat/AssistantMessage.tsx
+    - platform/src/components/consume/ConsumeChatV2.tsx
+    - platform/src/components/chat/MessageActionBar.tsx
+  est_tokens: 90000
+  est_duration_min: 65
+  status: pending
+
+- session_id: B-S4
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S4-composer-chrome.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S3]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    grep -n "r11b-active .*consume-composer-card" src/app/globals.css src/components/chat/Composer.tsx &&
+    npx jest --testPathPattern="Composer|B-S4" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/chat/Composer.tsx
+    - platform/src/app/globals.css
+  est_tokens: 80000
+  est_duration_min: 55
+  status: pending
+
+- session_id: B-S5
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S5-sidebar-chrome.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S4]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    grep -n "r11b-active.*conversation" src/components/consume/ConversationSidebarV2.tsx src/app/globals.css &&
+    npx jest --testPathPattern="ConversationSidebar|B-S5" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/consume/ConversationSidebarV2.tsx
+    - platform/src/app/globals.css
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: B-S6
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S6-markdown-content-typescale.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S5]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    grep -n "r11b-active.*markdown" src/app/globals.css src/components/chat/MarkdownContent.tsx &&
+    npx jest --testPathPattern="MarkdownContent|B-S6" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/chat/MarkdownContent.tsx
+    - platform/src/app/globals.css
+  est_tokens: 80000
+  est_duration_min: 55
+  status: pending
+
+- session_id: B-S7
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S7-inline-citation-parity.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S6]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    test -f src/components/chat/NumberedCitation.tsx &&
+    test ! -f src/components/chat/CitationSidePanel.tsx &&
+    grep -rn "CitationSidePanel\|CitationCtx" src --include="*.ts*" | grep -v ".test." && exit 1 ||
+    grep -n "sourceKind\|sourceUrl\|onActivate" src/components/chat/NumberedCitation.tsx &&
+    npx jest --testPathPattern="NumberedCitation|B-S7" --passWithNoTests
+  expected_artifacts:
+    - platform/src/components/chat/NumberedCitation.tsx
+    - platform/src/components/chat/MarkdownContent.tsx
+    - platform/src/components/consume/ConsumeChatV2.tsx
+  est_tokens: 110000
+  est_duration_min: 80
+  status: pending
+
+- session_id: B-S8
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/B-S8-brand-preservation-audit.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S7]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B/platform &&
+    test -f tests/visual/R11B_brand_preservation.spec.ts &&
+    echo "Visual regression test must be run with Playwright separately; gate only checks file exists"
+  expected_artifacts:
+    - platform/tests/visual/R11B_brand_preservation.spec.ts
+  est_tokens: 70000
+  est_duration_min: 50
+  status: pending
+
+- session_id: R11B-MERGE
+  brief_path: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/phase-B/R11B_MERGE-auto-pr-merge.md
+  branch: chat-v2/round11-b-look-and-feel
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavR11B
+  depends_on: [B-S0, B-S1, B-S2, B-S3, B-S4, B-S5, B-S6, B-S7, B-S8]
+  requires_external_gate: null
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: >
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavR11B &&
+    SOURCE_FLAGS=$(grep -rn "NEXT_PUBLIC_MARSYS_FLAG_R11B" platform/src --include="*.ts*" -o 2>/dev/null | awk -F: '{print $NF}' | sort -u) &&
+    YML_FLAGS=$(grep -oE "NEXT_PUBLIC_MARSYS_FLAG_R11B_[A-Z_]+" .github/workflows/deploy.yml 2>/dev/null | sort -u) &&
+    for f in $SOURCE_FLAGS; do echo "$YML_FLAGS" | grep -q "^$f$" || { echo "FAIL: $f not in deploy.yml"; exit 1; }; done &&
+    gh pr view chat-v2/round11-b-look-and-feel --json state,number 2>/dev/null | grep -q '"number"' &&
+    gh pr view chat-v2/round11-b-look-and-feel --json autoMergeRequest,state | grep -E '"state":"MERGED"|"autoMergeRequest":\{'
+  expected_artifacts: []
+  est_tokens: 40000
+  est_duration_min: 15
+  status: pending
