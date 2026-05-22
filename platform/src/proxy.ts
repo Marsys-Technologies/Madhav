@@ -38,7 +38,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/reset-password') ||
     pathname.startsWith('/api/access-requests') ||
-    pathname.startsWith('/api/mcp/')
+    pathname.startsWith('/api/mcp/') ||
+    pathname.startsWith('/api/admin/internal/') ||
+    pathname.startsWith('/api/admin/cron/')
 
   if (!isPublic) {
     const sessionCookie = request.cookies.get('__session')?.value
