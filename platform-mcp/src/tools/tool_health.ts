@@ -80,7 +80,7 @@ Tier restriction: super_admin + acharya only. client tier = 403.`,
           signal: AbortSignal.timeout(10_000),
         })
 
-        const data = await response.json()
+        const data = await response.json() as Record<string, unknown>
 
         return {
           content: [
