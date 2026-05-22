@@ -97,9 +97,36 @@ export class AnthropicAdapter implements CapabilityAdapter {
     };
   }
 
-  cache(_request: CacheRequest): CacheResponse {
-    // R11.D — Prompt Caching (Anthropic: cache_control breakpoints)
-    throw new CapabilityUnsupportedError('cache', 'anthropic');
+  cache(request: CacheRequest): CacheResponse {
+    // R11.D — Anthropic 4-breakpoint cache_control (NATIVE_RULINGS §4).
+    //
+    // Canonical breakpoint positions (0-indexed, relative to assembled message array):
+    //   BP0: end-of-tools     — after the tool definitions block
+    //   BP1: end-of-system    — at the end of the system prompt
+    //   BP2: end-of-RAG       — after the last retrieval/bundle message
+    //   BP3: last-turn        — at the last assistant turn in history
+    //
+    // The prompt_assembler.ts (D-S1) injects `cache_control: { type: 'ephemeral' }`
+    // at these positions when this config is returned.
+    //
+    // 5-minute TTL (ephemeral). Cache hits reduce input tokens by ~90%.
+    // Cost model: cache write = 1.25x base; cache read = 0.1x base.
+    const defaultBreakpoints = [
+      0,  // BP0: end-of-tools
+      1,  // BP1: end-of-system
+      2,  // BP2: end-of-RAG-bundle
+      3,  // BP3: last-assistant-turn
+    ];
+    return {
+      mode: 'explicit_4bp',
+      breakpointPositions: request.breakpointPositions ?? defaultBreakpoints,
+      providerPayload: {
+        // Anthropic API shape injected by prompt_assembler at each breakpoint position
+        cacheControl: { type: 'ephemeral' },
+        ttlMinutes: 5,
+        maxBreakpoints: 4,
+      },
+    };
   }
 
   tools(_request: ToolsRequest): ToolsResponse {
