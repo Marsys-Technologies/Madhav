@@ -19,12 +19,12 @@
  * MCPT v3.1.0-S4
  */
 
-import { extractCitations, hasCitation } from './heuristics/extract_citations.js'
-import { hasNumericalClaims } from './heuristics/extract_numerical_claims.js'
-import { isForwardLooking, extractForwardLookingPhrases } from './heuristics/forward_looking.js'
-import { checkSanskritGlossing } from './heuristics/sanskrit_glossing.js'
-import { detectLayerMixing } from './heuristics/layer_attribution.js'
-import { isNonFactualResponse, meetsNonFactualShape } from './heuristics/is_non_factual.js'
+import { extractCitations, hasCitation } from './heuristics/extract_citations'
+import { hasNumericalClaims } from './heuristics/extract_numerical_claims'
+import { isForwardLooking, extractForwardLookingPhrases } from './heuristics/forward_looking'
+import { checkSanskritGlossing } from './heuristics/sanskrit_glossing'
+import { detectLayerMixing } from './heuristics/layer_attribution'
+import { isNonFactualResponse, meetsNonFactualShape } from './heuristics/is_non_factual'
 
 // ── DB client interface ────────────────────────────────────────────────────────
 // We use a minimal fetch-based DB client to avoid server-only/edge runtime issues
