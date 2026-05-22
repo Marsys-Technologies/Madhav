@@ -86,11 +86,47 @@ classify (45ms), 6 tool steps (parallel, 1200ms total), synthesis (4300ms).`,
         }
       }
 
+      // MCPT v3.1.0-S4: Fetch audit findings for this trace and include in response.
+      // Findings are populated by the nightly audit job (03:00 UTC); may be empty
+      // for traces from the current day.
+      let audit_findings: unknown[] = []
+      try {
+        const auditResponse = await fetch(
+          `${process.env['PLATFORM_URL'] ?? 'http://localhost:3000'}/api/mcp/health/audit-findings?trace_id=${encodeURIComponent(trace_id)}`,
+          {
+            method: 'GET',
+            headers: {
+              'X-MCP-Internal-Token': process.env['MCP_INTERNAL_TOKEN'] ?? '',
+              'X-MCP-User': principal.user_uid,
+              'X-MCP-Audience-Tier': principal.audience_tier,
+              'X-MCP-Key-Id': principal.key_id,
+            },
+            signal: AbortSignal.timeout(3_000),
+          }
+        )
+        if (auditResponse.ok) {
+          const auditData = (await auditResponse.json()) as { findings?: unknown[] }
+          audit_findings = auditData.findings ?? []
+        }
+      } catch {
+        // Audit findings are optional; non-fatal if unavailable
+        audit_findings = []
+      }
+
+      // Merge audit_findings into the envelope result
+      const enrichedEnvelope = {
+        ...result.envelope,
+        audit_findings,
+        audit_findings_note: audit_findings.length === 0
+          ? 'No audit findings for this trace (nightly audit runs at 03:00 UTC; today\'s traces may not yet have findings).'
+          : `${audit_findings.length} finding(s) attached by nightly audit.`,
+      }
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
+            text: JSON.stringify(enrichedEnvelope, null, 2),
           },
         ],
       }

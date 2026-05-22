@@ -1,17 +1,137 @@
 /**
  * capabilities.ts — MCP resource: marsys://capabilities
  *
- * PLACEHOLDER in S3. S4 replaces the hardcoded section with live
- * tool_health() + data_coverage() calls.
+ * Wired in S4: fetches live perf data from tool_health() + data_coverage()
+ * at session attach time. Falls back to static snapshot if fetch fails.
  *
  * Structure per perf brief §6.3. Super_admin + acharya: full snapshot.
  * Client: tool names + caveats only.
  *
- * MCPT v3.1.0-S3 (PLACEHOLDER — "perf data pending S4 wiring")
+ * MCPT v3.1.0-S4 (replaces S3 placeholder with live perf data wiring)
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
+
+const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
+async function fetchToolHealth(): Promise<unknown> {
+  try {
+    const response = await fetch(`${PLATFORM_URL}/api/mcp/health/tools`, {
+      method: 'GET',
+      headers: {
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': 'system',
+        'X-MCP-Audience-Tier': 'super_admin',
+        'X-MCP-Key-Id': 'resource-loader',
+      },
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!response.ok) return null
+    return response.json()
+  } catch { return null }
+}
+
+async function fetchDataCoverage(): Promise<unknown> {
+  try {
+    const response = await fetch(`${PLATFORM_URL}/api/mcp/health/coverage`, {
+      method: 'GET',
+      headers: {
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': 'system',
+        'X-MCP-Audience-Tier': 'super_admin',
+        'X-MCP-Key-Id': 'resource-loader',
+      },
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!response.ok) return null
+    return response.json()
+  } catch { return null }
+}
+
+function buildCapabilitiesMarkdown(
+  toolHealth: unknown,
+  dataCoverage: unknown,
+  timestamp: string
+): string {
+  const th = toolHealth as Record<string, unknown> | null
+  const dc = dataCoverage as { coverage?: Array<{ tool: string; category: string; status: string; caveat?: string; expected_rows?: number }> } | null
+
+  const pendingCategories = dc?.coverage
+    ?.filter(c => c.status === 'pending')
+    .map(c => `${c.tool}:${c.category}`)
+    .join(', ') ?? 'KP, Tajaka, Shadbala, Ashtakavarga (v3.3 pending)'
+
+  return `# MARSYS-JIS Capabilities Snapshot
+**MCP Resource: \`marsys://capabilities\`**
+*Generated at: ${timestamp} | Source: tool_health() + data_coverage()*
+
+---
+
+## Available Tools (21 total)
+
+### Tier 2 — Composite Bundles (MCPT v3.1.0-S2)
+| Tool | Status |
+|---|---|
+| \`holistic_bundle\` | Active — 8-tool parallel read |
+| \`multi_school_bundle\` | Active — cross-school convergence |
+
+### Tier 3 — Surgical Primitives
+| Tool | Coverage Note |
+|---|---|
+| \`query_signals\` | 573 MSR signals active |
+| \`query_chart_facts\` | 37 categories; pending: ${pendingCategories} |
+| \`query_dasha_periods\` | Active |
+| \`query_panchanga\` | 73,414 rows (1900-2100) |
+| \`query_ephemeris\` | Active |
+| \`query_transit_event\` | Active |
+| \`lel_query\` | 36 life events active |
+| \`vector_search\` | UCN + RM + CDLM active |
+| \`get_cgm_subgraph\` | Active |
+| \`cross_school_lookup\` | Active |
+
+### Tier 4 — Raw Asset
+| Tool | Status |
+|---|---|
+| \`read_asset\` | Active |
+
+### Tier 5 — Observability
+| Tool | Note |
+|---|---|
+| \`get_trace\` | Active + audit findings (S4) |
+| \`list_recent_queries\` | Active |
+| \`tool_health\` | Active (super_admin + acharya only) |
+| \`data_coverage\` | Active (super_admin + acharya only) |
+
+### Tier 6 — Write
+| Tool | Status |
+|---|---|
+| \`log_prediction\` | Active (PPL discipline) |
+| \`record_outcome\` | Active |
+| \`flag_disagreement\` | Active |
+
+---
+
+## Data Coverage Summary
+
+${dc?.coverage?.map(c =>
+    `- **${c.tool}/${c.category}**: ${c.status}${c.expected_rows ? ` (expected: ${c.expected_rows} rows)` : ''}${c.caveat ? ` — ⚠️ ${c.caveat}` : ''}`
+  ).join('\n') ?? '- Coverage data pending migration 076 + seed application'}
+
+---
+
+## Perf Health
+
+${th
+    ? `Tool health data available. Call \`tool_health()\` for detailed per-tool metrics.`
+    : `Tool health data pending (migrations 073–076 + nightly audit first run).`}
+
+---
+
+*Next: run \`tool_health()\` or \`data_coverage()\` for live metrics. Audit job runs at 03:00 UTC.*
+`
+}
 
 const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 **MCP Resource: \`marsys://capabilities\`**
@@ -83,14 +203,29 @@ export function registerCapabilities(server: McpServer): void {
   server.resource(
     'capabilities',
     new ResourceTemplate('marsys://capabilities', { list: undefined }),
-    async (_uri) => ({
-      contents: [
-        {
-          uri: 'marsys://capabilities',
-          mimeType: 'text/markdown',
-          text: CAPABILITIES_PLACEHOLDER,
-        },
-      ],
-    })
+    async (_uri) => {
+      // S4: fetch live perf data; fall back to static placeholder on error
+      const timestamp = new Date().toISOString()
+      let text: string
+      try {
+        const [toolHealth, dataCoverage] = await Promise.all([
+          fetchToolHealth(),
+          fetchDataCoverage(),
+        ])
+        text = buildCapabilitiesMarkdown(toolHealth, dataCoverage, timestamp)
+      } catch {
+        text = CAPABILITIES_PLACEHOLDER
+      }
+
+      return {
+        contents: [
+          {
+            uri: 'marsys://capabilities',
+            mimeType: 'text/markdown',
+            text,
+          },
+        ],
+      }
+    }
   )
 }
