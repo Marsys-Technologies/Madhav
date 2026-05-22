@@ -944,11 +944,20 @@ export async function POST(request: Request) {
           writer.write({ type: 'data-stage', data: stagePart('tool_fetch', 'done', toolFetchMs) })
           writer.write({ type: 'data-stage', data: stagePart('synthesis', 'running') })
           pendingStreamWriter.onEvent()
+          // AI SDK v6 UI message stream protocol requires text-start before text-delta,
+          // and text-end + finish after the last delta.
+          const adapterTextPartId = 'text-0'
+          let adapterTextStarted = false
           try {
             for await (const event of adapter.chat(adapterChatReq)) {
               if (event.type === 'text_delta') {
+                if (!adapterTextStarted) {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  writer.write({ type: 'text-start', id: adapterTextPartId } as any)
+                  adapterTextStarted = true
+                }
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                writer.write({ type: 'text-delta', delta: event.text, id: adapterMsgId } as any)
+                writer.write({ type: 'text-delta', id: adapterTextPartId, delta: event.text } as any)
                 pendingStreamWriter.onTextDelta(event.text)
               } else if (event.type === 'thinking_delta') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -960,6 +969,12 @@ export async function POST(request: Request) {
           } catch (adapterErr) {
             console.error('[adapter-dispatch] stream error stack=%s', adapterId, adapterErr)
           }
+          if (adapterTextStarted) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            writer.write({ type: 'text-end', id: adapterTextPartId } as any)
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          writer.write({ type: 'finish', finishReason: 'stop' } as any)
           writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - adapterStartMs) })
           writer.write({
             type: 'data-observability',
