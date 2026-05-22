@@ -1,14 +1,17 @@
 /**
- * google/adapter.ts — Google (Gemini) CapabilityAdapter skeleton (A-S3).
+ * google/adapter.ts — Google (Gemini) CapabilityAdapter (R11.C real SDK wiring).
  *
  * Implements CapabilityAdapter for the Google/Gemini stack.
- * chat() provides a skeleton that will be wired to the Gemini AI SDK in A-S7.
+ * chat() uses streamText() + @ai-sdk/google with real streaming.
+ * Supports thinking_delta events via 'reasoning' parts in the fullStream
+ * (Gemini 2.5 extended thinking exposed via Vercel AI SDK reasoning-delta parts).
  * Other capability methods throw CapabilityUnsupportedError with phase pointers.
  *
- * Key Gemini-specific note: thinkingBudget is set via the generation config
- * `thinkingConfig: { thinkingBudget: N }` — the adapter will handle this in R11.C.
+ * Key Gemini-specific note: thinkingBudget is set via providerOptions.google.thinkingConfig.
  */
 
+import { streamText } from 'ai';
+import { google as googleProvider } from '@ai-sdk/google';
 import type { CapabilityAdapter } from '../adapter';
 import { CapabilityUnsupportedError } from '../adapter';
 import type { ProviderCapabilities } from '../capabilities';
@@ -39,7 +42,6 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { GOOGLE_MANIFEST } from './manifest';
-import { migrationAdapter } from '../migration-adapter';
 
 export class GoogleAdapter implements CapabilityAdapter {
   readonly providerId = 'google';
@@ -49,11 +51,71 @@ export class GoogleAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
-   * R11.C will wire in the actual Gemini SDK stream.
+   * Primary streaming chat — real implementation via Vercel AI SDK + @ai-sdk/google.
+   * Streams text and thinking deltas from fullStream parts.
+   * 'reasoning' parts map to thinking_delta (Gemini 2.5 extended thinking).
+   * 'text-delta' parts map to text_delta.
+   * 'finish' part emits usage + message_stop.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    yield* migrationAdapter.stubChat(request, 'google');
+    // Extract system instruction: explicit request.system takes priority,
+    // then fall back to a system-role message in the messages array.
+    const systemContent =
+      request.system ??
+      (request.messages.find((m) => m.role === 'system')?.content as string | undefined);
+
+    // Filter out system messages — passed separately above.
+    const conversationMessages = request.messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content as string,
+      }));
+
+    // Build provider options — include thinkingConfig if set.
+    // Gemini shape: providerOptions.google.thinkingConfig: { thinkingBudget: N }
+    const thinkingConfig = request.thinkingConfig?.providerPayload?.['thinkingConfig'] as
+      | Record<string, unknown>
+      | undefined;
+    const providerOptions = thinkingConfig
+      ? { google: { thinkingConfig } }
+      : undefined;
+
+    try {
+      const result = streamText({
+        model: googleProvider(request.model),
+        ...(systemContent ? { system: systemContent } : {}),
+        messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
+        maxTokens: request.maxTokens ?? 8192,
+        ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+        ...(providerOptions ? { providerOptions } : {}),
+      });
+
+      for await (const part of result.fullStream) {
+        if (part.type === 'text-delta') {
+          yield { type: 'text_delta', text: part.textDelta };
+        } else if (part.type === 'reasoning') {
+          // Extended thinking — Vercel AI SDK surfaces Gemini thought parts as 'reasoning'
+          yield { type: 'thinking_delta', thinking: part.textDelta };
+        } else if (part.type === 'finish') {
+          yield {
+            type: 'usage',
+            inputTokens: part.totalUsage.inputTokens ?? 0,
+            outputTokens: part.totalUsage.outputTokens ?? 0,
+          };
+          yield {
+            type: 'message_stop',
+            stopReason: part.finishReason ?? 'end_turn',
+          };
+        } else if (part.type === 'error') {
+          const errMsg = part.error instanceof Error ? part.error.message : String(part.error);
+          yield { type: 'error', error: errMsg };
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      yield { type: 'error', error: message };
+    }
   }
 
   thinking(request: ThinkingRequest): ThinkingResponse {

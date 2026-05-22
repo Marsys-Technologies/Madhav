@@ -9,6 +9,8 @@
  * This middleware call will be wired in A-S7 (dispatcher) when USE_ADAPTERS=true.
  */
 
+import { streamText } from 'ai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import type { CapabilityAdapter } from '../adapter';
 import { CapabilityUnsupportedError } from '../adapter';
 import type { ProviderCapabilities } from '../capabilities';
@@ -39,7 +41,6 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { DEEPSEEK_MANIFEST } from './manifest';
-import { migrationAdapter } from '../migration-adapter';
 
 export class DeepSeekAdapter implements CapabilityAdapter {
   readonly providerId = 'deepseek';
@@ -49,12 +50,69 @@ export class DeepSeekAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — delegates to MigrationAdapter (A-S10).
-   * Production note: R11.C wires extractReasoningMiddleware from the AI SDK
-   * to extract <think>...</think> blocks → ChatEvent { type: 'thinking_delta' }.
+   * Primary streaming chat — real DeepSeek implementation via @ai-sdk/deepseek.
+   *
+   * DeepSeek R1 emits reasoning via `reasoning-delta` stream parts (AI SDK
+   * extracts reasoning_content from the OpenAI-compat delta automatically).
+   * Surfaced as ChatEvent { type: 'thinking_delta' }.
+   *
+   * Cache telemetry: prompt_cache_hit_tokens from usage maps to cacheReadTokens.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
-    yield* migrationAdapter.stubChat(request, 'deepseek');
+    try {
+      const deepseek = createDeepSeek({
+        apiKey: process.env.DEEPSEEK_API_KEY ?? '',
+        baseURL: 'https://api.deepseek.com/v1',
+      });
+
+      // Extract system prompt — explicit request.system takes priority,
+      // then fall back to first system-role message.
+      const systemPrompt: string | undefined =
+        request.system ??
+        (request.messages.find((m) => m.role === 'system')?.content as string | undefined);
+
+      // Build messages for AI SDK — filter out system messages (passed separately)
+      const messages = request.messages
+        .filter((m) => m.role !== 'system')
+        .map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+        }));
+
+      const result = streamText({
+        model: deepseek(request.model),
+        ...(systemPrompt ? { system: systemPrompt } : {}),
+        messages,
+        maxOutputTokens: request.maxTokens ?? 8192,
+        ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+      });
+
+      for await (const part of result.fullStream) {
+        if (part.type === 'text-delta') {
+          yield { type: 'text_delta', text: part.text };
+        } else if (part.type === 'reasoning-delta') {
+          // DeepSeek R1 reasoning_content surfaced by AI SDK as reasoning-delta
+          yield { type: 'thinking_delta', thinking: part.text };
+        } else if (part.type === 'finish') {
+          // Emit usage before stop — AI SDK exposes totalUsage on finish
+          const usage = part.totalUsage;
+          yield {
+            type: 'usage',
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+            // cacheReadTokens surfaced from inputTokenDetails when available
+            cacheReadTokens: usage.inputTokenDetails?.cacheReadTokens ?? 0,
+          };
+          yield {
+            type: 'message_stop',
+            stopReason: part.finishReason ?? 'end_turn',
+          };
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      yield { type: 'error', error: message };
+    }
   }
 
   thinking(_request: ThinkingRequest): ThinkingResponse {
