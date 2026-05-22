@@ -13,36 +13,15 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { runNightlyAudit } from '@/lib/perf/audit_nightly'
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    const payload = parts[1]
-    const padded = payload + '=='.slice((payload.length % 4) || 4)
-    const decoded = Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-    return JSON.parse(decoded) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
 function validateAuth(request: Request): boolean {
-  const authHeader = request.headers.get('Authorization') ?? ''
-
   const cronSecret = process.env['MARSYS_CRON_SECRET']
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true
+  if (!cronSecret) return false
 
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7)
-    const payload = decodeJwtPayload(token)
-    if (!payload) return false
+  const customHeader = request.headers.get('X-Marsys-Cron-Secret')
+  if (customHeader === cronSecret) return true
 
-    const schedulerSA = process.env['MARSYS_SCHEDULER_SA']
-    if (schedulerSA && payload['email'] === schedulerSA) return true
-
-    const email = payload['email'] as string | undefined
-    if (email?.endsWith('.iam.gserviceaccount.com')) return true
-  }
+  const authHeader = request.headers.get('Authorization') ?? ''
+  if (authHeader === `Bearer ${cronSecret}`) return true
 
   return false
 }

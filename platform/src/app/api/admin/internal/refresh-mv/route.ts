@@ -24,40 +24,17 @@ const ALLOWED_VIEWS = new Set([
   'school_convergence_index',
 ])
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    const payload = parts[1]
-    // pad base64url to standard base64
-    const padded = payload + '=='.slice((payload.length % 4) || 4)
-    const decoded = Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-    return JSON.parse(decoded) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
 function validateAuth(request: Request): boolean {
-  const authHeader = request.headers.get('Authorization') ?? ''
-
-  // Fallback: shared secret for local/CI use
   const cronSecret = process.env['MARSYS_CRON_SECRET']
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true
+  if (!cronSecret) return false
 
-  // OIDC token from Cloud Scheduler
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7)
-    const payload = decodeJwtPayload(token)
-    if (!payload) return false
+  // Primary: X-Marsys-Cron-Secret custom header (avoids Authorization header conflicts)
+  const customHeader = request.headers.get('X-Marsys-Cron-Secret')
+  if (customHeader === cronSecret) return true
 
-    const schedulerSA = process.env['MARSYS_SCHEDULER_SA']
-    if (schedulerSA && payload['email'] === schedulerSA) return true
-
-    // Accept any Google service account if SA not configured
-    const email = payload['email'] as string | undefined
-    if (email?.endsWith('.iam.gserviceaccount.com')) return true
-  }
+  // Fallback: standard Authorization Bearer (for local/CI use where scheduler isn't involved)
+  const authHeader = request.headers.get('Authorization') ?? ''
+  if (authHeader === `Bearer ${cronSecret}`) return true
 
   return false
 }
