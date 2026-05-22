@@ -1,0 +1,19 @@
+[pipeline] MSR signal-grounding pipeline starting...
+[setup] grounding columns ensured on msr_signals
+[pipeline] found 573 ungrounded signals
+[pipeline] 50/573 processed
+[pipeline] 100/573 processed
+[pipeline] 150/573 processed
+[pipeline] 200/573 processed
+[pipeline] 250/573 processed
+[pipeline] 300/573 processed
+[pipeline] 350/573 processed
+[pipeline] 400/573 processed
+[pipeline] 450/573 processed
+[pipeline] 500/573 processed
+[pipeline] 550/573 processed
+[pipeline] CSV written → /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/00_ARCHITECTURE/grounding_review/msr_grounding_candidates_2026-05-22T09-43-13.csv
+[pipeline] NEXT: open CSV, fill 'accepted_candidate' column, then run apply_grounded_citations.ts
+
+[done] 573 signals processed. CSV: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/00_ARCHITECTURE/grounding_review/msr_grounding_candidates_2026-05-22T09-43-13.csv
+[done] 0 signals remaining (run again to continue)

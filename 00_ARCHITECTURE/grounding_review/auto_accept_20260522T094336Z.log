@@ -1,0 +1,33 @@
+[review] loaded 573 rows from /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/00_ARCHITECTURE/grounding_review/msr_grounding_candidates_2026-05-22T09-43-13.csv
+[auto-accept] CSV updated with suggested decisions
+[summary] written → /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/00_ARCHITECTURE/grounding_review/msr_grounding_candidates_2026-05-22T09-43-13_summary.md
+# Grounding Review Queue Summary
+CSV: /Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/00_ARCHITECTURE/grounding_review/msr_grounding_candidates_2026-05-22T09-43-13.csv
+Generated: 2026-05-22T09:43:36.794Z
+
+## Totals
+Total signals: 573
+Filled (any decision): 573
+  Accepted (candidate 1/2/3): 240
+  Deferred: 332
+  Rejected: 1
+  Pending (no decision yet): 0
+
+## Accepted by domain
+  career: 100
+  spirit: 44
+  wealth: 31
+  relationships: 29
+  health: 14
+  children: 7
+  parents: 5
+  mind: 3
+  psychological: 2
+  travel: 1
+  unknown: 1
+  education: 1
+  spirituality: 1
+  psychology: 1
+
+## Next step
+Run: npx tsx scripts/grounding/apply_grounded_citations.ts --csv "/Users/Dev/Vibe-Coding/Apps/MadhavMCPT-FIN/00_ARCHITECTURE/grounding_review/msr_grounding_candidates_2026-05-22T09-43-13.csv"
