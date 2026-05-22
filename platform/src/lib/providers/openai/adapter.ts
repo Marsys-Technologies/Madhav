@@ -108,9 +108,37 @@ export class OpenAIAdapter implements CapabilityAdapter {
     };
   }
 
-  tools(_request: ToolsRequest): ToolsResponse {
-    // R11.E — OpenAI: finish_reason=tool_calls loop
-    throw new CapabilityUnsupportedError('tools', 'openai');
+  tools(request: ToolsRequest): ToolsResponse {
+    // R11.E — OpenAI tool_calls agentic loop (E-S3).
+    //
+    // OpenAI's Chat Completions API returns finish_reason === 'tool_calls'
+    // when tool execution is needed. The loop reuses agentic_loop.ts engine
+    // with OPENAI_LOOP_CONFIG.
+    //
+    // Responses API: OpenAI's newer Responses API has native multi-turn
+    // tool handling, but the adapter uses Chat Completions for compatibility.
+    // When the Responses API becomes available server-side, prefer it:
+    //   client.responses.create({ ..., tools, previous_response_id })
+    // For now: standard while (finish_reason === 'tool_calls') pattern.
+    //
+    // Usage note: stream_options: { include_usage: true } must be set
+    // for accurate per-iteration cost tracking in Observatory.
+    const maxIterations = request.maxIterations ?? 8;
+    return {
+      mode: 'finish_reason_tool_calls',
+      maxIterations,
+      tools: request.tools,
+      providerPayload: {
+        terminationSignal: 'finish_reason_tool_calls',
+        terminationValue: 'tool_calls',
+        // Prefer Responses API when available (tool_choice + multi-step)
+        preferResponsesApi: false, // set true when wired in R11.F
+        // stream_options required for accurate per-iteration usage
+        requireStreamOptions: true,
+        // No interleaved text+tool in standard Chat Completions
+        supportsInterleavedTextTool: false,
+      },
+    };
   }
 
   webSearch(_request: WebSearchRequest): Promise<WebSearchResult> {

@@ -129,9 +129,28 @@ export class AnthropicAdapter implements CapabilityAdapter {
     };
   }
 
-  tools(_request: ToolsRequest): ToolsResponse {
-    // R11.E — Adaptive Tool Sequencing (Anthropic: stop_reason loop)
-    throw new CapabilityUnsupportedError('tools', 'anthropic');
+  tools(request: ToolsRequest): ToolsResponse {
+    // R11.E — Anthropic stop_reason agentic loop (E-S1).
+    //
+    // Loop terminates when stop_reason === 'tool_use'.
+    // 8-iteration cap enforced by agentic_loop.ts checkIterationCap().
+    // Default false (MARSYS_FLAG_R11E_ANTHROPIC_LOOP) — HIGH risk.
+    // When flag=false, route.ts uses single-shot pipeline.
+    const maxIterations = request.maxIterations ?? 8;
+    return {
+      mode: 'stop_reason',
+      maxIterations,
+      tools: request.tools,
+      providerPayload: {
+        // Anthropic stop_reason signal that triggers next iteration
+        terminationSignal: 'stop_reason',
+        terminationValue: 'tool_use',
+        // Per-iteration usage accumulation for Observatory (E-S9)
+        trackPerIterationUsage: true,
+        // Interleaved text+tool ordering supported by Claude 4.x (E-S6)
+        supportsInterleavedTextTool: true,
+      },
+    };
   }
 
   webSearch(_request: WebSearchRequest): Promise<WebSearchResult> {

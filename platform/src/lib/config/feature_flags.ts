@@ -175,6 +175,31 @@ export type FeatureFlag =
   //   When false: prior assembly order unchanged.
   //   Env: MARSYS_FLAG_R11D_PROMPT_LAYOUT
   | 'R11D_PROMPT_LAYOUT'
+  // R11E_ANTHROPIC_LOOP: Anthropic stop_reason=tool_use agentic loop (E-S1).
+  //   Server-side only — HIGH risk: each loop iteration adds LLM cost.
+  //   Default false; flip only after multi-tool smoke test passes.
+  //   Env: MARSYS_FLAG_R11E_ANTHROPIC_LOOP
+  | 'R11E_ANTHROPIC_LOOP'
+  // R11E_GEMINI_LOOP: Gemini finish_reason=function_calls agentic loop (E-S2).
+  //   Server-side only — HIGH risk.
+  //   Default false; flip after Gemini multi-tool smoke test passes.
+  //   Env: MARSYS_FLAG_R11E_GEMINI_LOOP
+  | 'R11E_GEMINI_LOOP'
+  // R11E_OPENAI_LOOP: OpenAI finish_reason=tool_calls loop; prefers Responses API (E-S3).
+  //   Server-side only — HIGH risk.
+  //   Default false.
+  //   Env: MARSYS_FLAG_R11E_OPENAI_LOOP
+  | 'R11E_OPENAI_LOOP'
+  // R11E_DEEPSEEK_LOOP: DeepSeek OpenAI-compat tool loop; preserves <think> middleware (E-S4).
+  //   Server-side only.
+  //   Default false.
+  //   Env: MARSYS_FLAG_R11E_DEEPSEEK_LOOP
+  | 'R11E_DEEPSEEK_LOOP'
+  // R11E_NVIDIA_LOOP: NVIDIA NIM OpenAI-compat tool loop (model-dependent) (E-S5).
+  //   Server-side only.
+  //   Default false; verify which hosted model is active before flipping.
+  //   Env: MARSYS_FLAG_R11E_NVIDIA_LOOP
+  | 'R11E_NVIDIA_LOOP'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -281,6 +306,12 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // R11D_PROMPT_LAYOUT: cache-aware assembly order. Default false.
   //   Flip via MARSYS_FLAG_R11D_PROMPT_LAYOUT=true after snapshot verification.
   R11D_PROMPT_LAYOUT: false,
+  // R11E — Agentic tool loops. All default false (HIGH risk). Flip individually after smoke.
+  R11E_ANTHROPIC_LOOP: false,
+  R11E_GEMINI_LOOP: false,
+  R11E_OPENAI_LOOP: false,
+  R11E_DEEPSEEK_LOOP: false,
+  R11E_NVIDIA_LOOP: false,
 }
 
 // Numeric config keys (read via configService.getValue)
