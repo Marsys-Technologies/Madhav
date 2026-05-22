@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.50
+version: 5.51
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.51 (2026-05-23, R11V2-PHASE-DE-ROLLOUT):
+    **R11.D + R11.E production flag rollout — D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). Deploy.yml flag persistence fixed. No macro-phase change.**
+    Key outcomes: (A) PRE-FLIGHT BLOCKER RESOLVED — deploy.yml replaced all env vars on every push; 3 prerequisite flags absent from production. Commit fbe8ff32: renamed orphaned ADAPTERS_ENABLED→MARSYS_FLAG_R11V2_USE_ADAPTERS; added MARSYS_FLAG_R11D_PROMPT_LAYOUT=true, MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true to env_vars. Commit 6f6d4f16: removed MARSYS_CRON_SECRET from secrets block (type conflict). Deploy unblocked → revision 356. (B) D.1 PASS — MARSYS_FLAG_R11D_PROMPT_LAYOUT=true live on rev 356; prompt_assembler.ts cache-aware layout active. (C) D.2 WAIVED — MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true live on rev 356; 2-query verification waived by operator. (D) D.3 NOT_IMPLEMENTED — MARSYS_FLAG_R11D_GEMINI_CACHE flipped true rev 357; 2 queries sent; no cachedContentTokenCount in logs. Root cause: adapter.cache() never called in route.ts dispatch block (lines 905–988 call only adapter.chat()); flag is a stub. Rolled back false via gcloud. (E) E.1–E.4 NOT_IMPLEMENTED — all R11E_*_LOOP flags confirmed stubs: adapter.loop() exists but route.ts has zero R11E references; agentic_loop.ts not imported or called from dispatch. None flipped. (F) STREAM_R11V2_COMPLETE.md §7 added documenting rollout final state. (G) ROLLOUT_PHASE_D_RESULT.md + ROLLOUT_PHASE_E_RESULT.md written. (H) MP.1+MP.2 mirrors updated.
+    files_touched: ["00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md", "00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_D_RESULT.md", "00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_E_RESULT.md", ".github/workflows/deploy.yml", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".geminirules", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (R11v2 rollout session; no macro-phase change).
+    last_session_id: R11V2-PHASE-DE-ROLLOUT. predecessor_session: R11V2-DISPATCH-WIRING-COMPLETE.
+    carry_forwards: ["D.3 Gemini cache: implement adapter.cache() → genai.caches.create() → cachedContent ID wiring in route.ts; then flip MARSYS_FLAG_R11D_GEMINI_CACHE=true", "E.1–E.4 agentic loop: implement adapter.loop() → agentic_loop.ts engine invocation in route.ts dispatch block; then flip E flags individually", "R11.F–K deferred arc in MULTI_PROVIDER_PARITY_ROADMAP.md"]
+    next_session_objective: "Open M6-A-S1 per PHASE_M6_PLAN_v1_0.md. R11v2 production state: USE_ADAPTERS=true, PROMPT_LAYOUT=true, ANTHROPIC_CACHE=true. D.3 and E.1–E.4 deferred to R11.F arc."
+    file_updated_at: 2026-05-23. file_updated_by_session: R11V2-PHASE-DE-ROLLOUT.
   - v5.50 (2026-05-22, R11V2-DISPATCH-WIRING-COMPLETE):
     **R11 v2 dispatch wiring COMPLETE — && false gate removed, real SDK calls in all 5 adapters, MARSYS_FLAG_R11V2_USE_ADAPTERS=true live. Production revision amjis-web-00339-7nc.**
     Key outcomes: (A) PR #149 squash-merged (SHA 77205869): removed && false dead-code gate from route.ts:908; real streamText SDK calls in AnthropicAdapter/GoogleAdapter/DeepSeekAdapter + raw openai stream in OpenAIAdapter/NvidiaAdapter; MigrationAdapter.stubChat() retired. (B) Build fixes merged to main: PR #150 (02cf6659) @supabase/supabase-js→pg in mv_refresh.ts; direct commits 267ce29e (Next.js 16 async params in bundles/[name]/route.ts), 913c7d27 (ES2018 tsconfig target — regex dotAll flag), 7bb7b0f1 (bundle_adapters.js correct 5-level path). (C) Production revision: amjis-web-00339-7nc deployed 2026-05-22; 100% traffic. (D) MARSYS_FLAG_R11V2_USE_ADAPTERS=true flipped in Cloud Run env-vars. (E) Production smoke: zero errors/warnings in 10-min log window post-deploy. (F) STREAM_R11V2_COMPLETE.md §5 amended: dispatch wiring close-out documented. (G) CLAUDE.md v3.8 §E R11 v2 STATUS: SUBSTRATE COMPLETE DISPATCH WIRING DEFERRED → COMPLETE. (H) MP.1+MP.2 mirrors updated same session.
@@ -4140,7 +4149,9 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: NATIVE-CLIENT-ID-FIX         # NATIVE-CLIENT-ID-FIX 2026-05-22: MuhuratResultsList.tsx NATIVE_CLIENT_ID corrected (abhisek_mohanty_primary → 362f9f17-95a5-490b-a5a7-027d3e0efda0); commit 246b35c6; F.2 E2E unblocked; predecessor PHASE-4C-CLOSE
+  last_session_id: R11V2-PHASE-DE-ROLLOUT       # R11V2-PHASE-DE-ROLLOUT 2026-05-23: D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). deploy.yml flags fixed. STREAM_R11V2_COMPLETE.md §7 added. D/E result docs written. Predecessor R11V2-DISPATCH-WIRING-COMPLETE.
+    # === Predecessor R11V2-DISPATCH-WIRING-COMPLETE (2026-05-22) ===
+    # NATIVE-CLIENT-ID-FIX 2026-05-22: MuhuratResultsList.tsx NATIVE_CLIENT_ID corrected (abhisek_mohanty_primary → 362f9f17-95a5-490b-a5a7-027d3e0efda0); commit 246b35c6; F.2 E2E unblocked; predecessor PHASE-4C-CLOSE
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
     # LL.9 SCAFFOLD confirmed. Carry-forwards CF.M5D.1–6 dispositioned. CAPABILITY_MANIFEST updated.
     # M5-E OPEN (S1 CLOSED). red_team_counter: 0 (unchanged; IS.8(b) fires at M5-E-S2).
@@ -4978,14 +4989,13 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    NATIVE-CLIENT-ID-FIX carry-forwards: (1) F.2 E2E smoke: manually verify /panchang/muhurat →
-    submit search → click Ask-Madhav deeplink → confirm /consume renders with prefilled prompt + correct
-    native context (362f9f17-95a5-490b-a5a7-027d3e0efda0). New revision: amjis-web-00314-wjk or newer.
-    (2) ActionBar.tsx NATIVE_CLIENT_ID='abhisek_mohanty_primary' at line 25 — same class bug; fix in next
-    operator session (may_touch: ActionBar.tsx only). (3) PR #142 NEEDS_REVISION — 4 blockers:
-    (a) ICR gate hardcodes MSR_v3_0.md; (b) RESOLVED_DIR path wrong; (c) ROOT_FILE_POLICY violation;
-    (d) DIS.013 on superseded MSR_v3_0.md. Fix then merge. (4) Operator: apply migrations 070+071.
-    (5) Deploy amjis-mcp via platform-mcp/cloudbuild.yaml. Then open M6-A-S1. Then:
+    R11V2-PHASE-DE-ROLLOUT carry-forwards: (1) D.3 Gemini cache — wire adapter.cache() →
+    genai.caches.create() → cachedContent ID into route.ts dispatch block; then flip
+    MARSYS_FLAG_R11D_GEMINI_CACHE=true and run 2-query verification. (2) E.1–E.4 agentic loop —
+    wire adapter.loop() → agentic_loop.ts engine into route.ts dispatch block for all 5 providers;
+    then flip E flags individually post-smoke. (3) Open M6-A-S1 per PHASE_M6_PLAN_v1_0.md. R11v2
+    production baseline: USE_ADAPTERS=true, PROMPT_LAYOUT=true, ANTHROPIC_CACHE=true live on
+    deploy.yml; adapter dispatch path verified. Then:
     === Predecessor next_session_objective (CV2-FINAL-CLOSE → M6-A-S1) preserved for audit ===
     M6-A-S1 — M6 Phase Plan Authoring + First Execution Session.
     Trigger phrase: "Read CLAUDE.md and CURRENT_STATE_v1_0.md §2 and open M6-A-S1."

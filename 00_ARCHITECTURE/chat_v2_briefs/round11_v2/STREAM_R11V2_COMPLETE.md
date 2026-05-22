@@ -84,6 +84,77 @@ All flags default false. Operator flips individually in Cloud Run env-vars after
 - Repository auto-merge disabled — R11B-MERGE required manual GitHub merge of PR #145.
 - MCP Transformation concurrent session held `.git/index.lock` intermittently; 0-byte stale locks removed safely.
 
+## §7 — R11.D + R11.E production flag rollout (2026-05-23 amendment)
+
+**Rollout session:** R11V2-Phase-DE-Resume (2026-05-23)
+
+### Pre-flight findings
+
+- **BLOCKER (resolved):** `deploy.yml` `env_vars:` block replaced all env vars on every
+  push. Three prerequisite flags (`MARSYS_FLAG_R11V2_USE_ADAPTERS`, `MARSYS_FLAG_R11D_PROMPT_LAYOUT`,
+  `MARSYS_FLAG_R11D_ANTHROPIC_CACHE`) were absent from production on every revision prior to 356.
+  Root cause: orphaned `ADAPTERS_ENABLED=true` in `env_vars:` used wrong env var name; manually
+  applied flags wiped by each code push. Fixed by commit `fbe8ff32` (added three correctly-named
+  flags to `env_vars:`).
+- **CRON_SECRET type conflict (resolved):** Commit `8c2dfc46` (Abhisek) added
+  `MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest` to `secrets:` block but it was already
+  a plain env var in Cloud Run. Resolved by removing it from `secrets:` block (commit `6f6d4f16`).
+  Deploy unblocked → revision 356.
+
+### D.1 — MARSYS_FLAG_R11D_PROMPT_LAYOUT: **PASS**
+
+Baked into `deploy.yml` env_vars via commit `fbe8ff32`. Live on revision 356.
+Cache-aware prompt layout (prompt_assembler.ts 4-breakpoint injection) verified active.
+
+### D.2 — MARSYS_FLAG_R11D_ANTHROPIC_CACHE: **WAIVED**
+
+Baked into `deploy.yml` env_vars via commit `fbe8ff32`. Live on revision 356.
+2-query cache verification waived by operator (prior session check not confirmed;
+operator approval documented in ROLLOUT_DE_RESUME_PREFLIGHT.md §3).
+
+### D.3 — MARSYS_FLAG_R11D_GEMINI_CACHE: **NOT_IMPLEMENTED — ROLLED BACK**
+
+Flipped `true` on revision 357. Operator sent 2 long-context Gemini queries.
+Log check: no `cachedContentTokenCount` entries for provider=google.
+
+Root cause: `R11D_GEMINI_CACHE` is a stub. Route.ts adapter dispatch block (lines 905–988)
+calls only `adapter.chat()` — `adapter.cache()` is never called. The Google adapter's
+`cache()` method returns a `CacheResponse` spec object (`sdkMethod: 'genai.caches.create'`)
+but route.ts has no code to consume this return value, call `genai.caches.create()`, or
+pass `cachedContent` ID to the model request.
+
+Rolled back: `gcloud run services update amjis-web --update-env-vars MARSYS_FLAG_R11D_GEMINI_CACHE=false`
+
+Full finding documented in `ROLLOUT_PHASE_D_RESULT.md §D.3`.
+
+### E.1–E.4 — R11E_*_LOOP flags: **ALL NOT_IMPLEMENTED — NOT FLIPPED**
+
+Same architecture gap as D.3. Route.ts has zero references to any `R11E_*` flag.
+`adapter.loop()` methods exist in all 5 adapters (return `LoopResponse` config specs),
+and `agentic_loop.ts` engine is implemented, but neither is imported or invoked from
+the dispatch block.
+
+Decision: do not flip any E flags. Flipping stubs creates false monitoring signals.
+
+Full finding documented in `ROLLOUT_PHASE_E_RESULT.md`.
+
+### Production state at rollout close
+
+| Flag | Value | Live since |
+|---|---|---|
+| `MARSYS_FLAG_R11V2_USE_ADAPTERS` | `true` | rev 356 (deploy.yml) |
+| `MARSYS_FLAG_R11D_PROMPT_LAYOUT` | `true` | rev 356 (deploy.yml) |
+| `MARSYS_FLAG_R11D_ANTHROPIC_CACHE` | `true` | rev 356 (deploy.yml) |
+| `MARSYS_FLAG_R11D_GEMINI_CACHE` | `false` | rolled back rev 357 |
+| `MARSYS_FLAG_R11E_*_LOOP` (×4) | `false` | default (never flipped) |
+
+### Deferred items (R11.F arc scope)
+
+1. Route.ts: wire `adapter.cache()` → `genai.caches.create()` → pass cachedContent ID to model request
+2. Route.ts: wire `adapter.loop()` → `agentic_loop.ts` engine for all 5 providers
+3. After (1): flip `MARSYS_FLAG_R11D_GEMINI_CACHE=true` and run 2-query verification
+4. After (2): flip E flags individually with tool-loop iteration verification
+
 ---
 
-*STREAM_R11V2_COMPLETE.md — sealed 2026-05-22 by Meta-Conductor arc-closure §3.D.*
+*STREAM_R11V2_COMPLETE.md — §7 amended 2026-05-23 by R11V2-Phase-DE-Resume rollout session.*

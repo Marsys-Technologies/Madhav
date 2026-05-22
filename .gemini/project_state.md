@@ -365,3 +365,19 @@ Chat V2 R11 v2 Multi-Provider Parity (Claude Takeover) arc COMPLETE. Dispatch wi
 - **Concurrent workstream #12** (R11 v2) now COMPLETE. Remaining per-phase flags (R11C/R11D/R11E) flip individually at operator discretion post-smoke. Deferred arc R11.F–K remains in `MULTI_PROVIDER_PARITY_ROADMAP.md`.
 
 MP.1 + MP.2 mirror update: .geminirules footer entry (MP.1) + this section (MP.2) updated same session.
+
+### R11 v2 D/E Flag Rollout — Mirror Update (2026-05-23)
+
+R11.D + R11.E production flag rollout complete. Key facts for Gemini-side state sync:
+
+- **D.1 (PROMPT_LAYOUT):** PASS — `MARSYS_FLAG_R11D_PROMPT_LAYOUT=true` baked into `deploy.yml` env_vars (commit `fbe8ff32`). Live since revision 356.
+- **D.2 (ANTHROPIC_CACHE):** WAIVED — `MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true` baked into `deploy.yml` env_vars. Operator waived 2-query verification.
+- **D.3 (GEMINI_CACHE):** NOT_IMPLEMENTED — `MARSYS_FLAG_R11D_GEMINI_CACHE` declared in `feature_flags.ts` but `adapter.cache()` is never called from `route.ts`. Route.ts dispatch block (lines 905–988) calls only `adapter.chat()`. Flipped true on revision 357, operator sent 2 queries, no cachedContentTokenCount in logs. Rolled back false via gcloud.
+- **E.1–E.4 (R11E_*_LOOP):** NOT_IMPLEMENTED — `adapter.loop()` methods exist in all 5 adapters (return `LoopResponse` config specs) and `agentic_loop.ts` engine is implemented, but route.ts has zero R11E flag references and no adapter.loop() invocation. None flipped.
+- **Pre-flight fix:** orphaned `ADAPTERS_ENABLED=true` in deploy.yml renamed `MARSYS_FLAG_R11V2_USE_ADAPTERS=true`; `MARSYS_CRON_SECRET` type-conflict removed (commit `6f6d4f16`).
+- **Governance seal:** `STREAM_R11V2_COMPLETE.md §7` added. `ROLLOUT_PHASE_D_RESULT.md` + `ROLLOUT_PHASE_E_RESULT.md` written.
+- **CLAUDE.md v3.9** §E R11 v2 bullet updated with D/E rollout outcome + deferred items.
+- **CURRENT_STATE v5.51** appended.
+- **Deferred to R11.F arc:** route.ts wiring for `adapter.cache()` → `genai.caches.create()` and `adapter.loop()` → `agentic_loop.ts` engine.
+
+MP.1 + MP.2 mirror update: .geminirules footer entry (MP.1) + this section (MP.2) updated same session.
