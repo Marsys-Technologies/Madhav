@@ -234,4 +234,11 @@ entries:
   expected_artifacts: []
   est_tokens: 40000
   est_duration_min: 15
-  status: pending
+  status: halted
+  halted_at: '2026-05-22T15:40:00Z'
+  halt_reason: >
+    PR #145 opened at https://github.com/amonty84/Madhav/pull/145.
+    Branch pushed. Auto-merge not available for this repository
+    (GraphQL: enablePullRequestAutoMerge). Human must merge PR #145 manually.
+    All 9 implementation sessions B-S0..B-S8 PASSED. Deploy.yml coverage PASS.
+    Action required: merge PR #145 to main.
