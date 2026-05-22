@@ -31,11 +31,41 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
+
+/**
+ * F.3 fix: category list derived from ChartFactsCategory enum in
+ * platform/src/lib/retrieve/chart_facts_query.ts:21–30.
+ * Keep this array in sync with that enum — it is the single source of truth.
+ */
+export const CHART_FACTS_CATEGORIES = [
+  'house', 'dasha_chara', 'planet', 'dasha_vimshottari', 'saham',
+  'sensitive_point', 'birth_metadata', 'strength_extra', 'yoga',
+  'dasha_yogini', 'deity_assignment', 'shadbala', 'ashtakavarga_sav',
+  'kp_cusp', 'navatara', 'panchang', 'cusp', 'arudha_occupancy',
+  'bhava_bala', 'chandra_placement', 'mrityu_bhaga', 'longevity_indicator',
+  'arudha', 'aspect', 'chalit_shift', 'kp_planet', 'special_lagna',
+  'strength', 'upagraha', 'ashtakavarga_bav', 'kakshya_zone',
+  'mercury_convergence', 'ashtakavarga_pinda', 'ishta_kashta',
+  'kp_significator', 'varshphal', 'avastha',
+] as const
+
+const CHART_FACTS_TOOL_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Queries the 795-row chart_facts table with structured filters ' +
+    '(category, planet, house, as_of_date) and returns raw fact rows without synthesis. ' +
+    'When to prefer: Use for single fact lookups ("What is Saturn\'s shadbala?"). ' +
+    'Prefer query_signals for MSR signal corpus data. ' +
+    'Prefer holistic_bundle when synthesis or multi-tool retrieval is needed. ' +
+    'Input shape hints: category is required; planet/house/as_of_date are optional filters; limit defaults to 50. ' +
+    'Output shape: {ok, result: {rows: ChartFactRow[]}, trace_id, epistemics: {surgical: true}}.',
+  enumSource: CHART_FACTS_CATEGORIES,
+  coverageHint: '795 rows across 37 categories',
+})
 
 const QueryChartFactsInputSchema = z.object({
   category: z.string().describe(
-    'Fact category to query. Examples: "shadbala", "dignity", "nakshatra", ' +
-    '"aspect", "house_placement", "dasha_vimshottari", "divisional_D9".'
+    `Fact category to query. Must be one of: ${CHART_FACTS_CATEGORIES.join(', ')}.`
   ),
   planet: z.string().optional().describe('Filter to a specific planet (e.g. "Saturn", "Moon").'),
   house: z.number().int().min(1).max(12).optional().describe('Filter to a specific house (1–12).'),
@@ -51,15 +81,7 @@ export function registerQueryChartFacts(
 ): void {
   server.tool(
     'query_chart_facts',
-    'What it does: Queries the 795-row chart_facts table with structured filters ' +
-    '(category, planet, house, as_of_date) and returns raw fact rows without synthesis. ' +
-    'When to prefer: Use for single fact lookups ("What is Saturn\'s shadbala?"). ' +
-    'Prefer ask_madhav when interpretation is needed. ' +
-    'Prefer query_signals for MSR signal corpus data. ' +
-    'Input shape hints: category is required (e.g. "shadbala", "dignity"); ' +
-    'planet/house/as_of_date are optional filters; limit defaults to 50. ' +
-    'Output shape preview: {ok, result: {rows: ChartFactRow[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: query_chart_facts({category: "shadbala", planet: "Saturn"}) → rows with strength data.',
+    CHART_FACTS_TOOL_DESCRIPTION,
     QueryChartFactsInputSchema.shape,
     async (args: QueryChartFactsInput) => {
       const principal = getPrincipal()

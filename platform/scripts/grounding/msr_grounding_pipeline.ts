@@ -39,7 +39,7 @@ const DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgresql://amjis_app@127.0.0.1:5432/amjis'
 
 const OUTPUT_DIR = path.join(
-  process.cwd(), '..', '00_ARCHITECTURE', 'grounding_review'
+  __dirname, '..', '..', '..', '00_ARCHITECTURE', 'grounding_review'
 )
 
 // ── DB pool ───────────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export async function fetchUngroundedSignals(): Promise<UngroundedSignal[]> {
     SELECT signal_id, claim_text, classical_basis, domain, planet
     FROM msr_signals
     WHERE (source_citation IS NULL OR source_citation = '')
-      AND native_id = 'abhisek'
+      AND native_id = 'abhisek_mohanty'
     ORDER BY signal_id
   `)
   return rows

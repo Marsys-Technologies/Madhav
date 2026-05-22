@@ -49,7 +49,7 @@ interface CsvRow {
 
 function parseCsv(filePath: string): CsvRow[] {
   const text = fs.readFileSync(filePath, 'utf8')
-  const lines = text.split('\n').filter(Boolean)
+  const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(Boolean)
   if (lines.length < 2) return []
 
   const headers = lines[0].split(',')

@@ -41,11 +41,7 @@ vi.mock('@/lib/pipeline/pipeline_planner', () => ({
   },
 }))
 
-vi.mock('@/lib/pipeline/budget_arbiter', () => ({
-  arbitrateBudgets: vi.fn().mockImplementation((tools: Array<{token_budget: number}>) =>
-    tools.map(t => ({ token_budget: t.token_budget }))
-  ),
-}))
+// F.7 (MCPT v3.1.0-S1): token-budget allocation mock removed — no longer on MCP path.
 
 vi.mock('@/lib/bundle/bundle_hydrator', () => ({
   hydrateBundle: vi.fn().mockResolvedValue({

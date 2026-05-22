@@ -32,6 +32,7 @@ import {
 } from '@/lib/mcp/primitives_registry'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { traceEmitter } from '@/lib/trace/emitter'
+import { query } from '@/lib/db/client'
 
 export const maxDuration = 60
 
@@ -113,6 +114,34 @@ export async function POST(request: Request, { params }: RouteParams) {
       }),
       { status: 400 }
     )
+  }
+
+  // Tool-registry check: operator may disable a tool at runtime via tool_registry table.
+  // Returns 503 {tool_disabled: true} when tool_registry.tool_enabled = false.
+  // Degrades gracefully: if the DB is unreachable or tool_registry row doesn't exist,
+  // execution proceeds (fail-open to avoid total outage on registry table loss).
+  try {
+    const registryResult = await query<{ tool_enabled: boolean }>(
+      `SELECT tool_enabled FROM tool_registry WHERE tool_name = $1 LIMIT 1`,
+      [mcpToolName]
+    )
+    if (registryResult.rows.length > 0 && registryResult.rows[0].tool_enabled === false) {
+      return NextResponse.json(
+        {
+          ok: false,
+          tool_disabled: true,
+          error: {
+            class: 'tool_disabled',
+            message: `Tool '${mcpToolName}' is currently disabled by the operator.`,
+            remediation: 'Check /admin/mcp/health for status. Contact admin to re-enable.',
+          },
+        },
+        { status: 503 }
+      )
+    }
+  } catch (registryErr) {
+    // Fail-open: log but don't block the tool call
+    console.warn(`[mcp:primitives] tool_registry lookup failed for ${mcpToolName} — proceeding`, registryErr)
   }
 
   // Resolve the underlying retrieval tool name

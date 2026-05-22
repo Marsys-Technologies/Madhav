@@ -233,7 +233,15 @@ async function retrieveImpl(
   start: number,
 ): Promise<ToolBundle> {
   const nativeId = (params?.native_id as string | undefined) ?? DEFAULT_NATIVE_ID
-  const queryText = plan.query_text
+
+  // F.1 fix: when the plan carries a surgical_primitive: placeholder, prefer
+  // explicit params.text / params.query_text so embedding uses the real query.
+  const queryText =
+    (params?.text as string | undefined) ??
+    (params?.query_text as string | undefined) ??
+    (plan?.query_text?.startsWith('surgical_primitive:') ? '' : plan?.query_text) ??
+    ''
+  if (!queryText) throw new Error('vector_search: no query text resolved from params or plan')
 
   // Resolve topK: params override wins, then configService
   const configTopK = configService.getValue(
