@@ -615,9 +615,12 @@ function V2Message() {
     setCitationCount(n)
   }, [])
 
+  // R11.B B-S3: .v2-message-row class enables CSS targeting.
+  // Under .consume-shell.r11b-active, this column is pinned to max-width 48rem (768px)
+  // via globals.css .consume-shell.r11b-active .v2-message-row rule.
   return (
     <MessagePrimitive.Root
-      className="group flex w-full max-w-4xl mx-auto flex-col gap-1 px-4 py-3"
+      className="group flex w-full max-w-4xl mx-auto flex-col gap-1 px-4 py-3 v2-message-row"
       data-testid="v2-message"
     >
       <MessagePrimitive.If user>

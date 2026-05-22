@@ -848,3 +848,38 @@ body {
   padding: 12px 14px;            /* Claude's constant: 12/14 not 10/16 */
   margin-left: auto;             /* Right-align within flex column */
 }
+
+/* ============================================================
+   R11.B — Message container shape (B-S3)
+   AssistantMessage: bubble-less (no bg/border at message level).
+   Message stream column pinned to 48rem (768px) centered.
+   Action bar hover-reveal.
+   ============================================================ */
+
+/* Asymmetric pattern — assistant message: no card chrome.
+   Bubble-less: background/border/padding removed at the message level.
+   (Text content itself is unstyled; prose classes handle spacing.)
+   Target: .v2-assistant-message or the group/message wrapper when r11b-active. */
+.consume-shell.r11b-active .v2-assistant-message-wrapper,
+.consume-shell.r11b-active [data-testid="v2-assistant-message"] {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* Message stream: pin to max-width 48rem (768px) centered column.
+   Overrides Tailwind max-w-4xl (896px) on the message wrapper.
+   r11b-active wraps both user + assistant turns. */
+.consume-shell.r11b-active .v2-message-row {
+  max-width: 48rem;              /* Claude's signature 768px column */
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Increase gap between message turns under r11b (gap-8 = 2rem) */
+.consume-shell.r11b-active [data-testid="v2-thread-root"] .v2-message-gap {
+  margin-bottom: 2rem;
+}
