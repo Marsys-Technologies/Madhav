@@ -135,6 +135,21 @@ export type FeatureFlag =
   // Server-side only — no NEXT_PUBLIC prefix, no deploy.yml build-arg.
   // Default false — cost risk (retry doubles LLM cost); opt-in only.
   | 'R10_AUTO_RETRY'
+  // R11 v2 — Multi-Provider Parity arc (Chat V2 R11 v2 — Claude Takeover)
+  // R11V2_MULTI_PROVIDER_PARITY: master gate — enables the provider-agnostic consume surface.
+  //   Client-side NEXT_PUBLIC flag. Default false until A-S11 runtime toggle is wired.
+  //   Env: NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY
+  | 'R11V2_MULTI_PROVIDER_PARITY'
+  // R11V2_USE_ADAPTERS: enables the new per-provider adapter dispatch path in route.ts.
+  //   Server-side only (no NEXT_PUBLIC prefix; no deploy.yml build-arg required).
+  //   Default false until A-S7 dispatcher is verified and all 5 adapters pass smoke.
+  //   Env: MARSYS_FLAG_R11V2_USE_ADAPTERS
+  | 'R11V2_USE_ADAPTERS'
+  // R11V2_CAPABILITY_TELEMETRY: enables per-capability-path telemetry logging to Observatory.
+  //   Server-side only (no NEXT_PUBLIC prefix; no deploy.yml build-arg required).
+  //   Default false until A-S9 telemetry wiring is verified and Observatory tables are updated.
+  //   Env: MARSYS_FLAG_R11V2_CAPABILITY_TELEMETRY
+  | 'R11V2_CAPABILITY_TELEMETRY'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -219,6 +234,13 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R10_REASONING_STEPS: true,
   // R10-Y-S9: default false — cost risk; opt-in only.
   R10_AUTO_RETRY: false,
+  // R11 v2 — Multi-Provider Parity arc. All three default false at A-S0.
+  // R11V2_MULTI_PROVIDER_PARITY: flipped true at A-S11 (runtime toggle wired).
+  R11V2_MULTI_PROVIDER_PARITY: false,
+  // R11V2_USE_ADAPTERS: flipped true after A-S7 dispatcher smoke passes on all 5 providers.
+  R11V2_USE_ADAPTERS: false,
+  // R11V2_CAPABILITY_TELEMETRY: flipped true after A-S9 Observatory wiring verified.
+  R11V2_CAPABILITY_TELEMETRY: false,
 }
 
 // Numeric config keys (read via configService.getValue)
