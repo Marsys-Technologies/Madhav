@@ -17,15 +17,7 @@
  * mv_calibration_score is refreshed by a Cloud Scheduler job at 04:00 UTC daily.
  */
 
-import { createClient } from '@supabase/supabase-js'
-
-// Supabase admin client (service role key required for REFRESH MATERIALIZED VIEW CONCURRENTLY)
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!url || !key) throw new Error('SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY required for MV refresh')
-  return createClient(url, key, { auth: { persistSession: false } })
-}
+import { query as dbQuery } from '../db/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,17 +47,14 @@ export interface MvRefreshResult {
 
 async function refreshMv(mvName: string): Promise<MvRefreshResult> {
   const start = Date.now()
-  const supabase = getSupabaseAdmin()
-  const { error } = await supabase.rpc('refresh_mv', { mv_name: mvName })
-  const duration_ms = Date.now() - start
-
-  if (error) {
-    // Fall back to direct SQL via the REST API's rpc if a stored proc isn't available
-    // (WT-A's v3.1.0-S4 will add the refresh_mv() proc; graceful degradation here)
-    console.warn(`[mv_refresh] rpc('refresh_mv') not available for ${mvName}: ${error.message}`)
-    return { mv: mvName, refreshed_at: new Date().toISOString(), duration_ms, error: error.message }
+  try {
+    await dbQuery(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${mvName}`)
+    return { mv: mvName, refreshed_at: new Date().toISOString(), duration_ms: Date.now() - start }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(`[mv_refresh] refresh failed for ${mvName}: ${msg}`)
+    return { mv: mvName, refreshed_at: new Date().toISOString(), duration_ms: Date.now() - start, error: msg }
   }
-  return { mv: mvName, refreshed_at: new Date().toISOString(), duration_ms }
 }
 
 export async function refreshMvCalibrationScore(): Promise<MvRefreshResult> {
@@ -80,19 +69,15 @@ export async function refreshAll5min(): Promise<MvRefreshResult[]> {
 // ── Data readers ─────────────────────────────────────────────────────────────
 
 export async function getMvCalibrationData(): Promise<CalibrationRow[]> {
-  const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
-    .from('mv_calibration_score')
-    .select('*')
-    .order('confidence_band')
-    .order('domain')
-    .order('horizon_bucket')
-
-  if (error) {
-    console.error('[mv_refresh] getMvCalibrationData error:', error.message)
+  try {
+    const result = await dbQuery<CalibrationRow>(
+      `SELECT * FROM mv_calibration_score ORDER BY confidence_band, domain, horizon_bucket`
+    )
+    return result.rows
+  } catch (err) {
+    console.error('[mv_refresh] getMvCalibrationData error:', err instanceof Error ? err.message : String(err))
     return []
   }
-  return (data ?? []) as CalibrationRow[]
 }
 
 // ── Nightly job entry point ───────────────────────────────────────────────────
