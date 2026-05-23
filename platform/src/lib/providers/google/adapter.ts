@@ -91,6 +91,20 @@ export class GoogleAdapter implements CapabilityAdapter {
       if (systemContent) streamParams.system = systemContent;
       if (request.temperature !== undefined) streamParams.temperature = request.temperature;
       if (providerOptions) streamParams.providerOptions = providerOptions;
+      // R11.F — S4: Inject cachedContent name if provided via cacheConfig (D.3 wiring).
+      // When route.ts creates a Gemini cachedContent object, it passes the returned
+      // resource name through cacheConfig.providerPayload.cachedContentName so the
+      // adapter can reference it in the streamText call.
+      const cachedContentName = request.cacheConfig?.providerPayload?.['cachedContentName'] as string | undefined;
+      if (cachedContentName) {
+        streamParams.providerOptions = {
+          ...streamParams.providerOptions,
+          google: {
+            ...(streamParams.providerOptions?.google ?? {}),
+            cachedContent: cachedContentName,
+          },
+        };
+      }
       const result = streamText(streamParams);
 
       for await (const part of result.fullStream) {

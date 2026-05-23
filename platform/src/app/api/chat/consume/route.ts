@@ -67,6 +67,7 @@ import { getAdapter } from '@/lib/providers/dispatcher'
 import type { ChatRequest } from '@/lib/providers/types'
 import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/adapter-dispatch-helpers'
 import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
+import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/providers/google/cached_content'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
@@ -946,6 +947,66 @@ export async function POST(request: Request) {
           maxIterations: 8,
         })
         adapterChatReq = { ...adapterChatReq, toolsConfig: toolsCfg, tools: toolsCfg.tools }
+      }
+      // R11.F — S4: Gemini cachedContent API (D.3)
+      // When R11D_GEMINI_CACHE=true and provider=google, attempt to create a
+      // Gemini cachedContent object for the system prompt + RAG bundle.
+      // The returned resource name is passed through cacheConfig so GoogleAdapter.chat()
+      // can reference it in the streamText providerOptions.google.cachedContent field.
+      // Cache creation is non-fatal — any failure falls through to a standard uncached request.
+      if (configService.getFlag('R11D_GEMINI_CACHE') && adapterId === 'google') {
+        const cacheResponse = adapter.cache({ cacheMode: 'cached_content_api', breakpointPositions: [] })
+        const estimatedTokens = Math.ceil((systemContent?.length ?? 0) / 4)
+        if (estimatedTokens >= GEMINI_CACHE_MIN_TOKENS) {
+          try {
+            const ttlSeconds = (cacheResponse.providerPayload?.['ttlSeconds'] as number) ?? 600
+            // Prefix model name with 'models/' if not already qualified — Gemini REST API requirement
+            const qualifiedModel = adapterChatReq.model.startsWith('models/')
+              ? adapterChatReq.model
+              : `models/${adapterChatReq.model}`
+            const cachePayload = buildCacheCreatePayload({
+              model: qualifiedModel,
+              systemPrompt: systemContent,
+              ragBundle: undefined,
+              ttl: `${ttlSeconds}s`,
+            })
+            const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+            if (apiKey) {
+              const cacheRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${apiKey}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(cachePayload),
+                }
+              )
+              if (cacheRes.ok) {
+                const cacheJson = await cacheRes.json() as { name?: string }
+                const cachedContentName = cacheJson.name
+                if (cachedContentName) {
+                  adapterChatReq = {
+                    ...adapterChatReq,
+                    cacheConfig: {
+                      ...cacheResponse,
+                      providerPayload: {
+                        ...cacheResponse.providerPayload,
+                        cachedContentName,
+                      },
+                    },
+                  }
+                  console.log(`[gemini-cache] Created cachedContent: ${cachedContentName} (~${estimatedTokens} tokens)`)
+                }
+              } else {
+                const errText = await cacheRes.text()
+                console.warn(`[gemini-cache] Cache creation failed (${cacheRes.status}): ${errText.slice(0, 200)}`)
+              }
+            }
+          } catch (cacheErr) {
+            console.warn('[gemini-cache] Cache creation error (non-fatal):', cacheErr)
+          }
+        } else {
+          console.log(`[gemini-cache] Skipping cache: ~${estimatedTokens} tokens < ${GEMINI_CACHE_MIN_TOKENS} minimum`)
+        }
       }
       const adapterMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
       const adapterStartMs = Date.now()
