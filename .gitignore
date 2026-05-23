@@ -47,7 +47,6 @@ platform/scripts/run_nim_catalog_check.command
 platform/scripts/run_nim_test.command
 
 # Eval scratch logs and result dumps (committed results live in platform/tests/eval/)
-eval-results/
 platform/scripts/eval/results_*.json
 platform/scripts/eval/eval_results_*.json
 platform/scripts/eval/*_stderr.log
@@ -63,3 +62,6 @@ scripts/setup_mcp_env.sh
 
 # Post-merge smoke test scratch space
 /post_merge_smoke/
+
+# MCPT v3.2: track eval-results/ JSON, suppress legacy log noise
+eval-results/*.log

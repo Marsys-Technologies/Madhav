@@ -5,11 +5,18 @@
  * CHART_FACTS_CATEGORIES (which mirrors ChartFactsCategory from the platform).
  *
  * MCPT v3.1.0-S1 AC.S1.3
+ *
+ * MCPT v3.2 Phase 3: Added lint gate for all 21 tool descriptions.
+ * Every tool description must:
+ *   - Start with a disambiguator sentence (What it does / Returns / FIRST CALL when)
+ *   - Contain "When to prefer:"
+ *   - Be ≤ 1200 characters
  */
 
 import { describe, it, expect } from 'vitest'
 import { CHART_FACTS_CATEGORIES } from '../src/tools/query_chart_facts.js'
 import { buildToolDescription } from '../src/tools/description_builder.js'
+import { CATALOG } from '../src/tools/catalog.js'
 
 // Canonical ChartFactsCategory values from platform/src/lib/retrieve/chart_facts_query.ts:21–30
 // Kept here as ground-truth for the assertion; update both when the platform enum changes.
@@ -76,5 +83,54 @@ describe('F.3 — Enum-derived tool descriptions', () => {
     expect(desc).toContain('y')
     expect(typeof desc).toBe('string')
     expect(desc.length).toBeGreaterThan(10)
+  })
+})
+
+describe('MCPT v3.2 Phase 3 — Tool description lint gate', () => {
+  it('CATALOG covers all 22 tools', () => {
+    expect(CATALOG).toHaveLength(22)
+    const names = CATALOG.map(t => t.name)
+    // Spot-check a representative from each tier
+    expect(names).toContain('chart_summary')
+    expect(names).toContain('holistic_bundle')
+    expect(names).toContain('query_chart_facts')
+    expect(names).toContain('read_asset')
+    expect(names).toContain('get_trace')
+    expect(names).toContain('log_prediction')
+    expect(names).toContain('flag_disagreement')
+  })
+
+  it('every description starts with a disambiguator sentence', () => {
+    for (const tool of CATALOG) {
+      const first = tool.description.split('. ')[0]
+      expect(
+        first,
+        `${tool.name}: first sentence must start with "What it does:", "Returns", or "FIRST CALL when"`
+      ).toMatch(/^(What it does|FIRST CALL when|Returns)/)
+    }
+  })
+
+  it('every description is ≤ 1200 characters', () => {
+    for (const tool of CATALOG) {
+      expect(
+        tool.description.length,
+        `${tool.name}: description is ${tool.description.length} chars (limit: 1200)`
+      ).toBeLessThanOrEqual(1200)
+    }
+  })
+
+  it('every description contains "When to prefer"', () => {
+    for (const tool of CATALOG) {
+      expect(
+        tool.description,
+        `${tool.name}: description must contain "When to prefer"`
+      ).toMatch(/When to prefer/)
+    }
+  })
+
+  it('no description is empty', () => {
+    for (const tool of CATALOG) {
+      expect(tool.description.length, `${tool.name}: description is empty`).toBeGreaterThan(50)
+    }
   })
 })

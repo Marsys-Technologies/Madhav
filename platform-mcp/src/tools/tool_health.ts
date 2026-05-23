@@ -10,6 +10,19 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const TOOL_HEALTH_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns aggregate health metrics for all registered MCP tools over the last N hours ' +
+    '(default 24h) — call counts, error rates, average latency, audit finding counts, and active caveats.',
+  whenToPrefer:
+    'Use to understand the operational state of the MCP server: which tools have elevated error rates, ' +
+    'which have pending audit findings. Essential for operator debugging. ' +
+    'Do NOT use to answer chart questions — use query_signals or holistic_bundle for that.',
+  tierNote: 'Available: super_admin + acharya only. client tier = 403.',
+})
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -29,22 +42,7 @@ export function registerToolHealth(
   server.tool(
     'tool_health',
 
-    `What it does: Returns aggregate health metrics for all registered MCP tools over
-the last N hours (default: 24). Metrics include call counts, error rates, average
-latency, audit finding counts, and active tool caveats. Available to super_admin
-and acharya tiers only; client tier receives 403 with house-rules reference.
-
-When to prefer: Use tool_health when you want to understand the operational state
-of the MCP server — which tools are being called most, which have elevated error
-rates, which have pending audit findings. Essential for operator debugging.
-Do NOT use tool_health to answer chart questions — use query_signals or holistic_bundle.
-
-Input: lookback_hours (optional, default 24, max 168).
-
-Output: {ok, generated_at, lookback_hours, tools: [{tool_name, call_count_24h,
-error_rate, avg_latency_ms, audit_finding_count, caveats}]}.
-
-Tier restriction: super_admin + acharya only. client tier = 403.`,
+    TOOL_HEALTH_DESCRIPTION,
 
     ToolHealthInputSchema.shape,
 
@@ -53,19 +51,11 @@ Tier restriction: super_admin + acharya only. client tier = 403.`,
 
       // Tier gate
       if (principal.audience_tier === 'client' || principal.audience_tier === 'public_redacted') {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                error: 'Forbidden',
-                message: 'tool_health is restricted to super_admin and acharya tiers. See marsys://house-rules.',
-              }),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult({
+          ok: false,
+          error: 'Forbidden',
+          message: 'tool_health is restricted to super_admin and acharya tiers. See marsys://house-rules.',
+        })
       }
 
       try {
@@ -82,27 +72,12 @@ Tier restriction: super_admin + acharya only. client tier = 403.`,
 
         const data = await response.json() as Record<string, unknown>
 
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({ ...data, lookback_hours: input.lookback_hours }),
-            },
-          ],
-        }
+        return okResult({ ...data, lookback_hours: input.lookback_hours } as unknown as { ok: boolean; [key: string]: unknown })
       } catch (err) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                error: err instanceof Error ? err.message : String(err),
-              }),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult({
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        })
       }
     }
   )

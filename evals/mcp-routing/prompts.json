@@ -1,0 +1,212 @@
+[
+  {
+    "id": "chart_summary_d1_overview",
+    "prompt": "Give me a complete overview of the native's birth chart",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "chart_summary",
+    "acceptable_alternatives": ["holistic_bundle"]
+  },
+  {
+    "id": "chart_summary_d9_request",
+    "prompt": "Show me the native's D9 navamsa chart",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "chart_summary",
+    "acceptable_alternatives": ["query_chart_facts"]
+  },
+  {
+    "id": "chart_summary_lagna",
+    "prompt": "What is the native's ascendant and lagna lord?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "chart_summary",
+    "acceptable_alternatives": ["query_chart_facts"]
+  },
+  {
+    "id": "chart_summary_planets",
+    "prompt": "What are the planetary positions in the native's chart?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "chart_summary",
+    "acceptable_alternatives": ["query_chart_facts"]
+  },
+  {
+    "id": "chart_summary_yogas",
+    "prompt": "What yogas are present in the native's chart?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "chart_summary",
+    "acceptable_alternatives": ["query_chart_facts", "holistic_bundle"]
+  },
+  {
+    "id": "query_chart_facts_shadbala_saturn",
+    "prompt": "What is Saturn's shadbala score?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_chart_facts",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_chart_facts_house7",
+    "prompt": "Which planets are placed in the 7th house?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_chart_facts",
+    "acceptable_alternatives": ["chart_summary"]
+  },
+  {
+    "id": "query_chart_facts_ashtakavarga",
+    "prompt": "What is the ashtakavarga bindhu count for Jupiter?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_chart_facts",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_chart_facts_kp_cusps",
+    "prompt": "Give me the KP cusp data for the 10th house",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_chart_facts",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_chart_facts_varshphal",
+    "prompt": "What are the varshphal data entries for this chart?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_chart_facts",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "holistic_bundle_synthesis",
+    "prompt": "Give me a holistic synthesis of the native's chart",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "holistic_bundle",
+    "acceptable_alternatives": ["chart_summary"]
+  },
+  {
+    "id": "holistic_bundle_career",
+    "prompt": "Synthesize the career and professional life themes from all chart layers",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "holistic_bundle",
+    "acceptable_alternatives": ["query_signals"]
+  },
+  {
+    "id": "holistic_bundle_marriage",
+    "prompt": "Give me a cross-layer synthesis of the native's marriage and relationships",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "holistic_bundle",
+    "acceptable_alternatives": ["query_signals"]
+  },
+  {
+    "id": "multi_school_bundle_saturn_7th",
+    "prompt": "Do all four schools agree on Saturn in the 7th house?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "multi_school_bundle",
+    "acceptable_alternatives": ["cross_school_lookup"]
+  },
+  {
+    "id": "multi_school_bundle_ketu_12th",
+    "prompt": "What do Parashara, Jaimini, KP and Tajaka each say about Ketu in the 12th house?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "multi_school_bundle",
+    "acceptable_alternatives": ["cross_school_lookup", "read_classical_text"]
+  },
+  {
+    "id": "query_dasha_current",
+    "prompt": "What is the current Vimshottari dasha?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_dasha_periods",
+    "acceptable_alternatives": ["chart_summary"]
+  },
+  {
+    "id": "query_dasha_2027",
+    "prompt": "What dasha period will be active in 2027?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_dasha_periods",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_dasha_sequence",
+    "prompt": "Show me the full Vimshottari dasha sequence for the next 10 years",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_dasha_periods",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_signals_career_forward",
+    "prompt": "Give me all forward-looking career signals from the MSR corpus",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_signals",
+    "acceptable_alternatives": ["holistic_bundle"]
+  },
+  {
+    "id": "query_signals_jupiter_dasha",
+    "prompt": "What MSR signals are tagged to Jupiter as dasha lord?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_signals",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_signals_health_domain",
+    "prompt": "Show me all health-domain signals from the signal corpus",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_signals",
+    "acceptable_alternatives": ["holistic_bundle"]
+  },
+  {
+    "id": "cross_school_lookup_mars_debilitated",
+    "prompt": "Do all four Jyotish schools agree that debilitated Mars harms the 7th?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "cross_school_lookup",
+    "acceptable_alternatives": ["multi_school_bundle"]
+  },
+  {
+    "id": "cross_school_lookup_raja_yoga",
+    "prompt": "What is the convergence score across schools for Raja Yoga formation?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "cross_school_lookup",
+    "acceptable_alternatives": ["multi_school_bundle"]
+  },
+  {
+    "id": "vector_search_atmakaraka",
+    "prompt": "Find content similar to atmakaraka and spiritual liberation",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "vector_search",
+    "acceptable_alternatives": ["read_classical_text", "get_cgm_subgraph"]
+  },
+  {
+    "id": "vector_search_second_saturn_return",
+    "prompt": "Search for content about Saturn return and maturity themes",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "vector_search",
+    "acceptable_alternatives": ["read_classical_text", "query_signals"]
+  },
+  {
+    "id": "lel_query_career_events",
+    "prompt": "What verified career events happened between 2010 and 2020?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "lel_query",
+    "acceptable_alternatives": ["holistic_bundle"]
+  },
+  {
+    "id": "lel_query_all_events",
+    "prompt": "Show me all life events in the Life Event Log",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "lel_query",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_panchanga_today",
+    "prompt": "What is today's tithi and nakshatra?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_panchanga",
+    "acceptable_alternatives": []
+  },
+  {
+    "id": "query_ephemeris_saturn_retrograde",
+    "prompt": "What sign was Saturn in during Q1 2024 and was it retrograde?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "query_ephemeris",
+    "acceptable_alternatives": ["query_transit_event"]
+  },
+  {
+    "id": "read_classical_text_parashara_ketu",
+    "prompt": "What does Parashara say about Ketu in the 12th house?",
+    "audience_tier": "super_admin",
+    "gold_first_tool": "read_classical_text",
+    "acceptable_alternatives": ["vector_search", "read_asset"]
+  }
+]

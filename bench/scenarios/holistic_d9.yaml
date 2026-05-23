@@ -1,0 +1,8 @@
+name: holistic_d9
+description: Holistic bundle D9 interpretation via holistic_bundle tool.
+audience_tier: super_admin
+mcp_base_url: ${MCP_BASE_URL:-http://localhost:8080}
+steps:
+  - tool: holistic_bundle
+    args: { query_text: "D9 chart interpretation for native", divisional_chart: D9 }
+metrics: [round_trips, response_bytes, wall_time_ms]

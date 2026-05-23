@@ -39,6 +39,10 @@ interface TraceStep {
   query_id: string
   step_seq: number
   step_name: string
+  // mcp_tool column added by migration 116: MCP-facing name (e.g. query_chart_facts).
+  // NULL for rows written before migration 116. Callers should prefer mcp_tool when
+  // present; step_name holds the retrieval-side name (e.g. chart_facts_query).
+  mcp_tool: string | null
   step_type: string
   status: string
   started_at: string | null
@@ -108,7 +112,11 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { rows } = await query<TraceStep>(
       `SELECT
-         query_id, step_seq, step_name, step_type, status,
+         query_id, step_seq, step_name,
+         -- mcp_tool column added by migration 116: MCP-facing name, e.g. query_chart_facts.
+         -- NULL for rows written before migration 116 is applied.
+         mcp_tool,
+         step_type, status,
          started_at::text AS started_at, completed_at::text AS completed_at,
          latency_ms, parallel_group, data_summary, payload, user_id
        FROM query_trace_steps

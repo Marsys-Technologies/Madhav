@@ -114,6 +114,14 @@ export interface TraceDataSummary {
   error_reason?: string
   /** step_error step: which pipeline stage failed (classify|compose|tool_fetch|synthesis). */
   error_stage?: string
+  // ── MCPT v3.2 additive (migration 116) ────────────────────────────────────
+  /** MCP-facing tool name for surgical primitive calls (e.g. query_chart_facts).
+   * Distinct from tool_name which holds the retrieval-side name (chart_facts_query).
+   * Populated only for mcp_primitive steps; used by list_recent_queries to return
+   * canonical MCP names instead of internal retrieval names. */
+  mcp_tool?: string
+  /** Human-readable summary of the tool call params for list_recent_queries display. */
+  query_summary?: string
   // ── P5 D.5.1 additive (context_assembly short-circuit) ─────────────────────
   /** context_assembly: true when the LLM call was skipped. */
   short_circuited?: boolean

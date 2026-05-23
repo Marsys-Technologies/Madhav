@@ -1,0 +1,60 @@
+{
+  "head_sha": "dcf7db85",
+  "baseline_sha": "4372cc40",
+  "diffed_at": "2026-05-23T19:52:58.839Z",
+  "scenarios": {
+    "canonical_d9_workflow": {
+      "baseline": {
+        "round_trips": 2,
+        "response_bytes": 32085,
+        "wall_time_ms": 1
+      },
+      "head": {
+        "round_trips": 2,
+        "response_bytes": 32085,
+        "wall_time_ms": 1
+      },
+      "delta_pct": {
+        "round_trips": 0,
+        "response_bytes": 0,
+        "wall_time_ms": 0
+      }
+    },
+    "holistic_d9": {
+      "baseline": {
+        "round_trips": 1,
+        "response_bytes": 64042,
+        "wall_time_ms": 1
+      },
+      "head": {
+        "round_trips": 1,
+        "response_bytes": 64042,
+        "wall_time_ms": 1
+      },
+      "delta_pct": {
+        "round_trips": 0,
+        "response_bytes": 0,
+        "wall_time_ms": 0
+      }
+    },
+    "portal_synthesis_floor": {
+      "baseline": {
+        "round_trips": 5,
+        "response_bytes": 38100,
+        "wall_time_ms": 0
+      },
+      "head": {
+        "round_trips": 5,
+        "response_bytes": 38100,
+        "wall_time_ms": 0
+      },
+      "delta_pct": {
+        "round_trips": 0,
+        "response_bytes": 0,
+        "wall_time_ms": 0
+      }
+    }
+  },
+  "verdict": "pass",
+  "regressions": []
+}

@@ -331,4 +331,30 @@ describe('chart_facts_query tool', () => {
     const args: unknown[] = mockQuery.mock.calls[0][1]
     expect(args).toContain('2025-12-31')
   })
+
+  // TC.16 — divisional_chart filter constrains SQL WHERE to matching rows only
+  it('query_chart_facts with divisional_chart filter returns only matching rows', async () => {
+    const d9Rows = [
+      makeRow({ fact_id: 'PLN.D9.SUN', category: 'planet', divisional_chart: 'D9', value_json: { planet: 'Sun', sign: 'Aries', house: 1 } }),
+      makeRow({ fact_id: 'PLN.D9.MOON', category: 'planet', divisional_chart: 'D9', value_json: { planet: 'Moon', sign: 'Cancer', house: 4 } }),
+    ]
+    mockQuery.mockResolvedValue({ rows: d9Rows, rowCount: d9Rows.length })
+
+    const bundle = await tool.retrieve(basePlan, { category: 'planet', divisional_chart: 'D9' })
+
+    // Verify the SQL WHERE clause includes the divisional_chart = $N condition
+    const sql: string = mockQuery.mock.calls[0][0]
+    expect(sql).toContain('divisional_chart =')
+
+    // Verify the bound argument contains 'D9'
+    const args: unknown[] = mockQuery.mock.calls[0][1]
+    expect(args).toContain('D9')
+
+    // Verify result rows are all D9
+    expect(bundle.results).toHaveLength(2)
+    bundle.results.forEach(r => {
+      const content = JSON.parse(r.content)
+      expect(content.divisional_chart).toBe('D9')
+    })
+  })
 })
