@@ -30,10 +30,10 @@ sessions:
     phase: A
     title: "Route.ts: convertRetrievalToolToChatTool helper + replace tools:[] stub"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S2_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-A-S1]
-    commit_sha: null
+    commit_sha: "275ba9e5"
     pr_url: null
     notes: "Fixes Break B1. Creates tool_catalogue.ts helper."
 
