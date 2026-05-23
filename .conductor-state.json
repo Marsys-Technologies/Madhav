@@ -81,17 +81,20 @@
     },
     {
       "id": 7,
-      "status": "in_progress",
+      "status": "completed",
+      "completed_at": "2026-05-24T01:22:00Z",
+      "gate": "PASS",
       "sub_agents": [
         {
           "id": "v32-s7a-seed-load",
-          "status": "blocked",
-          "reason": ".conductor-approve-prod tripwire absent; prod DB seed and Cloud Run job creation require human approval"
+          "status": "completed",
+          "note": "26 rows seeded to data_source_expected (23 chart_facts + lel_query + query_panchanga + query_signals)"
         },
         {
           "id": "v32-s7b-nightly-audit-job",
-          "status": "blocked",
-          "reason": ".conductor-approve-prod tripwire absent; prod DB seed and Cloud Run job creation require human approval"
+          "status": "completed",
+          "commit": "dcf7db85",
+          "note": "audit.ts added, Cloud Run job amjis-mcp-audit created, Cloud Scheduler nightly-mcp-audit ENABLED 03:00 IST"
         },
         { "id": "v32-s7c-handlers-truth", "status": "completed", "commit": "7a7f1e9c" }
       ]
@@ -118,13 +121,18 @@
     },
     {
       "id": 10,
-      "status": "waiting_prod_approval",
+      "status": "awaiting_pr_approval",
       "sub_agents": [
         {
           "id": "v32-s10-final-verify",
-          "status": "waiting_prod_approval",
-          "commit": "ec950a72",
-          "note": "Build fix applied (MCP SDK 1.12 type compat). tsc clean, 257/257 tests pass. Awaiting .conductor-approve-prod for Phase 7a+7b then staging deploy + prod promotion."
+          "status": "awaiting_pr_approval",
+          "commit": "85a19ae5",
+          "staging_revision": "amjis-mcp-00011-9zv",
+          "staging_url": "https://amjis-mcp-qm256lasva-el.a.run.app",
+          "pr_comment": "https://github.com/amonty84/Madhav/pull/153#issuecomment-4526380896",
+          "bench_verdict": "PASS",
+          "accuracy_verdict": "PASS",
+          "note": "Phase 10.7-10.9 complete. Staging live, bench+accuracy PASS. Awaiting PR #153 approval comment to execute 10.10 prod promotion."
         }
       ]
     }
