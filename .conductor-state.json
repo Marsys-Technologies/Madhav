@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "started_at": "2026-05-23T16:45:00Z",
+  "branch": "feature/mcpt-v32-quality-tightening",
+  "current_phase": 0,
+  "phases": [
+    {
+      "id": 0,
+      "status": "in_progress",
+      "sub_agents": [
+        {"id": "v32-s0-bootstrap", "status": "in_progress"}
+      ],
+      "gate_artifact": "bench/mcp_test_baseline.log"
+    },
+    {"id": 1, "status": "pending", "sub_agents": [
+      {"id": "v32-s1a-data_coverage-description", "status": "pending"},
+      {"id": "v32-s1b-tool_health-data_note", "status": "pending"},
+      {"id": "v32-s1c-supabase-076-seed-comment", "status": "pending"},
+      {"id": "v32-s1d-audit-other-descriptions", "status": "pending"}
+    ]},
+    {"id": 2, "status": "pending", "sub_agents": [
+      {"id": "v32-s2a-envelope-helper", "status": "pending"},
+      {"id": "v32-s2b-tool-migration", "status": "pending"}
+    ]},
+    {"id": 3, "status": "pending", "sub_agents": [
+      {"id": "v32-s3-descriptions-builder-migration", "status": "pending"}
+    ]},
+    {"id": 4, "status": "pending", "sub_agents": [
+      {"id": "v32-s4a-divisional-filter", "status": "pending"},
+      {"id": "v32-s4b-categories-batching", "status": "pending"},
+      {"id": "v32-s4c-chart-summary", "status": "pending"}
+    ]},
+    {"id": 5, "status": "pending", "sub_agents": [
+      {"id": "v32-s5a-trace-name-canonicalization", "status": "pending"},
+      {"id": "v32-s5b-query-summary-population", "status": "pending"}
+    ]},
+    {"id": 6, "status": "pending", "sub_agents": [
+      {"id": "v32-s6a-acharya-enum-decision", "status": "pending"},
+      {"id": "v32-s6b-tier-aware-list-tools", "status": "pending"}
+    ]},
+    {"id": 7, "status": "pending", "sub_agents": [
+      {"id": "v32-s7a-seed-load", "status": "pending"},
+      {"id": "v32-s7b-nightly-audit-job", "status": "pending"},
+      {"id": "v32-s7c-handlers-truth", "status": "pending"}
+    ]},
+    {"id": 8, "status": "pending", "sub_agents": [
+      {"id": "v32-s8a-bench-harness", "status": "pending"},
+      {"id": "v32-s8b-accuracy-harness", "status": "pending"}
+    ]},
+    {"id": 9, "status": "pending", "sub_agents": [
+      {"id": "v32-s9a-cross-scenario-equivalence", "status": "pending"},
+      {"id": "v32-s9b-routing-eval", "status": "pending"}
+    ]},
+    {"id": 10, "status": "pending", "sub_agents": [
+      {"id": "v32-s10-final-verify", "status": "pending"}
+    ]}
+  ],
+  "escalations": [],
+  "human_gates_pending": []
+}

@@ -1,0 +1,22 @@
+MCPT v3.2 Quality Tightening — Platform Test Baseline
+Captured: 2026-05-23
+Branch: feature/mcpt-v32-quality-tightening
+Tag: mcpt-v32-baseline
+
+== platform test run ==
+Total: 4967 passed / 18 failed / 22 skipped (5007 test cases)
+
+Pre-existing failures: 18 (documented in KNOWN_PRE_EXISTING_FAILURES.md v1.3)
+All 18 failures are pre-existing baselines — 0 regressions from this branch.
+
+Failure groups:
+1. R11.B chrome inline citation parity (8 failures, 4 files)
+   - tests/unit/chat-v2/citation_ui.test.ts (3)
+   - tests/unit/chat-v2/citation_rich_payload.test.ts (4)
+   - tests/unit/chat-v2/markdown_render_v2.test.ts (1)
+   - tests/visual/R11B_brand_preservation.spec.ts (0 cases, file-level)
+2. plan_escalation (2 failures) — PipelinePlanSchema.safeParse shape mismatch
+3. chart_facts_bhava_bala (timeout) — bootstrap test requiring live DB
+4. Additional documented residuals per KNOWN_PRE_EXISTING_FAILURES.md v1.3
+
+== VERDICT: BASELINE_ESTABLISHED — 18 pre-existing failures documented; not introduced by this branch ==

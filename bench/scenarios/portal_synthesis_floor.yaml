@@ -1,0 +1,18 @@
+# Phase 8 will populate this scenario — skeleton created in Phase 0
+name: portal_synthesis_floor
+description: Pre-refactor pattern — 5 separate query_chart_facts calls. Floor baseline.
+audience_tier: super_admin
+mcp_base_url: ${MCP_BASE_URL:-http://localhost:8080}
+steps:
+  - tool: query_chart_facts
+    args: { category: birth_metadata }
+  - tool: query_chart_facts
+    args: { category: planet }
+  - tool: query_chart_facts
+    args: { category: house }
+  - tool: query_chart_facts
+    args: { category: yoga }
+  - tool: query_chart_facts
+    args: { category: arudha }
+metrics: [round_trips, response_bytes, wall_time_ms]
+status: SKELETON
