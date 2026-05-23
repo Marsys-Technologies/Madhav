@@ -131,14 +131,36 @@ export type ToolCallItem = z.infer<typeof ToolCallItemSchema>
 //     or QueryPlan (those are deleted in Phase 4).
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §4a. Field classification: HARD-REQUIRED vs SOFT-OPTIONAL string fields
+//
+//   HARD-REQUIRED — leave as z.string() / z.enum(): a null or missing value
+//   is a genuine planner failure that must surface as 422 so it gets fixed.
+//     query_class, query_intent_summary
+//     AssetBundleItemSchema: asset_id, reason
+//     ToolCallItemSchema:    tool_name, reason
+//
+//   SOFT-OPTIONAL — narrative guidance fields whose absence is tolerable at
+//   parse time; we coerce null → undefined to absorb LLM format jitter.
+//   Coercions are detected at the call site and emitted as a trace_step for
+//   audit visibility in query_trace_steps.
+//     synthesis_guidance     (ends in _guidance)
+//     planning_rationale     (ends in _rationale)
+//
+//   Implementation: z.preprocess(v => v === null ? undefined : v, z.string())
+//   converts a literal null to undefined, letting .optional() accept it without
+//   the schema rejecting the response. The original null is still observable
+//   in the pre-parse rawPlannerArgs for coercion logging.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const PipelinePlanSchema = z.object({
 
   // ── Core classification ────────────────────────────────────────────────────
 
-  /** [PLANNER OUTPUT] Unified 8-class query taxonomy. */
+  /** [PLANNER OUTPUT] Unified 8-class query taxonomy. HARD-REQUIRED. */
   query_class: QueryClassEnum,
 
-  /** [PLANNER OUTPUT] ≤20-word neutral gloss of what the native is asking. */
+  /** [PLANNER OUTPUT] ≤20-word neutral gloss of what the native is asking. HARD-REQUIRED. */
   query_intent_summary: z.string().min(1).max(200),
 
   // ── Synthesis corpus ──────────────────────────────────────────────────────
@@ -169,8 +191,11 @@ export const PipelinePlanSchema = z.object({
    *
    * If absent, synthesis uses its default system prompt without guidance.
    * Present for non-trivial queries; absent for single_answer (factual).
+   *
+   * SOFT-OPTIONAL: null is coerced to undefined at parse time. Coercions are
+   * logged via the 'planner_field_coerced' trace_step for audit visibility.
    */
-  synthesis_guidance: z.string().optional(),
+  synthesis_guidance: z.preprocess(v => v === null ? undefined : v, z.string().optional()),
 
   // ── Output shape ──────────────────────────────────────────────────────────
 
@@ -217,8 +242,11 @@ export const PipelinePlanSchema = z.object({
 
   // ── Plan rationale ────────────────────────────────────────────────────────
 
-  /** [PLANNER OUTPUT] Why this overall plan was chosen. Stored in audit trail. */
-  planning_rationale: z.string().optional(),
+  /**
+   * [PLANNER OUTPUT] Why this overall plan was chosen. Stored in audit trail.
+   * SOFT-OPTIONAL: null coerced to undefined (same pattern as synthesis_guidance).
+   */
+  planning_rationale: z.preprocess(v => v === null ? undefined : v, z.string().optional()),
 
   // ── Gate III: prior-turn relevance ───────────────────────────────────────
   //
@@ -330,8 +358,14 @@ export const PipelinePlanInputJsonSchema: JSONSchema7 = {
         required: ['tool_name', 'params', 'token_budget', 'priority', 'reason'],
       },
     },
-    synthesis_guidance: { type: 'string' },
-    planning_rationale: { type: 'string' },
+    synthesis_guidance: {
+      type: 'string',
+      description: 'MUST be a non-empty string describing how the synthesis model should compose its answer — angle, depth, emphasis, structural framing. NEVER return null or omit this field for non-factual queries. Empty string is not acceptable.',
+    },
+    planning_rationale: {
+      type: 'string',
+      description: 'MUST be a non-empty string explaining why this plan was chosen. NEVER return null.',
+    },
     expected_output_shape: {
       type: 'string',
       enum: ['single_answer', 'three_interpretation', 'time_indexed_prediction', 'structured_data'],

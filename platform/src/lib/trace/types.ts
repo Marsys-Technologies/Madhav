@@ -114,6 +114,8 @@ export interface TraceDataSummary {
   error_reason?: string
   /** step_error step: which pipeline stage failed (classify|compose|tool_fetch|synthesis). */
   error_stage?: string
+  /** planner_field_coerced step: number of soft-optional fields null-coerced in one plan. */
+  coercion_count?: number
   // ── P5 D.5.1 additive (context_assembly short-circuit) ─────────────────────
   /** context_assembly: true when the LLM call was skipped. */
   short_circuited?: boolean
@@ -147,6 +149,8 @@ export interface TracePayload {
   reasoning_trace?: string
   /** step_error step: human-readable detail for inline display. */
   error_message?: string
+  /** planner_field_coerced step: soft-optional fields that were null in LLM output. */
+  coerced_fields?: string[]
 }
 
 /** One pipeline step record (maps 1:1 to a query_trace_steps row) */
