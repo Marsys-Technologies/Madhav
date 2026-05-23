@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { PipelinePlanSchema } from '../../../src/lib/pipeline/types';
 
 // ------------------------------------------------------------------
 // Mock 'ai' before importing the adapter (same pattern as F-S2 tests)
@@ -212,5 +213,60 @@ describe('R11F E2E: Anthropic adapter → B.11 floor context threading', () => {
     const systemContent = firstCallParams['system'] as string | undefined;
     expect(systemContent).toBeDefined();
     expect(systemContent).toContain(B11_FLOOR_MARKER);
+  });
+});
+
+// ------------------------------------------------------------------
+// Test 4: Planner null synthesis_guidance — the A-S5 production bug
+//
+// This test would NOT have caught the original bug because the A-S4
+// fixtures only mocked the adapter/loop layer, not the planner schema.
+// It now covers the exact production wire format that Anthropic returns:
+// a valid PipelinePlan except synthesis_guidance is null rather than
+// a string or absent. The schema fix (z.preprocess null→undefined) must
+// accept this without throwing.
+// ------------------------------------------------------------------
+
+describe('R11F A-S5 regression: planner synthesis_guidance: null does not cause 422', () => {
+  it('PipelinePlanSchema accepts synthesis_guidance: null and coerces to undefined', () => {
+    // This is the exact shape that caused the A-S5 422 in production.
+    // Anthropic returned synthesis_guidance: null; the old z.string().optional()
+    // rejected it; PipelinePlannerError was thrown; route.ts returned 422.
+    const productionWireFormat = {
+      query_class: 'predictive',
+      query_intent_summary: 'When does the native\'s next Saturn mahadasha start?',
+      asset_bundle: [
+        { asset_id: 'FORENSIC', priority: 1, reason: 'Floor: birth chart facts.' },
+        { asset_id: 'LEL', priority: 2, reason: 'Life event log for dasha correlation.' },
+      ],
+      tool_calls: [
+        {
+          tool_name: 'query_dasha_periods',
+          params: { dasha_lord: 'Saturn', limit: 5 },
+          token_budget: 800,
+          priority: 1,
+          reason: 'Saturn dasha sequence from current position.',
+        },
+      ],
+      synthesis_guidance: null,      // ← The bug: Anthropic returned null here
+      planning_rationale: null,      // ← Both soft-optional fields null (worst case)
+      forward_looking: true,
+      dasha_context_required: true,
+    };
+
+    const result = PipelinePlanSchema.safeParse(productionWireFormat);
+
+    // Must succeed — the schema fix coerces null → undefined for soft-optional fields
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      // synthesis_guidance null → undefined: treated as absent, synthesis uses default prompt
+      expect(result.data.synthesis_guidance).toBeUndefined();
+      expect(result.data.planning_rationale).toBeUndefined();
+      // Hard-required fields must be preserved exactly
+      expect(result.data.query_class).toBe('predictive');
+      expect(result.data.tool_calls).toHaveLength(1);
+      expect(result.data.tool_calls[0].tool_name).toBe('query_dasha_periods');
+    }
   });
 });
