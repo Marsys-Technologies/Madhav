@@ -2,7 +2,7 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 8,
+  "current_phase": 9,
   "phases": [
     {
       "id": 0,
@@ -158,29 +158,33 @@
     },
     {
       "id": 8,
-      "status": "in_progress",
+      "status": "completed",
       "sub_agents": [
         {
           "id": "v32-s8a-bench-harness",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "908f73d2"
         },
         {
           "id": "v32-s8b-accuracy-harness",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "36793c7f"
         }
-      ]
+      ],
+      "completed_at": "2026-05-23T20:00:00Z",
+      "gate": "PASS"
     },
     {
       "id": 9,
-      "status": "pending",
+      "status": "in_progress",
       "sub_agents": [
         {
           "id": "v32-s9a-cross-scenario-equivalence",
-          "status": "pending"
+          "status": "in_progress"
         },
         {
           "id": "v32-s9b-routing-eval",
-          "status": "pending"
+          "status": "in_progress"
         }
       ]
     },
