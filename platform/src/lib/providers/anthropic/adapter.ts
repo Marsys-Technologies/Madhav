@@ -105,6 +105,18 @@ export class AnthropicAdapter implements CapabilityAdapter {
         } else if (part.type === 'reasoning-delta') {
           // Extended thinking — Vercel AI SDK surfaces as 'reasoning-delta' parts with .text
           yield { type: 'thinking_delta', thinking: (part as unknown as { text: string }).text };
+        } else if ((part as unknown as { type: string }).type === 'tool-call-streaming-start') {
+          // Tool call begins — emit start event with id + name
+          const p = part as unknown as { toolCallId: string; toolName: string };
+          yield { type: 'tool_use_start', id: p.toolCallId, name: p.toolName };
+        } else if ((part as unknown as { type: string }).type === 'tool-call-delta') {
+          // Incremental tool input JSON
+          const p = part as unknown as { toolCallId: string; argsTextDelta: string };
+          yield { type: 'tool_use_input_delta', id: p.toolCallId, partialJson: p.argsTextDelta };
+        } else if (part.type === 'tool-call') {
+          // Full tool call available — emit complete event with parsed args
+          const p = part as unknown as { toolCallId: string; toolName: string; args: Record<string, unknown> };
+          yield { type: 'tool_use_complete', id: p.toolCallId, name: p.toolName, input: p.args };
         } else if (part.type === 'finish') {
           const usage = part.totalUsage;
           yield {
@@ -118,9 +130,11 @@ export class AnthropicAdapter implements CapabilityAdapter {
               (usage as unknown as { inputTokenDetails?: { cacheWriteTokens?: number } })
                 .inputTokenDetails?.cacheWriteTokens ?? 0,
           };
+          // Map tool-calls finish reason to canonical 'tool_use' stop reason
+          const stopReason = part.finishReason === 'tool-calls' ? 'tool_use' : (part.finishReason ?? 'end_turn');
           yield {
             type: 'message_stop',
-            stopReason: part.finishReason ?? 'end_turn',
+            stopReason,
           };
         } else if (part.type === 'error') {
           const raw = (part as unknown as { error?: unknown }).error;
