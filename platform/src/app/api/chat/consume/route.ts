@@ -74,6 +74,7 @@ import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 import { getTool } from '@/lib/retrieve/index'
+import { buildChatToolsFromNames } from '@/lib/retrieve/tool_catalogue'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
@@ -944,7 +945,7 @@ export async function POST(request: Request) {
         const manifest = adapter.getManifest()
         const toolsCfg = adapter.tools({
           toolLoopMode: manifest.adaptiveToolLoop,
-          tools: [],  // Stub: full MCP tool dispatch wired in follow-up arc
+          tools: buildChatToolsFromNames(queryPlan.tools_authorized ?? []),
           maxIterations: 8,
         })
         adapterChatReq = { ...adapterChatReq, toolsConfig: toolsCfg, tools: toolsCfg.tools }
