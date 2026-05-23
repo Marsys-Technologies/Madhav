@@ -53,3 +53,32 @@ Recommended action:
 ## Update — 2026-05-23 (post-merge follow-up)
 
 The DESC_TUNE failure for `chart_summary_d9_request` was addressed in the final close-out commit by adding explicit "navamsa" and "D9" mentions to the `chart_summary` tool description (`platform-mcp/src/tools/chart_summary.ts`). Re-running R3 against post-merge prod should yield 30/30 (29/30 was the ceiling before this change, after the AMBIGUOUS fix from this PR's earlier commit).
+
+---
+
+## Final Verification — 2026-05-23 (post-DESC_TUNE merge)
+
+After commit `1868ce31` (merged via PR #155 / fa8b203b) added explicit
+"navamsa" + "D9" mentions to the `chart_summary` description, R3 was
+re-run against revision amjis-mcp-00011-9zv:
+
+| Metric | Value |
+|---|---|
+| Prior result (post-prod, pre-DESC_TUNE) | 28/30 = 93.3% |
+| Post-DESC_TUNE result | 29/30 = 96.7% |
+| Delta | +3.3pp |
+| Verdict | IMPROVED |
+
+**Still failing**: `chart_summary_d9_request` — model returned `no_tool_call`
+(same failure as pre-DESC_TUNE). Despite navamsa+D9 now appearing in the description,
+the model again concluded divisional chart data is unavailable and replied with text.
+Classification: **MODEL_ERROR/AMBIGUOUS** (description was updated; the failure is in
+model inference, not description content). The `multi_school_bundle_ketu_12th` prompt
+was fixed (now passes as `acceptable` via `read_classical_text`).
+
+Raw result: `eval-results/routing_eval_verification_20260523T222311Z.json`
+Diff: `eval-results/routing_eval_verification_diff_20260523T222311Z.json`
+
+**MCPT v3.2 routing eval acceptance is closed at 29/30 (96.7%).** The remaining
+`chart_summary_d9_request` failure is a model-inference edge case (no_tool_call despite
+correct description); it does not block v3.2 acceptance (goal was ≥80%, met at 96.7%).

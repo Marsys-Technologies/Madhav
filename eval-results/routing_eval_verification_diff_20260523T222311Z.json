@@ -1,0 +1,20 @@
+{
+  "prior_pct": 93.3,
+  "head_pct": 96.7,
+  "prior_pass": 28,
+  "head_pass": 29,
+  "total": 30,
+  "delta_pp": 3.3,
+  "verdict": "IMPROVED",
+  "prior_revision_inferred": "amjis-mcp-00011-9zv (pre-DESC_TUNE merge)",
+  "head_revision": "amjis-mcp-00011-9zv (post-merge, includes 1868ce31)",
+  "prior_commit": "b9f372a3",
+  "head_commit": "d802639d",
+  "still_failing": [
+    "chart_summary_d9_request"
+  ],
+  "fixed_by_desc_tune": [
+    "multi_school_bundle_ketu_12th"
+  ],
+  "note": "chart_summary_d9_request continues to return no_tool_call despite navamsa+D9 in description; classified MODEL_ERROR/AMBIGUOUS"
+}

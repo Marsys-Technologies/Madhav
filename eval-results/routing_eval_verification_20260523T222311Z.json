@@ -1,0 +1,1429 @@
+{
+  "run_at": "2026-05-23T22:22:35.973Z",
+  "git_sha": "d802639d",
+  "mode": "live",
+  "model": "claude-haiku-4-5",
+  "total": 30,
+  "passed": 29,
+  "failed": 1,
+  "pass_rate": 0.9666666666666667,
+  "goal": ">=80% gold-or-acceptable",
+  "goal_met": true,
+  "results": [
+    {
+      "id": "chart_summary_d1_overview",
+      "prompt": "Give me a complete overview of the native's birth chart",
+      "gold_first_tool": "chart_summary",
+      "acceptable_alternatives": [
+        "holistic_bundle"
+      ],
+      "first_tool_called": "chart_summary",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01RJb8KsFFcietSX3iAYxia2",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll get you a complete overview of the native's birth chart by calling the chart summary function."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01Fq4Cw1k8FsrSnDAQkxef3t",
+            "name": "chart_summary",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 57,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "chart_summary_d9_request",
+      "prompt": "Show me the native's D9 navamsa chart",
+      "gold_first_tool": "chart_summary",
+      "acceptable_alternatives": [
+        "query_chart_facts"
+      ],
+      "first_tool_called": null,
+      "outcome": "no_tool_call",
+      "pass": false,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01Hu1GPuc6W29f4yqWib4b5B",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I don't have access to a function that retrieves or displays the D9 (Navamsa) divisional chart directly. The MARSYS-JIS MCP server tools I have available are focused on:\n\n- **Chart facts** (planetary positions, houses, yogas, dashas, shadbala, etc. in the natal chart)\n- **Signals & synthesis** (MSR signals, cross-domain linkage)\n- **Life events & transits** (ephemeris, panchang, dasha periods)\n- **Classical text citations** (Parashara, Jaimini, KP, Tajaka)\n\nHowever, I can help you in related ways:\n\n1. **Show the natal chart summary** – I can pull the native's full birth data, planetary positions, house placements, and yogas from the natal (D1) chart.\n\n2. **Extract Navamsa placements manually** – Once I have the natal chart data, I can calculate Navamsa positions for each planet (using the 9-fold divisional system).\n\n3. **Query Navamsa-related signals** – If the system has stored D9 analysis in the MSR signal corpus, I can search for Navamsa signals.\n\n**Would you like me to:**\n- Start by showing you the **chart_summary** (natal D1 chart snapshot)?\n- Then manually compute the D9 placements from the natal planetary degrees?\n- Or search for **Navamsa-related signals** in the corpus?\n\nPlease confirm, and I'll proceed!"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4054,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 351,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "chart_summary_lagna",
+      "prompt": "What is the native's ascendant and lagna lord?",
+      "gold_first_tool": "chart_summary",
+      "acceptable_alternatives": [
+        "query_chart_facts"
+      ],
+      "first_tool_called": "chart_summary",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01MqS56UJ4SWYQCcLUg252Dj",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll retrieve the native's ascendant and lagna lord information from the chart."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01Qf7Ux1BVjSintsjqNUDS1j",
+            "name": "chart_summary",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4055,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 55,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "chart_summary_planets",
+      "prompt": "What are the planetary positions in the native's chart?",
+      "gold_first_tool": "chart_summary",
+      "acceptable_alternatives": [
+        "query_chart_facts"
+      ],
+      "first_tool_called": "chart_summary",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01L1zrmu4uqCJr7jXyfz7Cmv",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll retrieve the planetary positions from the native's chart."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_014QSMHqWPR2G3yn3zn82z1w",
+            "name": "chart_summary",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 49,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "chart_summary_yogas",
+      "prompt": "What yogas are present in the native's chart?",
+      "gold_first_tool": "chart_summary",
+      "acceptable_alternatives": [
+        "query_chart_facts",
+        "holistic_bundle"
+      ],
+      "first_tool_called": "chart_summary",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_014g5PbG1LNh6L7JJZM65Swt",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll retrieve the chart summary to identify all the yogas present in the native's chart."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01NT6VBYUG4scMbJg7xn761c",
+            "name": "chart_summary",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 56,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_chart_facts_shadbala_saturn",
+      "prompt": "What is Saturn's shadbala score?",
+      "gold_first_tool": "query_chart_facts",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_chart_facts",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01VZhJJuZnp4U3LrEawm6wEU",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_015bxJzKPfUEwjw6Qg82oWUF",
+            "name": "query_chart_facts",
+            "input": {
+              "category": "shadbala",
+              "planet": "Saturn"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4051,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 75,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_chart_facts_house7",
+      "prompt": "Which planets are placed in the 7th house?",
+      "gold_first_tool": "query_chart_facts",
+      "acceptable_alternatives": [
+        "chart_summary"
+      ],
+      "first_tool_called": "query_chart_facts",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_011meqhQeHRQrHi5G7KdzP3D",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the chart facts to find which planets are placed in the 7th house."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_013aAXeE3sNPavq6WAp1QeST",
+            "name": "query_chart_facts",
+            "input": {
+              "house": 7
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 75,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_chart_facts_ashtakavarga",
+      "prompt": "What is the ashtakavarga bindhu count for Jupiter?",
+      "gold_first_tool": "query_chart_facts",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_chart_facts",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01WPi1BDAEGLTr4dY8GFfpSv",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01ArRpoYAUSC65qyo6G11T4m",
+            "name": "query_chart_facts",
+            "input": {
+              "category": "ashtakavarga_sav",
+              "planet": "Jupiter"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4056,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 80,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_chart_facts_kp_cusps",
+      "prompt": "Give me the KP cusp data for the 10th house",
+      "gold_first_tool": "query_chart_facts",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_chart_facts",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01EEG4pP7U9ddyvg3tsHTgEq",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the chart facts for the 10th house KP cusp data."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01M8qywcdvrtbtR9KSK12p9J",
+            "name": "query_chart_facts",
+            "input": {
+              "category": "kp_cusp",
+              "house": 10
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4056,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 95,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_chart_facts_varshphal",
+      "prompt": "What are the varshphal data entries for this chart?",
+      "gold_first_tool": "query_chart_facts",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_chart_facts",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01CkSWs1n7TU44oNpzo5fQUK",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the chart facts for varshphal data entries."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01SwJtqczPdnYeTvmmqJVqfm",
+            "name": "query_chart_facts",
+            "input": {
+              "category": "varshphal"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4055,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 73,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "holistic_bundle_synthesis",
+      "prompt": "Give me a holistic synthesis of the native's chart",
+      "gold_first_tool": "holistic_bundle",
+      "acceptable_alternatives": [
+        "chart_summary"
+      ],
+      "first_tool_called": "holistic_bundle",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01K5mdUScG6XHsXmyGiHDX9S",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll retrieve a comprehensive holistic synthesis of the native's chart by calling the holistic_bundle function, which will fan out across all the major analytical layers."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01NtYaAmkbGaNQQNG7iGq7EV",
+            "name": "holistic_bundle",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 71,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "holistic_bundle_career",
+      "prompt": "Synthesize the career and professional life themes from all chart layers",
+      "gold_first_tool": "holistic_bundle",
+      "acceptable_alternatives": [
+        "query_signals"
+      ],
+      "first_tool_called": "holistic_bundle",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01Jqx7R9WUrtM8u8t1YZWvks",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll call **holistic_bundle** to perform a parallel 8-tool read across all chart layers and synthesize the career and professional life themes."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_014kcwp1o4APTgQHmbFBg9YP",
+            "name": "holistic_bundle",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4055,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 70,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "holistic_bundle_marriage",
+      "prompt": "Give me a cross-layer synthesis of the native's marriage and relationships",
+      "gold_first_tool": "holistic_bundle",
+      "acceptable_alternatives": [
+        "query_signals"
+      ],
+      "first_tool_called": "holistic_bundle",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01FTykrgeLthACRLL1AFbrEo",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll perform a comprehensive cross-layer synthesis of the native's marriage and relationships by gathering data across multiple domains."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01VAyzDkQ6vrFTozqgm9V4Pq",
+            "name": "holistic_bundle",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4056,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 61,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "multi_school_bundle_saturn_7th",
+      "prompt": "Do all four schools agree on Saturn in the 7th house?",
+      "gold_first_tool": "multi_school_bundle",
+      "acceptable_alternatives": [
+        "cross_school_lookup"
+      ],
+      "first_tool_called": "multi_school_bundle",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01USFJowFAM7n4ebGhwrPxxA",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "This is a direct question about multi-school convergence on an astrological claim. I'll use the **multi_school_bundle** tool to check whether Parashara, Jaimini, KP, and Tajaka schools agree or disagree on Saturn in the 7th house."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_011ruU8K5Vttq6MWo7wH5HUf",
+            "name": "multi_school_bundle",
+            "input": {
+              "claim": "Saturn in the 7th house"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4056,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 126,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "multi_school_bundle_ketu_12th",
+      "prompt": "What do Parashara, Jaimini, KP and Tajaka each say about Ketu in the 12th house?",
+      "gold_first_tool": "multi_school_bundle",
+      "acceptable_alternatives": [
+        "cross_school_lookup",
+        "read_classical_text"
+      ],
+      "first_tool_called": "multi_school_bundle",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01GT1bXsBnffn6NGGvUhfqu7",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll search the classical texts for what each school says about Ketu in the 12th house."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01UdEwmsrM9pgyHdq6BNRR3V",
+            "name": "multi_school_bundle",
+            "input": {
+              "claim": "Ketu in the 12th house"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4073,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 86,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_dasha_current",
+      "prompt": "What is the current Vimshottari dasha?",
+      "gold_first_tool": "query_dasha_periods",
+      "acceptable_alternatives": [
+        "chart_summary"
+      ],
+      "first_tool_called": "query_dasha_periods",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01CNCyV69e7xb1ZahDp1QkaA",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the current Vimshottari dasha schedule for you."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01UQSZxbfHisDaQbBRAwjozq",
+            "name": "query_dasha_periods",
+            "input": {
+              "at": "2025-01-14"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4055,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 79,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_dasha_2027",
+      "prompt": "What dasha period will be active in 2027?",
+      "gold_first_tool": "query_dasha_periods",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_dasha_periods",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01XpmNpEFQqtTpJzLnocjx4W",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01RGQco4nSkMrc9oWDAurn6F",
+            "name": "query_dasha_periods",
+            "input": {
+              "range": {
+                "start": "2027-01-01",
+                "end": "2027-12-31"
+              }
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4054,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 78,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_dasha_sequence",
+      "prompt": "Show me the full Vimshottari dasha sequence for the next 10 years",
+      "gold_first_tool": "query_dasha_periods",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_dasha_periods",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_016maHAe9Kg7tCPEqTD2bsPz",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01QEqHWyk8L6YQ5zUjBGGJ7X",
+            "name": "query_dasha_periods",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4062,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 40,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_signals_career_forward",
+      "prompt": "Give me all forward-looking career signals from the MSR corpus",
+      "gold_first_tool": "query_signals",
+      "acceptable_alternatives": [
+        "holistic_bundle"
+      ],
+      "first_tool_called": "query_signals",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01KUMmezRzwbt1zgsU84E5oG",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01BqJixZqthw8T1p7FhBSsWC",
+            "name": "query_signals",
+            "input": {
+              "domain": "career",
+              "forward_looking": true
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4055,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 73,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_signals_jupiter_dasha",
+      "prompt": "What MSR signals are tagged to Jupiter as dasha lord?",
+      "gold_first_tool": "query_signals",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_signals",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01Lj7CP41BdjL8Bn93fTnd9i",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the MSR signal corpus to find all signals tagged to Jupiter as dasha lord."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01RCJvKAfJH3yh7HJvdxXCxC",
+            "name": "query_signals",
+            "input": {
+              "dasha_lord": "Jupiter"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4055,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 77,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_signals_health_domain",
+      "prompt": "Show me all health-domain signals from the signal corpus",
+      "gold_first_tool": "query_signals",
+      "acceptable_alternatives": [
+        "holistic_bundle"
+      ],
+      "first_tool_called": "query_signals",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_0193F1mBW5FwyYN4Vio65eH6",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "toolu_01SwstNYjVkhNyALiskZLLAM",
+            "name": "query_signals",
+            "input": {
+              "domain": "health"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 54,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "cross_school_lookup_mars_debilitated",
+      "prompt": "Do all four Jyotish schools agree that debilitated Mars harms the 7th?",
+      "gold_first_tool": "cross_school_lookup",
+      "acceptable_alternatives": [
+        "multi_school_bundle"
+      ],
+      "first_tool_called": "multi_school_bundle",
+      "outcome": "acceptable",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_013NG5jYGfYt6744kWxMQhiK",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "This is a perfect question for the **multi_school_bundle** tool, which is designed to check multi-school convergence on astrological claims. Let me run that now."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_011N3DaLvpQ3AdvyBGtJRkgh",
+            "name": "multi_school_bundle",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4064,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 77,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "cross_school_lookup_raja_yoga",
+      "prompt": "What is the convergence score across schools for Raja Yoga formation?",
+      "gold_first_tool": "cross_school_lookup",
+      "acceptable_alternatives": [
+        "multi_school_bundle"
+      ],
+      "first_tool_called": "cross_school_lookup",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01AHmpqREiykthgeRGW456QE",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll check the multi-school convergence on Raja Yoga formation across Parashara, Jaimini, KP, and Tajaka schools."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_013hSb8wwBs2bFgSC2a7Xfm4",
+            "name": "cross_school_lookup",
+            "input": {
+              "claim": "Raja Yoga formation"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4056,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 93,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "vector_search_atmakaraka",
+      "prompt": "Find content similar to atmakaraka and spiritual liberation",
+      "gold_first_tool": "vector_search",
+      "acceptable_alternatives": [
+        "read_classical_text",
+        "get_cgm_subgraph"
+      ],
+      "first_tool_called": "vector_search",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01NpVvMi8s3aPPkawi9tfRX5",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll search the RAG chunk corpus for content similar to atmakaraka and spiritual liberation."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01JgTxfCXx8QocB9HVXhGJrM",
+            "name": "vector_search",
+            "input": {
+              "query": "atmakaraka spiritual liberation"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 79,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "vector_search_second_saturn_return",
+      "prompt": "Search for content about Saturn return and maturity themes",
+      "gold_first_tool": "vector_search",
+      "acceptable_alternatives": [
+        "read_classical_text",
+        "query_signals"
+      ],
+      "first_tool_called": "vector_search",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01FkzYwDNQ7c4mbTGKKK7jM2",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll search the RAG corpus for content about Saturn return and maturity themes using semantic search."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01H7syWFgu9E4qbr88dZRkmo",
+            "name": "vector_search",
+            "input": {
+              "query": "Saturn return maturity themes"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4052,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 78,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "lel_query_career_events",
+      "prompt": "What verified career events happened between 2010 and 2020?",
+      "gold_first_tool": "lel_query",
+      "acceptable_alternatives": [
+        "holistic_bundle"
+      ],
+      "first_tool_called": "lel_query",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_011Z66d5dB6u7vwqEHGNYpGg",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the Life Event Log (LEL) to retrieve verified career events from 2010 to 2020."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01N5TzDdCM1Jkg9YdmSoTcb2",
+            "name": "lel_query",
+            "input": {
+              "category": "career",
+              "date_range": {
+                "start": "2010-01-01",
+                "end": "2020-12-31"
+              }
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4057,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 121,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "lel_query_all_events",
+      "prompt": "Show me all life events in the Life Event Log",
+      "gold_first_tool": "lel_query",
+      "acceptable_alternatives": [],
+      "first_tool_called": "lel_query",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_013T5dfyeeFQEcB8mdPZHdAm",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll retrieve all life events from the Life Event Log for you."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_018WrQivf43akDNsNq7ue3fv",
+            "name": "lel_query",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4052,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 52,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_panchanga_today",
+      "prompt": "What is today's tithi and nakshatra?",
+      "gold_first_tool": "query_panchanga",
+      "acceptable_alternatives": [],
+      "first_tool_called": "query_panchanga",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01CLi8oQXtoai5YhpkCykzni",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I need to query the panchanga for today's tithi and nakshatra."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01LEua7Q2wssVb8i7cfUuysZ",
+            "name": "query_panchanga",
+            "input": {},
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4053,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 57,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "query_ephemeris_saturn_retrograde",
+      "prompt": "What sign was Saturn in during Q1 2024 and was it retrograde?",
+      "gold_first_tool": "query_ephemeris",
+      "acceptable_alternatives": [
+        "query_transit_event"
+      ],
+      "first_tool_called": "query_ephemeris",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_014DoNZapYSZSVTenv7wpNBC",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll query the ephemeris data for Saturn's position during Q1 2024 (January 1 - March 31, 2024)."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01E3uBuwjhMsXAQh2DRDZo6F",
+            "name": "query_ephemeris",
+            "input": {
+              "planet": "Saturn",
+              "range": {
+                "start": "2024-01-01",
+                "end": "2024-03-31"
+              }
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4060,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 127,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    },
+    {
+      "id": "read_classical_text_parashara_ketu",
+      "prompt": "What does Parashara say about Ketu in the 12th house?",
+      "gold_first_tool": "read_classical_text",
+      "acceptable_alternatives": [
+        "vector_search",
+        "read_asset"
+      ],
+      "first_tool_called": "read_classical_text",
+      "outcome": "gold",
+      "pass": true,
+      "raw_response": {
+        "model": "claude-haiku-4-5-20251001",
+        "id": "msg_01VpuUTAMtW622nNF4wsJ6GU",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I'll search the classical Parashara texts for information about Ketu in the 12th house."
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu_01U95uWWFqfzTBaYwMAhqEeF",
+            "name": "read_classical_text",
+            "input": {
+              "query": "Ketu in the 12th house"
+            },
+            "caller": {
+              "type": "direct"
+            }
+          }
+        ],
+        "stop_reason": "tool_use",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 4060,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 87,
+          "service_tier": "standard",
+          "inference_geo": "not_available"
+        }
+      }
+    }
+  ]
+}
