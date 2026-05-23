@@ -357,8 +357,9 @@ describe('B-S1 TC3: B.11 floor — context preserved in subsequent requests', ()
     // So the second call should have 3 messages: original user + assistant + tool-result user.
     expect(secondCallParams.messages.length).toBeGreaterThanOrEqual(3);
 
-    // Last message before the final iteration should be a user-role tool_result turn.
+    // Last message before the final iteration should be a tool-role turn.
+    // The Google adapter converts ChatMessage{role:'user', tool_result} → Vercel AI SDK role:'tool'.
     const lastMsg = secondCallParams.messages[secondCallParams.messages.length - 1];
-    expect(lastMsg.role).toBe('user');
+    expect(lastMsg.role).toBe('tool');
   });
 });
