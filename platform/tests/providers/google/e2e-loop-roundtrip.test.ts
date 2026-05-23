@@ -15,6 +15,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// server-only guard: stub before any server module is imported
+vi.mock('server-only', () => ({}));
+
 // Mock 'ai' before importing the adapter or agentic_loop.
 vi.mock('ai', () => ({
   streamText: vi.fn(),
