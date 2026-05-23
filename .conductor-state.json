@@ -2,21 +2,27 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 0,
+  "current_phase": 1,
   "phases": [
     {
       "id": 0,
-      "status": "in_progress",
+      "status": "completed",
+      "pr_url": "https://github.com/amonty84/Madhav/pull/153",
       "sub_agents": [
-        {"id": "v32-s0-bootstrap", "status": "in_progress"}
+        {"id": "v32-s0-bootstrap", "status": "completed"}
       ],
-      "gate_artifact": "bench/mcp_test_baseline.log"
+      "gate_artifact": "bench/mcp_test_baseline.log",
+      "completed_at": "2026-05-23T17:00:00Z"
     },
-    {"id": 1, "status": "pending", "sub_agents": [
-      {"id": "v32-s1a-data_coverage-description", "status": "pending"},
-      {"id": "v32-s1b-tool_health-data_note", "status": "pending"},
-      {"id": "v32-s1c-supabase-076-seed-comment", "status": "pending"},
-      {"id": "v32-s1d-audit-other-descriptions", "status": "pending"}
+    {"id": 1, "status": "completed", "completed_at": "2026-05-23T17:15:00Z", "gate": "PASS", "sub_agents": [
+      {"id": "v32-s1a-data_coverage-description", "status": "completed", "commit": "47363264"},
+      {"id": "v32-s1b-tool_health-data_note", "status": "completed", "commit": "5dd5f83a"},
+      {"id": "v32-s1c-supabase-076-seed-comment", "status": "completed", "commit": "d43d83d0"},
+      {"id": "v32-s1d-audit-other-descriptions", "status": "completed", "commit": "9f0ce419"}
+    ]},
+    {"id": 2, "status": "in_progress", "sub_agents": [
+      {"id": "v32-s2a-envelope-helper", "status": "in_progress"},
+      {"id": "v32-s2b-tool-migration", "status": "pending"}
     ]},
     {"id": 2, "status": "pending", "sub_agents": [
       {"id": "v32-s2a-envelope-helper", "status": "pending"},
