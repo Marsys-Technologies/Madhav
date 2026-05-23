@@ -46,12 +46,13 @@ type MultiSchoolBundleInput = z.infer<typeof MultiSchoolBundleInputSchema>
 
 export function registerMultiSchoolBundle(
   server: McpServer,
-  getPrincipal: () => Principal
+  getPrincipal: () => Principal,
+  descriptionOverride?: string
 ): void {
   server.tool(
     'multi_school_bundle',
 
-    MULTI_SCHOOL_BUNDLE_DESCRIPTION,
+    descriptionOverride ?? MULTI_SCHOOL_BUNDLE_DESCRIPTION,
 
     MultiSchoolBundleInputSchema.shape,
 

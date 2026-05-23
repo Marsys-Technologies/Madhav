@@ -53,12 +53,13 @@ type HolisticBundleInput = z.infer<typeof HolisticBundleInputSchema>
 
 export function registerHolisticBundle(
   server: McpServer,
-  getPrincipal: () => Principal
+  getPrincipal: () => Principal,
+  descriptionOverride?: string
 ): void {
   server.tool(
     'holistic_bundle',
 
-    HOLISTIC_BUNDLE_DESCRIPTION,
+    descriptionOverride ?? HOLISTIC_BUNDLE_DESCRIPTION,
 
     HolisticBundleInputSchema.shape,
 

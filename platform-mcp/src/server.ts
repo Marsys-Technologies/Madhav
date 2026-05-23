@@ -59,6 +59,9 @@ import { registerMultiSchoolBundle } from './tools/multi_school_bundle_tool.js'
 import { registerToolHealth } from './tools/tool_health.js'
 import { registerDataCoverage } from './tools/data_coverage.js'
 import type { Principal } from './types.js'
+// Tier-aware catalog (MCPT v3.2 Phase 6b)
+import { CATALOG } from './tools/catalog.js'
+import { getCatalogForTier } from './tools/tier_catalog.js'
 
 const app = express()
 app.use(express.json())
@@ -119,6 +122,18 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   const getPrincipal = (): Principal => principal
 
+  // Build tier-aware catalog slice for this request (MCPT v3.2 Phase 6b).
+  // getCatalogForTier returns the filtered + annotated set of ToolCatalogEntry
+  // objects for the resolved audience_tier. Only descriptions vary — handlers
+  // are identical across tiers (holistic_bundle output byte-equal for same call).
+  const tier = principal.audience_tier
+  const tierCatalog = getCatalogForTier(tier, CATALOG)
+  const tierDescByName = new Map(tierCatalog.map(e => [e.name, e.description]))
+
+  // Helper: returns the tier-adjusted description for a tool, or undefined if
+  // the tool is not in the tier catalog (caller skips registration).
+  const tierDesc = (name: string): string | undefined => tierDescByName.get(name)
+
   // Register MCP resources (marsys://chart-overview, marsys://house-rules, etc.).
   // Resources are read once at session attach — they orient Claude to the
   // singleton chart and operating discipline without burning per-turn tool calls.
@@ -127,9 +142,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Register Tier 1 super-endpoint.
   registerChartSummaryTool(server, getPrincipal)
 
-  // Register Tier 2 bundles.
-  registerHolisticBundle(server, getPrincipal)
-  registerMultiSchoolBundle(server, getPrincipal)
+  // Register Tier 2 bundles (description varies by tier; handler unchanged).
+  registerHolisticBundle(server, getPrincipal, tierDesc('holistic_bundle'))
+  registerMultiSchoolBundle(server, getPrincipal, tierDesc('multi_school_bundle'))
 
   // Register Tier 3 surgical primitives.
   registerQueryChartFacts(server, getPrincipal)
@@ -150,13 +165,17 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Register Tier 5 observability + perf tools.
   registerGetTrace(server, getPrincipal)
   registerListRecentQueries(server, getPrincipal)
-  registerToolHealth(server, getPrincipal)
-  registerDataCoverage(server, getPrincipal)
 
-  // Register Tier 6 write tools.
-  registerLogPrediction(server, getPrincipal)
-  registerRecordOutcome(server, getPrincipal)
-  registerFlagDisagreement(server, getPrincipal)
+  // Ops tools: hidden from client tier per OPS_TOOLS set in tier_catalog.ts.
+  // OPS_TOOLS is the single source of truth — server.ts gates registration here
+  // to match getCatalogForTier's filtering behavior.
+  if (tier !== 'client') {
+    registerToolHealth(server, getPrincipal)
+    registerDataCoverage(server, getPrincipal)
+    registerLogPrediction(server, getPrincipal)
+    registerRecordOutcome(server, getPrincipal)
+    registerFlagDisagreement(server, getPrincipal)
+  }
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({
