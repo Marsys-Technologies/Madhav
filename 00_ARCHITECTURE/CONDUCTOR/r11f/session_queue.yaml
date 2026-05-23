@@ -100,12 +100,12 @@ sessions:
     phase: B
     title: "Google visual smoke via Chrome MCP"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S2_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-B-S1]
-    commit_sha: null
+    commit_sha: "310519dd"
     pr_url: null
-    notes: "Screenshots to visual_evidence/google/."
+    notes: "Smoke PASS: 5 Gemini tools fired, Saturn dates returned. 3 production fixes: adapter message conversion, types.ts name field, Gemini non-empty function_response.name. Test assertion corrected (user→tool role conversion)."
 
   - id: R11F-B-S3
     phase: B
