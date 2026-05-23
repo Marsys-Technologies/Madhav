@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isToday, isYesterday, parseISO } from 'date-fns'
-import { Archive, FolderPlus, MoreHorizontal, PenSquare, Pin, PinOff, Search, Sparkles, Trash2 } from 'lucide-react'
+import { Archive, CheckSquare, FolderPlus, ListChecks, MoreHorizontal, PenSquare, Pin, PinOff, Search, Square, Sparkles, Trash2, X } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import {
   DropdownMenu,
@@ -146,6 +146,9 @@ function ConversationItem({
   onArchive,
   onMoveToFolder,
   folders,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
 }: {
   conv: ConversationSummary
   active: boolean
@@ -156,6 +159,9 @@ function ConversationItem({
   onArchive?: (id: string, archived: boolean) => void
   onMoveToFolder?: (id: string, folderId: string | null) => void
   folders?: Array<{ id: string; name: string }>
+  selectMode?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -171,19 +177,32 @@ function ConversationItem({
           to Claude-compact (8px 12px, 8px border-radius). */}
       <button
         type="button"
-        onClick={() => onSelect(conv.id)}
-        className={`conversation-list-item w-full text-left px-3 py-2 pr-7 text-xs rounded-md transition-colors truncate ${
-          active
+        onClick={() => selectMode ? onToggleSelect?.(conv.id) : onSelect(conv.id)}
+        className={`conversation-list-item w-full text-left py-2 text-xs rounded-md transition-colors truncate flex items-center gap-2 ${
+          selectMode ? 'px-2 pr-2' : 'px-3 pr-7'
+        } ${
+          selected
+            ? 'bg-indigo-600/25 text-indigo-300'
+            : active && !selectMode
             ? 'bg-indigo-600/20 text-indigo-300'
             : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
         }`}
         data-testid={`v2-conversation-item-${conv.id}`}
+        aria-pressed={selectMode ? selected : undefined}
       >
-        {conv.pinned && <span className="mr-1 text-amber-500" aria-label="Pinned">📌</span>}
-        {conv.title ?? 'Untitled'}
+        {selectMode && (
+          <span className="shrink-0 text-zinc-500" aria-hidden>
+            {selected
+              ? <CheckSquare className="h-3.5 w-3.5 text-indigo-400" />
+              : <Square className="h-3.5 w-3.5" />
+            }
+          </span>
+        )}
+        {!selectMode && conv.pinned && <span className="mr-1 text-amber-500" aria-label="Pinned">📌</span>}
+        <span className="truncate">{conv.title ?? 'Untitled'}</span>
       </button>
 
-      {(hovered || menuOpen) && (
+      {!selectMode && (hovered || menuOpen) && (
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger
             aria-label="Conversation actions"
@@ -274,6 +293,8 @@ export function ConversationSidebarV2({
   const [semanticEnabled, setSemanticEnabled] = useState(false)
   const semanticSearchAvailable = process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH === 'true'
   const [showArchived, setShowArchived] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { folders, createFolder, renameFolder, deleteFolder } = useFolders()
 
@@ -385,6 +406,46 @@ export function ConversationSidebarV2({
     }).catch(() => { reload() })
   }, [reload])
 
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode(m => !m)
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleSelectItem = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }, [])
+
+  const batchArchive = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    setConversations(prev => prev.map(c => ids.includes(c.id) ? { ...c, archived_at: new Date().toISOString() } : c))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+    await Promise.all(ids.map(id =>
+      fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: true }),
+      }).catch(() => {})
+    ))
+    reload()
+  }, [selectedIds, reload])
+
+  const batchDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    if (!window.confirm(`Archive ${ids.length} conversation${ids.length === 1 ? '' : 's'}? They will be hidden from the list.`)) return
+    setConversations(prev => prev.filter(c => !ids.includes(c.id)))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+    await Promise.all(ids.map(id =>
+      fetch(`/api/conversations/${id}`, { method: 'DELETE' }).catch(() => {})
+    ))
+    reload()
+  }, [selectedIds, reload])
+
   const handleNewFolder = useCallback(() => {
     const name = window.prompt('Folder name:')
     if (name?.trim()) createFolder(name.trim())
@@ -468,53 +529,78 @@ export function ConversationSidebarV2({
           Conversations
         </span>
         <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onToggle}
-            title="Collapse sidebar"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-sidebar-collapse"
-          >
-            {/* ChevronLeft icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="h-3.5 w-3.5"
-              aria-hidden
+          {selectMode ? (
+            <button
+              type="button"
+              onClick={toggleSelectMode}
+              title="Cancel selection"
+              aria-label="Cancel selection"
+              className="flex h-6 w-6 items-center justify-center rounded text-indigo-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+              data-testid="v2-select-cancel"
             >
-              <path
-                d="M10 3L5 8l5 5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onNew}
-            title="New conversation"
-            className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-            data-testid="v2-new-conversation"
-          >
-            {/* Plus icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="h-3.5 w-3.5"
-              aria-hidden
-            >
-              <path
-                d="M8 2v12M2 8h12"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onToggle}
+                title="Collapse sidebar"
+                className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+                data-testid="v2-sidebar-collapse"
+              >
+                {/* ChevronLeft icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="h-3.5 w-3.5"
+                  aria-hidden
+                >
+                  <path
+                    d="M10 3L5 8l5 5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={toggleSelectMode}
+                title="Select conversations"
+                aria-label="Select conversations"
+                className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+                data-testid="v2-select-mode"
+              >
+                <ListChecks className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={onNew}
+                title="New conversation"
+                className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+                data-testid="v2-new-conversation"
+              >
+                {/* Plus icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="h-3.5 w-3.5"
+                  aria-hidden
+                >
+                  <path
+                    d="M8 2v12M2 8h12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -627,6 +713,9 @@ export function ConversationSidebarV2({
                 onSelect={onSelect}
                 onRename={onRename}
                 onDelete={onDelete}
+                selectMode={selectMode}
+                selected={selectedIds.has(conv.id)}
+                onToggleSelect={toggleSelectItem}
               />
             ))}
           </>
@@ -661,6 +750,9 @@ export function ConversationSidebarV2({
                     onArchive={archiveConversation}
                     onMoveToFolder={moveToFolder}
                     folders={folders}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(conv.id)}
+                    onToggleSelect={toggleSelectItem}
                   />
                 ))}
               </div>
@@ -702,6 +794,9 @@ export function ConversationSidebarV2({
                     onArchive={archiveConversation}
                     onMoveToFolder={moveToFolder}
                     folders={folders}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(conv.id)}
+                    onToggleSelect={toggleSelectItem}
                   />
                 ))}
               </div>
@@ -710,6 +805,47 @@ export function ConversationSidebarV2({
           </>
         )}
       </div>
+
+      {/* Batch action bar — shown in select mode */}
+      {selectMode && (
+        <div className="border-t border-zinc-800 bg-zinc-900/80 px-2 py-2 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-400">
+              {selectedIds.size === 0 ? 'None selected' : `${selectedIds.size} selected`}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const allIds = filteredConversations.map(c => c.id)
+                setSelectedIds(prev => prev.size === allIds.length ? new Set() : new Set(allIds))
+              }}
+              className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              {selectedIds.size === filteredConversations.length && filteredConversations.length > 0 ? 'Deselect all' : 'Select all'}
+            </button>
+          </div>
+          {selectedIds.size > 0 && (
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={batchArchive}
+                className="flex flex-1 items-center justify-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+              >
+                <Archive className="h-3 w-3" aria-hidden />
+                Archive
+              </button>
+              <button
+                type="button"
+                onClick={batchDelete}
+                className="flex flex-1 items-center justify-center gap-1 rounded bg-red-950/60 px-2 py-1 text-[10px] text-red-400 hover:bg-red-900/60 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" aria-hidden />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Archived link + New folder button */}
       <div className="flex items-center justify-between px-3 py-1.5 border-t border-zinc-800">
