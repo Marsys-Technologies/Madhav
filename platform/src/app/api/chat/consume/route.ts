@@ -66,6 +66,8 @@ import type { StackId } from '@/lib/providers/dispatcher'
 import { getAdapter } from '@/lib/providers/dispatcher'
 import type { ChatRequest } from '@/lib/providers/types'
 import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/adapter-dispatch-helpers'
+import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
+import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/providers/google/cached_content'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
@@ -925,8 +927,87 @@ export async function POST(request: Request) {
         bundleSystemContent,
         plan.synthesis_guidance ? `SYNTHESIS GUIDANCE:\n${plan.synthesis_guidance}` : '',
       ].filter(Boolean).join('\n\n---\n\n') || undefined
-      const adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
+      let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
       const adapter = getAdapter(adapterId)
+      // R11.F — S3: Per-provider agentic loop flag map
+      const ADAPTER_TO_LOOP_FLAG: Record<string, string> = {
+        anthropic: 'R11E_ANTHROPIC_LOOP',
+        google: 'R11E_GEMINI_LOOP',
+        openai: 'R11E_OPENAI_LOOP',
+        deepseek: 'R11E_DEEPSEEK_LOOP',
+        nvidia: 'R11E_NVIDIA_LOOP',
+      }
+      const loopFlagKey = ADAPTER_TO_LOOP_FLAG[adapterId]
+      const useAgenticLoop = loopFlagKey ? configService.getFlag(loopFlagKey as Parameters<typeof configService.getFlag>[0]) : false
+      if (useAgenticLoop) {
+        const manifest = adapter.getManifest()
+        const toolsCfg = adapter.tools({
+          toolLoopMode: manifest.adaptiveToolLoop,
+          tools: [],  // Stub: full MCP tool dispatch wired in follow-up arc
+          maxIterations: 8,
+        })
+        adapterChatReq = { ...adapterChatReq, toolsConfig: toolsCfg, tools: toolsCfg.tools }
+      }
+      // R11.F — S4: Gemini cachedContent API (D.3)
+      // When R11D_GEMINI_CACHE=true and provider=google, attempt to create a
+      // Gemini cachedContent object for the system prompt + RAG bundle.
+      // The returned resource name is passed through cacheConfig so GoogleAdapter.chat()
+      // can reference it in the streamText providerOptions.google.cachedContent field.
+      // Cache creation is non-fatal — any failure falls through to a standard uncached request.
+      if (configService.getFlag('R11D_GEMINI_CACHE') && adapterId === 'google') {
+        const cacheResponse = adapter.cache({ cacheMode: 'cached_content_api', breakpointPositions: [] })
+        const estimatedTokens = Math.ceil((systemContent?.length ?? 0) / 4)
+        if (estimatedTokens >= GEMINI_CACHE_MIN_TOKENS) {
+          try {
+            const ttlSeconds = (cacheResponse.providerPayload?.['ttlSeconds'] as number) ?? 600
+            // Prefix model name with 'models/' if not already qualified — Gemini REST API requirement
+            const qualifiedModel = adapterChatReq.model.startsWith('models/')
+              ? adapterChatReq.model
+              : `models/${adapterChatReq.model}`
+            const cachePayload = buildCacheCreatePayload({
+              model: qualifiedModel,
+              systemPrompt: systemContent,
+              ragBundle: undefined,
+              ttl: `${ttlSeconds}s`,
+            })
+            const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+            if (apiKey) {
+              const cacheRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${apiKey}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(cachePayload),
+                }
+              )
+              if (cacheRes.ok) {
+                const cacheJson = await cacheRes.json() as { name?: string }
+                const cachedContentName = cacheJson.name
+                if (cachedContentName) {
+                  adapterChatReq = {
+                    ...adapterChatReq,
+                    cacheConfig: {
+                      ...cacheResponse,
+                      providerPayload: {
+                        ...cacheResponse.providerPayload,
+                        cachedContentName,
+                      },
+                    },
+                  }
+                  console.log(`[gemini-cache] Created cachedContent: ${cachedContentName} (~${estimatedTokens} tokens)`)
+                }
+              } else {
+                const errText = await cacheRes.text()
+                console.warn(`[gemini-cache] Cache creation failed (${cacheRes.status}): ${errText.slice(0, 200)}`)
+              }
+            }
+          } catch (cacheErr) {
+            console.warn('[gemini-cache] Cache creation error (non-fatal):', cacheErr)
+          }
+        } else {
+          console.log(`[gemini-cache] Skipping cache: ~${estimatedTokens} tokens < ${GEMINI_CACHE_MIN_TOKENS} minimum`)
+        }
+      }
       const adapterMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
       const adapterStartMs = Date.now()
       const adapterStream = createUIMessageStream({
@@ -949,7 +1030,16 @@ export async function POST(request: Request) {
           const adapterTextPartId = 'text-0'
           let adapterTextStarted = false
           try {
-            for await (const event of adapter.chat(adapterChatReq)) {
+            const loopConfig = LOOP_CONFIG_BY_PROVIDER[adapterId]
+            const chatStream = (useAgenticLoop && loopConfig)
+              ? runAgenticLoop(
+                  adapter,
+                  adapterChatReq,
+                  async (_toolCall) => 'Tool not available in adapter dispatch (stub)',
+                  loopConfig,
+                )
+              : adapter.chat(adapterChatReq)
+            for await (const event of chatStream) {
               if (event.type === 'text_delta') {
                 if (!adapterTextStarted) {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -962,6 +1052,16 @@ export async function POST(request: Request) {
               } else if (event.type === 'thinking_delta') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 writer.write({ type: 'reasoning', delta: event.thinking, id: adapterMsgId } as any)
+              } else if (event.type === 'tool_use_start') {
+                // Silently consume — loop engine handles tool execution
+              } else if (event.type === 'tool_use_input_delta') {
+                // Silently consume — loop engine handles accumulation
+              } else if (event.type === 'tool_use_complete') {
+                // Emit as a tool data event for client visibility
+                writer.write({
+                  type: 'data-tool',
+                  data: { type: 'tool', name: event.name, status: 'done', ms: 0, ok_count: 1, err_count: 0 },
+                })
               } else if (event.type === 'error') {
                 console.error('[adapter-dispatch] adapter error event stack=%s error=%s', adapterId, event.error)
               }

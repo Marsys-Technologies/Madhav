@@ -1,5 +1,8 @@
 import 'server-only'
 
+import type { CapabilityAdapter } from '../providers/adapter'
+import type { ChatRequest, ChatEvent, ChatMessage } from '../providers/types'
+
 /**
  * agentic_loop.ts — Generic agentic tool-loop engine (E-S1).
  *
@@ -269,5 +272,120 @@ export function checkIterationCap(state: AgenticLoopState): void {
   const cap = state.config.maxIterations ?? MAX_ITERATIONS
   if (state.iterations >= cap) {
     throw new AgenticLoopCapExceeded(state.iterations)
+  }
+}
+
+/**
+ * Drives a multi-iteration agentic tool-call loop (E-S1–E-S5).
+ *
+ * Calls adapter.chat() repeatedly, collecting tool-use events each iteration,
+ * executing tools via toolExecutor, feeding results back, and repeating until
+ * the model signals end-of-turn (no tool-use stop reason) or the iteration cap
+ * is hit (throws AgenticLoopCapExceeded).
+ *
+ * All ChatEvents from every iteration are yielded in order to the caller.
+ */
+export async function* runAgenticLoop(
+  adapter: CapabilityAdapter,
+  initialRequest: ChatRequest,
+  toolExecutor: (toolCall: LoopToolCall) => Promise<string>,
+  config: AgenticLoopConfig,
+): AsyncIterable<ChatEvent> {
+  const state = createLoopState(config)
+  let currentRequest: ChatRequest = { ...initialRequest }
+
+  while (true) {
+    checkIterationCap(state)
+    state.iterations++
+
+    const pendingToolCalls: Array<{ id: string; name: string; inputJson: string }> = []
+    let lastStopReason: string | null = null
+    let iterInputTokens = 0
+    let iterOutputTokens = 0
+
+    for await (const event of adapter.chat(currentRequest)) {
+      yield event
+
+      if (event.type === 'tool_use_start') {
+        pendingToolCalls.push({ id: event.id, name: event.name, inputJson: '' })
+      } else if (event.type === 'tool_use_input_delta') {
+        const tc = pendingToolCalls.find(t => t.id === event.id)
+        if (tc) tc.inputJson += event.partialJson
+      } else if (event.type === 'usage') {
+        iterInputTokens = event.inputTokens
+        iterOutputTokens = event.outputTokens
+        accumulateUsage(state, {
+          inputTokens: event.inputTokens,
+          outputTokens: event.outputTokens,
+          cacheReadTokens: event.cacheReadTokens,
+          cacheCreationTokens: event.cacheCreationTokens,
+        })
+      } else if (event.type === 'message_stop') {
+        lastStopReason = event.stopReason
+      }
+    }
+
+    emitLoopIterationTelemetry({
+      iteration: state.iterations,
+      providerId: config.providerId,
+      inputTokens: iterInputTokens,
+      outputTokens: iterOutputTokens,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      reasoningTokens: 0,
+      toolCallCount: pendingToolCalls.length,
+      toolErrorCount: 0,
+      terminationSignal: lastStopReason,
+      completedAt: new Date().toISOString(),
+    })
+
+    // No tool-use signal → model is done
+    if (!isToolUseSignal(lastStopReason, config.terminationSignal)) {
+      return
+    }
+
+    // Execute all pending tool calls
+    const toolResults: LoopToolResult[] = await Promise.all(
+      pendingToolCalls.map(tc => {
+        let input: Record<string, unknown> = {}
+        try { input = JSON.parse(tc.inputJson || '{}') } catch { /* ignore parse errors */ }
+        return safeExecuteTool({ id: tc.id, name: tc.name, input }, toolExecutor)
+      }),
+    )
+
+    // Record tool call history
+    for (let i = 0; i < pendingToolCalls.length; i++) {
+      const tc = pendingToolCalls[i]
+      let input: Record<string, unknown> = {}
+      try { input = JSON.parse(tc.inputJson || '{}') } catch { /* ignore */ }
+      state.toolCallHistory.push({
+        iteration: state.iterations,
+        toolCall: { id: tc.id, name: tc.name, input },
+        result: toolResults[i],
+      })
+    }
+
+    // Append tool-use assistant turn + tool-result user turn to message history
+    const assistantTurn: ChatMessage = {
+      role: 'assistant',
+      content: pendingToolCalls.map(tc => {
+        let input: Record<string, unknown> = {}
+        try { input = JSON.parse(tc.inputJson || '{}') } catch { /* ignore */ }
+        return { type: 'tool_use' as const, id: tc.id, name: tc.name, input }
+      }),
+    }
+    const userTurn: ChatMessage = {
+      role: 'user',
+      content: toolResults.map(r => ({
+        type: 'tool_result' as const,
+        toolUseId: r.id,
+        content: r.output,
+      })),
+    }
+
+    currentRequest = {
+      ...currentRequest,
+      messages: [...currentRequest.messages, assistantTurn, userTurn],
+    }
   }
 }

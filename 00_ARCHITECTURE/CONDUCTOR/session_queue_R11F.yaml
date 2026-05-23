@@ -1,0 +1,241 @@
+# session_queue_R11F.yaml
+# R11.F dispatch wiring arc — Conductor session queue
+# Branch: feature/r11f-wiring-arc
+# Brief: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11V2_DISPATCH_WIRING_FULL_BRIEF_v1_0.md
+
+sessions:
+  - id: F-S1
+    title: "Pre-flight + agentic_loop engine (runAgenticLoop)"
+    status: passed
+    parallel_group: null
+    commit_message: "feat(r11f-s1): add runAgenticLoop engine to agentic_loop.ts + unit tests"
+    acceptance_criteria:
+      - "AC.S1.1: grep R11E in route.ts → 0"
+      - "AC.S1.2: grep adapter.cache in route.ts → 0"
+      - "AC.S1.3: vitest baseline 0 failures"
+      - "AC.S1.4: runAgenticLoop() added to agentic_loop.ts"
+      - "AC.S1.5: unit tests for loop engine pass"
+    prompt: >
+      See CONDUCTOR_PROMPT_R11F_v1_0.md §F-S1 prompt.
+      Key file: platform/src/lib/synthesis/agentic_loop.ts
+      Add runAgenticLoop() function + unit tests.
+      Run vitest. Commit. Report PASS/FAIL.
+    passed_at: "2026-05-23T01:30:00Z"
+    commit_sha: "1e1743b3"
+
+  - id: F-S2-anthropic
+    title: "Anthropic adapter — chat() tool-event emission"
+    status: pending
+    parallel_group: provider-adapters
+    commit_message: "feat(r11f-s2): anthropic adapter chat() emits tool_use events"
+    acceptance_criteria:
+      - "AC.S2.A.1: chat() emits tool_use_start"
+      - "AC.S2.A.2: chat() emits tool_use_input_delta"
+      - "AC.S2.A.3: chat() emits tool_use_complete with parsed input"
+      - "AC.S2.A.4: existing events (text_delta, message_stop, usage) still emit"
+      - "AC.S2.A.5: unit test passes"
+    prompt: >
+      See CONDUCTOR_PROMPT_R11F_v1_0.md §F-S2 template for PROVIDER=anthropic.
+      File: platform/src/lib/providers/anthropic/adapter.ts
+      Tool stream parts: tool-call-streaming-start, tool-call-delta, tool-call
+      Test: platform/tests/providers/anthropic-tool-events.test.ts
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S2-google
+    title: "Google adapter — chat() tool-event emission"
+    status: pending
+    parallel_group: provider-adapters
+    commit_message: "feat(r11f-s2): google adapter chat() emits tool_use events"
+    acceptance_criteria:
+      - "AC.S2.G.1: chat() emits tool_use_start"
+      - "AC.S2.G.2: chat() emits tool_use_input_delta"
+      - "AC.S2.G.3: chat() emits tool_use_complete with parsed input"
+      - "AC.S2.G.4: existing events still emit"
+      - "AC.S2.G.5: unit test passes"
+    prompt: >
+      See CONDUCTOR_PROMPT_R11F_v1_0.md §F-S2 template for PROVIDER=google.
+      File: platform/src/lib/providers/google/adapter.ts
+      Tool stream: tool-call parts from fullStream
+      Test: platform/tests/providers/google-tool-events.test.ts
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S2-openai
+    title: "OpenAI adapter — chat() tool-event emission"
+    status: pending
+    parallel_group: provider-adapters
+    commit_message: "feat(r11f-s2): openai adapter chat() emits tool_use events"
+    acceptance_criteria:
+      - "AC.S2.O.1: chat() emits tool_use_start"
+      - "AC.S2.O.2: chat() emits tool_use_input_delta"
+      - "AC.S2.O.3: chat() emits tool_use_complete with parsed input"
+      - "AC.S2.O.4: existing events still emit"
+      - "AC.S2.O.5: unit test passes"
+    prompt: >
+      See CONDUCTOR_PROMPT_R11F_v1_0.md §F-S2 template for PROVIDER=openai.
+      File: platform/src/lib/providers/openai/adapter.ts
+      Tool stream: choices[0].delta.tool_calls[] chunks
+      Test: platform/tests/providers/openai-tool-events.test.ts
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S2-deepseek
+    title: "DeepSeek adapter — chat() tool-event emission"
+    status: pending
+    parallel_group: provider-adapters
+    commit_message: "feat(r11f-s2): deepseek adapter chat() emits tool_use events"
+    acceptance_criteria:
+      - "AC.S2.D.1-5: same as openai pattern (OpenAI-compat stream)"
+    prompt: >
+      See CONDUCTOR_PROMPT_R11F_v1_0.md §F-S2 template for PROVIDER=deepseek.
+      File: platform/src/lib/providers/deepseek/adapter.ts
+      Same OpenAI-compat stream pattern as openai adapter.
+      Test: platform/tests/providers/deepseek-tool-events.test.ts
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S2-nvidia
+    title: "NVIDIA adapter — chat() tool-event emission"
+    status: pending
+    parallel_group: provider-adapters
+    commit_message: "feat(r11f-s2): nvidia adapter chat() emits tool_use events"
+    acceptance_criteria:
+      - "AC.S2.N.1-5: same as openai pattern (OpenAI-compat NIM stream)"
+    prompt: >
+      See CONDUCTOR_PROMPT_R11F_v1_0.md §F-S2 template for PROVIDER=nvidia.
+      File: platform/src/lib/providers/nvidia/adapter.ts
+      Same OpenAI-compat stream pattern as openai adapter (NIM base URL).
+      Test: platform/tests/providers/nvidia-tool-events.test.ts
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S3
+    title: "Route.ts E wiring — agentic loop for all 5 providers"
+    status: pending
+    parallel_group: null
+    commit_message: "feat(r11f-s3): wire runAgenticLoop into route.ts dispatch for R11E flags"
+    acceptance_criteria:
+      - "AC.S3.1: R11E_ANTHROPIC_LOOP referenced in route.ts"
+      - "AC.S3.2: runAgenticLoop imported and called in route.ts"
+      - "AC.S3.3: imports from agentic_loop.ts present"
+      - "AC.S3.4: all 5 provider loop flags gated"
+      - "AC.S3.5: vitest 0 failures"
+      - "AC.S3.6: tool executor wired"
+    prompt: >
+      Read route.ts dispatch block (lines 904-988).
+      Import runAgenticLoop, LOOP_CONFIG_BY_PROVIDER from agentic_loop.ts.
+      For each provider (anthropic/google/openai/deepseek/nvidia):
+        When R11E_<PROVIDER>_LOOP flag is true:
+          1. Call adapter.tools() with available tools
+          2. Add toolsConfig to adapterChatReq
+          3. Use runAgenticLoop instead of direct adapter.chat()
+          4. Tool executor: stub that returns "Tool not available in adapter dispatch" for now
+             (full MCP tool dispatch is a follow-up; the engine wiring is the deliverable)
+      Run vitest. Commit. Report PASS/FAIL.
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S4
+    title: "Route.ts D.3 wiring — Gemini cachedContent integration"
+    status: pending
+    parallel_group: null
+    commit_message: "feat(r11f-s4): wire Gemini cachedContent API into route.ts dispatch"
+    acceptance_criteria:
+      - "AC.S4.1: R11D_GEMINI_CACHE referenced in route.ts"
+      - "AC.S4.2: adapter.cache() called + min-token threshold check"
+      - "AC.S4.3: GoogleAdapter.chat() reads cachedContentName from cacheConfig"
+      - "AC.S4.4: sub-threshold fallback works"
+      - "AC.S4.5: vitest 0 failures"
+      - "AC.S4.6: unit test for payload structure"
+    prompt: >
+      D.3 Gemini cache wiring.
+
+      Step 1: Enhance GoogleAdapter.chat() (google/adapter.ts) to read
+        request.cacheConfig?.providerPayload?.cachedContentName
+        and pass as providerOptions.google.cachedContent to streamText().
+
+      Step 2: In route.ts dispatch block, after building adapterChatReq,
+        when configService.getFlag('R11D_GEMINI_CACHE') AND adapterId === 'google':
+          a. Call adapter.cache({ cacheMode: 'cached_content_api', breakpointPositions: [] })
+          b. Estimate token count: Math.ceil(systemContent?.length ?? 0 / 4)
+          c. If tokens >= GEMINI_CACHE_MIN_TOKENS (32768 from cached_content.ts):
+             - Build cachedContentPayload using buildCacheCreatePayload()
+             - Create cachedContent via raw fetch to Gemini API:
+               POST https://generativelanguage.googleapis.com/v1beta/cachedContents
+               ?key=${process.env.GOOGLE_GENERATIVE_AI_API_KEY}
+               body: JSON.stringify(cachedContentPayload)
+             - Extract name from response json
+             - Set adapterChatReq.cacheConfig = { ...cacheResponse, providerPayload: { cachedContentName: name } }
+          d. If tokens < threshold: log warning, skip cache, proceed normally
+
+      Step 3: Import buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS from google/cached_content.ts
+
+      Step 4: Write unit test for payload structure.
+      Run vitest. Commit. Report PASS/FAIL.
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S5
+    title: "CI validation — vitest + tsc"
+    status: pending
+    parallel_group: null
+    commit_message: "test(r11f-s5): CI validation — all tests pass post-wiring"
+    acceptance_criteria:
+      - "AC.S5.1: npx vitest run — 0 failures"
+      - "AC.S5.2: npx tsc --noEmit — 0 errors"
+      - "AC.S5.3: test count >= baseline"
+    prompt: >
+      Run full CI validation:
+      1. cd platform && npx vitest run 2>&1 | tail -20
+      2. cd platform && npx tsc --noEmit 2>&1 | head -30
+      If any failures: diagnose and fix. Report PASS/FAIL with test counts.
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S6
+    title: "PR + merge to main + deploy"
+    status: pending
+    parallel_group: null
+    commit_message: null
+    acceptance_criteria:
+      - "AC.S6.1: git push succeeds"
+      - "AC.S6.2: PR created"
+      - "AC.S6.3: CI passes on PR"
+      - "AC.S6.4: PR merged"
+      - "AC.S6.5: deploy triggered"
+    prompt: >
+      1. git push -u origin feature/r11f-wiring-arc
+      2. gh pr create --title "feat(r11f): wire adapter.cache() + adapter.tools() into route.ts dispatch" \
+           --body "Closes D.3 and E.1-E.4 gaps. Wires runAgenticLoop + Gemini cachedContent."
+      3. Wait for CI (gh pr checks --watch)
+      4. gh pr merge --squash --delete-branch --admin
+      5. Confirm deploy via: gh run list --limit 3
+      Report PASS/FAIL.
+    passed_at: null
+    commit_sha: null
+
+  - id: F-S7
+    title: "Governance close-out + rollout surface"
+    status: pending
+    parallel_group: null
+    commit_message: "docs(r11f-s7): governance close-out — rollout surface + state updates"
+    acceptance_criteria:
+      - "AC.S7.1: ROLLOUT_PHASE_R11F_RESULT.md authored"
+      - "AC.S7.2: STREAM_R11V2_COMPLETE.md §7 deferred items marked COMPLETE"
+      - "AC.S7.3: CURRENT_STATE_v1_0.md version bumped"
+      - "AC.S7.4: SESSION_LOG.md entry appended"
+      - "AC.S7.5: .gemini/project_state.md mirror updated"
+      - "AC.S7.6: deploy.yml updated with R11D_GEMINI_CACHE=true"
+    prompt: >
+      Work on main branch (F-S6 merged).
+      1. Author ROLLOUT_PHASE_R11F_RESULT.md with gcloud flip commands for each flag.
+      2. Update STREAM_R11V2_COMPLETE.md §7 deferred items: mark as COMPLETE.
+      3. Update CURRENT_STATE_v1_0.md: increment version, add R11.F arc completion note.
+      4. Append SESSION_LOG.md entry for R11.F arc.
+      5. Update .gemini/project_state.md mirror (MP.2).
+      6. Update deploy.yml: add MARSYS_FLAG_R11D_GEMINI_CACHE=true to env_vars block.
+      7. Commit + push to main.
+      Report PASS/FAIL.
+    passed_at: null
+    commit_sha: null

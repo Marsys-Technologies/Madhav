@@ -91,6 +91,20 @@ export class GoogleAdapter implements CapabilityAdapter {
       if (systemContent) streamParams.system = systemContent;
       if (request.temperature !== undefined) streamParams.temperature = request.temperature;
       if (providerOptions) streamParams.providerOptions = providerOptions;
+      // R11.F — S4: Inject cachedContent name if provided via cacheConfig (D.3 wiring).
+      // When route.ts creates a Gemini cachedContent object, it passes the returned
+      // resource name through cacheConfig.providerPayload.cachedContentName so the
+      // adapter can reference it in the streamText call.
+      const cachedContentName = request.cacheConfig?.providerPayload?.['cachedContentName'] as string | undefined;
+      if (cachedContentName) {
+        streamParams.providerOptions = {
+          ...streamParams.providerOptions,
+          google: {
+            ...(streamParams.providerOptions?.google ?? {}),
+            cachedContent: cachedContentName,
+          },
+        };
+      }
       const result = streamText(streamParams);
 
       for await (const part of result.fullStream) {
@@ -99,15 +113,31 @@ export class GoogleAdapter implements CapabilityAdapter {
         } else if (part.type === 'reasoning-delta') {
           // Extended thinking — Vercel AI SDK surfaces Gemini thought parts as 'reasoning-delta'
           yield { type: 'thinking_delta', thinking: (part as unknown as { text: string }).text };
+        } else if (part.type === 'tool-call') {
+          // Gemini emits complete tool calls (no streaming deltas).
+          // Synthesize the streaming protocol: start → full-JSON delta → complete.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tc = part as any;
+          const id: string = tc.toolCallId;
+          const name: string = tc.toolName;
+          const args = tc.args as Record<string, unknown>;
+          const argsJson = JSON.stringify(args);
+          yield { type: 'tool_use_start', id, name };
+          yield { type: 'tool_use_input_delta', id, partialJson: argsJson };
+          yield { type: 'tool_use_complete', id, name, input: args };
         } else if (part.type === 'finish') {
           yield {
             type: 'usage',
             inputTokens: part.totalUsage.inputTokens ?? 0,
             outputTokens: part.totalUsage.outputTokens ?? 0,
           };
+          // Map Vercel AI SDK 'tool-calls' finishReason to Google canonical 'function_calls'
+          // so isToolUseSignal() with 'finish_reason_function_calls' config recognises it.
+          const stopReason =
+            part.finishReason === 'tool-calls' ? 'function_calls' : (part.finishReason ?? 'end_turn');
           yield {
             type: 'message_stop',
-            stopReason: part.finishReason ?? 'end_turn',
+            stopReason,
           };
         } else if (part.type === 'error') {
           const errMsg = part.error instanceof Error ? part.error.message : String(part.error);

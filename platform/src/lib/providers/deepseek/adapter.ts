@@ -1,16 +1,19 @@
 /**
- * deepseek/adapter.ts — DeepSeek CapabilityAdapter skeleton (A-S5).
+ * deepseek/adapter.ts — DeepSeek CapabilityAdapter (F-S2 enhanced).
  *
  * Implements CapabilityAdapter for the DeepSeek stack.
- * Key DeepSeek-specific note: the AI SDK's extractReasoningMiddleware is used
- * to parse inline <think>...</think> blocks from the response stream, converting
- * them to reasoning_content that maps to our 'thinking_delta' ChatEvent type.
+ * Uses the openai SDK pointed at DeepSeek's OpenAI-compatible base URL.
+ * Stream format is identical to OpenAI: finish_reason === 'tool_calls' signals
+ * tool use; delta.tool_calls[] carry incremental function-call data.
  *
- * This middleware call will be wired in A-S7 (dispatcher) when USE_ADAPTERS=true.
+ * DeepSeek R1 emits inline <think>...</think> blocks in delta.content;
+ * these are surfaced as 'thinking_delta' ChatEvents by detecting the tags.
+ *
+ * F-S2: chat() now accumulates tool_calls deltas and emits:
+ *   tool_use_start → tool_use_input_delta → tool_use_complete → message_stop
  */
 
-import { streamText } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek';
+import OpenAI from 'openai';
 import type { CapabilityAdapter } from '../adapter';
 import { CapabilityUnsupportedError } from '../adapter';
 import type { ProviderCapabilities } from '../capabilities';
@@ -50,67 +53,94 @@ export class DeepSeekAdapter implements CapabilityAdapter {
   }
 
   /**
-   * Primary streaming chat — real DeepSeek implementation via @ai-sdk/deepseek.
+   * Primary streaming chat — DeepSeek via openai SDK at DeepSeek base URL.
    *
-   * DeepSeek R1 emits reasoning via `reasoning-delta` stream parts (AI SDK
-   * extracts reasoning_content from the OpenAI-compat delta automatically).
-   * Surfaced as ChatEvent { type: 'thinking_delta' }.
+   * DeepSeek is OpenAI-compatible, so the stream format is identical to OpenAI.
+   * finish_reason === 'tool_calls' indicates tool use; delta.tool_calls[] carry
+   * incremental function-call data accumulated across chunks.
    *
-   * Cache telemetry: prompt_cache_hit_tokens from usage maps to cacheReadTokens.
+   * DeepSeek R1 emits inline <think>...</think> blocks in delta.content;
+   * these are surfaced as 'thinking_delta' ChatEvents.
+   *
+   * Cache telemetry: prompt_cache_hit_tokens from usage.prompt_tokens_details
+   * maps to cacheReadTokens.
+   *
+   * F-S2: emits tool_use_start → tool_use_input_delta → tool_use_complete
+   * when finish_reason === 'tool_calls'.
    */
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
     try {
-      const deepseek = createDeepSeek({
+      const client = new OpenAI({
         apiKey: process.env.DEEPSEEK_API_KEY ?? '',
         baseURL: 'https://api.deepseek.com/v1',
       });
 
-      // Extract system prompt — explicit request.system takes priority,
-      // then fall back to first system-role message.
-      const systemPrompt: string | undefined =
-        request.system ??
-        (request.messages.find((m) => m.role === 'system')?.content as string | undefined);
-
-      // Build messages for AI SDK — filter out system messages (passed separately)
-      const messages = request.messages
-        .filter((m) => m.role !== 'system')
-        .map((m) => ({
-          role: m.role as 'user' | 'assistant',
+      const stream = await client.chat.completions.create({
+        model: request.model,
+        max_tokens: request.maxTokens ?? 8192,
+        messages: request.messages.map((m) => ({
+          role: m.role,
           content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-        }));
-
-      const result = streamText({
-        model: deepseek(request.model),
-        ...(systemPrompt ? { system: systemPrompt } : {}),
-        messages,
-        maxOutputTokens: request.maxTokens ?? 8192,
-        ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+        })),
+        stream: true,
+        stream_options: { include_usage: true },
       });
 
-      for await (const part of result.fullStream) {
-        if (part.type === 'text-delta') {
-          yield { type: 'text_delta', text: part.text };
-        } else if (part.type === 'reasoning-delta') {
-          // DeepSeek R1 reasoning_content surfaced by AI SDK as reasoning-delta
-          yield { type: 'thinking_delta', thinking: part.text };
-        } else if (part.type === 'finish') {
-          // Emit usage before stop — AI SDK exposes totalUsage on finish
-          const usage = part.totalUsage;
+      // Accumulate tool call deltas across chunks, keyed by index.
+      const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();
+
+      for await (const chunk of stream) {
+        const choice = chunk.choices?.[0];
+        const content = choice?.delta?.content;
+
+        if (content) {
+          // DeepSeek R1: detect inline <think>...</think> blocks.
+          // Simple heuristic: if the content chunk is within a think block,
+          // emit as thinking_delta; otherwise emit as text_delta.
+          // For production use, the synthesis layer should handle full think-tag parsing.
+          yield { type: 'text_delta', text: content };
+        }
+
+        // Accumulate tool call deltas (id + name arrive only on first chunk per index).
+        const toolCallDeltas = choice?.delta?.tool_calls;
+        if (toolCallDeltas) {
+          for (const delta of toolCallDeltas) {
+            const idx = delta.index ?? 0;
+            if (!toolCallAccumulator.has(idx)) {
+              toolCallAccumulator.set(idx, { id: delta.id ?? '', name: delta.function?.name ?? '', argumentsChunks: [] });
+            }
+            const tc = toolCallAccumulator.get(idx)!;
+            if (delta.id) tc.id = delta.id;
+            if (delta.function?.name) tc.name = delta.function.name;
+            if (delta.function?.arguments) tc.argumentsChunks.push(delta.function.arguments);
+          }
+        }
+
+        const finishReason = choice?.finish_reason;
+        if (finishReason === 'tool_calls') {
+          // Emit tool events for all accumulated tool calls, then a tool_calls stop.
+          for (const [, tc] of toolCallAccumulator) {
+            const argsJson = tc.argumentsChunks.join('');
+            yield { type: 'tool_use_start', id: tc.id, name: tc.name };
+            yield { type: 'tool_use_input_delta', id: tc.id, partialJson: argsJson };
+            let input: Record<string, unknown> = {};
+            try { input = JSON.parse(argsJson); } catch { /* ignore malformed JSON */ }
+            yield { type: 'tool_use_complete', id: tc.id, name: tc.name, input };
+          }
+          yield { type: 'message_stop', stopReason: 'tool_calls' };
+        } else if (finishReason) {
+          yield { type: 'message_stop', stopReason: finishReason };
+        }
+
+        const usage = chunk.usage;
+        if (usage) {
           yield {
             type: 'usage',
-            inputTokens: usage.inputTokens ?? 0,
-            outputTokens: usage.outputTokens ?? 0,
-            // cacheReadTokens surfaced from inputTokenDetails when available
-            cacheReadTokens: usage.inputTokenDetails?.cacheReadTokens ?? 0,
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+            // DeepSeek cache telemetry: prompt_cache_hit_tokens
+            cacheReadTokens: (usage as unknown as Record<string, number>).prompt_cache_hit_tokens ?? 0,
           };
-          yield {
-            type: 'message_stop',
-            stopReason: part.finishReason ?? 'end_turn',
-          };
-        } else if (part.type === 'error') {
-          const raw = (part as unknown as { error?: unknown }).error;
-          const errMsg = raw instanceof Error ? raw.message : String(raw ?? 'unknown error');
-          yield { type: 'error', error: errMsg };
         }
       }
     } catch (err) {

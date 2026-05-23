@@ -67,16 +67,47 @@ export class OpenAIAdapter implements CapabilityAdapter {
         stream_options: { include_usage: true },
       });
 
+      // Accumulate tool call deltas across chunks, keyed by index.
+      const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();
+
       for await (const chunk of stream) {
         const choice = chunk.choices?.[0];
         const content = choice?.delta?.content;
         if (content) {
           yield { type: 'text_delta', text: content };
         }
+
+        // Accumulate tool call deltas (id + name arrive only on first chunk per index).
+        const toolCallDeltas = choice?.delta?.tool_calls;
+        if (toolCallDeltas) {
+          for (const delta of toolCallDeltas) {
+            const idx = delta.index ?? 0;
+            if (!toolCallAccumulator.has(idx)) {
+              toolCallAccumulator.set(idx, { id: delta.id ?? '', name: delta.function?.name ?? '', argumentsChunks: [] });
+            }
+            const tc = toolCallAccumulator.get(idx)!;
+            if (delta.id) tc.id = delta.id;
+            if (delta.function?.name) tc.name = delta.function.name;
+            if (delta.function?.arguments) tc.argumentsChunks.push(delta.function.arguments);
+          }
+        }
+
         const finishReason = choice?.finish_reason;
-        if (finishReason) {
+        if (finishReason === 'tool_calls') {
+          // Emit tool events for all accumulated tool calls, then a tool_calls stop.
+          for (const [, tc] of toolCallAccumulator) {
+            const argsJson = tc.argumentsChunks.join('');
+            yield { type: 'tool_use_start', id: tc.id, name: tc.name };
+            yield { type: 'tool_use_input_delta', id: tc.id, partialJson: argsJson };
+            let input: Record<string, unknown> = {};
+            try { input = JSON.parse(argsJson); } catch { /* ignore malformed JSON */ }
+            yield { type: 'tool_use_complete', id: tc.id, name: tc.name, input };
+          }
+          yield { type: 'message_stop', stopReason: 'tool_calls' };
+        } else if (finishReason) {
           yield { type: 'message_stop', stopReason: finishReason };
         }
+
         const usage = chunk.usage;
         if (usage) {
           yield {
