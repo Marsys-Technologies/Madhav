@@ -1,0 +1,17 @@
+{
+  "baseline_pct": 0,
+  "baseline_note": "No routing eval harness existed before MCPT v3.2 Phase 9b — baseline = 0%",
+  "head_pct": 93.3,
+  "head_passed": 28,
+  "head_total": 30,
+  "delta_pp": 93.3,
+  "verdict": "PASS",
+  "target_pp": 15,
+  "goal": ">=80% gold-or-acceptable",
+  "goal_met": true,
+  "captured_at": "20260523T202704Z",
+  "prod_revision": "amjis-mcp-00011-9zv",
+  "prod_tag": "mcpt-v32-prod",
+  "runner_mode": "live",
+  "runner_model": "claude-haiku-4-5"
+}
