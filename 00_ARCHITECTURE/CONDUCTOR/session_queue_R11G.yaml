@@ -161,9 +161,10 @@ sessions:
 
   - id: G-S4
     title: "Vitest stabilization + baseline diff"
-    status: failed
-    failed_at: "2026-05-23T09:45:00Z"
-    halt_file: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_HALT_S4.md
+    status: passed
+    passed_at: "2026-05-23T10:15:00Z"
+    commit_sha: 64d41c4e
+    note: "Initial run halted on stale v1.2 baseline; operator approved v1.3 refresh; retry PASS"
     parallel_group: null
     commit_message: "test(r11g): full vitest stabilization + baseline diff"
     acceptance_criteria:
