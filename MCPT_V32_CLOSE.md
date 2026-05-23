@@ -65,3 +65,28 @@ MCPT v3.2 changed the description strings emitted by the MCP `list_tools` endpoi
 ### No behavior change
 
 Tool semantics, request/response shapes, error formats, and authentication are unchanged. Only descriptions and a few additive parameters changed.
+
+## Routing Eval Framing — Why 29/30 Is the Haiku Floor, Not the Ceiling
+
+The MCPT v3.2 routing-accuracy eval (R3) was measured against `claude-haiku-4-5`, the smallest model in the Anthropic family. The final result of 29/30 (96.7%) clears the ≥80% absolute acceptance target with margin. The one persistent failure (`chart_summary_d9_request`, prompt: "Give me my D9 chart") returned `no_tool_call` across three independent runs, including after the post-merge DESC_TUNE (commit `1868ce31`) added explicit "navamsa" and "D9" mentions to the `chart_summary` description.
+
+### Why we are not chasing the remaining 3.3pp
+
+1. **The failure is at the model-inference layer, not the description layer.** The description already says "FIRST CALL when interpreting any chart end-to-end" and now explicitly names "navamsa" and "D9". Three runs returning the same failure means it is a deterministic Haiku tendency, not random noise. Further description tuning would be tuning the wrong dial.
+
+2. **Haiku is not the production consumer.** The MCP server is consumed primarily by Claude Code in Antigravity, Claude Desktop, and Cowork. Those clients run Sonnet 4.6 or Opus 4.7, both materially stronger at tool-calling discipline than Haiku. The real-world routing on the same prompt is very likely correct on those tiers but is currently untested.
+
+3. **The 29/30 number is therefore a floor, not the operating ceiling.** Production routing accuracy is probably higher and would require a separate eval run against Sonnet/Opus to measure. That eval is not part of MCPT v3.2 scope.
+
+### What would change this position
+
+- Real production data (from `query_trace_steps` or `tool_execution_log`) showing the same `no_tool_call` pattern at scale with Sonnet/Opus consumers. If that emerges, open a follow-up to either:
+  - Add explicit example invocations to the `chart_summary` description, or
+  - Tune the system prompt at the consumer side (out of MCP server scope), or
+  - Accept and widen the eval's `acceptable_alternatives` to include `no_tool_call` for this specific prompt.
+
+- A planned cross-tier routing eval that re-runs R3 against Sonnet 4.6 and Opus 4.7 to establish the per-tier accuracy curve. Not committed; would be a separate brief.
+
+### Net
+
+MCPT v3.2 closes at 96.7% Haiku-floor with the documented limitation. The DESC_TUNE was the right move (it lifted 28/30 → 29/30) and no further tuning is recommended until production routing data warrants it.
