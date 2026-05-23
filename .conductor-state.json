@@ -2,60 +2,182 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 3,
+  "current_phase": 4,
   "phases": [
     {
       "id": 0,
       "status": "completed",
       "pr_url": "https://github.com/amonty84/Madhav/pull/153",
       "sub_agents": [
-        {"id": "v32-s0-bootstrap", "status": "completed"}
+        {
+          "id": "v32-s0-bootstrap",
+          "status": "completed"
+        }
       ],
       "gate_artifact": "bench/mcp_test_baseline.log",
       "completed_at": "2026-05-23T17:00:00Z"
     },
-    {"id": 1, "status": "completed", "completed_at": "2026-05-23T17:15:00Z", "gate": "PASS", "sub_agents": [
-      {"id": "v32-s1a-data_coverage-description", "status": "completed", "commit": "47363264"},
-      {"id": "v32-s1b-tool_health-data_note", "status": "completed", "commit": "5dd5f83a"},
-      {"id": "v32-s1c-supabase-076-seed-comment", "status": "completed", "commit": "d43d83d0"},
-      {"id": "v32-s1d-audit-other-descriptions", "status": "completed", "commit": "9f0ce419"}
-    ]},
-    {"id": 2, "status": "completed", "completed_at": "2026-05-23T17:45:00Z", "gate": "PASS", "sub_agents": [
-      {"id": "v32-s2a-envelope-helper", "status": "completed", "commit": "4756f5db"},
-      {"id": "v32-s2b-tool-migration", "status": "completed", "commit": "f1af2afd"}
-    ]},
-    {"id": 3, "status": "in_progress", "sub_agents": [
-      {"id": "v32-s3-descriptions-builder-migration", "status": "in_progress"}
-    ]},
-    {"id": 4, "status": "pending", "sub_agents": [
-      {"id": "v32-s4a-divisional-filter", "status": "pending"},
-      {"id": "v32-s4b-categories-batching", "status": "pending"},
-      {"id": "v32-s4c-chart-summary", "status": "pending"}
-    ]},
-    {"id": 5, "status": "pending", "sub_agents": [
-      {"id": "v32-s5a-trace-name-canonicalization", "status": "pending"},
-      {"id": "v32-s5b-query-summary-population", "status": "pending"}
-    ]},
-    {"id": 6, "status": "pending", "sub_agents": [
-      {"id": "v32-s6a-acharya-enum-decision", "status": "pending"},
-      {"id": "v32-s6b-tier-aware-list-tools", "status": "pending"}
-    ]},
-    {"id": 7, "status": "pending", "sub_agents": [
-      {"id": "v32-s7a-seed-load", "status": "pending"},
-      {"id": "v32-s7b-nightly-audit-job", "status": "pending"},
-      {"id": "v32-s7c-handlers-truth", "status": "pending"}
-    ]},
-    {"id": 8, "status": "pending", "sub_agents": [
-      {"id": "v32-s8a-bench-harness", "status": "pending"},
-      {"id": "v32-s8b-accuracy-harness", "status": "pending"}
-    ]},
-    {"id": 9, "status": "pending", "sub_agents": [
-      {"id": "v32-s9a-cross-scenario-equivalence", "status": "pending"},
-      {"id": "v32-s9b-routing-eval", "status": "pending"}
-    ]},
-    {"id": 10, "status": "pending", "sub_agents": [
-      {"id": "v32-s10-final-verify", "status": "pending"}
-    ]}
+    {
+      "id": 1,
+      "status": "completed",
+      "completed_at": "2026-05-23T17:15:00Z",
+      "gate": "PASS",
+      "sub_agents": [
+        {
+          "id": "v32-s1a-data_coverage-description",
+          "status": "completed",
+          "commit": "47363264"
+        },
+        {
+          "id": "v32-s1b-tool_health-data_note",
+          "status": "completed",
+          "commit": "5dd5f83a"
+        },
+        {
+          "id": "v32-s1c-supabase-076-seed-comment",
+          "status": "completed",
+          "commit": "d43d83d0"
+        },
+        {
+          "id": "v32-s1d-audit-other-descriptions",
+          "status": "completed",
+          "commit": "9f0ce419"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "status": "completed",
+      "completed_at": "2026-05-23T17:45:00Z",
+      "gate": "PASS",
+      "sub_agents": [
+        {
+          "id": "v32-s2a-envelope-helper",
+          "status": "completed",
+          "commit": "4756f5db"
+        },
+        {
+          "id": "v32-s2b-tool-migration",
+          "status": "completed",
+          "commit": "f1af2afd"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "status": "completed",
+      "sub_agents": [
+        {
+          "id": "v32-s3-descriptions-builder-migration",
+          "status": "completed",
+          "commit": "5228b2d9"
+        }
+      ],
+      "completed_at": "2026-05-23T18:15:00Z",
+      "gate": "PASS"
+    },
+    {
+      "id": 4,
+      "status": "in_progress",
+      "sub_agents": [
+        {
+          "id": "v32-s4a-divisional-filter",
+          "status": "in_progress"
+        },
+        {
+          "id": "v32-s4b-categories-batching",
+          "status": "in_progress"
+        },
+        {
+          "id": "v32-s4c-chart-summary",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "status": "pending",
+      "sub_agents": [
+        {
+          "id": "v32-s5a-trace-name-canonicalization",
+          "status": "pending"
+        },
+        {
+          "id": "v32-s5b-query-summary-population",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "status": "pending",
+      "sub_agents": [
+        {
+          "id": "v32-s6a-acharya-enum-decision",
+          "status": "pending"
+        },
+        {
+          "id": "v32-s6b-tier-aware-list-tools",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "status": "pending",
+      "sub_agents": [
+        {
+          "id": "v32-s7a-seed-load",
+          "status": "pending"
+        },
+        {
+          "id": "v32-s7b-nightly-audit-job",
+          "status": "pending"
+        },
+        {
+          "id": "v32-s7c-handlers-truth",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "status": "pending",
+      "sub_agents": [
+        {
+          "id": "v32-s8a-bench-harness",
+          "status": "pending"
+        },
+        {
+          "id": "v32-s8b-accuracy-harness",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "status": "pending",
+      "sub_agents": [
+        {
+          "id": "v32-s9a-cross-scenario-equivalence",
+          "status": "pending"
+        },
+        {
+          "id": "v32-s9b-routing-eval",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "status": "pending",
+      "sub_agents": [
+        {
+          "id": "v32-s10-final-verify",
+          "status": "pending"
+        }
+      ]
+    }
   ],
   "escalations": [],
   "human_gates_pending": []
