@@ -73,8 +73,14 @@ export const QUERY_CHART_FACTS_DESCRIPTION = buildToolDescription({
 const CHART_FACTS_TOOL_DESCRIPTION = QUERY_CHART_FACTS_DESCRIPTION
 
 const QueryChartFactsInputSchema = z.object({
-  category: z.string().describe(
-    `Fact category to query. Must be one of: ${CHART_FACTS_CATEGORIES.join(', ')}.`
+  category: z.string().optional().describe(
+    `Single fact category to query. Must be one of: ${CHART_FACTS_CATEGORIES.join(', ')}.`
+  ),
+  categories: z.array(z.string()).optional().describe(
+    'Optional array of categories to fetch in one call (multi-category batching). ' +
+    'When provided, overrides `category`. Response groups results by category in ' +
+    'result.rows_by_category: {category: rows[]}. ' +
+    `Valid values: ${CHART_FACTS_CATEGORIES.join(', ')}.`
   ),
   planet: z.string().optional().describe('Filter to a specific planet (e.g. "Saturn", "Moon").'),
   house: z.number().int().min(1).max(12).optional().describe('Filter to a specific house (1–12).'),
@@ -95,10 +101,19 @@ export function registerQueryChartFacts(
     QueryChartFactsInputSchema.shape,
     async (args: QueryChartFactsInput) => {
       const principal = getPrincipal()
+
+      // Determine whether batched (categories array) or single-category mode
+      const isBatched = Array.isArray(args.categories) && args.categories.length > 0
+
       const { status, envelope } = await callPlatformPrimitive(
         'query_chart_facts',
         {
-          category: args.category,
+          // When categories array is provided, pass it as `category` (platform supports array)
+          // and set the batched flag so the platform groups results by category.
+          ...(isBatched
+            ? { category: args.categories, batched: true }
+            : { category: args.category }
+          ),
           ...(args.planet ? { planet: args.planet } : {}),
           ...(args.house !== undefined ? { house: args.house } : {}),
           ...(args.as_of_date ? { as_of_date: args.as_of_date } : {}),
