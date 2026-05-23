@@ -2,7 +2,7 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 6,
+  "current_phase": 8,
   "phases": [
     {
       "id": 0,
@@ -119,47 +119,54 @@
     },
     {
       "id": 6,
-      "status": "in_progress",
+      "status": "completed",
       "sub_agents": [
         {
           "id": "v32-s6a-acharya-enum-decision",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "9bb60f57"
         },
         {
           "id": "v32-s6b-tier-aware-list-tools",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "28e4f9f7"
         }
-      ]
+      ],
+      "completed_at": "2026-05-23T19:30:00Z",
+      "gate": "PASS"
     },
     {
       "id": 7,
-      "status": "pending",
+      "status": "in_progress",
       "sub_agents": [
         {
           "id": "v32-s7a-seed-load",
-          "status": "pending"
+          "status": "blocked",
+          "reason": ".conductor-approve-prod tripwire absent; prod DB seed and Cloud Run job creation require human approval"
         },
         {
           "id": "v32-s7b-nightly-audit-job",
-          "status": "pending"
+          "status": "blocked",
+          "reason": ".conductor-approve-prod tripwire absent; prod DB seed and Cloud Run job creation require human approval"
         },
         {
           "id": "v32-s7c-handlers-truth",
-          "status": "pending"
+          "status": "completed",
+          "commit": "7a7f1e9c"
         }
       ]
     },
     {
       "id": 8,
-      "status": "pending",
+      "status": "in_progress",
       "sub_agents": [
         {
           "id": "v32-s8a-bench-harness",
-          "status": "pending"
+          "status": "in_progress"
         },
         {
           "id": "v32-s8b-accuracy-harness",
-          "status": "pending"
+          "status": "in_progress"
         }
       ]
     },
@@ -189,5 +196,15 @@
     }
   ],
   "escalations": [],
-  "human_gates_pending": []
+  "human_gates_pending": [
+    {
+      "phase": 7,
+      "items": [
+        "v32-s7a-seed-load",
+        "v32-s7b-nightly-audit-job"
+      ],
+      "reason": "Prod operations: data_source_expected_seed.sql load to prod DB + gcloud run jobs create amjis-mcp-audit + gcloud scheduler job creation",
+      "action_required": "Drop .conductor-approve-prod to unblock; conductor will run 7a+7b and then proceed to Phase 8"
+    }
+  ]
 }
