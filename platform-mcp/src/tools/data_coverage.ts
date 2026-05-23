@@ -30,10 +30,10 @@ export function registerDataCoverage(
   server.tool(
     'data_coverage',
 
-    `What it does: Returns a data coverage report showing expected vs actual row counts
-for each tool and data category. Useful for understanding which data has been backfilled
-and which is pending (KP, Tajaka, Shadbala, Ashtakavarga categories are pending v3.3
-backfill). Also surfaces active tool caveats. Tier-gated: super_admin + acharya only.
+    `What it does: Returns expected vs actual row counts per category. Categories backfilled
+through MCPT v3.3 (KP, Tajaka, Shadbala, Ashtakavarga, Upagraha, Bhava-Bala) return
+populated counts. Residuals tracked in \`mcp_audit_findings\`. Also surfaces active tool
+caveats. Tier-gated: super_admin + acharya only.
 
 When to prefer: Use data_coverage before calling a tool that relies on backfilled data
 (query_chart_facts with category kp_cusp, varshphal, shadbala, etc.) to check if data
