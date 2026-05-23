@@ -27,6 +27,7 @@ export default function ConsumeLayout({ children }: { children: ReactNode }) {
       <style>{`
         #main-content{animation:none!important}
         nav[aria-label="Primary navigation"]{display:none!important}
+        body{background-color:#0f0c06!important}
       `}</style>
       <ConsumeOverlayPortal>{children}</ConsumeOverlayPortal>
     </>

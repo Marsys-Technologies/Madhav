@@ -1030,6 +1030,7 @@ export async function POST(request: Request) {
           // and text-end + finish after the last delta.
           const adapterTextPartId = 'text-0'
           let adapterTextStarted = false
+          let adapterAccumulatedText = ''
           try {
             const loopConfig = LOOP_CONFIG_BY_PROVIDER[adapterId]
             const chatStream = (useAgenticLoop && loopConfig)
@@ -1050,6 +1051,7 @@ export async function POST(request: Request) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 writer.write({ type: 'text-delta', id: adapterTextPartId, delta: event.text } as any)
                 pendingStreamWriter.onTextDelta(event.text)
+                adapterAccumulatedText += event.text
               } else if (event.type === 'thinking_delta') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 writer.write({ type: 'reasoning', delta: event.thinking, id: adapterMsgId } as any)
@@ -1073,6 +1075,50 @@ export async function POST(request: Request) {
           if (adapterTextStarted) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             writer.write({ type: 'text-end', id: adapterTextPartId } as any)
+          }
+          // Write-through persistence: upsert all messages into conversation_messages.
+          // This mirrors the orchestrator path's onFinish persistence block so that
+          // adapter-routed conversations are restorable from the sidebar.
+          if (adapterAccumulatedText) {
+            // Assign fresh UUIDs for all messages — client-side message IDs
+            // (e.g. "yhJSXqHyqhawY9an") are not valid UUIDs and would fail
+            // the conversation_messages.id UUID column constraint.
+            const persistMsgs: UIMessage[] = [
+              ...(messages as UIMessage[]).map(m => ({ ...m, id: crypto.randomUUID() } as UIMessage)),
+              {
+                id: crypto.randomUUID(),
+                role: 'assistant' as const,
+                parts: [{ type: 'text', text: adapterAccumulatedText }],
+              } as UIMessage,
+            ]
+            const adapterWriteResult = await writeConversationMessages({
+              conversationId: finalConversationId,
+              messages: persistMsgs,
+            }).catch((err: unknown) => {
+              console.warn('[adapter-dispatch] persistence failed', finalConversationId, err)
+              return null
+            })
+            if (adapterWriteResult) {
+              writer.write({
+                type: 'data-persistence',
+                data: persistencePart({
+                  conversation_id: finalConversationId,
+                  message_id: adapterWriteResult.messageIds.at(-1) ?? '',
+                  status: adapterWriteResult.verified ? 'ok' : 'error',
+                }),
+              })
+            }
+            if (isFirstTurn) {
+              writer.write({ type: 'data-title', data: titlePart({ conversation_id: finalConversationId }) })
+              const titleUserMsgs = (messages as UIMessage[]).filter(m => m.role === 'user').slice(-1)
+              generateConversationTitle(titleUserMsgs, {
+                queryId,
+                conversationId: finalConversationId,
+                userId: user.uid,
+              }).then((title: string | null) => {
+                if (title) void updateConversationTitle(finalConversationId, title)
+              }).catch(() => { /* non-fatal */ })
+            }
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           writer.write({ type: 'finish', finishReason: 'stop' } as any)

@@ -586,7 +586,7 @@ function V2Message() {
           </div>
 
           {/* Edit action + branch picker for user messages */}
-          <div className="flex items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
+          <div className="flex min-h-[2rem] items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
               hideWhenRunning
@@ -747,7 +747,7 @@ function V2Message() {
           {provenance && <PostAnswerProvenance provenance={provenance} />}
 
           {/* Reload (regenerate) + Details + Copy actions for assistant messages */}
-          <div className="flex items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
+          <div className="flex min-h-[2rem] items-center gap-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             <V2BranchPicker />
             <ActionBarPrimitive.Root
               hideWhenRunning
@@ -1703,6 +1703,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   // Restore conversation messages on conversation switch.
   const handleSelectConversation = useCallback(async (id: string) => {
     setActiveConversationId(id)
+    setSidebarCollapsed(true)
     try {
       const r = await fetch(`/api/conversations/${id}/messages`)
       if (r.ok) {
@@ -1834,7 +1835,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
         )}
       >
         <header
-          className="flex items-center gap-3 border-b border-zinc-800 px-4 md:px-6 py-3 shrink-0"
+          className="flex items-center gap-3 px-4 md:px-6 py-3 shrink-0"
           data-testid="v2-header"
         >
           {/* Back to dashboard */}

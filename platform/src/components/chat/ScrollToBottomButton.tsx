@@ -23,7 +23,7 @@ export function ScrollToBottomButton({ visible, onClick, unreadCount = 0 }: Prop
         unreadCount > 0 ? 'h-7 px-3 text-[11px] font-medium' : 'size-9',
         visible ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-2'
       )}
-      style={{ bottom: 'calc(var(--composer-h) + 12px)' }}
+      style={{ bottom: 'calc(var(--composer-h, 160px) + 12px)' }}
     >
       <ArrowDown className="size-3.5 text-muted-foreground" />
       {unreadCount > 0 && (
