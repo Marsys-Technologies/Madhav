@@ -1,0 +1,178 @@
+# session_queue.yaml — R11.F Bounded Agentic Loop Arc
+# Branch: chat-v2/r11f-agentic-loop
+# Worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR11FBound
+# Master plan: 00_ARCHITECTURE/chat_v2_briefs/round11f/R11F_MASTER_PLAN_v1_0.md
+# Conductor README: 00_ARCHITECTURE/CONDUCTOR/r11f/README.md
+#
+# AUTHORITATIVE COPY: worktree (this file). Main-branch copy is for visibility only.
+#
+# Precondition: feature/r11f-wiring-arc (S1–S7) must be merged to main before
+# sessions in this arc push implementation commits to the feature branch.
+
+sessions:
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PHASE A — Anthropic Foundation (serial)
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - id: R11F-A-S1
+    phase: A
+    title: "Anthropic adapter: forward tools+toolChoice to streamText"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S1_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [precursor-arc-merged]
+    commit_sha: null
+    pr_url: null
+    notes: "Fixes Break B2. Promotes PROBE test out of describe.skip."
+
+  - id: R11F-A-S2
+    phase: A
+    title: "Route.ts: convertRetrievalToolToChatTool helper + replace tools:[] stub"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S2_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-A-S1]
+    commit_sha: null
+    pr_url: null
+    notes: "Fixes Break B1. Creates tool_catalogue.ts helper."
+
+  - id: R11F-A-S3
+    phase: A
+    title: "B.11 floor pre-execution preservation + onFinish parity"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S3_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-A-S2]
+    commit_sha: null
+    pr_url: null
+    notes: "Fixes Break B3. Architectural contract documented in route.ts."
+
+  - id: R11F-A-S4
+    phase: A
+    title: "Anthropic E2E integration test (VCR/spied streamText)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S4_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-A-S3]
+    commit_sha: null
+    pr_url: null
+    notes: "3 test cases: round-trip, cap, floor context. No production code changes."
+
+  - id: R11F-A-S5
+    phase: A
+    title: "Anthropic visual smoke via Chrome MCP"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S5_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-A-S4]
+    commit_sha: null
+    pr_url: null
+    notes: "Screenshots to visual_evidence/anthropic/. HALT if tool-flow timeline empty."
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PHASE B — Other Providers (B1+B3 parallel-eligible; B2/B4 serial after B1/B3)
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - id: R11F-B-S1
+    phase: B
+    title: "Google adapter: forward tools in Gemini format + E2E test"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S1_v1_0.md"
+    status: pending
+    parallel_safe: true
+    blocked_by: [R11F-A-S2]
+    commit_sha: null
+    pr_url: null
+    notes: "Parallel-eligible with B-S3. Use isolation:worktree if concurrent."
+
+  - id: R11F-B-S2
+    phase: B
+    title: "Google visual smoke via Chrome MCP"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S2_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-B-S1]
+    commit_sha: null
+    pr_url: null
+    notes: "Screenshots to visual_evidence/google/."
+
+  - id: R11F-B-S3
+    phase: B
+    title: "OpenAI adapter: forward tools in OpenAI format + E2E test"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S3_v1_0.md"
+    status: pending
+    parallel_safe: true
+    blocked_by: [R11F-A-S2]
+    commit_sha: null
+    pr_url: null
+    notes: "Parallel-eligible with B-S1. Use isolation:worktree if concurrent."
+
+  - id: R11F-B-S4
+    phase: B
+    title: "OpenAI visual smoke via Chrome MCP"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S4_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-B-S3]
+    commit_sha: null
+    pr_url: null
+    notes: "Screenshots to visual_evidence/openai/."
+
+  - id: R11F-B-S5
+    phase: B
+    title: "DeepSeek+NVIDIA: verify/fix tool forwarding + combined smoke"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S5_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-B-S1, R11F-B-S3]
+    commit_sha: null
+    pr_url: null
+    notes: "NVIDIA Case A/B decision made here. Documents R1 thinking+tool limitation."
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PHASE C — Cross-Cutting (serial)
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - id: R11F-C-S1
+    phase: C
+    title: "Cross-provider parity matrix + trace audit suite"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S1_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-B-S2, R11F-B-S4, R11F-B-S5]
+    commit_sha: null
+    pr_url: null
+    notes: "All Phase B sessions must complete (PASS or documented-skip) before C-S1."
+
+  - id: R11F-C-S2
+    phase: C
+    title: "Iteration-cap stress + IS.8(b) red-team adversarial pass"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S2_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-C-S1]
+    commit_sha: null
+    pr_url: null
+    notes: "Mandatory IS.8(b) red-team gate. C-S3 cannot proceed without PASS."
+
+  - id: R11F-C-S3
+    phase: C
+    title: "deploy.yml flag flips (R11E loop flags for all providers)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S3_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-C-S2]
+    commit_sha: null
+    pr_url: null
+    notes: "Commit-only. NVIDIA flag omitted if B-S5 was Case B."
+
+  - id: R11F-C-S4
+    phase: C
+    title: "Visual regression sweep + sealing artifact + open PR (HALT)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S4_v1_0.md"
+    status: pending
+    parallel_safe: false
+    blocked_by: [R11F-C-S3]
+    commit_sha: null
+    pr_url: null
+    notes: "Final session. Opens PR and HALTS for native merge approval."
