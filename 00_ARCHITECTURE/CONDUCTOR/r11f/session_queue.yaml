@@ -59,16 +59,27 @@ sessions:
     pr_url: null
     notes: "3 test cases: round-trip, cap, floor context. No production code changes."
 
+  - id: R11F-A-S6
+    phase: A
+    title: "Tool inputSchema normalization — AI SDK v6 CoreTool fix (catalogue + adapter)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S6_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-A-S2]
+    commit_sha: null
+    pr_url: null
+    notes: "Fixes AI SDK v6 parameters→inputSchema rename + adds normalizeInputSchema() catalogue boundary."
+
   - id: R11F-A-S5
     phase: A
     title: "Anthropic visual smoke via Chrome MCP"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S5_v1_0.md"
-    status: halted
+    status: pending
     parallel_safe: false
-    blocked_by: [R11F-A-S4]
-    commit_sha: "54e97a23"
+    blocked_by: [R11F-A-S6]
+    commit_sha: null
     pr_url: null
-    notes: "HALTED: Anthropic API 400 — tools.0.custom.input_schema.type missing. jsonSchema() wrapper in adapter.ts:107 omits 'type':'object'. Fix required before Phase B."
+    notes: "Screenshots to visual_evidence/anthropic/. HALT if tool-flow timeline empty."
 
   # ──────────────────────────────────────────────────────────────────────────────
   # PHASE B — Other Providers (B1+B3 parallel-eligible; B2/B4 serial after B1/B3)
