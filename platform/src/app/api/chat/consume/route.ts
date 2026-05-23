@@ -905,6 +905,18 @@ export async function POST(request: Request) {
       disclosure_tier: audienceTier,
     }),
   }
+  /**
+   * B.11 FLOOR CONTRACT (binding for all adapter dispatch paths):
+   *
+   * B.11 floor tools (MSR, UCN, CGM holistic synthesis) are pre-executed
+   * deterministically above this block and their results injected into
+   * adapterChatReq.messages before any model call. The agentic loop receives
+   * a context that already contains the holistic synthesis layer — the model
+   * cannot skip or defer it.
+   *
+   * Loop tools are the PLANNER-AUTHORISED SUBSET only. The loop adds gap-recovery
+   * and ambiguity-resolution capability. It does not replace the planner.
+   */
   // R11 v2 — Capability Dispatcher gate (A-S7 + dispatch-wiring)
   // When MARSYS_FLAG_R11V2_USE_ADAPTERS=true, the chat call routes through the
   // capability dispatcher to the per-provider adapter instead of the legacy orchestrator path.
@@ -1119,6 +1131,57 @@ export async function POST(request: Request) {
               }).then((title: string | null) => {
                 if (title) void updateConversationTitle(finalConversationId, title)
               }).catch(() => { /* non-fatal */ })
+            }
+
+            // onFinish parity — MON-8: context_assembly_log write (mirrors legacy onFinish block).
+            // Counts L1/L2.5/L4/vector/CGM tokens from the floor tool results that were
+            // pre-executed above the adapter dispatch block (B.11 floor contract).
+            const tokensForAdapter = (predicate: (toolName: string) => boolean): number => {
+              let chars = 0
+              for (const tb of validToolResults) {
+                if (!predicate(tb.tool_name)) continue
+                for (const r of tb.results) chars += r.content.length
+              }
+              return Math.ceil(chars / 4)
+            }
+            void writeContextAssemblyLog({
+              query_id: queryId,
+              l1_tokens: tokensForAdapter(n => [
+                'chart_facts_query', 'divisional_query', 'kp_query',
+                'manifest_query', 'query_kp_ruling_planets', 'query_varshaphala',
+                'saham_query', 'temporal', 'timeline_query',
+              ].includes(n)),
+              l2_5_signal_tokens: tokensForAdapter(n => [
+                'msr_sql', 'query_msr_aggregate', 'query_signal_state',
+              ].includes(n)),
+              l2_5_pattern_tokens: tokensForAdapter(n => [
+                'pattern_register', 'resonance_register',
+                'contradiction_register', 'cluster_atlas',
+              ].includes(n)),
+              l4_tokens: tokensForAdapter(n => ['remedial_codex_query', 'domain_report_query'].includes(n)),
+              vector_tokens: tokensForAdapter(n => n === 'vector_search'),
+              cgm_tokens: tokensForAdapter(n => n === 'cgm_graph_walk'),
+              synthesis_model_id: modelId,
+              model_max_context: modelMeta.maxInputTokens ?? null,
+              b3_compliant: true,
+              citation_count: 0,
+              verified_citations: 0,
+            })
+
+            // onFinish parity — γ3: PPL prediction candidate detection (mirrors legacy onFinish block).
+            // Scans adapter-accumulated text for time-indexed prediction markers.
+            const predCandidates = detectPredictionCandidates(adapterAccumulatedText)
+              .filter(c => c.score >= 0.5)
+            for (const candidate of predCandidates) {
+              writer.write({
+                type: 'data-prediction-candidate',
+                data: predictionCandidatePart({
+                  text: candidate.text,
+                  offset: candidate.offset,
+                  score: candidate.score,
+                  horizon: candidate.horizon,
+                }),
+              })
             }
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
