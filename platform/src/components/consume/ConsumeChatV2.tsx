@@ -100,6 +100,7 @@ import { PostAnswerProvenance } from './PostAnswerProvenance'
 import { CorrectionNotice } from './CorrectionNotice'
 import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
+import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SettingsDropdown } from './SettingsDropdown'
 import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
@@ -1824,52 +1825,79 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       data-r11b-active={r11bActive ? 'true' : 'false'}
       style={{ ['--text-scale' as string]: textScale }}
     >
-      {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
-      {!sidebarCollapsed && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden"
-          onClick={() => setSidebarCollapsed(true)}
-          aria-hidden="true"
-          data-testid="v2-mobile-sidebar-backdrop"
-        />
-      )}
+      {/* Mobile sidebar backdrop — fades in/out when sidebar opens/closes on small screens */}
+      <AnimatePresence>
+        {!sidebarCollapsed && (
+          <motion.div
+            key="mobile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed inset-0 z-30 bg-black/60 md:hidden"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-hidden="true"
+            data-testid="v2-mobile-sidebar-backdrop"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Hover strip — invisible 12px zone on the left edge (desktop only).
-          Triggers auto-expand after 150ms when the sidebar is collapsed. */}
-      {sidebarCollapsed && (
-        <div
-          className="fixed left-0 inset-y-0 w-3 z-40 hidden md:block"
-          onMouseEnter={handleStripEnter}
-          aria-hidden="true"
-        />
-      )}
+      {/* Condensed glass rail — fades out when sidebar opens, fades in when it closes. */}
+      <AnimatePresence>
+        {sidebarCollapsed && (
+          <motion.div
+            key="glass-rail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed left-0 inset-y-0 w-3 z-40 hidden md:block backdrop-blur-[8px] border-r"
+            style={{
+              background: 'rgba(13,10,5,0.38)',
+              borderRightColor: 'rgba(255,255,255,0.10)',
+            }}
+            onMouseEnter={handleStripEnter}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Sidebar wrapper:
-          Always fixed/overlay so it never steals width from the chat column.
-          collapsed=true  → hidden; collapsed=false → fixed slide-over. */}
-      <div
-        className={sidebarCollapsed ? 'hidden' : 'fixed inset-y-0 left-0 z-40 flex'}
-        onMouseEnter={handleSidebarEnter}
-        onMouseLeave={handleSidebarLeave}
-      >
-        <ConversationSidebarV2
-          chartId={chartId}
-          activeId={activeConversationId}
-          onSelect={handleSelectConversation}
-          onNew={handleNewConversation}
-          collapsed={sidebarCollapsed}
-          onToggle={() => {
-            const next = sidebarCollapsed
-            setSidebarCollapsed(!next)
-            setSidebarPinned(next) // opening via click = pin; closing via click = unpin
-          }}
-          reloadTrigger={sidebarReloadTick}
-          onRename={handleRenameConversation}
-          onDelete={handleDeleteConversation}
-          showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
-          onLoadingChange={setSidebarLoading}
-        />
-      </div>
+      {/* Sidebar wrapper — slides in from the left with spring physics. */}
+      <AnimatePresence>
+        {!sidebarCollapsed && (
+          <motion.div
+            key="sidebar"
+            initial={{ x: '-100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '-100%', opacity: 0 }}
+            transition={{
+              x: { type: 'spring', stiffness: 320, damping: 32 },
+              opacity: { duration: 0.18, ease: 'easeOut' },
+            }}
+            className="fixed inset-y-0 left-0 z-40 flex"
+            onMouseEnter={handleSidebarEnter}
+            onMouseLeave={handleSidebarLeave}
+          >
+            <ConversationSidebarV2
+              chartId={chartId}
+              activeId={activeConversationId}
+              onSelect={handleSelectConversation}
+              onNew={handleNewConversation}
+              collapsed={sidebarCollapsed}
+              onToggle={() => {
+                const next = sidebarCollapsed
+                setSidebarCollapsed(!next)
+                setSidebarPinned(next) // opening via click = pin; closing via click = unpin
+              }}
+              reloadTrigger={sidebarReloadTick}
+              onRename={handleRenameConversation}
+              onDelete={handleDeleteConversation}
+              showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
+              onLoadingChange={setSidebarLoading}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div
         data-testid="v2-chat-column"
