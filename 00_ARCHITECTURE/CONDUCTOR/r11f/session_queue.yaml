@@ -133,12 +133,12 @@ sessions:
     phase: B
     title: "DeepSeek+NVIDIA: verify/fix tool forwarding + combined smoke"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S5_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-B-S1, R11F-B-S3]
-    commit_sha: null
+    commit_sha: "3280b336"
     pr_url: null
-    notes: "NVIDIA Case A/B decision made here. Documents R1 thinking+tool limitation."
+    notes: "NVIDIA Case A (llama-3.1/3.3-70b supports function calling). Both adapters fixed. 69 tests pass. 557 total passing. Both smokes PASS."
 
   # ──────────────────────────────────────────────────────────────────────────────
   # PHASE C — Cross-Cutting (serial)
