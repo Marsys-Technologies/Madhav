@@ -138,6 +138,84 @@ describe('R11F E2E: Anthropic adapter → agentic loop round-trip (happy path)',
     const secondCall = vi.mocked(streamText).mock.calls[1][0];
     expect(firstCall).toHaveProperty('tools');
     expect(secondCall).toHaveProperty('tools');
+
+    // AI SDK v6 requires 'inputSchema' field on CoreTool — NOT 'parameters'.
+    // If the adapter still uses 'parameters', tool2.inputSchema is undefined and
+    // asSchema(undefined) produces { properties: {} } (no type), causing Anthropic 400.
+    const tools = firstCall.tools as Record<string, { inputSchema?: unknown; parameters?: unknown }>;
+    for (const toolDef of Object.values(tools)) {
+      expect(toolDef).toHaveProperty('inputSchema');
+      expect(toolDef).not.toHaveProperty('parameters');
+      // With jsonSchema() mocked as identity, inputSchema is the raw normalized schema
+      const schema = toolDef.inputSchema as { type?: string };
+      expect(schema.type).toBe('object');
+    }
+  });
+});
+
+// ------------------------------------------------------------------
+// Test 1b: Tool schemas without 'type' are normalised to type:object
+//
+// Tightened fixture: request includes tools with bare {} and properties-only
+// schemas. The adapter must normalise these before forwarding to streamText
+// so Anthropic never sees input_schema without type:object.
+// ------------------------------------------------------------------
+
+describe('R11F A-S6 regression: bare tool inputSchemas are normalised to type:object', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('normalises {} and properties-only schemas before passing to streamText', async () => {
+    vi.mocked(streamText).mockImplementation(() => ({
+      fullStream: makeStream([...anthropicToolUseFixture.iteration2]),
+    } as unknown as ReturnType<typeof streamText>));
+
+    const adapter = new AnthropicAdapter();
+    const mockExecutor = vi.fn().mockResolvedValue('{}');
+
+    // Request with deliberately under-specified schemas
+    const requestWithBareSchemas = makeRequest({
+      tools: [
+        {
+          name: 'query_bare',
+          description: 'Parameterless tool — no schema at all',
+          inputSchema: {},  // should become { type: 'object', properties: {} }
+        },
+        {
+          name: 'query_props_only',
+          description: 'Properties present but no root type',
+          inputSchema: {
+            properties: { date: { type: 'string' } },  // should become { type: 'object', properties: {...} }
+          },
+        },
+      ],
+    });
+
+    await collectEvents(
+      runAgenticLoop(adapter, requestWithBareSchemas, mockExecutor, ANTHROPIC_LOOP_CONFIG),
+    );
+
+    const firstCall = vi.mocked(streamText).mock.calls[0][0];
+    const tools = firstCall.tools as Record<string, { inputSchema?: unknown; parameters?: unknown }>;
+
+    // Both tools must arrive at streamText with type:object
+    for (const toolDef of Object.values(tools)) {
+      expect(toolDef).toHaveProperty('inputSchema');
+      expect(toolDef).not.toHaveProperty('parameters');
+      const schema = toolDef.inputSchema as { type?: string };
+      expect(schema.type).toBe('object');
+    }
+
+    // Specifically: bare {} becomes { type: 'object', properties: {} }
+    const bareTool = tools['query_bare'] as { inputSchema: { type: string; properties: unknown } };
+    expect(bareTool.inputSchema.type).toBe('object');
+    expect(bareTool.inputSchema.properties).toEqual({});
+
+    // Specifically: properties-only becomes { type: 'object', properties: { date: ... } }
+    const propsTool = tools['query_props_only'] as { inputSchema: { type: string; properties: unknown } };
+    expect(propsTool.inputSchema.type).toBe('object');
+    expect(propsTool.inputSchema.properties).toEqual({ date: { type: 'string' } });
   });
 });
 
