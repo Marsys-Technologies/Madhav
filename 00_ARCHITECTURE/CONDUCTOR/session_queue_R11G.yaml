@@ -63,7 +63,9 @@ sessions:
 
   - id: G-S2
     title: "Settings dropdown — redesign toggle UX"
-    status: pending
+    status: passed
+    passed_at: "2026-05-23T09:00:00Z"
+    commit_sha: 6e9e9dbb
     parallel_group: null
     commit_message: "feat(r11g): redesign chat shell toggle into Settings dropdown"
     acceptance_criteria:
