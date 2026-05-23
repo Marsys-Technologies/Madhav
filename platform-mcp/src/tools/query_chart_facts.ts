@@ -51,18 +51,21 @@ export const CHART_FACTS_CATEGORIES = [
   'kp_significator', 'varshphal', 'avastha',
 ] as const
 
-const CHART_FACTS_TOOL_DESCRIPTION = buildToolDescription({
+export const QUERY_CHART_FACTS_DESCRIPTION = buildToolDescription({
   baseDescription:
-    'What it does: Queries the 2,717-row chart_facts table with structured filters ' +
+    'What it does: Queries the chart_facts table with structured filters ' +
     '(category, planet, house, as_of_date) and returns raw fact rows without synthesis. ' +
-    'When to prefer: Use for single fact lookups ("What is Saturn\'s shadbala?"). ' +
-    'Prefer query_signals for MSR signal corpus data. ' +
-    'Prefer holistic_bundle when synthesis or multi-tool retrieval is needed. ' +
-    'Input shape hints: category is required; planet/house/as_of_date are optional filters; limit defaults to 50. ' +
-    'Output shape: {ok, result: {rows: ChartFactRow[]}, trace_id, epistemics: {surgical: true}}.',
+    'category is required; planet/house/as_of_date are optional filters; limit defaults to 50.',
   enumSource: CHART_FACTS_CATEGORIES,
   coverageHint: '2,717 rows across 27 categories',
+  whenToPrefer:
+    'Use for single fact lookups ("What is Saturn\'s shadbala?", "Which planets are in house 7?"). ' +
+    'Prefer query_signals for MSR signal corpus data. ' +
+    'Prefer holistic_bundle when synthesis or multi-tool retrieval is needed.',
 })
+
+// Keep internal alias for the tool registration
+const CHART_FACTS_TOOL_DESCRIPTION = QUERY_CHART_FACTS_DESCRIPTION
 
 const QueryChartFactsInputSchema = z.object({
   category: z.string().describe(

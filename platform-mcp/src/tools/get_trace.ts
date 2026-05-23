@@ -25,6 +25,19 @@ import { z } from 'zod'
 import { callPlatformTrace } from '../client.js'
 import type { Principal } from '../types.js'
 import { okResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const GET_TRACE_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns the full query_trace_steps ledger for a prior MCP query — ' +
+    'every pipeline stage (classify, compose_bundle, each retrieval tool, synthesis, done) ' +
+    'with inputs, outputs, latencies, and token estimates per step.',
+  whenToPrefer:
+    'Use get_trace after a holistic_bundle call to debug what happened, verify which tools fired, ' +
+    'inspect the synthesis prompt, or understand per-stage latency. ' +
+    'Use for differential analysis (plan → edit → execute → compare traces). ' +
+    'Do NOT use get_trace to answer chart questions — that is holistic_bundle\'s job.',
+})
 
 // ── Tool registration ─────────────────────────────────────────────────────────
 
@@ -35,28 +48,7 @@ export function registerGetTrace(
   server.tool(
     'get_trace',
 
-    // ── Tool description (§4.6-standard, ≥100 words) ──────────────────────────
-    `What it does: Returns the full query_trace_steps ledger for a prior MCP
-query. Every pipeline stage is included: classify (planner output), compose_bundle
-(context assembly), each retrieval tool (msr_sql, cgm_graph_walk, etc.), synthesis
-(LLM prompt + completion), and done. Includes stage inputs, outputs, latencies,
-and token estimates per step.
-
-When to prefer: Use get_trace after an holistic_bundle call when you need to debug
-what happened, verify which L2.5 tools fired, inspect the exact synthesis prompt,
-or understand per-stage latency and token consumption. Use for differential analysis
-workflows (plan → edit → execute → compare traces). Do NOT use get_trace to answer
-chart questions — that is holistic_bundle's job.
-
-Input shape hints: trace_id — the trace_id field from any prior MCP tool response
-envelope (e.g., from holistic_bundle, execute_plan, or a primitive tool call).
-
-Output shape preview: {ok, result: {trace_id, steps: [{step_name, step_type,
-status, latency_ms, data_summary, payload},...], step_count, latency_ms_total},
-epistemics: {surgical: true}}.
-
-Example: get_trace({trace_id: "qry_2026-05-21_a4f3e2"}) → returns 8 steps with
-classify (45ms), 6 tool steps (parallel, 1200ms total), synthesis (4300ms).`,
+    GET_TRACE_DESCRIPTION,
 
     // ── Input schema ──────────────────────────────────────────────────────────
     {

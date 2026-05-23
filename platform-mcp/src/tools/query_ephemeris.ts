@@ -30,8 +30,21 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
 
 const PLANETS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'] as const
+
+export const QUERY_EPHEMERIS_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns date-indexed planetary positions (sign, degree, nakshatra, retrograde status, speed) ' +
+    'from the ephemeris_daily table for a given planet and date range.',
+  enumSource: PLANETS,
+  coverageHint: 'Swiss Ephemeris output; max ~1 year range recommended per call',
+  whenToPrefer:
+    'Use for "What sign was Saturn in during Q1 2025?" or retrograde status checks. ' +
+    'Prefer query_transit_event for "when does X enter Y?" searches. ' +
+    'Prefer holistic_bundle when positional data needs chart synthesis.',
+})
 
 const QueryEphemerisInputSchema = z.object({
   planet: z.enum(PLANETS).describe(
@@ -51,16 +64,7 @@ export function registerQueryEphemeris(
 ): void {
   server.tool(
     'query_ephemeris',
-    'What it does: Returns date-indexed planetary positions (sign, degree, nakshatra, ' +
-    'retrograde status, speed) from the ephemeris_daily table for a given planet and date range. ' +
-    'When to prefer: Use for "What sign was Saturn in during Q1 2025?" or retrograde status checks. ' +
-    'Prefer query_transit_event for "when does X enter Y?" searches. ' +
-    'Prefer holistic_bundle when positional data needs chart synthesis. ' +
-    'Input shape hints: planet is one of the 9 Jyotish grahas; ' +
-    'date_range {start, end} is required; max ~1 year range recommended. ' +
-    'Output shape preview: {ok, result: {positions: EphemerisRow[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: query_ephemeris({planet: "Saturn", date_range: {start: "2025-01-01", end: "2025-03-31"}}) ' +
-    '→ daily degree/sign/nakshatra for Saturn.',
+    QUERY_EPHEMERIS_DESCRIPTION,
     QueryEphemerisInputSchema.shape,
     async (args: QueryEphemerisInput) => {
       const principal = getPrincipal()

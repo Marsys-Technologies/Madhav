@@ -33,6 +33,18 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const QUERY_PANCHANGA_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns the 5 limbs of the Vedic day (tithi, vara, nakshatra, yoga, karana) ' +
+    'plus hora, choghadiya, muhurat windows, and inauspicious periods (Rahu Kalam, Gulika, Yamaghanta) for any date.',
+  coverageHint: 'Pre-computed panchanga_daily table: 73,414 rows covering 1900–2100',
+  whenToPrefer:
+    'Use for date-specific panchang questions ("What is today\'s nakshatra?", "When is Rahu Kalam?"). ' +
+    'Prefer holistic_bundle when you also need chart-level interpretation of the panchang for the native. ' +
+    'Input: date required (YYYY-MM-DD); observer optional lat/lon (defaults to Bhubaneswar).',
+})
 
 const QueryPanchangaInputSchema = z.object({
   date: z.string().describe('ISO date (YYYY-MM-DD) to retrieve panchang data for.'),
@@ -52,15 +64,7 @@ export function registerQueryPanchanga(
 ): void {
   server.tool(
     'query_panchanga',
-    'What it does: Returns the 5 limbs of the Vedic day (tithi, vara, nakshatra, yoga, karana) ' +
-    'plus hora, choghadiya, muhurat windows, and inauspicious periods (Rahu Kalam etc.) for any date. ' +
-    'Data is pre-computed in the panchanga_daily table (1900–2100). Tagged surgical: true. ' +
-    'When to prefer: Use for date-specific panchang questions ("What is today\'s nakshatra?"). ' +
-    'Prefer holistic_bundle when you also need chart-level interpretation of the panchang. ' +
-    'Input shape hints: date is required (YYYY-MM-DD); observer is optional lat/lon ' +
-    '(defaults to native\'s birth location: Bhubaneswar lat 20.29 lon 85.82). ' +
-    'Output shape preview: {ok, result: {tithi, vara, nakshatra, yoga, karana, hora[], choghadiya[], ...}}. ' +
-    'Example: query_panchanga({date: "2026-05-21"}) → {tithi: "Shukla Chaturdashi", ...}',
+    QUERY_PANCHANGA_DESCRIPTION,
     QueryPanchangaInputSchema.shape,
     async (args: QueryPanchangaInput) => {
       const principal = getPrincipal()

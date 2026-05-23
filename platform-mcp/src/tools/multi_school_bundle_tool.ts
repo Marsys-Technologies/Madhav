@@ -13,8 +13,22 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { executeMultiSchoolBundle } from '../bundles/multi_school_bundle.js'
 import type { Principal } from '../types.js'
 import { okResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
 
 const SCHOOLS = ['parashara', 'jaimini', 'kp', 'tajaka'] as const
+
+export const MULTI_SCHOOL_BUNDLE_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Runs a parallel multi-school convergence check on an astrological claim — ' +
+    'fires cross_school_lookup, per-school evidence queries (Parashara/Jaimini/KP/Tajaka), ' +
+    'and reads the most-cited classical text reference, all concurrently.',
+  enumSource: SCHOOLS,
+  coverageHint: 'All four school evidence sets fully populated (MCPT v3.3); results cached 5 minutes',
+  whenToPrefer:
+    'Use when the question explicitly concerns whether all four schools agree or disagree on a claim. ' +
+    'Prefer holistic_bundle when you want multi-school data synthesized alongside the native\'s actual signals. ' +
+    'Prefer cross_school_lookup directly for a lightweight stance-only check without per-school evidence.',
+})
 
 const MultiSchoolBundleInputSchema = z.object({
   claim: z.string().min(10).describe(
@@ -37,30 +51,7 @@ export function registerMultiSchoolBundle(
   server.tool(
     'multi_school_bundle',
 
-    `What it does: Runs a parallel multi-school convergence check on an astrological claim.
-Fires: (1) cross_school_lookup to get stance + citation per school; (2) per-school
-targeted evidence queries (Parashara → MSR signals, Jaimini → strength_extra chart_facts,
-KP → kp_cusp chart_facts, Tajaka → varshphal chart_facts); (3) read_classical_text for
-the most-cited classical reference from the lookup result. All tasks run concurrently with
-8-second per-tool timeouts and error isolation. All four school evidence sets are fully
-populated (MCPT v3.3 complete). Results
-cached 5 minutes.
-
-When to prefer: Use multi_school_bundle when the question explicitly concerns whether
-Parashara, Jaimini, KP, and Tajaka schools agree or disagree on a specific rule or
-claim. Prefer holistic_bundle when you want the multi-school data synthesized alongside the
-native's actual signals. Prefer query_signals + cross_school_lookup directly when you
-need raw school-level data without the bundle orchestration.
-
-Input shape: claim (required declarative sentence), schools (optional subset).
-
-Output shape: { ok: true, bundle_name: "multi_school_bundle", served_from_cache: bool,
-claim, schools, bundle_entries: [{sub_tool, errored, data, rows_returned, latency_ms}...],
-provenance: {sub_tools_fired, sub_tools_errored, convergence_score?: float} }.
-
-Example: multi_school_bundle({ claim: "Saturn aspects 7th house lord damages partnerships" })
-→ bundle_entries has cross_school_lookup + 4 per-school evidence entries + optional
-classical text read; provenance.convergence_score from cross_school_lookup.`,
+    MULTI_SCHOOL_BUNDLE_DESCRIPTION,
 
     MultiSchoolBundleInputSchema.shape,
 

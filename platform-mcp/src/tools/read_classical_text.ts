@@ -21,10 +21,23 @@ import { z } from 'zod'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
 import { okResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
 
 // ── Supported classical texts ─────────────────────────────────────────────────
 
 const CLASSICAL_TEXT_IDS = ['BPHS', 'KP_READER', 'JAIMINI', 'TAJAKA'] as const
+
+export const READ_CLASSICAL_TEXT_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Retrieves excerpts from the MARSYS-JIS classical corpus (BPHS, KP Reader, ' +
+    'Jaimini Sutram, Tajaka Neelakanthi) ranked by semantic similarity to a query.',
+  enumSource: CLASSICAL_TEXT_IDS,
+  coverageHint: 'Vertex AI 768-dim embeddings; limit 1–20 excerpts per call',
+  whenToPrefer:
+    'Use when the question requires a classical textual citation ("what does Parashara say about Ketu in the 12th?"). ' +
+    'Prefer vector_search for cross-layer semantic retrieval including MSR signals and LEL data. ' +
+    'Prefer query_chart_facts or query_signals for structured fact lookups that do not require quoting.',
+})
 
 // ── Tool registration ─────────────────────────────────────────────────────────
 
@@ -35,32 +48,7 @@ export function registerReadClassicalText(
   server.tool(
     'read_classical_text',
 
-    // ── Tool description (§4.6-standard, ≥100 words) ──────────────────────────
-    `What it does: Retrieves excerpts from the MARSYS-JIS classical corpus —
-Brihat Parashara Hora Shastra (BPHS), KP Reader, Jaimini Sutram, and Tajaka
-Neelakanthi — ranked by semantic similarity to your query. Use to ground
-interpretive claims in canonical śāstra text, quote classical authority for a
-yoga or dasha interpretation, or surface the classical-text basis for a signal
-in the MSR corpus.
-
-When to prefer: Use read_classical_text when the question requires a classical
-textual citation ("what does Parashara say about Ketu in the 12th?"). Prefer
-vector_search for cross-layer semantic retrieval including MSR signals and LEL
-data. Prefer query_chart_facts or query_signals for structured fact lookups that
-do not require textual quoting.
-
-Input shape hints: query — required; the Sanskrit concept, yoga name, or
-interpretive question to search for (e.g., "Ketu in 12th house moksha",
-"Hamsa yoga Jupiter exaltation"). text_id — optional; filter to a specific
-text: "BPHS", "KP_READER", "JAIMINI", or "TAJAKA". limit — optional; max
-excerpts to return (default 5, max 20).
-
-Output shape preview: {ok, result: {results: [{text_key, title, chapter,
-verse_range, content, similarity}]}, trace_id, epistemics: {surgical: true}}.
-
-Example: read_classical_text({query: "Hamsa yoga Jupiter exaltation",
-text_id: "BPHS", limit: 3}) → returns up to 3 BPHS excerpts closest to
-the Hamsa-yoga concept, with chapter and verse_range for citation.`,
+    READ_CLASSICAL_TEXT_DESCRIPTION,
 
     // ── Input schema ──────────────────────────────────────────────────────────
     {

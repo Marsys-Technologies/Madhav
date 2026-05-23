@@ -20,6 +20,7 @@ import { z } from 'zod'
 import { callPlatformAsset } from '../client.js'
 import type { Principal } from '../types.js'
 import { okResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
 
 // ── Supported canonical IDs ──────────────────────────────────────────────────
 
@@ -35,6 +36,18 @@ const KNOWN_CANONICAL_IDS = [
   'PROJECT_ARCHITECTURE',
 ] as const
 
+export const READ_ASSET_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns the raw markdown of a canonical MARSYS-JIS artifact by its canonical_id ' +
+    '(MSR, UCN, CDLM, CGM, RM, FORENSIC, LEL, MACRO_PLAN, PROJECT_ARCHITECTURE), with optional section filter.',
+  enumSource: KNOWN_CANONICAL_IDS,
+  whenToPrefer:
+    'Use when you need the full text of a synthesis layer document ' +
+    '(e.g., full CGM for a graph overview, full FORENSIC for a birth-data audit). ' +
+    'Prefer query_signals or query_chart_facts for targeted fact lookups within documents. ' +
+    'Prefer holistic_bundle for any question requiring synthesis across multiple documents.',
+})
+
 // ── Tool registration ─────────────────────────────────────────────────────────
 
 export function registerReadAsset(
@@ -44,29 +57,7 @@ export function registerReadAsset(
   server.tool(
     'read_asset',
 
-    // ── Tool description (§4.6-standard, ≥100 words) ──────────────────────────
-    `What it does: Returns the raw markdown of a canonical MARSYS-JIS artifact
-by its canonical_id (e.g., "MSR", "FORENSIC", "UCN", "CDLM", "CGM", "RM", "LEL",
-"MACRO_PLAN", "PROJECT_ARCHITECTURE"). Use when you need the full text of a
-synthesis layer document, not just a signal-level query result.
-
-When to prefer: Prefer read_asset when you need to read an entire document —
-e.g., the full CGM for a comprehensive graph overview, or the full FORENSIC for
-a complete birth-data audit. Prefer query_signals or query_chart_facts for
-targeted fact lookups within documents. Prefer holistic_bundle for any question
-requiring synthesis across multiple documents.
-
-Input shape hints: canonical_id — one of the supported canonical IDs listed
-above (case-insensitive). section — optional section filter (e.g., "§A",
-"Tier 1", "Planetary Positions", or any heading text); if omitted, the full
-document is returned.
-
-Output shape preview: {ok, result: {canonical_id, content: "<markdown>",
-word_count, path, section_filter}, trace_id, epistemics: {surgical: true}}.
-
-Example: read_asset({canonical_id: "MSR"}) → returns full MSR markdown (~514
-signals, 30,000+ words); read_asset({canonical_id: "FORENSIC", section:
-"Planetary Positions"}) → returns only the Planetary Positions section.`,
+    READ_ASSET_DESCRIPTION,
 
     // ── Input schema ──────────────────────────────────────────────────────────
     {

@@ -52,6 +52,19 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformWrites } from '../client.js'
 import type { Principal } from '../types.js'
 import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const LOG_PREDICTION_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Logs a prospective prediction to the MARSYS-JIS Prospective Prediction Log (PPL) ' +
+    'with domain, horizon, confidence, and falsifier BEFORE any outcome is observed. ' +
+    'Required fields: domain, horizon, prediction_text, confidence, falsifier.',
+  whenToPrefer:
+    'FIRST CALL when you are making any time-indexed, testable astrological prediction — ' +
+    'this is a governance obligation, not optional. ' +
+    'Log before discussing outcomes; PPL discipline requires predictions are logged first. ' +
+    'Use record_outcome later when the outcome is observable.',
+})
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -100,9 +113,7 @@ export function registerLogPrediction(
 ): void {
   server.tool(
     'log_prediction',
-    'Log a prospective prediction to the MARSYS-JIS PPL. Call BEFORE observing any outcome. ' +
-    'Governance obligation for time-indexed predictions — logs domain, horizon, confidence, ' +
-    'and falsifier with full provenance. Returns prediction_id for later outcome recording.',
+    LOG_PREDICTION_DESCRIPTION,
     LogPredictionInputSchema.shape,
     async (input: LogPredictionInput) => {
       const principal = getPrincipal()

@@ -33,8 +33,21 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
 
 const DOC_TYPES = ['l1_fact', 'ucn_section', 'msr_signal', 'cdlm_cell', 'domain_report', 'rm_element'] as const
+
+export const VECTOR_SEARCH_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Semantically searches the RAG chunk corpus (MSR signals, UCN, CDLM, domain reports, L1 facts) ' +
+    'using Vertex AI 768-dim embeddings and returns top-K chunks ranked by cosine similarity.',
+  enumSource: DOC_TYPES,
+  coverageHint: '4,589+ RAG chunks across all synthesis layers',
+  whenToPrefer:
+    'Use for "find content similar to X" queries where you do not know the exact signal ID. ' +
+    'Prefer query_signals for structured MSR lookups with exact domain/confidence/dasha_lord filters. ' +
+    'Prefer holistic_bundle when semantically similar content needs to be synthesized into an answer.',
+})
 
 const VectorSearchInputSchema = z.object({
   text: z.string().describe('Query text to semantically match against the RAG chunk corpus.'),
@@ -55,16 +68,7 @@ export function registerVectorSearch(
 ): void {
   server.tool(
     'vector_search',
-    'What it does: Semantically searches the RAG chunk corpus (MSR signals, UCN, CDLM, ' +
-    'domain reports, L1 facts) using Vertex AI 768-dim embeddings and returns top-K chunks ' +
-    'ranked by cosine similarity. Tagged surgical: true. ' +
-    'When to prefer: Use for "find content similar to X" queries. Prefer query_signals ' +
-    'for structured MSR lookups with exact filters. Prefer holistic_bundle when synthesis is needed. ' +
-    'Input shape hints: text (required) is the semantic query; doc_type is an optional array ' +
-    'of document type filters; top_k defaults to 10 (max 50). ' +
-    'Output shape preview: {ok, result: {chunks: VectorChunk[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: vector_search({text: "Saturn obstacles career until 36", top_k: 5}) ' +
-    '→ top 5 semantically similar RAG chunks with scores.',
+    VECTOR_SEARCH_DESCRIPTION,
     VectorSearchInputSchema.shape,
     async (args: VectorSearchInput) => {
       const principal = getPrincipal()

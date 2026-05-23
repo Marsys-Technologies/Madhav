@@ -34,8 +34,21 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
 
 const SCHOOLS = ['parashara', 'jaimini', 'kp', 'tajaka'] as const
+
+export const CROSS_SCHOOL_LOOKUP_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Checks an astrological claim against Parashara, Jaimini, KP, and Tajaka ' +
+    'and returns where each school agrees, disagrees, or is silent, with a convergence score (0–1).',
+  enumSource: SCHOOLS,
+  coverageHint: 'All four school evidence sets fully populated (MCPT v3.3)',
+  whenToPrefer:
+    'Use when the question is explicitly about multi-school convergence on a rule or claim. ' +
+    'Prefer multi_school_bundle when you also want per-school evidence queries and classical text references. ' +
+    'Prefer query_signals to find signals already tagged with school convergence metadata.',
+})
 
 const CrossSchoolLookupInputSchema = z.object({
   claim: z.string().describe(
@@ -56,17 +69,7 @@ export function registerCrossSchoolLookup(
 ): void {
   server.tool(
     'cross_school_lookup',
-    'What it does: Checks an astrological claim against Parashara, Jaimini, KP, and Tajaka ' +
-    'and returns where each school agrees, disagrees, or is silent, with a convergence score. ' +
-    'When to prefer: Use when the question is explicitly about multi-school convergence on a rule. ' +
-    'Prefer holistic_bundle when multi-school data needs synthesis against the native\'s chart. ' +
-    'Prefer query_signals to find signals already tagged with school convergence metadata. ' +
-    'Input shape hints: claim (required) is a declarative astrological statement; ' +
-    'schools (optional) is an array of school names to check (default: all four). ' +
-    'Output shape preview: {ok, result: {convergence_score, school_positions: [{school, stance, citation}]}, ' +
-    'trace_id, epistemics: {surgical: true}}. ' +
-    'Example: cross_school_lookup({claim: "Saturn in 10th delays career until 36"}) ' +
-    '→ per-school agree/disagree/silent with convergence score.',
+    CROSS_SCHOOL_LOOKUP_DESCRIPTION,
     CrossSchoolLookupInputSchema.shape,
     async (args: CrossSchoolLookupInput) => {
       const principal = getPrincipal()

@@ -12,6 +12,19 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
 import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const DATA_COVERAGE_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns expected vs actual row counts per category for all tools, ' +
+    'including backfill status (KP, Tajaka, Shadbala, Ashtakavarga, Upagraha, Bhava-Bala) ' +
+    'and active tool caveats from mcp_audit_findings.',
+  whenToPrefer:
+    'Use data_coverage before calling a tool that relies on backfilled data (query_chart_facts ' +
+    'with category kp_cusp, varshphal, shadbala, etc.) to verify data is present. ' +
+    'Use tool_health for operational metrics; use data_coverage for data availability.',
+  tierNote: 'Available: super_admin + acharya only. client tier = 403.',
+})
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -31,22 +44,7 @@ export function registerDataCoverage(
   server.tool(
     'data_coverage',
 
-    `What it does: Returns expected vs actual row counts per category. Categories backfilled
-through MCPT v3.3 (KP, Tajaka, Shadbala, Ashtakavarga, Upagraha, Bhava-Bala) return
-populated counts. Residuals tracked in \`mcp_audit_findings\`. Also surfaces active tool
-caveats. Tier-gated: super_admin + acharya only.
-
-When to prefer: Use data_coverage before calling a tool that relies on backfilled data
-(query_chart_facts with category kp_cusp, varshphal, shadbala, etc.) to check if data
-is actually present. Use tool_health for operational metrics; use data_coverage for
-data availability. Do NOT use for chart interpretation — use query_signals for that.
-
-Input: tool_filter (optional string to filter by tool name).
-
-Output: {ok, coverage: [{tool, category, expected_rows, actual_rows, backfill_phase,
-status, caveat?}], caveats: [{tool, caveat, severity}]}.
-
-Tier restriction: super_admin + acharya only. client tier = 403.`,
+    DATA_COVERAGE_DESCRIPTION,
 
     DataCoverageInputSchema.shape,
 

@@ -50,6 +50,17 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformWrites } from '../client.js'
 import type { Principal } from '../types.js'
 import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const RECORD_OUTCOME_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Records an observed outcome against a prior PPL prediction (by prediction_id ' +
+    'from log_prediction), closing the prediction-outcome loop required by the Learning Layer discipline.',
+  whenToPrefer:
+    'Use ONLY after an outcome is observable and you have factual evidence of what occurred. ' +
+    'Do not call speculatively or before the horizon date passes. ' +
+    'Partial matches record with verified=false and explanation in notes.',
+})
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -86,10 +97,7 @@ export function registerRecordOutcome(
 ): void {
   server.tool(
     'record_outcome',
-    'Record an observed outcome against a prior PPL prediction (by prediction_id). ' +
-    'Call ONLY after the outcome is observable. verified=true means the prediction ' +
-    'came true as stated; false means it did not or only partially did. ' +
-    'Returns found=true if prediction_id exists in PPL; found=false if not.',
+    RECORD_OUTCOME_DESCRIPTION,
     RecordOutcomeInputSchema.shape,
     async (input: RecordOutcomeInput) => {
       const principal = getPrincipal()

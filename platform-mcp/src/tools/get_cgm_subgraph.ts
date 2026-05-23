@@ -34,6 +34,19 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const GET_CGM_SUBGRAPH_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Traverses the Cross-Domain Linkage Matrix (CGM) from a seed node ' +
+    'and returns a subgraph of connected signals and domains up to N hops, with typed edges ' +
+    '(amplifies, contradicts, shares_ruler, temporal_co-activation).',
+  coverageHint: 'CGM encodes cross-domain linkages across all 573 MSR signals',
+  whenToPrefer:
+    'Use to map cross-domain signal topology ("what signals are connected to SIG.MSR.234 within 2 hops?"). ' +
+    'Prefer holistic_bundle when cross-domain connections need to be synthesized into a holistic answer. ' +
+    'Prefer query_signals for flat signal lookups without graph traversal.',
+})
 
 const GetCgmSubgraphInputSchema = z.object({
   node_id: z.string().describe(
@@ -56,15 +69,7 @@ export function registerGetCgmSubgraph(
 ): void {
   server.tool(
     'get_cgm_subgraph',
-    'What it does: Traverses the Cross-Domain Linkage Matrix (CGM) from a seed node ' +
-    'and returns a subgraph of connected signals/domains up to N hops, with edges ' +
-    'typed by link relationship (amplifies, contradicts, shares_ruler, etc.). ' +
-    'When to prefer: Use to map cross-domain signal topology ("what connects to SIG.MSR.234?"). ' +
-    'Prefer holistic_bundle when the cross-domain connections need to be synthesized into a holistic answer. ' +
-    'Input shape hints: node_id (required) is the seed — a signal ID or CGM entity ID; ' +
-    'hops (default 2) controls traversal depth (max 5); edge_types is an optional filter array. ' +
-    'Output shape preview: {ok, result: {nodes: CgmNode[], edges: CgmEdge[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: get_cgm_subgraph({node_id: "SIG.MSR.234", hops: 2}) → subgraph of 2-hop neighbors.',
+    GET_CGM_SUBGRAPH_DESCRIPTION,
     GetCgmSubgraphInputSchema.shape,
     async (args: GetCgmSubgraphInput) => {
       const principal = getPrincipal()

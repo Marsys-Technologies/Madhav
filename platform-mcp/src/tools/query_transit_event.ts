@@ -33,6 +33,17 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const QUERY_TRANSIT_EVENT_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Searches ephemeris_daily for specific transit events (sign ingresses, conjunctions, degree crossings) ' +
+    'within a date range and returns exact event dates with before/after planet state.',
+  whenToPrefer:
+    'Use for "When does Saturn enter Aquarius?" style questions — event-date lookup rather than daily scan. ' +
+    'Prefer query_ephemeris for day-by-day position data over a range. ' +
+    'Prefer holistic_bundle when the transit\'s meaning for the native\'s chart is also needed.',
+})
 
 const QueryTransitEventInputSchema = z.object({
   planet: z.string().describe(
@@ -56,17 +67,7 @@ export function registerQueryTransitEvent(
 ): void {
   server.tool(
     'query_transit_event',
-    'What it does: Searches ephemeris_daily for specific transit events (sign ingresses, ' +
-    'conjunctions, degree crossings) within a date range and returns exact event dates. ' +
-    'When to prefer: Use for "When does Saturn enter Aquarius?" style questions. ' +
-    'Prefer query_ephemeris for day-by-day position scanning. ' +
-    'Prefer holistic_bundle when the transit meaning for the native\'s chart is also needed. ' +
-    'Input shape hints: planet (required) is the transiting graha; ' +
-    'target (required) is the sign/house/degree being transited; ' +
-    'date_range {start, end} (required) narrows the search window. ' +
-    'Output shape preview: {ok, result: {events: TransitEvent[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: query_transit_event({planet: "Saturn", target: "Aquarius", ' +
-    'date_range: {start: "2020-01-01", end: "2025-12-31"}}) → ingress date records.',
+    QUERY_TRANSIT_EVENT_DESCRIPTION,
     QueryTransitEventInputSchema.shape,
     async (args: QueryTransitEventInput) => {
       const principal = getPrincipal()
