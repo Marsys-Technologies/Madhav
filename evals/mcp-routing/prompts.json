@@ -102,7 +102,7 @@
     "prompt": "What do Parashara, Jaimini, KP and Tajaka each say about Ketu in the 12th house?",
     "audience_tier": "super_admin",
     "gold_first_tool": "multi_school_bundle",
-    "acceptable_alternatives": ["cross_school_lookup"]
+    "acceptable_alternatives": ["cross_school_lookup", "read_classical_text"]
   },
   {
     "id": "query_dasha_current",
