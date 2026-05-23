@@ -1,0 +1,354 @@
+# session_queue_R11G.yaml
+# R11.G tool executor + toggle redesign + flag activation arc
+# Branch: feature/r11g-tool-executor-toggle
+# Brief: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md
+
+arc_id: R11G
+arc_name: R11.G Tool Executor + Toggle Redesign + Flag Activation
+authored: 2026-05-23
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR11G
+branch: feature/r11g-tool-executor-toggle
+brief: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md
+plan: 00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_LIVE_ARC_PLAN_v1_0.md
+halt_policy: strict
+sessions_total: 7
+
+sessions:
+
+  - id: G-S1
+    title: "Tool executor wiring (replace stub with real MCP dispatch)"
+    status: passed
+    passed_at: "2026-05-23T08:30:00Z"
+    commit_sha: ba4796bb
+    parallel_group: null
+    commit_message: "feat(r11g): wire real MCP tool executor into runAgenticLoop callback"
+    acceptance_criteria:
+      - "AC.G1.1: executeMCPTool function exists + exported"
+      - "AC.G1.2: all 5 provider gates in route.ts pass real executor"
+      - "AC.G1.3: agentic-loop test extended with real-executor mock"
+      - "AC.G1.4: tool error → loop continues, no abort"
+      - "AC.G1.5: vitest baseline diff 0 NEW failures"
+    prompt: |
+      You are G-S1 of the autonomous R11.G arc. Wire the real MCP tool executor.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§3 + §10)
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/src/app/api/consume/route.ts — find the existing tool dispatch code (the path planner uses to execute tools)
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/src/lib/synthesis/agentic_loop.ts — current toolExecutor signature
+
+      Implement per brief §3:
+      1. Identify the existing planner tool-execution path in route.ts.
+      2. Extract it as a reusable async function: executeMCPTool(toolCall, ctx) → Promise<string>.
+      3. Replace ALL 5 provider-gate stub toolExecutor closures in route.ts with the real function.
+      4. Handle tool exec errors gracefully — return "ERROR: <msg>" strings, do not throw / abort loop.
+
+      Tests:
+      - Extend platform/tests/providers/agentic-loop-engine.test.ts with a test using executeMCPTool against a mocked MCP backend → assert real tool results flow back into the next iteration's messages array.
+      - Add a tool-error-recovery test: middle iteration's tool returns ERROR string → loop continues, model gets the error, loop completes naturally.
+
+      Run: cd platform && pnpm vitest run tests/providers/agentic-loop-engine.test.ts
+      All must PASS.
+
+      Commit on feature/r11g-tool-executor-toggle:
+        git add -A
+        git commit -m "feat(r11g): wire real MCP tool executor into runAgenticLoop callback"
+
+      Halt rules: strict. Any RED → STATUS=FAIL.
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=<one-line>
+        FILES_TOUCHED=<count>
+        COMMIT_SHAS=<list>
+
+  - id: G-S2
+    title: "Settings dropdown — redesign toggle UX"
+    status: passed
+    passed_at: "2026-05-23T09:00:00Z"
+    commit_sha: 6e9e9dbb
+    parallel_group: null
+    commit_message: "feat(r11g): redesign chat shell toggle into Settings dropdown"
+    acceptance_criteria:
+      - "AC.G2.1: SettingsDropdown.tsx exists per spec"
+      - "AC.G2.2: ConsumeChatV2.tsx mounts SettingsDropdown in place of old toggle"
+      - "AC.G2.3: MultiProviderParityToggle.tsx deleted (no remaining imports)"
+      - "AC.G2.4: component test passes (render, click radios, localStorage, click-outside-close)"
+      - "AC.G2.5: vitest baseline 0 NEW failures"
+    prompt: |
+      You are G-S2 of the autonomous R11.G arc. Implement the Settings dropdown.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§4 — full component spec inline)
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/src/components/consume/MultiProviderParityToggle.tsx — current toggle
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/src/components/consume/ConsumeChatV2.tsx — mount site (around line 1489)
+
+      Implement per brief §4:
+      1. Create platform/src/components/consume/SettingsDropdown.tsx exactly per the brief's component spec (gear icon → menu → "Chat experience" section → two radio options with descriptive copy + data-testids).
+      2. Hide entirely when PARITY_ENV_ENABLED is false (returns null).
+      3. Update ConsumeChatV2.tsx — replace <MultiProviderParityToggle /> with <SettingsDropdown />.
+      4. Delete MultiProviderParityToggle.tsx + its test file. Verify no remaining imports via grep.
+
+      Component test: platform/tests/components/consume/SettingsDropdown.test.tsx
+      - Renders gear icon when PARITY_ENV_ENABLED=true
+      - Renders null when PARITY_ENV_ENABLED=false
+      - Click gear → menu opens (assert data-testid="settings-dropdown-menu" present)
+      - Click "Claude-style chat" radio → localStorage['marsys.chatShellMode'] = 'multi-provider'
+      - Click "Classic Marsys" radio → localStorage = 'classic'
+      - Click outside menu → menu closes
+
+      Run: cd platform && pnpm vitest run tests/components/consume/SettingsDropdown.test.tsx
+      All must PASS.
+
+      Commit:
+        git add -A
+        git commit -m "feat(r11g): redesign chat shell toggle into Settings dropdown"
+
+      Halt rules: strict.
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=<one-line>
+        FILES_TOUCHED=<count>
+        COMMIT_SHAS=<list>
+
+  - id: G-S3
+    title: "Default-state behavior verification (Classic when localStorage null)"
+    status: passed
+    passed_at: "2026-05-23T09:30:00Z"
+    commit_sha: 17e25fc3
+    parallel_group: null
+    commit_message: "test(r11g): verify default-classic + SSR-safe chat shell behavior"
+    acceptance_criteria:
+      - "AC.G3.1: useChatShellMode null/undefined localStorage → mode='classic'"
+      - "AC.G3.2: useMultiProviderParity() returns false when localStorage null"
+      - "AC.G3.3: SSR-safe — no hydration mismatch"
+      - "AC.G3.4: new test covers null/undefined → classic"
+      - "AC.G3.5: prior 'multi-provider' localStorage value preserved"
+    prompt: |
+      You are G-S3 of the autonomous R11.G arc. Verify default-classic behavior.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§5)
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/src/lib/chat-v2/useMultiProviderParity.ts
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/tests/lib/chat-v2/useMultiProviderParity.test.tsx
+
+      Verify (no code changes expected — current implementation should already be correct):
+      1. useChatShellMode with localStorage null → mode='classic'.
+      2. useMultiProviderParity() with PARITY_ENV_ENABLED=true + localStorage null → false.
+      3. SSR-safe: server returns 'classic' during render; client hydrates without flash.
+
+      Extend platform/tests/lib/chat-v2/useMultiProviderParity.test.tsx with new test cases:
+      - Test: null localStorage → mode='classic'
+      - Test: undefined localStorage → mode='classic'
+      - Test: 'classic' localStorage → mode='classic'
+      - Test: 'multi-provider' localStorage → mode='multi-provider' (preservation)
+      - Test: 'invalid-value' localStorage → mode='classic' (fallback)
+
+      Run: cd platform && pnpm vitest run tests/lib/chat-v2/useMultiProviderParity.test.tsx
+      All must PASS.
+
+      Commit:
+        git add -A
+        git commit -m "test(r11g): verify default-classic + SSR-safe chat shell behavior"
+
+      Halt rules: strict.
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=<one-line>
+        FILES_TOUCHED=<count>
+        COMMIT_SHAS=<list>
+
+  - id: G-S4
+    title: "Vitest stabilization + baseline diff"
+    status: passed
+    passed_at: "2026-05-23T10:15:00Z"
+    commit_sha: 64d41c4e
+    note: "Initial run halted on stale v1.2 baseline; operator approved v1.3 refresh; retry PASS"
+    parallel_group: null
+    commit_message: "test(r11g): full vitest stabilization + baseline diff"
+    acceptance_criteria:
+      - "AC.G4.1: full vitest suite runs"
+      - "AC.G4.2: NEW failures = 0 (vs KNOWN_PRE_EXISTING_FAILURES baseline)"
+      - "AC.G4.3: result MD written"
+    prompt: |
+      You are G-S4 of the autonomous R11.G arc. Stabilize the test suite.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§6)
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/KNOWN_PRE_EXISTING_FAILURES.md (or search repo for the actual path)
+
+      Run: cd platform && pnpm vitest run 2>&1 | tee /tmp/r11g-vitest-out.txt
+      Parse output for failing test names.
+
+      Compare against baseline:
+      - NEW failures (current - baseline) → HALT with list.
+      - Pre-existing failures (current ∩ baseline) → note + continue.
+      - Resolved failures (baseline - current) → note as wins.
+
+      Write: /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/SESSION_R11G_S4_RESULT.md with:
+        - Total / passed / failed counts
+        - NEW failures (must be empty for PASS)
+        - Pre-existing failures still present
+        - Resolved failures
+
+      Commit:
+        git add 00_ARCHITECTURE/chat_v2_briefs/round11_v2/SESSION_R11G_S4_RESULT.md
+        git commit -m "test(r11g): full vitest stabilization + baseline diff"
+
+      Halt rules: strict. NEW failure → HALT.
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=<one-line>
+        NEW_FAILURES=<count>
+        PRE_EXISTING=<count>
+        RESOLVED=<count>
+
+  - id: G-S5
+    title: "Server-side integration smoke (real-tool loop + dropdown)"
+    status: passed
+    passed_at: "2026-05-23T11:00:00Z"
+    commit_sha: 49b7c3aa
+    parallel_group: null
+    commit_message: "test(r11g): server-side integration smoke for tool executor + dropdown"
+    acceptance_criteria:
+      - "AC.G5.1: tool-executor-loop.test.ts PASS"
+      - "AC.G5.2: tool-error-recovery.test.ts PASS"
+      - "AC.G5.3: multi-tool-fan-out.test.ts PASS"
+      - "AC.G5.4: settings-dropdown smoke PASS"
+      - "AC.G5.5: result MD written"
+    prompt: |
+      You are G-S5 of the autonomous R11.G arc. Server-side integration smoke.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§7)
+      - Existing test patterns under platform/tests/
+
+      Create directory: platform/tests/e2e/r11g-server-smoke/
+      Write per brief §7:
+      - tool-executor-loop.test.ts — 3-iteration loop with REAL executeMCPTool, MCP backend mocked at transport layer. Assert tool results flow back into messages array.
+      - tool-error-recovery.test.ts — middle iteration tool returns "ERROR: ..." → loop continues.
+      - multi-tool-fan-out.test.ts — single iteration with 2 simultaneous tool calls → both execute via Promise.all → both results feed back.
+      - settings-dropdown.test.tsx — render test, click gear, click radio, assert localStorage updates.
+
+      Run: cd platform && pnpm vitest run tests/e2e/r11g-server-smoke/
+      ALL must PASS.
+
+      Write: /Users/Dev/Vibe-Coding/Apps/MadhavR11G/platform/tests/e2e/r11g-server-smoke/SMOKE_R11G_SERVER_RESULT.md with per-test grid.
+
+      Commit:
+        git add -A
+        git commit -m "test(r11g): server-side integration smoke for tool executor + dropdown"
+
+      Halt rules: strict. Any RED → HALT.
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=<one-line>
+        TESTS_PASSED=<n>/<total>
+
+  - id: G-S6
+    title: "deploy.yml flag activation + PR + merge + deploy"
+    status: pending
+    parallel_group: null
+    commit_message: "chore(r11g): activate NEXT_PUBLIC parity build flags in deploy.yml"
+    acceptance_criteria:
+      - "AC.G6.1: deploy.yml both NEXT_PUBLIC lines flipped to default 'true'"
+      - "AC.G6.2: branch pushed"
+      - "AC.G6.3: PR opened with descriptive body"
+      - "AC.G6.4: CI passes (baseline diff = 0 new failures)"
+      - "AC.G6.5: PR auto-merged"
+      - "AC.G6.6: Cloud Run deploy succeeds, revision captured"
+    prompt: |
+      You are G-S6 of the autonomous R11.G arc. Deploy.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§8)
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/.github/workflows/deploy.yml
+
+      Step 1: Edit deploy.yml — change two lines from default 'false' to default 'true':
+        NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY || 'true' }}
+        NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL || 'true' }}
+
+      DO NOT touch any R11.E or R11.D D.3 flags. Only the two NEXT_PUBLIC build args.
+
+      Commit: "chore(r11g): activate NEXT_PUBLIC parity build flags in deploy.yml"
+
+      Step 2: Push branch:
+        git push -u origin feature/r11g-tool-executor-toggle
+
+      Step 3: Open PR with title "feat(r11g): tool executor + Settings dropdown + parity flag activation"
+      and body summarizing per-session results.
+
+      Step 4: Wait for CI. Use gh pr checks --watch or poll.
+
+      Step 5: Compare CI failures against baseline. NEW failures → HALT (do not merge).
+
+      Step 6: If green: gh pr merge <PR#> --squash --delete-branch --admin
+
+      Step 7: Capture merge SHA. Watch deploy workflow. Capture Cloud Run revision ID.
+
+      Halt rules: strict. Any RED → HALT, do not merge.
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=<one-line>
+        PR_NUMBER=<n>
+        MERGE_SHA=<sha>
+        CLOUD_RUN_REVISION=<id>
+
+  - id: G-S7
+    title: "Surface + governance close + mirrors"
+    status: pending
+    parallel_group: null
+    commit_message: "docs(r11g): governance close — tool executor + dropdown + flag activation live"
+    acceptance_criteria:
+      - "AC.G7.1: ROLLOUT_PHASE_R11G_RESULT.md written"
+      - "AC.G7.2: STREAM_R11V2_COMPLETE.md amended"
+      - "AC.G7.3: CLAUDE.md §E R11 v2 bullet updated"
+      - "AC.G7.4: CURRENT_STATE_v1_0.md new entry"
+      - "AC.G7.5: .geminirules + .gemini/project_state.md mirror updated"
+      - "AC.G7.6: single governance commit on main"
+    prompt: |
+      You are G-S7 of the autonomous R11.G arc. Final session — surface + governance close.
+
+      Read first:
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/R11G_BRIEF_v1_0.md (§9)
+      - All SESSION_R11G_S*_RESULT.md files
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/CLAUDE.md
+      - /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+
+      Step 1: Write /Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_R11G_RESULT.md with:
+        - All session result paths
+        - Final Cloud Run revision ID (from G-S6)
+        - Settings dropdown verification notes
+        - Reminder: R11.E flag rollout commands unchanged (see ROLLOUT_PHASE_R11F_RESULT.md when operator ready)
+        - Test instructions: "Open prod /consume, click gear icon, switch to 'Claude-style chat', refresh, confirm R11.B chrome activates"
+
+      Step 2: Switch to main + pull:
+        git checkout main
+        git pull --ff-only origin main
+
+      Step 3: Apply governance amendments:
+        - STREAM_R11V2_COMPLETE.md — new §N "R11.G Tool Executor + Toggle Redesign + Flag Activation" with revision ID + summary
+        - CLAUDE.md §E R11 v2 bullet — append: "R11.G shipped 2026-MM-DD: tool executor wired (loop now executes real MCP tools when R11E_*_LOOP flags flip); Settings dropdown replaces inline toggle; NEXT_PUBLIC parity flags activated by default in deploy.yml (default Classic, opt-in to Claude-style)"
+        - CURRENT_STATE_v1_0.md — new version entry
+        - .geminirules — append R11G-COMPLETE footer entry (mirror MP.1)
+        - .gemini/project_state.md — new section (mirror MP.2)
+
+      Step 4: Single commit on main:
+        git add -A
+        git commit -m "docs(r11g): governance close — tool executor + dropdown + flag activation live"
+        git push origin main
+
+      Final-message format:
+        STATUS=PASS|FAIL
+        SUMMARY=R11.G autonomous arc COMPLETE — Settings dropdown live, tool executor real, default Classic shell preserved
+        ROLLOUT_RESULT_MD=/Users/Dev/Vibe-Coding/Apps/MadhavR11G/00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_R11G_RESULT.md
+        GOVERNANCE_COMMIT_SHA=<sha>
+
+      Halt rules: strict.
+
+# End of session_queue_R11G.yaml

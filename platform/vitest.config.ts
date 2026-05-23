@@ -11,7 +11,14 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      'tests/e2e/**',
+      // Playwright e2e suites — run via `playwright test`, not vitest.
+      // Exception: tests/e2e/r11g-server-smoke/ uses vitest (server-side smoke, R11.G-S5).
+      'tests/e2e/chat-v2/**',
+      'tests/e2e/clients.spec.ts',
+      'tests/e2e/gate_i_performance_smoke.spec.ts',
+      'tests/e2e/gate_ii_trace_smoke.spec.ts',
+      'tests/e2e/gate_iii_intelligent_chat_smoke.spec.ts',
+      'tests/e2e/portal/**',
     ],
   },
   resolve: {

@@ -8,9 +8,11 @@
  *      iter 2 yields text_delta + message_stop('end_turn') → 2 iters executed, tool events present.
  *   3. Cap exceeded: mock always yields message_stop('tool_use') → throws AgenticLoopCapExceeded
  *      after MAX_ITERATIONS.
+ *   4. (R11.G-S1) executeMCPTool with mocked MCP backend → real tool results flow into loop.
+ *   5. (R11.G-S1) Tool error recovery → loop continues, model receives error string, no throw.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { CapabilityAdapter } from '../../src/lib/providers/adapter'
 import type { ChatRequest, ChatEvent } from '../../src/lib/providers/types'
 import {
@@ -19,6 +21,16 @@ import {
   ANTHROPIC_LOOP_CONFIG,
   MAX_ITERATIONS,
 } from '../../src/lib/synthesis/agentic_loop'
+
+// Mock the retrieve/index module so executeMCPTool doesn't hit real DB
+vi.mock('../../src/lib/retrieve/index', () => ({
+  getTool: vi.fn(),
+  RETRIEVAL_TOOLS: [],
+}))
+
+import { getTool } from '../../src/lib/retrieve/index'
+import { executeMCPTool } from '../../src/lib/synthesis/mcp_tool_executor'
+import type { MCPToolExecutorCtx } from '../../src/lib/synthesis/mcp_tool_executor'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,6 +41,26 @@ function makeRequest(): ChatRequest {
   return {
     messages: [{ role: 'user', content: 'Hello' }],
     model: 'claude-sonnet-4-6',
+  }
+}
+
+/** Builds a minimal MCPToolExecutorCtx for test use. */
+function makeCtx(): MCPToolExecutorCtx {
+  return {
+    queryPlan: {
+      query_plan_id: 'test-plan-id',
+      query_text: 'test query',
+      query_class: 'factual',
+      domains: ['natal'],
+      forward_looking: false,
+      audience_tier: 'super_admin',
+      tools_authorized: ['msr_sql', 'query_panchanga'],
+      history_mode: 'synthesized',
+      panel_mode: false,
+      expected_output_shape: 'single_answer',
+      manifest_fingerprint: 'test-fingerprint',
+      schema_version: '1.0',
+    },
   }
 }
 
@@ -299,5 +331,255 @@ describe('runAgenticLoop — iteration cap exceeded', () => {
 
     expect(caughtError).not.toBeNull()
     expect(caughtError?.iterations).toBe(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 4: executeMCPTool — real tool results flow back (R11.G-S1, AC.G1.3)
+// ---------------------------------------------------------------------------
+
+describe('executeMCPTool — real tool results via mocked MCP backend (AC.G1.3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns serialised JSON when tool succeeds', async () => {
+    const mockTool = {
+      name: 'msr_sql',
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        results: [
+          { content: 'Signal MSR.001: Saturn in 10H', significance: 0.9, source_canonical_id: 'MSR.001', confidence: 0.85, result_hash: 'sha256:abc', schema_version: '1.0' },
+        ],
+      }),
+    }
+    vi.mocked(getTool).mockReturnValue(mockTool as any)
+
+    const ctx = makeCtx()
+    const toolCall = { id: 'tc-1', name: 'msr_sql', input: { signal_type: ['yoga'] } }
+    const result = await executeMCPTool(toolCall, ctx)
+
+    expect(result).not.toMatch(/^ERROR:/)
+    const parsed = JSON.parse(result)
+    expect(parsed.tool).toBe('msr_sql')
+    expect(parsed.results).toHaveLength(1)
+    expect(parsed.result_count).toBe(1)
+    expect(mockTool.retrieve).toHaveBeenCalledWith(ctx.queryPlan, { signal_type: ['yoga'] })
+  })
+
+  it('returns ERROR string when tool is not registered (AC.G1.4)', async () => {
+    vi.mocked(getTool).mockReturnValue(undefined)
+
+    const ctx = makeCtx()
+    const toolCall = { id: 'tc-2', name: 'nonexistent_tool', input: {} }
+    const result = await executeMCPTool(toolCall, ctx)
+
+    expect(result).toMatch(/^ERROR:/)
+    expect(result).toContain('nonexistent_tool')
+  })
+
+  it('returns ERROR string (not throw) when tool.retrieve() rejects (AC.G1.4)', async () => {
+    const mockTool = {
+      name: 'msr_sql',
+      version: '1.0',
+      retrieve: vi.fn().mockRejectedValue(new Error('DB connection failed')),
+    }
+    vi.mocked(getTool).mockReturnValue(mockTool as any)
+
+    const ctx = makeCtx()
+    const toolCall = { id: 'tc-3', name: 'msr_sql', input: {} }
+    const result = await executeMCPTool(toolCall, ctx)
+
+    expect(result).toMatch(/^ERROR:/)
+    expect(result).toContain('DB connection failed')
+  })
+
+  it('real executeMCPTool flows into runAgenticLoop — results appear in next iteration messages', async () => {
+    // Iter 1: model requests msr_sql tool
+    const iter1Events: ChatEvent[] = [
+      { type: 'tool_use_start', id: 'tc-loop-1', name: 'msr_sql' },
+      { type: 'tool_use_input_delta', id: 'tc-loop-1', partialJson: '{"signal_type":["yoga"]}' },
+      { type: 'message_stop', stopReason: 'tool_use' },
+    ]
+    // Iter 2: model produces final answer
+    const iter2Events: ChatEvent[] = [
+      { type: 'text_delta', text: 'Based on msr_sql results, Saturn is strong.' },
+      { type: 'message_stop', stopReason: 'end_turn' },
+    ]
+
+    const mockTool = {
+      name: 'msr_sql',
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        results: [{ content: 'Saturn 10H yoga active', significance: 0.9, source_canonical_id: 'MSR.001', confidence: 0.85, result_hash: 'sha256:abc', schema_version: '1.0' }],
+      }),
+    }
+    vi.mocked(getTool).mockReturnValue(mockTool as any)
+
+    const chatCallArgs: ChatRequest[] = []
+    const adapter: CapabilityAdapter = {
+      providerId: 'anthropic',
+      getManifest: vi.fn(),
+      chat: async function* (req: ChatRequest): AsyncIterable<ChatEvent> {
+        chatCallArgs.push(req)
+        const events = chatCallArgs.length === 1 ? iter1Events : iter2Events
+        for (const event of events) yield event
+      },
+      thinking: vi.fn(),
+      cache: vi.fn(),
+      tools: vi.fn(),
+      webSearch: vi.fn(),
+      webFetch: vi.fn(),
+      codeExecution: vi.fn(),
+      memory: vi.fn(),
+      multimodal: vi.fn(),
+      imageGeneration: vi.fn(),
+      computerUse: vi.fn() as unknown as CapabilityAdapter['computerUse'],
+      structuredOutputs: vi.fn(),
+    } as unknown as CapabilityAdapter
+
+    const ctx = makeCtx()
+    const collected: ChatEvent[] = []
+    for await (const event of runAgenticLoop(
+      adapter,
+      makeRequest(),
+      (toolCall) => executeMCPTool(toolCall, ctx),
+      ANTHROPIC_LOOP_CONFIG,
+    )) {
+      collected.push(event)
+    }
+
+    // Both iterations' events yielded
+    expect(collected).toHaveLength(5)
+    // msr_sql tool was called
+    expect(mockTool.retrieve).toHaveBeenCalledTimes(1)
+    // Second chat() call has 3 messages (original + assistant tool-use + user tool-result)
+    expect(chatCallArgs).toHaveLength(2)
+    const secondMessages = chatCallArgs[1].messages
+    expect(secondMessages).toHaveLength(3)
+    // user tool-result turn carries the JSON output from executeMCPTool
+    const userTurn = secondMessages[2]
+    expect(userTurn.role).toBe('user')
+    const userContent = userTurn.content as Array<{ type: string; content: string }>
+    expect(userContent[0].type).toBe('tool_result')
+    const toolResultContent = userContent[0].content
+    expect(toolResultContent).toContain('msr_sql')
+    expect(toolResultContent).toContain('Saturn 10H yoga active')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 5: Tool error recovery — loop continues, no abort (R11.G-S1, AC.G1.4)
+// ---------------------------------------------------------------------------
+
+describe('executeMCPTool — tool error recovery in loop (AC.G1.4)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('middle iteration tool returns ERROR string → loop continues, model receives error, loop does NOT throw', async () => {
+    // Iter 1: model requests a tool that will fail
+    const iter1Events: ChatEvent[] = [
+      { type: 'tool_use_start', id: 'tc-err-1', name: 'msr_sql' },
+      { type: 'tool_use_input_delta', id: 'tc-err-1', partialJson: '{}' },
+      { type: 'message_stop', stopReason: 'tool_use' },
+    ]
+    // Iter 2: model reacts to error and produces final answer
+    const iter2Events: ChatEvent[] = [
+      { type: 'text_delta', text: 'I encountered an error but can still answer.' },
+      { type: 'message_stop', stopReason: 'end_turn' },
+    ]
+
+    // Tool fails with an exception
+    const mockTool = {
+      name: 'msr_sql',
+      version: '1.0',
+      retrieve: vi.fn().mockRejectedValue(new Error('Simulated DB failure')),
+    }
+    vi.mocked(getTool).mockReturnValue(mockTool as any)
+
+    const chatCallArgs: ChatRequest[] = []
+    const adapter: CapabilityAdapter = {
+      providerId: 'anthropic',
+      getManifest: vi.fn(),
+      chat: async function* (req: ChatRequest): AsyncIterable<ChatEvent> {
+        chatCallArgs.push(req)
+        const events = chatCallArgs.length === 1 ? iter1Events : iter2Events
+        for (const event of events) yield event
+      },
+      thinking: vi.fn(),
+      cache: vi.fn(),
+      tools: vi.fn(),
+      webSearch: vi.fn(),
+      webFetch: vi.fn(),
+      codeExecution: vi.fn(),
+      memory: vi.fn(),
+      multimodal: vi.fn(),
+      imageGeneration: vi.fn(),
+      computerUse: vi.fn() as unknown as CapabilityAdapter['computerUse'],
+      structuredOutputs: vi.fn(),
+    } as unknown as CapabilityAdapter
+
+    const ctx = makeCtx()
+    const collected: ChatEvent[] = []
+
+    // Must NOT throw — loop completes naturally after error recovery
+    let threw = false
+    try {
+      for await (const event of runAgenticLoop(
+        adapter,
+        makeRequest(),
+        (toolCall) => executeMCPTool(toolCall, ctx),
+        ANTHROPIC_LOOP_CONFIG,
+      )) {
+        collected.push(event)
+      }
+    } catch {
+      threw = true
+    }
+    expect(threw).toBe(false)
+
+    // Both iterations ran — 5 events total
+    expect(collected).toHaveLength(5)
+    expect(chatCallArgs).toHaveLength(2)
+
+    // The second chat() call received the error string in the tool_result
+    const secondMessages = chatCallArgs[1].messages
+    const userTurn = secondMessages[2]
+    const userContent = userTurn.content as Array<{ type: string; content: string }>
+    expect(userContent[0].type).toBe('tool_result')
+    // Error message was passed through to the model
+    expect(userContent[0].content).toMatch(/ERROR:.*Simulated DB failure/)
+  })
+
+  it('AgenticLoopCapExceeded is thrown only on cap breach — not on tool errors', async () => {
+    // Every iteration: one tool call that fails; model always requests another tool (tool_use stop)
+    const singleIterEvents: ChatEvent[] = [
+      { type: 'tool_use_start', id: 'tc-cap', name: 'msr_sql' },
+      { type: 'tool_use_input_delta', id: 'tc-cap', partialJson: '{}' },
+      { type: 'message_stop', stopReason: 'tool_use' },
+    ]
+
+    const mockTool = {
+      name: 'msr_sql',
+      version: '1.0',
+      retrieve: vi.fn().mockRejectedValue(new Error('persistent failure')),
+    }
+    vi.mocked(getTool).mockReturnValue(mockTool as any)
+
+    const sequences = Array.from({ length: MAX_ITERATIONS + 2 }, () => [...singleIterEvents])
+    const adapter = makeMockAdapter(sequences)
+    const ctx = makeCtx()
+
+    await expect(async () => {
+      await collectEvents(
+        runAgenticLoop(
+          adapter,
+          makeRequest(),
+          (toolCall) => executeMCPTool(toolCall, ctx),
+          ANTHROPIC_LOOP_CONFIG,
+        ),
+      )
+    }).rejects.toThrow(AgenticLoopCapExceeded)
   })
 })

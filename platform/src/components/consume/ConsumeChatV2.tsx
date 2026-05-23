@@ -101,7 +101,7 @@ import { CorrectionNotice } from './CorrectionNotice'
 import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
 import { cn } from '@/lib/utils'
-import { MultiProviderParityToggle } from './MultiProviderParityToggle'
+import { SettingsDropdown } from './SettingsDropdown'
 import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
 
 // R11.B — Look-and-Feel umbrella flag (NEXT_PUBLIC, build-time)
@@ -1485,8 +1485,8 @@ function V2BottomBar() {
           <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
         )}
         <PanelModeToggle />
-        {/* A-S11: Multi-Provider Parity runtime toggle (hidden when env-var false) */}
-        <MultiProviderParityToggle />
+        {/* R11.G: Settings dropdown — replaces inline parity toggle */}
+        <SettingsDropdown />
       </div>
     </div>
   )

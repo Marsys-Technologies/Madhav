@@ -67,6 +67,7 @@ import { getAdapter } from '@/lib/providers/dispatcher'
 import type { ChatRequest } from '@/lib/providers/types'
 import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/adapter-dispatch-helpers'
 import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
+import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
 import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/providers/google/cached_content'
 import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
@@ -1035,7 +1036,7 @@ export async function POST(request: Request) {
               ? runAgenticLoop(
                   adapter,
                   adapterChatReq,
-                  async (_toolCall) => 'Tool not available in adapter dispatch (stub)',
+                  (toolCall) => executeMCPTool(toolCall, { queryPlan }),
                   loopConfig,
                 )
               : adapter.chat(adapterChatReq)
