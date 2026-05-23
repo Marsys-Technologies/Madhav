@@ -2,7 +2,7 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 4,
+  "current_phase": 5,
   "phases": [
     {
       "id": 0,
@@ -78,33 +78,38 @@
     },
     {
       "id": 4,
-      "status": "in_progress",
+      "status": "completed",
       "sub_agents": [
         {
           "id": "v32-s4a-divisional-filter",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "ffefabf7"
         },
         {
           "id": "v32-s4b-categories-batching",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "5fa9edd4"
         },
         {
           "id": "v32-s4c-chart-summary",
-          "status": "pending"
+          "status": "completed",
+          "commit": "34b2ccbe"
         }
-      ]
+      ],
+      "completed_at": "2026-05-23T18:45:00Z",
+      "gate": "PASS"
     },
     {
       "id": 5,
-      "status": "pending",
+      "status": "in_progress",
       "sub_agents": [
         {
           "id": "v32-s5a-trace-name-canonicalization",
-          "status": "pending"
+          "status": "in_progress"
         },
         {
           "id": "v32-s5b-query-summary-population",
-          "status": "pending"
+          "status": "in_progress"
         }
       ]
     },
