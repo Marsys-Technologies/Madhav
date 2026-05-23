@@ -10,7 +10,7 @@
  * Key Gemini-specific note: thinkingBudget is set via providerOptions.google.thinkingConfig.
  */
 
-import { streamText } from 'ai';
+import { streamText, jsonSchema } from 'ai';
 import { google as googleProvider } from '@ai-sdk/google';
 import type { CapabilityAdapter } from '../adapter';
 import { CapabilityUnsupportedError } from '../adapter';
@@ -91,6 +91,23 @@ export class GoogleAdapter implements CapabilityAdapter {
       if (systemContent) streamParams.system = systemContent;
       if (request.temperature !== undefined) streamParams.temperature = request.temperature;
       if (providerOptions) streamParams.providerOptions = providerOptions;
+      // R11.F — B-S1: Forward tools to Gemini via Vercel AI SDK tool format.
+      // Vercel AI SDK streamText accepts tools as Record<string, Tool> where each entry
+      // has { description, inputSchema: jsonSchema(...) }. Gemini receives these as
+      // functionDeclarations. Without this forwarding, Gemini never sees the tool
+      // definitions and cannot emit tool-call parts (Break B2-G).
+      if (request.tools && request.tools.length > 0) {
+        streamParams.tools = Object.fromEntries(
+          request.tools.map((tool) => [
+            tool.name,
+            {
+              description: tool.description ?? '',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              inputSchema: jsonSchema(tool.inputSchema as any),
+            },
+          ]),
+        );
+      }
       // R11.F — S4: Inject cachedContent name if provided via cacheConfig (D.3 wiring).
       // When route.ts creates a Gemini cachedContent object, it passes the returned
       // resource name through cacheConfig.providerPayload.cachedContentName so the
