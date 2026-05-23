@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.52
+version: 5.53
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.53 (2026-05-23, R11G-S7-GOVERNANCE-CLOSE):
+    **R11.G COMPLETE. Tool executor wired (mcp_tool_executor.ts), SettingsDropdown ships, NEXT_PUBLIC parity flags activated. PR #152, merge SHA 52e18cb5, Cloud Run amjis-web-00367-b59. KNOWN_PRE_EXISTING_FAILURES.md updated to v1.3 (18 pre-existing, 0 R11.G regressions).**
+    Key outcomes: (A) PR #152 squash-merged to main (SHA 52e18cb5): mcp_tool_executor.ts implements real MCP dispatch to MARSYS retrieval tool registry; all 5 provider gates in route.ts pass executeMCPTool to runAgenticLoop (replaces stub null executor from R11.F). Tool errors return "ERROR: <msg>" strings; loop does not abort. (B) SettingsDropdown.tsx shipped: gear icon → "Chat experience" section → "Classic Marsys" (default) / "Claude-style chat" radio options; MultiProviderParityToggle.tsx deleted. (C) deploy.yml NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY + NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL defaulted true; Settings dropdown now visible in production; default localStorage (null) → Classic shell (no surprise change for existing users). (D) 37 new tests: agentic-loop-engine.test.ts (5), SettingsDropdown.test.tsx (12), useMultiProviderParity.test.tsx (7), r11g-server-smoke/ (13); all PASS. (E) KNOWN_PRE_EXISTING_FAILURES.md v1.3 baseline: 18 pre-existing, 0 R11.G regressions. (F) ROLLOUT_PHASE_R11G_RESULT.md authored. (G) STREAM_R11V2_COMPLETE.md §8 added. (H) CLAUDE.md v4.0. (I) MP.1+MP.2 mirrors updated.
+    files_touched: ["00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_R11G_RESULT.md", "00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md", "CLAUDE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", ".geminirules", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (R11G governance close-out session; no macro-phase change).
+    last_session_id: R11G-S7-GOVERNANCE-CLOSE. predecessor_session: R11F-S7-GOVERNANCE-CLOSE.
+    carry_forwards: ["Operator: verify Settings dropdown in prod /consume per ROLLOUT_PHASE_R11G_RESULT.md §5", "Operator: flip R11.E loop flags individually per ROLLOUT_PHASE_R11F_RESULT.md", "Operator: persist each verified E flag in deploy.yml env_vars", "MadhavR11G worktree: retire after operator confirms prod verification PASS"]
+    next_session_objective: "Operator verifies Settings dropdown in prod. Flip R11.E loop flags per ROLLOUT_PHASE_R11F_RESULT.md. Next project session: M6-A-S1."
+    file_updated_at: 2026-05-23. file_updated_by_session: R11G-S7-GOVERNANCE-CLOSE.
   - v5.52 (2026-05-23, R11F-S7-GOVERNANCE-CLOSE):
     **R11.F wiring arc COMPLETE — PR #151 merged (squash SHA 97acf339). D.3 Gemini cache wired; E.1-E.4 agentic loop wired (stub executor). All R11.D + R11.E flags ready to flip per operator runbook. Branch feature/r11f-wiring-arc retired. No macro-phase change.**
     Key outcomes: (A) PR #151 squash-merged to main (SHA 97acf339): adapter.cache() wired into route.ts dispatch for D.3 MARSYS_FLAG_R11D_GEMINI_CACHE path — calls genai.caches.create() + passes cachedContent ID to model request; adapter.loop() wired into route.ts dispatch for E.1-E.4 R11E_*_LOOP paths — invokes agentic_loop.ts engine with stub tool executor. (B) 7 new test files added (agentic-loop-engine.test.ts + 5 per-provider tool-events + gemini-cache-wiring.test.ts); full vitest suite passes. (C) ROLLOUT_PHASE_R11F_RESULT.md authored with per-flag gcloud flip commands + verification steps. (D) STREAM_R11V2_COMPLETE.md §7 deferred items marked COMPLETE. (E) feature/r11f-wiring-arc branch retired. (F) MP.2 mirror (.gemini/project_state.md) updated.

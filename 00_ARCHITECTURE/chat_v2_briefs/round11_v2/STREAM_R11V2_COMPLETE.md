@@ -160,3 +160,26 @@ Full finding documented in `ROLLOUT_PHASE_E_RESULT.md`.
 ---
 
 *STREAM_R11V2_COMPLETE.md — §7 amended 2026-05-23 by R11V2-Phase-DE-Resume rollout session. §7 deferred items closed 2026-05-23 by R11F-S7 governance session (PR #151, SHA 97acf339).*
+
+## §8 — R11.G: Tool Executor + Settings Dropdown + Flag Activation (2026-05-23)
+
+**Status: COMPLETE**  
+**PR:** #152 | **Merge SHA:** 52e18cb5 | **Cloud Run:** amjis-web-00367-b59
+
+### Delivered
+1. **Tool executor wiring** — `mcp_tool_executor.ts` extracts real MCP dispatch; all 5 provider gates in route.ts pass `executeMCPTool` to `runAgenticLoop` (replaces stub). Tool errors return "ERROR: <msg>" strings; loop does not abort.
+2. **Settings dropdown** — `SettingsDropdown.tsx`: gear icon → "Chat experience" section → "Classic Marsys" (default) / "Claude-style chat" radio options. `MultiProviderParityToggle.tsx` deleted.
+3. **NEXT_PUBLIC flag activation** — deploy.yml `MULTI_PROVIDER_PARITY` + `R11B_LOOK_AND_FEEL` default to `true`. Toggle visible in production. Default localStorage (null) → Classic shell (no change for existing users).
+
+### Test results
+- 7 sessions PASS, 0 FAIL
+- New tests: agentic-loop-engine.test.ts (5 new tests), SettingsDropdown.test.tsx (12 tests), useMultiProviderParity.test.tsx (7 new tests), r11g-server-smoke/ (13 tests) — 37 new tests total
+- Baseline: KNOWN_PRE_EXISTING_FAILURES.md v1.3 (18 pre-existing; 0 R11.G regressions)
+
+### Operator follow-up
+- Verify Settings dropdown in prod /consume
+- R11.E loop flags: flip when ready per ROLLOUT_PHASE_R11F_RESULT.md
+
+---
+
+*STREAM_R11V2_COMPLETE.md — §8 added 2026-05-23 by G-S7 governance close session (R11.G COMPLETE).*
