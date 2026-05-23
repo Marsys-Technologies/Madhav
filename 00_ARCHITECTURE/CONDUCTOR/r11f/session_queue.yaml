@@ -41,10 +41,10 @@ sessions:
     phase: A
     title: "B.11 floor pre-execution preservation + onFinish parity"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S3_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-A-S2]
-    commit_sha: null
+    commit_sha: "8e071aa5"
     pr_url: null
     notes: "Fixes Break B3. Architectural contract documented in route.ts."
 
