@@ -52,10 +52,10 @@ sessions:
     phase: A
     title: "Anthropic E2E integration test (VCR/spied streamText)"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S4_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-A-S3]
-    commit_sha: null
+    commit_sha: "0eaae392"
     pr_url: null
     notes: "3 test cases: round-trip, cap, floor context. No production code changes."
 
