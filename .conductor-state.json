@@ -2,7 +2,7 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 5,
+  "current_phase": 6,
   "phases": [
     {
       "id": 0,
@@ -101,29 +101,33 @@
     },
     {
       "id": 5,
-      "status": "in_progress",
+      "status": "completed",
       "sub_agents": [
         {
           "id": "v32-s5a-trace-name-canonicalization",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "2af51f79"
         },
         {
           "id": "v32-s5b-query-summary-population",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "2a8fcc6e"
         }
-      ]
+      ],
+      "completed_at": "2026-05-23T19:10:00Z",
+      "gate": "PASS"
     },
     {
       "id": 6,
-      "status": "pending",
+      "status": "in_progress",
       "sub_agents": [
         {
           "id": "v32-s6a-acharya-enum-decision",
-          "status": "pending"
+          "status": "in_progress"
         },
         {
           "id": "v32-s6b-tier-aware-list-tools",
-          "status": "pending"
+          "status": "in_progress"
         }
       ]
     },
