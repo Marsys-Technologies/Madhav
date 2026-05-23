@@ -151,6 +151,8 @@ export interface ResolvedToolsConfig {
   mode: ProviderCapabilities['adaptiveToolLoop'];
   maxIterations: number;
   tools: ChatTool[];
+  /** Tool choice behaviour forwarded to the AI SDK ('auto' | 'required' | 'none'). */
+  toolChoice?: 'auto' | 'required' | 'none';
   /** Provider-specific payload (e.g., Responses API for OpenAI). */
   providerPayload?: Record<string, unknown>;
 }

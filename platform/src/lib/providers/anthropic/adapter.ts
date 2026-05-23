@@ -48,7 +48,8 @@ import type {
   StructuredOutputsRequest,
   StructuredOutputsResponse,
 } from '../types';
-import { streamText } from 'ai';
+import { streamText, jsonSchema } from 'ai';
+import type { CoreTool } from 'ai';
 import { anthropic as anthropicProvider } from '@ai-sdk/anthropic';
 import { ANTHROPIC_MANIFEST } from './manifest';
 
@@ -96,6 +97,23 @@ export class AnthropicAdapter implements CapabilityAdapter {
       if (systemContent) streamParams.system = systemContent;
       if (request.temperature !== undefined) streamParams.temperature = request.temperature;
       if (providerOptions) streamParams.providerOptions = providerOptions;
+
+      // Forward tool definitions to streamText so the model can call them
+      if (request.tools && request.tools.length > 0) {
+        const toolsMap: Record<string, CoreTool> = {};
+        for (const tool of request.tools) {
+          toolsMap[tool.name] = {
+            description: tool.description,
+            parameters: jsonSchema(tool.inputSchema ?? { type: 'object', properties: {} }),
+          };
+        }
+        streamParams.tools = toolsMap;
+      }
+
+      // Forward toolChoice ('auto' | 'required' | 'none') when present
+      if (request.toolsConfig?.toolChoice) {
+        streamParams.toolChoice = request.toolsConfig.toolChoice;
+      }
 
       const result = streamText(streamParams);
 
