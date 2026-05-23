@@ -74,7 +74,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       avg_latency_ms: null,       // populated by nightly audit
       audit_finding_count: null,  // populated by nightly audit
       caveats: [],                // populated from tool_caveats table
-      data_note: 'Live metrics pending. Apply migrations 073-076 and run nightly audit.',
+      // data_note omitted: migrations 073-076 applied 2026-05-22; nightly audit live (see MCPT v3.2 Phase 7)
     })),
   })
 }
