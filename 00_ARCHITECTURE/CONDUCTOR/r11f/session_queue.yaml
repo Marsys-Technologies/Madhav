@@ -74,12 +74,12 @@ sessions:
     phase: A
     title: "Anthropic visual smoke via Chrome MCP"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S5_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-A-S6]
-    commit_sha: null
+    commit_sha: "b0aa2a51"
     pr_url: null
-    notes: "Screenshots to visual_evidence/anthropic/. HALT if tool-flow timeline empty."
+    notes: "Screenshots to visual_evidence/anthropic/. Triage fix e80d2333 (planner null-coercion extended to all soft-optional fields). Smoke PASS on port 3001. HTTP 200, Saturn dasha dates returned, tool-flow timeline captured."
 
   # ──────────────────────────────────────────────────────────────────────────────
   # PHASE B — Other Providers (B1+B3 parallel-eligible; B2/B4 serial after B1/B3)
