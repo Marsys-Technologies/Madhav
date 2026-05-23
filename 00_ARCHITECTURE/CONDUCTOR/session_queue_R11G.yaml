@@ -113,7 +113,9 @@ sessions:
 
   - id: G-S3
     title: "Default-state behavior verification (Classic when localStorage null)"
-    status: pending
+    status: passed
+    passed_at: "2026-05-23T09:30:00Z"
+    commit_sha: 17e25fc3
     parallel_group: null
     commit_message: "test(r11g): verify default-classic + SSR-safe chat shell behavior"
     acceptance_criteria:
