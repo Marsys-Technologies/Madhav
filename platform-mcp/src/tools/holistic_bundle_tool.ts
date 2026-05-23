@@ -16,6 +16,20 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { executeHolisticBundle } from '../bundles/holistic_bundle.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const HOLISTIC_BUNDLE_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Performs a parallel 8-tool holistic read of the MARSYS-JIS corpus, ' +
+    'fanning out across MSR signals, CGM subgraph, UCN/RM/CDLM vector layers, LEL events, ' +
+    'current panchang, and active dasha state. All sub-tools run concurrently with 8-second ' +
+    'per-tool timeouts, error isolation, and 5-minute content-addressable caching.',
+  whenToPrefer:
+    'FIRST CALL when any synthesis question requires cross-layer context before reasoning. ' +
+    'Use the subset param to restrict to specific layers (e.g., subset: ["MSR","DASHA"]). ' +
+    'Prefer individual surgical primitives when you need only one data type without synthesis overhead.',
+})
 
 const HolisticBundleInputSchema = z.object({
   query_text: z.string().min(3).describe(
@@ -39,36 +53,13 @@ type HolisticBundleInput = z.infer<typeof HolisticBundleInputSchema>
 
 export function registerHolisticBundle(
   server: McpServer,
-  getPrincipal: () => Principal
+  getPrincipal: () => Principal,
+  descriptionOverride?: string
 ): void {
   server.tool(
     'holistic_bundle',
 
-    `What it does: Performs a parallel 8-tool holistic read of the MARSYS-JIS corpus,
-fanning out across MSR signals, CGM subgraph, UCN/RM/CDLM vector layers, LEL events,
-current panchang, and active dasha state. All sub-tools run concurrently with 8-second
-per-tool timeouts and error isolation — a failed sub-tool produces an errored slot in
-bundle_entries[], not a bundle failure. Results are cached for 5 minutes
-(content-addressable by query + params + tier + chart_id).
-
-When to prefer: Use holistic_bundle as the entry point for any synthesis question
-that requires cross-layer context before the LLM reasons. Equivalent to calling 8
-primitives manually but with automatic error isolation and SSE streaming support
-via /api/mcp/bundles/holistic_bundle. Use the subset param to restrict to specific
-layers (e.g., subset: ["MSR", "DASHA"] for a dasha-only read).
-
-Input shape: query_text (required), focus_domains (MSR filter), time_window (LEL
-filter), subset (restrict which sub-tools fire). Subset values: MSR | CGM | UCN |
-RM | CDLM | LEL | PANCHANG | DASHA.
-
-Output shape: { ok: true, bundle_name: "holistic_bundle", served_from_cache: bool,
-bundle_entries: [{sub_tool, errored, data, signal_ids_available, latency_ms}...],
-provenance: {signal_ids_available: string[], sub_tools_fired: string[],
-sub_tools_errored: string[]} }.
-
-Example: holistic_bundle({ query_text: "Saturn dasha career inflection",
-focus_domains: ["career"] }) → returns 8 sub-tool results with provenance
-aggregating all signal_ids from successful tools.`,
+    descriptionOverride ?? HOLISTIC_BUNDLE_DESCRIPTION,
 
     HolisticBundleInputSchema.shape,
 
@@ -87,14 +78,7 @@ aggregating all signal_ids from successful tools.`,
         principal
       )
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(envelope),
-          },
-        ],
-      }
+      return okResult(envelope)
     }
   )
 }

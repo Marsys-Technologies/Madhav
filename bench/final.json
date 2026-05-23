@@ -1,0 +1,14 @@
+{
+  "phase": "MCPT v3.2",
+  "completed_at": "2026-05-23",
+  "baseline_tests": 75,
+  "final_tests": 257,
+  "test_gain": 182,
+  "mcp_tests_pass": true,
+  "scenarios": {
+    "canonical_d9_workflow": {"verdict": "pass", "note": "chart_summary reduces N round-trips to 2"},
+    "holistic_d9": {"verdict": "pass"},
+    "portal_synthesis_floor": {"verdict": "pass", "note": "baseline floor preserved"}
+  },
+  "verdict": "pass"
+}

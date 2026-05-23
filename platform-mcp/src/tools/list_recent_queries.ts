@@ -22,6 +22,18 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformRecent } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const LIST_RECENT_QUERIES_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns recent MCP call history for the current API key — ' +
+    'each entry includes trace_id, tool name, source (mcp or mcp_primitive), timestamp, and a brief query summary.',
+  whenToPrefer:
+    'Use when you want an audit of what this API key has called recently, ' +
+    'or need to find a trace_id from a prior session for follow-up investigation with get_trace. ' +
+    'Do not use for answering chart questions — use holistic_bundle for that.',
+})
 
 // ── Tool registration ─────────────────────────────────────────────────────────
 
@@ -32,27 +44,7 @@ export function registerListRecentQueries(
   server.tool(
     'list_recent_queries',
 
-    // ── Tool description (§4.6-standard, ≥100 words) ──────────────────────────
-    `What it does: Returns recent MCP call history for the current API key.
-Each entry includes trace_id, tool name, source (mcp or mcp_primitive), timestamp,
-and a brief query summary. The result is scoped to the calling API key — you see
-only your own calls, not other principals' calls.
-
-When to prefer: Use list_recent_queries when you want an audit of what this API
-key has called recently, need to find a trace_id from a prior session for follow-up
-investigation with get_trace, or want to understand usage patterns and cost behavior
-for this key. For inspecting a specific call in full detail, pass the trace_id to
-get_trace. For answering chart questions, use holistic_bundle. This tool does not
-answer astrological questions — it is purely for MCP usage audit and navigation.
-
-Input shape hints: limit — integer between 1 and 100 (default 20). since — ISO
-8601 date string (e.g., "2026-05-01"); defaults to 7 days ago if omitted.
-
-Output shape preview: {ok, result: {queries: [{trace_id, created_at, tool, source,
-query_summary}]}, epistemics: {surgical: true}}.
-
-Example: list_recent_queries({limit: 5}) → returns the 5 most recent calls;
-list_recent_queries({since: "2026-05-20"}) → all calls since May 20.`,
+    LIST_RECENT_QUERIES_DESCRIPTION,
 
     // ── Input schema ──────────────────────────────────────────────────────────
     {
@@ -95,14 +87,7 @@ list_recent_queries({since: "2026-05-20"}) → all calls since May 20.`,
         }
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

@@ -29,6 +29,19 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const QUERY_DASHA_PERIODS_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns the Vimshottari dasha schedule for the native\'s chart — ' +
+    'Mahadasha, Antardasha, Pratyantar — with exact start/end dates, bypassing synthesis. ' +
+    'Input: at (single ISO date), range ({start, end}), or omit both for the full sequence.',
+  whenToPrefer:
+    'Use for "what dasha is active on date X?" without synthesis overhead. ' +
+    'Prefer holistic_bundle when you also need interpretation of what the period means for the native. ' +
+    'Prefer query_chart_facts with category "dasha_vimshottari" for raw DB rows without the structured period wrapper.',
+})
 
 const QueryDashaPeriodsInputSchema = z.object({
   at: z.string().optional().describe(
@@ -51,14 +64,7 @@ export function registerQueryDashaPeriods(
 ): void {
   server.tool(
     'query_dasha_periods',
-    'What it does: Returns the Vimshottari dasha schedule for the native\'s chart — ' +
-    'Mahadasha, Antardasha, Pratyantar — with exact start/end dates, bypassing synthesis. ' +
-    'When to prefer: Use for "what dasha is active on date X?" without synthesis overhead. ' +
-    'Prefer holistic_bundle when you also need interpretation of what the period means. ' +
-    'Input shape hints: at — single ISO date lookup; range — {start, end} for a date window; ' +
-    'system defaults to "vimshottari". All params optional; omitting all returns full sequence. ' +
-    'Output shape preview: {ok, result: {periods: DashaPeriod[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: query_dasha_periods({at: "2026-05-21"}) → active Mahadasha + Antardasha with dates.',
+    QUERY_DASHA_PERIODS_DESCRIPTION,
     QueryDashaPeriodsInputSchema.shape,
     async (args: QueryDashaPeriodsInput) => {
       const principal = getPrincipal()
@@ -71,11 +77,10 @@ export function registerQueryDashaPeriods(
         },
         principal
       )
-      const text = JSON.stringify(envelope, null, 2)
-      return {
-        content: [{ type: 'text' as const, text }],
-        isError: !envelope.ok || status >= 400,
+      if (!envelope.ok || status >= 400) {
+        return errorResult(envelope)
       }
+      return okResult(envelope)
     }
   )
 }

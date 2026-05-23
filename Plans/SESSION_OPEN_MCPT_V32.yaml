@@ -1,0 +1,64 @@
+session_open:
+  session_id: MCPT_V32_QUALITY_TIGHTENING_CONDUCTOR
+  cowork_thread_name: "MCPT v3.2 — Quality Tightening (Conductor)"
+  step_number_or_macro_phase: M5-concurrent/MCPT-v3.2
+  agent: Claude Sonnet 4.6 (Conductor)
+  opened_at: "2026-05-23"
+  branch: feature/mcpt-v32-quality-tightening
+  baseline_tag: mcpt-v32-baseline
+  plan_ground_truth: Plans/MCPT_V32_OPTIMIZATION_PLAN_v3.md
+
+  may_touch:
+    - "platform-mcp/**"
+    - "platform/src/lib/mcp/**"
+    - "platform/src/app/api/mcp/**"
+    - "platform/scripts/governance/**"   # read-only validation only
+    - "Plans/**"
+    - "MIGRATIONS_APPLIED_LOG.md"
+    - "00_ARCHITECTURE/perf_system_seeds/**"
+    - "bench/**"
+    - "accuracy/**"
+    - "platform-mcp/test/**"
+    - "platform/tests/synthesis/**"       # additive only
+    - "evals/**"
+    - ".github/workflows/mcp-bench.yml"
+    - ".conductor-state.json"
+    - "platform/migrations/**"            # new migrations only (116+)
+    - "platform/supabase/migrations/**"   # new migrations only (083+)
+
+  must_not_touch:
+    - "01_FACTS_LAYER/**"
+    - "025_HOLISTIC_SYNTHESIS/**"
+    - "04_REMEDIAL_CODEX/**"
+    - "06_LEARNING_LAYER/**"
+    - "99_ARCHIVE/**"
+    - "CLAUDE.md"                         # only via mirror-enforced PR-end sync in Phase 10.4
+    - ".geminirules"                      # only via mirror-enforced PR-end sync in Phase 10.4
+    - "platform/src/app/api/chat/**"      # Chat-V2 R11 arc — separate workstream
+    - "platform/src/components/**"        # Chat-V2 UI — separate workstream
+
+  objectives:
+    - "Eliminate stale lies in tool descriptions (Phase 1)"
+    - "Standardize envelope serialization — single _envelope.ts helper (Phase 2)"
+    - "Standardize all 21 tool descriptions via description_builder (Phase 3)"
+    - "Add divisional_chart filter + categories[] batching + chart_summary tool (Phase 4)"
+    - "Align trace names to MCP-facing tool names (Phase 5)"
+    - "Tier-aware list_tools catalog + resolve acharya tier inconsistency (Phase 6)"
+    - "Seed data_source_expected; wire nightly audit job; make data_coverage/tool_health truthful (Phase 7)"
+    - "Build bench + accuracy harnesses; wire to CI (Phase 8)"
+    - "Cross-scenario equivalence + routing eval (Phase 9)"
+    - "Final sweep + mirror sync + prod promotion (Phase 10)"
+
+  red_team_due: false
+  mirror_pair_freshness_check:
+    MP1_CLAUDE_GEMINIRULES: deferred_to_phase_10
+    MP2_SESSION_STATE: not_applicable_conductor_only
+
+  core_rules:
+    accuracy_over_performance: true
+    never_deprecate_tools: true
+    holistic_bundle_stays: true
+    multi_school_bundle_stays: true
+    bench_accuracy_diffs_on_every_pr: true
+    no_git_add_A: true
+    co_authored_by_trailer: "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
