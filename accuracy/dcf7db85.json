@@ -1,181 +1,149 @@
 {
-  "fixture": "/Users/Dev/Vibe-Coding/Apps/Madhav-mcpt-v32/platform-mcp/test/accuracy/fixtures/abhisek-mohanty-golden.json",
-  "run_at": "2026-05-23T19:54:09.575Z",
+  "fixture_path": "/Users/Dev/Vibe-Coding/Apps/Madhav-mcpt-v32/platform-mcp/test/accuracy/fixtures/abhisek-mohanty-golden.json",
+  "chart_id": "abhisek-mohanty",
+  "mcpt_version": "v3.3",
+  "run_at": "2026-05-23T19:54:14.739Z",
   "git_sha": "dcf7db85",
+  "categories_checked": 27,
+  "categories_passed": 27,
+  "categories_failed": 0,
   "checks": {
-    "golden_snapshot": {
-      "expected_rows": 2717,
-      "actual_rows": 215,
-      "delta": -2502,
-      "added": [],
-      "removed": [],
-      "changed": []
-    }
-  },
-  "verdict": "pass",
-  "regressions": [],
-  "detail": {
     "birth_metadata": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "planet": {
       "expected_min_rows": 9,
       "actual_rows": 9,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "house": {
       "expected_min_rows": 12,
       "actual_rows": 12,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "yoga": {
       "expected_min_rows": 50,
       "actual_rows": 50,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "arudha": {
       "expected_min_rows": 12,
       "actual_rows": 12,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "dasha_vimshottari": {
       "expected_min_rows": 3,
       "actual_rows": 3,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "sensitive_point": {
       "expected_min_rows": 5,
       "actual_rows": 5,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "shadbala": {
       "expected_min_rows": 7,
       "actual_rows": 7,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "ashtakavarga_sav": {
       "expected_min_rows": 7,
       "actual_rows": 7,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "ashtakavarga_bav": {
       "expected_min_rows": 56,
       "actual_rows": 56,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "aspect": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "kp_planet": {
       "expected_min_rows": 9,
       "actual_rows": 9,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "kp_cusp": {
       "expected_min_rows": 12,
       "actual_rows": 12,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "varshphal": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "special_lagna": {
       "expected_min_rows": 3,
       "actual_rows": 3,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "upagraha": {
       "expected_min_rows": 5,
       "actual_rows": 5,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "bhava_bala": {
       "expected_min_rows": 12,
       "actual_rows": 12,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "navatara": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "arudha_occupancy": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "strength": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "chalit_shift": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "mrityu_bhaga": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "longevity_indicator": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "chandra_placement": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "avastha": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "saham": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     },
     "dasha_chara": {
       "expected_min_rows": 1,
       "actual_rows": 1,
-      "delta": 0,
-      "status": "ok"
+      "passed": true
     }
-  }
+  },
+  "verdict": "pass",
+  "regressions": []
 }

@@ -15,7 +15,7 @@
  * MCPT v3.2 Phase 8 — Accuracy Harness (P8b)
  */
 
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'fs'
 import { execSync } from 'child_process'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -99,9 +99,10 @@ function findLatestRunResult(): AccuracyRunResult | null {
     return null
   }
   const files = readdirSync(ACCURACY_DIR)
-    .filter(f => f.endsWith('.json') && f !== 'diff.json')
-    .sort()
-    .reverse()
+    .filter(f => f.endsWith('.json') && f !== 'diff.json' && f !== 'cross_scenario.json' && f !== 'final.json')
+    .map(f => ({ name: f, mtime: statSync(join(ACCURACY_DIR, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)
+    .map(f => f.name)
 
   if (files.length === 0) {
     return null

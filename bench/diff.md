@@ -1,10 +1,21 @@
-# Bench Diff — MCPT v3.2 vs mcpt-v32-baseline
+## MCP Bench Diff — ✅ PASS
 
-| Scenario | Metric | Baseline | Head | Delta |
+**Head SHA:** `dcf7db85`  
+**Baseline SHA:** `4372cc40`  
+**Diffed at:** 2026-05-23T19:52:58.839Z
+
+### Scenario Metrics
+
+| Scenario | Metric | Baseline | Head | Δ% |
 |---|---|---|---|---|
-| canonical_d9_workflow | round_trips | 5 | 2 | -60% |
-| canonical_d9_workflow | response_bytes | est. 28400 | est. 8200 | -71% |
-| portal_synthesis_floor | round_trips | 5 | 5 | 0% (floor) |
+| canonical_d9_workflow | round_trips | 2 | 2 | 0% |
+| canonical_d9_workflow | response_bytes | 32085 | 32085 | 0% |
+| canonical_d9_workflow | wall_time_ms | 1 | 1 | 0% |
 | holistic_d9 | round_trips | 1 | 1 | 0% |
+| holistic_d9 | response_bytes | 64042 | 64042 | 0% |
+| holistic_d9 | wall_time_ms | 1 | 1 | 0% |
+| portal_synthesis_floor | round_trips | 5 | 5 | 0% |
+| portal_synthesis_floor | response_bytes | 38100 | 38100 | 0% |
+| portal_synthesis_floor | wall_time_ms | 0 | 0 | 0% |
 
-**Verdict: PASS** — No regressions. canonical_d9_workflow shows significant improvement via chart_summary.
+_No regressions detected. All metrics within threshold._

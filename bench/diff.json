@@ -1,7 +1,7 @@
 {
-  "head_sha": "4372cc40",
+  "head_sha": "dcf7db85",
   "baseline_sha": "4372cc40",
-  "diffed_at": "2026-05-23T17:48:22.382Z",
+  "diffed_at": "2026-05-23T19:52:58.839Z",
   "scenarios": {
     "canonical_d9_workflow": {
       "baseline": {
