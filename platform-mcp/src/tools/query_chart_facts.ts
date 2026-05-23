@@ -32,6 +32,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
+import { okResult, errorResult } from './_envelope.js'
 
 /**
  * F.3 fix: category list derived from ChartFactsCategory enum in
@@ -96,11 +97,10 @@ export function registerQueryChartFacts(
         },
         principal
       )
-      const text = JSON.stringify(envelope, null, 2)
-      return {
-        content: [{ type: 'text' as const, text }],
-        isError: !envelope.ok || status >= 400,
+      if (!envelope.ok || status >= 400) {
+        return errorResult(envelope)
       }
+      return okResult(envelope)
     }
   )
 }

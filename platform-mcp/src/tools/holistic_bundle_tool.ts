@@ -16,6 +16,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { executeHolisticBundle } from '../bundles/holistic_bundle.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
 
 const HolisticBundleInputSchema = z.object({
   query_text: z.string().min(3).describe(
@@ -87,14 +88,7 @@ aggregating all signal_ids from successful tools.`,
         principal
       )
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(envelope),
-          },
-        ],
-      }
+      return okResult(envelope)
     }
   )
 }

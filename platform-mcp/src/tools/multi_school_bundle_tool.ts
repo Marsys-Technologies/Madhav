@@ -12,6 +12,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { executeMultiSchoolBundle } from '../bundles/multi_school_bundle.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
 
 const SCHOOLS = ['parashara', 'jaimini', 'kp', 'tajaka'] as const
 
@@ -76,14 +77,7 @@ classical text read; provenance.convergence_score from cross_school_lookup.`,
         principal
       )
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(envelope),
-          },
-        ],
-      }
+      return okResult(envelope)
     }
   )
 }

@@ -20,6 +20,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
 
 // ── Supported classical texts ─────────────────────────────────────────────────
 
@@ -111,14 +112,7 @@ the Hamsa-yoga concept, with chapter and verse_range for citation.`,
         }
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

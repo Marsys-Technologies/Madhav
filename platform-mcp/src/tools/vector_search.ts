@@ -31,6 +31,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
+import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
 
 const DOC_TYPES = ['l1_fact', 'ucn_section', 'msr_signal', 'cdlm_cell', 'domain_report', 'rm_element'] as const
@@ -76,11 +77,10 @@ export function registerVectorSearch(
         },
         principal
       )
-      const text = JSON.stringify(envelope, null, 2)
-      return {
-        content: [{ type: 'text' as const, text }],
-        isError: !envelope.ok || status >= 400,
+      if (!envelope.ok || status >= 400) {
+        return errorResult(envelope)
       }
+      return okResult(envelope)
     }
   )
 }

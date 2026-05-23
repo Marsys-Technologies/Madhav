@@ -19,6 +19,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformAsset } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
 
 // ── Supported canonical IDs ──────────────────────────────────────────────────
 
@@ -104,14 +105,7 @@ signals, 30,000+ words); read_asset({canonical_id: "FORENSIC", section:
         }
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

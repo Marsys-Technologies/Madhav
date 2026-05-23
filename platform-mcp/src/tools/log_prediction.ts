@@ -51,6 +51,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformWrites } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -124,25 +125,10 @@ export function registerLogPrediction(
       )
 
       if (!result.envelope.ok) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result.envelope, null, 2),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult(result.envelope)
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

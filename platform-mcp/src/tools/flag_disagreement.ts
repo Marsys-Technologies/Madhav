@@ -56,6 +56,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformWrites } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -124,22 +125,14 @@ export function registerFlagDisagreement(
       // Acharya and client tiers can note conflicts in their responses but cannot
       // write to the formal governance register — that requires operator trust.
       if (principal.audience_tier !== 'super_admin') {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                error: {
-                  class: 'TIER_FORBIDDEN',
-                  message: 'flag_disagreement requires super_admin tier. ' +
-                    'Acharya/client callers: note the conflict in your response instead.',
-                },
-              }, null, 2),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult({
+          ok: false,
+          error: {
+            class: 'TIER_FORBIDDEN',
+            message: 'flag_disagreement requires super_admin tier. ' +
+              'Acharya/client callers: note the conflict in your response instead.',
+          },
+        })
       }
 
       const result = await callPlatformWrites(
@@ -156,25 +149,10 @@ export function registerFlagDisagreement(
       )
 
       if (!result.envelope.ok) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result.envelope, null, 2),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult(result.envelope)
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

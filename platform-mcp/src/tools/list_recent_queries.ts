@@ -22,6 +22,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformRecent } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
 
 // ── Tool registration ─────────────────────────────────────────────────────────
 
@@ -95,14 +96,7 @@ list_recent_queries({since: "2026-05-20"}) → all calls since May 20.`,
         }
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

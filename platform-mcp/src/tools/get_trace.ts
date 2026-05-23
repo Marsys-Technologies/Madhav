@@ -24,6 +24,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformTrace } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult } from './_envelope.js'
 
 // ── Tool registration ─────────────────────────────────────────────────────────
 
@@ -122,14 +123,7 @@ classify (45ms), 6 tool steps (parallel, 1200ms total), synthesis (4300ms).`,
           : `${audit_findings.length} finding(s) attached by nightly audit.`,
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(enrichedEnvelope, null, 2),
-          },
-        ],
-      }
+      return okResult(enrichedEnvelope)
     }
   )
 }

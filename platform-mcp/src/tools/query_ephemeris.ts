@@ -28,6 +28,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
+import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
 
 const PLANETS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'] as const
@@ -71,11 +72,10 @@ export function registerQueryEphemeris(
         },
         principal
       )
-      const text = JSON.stringify(envelope, null, 2)
-      return {
-        content: [{ type: 'text' as const, text }],
-        isError: !envelope.ok || status >= 400,
+      if (!envelope.ok || status >= 400) {
+        return errorResult(envelope)
       }
+      return okResult(envelope)
     }
   )
 }

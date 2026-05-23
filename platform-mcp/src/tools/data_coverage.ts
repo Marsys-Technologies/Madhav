@@ -11,6 +11,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -54,19 +55,11 @@ Tier restriction: super_admin + acharya only. client tier = 403.`,
 
       // Tier gate
       if (principal.audience_tier === 'client' || principal.audience_tier === 'public_redacted') {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                error: 'Forbidden',
-                message: 'data_coverage is restricted to super_admin and acharya tiers.',
-              }),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult({
+          ok: false,
+          error: 'Forbidden',
+          message: 'data_coverage is restricted to super_admin and acharya tiers.',
+        })
       }
 
       try {
@@ -92,27 +85,12 @@ Tier restriction: super_admin + acharya only. client tier = 403.`,
           data.coverage = data.coverage.filter(c => c.tool === input.tool_filter)
         }
 
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(data),
-            },
-          ],
-        }
+        return okResult(data)
       } catch (err) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                error: err instanceof Error ? err.message : String(err),
-              }),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult({
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        })
       }
     }
   )
