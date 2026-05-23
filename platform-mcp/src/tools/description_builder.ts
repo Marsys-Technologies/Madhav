@@ -14,7 +14,7 @@ export interface BuildToolDescriptionOptions {
   enumSource: readonly string[]
   /**
    * Optional free-text hint about current data coverage
-   * (e.g. "795 rows across N categories").
+   * (e.g. "2,717 rows across 27 categories").
    */
   coverageHint?: string
 }
@@ -24,7 +24,7 @@ export interface BuildToolDescriptionOptions {
  * from the underlying platform layer.
  *
  * Example output:
- *   "What it does: Queries the chart_facts table (795 rows). ...
+ *   "What it does: Queries the chart_facts table (2,717 rows). ...
  *    Valid categories: house, shadbala, dasha_vimshottari, ..."
  */
 export function buildToolDescription({

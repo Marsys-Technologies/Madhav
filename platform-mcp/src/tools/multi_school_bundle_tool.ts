@@ -23,7 +23,7 @@ const MultiSchoolBundleInputSchema = z.object({
   ),
   schools: z.array(z.enum(SCHOOLS)).optional().describe(
     'Schools to include. Defaults to all four: parashara, jaimini, kp, tajaka. ' +
-    'KP and Tajaka evidence queries skip if the respective chart_facts rows have not been backfilled.'
+    'All four school evidence sets (including KP and Tajaka) are fully populated as of MCPT v3.3.'
   ),
 })
 
@@ -41,8 +41,8 @@ Fires: (1) cross_school_lookup to get stance + citation per school; (2) per-scho
 targeted evidence queries (Parashara → MSR signals, Jaimini → strength_extra chart_facts,
 KP → kp_cusp chart_facts, Tajaka → varshphal chart_facts); (3) read_classical_text for
 the most-cited classical reference from the lookup result. All tasks run concurrently with
-8-second per-tool timeouts and error isolation. KP and Tajaka evidence queries degrade
-gracefully if their chart_facts rows have not been backfilled (v3.3 scope). Results
+8-second per-tool timeouts and error isolation. All four school evidence sets are fully
+populated (MCPT v3.3 complete). Results
 cached 5 minutes.
 
 When to prefer: Use multi_school_bundle when the question explicitly concerns whether

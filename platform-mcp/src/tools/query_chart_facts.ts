@@ -1,7 +1,7 @@
 /**
  * query_chart_facts.ts — MCP Tier 3 surgical primitive: parametric chart-fact lookup.
  *
- * What it does: Queries the 795-row chart_facts table with structured filters
+ * What it does: Queries the 2,717-row chart_facts table with structured filters
  * (category, planet, house, as_of_date). Returns raw chart-fact rows — birth
  * data, dignity computations, shadbala, aspects, nakshatra placements, divisional
  * chart positions — without running the planner or synthesis. This is a direct
@@ -52,7 +52,7 @@ export const CHART_FACTS_CATEGORIES = [
 
 const CHART_FACTS_TOOL_DESCRIPTION = buildToolDescription({
   baseDescription:
-    'What it does: Queries the 795-row chart_facts table with structured filters ' +
+    'What it does: Queries the 2,717-row chart_facts table with structured filters ' +
     '(category, planet, house, as_of_date) and returns raw fact rows without synthesis. ' +
     'When to prefer: Use for single fact lookups ("What is Saturn\'s shadbala?"). ' +
     'Prefer query_signals for MSR signal corpus data. ' +
@@ -60,7 +60,7 @@ const CHART_FACTS_TOOL_DESCRIPTION = buildToolDescription({
     'Input shape hints: category is required; planet/house/as_of_date are optional filters; limit defaults to 50. ' +
     'Output shape: {ok, result: {rows: ChartFactRow[]}, trace_id, epistemics: {surgical: true}}.',
   enumSource: CHART_FACTS_CATEGORIES,
-  coverageHint: '795 rows across 37 categories',
+  coverageHint: '2,717 rows across 27 categories',
 })
 
 const QueryChartFactsInputSchema = z.object({
