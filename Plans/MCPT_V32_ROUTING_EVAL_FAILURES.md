@@ -82,3 +82,19 @@ Diff: `eval-results/routing_eval_verification_diff_20260523T222311Z.json`
 **MCPT v3.2 routing eval acceptance is closed at 29/30 (96.7%).** The remaining
 `chart_summary_d9_request` failure is a model-inference edge case (no_tool_call despite
 correct description); it does not block v3.2 acceptance (goal was ≥80%, met at 96.7%).
+
+---
+
+## R3 Repeat Confirmation — 2026-05-24 (independent re-run)
+
+Second independent run against the same revision (`amjis-mcp-00011-9zv`, main HEAD `d802639d`):
+
+| Metric | Value |
+|---|---|
+| Result | 29/30 = 96.7% |
+| Delta vs prior post-prod | +3.4pp (28→29) |
+| Verdict | IMPROVED |
+| Still failing | `chart_summary_d9_request` → `no_tool_call` (unchanged) |
+
+Result confirmed. Raw: `eval-results/routing_eval_verification_20260523T223357Z.json`
+Diff: `eval-results/routing_eval_verification_diff_20260523T223357Z.json`
