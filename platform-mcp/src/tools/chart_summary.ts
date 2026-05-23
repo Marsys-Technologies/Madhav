@@ -74,15 +74,18 @@ const DEFAULT_CATEGORIES = [
 
 export const CHART_SUMMARY_DESCRIPTION = buildToolDescription({
   baseDescription:
-    'What it does: Returns a canonical wide-by-default fact bundle for a chart in a single call, ' +
-    'spanning birth metadata, planetary positions, house assignments, yogas, arudha lagna, ' +
-    'current dasha state, and sensitive points across D1/D9/D10 by default.',
+    'FIRST CALL when interpreting any chart end-to-end. Returns 30-60 canonical facts in one ' +
+    'round-trip — birth metadata, planet placements, house occupancy, yogas, arudhas, current ' +
+    'dasha, sensitive points — across requested divisional charts (defaults to D1 + D9 navamsa ' +
+    '+ D10 dasamsa). Prefer over query_chart_facts unless you know the exact single category ' +
+    'you need.',
   coverageHint: 'Canonical ~50+ rows in ≤2 round-trips; replaces 5+ separate query_chart_facts calls.',
   whenToPrefer:
     'Use as the FIRST CALL for any chart interpretation task. ' +
     'Replaces 5+ separate query_chart_facts calls. ' +
     'Use include_categories / exclude_categories to narrow the bundle. ' +
-    'Surgical follow-ups via query_chart_facts for edge cases.',
+    'Surgical follow-ups via query_chart_facts for edge cases. ' +
+    'Works for both "navamsa" and "D9" requests — these are the same chart.',
 })
 
 // ── Input schema ──────────────────────────────────────────────────────────────

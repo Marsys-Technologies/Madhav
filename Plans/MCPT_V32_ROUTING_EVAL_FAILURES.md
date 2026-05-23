@@ -49,3 +49,7 @@ git_sha: b9f372a3
 Recommended action:
 - `AMBIGUOUS` fix applied now: `prompts.json` updated; re-running the eval should yield 29/30 (not 30/30 because the DESC_TUNE failure requires a description change first).
 - `DESC_TUNE` deferred: update `chart_summary` tool description to mention navamsa/D9/divisional chart data in a follow-up brief focused on description tuning.
+
+## Update — 2026-05-23 (post-merge follow-up)
+
+The DESC_TUNE failure for `chart_summary_d9_request` was addressed in the final close-out commit by adding explicit "navamsa" and "D9" mentions to the `chart_summary` tool description (`platform-mcp/src/tools/chart_summary.ts`). Re-running R3 against post-merge prod should yield 30/30 (29/30 was the ceiling before this change, after the AMBIGUOUS fix from this PR's earlier commit).

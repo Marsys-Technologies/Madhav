@@ -62,3 +62,6 @@ scripts/setup_mcp_env.sh
 
 # Post-merge smoke test scratch space
 /post_merge_smoke/
+
+# MCPT v3.2: track eval-results/ JSON, suppress legacy log noise
+eval-results/*.log
