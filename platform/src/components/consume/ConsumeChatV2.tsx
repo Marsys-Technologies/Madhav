@@ -1597,10 +1597,41 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(initialMessagesProp)
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  // pinnedOpen: true when the user explicitly clicked the toggle to open — hover-out won't auto-close.
+  // Resets to false when the user clicks toggle again (to close) or when sidebar auto-opens via hover.
+  const [sidebarPinned, setSidebarPinned] = useState(false)
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
   const [sidebarLoading, setSidebarLoading] = useState(false)
   const [textScale, increaseTextScale, decreaseTextScale] = useTextScale()
   const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
+
+  // Hover-based auto-expand / auto-collapse (desktop only).
+  // Strip mouseenter → expand after 150ms. Sidebar mouseleave → collapse after 400ms if not pinned.
+  const handleStripEnter = useCallback(() => {
+    if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    expandTimerRef.current = setTimeout(() => {
+      setSidebarCollapsed(false)
+      setSidebarPinned(false) // hover-open is not pinned
+    }, 150)
+  }, [])
+
+  const handleSidebarEnter = useCallback(() => {
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
+  }, [])
+
+  const handleSidebarLeave = useCallback(() => {
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    collapseTimerRef.current = setTimeout(() => {
+      setSidebarPinned(prev => {
+        if (!prev) setSidebarCollapsed(true)
+        return prev
+      })
+    }, 400)
+  }, [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
@@ -1704,6 +1735,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const handleSelectConversation = useCallback(async (id: string) => {
     setActiveConversationId(id)
     setSidebarCollapsed(true)
+    setSidebarPinned(false)
     try {
       const r = await fetch(`/api/conversations/${id}/messages`)
       if (r.ok) {
@@ -1768,7 +1800,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       hint: '⌘ B',
       icon: PanelLeft,
       keywords: 'sidebar conversations toggle',
-      run: () => { setSidebarCollapsed(c => !c); setPaletteOpen(false) },
+      run: () => { setSidebarCollapsed(c => { setSidebarPinned(!c); return !c }); setPaletteOpen(false) },
     },
     {
       id: 'shortcuts',
@@ -1802,16 +1834,23 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
         />
       )}
 
+      {/* Hover strip — invisible 12px zone on the left edge (desktop only).
+          Triggers auto-expand after 150ms when the sidebar is collapsed. */}
+      {sidebarCollapsed && (
+        <div
+          className="fixed left-0 inset-y-0 w-3 z-40 hidden md:block"
+          onMouseEnter={handleStripEnter}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar wrapper:
           Always fixed/overlay so it never steals width from the chat column.
-          collapsed=true  → hidden on mobile; fixed thin strip on md+
-          collapsed=false → fixed slide-over on all viewports */}
+          collapsed=true  → hidden; collapsed=false → fixed slide-over. */}
       <div
-        className={
-          sidebarCollapsed
-            ? 'hidden'
-            : 'fixed inset-y-0 left-0 z-40 flex'
-        }
+        className={sidebarCollapsed ? 'hidden' : 'fixed inset-y-0 left-0 z-40 flex'}
+        onMouseEnter={handleSidebarEnter}
+        onMouseLeave={handleSidebarLeave}
       >
         <ConversationSidebarV2
           chartId={chartId}
@@ -1819,7 +1858,11 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           onSelect={handleSelectConversation}
           onNew={handleNewConversation}
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((c) => !c)}
+          onToggle={() => {
+            const next = sidebarCollapsed
+            setSidebarCollapsed(!next)
+            setSidebarPinned(next) // opening via click = pin; closing via click = unpin
+          }}
           reloadTrigger={sidebarReloadTick}
           onRename={handleRenameConversation}
           onDelete={handleDeleteConversation}
@@ -1859,10 +1902,14 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           >
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
-          {/* Desktop: toggle sidebar */}
+          {/* Desktop: toggle sidebar (click = pin open / unpin+close) */}
           <button
             type="button"
-            onClick={() => setSidebarCollapsed(c => !c)}
+            onClick={() => {
+              const next = sidebarCollapsed
+              setSidebarCollapsed(!next)
+              setSidebarPinned(next) // opening = pin, closing = unpin
+            }}
             className="hidden md:flex h-8 w-8 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors"
             aria-label="Toggle conversations"
             data-testid="v2-desktop-sidebar-toggle"
