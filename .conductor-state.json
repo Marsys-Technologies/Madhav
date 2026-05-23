@@ -2,7 +2,7 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 9,
+  "current_phase": 10,
   "phases": [
     {
       "id": 0,
@@ -176,25 +176,29 @@
     },
     {
       "id": 9,
-      "status": "in_progress",
+      "status": "completed",
       "sub_agents": [
         {
           "id": "v32-s9a-cross-scenario-equivalence",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "8ad00154"
         },
         {
           "id": "v32-s9b-routing-eval",
-          "status": "in_progress"
+          "status": "completed",
+          "commit": "e25ea4bb"
         }
-      ]
+      ],
+      "completed_at": "2026-05-23T20:30:00Z",
+      "gate": "PASS"
     },
     {
       "id": 10,
-      "status": "pending",
+      "status": "in_progress",
       "sub_agents": [
         {
           "id": "v32-s10-final-verify",
-          "status": "pending"
+          "status": "in_progress"
         }
       ]
     }
