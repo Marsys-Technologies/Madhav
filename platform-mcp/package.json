@@ -11,7 +11,12 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "accuracy:capture": "vitest run test/accuracy/run.test.ts --reporter=verbose",
+    "accuracy:diff": "tsx test/accuracy/diff.ts",
+    "accuracy:regenerate-golden": "tsx test/accuracy/regenerate_golden.ts",
+    "bench:capture": "vitest run test/bench/run.ts --reporter=verbose",
+    "bench:diff": "tsx test/bench/diff.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

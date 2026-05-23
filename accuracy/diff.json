@@ -1,0 +1,181 @@
+{
+  "fixture": "/Users/Dev/Vibe-Coding/Apps/Madhav-mcpt-v32/platform-mcp/test/accuracy/fixtures/abhisek-mohanty-golden.json",
+  "run_at": "2026-05-23T17:47:46.997Z",
+  "git_sha": "4372cc40",
+  "checks": {
+    "golden_snapshot": {
+      "expected_rows": 2717,
+      "actual_rows": 215,
+      "delta": -2502,
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "verdict": "pass",
+  "regressions": [],
+  "detail": {
+    "birth_metadata": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "planet": {
+      "expected_min_rows": 9,
+      "actual_rows": 9,
+      "delta": 0,
+      "status": "ok"
+    },
+    "house": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "delta": 0,
+      "status": "ok"
+    },
+    "yoga": {
+      "expected_min_rows": 50,
+      "actual_rows": 50,
+      "delta": 0,
+      "status": "ok"
+    },
+    "arudha": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "delta": 0,
+      "status": "ok"
+    },
+    "dasha_vimshottari": {
+      "expected_min_rows": 3,
+      "actual_rows": 3,
+      "delta": 0,
+      "status": "ok"
+    },
+    "sensitive_point": {
+      "expected_min_rows": 5,
+      "actual_rows": 5,
+      "delta": 0,
+      "status": "ok"
+    },
+    "shadbala": {
+      "expected_min_rows": 7,
+      "actual_rows": 7,
+      "delta": 0,
+      "status": "ok"
+    },
+    "ashtakavarga_sav": {
+      "expected_min_rows": 7,
+      "actual_rows": 7,
+      "delta": 0,
+      "status": "ok"
+    },
+    "ashtakavarga_bav": {
+      "expected_min_rows": 56,
+      "actual_rows": 56,
+      "delta": 0,
+      "status": "ok"
+    },
+    "aspect": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "kp_planet": {
+      "expected_min_rows": 9,
+      "actual_rows": 9,
+      "delta": 0,
+      "status": "ok"
+    },
+    "kp_cusp": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "delta": 0,
+      "status": "ok"
+    },
+    "varshphal": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "special_lagna": {
+      "expected_min_rows": 3,
+      "actual_rows": 3,
+      "delta": 0,
+      "status": "ok"
+    },
+    "upagraha": {
+      "expected_min_rows": 5,
+      "actual_rows": 5,
+      "delta": 0,
+      "status": "ok"
+    },
+    "bhava_bala": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "delta": 0,
+      "status": "ok"
+    },
+    "navatara": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "arudha_occupancy": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "strength": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "chalit_shift": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "mrityu_bhaga": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "longevity_indicator": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "chandra_placement": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "avastha": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "saham": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    },
+    "dasha_chara": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "delta": 0,
+      "status": "ok"
+    }
+  }
+}
