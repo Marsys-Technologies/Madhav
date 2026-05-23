@@ -2,7 +2,7 @@
   "version": 1,
   "started_at": "2026-05-23T16:45:00Z",
   "branch": "feature/mcpt-v32-quality-tightening",
-  "current_phase": 1,
+  "current_phase": 3,
   "phases": [
     {
       "id": 0,
@@ -20,16 +20,12 @@
       {"id": "v32-s1c-supabase-076-seed-comment", "status": "completed", "commit": "d43d83d0"},
       {"id": "v32-s1d-audit-other-descriptions", "status": "completed", "commit": "9f0ce419"}
     ]},
-    {"id": 2, "status": "in_progress", "sub_agents": [
-      {"id": "v32-s2a-envelope-helper", "status": "in_progress"},
-      {"id": "v32-s2b-tool-migration", "status": "pending"}
+    {"id": 2, "status": "completed", "completed_at": "2026-05-23T17:45:00Z", "gate": "PASS", "sub_agents": [
+      {"id": "v32-s2a-envelope-helper", "status": "completed", "commit": "4756f5db"},
+      {"id": "v32-s2b-tool-migration", "status": "completed", "commit": "f1af2afd"}
     ]},
-    {"id": 2, "status": "pending", "sub_agents": [
-      {"id": "v32-s2a-envelope-helper", "status": "pending"},
-      {"id": "v32-s2b-tool-migration", "status": "pending"}
-    ]},
-    {"id": 3, "status": "pending", "sub_agents": [
-      {"id": "v32-s3-descriptions-builder-migration", "status": "pending"}
+    {"id": 3, "status": "in_progress", "sub_agents": [
+      {"id": "v32-s3-descriptions-builder-migration", "status": "in_progress"}
     ]},
     {"id": 4, "status": "pending", "sub_agents": [
       {"id": "v32-s4a-divisional-filter", "status": "pending"},
