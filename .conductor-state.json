@@ -194,11 +194,13 @@
     },
     {
       "id": 10,
-      "status": "in_progress",
+      "status": "waiting_prod_approval",
       "sub_agents": [
         {
           "id": "v32-s10-final-verify",
-          "status": "in_progress"
+          "status": "waiting_prod_approval",
+          "commit": "7e6fa2f3",
+          "note": "All code complete. Awaiting .conductor-approve-prod for staging deploy + prod promotion."
         }
       ]
     }
@@ -213,6 +215,15 @@
       ],
       "reason": "Prod operations: data_source_expected_seed.sql load to prod DB + gcloud run jobs create amjis-mcp-audit + gcloud scheduler job creation",
       "action_required": "Drop .conductor-approve-prod to unblock; conductor will run 7a+7b and then proceed to Phase 8"
+    },
+    {
+      "phase": 10,
+      "items": [
+        "staging_deploy",
+        "prod_promotion"
+      ],
+      "reason": "Phase 10.7-10.10: gcloud deploy to staging, review, then prod traffic split requires .conductor-approve-prod tripwire",
+      "action_required": "Drop .conductor-approve-prod at worktree root. Conductor will: deploy staging, post metrics to PR, await approval comment, then promote to prod."
     }
   ]
 }
