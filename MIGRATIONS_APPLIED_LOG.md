@@ -115,6 +115,7 @@ executor: Claude Code (autonomous, native-authorized)
 | 068_pin_archive_folders.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | conversation_folders, conversation_folder_members (tables), conversations.pinned (column) | R8-S4 pin/archive/folders; note: table names differ from brief assumptions; all 3 objects verified |
 | 069_performance_wiring_fixes.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | performance_queries: retrieval_scores (jsonb), compose_bundle_latency_ms (int), latency_complete (bool) | PERF-S1 wiring; all 3 columns verified |
 | 116_trace_mcp_tool_column.sql | 2026-05-23 | MCPT-v32-P5A | query_trace_steps.mcp_tool (TEXT), idx_query_trace_steps_mcp_tool | pending apply; backfills from data_summary->>'mcp_tool' |
+| 117_audience_tier_acharya_enum.sql | 2026-05-23 | MCPT-v32-P6A | mcp_api_keys.audience_tier CHECK constraint now includes 'acharya' | pending apply; idempotent DO block |
 
 ---
 
