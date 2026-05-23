@@ -122,12 +122,12 @@ sessions:
     phase: B
     title: "OpenAI visual smoke via Chrome MCP"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S4_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-B-S3]
-    commit_sha: null
+    commit_sha: "53fdd093"
     pr_url: null
-    notes: "Screenshots to visual_evidence/openai/."
+    notes: "Smoke PASS: 2 iterations (tool_calls→stop), GPT-4.1, Saturn dates returned, tool-flow timeline visible. MARSYS_FLAG_R11E_OPENAI_LOOP=true added to .env.local."
 
   - id: R11F-B-S5
     phase: B
