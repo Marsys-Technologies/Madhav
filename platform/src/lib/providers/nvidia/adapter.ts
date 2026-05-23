@@ -61,16 +61,39 @@ export class NVIDIAAdapter implements CapabilityAdapter {
         apiKey: process.env.NVIDIA_NIM_API_KEY,
         baseURL: 'https://integrate.api.nvidia.com/v1',
       });
-      const stream = await client.chat.completions.create({
+      // Build stream params; forward tools for models that support function calling.
+      // NVIDIA NIM llama-3.1-70b-instruct and llama-3.3-70b-instruct support OpenAI-compat tool calling.
+      // Tools are forwarded unconditionally here; unsupported models will return an API error
+      // that the tools() method's unsupportedModels list signals to the dispatcher.
+      const streamParams: Parameters<typeof client.chat.completions.create>[0] = {
         model: request.model,
         max_tokens: request.maxTokens ?? 4096,
         messages: request.messages.map((m) => ({
           role: m.role,
           content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
         })),
-        stream: true,
+        stream: true as const,
         stream_options: { include_usage: true },
-      });
+      };
+
+      // NIM uses OpenAI-compat function calling — plain JSON Schema parameters, no jsonSchema() wrapper.
+      if (request.tools && request.tools.length > 0) {
+        streamParams.tools = request.tools.map((tool) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.name,
+            description: tool.description ?? '',
+            parameters: (tool.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
+          },
+        }));
+      }
+
+      // Forward tool_choice if configured via toolsConfig.
+      if (request.toolsConfig?.providerPayload?.toolChoice) {
+        streamParams.tool_choice = request.toolsConfig.providerPayload.toolChoice as 'auto' | 'none' | 'required';
+      }
+
+      const stream = await client.chat.completions.create(streamParams);
 
       const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();
 
