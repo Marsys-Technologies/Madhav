@@ -98,3 +98,24 @@ Second independent run against the same revision (`amjis-mcp-00011-9zv`, main HE
 
 Result confirmed. Raw: `eval-results/routing_eval_verification_20260523T223357Z.json`
 Diff: `eval-results/routing_eval_verification_diff_20260523T223357Z.json`
+
+---
+
+## R3 Third Run — 2026-05-24 (final independent confirmation)
+
+Third independent run against `amjis-mcp-00011-9zv` (main HEAD `4cdf5a77`):
+
+| Metric | Value |
+|---|---|
+| Prior result (post-prod, pre-DESC_TUNE) | 28/30 = 93.3% |
+| Post-DESC_TUNE result | 29/30 = 96.7% |
+| Delta | +3.3pp |
+| Verdict | IMPROVED |
+| Still failing | `chart_summary_d9_request` → `no_tool_call` (unchanged across all 3 runs) |
+
+Three independent runs confirm the stable ceiling: 29/30 (96.7%). The `chart_summary_d9_request` failure is a persistent MODEL_ERROR/AMBIGUOUS edge case — description was updated (navamsa+D9 explicit), but the model consistently returns no_tool_call for this prompt. Does not block acceptance (goal ≥80%, met at 96.7%).
+
+Raw: `eval-results/routing_eval_verification_20260523T234109Z.json`
+Diff: `eval-results/routing_eval_verification_diff_20260523T234109Z.json`
+
+**MCPT v3.2 routing eval acceptance closed at 29/30 (96.7%). Stable across 3 runs.**
