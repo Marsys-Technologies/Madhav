@@ -207,7 +207,9 @@ sessions:
 
   - id: G-S5
     title: "Server-side integration smoke (real-tool loop + dropdown)"
-    status: pending
+    status: passed
+    passed_at: "2026-05-23T11:00:00Z"
+    commit_sha: 49b7c3aa
     parallel_group: null
     commit_message: "test(r11g): server-side integration smoke for tool executor + dropdown"
     acceptance_criteria:
