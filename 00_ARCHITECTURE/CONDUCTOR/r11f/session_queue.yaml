@@ -19,10 +19,10 @@ sessions:
     phase: A
     title: "Anthropic adapter: forward tools+toolChoice to streamText"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S1_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [precursor-arc-merged]
-    commit_sha: null
+    commit_sha: "26c377f7"
     pr_url: null
     notes: "Fixes Break B2. Promotes PROBE test out of describe.skip."
 
