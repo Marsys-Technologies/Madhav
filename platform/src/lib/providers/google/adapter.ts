@@ -65,12 +65,62 @@ export class GoogleAdapter implements CapabilityAdapter {
       (request.messages.find((m) => m.role === 'system')?.content as string | undefined);
 
     // Filter out system messages — passed separately above.
-    const conversationMessages = request.messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content as string,
-      }));
+    // R11F-B-S2: Properly convert ChatMessage[] to Vercel AI SDK ModelMessage[] format.
+    // When the agentic loop feeds tool results back, content is ChatContentBlock[] not string.
+    // We must map tool_use blocks → CoreAssistantMessage tool-call parts, and
+    // tool_result blocks → CoreToolMessage tool-result parts (separate role='tool' messages).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const conversationMessages: any[] = []
+    for (const m of request.messages) {
+      if (m.role === 'system') continue
+      if (typeof m.content === 'string') {
+        conversationMessages.push({ role: m.role, content: m.content })
+        continue
+      }
+      // content is ChatContentBlock[]
+      const blocks = m.content
+      const toolUseBlocks = blocks.filter(b => b.type === 'tool_use')
+      const toolResultBlocks = blocks.filter(b => b.type === 'tool_result')
+      const textBlocks = blocks.filter(b => b.type === 'text')
+
+      if (toolUseBlocks.length > 0) {
+        // Assistant turn with tool calls — Vercel AI SDK CoreAssistantMessage format
+        conversationMessages.push({
+          role: 'assistant',
+          content: [
+            ...textBlocks.map(b => ({ type: 'text', text: (b as { type: 'text'; text: string }).text })),
+            ...toolUseBlocks.map(b => {
+              const tb = b as { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+              // ToolCallPart: { type: 'tool-call', toolCallId, toolName, input } (not 'args')
+              return { type: 'tool-call', toolCallId: tb.id, toolName: tb.name, input: tb.input }
+            }),
+          ],
+        })
+      } else if (toolResultBlocks.length > 0) {
+        // User turn with tool results — Vercel AI SDK ToolModelMessage format (role='tool')
+        // ToolResultPart requires: { type: 'tool-result', toolCallId, toolName, output: ToolResultOutput }
+        // ToolResultOutput for string content: { type: 'text', value: string }
+        // Gemini requires non-empty function_response.name — use name from tool_result block.
+        conversationMessages.push({
+          role: 'tool',
+          content: toolResultBlocks.map(b => {
+            const rb = b as { type: 'tool_result'; toolUseId: string; name?: string; content: string }
+            return {
+              type: 'tool-result',
+              toolCallId: rb.toolUseId,
+              toolName: rb.name ?? 'unknown_tool',
+              output: { type: 'text', value: rb.content },
+            }
+          }),
+        })
+      } else {
+        // Plain text content blocks — join as string
+        const text = textBlocks
+          .map(b => (b as { type: 'text'; text: string }).text)
+          .join('')
+        conversationMessages.push({ role: m.role, content: text || '[no content]' })
+      }
+    }
 
     // Build provider options — include thinkingConfig if set.
     // Gemini shape: providerOptions.google.thinkingConfig: { thinkingBudget: N }
@@ -152,12 +202,22 @@ export class GoogleAdapter implements CapabilityAdapter {
           // so isToolUseSignal() with 'finish_reason_function_calls' config recognises it.
           const stopReason =
             part.finishReason === 'tool-calls' ? 'function_calls' : (part.finishReason ?? 'end_turn');
+          // R11F-B-S2: Log error finish reasons so the root cause is visible in dev server log.
+          if (part.finishReason === 'error' || part.finishReason === 'content-filter') {
+            console.error('[google-adapter] Gemini finish with error/filter reason:', {
+              finishReason: part.finishReason,
+              totalUsage: part.totalUsage,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              rawResponse: (part as any).rawResponse,
+            });
+          }
           yield {
             type: 'message_stop',
             stopReason,
           };
         } else if (part.type === 'error') {
           const errMsg = part.error instanceof Error ? part.error.message : String(part.error);
+          console.error('[google-adapter] Gemini stream error part:', errMsg);
           yield { type: 'error', error: errMsg };
         }
       }

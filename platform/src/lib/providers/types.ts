@@ -45,7 +45,7 @@ export interface ChatMessage {
 export type ChatContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image'; source: ImageSource }
-  | { type: 'tool_result'; toolUseId: string; content: string }
+  | { type: 'tool_result'; toolUseId: string; name?: string; content: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
 
 export interface ImageSource {
