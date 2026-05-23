@@ -1,6 +1,6 @@
 -- data_source_expected_seed.sql — Initial expected row counts for data coverage reporting.
 -- MCPT v3.1.0-S4
--- Apply after migration 076.
+-- Status: Ready to load. Migrations 073-076 applied 2026-05-22. MCPT v3.3 backfill complete.
 
 -- chart_facts categories
 INSERT INTO data_source_expected (tool_name, category, expected_rows, backfill_phase, notes)
@@ -48,11 +48,11 @@ VALUES
   ('lel_query', 'life_events', 36, 'v3.1.0-S1', 'LEL v1.6: 36 events + 5 period summaries + 6 chronic patterns')
 ON CONFLICT (tool_name, category) DO NOTHING;
 
--- Tool caveats for pending backfills
+-- Tool caveats (v3.3 backfill complete 2026-05-22 — rows now populated)
 INSERT INTO tool_caveats (tool_name, caveat_text, caveat_class, severity)
 VALUES
-  ('query_chart_facts', 'KP categories (kp_cusp, kp_planet, kp_significator) return 0 rows until v3.3 backfill completes.', 'data_gap', 'warn'),
-  ('query_chart_facts', 'Tajaka category (varshphal) returns 0 rows until v3.3 backfill completes.', 'data_gap', 'warn'),
-  ('query_chart_facts', 'Strength categories (shadbala, ashtakavarga_sav, ashtakavarga_bav, bhava_bala) return 0 rows until v3.3 backfill completes.', 'data_gap', 'warn'),
-  ('query_chart_facts', 'Upagraha positions return 0 rows until v3.3 backfill completes.', 'data_gap', 'warn')
+  ('query_chart_facts', 'KP categories (kp_cusp, kp_planet, kp_significator): v3.3 backfill complete 2026-05-22.', 'data_gap', 'info'),
+  ('query_chart_facts', 'Tajaka category (varshphal): v3.3 backfill complete 2026-05-22.', 'data_gap', 'info'),
+  ('query_chart_facts', 'Strength categories (shadbala, ashtakavarga_sav, ashtakavarga_bav, bhava_bala): v3.3 backfill complete 2026-05-22.', 'data_gap', 'info'),
+  ('query_chart_facts', 'Upagraha positions: v3.3 backfill complete 2026-05-22.', 'data_gap', 'info')
 ON CONFLICT DO NOTHING;
