@@ -13,18 +13,23 @@
  * Prefer query_signals when you need MSR signal corpus data rather than raw chart facts.
  *
  * Input shape hints:
- *   category — required; e.g. "shadbala", "dignity", "nakshatra", "aspect",
- *     "house_placement", "dasha_vimshottari", "divisional_D9".
+ *   category — single category string; e.g. "shadbala", "aspect", "dasha_vimshottari".
+ *   categories — optional array of category strings for multi-category batching in one call.
+ *     When provided, overrides `category`. Response uses rows_by_category: {cat: rows[]}.
  *   planet — optional; filter to a specific planet (e.g. "Saturn", "Moon").
  *   house — optional; filter to a specific house number (1–12).
  *   as_of_date — optional ISO date; filters time-sensitive facts to that date.
  *   limit — optional; max rows to return (default 50).
  *
- * Output shape preview: {ok, result: {rows: ChartFactRow[]}, trace_id, epistemics: {surgical: true}}.
+ * Output shape preview (single): {ok, result: {rows: ChartFactRow[]}, trace_id, epistemics: {surgical: true}}.
+ * Output shape preview (batched): {ok, result: {rows_by_category: {cat: ChartFactRow[]}}, trace_id, epistemics: {surgical: true}}.
  *
- * Example: query_chart_facts({category: "shadbala", planet: "Saturn"}) →
- *   {ok: true, result: {rows: [{planet: "Saturn", category: "shadbala",
- *   value: "7.4 rupas", ...}]}, epistemics: {surgical: true, confidence_band: "high"}}
+ * Example (single): query_chart_facts({category: "shadbala", planet: "Saturn"}) →
+ *   {ok: true, result: {rows: [{planet: "Saturn", category: "shadbala", ...}]}, ...}
+ * Example (batched): query_chart_facts({categories: ["planet", "house", "yoga"]}) →
+ *   {ok: true, result: {rows_by_category: {planet: [...], house: [...], yoga: [...]}}, ...}
+ *
+ * MCPT v3.2 P4b: Added `categories` array batching param.
  */
 
 import { z } from 'zod'
@@ -74,6 +79,7 @@ const QueryChartFactsInputSchema = z.object({
   planet: z.string().optional().describe('Filter to a specific planet (e.g. "Saturn", "Moon").'),
   house: z.number().int().min(1).max(12).optional().describe('Filter to a specific house (1–12).'),
   as_of_date: z.string().optional().describe('ISO date for time-sensitive fact filtering.'),
+  divisional_chart: z.string().optional().describe('Optional divisional chart filter. Examples: "D1", "D9", "D10", "D12". When provided, only rows matching this divisional_chart are returned.'),
   limit: z.number().int().min(1).max(200).optional().default(50).describe('Max rows to return.'),
 })
 
@@ -96,6 +102,7 @@ export function registerQueryChartFacts(
           ...(args.planet ? { planet: args.planet } : {}),
           ...(args.house !== undefined ? { house: args.house } : {}),
           ...(args.as_of_date ? { as_of_date: args.as_of_date } : {}),
+          ...(args.divisional_chart ? { divisional_chart: args.divisional_chart } : {}),
           limit: args.limit ?? 50,
         },
         principal
