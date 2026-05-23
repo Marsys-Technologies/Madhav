@@ -23,26 +23,10 @@
       "completed_at": "2026-05-23T17:15:00Z",
       "gate": "PASS",
       "sub_agents": [
-        {
-          "id": "v32-s1a-data_coverage-description",
-          "status": "completed",
-          "commit": "47363264"
-        },
-        {
-          "id": "v32-s1b-tool_health-data_note",
-          "status": "completed",
-          "commit": "5dd5f83a"
-        },
-        {
-          "id": "v32-s1c-supabase-076-seed-comment",
-          "status": "completed",
-          "commit": "d43d83d0"
-        },
-        {
-          "id": "v32-s1d-audit-other-descriptions",
-          "status": "completed",
-          "commit": "9f0ce419"
-        }
+        { "id": "v32-s1a-data_coverage-description", "status": "completed", "commit": "47363264" },
+        { "id": "v32-s1b-tool_health-data_note", "status": "completed", "commit": "5dd5f83a" },
+        { "id": "v32-s1c-supabase-076-seed-comment", "status": "completed", "commit": "d43d83d0" },
+        { "id": "v32-s1d-audit-other-descriptions", "status": "completed", "commit": "9f0ce419" }
       ]
     },
     {
@@ -51,89 +35,49 @@
       "completed_at": "2026-05-23T17:45:00Z",
       "gate": "PASS",
       "sub_agents": [
-        {
-          "id": "v32-s2a-envelope-helper",
-          "status": "completed",
-          "commit": "4756f5db"
-        },
-        {
-          "id": "v32-s2b-tool-migration",
-          "status": "completed",
-          "commit": "f1af2afd"
-        }
+        { "id": "v32-s2a-envelope-helper", "status": "completed", "commit": "4756f5db" },
+        { "id": "v32-s2b-tool-migration", "status": "completed", "commit": "f1af2afd" }
       ]
     },
     {
       "id": 3,
       "status": "completed",
-      "sub_agents": [
-        {
-          "id": "v32-s3-descriptions-builder-migration",
-          "status": "completed",
-          "commit": "5228b2d9"
-        }
-      ],
       "completed_at": "2026-05-23T18:15:00Z",
-      "gate": "PASS"
+      "gate": "PASS",
+      "sub_agents": [
+        { "id": "v32-s3-descriptions-builder-migration", "status": "completed", "commit": "5228b2d9" }
+      ]
     },
     {
       "id": 4,
       "status": "completed",
-      "sub_agents": [
-        {
-          "id": "v32-s4a-divisional-filter",
-          "status": "completed",
-          "commit": "ffefabf7"
-        },
-        {
-          "id": "v32-s4b-categories-batching",
-          "status": "completed",
-          "commit": "5fa9edd4"
-        },
-        {
-          "id": "v32-s4c-chart-summary",
-          "status": "completed",
-          "commit": "34b2ccbe"
-        }
-      ],
       "completed_at": "2026-05-23T18:45:00Z",
-      "gate": "PASS"
+      "gate": "PASS",
+      "sub_agents": [
+        { "id": "v32-s4a-divisional-filter", "status": "completed", "commit": "ffefabf7" },
+        { "id": "v32-s4b-categories-batching", "status": "completed", "commit": "5fa9edd4" },
+        { "id": "v32-s4c-chart-summary", "status": "completed", "commit": "34b2ccbe" }
+      ]
     },
     {
       "id": 5,
       "status": "completed",
-      "sub_agents": [
-        {
-          "id": "v32-s5a-trace-name-canonicalization",
-          "status": "completed",
-          "commit": "2af51f79"
-        },
-        {
-          "id": "v32-s5b-query-summary-population",
-          "status": "completed",
-          "commit": "2a8fcc6e"
-        }
-      ],
       "completed_at": "2026-05-23T19:10:00Z",
-      "gate": "PASS"
+      "gate": "PASS",
+      "sub_agents": [
+        { "id": "v32-s5a-trace-name-canonicalization", "status": "completed", "commit": "2af51f79" },
+        { "id": "v32-s5b-query-summary-population", "status": "completed", "commit": "2a8fcc6e" }
+      ]
     },
     {
       "id": 6,
       "status": "completed",
-      "sub_agents": [
-        {
-          "id": "v32-s6a-acharya-enum-decision",
-          "status": "completed",
-          "commit": "9bb60f57"
-        },
-        {
-          "id": "v32-s6b-tier-aware-list-tools",
-          "status": "completed",
-          "commit": "28e4f9f7"
-        }
-      ],
       "completed_at": "2026-05-23T19:30:00Z",
-      "gate": "PASS"
+      "gate": "PASS",
+      "sub_agents": [
+        { "id": "v32-s6a-acharya-enum-decision", "status": "completed", "commit": "9bb60f57" },
+        { "id": "v32-s6b-tier-aware-list-tools", "status": "completed", "commit": "28e4f9f7" }
+      ]
     },
     {
       "id": 7,
@@ -149,48 +93,28 @@
           "status": "blocked",
           "reason": ".conductor-approve-prod tripwire absent; prod DB seed and Cloud Run job creation require human approval"
         },
-        {
-          "id": "v32-s7c-handlers-truth",
-          "status": "completed",
-          "commit": "7a7f1e9c"
-        }
+        { "id": "v32-s7c-handlers-truth", "status": "completed", "commit": "7a7f1e9c" }
       ]
     },
     {
       "id": 8,
       "status": "completed",
-      "sub_agents": [
-        {
-          "id": "v32-s8a-bench-harness",
-          "status": "completed",
-          "commit": "908f73d2"
-        },
-        {
-          "id": "v32-s8b-accuracy-harness",
-          "status": "completed",
-          "commit": "36793c7f"
-        }
-      ],
       "completed_at": "2026-05-23T20:00:00Z",
-      "gate": "PASS"
+      "gate": "PASS",
+      "sub_agents": [
+        { "id": "v32-s8a-bench-harness", "status": "completed", "commit": "908f73d2" },
+        { "id": "v32-s8b-accuracy-harness", "status": "completed", "commit": "36793c7f" }
+      ]
     },
     {
       "id": 9,
       "status": "completed",
-      "sub_agents": [
-        {
-          "id": "v32-s9a-cross-scenario-equivalence",
-          "status": "completed",
-          "commit": "8ad00154"
-        },
-        {
-          "id": "v32-s9b-routing-eval",
-          "status": "completed",
-          "commit": "e25ea4bb"
-        }
-      ],
       "completed_at": "2026-05-23T20:30:00Z",
-      "gate": "PASS"
+      "gate": "PASS",
+      "sub_agents": [
+        { "id": "v32-s9a-cross-scenario-equivalence", "status": "completed", "commit": "8ad00154" },
+        { "id": "v32-s9b-routing-eval", "status": "completed", "commit": "e25ea4bb" }
+      ]
     },
     {
       "id": 10,
@@ -199,8 +123,8 @@
         {
           "id": "v32-s10-final-verify",
           "status": "waiting_prod_approval",
-          "commit": "7e6fa2f3",
-          "note": "All code complete. Awaiting .conductor-approve-prod for staging deploy + prod promotion."
+          "commit": "ec950a72",
+          "note": "Build fix applied (MCP SDK 1.12 type compat). tsc clean, 257/257 tests pass. Awaiting .conductor-approve-prod for Phase 7a+7b then staging deploy + prod promotion."
         }
       ]
     }
@@ -209,20 +133,14 @@
   "human_gates_pending": [
     {
       "phase": 7,
-      "items": [
-        "v32-s7a-seed-load",
-        "v32-s7b-nightly-audit-job"
-      ],
+      "items": ["v32-s7a-seed-load", "v32-s7b-nightly-audit-job"],
       "reason": "Prod operations: data_source_expected_seed.sql load to prod DB + gcloud run jobs create amjis-mcp-audit + gcloud scheduler job creation",
-      "action_required": "Drop .conductor-approve-prod to unblock; conductor will run 7a+7b and then proceed to Phase 8"
+      "action_required": "Drop .conductor-approve-prod to unblock; conductor will run 7a+7b then Phase 10 staging+prod"
     },
     {
       "phase": 10,
-      "items": [
-        "staging_deploy",
-        "prod_promotion"
-      ],
-      "reason": "Phase 10.7-10.10: gcloud deploy to staging, review, then prod traffic split requires .conductor-approve-prod tripwire",
+      "items": ["staging_deploy", "prod_promotion"],
+      "reason": "Phase 10.7-10.10: gcloud deploy to staging, review, then prod traffic split",
       "action_required": "Drop .conductor-approve-prod at worktree root. Conductor will: deploy staging, post metrics to PR, await approval comment, then promote to prod."
     }
   ]
