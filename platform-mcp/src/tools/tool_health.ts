@@ -72,7 +72,7 @@ export function registerToolHealth(
 
         const data = await response.json() as Record<string, unknown>
 
-        return okResult({ ...data, lookback_hours: input.lookback_hours } as { ok: boolean; [key: string]: unknown })
+        return okResult({ ...data, lookback_hours: input.lookback_hours } as unknown as { ok: boolean; [key: string]: unknown })
       } catch (err) {
         return errorResult({
           ok: false,
