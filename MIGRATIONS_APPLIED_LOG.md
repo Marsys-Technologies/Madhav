@@ -114,6 +114,7 @@ executor: Claude Code (autonomous, native-authorized)
 | 067_pg_trgm_conversation_messages.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | pg_trgm extension + idx_conv_messages_body_trgm (GIN index) | R8-S3 sidebar FTS search; both objects verified |
 | 068_pin_archive_folders.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | conversation_folders, conversation_folder_members (tables), conversations.pinned (column) | R8-S4 pin/archive/folders; note: table names differ from brief assumptions; all 3 objects verified |
 | 069_performance_wiring_fixes.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | performance_queries: retrieval_scores (jsonb), compose_bundle_latency_ms (int), latency_complete (bool) | PERF-S1 wiring; all 3 columns verified |
+| 116_trace_mcp_tool_column.sql | 2026-05-23 | MCPT-v32-P5A | query_trace_steps.mcp_tool (TEXT), idx_query_trace_steps_mcp_tool | pending apply; backfills from data_summary->>'mcp_tool' |
 
 ---
 
@@ -121,7 +122,7 @@ executor: Claude Code (autonomous, native-authorized)
 
 After every migration apply, append a row to this file in the same commit that applies. See `00_ARCHITECTURE/MIGRATION_DIRECTORY_POLICY_v1_0.md` for directory rules.
 
-- **Canonical directory:** `platform/migrations/` (next migration: 115)
+- **Canonical directory:** `platform/migrations/` (next migration: 117)
 - **Frozen directory:** `platform/supabase/migrations/` (no new files)
 - **Idempotency:** All migrations use `IF NOT EXISTS` guards
 - **Verify command:** `psql "$DATABASE_URL" -c "SELECT to_regclass('public.<table>');"`
