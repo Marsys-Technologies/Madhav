@@ -89,12 +89,12 @@ sessions:
     phase: B
     title: "Google adapter: forward tools in Gemini format + E2E test"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S1_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: true
     blocked_by: [R11F-A-S2]
-    commit_sha: null
+    commit_sha: "aa4d3343"
     pr_url: null
-    notes: "Parallel-eligible with B-S3. Use isolation:worktree if concurrent."
+    notes: "Cherry-picked b338f038 from worktree + aa4d3343 server-only fix. 13 tests pass. D.3 cachedContent already wired. Used Vercel AI SDK ToolSet format."
 
   - id: R11F-B-S2
     phase: B
@@ -111,12 +111,12 @@ sessions:
     phase: B
     title: "OpenAI adapter: forward tools in OpenAI format + E2E test"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S3_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: true
     blocked_by: [R11F-A-S2]
-    commit_sha: null
+    commit_sha: "baf67ecb"
     pr_url: null
-    notes: "Parallel-eligible with B-S1. Use isolation:worktree if concurrent."
+    notes: "Cherry-picked 59b46284 from worktree. 19 tests pass. Raw OpenAI SDK (no Vercel wrapper); plain JSON Schema for parameters. vi.hoisted mock pattern."
 
   - id: R11F-B-S4
     phase: B
