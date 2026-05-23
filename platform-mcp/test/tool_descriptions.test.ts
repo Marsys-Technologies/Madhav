@@ -87,10 +87,11 @@ describe('F.3 — Enum-derived tool descriptions', () => {
 })
 
 describe('MCPT v3.2 Phase 3 — Tool description lint gate', () => {
-  it('CATALOG covers all 21 tools', () => {
-    expect(CATALOG).toHaveLength(21)
+  it('CATALOG covers all 22 tools', () => {
+    expect(CATALOG).toHaveLength(22)
     const names = CATALOG.map(t => t.name)
     // Spot-check a representative from each tier
+    expect(names).toContain('chart_summary')
     expect(names).toContain('holistic_bundle')
     expect(names).toContain('query_chart_facts')
     expect(names).toContain('read_asset')

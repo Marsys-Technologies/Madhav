@@ -1,12 +1,15 @@
 /**
- * catalog.ts — MCPT v3.2 Phase 3: Tool description catalog for lint testing.
+ * catalog.ts — MCPT v3.2 Phase 4c: Tool description catalog for lint testing.
  *
- * Exports an array of { name, description } entries for all 21 registered MCP tools.
+ * Exports an array of { name, description } entries for all 22 registered MCP tools.
  * Used by test/tool_descriptions.test.ts to enforce the Phase 3 lint gate:
  *   - every description starts with a disambiguator sentence
  *   - every description contains "When to prefer:"
  *   - every description is ≤ 1200 characters
  */
+
+// Tier 1: super-endpoint
+import { CHART_SUMMARY_DESCRIPTION } from './chart_summary.js'
 
 // Tier 2: composite bundles
 import { HOLISTIC_BUNDLE_DESCRIPTION } from './holistic_bundle_tool.js'
@@ -45,10 +48,13 @@ export interface ToolCatalogEntry {
 }
 
 /**
- * CATALOG — all 21 MCP tools with their current descriptions.
+ * CATALOG — all 22 MCP tools with their current descriptions.
  * Order mirrors server.ts tool registration order.
  */
 export const CATALOG: ToolCatalogEntry[] = [
+  // Tier 1: super-endpoint
+  { name: 'chart_summary', description: CHART_SUMMARY_DESCRIPTION },
+
   // Tier 2: bundles
   { name: 'holistic_bundle', description: HOLISTIC_BUNDLE_DESCRIPTION },
   { name: 'multi_school_bundle', description: MULTI_SCHOOL_BUNDLE_DESCRIPTION },

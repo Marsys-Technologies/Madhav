@@ -5,9 +5,10 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 21 tools registered (v3.5, per arch §3.7).
+ * - 22 tools registered (v3.6, per arch §3.7 + MCPT v3.2 Phase 4c).
  *
- * Tool count (v3.5, 21 tools per MCP arch §3.7):
+ * Tool count (v3.6, 22 tools per MCP arch §3.7 + MCPT v3.2 Phase 4c):
+ *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
  *   Tier 3 surgical primitives (10): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
@@ -49,6 +50,8 @@ import { registerListRecentQueries } from './tools/list_recent_queries.js'
 import { registerLogPrediction } from './tools/log_prediction.js'
 import { registerRecordOutcome } from './tools/record_outcome.js'
 import { registerFlagDisagreement } from './tools/flag_disagreement.js'
+// Tier 1: super-endpoint (MCPT v3.2 Phase 4c)
+import { registerChartSummaryTool } from './tools/chart_summary.js'
 // Tier 2: composite bundles (MCPT v3.1.0-S2)
 import { registerHolisticBundle } from './tools/holistic_bundle_tool.js'
 import { registerMultiSchoolBundle } from './tools/multi_school_bundle_tool.js'
@@ -120,6 +123,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Resources are read once at session attach — they orient Claude to the
   // singleton chart and operating discipline without burning per-turn tool calls.
   registerResources(server)
+
+  // Register Tier 1 super-endpoint.
+  registerChartSummaryTool(server, getPrincipal)
 
   // Register Tier 2 bundles.
   registerHolisticBundle(server, getPrincipal)
