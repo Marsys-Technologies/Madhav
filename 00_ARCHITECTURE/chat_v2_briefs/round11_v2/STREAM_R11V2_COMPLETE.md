@@ -148,13 +148,15 @@ Full finding documented in `ROLLOUT_PHASE_E_RESULT.md`.
 | `MARSYS_FLAG_R11D_GEMINI_CACHE` | `false` | rolled back rev 357 |
 | `MARSYS_FLAG_R11E_*_LOOP` (×4) | `false` | default (never flipped) |
 
-### Deferred items (R11.F arc scope)
+### Deferred items — now COMPLETE (R11.F arc, PR #151, SHA 97acf339)
 
-1. Route.ts: wire `adapter.cache()` → `genai.caches.create()` → pass cachedContent ID to model request
-2. Route.ts: wire `adapter.loop()` → `agentic_loop.ts` engine for all 5 providers
-3. After (1): flip `MARSYS_FLAG_R11D_GEMINI_CACHE=true` and run 2-query verification
-4. After (2): flip E flags individually with tool-loop iteration verification
+1. ✅ Route.ts: wire `adapter.cache()` → `genai.caches.create()` → pass cachedContent ID to model request
+2. ✅ Route.ts: wire `adapter.loop()` → `agentic_loop.ts` engine for all 5 providers
+3. After (1): flip `MARSYS_FLAG_R11D_GEMINI_CACHE=true` — see ROLLOUT_PHASE_R11F_RESULT.md
+4. After (2): flip E flags individually — see ROLLOUT_PHASE_R11F_RESULT.md
+
+**Note on tool executor**: Loop is wired with a stub executor. Full MCP tool dispatch is the next follow-up arc.
 
 ---
 
-*STREAM_R11V2_COMPLETE.md — §7 amended 2026-05-23 by R11V2-Phase-DE-Resume rollout session.*
+*STREAM_R11V2_COMPLETE.md — §7 amended 2026-05-23 by R11V2-Phase-DE-Resume rollout session. §7 deferred items closed 2026-05-23 by R11F-S7 governance session (PR #151, SHA 97acf339).*

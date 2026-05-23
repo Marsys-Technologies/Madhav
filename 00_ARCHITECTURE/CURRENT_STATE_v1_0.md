@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.51
+version: 5.52
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.52 (2026-05-23, R11F-S7-GOVERNANCE-CLOSE):
+    **R11.F wiring arc COMPLETE — PR #151 merged (squash SHA 97acf339). D.3 Gemini cache wired; E.1-E.4 agentic loop wired (stub executor). All R11.D + R11.E flags ready to flip per operator runbook. Branch feature/r11f-wiring-arc retired. No macro-phase change.**
+    Key outcomes: (A) PR #151 squash-merged to main (SHA 97acf339): adapter.cache() wired into route.ts dispatch for D.3 MARSYS_FLAG_R11D_GEMINI_CACHE path — calls genai.caches.create() + passes cachedContent ID to model request; adapter.loop() wired into route.ts dispatch for E.1-E.4 R11E_*_LOOP paths — invokes agentic_loop.ts engine with stub tool executor. (B) 7 new test files added (agentic-loop-engine.test.ts + 5 per-provider tool-events + gemini-cache-wiring.test.ts); full vitest suite passes. (C) ROLLOUT_PHASE_R11F_RESULT.md authored with per-flag gcloud flip commands + verification steps. (D) STREAM_R11V2_COMPLETE.md §7 deferred items marked COMPLETE. (E) feature/r11f-wiring-arc branch retired. (F) MP.2 mirror (.gemini/project_state.md) updated.
+    files_touched: ["00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_R11F_RESULT.md", "00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (R11F governance close-out session; no macro-phase change).
+    last_session_id: R11F-S7-GOVERNANCE-CLOSE. predecessor_session: R11V2-PHASE-DE-ROLLOUT.
+    carry_forwards: ["Operator: flip MARSYS_FLAG_R11D_GEMINI_CACHE=true after deploy verification per ROLLOUT_PHASE_R11F_RESULT.md", "Operator: flip E flags individually (E.1 first, 15-min windows) per ROLLOUT_PHASE_R11F_RESULT.md", "Operator: add each verified flag to deploy.yml env_vars for persistence", "Follow-up arc: full MCP tool dispatch wiring (stub executor replacement)"]
+    next_session_objective: "Operator activates D.3 and E.1-E.4 flags per ROLLOUT_PHASE_R11F_RESULT.md. Next project session: M6-A-S1."
+    file_updated_at: 2026-05-23. file_updated_by_session: R11F-S7-GOVERNANCE-CLOSE.
   - v5.51 (2026-05-23, R11V2-PHASE-DE-ROLLOUT):
     **R11.D + R11.E production flag rollout — D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). Deploy.yml flag persistence fixed. No macro-phase change.**
     Key outcomes: (A) PRE-FLIGHT BLOCKER RESOLVED — deploy.yml replaced all env vars on every push; 3 prerequisite flags absent from production. Commit fbe8ff32: renamed orphaned ADAPTERS_ENABLED→MARSYS_FLAG_R11V2_USE_ADAPTERS; added MARSYS_FLAG_R11D_PROMPT_LAYOUT=true, MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true to env_vars. Commit 6f6d4f16: removed MARSYS_CRON_SECRET from secrets block (type conflict). Deploy unblocked → revision 356. (B) D.1 PASS — MARSYS_FLAG_R11D_PROMPT_LAYOUT=true live on rev 356; prompt_assembler.ts cache-aware layout active. (C) D.2 WAIVED — MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true live on rev 356; 2-query verification waived by operator. (D) D.3 NOT_IMPLEMENTED — MARSYS_FLAG_R11D_GEMINI_CACHE flipped true rev 357; 2 queries sent; no cachedContentTokenCount in logs. Root cause: adapter.cache() never called in route.ts dispatch block (lines 905–988 call only adapter.chat()); flag is a stub. Rolled back false via gcloud. (E) E.1–E.4 NOT_IMPLEMENTED — all R11E_*_LOOP flags confirmed stubs: adapter.loop() exists but route.ts has zero R11E references; agentic_loop.ts not imported or called from dispatch. None flipped. (F) STREAM_R11V2_COMPLETE.md §7 added documenting rollout final state. (G) ROLLOUT_PHASE_D_RESULT.md + ROLLOUT_PHASE_E_RESULT.md written. (H) MP.1+MP.2 mirrors updated.

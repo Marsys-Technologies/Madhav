@@ -27642,3 +27642,69 @@ session_close:
     MCP health endpoint responding OK on pre-deploy revision. All migrations 072–080 pending
     operator application. MCP Transformation PROJECT COMPLETE.
 ```
+
+## R11F-S7-GOVERNANCE-CLOSE — R11.F dispatch wiring arc governance close-out
+
+```yaml
+session_open:
+  session_id: R11F-S7-GOVERNANCE-CLOSE
+  open_timestamp: 2026-05-23T00:00:00+05:30
+  cowork_thread_name: "R11F-S7-GOVERNANCE-CLOSE — R11.F wiring arc close-out"
+  active_phase_plan: PHASE_M5_PLAN_v1_0.md (M6 INCOMING)
+  may_touch:
+    - 00_ARCHITECTURE/chat_v2_briefs/round11_v2/ROLLOUT_PHASE_R11F_RESULT.md
+    - 00_ARCHITECTURE/chat_v2_briefs/round11_v2/STREAM_R11V2_COMPLETE.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md (EOF append only)
+    - .gemini/project_state.md
+  must_not_touch:
+    - platform/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - CLAUDE.md
+```
+
+R11.F wiring arc governance close-out. PR #151 (squash SHA 97acf339) merged to main. Session authors the operator rollout surface and updates governance state.
+
+**AC.S7.1 PASS** — ROLLOUT_PHASE_R11F_RESULT.md authored at `00_ARCHITECTURE/chat_v2_briefs/round11_v2/`. Per-flag gcloud flip commands (D.3, E.1-E.4) + verification steps + tool executor stub note + deploy.yml persistence instructions.
+
+**AC.S7.2 PASS** — STREAM_R11V2_COMPLETE.md §7 deferred items replaced with COMPLETE block: items 1+2 marked ✅ (adapter.cache() wired; adapter.loop() wired); items 3+4 redirect to ROLLOUT_PHASE_R11F_RESULT.md for operator action.
+
+**AC.S7.3 PASS** — CURRENT_STATE_v1_0.md bumped v5.51 → v5.52. New changelog entry documents PR #151, D.3 + E.1-E.4 wiring, stub executor note, feature/r11f-wiring-arc retired, operator next steps.
+
+**AC.S7.4 PASS** — SESSION_LOG.md entry appended (this entry).
+
+**AC.S7.5 PASS** — .gemini/project_state.md MP.2 mirror updated with R11.F arc COMPLETE state.
+
+```yaml
+session_close:
+  session_id: R11F-S7-GOVERNANCE-CLOSE
+  close_timestamp: 2026-05-23T00:30:00+05:30
+  acceptance_criteria_met: true
+  all_acceptance_criteria_met: true
+  commits_this_session:
+    - sha: governance-close-out
+      message: "docs(r11f-s7): governance close-out — rollout surface + state updates"
+      branch: main
+  pr_merged: "PR #151 (squash SHA 97acf339) — merged prior to this governance session"
+  current_state_version: "5.52"
+  session_log_updated: true
+  mirror_updates_propagated:
+    - MP.2: .gemini/project_state.md R11.F arc COMPLETE state update
+  carry_forwards:
+    - "Operator: flip MARSYS_FLAG_R11D_GEMINI_CACHE=true after deploy verification per ROLLOUT_PHASE_R11F_RESULT.md"
+    - "Operator: flip E flags individually (E.1-E.4, 15-min windows each) per ROLLOUT_PHASE_R11F_RESULT.md"
+    - "Operator: add each verified flag to deploy.yml env_vars for persistence"
+    - "Follow-up arc: full MCP tool dispatch wiring (replace stub executor with real Marsys tool calls)"
+    - "M6-A-S1: open per PHASE_M6_PLAN_v1_0.md"
+  close_criteria_met: true
+  handoff_notes: >
+    R11.F wiring arc governance close-out complete. PR #151 (SHA 97acf339) ships
+    adapter.cache() + adapter.loop() wired into route.ts dispatch. D.3 Gemini cache
+    and E.1-E.4 agentic loop flags are now ready for operator activation.
+    Tool executor is a stub (returns "Tool not available") — safe for production.
+    Full MCP tool dispatch is the next follow-up arc.
+    ROLLOUT_PHASE_R11F_RESULT.md provides the per-flag activation runbook.
+    Next: operator flips flags per runbook; then M6-A-S1.
+```
