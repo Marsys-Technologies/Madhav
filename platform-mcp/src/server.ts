@@ -50,6 +50,10 @@ import { registerTaraBalamForNative } from './tools/tara_balam_for_native.js'
 import { registerChandraBalamForNative } from './tools/chandra_balam_for_native.js'
 import { registerQueryTransitsOverNatal } from './tools/query_transits_over_natal.js'
 import { registerQueryYogasActiveNow } from './tools/query_yogas_active_now.js'
+import { registerGetPlanetAvastha } from './tools/get_planet_avastha.js'
+import { registerGetShadbalaFull } from './tools/get_shadbala_full.js'
+import { registerInterpretCurrentDasha } from './tools/interpret_current_dasha.js'
+import { registerListCanonicalArtifactVersions } from './tools/list_canonical_artifact_versions.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -176,6 +180,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerChandraBalamForNative(server, getPrincipal)
   registerQueryTransitsOverNatal(server, getPrincipal)
   registerQueryYogasActiveNow(server, getPrincipal)
+  registerGetPlanetAvastha(server, getPrincipal)
+  registerGetShadbalaFull(server, getPrincipal)
+  registerInterpretCurrentDasha(server, getPrincipal)
+  registerListCanonicalArtifactVersions(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)

@@ -39,6 +39,41 @@ import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 import { okResult, errorResult } from './_envelope.js'
 
+// ── Sanskrit term lookup table (TR-P9-S2: output_encoding param) ─────────────
+
+const SANSKRIT_TERMS: Record<string, { IAST: string; devanagari: string }> = {
+  'Sun': { IAST: 'Sūrya', devanagari: 'सूर्य' },
+  'Moon': { IAST: 'Candra', devanagari: 'चन्द्र' },
+  'Mars': { IAST: 'Maṅgala', devanagari: 'मंगल' },
+  'Mercury': { IAST: 'Budha', devanagari: 'बुध' },
+  'Jupiter': { IAST: 'Guru', devanagari: 'गुरु' },
+  'Venus': { IAST: 'Śukra', devanagari: 'शुक्र' },
+  'Saturn': { IAST: 'Śani', devanagari: 'शनि' },
+  'Rahu': { IAST: 'Rāhu', devanagari: 'राहु' },
+  'Ketu': { IAST: 'Ketu', devanagari: 'केतु' },
+  'Aries': { IAST: 'Meṣa', devanagari: 'मेष' },
+  'Taurus': { IAST: 'Vṛṣabha', devanagari: 'वृषभ' },
+  'Gemini': { IAST: 'Mithuna', devanagari: 'मिथुन' },
+  'Cancer': { IAST: 'Karkaṭa', devanagari: 'कर्कट' },
+  'Leo': { IAST: 'Siṃha', devanagari: 'सिंह' },
+  'Virgo': { IAST: 'Kanyā', devanagari: 'कन्या' },
+  'Libra': { IAST: 'Tulā', devanagari: 'तुला' },
+  'Scorpio': { IAST: 'Vṛścika', devanagari: 'वृश्चिक' },
+  'Sagittarius': { IAST: 'Dhanu', devanagari: 'धनु' },
+  'Capricorn': { IAST: 'Makara', devanagari: 'मकर' },
+  'Aquarius': { IAST: 'Kumbha', devanagari: 'कुम्भ' },
+  'Pisces': { IAST: 'Mīna', devanagari: 'मीन' },
+}
+
+function applyEncoding(text: string, encoding: 'IAST' | 'devanagari' | 'none'): string {
+  if (encoding === 'none') return text
+  for (const [english, encoded] of Object.entries(SANSKRIT_TERMS)) {
+    const regex = new RegExp(`\\b${english}\\b`, 'g')
+    text = text.replace(regex, encoded[encoding])
+  }
+  return text
+}
+
 /**
  * F.3 fix: category list derived from ChartFactsCategory enum in
  * platform/src/lib/retrieve/chart_facts_query.ts:21–30.
@@ -92,6 +127,12 @@ const QueryChartFactsInputSchema = z.object({
     'When true, returns ALL known categories from CHART_FACTS_CATEGORIES even if they have 0 rows. ' +
     'Each category object includes a populated_count field (number of rows in chart_facts for that category). ' +
     'When false (default), only returns categories that have at least one row, each annotated with populated_count.'
+  ),
+  output_encoding: z.enum(['IAST', 'devanagari', 'none']).optional().default('none').describe(
+    'Sanskrit transliteration encoding applied to string values in the response rows. ' +
+    '"IAST" — ISO 15919 diacritics (e.g. Sūrya, Candra). ' +
+    '"devanagari" — Devanagari script (e.g. सूर्य, चन्द्र). ' +
+    '"none" (default) — no transformation applied.'
   ),
 })
 
@@ -263,6 +304,45 @@ export function registerQueryChartFacts(
             }
             envelopeResult['all_category_counts'] = allCategoryCounts
           }
+        }
+      }
+
+      // ── Step 4: Apply Sanskrit encoding to string values in rows ──────────
+      // Only applied when output_encoding !== 'none' (default is 'none', so
+      // existing tests that don't pass output_encoding are unaffected).
+      const encoding = args.output_encoding ?? 'none'
+      if (encoding !== 'none' && envelopeResult) {
+        // Apply encoding to all string values in a row object
+        const encodeRow = (row: unknown): unknown => {
+          if (!row || typeof row !== 'object' || Array.isArray(row)) return row
+          const encoded: Record<string, unknown> = {}
+          for (const [key, val] of Object.entries(row as Record<string, unknown>)) {
+            encoded[key] = typeof val === 'string' ? applyEncoding(val, encoding) : val
+          }
+          return encoded
+        }
+
+        // Encode rows inside rows_by_category (batched mode)
+        const rowsByCategory = envelopeResult['rows_by_category'] as
+          | Record<string, { rows: unknown[]; populated_count: number } | unknown[]>
+          | undefined
+        if (rowsByCategory) {
+          for (const [cat, bucket] of Object.entries(rowsByCategory)) {
+            if (bucket && typeof bucket === 'object' && !Array.isArray(bucket)) {
+              // Annotated bucket shape: { rows: unknown[], populated_count: number }
+              const b = bucket as { rows: unknown[]; populated_count: number }
+              b.rows = b.rows.map(encodeRow)
+              ;(rowsByCategory as Record<string, unknown>)[cat] = b
+            } else if (Array.isArray(bucket)) {
+              ;(rowsByCategory as Record<string, unknown>)[cat] = bucket.map(encodeRow)
+            }
+          }
+        }
+
+        // Encode rows in single-category mode
+        const singleRowsEncoded = envelopeResult['rows'] as unknown[] | undefined
+        if (Array.isArray(singleRowsEncoded)) {
+          envelopeResult['rows'] = singleRowsEncoded.map(encodeRow)
         }
       }
 
