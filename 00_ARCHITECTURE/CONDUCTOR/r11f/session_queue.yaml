@@ -170,12 +170,12 @@ sessions:
     phase: C
     title: "deploy.yml flag flips (R11E loop flags for all providers)"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S3_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-C-S2]
-    commit_sha: null
+    commit_sha: "4c046137"
     pr_url: null
-    notes: "Commit-only. NVIDIA flag omitted if B-S5 was Case B."
+    notes: "All 5 R11E loop flags added (NVIDIA Case A included). Flags activate on next Cloud Run deploy after PR merge."
 
   - id: R11F-C-S4
     phase: C
