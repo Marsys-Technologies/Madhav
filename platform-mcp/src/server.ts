@@ -5,14 +5,15 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 23 tools registered (v3.7, TR-P1-S3: list_assets added).
+ * - 26 tools registered (v3.8, TR-P4-S1: query_varshphal, query_divisional_chart, query_remedial_mantras added).
  *
  * Tool count (v3.7, 23 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (10): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (13): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
- *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
+ *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
+ *                query_varshphal, query_divisional_chart, query_remedial_mantras
  *   Tier 4 raw-asset reads (3): read_asset, read_classical_text, list_assets
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
@@ -40,6 +41,9 @@ import { registerLelQuery } from './tools/lel_query.js'
 import { registerVectorSearch } from './tools/vector_search.js'
 import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js'
 import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
+import { registerQueryVarshphal } from './tools/query_varshphal.js'
+import { registerQueryDivisionalChart } from './tools/query_divisional_chart.js'
+import { registerQueryRemedialMantras } from './tools/query_remedial_mantras.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -158,6 +162,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerVectorSearch(server, getPrincipal)
   registerGetCgmSubgraph(server, getPrincipal)
   registerCrossSchoolLookup(server, getPrincipal)
+  registerQueryVarshphal(server, getPrincipal)
+  registerQueryDivisionalChart(server, getPrincipal)
+  registerQueryRemedialMantras(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
