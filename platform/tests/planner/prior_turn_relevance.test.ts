@@ -47,20 +47,22 @@ describe('PipelinePlan — prior_turn_relevance', () => {
     expect(out.success).toBe(true)
   })
 
-  it('rejects used > 2', () => {
+  it('coerces invalid used > 2 to absent (catch absorbs bad LLM output)', () => {
     const out = PipelinePlanSchema.safeParse({
       ...basePlan,
       prior_turn_relevance: { used: 3, reason: 'too many', mode: 'continuation' },
     })
-    expect(out.success).toBe(false)
+    expect(out.success).toBe(true)
+    expect(out.data?.prior_turn_relevance).toBeUndefined()
   })
 
-  it('rejects an unknown mode', () => {
+  it('coerces unknown mode to absent (catch absorbs bad LLM output)', () => {
     const out = PipelinePlanSchema.safeParse({
       ...basePlan,
       prior_turn_relevance: { used: 0, reason: 'x', mode: 'borrow' },
     })
-    expect(out.success).toBe(false)
+    expect(out.success).toBe(true)
+    expect(out.data?.prior_turn_relevance).toBeUndefined()
   })
 
   it('is optional — plan without prior_turn_relevance still parses', () => {
