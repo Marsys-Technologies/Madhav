@@ -68,11 +68,21 @@ export function registerQueryPanchanga(
     QueryPanchangaInputSchema.shape,
     async (args: QueryPanchangaInput) => {
       const principal = getPrincipal()
+
+      // C8 fix: pass all 11 field groups so the platform retrieval tool includes
+      // the 5 enrichment JSONB columns (special_yogas, choghadiya, hora,
+      // inauspicious, auspicious) that default to omitted when fields is absent.
+      const ALL_PANCHANGA_FIELDS = [
+        'tithi', 'vara', 'nakshatra', 'yoga', 'karana', 'sunrise',
+        'special_yogas', 'choghadiya', 'hora', 'inauspicious', 'auspicious',
+      ]
+
       const { status, envelope } = await callPlatformPrimitive(
         'query_panchanga',
         {
           date: args.date,
           ...(args.observer ? { observer: args.observer } : {}),
+          fields: ALL_PANCHANGA_FIELDS,
         },
         principal
       )

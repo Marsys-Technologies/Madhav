@@ -5,15 +5,15 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 22 tools registered (v3.6, per arch §3.7 + MCPT v3.2 Phase 4c).
+ * - 23 tools registered (v3.7, TR-P1-S3: list_assets added).
  *
- * Tool count (v3.6, 22 tools per MCP arch §3.7 + MCPT v3.2 Phase 4c):
+ * Tool count (v3.7, 23 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
  *   Tier 3 surgical primitives (10): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
- *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
+ *   Tier 4 raw-asset reads (3): read_asset, read_classical_text, list_assets
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
  *   Tier 6 writes (3): log_prediction, record_outcome, flag_disagreement
@@ -43,6 +43,7 @@ import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
+import { registerListAssets } from './tools/list_assets.js'
 // Tier 5: observability + perf
 import { registerGetTrace } from './tools/get_trace.js'
 import { registerListRecentQueries } from './tools/list_recent_queries.js'
@@ -161,6 +162,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
   registerReadClassicalText(server, getPrincipal)
+  registerListAssets(server, getPrincipal)
 
   // Register Tier 5 observability + perf tools.
   registerGetTrace(server, getPrincipal)

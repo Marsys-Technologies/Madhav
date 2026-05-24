@@ -1,131 +1,134 @@
 ---
-artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S1_v1_0.md
+artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S3_v1_0.md
 type: CLAUDECODE_BRIEF
 version: 1.0
 status: COMPLETE
 authored_by: Conductor (2026-05-25)
-session_id: TR-P1-S1
+session_id: TR-P1-S3
 ---
 
-# CLAUDECODE_BRIEF — TR-P1-S1
-## Phase 1.1 + 1.2: chart_summary envelope fix + query_transit_event event_type schema
+# CLAUDECODE_BRIEF — TR-P1-S3
+## Phase 1.5 + 1.6: read_asset prod cwd fix + list_assets + query_panchanga 5 enrichment columns
 
 ## §0 — Start
 
-You are in /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix on branch feature/tooling-remediation.
-
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
-git status  # must be clean before starting
+git status  # must be clean
 ```
 
 ## §1 — Scope
 
-may_touch: platform-mcp/src/tools/chart_summary.ts, platform-mcp/src/tools/query_transit_event.ts, platform-mcp/src/tools/chart_summary.test.ts, platform-mcp/src/tools/query_transit_event.test.ts
-must_not_touch: 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, .geminirules, CLAUDE.md, 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/**
+may_touch: platform-mcp/src/tools/read_asset.ts, platform-mcp/src/tools/query_panchanga.ts, platform-mcp/src/tools/read_asset.test.ts, platform-mcp/src/tools/query_panchanga.test.ts, platform-mcp/src/tools/list_assets.ts, platform-mcp/src/index.ts
+must_not_touch: 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, .geminirules, CLAUDE.md, 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/**, platform/src/**
 
 ## §2 — Task
 
-### Phase 0 findings that update this brief
+### Phase 0 findings
 
-Phase 0 (TR-P0-S1) determined:
+**C9 — read_asset:** Bug is **PROD_ENV** — `MARSYS_REPO_ROOT` env var is not set in the Cloud Run sidecar. Every call to `read_asset` resolves the path as `path.join(undefined, canonical_path)` which becomes `/canonical_path` (an absolute path starting at `/`, which does not exist in the container). Fix: use `__dirname`-relative resolution or a hardcoded fallback path constant; do NOT rely on `MARSYS_REPO_ROOT` alone.
 
-**C1 — chart_summary:** Bug is in the **MCP wrapper**, not the platform primitive.
-The wrapper calls `callPlatformPrimitive` which returns a `ToolBundle` envelope. The wrapper then reads `envelope.result.rows_by_category` directly, but the actual data is at `results[0].content` which is a serialised JSON string that must be parsed. The primitive itself is correct.
-
-**C6 — query_transit_event:** Bug is in the **MCP wrapper** schema. `event_type` is a required parameter consumed by the underlying engine but is not declared in the MCP input schema, so callers never send it and the engine receives `undefined`.
+**C8 — query_panchanga:** Bug is **wrapper** layer — the 5 enrichment JSONB columns (`special_yogas`, `choghadiya`, `hora`, `inauspicious`, `auspicious`) are fully populated in the DB (all rows since 2026-01-01). The `query_panchanga` handler's SQL SELECT simply omits them. Fix: add them to the SELECT and response shape.
 
 ---
 
-### 2.1 — Fix chart_summary (C1)
+### 2.1 — Fix read_asset (C9)
 
-File: `platform-mcp/src/tools/chart_summary.ts`
+File: `platform-mcp/src/tools/read_asset.ts` (or whichever file handles read_asset)
 
-1. Read the file fully to understand the current `callPlatformPrimitive` invocation and how the result is unwrapped.
-2. Find where the response is read after `callPlatformPrimitive` returns. The bug: code reads `result.rows_by_category` or similar directly off the envelope top level.
-3. Fix: the `ToolBundle` envelope from `callPlatformPrimitive` returns `{ results: [{ content: "<JSON string>", ... }] }`. Unwrap by:
-   ```typescript
-   const raw = await callPlatformPrimitive(...);
-   const content = raw?.results?.[0]?.content;
-   const parsed = typeof content === 'string' ? JSON.parse(content) : content;
-   // now read parsed.rows_by_category or parsed.summary etc.
+1. Read the file fully. Find the path resolution logic.
+2. The prod Cloud Run sidecar has the project files under a known path (check the Dockerfile in `platform-mcp/Dockerfile` or `platform/Dockerfile` for the WORKDIR and COPY destinations).
+3. Fix strategy — in priority order:
+   a. **Use `__dirname`-relative resolution.** The sidecar JS bundle is at `/app/` or similar. The canonical documents are copied there too. Use: `path.join(__dirname, '../../..', canonical_path)` or similar (adjust depth based on the actual bundle structure).
+   b. **Fallback chain:** `process.env.MARSYS_REPO_ROOT ?? path.join(__dirname, '../..')` — this way it works both locally (where MARSYS_REPO_ROOT may be set) and in prod (where it isn't).
+4. Also read the Dockerfile to confirm where project files land in the container image.
+5. Add `list_assets` as a new tool (same file or new file `platform-mcp/src/tools/list_assets.ts`):
+   - No params needed.
+   - Reads the `CAPABILITY_MANIFEST.json` (at the known repo path) and returns `{ canonical_ids: [{ id, path, status }] }` for all entries.
+   - Alternatively, hardcode the list of known canonical_ids with their paths (simpler and safer for prod).
+
+### 2.2 — read_asset regression tests
+
+File: `platform-mcp/src/tools/read_asset.test.ts` (create if absent)
+
+- Mock `fs.readFileSync`; test that `read_asset({ canonical_id: "MACRO_PLAN" })` resolves to a non-empty content string.
+- Test that `read_asset({ canonical_id: "NONEXISTENT" })` returns a clean error (not an unhandled exception).
+- Test `list_assets()` returns an array with at least 10 ids.
+
+### 2.3 — Fix query_panchanga enrichment (C8)
+
+File: `platform-mcp/src/tools/query_panchanga.ts`
+
+1. Read the file fully. Find the SQL SELECT statement or the fields returned from the primitive.
+2. Add the 5 JSONB columns to the SELECT:
+   ```sql
+   SELECT ..., special_yogas, choghadiya, hora, inauspicious, auspicious FROM panchanga_daily WHERE ...
    ```
-4. If the structure differs slightly from above, read the actual runtime shape from the Phase 0 baseline at `eval-results/tooling_audit_baseline_20260524.json` key `tool_tests.C1_chart_summary.error_shape` to understand what the wrapper currently receives.
-5. After fix, the tool must return a non-empty `rows_by_category` object for `chart_id: "362f9f17-95a5-490b-a5a7-027d3e0efda0"`.
-
-### 2.2 — Add/update chart_summary regression test
-
-File: `platform-mcp/src/tools/chart_summary.test.ts` (create if absent)
-
-Test must:
-- Call `chart_summary({ chart_id: "362f9f17-95a5-490b-a5a7-027d3e0efda0", tier: "super_admin" })`
-- Assert `response.rows_by_category` is an object with at least one key
-- Assert no top-level `error` key in the response
-
-Mock `callPlatformPrimitive` to return a realistic ToolBundle envelope shape.
-
-### 2.3 — Fix query_transit_event (C6)
-
-File: `platform-mcp/src/tools/query_transit_event.ts`
-
-1. Read the file fully. Find the Zod input schema (lines ~48–60 per audit).
-2. Add `event_type` as a **required** enum parameter:
+3. In the response mapping, include these 5 columns:
    ```typescript
-   event_type: z.enum([
-     "ingress", "station_retrograde", "station_direct", "exact_aspect",
-     "opposition", "conjunction", "trine", "square", "sextile"
-   ]).describe("Type of transit event to search for")
+   const result = {
+     date: row.date,
+     // ... existing fields ...
+     special_yogas: row.special_yogas ?? null,
+     choghadiya: row.choghadiya ?? null,
+     hora: row.hora ?? null,
+     inauspicious: row.inauspicious ?? null,
+     auspicious: row.auspicious ?? null,
+   };
    ```
-3. Also add a clear error message: if somehow `event_type` is undefined at runtime, throw:
-   `"event_type is required. Valid values: ingress|station_retrograde|station_direct|exact_aspect|opposition|conjunction|trine|square|sextile"`
-4. Pass `event_type` through to the underlying engine/primitive call.
+4. Update the Zod output schema (if one exists) to include these 5 fields as `z.any().optional()`.
 
-### 2.4 — Add/update query_transit_event regression test
+### 2.4 — query_panchanga regression tests
 
-File: `platform-mcp/src/tools/query_transit_event.test.ts` (create if absent)
+File: `platform-mcp/src/tools/query_panchanga.test.ts` (create if absent)
 
-Test must:
-- Assert that calling without `event_type` returns a Zod validation error (not "Unknown event_type 'undefined'")
-- Assert that calling with a valid `event_type` reaches the engine (mock the primitive call)
+- Mock the DB call; test that `query_panchanga({ date: "2026-05-24" })` response includes `choghadiya` field (even if null in the mock).
+- Test that the SELECT query string contains "choghadiya" (grep the SQL string in the handler).
 
-### 2.5 — Commit
+### 2.5 — Register list_assets in the MCP tool registry
+
+File: `platform-mcp/src/index.ts` (or wherever tools are registered)
+
+Add `list_assets` to the registered tools list.
+
+### 2.6 — Commit
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
-git add platform-mcp/src/tools/chart_summary.ts \
-        platform-mcp/src/tools/query_transit_event.ts \
-        platform-mcp/src/tools/chart_summary.test.ts \
-        platform-mcp/src/tools/query_transit_event.test.ts
-git commit -m "fix(TR-P1-S1): chart_summary 0-rows root cause; query_transit_event event_type schema"
+git add platform-mcp/src/tools/read_asset.ts \
+        platform-mcp/src/tools/query_panchanga.ts \
+        platform-mcp/src/tools/list_assets.ts \
+        platform-mcp/src/tools/read_asset.test.ts \
+        platform-mcp/src/tools/query_panchanga.test.ts \
+        platform-mcp/src/index.ts
+git commit -m "fix(TR-P1-S3): read_asset cwd+list_assets; query_panchanga 5 enrichment columns"
 ```
 
 ## §3 — Acceptance criteria
 
 | ID | Criterion |
 |---|---|
-| AC.1 | `chart_summary.ts` unwraps ToolBundle envelope correctly (reads `results[0].content` parsed JSON) |
-| AC.2 | `chart_summary.test.ts` passes — non-empty `rows_by_category` returned for native chart_id |
-| AC.3 | `query_transit_event.ts` Zod schema includes `event_type` as required enum |
-| AC.4 | `query_transit_event.test.ts` passes — calling without `event_type` yields schema validation error |
-| AC.5 | Both tests pass: `npx vitest run src/tools/chart_summary.test.ts src/tools/query_transit_event.test.ts` exits 0 |
+| AC.1 | `read_asset.ts` uses `__dirname`-relative path OR `MARSYS_REPO_ROOT ?? __dirname` fallback — not naked `MARSYS_REPO_ROOT` |
+| AC.2 | `list_assets` tool registered and returns ≥10 canonical_ids |
+| AC.3 | `read_asset.test.ts` passes — MACRO_PLAN resolves; NONEXISTENT returns clean error |
+| AC.4 | `query_panchanga.ts` SELECT includes all 5 enrichment JSONB columns |
+| AC.5 | Both test files pass: `npx vitest run src/tools/read_asset.test.ts src/tools/query_panchanga.test.ts` exits 0 |
 
 ## §4 — Gate command
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
-grep -q 'TR-P1-S1.*COMPLETE\|TR-P1-S1: PASS' 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/CONDUCTOR_LOG.md || \
-(cd platform-mcp && npx vitest run src/tools/chart_summary.test.ts --reporter=verbose 2>&1 | grep -q 'PASS')
+(npx vitest run src/tools/read_asset.test.ts src/tools/query_panchanga.test.ts --reporter=verbose 2>&1 | grep -E 'passed|PASS' | grep -q '.')
 ```
 
-## §5 — FINAL_SUMMARY (emit at session end)
+## §5 — FINAL_SUMMARY
 
 ```
 ---FINAL_SUMMARY---
-session_id: TR-P1-S1
+session_id: TR-P1-S3
 status: PASS | HALT_NEEDS_HUMAN
 tests_passed: <N>
 files_changed: <list>
 commit_sha: <git log --format=%H -1>
-notes_for_orchestrator: <any info conductor needs>
+notes_for_orchestrator: <path chosen for read_asset; any deviations>
 ---
 ```
