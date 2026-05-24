@@ -30,7 +30,21 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
+import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const LEL_QUERY_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Queries the Life Event Log (LEL) — 36 verified life events, ' +
+    '5 period summaries, 6 chronic patterns — with optional category, date range, and significance filters. ' +
+    'Returns raw event records as ground-truth data for calibration and backtesting.',
+  coverageHint: 'M4 ground-truth spine; confidence up to 0.89',
+  whenToPrefer:
+    'Use to retrieve verified life events ("what career events happened 2015–2020?"). ' +
+    'Prefer holistic_bundle when interpretation in light of current chart state is also needed. ' +
+    'Pair with query_dasha_periods to correlate events with active dasha lords.',
+})
 
 const LelQueryInputSchema = z.object({
   category: z.string().optional().describe(
@@ -54,15 +68,7 @@ export function registerLelQuery(
 ): void {
   server.tool(
     'lel_query',
-    'What it does: Queries the Life Event Log (LEL) — 36 verified life events, ' +
-    '5 period summaries, 6 chronic patterns — with optional category, date range, ' +
-    'and significance filters. Returns raw event records as ground-truth data. ' +
-    'When to prefer: Use to retrieve verified life events for calibration ("what career ' +
-    'events happened 2015–2020?"). Prefer holistic_bundle when interpretation is also needed. ' +
-    'Input shape hints: all params optional; category filters by event type; ' +
-    'date_range {start, end} filters by occurrence date; min_significance is a 0–1 float. ' +
-    'Output shape preview: {ok, result: {events: LelEvent[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: lel_query({category: "career", min_significance: 0.7}) → documented career events.',
+    LEL_QUERY_DESCRIPTION,
     LelQueryInputSchema.shape,
     async (args: LelQueryInput) => {
       const principal = getPrincipal()
@@ -75,11 +81,10 @@ export function registerLelQuery(
         },
         principal
       )
-      const text = JSON.stringify(envelope, null, 2)
-      return {
-        content: [{ type: 'text' as const, text }],
-        isError: !envelope.ok || status >= 400,
+      if (!envelope.ok || status >= 400) {
+        return errorResult(envelope)
       }
+      return okResult(envelope)
     }
   )
 }

@@ -1,0 +1,21 @@
+MCPT v3.2 Quality Tightening — MCP Test Baseline
+Captured: 2026-05-23
+Branch: feature/mcpt-v32-quality-tightening
+Tag: mcpt-v32-baseline
+
+== platform-mcp test run ==
+ ✓ test/resources/resources.test.ts (30 tests)
+ ✓ test/bundles/cache.test.ts (6 tests)
+ ✓ test/auth_cache.test.ts (5 tests)
+ ✓ test/bundles/holistic_bundle.test.ts (7 tests)
+ ✓ test/bundles/multi_school_bundle.test.ts (6 tests)
+ ✓ test/bundles/sse_streaming.integration.test.ts (6 tests)
+ ✓ test/data_coverage.integration.test.ts (6 tests)
+ ✓ test/tool_health.integration.test.ts (5 tests)
+ ✓ test/tool_descriptions.test.ts (4 tests)
+
+Test Files: 9 passed (9)
+Tests:      75 passed (75)
+Duration:   ~223ms
+
+== VERDICT: PASS (all 75 MCP tests green) ==

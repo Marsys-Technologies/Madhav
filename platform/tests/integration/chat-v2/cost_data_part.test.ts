@@ -18,7 +18,7 @@ const routeSrc = readFileSync(
 describe('B.8 — cost data part emission (O1)', () => {
   it('route destructures usageHolder from orchestrator.synthesize()', () => {
     expect(routeSrc).toContain('usageHolder')
-    const synthLine = routeSrc.split('\n').find(l => l.includes('orchestrator.synthesize') && l.includes('let {'))
+    const synthLine = routeSrc.split('\n').find(l => l.includes('orchestrator.synthesize') && l.includes('const {'))
     expect(synthLine).toBeTruthy()
     expect(synthLine).toContain('usageHolder')
   })

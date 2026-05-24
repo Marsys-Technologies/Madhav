@@ -1,0 +1,124 @@
+name: MCP Bench & Accuracy Harness
+
+on:
+  pull_request:
+    paths:
+      - 'platform-mcp/**'
+      - 'platform/src/lib/mcp/**'
+      - '.github/workflows/mcp-bench.yml'
+  push:
+    branches:
+      - main
+      - 'feature/mcpt-*'
+
+concurrency:
+  group: mcp-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench-and-accuracy:
+    name: Bench + Accuracy Harness
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform-mcp
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform-mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Bench harness (P8a) ────────────────────────────────────────────────
+      - name: Run bench capture
+        run: npm run bench:capture
+        continue-on-error: true
+
+      - name: Run bench diff
+        run: npm run bench:diff
+
+      - name: Upload bench artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-results-${{ github.sha }}
+          path: bench/
+          retention-days: 30
+
+      # ── Accuracy harness (P8b) ────────────────────────────────────────────
+      - name: Run accuracy capture
+        run: npm run accuracy:capture
+        # accuracy:capture runs test/accuracy/run.test.ts via vitest
+
+      - name: Run accuracy diff
+        run: npm run accuracy:diff
+
+      - name: Upload accuracy artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accuracy-results-${{ github.sha }}
+          path: accuracy/
+          retention-days: 30
+
+      # ── Post bench diff as PR comment ────────────────────────────────────
+      - name: Post bench diff to PR
+        if: github.event_name == 'pull_request'
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "$(cat ../bench/diff.md 2>/dev/null || echo 'No bench diff generated')"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Post accuracy diff as PR comment ──────────────────────────────────
+      - name: Post accuracy diff to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const diffPath = 'accuracy/diff.json';
+            if (!fs.existsSync(diffPath)) {
+              console.log('No accuracy diff.json found, skipping comment.');
+              return;
+            }
+            const diff = JSON.parse(fs.readFileSync(diffPath, 'utf8'));
+            const verdict = diff.verdict.toUpperCase();
+            const icon = diff.verdict === 'pass' ? '✅' : '❌';
+            const expected = diff.checks.golden_snapshot.expected_rows;
+            const actual = diff.checks.golden_snapshot.actual_rows;
+            const regressions = diff.regressions;
+
+            let body = `## ${icon} MCP Accuracy Harness — ${verdict}\n\n`;
+            body += `**Golden snapshot:** expected ≥${expected} rows, checked ${actual} rows\n\n`;
+
+            if (regressions.length > 0) {
+              body += `**Regressions (${regressions.length}):**\n`;
+              for (const cat of regressions) {
+                const d = diff.detail[cat];
+                body += `- \`${cat}\`: expected ≥${d.expected_min_rows}, got ${d.actual_rows}\n`;
+              }
+            } else {
+              body += `All ${Object.keys(diff.detail).length} categories meet expected_min_rows thresholds.\n`;
+            }
+
+            body += `\n<sub>Git SHA: \`${diff.git_sha}\` · Run at: ${diff.run_at}</sub>`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # ── Run all tests (must pass) ─────────────────────────────────────────
+      - name: Run full test suite
+        run: npm test

@@ -30,6 +30,19 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const QUERY_SIGNALS_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Queries the MSR signal corpus (499+ astrological signals) with structured ' +
+    'filters (domain, planet, dasha_lord, min_confidence, forward_looking) and returns raw signal rows without synthesis.',
+  coverageHint: '499+ signals across all Jyotish domains',
+  whenToPrefer:
+    'Use for "give me all forward-looking career signals" style queries. ' +
+    'Prefer holistic_bundle when interpretation or cross-domain synthesis is also needed. ' +
+    'Prefer query_chart_facts for raw chart-fact rows rather than MSR signals.',
+})
 
 const QuerySignalsInputSchema = z.object({
   domain: z.string().optional().describe(
@@ -58,15 +71,7 @@ export function registerQuerySignals(
 ): void {
   server.tool(
     'query_signals',
-    'What it does: Queries the MSR signal corpus (499+ astrological signals) with structured ' +
-    'filters and returns raw signal rows without synthesis. ' +
-    'When to prefer: Use for "give me all forward-looking career signals" style queries. ' +
-    'Prefer holistic_bundle when interpretation or cross-domain synthesis is also needed. ' +
-    'Input shape hints: all params optional; domain filters by Jyotish domain; ' +
-    'dasha_lord filters by activating dasha; min_confidence is a 0–1 float; ' +
-    'forward_looking:true limits to prospective signals. ' +
-    'Output shape preview: {ok, result: {signals: MsrSignalRow[]}, trace_id, epistemics: {surgical: true}}. ' +
-    'Example: query_signals({domain: "career", forward_looking: true}) → raw MSR signal rows.',
+    QUERY_SIGNALS_DESCRIPTION,
     QuerySignalsInputSchema.shape,
     async (args: QuerySignalsInput) => {
       const principal = getPrincipal()
@@ -82,11 +87,10 @@ export function registerQuerySignals(
         },
         principal
       )
-      const text = JSON.stringify(envelope, null, 2)
-      return {
-        content: [{ type: 'text' as const, text }],
-        isError: !envelope.ok || status >= 400,
+      if (!envelope.ok || status >= 400) {
+        return errorResult(envelope)
       }
+      return okResult(envelope)
     }
   )
 }

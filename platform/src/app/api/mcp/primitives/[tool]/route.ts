@@ -32,6 +32,7 @@ import {
 } from '@/lib/mcp/primitives_registry'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { traceEmitter } from '@/lib/trace/emitter'
+import { buildTraceSummary } from '@/lib/mcp/trace_summary'
 import { query } from '@/lib/db/client'
 
 export const maxDuration = 60
@@ -223,6 +224,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       data_summary: {
         tool_name: retrievalToolName,
         result: `mcp_primitive:${mcpToolName}`,
+        mcp_tool: mcpToolName,
+        query_summary: buildTraceSummary(mcpToolName, toolParams),
       },
       payload: {
         // Store MCP source tag and surgical flag in the payload for audit trail

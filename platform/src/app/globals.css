@@ -86,6 +86,10 @@
 html,
 body {
   overscroll-behavior: none;
+  /* Prevent grey flash during Next.js page transitions — the base HTML
+     background matches the app's darkest surface so no lighter colour
+     peeks through while the incoming page layout mounts. */
+  background-color: #0d0a05;
 }
 
 :root {

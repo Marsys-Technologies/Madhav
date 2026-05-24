@@ -56,6 +56,20 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformWrites } from '../client.js'
 import type { Principal } from '../types.js'
+import { okResult, errorResult } from './_envelope.js'
+import { buildToolDescription } from './description_builder.js'
+
+export const FLAG_DISAGREEMENT_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Logs a formal disagreement to the MARSYS-JIS governance register ' +
+    '(mcp_disagreements table) when you detect a contradiction between MSR signals and FORENSIC L1 data, ' +
+    'between two synthesis outputs, or any irresolvable conflict.',
+  whenToPrefer:
+    'Use when you encounter a factual L1 conflict, inter-session output conflict, or structural scope issue ' +
+    'that cannot be silently resolved. This is a formal governance channel — the native reviews entries. ' +
+    'Do NOT use for minor uncertainty; only for genuine, irresolvable conflicts.',
+  tierNote: 'Available: super_admin only. acharya/client tier = 403.',
+})
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -112,10 +126,7 @@ export function registerFlagDisagreement(
 ): void {
   server.tool(
     'flag_disagreement',
-    'Flag a governance disagreement to the MARSYS-JIS register. Use when you detect ' +
-    'a contradiction between MSR signals and FORENSIC L1 data, between two synthesis ' +
-    'outputs, or any irresolvable conflict. This is a formal channel — the native ' +
-    'reviews entries. Returns disagreement_id for tracking.',
+    FLAG_DISAGREEMENT_DESCRIPTION,
     FlagDisagreementInputSchema.shape,
     async (input: FlagDisagreementInput) => {
       const principal = getPrincipal()
@@ -124,22 +135,14 @@ export function registerFlagDisagreement(
       // Acharya and client tiers can note conflicts in their responses but cannot
       // write to the formal governance register — that requires operator trust.
       if (principal.audience_tier !== 'super_admin') {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                ok: false,
-                error: {
-                  class: 'TIER_FORBIDDEN',
-                  message: 'flag_disagreement requires super_admin tier. ' +
-                    'Acharya/client callers: note the conflict in your response instead.',
-                },
-              }, null, 2),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult({
+          ok: false,
+          error: {
+            class: 'TIER_FORBIDDEN',
+            message: 'flag_disagreement requires super_admin tier. ' +
+              'Acharya/client callers: note the conflict in your response instead.',
+          },
+        })
       }
 
       const result = await callPlatformWrites(
@@ -156,25 +159,10 @@ export function registerFlagDisagreement(
       )
 
       if (!result.envelope.ok) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(result.envelope, null, 2),
-            },
-          ],
-          isError: true,
-        }
+        return errorResult(result.envelope)
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result.envelope, null, 2),
-          },
-        ],
-      }
+      return okResult(result.envelope)
     }
   )
 }

@@ -5,13 +5,16 @@
  *
  * Returns data coverage report: expected vs actual row counts per tool/category.
  * Sourced from data_source_expected table (migration 076) + tool_caveats.
+ * actual_rows and updated_at are real DB values; graceful fallback when table is empty
+ * (Phase 7a seed load not yet applied).
  *
- * MCPT v3.1.0-S4
+ * MCPT v3.2 Phase 7c
  */
 
 import 'server-only'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { query } from '@/lib/db/client'
 
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
@@ -24,6 +27,22 @@ function extractPrincipal(req: NextRequest): { audience_tier: string } | null {
 function validateToken(req: NextRequest): boolean {
   const token = req.headers.get('X-MCP-Internal-Token')
   return !!token && token === MCP_INTERNAL_TOKEN
+}
+
+interface DataSourceExpectedRow {
+  tool_name: string
+  category: string
+  expected_rows: number
+  actual_rows: number | null
+  backfill_phase: string | null
+  notes: string | null
+  updated_at: string
+}
+
+interface ToolCaveatRow {
+  tool_name: string
+  caveat_text: string
+  severity: string
 }
 
 export async function GET(req: NextRequest): Promise<Response> {
@@ -49,33 +68,85 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const now = new Date().toISOString()
 
-  // Coverage data seeded from data_source_expected_seed.sql
-  // In production, actual_rows would be populated from nightly audit.
-  return NextResponse.json({
-    ok: true,
-    generated_at: now,
-    tier: principal.audience_tier,
-    coverage: [
-      // chart_facts categories
-      { tool: 'query_chart_facts', category: 'house', expected_rows: 12, actual_rows: null, backfill_phase: 'v3.1.0-S1', status: 'active' },
-      { tool: 'query_chart_facts', category: 'planet', expected_rows: 9, actual_rows: null, backfill_phase: 'v3.1.0-S1', status: 'active' },
-      { tool: 'query_chart_facts', category: 'dasha_vimshottari', expected_rows: 9, actual_rows: null, backfill_phase: 'v3.1.0-S1', status: 'active' },
-      { tool: 'query_chart_facts', category: 'kp_cusp', expected_rows: 12, actual_rows: null, backfill_phase: 'v3.3', status: 'pending', caveat: 'KP backfill pending v3.3' },
-      { tool: 'query_chart_facts', category: 'varshphal', expected_rows: 10, actual_rows: null, backfill_phase: 'v3.3', status: 'pending', caveat: 'Tajaka varshphal backfill pending v3.3' },
-      { tool: 'query_chart_facts', category: 'shadbala', expected_rows: 9, actual_rows: null, backfill_phase: 'v3.3', status: 'pending', caveat: 'Shadbala backfill pending v3.3' },
-      { tool: 'query_chart_facts', category: 'ashtakavarga_sav', expected_rows: 9, actual_rows: null, backfill_phase: 'v3.3', status: 'pending', caveat: 'Ashtakavarga SAV backfill pending v3.3' },
-      // MSR signals
-      { tool: 'query_signals', category: 'msr_corpus', expected_rows: 573, actual_rows: null, backfill_phase: 'v3.1.0-S1', status: 'active' },
-      // Panchanga
-      { tool: 'query_panchanga', category: 'panchanga_daily', expected_rows: 73414, actual_rows: null, backfill_phase: 'phase-4c-enrich-20260521-r2', status: 'active' },
-      // LEL
-      { tool: 'lel_query', category: 'life_events', expected_rows: 36, actual_rows: null, backfill_phase: 'v3.1.0-S1', status: 'active' },
-    ],
-    caveats: [
-      { tool: 'query_chart_facts', caveat: 'KP, Tajaka, Shadbala, and Ashtakavarga categories pending v3.3 backfill. Queries against these categories return 0 rows until backfill completes.', severity: 'warn' },
-    ],
-    note: 'actual_rows populated after applying migrations 073-076 and running nightly audit.',
-  })
+  try {
+    // Query data_source_expected for all rows
+    const coverageResult = await query<DataSourceExpectedRow>(
+      `SELECT tool_name, category, expected_rows, actual_rows, backfill_phase, notes, updated_at
+       FROM data_source_expected
+       ORDER BY tool_name, category`
+    )
+
+    // If table is empty (Phase 7a seed not yet applied), return graceful empty response
+    if (coverageResult.rows.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        generated_at: now,
+        tier: principal.audience_tier,
+        coverage: [],
+        caveats: [],
+        note: 'data_source_expected table not yet seeded — run Phase 7a seed load',
+      })
+    }
+
+    // Build coverage array from real DB rows
+    const coverage = coverageResult.rows.map(row => ({
+      tool: row.tool_name,
+      category: row.category,
+      expected_rows: row.expected_rows,
+      actual_rows: row.actual_rows,
+      last_updated_at: row.updated_at,
+      backfill_phase: row.backfill_phase,
+      notes: row.notes ?? undefined,
+      status: row.actual_rows !== null && row.actual_rows >= row.expected_rows ? 'ok' : 'low',
+    }))
+
+    // Query active caveats from tool_caveats
+    let caveats: Array<{ tool: string; caveat: string; severity: string }> = []
+    try {
+      const caveatResult = await query<ToolCaveatRow>(
+        `SELECT tool_name, caveat_text, severity
+         FROM tool_caveats
+         WHERE active = true
+         ORDER BY tool_name, severity`
+      )
+      caveats = caveatResult.rows.map(row => ({
+        tool: row.tool_name,
+        caveat: row.caveat_text,
+        severity: row.severity,
+      }))
+    } catch {
+      // tool_caveats query failure is non-fatal — return coverage without caveats
+      caveats = []
+    }
+
+    return NextResponse.json({
+      ok: true,
+      generated_at: now,
+      tier: principal.audience_tier,
+      coverage,
+      caveats,
+    })
+  } catch (err) {
+    // DB unavailable or table doesn't exist yet — graceful degradation
+    const message = err instanceof Error ? err.message : String(err)
+    const isTableMissing = message.includes('does not exist') || message.includes('relation')
+
+    if (isTableMissing) {
+      return NextResponse.json({
+        ok: true,
+        generated_at: now,
+        tier: principal.audience_tier,
+        coverage: [],
+        caveats: [],
+        note: 'data_source_expected table not yet seeded — run Phase 7a seed load',
+      })
+    }
+
+    return NextResponse.json(
+      { ok: false, error: 'coverage_query_failed', message },
+      { status: 500 }
+    )
+  }
 }
 
 export async function POST(req: NextRequest): Promise<Response> {

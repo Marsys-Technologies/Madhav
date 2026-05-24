@@ -100,6 +100,7 @@ import { PostAnswerProvenance } from './PostAnswerProvenance'
 import { CorrectionNotice } from './CorrectionNotice'
 import { OutOfDomainBanner } from './OutOfDomainBanner'
 import type { ContextUsageEvent, ProvenanceEvent } from '@/types/sse_events'
+import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SettingsDropdown } from './SettingsDropdown'
 import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
@@ -1597,10 +1598,41 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(initialMessagesProp)
   const [restoredKey, setRestoredKey] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  // pinnedOpen: true when the user explicitly clicked the toggle to open — hover-out won't auto-close.
+  // Resets to false when the user clicks toggle again (to close) or when sidebar auto-opens via hover.
+  const [sidebarPinned, setSidebarPinned] = useState(false)
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sidebarReloadTick, setSidebarReloadTick] = useState(0)
   const [sidebarLoading, setSidebarLoading] = useState(false)
   const [textScale, increaseTextScale, decreaseTextScale] = useTextScale()
   const handleTitleGenerated = useCallback(() => setSidebarReloadTick((n) => n + 1), [])
+
+  // Hover-based auto-expand / auto-collapse (desktop only).
+  // Strip mouseenter → expand after 150ms. Sidebar mouseleave → collapse after 400ms if not pinned.
+  const handleStripEnter = useCallback(() => {
+    if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    expandTimerRef.current = setTimeout(() => {
+      setSidebarCollapsed(false)
+      setSidebarPinned(false) // hover-open is not pinned
+    }, 150)
+  }, [])
+
+  const handleSidebarEnter = useCallback(() => {
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    if (expandTimerRef.current) clearTimeout(expandTimerRef.current)
+  }, [])
+
+  const handleSidebarLeave = useCallback(() => {
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current)
+    collapseTimerRef.current = setTimeout(() => {
+      setSidebarPinned(prev => {
+        if (!prev) setSidebarCollapsed(true)
+        return prev
+      })
+    }, 400)
+  }, [])
   const [traceOpen, setTraceOpen] = useState(false)
   const [latestQueryId, setLatestQueryId] = useState<string | null>(null)
   const { stack, style, lelEnabled, setStack, setStyle, setLelEnabled } = useChatPreferences(chartId)
@@ -1704,6 +1736,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
   const handleSelectConversation = useCallback(async (id: string) => {
     setActiveConversationId(id)
     setSidebarCollapsed(true)
+    setSidebarPinned(false)
     try {
       const r = await fetch(`/api/conversations/${id}/messages`)
       if (r.ok) {
@@ -1768,7 +1801,7 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       hint: '⌘ B',
       icon: PanelLeft,
       keywords: 'sidebar conversations toggle',
-      run: () => { setSidebarCollapsed(c => !c); setPaletteOpen(false) },
+      run: () => { setSidebarCollapsed(c => { setSidebarPinned(!c); return !c }); setPaletteOpen(false) },
     },
     {
       id: 'shortcuts',
@@ -1792,41 +1825,79 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
       data-r11b-active={r11bActive ? 'true' : 'false'}
       style={{ ['--text-scale' as string]: textScale }}
     >
-      {/* Mobile sidebar backdrop — visible only when sidebar is open on small screens */}
-      {!sidebarCollapsed && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden"
-          onClick={() => setSidebarCollapsed(true)}
-          aria-hidden="true"
-          data-testid="v2-mobile-sidebar-backdrop"
-        />
-      )}
+      {/* Mobile sidebar backdrop — fades in/out when sidebar opens/closes on small screens */}
+      <AnimatePresence>
+        {!sidebarCollapsed && (
+          <motion.div
+            key="mobile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed inset-0 z-30 bg-black/60 md:hidden"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-hidden="true"
+            data-testid="v2-mobile-sidebar-backdrop"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Sidebar wrapper:
-          Always fixed/overlay so it never steals width from the chat column.
-          collapsed=true  → hidden on mobile; fixed thin strip on md+
-          collapsed=false → fixed slide-over on all viewports */}
-      <div
-        className={
-          sidebarCollapsed
-            ? 'hidden'
-            : 'fixed inset-y-0 left-0 z-40 flex'
-        }
-      >
-        <ConversationSidebarV2
-          chartId={chartId}
-          activeId={activeConversationId}
-          onSelect={handleSelectConversation}
-          onNew={handleNewConversation}
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((c) => !c)}
-          reloadTrigger={sidebarReloadTick}
-          onRename={handleRenameConversation}
-          onDelete={handleDeleteConversation}
-          showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
-          onLoadingChange={setSidebarLoading}
-        />
-      </div>
+      {/* Condensed glass rail — fades out when sidebar opens, fades in when it closes. */}
+      <AnimatePresence>
+        {sidebarCollapsed && (
+          <motion.div
+            key="glass-rail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed left-0 inset-y-0 w-3 z-40 hidden md:block backdrop-blur-[8px] border-r"
+            style={{
+              background: 'rgba(13,10,5,0.38)',
+              borderRightColor: 'rgba(255,255,255,0.10)',
+            }}
+            onMouseEnter={handleStripEnter}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar wrapper — slides in from the left with spring physics. */}
+      <AnimatePresence>
+        {!sidebarCollapsed && (
+          <motion.div
+            key="sidebar"
+            initial={{ x: '-100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '-100%', opacity: 0 }}
+            transition={{
+              x: { type: 'spring', stiffness: 320, damping: 32 },
+              opacity: { duration: 0.18, ease: 'easeOut' },
+            }}
+            className="fixed inset-y-0 left-0 z-40 flex"
+            onMouseEnter={handleSidebarEnter}
+            onMouseLeave={handleSidebarLeave}
+          >
+            <ConversationSidebarV2
+              chartId={chartId}
+              activeId={activeConversationId}
+              onSelect={handleSelectConversation}
+              onNew={handleNewConversation}
+              collapsed={sidebarCollapsed}
+              onToggle={() => {
+                const next = sidebarCollapsed
+                setSidebarCollapsed(!next)
+                setSidebarPinned(next) // opening via click = pin; closing via click = unpin
+              }}
+              reloadTrigger={sidebarReloadTick}
+              onRename={handleRenameConversation}
+              onDelete={handleDeleteConversation}
+              showProjects={process.env.NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS === 'true'}
+              onLoadingChange={setSidebarLoading}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div
         data-testid="v2-chat-column"
@@ -1859,10 +1930,14 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
           >
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
-          {/* Desktop: toggle sidebar */}
+          {/* Desktop: toggle sidebar (click = pin open / unpin+close) */}
           <button
             type="button"
-            onClick={() => setSidebarCollapsed(c => !c)}
+            onClick={() => {
+              const next = sidebarCollapsed
+              setSidebarCollapsed(!next)
+              setSidebarPinned(next) // opening = pin, closing = unpin
+            }}
             className="hidden md:flex h-8 w-8 items-center justify-center rounded-md text-[color-mix(in_oklch,var(--brand-gold-cream)_40%,transparent)] hover:bg-[rgba(var(--brand-gold-rgb),0.06)] transition-colors"
             aria-label="Toggle conversations"
             data-testid="v2-desktop-sidebar-toggle"

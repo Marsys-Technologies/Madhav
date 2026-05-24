@@ -19,6 +19,8 @@ export default defineConfig({
       'tests/e2e/gate_ii_trace_smoke.spec.ts',
       'tests/e2e/gate_iii_intelligent_chat_smoke.spec.ts',
       'tests/e2e/portal/**',
+      // Playwright visual spec — no env vars in unit mode, file-level FAIL without this guard.
+      'tests/visual/R11B_brand_preservation.spec.ts',
     ],
   },
   resolve: {

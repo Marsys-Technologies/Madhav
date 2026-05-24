@@ -155,6 +155,41 @@ work. Improvement reduces apply latency and clarifies the transaction journal.
 
 ---
 
+## Item 5 — Lifecycle tab does not count synthesis-stage (agentic loop) tool calls
+
+**ID:** CF.V13.5
+**Surfaced at:** R11.F PR #156 pre-merge audit (2026-05-24)
+**Severity:** LOW
+
+**Description:**
+The Query Trace Lifecycle tab's RETRIEVAL row counts only pre-synthesis pipeline retrieval
+calls (the deterministic `tool_fetch` stage). Tool calls fired by the R11.F agentic loop
+during synthesis are emitted as `data-tool` events (route.ts:1060–1065) but do not
+increment the RETRIEVAL counter. This means:
+
+- In production, "0 tools fired" in the Lifecycle RETRIEVAL row is consistent with a
+  fully-functional agentic loop response.
+- To confirm tool execution post-R11.F, an operator must infer it from response content
+  (specific dates, IKP/TRS citation anchors, sub-dasha tables) rather than reading a counter.
+- Cloud Run log watch is the fallback: `[google-adapter]`, `[anthropic-adapter]` tool_use
+  events are logged at DEBUG level.
+
+**Scope of work:**
+Add a synthesis-stage tool call counter to the Lifecycle tab. Route options:
+1. Increment a separate "agentic loop tools fired" counter from the `tool_use_complete`
+   event handler (route.ts:1060) and emit as a new `data-stage` part (`agentic_tools`)
+2. Or extend the existing `data-tool` event to carry a `stage` field (`retrieval` vs
+   `synthesis`) and update the Lifecycle UI to display both rows
+
+Either option is additive/non-breaking. The Phase 2 post-R11.F log-watch procedure
+(10-minute compressed monitoring) is the current operational substitute.
+
+**Why deferred:** Not a correctness gap — tools are called and results used correctly.
+Pure observability improvement. Appropriate scope for a Chat V2 R12 polish session or
+a standalone P0 if a production debugging incident makes the gap acute.
+
+---
+
 ## Summary Table
 
 | ID | Item | Source Session | Severity | Est. Sessions |
@@ -163,10 +198,11 @@ work. Improvement reduces apply latency and clarifies the transaction journal.
 | CF.V13.2 | bootstrap build_manifests auto-registration | Phase 4C close | MEDIUM | 1 |
 | CF.V13.3 | PLANNER_PROMPT pending-patch warning R-rule | ICR campaign scoping | LOW | 1 |
 | CF.V13.4 | §N detector leaf vs networked signal classification | M5 close (MSR.387 fix) | LOW | 1 |
+| CF.V13.5 | Lifecycle tab synthesis-stage tool call counter missing | R11.F audit 2026-05-24 | LOW | 1 |
 
-**Total carry-forward:** 4 items across 8–11 estimated sessions.
+**Total carry-forward:** 5 items across 9–12 estimated sessions.
 **V1.2 audit shipped:** 55 defects across 21 sessions (COV×10, PERF×5, ICR×6).
 
 ---
 
-*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0 — produced at M5 Coverage Campaign close 2026-05-21.*
+*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.2 — CF.V13.5 added at R11.F close 2026-05-24.*

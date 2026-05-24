@@ -56,6 +56,12 @@ export interface ChartFactsQueryInput {
   from_date?: string
   /** ISO date. For dasha categories: returns rows where start_date <= to_date. */
   to_date?: string
+  /**
+   * MCPT v3.2 P4b: When true, the response result item is grouped by category as
+   * { rows_by_category: { [category]: ChartFactRow[] } } instead of a flat rows array.
+   * Used by the MCP query_chart_facts tool when the `categories` array param is provided.
+   */
+  batched?: boolean
 }
 
 interface ChartFactsRow {
@@ -219,21 +225,49 @@ async function retrieveImpl(
 
   const { rows } = await getStorageClient().query<ChartFactsRow>(sql, args)
 
-  const results: ToolBundleResult[] = rows.map((row) => ({
-    content: JSON.stringify({
-      fact_id: row.fact_id,
-      category: row.category,
-      divisional_chart: row.divisional_chart,
-      value_text: row.value_text,
-      value_number: row.value_number,
-      data: row.value_json,
-      source: row.source_section,
-    }),
-    source_canonical_id: 'FORENSIC',
-    source_version: '8.0',
-    confidence: 1.0,
-    significance: 0.9,
-  }))
+  // MCPT v3.2 P4b: When batched=true, group rows by category and emit a single
+  // result item with { rows_by_category: { [category]: row[] } } for one-round-trip
+  // multi-category retrieval. Single-category path (batched=false/undefined) unchanged.
+  let results: ToolBundleResult[]
+  if (p.batched === true) {
+    const grouped: Record<string, unknown[]> = {}
+    for (const row of rows) {
+      const cat = row.category
+      if (!grouped[cat]) grouped[cat] = []
+      grouped[cat].push({
+        fact_id: row.fact_id,
+        category: row.category,
+        divisional_chart: row.divisional_chart,
+        value_text: row.value_text,
+        value_number: row.value_number,
+        data: row.value_json,
+        source: row.source_section,
+      })
+    }
+    results = [{
+      content: JSON.stringify({ rows_by_category: grouped }),
+      source_canonical_id: 'FORENSIC',
+      source_version: '8.0',
+      confidence: 1.0,
+      significance: 0.9,
+    }]
+  } else {
+    results = rows.map((row) => ({
+      content: JSON.stringify({
+        fact_id: row.fact_id,
+        category: row.category,
+        divisional_chart: row.divisional_chart,
+        value_text: row.value_text,
+        value_number: row.value_number,
+        data: row.value_json,
+        source: row.source_section,
+      }),
+      source_canonical_id: 'FORENSIC',
+      source_version: '8.0',
+      confidence: 1.0,
+      significance: 0.9,
+    }))
+  }
 
   const result_hash =
     'sha256:' +

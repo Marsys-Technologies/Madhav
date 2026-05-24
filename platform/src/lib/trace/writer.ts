@@ -12,28 +12,69 @@ import type { TraceStep, TraceHistoryRow } from './types'
 
 /** Persist a single trace step. Called fire-and-forget from emitter. */
 export async function writeTraceStep(step: TraceStep): Promise<void> {
-  await query(
-    `INSERT INTO public.query_trace_steps
-       (query_id, conversation_id, user_id, step_seq, step_name, step_type, status,
-        started_at, completed_at, latency_ms, parallel_group, data_summary, payload)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb)
-     ON CONFLICT DO NOTHING`,
-    [
-      step.query_id,
-      step.conversation_id ?? null,
-      step.user_id ?? null,
-      step.step_seq,
-      step.step_name,
-      step.step_type,
-      step.status,
-      step.started_at,
-      step.completed_at ?? null,
-      step.latency_ms ?? null,
-      step.parallel_group ?? null,
-      JSON.stringify(step.data_summary),
-      JSON.stringify(step.payload),
-    ]
-  )
+  // mcp_tool column added by migration 116. Extract from data_summary so the
+  // column is populated for all mcp_primitive calls without changing TraceStep shape.
+  // Migration 116 must be applied before this code runs in production.
+  const mcpTool = step.data_summary?.mcp_tool ?? null
+
+  // Try writing with mcp_tool column (requires migration 116).
+  // Falls back to the pre-migration INSERT shape if the column is absent,
+  // so trace writes are never dropped during a rolling deploy.
+  try {
+    await query(
+      `INSERT INTO public.query_trace_steps
+         (query_id, conversation_id, user_id, step_seq, step_name, mcp_tool, step_type, status,
+          started_at, completed_at, latency_ms, parallel_group, data_summary, payload)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb)
+       ON CONFLICT DO NOTHING`,
+      [
+        step.query_id,
+        step.conversation_id ?? null,
+        step.user_id ?? null,
+        step.step_seq,
+        step.step_name,
+        mcpTool,
+        step.step_type,
+        step.status,
+        step.started_at,
+        step.completed_at ?? null,
+        step.latency_ms ?? null,
+        step.parallel_group ?? null,
+        JSON.stringify(step.data_summary),
+        JSON.stringify(step.payload),
+      ]
+    )
+  } catch (err) {
+    // Fallback: if mcp_tool column doesn't exist yet (pre-migration 116),
+    // write without it so trace steps are never silently dropped.
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('mcp_tool') || msg.includes('column')) {
+      await query(
+        `INSERT INTO public.query_trace_steps
+           (query_id, conversation_id, user_id, step_seq, step_name, step_type, status,
+            started_at, completed_at, latency_ms, parallel_group, data_summary, payload)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb)
+         ON CONFLICT DO NOTHING`,
+        [
+          step.query_id,
+          step.conversation_id ?? null,
+          step.user_id ?? null,
+          step.step_seq,
+          step.step_name,
+          step.step_type,
+          step.status,
+          step.started_at,
+          step.completed_at ?? null,
+          step.latency_ms ?? null,
+          step.parallel_group ?? null,
+          JSON.stringify(step.data_summary),
+          JSON.stringify(step.payload),
+        ]
+      )
+    } else {
+      throw err
+    }
+  }
 }
 
 /** Fetch all steps for a query, ordered by step_seq (for historical replay). */
