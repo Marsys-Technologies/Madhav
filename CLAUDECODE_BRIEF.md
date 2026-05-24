@@ -1,129 +1,117 @@
 ---
-artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P10-S2_v1_0.md
+artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P7-S1_v1_0.md
 type: CLAUDECODE_BRIEF
 version: 1.0
 status: COMPLETE
 authored_by: Conductor (2026-05-25)
-session_id: TR-P10-S2
+session_id: TR-P7-S1
 ---
 
-# CLAUDECODE_BRIEF — TR-P10-S2
-## Phase 10.6–10.10: PLANNER_PROMPT next-version + MP.1 mirror to .geminirules
+# CLAUDECODE_BRIEF — TR-P7-S1
+## Phase 7.1 + 7.6: query_dasha_periods PD/SD levels; query_drekkana_drishti
 
 ## §0 — Start
 
+You are in /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix on branch feature/tooling-remediation.
+
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
-git status  # must be clean
+git status  # must be clean before starting
 ```
 
 ## §1 — Scope
 
-may_touch: 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md, .geminirules
-must_not_touch: platform/**, platform-mcp/**, python-sidecar/**, 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, CLAUDE.md, 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/**
-
-**This session touches ONLY the PLANNER_PROMPT document and .geminirules. No application code.**
+may_touch: platform-mcp/src/tools/query_dasha_periods.ts, platform-mcp/src/tools/query_dasha_periods.test.ts, platform-mcp/src/tools/query_drekkana_drishti.ts, platform-mcp/src/tools/query_drekkana_drishti.test.ts, platform/src/lib/retrieve/*, platform-mcp/src/server.ts, platform-mcp/src/index.ts
+must_not_touch: 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, .geminirules, CLAUDE.md, 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/**
 
 ## §2 — Task
 
-First read `00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md` to see the current version (should be 2.5 after TR-P10-S1) and the section structure. Then add 5 more R-rules and bump to the next minor version.
+### 7.1 — query_dasha_periods level extension
 
-### R-CS.2 — Pre-compute chart summary
+**File:** `platform-mcp/src/tools/query_dasha_periods.ts`
 
-```
-R-CS.2 — Pre-compute chart summary
-At session start, after the R-TD.1 diagnostic, call chart_summary() to cache the overview.
-Reference this cached summary throughout the session rather than re-calling. Avoids the
-0-rows bug exposing itself mid-reading (flag it if chart_summary returns 0 — do not silently skip).
-```
+1. Read the existing file fully to understand current schema and engine call.
+2. Add `level` param to the Zod schema: `z.enum(["maha","antar","pratyantar","sookshma"]).default("antar")`.
+3. Thread `level` through to the engine/primitive call. Check the platform primitive at `platform/src/lib/retrieve/` — grep for `query_dasha_periods` or `vimshottari`.
+4. PD (Pratyantar) and SD (Sookshma) are computed from MD/AD durations × planet ratios (standard Vimshottari proportion). If the engine already computes them, expose via level param. If not, implement:
+   - Pratyantar period for planet P within AD of planet A within MD of planet M:
+     `duration_pratyantar = duration_AD(A,M) × vimshottari_years[P] / 120`
+   - Sookshma period for planet S within PD of P:
+     `duration_sookshma = duration_PD(P,A,M) × vimshottari_years[S] / 120`
+   - Vimshottari years: Sun=6, Moon=10, Mars=7, Rahu=18, Jupiter=16, Saturn=19, Mercury=17, Ketu=7, Venus=20.
+5. Response shape: same as current but with nested `sub_periods` for PD/SD when level is pratyantar/sookshma.
+6. Write regression tests in `platform-mcp/src/tools/query_dasha_periods.test.ts`:
+   - `query_dasha_periods({level:"antar"})` returns periods (existing baseline).
+   - `query_dasha_periods({level:"pratyantar"})` returns periods with `duration_days` smaller than corresponding AD periods.
+   - `query_dasha_periods({level:"sookshma"})` returns periods with even smaller durations.
 
-### R-CGM.1 — CGM + vector proactive use
+### 7.6 — query_drekkana_drishti (new tool)
 
-```
-R-CGM.1 — CGM + vector proactive use
-For every signal with confidence ≥ 0.7, walk get_cgm_subgraph() 2 hops to find connected
-signals. For every domain-boundary question, call vector_search() with the domain as the query.
-Do not reserve these tools for explicit user requests — they are part of the default B.11 read.
-```
+**New files:** `platform-mcp/src/tools/query_drekkana_drishti.ts` + `platform-mcp/src/tools/query_drekkana_drishti.test.ts`
 
-### R-TRI.1 — Triangulate before asserting
+The D3 (Drekkana) chart governs siblings, courage, and Jaimini-style aspects.
 
-```
-R-TRI.1 — Triangulate before asserting
-Every substantive claim follows the triangulation chain: MSR signal → chart_facts confirmation
-→ ephemeris timing. A claim that skips any leg is annotated
-[PARTIAL-TRIANGULATION: missing <leg>].
-```
-
-### R-PER.1 — Mark permanence
-
-```
-R-PER.1 — Mark permanence
-Every clause in a reading is explicitly tagged:
-  (permanent — natal disposition)
-  (dasha-tied — active for <period>)
-  (transit-tied — window <date_from> to <date_to>)
-Untagged clauses are governance violations equivalent to a B.1 layer collapse.
-```
-
-### R-SCH.1 — Read schemas before use
-
-```
-R-SCH.1 — Read schemas before use
-Before the first invocation of any tool in a session, read its full schema description.
-If the tool is new (added in a phase post-P0), call list_assets() to confirm availability.
-```
-
-### Version bump + changelog
-
-Bump from current version (2.5) to next minor (2.6). Add changelog entry for v2.6.
-
-### MP.1 mirror to .geminirules
-
-Read the current `.geminirules`. Add a `TOOLING_REMEDIATION_RULES` section with adapted-parity versions of all 10 methodology rules (R-TD.1 through R-SCH.1) in Gemini idiom. Tag the section:
-```
-# TOOLING_REMEDIATION_RULES — Added TR-P10-S2 (2026-05-25), mirror pair MP.1
-```
-
-The mirror is semantic, not byte-identical. Adapt language for Gemini's working style while preserving intent. Keep the section clearly delimited with a comment header and footer.
+1. Fetch D3 positions: call `query_divisional_chart({division:"D3"})` (already built in TR-P4-S1). Parse the planet positions from the response.
+2. Alternatively, check if `chart_facts` has rows with `category: "divisional_d3"` — prefer chart_facts if populated (faster).
+3. Compute Jaimini Drekkana Drishti:
+   - **Moveable signs** (Aries, Cancer, Libra, Capricorn): cast drishti on all signs EXCEPT the adjacent signs (the 2nd and 12th from them).
+   - **Fixed signs** (Taurus, Leo, Scorpio, Aquarius): cast drishti on all other fixed signs.
+   - **Dual signs** (Gemini, Virgo, Sagittarius, Pisces): cast drishti on all other dual signs.
+4. For each planet in D3, compute which signs it aspects based on its D3 sign type (moveable/fixed/dual).
+5. For each aspected sign, check if any other planet occupies that sign → record aspect with strength (full=1.0 for in-sign).
+6. Output shape:
+   ```json
+   {
+     "planets": [
+       {
+         "planet": "Jupiter",
+         "drekkana_sign": "Aries",
+         "drekkana_house": 1,
+         "sign_type": "moveable",
+         "drishti_targets": [
+           {"sign": "Leo", "planet_in_sign": "Sun", "aspect_strength": 1.0},
+           {"sign": "Scorpio", "planet_in_sign": null, "aspect_strength": 1.0}
+         ]
+       }
+     ],
+     "mutual_drekkana_drishti": []
+   }
+   ```
+7. Schema params: `chart_id` (string, optional — default native's), `tier` (string).
+8. Register the new tool in `platform-mcp/src/server.ts` (or index.ts — wherever other tools are registered).
+9. Write tests:
+   - `query_drekkana_drishti({})` returns a non-empty `planets` array.
+   - Each planet in the response has `drekkana_sign`, `drekkana_house`, `drishti_targets`.
 
 ### Commit
 
 ```bash
-git add 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md .geminirules
-git commit -m "feat(TR-P10-S2): PLANNER_PROMPT v2.6 — R-CS.2, R-CGM.1, R-TRI.1, R-PER.1, R-SCH.1 + MP.1 mirror"
+git add -A
+git commit -m "feat(TR-P7-S1): dasha_periods PD/SD levels; query_drekkana_drishti"
 ```
-
-Push is handled by the conductor after FINAL_SUMMARY (wave 1 push boundary).
 
 ## §3 — Acceptance criteria
 
-| ID | Criterion |
-|---|---|
-| AC.1 | `PLANNER_PROMPT_v2_0.md` contains `R-CGM` or `cgm_subgraph` |
-| AC.2 | `PLANNER_PROMPT_v2_0.md` version bumped (one minor above 2.5) |
-| AC.3 | `.geminirules` contains `tooling.remediation` or `R-TD` or `session_start_diagnostic` |
-| AC.4 | `.geminirules` contains `TOOLING_REMEDIATION_RULES` section header |
-| AC.5 | Commit exists with the correct message |
+1. `query_dasha_periods` Zod schema includes `level` enum param with default "antar".
+2. `query_dasha_periods({level:"pratyantar"})` returns non-empty response with periods having shorter durations than the AD level.
+3. `query_drekkana_drishti({})` is a registered MCP tool that returns planet positions in D3 with Jaimini drishti targets.
+4. All new tests pass: `npx vitest run src/tools/query_dasha_periods.test.ts src/tools/query_drekkana_drishti.test.ts --reporter=verbose`.
+5. Commit SHA exists: `git log --format=%H -1` returns a new commit.
 
 ## §4 — Gate command
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
-grep -q 'R-CGM\|cgm_subgraph' 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md && \
-grep -q 'tooling.remediation\|R-TD\|session_start_diagnostic' .geminirules && \
-echo "GATE_PASS"
+(cd platform-mcp && npx vitest run src/tools/query_dasha_periods.test.ts src/tools/query_drekkana_drishti.test.ts --reporter=verbose 2>&1 | grep -E 'PASS|passed' | grep -q '.')
 ```
 
-## §5 — FINAL_SUMMARY
+## §5 — FINAL_SUMMARY (emit at session end)
 
-```
 ---FINAL_SUMMARY---
-session_id: TR-P10-S2
+session_id: TR-P7-S1
 status: PASS | HALT_NEEDS_HUMAN
-tests_passed: 0
-files_changed: [00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md, .geminirules]
+tests_passed: <N>
+files_changed: <list>
 commit_sha: <git log --format=%H -1>
-notes_for_orchestrator: <section where rules were placed, .geminirules section details>
+notes_for_orchestrator: <any info conductor needs>
 ---
-```
