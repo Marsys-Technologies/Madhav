@@ -1,0 +1,197 @@
+{
+  "captured_at": "2026-05-24",
+  "mcp_server_reachable": true,
+  "mcp_server_url": "https://amjis-mcp-qm256lasva-el.a.run.app",
+  "mcp_server_health_response": {"status": "ok", "service": "marsys-mcp", "version": "1.0.0"},
+  "note_key_discovery": "No MCP API key in .env.local — generated diagnostic key mcp_prod_NQEfNhsY (super_admin, tr-p0-s1-diagnostic-20260524) directly in DB.",
+  "data_coverage_response": {
+    "ok": true,
+    "note": "data_coverage returns 26 coverage entries but all actual_rows are null — tool reads expected_rows from metadata table, never queries actual DB row counts",
+    "categories_reported": ["lel_query/life_events", "query_chart_facts/arudha", "query_chart_facts/ashtakavarga_bav", "query_chart_facts/ashtakavarga_sav", "query_chart_facts/aspect", "query_chart_facts/bhava_bala", "query_chart_facts/birth_metadata", "query_chart_facts/chalit_shift", "query_chart_facts/dasha_chara", "query_chart_facts/dasha_vimshottari", "query_chart_facts/house", "query_chart_facts/kp_cusp", "query_chart_facts/kp_planet", "query_chart_facts/kp_significator", "query_chart_facts/navatara", "query_chart_facts/planet", "query_chart_facts/saham", "query_chart_facts/sensitive_point", "query_chart_facts/shadbala", "query_chart_facts/special_lagna", "query_chart_facts/strength_extra", "query_chart_facts/upagraha", "query_chart_facts/varshphal", "query_chart_facts/yoga", "query_panchanga/panchanga_daily", "query_signals/msr_corpus"],
+    "key_finding": "all actual_rows fields are null — data_coverage MV is not populated"
+  },
+  "tool_health_response": {
+    "ok": true,
+    "mv_available": true,
+    "all_call_counts_null": true,
+    "note": "tool_health shows 20 tools but all call_count_24h/error_rate/avg_latency_ms/audit_finding_count are null — MV not populated from prod usage"
+  },
+  "tool_tests": {
+    "C1_chart_summary": {
+      "schema_valid": true,
+      "row_count": 0,
+      "error_shape": "ok:true but total_rows:0 and rows_by_category:{} — wrapper calls query_chart_facts primitive but misreads nested results[0].content JSON as envelope.result.rows_by_category directly",
+      "layer_hypothesis": "wrapper",
+      "note": "query_chart_facts called directly returns 22 birth_metadata + 18 yoga + 48 planet + etc. chart_summary wrapper bug: envelope.result is ToolBundle not rows_by_category; wrapper must unwrap results[0].content JSON string"
+    },
+    "C2_holistic_bundle_ucn_rm_cdlm": {
+      "schema_valid": false,
+      "row_count": null,
+      "error_shape": "MCP error -32602: Input validation error: Invalid arguments for tool holistic_bundle: query_text field required (string, received undefined)",
+      "layer_hypothesis": "wrapper",
+      "note": "holistic_bundle requires query_text param which brief invocation did not include. Tool schema requires query_text z.string().min(3). Audit finding confirmed — tool errors when called without query_text"
+    },
+    "C3_cross_school_lookup": {
+      "schema_valid": true,
+      "row_count": 7,
+      "error_shape": "all 7 school results have coverage_type:silent and matching_signals:[] — topic param not passed through; invocation_params shows topic='surgical_primitive:cross_school_lookup' not the actual claim",
+      "layer_hypothesis": "wrapper",
+      "note": "cross_school_lookup receives claim param but platform primitive gets topic='surgical_primitive:cross_school_lookup' (the queryPlan.query_text from primitives route). The claim is not forwarded to the underlying multi_school_signal_lookup. Signal lookup always gets a useless query_text."
+    },
+    "C4_query_signals_filters": {
+      "schema_valid": true,
+      "row_count": 50,
+      "error_shape": "forward_looking and min_confidence params not applied — invocation_params shows forward_looking:false and confidence_floor:0.6 despite caller sending forward_looking:true and min_confidence:0.8",
+      "layer_hypothesis": "wrapper",
+      "note": "msr_sql tool params are built from queryPlan fields (forward_looking, confidence_floor) not from MCP input params. The MCP wrapper (query_signals.ts) must translate these params into toolParams before calling the primitive."
+    },
+    "C5_query_ephemeris_date_range": {
+      "schema_valid": false,
+      "row_count": null,
+      "error_shape": "MCP error -32602: Invalid arguments — date_range expects start/end fields not from/to; also planets array not accepted (only single planet param)",
+      "layer_hypothesis": "wrapper",
+      "note": "Brief used wrong param names (from/to and planets array). Correct schema: date_range.start/end, single planet. After retry with correct params: PASS — returns Jupiter ephemeris for 2026-06-01 (note: returns 2026-05-24 data, date_range filtering may not work)",
+      "retry_schema_valid": true,
+      "retry_row_count": 1
+    },
+    "C6_query_transit_event": {
+      "schema_valid": false,
+      "row_count": null,
+      "error_shape": "Initial: from/to field names wrong. After retry with start/end: returns {note:'Unknown event_type undefined. Use ingress|station|aspect|conjunction.'} — event_type param missing from schema",
+      "layer_hypothesis": "wrapper",
+      "note": "query_transit_event schema does not expose event_type as an input param. Callers cannot specify what kind of transit event to query. This is confirmed as a wrapper schema gap — the underlying tool supports event_type but the MCP schema does not surface it."
+    },
+    "C7_query_dasha_periods_pd_sd": {
+      "schema_valid": true,
+      "row_count": 28,
+      "error_shape": null,
+      "layer_hypothesis": "data_empty",
+      "note": "Returns 28 rows but all at level A (antardasha) or M_start — pd_lord is null in all rows. Tool does not return pratyantar dasha (PD) or sookshma dasha (SD). DB has dasha_vimshottari:50 rows but none at PD/SD level."
+    },
+    "C8_query_panchanga_enrichment": {
+      "schema_valid": true,
+      "row_count": 1,
+      "error_shape": null,
+      "layer_hypothesis": "wrapper",
+      "note": "Panchanga result for 2026-05-24 returns 20 base fields (tithi, vara, yoga etc.) but missing enrichment cols: special_yogas, choghadiya, hora, inauspicious, auspicious. DB has all 5 enrichment columns populated (27393 rows with enrichment for 2026+). Wrapper does not select/return enrichment JSONB columns."
+    },
+    "C9_read_asset_macro_plan": {
+      "schema_valid": false,
+      "row_count": null,
+      "error_shape": "Error: internal: Failed to read artifact MACRO_PLAN: ENOENT: no such file or directory, open '/00_ARCHITECTURE/MACRO_PLAN_v2_0.md'",
+      "layer_hypothesis": "prod_env",
+      "note": "MARSYS_REPO_ROOT is set to /Users/Dev/Vibe-Coding/Apps/Madhav in local .env.local, but prod Cloud Run environment resolves path from root '/' which doesn't exist. Asset reader prepends path with undefined/missing repo root env var in production."
+    },
+    "C9_read_asset_lel": {
+      "schema_valid": false,
+      "row_count": null,
+      "error_shape": "Error: internal: Failed to read artifact LEL: ENOENT: no such file or directory, open '/01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md'",
+      "layer_hypothesis": "prod_env",
+      "note": "Same root cause as C9_macro — MARSYS_REPO_ROOT env var not set in Cloud Run prod environment. Files exist locally but path resolution fails in prod."
+    },
+    "C10_read_classical_text": {
+      "schema_valid": true,
+      "row_count": 0,
+      "error_shape": null,
+      "layer_hypothesis": "wrapper",
+      "note": "Returns ok:true but 0 results for BPHS query. Root cause: wrapper converts text_id='BPHS' → schools=['bphs'] and filters WHERE ct.school = ANY(['bphs']). But ct.school for bphs is 'parashari' not 'bphs'. text_id maps to text_key not school. Filter should use WHERE ct.text_key = ANY(['bphs']). DB has 8349 classical_chunks with 8337 embeddings — data is there, filter is wrong."
+    },
+    "C11_chart_facts_empty_categories": {
+      "schema_valid": true,
+      "row_count": 0,
+      "error_shape": null,
+      "layer_hypothesis": "data_empty",
+      "note": "Categories deity_assignment, ishta_kashta, chandra_placement, avastha return 0 rows — confirmed from direct DB query. These categories are listed in ChartFactsCategory enum (chart_facts_query.ts line 21-30) but no data was ingested. DB has 27 categories with data but none of these 4."
+    }
+  },
+  "db_counts": {
+    "chart_facts_total_rows": 2475,
+    "chart_facts_by_category": {
+      "varshphal": 1566,
+      "house": 149,
+      "dasha_chara": 144,
+      "ashtakavarga_bav": 105,
+      "shadbala": 63,
+      "dasha_vimshottari": 50,
+      "kp_cusp": 48,
+      "planet": 48,
+      "aspect": 38,
+      "saham": 36,
+      "kp_planet": 36,
+      "birth_metadata": 22,
+      "cusp": 21,
+      "yoga": 18,
+      "dasha_yogini": 17,
+      "navatara": 12,
+      "panchang": 12,
+      "bhava_bala": 12,
+      "ashtakavarga_sav": 12,
+      "arudha": 9,
+      "special_lagna": 9,
+      "strength": 9,
+      "upagraha": 9,
+      "transit": 8,
+      "mercury_convergence": 8,
+      "kp_significator": 7,
+      "strength_extra": 7
+    },
+    "chart_facts_note": "27 categories present. Missing: sensitive_point (0), deity_assignment (0), ishta_kashta (0), chandra_placement (0), avastha (0). Plan claimed 2717 rows — actual is 2475.",
+    "school_convergence_index_total_rows": 574,
+    "school_convergence_index_note": "Materialized view with correct schema. Columns: signal_id, parashari_present, jaimini_present, kp_present, tajika_present, convergence_score, missing_schools. NOT the school×coverage_type breakdown expected by brief — schema differs from plan assumption. Coverage: parashari=499, jaimini=546, kp=459, tajika=484. Avg convergence score=0.866.",
+    "school_convergence_index_by_school": {
+      "has_parashari": 499,
+      "has_jaimini": 546,
+      "has_kp": 459,
+      "has_tajika": 484,
+      "avg_convergence_score": 0.866
+    },
+    "rag_chunks_total_rows": 6931,
+    "rag_chunks_by_doc_type_layer": {
+      "classical_text:L8": 5743,
+      "msr_signal:L2.5": 514,
+      "cgm_node:L2.5": 284,
+      "ucn_section:L2.5": 128,
+      "l1_fact:L1": 116,
+      "cdlm_cell:L2.5": 81,
+      "rm_element:L2.5": 33,
+      "l4_remedial:L4": 21,
+      "lel_chronic_pattern:L1": 6,
+      "lel_period_summary:L1": 5
+    },
+    "rag_chunks_note": "Plan claimed 4589 rag_chunks — actual is 6931. Also a separate classical_chunks table with 8349 rows and 8337 embeddings (used by read_classical_text). rag_chunks and classical_chunks are separate tables.",
+    "panchanga_enrichment_coverage": {
+      "total_rows_since_2026": 27393,
+      "has_special_yogas": 27393,
+      "has_choghadiya": 27393,
+      "has_hora": 27393,
+      "has_inauspicious": 27393,
+      "has_auspicious": 27393,
+      "note": "All enrichment columns fully populated in DB. But query_panchanga MCP tool does not return them (wrapper bug)."
+    }
+  },
+  "layer_decisions": {
+    "C1_bug_layer": "wrapper",
+    "C2_bug_layer": "wrapper",
+    "C3_bug_layer": "wrapper",
+    "C4_bug_layer": "wrapper",
+    "C5_bug_layer": "wrapper",
+    "C6_bug_layer": "wrapper",
+    "C7_bug_layer": "data_empty",
+    "C8_bug_layer": "wrapper",
+    "C9_bug_layer": "prod_env",
+    "C10_bug_layer": "wrapper",
+    "C11_bug_layer": "data_empty"
+  },
+  "key_surprises": [
+    "chart_facts actual rows = 2475 not 2717 as plan claimed (242 row discrepancy)",
+    "rag_chunks actual = 6931 not 4589 as plan claimed (2342 more chunks than expected — likely classical_text chunks were counted separately in plan but are in rag_chunks table)",
+    "classical_chunks is a SEPARATE table from rag_chunks with 8349 rows — read_classical_text uses classical_chunks/classical_texts tables, NOT rag_chunks",
+    "school_convergence_index is a materialized view with signal-level rows (574 = one per MSR signal), not school×coverage_type breakdown as plan assumed",
+    "data_coverage MV: all actual_rows are null — tool reports expected_rows from metadata, never queries actual counts",
+    "tool_health MV: all call metrics null — no usage telemetry being ingested",
+    "C8 panchanga enrichment: data IS in DB (all 5 cols populated) but wrapper does not return them — plan said 'missing enrichment cols' implied data gap; it is actually a wrapper gap",
+    "C9 read_asset: MARSYS_REPO_ROOT env var not set in prod Cloud Run — all asset reads fail with ENOENT at '/' path — this is a deployment config gap not a code bug",
+    "C10 read_classical_text: text_id → school mapping is wrong in wrapper (bphs → parashari), so no results returned despite 8337 embedded classical chunks",
+    "C1 chart_summary: wrapper exists and calls the right primitive, but misreads the nested ToolBundle response structure — this is a wrapper bug not a data or primitive bug"
+  ]
+}

@@ -39,6 +39,41 @@ import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 import { okResult, errorResult } from './_envelope.js'
 
+// ── Sanskrit term lookup table (TR-P9-S2: output_encoding param) ─────────────
+
+const SANSKRIT_TERMS: Record<string, { IAST: string; devanagari: string }> = {
+  'Sun': { IAST: 'Sūrya', devanagari: 'सूर्य' },
+  'Moon': { IAST: 'Candra', devanagari: 'चन्द्र' },
+  'Mars': { IAST: 'Maṅgala', devanagari: 'मंगल' },
+  'Mercury': { IAST: 'Budha', devanagari: 'बुध' },
+  'Jupiter': { IAST: 'Guru', devanagari: 'गुरु' },
+  'Venus': { IAST: 'Śukra', devanagari: 'शुक्र' },
+  'Saturn': { IAST: 'Śani', devanagari: 'शनि' },
+  'Rahu': { IAST: 'Rāhu', devanagari: 'राहु' },
+  'Ketu': { IAST: 'Ketu', devanagari: 'केतु' },
+  'Aries': { IAST: 'Meṣa', devanagari: 'मेष' },
+  'Taurus': { IAST: 'Vṛṣabha', devanagari: 'वृषभ' },
+  'Gemini': { IAST: 'Mithuna', devanagari: 'मिथुन' },
+  'Cancer': { IAST: 'Karkaṭa', devanagari: 'कर्कट' },
+  'Leo': { IAST: 'Siṃha', devanagari: 'सिंह' },
+  'Virgo': { IAST: 'Kanyā', devanagari: 'कन्या' },
+  'Libra': { IAST: 'Tulā', devanagari: 'तुला' },
+  'Scorpio': { IAST: 'Vṛścika', devanagari: 'वृश्चिक' },
+  'Sagittarius': { IAST: 'Dhanu', devanagari: 'धनु' },
+  'Capricorn': { IAST: 'Makara', devanagari: 'मकर' },
+  'Aquarius': { IAST: 'Kumbha', devanagari: 'कुम्भ' },
+  'Pisces': { IAST: 'Mīna', devanagari: 'मीन' },
+}
+
+function applyEncoding(text: string, encoding: 'IAST' | 'devanagari' | 'none'): string {
+  if (encoding === 'none') return text
+  for (const [english, encoded] of Object.entries(SANSKRIT_TERMS)) {
+    const regex = new RegExp(`\\b${english}\\b`, 'g')
+    text = text.replace(regex, encoded[encoding])
+  }
+  return text
+}
+
 /**
  * F.3 fix: category list derived from ChartFactsCategory enum in
  * platform/src/lib/retrieve/chart_facts_query.ts:21–30.
@@ -67,6 +102,7 @@ export const QUERY_CHART_FACTS_DESCRIPTION = buildToolDescription({
     'Use for single fact lookups ("What is Saturn\'s shadbala?", "Which planets are in house 7?"). ' +
     'Prefer query_signals for MSR signal corpus data. ' +
     'Prefer holistic_bundle when synthesis or multi-tool retrieval is needed.',
+  tierAccess: 'All tiers. super_admin + acharya see all 37 categories; client tier sees curated subset.',
 })
 
 // Keep internal alias for the tool registration
@@ -87,6 +123,17 @@ const QueryChartFactsInputSchema = z.object({
   as_of_date: z.string().optional().describe('ISO date for time-sensitive fact filtering.'),
   divisional_chart: z.string().optional().describe('Optional divisional chart filter. Examples: "D1", "D9", "D10", "D12". When provided, only rows matching this divisional_chart are returned.'),
   limit: z.number().int().min(1).max(200).optional().default(50).describe('Max rows to return.'),
+  include_empty_counts: z.boolean().optional().default(false).describe(
+    'When true, returns ALL known categories from CHART_FACTS_CATEGORIES even if they have 0 rows. ' +
+    'Each category object includes a populated_count field (number of rows in chart_facts for that category). ' +
+    'When false (default), only returns categories that have at least one row, each annotated with populated_count.'
+  ),
+  output_encoding: z.enum(['IAST', 'devanagari', 'none']).optional().default('none').describe(
+    'Sanskrit transliteration encoding applied to string values in the response rows. ' +
+    '"IAST" — ISO 15919 diacritics (e.g. Sūrya, Candra). ' +
+    '"devanagari" — Devanagari script (e.g. सूर्य, चन्द्र). ' +
+    '"none" (default) — no transformation applied.'
+  ),
 })
 
 type QueryChartFactsInput = z.infer<typeof QueryChartFactsInputSchema>
@@ -105,6 +152,52 @@ export function registerQueryChartFacts(
       // Determine whether batched (categories array) or single-category mode
       const isBatched = Array.isArray(args.categories) && args.categories.length > 0
 
+      // --- Step 1: Build a per-category count map ---
+      // Strategy: fetch all categories in one batched call (limit=1 per category just for
+      // structure), then use row-lengths as a proxy count. When include_empty_counts=true
+      // we need counts for every known category, so we always run the full-category pre-query.
+      // When include_empty_counts=false we only need counts for the categories in the response;
+      // those are derived from the main call row lengths (see Step 3).
+      let countMap: Record<string, number> = {}
+
+      if (args.include_empty_counts) {
+        // Pre-query: fetch all known categories batched to build the count map.
+        // We use limit=200 (max) to get accurate row lengths as count proxies.
+        const countQueryResult = await callPlatformPrimitive(
+          'query_chart_facts',
+          {
+            category: [...CHART_FACTS_CATEGORIES],
+            batched: true,
+            limit: 200,
+          },
+          principal
+        )
+        if (countQueryResult.envelope.ok && countQueryResult.status < 400) {
+          const countEnv = countQueryResult.envelope as Record<string, unknown>
+          const countData = countEnv['result'] as Record<string, unknown> | undefined
+          if (countData) {
+            // Try ToolBundle.results[0].content (JSON) first, then direct rows_by_category
+            const bundleResults = countData['results'] as Array<{ content: string }> | undefined
+            let rowsByCat: Record<string, unknown[]> | undefined
+            if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+              try {
+                const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+                rowsByCat = parsed['rows_by_category'] as Record<string, unknown[]> | undefined
+              } catch { /* ignore parse errors */ }
+            }
+            if (!rowsByCat && typeof countData['rows_by_category'] === 'object') {
+              rowsByCat = countData['rows_by_category'] as Record<string, unknown[]>
+            }
+            if (rowsByCat) {
+              for (const [cat, rows] of Object.entries(rowsByCat)) {
+                countMap[cat] = Array.isArray(rows) ? rows.length : 0
+              }
+            }
+          }
+        }
+      }
+
+      // --- Step 2: Fetch the actual data ---
       const { status, envelope } = await callPlatformPrimitive(
         'query_chart_facts',
         {
@@ -125,6 +218,134 @@ export function registerQueryChartFacts(
       if (!envelope.ok || status >= 400) {
         return errorResult(envelope)
       }
+
+      // --- Step 3: Annotate response with populated_count ---
+      // Cast envelope result to a mutable shape so we can enrich it.
+      const envelopeResult = (envelope as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
+
+      if (envelopeResult) {
+        // Try to unwrap ToolBundle.results[0].content if the platform wraps results that way.
+        // If so, the actual data lives inside the JSON string.
+        let rowsByCategory: Record<string, unknown[]> | undefined
+        let singleRows: unknown[] | undefined
+
+        const bundleResults = envelopeResult['results'] as Array<{ content: string }> | undefined
+        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+          try {
+            const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+            if (isBatched && parsed['rows_by_category']) {
+              rowsByCategory = parsed['rows_by_category'] as Record<string, unknown[]>
+            } else if (!isBatched && parsed['rows']) {
+              singleRows = parsed['rows'] as unknown[]
+            }
+          } catch { /* ignore */ }
+        }
+        if (!rowsByCategory && !singleRows) {
+          if (isBatched && envelopeResult['rows_by_category']) {
+            rowsByCategory = envelopeResult['rows_by_category'] as Record<string, unknown[]>
+          } else if (!isBatched && envelopeResult['rows']) {
+            singleRows = envelopeResult['rows'] as unknown[]
+          }
+        }
+
+        if (isBatched && rowsByCategory) {
+          // Batched mode: annotate each category bucket with populated_count.
+          // For include_empty_counts=false: use row lengths as count proxy.
+          for (const [cat, rows] of Object.entries(rowsByCategory)) {
+            if (!(cat in countMap)) {
+              countMap[cat] = Array.isArray(rows) ? rows.length : 0
+            }
+          }
+
+          // Build annotated structure
+          const annotated: Record<string, { rows: unknown[]; populated_count: number }> = {}
+          for (const [cat, rows] of Object.entries(rowsByCategory)) {
+            annotated[cat] = {
+              rows: Array.isArray(rows) ? rows : [],
+              populated_count: countMap[cat] ?? 0,
+            }
+          }
+
+          // When include_empty_counts=true, add all known categories not yet present
+          if (args.include_empty_counts) {
+            for (const cat of CHART_FACTS_CATEGORIES) {
+              if (!(cat in annotated)) {
+                annotated[cat] = { rows: [], populated_count: countMap[cat] ?? 0 }
+              }
+            }
+          }
+
+          // Write annotated rows_by_category back to envelope
+          if (bundleResults && bundleResults.length > 0) {
+            // ToolBundle wrapping: update the JSON string in results[0].content
+            const baseContent = (() => {
+              try { return JSON.parse(bundleResults[0].content) as Record<string, unknown> } catch { return {} }
+            })()
+            baseContent['rows_by_category'] = annotated
+            ;(envelopeResult['results'] as Array<{ content: string }>)[0].content = JSON.stringify(baseContent)
+          } else {
+            envelopeResult['rows_by_category'] = annotated
+          }
+
+        } else if (!isBatched) {
+          // Single-category mode: add populated_count at result level.
+          const rows = singleRows ?? (envelopeResult['rows'] as unknown[] | undefined) ?? []
+          const cat = args.category ?? ''
+          if (!(cat in countMap)) {
+            countMap[cat] = Array.isArray(rows) ? rows.length : 0
+          }
+          envelopeResult['populated_count'] = countMap[cat] ?? 0
+
+          // When include_empty_counts=true, also expose all_category_counts
+          if (args.include_empty_counts) {
+            const allCategoryCounts: Record<string, number> = {}
+            for (const c of CHART_FACTS_CATEGORIES) {
+              allCategoryCounts[c] = countMap[c] ?? 0
+            }
+            envelopeResult['all_category_counts'] = allCategoryCounts
+          }
+        }
+      }
+
+      // ── Step 4: Apply Sanskrit encoding to string values in rows ──────────
+      // Only applied when output_encoding !== 'none' (default is 'none', so
+      // existing tests that don't pass output_encoding are unaffected).
+      const encoding = args.output_encoding ?? 'none'
+      if (encoding !== 'none' && envelopeResult) {
+        // Apply encoding to all string values in a row object
+        const encodeRow = (row: unknown): unknown => {
+          if (!row || typeof row !== 'object' || Array.isArray(row)) return row
+          const encoded: Record<string, unknown> = {}
+          for (const [key, val] of Object.entries(row as Record<string, unknown>)) {
+            encoded[key] = typeof val === 'string' ? applyEncoding(val, encoding) : val
+          }
+          return encoded
+        }
+
+        // Encode rows inside rows_by_category (batched mode)
+        const rowsByCategory = envelopeResult['rows_by_category'] as
+          | Record<string, { rows: unknown[]; populated_count: number } | unknown[]>
+          | undefined
+        if (rowsByCategory) {
+          for (const [cat, bucket] of Object.entries(rowsByCategory)) {
+            if (bucket && typeof bucket === 'object' && !Array.isArray(bucket)) {
+              // Annotated bucket shape: { rows: unknown[], populated_count: number }
+              const b = bucket as { rows: unknown[]; populated_count: number }
+              b.rows = b.rows.map(encodeRow)
+              ;(rowsByCategory as Record<string, unknown>)[cat] = b
+            } else if (Array.isArray(bucket)) {
+              ;(rowsByCategory as Record<string, unknown>)[cat] = bucket.map(encodeRow)
+            }
+          }
+        }
+
+        // Encode rows in single-category mode
+        const singleRowsEncoded = envelopeResult['rows'] as unknown[] | undefined
+        if (Array.isArray(singleRowsEncoded)) {
+          envelopeResult['rows'] = singleRowsEncoded.map(encodeRow)
+        }
+      }
+
       return okResult(envelope)
     }
   )

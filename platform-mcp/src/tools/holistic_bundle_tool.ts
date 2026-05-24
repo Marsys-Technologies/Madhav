@@ -29,6 +29,7 @@ export const HOLISTIC_BUNDLE_DESCRIPTION = buildToolDescription({
     'FIRST CALL when any synthesis question requires cross-layer context before reasoning. ' +
     'Use the subset param to restrict to specific layers (e.g., subset: ["MSR","DASHA"]). ' +
     'Prefer individual surgical primitives when you need only one data type without synthesis overhead.',
+  tierAccess: 'All tiers. Tier determines subset of bundle data returned.',
 })
 
 const HolisticBundleInputSchema = z.object({
@@ -46,6 +47,12 @@ const HolisticBundleInputSchema = z.object({
   ),
   subset: z.array(z.string()).optional().describe(
     'Optional list of sub-tool names to restrict the bundle. Valid values: MSR, CGM, UCN, RM, CDLM, LEL, PANCHANG, DASHA. Case-insensitive.'
+  ),
+  subset_size: z.number().int().min(10).max(573).optional().default(100).describe(
+    'Number of MSR signals to fetch. Default 100. Range 10–573.'
+  ),
+  return_format: z.enum(['verbose', 'compressed']).optional().default('verbose').describe(
+    'verbose: full data in bundle_entries (default). compressed: strip data payloads, return only metadata fields.'
   ),
 })
 
@@ -72,6 +79,8 @@ export function registerHolisticBundle(
           focus_domains: input.focus_domains,
           time_window: input.time_window,
           subset: input.subset,
+          subset_size: input.subset_size,
+          return_format: input.return_format,
           tier: principal.audience_tier,
           chart_id: undefined,
         },

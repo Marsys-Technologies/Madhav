@@ -39,6 +39,12 @@ export interface BuildToolDescriptionOptions {
    * (e.g. "Available: super_admin + acharya only. client tier = 403.").
    */
   tierNote?: string
+  /**
+   * Optional tier access description indicating which audience tiers can use
+   * this tool and any tier-specific behaviour differences.
+   * (e.g. "All tiers (super_admin, acharya, client). Full natal chart data.").
+   */
+  tierAccess?: string
 }
 
 const MAX_DESCRIPTION_LENGTH = 1200
@@ -59,6 +65,7 @@ export function buildToolDescription({
   coverageHint,
   whenToPrefer,
   tierNote,
+  tierAccess,
 }: BuildToolDescriptionOptions): string {
   const parts: string[] = []
 
@@ -87,6 +94,14 @@ export function buildToolDescription({
   if (tierNote) {
     parts.push(` ${tierNote.trimEnd()}`)
     if (!tierNote.trimEnd().endsWith('.')) {
+      parts.push('.')
+    }
+  }
+
+  // Tier access
+  if (tierAccess) {
+    parts.push(`\nTier access: ${tierAccess.trimEnd()}`)
+    if (!tierAccess.trimEnd().endsWith('.')) {
       parts.push('.')
     }
   }

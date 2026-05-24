@@ -1,6 +1,6 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.4
+version: 2.6
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 planner_blind_fix:
@@ -935,6 +935,61 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
           - Do NOT attach for natal signal queries already covered by msr_sql;
             R-RM fires only when resonance classifications or RM-specific
             structure is needed.
+
+  R-TD.1 — Session-start diagnostic
+        Before any substantive chart reading, call data_coverage({tier: 'super_admin'}) and
+        tool_health({days: 30}). If either tool errors, log with flag_disagreement and proceed
+        noting the gap. Do not skip this step even in short sessions.
+
+  R-NDE.1 — No date estimation
+        All future-dated claims (e.g. 'Jupiter will transit X around mid-2027') MUST be sourced
+        from query_ephemeris({date_range:{from:...,to:...}}) or query_transit_event(). Never
+        extrapolate from mean motion. Mark any date claim that lacks an ephemeris source as
+        [DATE_UNVERIFIED].
+
+  R-LP.1 — log_prediction mandatory
+        Every substantive predictive claim — defined as a claim about a future event, its timing,
+        or its quality — MUST be followed immediately by a log_prediction() call with:
+        confidence (0.0–1.0), horizon (months), falsifier (what observable outcome would refute it).
+        Predictions without log_prediction() violate B.3.
+
+  R-FD.1 — flag_disagreement on broken tools
+        When a tool returns an error or suspicious output (0 rows, silent coverage), call
+        flag_disagreement() to log it formally before proceeding with a workaround. Silent
+        workarounds are governance violations.
+
+  R-CS.1 — Cross-school before high-confidence
+        Before asserting any predictive claim with confidence ≥ 0.75, call cross_school_lookup()
+        for that claim. If cross_school_lookup returns silent or data_empty for all schools,
+        lower the stated confidence to ≤ 0.65 and note the gap explicitly.
+        [Activates after Phase 2 ships a populated school_convergence_index; until then,
+        annotate claims as [PRE-PHASE-2].]
+
+  R-CS.2 — Pre-compute chart summary
+        At session start, after the R-TD.1 diagnostic, call chart_summary() to cache the overview.
+        Reference this cached summary throughout the session rather than re-calling. Avoids the
+        0-rows bug exposing itself mid-reading (flag it if chart_summary returns 0 — do not silently skip).
+
+  R-CGM.1 — CGM + vector proactive use
+        For every signal with confidence ≥ 0.7, walk get_cgm_subgraph() 2 hops to find connected
+        signals. For every domain-boundary question, call vector_search() with the domain as the query.
+        Do not reserve these tools for explicit user requests — they are part of the default B.11 read.
+
+  R-TRI.1 — Triangulate before asserting
+        Every substantive claim follows the triangulation chain: MSR signal → chart_facts confirmation
+        → ephemeris timing. A claim that skips any leg is annotated
+        [PARTIAL-TRIANGULATION: missing <leg>].
+
+  R-PER.1 — Mark permanence
+        Every clause in a reading is explicitly tagged:
+          (permanent — natal disposition)
+          (dasha-tied — active for <period>)
+          (transit-tied — window <date_from> to <date_to>)
+        Untagged clauses are governance violations equivalent to a B.1 layer collapse.
+
+  R-SCH.1 — Read schemas before use
+        Before the first invocation of any tool in a session, read its full schema description.
+        If the tool is new (added in a phase post-P0), call list_assets() to confirm availability.
 
 Style rules (unchanged from v1.7):
 
@@ -2273,3 +2328,21 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*
 *v2.0.7 content extension 2026-05-20 (Phase 4C enrichment) — R-PA subclauses (f)+(g) for inauspicious periods + choghadiya/hora/special yoga triggers; R-PCI panchang context inheritance rule; examples 4.29–4.31*
 *v2.0.8 content extension 2026-05-21 (COV-S5) — R-UCN, R-CDLM, R-RM routing rules for query_ucn_walk, query_cdlm_lookup, query_rm_walk (L2.5 structural graph tools, tools 34–36)*
+*v2.5 content extension 2026-05-25 (TR-P10-S1) — R-TD.1 (session-start diagnostic), R-NDE.1 (no date estimation), R-LP.1 (log_prediction mandatory), R-FD.1 (flag_disagreement on broken tools), R-CS.1 (cross-school before high-confidence). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.1–10.5.*
+*v2.6 content extension 2026-05-25 (TR-P10-S2) — R-CS.2 (pre-compute chart summary), R-CGM.1 (CGM + vector proactive use), R-TRI.1 (triangulate before asserting), R-PER.1 (mark permanence), R-SCH.1 (read schemas before use). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.6–10.10. MP.1 mirror propagated to .geminirules TOOLING_REMEDIATION_RULES section (all 10 rules).*
+
+## Changelog
+
+### v2.6 — 2026-05-25 (TR-P10-S2)
+Added R-CS.2 (pre-compute chart summary), R-CGM.1 (CGM + vector proactive use),
+R-TRI.1 (triangulate before asserting), R-PER.1 (mark permanence),
+R-SCH.1 (read schemas before use). Five methodology rules from the
+MARSYS-JIS Tooling Remediation Phase 10.6–10.10. MP.1 mirror propagated to
+.geminirules TOOLING_REMEDIATION_RULES section covering all 10 R-rules
+(R-TD.1 through R-SCH.1).
+
+### v2.5 — 2026-05-25 (TR-P10-S1)
+Added R-TD.1 (session-start diagnostic), R-NDE.1 (no date estimation),
+R-LP.1 (log_prediction mandatory), R-FD.1 (flag_disagreement on broken tools),
+R-CS.1 (cross-school before high-confidence). Five methodology rules from the
+MARSYS-JIS Tooling Remediation Phase 10.1–10.5.

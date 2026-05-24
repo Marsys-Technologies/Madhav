@@ -36,7 +36,8 @@ import { buildToolDescription } from './description_builder.js'
 export const QUERY_SIGNALS_DESCRIPTION = buildToolDescription({
   baseDescription:
     'What it does: Queries the MSR signal corpus (499+ astrological signals) with structured ' +
-    'filters (domain, planet, dasha_lord, min_confidence, forward_looking) and returns raw signal rows without synthesis.',
+    'filters (domain, domains[], planet, dasha_lord, min_confidence, forward_looking, valence, temporal_activation) ' +
+    'and returns raw signal rows without synthesis.',
   coverageHint: '499+ signals across all Jyotish domains',
   whenToPrefer:
     'Use for "give me all forward-looking career signals" style queries. ' +
@@ -48,6 +49,10 @@ const QuerySignalsInputSchema = z.object({
   domain: z.string().optional().describe(
     'Jyotish domain filter. Examples: "career", "health", "relationships", "spiritual".'
   ),
+  domains: z.array(z.string()).optional().describe(
+    'Multiple domain filters. When provided, returns signals matching any of the listed domains. ' +
+    'Prefer this over repeated single-domain calls.'
+  ),
   planet: z.string().optional().describe('Filter to signals involving a specific planet.'),
   dasha_lord: z.string().optional().describe(
     'Filter to signals activated by a specific dasha lord (e.g. "Saturn", "Ketu").'
@@ -57,6 +62,12 @@ const QuerySignalsInputSchema = z.object({
   ),
   forward_looking: z.boolean().optional().describe(
     'If true, return only prospective (forward-looking) signals.'
+  ),
+  valence: z.enum(['positive', 'negative', 'neutral']).optional().describe(
+    'Filter by signal valence. "positive" = benefic outcomes; "negative" = malefic/challenging; "neutral" = mixed or context-dependent.'
+  ),
+  temporal_activation: z.enum(['permanent', 'dasha_tied', 'transit_tied']).optional().describe(
+    'Filter by activation pattern. "permanent" = natal, always active; "dasha_tied" = active only in specific dasha periods; "transit_tied" = active only during specific transits.'
   ),
   limit: z.number().int().min(1).max(500).optional().default(50).describe(
     'Max signals to return (default 50, max 500).'
@@ -79,10 +90,13 @@ export function registerQuerySignals(
         'query_signals',
         {
           ...(args.domain ? { domain: args.domain } : {}),
+          ...(args.domains && args.domains.length > 0 ? { domains: args.domains } : {}),
           ...(args.planet ? { planet: args.planet } : {}),
           ...(args.dasha_lord ? { dasha_lord: args.dasha_lord } : {}),
-          ...(args.min_confidence !== undefined ? { min_confidence: args.min_confidence } : {}),
+          ...(args.min_confidence !== undefined ? { min_confidence: args.min_confidence, confidence_floor: args.min_confidence } : {}),
           ...(args.forward_looking !== undefined ? { forward_looking: args.forward_looking } : {}),
+          ...(args.valence !== undefined ? { valence: [args.valence] } : {}),
+          ...(args.temporal_activation !== undefined ? { temporal_activation: [args.temporal_activation] } : {}),
           limit: args.limit ?? 50,
         },
         principal

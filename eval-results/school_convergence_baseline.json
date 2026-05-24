@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-05-25",
+  "session_id": "TR-P2-S1",
+  "total_rows": 574,
+  "schema_type": "signal_level_mv",
+  "schema_columns": [
+    "signal_id",
+    "parashari_present",
+    "jaimini_present",
+    "kp_present",
+    "tajika_present",
+    "convergence_score",
+    "missing_schools"
+  ],
+  "schema_column_types": {
+    "signal_id": "text",
+    "parashari_present": "bigint",
+    "jaimini_present": "bigint",
+    "kp_present": "bigint",
+    "tajika_present": "bigint",
+    "convergence_score": "numeric",
+    "missing_schools": "text[]"
+  },
+  "mv_definition_note": "Pivots school_signal_coverage rows per signal_id; parashari/jaimini/kp/tajika_present are counts of primary+secondary coverage rows per school; convergence_score is fraction of 4 schools with any coverage (0.00-1.00); missing_schools is array of school names with zero coverage.",
+  "coverage_by_school": {
+    "parashari": 499,
+    "jaimini": 546,
+    "kp": 459,
+    "tajika": 484
+  },
+  "branch_decision": "fix_wrapper",
+  "branch_rationale": "574 rows present (one per MSR signal); MV schema is signal-level pivot with boolean-count columns per school (not a school-row layout); the cross_school_lookup C3 bug is wrapper-level — the claim param is never forwarded to the underlying multi_school_signal_lookup; platform primitive receives topic='surgical_primitive:cross_school_lookup' (the queryPlan.query_text) instead of the actual claim; all 7 school results return coverage_type:silent as a consequence; the data is good, the wrapper is broken",
+  "db_source": "school_convergence_index materialized view (postgresql, proxy port 5433)",
+  "query_verified": true
+}

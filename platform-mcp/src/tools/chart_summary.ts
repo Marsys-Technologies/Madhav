@@ -86,6 +86,7 @@ export const CHART_SUMMARY_DESCRIPTION = buildToolDescription({
     'Use include_categories / exclude_categories to narrow the bundle. ' +
     'Surgical follow-ups via query_chart_facts for edge cases. ' +
     'Works for both "navamsa" and "D9" requests — these are the same chart.',
+  tierAccess: 'All tiers (super_admin, acharya, client). Full natal chart data.',
 })
 
 // ── Input schema ──────────────────────────────────────────────────────────────
@@ -175,18 +176,31 @@ export function registerChartSummaryTool(
           return errorResult(bulkEnvelope)
         }
 
-        // Merge rows_by_category from bulk response
-        const bulkResult = bulkEnvelope.result as Record<string, unknown> | undefined
-        if (bulkResult) {
-          const rowsByCat = bulkResult['rows_by_category'] as Record<string, unknown[]> | undefined
+        // Unwrap the ToolBundle envelope returned by callPlatformPrimitive.
+        // The platform route sets envelope.result = toolResult (a ToolBundle).
+        // For batched queries, the ToolBundle has:
+        //   { results: [{ content: '{"rows_by_category": {...}}', ... }] }
+        // We must parse results[0].content (a serialised JSON string) to get
+        // the actual rows_by_category data. Reading envelope.result.rows_by_category
+        // directly returns undefined — that is the C1 bug this unwrap fixes.
+        const toolBundle = bulkEnvelope.result as Record<string, unknown> | undefined
+        if (toolBundle) {
+          const bundleResults = toolBundle['results'] as Array<Record<string, unknown>> | undefined
+          const rawContent = bundleResults?.[0]?.['content']
+          const parsed: Record<string, unknown> =
+            typeof rawContent === 'string'
+              ? (JSON.parse(rawContent) as Record<string, unknown>)
+              : (rawContent as Record<string, unknown> ?? {})
+
+          const rowsByCat = parsed['rows_by_category'] as Record<string, unknown[]> | undefined
           if (rowsByCat) {
             for (const [cat, rows] of Object.entries(rowsByCat)) {
               if (!rowsByCategory[cat]) rowsByCategory[cat] = []
               rowsByCategory[cat].push(...rows)
             }
           }
-          // Also handle flat rows array (single-category fallback)
-          const flatRows = bulkResult['rows'] as unknown[] | undefined
+          // Also handle flat rows array (single-category fallback when batched=false)
+          const flatRows = parsed['rows'] as unknown[] | undefined
           if (flatRows && flatRows.length > 0) {
             for (const row of flatRows) {
               const r = row as Record<string, unknown>
@@ -221,16 +235,24 @@ export function registerChartSummaryTool(
             return errorResult(divEnvelope)
           }
 
-          const divResult = divEnvelope.result as Record<string, unknown> | undefined
-          if (divResult) {
-            const rowsByCat = divResult['rows_by_category'] as Record<string, unknown[]> | undefined
+          // Same ToolBundle unwrap as bulk path — see C1 fix comment above.
+          const divBundle = divEnvelope.result as Record<string, unknown> | undefined
+          if (divBundle) {
+            const divBundleResults = divBundle['results'] as Array<Record<string, unknown>> | undefined
+            const divRawContent = divBundleResults?.[0]?.['content']
+            const divParsed: Record<string, unknown> =
+              typeof divRawContent === 'string'
+                ? (JSON.parse(divRawContent) as Record<string, unknown>)
+                : (divRawContent as Record<string, unknown> ?? {})
+
+            const rowsByCat = divParsed['rows_by_category'] as Record<string, unknown[]> | undefined
             if (rowsByCat) {
               for (const [cat, rows] of Object.entries(rowsByCat)) {
                 if (!rowsByCategory[cat]) rowsByCategory[cat] = []
                 rowsByCategory[cat].push(...rows)
               }
             }
-            const flatRows = divResult['rows'] as unknown[] | undefined
+            const flatRows = divParsed['rows'] as unknown[] | undefined
             if (flatRows && flatRows.length > 0) {
               for (const row of flatRows) {
                 const r = row as Record<string, unknown>
