@@ -5,7 +5,7 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 29 tools registered (v3.9, TR-P4-S2: muhurta_finder, tara_balam_for_native, chandra_balam_for_native added).
+ * - 30 tools registered (TR-P6-S1: query_transits_over_natal added).
  *
  * Tool count (v3.7, 23 tools):
  *   Tier 1 super-endpoint (1): chart_summary
@@ -48,6 +48,7 @@ import { registerQueryRemedialMantras } from './tools/query_remedial_mantras.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 import { registerTaraBalamForNative } from './tools/tara_balam_for_native.js'
 import { registerChandraBalamForNative } from './tools/chandra_balam_for_native.js'
+import { registerQueryTransitsOverNatal } from './tools/query_transits_over_natal.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -172,6 +173,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerMuhurtaFinder(server, getPrincipal)
   registerTaraBalamForNative(server, getPrincipal)
   registerChandraBalamForNative(server, getPrincipal)
+  registerQueryTransitsOverNatal(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
