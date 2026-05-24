@@ -180,6 +180,81 @@ Follow these principles rigorously.
 
 ---
 
+# TOOLING_REMEDIATION_RULES — Added TR-P10-S2 (2026-05-25), mirror pair MP.1
+# Adapted-parity mirror of PLANNER_PROMPT_v2_0.md v2.6 R-TD.1 through R-SCH.1.
+# Semantic equivalence with Claude-side rules; Gemini-idiom phrasing throughout.
+# Covers all 10 methodology rules from MARSYS-JIS Tooling Remediation Phase 10.
+
+## Tooling Methodology Rules (Gemini-side)
+
+**R-TD.1 — Session-start diagnostic (Gemini idiom)**
+At the start of every chart-reading session, invoke `data_coverage` (tier: super_admin)
+and `tool_health` (days: 30) before any substantive query. If either call returns an
+error or an empty response, record the failure via `flag_disagreement` and proceed with
+an explicit note of the gap. This step is mandatory — never skip it even in short sessions.
+
+**R-NDE.1 — No date estimation (Gemini idiom)**
+All future-dated claims (e.g. "Saturn will transit Aries around mid-2027") must be
+sourced from `query_ephemeris` (date_range) or `query_transit_event`. Do not extrapolate
+from mean motion or rule of thumb. Any date claim that cannot be grounded in an ephemeris
+call must be tagged [DATE_UNVERIFIED].
+
+**R-LP.1 — log_prediction mandatory (Gemini idiom)**
+Every predictive claim about a future event, its timing, or its quality must be
+immediately followed by a `log_prediction` call carrying: confidence (0.0–1.0),
+horizon in months, and a falsifier (the observable outcome that would refute it).
+Predictions without a `log_prediction` call violate B.3 derivation-ledger mandate.
+
+**R-FD.1 — flag_disagreement on broken tools (Gemini idiom)**
+When any tool returns an error, a suspiciously empty result (0 rows), or silent coverage
+gaps, call `flag_disagreement` to log the issue formally before applying any workaround.
+Proceeding with a workaround without first logging is a governance violation equivalent to
+a silent CDLM overwrite.
+
+**R-CS.1 — Cross-school before high-confidence (Gemini idiom)**
+Before asserting any predictive claim with stated confidence ≥ 0.75, call
+`cross_school_lookup` for that claim. If the lookup returns silent or data_empty across
+all schools, reduce the stated confidence to ≤ 0.65 and explicitly note the gap.
+Until Phase 2 ships a populated `school_convergence_index`, annotate such claims as
+[PRE-PHASE-2].
+
+**R-CS.2 — Pre-compute chart summary (Gemini idiom)**
+Immediately after the R-TD.1 diagnostic, call `chart_summary` to cache the session
+overview. Reference this cached result throughout the session rather than re-calling.
+If `chart_summary` returns 0 rows, flag it via `flag_disagreement` — do not silently skip
+and proceed as if the summary were available.
+
+**R-CGM.1 — CGM + vector proactive use (Gemini idiom)**
+For every signal with confidence ≥ 0.7, walk `get_cgm_subgraph` two hops to surface
+connected signals. For every domain-boundary question, call `vector_search` with the
+domain as the query string. These tools are part of the default B.11 whole-chart read —
+do not reserve them for explicit user requests.
+
+**R-TRI.1 — Triangulate before asserting (Gemini idiom)**
+Every substantive claim follows a three-leg triangulation chain:
+  1. MSR signal (holistic-synthesis layer)
+  2. `chart_facts` confirmation (L1 structural layer)
+  3. Ephemeris timing via `query_ephemeris` or `query_transit_event`
+A claim that skips any leg must be annotated [PARTIAL-TRIANGULATION: missing <leg>].
+
+**R-PER.1 — Mark permanence (Gemini idiom)**
+Every clause in a reading must be explicitly tagged with its temporal binding:
+  - (permanent — natal disposition)
+  - (dasha-tied — active for <period>)
+  - (transit-tied — window <date_from> to <date_to>)
+An untagged clause is a governance violation equivalent to a B.1 facts/interpretation
+layer collapse.
+
+**R-SCH.1 — Read schemas before use (Gemini idiom)**
+Before the first invocation of any tool in a session, read its full schema description.
+For tools added in a phase after P0, call `list_assets` to confirm availability before
+attempting invocation. Schema-blind tool calls are a root cause of 0-rows and silent
+coverage bugs.
+
+# END TOOLING_REMEDIATION_RULES
+
+---
+
 *End of .geminirules — footer amended 2026-04-27 at Madhav_COW_M2A_Exec_12_BRIEF_AUTHORING (Cowork governance aside — B.6 brief authored): CLAUDECODE_BRIEF.md for Exec_12 READY; §F state unchanged (B.5 COMPLETE; red_team_counter: 0); next execution session: Madhav_M2A_Exec_12 (B.6 Hybrid Retrieval Library). §F substantive state block will be updated at Exec_12 close by the Claude Code executor.*
 *Footer amended 2026-04-27 at Madhav_COW_M2A_Exec_13_BRIEF_AUTHORING (Cowork governance aside — B.7 brief authored): CLAUDECODE_BRIEF.md for Exec_13 READY; §F state unchanged (B.6 COMPLETE, M2B CLOSED; red_team_counter: 0); next execution session: Madhav_M2A_Exec_13 (B.7 Router + Plan Library, M2C begins). Router runtime = claude-opus-4-6 (Q1); no M2C_EXEC_PLAN (Q2).*
 *B.7 COMPLETE — Madhav_M2A_Exec_13 (2026-04-27): Router + Plan Library. QueryPlan schema (7 fields), plans_v1_0.md taxonomy (5 types), router_v1_0.md prompt (2 disambiguation rules), router.py (claude-opus-4-6, WCR enforcer), rag_router.py (POST /rag/route), routerClient.ts, golden eval 20/20 PASS (100%), WCR invariant 15/15 PASS. red_team_counter: 1. M2C active. Next: Madhav_M2A_Exec_14 (B.8).*
