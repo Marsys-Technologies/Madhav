@@ -59,6 +59,8 @@ import { registerQueryJaiminiCharaDasha } from './tools/query_jaimini_chara_dash
 import { registerQueryPlanetaryPeriodPredictions } from './tools/query_planetary_period_predictions.js'
 import { registerQueryDasamshhaCareer } from './tools/query_dasamsha_career.js'
 import { registerQueryShashtiamsha } from './tools/query_shashtiamsha.js'
+import { registerQueryEclipseTransits } from './tools/query_eclipse_transits.js'
+import { registerQueryPlanetWar } from './tools/query_planet_war.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -194,6 +196,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerQueryPlanetaryPeriodPredictions(server, getPrincipal)
   registerQueryDasamshhaCareer(server, getPrincipal)
   registerQueryShashtiamsha(server, getPrincipal)
+  registerQueryEclipseTransits(server, getPrincipal)
+  registerQueryPlanetWar(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
