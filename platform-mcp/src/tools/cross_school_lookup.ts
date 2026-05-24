@@ -73,9 +73,16 @@ export function registerCrossSchoolLookup(
     CrossSchoolLookupInputSchema.shape,
     async (args: CrossSchoolLookupInput) => {
       const principal = getPrincipal()
+      // Bug fix (TR-P2-S2 / C3): the platform primitive resolves the lookup topic via
+      // params.topic (falling back to plan.query_text if absent). Passing only
+      // { claim: ... } caused the primitive to always query using the static fallback
+      // string "surgical_primitive:cross_school_lookup" instead of the user's claim.
+      // Fix: forward the claim as both `topic` (the param the primitive reads) and
+      // `claim` (preserved for documentation / future primitive upgrades).
       const { status, envelope } = await callPlatformPrimitive(
         'cross_school_lookup',
         {
+          topic: args.claim,
           claim: args.claim,
           ...(args.schools ? { schools: args.schools } : {}),
         },
@@ -84,7 +91,25 @@ export function registerCrossSchoolLookup(
       if (!envelope.ok || status >= 400) {
         return errorResult(envelope)
       }
-      return okResult(envelope)
+
+      // Augment the platform response with the static Nadi/BNN/Yogini note.
+      // These three schools are not represented in the corpus (school_convergence_index
+      // covers only parashari, jaimini, kp, tajaka). Their coverage defaults to silent
+      // for every signal. We surface this as a first-class field so callers are not
+      // misled into thinking absent coverage means silent-but-checked.
+      const augmented = {
+        ...envelope,
+        result: {
+          ...(typeof envelope.result === 'object' && envelope.result !== null
+            ? envelope.result
+            : { raw: envelope.result }),
+          unrepresented_schools: ['nadi', 'bnn', 'yogini'] as const,
+          unrepresented_schools_note:
+            'These schools are not in the corpus; their coverage defaults to silent for all signals.',
+        },
+      }
+
+      return okResult(augmented)
     }
   )
 }
