@@ -25,6 +25,11 @@ changelog:
   - v1.0.1 (2026-05-21, M5_COVERAGE_CAMPAIGN_CLOSE post-seal): Added Item 4 (CF.V13.4) —
     §N detector leaf vs networked signal classification, surfaced via MSR.387 manual fix
     verification. Queue now carries 4 items across 8–11 estimated sessions.
+  - v1.0.2 (2026-05-24, R11.F_AUDIT_PRE_MERGE): Added Item 5 (CF.V13.5) —
+    Lifecycle tab synthesis-stage tool call counter missing. Queue carries 5 items.
+  - v1.0.3 (2026-05-24, R11.F_ROLLOUT_COMPLETE): Added Items 6+7 (CF.V13.6, CF.V13.7) —
+    GitHub Actions no PR-level CI trigger; session discipline grep-all-SDK-sharing-adapters.
+    Queue now carries 7 items across 9–13 estimated sessions.
 ---
 
 # V1.3 Audit Queue v1.0
@@ -190,6 +195,43 @@ a standalone P0 if a production debugging incident makes the gap acute.
 
 ---
 
+## Item 6 — GitHub Actions: No CI on Feature Branches
+
+**ID:** CF.V13.6
+**Surfaced at:** R11.F rollout 2026-05-24 (3 consecutive failed deploys: PRs #156, #157, #158)
+**Severity:** LOW
+
+**Description:**
+The GitHub Actions workflow has no `pull_request:` trigger. CI runs only on pushes to `main`. This means every PR-level regression is discovered post-merge, during Cloud Build/Deploy, rather than pre-merge. PRs #156, #157, and #158 each landed a regression that a PR-level CI run would have caught (TypeScript type error, import error, NVIDIA stream-type narrowing). Three failed deploys in sequence is a productivity and reliability signal.
+
+**Scope of work:**
+- Add `pull_request:` trigger to the existing test workflow (`.github/workflows/test.yml` or equivalent)
+- Confirm the workflow runs `pnpm test` (or `vitest`) on the PR branch
+- Optionally add branch protection rule requiring CI to pass before merge
+
+**Why deferred:** Low-complexity fix but touches CI pipeline configuration. Appropriate for a hygiene session or v1.4 backlog item, not a blocking correctness issue.
+
+---
+
+## Item 7 — Session Discipline: Grep All SDK-Sharing Adapters Before Patching
+
+**ID:** CF.V13.7
+**Surfaced at:** R11.F rollout 2026-05-24 (NVIDIA hotfix 2a4e3c55 — extra hotfix cycle)
+**Severity:** LOW (learning / process)
+
+**Description:**
+When triage identifies a regression pattern across multiple adapter files that share a common SDK base, the session discipline must include grepping ALL adapter files for the pattern before authoring the patch — not just the adapter where the symptom was first observed.
+
+In R11.F, a stream-type narrowing error was patched in the Anthropic, Google, OpenAI, and DeepSeek adapters. The NVIDIA adapter was missed because it uses the OpenAI SDK as its base (not a standalone SDK). The oversight cost one extra hotfix cycle (PR #158, commit `2a4e3c55`).
+
+**Scope of work:**
+- Codify the following in the project's session-discipline checklist (GOVERNANCE_INTEGRITY_PROTOCOL or ONGOING_HYGIENE_POLICIES): "When patching a pattern across adapter files: (1) identify the SDK base for each affected adapter; (2) grep all adapters that share the same SDK base; (3) include all SDK-sharing adapters in the same patch, even if they showed no immediate symptom."
+- The NVIDIA adapter's SDK base (`import ... from 'openai'`) is the canonical example to cite.
+
+**Why deferred:** Process improvement, not a code defect. Current adapter files are in the correct state post-`2a4e3c55`. The learning is captured here for operationalization in the next governance pass.
+
+---
+
 ## Summary Table
 
 | ID | Item | Source Session | Severity | Est. Sessions |
@@ -199,10 +241,12 @@ a standalone P0 if a production debugging incident makes the gap acute.
 | CF.V13.3 | PLANNER_PROMPT pending-patch warning R-rule | ICR campaign scoping | LOW | 1 |
 | CF.V13.4 | §N detector leaf vs networked signal classification | M5 close (MSR.387 fix) | LOW | 1 |
 | CF.V13.5 | Lifecycle tab synthesis-stage tool call counter missing | R11.F audit 2026-05-24 | LOW | 1 |
+| CF.V13.6 | GitHub Actions: no `pull_request:` CI trigger | R11.F rollout 2026-05-24 | LOW | 0.5 |
+| CF.V13.7 | Session discipline: grep all SDK-sharing adapters before patching | R11.F rollout 2026-05-24 | LOW | 0.5 |
 
-**Total carry-forward:** 5 items across 9–12 estimated sessions.
+**Total carry-forward:** 7 items across 9–13 estimated sessions.
 **V1.2 audit shipped:** 55 defects across 21 sessions (COV×10, PERF×5, ICR×6).
 
 ---
 
-*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.2 — CF.V13.5 added at R11.F close 2026-05-24.*
+*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.3 — CF.V13.6 + CF.V13.7 added at R11.F rollout close 2026-05-24.*
