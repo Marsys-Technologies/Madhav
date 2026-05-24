@@ -47,7 +47,7 @@ entries:
     - 00_ARCHITECTURE/TOOLING_AUDIT_TRACKER_v1_0.md
   est_tokens: 80000
   est_duration_min: 60
-  status: pending
+  status: passed
   human_decision_prompt: null
 
 # ─────────────────────────────────────────────────────────
