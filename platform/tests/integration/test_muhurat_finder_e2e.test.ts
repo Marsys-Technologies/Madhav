@@ -191,12 +191,12 @@ function buildAskMadhavPrompt(window: MuhuratWindow, rank: number): string {
     ? new Date(window.start_utc).toDateString()
     : 'Unknown date'
 
-  // Use *_contrib keys for the top factors (verbose breakdown format from sidecar)
+  // Short keys since Phase 4C enrichment (tithi, nakshatra, vara …)
   const topFactors = Object.entries(window.breakdown)
-    .filter(([k, v]) => k.endsWith('_contrib') && typeof v === 'number' && (v as number) > 0)
+    .filter(([, v]) => typeof v === 'number' && (v as number) > 0)
     .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 3)
-    .map(([k, v]) => `${k.replace('_contrib', '')} (+${(v as number).toFixed(2)})`)
+    .map(([k, v]) => `${k} (+${(v as number).toFixed(2)})`)
     .join(', ')
 
   return (
@@ -262,8 +262,8 @@ describe('Muhurat Finder E2E — live sidecar (AC.4C6S4.1)', () => {
 
     for (const w of data.windows) {
       expect(w.breakdown, `Window on ${w.start_utc} has empty breakdown`).toBeDefined()
-      // Breakdown contains verbose keys — filter to *_contrib numeric keys
-      const contribKeys = Object.keys(w.breakdown).filter((k) => k.endsWith('_contrib') || k === 'avoid_deduction')
+      // Breakdown uses short keys (tithi, nakshatra, vara, yoga, karana …) since Phase 4C enrichment
+      const contribKeys = Object.keys(w.breakdown).filter((k) => typeof w.breakdown[k] === 'number')
       expect(contribKeys.length, `Window on ${w.start_utc} breakdown has no contribution factors`).toBeGreaterThan(0)
       // At least one contribution must be non-zero (any day has some factor)
       const numericValues = contribKeys.map((k) => w.breakdown[k] as number)

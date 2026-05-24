@@ -1,14 +1,15 @@
 # Known Pre-Existing Test Failures
 
-**v1.3 — R11.G-S4 baseline refresh (2026-05-23)**
-Branch: feature/r11g-tool-executor-toggle
-Total pre-existing failures: **18 test cases, 10 files**
-Test suite at R11.G-S4 run: **4967 passed / 18 failed / 22 skipped** (5007 test cases)
+**v1.4 — pre-existing failures resolved (2026-05-24)**
+Branch: main
+Total pre-existing failures: **0 test cases**
+Test suite: **4997 passed / 0 failed / 23 skipped** (5020 test cases)
 
 ---
 
 ## Changelog
 
+- **v1.4 (2026-05-24):** All 18 pre-existing failures from v1.3 resolved. 10 targeted edits across 10 files: deleted 8 stale citation tests (R11.B chrome arc); added 6 missing tool entries to RETRIEVAL_CAPABILITY_SPEC (M5 Coverage Campaign gap); updated RT-08a/b to new PipelinePlanSchema shape; updated PredictionsCalibration tests to current component API; fixed MuhuratFinderModal client UUID; updated e2e breakdown key filter (Phase 4C short-key format); fixed `let {` → `const {` in cost_data_part test. Final suite: **0 failures**.
 - **v1.3 (2026-05-23):** Refreshed during R11.G-S4 baseline diff. 18 pre-existing failures documented across 6 source arcs (R11.B chrome, M5 Coverage Campaign, MCPT v3.1, Phase 4C, R11.F). All verified non-regression — landed via PRs that pre-dated the v1.2 capture moment but were never folded into the baseline. R11.G introduced **0 new failures**.
 - **v1.2 (2026-05-20):** Post closeout-residuals triage — 0 failures, all 9 previously-failing files resolved.
 - **v1.1 (2026-05-20):** Post-R10 merge — 16 failures / 9 files.

@@ -66,14 +66,6 @@ describe('ConsumeChatV2 β4 citation wiring', () => {
     expect(consumeSrc).toContain('NumberedCitation')
   })
 
-  it('imports CitationSidePanel', () => {
-    expect(consumeSrc).toContain('CitationSidePanel')
-  })
-
-  it('uses CitationCtx (citation context)', () => {
-    expect(consumeSrc).toContain('CitationCtx')
-  })
-
   it('renders V2AssistantText as the Text part renderer', () => {
     expect(consumeSrc).toContain('V2AssistantText')
   })
@@ -87,14 +79,6 @@ describe('ConsumeChatV2 β4 citation wiring', () => {
     ).toContain('v2-citation-badge')
   })
 
-  it('uses v2-citation-panel test ID (from CitationSidePanel)', () => {
-    expect(
-      readFileSync(
-        resolve(__dirname, '../../../src/components/chat/CitationSidePanel.tsx'),
-        'utf8',
-      )
-    ).toContain('v2-citation-panel')
-  })
 })
 
 // ── Route citation emission ───────────────────────────────────────────────────

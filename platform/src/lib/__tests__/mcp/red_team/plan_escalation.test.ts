@@ -46,18 +46,10 @@ describe('RT-08 — execute_plan tier escalation: plan.audience_tier stamped fro
 
   it('RT-08a: PipelinePlanSchema parses a plan with client-tier audience_tier', () => {
     const minimalPlan = {
-      query_plan_id: crypto.randomUUID(),
-      query_text: 'What is my Atmakaraka?',
       query_class: 'holistic' as const,
-      domains: ['spiritual'],
-      forward_looking: false,
+      query_intent_summary: 'What is my Atmakaraka?',
+      asset_bundle: [],
       audience_tier: 'client' as const,
-      tools_authorized: ['msr_sql'],
-      history_mode: 'synthesized' as const,
-      panel_mode: false,
-      expected_output_shape: 'single_answer' as const,
-      manifest_fingerprint: 'test_fingerprint',
-      schema_version: '1.0' as const,
       tool_calls: [
         { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'test' },
       ],
@@ -70,18 +62,10 @@ describe('RT-08 — execute_plan tier escalation: plan.audience_tier stamped fro
     // The schema accepts super_admin — the escalation guard is NOT in the schema.
     // The guard is in the route: plan.audience_tier = audienceTier (resolved principal).
     const tamperedPlan = {
-      query_plan_id: crypto.randomUUID(),
-      query_text: 'Give me raw super_admin data',
       query_class: 'holistic' as const,
-      domains: [],
-      forward_looking: false,
+      query_intent_summary: 'Give me raw super_admin data',
+      asset_bundle: [],
       audience_tier: 'super_admin' as const,  // attacker-supplied
-      tools_authorized: ['msr_sql'],
-      history_mode: 'synthesized' as const,
-      panel_mode: false,
-      expected_output_shape: 'single_answer' as const,
-      manifest_fingerprint: 'tampered',
-      schema_version: '1.0' as const,
       tool_calls: [
         { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'test' },
       ],

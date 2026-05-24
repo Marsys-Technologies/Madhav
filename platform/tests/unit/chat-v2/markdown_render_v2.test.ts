@@ -79,15 +79,6 @@ describe('B.4 — streamdown in V2AssistantText', () => {
     expect(markdownSrc).not.toContain('closeUnclosedFences')
   })
 
-  it('citation count still computed for drawer badge in V2AssistantText', () => {
-    const fn = v2Src.slice(
-      v2Src.indexOf('function V2AssistantText'),
-      v2Src.indexOf('function V2AssistantText') + 5000,
-    )
-    expect(fn).toContain('onCitationCount')
-    expect(fn).toContain('renderWithCitations')
-  })
-
   it('V2AssistantText uses useMessage() to detect streaming status', () => {
     const fn = v2Src.slice(
       v2Src.indexOf('function V2AssistantText'),

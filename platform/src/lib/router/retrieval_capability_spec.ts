@@ -793,6 +793,148 @@ const query_dasha_periods: RetrievalCapabilityEntry = {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// COV-S4 — sidecar capability wrappers (tools 31-33)
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_muhurat: RetrievalCapabilityEntry = {
+  tool_name: 'query_muhurat',
+  description:
+    'Auspicious muhurat window finder — calls panchang_engine via sidecar POST /api/compute/muhurat. ' +
+    'Supports 6 MVP events: vivah (marriage), griha_pravesh (house warming), vyapara (business start), ' +
+    'yatra (travel), property_purchase, mantra_initiation. ' +
+    'Returns top_n windows ranked by composite score (tithi, vara, nakshatra, yoga, karana, hora). ' +
+    'Optional chart_id enables Tara Bala + Chandra Bala native overlay. Date range max 90 days.',
+  data_surface:
+    'Live compute — sidecar POST /api/compute/muhurat backed by panchang_engine. ' +
+    'Result fields: event, windows[]{start_utc, end_utc, star_rating, score, breakdown{tithi, nakshatra, vara, ...}}. ' +
+    'Default location: Bhubaneswar (20.27°N, 85.84°E, IST).',
+  supported_params:
+    '{ event: "vivah"|"griha_pravesh"|"vyapara"|"yatra"|"property_purchase"|"mantra_initiation" (required); ' +
+    'date_from: YYYY-MM-DD (required); date_to: YYYY-MM-DD (required, max 90 days from date_from); ' +
+    'top_n?: number (default 10, max 90); chart_id?: string (enables Tara Bala overlay); ' +
+    'lat?: number; lon?: number; tz_offset_minutes?: number }',
+  optimal_patterns: [
+    'Best vivah muhurats Jan 2027: {event:"vivah", date_from:"2027-01-01", date_to:"2027-01-31", top_n:10}',
+    'Top griha pravesh windows next month: {event:"griha_pravesh", date_from:"2026-06-01", date_to:"2026-06-30"}',
+    'Business launch muhurats with native overlay: {event:"vyapara", date_from:"2026-07-01", date_to:"2026-07-31", chart_id:"<UUID>"}',
+    'Travel auspicious windows: {event:"yatra", date_from:"2026-08-01", date_to:"2026-08-31", top_n:5}',
+  ],
+  cost_tier: 'medium',
+  requires_temporal: true,
+}
+
+const query_jaimini_drishti: RetrievalCapabilityEntry = {
+  tool_name: 'query_jaimini_drishti',
+  description:
+    'Jaimini drishti (special aspect) analysis — sidecar POST /jaimini_drishti. ' +
+    'Computes sign-to-sign special aspects per Jaimini system: movable signs aspect fixed (not adjacent), ' +
+    'fixed signs aspect movable (not adjacent), dual signs aspect dual (not adjacent). ' +
+    'Distinct from Parashari graha drishti. Use for Jaimini-specific chart questions ' +
+    'about aspect relationships, Chara Karakas, Arudha Padas, or Pada Lagna. ' +
+    'Sidecar endpoint currently stub — returns not_implemented until M6 Jaimini module lands.',
+  data_surface:
+    'Live compute — sidecar POST /jaimini_drishti (stub, M6+ scope). ' +
+    'Will return sign-to-sign aspect pairs per Jaimini rules once M6 Jaimini module is implemented.',
+  supported_params:
+    '{ chart_id?: string; signs?: string[] (filter to specific signs); ' +
+    'include_arudha?: boolean; include_chara_karaka?: boolean }',
+  optimal_patterns: [
+    'Jaimini aspects on Atmakaraka: {chart_id:"<UUID>", include_chara_karaka:true}',
+    'Sign aspects involving Lagna: {signs:["Aries"], chart_id:"<UUID>"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+const query_v7_additions: RetrievalCapabilityEntry = {
+  tool_name: 'query_v7_additions',
+  description:
+    'v7 additions capability surface — sidecar POST /v7_additions. ' +
+    'Reserved capability slot for compute features added in engine v7. ' +
+    'Exact scope defined at M6 planning. Currently a stub returning not_implemented. ' +
+    'Use this tool when a query explicitly targets v7 engine capabilities ' +
+    'not covered by existing panchanga, ephemeris, muhurat, or transit tools.',
+  data_surface:
+    'Live compute — sidecar POST /v7_additions (stub, M6+ scope). ' +
+    'Will surface v7 engine-specific computations once M6 planning completes.',
+  supported_params: '{ feature?: string; params?: Record<string, unknown> }',
+  optimal_patterns: [
+    'Query v7 engine feature: {feature:"<v7_feature_name>", params:{}}',
+    'Discover v7 capabilities: {} (no params — returns available feature list once implemented)',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// COV-S5 — L2.5 structural graph tools (tools 34-36)
+// ────────────────────────────────────────────────────────────────────────────
+
+const query_ucn_walk: RetrievalCapabilityEntry = {
+  tool_name: 'query_ucn_walk',
+  description:
+    'UCN walk — scans UCN_v4_0.md for signal references near a seed signal ID or returns ' +
+    'all signal-section associations in full-dump mode. ' +
+    'Use when a query asks for the UCN narrative context around a specific MSR signal or ' +
+    'to enumerate which UCN sections reference a particular signal.',
+  data_surface:
+    'L2.5 — UCN_v4_0.md (Unified Confluence Narrative). ' +
+    'Returns Array<{ signal_id, confluence_type (section heading), domain }>.',
+  supported_params:
+    '{ seed_signal_id?: string (e.g. "MSR.413" or "SIG.MSR.413"); depth?: number (accepted, unused) }',
+  optimal_patterns: [
+    'UCN context for a signal: {seed_signal_id:"MSR.042"}',
+    'All UCN section associations: {} (full-dump mode)',
+    'Which sections reference Saturn signals: {seed_signal_id:"MSR.117"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+const query_cdlm_lookup: RetrievalCapabilityEntry = {
+  tool_name: 'query_cdlm_lookup',
+  description:
+    'CDLM lookup — parses CDLM_v1_1.md (81-cell cross-domain linkage matrix) and returns ' +
+    'matching cells filtered by domain_a, domain_b, or signal_id. ' +
+    'Full-dump mode (no params) returns all 81 cells. ' +
+    'Use when a query asks about cross-domain interactions, linkage types, or which domains a signal bridges.',
+  data_surface:
+    'L2.5 — CDLM_v1_1.md (Cross-Domain Linkage Matrix, 81 cells). ' +
+    'Returns Array<{ domain_pair, row_domain, col_domain, linkage_type, strength, direction, valence, signal_ids, key_finding }>.',
+  supported_params:
+    '{ domain_a?: string (e.g. "Career"); domain_b?: string (e.g. "Wealth"); signal_id?: string (e.g. "MSR.413") }',
+  optimal_patterns: [
+    'Career–Wealth linkage: {domain_a:"Career", domain_b:"Wealth"}',
+    'Cross-domain interactions for a signal: {signal_id:"MSR.413"}',
+    'All domains linked to Relationships: {domain_a:"Relationships"}',
+    'Full CDLM matrix: {} (all 81 cells)',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+const query_rm_walk: RetrievalCapabilityEntry = {
+  tool_name: 'query_rm_walk',
+  description:
+    'RM walk — scans RM_v2_0.md (35 element blocks, Resonance Map) and returns resonance ' +
+    'entries filtered by seed_signal_id (MSR.NNN anchor match) or all entries in full-dump mode. ' +
+    'Use when a query asks about resonance patterns, net resonance classifications, or ' +
+    'which RM elements are associated with a specific MSR signal.',
+  data_surface:
+    'L2.5 — RM_v2_0.md (Resonance Map, 35 RM element blocks RM.01–RM.35). ' +
+    'Returns Array<{ rm_id, signal_id, resonance_type, strength, domains, msr_anchors, net_resonance }>.',
+  supported_params:
+    '{ seed_signal_id?: string (e.g. "MSR.413" or "RM.01"); depth?: number (accepted, unused) }',
+  optimal_patterns: [
+    'RM elements for a signal: {seed_signal_id:"MSR.042"}',
+    'All resonance map entries: {} (full-dump mode)',
+    'Net resonance patterns: {seed_signal_id:"RM.07"}',
+  ],
+  cost_tier: 'low',
+  requires_temporal: false,
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registry — preserves the order from RETRIEVAL_TOOLS in retrieve/index.ts
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -827,6 +969,12 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   query_panchanga,      // Phase 4C
   query_transit_event,  // Phase 4D
   query_dasha_periods,  // Phase 5A
+  query_muhurat,        // COV-S4
+  query_jaimini_drishti, // COV-S4
+  query_v7_additions,   // COV-S4
+  query_ucn_walk,       // COV-S5
+  query_cdlm_lookup,    // COV-S5
+  query_rm_walk,        // COV-S5
 ] as const
 
 /**

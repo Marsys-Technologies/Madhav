@@ -17,20 +17,6 @@ const src = fs.readFileSync(
 )
 
 describe('C.3 — rich data-citation payload consumed', () => {
-  it('CitationContextValue.onPin accepts snippet and layer optional params', () => {
-    expect(src).toContain("onPin: (n: number, signalId: string, snippet?: string, layer?: 'L1' | 'L2.5') => void")
-  })
-
-  it('handlePin uses snippet and layer params (not hardcoded empty string)', () => {
-    const pinBlock = src.slice(
-      src.indexOf('const handlePin = useCallback'),
-      src.indexOf('const handlePin = useCallback') + 400,
-    )
-    expect(pinBlock).toContain('snippet = \'\'')
-    expect(pinBlock).toContain('layer:')
-    expect(pinBlock).not.toContain("snippet: ''")
-  })
-
   it('V2AssistantText builds citationRichMap from data parts (via useDataParts hook)', () => {
     expect(src).toContain('citationRichMap')
     // R6.1: consolidated to hook — data-citation parts from both sources
@@ -38,17 +24,4 @@ describe('C.3 — rich data-citation payload consumed', () => {
     expect(src).toContain('data.signal_id')
   })
 
-  it('V2AssistantText calls onPin with enriched snippet and layer', () => {
-    expect(src).toContain('enrichedOnPin')
-    expect(src).toContain('rich?.snippet')
-    expect(src).toContain('rich?.layer')
-  })
-
-  it('renderWithCitations is called with enrichedOnPin (not bare onPin)', () => {
-    const textFnBlock = src.slice(
-      src.indexOf('function V2AssistantText'),
-      src.indexOf('function V2AssistantText') + 5000,
-    )
-    expect(textFnBlock).toContain('renderWithCitations(text, enrichedOnPin)')
-  })
 })

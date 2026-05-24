@@ -12,7 +12,8 @@
  * MCPT v3.1.0-S5
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { waitFor } from '@testing-library/react'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -135,28 +136,35 @@ describe('PredictionsCalibration', () => {
         <PredictionsCalibration />
       </Wrapper>
     )
-    expect(screen.getByText(/Calibration data available in v3.4/i)).toBeTruthy()
+    expect(screen.getByText('Predictions / Calibration')).toBeTruthy()
+    expect(screen.getByText('Per-confidence-band realized rate vs. expected midpoint. Wilson 95% CI.')).toBeTruthy()
   })
 
-  it('renders the preview table rows', () => {
+  it('renders the loading state while fetching', () => {
     const { Wrapper } = { Wrapper: createWrapper() }
     render(
       <Wrapper>
         <PredictionsCalibration />
       </Wrapper>
     )
-    expect(screen.getByText('0.7–0.8')).toBeTruthy()
+    expect(screen.getByText('Loading calibration data…')).toBeTruthy()
   })
 
-  it('mentions log_prediction and record_outcome tools', () => {
+  it('mentions log_prediction and record_outcome tools once data resolves empty', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ rows: [], refreshed_at: null, grounding_pct: null }),
+    } as Response)
     const { Wrapper } = { Wrapper: createWrapper() }
     render(
       <Wrapper>
         <PredictionsCalibration />
       </Wrapper>
     )
-    expect(screen.getByText(/log_prediction/)).toBeTruthy()
-    expect(screen.getByText(/record_outcome/)).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByText(/log_prediction/)).toBeTruthy()
+      expect(screen.getByText(/record_outcome/)).toBeTruthy()
+    })
   })
 })
 
