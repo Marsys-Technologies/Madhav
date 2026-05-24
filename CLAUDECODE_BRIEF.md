@@ -1,14 +1,14 @@
 ---
-artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P7-S4_v1_0.md
+artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P8-S2_v1_0.md
 type: CLAUDECODE_BRIEF
 version: 1.0
 status: COMPLETE
 authored_by: Conductor (2026-05-25)
-session_id: TR-P7-S4
+session_id: TR-P8-S2
 ---
 
-# CLAUDECODE_BRIEF — TR-P7-S4
-## Phase 7.4 + 7.5: query_dasamsha_career (D10) + query_shashtiamsha (D60)
+# CLAUDECODE_BRIEF — TR-P8-S2
+## Phase 8.3: query_remedies_prescribed + v1.0 close summary (FINAL SESSION)
 
 ## §0 — Start
 
@@ -21,125 +21,137 @@ git status  # must be clean before starting
 
 ## §1 — Scope
 
-may_touch: platform-mcp/src/tools/query_dasamsha_career.ts, platform-mcp/src/tools/query_dasamsha_career.test.ts, platform-mcp/src/tools/query_shashtiamsha.ts, platform-mcp/src/tools/query_shashtiamsha.test.ts, platform-mcp/src/server.ts
+may_touch: platform-mcp/src/tools/query_remedies_prescribed.ts, platform-mcp/src/tools/query_remedies_prescribed.test.ts, platform-mcp/src/server.ts, eval-results/tooling_remediation_v1_0_close.json, 00_ARCHITECTURE/TOOLING_AUDIT_TRACKER_v1_0.md
 must_not_touch: 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, .geminirules, CLAUDE.md, 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/**
 
 ## §2 — Task
 
-### 7.4 — query_dasamsha_career
+### 8.3 — query_remedies_prescribed
 
-**New file:** `platform-mcp/src/tools/query_dasamsha_career.ts`
+**New file:** `platform-mcp/src/tools/query_remedies_prescribed.ts`
 
-The D10 (Dasamsha) chart governs career, profession, and public status.
+This tool cross-references natal chart conditions with the remedial codex.
 
-1. Read `query_divisional_chart.ts` (built in TR-P4-S1) to understand how to call it.
-2. The tool calls `query_divisional_chart({division:"D10", chart_id})` via `callPlatformPrimitive`.
-3. Parse the D3-style response to get planet sign/house positions in D10.
-4. **Career indicators** — hardcode these classical rules:
-   - 10H lord in D10: strong career indicator.
-   - Sun, Saturn, Mercury in D10 10H: additional career strength.
-   - 10H lord in own sign, exalted, or in kendra/trikona → favourable career.
-   - 10H lord in 6H/8H/12H → career obstacles.
-5. **Response shape:**
+1. Read `query_remedial_mantras.ts` (built in TR-P4-S1) to understand the remedial codex access pattern.
+
+2. **Schema params** (Zod):
+   - `affliction`: `z.string().optional()` — e.g. "Saturn afflicts 1H", "debilitated Mars", "Rahu-Ketu axis on 7H"
+   - `planet`: `z.string().optional()` — e.g. "Saturn", "Rahu"
+   - `house`: `z.number().min(1).max(12).optional()` — 1–12
+   - `condition`: `z.string().optional()` — free text query for RAG search
+   - `remedy_type`: `z.enum(["mantra","gem","ritual","charity","all"]).default("all")`
+   - `tier`: `z.string().optional()`
+
+3. **Algorithm:**
+   a. Build a search query from the provided params: `"${affliction ?? ''} ${planet ?? ''} house ${house ?? ''} ${condition ?? ''} remedy mantra gem".trim()`
+   b. Call `query_remedial_mantras` primitive (via callPlatformPrimitive) with the constructed query and the planet/house filters.
+   c. Also call `query_chart_facts` for the planet's chart_facts row (category: "remedy" or "strength") if planet is provided.
+   d. Filter results by remedy_type if not "all".
+   e. For each result, detect remedy_type from content keywords: "mantra" → mantra, "gem"|"gemstone"|"ratna" → gem, "ritual"|"puja"|"homa" → ritual, "donate"|"charity"|"daan" → charity.
+   f. Return top 10 results.
+
+4. **Response:**
    ```json
    {
-     "d10_ascendant": "Aries",
-     "planets": [
-       {"planet":"Sun","sign":"Leo","house":5,"dignity":"own_sign"}
+     "affliction_query": "Saturn afflicts 1H",
+     "results": [
+       {
+         "condition": "Saturn affliction",
+         "remedy_type": "mantra",
+         "remedy_text": "Om Sham Shanaischaraya Namah — recite 108 times on Saturdays",
+         "timing": "Saturday, Pushya nakshatra, dawn",
+         "classical_source": "BPHS chapter 56",
+         "relevance_score": 0.87
+       }
      ],
-     "career_indicators": [
-       {"indicator":"10H lord in D10","planet":"Saturn","classical_rule":"Saturn as 10L placed in 7H D10 — directional strength"}
-     ]
+     "result_count": N
    }
    ```
-6. **Schema params:** `chart_id` (string, optional), `tier` (string, optional).
-7. **Register** in server.ts.
-8. **Tests** (mock `callPlatformPrimitive`):
-   - Returns non-null `d10_ascendant`.
-   - `planets` array has ≥ 1 entry.
-   - `career_indicators` array is present (can be empty if no rule fires on mock data).
 
-### 7.5 — query_shashtiamsha
+5. **Register** in server.ts.
 
-**New file:** `platform-mcp/src/tools/query_shashtiamsha.ts`
+6. **Tests** (mock callPlatformPrimitive):
+   - `query_remedies_prescribed({planet:"Saturn"})` returns results.
+   - remedy_type filter "mantra" returns only mantra entries.
+   - Result has `remedy_type`, `remedy_text`, `classical_source`.
+   - Empty query (no params) returns empty results gracefully.
 
-The D60 (Shashtiamsha) is the finest divisional — shows past-life karma. Each D60 pada has a classical name.
+### Close summary steps
 
-1. Call `query_divisional_chart({division:"D60", chart_id})` via `callPlatformPrimitive`.
-2. Map each planet's D60 position to a classical pada name + interpretation using this fixed lookup table (60 padas cycle through the 12 signs):
+After the tool is built and tests pass, execute these close-out steps:
 
-```typescript
-const D60_PADA_NAMES: Record<number, { name: string; interpretation: string }> = {
-  1: { name: "Ghora", interpretation: "Malefic; past-life violence or harsh karma" },
-  2: { name: "Rakshasa", interpretation: "Demonic; indicates past-life cruelty" },
-  3: { name: "Deva", interpretation: "Divine; past-life merit and piety" },
-  4: { name: "Kubera", interpretation: "Wealth deity; past-life generosity" },
-  5: { name: "Yaksha", interpretation: "Semi-divine; past-life association with nature spirits" },
-  6: { name: "Kinnara", interpretation: "Celestial musician; artistic past-life" },
-  7: { name: "Bhrashta", interpretation: "Fallen; past-life ethical violations" },
-  8: { name: "Kulaghna", interpretation: "Family destroyer; past-life betrayal" },
-  9: { name: "Garuda", interpretation: "Eagle deity; past-life spiritual aspiration" },
-  10: { name: "Agni", interpretation: "Fire deity; transformative past-life experiences" },
-  11: { name: "Maya", interpretation: "Illusion; past-life deception" },
-  12: { name: "Purishaka", interpretation: "Impure; difficult past-life associations" },
-  // Extend 13–60 by cycling through these 12 names: 13→Ghora, 14→Rakshasa, etc.
-};
+**Step 1: Run the full vitest suite**
+```bash
+cd platform-mcp && npx vitest run --reporter=verbose 2>&1 | tail -30
+```
+Capture the pass/fail summary line (e.g. "X passed, Y failed").
+
+**Step 2: Update TOOLING_AUDIT_TRACKER_v1_0.md**
+Read `00_ARCHITECTURE/TOOLING_AUDIT_TRACKER_v1_0.md`. Find any items that are not yet marked DONE. Mark all items with a session reference as DONE:
+- Items in Phase 8 column: mark DONE (TR-P8-S2)
+- Items from Phase 7 if any still open: mark DONE (TR-P7-S1 through TR-P7-S4)
+- Overall status: set to "v1.0 COMPLETE (2026-05-25)"
+
+**Step 3: Write closing summary**
+Write `eval-results/tooling_remediation_v1_0_close.json`:
+```json
+{
+  "sessions_completed": 26,
+  "tools_fixed": "<count from tracker>",
+  "tools_added": "<count from tracker>",
+  "tracker_open_items": 0,
+  "vitest_summary": "<paste the tail -30 summary line>",
+  "next_steps": [
+    "Phase 12: spouse chart integration when data available",
+    "query_tara_balam + query_chandra_balam primitives_registry.ts wiring (noted TR-P4-S2)",
+    "query_dasamsha_career stub for query_dasamsha_career in TR-P9-S2 career_timing_audit recipe"
+  ],
+  "completed_at": "2026-05-25"
+}
 ```
 
-   The pada number for a planet = `Math.ceil((planet_longitude_in_sign % 30) / 0.5)` (each pada = 0.5°). If the planet is at 0°, pada = 1.
-
-3. **Response shape:**
-   ```json
-   {
-     "planets": [
-       {
-         "planet": "Jupiter",
-         "d60_sign": "Leo",
-         "d60_house": 5,
-         "d60_longitude_in_sign": 14.5,
-         "d60_pada_number": 29,
-         "d60_pada_name": "Garuda",
-         "d60_interpretation": "Eagle deity; past-life spiritual aspiration"
-       }
-     ]
-   }
-   ```
-4. **Schema params:** `chart_id` (string, optional), `tier` (string, optional).
-5. **Register** in server.ts.
-6. **Tests** (mock `callPlatformPrimitive`):
-   - Returns `planets` array with ≥ 1 entry.
-   - Each planet has `d60_pada_name` (non-empty string).
-   - Pada calculation: planet at 7.5° in sign → pada = `Math.ceil(7.5/0.5)` = 15 → name cycles to position 15 mod 12 = 3 → "Deva".
-
-### Commit + Push
-
+**Step 4: Commit**
 ```bash
 git add -A
-git commit -m "feat(TR-P7-S4): query_dasamsha_career; query_shashtiamsha"
+git commit -m "feat(TR-P8-S2): query_remedies_prescribed; v1.0 close summary"
+```
+
+**Step 5: Push**
+```bash
 git push origin feature/tooling-remediation
 ```
 
-This is the Wave 4 push boundary. Push after commit.
+**Step 6: Emit the PR command (do not run it — print it for the human)**
+```
+PR TO MAIN (human action required):
+gh pr create \
+  --title "feat: MARSYS-JIS Tooling Remediation v1.0 (87 findings fixed)" \
+  --base main \
+  --head feature/tooling-remediation \
+  --body "26 sessions. 87 audit findings addressed. See eval-results/tooling_remediation_v1_0_close.json for summary."
+```
 
 ## §3 — Acceptance criteria
 
-1. `query_dasamsha_career` is registered, returns D10 positions + career indicators.
-2. `query_shashtiamsha` is registered, returns D60 positions with pada names + interpretations.
-3. Pada cycle logic correct: pada 1–12 have names; 13→cycles back to Ghora, etc.
-4. All tests pass: `npx vitest run src/tools/query_dasamsha_career.test.ts src/tools/query_shashtiamsha.test.ts`.
-5. Git push to `feature/tooling-remediation` succeeds.
+1. `query_remedies_prescribed` is registered, accepts affliction/planet/house/condition/remedy_type params.
+2. All tests pass: `npx vitest run src/tools/query_remedies_prescribed.test.ts`.
+3. Full vitest suite run completed and summary captured.
+4. `eval-results/tooling_remediation_v1_0_close.json` written.
+5. `TOOLING_AUDIT_TRACKER_v1_0.md` updated to "v1.0 COMPLETE".
+6. Commit + push to `feature/tooling-remediation` succeeds.
 
 ## §4 — Gate command
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
-(cd platform-mcp && npx vitest run src/tools/query_dasamsha_career.test.ts src/tools/query_shashtiamsha.test.ts --reporter=verbose 2>&1 | grep -E 'PASS|passed' | grep -q '.')
+(cd platform-mcp && npx vitest run --reporter=verbose 2>&1 | tail -20 | grep -E 'passed|PASS') && \
+git log --oneline origin/feature/tooling-remediation | head -1 | grep -q 'TR-P8-S2'
 ```
 
 ## §5 — FINAL_SUMMARY (emit at session end)
 
 ---FINAL_SUMMARY---
-session_id: TR-P7-S4
+session_id: TR-P8-S2
 status: PASS | HALT_NEEDS_HUMAN
 tests_passed: <N>
 files_changed: <list>

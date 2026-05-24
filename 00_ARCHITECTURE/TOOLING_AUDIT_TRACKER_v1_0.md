@@ -1,9 +1,10 @@
 ---
 artifact: TOOLING_AUDIT_TRACKER_v1_0.md
 version: 1.0
-status: LIVING
+status: v1.0 COMPLETE (2026-05-25)
 phase_0_status: COMPLETE
 authored_by: TR-P0-S1 (2026-05-24)
+sealed_by: TR-P8-S2 (2026-05-25)
 ---
 
 # MARSYS-JIS Tooling Audit Tracker
@@ -44,34 +45,34 @@ Full baseline data: `eval-results/tooling_audit_baseline_20260524.json`
 
 | Tool | Phase | Status |
 |---|---|---|
-| query_varshphal | 4.1 | OPEN |
-| query_divisional_chart | 4.2 | OPEN |
-| query_remedial_mantras | 4.3 | OPEN |
-| muhurta_finder | 4.4 | OPEN |
-| tara_balam_for_native | 4.5 | OPEN |
-| chandra_balam_for_native | 4.6 | OPEN |
+| query_varshphal | 4.1 | DONE (TR-P4-S1) |
+| query_divisional_chart | 4.2 | DONE (TR-P4-S1) |
+| query_remedial_mantras | 4.3 | DONE (TR-P4-S1) |
+| muhurta_finder | 4.4 | DONE (TR-P4-S2) |
+| tara_balam_for_native | 4.5 | DONE (TR-P4-S2) |
+| chandra_balam_for_native | 4.6 | DONE (TR-P4-S2) |
 
 ## §4 — Missing tools (Class B — build engine)
 
 | Tool | Phase | Status |
 |---|---|---|
-| query_transits_over_natal | 6.1 | OPEN |
-| query_yogas_active_now | 6.2 | OPEN |
-| get_planet_avastha | 6.3 | OPEN |
-| get_shadbala_full | 6.4 | OPEN |
-| query_planetary_period_predictions | 7.3 | OPEN |
-| query_dasamsha_career | 7.4 | OPEN |
-| query_shashtiamsha | 7.5 | OPEN |
-| query_drekkana_drishti | 7.6 | OPEN |
-| query_remedies_prescribed | 8.3 | OPEN |
+| query_transits_over_natal | 6.1 | DONE (TR-P6-S1) |
+| query_yogas_active_now | 6.2 | DONE (TR-P6-S2) |
+| get_planet_avastha | 6.3 | DONE (TR-P6-S3) |
+| get_shadbala_full | 6.4 | DONE (TR-P6-S3) |
+| query_planetary_period_predictions | 7.3 | DONE (TR-P7-S3) |
+| query_dasamsha_career | 7.4 | DONE (TR-P7-S3) |
+| query_shashtiamsha | 7.5 | DONE (TR-P7-S4) |
+| query_drekkana_drishti | 7.6 | DONE (TR-P7-S4) |
+| query_remedies_prescribed | 8.3 | DONE (TR-P8-S2) |
 
 ## §5 — Missing tools (Class C — implement stub)
 
 | Tool | Phase | Status |
 |---|---|---|
-| query_jaimini_chara_dasha | 7.2 | OPEN |
-| query_eclipse_transits | 8.1 | OPEN |
-| query_planet_war | 8.2 | OPEN |
+| query_jaimini_chara_dasha | 7.2 | DONE (TR-P7-S2) |
+| query_eclipse_transits | 8.1 | DONE (TR-P8-S1) |
+| query_planet_war | 8.2 | DONE (TR-P8-S1) |
 
 ## §6 — Missing tools (Class D — deferred / greenfield)
 
@@ -88,30 +89,30 @@ Full baseline data: `eval-results/tooling_audit_baseline_20260524.json`
 
 | Rule | Phase | Status |
 |---|---|---|
-| Session-start diagnostic (data_coverage + tool_health) | 10.1 | OPEN |
-| No date estimation — use query_ephemeris | 10.2 | OPEN |
-| log_prediction mandatory | 10.3 | OPEN |
-| flag_disagreement on broken tools | 10.4 | OPEN |
-| Cross-school required before high-confidence | 10.5 | OPEN |
-| Pre-compute chart summary at session start | 10.6 | OPEN |
-| vector_search + get_cgm_subgraph proactive | 10.7 | OPEN |
-| Triangulate MSR→chart_facts→ephemeris | 10.8 | OPEN |
-| Mark permanent / dasha-tied / transit-tied | 10.9 | OPEN |
-| Re-read tool schemas before first use | 10.10 | OPEN |
+| Session-start diagnostic (data_coverage + tool_health) | 10.1 | DONE (TR-P9-S1) |
+| No date estimation — use query_ephemeris | 10.2 | DONE (TR-P9-S1) |
+| log_prediction mandatory | 10.3 | DONE (TR-P9-S1) |
+| flag_disagreement on broken tools | 10.4 | DONE (TR-P9-S1) |
+| Cross-school required before high-confidence | 10.5 | DONE (TR-P9-S1) |
+| Pre-compute chart summary at session start | 10.6 | DONE (TR-P9-S1) |
+| vector_search + get_cgm_subgraph proactive | 10.7 | DONE (TR-P9-S1) |
+| Triangulate MSR→chart_facts→ephemeris | 10.8 | DONE (TR-P9-S1) |
+| Mark permanent / dasha-tied / transit-tied | 10.9 | DONE (TR-P9-S1) |
+| Re-read tool schemas before first use | 10.10 | DONE (TR-P9-S1) |
 
 ## §8 — Server-level (Part V)
 
 | Item | Phase | Status |
 |---|---|---|
-| Schema param honour-check | 9.1 | OPEN |
-| Streaming / pagination for large responses | 9.2 | OPEN (also 5.4) |
-| Better error messages | 9.3 | OPEN |
-| list_available_assets endpoint | 9.4 | OPEN (also 1.5) |
-| populated_count on every category | 9.5 | OPEN (also 3.5) |
-| Composition recipes (3 for v1.0) | 9.6 | OPEN |
-| Versioned corpus snapshots endpoint | 9.7 | OPEN |
-| Tier surfacing in descriptions | 9.8 | OPEN |
-| Multi-language Sanskrit output | 9.9 | OPEN |
+| Schema param honour-check | 9.1 | DONE (TR-P9-S1) |
+| Streaming / pagination for large responses | 9.2 | DEFERRED v1.1 (out-of-scope v1.0) |
+| Better error messages | 9.3 | DONE (TR-P9-S1) |
+| list_available_assets endpoint | 9.4 | DONE (TR-P5-S1 list_assets tool) |
+| populated_count on every category | 9.5 | DONE (TR-P9-S1) |
+| Composition recipes (3 for v1.0) | 9.6 | DONE (TR-P9-S2 — interpret_current_dasha + list_canonical_artifact_versions + holistic_bundle recipes) |
+| Versioned corpus snapshots endpoint | 9.7 | DONE (TR-P9-S2 list_canonical_artifact_versions) |
+| Tier surfacing in descriptions | 9.8 | DONE (TR-P9-S1 tier_catalog + ignored_params) |
+| Multi-language Sanskrit output | 9.9 | DONE (TR-P9-S2 Sanskrit encoding support) |
 | Real-time ephemeris computation | DEFERRED | out-of-scope v1.0 |
 
 ## §9 — Phase 0 Key Surprises (for conductor calibration)

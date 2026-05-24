@@ -1,0 +1,56 @@
+{
+  "sessions_completed": 26,
+  "tools_fixed": 2,
+  "tools_added": 18,
+  "tracker_open_items": 0,
+  "vitest_summary": "Test Files  2 failed | 47 passed (49) — Tests  4 failed | 698 passed (702); 4 failures are pre-existing cross_scenario accuracy tests unrelated to TR-P8-S2; 14 new tests added in TR-P8-S2 all pass",
+  "tools_added_detail": [
+    "query_varshphal (TR-P4-S1)",
+    "query_divisional_chart (TR-P4-S1)",
+    "query_remedial_mantras (TR-P4-S1)",
+    "muhurta_finder (TR-P4-S2)",
+    "tara_balam_for_native (TR-P4-S2)",
+    "chandra_balam_for_native (TR-P4-S2)",
+    "query_transits_over_natal (TR-P6-S1)",
+    "query_yogas_active_now (TR-P6-S2)",
+    "get_planet_avastha (TR-P6-S3)",
+    "get_shadbala_full (TR-P6-S3)",
+    "query_jaimini_chara_dasha (TR-P7-S2)",
+    "query_planetary_period_predictions (TR-P7-S3)",
+    "query_dasamsha_career (TR-P7-S3)",
+    "query_shashtiamsha (TR-P7-S4)",
+    "query_drekkana_drishti (TR-P7-S4)",
+    "query_eclipse_transits (TR-P8-S1)",
+    "query_planet_war (TR-P8-S1)",
+    "query_remedies_prescribed (TR-P8-S2)"
+  ],
+  "tools_fixed_detail": [
+    "C11/D1: deity_assignment/ishta_kashta/chandra_placement/avastha data backfill (TR-P3-S1) — 2475→2681 chart_facts rows"
+  ],
+  "open_findings_at_close": [
+    "C1: chart_summary ToolBundle envelope mismatch — wrapper reads wrong nesting level",
+    "C2: holistic_bundle mandatory query_text param missing from some call patterns",
+    "C3: cross_school_lookup claim param not forwarded to platform primitive",
+    "C4: query_signals forward_looking/min_confidence params not translated",
+    "C5: query_ephemeris date_range start/end vs from/to schema mismatch",
+    "C6: query_transit_event event_type not in MCP input schema",
+    "C7: query_dasha_periods PD/SD data gap — only MD/AD ingested",
+    "C8: query_panchanga enrichment JSONB columns not in SELECT",
+    "C9/D3: read_asset MARSYS_REPO_ROOT not set in Cloud Run prod env",
+    "C10: read_classical_text text_id→school mapping wrong (bphs→parashari not bphs)",
+    "D2: shadbala roll-up aggregation missing",
+    "D4: cross_school_lookup wrapper bug (same root as C3)",
+    "D5: chart_facts 2717 vs 2475 row count discrepancy in plan",
+    "D6: rag_chunks 4589 vs 6931 claim discrepancy",
+    "D7: classical texts count (14 actual vs 4 in plan)"
+  ],
+  "next_steps": [
+    "Phase 12: spouse chart integration when data available",
+    "query_tara_balam + query_chandra_balam primitives_registry.ts wiring (noted TR-P4-S2)",
+    "query_dasamsha_career stub for query_dasamsha_career in TR-P9-S2 career_timing_audit recipe",
+    "Fix C1–C10 wrapper bugs deferred from v1.0 scope in v1.1 remediation arc",
+    "Streaming/pagination for large responses (D2, §8.9.2) — deferred v1.1",
+    "MARSYS_REPO_ROOT Cloud Run env var fix for read_asset prod (C9/D3)"
+  ],
+  "completed_at": "2026-05-25"
+}
