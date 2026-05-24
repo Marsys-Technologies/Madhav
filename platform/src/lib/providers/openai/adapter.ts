@@ -86,7 +86,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
         createParams.tool_choice = request.toolsConfig.providerPayload.toolChoice as 'auto' | 'none' | 'required';
       }
 
-      const stream = await client.chat.completions.create(createParams);
+      const stream = await client.chat.completions.create({ ...createParams, stream: true as const });
 
       // Accumulate tool call deltas across chunks, keyed by index.
       const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();
