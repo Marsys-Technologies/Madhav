@@ -159,12 +159,12 @@ sessions:
     phase: C
     title: "Iteration-cap stress + IS.8(b) red-team adversarial pass"
     brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S2_v1_0.md"
-    status: pending
+    status: completed
     parallel_safe: false
     blocked_by: [R11F-C-S1]
-    commit_sha: null
+    commit_sha: "d64a17b0"
     pr_url: null
-    notes: "Mandatory IS.8(b) red-team gate. C-S3 cannot proceed without PASS."
+    notes: "IS.8(b) PASS: 0 class-1, 0 class-2. RT.1/2/3 all PASS. 26 tests (8 stress + 18 red-team). C-S3 unblocked."
 
   - id: R11F-C-S3
     phase: C
