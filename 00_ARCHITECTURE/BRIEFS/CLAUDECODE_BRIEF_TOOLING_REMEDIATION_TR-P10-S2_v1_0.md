@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P10-S2_v1_0.md
 type: CLAUDECODE_BRIEF
 version: 1.0
-status: COMPLETE
+status: PENDING
 authored_by: Conductor (2026-05-25)
 session_id: TR-P10-S2
 ---

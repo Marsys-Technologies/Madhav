@@ -63,9 +63,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P0-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     grep -q 'TR-P1-S1.*COMPLETE\|TR-P1-S1: PASS' 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/CONDUCTOR_LOG.md || \
@@ -110,9 +111,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P0-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     (cd platform-mcp && npx vitest run src/tools/query_signals.test.ts src/tools/query_ephemeris.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
@@ -153,9 +155,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P0-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     (cd platform-mcp && npx vitest run src/tools/read_asset.test.ts src/tools/query_panchanga.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
@@ -193,9 +196,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P0-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     (cd platform-mcp && npx vitest run src/tools/query_varshphal.test.ts src/tools/query_divisional_chart.test.ts src/tools/query_remedial_mantras.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
@@ -241,9 +245,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P0-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     (cd platform-mcp && npx vitest run src/tools/muhurta_finder.test.ts src/tools/tara_balam.test.ts src/tools/chandra_balam.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
@@ -290,9 +295,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P0-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: false
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     grep -q 'R-TD.1\|session_start_diagnostic' 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md && \
@@ -348,9 +354,10 @@ entries:
   branch: feature/tooling-remediation
   worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
   depends_on: [TR-P10-S1]
-  requires_brief_authoring: true
+  requires_brief_authoring: false
   requires_human_approval: false
   push_to_remote: true
+  status: passed
   gate_command: |
     cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
     grep -q 'R-CGM\|cgm_subgraph' 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md && \
