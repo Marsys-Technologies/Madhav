@@ -26,13 +26,13 @@ Full baseline data: `eval-results/tooling_audit_baseline_20260524.json`
 | C8 | query_panchanga missing enrichment cols | 1.6 | OPEN | wrapper — enrichment data IS in DB (special_yogas, choghadiya, hora, inauspicious, auspicious all populated in 27393 rows since 2026); wrapper SELECT does not include JSONB enrichment columns |
 | C9 | read_asset ENOENT | 1.5 | OPEN | prod_env — MARSYS_REPO_ROOT not set in Cloud Run prod; files resolve from '/' path which doesn't exist; both MACRO_PLAN and LEL fail identically; code correct, env config gap |
 | C10 | read_classical_text no results | 2.5 | OPEN | wrapper — text_id='BPHS' maps to schools=['bphs'] filter on ct.school, but ct.school='parashari' for BPHS; should filter ct.text_key='bphs'; 8349 classical_chunks with 8337 embeddings exist in DB |
-| C11 | query_chart_facts empty categories | 3.1 | OPEN | data_empty — deity_assignment, ishta_kashta, chandra_placement, avastha have 0 rows in chart_facts (confirmed DB query); categories exist in ChartFactsCategory enum but no data ingested |
+| C11 | query_chart_facts empty categories | 3.1 | DATA RESOLVED (TR-P3-S1 2026-05-25) | data_empty root cause fixed — deity_assignment=16, ishta_kashta=7, chandra_placement=12, avastha=7 rows now in DB. query_chart_facts wrapper itself unchanged (no wrapper bug confirmed for these categories). |
 
 ## §2 — Data-layer findings (D1–D7)
 
 | Code | Finding | Phase | Status | Baseline |
 |---|---|---|---|---|
-| D1 | deity_assignment/ishta_kashta/chandra_placement/avastha empty | 3.1 | OPEN | Confirmed 0 rows in DB for all 4 categories. Also: sensitive_point=0 rows despite being in enum. 27 categories with data, 5+ categories empty. |
+| D1 | deity_assignment/ishta_kashta/chandra_placement/avastha empty | 3.1 | RESOLVED (TR-P3-S1 2026-05-25) | Backfill complete. Extractor: platform/python-sidecar/pipeline/loaders/chart_facts_loader.py against FORENSIC_v8_0.md. Extracted: deity_assignment=16, ishta_kashta=7, chandra_placement=12, avastha=7. Upserted 215 rows (19 categories) — 0 errors. DB after: deity_assignment=16, ishta_kashta=7, chandra_placement=12, avastha=7. Also resolved: sensitive_point=25, arudha_occupancy=12, mrityu_bhaga=11, kakshya_zone=8, chalit_shift=9, longevity_indicator=10. Total chart_facts: 2475→2681. See eval-results/chart_facts_extractor_run.json. |
 | D2 | shadbala no roll-up | 6.4 | OPEN | DB has shadbala:63 rows. Tool returns them but no roll-up/total_rupas aggregation. schema confirmed missing roll-up. |
 | D3 | read_asset ENOENT in prod | 1.5 | OPEN | Same as C9 — prod_env root cause: MARSYS_REPO_ROOT missing from Cloud Run env vars |
 | D4 | school_convergence_index all silent | 2.1 | OPEN | **TR-P2-S1 CONFIRMED** 574 rows (signal-level MV, one row per MSR signal). Columns: signal_id, parashari_present, jaimini_present, kp_present, tajika_present, convergence_score, missing_schools. Coverage: parashari=499/574, jaimini=546/574, kp=459/574, tajika=484/574. Data is good; **branch_decision=fix_wrapper** — C3 bug is wrapper not forwarding claim param (detail: eval-results/school_convergence_baseline.json). |

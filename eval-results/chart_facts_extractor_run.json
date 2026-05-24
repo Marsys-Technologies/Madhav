@@ -1,0 +1,60 @@
+{
+  "captured_at": "2026-05-25",
+  "session_id": "TR-P3-S1",
+  "extractor_script": "platform/python-sidecar/pipeline/extractors/chart_facts_extractor.py",
+  "loader_script": "platform/python-sidecar/pipeline/loaders/chart_facts_loader.py",
+  "source_file": "01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md",
+  "note_on_source": "Extractor targets FORENSIC_ASTROLOGICAL_DATA_v8_0.md (not MSR_v5_0.md as mentioned in brief §2 step 3 — brief had a typo; extractor docstring and usage confirm FORENSIC as input)",
+  "extracted_counts": {
+    "arudha_occupancy": 12,
+    "ashtakavarga_bav": 8,
+    "ashtakavarga_pinda": 7,
+    "ashtakavarga_sav": 13,
+    "aspect": 9,
+    "avastha": 7,
+    "bhava_bala": 12,
+    "chalit_shift": 9,
+    "chandra_placement": 12,
+    "deity_assignment": 16,
+    "ishta_kashta": 7,
+    "kakshya_zone": 8,
+    "longevity_indicator": 10,
+    "mrityu_bhaga": 11,
+    "sensitive_point": 25,
+    "shadbala": 14,
+    "strength_extra": 21,
+    "upagraha": 9,
+    "varshphal": 5,
+    "TOTAL": 215
+  },
+  "db_counts_before": {
+    "deity_assignment": 0,
+    "ishta_kashta": 0,
+    "chandra_placement": 0,
+    "avastha": 0,
+    "total_chart_facts": 2475
+  },
+  "db_counts_after": {
+    "deity_assignment": 16,
+    "ishta_kashta": 7,
+    "chandra_placement": 12,
+    "avastha": 7,
+    "total_chart_facts": 2681
+  },
+  "additional_categories_backfilled": {
+    "arudha_occupancy": 12,
+    "chalit_shift": 9,
+    "kakshya_zone": 8,
+    "longevity_indicator": 10,
+    "mrityu_bhaga": 11,
+    "sensitive_point": 25
+  },
+  "backfill_action": "loaded",
+  "upsert_result": {
+    "rows_written": 215,
+    "rows_total": 215,
+    "errors": 0,
+    "build_id_prefix": "karn-w2-r2-chart-facts-20260525"
+  },
+  "notes": "All 4 target categories extracted with counts > 0. Upsert successful: 215/215 rows written, 0 errors. The loader uses ON CONFLICT (fact_id) DO UPDATE so pre-existing rows in other categories (shadbala, bhava_bala, etc.) were updated in-place without duplication. Net new rows added: 2681-2475=206 (9 rows were updates to pre-existing fact_ids). D5 finding updated: chart_facts total is now 2681, up from 2475."
+}
