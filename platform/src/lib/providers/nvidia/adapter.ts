@@ -93,7 +93,7 @@ export class NVIDIAAdapter implements CapabilityAdapter {
         streamParams.tool_choice = request.toolsConfig.providerPayload.toolChoice as 'auto' | 'none' | 'required';
       }
 
-      const stream = await client.chat.completions.create(streamParams);
+      const stream = await client.chat.completions.create({ ...streamParams, stream: true as const });
 
       const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();
 
