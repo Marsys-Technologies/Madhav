@@ -91,6 +91,11 @@ jobs:
             MARSYS_FLAG_R11V2_USE_ADAPTERS=true
             MARSYS_FLAG_R11D_PROMPT_LAYOUT=true
             MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true
+            MARSYS_FLAG_R11E_ANTHROPIC_LOOP=true
+            MARSYS_FLAG_R11E_GEMINI_LOOP=true
+            MARSYS_FLAG_R11E_OPENAI_LOOP=true
+            MARSYS_FLAG_R11E_DEEPSEEK_LOOP=true
+            MARSYS_FLAG_R11E_NVIDIA_LOOP=true
             CONSUME_UI_V2_ENABLED=true
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
