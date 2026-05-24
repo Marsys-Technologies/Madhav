@@ -29,6 +29,7 @@ export const HOLISTIC_BUNDLE_DESCRIPTION = buildToolDescription({
     'FIRST CALL when any synthesis question requires cross-layer context before reasoning. ' +
     'Use the subset param to restrict to specific layers (e.g., subset: ["MSR","DASHA"]). ' +
     'Prefer individual surgical primitives when you need only one data type without synthesis overhead.',
+  tierAccess: 'All tiers. Tier determines subset of bundle data returned.',
 })
 
 const HolisticBundleInputSchema = z.object({

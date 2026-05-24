@@ -67,6 +67,7 @@ export const QUERY_CHART_FACTS_DESCRIPTION = buildToolDescription({
     'Use for single fact lookups ("What is Saturn\'s shadbala?", "Which planets are in house 7?"). ' +
     'Prefer query_signals for MSR signal corpus data. ' +
     'Prefer holistic_bundle when synthesis or multi-tool retrieval is needed.',
+  tierAccess: 'All tiers. super_admin + acharya see all 37 categories; client tier sees curated subset.',
 })
 
 // Keep internal alias for the tool registration

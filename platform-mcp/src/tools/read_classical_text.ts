@@ -68,6 +68,7 @@ export const READ_CLASSICAL_TEXT_DESCRIPTION = buildToolDescription({
     'Use `citation: "BPHS.33.1"` for exact verse lookup. ' +
     'Prefer vector_search for cross-layer semantic retrieval including MSR signals and LEL data. ' +
     'Prefer query_chart_facts or query_signals for structured fact lookups that do not require quoting.',
+  tierAccess: 'super_admin + acharya. Classical text corpus is acharya-grade.',
 })
 
 // ── Tool registration ─────────────────────────────────────────────────────────
@@ -198,8 +199,9 @@ export function registerReadClassicalText(
         const errorMsg = 'error' in errEnv
           ? `${errEnv.error.class}: ${errEnv.error.message}`
           : 'Unknown error from platform primitive endpoint'
+        const validIds = CLASSICAL_TEXT_IDS.join(', ')
         return {
-          content: [{ type: 'text' as const, text: `Error: ${errorMsg}` }],
+          content: [{ type: 'text' as const, text: `Error: ${errorMsg} Valid text IDs: ${validIds}.` }],
           isError: true,
         }
       }

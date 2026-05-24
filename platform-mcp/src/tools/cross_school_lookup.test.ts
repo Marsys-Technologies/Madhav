@@ -249,6 +249,25 @@ describe('cross_school_lookup — C3 claim forwarding fix + Nadi/BNN/Yogini note
     expect((result as { isError?: boolean }).isError).toBe(true)
   })
 
+  // AC.5: each school entry in results has school_count as a number
+  it('AC.5 — each school entry in results has school_count as a number', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildSuccessEnvelope([
+      { school: 'parashara', coverage_type: 'primary', confidence: 0.95, matching_signals: ['SIG.MSR.001'] },
+      { school: 'jaimini', coverage_type: 'secondary', confidence: 0.80, matching_signals: [] },
+    ]))
+
+    const result = await callCrossSchoolLookup({ claim: 'Saturn in 10th house delays career' })
+    const parsed = parseResultContent(result) as {
+      result?: { results?: Array<Record<string, unknown>> }
+    }
+    const entries = parsed?.result?.results ?? []
+    expect(entries.length).toBeGreaterThan(0)
+    for (const entry of entries) {
+      expect(typeof entry['school_count']).toBe('number')
+    }
+  })
+
   // Different claims produce different topic values (not the same static string)
   it('different claims produce different topic values in toolParams', async () => {
     const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)

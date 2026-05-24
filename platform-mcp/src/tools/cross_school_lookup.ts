@@ -48,6 +48,7 @@ export const CROSS_SCHOOL_LOOKUP_DESCRIPTION = buildToolDescription({
     'Use when the question is explicitly about multi-school convergence on a rule or claim. ' +
     'Prefer multi_school_bundle when you also want per-school evidence queries and classical text references. ' +
     'Prefer query_signals to find signals already tagged with school convergence metadata.',
+  tierAccess: 'super_admin + acharya. Multi-school analysis is acharya-grade.',
 })
 
 const CrossSchoolLookupInputSchema = z.object({
@@ -97,12 +98,46 @@ export function registerCrossSchoolLookup(
       // covers only parashari, jaimini, kp, tajaka). Their coverage defaults to silent
       // for every signal. We surface this as a first-class field so callers are not
       // misled into thinking absent coverage means silent-but-checked.
+      const baseResult = typeof envelope.result === 'object' && envelope.result !== null
+        ? envelope.result as Record<string, unknown>
+        : { raw: envelope.result }
+
+      // Add school_count to each result entry: count of entries sharing the same school name.
+      // Results arrive as a flat array; we compute per-school frequency and annotate each entry.
+      const rawResults = Array.isArray(baseResult['results']) ? baseResult['results'] as unknown[] : []
+      // Build per-school count map
+      const schoolFreq: Record<string, number> = {}
+      for (const entry of rawResults) {
+        const e = entry as Record<string, unknown>
+        const schoolName = typeof e['school'] === 'string'
+          ? e['school']
+          : (() => {
+              try {
+                const parsed = JSON.parse(e['content'] as string) as Record<string, unknown>
+                return typeof parsed['school'] === 'string' ? parsed['school'] : '__unknown__'
+              } catch { return '__unknown__' }
+            })()
+        schoolFreq[schoolName] = (schoolFreq[schoolName] ?? 0) + 1
+      }
+      // Annotate each entry with school_count
+      const annotatedResults = rawResults.map(entry => {
+        const e = entry as Record<string, unknown>
+        const schoolName = typeof e['school'] === 'string'
+          ? e['school']
+          : (() => {
+              try {
+                const parsed = JSON.parse(e['content'] as string) as Record<string, unknown>
+                return typeof parsed['school'] === 'string' ? parsed['school'] : '__unknown__'
+              } catch { return '__unknown__' }
+            })()
+        return { ...e, school_count: schoolFreq[schoolName] ?? 1 }
+      })
+
       const augmented = {
         ...envelope,
         result: {
-          ...(typeof envelope.result === 'object' && envelope.result !== null
-            ? envelope.result
-            : { raw: envelope.result }),
+          ...baseResult,
+          results: annotatedResults,
           unrepresented_schools: ['nadi', 'bnn', 'yogini'] as const,
           unrepresented_schools_note:
             'These schools are not in the corpus; their coverage defaults to silent for all signals.',

@@ -86,6 +86,7 @@ export const CHART_SUMMARY_DESCRIPTION = buildToolDescription({
     'Use include_categories / exclude_categories to narrow the bundle. ' +
     'Surgical follow-ups via query_chart_facts for edge cases. ' +
     'Works for both "navamsa" and "D9" requests — these are the same chart.',
+  tierAccess: 'All tiers (super_admin, acharya, client). Full natal chart data.',
 })
 
 // ── Input schema ──────────────────────────────────────────────────────────────
