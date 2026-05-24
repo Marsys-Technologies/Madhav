@@ -91,6 +91,11 @@ export interface HolisticBundleEnvelope {
   }
   cached_at?: string
   expires_at?: string
+  response_meta?: {
+    size_kb: number
+    chunked: boolean
+    recommendation: string | null
+  }
 }
 
 // ── Params ─────────────────────────────────────────────────────────────────────
@@ -102,6 +107,8 @@ export interface HolisticBundleParams {
   subset?: string[]
   tier: string
   chart_id?: string
+  subset_size?: number
+  return_format?: 'verbose' | 'compressed'
 }
 
 // ── Primitive caller helper ────────────────────────────────────────────────────
@@ -181,13 +188,13 @@ async function runSubTool(
 
 // ── Tool route mapping ─────────────────────────────────────────────────────────
 
-function getToolRouteFor(name: SubToolName): string {
+export function getToolRouteFor(name: SubToolName): string {
   const routes: Record<SubToolName, string> = {
     MSR: 'query_signals',
     CGM: 'get_cgm_subgraph',
-    UCN: 'vector_search',
-    RM: 'vector_search',
-    CDLM: 'vector_search',
+    UCN: 'read_asset',
+    RM: 'read_asset',
+    CDLM: 'read_asset',
     LEL: 'lel_query',
     PANCHANG: 'query_panchanga',
     DASHA: 'query_dasha_periods',
@@ -197,7 +204,7 @@ function getToolRouteFor(name: SubToolName): string {
 
 // ── Param builder per sub-tool ─────────────────────────────────────────────────
 
-function buildParams(
+export function buildParams(
   name: SubToolName,
   bundleParams: HolisticBundleParams
 ): Record<string, unknown> {
@@ -207,16 +214,16 @@ function buildParams(
         ...(bundleParams.focus_domains?.length
           ? { domain: bundleParams.focus_domains[0] }
           : {}),
-        limit: 100,
+        limit: bundleParams.subset_size ?? 100,
       }
     case 'CGM':
       return { query: bundleParams.query_text, hops: 3 }
     case 'UCN':
-      return { query: bundleParams.query_text, source_filter: 'UCN_v4_1', top_k: 25 }
+      return { canonical_id: 'UCN' }
     case 'RM':
-      return { query: bundleParams.query_text, source_filter: 'RM_v2_2', top_k: 15 }
+      return { canonical_id: 'RM' }
     case 'CDLM':
-      return { query: bundleParams.query_text, source_filter: 'CDLM_v1_3', top_k: 15 }
+      return { canonical_id: 'CDLM' }
     case 'LEL':
       return bundleParams.time_window ?? {}
     case 'PANCHANG':
@@ -333,15 +340,38 @@ export async function executeHolisticBundle(
     }
   }
 
+  // Apply compression if requested
+  const finalEntries = params.return_format === 'compressed'
+    ? bundle_entries.map(e => e.errored
+        ? { sub_tool: e.sub_tool, errored: true as const, error_class: e.error_class, latency_ms: e.latency_ms, attempted_params: e.attempted_params }
+        : { sub_tool: e.sub_tool, errored: false as const, rows_returned: e.rows_returned, signal_ids_available: e.signal_ids_available, latency_ms: e.latency_ms }
+      )
+    : bundle_entries
+
   const envelope: HolisticBundleEnvelope = {
     ok: true,
     bundle_name: 'holistic_bundle',
     served_from_cache: false,
-    bundle_entries,
+    bundle_entries: finalEntries,
     provenance: {
       signal_ids_available: [...new Set(allSignalIds)],
       sub_tools_fired,
       sub_tools_errored,
+    },
+  }
+
+  // Add response size metadata
+  const serialized = JSON.stringify(envelope)
+  const sizeKB = Buffer.byteLength(serialized, 'utf8') / 1024
+
+  const annotatedEnvelope: HolisticBundleEnvelope = {
+    ...envelope,
+    response_meta: {
+      size_kb: Math.round(sizeKB * 10) / 10,
+      chunked: sizeKB > 64,
+      recommendation: sizeKB > 64
+        ? 'Response exceeds 64KB. Use return_format="compressed" or subset param to narrow the query.'
+        : null,
     },
   }
 
@@ -351,9 +381,9 @@ export async function executeHolisticBundle(
     bundleName: 'holistic_bundle',
     audienceTier: params.tier,
     chartId: params.chart_id ?? 'default',
-    envelope,
+    envelope: annotatedEnvelope,
   })
 
-  onEvent?.({ type: 'bundle.completed', envelope })
-  return envelope
+  onEvent?.({ type: 'bundle.completed', envelope: annotatedEnvelope })
+  return annotatedEnvelope
 }
