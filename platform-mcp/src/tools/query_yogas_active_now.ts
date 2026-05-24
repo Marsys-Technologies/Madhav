@@ -336,7 +336,7 @@ export function registerQueryYogasActiveNow(
       )
 
       if (dashaResult.envelope.ok && dashaResult.status < 400) {
-        const data = unwrapEnvelope(dashaResult.envelope as Record<string, unknown>)
+        const data = unwrapEnvelope(dashaResult.envelope as unknown as Record<string, unknown>)
         dashaContext = extractDashaContext(data)
       }
       // If dasha call fails: dashaContext remains null → all yogas become dormant

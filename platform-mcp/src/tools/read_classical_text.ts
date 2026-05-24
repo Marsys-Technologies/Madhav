@@ -149,9 +149,9 @@ export function registerReadClassicalText(
       if (citation) {
         const parts = citation.split('.')
         if (parts.length >= 3) {
-          resolvedTextKey = parts[0].toLowerCase()
-          const parsedChapter = parseInt(parts[1], 10)
-          const parsedVerse = parseInt(parts[2], 10)
+          resolvedTextKey = parts[0]!.toLowerCase()
+          const parsedChapter = parseInt(parts[1]!, 10)
+          const parsedVerse = parseInt(parts[2]!, 10)
           if (!isNaN(parsedChapter) && !isNaN(parsedVerse)) {
             resolvedChapter = parsedChapter
             resolvedVerse = parsedVerse
@@ -211,7 +211,7 @@ export function registerReadClassicalText(
 
       if (isExactLookup || citation) {
         // Inject citation metadata into the response text
-        const parsed = JSON.parse(baseResult.content[0].text as string) as Record<string, unknown>
+        const parsed = JSON.parse(baseResult.content[0]!.text as string) as Record<string, unknown>
         parsed['lookup_mode'] = isExactLookup ? 'exact' : 'semantic'
         if (citation) parsed['citation_requested'] = citation
         if (resolvedTextKey) parsed['text_key_filter'] = resolvedTextKey

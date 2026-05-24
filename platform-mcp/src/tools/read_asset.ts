@@ -106,11 +106,11 @@ function filterToSection(content: string, section: string): string {
   let headingLevel = 0
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+    const line = lines[i]!
     const headingMatch = line.match(/^(#{1,6})\s+(.+)/)
-    if (headingMatch && headingMatch[2].toLowerCase().includes(sectionLower)) {
+    if (headingMatch && headingMatch[2]!.toLowerCase().includes(sectionLower)) {
       startLine = i
-      headingLevel = headingMatch[1].length
+      headingLevel = headingMatch[1]!.length
       break
     }
   }
@@ -119,9 +119,9 @@ function filterToSection(content: string, section: string): string {
 
   let endLine = lines.length
   for (let i = startLine + 1; i < lines.length; i++) {
-    const line = lines[i]
+    const line = lines[i]!
     const headingMatch = line.match(/^(#{1,6})\s+/)
-    if (headingMatch && headingMatch[1].length <= headingLevel) {
+    if (headingMatch && headingMatch[1]!.length <= headingLevel) {
       endLine = i
       break
     }
