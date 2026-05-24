@@ -108,11 +108,8 @@ jobs:
   coverage-gate:
     name: Coverage Gate (COV-S7)
     runs-on: ubuntu-latest
-    # continue-on-error during M5 coverage remediation campaign: the gate surfaces
-    # pre-existing gaps documented in CAPABILITY_COVERAGE_AND_PERFORMANCE_AUDIT_v1_0.md §C.
-    # These gaps are the campaign's target; the gate must NOT block campaign PRs that fix them.
-    # Remove continue-on-error once all COV-stream sessions complete and the baseline is clean.
-    continue-on-error: true
+    # continue-on-error removed 2026-05-25: M5 Coverage Campaign is COMPLETE and the
+    # baseline is now clean (exit 0). Gate is a hard blocker from this point forward.
 
     permissions:
       contents: read

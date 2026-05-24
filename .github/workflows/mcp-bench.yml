@@ -19,6 +19,9 @@ jobs:
   bench-and-accuracy:
     name: Bench + Accuracy Harness
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     defaults:
       run:
         working-directory: platform-mcp
