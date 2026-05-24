@@ -55,6 +55,7 @@ import { registerGetShadbalaFull } from './tools/get_shadbala_full.js'
 import { registerInterpretCurrentDasha } from './tools/interpret_current_dasha.js'
 import { registerListCanonicalArtifactVersions } from './tools/list_canonical_artifact_versions.js'
 import { registerQueryDrekkanaDisthi } from './tools/query_drekkana_drishti.js'
+import { registerQueryJaiminiCharaDasha } from './tools/query_jaimini_chara_dasha.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -186,6 +187,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerInterpretCurrentDasha(server, getPrincipal)
   registerListCanonicalArtifactVersions(server, getPrincipal)
   registerQueryDrekkanaDisthi(server, getPrincipal)
+  registerQueryJaiminiCharaDasha(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
