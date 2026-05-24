@@ -1,6 +1,6 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.4
+version: 2.5
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 planner_blind_fix:
@@ -935,6 +935,35 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
           - Do NOT attach for natal signal queries already covered by msr_sql;
             R-RM fires only when resonance classifications or RM-specific
             structure is needed.
+
+  R-TD.1 — Session-start diagnostic
+        Before any substantive chart reading, call data_coverage({tier: 'super_admin'}) and
+        tool_health({days: 30}). If either tool errors, log with flag_disagreement and proceed
+        noting the gap. Do not skip this step even in short sessions.
+
+  R-NDE.1 — No date estimation
+        All future-dated claims (e.g. 'Jupiter will transit X around mid-2027') MUST be sourced
+        from query_ephemeris({date_range:{from:...,to:...}}) or query_transit_event(). Never
+        extrapolate from mean motion. Mark any date claim that lacks an ephemeris source as
+        [DATE_UNVERIFIED].
+
+  R-LP.1 — log_prediction mandatory
+        Every substantive predictive claim — defined as a claim about a future event, its timing,
+        or its quality — MUST be followed immediately by a log_prediction() call with:
+        confidence (0.0–1.0), horizon (months), falsifier (what observable outcome would refute it).
+        Predictions without log_prediction() violate B.3.
+
+  R-FD.1 — flag_disagreement on broken tools
+        When a tool returns an error or suspicious output (0 rows, silent coverage), call
+        flag_disagreement() to log it formally before proceeding with a workaround. Silent
+        workarounds are governance violations.
+
+  R-CS.1 — Cross-school before high-confidence
+        Before asserting any predictive claim with confidence ≥ 0.75, call cross_school_lookup()
+        for that claim. If cross_school_lookup returns silent or data_empty for all schools,
+        lower the stated confidence to ≤ 0.65 and note the gap explicitly.
+        [Activates after Phase 2 ships a populated school_convergence_index; until then,
+        annotate claims as [PRE-PHASE-2].]
 
 Style rules (unchanged from v1.7):
 
@@ -2273,3 +2302,12 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.6 content extension 2026-05-19 (Phase 5A) — R-DA dasha-anchor rule + example 4.28 added for query_dasha_periods*
 *v2.0.7 content extension 2026-05-20 (Phase 4C enrichment) — R-PA subclauses (f)+(g) for inauspicious periods + choghadiya/hora/special yoga triggers; R-PCI panchang context inheritance rule; examples 4.29–4.31*
 *v2.0.8 content extension 2026-05-21 (COV-S5) — R-UCN, R-CDLM, R-RM routing rules for query_ucn_walk, query_cdlm_lookup, query_rm_walk (L2.5 structural graph tools, tools 34–36)*
+*v2.5 content extension 2026-05-25 (TR-P10-S1) — R-TD.1 (session-start diagnostic), R-NDE.1 (no date estimation), R-LP.1 (log_prediction mandatory), R-FD.1 (flag_disagreement on broken tools), R-CS.1 (cross-school before high-confidence). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.1–10.5.*
+
+## Changelog
+
+### v2.5 — 2026-05-25 (TR-P10-S1)
+Added R-TD.1 (session-start diagnostic), R-NDE.1 (no date estimation),
+R-LP.1 (log_prediction mandatory), R-FD.1 (flag_disagreement on broken tools),
+R-CS.1 (cross-school before high-confidence). Five methodology rules from the
+MARSYS-JIS Tooling Remediation Phase 10.1–10.5.
