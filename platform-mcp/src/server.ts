@@ -49,6 +49,7 @@ import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 import { registerTaraBalamForNative } from './tools/tara_balam_for_native.js'
 import { registerChandraBalamForNative } from './tools/chandra_balam_for_native.js'
 import { registerQueryTransitsOverNatal } from './tools/query_transits_over_natal.js'
+import { registerQueryYogasActiveNow } from './tools/query_yogas_active_now.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -174,6 +175,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerTaraBalamForNative(server, getPrincipal)
   registerChandraBalamForNative(server, getPrincipal)
   registerQueryTransitsOverNatal(server, getPrincipal)
+  registerQueryYogasActiveNow(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
