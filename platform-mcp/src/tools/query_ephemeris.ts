@@ -13,14 +13,16 @@
  * Prefer holistic_bundle when you need the positional data synthesized against the chart.
  *
  * Input shape hints:
- *   planet — required; Jyotish planet name: "Sun", "Moon", "Mars", "Mercury",
- *     "Jupiter", "Venus", "Saturn", "Rahu", "Ketu".
- *   date_range — required {start, end} ISO date pair; max range ~1 year recommended.
+ *   planet — optional; Jyotish planet name or array of names: "Sun", "Moon", "Mars",
+ *     "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu". Omit for all 9 grahas.
+ *   date_range — required {from, to} ISO date pair; max span 1825 days (5 years).
+ *   sample_step — optional "1d"|"7d"|"30d"; defaults "1d". Use "7d"/"30d" for wide ranges.
+ *   return_changes_only — optional boolean; if true, only rows where position changed >1°.
  *
  * Output shape preview: {ok, result: {positions: EphemerisRow[]}, trace_id,
  *   epistemics: {surgical: true}}.
  *
- * Example: query_ephemeris({planet: "Saturn", date_range: {start: "2025-01-01", end: "2025-03-31"}}) →
+ * Example: query_ephemeris({planet: "Saturn", date_range: {from: "2025-01-01", to: "2025-03-31"}}) →
  *   {ok: true, result: {positions: [{date: "2025-01-01", sign: "Aquarius",
  *   degree: 17.4, retrograde: false, nakshatra: "Shatabhisha"}]}, ...}
  */
@@ -46,17 +48,42 @@ export const QUERY_EPHEMERIS_DESCRIPTION = buildToolDescription({
     'Prefer holistic_bundle when positional data needs chart synthesis.',
 })
 
+const MAX_DATE_RANGE_DAYS = 1825  // 5 years
+
 const QueryEphemerisInputSchema = z.object({
-  planet: z.enum(PLANETS).describe(
-    'Jyotish graha. One of: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu.'
+  planet: z.union([z.enum(PLANETS), z.array(z.enum(PLANETS))]).optional().describe(
+    'Jyotish graha(s). One of or an array of: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu. ' +
+    'Omit to return all 9 grahas.'
   ),
   date_range: z.object({
-    start: z.string().describe('ISO start date (YYYY-MM-DD).'),
-    end: z.string().describe('ISO end date (YYYY-MM-DD).'),
-  }).describe('Date range for position lookup. Max ~1 year recommended.'),
+    from: z.string().describe('ISO start date (YYYY-MM-DD).'),
+    to: z.string().describe('ISO end date (YYYY-MM-DD).'),
+  }).describe(
+    'Date range for position lookup. Maximum span: 1825 days (5 years). ' +
+    'Use sample_step to reduce row count for wide ranges.'
+  ),
+  sample_step: z.enum(['1d', '7d', '30d']).optional().default('1d').describe(
+    'Sampling interval. "1d" = every day (default); "7d" = weekly (Sundays); "30d" = monthly (1st of each month). ' +
+    'Use "7d" or "30d" to reduce token cost for wide date ranges.'
+  ),
+  return_changes_only: z.boolean().optional().default(false).describe(
+    'When true, only return rows where at least one planet position changed by >1 degree from the previous row. ' +
+    'Useful for finding ingress / station events without full-range scan.'
+  ),
+  derived_fields: z.array(
+    z.enum(['dignity', 'combust', 'vargottama', 'ingress', 'yuddha', 'house', 'house_bc'])
+  ).optional().describe(
+    'Which derived columns to include. Defaults to all 7. Pass [] to skip all derived columns for token-tight queries.'
+  ),
 })
 
 type QueryEphemerisInput = z.infer<typeof QueryEphemerisInputSchema>
+
+/** Returns number of days between two ISO date strings. */
+function daysBetween(from: string, to: string): number {
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.round((new Date(to).getTime() - new Date(from).getTime()) / msPerDay)
+}
 
 export function registerQueryEphemeris(
   server: McpServer,
@@ -68,11 +95,45 @@ export function registerQueryEphemeris(
     QueryEphemerisInputSchema.shape,
     async (args: QueryEphemerisInput) => {
       const principal = getPrincipal()
+
+      // Enforce 1825-day cap
+      const span = daysBetween(args.date_range.from, args.date_range.to)
+      if (span > MAX_DATE_RANGE_DAYS) {
+        const errEnvelope = {
+          ok: false,
+          error: 'date_range_too_wide',
+          message: `Date range exceeds 5-year maximum (1825 days). Please narrow the range. Requested span: ${span} days.`,
+        }
+        return errorResult(errEnvelope)
+      }
+      if (span < 0) {
+        const errEnvelope = {
+          ok: false,
+          error: 'date_range_invalid',
+          message: `date_range.from must be before date_range.to. Got from="${args.date_range.from}", to="${args.date_range.to}".`,
+        }
+        return errorResult(errEnvelope)
+      }
+
+      // Normalize planet(s) to array
+      const planetsArray: string[] = args.planet === undefined
+        ? []
+        : Array.isArray(args.planet)
+          ? args.planet
+          : [args.planet]
+
       const { status, envelope } = await callPlatformPrimitive(
         'query_ephemeris',
         {
-          planet: args.planet,
-          date_range: args.date_range,
+          // Translate date_range.{from,to} → start_date/end_date for the primitive
+          start_date: args.date_range.from,
+          end_date: args.date_range.to,
+          // Pass planets as array (primitive accepts both planet and planets)
+          ...(planetsArray.length === 1 ? { planet: planetsArray[0] } : {}),
+          ...(planetsArray.length > 1 ? { planets: planetsArray } : {}),
+          sample_step: args.sample_step ?? '1d',
+          return_changes_only: args.return_changes_only ?? false,
+          ...(args.derived_fields !== undefined ? { derived_fields: args.derived_fields } : {}),
         },
         principal
       )
