@@ -1,0 +1,84 @@
+data: {"type":"start","messageId":"msg-GWhlRg9Id7pxBYAc"}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"classify","status":"done","ms":7901}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"compose_bundle","status":"done","ms":6}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"cgm_graph_walk","status":"done","ms":3,"ok_count":0,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"msr_sql","status":"done","ms":242,"ok_count":100,"err_count":0}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"tool_fetch","status":"done","ms":243}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"synthesis","status":"running"}}
+
+data: {"type":"text-start","id":"text-0"}
+
+data: {"type":"text-delta","id":"text-0","delta":"Looking at your V"}
+
+data: {"type":"text-delta","id":"text-0","delta":"imshottari dasha sequence, I can answer this directly from the"}
+
+data: {"type":"text-delta","id":"text-0","delta":" L1 data.\n\n## Your Next Saturn Mahadasha\n\n**Start date:** Not in this l"}
+
+data: {"type":"text-delta","id":"text-0","delta":"ifetime's projected sequence within the documented range.\n\nHere's the situation based on Â§5"}
+
+data: {"type":"text-delta","id":"text-0","delta":".1 of your FORENSIC data:\n\nYour **completed and current** Saturn M"}
+
+data: {"type":"text-delta","id":"text-0","delta":"D already ran from **1991-08-21 to 2010-08-21** (19 years)."}
+
+data: {"type":"text-delta","id":"text-0","delta":" In the Vimshottari sequence, Saturn does not repeat â€” the cycle moves for"}
+
+data: {"type":"text-delta","id":"text-0","delta":"ward through the remaining planets:\n\n| MD Lord | Start | End | Duration |\n|---------|-------|-----|----"}
+
+data: {"type":"text-delta","id":"text-0","delta":"------|\n| Mercury (current) | 2010-08-21 | 2027-08-21 | 17 yrs |\n| Ketu | 2027-08-21 | 2"}
+
+data: {"type":"text-delta","id":"text-0","delta":"034-08-21 | 7 yrs |\n| Venus | 2034-08-21 | 2054-08-21 | 20 yrs |\n| Sun | 2054-08-21 | 2060"}
+
+data: {"type":"text-delta","id":"text-0","delta":"-08-21 | 6 yrs |\n| Moon | 2060-08-21 | 2070-08-21 | 10 yrs |\n| Mars | 2070-08-21 | 2077"}
+
+data: {"type":"text-delta","id":"text-0","delta":"-08-21 | 7 yrs |\n| Rahu | 2077-08-21 | 2095-08-21 | 18 yrs |\n| **Saturn (next)"}
+
+data: {"type":"text-delta","id":"text-0","delta":"** | **2095-08-21** | **2114-08-21** | **19 yrs** |\n\nSo your **next Saturn Mahadasha would begin 2095-08-21**,"}
+
+data: {"type":"text-delta","id":"text-0","delta":" which is beyond your Kalachakra Paramayush"}
+
+data: {"type":"text-delta","id":"text-0","delta":" of 85 years (Â§24.1 puts that limit around 2069).\n\n## What You Probably Want"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Instead\n\nTwo things are likely more useful to you right now:\n\n**1. Your current Saturn Antard"}
+
+data: {"type":"text-delta","id":"text-0","delta":"asha** (within Mercury MD) â€” this is active right now:\n- **Mercury M"}
+
+data: {"type":"text-delta","id":"text-0","delta":"D â€“ Saturn AD: 2024-12-12 â†’ 2027-08-21** (`DSH.V"}
+
+data: {"type":"text-delta","id":"text-0","delta":".023`)\n- This is the Saturn-flavored sub-period you're currently living through, with Saturn being your ch"}
+
+data: {"type":"text-delta","id":"text-0","delta":"art's strongest planet (Shadbala JH rank 1, exalted"}
+
+data: {"type":"text-delta","id":"text-0","delta":" in H7, Ishta 9:1 beneficial â€” your primary deliverer per"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Â§6.7).\n\n**2. Saturn sub-periods in upcoming MDs:**\n- **"}
+
+data: {"type":"text-delta","id":"text-0","delta":"Ketu MD â€“ Saturn AD:** 2032-07-15 â†’ 2033-08-24 (`DSH.V.031`)\n- **Venus MD â€“ Satur"}
+
+data: {"type":"text-delta","id":"text-0","delta":"n AD:** 2047-06-21 â†’ 2050-08-21 (`DSH.V.039`)\n- **Sun MD â€“ Saturn AD:** 2057-06-27"}
+
+data: {"type":"text-delta","id":"text-0","delta":" â†’ 2058-06-09 (`DSH.V.047`)\n\nWould you like me to walk through the current **Mercuryâ€“Saturn AD** in"}
+
+data: {"type":"text-delta","id":"text-0","delta":" more depth (it has the structural weight of a"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Saturn MD given Saturn's chart-wide dominance), or look at the Ketuâ€“Saturn AD coming in 2032?"}
+
+data: {"type":"text-end","id":"text-0"}
+
+data: {"type":"data-persistence","data":{"type":"persistence","conversation_id":"486ccbcc-2507-4ef9-9608-961c68e549f9","message_id":"a9d59a8b-9dbe-464a-97fa-1148b3c24170","status":"ok"}}
+
+data: {"type":"data-title","data":{"type":"title","conversation_id":"486ccbcc-2507-4ef9-9608-961c68e549f9"}}
+
+data: {"type":"finish","finishReason":"stop"}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"synthesis","status":"done","ms":16954}}
+
+data: {"type":"data-observability","data":{"type":"observability","query_id":"90603e9b-0bdd-4c78-84b9-3849cd418e67","trace_url":"/observatory/trace/90603e9b-0bdd-4c78-84b9-3849cd418e67"}}
+
+data: [DONE]
+

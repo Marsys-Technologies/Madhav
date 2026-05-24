@@ -564,6 +564,18 @@ export async function callPipelinePlanner(
     })
     throw new PipelinePlannerError(errMsg, parseErr)
   }
+  // Detect soft-optional string fields that the LLM returned as null (before coercion).
+  // PipelinePlanSchema coerces null → undefined for these fields so parsing succeeds,
+  // but we capture the original null here for audit emission below.
+  const SOFT_OPTIONAL_STRING_FIELDS = ['synthesis_guidance', 'planning_rationale'] as const
+  const coercedFields = new Set<string>()
+  if (rawPlannerArgs !== null && typeof rawPlannerArgs === 'object') {
+    const raw = rawPlannerArgs as Record<string, unknown>
+    for (const field of SOFT_OPTIONAL_STRING_FIELDS) {
+      if (raw[field] === null) coercedFields.add(field)
+    }
+  }
+
   const parsed = PipelinePlanSchema.safeParse(rawPlannerArgs)
   if (!parsed.success) {
     const errMsg = `LLM planner returned schema-invalid output: ${parsed.error.message}`
@@ -584,6 +596,39 @@ export async function callPipelinePlanner(
       },
     })
     throw new PipelinePlannerError(errMsg, parsed.error)
+  }
+
+  // Emit audit trace for any soft-optional null coercions so they appear in
+  // query_trace_steps and are visible in Cloud Run logs. A silent coercion
+  // would mask systemic model non-compliance across providers.
+  if (coercedFields.size > 0) {
+    console.warn(
+      '[pipeline_planner] soft-optional null fields coerced to undefined — fields=%s model=%s query_id=%s',
+      [...coercedFields].join(','),
+      activeModelId,
+      queryId ?? 'unknown',
+    )
+    emitTrace?.({
+      event: 'step_done',
+      query_id: stepQueryId,
+      step: {
+        query_id: stepQueryId,
+        step_seq: 0,
+        step_name: 'planner_field_coerced',
+        step_type: 'llm',
+        status: 'done',
+        started_at: plannerStepStart,
+        completed_at: new Date().toISOString(),
+        latency_ms: 0,
+        data_summary: {
+          model: activeModelId,
+          coercion_count: coercedFields.size,
+        },
+        payload: {
+          coerced_fields: [...coercedFields],
+        },
+      },
+    })
   }
 
   emitTrace?.({

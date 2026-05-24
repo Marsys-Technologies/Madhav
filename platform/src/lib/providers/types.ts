@@ -45,7 +45,7 @@ export interface ChatMessage {
 export type ChatContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image'; source: ImageSource }
-  | { type: 'tool_result'; toolUseId: string; content: string }
+  | { type: 'tool_result'; toolUseId: string; name?: string; content: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
 
 export interface ImageSource {
@@ -151,6 +151,8 @@ export interface ResolvedToolsConfig {
   mode: ProviderCapabilities['adaptiveToolLoop'];
   maxIterations: number;
   tools: ChatTool[];
+  /** Tool choice behaviour forwarded to the AI SDK ('auto' | 'required' | 'none'). */
+  toolChoice?: 'auto' | 'required' | 'none';
   /** Provider-specific payload (e.g., Responses API for OpenAI). */
   providerPayload?: Record<string, unknown>;
 }

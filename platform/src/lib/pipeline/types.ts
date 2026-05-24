@@ -131,14 +131,50 @@ export type ToolCallItem = z.infer<typeof ToolCallItemSchema>
 //     or QueryPlan (those are deleted in Phase 4).
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §4a. Field classification: HARD-REQUIRED vs SOFT-OPTIONAL fields
+//
+//   HARD-REQUIRED — leave as z.string() / z.enum() WITHOUT .catch(): a null or
+//   missing value is a genuine planner failure that must surface as 422 so it
+//   gets fixed at the model/prompt level.
+//     query_class, query_intent_summary
+//     AssetBundleItemSchema: asset_id, reason
+//     ToolCallItemSchema:    tool_name, reason
+//
+//   SOFT-OPTIONAL — fields whose absence is tolerable at parse time; we coerce
+//   null → undefined to absorb LLM format jitter (Anthropic and other providers
+//   sometimes return null for optional fields instead of omitting them).
+//   Coercions are detected at the call site and emitted as a trace_step for
+//   audit visibility in query_trace_steps.
+//
+//   Two implementation patterns (both tested, both handle null):
+//
+//   (A) String fields (synthesis_guidance, planning_rationale):
+//       z.preprocess(v => v === null ? undefined : v, z.string().optional())
+//       — preserves the pre-parse null in rawPlannerArgs for coercion logging.
+//
+//   (B) Enum / boolean / array / object fields (everything else):
+//       z.TYPE.optional().catch(undefined)
+//       — .catch swallows any parse failure (including null) and returns undefined.
+//       Simpler than preprocess for non-string types; same runtime safety.
+//
+//   IMPORTANT: Both patterns are semantically equivalent for route.ts — the
+//   downstream consumers treat undefined and absent identically. The only
+//   difference is that pattern (A) enables pre-coercion null detection for
+//   audit logging; pattern (B) does not. String fields use (A) because the
+//   planner prompt explicitly forbids null there and we want visibility into
+//   violations; other optional fields use (B) because they are structurally
+//   optional in the prompt schema.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const PipelinePlanSchema = z.object({
 
   // ── Core classification ────────────────────────────────────────────────────
 
-  /** [PLANNER OUTPUT] Unified 8-class query taxonomy. */
+  /** [PLANNER OUTPUT] Unified 8-class query taxonomy. HARD-REQUIRED. */
   query_class: QueryClassEnum,
 
-  /** [PLANNER OUTPUT] ≤20-word neutral gloss of what the native is asking. */
+  /** [PLANNER OUTPUT] ≤20-word neutral gloss of what the native is asking. HARD-REQUIRED. */
   query_intent_summary: z.string().min(1).max(200),
 
   // ── Synthesis corpus ──────────────────────────────────────────────────────
@@ -169,56 +205,72 @@ export const PipelinePlanSchema = z.object({
    *
    * If absent, synthesis uses its default system prompt without guidance.
    * Present for non-trivial queries; absent for single_answer (factual).
+   *
+   * SOFT-OPTIONAL: null is coerced to undefined at parse time. Coercions are
+   * logged via the 'planner_field_coerced' trace_step for audit visibility.
    */
-  synthesis_guidance: z.string().optional(),
+  synthesis_guidance: z.preprocess(v => v === null ? undefined : v, z.string().optional()),
 
   // ── Output shape ──────────────────────────────────────────────────────────
 
   /**
    * [PLANNER OUTPUT] Response shape the synthesis LLM should produce.
    * Drives token caps and validator selection.
+   * SOFT-OPTIONAL: .catch(undefined) absorbs null returns from the LLM (same
+   * class of provider jitter as synthesis_guidance; catch is equivalent to
+   * preprocess null→undefined for enum/boolean/array/object types).
    */
   expected_output_shape: z.enum([
     'single_answer',
     'three_interpretation',
     'time_indexed_prediction',
     'structured_data',
-  ]).optional(),
+  ]).optional().catch(undefined),
 
   /** [PLANNER OUTPUT] Conversation history handling mode. */
   history_mode: z.enum(['synthesized', 'research']).optional().catch(undefined),
 
-  /** [PLANNER OUTPUT] Whether to route through the panel multi-LLM path. */
-  panel_mode: z.boolean().optional(),
+  /**
+   * [PLANNER OUTPUT] Whether to route through the panel multi-LLM path.
+   * SOFT-OPTIONAL: .catch(undefined) handles null from provider.
+   */
+  panel_mode: z.boolean().optional().catch(undefined),
 
   // ── Chart-level retrieval hints ───────────────────────────────────────────
   // [PLANNER OUTPUT] Structured extraction from the query. Allows retrieval
   // tools to parameterize calls without re-parsing query text.
+  // All fields are SOFT-OPTIONAL: .catch(undefined) absorbs null from LLM output.
 
-  planets: z.array(z.string()).optional(),
-  houses: z.array(z.number()).optional(),
-  domains: z.array(z.string()).optional(),
-  forward_looking: z.boolean().optional(),
-  dasha_context_required: z.boolean().optional(),
-  graph_seed_hints: z.array(z.string()).optional(),
-  edge_type_filter: z.array(z.string()).optional(),
+  planets: z.array(z.string()).optional().catch(undefined),
+  houses: z.array(z.number()).optional().catch(undefined),
+  domains: z.array(z.string()).optional().catch(undefined),
+  forward_looking: z.boolean().optional().catch(undefined),
+  dasha_context_required: z.boolean().optional().catch(undefined),
+  graph_seed_hints: z.array(z.string()).optional().catch(undefined),
+  edge_type_filter: z.array(z.string()).optional().catch(undefined),
   vector_search_filter: z.object({
-    doc_type: z.array(z.string()).optional(),
-    layer: z.string().optional(),
-  }).optional(),
+    doc_type: z.array(z.string()).optional().catch(undefined),
+    layer: z.string().optional().catch(undefined),
+  }).optional().catch(undefined),
 
   // ── Temporal scope ────────────────────────────────────────────────────────
 
-  /** [PLANNER OUTPUT] Absolute time window for temporal retrieval scoping. */
+  /**
+   * [PLANNER OUTPUT] Absolute time window for temporal retrieval scoping.
+   * SOFT-OPTIONAL: .catch(undefined) handles null from provider.
+   */
   time_window: z.object({
     start: z.string(),
     end: z.string(),
-  }).optional(),
+  }).optional().catch(undefined),
 
   // ── Plan rationale ────────────────────────────────────────────────────────
 
-  /** [PLANNER OUTPUT] Why this overall plan was chosen. Stored in audit trail. */
-  planning_rationale: z.string().optional(),
+  /**
+   * [PLANNER OUTPUT] Why this overall plan was chosen. Stored in audit trail.
+   * SOFT-OPTIONAL: null coerced to undefined (same pattern as synthesis_guidance).
+   */
+  planning_rationale: z.preprocess(v => v === null ? undefined : v, z.string().optional()),
 
   // ── Gate III: prior-turn relevance ───────────────────────────────────────
   //
@@ -230,11 +282,12 @@ export const PipelinePlanSchema = z.object({
   //
   // Optional for backwards-compat with planner outputs predating Gate III.
   // When absent, route.ts falls back to the legacy 2-pair window.
+  // SOFT-OPTIONAL: .catch(undefined) handles null from provider.
   prior_turn_relevance: z.object({
     used: z.union([z.literal(0), z.literal(1), z.literal(2)]),
     reason: z.string().min(1).max(400),
     mode: z.enum(['independent', 'narrative_context', 'continuation']),
-  }).optional(),
+  }).optional().catch(undefined),
 
   // ── Route-stamped metadata ────────────────────────────────────────────────
   // These fields are NEVER part of the LLM output. route.ts stamps them
@@ -330,8 +383,14 @@ export const PipelinePlanInputJsonSchema: JSONSchema7 = {
         required: ['tool_name', 'params', 'token_budget', 'priority', 'reason'],
       },
     },
-    synthesis_guidance: { type: 'string' },
-    planning_rationale: { type: 'string' },
+    synthesis_guidance: {
+      type: 'string',
+      description: 'MUST be a non-empty string describing how the synthesis model should compose its answer — angle, depth, emphasis, structural framing. NEVER return null or omit this field for non-factual queries. Empty string is not acceptable.',
+    },
+    planning_rationale: {
+      type: 'string',
+      description: 'MUST be a non-empty string explaining why this plan was chosen. NEVER return null.',
+    },
     expected_output_shape: {
       type: 'string',
       enum: ['single_answer', 'three_interpretation', 'time_indexed_prediction', 'structured_data'],

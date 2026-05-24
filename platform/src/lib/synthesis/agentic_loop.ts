@@ -379,6 +379,7 @@ export async function* runAgenticLoop(
       content: toolResults.map(r => ({
         type: 'tool_result' as const,
         toolUseId: r.id,
+        name: r.name,   // R11F-B-S2: pass tool name so provider adapters (Gemini) can set non-empty function_response.name
         content: r.output,
       })),
     }

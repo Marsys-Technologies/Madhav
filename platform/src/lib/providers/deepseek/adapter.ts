@@ -75,16 +75,36 @@ export class DeepSeekAdapter implements CapabilityAdapter {
         baseURL: 'https://api.deepseek.com/v1',
       });
 
-      const stream = await client.chat.completions.create({
+      // Build stream params; forward tools if present (fixes Break B2-DS: tools were silently dropped).
+      const streamParams: Parameters<typeof client.chat.completions.create>[0] = {
         model: request.model,
         max_tokens: request.maxTokens ?? 8192,
         messages: request.messages.map((m) => ({
           role: m.role,
           content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
         })),
-        stream: true,
+        stream: true as const,
         stream_options: { include_usage: true },
-      });
+      };
+
+      // DeepSeek is OpenAI-compatible — plain JSON Schema parameters, no jsonSchema() wrapper.
+      if (request.tools && request.tools.length > 0) {
+        streamParams.tools = request.tools.map((tool) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.name,
+            description: tool.description ?? '',
+            parameters: (tool.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
+          },
+        }));
+      }
+
+      // Forward tool_choice if configured via toolsConfig.
+      if (request.toolsConfig?.providerPayload?.toolChoice) {
+        streamParams.tool_choice = request.toolsConfig.providerPayload.toolChoice as 'auto' | 'none' | 'required';
+      }
+
+      const stream = await client.chat.completions.create(streamParams);
 
       // Accumulate tool call deltas across chunks, keyed by index.
       const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();

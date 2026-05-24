@@ -48,7 +48,8 @@ import type {
   StructuredOutputsRequest,
   StructuredOutputsResponse,
 } from '../types';
-import { streamText } from 'ai';
+import { streamText, jsonSchema } from 'ai';
+import { normalizeInputSchema } from '@/lib/retrieve/tool_catalogue';
 import { anthropic as anthropicProvider } from '@ai-sdk/anthropic';
 import { ANTHROPIC_MANIFEST } from './manifest';
 
@@ -96,6 +97,30 @@ export class AnthropicAdapter implements CapabilityAdapter {
       if (systemContent) streamParams.system = systemContent;
       if (request.temperature !== undefined) streamParams.temperature = request.temperature;
       if (providerOptions) streamParams.providerOptions = providerOptions;
+
+      // Forward tool definitions to streamText so the model can call them.
+      // AI SDK v6: CoreTool uses 'inputSchema' (not 'parameters'). Using 'parameters'
+      // leaves tool2.inputSchema undefined; asSchema(undefined) produces
+      // { properties: {}, additionalProperties: false } — no 'type' field — causing
+      // Anthropic API 400: tools.0.custom.input_schema.type: Field required.
+      // normalizeInputSchema guarantees type:'object' regardless of what the
+      // caller supplies.
+      if (request.tools && request.tools.length > 0) {
+        const toolsMap: Record<string, { description?: string; inputSchema: ReturnType<typeof jsonSchema> }> = {};
+        for (const tool of request.tools) {
+          toolsMap[tool.name] = {
+            description: tool.description,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            inputSchema: jsonSchema(normalizeInputSchema(tool.inputSchema as any) as any),
+          };
+        }
+        streamParams.tools = toolsMap;
+      }
+
+      // Forward toolChoice ('auto' | 'required' | 'none') when present
+      if (request.toolsConfig?.toolChoice) {
+        streamParams.toolChoice = request.toolsConfig.toolChoice;
+      }
 
       const result = streamText(streamParams);
 

@@ -1,0 +1,189 @@
+# session_queue.yaml — R11.F Bounded Agentic Loop Arc
+# Branch: chat-v2/r11f-agentic-loop
+# Worktree: /Users/Dev/Vibe-Coding/Apps/MadhavR11FBound
+# Master plan: 00_ARCHITECTURE/chat_v2_briefs/round11f/R11F_MASTER_PLAN_v1_0.md
+# Conductor README: 00_ARCHITECTURE/CONDUCTOR/r11f/README.md
+#
+# AUTHORITATIVE COPY: worktree (this file). Main-branch copy is for visibility only.
+#
+# Precondition: feature/r11f-wiring-arc (S1–S7) must be merged to main before
+# sessions in this arc push implementation commits to the feature branch.
+
+sessions:
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PHASE A — Anthropic Foundation (serial)
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - id: R11F-A-S1
+    phase: A
+    title: "Anthropic adapter: forward tools+toolChoice to streamText"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S1_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [precursor-arc-merged]
+    commit_sha: "26c377f7"
+    pr_url: null
+    notes: "Fixes Break B2. Promotes PROBE test out of describe.skip."
+
+  - id: R11F-A-S2
+    phase: A
+    title: "Route.ts: convertRetrievalToolToChatTool helper + replace tools:[] stub"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S2_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-A-S1]
+    commit_sha: "275ba9e5"
+    pr_url: null
+    notes: "Fixes Break B1. Creates tool_catalogue.ts helper."
+
+  - id: R11F-A-S3
+    phase: A
+    title: "B.11 floor pre-execution preservation + onFinish parity"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S3_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-A-S2]
+    commit_sha: "8e071aa5"
+    pr_url: null
+    notes: "Fixes Break B3. Architectural contract documented in route.ts."
+
+  - id: R11F-A-S4
+    phase: A
+    title: "Anthropic E2E integration test (VCR/spied streamText)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S4_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-A-S3]
+    commit_sha: "0eaae392"
+    pr_url: null
+    notes: "3 test cases: round-trip, cap, floor context. No production code changes."
+
+  - id: R11F-A-S6
+    phase: A
+    title: "Tool inputSchema normalization — AI SDK v6 CoreTool fix (catalogue + adapter)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S6_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-A-S2]
+    commit_sha: null
+    pr_url: null
+    notes: "Fixes AI SDK v6 parameters→inputSchema rename + adds normalizeInputSchema() catalogue boundary."
+
+  - id: R11F-A-S5
+    phase: A
+    title: "Anthropic visual smoke via Chrome MCP"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-A-S5_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-A-S6]
+    commit_sha: "b0aa2a51"
+    pr_url: null
+    notes: "Screenshots to visual_evidence/anthropic/. Triage fix e80d2333 (planner null-coercion extended to all soft-optional fields). Smoke PASS on port 3001. HTTP 200, Saturn dasha dates returned, tool-flow timeline captured."
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PHASE B — Other Providers (B1+B3 parallel-eligible; B2/B4 serial after B1/B3)
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - id: R11F-B-S1
+    phase: B
+    title: "Google adapter: forward tools in Gemini format + E2E test"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S1_v1_0.md"
+    status: completed
+    parallel_safe: true
+    blocked_by: [R11F-A-S2]
+    commit_sha: "aa4d3343"
+    pr_url: null
+    notes: "Cherry-picked b338f038 from worktree + aa4d3343 server-only fix. 13 tests pass. D.3 cachedContent already wired. Used Vercel AI SDK ToolSet format."
+
+  - id: R11F-B-S2
+    phase: B
+    title: "Google visual smoke via Chrome MCP"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S2_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-B-S1]
+    commit_sha: "310519dd"
+    pr_url: null
+    notes: "Smoke PASS: 5 Gemini tools fired, Saturn dates returned. 3 production fixes: adapter message conversion, types.ts name field, Gemini non-empty function_response.name. Test assertion corrected (user→tool role conversion)."
+
+  - id: R11F-B-S3
+    phase: B
+    title: "OpenAI adapter: forward tools in OpenAI format + E2E test"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S3_v1_0.md"
+    status: completed
+    parallel_safe: true
+    blocked_by: [R11F-A-S2]
+    commit_sha: "baf67ecb"
+    pr_url: null
+    notes: "Cherry-picked 59b46284 from worktree. 19 tests pass. Raw OpenAI SDK (no Vercel wrapper); plain JSON Schema for parameters. vi.hoisted mock pattern."
+
+  - id: R11F-B-S4
+    phase: B
+    title: "OpenAI visual smoke via Chrome MCP"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S4_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-B-S3]
+    commit_sha: "53fdd093"
+    pr_url: null
+    notes: "Smoke PASS: 2 iterations (tool_calls→stop), GPT-4.1, Saturn dates returned, tool-flow timeline visible. MARSYS_FLAG_R11E_OPENAI_LOOP=true added to .env.local."
+
+  - id: R11F-B-S5
+    phase: B
+    title: "DeepSeek+NVIDIA: verify/fix tool forwarding + combined smoke"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-B-S5_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-B-S1, R11F-B-S3]
+    commit_sha: "3280b336"
+    pr_url: null
+    notes: "NVIDIA Case A (llama-3.1/3.3-70b supports function calling). Both adapters fixed. 69 tests pass. 557 total passing. Both smokes PASS."
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # PHASE C — Cross-Cutting (serial)
+  # ──────────────────────────────────────────────────────────────────────────────
+
+  - id: R11F-C-S1
+    phase: C
+    title: "Cross-provider parity matrix + trace audit suite"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S1_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-B-S2, R11F-B-S4, R11F-B-S5]
+    commit_sha: "f050c29b"
+    pr_url: null
+    notes: "35 new tests (19 parity + 16 trace audit). trace_writer.ts already had all required fields. No regressions."
+
+  - id: R11F-C-S2
+    phase: C
+    title: "Iteration-cap stress + IS.8(b) red-team adversarial pass"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S2_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-C-S1]
+    commit_sha: "d64a17b0"
+    pr_url: null
+    notes: "IS.8(b) PASS: 0 class-1, 0 class-2. RT.1/2/3 all PASS. 26 tests (8 stress + 18 red-team). C-S3 unblocked."
+
+  - id: R11F-C-S3
+    phase: C
+    title: "deploy.yml flag flips (R11E loop flags for all providers)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S3_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-C-S2]
+    commit_sha: "4c046137"
+    pr_url: null
+    notes: "All 5 R11E loop flags added (NVIDIA Case A included). Flags activate on next Cloud Run deploy after PR merge."
+
+  - id: R11F-C-S4
+    phase: C
+    title: "Visual regression sweep + sealing artifact + open PR (HALT)"
+    brief_path: "00_ARCHITECTURE/chat_v2_briefs/round11f/sessions/BRIEF_R11F-C-S4_v1_0.md"
+    status: completed
+    parallel_safe: false
+    blocked_by: [R11F-C-S3]
+    commit_sha: "6062ce69"
+    pr_url: "https://github.com/amonty84/Madhav/pull/156"
+    notes: "HALT: PR opened, awaiting native merge approval. Q1 swept across all 5 providers. Sealing artifact created."

@@ -56,16 +56,37 @@ export class OpenAIAdapter implements CapabilityAdapter {
   async *chat(request: ChatRequest): AsyncIterable<ChatEvent> {
     try {
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const stream = await client.chat.completions.create({
+
+      // Build the base params
+      const createParams: Parameters<typeof client.chat.completions.create>[0] = {
         model: request.model,
         max_tokens: request.maxTokens ?? 4096,
         messages: request.messages.map((m) => ({
           role: m.role,
           content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
         })),
-        stream: true,
+        stream: true as const,
         stream_options: { include_usage: true },
-      });
+      };
+
+      // Forward tools to the OpenAI API (fixes Break B2-O: tools were silently dropped).
+      if (request.tools && request.tools.length > 0) {
+        createParams.tools = request.tools.map((tool) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.name,
+            description: tool.description ?? '',
+            parameters: (tool.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
+          },
+        }));
+      }
+
+      // Forward tool_choice if configured via toolsConfig
+      if (request.toolsConfig?.providerPayload?.toolChoice) {
+        createParams.tool_choice = request.toolsConfig.providerPayload.toolChoice as 'auto' | 'none' | 'required';
+      }
+
+      const stream = await client.chat.completions.create(createParams);
 
       // Accumulate tool call deltas across chunks, keyed by index.
       const toolCallAccumulator: Map<number, { id: string; name: string; argumentsChunks: string[] }> = new Map();

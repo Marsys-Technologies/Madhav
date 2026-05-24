@@ -114,6 +114,8 @@ export interface TraceDataSummary {
   error_reason?: string
   /** step_error step: which pipeline stage failed (classify|compose|tool_fetch|synthesis). */
   error_stage?: string
+  /** planner_field_coerced step: number of soft-optional fields null-coerced in one plan. */
+  coercion_count?: number
   // ── MCPT v3.2 additive (migration 116) ────────────────────────────────────
   /** MCP-facing tool name for surgical primitive calls (e.g. query_chart_facts).
    * Distinct from tool_name which holds the retrieval-side name (chart_facts_query).
@@ -155,6 +157,8 @@ export interface TracePayload {
   reasoning_trace?: string
   /** step_error step: human-readable detail for inline display. */
   error_message?: string
+  /** planner_field_coerced step: soft-optional fields that were null in LLM output. */
+  coerced_fields?: string[]
 }
 
 /** One pipeline step record (maps 1:1 to a query_trace_steps row) */
