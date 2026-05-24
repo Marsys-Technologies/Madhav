@@ -1,0 +1,1013 @@
+schema_version: '1.1'
+queue_name: tooling_remediation_v1_0
+generated_at: '2026-05-24'
+generated_by: Cowork (Sonnet 4.6) — Tooling Remediation kickoff session
+total_entries: 26
+governing_plan: 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/MARSYS_JIS_TOOLING_REMEDIATION_PLAN_v1_0.md
+worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+branch: feature/tooling-remediation
+notes: |
+  26 sessions across 6 waves. Wave 0 has a pre-authored brief (TR-P0-S1).
+  Waves 1–5 entries have requires_brief_authoring: true — the conductor authors
+  each brief from the brief_spec field before spawning the sub-agent (no halt).
+  Commit after every session. Push at wave boundaries. Merge to main is human-gated.
+  Context budget: 20 sub-agents per orchestrator chat; emit ORCHESTRATOR HANDOFF and
+  stop when limit is reached. Re-kick in a fresh chat to continue.
+
+wave_commit_strategy:
+  wave_0: "commit after TR-P0-S1; push immediately"
+  wave_1: "commit after each session; push at TR-P10-S2 completion"
+  wave_2: "commit after each session; push at TR-P5-S1 completion"
+  wave_3: "commit after each session; push at TR-P9-S2 completion"
+  wave_4: "commit after each session; push at TR-P7-S4 completion"
+  wave_5: "commit after each session; push at TR-P8-S2 completion; open PR to main for human review"
+
+# ─────────────────────────────────────────────────────────
+# WAVE 0 — Pre-flight diagnostic (gates everything)
+# ─────────────────────────────────────────────────────────
+entries:
+
+- session_id: TR-P0-S1
+  wave: 0
+  phase: 0
+  description: "Phase 0 — pre-flight diagnostic: MCP tool tests (C1–C11), DB counts (D1–D7), baseline JSON, tracker"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_PHASE_0_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: []
+  requires_brief_authoring: false
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    python3 -c "import json,sys; d=json.load(open('eval-results/tooling_audit_baseline_20260524.json')); sys.exit(0 if len(d.get('tool_tests',{})) >= 11 else 1)" && \
+    grep -q 'phase_0_status: COMPLETE' 00_ARCHITECTURE/TOOLING_AUDIT_TRACKER_v1_0.md
+  expected_artifacts:
+    - eval-results/tooling_audit_baseline_20260524.json
+    - 00_ARCHITECTURE/TOOLING_AUDIT_TRACKER_v1_0.md
+  est_tokens: 80000
+  est_duration_min: 60
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────
+# WAVE 1 — Critical fixes + quick wrappers + methodology
+# (conceptually parallel; run sequentially by conductor)
+# ─────────────────────────────────────────────────────────
+
+- session_id: TR-P1-S1
+  wave: 1
+  phase: 1
+  description: "Phase 1.1 + 1.2: chart_summary 0-rows root-cause trace+fix (at platform primitive layer, not MCP wrapper); query_transit_event — add event_type to schema as required enum, improve error message"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    grep -q 'TR-P1-S1.*COMPLETE\|TR-P1-S1: PASS' 00_ARCHITECTURE/CONDUCTOR/tooling-remediation/CONDUCTOR_LOG.md || \
+    (cd platform-mcp && npx vitest run src/tools/chart_summary.test.ts --reporter=verbose 2>&1 | grep -q 'PASS')
+  brief_spec: |
+    SCOPE: Fix two tools — chart_summary (C1) and query_transit_event (C6).
+
+    CHART_SUMMARY FIX (C1):
+    - File: platform-mcp/src/tools/chart_summary.ts (wrapper — already correct per plan §1.1)
+    - Root cause is in the platform primitive. Trace: grep for chart_summary in platform/src/lib/retrieve/ and platform/src/lib/mcp/primitives_registry.ts.
+    - Find where chart_id default resolution happens. If chart_id is null/undefined, the primitive may return 0 rows silently.
+    - Fix: ensure chart_id falls back to the native's canonical chart_id ("362f9f17-95a5-490b-a5a7-027d3e0efda0") when not provided, OR throw a clear error.
+    - Also check: does the primitive's SQL WHERE clause use the correct column name for chart_id?
+    - Add a regression test: chart_summary({chart_id: "362f9f17-95a5-490b-a5a7-027d3e0efda0"}) must return row_count > 0.
+    - Read the Phase 0 baseline's C1 layer_hypothesis before deciding where to fix.
+
+    QUERY_TRANSIT_EVENT FIX (C6):
+    - File: platform-mcp/src/tools/query_transit_event.ts
+    - Problem: event_type is required by the engine but not in the MCP schema (lines 48–60 per audit).
+    - Fix: add event_type as a required enum param: ["ingress","station_retrograde","station_direct","exact_aspect","opposition","conjunction","trine","square","sextile"].
+    - Also add a clear error message when event_type is undefined: "event_type is required. Valid values: ingress|station_retrograde|station_direct|exact_aspect|opposition|conjunction|trine|square|sextile"
+    - Add a regression test: calling without event_type returns a clean validation error (not "Unknown event_type 'undefined'").
+
+    FILE SCOPE:
+    may_touch: platform-mcp/src/tools/chart_summary.ts, platform-mcp/src/tools/query_transit_event.ts, platform/src/lib/retrieve/*, platform/src/lib/mcp/primitives_registry.ts, platform-mcp/src/tools/chart_summary.test.ts, platform-mcp/src/tools/query_transit_event.test.ts
+    must_not_touch: 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, .geminirules, CLAUDE.md
+
+    COMMIT: git commit -m "fix(TR-P1-S1): chart_summary 0-rows root cause; query_transit_event event_type schema"
+  expected_artifacts:
+    - platform-mcp/src/tools/chart_summary.ts (modified)
+    - platform-mcp/src/tools/query_transit_event.ts (modified)
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P1-S2
+  wave: 1
+  phase: 1
+  description: "Phase 1.3 + 1.4: query_signals filter enforcement (forward_looking, min_confidence, valence, temporal_activation, domains[]); query_ephemeris date_range + sample_step + return_changes_only"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_signals.test.ts src/tools/query_ephemeris.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Fix filter enforcement in two tools — query_signals (C4) and query_ephemeris (C5).
+
+    QUERY_SIGNALS FIX (C4):
+    - MCP wrapper (platform-mcp/src/tools/query_signals.ts lines 76–89) already threads filters through.
+    - Bug is in the platform primitive SQL WHERE clause.
+    - Find: platform/src/lib/retrieve/ — grep for query_signals or the underlying function.
+    - Fix: add SQL WHERE conditions for: forward_looking (temporal_direction = 'forward'), min_confidence (confidence >= X), valence filter (new: 'positive'|'negative'|'neutral'), temporal_activation filter (new: 'permanent'|'dasha_tied'|'transit_tied'), domains[] filter (domain IN (domains)).
+    - Expose new params valence, temporal_activation, domains in the MCP schema.
+    - Add regression tests: filter with min_confidence=0.9 returns fewer rows than without; forward_looking=true excludes non-forward signals.
+
+    QUERY_EPHEMERIS FIX (C5):
+    - Bug: only one date returned even when date_range passed. Fix at platform primitive (LIMIT or range interpretation).
+    - Find: platform/src/lib/retrieve/ — grep for query_ephemeris.
+    - Fix: honour date_range.from / date_range.to in the SQL query (WHERE date BETWEEN from AND to).
+    - Add new params: sample_step (enum: "1d"|"7d"|"30d" — sample every N days within range; default "1d"), return_changes_only (bool — only return rows where any planet changed sign or shifted >1 degree from previous row; default false).
+    - Cap max rows at 1825 (5 years × 365 days) — return an error if range exceeds this.
+    - Add regression tests: date_range spanning 30 days returns 30 rows (daily step); sample_step "7d" returns ~4 rows.
+
+    FILE SCOPE:
+    may_touch: platform-mcp/src/tools/query_signals.ts, platform-mcp/src/tools/query_ephemeris.ts, platform/src/lib/retrieve/*, platform-mcp/src/tools/query_signals.test.ts, platform-mcp/src/tools/query_ephemeris.test.ts
+    must_not_touch: 025_HOLISTIC_SYNTHESIS/**, 01_FACTS_LAYER/**, .geminirules, CLAUDE.md
+
+    COMMIT: git commit -m "fix(TR-P1-S2): query_signals filter enforcement; query_ephemeris date_range+sample_step"
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P1-S3
+  wave: 1
+  phase: 1
+  description: "Phase 1.5 + 1.6: read_asset prod cwd diagnosis + fix + list_assets endpoint; query_panchanga surface 5 enrichment JSONB columns from PR #110"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P1-S3_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/read_asset.test.ts src/tools/query_panchanga.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Fix read_asset path resolution in prod (C9) and surface panchanga enrichment fields (C8).
+
+    READ_ASSET FIX (C9):
+    - Read Phase 0 baseline C9 layer_hypothesis. The plan suspects prod Cloud Run sidecar cwd mismatch (path concat error producing absolute path instead of relative).
+    - In platform-mcp or the MCP sidecar: find the read_asset handler (route.ts:49–62 per audit).
+    - Inspect: how is the docs directory resolved? Is it path.join(process.cwd(), canonical_path) or something that produces a leading slash?
+    - Fix strategy A: use __dirname-relative resolution instead of process.cwd().
+    - Fix strategy B: if docs are baked into the container image, use a known absolute path constant.
+    - Choose the fix that matches the actual deployment pattern (check Dockerfile or cloudbuild.yaml).
+    - Add list_assets endpoint: reads the canonical_id → path mapping (from CAPABILITY_MANIFEST.json or hardcoded list) and returns which canonical_ids resolve vs. which are schema-only.
+    - Test: read_asset("MACRO_PLAN") returns content > 100 chars; list_assets() returns ≥10 canonical_ids.
+
+    QUERY_PANCHANGA ENRICHMENT (C8):
+    - PR #110 added 5 JSONB columns: special_yogas, choghadiya, hora, inauspicious, auspicious.
+    - Find the query_panchanga handler/primitive. It is not surfacing these columns in the response.
+    - Fix: add these 5 columns to the SELECT and to the response shape.
+    - The panchanga_daily table has these columns (verify with: \d panchanga_daily in psql).
+    - Add regression test: query_panchanga({date: "2026-05-24"}) returns response.choghadiya with ≥1 item.
+
+    COMMIT: git commit -m "fix(TR-P1-S3): read_asset cwd+list_assets; query_panchanga 5 enrichment columns"
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P4-S1
+  wave: 1
+  phase: 4
+  description: "Phase 4.1–4.3: wrap existing engines — query_varshphal (Tajaka varshaphala engine), query_divisional_chart (D1-D60 engine), query_remedial_mantras (remedial codex RAG filter)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P4-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_varshphal.test.ts src/tools/query_divisional_chart.test.ts src/tools/query_remedial_mantras.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Add 3 MCP wrappers for engines that already exist. Follow the existing wrapper pattern
+    (description_builder + _envelope + Zod schema + tier-aware dispatch) exactly as in query_chart_facts.ts.
+
+    4.1 — query_varshphal:
+    - Source engine: platform/src/lib/retrieve/query_varshaphala.ts (reads varshaphala table)
+    - New file: platform-mcp/src/tools/query_varshphal.ts
+    - Schema params: chart_id (string, optional — default to native's), year (number, e.g. 2026), tier (string)
+    - Response: varshaphala data for that year (lagna, planet positions, Muntha, lord of year)
+    - Tier visibility: super_admin + acharya
+    - Test: query_varshphal({year: 2026}) returns non-empty response
+
+    4.2 — query_divisional_chart:
+    - Source engine: platform/src/lib/retrieve/divisional_query.ts (D1–D60 from chart_facts)
+    - New file: platform-mcp/src/tools/query_divisional_chart.ts
+    - Schema params: chart_id (optional), division (enum D1..D60, required), tier
+    - Response: planet positions in the requested divisional chart
+    - Test: query_divisional_chart({division: "D9"}) returns ≥7 planet rows
+
+    4.3 — query_remedial_mantras:
+    - Source engine: platform/src/lib/retrieve/remedial_codex_query.ts (RAG filter on doc_type='l4_remedial')
+    - New file: platform-mcp/src/tools/query_remedial_mantras.ts
+    - Schema params: planet (optional), house (optional, 1–12), condition (optional, string query), tier
+    - Response: relevant mantra/remedy chunks from the remedial codex
+    - Test: query_remedial_mantras({planet: "Saturn"}) returns ≥1 chunk
+
+    REGISTER all 3 new tools in the MCP tool registry (platform-mcp/src/index.ts or equivalent registration file).
+
+    COMMIT: git commit -m "feat(TR-P4-S1): add MCP wrappers — query_varshphal, query_divisional_chart, query_remedial_mantras"
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P4-S2
+  wave: 1
+  phase: 4
+  description: "Phase 4.4–4.6: wrap existing sidecar engines — muhurta_finder, tara_balam_for_native, chandra_balam_for_native (all in panchang_engine/muhurat.py + tara_bala.py)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P4-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/muhurta_finder.test.ts src/tools/tara_balam.test.ts src/tools/chandra_balam.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Add 3 MCP wrappers for panchang sidecar engines. These call the Python sidecar via HTTP
+    (the sidecar already has routes for muhurat and tara_bala per Phase 4C). Find the existing sidecar
+    HTTP client pattern (grep for sidecar in platform-mcp/src/) and replicate it.
+
+    4.4 — muhurta_finder:
+    - Sidecar: platform/python-sidecar/panchang_engine/muhurat.py (Phase 4C-shipped, prod-ready)
+    - Find the sidecar route path for muhurat (grep in platform/python-sidecar/routers/)
+    - New file: platform-mcp/src/tools/muhurta_finder.ts
+    - Schema: date_from (string), date_to (string), activity_type (string, e.g. "travel"|"business"|"marriage"), tier
+    - Response: list of muhurta windows with score, start_time, end_time, auspicious_factors
+    - Test: muhurta_finder({date_from: "2026-06-01", date_to: "2026-06-07", activity_type: "travel"}) returns ≥1 window
+
+    4.5 — tara_balam_for_native:
+    - Sidecar: platform/python-sidecar/panchang_engine/tara_bala.py
+    - New file: platform-mcp/src/tools/tara_balam_for_native.ts
+    - Schema: date (string), tier
+    - Response: tara count (1–9), tara name, score, interpretation
+    - Test: tara_balam_for_native({date: "2026-05-24"}) returns tara_count ∈ [1..9]
+
+    4.6 — chandra_balam_for_native:
+    - Same sidecar file as tara_bala.py (chandra_bala is computed alongside tara_bala)
+    - New file: platform-mcp/src/tools/chandra_balam_for_native.ts
+    - Schema: date (string), tier
+    - Response: chandra_bala score (0–60), interpretation, moon_nakshatra on that date
+    - Test: chandra_balam_for_native({date: "2026-05-24"}) returns chandra_bala_score ∈ [0..60]
+
+    REGISTER all 3 new tools in the MCP tool registry.
+
+    COMMIT: git commit -m "feat(TR-P4-S2): add MCP wrappers — muhurta_finder, tara_balam, chandra_balam"
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P10-S1
+  wave: 1
+  phase: 10
+  description: "Phase 10.1–10.5: planner prompt R-rule additions — session-start diagnostic, no date estimation, log_prediction mandatory, flag_disagreement mandatory, cross-school before high-confidence"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P10-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    grep -q 'R-TD.1\|session_start_diagnostic' 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md && \
+    grep -q 'R-NDE\|no_date_estimation' 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
+  brief_spec: |
+    SCOPE: Amend PLANNER_PROMPT_v2_0.md with 5 new R-rules (methodology Part IV, rules 1–5).
+    Do NOT touch application code. This session only edits governance/prompt files.
+    Read the current PLANNER_PROMPT_v2_0.md fully before amending.
+
+    Add the following R-rules to the appropriate section of PLANNER_PROMPT_v2_0.md.
+    Use the existing R-rule naming convention (R-XX.N format). Increment version to v2.1.
+
+    R-TD.1 — Session-start diagnostic:
+    "Before any substantive chart reading, call data_coverage({tier: 'super_admin'}) and
+    tool_health({days: 30}). If either tool errors, log with flag_disagreement and proceed
+    noting the gap. Do not skip this step even in short sessions."
+
+    R-NDE.1 — No date estimation:
+    "All future-dated claims (e.g. 'Jupiter will transit X around mid-2027') MUST be sourced
+    from query_ephemeris({date_range:...}) or query_transit_event(). Never extrapolate from
+    mean motion. Mark any date claim that lacks an ephemeris source as [DATE_UNVERIFIED]."
+
+    R-LP.1 — log_prediction mandatory:
+    "Every substantive predictive claim — defined as a claim about a future event, its timing,
+    or its quality — MUST be followed immediately by a log_prediction() call with:
+    confidence (0.0–1.0), horizon (months), falsifier (what observable outcome would refute it).
+    Predictions without log_prediction() violate B.3."
+
+    R-FD.1 — flag_disagreement on broken tools:
+    "When a tool returns an error or suspicious output (0 rows, silent coverage), call
+    flag_disagreement() to log it formally before proceeding with a workaround. Silent
+    workarounds are governance violations."
+
+    R-CS.1 — Cross-school before high-confidence:
+    "Before asserting any predictive claim with confidence ≥ 0.75, call cross_school_lookup()
+    for that claim. If cross_school_lookup returns silent or data_empty for all schools, lower
+    the stated confidence to ≤ 0.65 and note the gap explicitly. [Activates after Phase 2 ships
+    a populated school_convergence_index; until then, annotate claims as [PRE-PHASE-2].}"
+
+    Also: bump PLANNER_PROMPT_v2_0.md frontmatter version to 2.1 + add changelog entry.
+
+    COMMIT: git commit -m "feat(TR-P10-S1): PLANNER_PROMPT v2.1 — R-TD.1, R-NDE.1, R-LP.1, R-FD.1, R-CS.1"
+  est_tokens: 60000
+  est_duration_min: 45
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P10-S2
+  wave: 1
+  phase: 10
+  description: "Phase 10.6–10.10: planner prompt R-rules 6–10 (cache chart summary, cgm+vector proactive, triangulate, mark permanence, read schemas) + MP.1 mirror to .geminirules"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P10-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P10-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    grep -q 'R-CGM\|cgm_subgraph' 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md && \
+    grep -q 'tooling.remediation\|R-TD\|session_start_diagnostic' .geminirules
+  brief_spec: |
+    SCOPE: Add R-rules 6–10 to PLANNER_PROMPT_v2_0.md (bump to v2.2), then mirror to .geminirules (MP.1).
+    No application code touched.
+
+    R-CS.2 — Pre-compute chart summary:
+    "At session start, after the R-TD.1 diagnostic, call chart_summary() to cache the overview.
+    Reference this cached summary throughout the session rather than re-calling. Avoids the 0-rows
+    bug exposing itself mid-reading (flag it if chart_summary returns 0 — do not silently skip)."
+
+    R-CGM.1 — CGM + vector proactive use:
+    "For every signal with confidence ≥ 0.7, walk get_cgm_subgraph() 2 hops to find connected
+    signals. For every domain-boundary question, call vector_search() with the domain as the query.
+    Do not reserve these tools for explicit user requests — they are part of the default B.11 read."
+
+    R-TRI.1 — Triangulate before asserting:
+    "Every substantive claim follows the triangulation chain: MSR signal → chart_facts confirmation
+    → ephemeris timing. A claim that skips any leg is annotated [PARTIAL-TRIANGULATION: missing X]."
+
+    R-PER.1 — Mark permanence:
+    "Every clause in a reading is explicitly tagged: (permanent — natal disposition),
+    (dasha-tied — active for <period>), or (transit-tied — window <date_from> to <date_to>).
+    Untagged clauses are governance violations equivalent to a B.1 layer collapse."
+
+    R-SCH.1 — Read schemas before use:
+    "Before the first invocation of any tool in a session, read its full schema description.
+    If the tool is new (added in a phase post-P0), call list_assets() to confirm availability."
+
+    Bump to v2.2 + changelog.
+
+    MP.1 MIRROR to .geminirules:
+    Read the current .geminirules. Add a TOOLING_REMEDIATION_RULES section (adapted parity —
+    not byte-identical) that covers the same 10 methodology rules in Gemini idiom.
+    Tag the section: "# Added TR-P10-S2 (2026-05-24), mirror pair MP.1"
+
+    COMMIT: git commit -m "feat(TR-P10-S2): PLANNER_PROMPT v2.2 — R-CS.2, R-CGM.1, R-TRI.1, R-PER.1, R-SCH.1 + MP.1 mirror"
+    Push after commit (wave 1 push boundary).
+  est_tokens: 80000
+  est_duration_min: 60
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────
+# WAVE 2 — Cross-school, empty categories, holistic_bundle
+# ─────────────────────────────────────────────────────────
+
+- session_id: TR-P2-S1
+  wave: 2
+  phase: 2
+  description: "Phase 2.1: count school_convergence_index per school × coverage_type in prod; decide branch (populated → fix matcher | sparse → build loader)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P2-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P1-S1, TR-P4-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    test -f eval-results/school_convergence_baseline.json && \
+    python3 -c "import json,sys; d=json.load(open('eval-results/school_convergence_baseline.json')); sys.exit(0 if 'total_rows' in d else 1)"
+  brief_spec: |
+    SCOPE: Diagnose school_convergence_index population. Count rows by school and coverage_type.
+    Write the result to eval-results/school_convergence_baseline.json. Record the branch decision.
+
+    1. Start DB proxy (platform/scripts/start_db_proxy.sh).
+    2. Run: SELECT school, coverage_type, COUNT(*) FROM school_convergence_index GROUP BY 1,2 ORDER BY 1,2;
+    3. Also run: SELECT COUNT(*) as total FROM school_convergence_index;
+    4. Write eval-results/school_convergence_baseline.json:
+       {"total_rows": N, "by_school_coverage": {"Parashari:primary": N, ...}, "branch_decision": "fix_matcher|build_loader"}
+    5. Branch decision rule: if total_rows >= 1000 → "fix_matcher"; if total_rows < 500 → "build_loader"; if 500–999 → "build_loader" (insufficient density).
+    6. Update 00_ARCHITECTURE/TOOLING_AUDIT_TRACKER_v1_0.md: D4 row — update Baseline column with actual count.
+
+    COMMIT: git commit -m "TR-P2-S1: school_convergence_index count + branch decision"
+
+    This session does NOT build the loader or fix the matcher — that is TR-P2-S2.
+  est_tokens: 40000
+  est_duration_min: 30
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P2-S2
+  wave: 2
+  phase: 2
+  description: "Phase 2.2 + 2.3: build/fix school_convergence_index loader (branch from TR-P2-S1 decision); stub silent rows for Nadi/BNN/Yogini schools"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P2-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P2-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/cross_school_lookup.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Fix cross_school_lookup to return non-silent coverage. Approach depends on TR-P2-S1 branch_decision.
+
+    IF branch_decision == "fix_matcher":
+    - The index is populated but the cross_school_lookup matcher is not joining correctly.
+    - Find cross_school_lookup.ts + its primitive. Find the JOIN condition.
+    - Fix the JOIN: likely the claim text is not being vectorised/matched against school index rows.
+
+    IF branch_decision == "build_loader":
+    - Build a loader script: platform/scripts/load_school_convergence.ts (or .py).
+    - Source: MSR_v5_0.md signals (each signal has school tags in the FORENSIC data).
+    - Target: school_convergence_index table (migration 057 schema: signal_id, school, coverage_type, evidence_text, confidence).
+    - For each MSR signal: determine which schools support it (check BPHS, Jaimini, KP, Tajaka source fields in the signal).
+    - Set coverage_type: primary (school is the origin), secondary (school corroborates), silent (school doesn't address it).
+    - Write stub silent rows for Nadi, BNN, Yogini for every signal (coverage_type='silent', evidence_text='school not represented in corpus').
+    - Target: ≥1000 rows minimum.
+    - Run the loader against prod (via DB proxy).
+
+    Regression test: cross_school_lookup({claim: "Jupiter lord of 9H"}) returns at least one school with coverage_type != "silent".
+    COMMIT: git commit -m "fix(TR-P2-S2): school_convergence_index loader+fix; stub silent for Nadi/BNN/Yogini"
+  est_tokens: 150000
+  est_duration_min: 120
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P2-S3
+  wave: 2
+  phase: 2
+  description: "Phase 2.4 + 2.5: corpus expansion (Phaladeepika + Brihat Jataka ingest into rag_chunks); read_classical_text chapter:verse exact-lookup"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P2-S3_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P2-S2]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/read_classical_text.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Expand classical corpus to 6 texts (add Phaladeepika + Brihat Jataka) and add chapter:verse exact-lookup.
+
+    CORPUS EXPANSION:
+    - Check if Phaladeepika and Brihat Jataka text files exist anywhere in the repo (grep Assets/, 08_CLASSICAL_CROSS_REFERENCE/).
+    - If found: update classical_text_chunker.ts to include them (currently hardcodes 4 texts).
+    - If not found: create placeholder stubs with 5–10 representative chunks each (clearly marked as STUB_PENDING_OCR).
+    - Add a chunk for each: WORK_ID = "PHALADEEPIKA" and "BRIHAT_JATAKA", include representative sloka text.
+    - Run the chunker on the new texts and load into rag_chunks via the existing loader.
+
+    CITATION LOOKUP:
+    - Add to read_classical_text schema: chapter (number, optional), verse (number, optional), citation (string, optional, e.g. "BPHS.33.12").
+    - When citation param is provided: split on "." → [text_id, chapter, verse]; do exact lookup in rag_chunks WHERE text_id=$1 AND chapter=$2 AND verse=$3.
+    - When chapter+verse provided without citation: same logic.
+    - Fall back to semantic search when chapter:verse lookup returns 0 rows.
+
+    Regression test: read_classical_text({citation: "BPHS.33.1"}) returns a chunk; read_classical_text({text_id: "PHALADEEPIKA", query: "Jupiter"}) returns ≥1 chunk.
+    COMMIT: git commit -m "feat(TR-P2-S3): corpus +Phaladeepika +BrihatJataka; read_classical_text citation lookup"
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P3-S1
+  wave: 2
+  phase: 3
+  description: "Phase 3.1–3.3: re-run chart_facts extractor; identify why deity_assignment/ishta_kashta/chandra_placement/avastha are empty; backfill prod"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P3-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P0-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    test -f eval-results/chart_facts_extractor_run.json
+  brief_spec: |
+    SCOPE: Re-run the chart_facts extractor against MSR_v5_0.md (current canonical). Compare output to prod DB.
+    Backfill any missing rows for the 4 empty categories.
+
+    1. Find the extractor script: likely platform/scripts/ or platform-mcp/scripts/ (grep for extract or extractor.py).
+    2. Run it against 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md in dry-run mode to get counts per category.
+    3. Save output to eval-results/chart_facts_extractor_run.json with counts per category.
+    4. Compare extracted counts vs. Phase 0 baseline DB counts for: deity_assignment, ishta_kashta, chandra_placement, avastha.
+    5. If extracted count > 0 but DB count = 0: the loader never ran. Run the loader for these 4 categories.
+    6. If extracted count = 0: the extractor regex doesn't match the current MSR section format. Fix the regex to match SIG.MSR.397 (deity) and SIG.MSR.438 (ishta_phala) sections.
+    7. Load the backfill rows into prod via DB proxy.
+
+    COMMIT: git commit -m "fix(TR-P3-S1): chart_facts backfill — deity_assignment, ishta_kashta, chandra_placement, avastha"
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P3-S2
+  wave: 2
+  phase: 3
+  description: "Phase 3.4–3.6: reconcile chart_facts row count claim (was 2717, actual TBD); add populated_count to query_chart_facts response; add include_empty_counts flag"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P3-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P3-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_chart_facts.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Surface data completeness in query_chart_facts responses.
+
+    1. Re-query prod DB: SELECT COUNT(*) FROM chart_facts; Record actual count. Update TOOLING_AUDIT_TRACKER D5.
+    2. In platform-mcp/src/tools/query_chart_facts.ts:
+       - Add populated_count field to every category response: number of rows in chart_facts for that category.
+       - Add include_empty_counts: bool param (default false). When true, return all known categories even if empty, with populated_count: 0.
+    3. The CHART_FACTS_CATEGORIES list (query_chart_facts.ts:47–57) is the authoritative list of known categories.
+    4. For each returned category, add populated_count from a COUNT(*) sub-query or by pre-loading counts.
+    5. Regression test: query_chart_facts({include_empty_counts: true}) returns all 27 (or actual N) categories; deity_assignment has populated_count ≥ 0 (explicit).
+
+    COMMIT: git commit -m "feat(TR-P3-S2): query_chart_facts — populated_count field + include_empty_counts flag"
+  est_tokens: 80000
+  est_duration_min: 60
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P5-S1
+  wave: 2
+  phase: 5
+  description: "Phase 5.1–5.4: holistic_bundle UCN/RM/CDLM source_filter fix; subset_size + return_format params; streaming/pagination for responses >50KB"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P5-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P1-S3, TR-P3-S2]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/holistic_bundle.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Fix holistic_bundle and add streaming for large responses.
+
+    5.1 — UCN/RM/CDLM source_filter fix:
+    - Find holistic_bundle.ts:184–196 routing of UCN/RM/CDLM to vector_search with source_filter.
+    - From Phase 0 baseline: what source values are actually present in rag_chunks for UCN/RM/CDLM?
+    - Fix: either set source_filter to the correct tag value, OR switch UCN/RM/CDLM routing to read_asset (now fixed in TR-P1-S3).
+    - Recommended: use read_asset("UCN") + read_asset("RM") + read_asset("CDLM") — cleaner than vector_search filter.
+
+    5.2 — subset_size param:
+    - Add subset_size: number (default 100, min 10, max 573) to holistic_bundle schema.
+    - Pass it as a LIMIT to the MSR signal fetch.
+
+    5.3 — return_format param:
+    - Add return_format: "verbose" | "compressed" (default "verbose").
+    - compressed: strip description fields from signals, return id + score + domain only.
+
+    5.4 — Streaming for large responses:
+    - Any tool response that would exceed 64KB triggers chunked streaming.
+    - Implement using the MCP protocol's streaming capability (check existing streaming impl in the sidecar or platform-mcp).
+    - Primary targets: holistic_bundle and cross_school_lookup.
+    - If MCP streaming is not yet implemented in the server, add Content-Type: application/x-ndjson chunking as fallback.
+
+    Push after commit (wave 2 push boundary).
+    COMMIT: git commit -m "fix(TR-P5-S1): holistic_bundle UCN/RM/CDLM fix; subset_size; return_format; 64KB streaming"
+  est_tokens: 130000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────
+# WAVE 3 — Tier-1 engine builds + server cross-cutting
+# ─────────────────────────────────────────────────────────
+
+- session_id: TR-P6-S1
+  wave: 3
+  phase: 6
+  description: "Phase 6.1: build query_transits_over_natal engine — given date range + target natal point + orb, return every transit planet that enters orb"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P6-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P5-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_transits_over_natal.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Build query_transits_over_natal — the most-used predictive tool per audit.
+
+    Engine design:
+    - Input: date_range (from/to), target_natal_point (planet name or house cusp, e.g. "natal_moon"), orb_degrees (default 1.0), transit_planets (optional list, default all 9 grahas), tier
+    - Algorithm: for each day in date_range, get transit planet position from ephemeris_daily; get natal planet position from chart_facts (category: "natal_positions" or equivalent); if |transit - natal| ≤ orb_degrees, record a transit event.
+    - Output: list of {transit_planet, target_natal_point, date_entered_orb, date_exact, date_left_orb, aspect_type, orb_at_exact}
+    - Source data: ephemeris_daily table (transit positions), chart_facts table (natal positions)
+    - Add platform/src/lib/retrieve/query_transits_over_natal.ts (engine) + platform-mcp/src/tools/query_transits_over_natal.ts (wrapper)
+    - Register in MCP tool registry.
+    - Test: query_transits_over_natal({date_range:{from:"2026-06-01",to:"2026-12-31"}, target_natal_point:"natal_moon"}) returns ≥1 transit event.
+
+    COMMIT: git commit -m "feat(TR-P6-S1): query_transits_over_natal engine + MCP wrapper"
+  est_tokens: 150000
+  est_duration_min: 120
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P6-S2
+  wave: 3
+  phase: 6
+  description: "Phase 6.2: build query_yogas_active_now — cross-reference natal yoga rows × current dasha × current transits; return active/dormant yogas with activation reason"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P6-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P6-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_yogas_active_now.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Build query_yogas_active_now.
+
+    Engine design:
+    - Input: date (string, default today), tier
+    - Step 1: fetch natal yoga rows from chart_facts (category: "yoga")
+    - Step 2: get current dasha period from query_dasha_periods for the given date
+    - Step 3: for each natal yoga, check: is the yoga's lord planet in the current dasha MD or AD? Is the yoga's trigger planet in transit over a natal activation point (from query_transits_over_natal for the date ±30 days)?
+    - Classify: "active" (dasha + transit alignment), "dormant" (no current activator), "latent" (conditions partially met)
+    - Output: [{yoga_id, yoga_name, status, activation_reason, dasha_context, transit_context}]
+    - Add engine + MCP wrapper + register.
+    - Test: query_yogas_active_now({date: "2026-06-01"}) returns ≥1 yoga with a status field.
+
+    COMMIT: git commit -m "feat(TR-P6-S2): query_yogas_active_now engine"
+  est_tokens: 130000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P6-S3
+  wave: 3
+  phase: 6
+  description: "Phase 6.3 + 6.4: get_planet_avastha (6-state live engine) + get_shadbala_full (19-component → 6-canonical roll-up)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P6-S3_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P6-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/get_planet_avastha.test.ts src/tools/get_shadbala_full.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Two engine builds — get_planet_avastha and get_shadbala_full.
+
+    get_planet_avastha:
+    - 6 avasthas: Lajjita (ashamed), Garvita (proud), Kshudita (hungry), Trushita (thirsty), Mudita (delighted), Kshobhita (agitated)
+    - Each avastha is determined by the planet's sign lord, nakshatra lord, and relationship to other planets (enemy/friend in same house)
+    - Input: planet (string), date (optional, default today for current transit OR use natal if no date), tier
+    - The avastha category already exists in chart_facts — but for live transit avasthas, compute from current ephemeris position.
+    - Output: {planet, avastha, avastha_explanation, is_natal_or_transit}
+
+    get_shadbala_full:
+    - chart_facts has 19 component rows under category="shadbala" (the _SBL_COMPONENT_MAP from the extractor)
+    - Roll up to 6 canonical components: Sthana Bala, Dig Bala, Kala Bala, Cheshta Bala, Naisargika Bala, Drig Bala
+    - Input: chart_id (optional), tier
+    - Output: {planet: {sthana: N, dig: N, kala: N, cheshta: N, naisargika: N, drig: N, total: N, total_rupas: N}} for all 9 planets
+    - Implement as a synthesis tool over existing chart_facts rows (no new DB rows needed)
+
+    COMMIT: git commit -m "feat(TR-P6-S3): get_planet_avastha engine; get_shadbala_full roll-up"
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P9-S1
+  wave: 3
+  phase: 9
+  description: "Phase 9.1–9.5: server-level cross-cutting — schema param honour-check, better error messages, list_available_assets, populated_count consistency, tier surfacing in descriptions"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P9-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P5-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run --reporter=verbose 2>&1 | grep -E 'PASS|passed' | grep -q '.')
+  brief_spec: |
+    SCOPE: Server-level improvements that are independent of specific tools.
+
+    9.1 — Param honour-check: add middleware/wrapper that checks if the caller supplied a param that the schema declares but the handler ignores. Log a WARN in the response's meta block: {ignored_params: ["param_name"]}.
+    9.2 — (Covered by TR-P5-S1 streaming — skip this sub-item.)
+    9.3 — Better error messages: audit every tool's catch block. Replace generic "Internal error" with: "Tool X failed at [stage]: [reason]. Valid values for [param]: [list]." Add enum values to every error message where relevant.
+    9.4 — list_available_assets: TR-P1-S3 added this; verify it's registered and returns correct data. If not, add it.
+    9.5 — populated_count consistency: verify that all category-returning tools (query_chart_facts, cross_school_lookup) return populated_count. If any don't, add it.
+    9.8 — Tier surfacing: every tool's description must end with "Tier access: [super_admin, acharya]" or equivalent. Update all tool description_builder calls.
+
+    COMMIT: git commit -m "fix(TR-P9-S1): param honour-check, error messages, list_assets, populated_count, tier descriptions"
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P9-S2
+  wave: 3
+  phase: 9
+  description: "Phase 9.6–9.9: composition recipes (3 for v1.0), versioned corpus snapshots, multi-language Sanskrit output"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P9-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P9-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/interpret_current_dasha.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Three composition recipes + versioned snapshot endpoint + Sanskrit encoding.
+
+    9.6 — Composition recipes (pre-built workflows as MCP tools):
+    - interpret_current_dasha: calls query_dasha_periods + holistic_bundle(subset_size:30) + query_yogas_active_now → synthesises a dasha reading. No LLM needed — purely a data aggregation.
+    - career_timing_audit: calls query_transits_over_natal(target: "natal_10L") + query_dasamsha_career (Phase 7.4, stub if not built yet) + query_dasha_periods → returns timing windows.
+    - auspicious_period_finder: calls muhurta_finder + tara_balam + chandra_balam + query_yogas_active_now → ranks periods.
+
+    9.7 — list_canonical_artifact_versions: new tool that reads CAPABILITY_MANIFEST.json and returns version + last_updated for each canonical_id. Simple file read — no DB needed.
+
+    9.9 — Multi-language Sanskrit: add output_encoding param (enum: "IAST"|"HK"|"devanagari"|"none"; default "IAST") to query_chart_facts and read_classical_text. The encoding transforms Sanskrit terms in the response (e.g. Guru → गुरु in devanagari, Guru in IAST). Use a small lookup table — no external library.
+
+    Push after commit (wave 3 push boundary).
+    COMMIT: git commit -m "feat(TR-P9-S2): composition recipes; list_canonical_artifact_versions; Sanskrit encoding"
+  est_tokens: 130000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────
+# WAVE 4 — Tier-2 engine builds
+# ─────────────────────────────────────────────────────────
+
+- session_id: TR-P7-S1
+  wave: 4
+  phase: 7
+  description: "Phase 7.1 + 7.6: query_dasha_periods level extension (MD/AD/PD/SD); query_drekkana_drishti (D3 chart_facts + Jaimini aspect computation)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P7-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P9-S2]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_dasha_periods.test.ts src/tools/query_drekkana_drishti.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Dasha level extension + Drekkana Drishti tool.
+
+    query_dasha_periods extension (7.1):
+    - Current schema has no level param. Add level: enum("maha"|"antar"|"pratyantar"|"sookshma") — default "antar".
+    - Thread level through to the engine. PD = Pratyantar dasha (sub-sub-period); SD = Sookshma (sub-sub-sub).
+    - PD/SD are computed from MD/AD durations × planet ratios — implement if not already in the engine.
+    - Test: query_dasha_periods({level:"pratyantar"}) returns periods with smaller durations than AD periods.
+
+    query_drekkana_drishti (7.6):
+    - D3 chart (Drekkana) shows siblings, courage, and Jaimini-style aspects.
+    - Fetch D3 positions from chart_facts (category: "divisional_d3" or compute from D3 divisional_query).
+    - Compute Jaimini Drekkana Drishti: moveable signs cast drishti on all except adjacent; fixed signs cast on fixed; dual signs cast on dual.
+    - Output: {planet, drekkana_sign, drekkana_house, dristi_targets: [{planet, sign, aspect_strength}]}
+    - New MCP tool: query_drekkana_drishti; register in tool registry.
+    - Test: returns non-empty drekkana positions for the native's chart.
+
+    COMMIT: git commit -m "feat(TR-P7-S1): dasha_periods PD/SD levels; query_drekkana_drishti"
+  est_tokens: 130000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P7-S2
+  wave: 4
+  phase: 7
+  description: "Phase 7.2: query_jaimini_chara_dasha — implement the sidecar stub at python-sidecar/routers/jaimini.py"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P7-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P7-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_jaimini_chara_dasha.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Implement Jaimini Chara Dasha from the existing sidecar stub.
+
+    - Find python-sidecar/routers/jaimini.py (the stub). Read it fully.
+    - Jaimini Chara Dasha: 12 rashis serve as dasha signs in a sequence determined by sign lord strengths.
+    - Duration of each rashi dasha: based on the longitude of the sign's Atmakaraka and the sign's lord.
+    - Standard algorithm: Chara Dasha period for rashi = number of years determined by sign lord's position in navamsha.
+    - The FORENSIC data has the native's natal chart; use it.
+    - Implement: compute_chara_dasha(birth_datetime, birth_lat, birth_lng) → [{rashi, start_date, end_date, sub_dashas: [{rashi, start, end}]}]
+    - Expose via the sidecar HTTP route and via a new MCP wrapper query_jaimini_chara_dasha.
+    - Test: returns 12 rashi periods totalling approximately 120 years from birth date.
+
+    COMMIT: git commit -m "feat(TR-P7-S2): query_jaimini_chara_dasha — implement sidecar stub"
+  est_tokens: 150000
+  est_duration_min: 120
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P7-S3
+  wave: 4
+  phase: 7
+  description: "Phase 7.3: query_planetary_period_predictions — curator over BPHS+Jaimini classical-text chunks for dasha-lord combinations"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P7-S3_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P7-S2, TR-P2-S3]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_planetary_period_predictions.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Build query_planetary_period_predictions — retrieves classical shastra predictions for MD/AD combinations.
+
+    - Input: maha_dasha_lord (planet), antar_dasha_lord (planet, optional), tier
+    - Algorithm: query rag_chunks WHERE text_id IN ('BPHS','JAIMINI_SUTRAM','KP_READER','PHALADEEPIKA') AND content CONTAINS [maha_lord] AND content CONTAINS 'dasha'.
+    - Also do vector_search({query: "[maha_lord] dasha [antar_lord] predictions"}).
+    - Merge and deduplicate results. Return top 10 by relevance.
+    - Output: [{text_id, chapter, verse, content, relevance_score, school}]
+    - New MCP wrapper + register.
+    - Test: query_planetary_period_predictions({maha_dasha_lord:"Rahu", antar_dasha_lord:"Jupiter"}) returns ≥2 chunks.
+
+    COMMIT: git commit -m "feat(TR-P7-S3): query_planetary_period_predictions classical curator"
+  est_tokens: 100000
+  est_duration_min: 75
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P7-S4
+  wave: 4
+  phase: 7
+  description: "Phase 7.4 + 7.5: query_dasamsha_career (D10 chart_facts + interpretation) and query_shashtiamsha (D60 chart_facts + past-life analysis)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P7-S4_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P7-S3]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_dasamsha_career.test.ts src/tools/query_shashtiamsha.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Two divisional chart tools with interpretation overlays.
+
+    query_dasamsha_career (7.4):
+    - D10 (Dasamsha) rules career, profession, status.
+    - Fetch D10 positions via query_divisional_chart({division:"D10"}).
+    - Also fetch D10 chart_facts rows (category: "divisional_d10" if they exist).
+    - Add classical interpretation overlay: 10H lord in D10, 10L sign/nakshatra, planets in D10 10H.
+    - Output: {d10_ascendant, planets: [{planet, sign, house, dignity}], career_indicators: [{indicator, planet, classical_rule}]}
+
+    query_shashtiamsha (7.5):
+    - D60 (Shashtiamsha) is the finest divisional — shows past karma.
+    - Each pada of D60 has a name (Ghora, Rakshasa, Deva, etc.) with classical meaning.
+    - Fetch D60 positions via divisional_query.
+    - Map each planet's D60 pada to its classical name + interpretation.
+    - Output: {planets: [{planet, d60_sign, d60_pada_name, d60_interpretation}]}
+
+    Both tools: new MCP wrappers + register + tests.
+    Push after commit (wave 4 push boundary).
+    COMMIT: git commit -m "feat(TR-P7-S4): query_dasamsha_career; query_shashtiamsha"
+  est_tokens: 130000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
+
+# ─────────────────────────────────────────────────────────
+# WAVE 5 — Tier-3 + sidecar stubs
+# ─────────────────────────────────────────────────────────
+
+- session_id: TR-P8-S1
+  wave: 5
+  phase: 8
+  description: "Phase 8.1 + 8.2: query_eclipse_transits (implement sidecar stub; writer pipeline exists) + query_planet_war (graha_yuddha thin engine over ephemeris)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P8-S1_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P7-S4]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: false
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run src/tools/query_eclipse_transits.test.ts src/tools/query_planet_war.test.ts --reporter=verbose 2>&1 | grep -q 'PASS\|passed')
+  brief_spec: |
+    SCOPE: Two sidecar/thin-engine tools.
+
+    query_eclipse_transits (8.1):
+    - Stub: python-sidecar/routers/eclipses.py (writer pipeline present per audit).
+    - Eclipse data may already be in ephemeris_daily (check for eclipse_type column).
+    - If in DB: add a query layer filtering for solar/lunar eclipses near natal sensitive points.
+    - If computed: implement eclipse detection (Sun and Moon at same/opposite degrees with Moon near node).
+    - Output: [{date, eclipse_type (solar|lunar), degree, conjunct_natal_point, impact_assessment}]
+
+    query_planet_war (8.2):
+    - Graha Yuddha: two planets within 1 degree of each other (longitude difference < 1°).
+    - The "winner" is determined by: higher declination wins (or specific classical rules per planet pair).
+    - Scan ephemeris_daily for dates where any two planets are within 1° of each other.
+    - Input: date_range (optional, default current year), planets (optional list), tier
+    - Output: [{date, planet_1, planet_2, degree, winner, classical_interpretation}]
+    - Thin engine over ephemeris_daily — no ML needed.
+
+    COMMIT: git commit -m "feat(TR-P8-S1): query_eclipse_transits; query_planet_war"
+  est_tokens: 120000
+  est_duration_min: 90
+  status: pending
+  human_decision_prompt: null
+
+- session_id: TR-P8-S2
+  wave: 5
+  phase: 8
+  description: "Phase 8.3: query_remedies_prescribed — chart-condition-indexed prescriber over remedial codex (last session, opens PR to main)"
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_TOOLING_REMEDIATION_TR-P8-S2_v1_0.md
+  branch: feature/tooling-remediation
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix
+  depends_on: [TR-P8-S1]
+  requires_brief_authoring: true
+  requires_human_approval: false
+  push_to_remote: true
+  gate_command: |
+    cd /Users/Dev/Vibe-Coding/Apps/MadhavToolingFix && \
+    (cd platform-mcp && npx vitest run --reporter=verbose 2>&1 | tail -20 | grep -E 'passed|PASS') && \
+    git log --oneline origin/feature/tooling-remediation | head -1 | grep -q 'TR-P8-S2'
+  brief_spec: |
+    SCOPE: Final wave-5 session. Build query_remedies_prescribed, then push all commits and produce a summary.
+
+    query_remedies_prescribed (8.3):
+    - Cross-reference natal chart conditions (afflicted planets, weak dignity, malefic aspects) with the remedial codex.
+    - Source: chart_facts (category: "remedy" or "remedial") + rag_chunks (doc_type: "l4_remedial" from query_remedial_mantras engine in TR-P4-S1).
+    - Input: affliction (string, e.g. "Saturn afflicts 1H"), planet (optional), house (optional), tier
+    - Algorithm: find chart_facts rows where condition matches → return prescribed remedy with mantra, gem, ritual, and timing.
+    - Output: [{condition, remedy_type (mantra|gem|ritual|charity), remedy_text, timing, classical_source}]
+
+    After shipping this tool:
+    1. Run the full vitest suite: npx vitest run --reporter=verbose
+    2. Capture pass/fail counts.
+    3. Update TOOLING_AUDIT_TRACKER_v1_0.md: mark all completed items as DONE with phase/session reference.
+    4. Write a closing summary to eval-results/tooling_remediation_v1_0_close.json:
+       {"sessions_completed": 26, "tools_fixed": N, "tools_added": N, "tracker_open_items": N, "next_steps": ["Phase 12 greenfield when spouse data available"]}
+    5. git push origin feature/tooling-remediation
+    6. Emit: "PR TO MAIN: Human gate — run: gh pr create --title 'Tooling Remediation v1.0' --base main --head feature/tooling-remediation"
+
+    COMMIT: git commit -m "feat(TR-P8-S2): query_remedies_prescribed; v1.0 close summary"
+  est_tokens: 130000
+  est_duration_min: 100
+  status: pending
+  human_decision_prompt: null
