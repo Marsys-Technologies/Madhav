@@ -5,14 +5,16 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 22 tools registered (v3.6, per arch §3.7 + MCPT v3.2 Phase 4c).
+ * - 26 tools registered (v3.7, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159).
  *
- * Tool count (v3.6, 22 tools per MCP arch §3.7 + MCPT v3.2 Phase 4c):
+ * Tool count (v3.7, 26 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (10): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (14): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
- *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup
+ *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
+ *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder
+ *                (last 4 added TR Wave PR #159 — Class A: engine existed)
  *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
@@ -29,7 +31,7 @@ import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import { registerResources } from './resources/index.js'
-// Tier 3: surgical primitives
+// Tier 3: surgical primitives (original 10)
 import { registerQueryChartFacts } from './tools/query_chart_facts.js'
 import { registerQuerySignals } from './tools/query_signals.js'
 import { registerQueryDashaPeriods } from './tools/query_dasha_periods.js'
@@ -40,6 +42,11 @@ import { registerLelQuery } from './tools/lel_query.js'
 import { registerVectorSearch } from './tools/vector_search.js'
 import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js'
 import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
+// Tier 3: TR Wave additions (PR #159 — Class A: engine existed)
+import { registerQueryVarshphal } from './tools/query_varshphal.js'
+import { registerQueryDivisionalChart } from './tools/query_divisional_chart.js'
+import { registerQueryRemedialMantras } from './tools/query_remedial_mantras.js'
+import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -146,7 +153,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerHolisticBundle(server, getPrincipal, tierDesc('holistic_bundle'))
   registerMultiSchoolBundle(server, getPrincipal, tierDesc('multi_school_bundle'))
 
-  // Register Tier 3 surgical primitives.
+  // Register Tier 3 surgical primitives (original 10).
   registerQueryChartFacts(server, getPrincipal)
   registerQuerySignals(server, getPrincipal)
   registerQueryDashaPeriods(server, getPrincipal)
@@ -157,6 +164,11 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerVectorSearch(server, getPrincipal)
   registerGetCgmSubgraph(server, getPrincipal)
   registerCrossSchoolLookup(server, getPrincipal)
+  // TR Wave additions (PR #159 — Class A: existing retrieval engines).
+  registerQueryVarshphal(server, getPrincipal)
+  registerQueryDivisionalChart(server, getPrincipal)
+  registerQueryRemedialMantras(server, getPrincipal)
+  registerMuhurtaFinder(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)

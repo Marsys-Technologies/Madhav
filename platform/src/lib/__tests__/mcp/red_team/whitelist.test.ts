@@ -46,8 +46,9 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
     expect(isAllowedSurgicalTool('contradiction_register')).toBe(false)
   })
 
-  it('RT-04g: all 10 whitelisted MCP primitive names are accepted', () => {
+  it('RT-04g: all original + TR Wave whitelisted names are accepted', () => {
     const expected = [
+      // Original 11
       'query_chart_facts',
       'query_signals',
       'query_dasha_periods',
@@ -58,14 +59,25 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
       'vector_search',
       'get_cgm_subgraph',
       'cross_school_lookup',
+      'read_classical_text',
+      // TR Wave MCP-facing names
+      'query_varshphal',
+      'query_divisional_chart',
+      'query_remedial_mantras',
+      'muhurta_finder',
+      // TR Wave retrieval-name aliases
+      'query_varshaphala',
+      'divisional_query',
+      'remedial_codex_query',
+      'query_muhurat',
     ]
     for (const name of expected) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
   })
 
-  it('RT-04h: whitelist maps 11 MCP names, no more, no less', () => {
-    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(11)
+  it('RT-04h: whitelist maps 23 entries (11 original + 4 MCP TR + 4 retrieval aliases + 4 stubs)', () => {
+    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(23)
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {

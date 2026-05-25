@@ -58,8 +58,11 @@ const SAFE_ASSET_MAP: Record<string, string> = {
   PROJECT_ARCHITECTURE: '00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md',
 }
 
-// Repository root = one directory above the Next.js platform/ directory.
-const REPO_ROOT = join(process.cwd(), '..')
+// MARSYS_REPO_ROOT is baked into the container image by platform/Dockerfile
+// (ENV MARSYS_REPO_ROOT=/app in the runner stage, which also copies 01_FACTS_LAYER/
+// and 025_HOLISTIC_SYNTHESIS/ into /app). Fallback to cwd/.. for local dev where
+// process.cwd() is the platform/ directory and the repo root is one level up.
+const REPO_ROOT = process.env.MARSYS_REPO_ROOT ?? join(process.cwd(), '..')
 
 // ── Section filter ────────────────────────────────────────────────────────────
 
