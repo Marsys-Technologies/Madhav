@@ -187,7 +187,7 @@ sessions:
     phase: 4
     name: "Load enhanced chart_facts to DB + update CAPABILITY_MANIFEST + verify MCP access"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P4-S14.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 60
     depends_on: [DAR-P4-S11, DAR-P4-S12, DAR-P4-S13]
     gate_commands:
