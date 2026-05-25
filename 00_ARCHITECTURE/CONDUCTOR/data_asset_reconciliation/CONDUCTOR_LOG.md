@@ -101,7 +101,7 @@ Notes: Cross-asset integrity PASS — CGM/UCN/CDLM cross-references valid; schoo
 
 ## DAR-P7-S26 — COMPLETE — 2026-05-25
 Gate results: 4/4 PASS
-Commit: [will fill after commit]
+Commit: fd6f8b08
 Notes: Governance close artifact written. Drift_detector exit=1 (319 pre-existing findings, no DAR regressions). All 25 prior sessions COMPLETE. Merged to main — no conflicts (CI/CD deployment triggered). DAR workstream sealed.
 
 ## CONDUCTOR RUN 2 — FINAL SUMMARY
