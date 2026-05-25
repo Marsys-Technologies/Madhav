@@ -592,7 +592,67 @@ def run(
     if csv_check_residual:
         logger.warning("RESIDUAL: %s", csv_check_residual)
 
+    if not dry_run:
+        _register_build_manifest(
+            db_url=db_url,
+            build_id=build_id,
+            start=start,
+            end=end,
+            row_count=total_written,
+            use_psycopg2=_use_psycopg2,
+        )
+
     return total_written
+
+
+def _register_build_manifest(
+    db_url: str,
+    build_id: str,
+    start: date,
+    end: date,
+    row_count: int,
+    use_psycopg2: bool,
+) -> None:
+    """Auto-register this bootstrap run in build_manifests so operator rollback is auditable."""
+    notes = (
+        f"Ephemeris bootstrap {start}..{end} Lahiri sidereal 9 graha, {row_count} rows"
+    )
+    sql = """
+        INSERT INTO build_manifests
+          (build_id, triggered_at, triggered_by, registry_fingerprint,
+           pipeline_image_uri, embedding_model, embedding_dim,
+           chunk_count, embedding_count, status, manifest_uri, asset_id, notes)
+        VALUES
+          (%(build_id)s, now(), %(triggered_by)s, 'n/a',
+           'n/a', 'n/a', 0,
+           0, 0, 'staging', 'n/a', 'ephemeris_daily', %(notes)s)
+        ON CONFLICT (build_id) DO UPDATE
+          SET notes = EXCLUDED.notes,
+              status = CASE
+                WHEN build_manifests.status IN ('rolled_back', 'live') THEN build_manifests.status
+                ELSE 'staging'
+              END;
+    """
+    params = {
+        "build_id": build_id,
+        "triggered_by": "bootstrap_ephemeris.py auto-registered",
+        "notes": notes,
+    }
+    try:
+        if use_psycopg2:
+            import psycopg2
+            with psycopg2.connect(db_url) as conn:
+                conn.cursor().execute(sql, params)
+                conn.commit()
+        else:
+            import psycopg  # type: ignore[no-redef]
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, params)
+                conn.commit()
+        logger.info("build_manifests registered: build_id=%s status=staging", build_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("build_manifests registration failed (non-fatal): %s", exc)
 
 
 def main() -> None:
