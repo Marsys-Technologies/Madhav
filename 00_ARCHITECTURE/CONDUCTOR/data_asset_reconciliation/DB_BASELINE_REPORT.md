@@ -8,7 +8,10 @@ l25_msr_signals_count: 514
 ephemeris_daily_count: 660726
 chart_facts_count: 2681
 msr_rag_chunks_count: 514
-notes: "Baseline captured before MSR v5.0 DB rebuild. rag_chunks filtered by doc_type='msr_signal' (column source_type does not exist; task brief contained incorrect column name — doc_type is the correct discriminator). Migration 117 SQL file contained a PG12-incompatible reference to pg_constraint.consrc (removed in PG12); fixed in-session to use pg_get_constraintdef(c.oid) — migration SQL file updated with fix annotation."
+school_signal_coverage_count: 3747
+ephemeris_node_type: "column does not exist — table uses planet discriminator; rahu=73414 ketu=73414 (mean node only; no true-node column)"
+bhava_chalit_null_count: 0
+notes: "Baseline captured before MSR v5.0 DB rebuild. rag_chunks filtered by doc_type='msr_signal' (column source_type does not exist; task brief contained incorrect column name — doc_type is the correct discriminator). Migration 117 SQL file contained a PG12-incompatible reference to pg_constraint.consrc (removed in PG12); fixed in-session to use pg_get_constraintdef(c.oid) — migration SQL file updated with fix annotation. DAR-P2-S6 augmentation: node_type column does not exist in ephemeris_daily — planet is the discriminator; 9 planets × 73,414 rows; bhava_chalit_house has 0 NULLs (fully populated)."
 ---
 
 # DB Baseline Report — DAR-P2-S5
@@ -50,11 +53,26 @@ WHERE r.relname = 'mcp_api_keys' AND c.contype = 'c';
 | `ephemeris_daily` | 660,726 | `SELECT COUNT(*) FROM ephemeris_daily` |
 | `chart_facts` | 2,681 | `SELECT COUNT(*) FROM chart_facts` |
 | `rag_chunks` (doc_type=msr_signal) | 514 | `SELECT COUNT(*) FROM rag_chunks WHERE doc_type='msr_signal'` |
+| `school_signal_coverage` | 3,747 | `SELECT COUNT(*) FROM school_signal_coverage` |
+| `ephemeris_daily` node_type | N/A — column absent | `SELECT node_type, COUNT(*) FROM ephemeris_daily GROUP BY node_type` — see anomaly §4 |
+| `ephemeris_daily` (rahu rows) | 73,414 | `SELECT COUNT(*) FROM ephemeris_daily WHERE planet='rahu'` |
+| `ephemeris_daily` (ketu rows) | 73,414 | `SELECT COUNT(*) FROM ephemeris_daily WHERE planet='ketu'` |
+| `ephemeris_daily` bhava_chalit_house NULL | 0 | `SELECT COUNT(*) FROM ephemeris_daily WHERE bhava_chalit_house IS NULL` |
 
 ### Source File
 ```
 msr_signals.source_file: MSR_v5_0.md
 ```
+
+## DAR-P2-S6 Augmentation
+
+Captured: 2026-05-25 (DAR-P2-S6 session)
+
+| Field | Value | Notes |
+|-------|-------|-------|
+| `school_signal_coverage_count` | 3,747 | Table exists and is populated |
+| `ephemeris_node_type` | column absent | `node_type` does not exist; planet discriminator used instead; rahu=73,414 / ketu=73,414 |
+| `bhava_chalit_null_count` | 0 | All 660,726 rows have `bhava_chalit_house` populated |
 
 ## Anomalies
 
@@ -63,3 +81,7 @@ msr_signals.source_file: MSR_v5_0.md
 2. **Migration 117 SQL bug**: Original `pg_constraint.consrc` reference fails on PG15. Fixed in-session; migration SQL file updated with fix annotation and corrected DO block.
 
 3. **msr_signals (573) vs rag_chunks msr_signal (514)**: Delta of 59 signals. Rag_chunks reflect MSR_v3_0.md; current canonical is MSR_v5_0.md with 573 signals. Rebuild target: 573 rag_chunks with doc_type=msr_signal post-DAR.
+
+4. **ephemeris_daily node_type column absent** (DAR-P2-S6): The task brief specified `SELECT node_type, COUNT(*) FROM ephemeris_daily GROUP BY node_type` but `node_type` is not a column in `ephemeris_daily`. The table uses `planet TEXT NOT NULL` as its discriminator. Lunar nodes are represented as `planet='rahu'` and `planet='ketu'` (mean-node only; no true-node / mean-node split column). The query was adapted: planet breakdown captured instead (9 planets × 73,414 rows each = 660,726 total). No schema gap — this is a task-brief column-name error, not a DB deficiency.
+
+5. **bhava_chalit_house fully populated** (DAR-P2-S6): NULL count = 0 across all 660,726 ephemeris_daily rows. This confirms the ephemeris build pipeline populates `bhava_chalit_house` for every row. No remediation required.
