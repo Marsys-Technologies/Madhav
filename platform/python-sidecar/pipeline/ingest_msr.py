@@ -4,7 +4,7 @@ KARN-W2-R1: populates the 8 new source columns via UPDATE on existing signal_id 
 
 Usage:
     python -m pipeline.ingest_msr \
-        --source <path-to-MSR_v3_0.md> \
+        --source <path-to-MSR_v5_0.md> \
         --native abhisek_mohanty \
         --upsert
 
@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Re-ingest MSR signals with new columns")
-    p.add_argument("--source", required=True, help="Path to MSR_v3_0.md")
+    p.add_argument("--source", required=True, help="Path to MSR_v5_0.md")
     p.add_argument("--native", default="abhisek_mohanty", help="native_id")
     p.add_argument("--upsert", action="store_true", help="Use UPSERT (required)")
     p.add_argument(
@@ -77,7 +77,7 @@ def _regex_inline_list(yaml_body: str, field: str) -> list | None:
 
 
 def _extract_signals(source_path: Path) -> list[dict[str, Any]]:
-    """Parse MSR_v3_0.md and return one dict per signal with all 8 new fields.
+    """Parse MSR_v5_0.md and return one dict per signal with all 8 new fields.
 
     Uses yaml.safe_load first; falls back to regex extraction for signals
     where YAML parse fails (typically due to inline quotes in supporting_rules).

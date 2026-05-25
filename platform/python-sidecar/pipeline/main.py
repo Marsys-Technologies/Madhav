@@ -85,7 +85,7 @@ def _build_chunker_registry() -> dict[str, tuple[str, Any]]:
         # lel_section is a log label only; actual doc_types (lel_period_summary,
         # lel_chronic_pattern) come from the chunks themselves.
         "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md": ("lel_section", chunk_lel_sections),
-        "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md": ("msr_signal", chunk_msr_signals),
+        "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md": ("msr_signal", chunk_msr_signals),
         "025_HOLISTIC_SYNTHESIS/UCN_v4_0.md": ("ucn_section", chunk_ucn_sections),
         "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md": ("cdlm_cell", chunk_cdlm_cells),
         "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md": ("cgm_node", chunk_cgm_nodes),
