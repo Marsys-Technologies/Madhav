@@ -116,6 +116,18 @@ executor: Claude Code (autonomous, native-authorized)
 | 069_performance_wiring_fixes.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | performance_queries: retrieval_scores (jsonb), compose_bundle_latency_ms (int), latency_complete (bool) | PERF-S1 wiring; all 3 columns verified |
 | 116_trace_mcp_tool_column.sql | 2026-05-23 | MCPT-v32-P5A | query_trace_steps.mcp_tool (TEXT), idx_query_trace_steps_mcp_tool | pending apply; backfills from data_summary->>'mcp_tool' |
 | 117_audience_tier_acharya_enum.sql | 2026-05-23 | MCPT-v32-P6A | mcp_api_keys.audience_tier CHECK constraint now includes 'acharya' | pending apply; idempotent DO block |
+| 072_mcp_bundle_cache.sql | 2026-05-22 | inferred_from_workstream_close | mcp_bundle_cache (content-addressable 5-min bundle cache; key=sha256(query+params+tier+chart_id)) | MCPT v3.1.0-S2 |
+| 073_perf_log_extensions.sql | 2026-05-22 | inferred_from_workstream_close | tool_execution_log: 5 perf-system columns for nightly audit | MCPT v3.1.0-S4 |
+| 074_audit_findings.sql | 2026-05-22 | inferred_from_workstream_close | mcp_audit_findings, audit_job_runs | MCPT v3.1.0-S4 |
+| 075_prediction_outcomes.sql | 2026-05-22 | inferred_from_workstream_close | mcp_prediction_outcomes, mcp_predictions calibration columns | MCPT v3.1.0-S4 |
+| 075b_prediction_outcomes_remediation.sql | 2026-05-22 | inferred_from_workstream_close | mcp_predictions/mcp_prediction_outcomes schema remediation | MCPT v3.1.0-S4 |
+| 076_data_source_expected_and_caveats.sql | 2026-05-22 | inferred_from_workstream_close | data_source_expected (expected row counts per tool/category), tool_caveats | MCPT v3.1.0-S4 |
+| 077_mcp_alerts_config_and_tool_registry.sql | 2026-05-22 | inferred_from_workstream_close | mcp_alerts_config (per-metric thresholds + dispatch targets), tool_registry (DB-level tool enable/disable) | MCPT v3.1.0-S5 |
+| 078_multi_school_extensions.sql | 2026-05-22 | inferred_from_workstream_close | school_signal_coverage: notes column + substantive-coverage index | MCPT v3.2-S4 |
+| 079_tajaka_and_convergence.sql | 2026-05-22 | inferred_from_workstream_close | school_convergence_index (materialized view), tajaka_annual (muntha_sign deterministic; year_lord/annual_lagna/saham=EXTERNAL_COMPUTATION_REQUIRED) | MCPT v3.2-S5 |
+| 080_classical_texts_work_column.sql | 2026-05-22 | inferred_from_workstream_close | classical_texts.work (generated column = upper(text_key)), idx for per-work queries | MCPT v3.2 (enables read_classical_text MCP tool) |
+| 081_build_manifests_asset_id.sql | 2026-05-22 | inferred_from_workstream_close | build_manifests.asset_id (text column) | MCPT v3.5 housekeeping; closes AC.*.4 schema-mismatch residual |
+| 082_perf_system_materialized_views.sql | 2026-05-22 | inferred_from_workstream_close | 4 perf-system materialized views + MCP-aware columns on tool_execution_log | MCPT v3.7 Operational Gap Closure Phase B |
 
 ---
 

@@ -58,7 +58,7 @@
     {
       "canonical_id": "LEL",
       "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
-      "version": "1.6",
+      "version": "1.7",
       "status": "CURRENT",
       "layer": "L1",
       "expose_to_chat": true,
@@ -1242,7 +1242,7 @@
       "canonical_id": "RETRIEVAL_TOOL_lel_query",
       "tool_name": "lel_query",
       "tool_description": "Retrieves ground-truth life events from LEL \u2014 recorded dates categories chart states",
-      "description": "Queries life_events table \u2014 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "description": "Queries life_events table \u2014 57 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
       "query_schema": {
         "type": "object",
         "properties": {

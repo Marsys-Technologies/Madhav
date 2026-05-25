@@ -106,18 +106,18 @@ Unified canonical L1 — 1,950-line single-source-of-truth for every planet/hous
 ```yaml
 canonical_id: LEL
 path: 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
-version: "1.6"
+version: "1.7"
 status: CURRENT
-fingerprint_sha256: ROTATED_canonical_id_frontmatter_patch_2026-05-12
+fingerprint_sha256: ROTATED_DAR-P1-S3_2026-05-25
 mirror_obligations:
   claude_side: 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md
   gemini_side: null
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "L1 facts are Claude-resident; Gemini reads them at L4 Discovery Layer but does not author."
-last_verified_session: canonical_id_frontmatter_patch_2026-05-12
-last_verified_on: 2026-05-12
-notes: "46 events (35 original + 11 v1.3 Swiss-Ephemeris pass) + 5 period summaries + 6 chronic patterns. v1.4: 11 pending→computed. v1.5: PPL migration annotations. v1.6: EVT.2019+2023 dual-tagged residential+travel per NAP.M4.2. Confidence 0.89."
+last_verified_session: DAR-P1-S3_2026-05-25
+last_verified_on: 2026-05-25
+notes: "57 events + 5 period summaries + 8 chronic patterns. v1.4: 11 pending→computed. v1.5: PPL migration annotations. v1.6: EVT.2019+2023 dual-tagged residential+travel per NAP.M4.2. v1.7: count correction to 57 events + 8 chronic patterns per DAR-P1-S3. Confidence 0.89."
 ```
 
 Life Event Log v1.2 is CURRENT. MP v2.0 names LEL as M4 prerequisite with cadence "Start immediately; do not defer." Closes GA.9 at the CANONICAL_ARTIFACTS registration layer; full CLAUDE.md surfacing lands at Step 9.
