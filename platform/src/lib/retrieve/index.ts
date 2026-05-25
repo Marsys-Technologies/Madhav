@@ -126,6 +126,21 @@ import * as muhurtaFinder from './muhurta_finder'
 export * from './types'
 import type { RetrievalTool } from './types'
 
+// UDA-3-S1 — Interface normalization aliases.
+// These alias entries expose the canonical (MCP) name via the portal RETRIEVAL_TOOLS
+// registry so that Channel B (agentic loop via executeMCPTool / getTool) can resolve
+// tools by their canonical name. The original keys are retained below for backward
+// compatibility with the planner prompt and any call site using the old name.
+const chartFactsQueryAlias: RetrievalTool = {
+  ...chartFactsQuery.tool,
+  name: 'query_chart_facts', // canonical MCP name; portal native name is 'chart_facts_query'
+}
+
+const queryVarshphalAlias: RetrievalTool = {
+  ...queryVarshaphala.tool,
+  name: 'query_varshphal', // canonical MCP name; portal native name is 'query_varshaphala'
+}
+
 export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   msrSql.tool,
   patternRegister.tool,
@@ -178,6 +193,10 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   taraBalamForNative.tool,
   chandraBalamForNative.tool,
   muhurtaFinder.tool,
+  // UDA-3-S1 canonical-name aliases (getTool resolves by name; these ensure the
+  // canonical MCP names resolve in the portal agentic loop — Channel B parity).
+  chartFactsQueryAlias,  // 'query_chart_facts' → chart_facts_query handler
+  queryVarshphalAlias,   // 'query_varshphal'   → query_varshaphala handler
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
