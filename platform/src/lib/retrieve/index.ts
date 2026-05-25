@@ -21,6 +21,7 @@
  * UDA-1-S5: query_dasamsha_career — D10 career indicator rules (tool 43)
  * UDA-1-S5: query_shashtiamsha — D60 Shashtiamsha karma pada analysis (tool 44)
  * UDA-1-S6: query_eclipse_transits, query_planet_war — eclipse detection + Graha Yuddha (tools 45-46)
+ * UDA-1-S7: query_drekkana_drishti, query_remedies_prescribed — Jaimini Drekkana Drishti + remedial codex cross-reference (tools 47-48)
  */
 
 import * as msrSql from './msr_sql'
@@ -112,6 +113,10 @@ import * as queryShashtiamsha from './query_shashtiamsha'
 import * as queryEclipseTransits from './query_eclipse_transits'
 import * as queryPlanetWar from './query_planet_war'
 
+// UDA-1-S7 — Jaimini Drekkana Drishti + remedial codex cross-reference (tools 47-48)
+import * as queryDrekkanaDisthi from './query_drekkana_drishti'
+import * as queryRemediesPrescribed from './query_remedies_prescribed'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -162,6 +167,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryShashtiamsha.tool,
   queryEclipseTransits.tool,
   queryPlanetWar.tool,
+  queryDrekkanaDisthi.tool,
+  queryRemediesPrescribed.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
