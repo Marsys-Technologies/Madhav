@@ -4865,3 +4865,439 @@ facts:
     value_json: {cycle: "future_dhaiya", saturn_sign: Taurus, phase: "Kantaka Shani", start_date: "2030-04-17", end_date: "2032-05-30"}
     source_section: "§21 row 8"
     extraction_method: direct_read
+  # ── §7 Ashtakavarga ──────────────────────────────────────────────────────
+  - fact_id: AVG.BAV.SUN
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 48
+    value_text: "Sun BAV total: 48 bindus"
+    value_json: {planet: Sun, Ar: 5, Ta: 5, Ge: 5, Cn: 5, Le: 4, Vi: 3, Li: 5, Sc: 6, Sg: 2, Cp: 4, Aq: 2, Pi: 2, total: 48}
+    source_section: "§7.1 row 1"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV"
+    extraction_method: direct_read
+  - fact_id: AVG.BAV.MOON
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 49
+    value_text: "Moon BAV total: 49 bindus (FORENSIC canonical; JH differs ±1 in 4 signs)"
+    value_json: {planet: Moon, Ar: 3, Ta: 1, Ge: 5, Cn: 5, Le: 6, Vi: 3, Li: 4, Sc: 5, Sg: 4, Cp: 2, Aq: 5, Pi: 6, total: 49, note: "FORENSIC canonical per GAP.08"}
+    source_section: "§7.1 row 2"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV (GAP.08 resolved)"
+    extraction_method: direct_read
+  - fact_id: AVG.BAV.MARS
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 39
+    value_text: "Mars BAV total: 39 bindus"
+    value_json: {planet: Mars, Ar: 4, Ta: 6, Ge: 4, Cn: 4, Le: 2, Vi: 2, Li: 5, Sc: 5, Sg: 1, Cp: 3, Aq: 1, Pi: 2, total: 39}
+    source_section: "§7.1 row 3"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV"
+    extraction_method: direct_read
+  - fact_id: AVG.BAV.MERCURY
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 54
+    value_text: "Mercury BAV total: 54 bindus"
+    value_json: {planet: Mercury, Ar: 4, Ta: 7, Ge: 4, Cn: 6, Le: 3, Vi: 4, Li: 5, Sc: 7, Sg: 4, Cp: 5, Aq: 2, Pi: 3, total: 54}
+    source_section: "§7.1 row 4"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV"
+    extraction_method: direct_read
+  - fact_id: AVG.BAV.JUPITER
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 56
+    value_text: "Jupiter BAV total: 56 bindus"
+    value_json: {planet: Jupiter, Ar: 5, Ta: 4, Ge: 3, Cn: 4, Le: 5, Vi: 6, Li: 7, Sc: 3, Sg: 4, Cp: 6, Aq: 5, Pi: 4, total: 56}
+    source_section: "§7.1 row 5"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV"
+    extraction_method: direct_read
+  - fact_id: AVG.BAV.VENUS
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 52
+    value_text: "Venus BAV total: 52 bindus"
+    value_json: {planet: Venus, Ar: 4, Ta: 4, Ge: 5, Cn: 4, Le: 6, Vi: 5, Li: 3, Sc: 3, Sg: 6, Cp: 4, Aq: 4, Pi: 4, total: 52}
+    source_section: "§7.1 row 6"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV"
+    extraction_method: direct_read
+  - fact_id: AVG.BAV.SATURN
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 39
+    value_text: "Saturn BAV total: 39 bindus"
+    value_json: {planet: Saturn, Ar: 4, Ta: 2, Ge: 2, Cn: 4, Le: 4, Vi: 3, Li: 4, Sc: 4, Sg: 4, Cp: 2, Aq: 4, Pi: 2, total: 39}
+    source_section: "§7.1 row 7"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.1 BAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.ARIES
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 29
+    value_text: "SAV Aries (H1): 29 bindus"
+    value_json: {sign: Aries, house: 1, sav_total: 29}
+    source_section: "§7.2 row 1"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.TAURUS
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 29
+    value_text: "SAV Taurus (H2): 29 bindus"
+    value_json: {sign: Taurus, house: 2, sav_total: 29}
+    source_section: "§7.2 row 2"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.GEMINI
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 28
+    value_text: "SAV Gemini (H3): 28 bindus"
+    value_json: {sign: Gemini, house: 3, sav_total: 28}
+    source_section: "§7.2 row 3"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.CANCER
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 32
+    value_text: "SAV Cancer (H4): 32 bindus"
+    value_json: {sign: Cancer, house: 4, sav_total: 32}
+    source_section: "§7.2 row 4"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.LEO
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 30
+    value_text: "SAV Leo (H5): 30 bindus"
+    value_json: {sign: Leo, house: 5, sav_total: 30}
+    source_section: "§7.2 row 5"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.VIRGO
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 26
+    value_text: "SAV Virgo (H6): 26 bindus"
+    value_json: {sign: Virgo, house: 6, sav_total: 26}
+    source_section: "§7.2 row 6"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.LIBRA
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 33
+    value_text: "SAV Libra (H7): 33 bindus"
+    value_json: {sign: Libra, house: 7, sav_total: 33}
+    source_section: "§7.2 row 7"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.SCORPIO
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 33
+    value_text: "SAV Scorpio (H8): 33 bindus"
+    value_json: {sign: Scorpio, house: 8, sav_total: 33}
+    source_section: "§7.2 row 8"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.SAGITTARIUS
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 25
+    value_text: "SAV Sagittarius (H9): 25 bindus"
+    value_json: {sign: Sagittarius, house: 9, sav_total: 25}
+    source_section: "§7.2 row 9"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.CAPRICORN
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 26
+    value_text: "SAV Capricorn (H10): 26 bindus"
+    value_json: {sign: Capricorn, house: 10, sav_total: 26}
+    source_section: "§7.2 row 10"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.AQUARIUS
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 23
+    value_text: "SAV Aquarius (H11): 23 bindus"
+    value_json: {sign: Aquarius, house: 11, sav_total: 23}
+    source_section: "§7.2 row 11"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.PISCES
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 23
+    value_text: "SAV Pisces (H12): 23 bindus"
+    value_json: {sign: Pisces, house: 12, sav_total: 23}
+    source_section: "§7.2 row 12"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  - fact_id: AVG.SAV.TOTAL
+    category: ashtakavarga
+    divisional_chart: D1
+    value_number: 337
+    value_text: "Sarvashtakavarga grand total: 337 bindus"
+    value_json: {grand_total: 337}
+    source_section: "§7.2 grand total row"
+    forensic_ref: "FORENSIC v8.0 §7 — Ashtakavarga §7.2 SAV"
+    extraction_method: direct_read
+  # ── §10 Chara Karakas / Sthira Karakas ───────────────────────────────────
+  - fact_id: KRK.C.ATMA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Atmakaraka (AK): Moon — Soul / Self; D1 longitude (sign-stripped) 27°02′"
+    value_json: {role: Atmakaraka, abbreviation: AK, life_area: "Soul / Self", planet: Moon, d1_longitude_sign_stripped: "27°02′", system: "7-karaka"}
+    source_section: "§10.1 row 1"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.C.AMATYA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Amatyakaraka (AmK): Saturn — Career / Status; D1 longitude (sign-stripped) 22°27′"
+    value_json: {role: Amatyakaraka, abbreviation: AmK, life_area: "Career / Status", planet: Saturn, d1_longitude_sign_stripped: "22°27′", system: "7-karaka"}
+    source_section: "§10.1 row 2"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.C.BHRATRU
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Bhratrukaraka (BK): Sun — Siblings / Guru / Resources; D1 longitude (sign-stripped) 21°57′"
+    value_json: {role: Bhratrukaraka, abbreviation: BK, life_area: "Siblings / Guru / Resources", planet: Sun, d1_longitude_sign_stripped: "21°57′", system: "7-karaka"}
+    source_section: "§10.1 row 3"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.C.MATRU
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Matrukaraka (MK): Venus — Mother / Heart / Home; D1 longitude (sign-stripped) 19°10′"
+    value_json: {role: Matrukaraka, abbreviation: MK, life_area: "Mother / Heart / Home", planet: Venus, d1_longitude_sign_stripped: "19°10′", system: "7-karaka"}
+    source_section: "§10.1 row 4"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.C.PUTRA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Putrakaraka (PK): Mars — Children / Creativity / Future; D1 longitude (sign-stripped) 18°31′"
+    value_json: {role: Putrakaraka, abbreviation: PK, life_area: "Children / Creativity / Future", planet: Mars, d1_longitude_sign_stripped: "18°31′", system: "7-karaka"}
+    source_section: "§10.1 row 5"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.C.GNATI
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Gnatikaraka (GK): Jupiter — Obstacles / Rivals; D1 longitude (sign-stripped) 09°48′"
+    value_json: {role: Gnatikaraka, abbreviation: GK, life_area: "Obstacles / Rivals", planet: Jupiter, d1_longitude_sign_stripped: "09°48′", system: "7-karaka"}
+    source_section: "§10.1 row 6"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.C.DARA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Darakaraka (DK): Mercury — Spouse / Partners; D1 longitude (sign-stripped) 00°50′"
+    value_json: {role: Darakaraka, abbreviation: DK, life_area: "Spouse / Partners", planet: Mercury, d1_longitude_sign_stripped: "00°50′", system: "7-karaka"}
+    source_section: "§10.1 row 7"
+    forensic_ref: "FORENSIC v8.0 §10.1 — Chara Karakas (Jaimini 7-karaka system, primary)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.ATMA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Atma: Sun (fixed); Chara Karaka = Moon (AK)"
+    value_json: {role: Atma, sthira_karaka: Sun, chara_karaka: Moon, chara_karaka_role: Atmakaraka, chara_state: "Susupta / Mrat / Shant"}
+    source_section: "§10.2 row 1"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.AMATYA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Amatya: Mercury (fixed); Chara Karaka = Saturn (AmK)"
+    value_json: {role: Amatya, sthira_karaka: Mercury, chara_karaka: Saturn, chara_karaka_role: Amatyakaraka, chara_state: "Susupta / Vradha / Muditha"}
+    source_section: "§10.2 row 2"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.BHRATRU
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Bhratru: Mars (fixed); Chara Karaka = Sun (BK)"
+    value_json: {role: Bhratru, sthira_karaka: Mars, chara_karaka: Sun, chara_karaka_role: Bhratrukaraka, chara_state: "Jaagrat / Kumar / Deena"}
+    source_section: "§10.2 row 3"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.MATRU
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Matru: Moon (fixed); Chara Karaka = Venus (MK)"
+    value_json: {role: Matru, sthira_karaka: Moon, chara_karaka: Venus, chara_karaka_role: Matrukaraka, chara_state: "Swapna / Vradha / Swatha"}
+    source_section: "§10.2 row 4"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.PUTRA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Putra: Jupiter (fixed); Chara Karaka = Mars (PK)"
+    value_json: {role: Putra, sthira_karaka: Jupiter, chara_karaka: Mars, chara_karaka_role: Putrakaraka, chara_state: "Swapna / Vradha / Deepta"}
+    source_section: "§10.2 row 5"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.GNATI
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Gnati: Saturn (fixed); Chara Karaka = Jupiter (GK)"
+    value_json: {role: Gnati, sthira_karaka: Saturn, chara_karaka: Jupiter, chara_karaka_role: Gnatikaraka, chara_state: "Jaagrat / Kumar / Swatha"}
+    source_section: "§10.2 row 6"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  - fact_id: KRK.S.DARA
+    category: sthira_karaka
+    divisional_chart: D1
+    value_text: "Sthira Karaka Dara: Venus (fixed); Chara Karaka = Mercury (DK)"
+    value_json: {role: Dara, sthira_karaka: Venus, chara_karaka: Mercury, chara_karaka_role: Darakaraka, chara_state: "Susupta / Mrat / Shant"}
+    source_section: "§10.2 row 7"
+    forensic_ref: "FORENSIC v8.0 §10.2 — Sthira Karakas (Parashari Fixed)"
+    extraction_method: direct_read
+  # ── §11.1 Upagrahas ───────────────────────────────────────────────────────
+  - fact_id: UPG.GULIKA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Gulika: Gemini 13°57′ Ardra (Time-based)"
+    value_json: {name: Gulika, type: time_based, sign: Gemini, degree: "13°57′", nakshatra: Ardra}
+    source_section: "§11.1 row 1"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.MANDI
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Mandi: Cancer 14°13′ Pushya (Time-based)"
+    value_json: {name: Mandi, type: time_based, sign: Cancer, degree: "14°13′", nakshatra: Pushya}
+    source_section: "§11.1 row 2"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.YAMAGHANTAKA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Yamaghantaka: Taurus 01°54′ Krittika (Time-based)"
+    value_json: {name: Yamaghantaka, type: time_based, sign: Taurus, degree: "01°54′", nakshatra: Krittika}
+    source_section: "§11.1 row 3"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.ARDHAPRAHARA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Ardhaprahara: Aries 10°52′ Ashwini (Time-based)"
+    value_json: {name: Ardhaprahara, type: time_based, sign: Aries, degree: "10°52′", nakshatra: Ashwini}
+    source_section: "§11.1 row 4"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.DHUMA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Dhuma: Gemini 05°17′ Mrigasira (Sun-based)"
+    value_json: {name: Dhuma, type: sun_based, sign: Gemini, degree: "05°17′", nakshatra: Mrigasira}
+    source_section: "§11.1 row 5"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.VYATIPATA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Vyatipata: Capricorn 24°42′ Dhanishta (Sun-based)"
+    value_json: {name: Vyatipata, type: sun_based, sign: Capricorn, degree: "24°42′", nakshatra: Dhanishta}
+    source_section: "§11.1 row 6"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.PARIVESHA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Parivesha: Cancer 24°42′ Ashlesha (Sun-based)"
+    value_json: {name: Parivesha, type: sun_based, sign: Cancer, degree: "24°42′", nakshatra: Ashlesha}
+    source_section: "§11.1 row 7"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.INDRACHAPA
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Indrachapa: Sagittarius 05°17′ Moola (Sun-based)"
+    value_json: {name: Indrachapa, type: sun_based, sign: Sagittarius, degree: "05°17′", nakshatra: Moola}
+    source_section: "§11.1 row 8"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  - fact_id: UPG.UPAKETU
+    category: upagraha
+    divisional_chart: D1
+    value_text: "Upaketu: Sagittarius 21°57′ Purva Ashadha (Sun-based)"
+    value_json: {name: Upaketu, type: sun_based, sign: Sagittarius, degree: "21°57′", nakshatra: "Purva Ashadha"}
+    source_section: "§11.1 row 9"
+    forensic_ref: "FORENSIC v8.0 §11.1 — Upagrahas"
+    extraction_method: direct_read
+  # ── §11.2 Bhrigu Bindu ───────────────────────────────────────────────────
+  - fact_id: BB.FORMULA
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_text: "Bhrigu Bindu formula: (Moon_abs + Rahu_abs) / 2 mod 360"
+    value_json: {formula: "(Moon_abs + Rahu_abs) / 2 mod 360"}
+    source_section: "§11.2 row 1"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.INPUT.MOON
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_number: 327.05
+    value_text: "Moon absolute longitude: 327.05°"
+    value_json: {input: Moon_abs, value_deg: 327.05}
+    source_section: "§11.2 row 2"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.INPUT.RAHU
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_number: 49.03
+    value_text: "Rahu absolute longitude: 49.03°"
+    value_json: {input: Rahu_abs, value_deg: 49.03}
+    source_section: "§11.2 row 3"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.RESULT.ABS
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_number: 188.04
+    value_text: "Bhrigu Bindu absolute longitude: 188.04°"
+    value_json: {bhrigu_bindu_abs: 188.04}
+    source_section: "§11.2 row 4"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.RESULT.SIGN
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_text: Libra
+    value_json: {sign: Libra}
+    source_section: "§11.2 row 5"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.RESULT.DEG
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_text: "08°04′"
+    value_json: {degree: "08°04′", jh_confirms: "Libra 8°03′34.51″ Swati Pada 1 — FORENSIC and JH agree"}
+    source_section: "§11.2 row 6"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.RESULT.NAK
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_text: Swati
+    value_json: {nakshatra: Swati}
+    source_section: "§11.2 row 7"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
+  - fact_id: BB.RESULT.PADA
+    category: bhrigu_bindu
+    divisional_chart: D1
+    value_number: 1
+    value_text: "Pada 1"
+    value_json: {pada: 1}
+    source_section: "§11.2 row 8"
+    forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
+    extraction_method: direct_read
