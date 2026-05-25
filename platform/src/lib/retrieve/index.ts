@@ -16,6 +16,7 @@
  * COV-S5: query_ucn_walk, query_cdlm_lookup, query_rm_walk — L2.5 structural graph tools (tools 34-36)
  * UDA-1-S1: query_transits_over_natal, query_yogas_active_now — transit windows + yoga activation (tools 37-38)
  * UDA-1-S2: get_planet_avastha, get_shadbala_full — avastha 3-step fallback + shadbala roll-up (tools 39-40)
+ * UDA-1-S3: query_jaimini_chara_dasha — Jaimini Chara Dasha active period + full timeline (tool 41)
  */
 
 import * as msrSql from './msr_sql'
@@ -93,6 +94,9 @@ import * as queryYogasActiveNow from './query_yogas_active_now'
 import * as getPlanetAvastha from './get_planet_avastha'
 import * as getShadbalaFull from './get_shadbala_full'
 
+// UDA-1-S3 — Jaimini Chara Dasha active period + full 12-rashi timeline (tool 41)
+import * as queryJaiminiCharaDasha from './query_jaimini_chara_dasha'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -137,6 +141,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryYogasActiveNow.tool,
   getPlanetAvastha.tool,
   getShadbalaFull.tool,
+  queryJaiminiCharaDasha.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
