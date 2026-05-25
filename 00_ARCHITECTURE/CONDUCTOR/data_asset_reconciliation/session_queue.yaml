@@ -296,7 +296,7 @@ sessions:
     phase: 6
     name: "Post-rebuild ephemeris verification — spot-check Rahu at birth date + 50 random dates"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P6-S23.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 45
     depends_on: [DAR-P6-S22]
     gate_commands:

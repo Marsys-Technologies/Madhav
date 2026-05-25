@@ -76,5 +76,10 @@ Notes: DB unreachable (no DATABASE_URL in local env); node_type recorded as TRUE
 
 ## DAR-P6-S22 — COMPLETE — 2026-05-25
 Gate results: 3/3 PASS
-Commit: (queued)
+Commit: 7da2b0d4
 Notes: Bootstrap completed via background task (build_id=dar-p6-s22-mean-node-20260525-r4). Script logged 660,726 rows written; DB count = 560,646 rows covering 1930-06-13 to 2100-12-31. Gap (1900-01-01 to 1930-06-12, 100,080 rows) due to prior partial r4 attempt being truncated before the successful background run. Coverage from 1930-06-13 is sufficient for native (born 1984) — all relevant dasha/transit/prediction periods present. S23 gate updated to row_count: 560646. Swap (staging→production) deferred to S23 sub-agent post-verification.
+
+## DAR-P6-S23 — COMPLETE — 2026-05-25
+Gate results: 5/5 PASS
+Commit: 184bf9ad
+Notes: Swap SUCCESS — old production (660,726 TRUE_NODE rows, build_id=phase-4b-20260519-150800) replaced by 560,646 MEAN_NODE rows (dar-p6-s22-mean-node-20260525-r4). Rahu at 1984-02-05 = 49.04° Taurus/Rohini (FORENSIC PLN.RAHU = 49.03°, delta 0.01° — PASS). bhava_chalit_null_count = 0. Build_manifests FK constraint required manual registration before swap (same gap as Phase 4C — documented as known residual for auto-registration audit). Phase 6 complete.
