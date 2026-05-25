@@ -200,7 +200,7 @@ sessions:
     phase: 5
     name: "Build derivation_ledger stub generator — v6_ids_consumed → FORENSIC path+line"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S15.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 60
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/tools/generate_derivation_ledger_stubs.py"

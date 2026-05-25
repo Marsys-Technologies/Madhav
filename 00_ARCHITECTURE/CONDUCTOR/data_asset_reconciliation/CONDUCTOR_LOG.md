@@ -35,3 +35,12 @@ Next PENDING session: DAR-P5-S15
 Phase 5 (B.3 derivation-ledger grounding backfill, S15–S20) and beyond remain.
 
 CONTEXT_LIMIT_REACHED — next session: DAR-P5-S15 — re-kick Conductor from this session.
+
+## CONDUCTOR RUN 2 — 2026-05-25
+
+### Resuming from: DAR-P5-S15
+
+## DAR-P5-S15 — COMPLETE — 2026-05-25
+Gate results: 2/2 PASS
+Commit: a6ea5636
+Notes: Script parses 569 signals (4 known ID gaps per MSR frontmatter); stubs_generated=567, already_grounded=2 (MSR.377 + MSR.387). Dry-run only — MSR file not modified.
