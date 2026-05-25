@@ -134,7 +134,7 @@ sessions:
     phase: 3
     name: "Rebuild four register writers + school_signal_coverage (4011 rows) + refresh MV"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S10.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 60
     depends_on: [DAR-P3-S8]
     gate_commands:
