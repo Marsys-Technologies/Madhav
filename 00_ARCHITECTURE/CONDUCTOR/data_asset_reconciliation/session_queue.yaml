@@ -163,7 +163,7 @@ sessions:
     phase: 4
     name: "chart_facts extractors — Yogi/Avayogi + Mrityu Bhaga + Chalit kinetic + Avastha + longevity"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P4-S12.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 90
     gate_commands:
       - "grep -q 'yogi_avayogi' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
