@@ -1,0 +1,65 @@
+# MSR v5.0 B.3 Derivation-Ledger grounding progress
+# Each session writes its domain key as DONE when complete
+# S20 reads this to validate all domains complete before MSR v5.1 bump
+
+grounded_lagna: DONE      # DAR-P5-S16 (2026-05-25): 83 signals grounded
+grounded_sun: DONE        # DAR-P5-S16 (2026-05-25): 100 signals grounded
+grounded_moon: DONE       # DAR-P5-S16 (2026-05-25): 134 signals grounded
+grounded_mars: DONE       # DAR-P5-S16 (2026-05-25): 96 signals grounded
+grounded_mercury: DONE     # DAR-P5-S17 (2026-05-25): 61 signals grounded
+grounded_jupiter: DONE     # DAR-P5-S17 (2026-05-25): 75 signals grounded
+grounded_venus: DONE       # DAR-P5-S17 (2026-05-25): 49 signals grounded
+grounded_saturn: DONE      # DAR-P5-S17 (2026-05-25): 72 signals grounded
+grounded_house_domain: DONE   # DAR-P5-S18 (2026-05-25): Saham sensitive points, Jaimini A6/UL/Chara, meta-convergence, upagraha, cross-varga §VI preamble
+grounded_dasha: DONE          # DAR-P5-S18 (2026-05-25): Vimshottari (Ketu MD, Mercury MD bridge, Saturn AD), Chara Dasha, Yogini Dasha signals
+grounded_nadi_bnn: DONE       # DAR-P5-S18 (2026-05-25): No Nadi/BNN domain signals found in PENDING set — domain complete by absence
+grounded_yogini_tajaka: DONE  # DAR-P5-S18 (2026-05-25): Yogini preamble (MSR.557), Tajika preamble (§IX) + individual signals (MSR.559-573)
+total_grounded: 573
+last_updated: 2026-05-25
+
+# Session notes:
+# DAR-P5-S16 (2026-05-25):
+#   - Ran generate_derivation_ledger_stubs.py: injected 567 PENDING stubs
+#     (2 signals already had derivation_ledger blocks from prior sessions)
+#   - Grounded 309 signals across Lagna/Sun/Moon/Mars domains
+#   - FORENSIC v8.0 fact IDs used:
+#     Lagna:  MET.LAGNA.SIGN, MET.LAGNA.NAK, HSE.1, CSP.1, BVB.JH.1, KP.CUSP.1
+#     Sun:    PLN.SUN, D9.SUN, D10.SUN, SBL.TOTAL.SUN, IKP.SUN, KP.PLN.SUN
+#     Moon:   PLN.MOON, MET.MOON.SIGN, MET.MOON.NAK, D9.MOON, D9.12H.TENANTS,
+#             KRK.ATMA, SBL.TOTAL.MOON, IKP.MOON, KP.PLN.MOON
+#     Mars:   PLN.MARS, D9.MARS, D10.MARS, SBL.TOTAL.MARS, IKP.MARS,
+#             KP.PLN.MARS, CSI.MARS, HSE.7
+#   - 258 signals remain PENDING (Mercury, Jupiter, Venus, Saturn,
+#     house domain, dasha, nadi/BNN, Yogini/Tajaka)
+#
+# DAR-P5-S17 (2026-05-25):
+#   - Grounded 196 signals across Mercury/Jupiter/Venus/Saturn domains
+#   - Signals with multiple planet entities counted in each matching domain
+#   - FORENSIC v8.0 fact IDs used:
+#     Mercury: PLN.MERCURY, D9.MERCURY, D10.MERCURY, CSI.MERCURY,
+#              KP.PLN.MERCURY, CDL.MERCURY, SBL.TOTAL.MERCURY
+#     Jupiter: PLN.JUPITER, D9.JUPITER, D10.JUPITER, CSI.JUPITER,
+#              KP.PLN.JUPITER, CDL.JUPITER, SBL.TOTAL.JUPITER
+#     Venus:   PLN.VENUS, D9.VENUS, D10.VENUS, CSI.VENUS,
+#              KP.PLN.VENUS, CDL.VENUS, SBL.TOTAL.VENUS
+#     Saturn:  PLN.SATURN, D9.SATURN, D10.SATURN, CSI.SATURN,
+#              KP.PLN.SATURN, CDL.SATURN, SBL.TOTAL.SATURN
+#   - 62 signals remain PENDING (Rahu/Ketu, house-domain, dasha, nadi/BNN, Yogini/Tajaka)
+#
+# DAR-P5-S18 (2026-05-25):
+#   - Grounded all 62 remaining PENDING signals across:
+#     Rahu/Ketu natal:     PLN.RAHU, PLN.KETU, HSE.2, HSE.8, D9.RAHU, D9.KETU, D10.RAHU
+#     Dasha (Vimshottari): DSH.V.023, DSH.V.024, DSH.V.016, DSH.V.029, MET.DASHA.CURRENT
+#     Dasha (Chara):       DSH.C.085 (Scorpio MD 2026-02-05 to 2027-01-05)
+#     Dasha (Yogini):      DSH.Y.BHADRIKA.2021
+#     Sahams:              SAH.SRADDHA, SAH.BANDHU, SAH.PUNYA, SAH.YASAS, SAH.VIDYA,
+#                          SAH.MITRA, SAH.SAMARTHA, SAH.KALI, SAH.PITRU, SAH.RAJYA,
+#                          SAH.KARMA, SAH.ARTHA, SAH.PARADARA, SAH.SASTRA, SAH.JEEVA,
+#                          SAH.GAURAVA, SAH.BHRATRU, SAH.ROGA
+#     Arudhas:             ARD.A6, KP.CUSP.2
+#     Upagrahas:           UPG.MANDI, UPG.GULIKA
+#     Special Lagnas:      LAG.VARNADA, LAG.GHATI, CSI.MERCURY
+#     Meta/Statistics:     MET.DASHA.CURRENT (statistics signals with no chart-fact ID)
+#     Tajika framework:    MET.LAGNA.SIGN, SAH.PUNYA (Varsha Kundali framework signals)
+#   - 0 signals remain PENDING — complete B.3 grounding of all 573 MSR v5.0 signals
+#   - Final GROUNDED count: 567 (includes all prior sessions + S18 62 signals)

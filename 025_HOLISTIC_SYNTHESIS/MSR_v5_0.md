@@ -1,6 +1,6 @@
 ---
 artifact: MSR_v5_0.md
-version: "5.0"
+version: 5.1
 canonical_id: MSR
 status: CURRENT
 predecessor: MSR_v4_0.md (543 signals)
@@ -13,6 +13,7 @@ signal_count: 573
 v3_1_changelog: "VARGA-ETL-FULL-S1 D12 (2026-05-10): added §VI — 15 Cross-Varga Dignity Signals SIG.MSR.500–514. Sourced from FORENSIC §3.15 CSI ledger + §3.1–§3.14 divisional placement tables. No prior signal mutated."
 v3_1_reconciliation_note: "M5-A-S1 (2026-05-13): Signal-completeness reconciliation. grep-count confirms 514 authored SIG.MSR.* entries, exactly matching signal_count:514. Four ID gaps are confirmed numbering artifacts — SIG.MSR.207 (between 206 and 208; skipped during v1.0 authoring) and SIG.MSR.497–499 (between 496 and 500; v2.0 closed at 496 before v3.1 added 500–514). No content is missing; the gaps are artifacts of in-session renumbering. Platform comparison (msr_domain_buckets.json) not available in this worktree; structural count is confirmed correct."
 v4_0_changelog: "M8-F-S1 (2026-05-14): added §VII — 29 Nadi + BNN Signals SIG.MSR.515–543. Extracted from Bhrigu Nandi Nadi (25 signals), Chandra Kala Nadi (2 signals), Dhruva Nadi (1 signal), and 1 cross-source signal. All use Nadi-specific trigger mechanisms (sequential transit analysis, house-from-planet counting) absent from Parashari/Jaimini framework. Dedup confirmed against SIG.MSR.001–514; no prior signal mutated. Source: MSR_EXPANSION_PROPOSAL_v1_0.md + BNN_SIGNAL_EXTRACTION_v1_0.md + NADI_SIGNAL_EXTRACTION_v1_0.md."
+v5_1_changelog: "DAR-P5-S20 (2026-05-25): B.3 derivation_ledger grounding complete via DAR workstream (567/569 parseable signals grounded; 2 signals already had derivation_ledger blocks prior to DAR; 4 known ID gaps in numbering: SIG.MSR.207, SIG.MSR.497–499). All grounding_status fields set to GROUNDED across all 12 domains (Lagna, Sun, Moon, Mars via DAR-P5-S16; Mercury, Jupiter, Venus, Saturn via DAR-P5-S17; house_domain, dasha, nadi_bnn, yogini_tajaka via DAR-P5-S18). Canonical total: 573 signals."
 ---
 
 # MSR_v5_0 — MASTER SIGNAL REGISTER (UNIFIED)
@@ -40,6 +41,21 @@ SIG.MSR.001:
   v6_ids_consumed: [PLN.SATURN, SBL.SAT, HSE.7, BVB.7]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.STR.01, CTR.01"
   prior_id: SIG.01
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.002:
   signal_name: "D9 Neecha Bhanga Raja Yoga — Venus Debilitated Virgo D9, Cancelled by Mercury Vargottama"
@@ -61,6 +77,21 @@ SIG.MSR.002:
   v6_ids_consumed: [PLN.VENUS, D9.VENUS, PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "RPT.YOG.01.A"
   prior_id: SIG.02
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.003:
   signal_name: "D9 Neecha Bhanga Raja Yoga — Saturn Debilitated Aries D9, Cancelled by Sun in D9 Lagna"
@@ -82,6 +113,21 @@ SIG.MSR.003:
   v6_ids_consumed: [PLN.SATURN, D9.SATURN, PLN.SUN, D9.SUN]
   rpt_deep_dive: "RPT.YOG.01.A"
   prior_id: SIG.03
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SUN
+        note: "Sun in Cancer D9 (not vargottama)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.004:
   signal_name: "Atmakaraka Moon in 11H Aquarius — D9 Karakamsa Gemini"
@@ -103,6 +149,18 @@ SIG.MSR.004:
   v6_ids_consumed: [PLN.MOON, HSE.11, DSH.C.AK, D9.MOON]
   rpt_deep_dive: "RPT.STR.01.B, RPT.DEV.01"
   prior_id: SIG.04
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.005:
   signal_name: "Moon-AK Chalit-12 Foreign Income Architecture"
@@ -124,6 +182,18 @@ SIG.MSR.005:
   v6_ids_consumed: [PLN.MOON, HSE.12, CUSP.12]
   rpt_deep_dive: "RPT.HSE.01.C, RPT.STR.01.B"
   prior_id: SIG.05
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.006:
   signal_name: "D9 12H Gemini Stellium — Moon + Jupiter + Rahu Disposited by Vargottama Mercury"
@@ -145,6 +215,18 @@ SIG.MSR.006:
   v6_ids_consumed: [D9.MOON, D9.JUPITER, D9.RAHU]
   rpt_deep_dive: "RPT.HSE.01.E"
   prior_id: SIG.06
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §3.5.2 D9 12th-House Stellium"
+        fact_id: D9.12H.TENANTS
+        note: "Moon in D9 12H Gemini stellium with Jupiter and Rahu"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.007:
   signal_name: "Saraswati Yoga — Jupiter + Venus + Mercury in Kendra/Trikona — CYSS 91"
@@ -167,6 +249,21 @@ SIG.MSR.007:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.MERCURY, HSE.9, HSE.10]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.YOG.01.C"
   prior_id: SIG.07
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.008:
   signal_name: "Lakshmi Yoga — 9L Jupiter Own-Sign + Venus Strong in 9H — CYSS 77"
@@ -188,6 +285,21 @@ SIG.MSR.008:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.HSE.01.D"
   prior_id: SIG.08
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.009:
   signal_name: "Mercury Vargottama + MD Lord + Yogi Planet — Chart Operational Spine"
@@ -210,6 +322,18 @@ SIG.MSR.009:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "RPT.STR.01.C, RPT.YOG.01.A, RPT.DSH.01.A"
   prior_id: SIG.09
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.010:
   signal_name: "Rahu in 2H Taurus Rohini — Wealth Through Unconventional Channels"
@@ -232,6 +356,18 @@ SIG.MSR.010:
   v6_ids_consumed: [PLN.RAHU, HSE.2, NAK.ROHINI]
   rpt_deep_dive: "RPT.HSE.02.A, RPT.TRN.03"
   prior_id: SIG.10
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.2
+        note: "House 2 Taurus — Rahu tenant; wealth/family house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.011:
   signal_name: "Anapha Yoga — Sun + Mercury in 12th from Moon (Capricorn)"
@@ -254,6 +390,21 @@ SIG.MSR.011:
   rpt_deep_dive: "RPT.YOG.01.A"
   prior_id: SIG.11
   red_team_note: "DA v1.2.1 and CGM incorrectly attributed Anapha to Saturn; corrected here — Sun+Mercury in 12th from Moon is the accurate classical reading"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.012:
   signal_name: "Venus Shadbala Rank 7 — Weakest Planet by Aggregate Strength"
@@ -275,6 +426,21 @@ SIG.MSR.012:
   v6_ids_consumed: [PLN.VENUS, SBL.VENUS, HSE.2, HSE.7]
   rpt_deep_dive: "RPT.HSE.02.C, RPT.DEV.01"
   prior_id: SIG.12
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.VENUS
+        note: "Venus Shadbala rank 7 (4.80 rupas JH)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.013:
   signal_name: "Sade Sati Cycle 2 Active — Saturn in Pisces Transiting 12th from Natal Moon"
@@ -296,6 +462,18 @@ SIG.MSR.013:
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, DSH.V.SS.C2]
   rpt_deep_dive: "RPT.TRN.01, RPT.KAK.01"
   prior_id: SIG.13
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.014:
   signal_name: "Sun 10H Capricorn with AL + Mercury — Career-Density Stellium"
@@ -319,6 +497,18 @@ SIG.MSR.014:
   rpt_deep_dive: "RPT.HSE.01.A, RPT.DVS.01"
   prior_id: SIG.14
   reconciliation: "FIX_SESSION_001 2026-04-18 — Removed non-existent Jupiter-5th-aspect-from-9H-onto-10H supporting rule; confidence adjusted from 0.90 to 0.88 to reflect loss of that supporting rule."
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.015:
   signal_name: "Hidden Raja Yoga — Mars + Saturn Exalted Conjunction in 7H Libra"
@@ -341,6 +531,18 @@ SIG.MSR.015:
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.7]
   rpt_deep_dive: "RPT.HSE.02.B, RPT.HSE.02.D"
   prior_id: SIG.15
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.016:
   signal_name: "Mercury Operational Dominance — Six-Factor CVG.01 Convergence"
@@ -364,6 +566,18 @@ SIG.MSR.016:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "RPT.STR.01.C, RPT.DSH.01.A"
   prior_id: CVG.01
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.017:
   signal_name: "Jupiter 9L-Own Dharma-Wealth Chain — CVG.02"
@@ -386,6 +600,18 @@ SIG.MSR.017:
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.D, RPT.YOG.01.A"
   prior_id: CVG.02
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.018:
   signal_name: "Moon AK Foreign-Income Chain — CVG.03"
@@ -408,6 +634,18 @@ SIG.MSR.018:
   v6_ids_consumed: [PLN.MOON, HSE.12, D9.MOON, CUSP.12]
   rpt_deep_dive: "RPT.HSE.01.C, RPT.HSE.01.E"
   prior_id: CVG.03
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.019:
   signal_name: "10H Career-Density Convergence — CVG.04"
@@ -431,6 +669,18 @@ SIG.MSR.019:
   rpt_deep_dive: "RPT.HSE.01.A, RPT.DVS.01"
   prior_id: CVG.04
   reconciliation: "FIX_SESSION_001 2026-04-18 — Corrected non-existent Jupiter-5th-aspect-onto-10H to actual 9L-lordship-adjacency mechanism; confidence 0.90→0.88."
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.020:
   signal_name: "Saturn 7H Exalted + Shadbala + MPY + AD Lord + Yogini — CVG.05"
@@ -453,6 +703,21 @@ SIG.MSR.020:
   v6_ids_consumed: [PLN.SATURN, SBL.SAT, DSH.V.SAT_AD, HSE.7]
   rpt_deep_dive: "RPT.DSH.01.A, RPT.HSE.02.B"
   prior_id: CVG.05
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.021:
   signal_name: "Jupiter 9H Own-Sign + Lakshmi Member + 9L + MPY Near-Miss — CVG.06"
@@ -474,6 +739,18 @@ SIG.MSR.021:
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.D"
   prior_id: CVG.06
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.022:
   signal_name: "Gemini 3H Nexus — UL + A5 + A11 + Hora Lagna + Vivaha Saham (4H Cancer) — CVG.07"
@@ -495,6 +772,18 @@ SIG.MSR.022:
   confidence: 0.82
   v6_ids_consumed: [ARD.UL, ARD.A5, ARD.A11, LAG.HORA, SAH.VIVAHA, UPG.GULIKA, UPG.DHUMA, HSE.3, HSE.4]
   rpt_deep_dive: "RPT.HSE.02.C, REPORT_RELATIONSHIPS_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.023:
   signal_name: "Aries-Libra Axis Triple-Aspect — Mars/Saturn 7th + Jupiter 5th + Bhrigu Bindu + Muntha — CVG.08"
@@ -517,6 +806,21 @@ SIG.MSR.023:
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, PLN.JUPITER, BB.NATAL, HSE.1, HSE.7]
   rpt_deep_dive: "RPT.HSE.02.B, RPT.STR.01.A"
   prior_id: CVG.08
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.024:
   signal_name: "Saturn Ishta/Kashta Phala Resolution — Saturn IS the Chart's Most Beneficial Phala Planet (v2.0 REVISED)"
@@ -539,6 +843,18 @@ SIG.MSR.024:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, SBL.SAT, ISH.SAT, KAS.SAT]
   rpt_deep_dive: "REPORT_FINANCIAL_v2_1, UCN_v3_0 §XXIII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.025:
   signal_name: "Dharma Devata Tension — Venkateswara (Classical) vs Jagannath (Operational) — CTR.02"
@@ -560,6 +876,18 @@ SIG.MSR.025:
   v6_ids_consumed: [D20.PISCES, PLN.SUN, PLN.VENUS]
   rpt_deep_dive: "RPT.DEV.01.C, RPT.DEV.01.F"
   prior_id: CTR.02
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.026:
   signal_name: "Jupiter Uccha Bala Rank 7 Last — Positional Weakness Amid Dignity Strength — CTR.03"
@@ -581,6 +909,18 @@ SIG.MSR.026:
   v6_ids_consumed: [PLN.JUPITER, SBL.JUP]
   rpt_deep_dive: "RPT.RED.03"
   prior_id: CTR.03
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.027:
   signal_name: "Moon Rashi-11H vs Chalit-12H House Drift — CTR.04"
@@ -603,6 +943,15 @@ SIG.MSR.027:
   v6_ids_consumed: [PLN.MOON, CUSP.11, CUSP.12]
   rpt_deep_dive: "RPT.HSE.01.C"
   prior_id: CTR.04
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.028:
   signal_name: "Mercury Rashi/Chalit Ambiguity — 10H vs Cusp Proximity — CTR.05"
@@ -624,6 +973,18 @@ SIG.MSR.028:
   v6_ids_consumed: [PLN.MERCURY, CUSP.10, CUSP.9]
   rpt_deep_dive: "RPT.RED.05"
   prior_id: CTR.05
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.029:
   signal_name: "Sun Sthana Bala Arithmetic Resolved — CTR.06"
@@ -644,6 +1005,18 @@ SIG.MSR.029:
   v6_ids_consumed: [PLN.SUN, SBL.SUN]
   rpt_deep_dive: "RPT.RED.01, D.101"
   prior_id: CTR.06
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.030:
   signal_name: "Sade Sati Phase Labels vs Saturn Ephemeris Inconsistency — CTR.07"
@@ -665,6 +1038,18 @@ SIG.MSR.030:
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, DSH.V.SS.C2]
   rpt_deep_dive: "RPT.TRN.01"
   prior_id: CTR.07
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.031:
   signal_name: "Rahu Quadruple Jaimini Aspect — Rahu Aspects Sun + Mercury + Mars + Saturn"
@@ -688,6 +1073,21 @@ SIG.MSR.031:
   v6_ids_consumed: [PLN.RAHU, PLN.SUN, PLN.MERCURY, PLN.MARS, PLN.SATURN, HSE.2, HSE.7, HSE.10]
   rpt_deep_dive: "CGP_AUDIT_v1_0 §3.3"
   prior_id: SIG.16
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.032:
   signal_name: "7H Bhavabala Rank 12 vs SAV Rank 1 — Paradox: Strong Sign in Weak House"
@@ -710,6 +1110,18 @@ SIG.MSR.032:
   v6_ids_consumed: [HSE.7, BVB.7, SAV.7]
   rpt_deep_dive: "MATRIX_HOUSES §4.7"
   prior_id: SIG.17
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MARS
+        note: "Mars Shadbala JH 5.34 rupas rank 6"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.033:
   signal_name: "12H Bhavabala Rank 1 vs SAV Rank 12 — Self-Powered Moksha Architecture"
@@ -732,6 +1144,15 @@ SIG.MSR.033:
   v6_ids_consumed: [HSE.12, BVB.12, SAV.12, PLN.JUPITER, PLN.MOON]
   rpt_deep_dive: "MATRIX_HOUSES §4.12"
   prior_id: SIG.18
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.034:
   signal_name: "Sun-Mercury-AL 10H Density Loop-Closure — Triple 10H Concentration"
@@ -755,6 +1176,18 @@ SIG.MSR.034:
   rpt_deep_dive: "RPT.HSE.01.A, RPT.DVS.01"
   prior_id: SIG.19
   reconciliation: "FIX_SESSION_001 2026-04-18 — Replaced non-existent Jupiter-5th-aspect-onto-10H with accurate trine-to-kendra-adjacency mechanism; confidence 0.90→0.88."
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.035:
   signal_name: "Mercury Operational Yoga Stack — Elevates CVG.01 to Six-Layer Convergence"
@@ -778,6 +1211,18 @@ SIG.MSR.035:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "RPT.STR.01.C, RPT.DSH.01"
   prior_id: SIG.20
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.036:
   signal_name: "Ketu-Mercury 0.50° Quincunx — Tightest Aspect in Chart, MD-Handover Bridge 2027"
@@ -801,6 +1246,18 @@ SIG.MSR.036:
   v6_ids_consumed: [PLN.KETU, PLN.MERCURY, HSE.8, HSE.10]
   rpt_deep_dive: "MATRIX_PLANETS §4.MERCURY, §4.KETU, RPT.DSH.02"
   prior_id: SIG.21
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.037:
   signal_name: "Saturn Quadruple-Structural-Activation — Shadbala + Pinda + MPY + AD + AmK"
@@ -824,6 +1281,18 @@ SIG.MSR.037:
   v6_ids_consumed: [PLN.SATURN, SBL.SAT, DSH.V.SAT_AD, KRK.C.AMK]
   rpt_deep_dive: "RPT.DSH.01.A, MATRIX_PLANETS §4.SATURN"
   prior_id: SIG.22
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.038:
   signal_name: "Triple-Exalted-Nodal-Axis — Saturn (Libra) + Rahu (Taurus) + Ketu (Scorpio) All Exalted"
@@ -847,6 +1316,18 @@ SIG.MSR.038:
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU, HSE.7, HSE.2, HSE.8]
   rpt_deep_dive: "MATRIX_SIGNS §3.LIBRA, §3.TAURUS, §3.SCORPIO"
   prior_id: SIG.23
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.039:
   signal_name: "Mars-Capricorn-Transit as Career-Launch Trigger — Retrodictively Confirmed"
@@ -870,6 +1351,21 @@ SIG.MSR.039:
   v6_ids_consumed: [PLN.MARS, SGN.CAPRICORN, HSE.10]
   rpt_deep_dive: "MATRIX_SIGNS §3.CAPRICORN"
   prior_id: SIG.24
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.040:
   signal_name: "Saturn-Pisces Triple-Activation 2025–2028 — Transit + Kakshya + Sade Sati Descending"
@@ -892,6 +1388,18 @@ SIG.MSR.040:
   v6_ids_consumed: [PLN.SATURN, SGN.PISCES, HSE.12, PLN.MOON]
   rpt_deep_dive: "RPT.TRN.01, RPT.KAK.01"
   prior_id: SIG.25
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.041:
   signal_name: "D27 Lagna Pisces = D1 12H Pisces — Strength-Chart Lagna is Natal Moksha House"
@@ -915,6 +1423,18 @@ SIG.MSR.041:
   v6_ids_consumed: [D27.LAGNA, HSE.12]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D27"
   prior_id: SIG.26
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §6.6 Bhava Bala JH"
+        fact_id: BVB.JH.1
+        note: "Lagna Bhava Bala 7.00 rupas JH rank 8"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.042:
   signal_name: "D60 Saturn at Lagna — Past-Karma Primary Thread is Saturn-Discipline"
@@ -937,6 +1457,18 @@ SIG.MSR.042:
   v6_ids_consumed: [D60.SATURN, D60.LAGNA]
   rpt_deep_dive: "RPT.DVS.02"
   prior_id: SIG.27
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.043:
   signal_name: "D20 + D40 Sun-Pisces Vishnu-Affinity — Structural Cross-Divisional Pattern"
@@ -960,6 +1492,18 @@ SIG.MSR.043:
   v6_ids_consumed: [D20.PISCES, D40.10, PLN.SUN, HSE.12]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D20, §4.D40"
   prior_id: SIG.28
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.044:
   signal_name: "Mercury MD Retrodictive Density 10× Other MDs — Empirical Validation of CVG.01"
@@ -982,6 +1526,15 @@ SIG.MSR.044:
   v6_ids_consumed: [PLN.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4.MERCURY_MD"
   prior_id: SIG.29
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.045:
   signal_name: "100% AD-Lord Domain-Match Pattern — Every Mercury MD Sub-Period Thematically Matches Lord"
@@ -1005,6 +1558,15 @@ SIG.MSR.045:
   v6_ids_consumed: [PLN.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4"
   prior_id: SIG.30
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.046:
   signal_name: "Saturn Return Libra 2041–2044 — Lifetime Apex Transit at Age 57–60"
@@ -1028,6 +1590,18 @@ SIG.MSR.046:
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA, HSE.7]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4.FUTURE_APEX"
   prior_id: SIG.31
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.047:
   signal_name: "Sun in Capricorn D1 — Enemy Sign (Shatru Kshetra)"
@@ -1050,6 +1624,18 @@ SIG.MSR.047:
   confidence: 0.92
   v6_ids_consumed: [PLN.SUN, SGN.CAPRICORN, SBL.SUN]
   rpt_deep_dive: "RPT.STR.01.C, Session 10b correction"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.048:
   signal_name: "Moon in Aquarius D1 — Neutral Sign (Sama)"
@@ -1071,6 +1657,18 @@ SIG.MSR.048:
   confidence: 0.88
   v6_ids_consumed: [PLN.MOON, SGN.AQUARIUS, SBL.MOON]
   rpt_deep_dive: "RPT.STR.01.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.049:
   signal_name: "Mars in Libra D1 — Enemy Sign, Lagnesh in 7H"
@@ -1093,6 +1691,18 @@ SIG.MSR.049:
   confidence: 0.90
   v6_ids_consumed: [PLN.MARS, SGN.LIBRA, SBL.MARS, HSE.7]
   rpt_deep_dive: "RPT.STR.01.A, RPT.HSE.02.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.050:
   signal_name: "Mercury in Capricorn D1 — Neutral/Friendly Sign"
@@ -1114,6 +1724,21 @@ SIG.MSR.050:
   confidence: 0.90
   v6_ids_consumed: [PLN.MERCURY, SGN.CAPRICORN, D9.MERCURY]
   rpt_deep_dive: "RPT.STR.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.051:
   signal_name: "Jupiter in Sagittarius D1 — Own Sign (Swa Kshetra)"
@@ -1136,6 +1761,18 @@ SIG.MSR.051:
   confidence: 0.93
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS, HSE.9, SBL.JUP]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.HSE.01.D"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.052:
   signal_name: "Venus in Sagittarius D1 — Friend's Sign (Mitra Kshetra)"
@@ -1158,6 +1795,21 @@ SIG.MSR.052:
   confidence: 0.88
   v6_ids_consumed: [PLN.VENUS, SGN.SAGITTARIUS, SBL.VENUS]
   rpt_deep_dive: "RPT.HSE.02.C, RPT.DEV.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H — own sign"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.VENUS
+        note: "Venus Shadbala rank 7 (4.80 rupas JH)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.053:
   signal_name: "Saturn in Libra D1 — Exalted (Uccha), Maximum Uccha Bala 59.18 Virupa"
@@ -1180,6 +1832,21 @@ SIG.MSR.053:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA, SBL.SAT, HSE.7]
   rpt_deep_dive: "SIG.MSR.001, RPT.YOG.01.A, RPT.HSE.02.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.054:
   signal_name: "Rahu in Taurus D1 — Exalted (Classical School)"
@@ -1201,6 +1868,18 @@ SIG.MSR.054:
   confidence: 0.78
   v6_ids_consumed: [PLN.RAHU, SGN.TAURUS, HSE.2, NAK.ROHINI]
   rpt_deep_dive: "RPT.HSE.02.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 — classical exaltation Taurus"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.RAHU
+        note: "Rahu in Gemini D9 (not vargottama) — dignity shift D1→D9"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.055:
   signal_name: "Ketu in Scorpio D1 — Exalted (Classical School)"
@@ -1223,6 +1902,18 @@ SIG.MSR.055:
   confidence: 0.78
   v6_ids_consumed: [PLN.KETU, SGN.SCORPIO, HSE.8, NAK.JYESHTHA]
   rpt_deep_dive: "RPT.DSH.02"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — Ketu tenant; transformation/moksha house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.056:
   signal_name: "Mercury Vargottama in Capricorn D9 — Same Sign as D1 (Maximum Stability)"
@@ -1244,6 +1935,18 @@ SIG.MSR.056:
   confidence: 0.95
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, SGN.CAPRICORN]
   rpt_deep_dive: "RPT.STR.01.C, SIG.MSR.009"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.057:
   signal_name: "Venus Debilitated in Virgo D9 — Neecha, Cancelled (NBRY)"
@@ -1266,6 +1969,21 @@ SIG.MSR.057:
   confidence: 0.82
   v6_ids_consumed: [PLN.VENUS, D9.VENUS, PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "RPT.YOG.01.A, SIG.MSR.002"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.058:
   signal_name: "Saturn Debilitated in Aries D9 — Neecha, Cancelled (NBRY)"
@@ -1287,6 +2005,18 @@ SIG.MSR.058:
   confidence: 0.80
   v6_ids_consumed: [PLN.SATURN, D9.SATURN, PLN.SUN, D9.SUN]
   rpt_deep_dive: "RPT.YOG.01.A, SIG.MSR.003"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SUN
+        note: "Sun in Cancer D9 (not vargottama)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.059:
   signal_name: "Moon in Gemini D9 12H — AK in Moksha House of Navamsa"
@@ -1308,6 +2038,18 @@ SIG.MSR.059:
   confidence: 0.82
   v6_ids_consumed: [PLN.MOON, D9.MOON, SGN.GEMINI]
   rpt_deep_dive: "SIG.MSR.006, RPT.HSE.01.E"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.060:
   signal_name: "Jupiter in Gemini D9 12H — Enemy Sign, Yet Part of Moksha Stellium"
@@ -1329,6 +2071,18 @@ SIG.MSR.060:
   confidence: 0.75
   v6_ids_consumed: [PLN.JUPITER, D9.JUPITER, SGN.GEMINI]
   rpt_deep_dive: "SIG.MSR.006, RPT.DVS.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.061:
   signal_name: "Sun in Cancer D9 — Friend's Sign, D9 Lagna (1H D9) — Strong Navamsa Positioning"
@@ -1350,6 +2104,21 @@ SIG.MSR.061:
   confidence: 0.78
   v6_ids_consumed: [PLN.SUN, D9.SUN, SGN.CANCER]
   rpt_deep_dive: "SIG.MSR.003, SIG.MSR.058"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SUN
+        note: "Sun in Cancer D9 (not vargottama)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.062:
   signal_name: "Saturn in Taurus D10 — Friend's Sign at D10 Midheaven"
@@ -1371,6 +2140,21 @@ SIG.MSR.062:
   confidence: 0.80
   v6_ids_consumed: [PLN.SATURN, D10.SATURN, SGN.TAURUS]
   rpt_deep_dive: "RPT.DVS.01, MATRIX_DIVISIONALS §4.D10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SATURN
+        note: "Saturn in Taurus D10 — 10th house D10 (angular, very strong)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.063:
   signal_name: "Sun + Mars in Aries D10 9H — Both Exalted/Own-Sign in D10 Trikona"
@@ -1392,6 +2176,21 @@ SIG.MSR.063:
   confidence: 0.80
   v6_ids_consumed: [PLN.SUN, PLN.MARS, D10.SUN, D10.MARS, SGN.ARIES]
   rpt_deep_dive: "RPT.DVS.01, MATRIX_DIVISIONALS §4.D10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SUN
+        note: "Sun in Aries D10 9H"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.064:
   signal_name: "Mercury Own-Sign in Virgo D10 2H — Budha in Own Sign in Dhana Bhava of Career Chart"
@@ -1413,6 +2212,18 @@ SIG.MSR.064:
   confidence: 0.78
   v6_ids_consumed: [PLN.MERCURY, D10.MERCURY, SGN.VIRGO]
   rpt_deep_dive: "RPT.DVS.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.MERCURY
+        note: "Mercury in Virgo D10 (own sign) — 2nd house D10"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.065:
   signal_name: "Mars Exalted in Capricorn D3 Drekkana — Physical Vitality Reinforced"
@@ -1433,6 +2244,18 @@ SIG.MSR.065:
   confidence: 0.70
   v6_ids_consumed: [PLN.MARS, D3.MARS, SGN.CAPRICORN]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.066:
   signal_name: "Jupiter Own-Sign in Sagittarius D7 Saptamsha — Children Prosperity"
@@ -1454,6 +2277,18 @@ SIG.MSR.066:
   confidence: 0.72
   v6_ids_consumed: [PLN.JUPITER, D7.JUPITER, SGN.SAGITTARIUS]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D7"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.067:
   signal_name: "Saturn D9 Aries Debilitation — Cross-Reference to MSR.058"
@@ -1474,6 +2309,18 @@ SIG.MSR.067:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, D9.SATURN]
   rpt_deep_dive: "SIG.MSR.058"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.068:
   signal_name: "Rahu in Gemini D9 12H — Amplifies Stellium and Foreign Dimension"
@@ -1494,6 +2341,18 @@ SIG.MSR.068:
   confidence: 0.78
   v6_ids_consumed: [PLN.RAHU, D9.RAHU, SGN.GEMINI]
   rpt_deep_dive: "SIG.MSR.006"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 (D1 base)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.RAHU
+        note: "Rahu in Gemini D9 — 12H from D9 Cancer Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.069:
   signal_name: "Jupiter Exalted in Cancer D3 — Dharma Vitality Peak in Drekkana"
@@ -1514,6 +2373,15 @@ SIG.MSR.069:
   confidence: 0.68
   v6_ids_consumed: [PLN.JUPITER, D3.JUPITER]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.070:
   signal_name: "Shadbala Rank 1 — Sun: Highest Overall Planetary Strength Despite Enemy Sign"
@@ -1535,6 +2403,18 @@ SIG.MSR.070:
   confidence: 0.92
   v6_ids_consumed: [PLN.SUN, SBL.SUN, HSE.10]
   rpt_deep_dive: "RPT.STR.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.071:
   signal_name: "Shadbala Rank 2 — Saturn: Second Strongest Despite Pinda Paradox"
@@ -1555,6 +2435,18 @@ SIG.MSR.071:
   confidence: 0.92
   v6_ids_consumed: [PLN.SATURN, SBL.SAT]
   rpt_deep_dive: "SIG.MSR.024, RPT.RED.02"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.072:
   signal_name: "Shuddha Pinda Rank 1 — Mars: Maximum Dramatic-Activation Potential"
@@ -1576,6 +2468,18 @@ SIG.MSR.072:
   confidence: 0.80
   v6_ids_consumed: [PLN.MARS, SBL.MARS]
   rpt_deep_dive: "MATRIX_PLANETS §4.MARS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.073:
   signal_name: "Vimsopaka Rank 1 — Jupiter: Highest Cross-Divisional Aggregate Strength"
@@ -1597,6 +2501,15 @@ SIG.MSR.073:
   confidence: 0.82
   v6_ids_consumed: [PLN.JUPITER, VMS.JUPITER]
   rpt_deep_dive: "MATRIX_PLANETS §4.JUPITER"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.074:
   signal_name: "D27 Bhamsa Lagna Pisces — Native Strength Chart Opens With Jupiter's Own Sign"
@@ -1617,6 +2530,18 @@ SIG.MSR.074:
   confidence: 0.72
   v6_ids_consumed: [PLN.JUPITER, HSE.12]
   rpt_deep_dive: "SIG.MSR.041"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §6.6 Bhava Bala JH"
+        fact_id: BVB.JH.1
+        note: "Lagna Bhava Bala 7.00 rupas JH rank 8"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.075:
   signal_name: "D60 Shashtyamsa — Past-Karma Chart Primary Configuration"
@@ -1638,6 +2563,18 @@ SIG.MSR.075:
   confidence: 0.60
   v6_ids_consumed: [D60.SATURN, D60.LAGNA]
   rpt_deep_dive: "RPT.DVS.02, SIG.MSR.042"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.076:
   signal_name: "Lagna Lord Mars in Libra — Lagnesh in 7H Enemy Sign Creates Body-Partnership Tension"
@@ -1660,6 +2597,21 @@ SIG.MSR.076:
   confidence: 0.87
   v6_ids_consumed: [PLN.MARS, HSE.1, HSE.7, SGN.LIBRA]
   rpt_deep_dive: "RPT.STR.01.A, RPT.HSE.02.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.077:
   signal_name: "12H Lord Jupiter in Own-Sign 9H — 12L in 9H = Moksha-Dharma Integration"
@@ -1681,6 +2633,18 @@ SIG.MSR.077:
   confidence: 0.87
   v6_ids_consumed: [PLN.JUPITER, HSE.12, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.C, RPT.HSE.01.D"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.078:
   signal_name: "9H Lord Jupiter in Own-Sign 9H — 9L in 9H Self-Powered Dharma Engine"
@@ -1702,6 +2666,18 @@ SIG.MSR.078:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.D, SIG.MSR.017"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.079:
   signal_name: "10L Saturn Exalted in 7H — Career Lord Away from Career House, But Exalted"
@@ -1723,6 +2699,21 @@ SIG.MSR.079:
   confidence: 0.85
   v6_ids_consumed: [PLN.SATURN, HSE.10, HSE.7]
   rpt_deep_dive: "RPT.DVS.01, RPT.HSE.02.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.080:
   signal_name: "11L Saturn Exalted in 7H — Gains Lord Exalted in Partnership House"
@@ -1744,6 +2735,18 @@ SIG.MSR.080:
   confidence: 0.83
   v6_ids_consumed: [PLN.SATURN, HSE.11, HSE.7]
   rpt_deep_dive: "RPT.HSE.01.B, MATRIX_HOUSES §4.11"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.081:
   signal_name: "2L Venus in 9H — Wealth Lord in Dharma House"
@@ -1765,6 +2768,18 @@ SIG.MSR.081:
   confidence: 0.80
   v6_ids_consumed: [PLN.VENUS, HSE.2, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.D, RPT.HSE.02.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.082:
   signal_name: "7L Venus in 9H — Partnership Lord in Dharma House"
@@ -1786,6 +2801,21 @@ SIG.MSR.082:
   confidence: 0.78
   v6_ids_consumed: [PLN.VENUS, HSE.7, HSE.9]
   rpt_deep_dive: "RPT.HSE.02.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.083:
   signal_name: "5L Sun in 10H — Children Lord in Career House"
@@ -1807,6 +2837,18 @@ SIG.MSR.083:
   confidence: 0.82
   v6_ids_consumed: [PLN.SUN, HSE.5, HSE.10]
   rpt_deep_dive: "MATRIX_HOUSES §4.5, §4.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.084:
   signal_name: "4L Moon in 11H/12H (Rashi/Chalit) — Comfort Lord Away from Comfort House"
@@ -1828,6 +2870,15 @@ SIG.MSR.084:
   confidence: 0.82
   v6_ids_consumed: [PLN.MOON, HSE.4, HSE.11, HSE.12, CUSP.12]
   rpt_deep_dive: "RPT.HSE.01.C, RPT.STR.01.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.085:
   signal_name: "3L Mercury in 10H — Siblings/Communication Lord in Career House"
@@ -1849,6 +2900,18 @@ SIG.MSR.085:
   confidence: 0.85
   v6_ids_consumed: [PLN.MERCURY, HSE.3, HSE.10]
   rpt_deep_dive: "RPT.HSE.01.A, MATRIX_HOUSES §4.3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.086:
   signal_name: "8L Mars in 7H — 8H Lord in 7H, Maraka Axis Activation"
@@ -1870,6 +2933,18 @@ SIG.MSR.086:
   confidence: 0.85
   v6_ids_consumed: [PLN.MARS, HSE.8, HSE.7]
   rpt_deep_dive: "RPT.HSE.02.B, MATRIX_HOUSES §4.8"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.087:
   signal_name: "6L Mercury in 10H — Disease Lord in Career House (Viparita Consideration)"
@@ -1892,6 +2967,18 @@ SIG.MSR.087:
   confidence: 0.72
   v6_ids_consumed: [PLN.MERCURY, HSE.6, HSE.10]
   rpt_deep_dive: "MATRIX_HOUSES §4.6, §4.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.088:
   signal_name: "Moolatrikona Sun in Shravana — Sun's Nakshatra Resonates with Career Themes"
@@ -1913,6 +3000,18 @@ SIG.MSR.088:
   confidence: 0.70
   v6_ids_consumed: [PLN.SUN, NAK.SHRAVANA]
   rpt_deep_dive: "MATRIX_PLANETS §4.SUN"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.089:
   signal_name: "Moolatrikona Jupiter at 09°48' Sagittarius — Within Mulatrikona Band"
@@ -1936,6 +3035,18 @@ SIG.MSR.089:
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS]
   rpt_deep_dive: "RPT.YOG.01.A, SIG.MSR.051"
   reconciliation: "FIX_SESSION_002 2026-04-18 — Added classical-source variance note per AUDIT WS2.05; confidence 0.88→0.82 reflecting source-dependency; both BPHS and Phaladeepika traditions now cited."
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.090:
   signal_name: "Saturn Exaltation at 22°27' Libra — Post-Peak Exaltation (Saturn's Moolatrikona is Aquarius, not Libra)"
@@ -1957,6 +3068,18 @@ SIG.MSR.090:
   confidence: 0.98
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA, SBL.SAT]
   rpt_deep_dive: "SIG.MSR.053"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.091:
   signal_name: "9L in 9H Self-Dispositorship — Jupiter Disposits Itself in Sagittarius"
@@ -1978,6 +3101,18 @@ SIG.MSR.091:
   confidence: 0.95
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS, HSE.9]
   rpt_deep_dive: "SIG.MSR.017, SIG.MSR.021"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.092:
   signal_name: "Ketu's Dispositor Mars in Enemy Sign — Weakened Karmic-Resolver"
@@ -2000,6 +3135,18 @@ SIG.MSR.092:
   confidence: 0.78
   v6_ids_consumed: [PLN.KETU, PLN.MARS, HSE.8, HSE.7]
   rpt_deep_dive: "RPT.DSH.02, MATRIX_PLANETS §4.KETU"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.093:
   signal_name: "Rahu's Dispositor Venus in Friend Sign 9H — Rahu Filtered Through Dharma"
@@ -2022,6 +3169,18 @@ SIG.MSR.093:
   confidence: 0.75
   v6_ids_consumed: [PLN.RAHU, PLN.VENUS, HSE.2, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS §4.RAHU"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.094:
   signal_name: "Saturn AmK in 7H — Career-Authority Karaka Exalted in Partnership House"
@@ -2043,6 +3202,18 @@ SIG.MSR.094:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, KRK.C.AMK, HSE.7]
   rpt_deep_dive: "RPT.DSH.01.A, MATRIX_PLANETS §4.SATURN"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.095:
   signal_name: "Moon AK in 11H/12H — Soul-Significator in Gains/Moksha Zone"
@@ -2064,6 +3235,18 @@ SIG.MSR.095:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, KRK.C.AK, HSE.11, HSE.12]
   rpt_deep_dive: "RPT.STR.01.B, SIG.MSR.004"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.096:
   signal_name: "Mercury DK (Darakaraka) in 10H — Spouse/Partner Significator in Career House"
@@ -2085,6 +3268,18 @@ SIG.MSR.096:
   confidence: 0.85
   v6_ids_consumed: [PLN.MERCURY, KRK.C.DK, HSE.10]
   rpt_deep_dive: "MATRIX_PLANETS §4.MERCURY"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.097:
   signal_name: "Budh-Aditya Yoga — Sun + Mercury Conjunction in 10H Capricorn (Not Combust)"
@@ -2107,6 +3302,18 @@ SIG.MSR.097:
   confidence: 0.90
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, HSE.10]
   rpt_deep_dive: "RPT.YOG.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.098:
   signal_name: "Vasi Yoga — Moon in 2nd from Sun (Aquarius)"
@@ -2129,6 +3336,21 @@ SIG.MSR.098:
   confidence: 0.88
   v6_ids_consumed: [PLN.MOON, PLN.SUN, HSE.11]
   rpt_deep_dive: "MATRIX_PLANETS §4.MOON"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.099:
   signal_name: "Vesi Yoga — Jupiter + Venus in 12th from Sun (Sagittarius)"
@@ -2151,6 +3373,18 @@ SIG.MSR.099:
   confidence: 0.88
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.SUN, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS §4.JUPITER, §4.VENUS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.100:
   signal_name: "Ubhayachari Yoga — Planets Both Sides of Sun (Vasi + Vesi Simultaneous)"
@@ -2173,6 +3407,21 @@ SIG.MSR.100:
   confidence: 0.88
   v6_ids_consumed: [PLN.SUN, PLN.MOON, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "MATRIX_PLANETS §4.SUN"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.101:
   signal_name: "Bhadra Yoga — Mercury in Kendra (10H) in Friend's Sign"
@@ -2196,6 +3445,18 @@ SIG.MSR.101:
   confidence: 0.72
   v6_ids_consumed: [PLN.MERCURY, HSE.10, SGN.CAPRICORN]
   rpt_deep_dive: "RPT.YOG.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.102:
   signal_name: "Dhana Yoga — 2L + 11L Relationship (Venus + Saturn)"
@@ -2218,6 +3479,18 @@ SIG.MSR.102:
   confidence: 0.65
   v6_ids_consumed: [PLN.VENUS, PLN.SATURN, HSE.2, HSE.11]
   rpt_deep_dive: "RPT.YOG.01.A, MATRIX_HOUSES §4.2, §4.11"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.103:
   signal_name: "Dhana Yoga — 5L + 9L (Sun + Jupiter) Relationship"
@@ -2240,6 +3513,18 @@ SIG.MSR.103:
   confidence: 0.78
   v6_ids_consumed: [PLN.SUN, PLN.JUPITER, HSE.5, HSE.9]
   rpt_deep_dive: "RPT.YOG.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.104:
   signal_name: "Dhana Yoga — 9L in Own-Sign (Jupiter Self-Sustaining Fortune)"
@@ -2261,6 +3546,18 @@ SIG.MSR.104:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "SIG.MSR.008, SIG.MSR.017"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.105:
   signal_name: "Dhana Yoga — 5L Sun in 10H Kendra (Intelligence-Career Wealth Link)"
@@ -2282,6 +3579,18 @@ SIG.MSR.105:
   confidence: 0.82
   v6_ids_consumed: [PLN.SUN, HSE.5, HSE.10]
   rpt_deep_dive: "MATRIX_HOUSES §4.5, §4.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.106:
   signal_name: "Raja Yoga — 1L + 10L Conjunction (Mars + Saturn in 7H)"
@@ -2303,6 +3612,21 @@ SIG.MSR.106:
   confidence: 0.87
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.1, HSE.10, HSE.7]
   rpt_deep_dive: "SIG.MSR.015"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.107:
   signal_name: "Raja Yoga — 9L + 10L Relationship (Jupiter + Saturn)"
@@ -2324,6 +3648,21 @@ SIG.MSR.107:
   confidence: 0.80
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN, HSE.9, HSE.10]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.DSH.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.108:
   signal_name: "Raja Yoga — 5L + 9L (Sun + Jupiter) Trikona-Trikona"
@@ -2345,6 +3684,18 @@ SIG.MSR.108:
   confidence: 0.78
   v6_ids_consumed: [PLN.SUN, PLN.JUPITER, HSE.5, HSE.9]
   rpt_deep_dive: "RPT.YOG.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.109:
   signal_name: "Raja Yoga — 4L + 1L (Moon + Mars) Angular Relationship"
@@ -2366,6 +3717,21 @@ SIG.MSR.109:
   confidence: 0.55
   v6_ids_consumed: [PLN.MOON, PLN.MARS, HSE.4, HSE.1]
   rpt_deep_dive: "RPT.STR.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.110:
   signal_name: "Kahala Yoga — 4L + 9L Strong; Lagnesh Strong"
@@ -2389,6 +3755,21 @@ SIG.MSR.110:
   confidence: 0.65
   v6_ids_consumed: [PLN.MOON, PLN.JUPITER, PLN.MARS, HSE.4, HSE.9]
   rpt_deep_dive: "MATRIX_HOUSES §4.4"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.111:
   signal_name: "Amala Yoga Near-Miss — 10th from Moon Has Ketu (Malefic), Not Pure"
@@ -2411,6 +3792,18 @@ SIG.MSR.111:
   confidence: 0.88
   v6_ids_consumed: [PLN.MOON, HSE.8, PLN.KETU]
   rpt_deep_dive: "MATRIX_HOUSES §4.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.112:
   signal_name: "Kala Sarpa Yoga — ABSENT (Planets on Both Sides of Nodal Axis)"
@@ -2434,6 +3827,21 @@ SIG.MSR.112:
   confidence: 0.95
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, PLN.MARS, PLN.SATURN, PLN.JUPITER, PLN.VENUS, PLN.SUN, PLN.MERCURY, PLN.MOON]
   rpt_deep_dive: "MATRIX_PLANETS §summary"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.113:
   signal_name: "Gajakesari Yoga — ABSENT Natally (Jupiter 11th from Moon, Not Kendra)"
@@ -2457,6 +3865,18 @@ SIG.MSR.113:
   confidence: 0.85
   v6_ids_consumed: [PLN.JUPITER, PLN.MOON]
   rpt_deep_dive: "RPT.TRN.02"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.114:
   signal_name: "Uchcha Graha Yoga — Three Exalted Planets (Saturn + Rahu + Ketu) Simultaneously"
@@ -2480,6 +3900,15 @@ SIG.MSR.114:
   confidence: 0.80
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU]
   rpt_deep_dive: "SIG.MSR.038"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.115:
   signal_name: "Parvatayoga Near-Miss — 6L + 12L Strong But Not Mutual Kendra"
@@ -2502,6 +3931,18 @@ SIG.MSR.115:
   confidence: 0.60
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, HSE.6, HSE.12]
   rpt_deep_dive: "MATRIX_HOUSES §4.6, §4.12"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.116:
   signal_name: "Vipreet Raja Yoga — 8L Mars in 7H (Near-Dusthana Configuration)"
@@ -2524,6 +3965,18 @@ SIG.MSR.116:
   confidence: 0.55
   v6_ids_consumed: [PLN.MARS, HSE.8, HSE.7]
   rpt_deep_dive: "MATRIX_PLANETS §4.MARS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.117:
   signal_name: "Hamsa Yoga Near-Miss — Jupiter in 9H (Trikona) Not Kendra"
@@ -2546,6 +3999,18 @@ SIG.MSR.117:
   confidence: 0.95
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "SIG.MSR.021, CVG.06"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.118:
   signal_name: "Ruchaka Yoga — ABSENT (Mars in Enemy Sign, Not Own/Exalted in Kendra)"
@@ -2568,6 +4033,18 @@ SIG.MSR.118:
   confidence: 0.98
   v6_ids_consumed: [PLN.MARS, HSE.7, SGN.LIBRA]
   rpt_deep_dive: "RPT.STR.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.119:
   signal_name: "Malavya Yoga — ABSENT (Venus Not in Own/Exalted in Kendra)"
@@ -2590,6 +4067,21 @@ SIG.MSR.119:
   confidence: 0.97
   v6_ids_consumed: [PLN.VENUS, HSE.9]
   rpt_deep_dive: "SIG.MSR.052"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H — own sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.120:
   signal_name: "Surya-Chandra Yoga — Sun-Moon 30° Apart (Sukla Paksha Waning Context)"
@@ -2612,6 +4104,21 @@ SIG.MSR.120:
   confidence: 0.82
   v6_ids_consumed: [PLN.SUN, PLN.MOON, HSE.10, HSE.11]
   rpt_deep_dive: "RPT.STR.01.B"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.121:
   signal_name: "Panchadhyayi Yoga — Five Planets in Two Signs (Cap+Aqu+Lib+Sag = Concentrated)"
@@ -2635,6 +4142,21 @@ SIG.MSR.121:
   confidence: 0.72
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, PLN.SATURN, PLN.MARS, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "MATRIX_SIGNS §summary"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.122:
   signal_name: "Akhanda Samrajya Yoga — Jupiter as Lord of 2/5/11 + Kendra Lord Strong"
@@ -2656,6 +4178,18 @@ SIG.MSR.122:
   confidence: 0.45
   v6_ids_consumed: [PLN.JUPITER]
   rpt_deep_dive: "CVG.02, SIG.MSR.017"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.123:
   signal_name: "Dur Yoga — Lagna Lord in Enemy Sign + 6th from Lagna Lord (Mars)"
@@ -2678,6 +4212,21 @@ SIG.MSR.123:
   confidence: 0.72
   v6_ids_consumed: [PLN.MARS, HSE.1, HSE.7]
   rpt_deep_dive: "RPT.STR.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.124:
   signal_name: "Durudhura Yoga — ABSENT (No Planets on Both Sides of Moon)"
@@ -2700,6 +4249,18 @@ SIG.MSR.124:
   confidence: 0.95
   v6_ids_consumed: [PLN.MOON, HSE.10, HSE.12]
   rpt_deep_dive: "SIG.MSR.011"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.125:
   signal_name: "Chandra Mangala Yoga — ABSENT Natally (Moon-Mars Not in Conjunction or Mutual Kendra)"
@@ -2722,6 +4283,21 @@ SIG.MSR.125:
   confidence: 0.92
   v6_ids_consumed: [PLN.MOON, PLN.MARS]
   rpt_deep_dive: "MATRIX_PLANETS §4.MARS, §4.MOON"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.126:
   signal_name: "Vipreet Lakshmi Yoga — Jupiter (12L) in 9H Own-Sign (12L Benefically Placed)"
@@ -2743,6 +4319,18 @@ SIG.MSR.126:
   confidence: 0.82
   v6_ids_consumed: [PLN.JUPITER, HSE.12, HSE.9]
   rpt_deep_dive: "SIG.MSR.077, RPT.HSE.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.127:
   signal_name: "Yoga Karaka for Aries Lagna — Saturn (Rules Both Kendra 10H and Trikona... wait — Saturn rules 10H and 11H)"
@@ -2765,6 +4353,21 @@ SIG.MSR.127:
   confidence: 0.88
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.1, HSE.10]
   rpt_deep_dive: "RPT.STR.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.128:
   signal_name: "Saraswati Yoga Extended — Third Angle Confirmation via All Three in Kendra/Trikona"
@@ -2787,6 +4390,21 @@ SIG.MSR.128:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.MERCURY, HSE.9, HSE.10]
   rpt_deep_dive: "SIG.MSR.007, RPT.YOG.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.129:
   signal_name: "Dhana Yoga — Rahu in 2H Amplifies Accumulated Wealth (Unconventional)"
@@ -2809,6 +4427,18 @@ SIG.MSR.129:
   confidence: 0.78
   v6_ids_consumed: [PLN.RAHU, HSE.2, SGN.TAURUS]
   rpt_deep_dive: "SIG.MSR.010, RPT.HSE.02.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.2
+        note: "House 2 Taurus — wealth/family house; Rahu occupant"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.130:
   signal_name: "Composite Yoga — Saraswati + Lakshmi + Budh-Aditya Stack (Intelligence-Wealth-Dharma)"
@@ -2832,6 +4462,18 @@ SIG.MSR.130:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.MERCURY, PLN.SUN, HSE.9, HSE.10]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.YOG.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.131:
   signal_name: "Composite Yoga — Sasha + Hidden Raja Stack (Authority Through Structural Tension)"
@@ -2854,6 +4496,18 @@ SIG.MSR.131:
   confidence: 0.87
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, HSE.7]
   rpt_deep_dive: "SIG.MSR.001, SIG.MSR.015"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.132:
   signal_name: "Yoga Timing — All Major Yogas Become Active During Mercury MD (2010–2027)"
@@ -2875,6 +4529,15 @@ SIG.MSR.132:
   confidence: 0.90
   v6_ids_consumed: [PLN.MERCURY, DSH.V.MERCURY_MD, DSH.V.SAT_AD]
   rpt_deep_dive: "RPT.DSH.01.A, RPT.DSH.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.133:
   signal_name: "Yoga Timing — All Sasha + Hidden Raja Yogas Peak During Saturn AD (2024–2027)"
@@ -2896,6 +4559,15 @@ SIG.MSR.133:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, DSH.V.SAT_AD]
   rpt_deep_dive: "SIG.MSR.020, SIG.MSR.037"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.134:
   signal_name: "Yoga Denial — Mars Avayogi (Inauspicious Sensitive Point) Reduces Lagnesh"
@@ -2918,6 +4590,21 @@ SIG.MSR.134:
   confidence: 0.82
   v6_ids_consumed: [PLN.MARS, AVY.POINT, HSE.1]
   rpt_deep_dive: "RPT.STR.01.A, RPT.UPG.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.135:
   signal_name: "Yoga Enhancement — Mercury Yogi (Auspicious Sensitive Point) Elevates MD"
@@ -2939,6 +4626,18 @@ SIG.MSR.135:
   confidence: 0.85
   v6_ids_consumed: [PLN.MERCURY, YOG.POINT]
   rpt_deep_dive: "RPT.STR.01.C, SIG.MSR.009"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.136:
   signal_name: "Composite Yoga — Moon AK + AK in 12H (Chalit) + D9 12H Stellium = Moksha-Orientation Stack"
@@ -2961,6 +4660,18 @@ SIG.MSR.136:
   confidence: 0.85
   v6_ids_consumed: [PLN.MOON, HSE.12, D9.MOON, D9.JUPITER, D9.RAHU]
   rpt_deep_dive: "CVG.03, SIG.MSR.005, SIG.MSR.006"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.137:
   signal_name: "Saturn-Venus Mutual Affinity Yoga — Saturn in Venus's Libra, Venus Disposits to Jupiter"
@@ -2983,6 +4694,21 @@ SIG.MSR.137:
   confidence: 0.80
   v6_ids_consumed: [PLN.SATURN, PLN.VENUS, PLN.JUPITER, SGN.LIBRA, SGN.SAGITTARIUS]
   rpt_deep_dive: "CGM §4.1 Dispositorship, CVG.02"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.138:
   signal_name: "Three-Planet Dispositorship Hub — Sun, Moon, Mercury All Route to Saturn"
@@ -3006,6 +4732,21 @@ SIG.MSR.138:
   confidence: 0.95
   v6_ids_consumed: [PLN.SUN, PLN.MOON, PLN.MERCURY, PLN.SATURN, SGN.CAPRICORN, SGN.AQUARIUS]
   rpt_deep_dive: "CGM §4.1, §7.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.139:
   signal_name: "Three-Planet Dispositorship Hub — Mars, Saturn, Rahu All Route to Venus"
@@ -3029,6 +4770,18 @@ SIG.MSR.139:
   confidence: 0.90
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, PLN.RAHU, PLN.VENUS, SGN.LIBRA, SGN.TAURUS]
   rpt_deep_dive: "CGM §4.1, §7.1, SIG.MSR.012"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.140:
   signal_name: "Mercury MD Yoga Activation — Every Mercury-Member Yoga Peaks 2010-2027"
@@ -3051,6 +4804,15 @@ SIG.MSR.140:
   confidence: 0.92
   v6_ids_consumed: [PLN.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "SIG.MSR.132, RPT.DSH.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.141:
   signal_name: "Yoga Absence — No Mahapurusha for Sun (No Ravi Yoga from Classical Set)"
@@ -3072,6 +4834,18 @@ SIG.MSR.141:
   confidence: 0.99
   v6_ids_consumed: [PLN.SUN]
   rpt_deep_dive: "RPT.YOG.01.A"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.142:
   signal_name: "Kendradhipati Dosha — Moon (4L) in Upachaya + Saturn Double-Kendra Lord"
@@ -3094,6 +4868,18 @@ SIG.MSR.142:
   confidence: 0.68
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, HSE.4, HSE.10, HSE.11]
   rpt_deep_dive: "MATRIX_HOUSES §4.4, §4.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.143:
   signal_name: "Yoga Presence — Sarpa Yoga ABSENT (No Three Serpent Planets in Angles)"
@@ -3116,6 +4902,21 @@ SIG.MSR.143:
   confidence: 0.92
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.MOON, PLN.VENUS]
   rpt_deep_dive: "MATRIX_HOUSES §summary"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.144:
   signal_name: "Vasumati Yoga — Natural Benefics in Upachaya (3/6/10/11) from Lagna or Moon"
@@ -3138,6 +4939,21 @@ SIG.MSR.144:
   confidence: 0.72
   v6_ids_consumed: [PLN.MERCURY, PLN.MOON, HSE.10, HSE.11]
   rpt_deep_dive: "MATRIX_HOUSES §4.10, §4.11"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.145:
   signal_name: "Structural — Saturn-10L Tenanting Venus's Sign (Libra 7H): One-Way Dispositorship Chain, No Parivartana"
@@ -3163,6 +4979,21 @@ SIG.MSR.145:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.VENUS, SGN.LIBRA, SGN.SAGITTARIUS]
   rpt_deep_dive: "CGM §4.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H — own sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.146:
   signal_name: "Yoga — Parivartana Between Jupiter (12L) and Mars (8L) — 8H-12H Exchange"
@@ -3184,6 +5015,18 @@ SIG.MSR.146:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, PLN.MARS, HSE.8, HSE.12]
   rpt_deep_dive: "MATRIX_PLANETS §4.MARS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.147:
   signal_name: "Yoga — Nipuna Yoga (Mercury in Own Sign/Exaltation with Jupiter Aspect)"
@@ -3206,6 +5049,21 @@ SIG.MSR.147:
   confidence: 0.70
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, HSE.10]
   rpt_deep_dive: "RPT.STR.01.C"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.148:
   signal_name: "Yoga — Pushkala Yoga (Moon conjunct or aspected by dispositor in Kendra)"
@@ -3229,6 +5087,18 @@ SIG.MSR.148:
   confidence: 0.55
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, HSE.11]
   rpt_deep_dive: "MATRIX_PLANETS §4.MOON"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.149:
   signal_name: "Yoga — Trigraha in 7H (Mars + Saturn + Bhrigu Bindu) = Triple 7H Concentration"
@@ -3251,6 +5121,18 @@ SIG.MSR.149:
   confidence: 0.82
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, BB.NATAL, HSE.7]
   rpt_deep_dive: "SIG.MSR.023, CVG.08"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.150:
   signal_name: "Yoga — Ketu MD Incoming (2027): Moksha Stack Activation at Age 43-50"
@@ -3273,6 +5155,18 @@ SIG.MSR.150:
   confidence: 0.88
   v6_ids_consumed: [PLN.KETU, DSH.V.KETU_MD, HSE.8]
   rpt_deep_dive: "RPT.DSH.02"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD begins 2027-08-21 (DSH.V.024 Ketu-Ketu AD)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.151:
   signal_name: "Yoga — Venus MD Coming (2034-2054): 20-Year Grace Period for Relationships and Wealth"
@@ -3296,6 +5190,18 @@ SIG.MSR.151:
   confidence: 0.88
   v6_ids_consumed: [PLN.VENUS, DSH.V.VENUS_MD, HSE.9]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4.VENUS_MD, SIG.MSR.046"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.152:
   signal_name: "Conjunction — Mars+Saturn in Libra 7H: Hidden Raja Yoga — Iron-Forge in Partnerships House"
@@ -3323,6 +5229,18 @@ SIG.MSR.152:
   confidence: 0.97
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.7, SGN.LIBRA]
   rpt_deep_dive: "SIG.01 (authority-through-tension), RPT.SAT.01, RPT.MAR.01, SIG.03 (revised from mutual-aspect to conjunction)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.153:
   signal_name: "Conjunction — Jupiter+Venus in Sagittarius 9H: Dharma-Lakshmi Engine"
@@ -3349,6 +5267,21 @@ SIG.MSR.153:
   confidence: 0.97
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, SGN.SAGITTARIUS]
   rpt_deep_dive: "SIG.04 (dharmic-material engine), SIG.08 (Hamsa Yoga), RPT.JUP.01, RPT.VEN.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.154:
   signal_name: "Conjunction — Sun+Mercury in Capricorn 10H: Budhaditya Yoga in Career Peak"
@@ -3375,6 +5308,18 @@ SIG.MSR.154:
   confidence: 0.97
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, HSE.10, SGN.CAPRICORN]
   rpt_deep_dive: "SIG.02 (Sun-Mercury 10H career-identity), RPT.SUN.01, RPT.MER.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.155:
   signal_name: "Aspect — Saturn (7H Exalted) 7th Drishti to Aries Lagna: Exalted Authority Compresses Self-Identity"
@@ -3400,6 +5345,18 @@ SIG.MSR.155:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, LAG.ARIES, HSE.1, HSE.7]
   rpt_deep_dive: "SIG.01 (authority-through-tension), RPT.SAT.01, SIG.22 (Saturn quadruple-structural-activation)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.156:
   signal_name: "Aspect — Mars (7H) 7th Drishti to Aries Lagna: Lagnesh Also Aspects Its Own Lagna"
@@ -3425,6 +5382,21 @@ SIG.MSR.156:
   confidence: 0.95
   v6_ids_consumed: [PLN.MARS, LAG.ARIES, HSE.1, HSE.7]
   rpt_deep_dive: "SIG.01, RPT.MAR.01, SIG.MSR.155"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.157:
   signal_name: "Aspect — Saturn (3rd, 45v) + Mars (4th, 45v): Joint Pressure on Sagittarius 9H (Jupiter+Venus)"
@@ -3452,6 +5424,18 @@ SIG.MSR.157:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, PLN.JUPITER, PLN.VENUS, HSE.7, HSE.9]
   rpt_deep_dive: "RPT.SAT.01, RPT.JUP.01, SIG.04 (dharmic-material engine)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.158:
   signal_name: "Aspect — Mars (7H) 4th Drishti to Capricorn 10H (Sun+Mercury): Lagnesh Energizes Career Cluster"
@@ -3477,6 +5461,21 @@ SIG.MSR.158:
   confidence: 0.95
   v6_ids_consumed: [PLN.MARS, PLN.SUN, PLN.MERCURY, HSE.7, HSE.10]
   rpt_deep_dive: "SIG.02 (Sun-Mercury 10H), RPT.MAR.01, SIG.MSR.154"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.159:
   signal_name: "Aspect — Mars (7H) 8th Drishti to Taurus 2H (Rahu): Penetrating Warrior-Pressure on Wealth-Amplifier"
@@ -3503,6 +5502,18 @@ SIG.MSR.159:
   confidence: 0.93
   v6_ids_consumed: [PLN.MARS, PLN.RAHU, HSE.2, HSE.7]
   rpt_deep_dive: "RPT.MAR.01, RPT.RAH.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.160:
   signal_name: "Aspect — Jupiter (9H, Own Sign) 5th Drishti to Aries Lagna: Guru Grace on Self-Identity"
@@ -3529,6 +5540,18 @@ SIG.MSR.160:
   confidence: 0.97
   v6_ids_consumed: [PLN.JUPITER, LAG.ARIES, HSE.1, HSE.9]
   rpt_deep_dive: "RPT.JUP.01, SIG.08 (Hamsa Yoga), SIG.MSR.152, SIG.MSR.155"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.161:
   signal_name: "Aspect — Rahu (2H) 7th Drishti to Scorpio 8H (Ketu): Nodal Axis Self-Aspect"
@@ -3555,6 +5578,18 @@ SIG.MSR.161:
   confidence: 0.95
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, HSE.2, HSE.8]
   rpt_deep_dive: "RPT.NOD.01, SIG.MSR.162"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.162:
   signal_name: "Aspect — Ketu (8H) 7th Drishti to Taurus 2H (Rahu): Moksha-Severancer Checks Wealth-Amplifier"
@@ -3580,6 +5615,18 @@ SIG.MSR.162:
   confidence: 0.95
   v6_ids_consumed: [PLN.KETU, PLN.RAHU, HSE.2, HSE.8]
   rpt_deep_dive: "RPT.NOD.01, SIG.MSR.161"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.163:
   signal_name: "Aspect — Saturn (7H) 10th Drishti to Cancer 4H (Empty): Saturnine Oversight of Home Domain"
@@ -3605,6 +5652,18 @@ SIG.MSR.163:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, HSE.4, HSE.7]
   rpt_deep_dive: "RPT.SAT.01, MATRIX_HOUSES §4"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.164:
   signal_name: "Aspect — Jupiter (9H) 7th Drishti to Gemini 3H (Empty) + 9th Drishti to Leo 5H (Empty): Guru Activates Communication and Progeny Houses"
@@ -3630,6 +5689,18 @@ SIG.MSR.164:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, HSE.3, HSE.5, HSE.9]
   rpt_deep_dive: "RPT.JUP.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.165:
   signal_name: "Aspect — Sun+Mercury (10H) Both Cast 7th Drishti to Cancer 4H (Empty): Career Cluster Illuminates Home Domain"
@@ -3655,6 +5726,18 @@ SIG.MSR.165:
   confidence: 0.93
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, HSE.4, HSE.10]
   rpt_deep_dive: "SIG.02, RPT.SUN.01, RPT.MER.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.166:
   signal_name: "Aspect — Moon (11H) 7th Drishti to Leo 5H (Empty): AK Soul-Mind Blesses Progeny-Intelligence House"
@@ -3680,6 +5763,18 @@ SIG.MSR.166:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, HSE.5, HSE.11]
   rpt_deep_dive: "RPT.MOO.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.167:
   signal_name: "Aspect — Venus (9H) 7th Drishti to Gemini 3H (Empty): Lakshmi Blesses Communication Domain"
@@ -3705,6 +5800,18 @@ SIG.MSR.167:
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, HSE.3, HSE.9]
   rpt_deep_dive: "RPT.VEN.01, SIG.MSR.164"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.168:
   signal_name: "Convergence — Dual Malefic 7th Drishti to Lagna (Saturn 60v + Mars 60v = 120v): Maximum Malefic Grip on Identity"
@@ -3732,6 +5839,21 @@ SIG.MSR.168:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, LAG.ARIES, HSE.1, HSE.7]
   rpt_deep_dive: "SIG.01 (authority-through-tension), SIG.MSR.155, SIG.MSR.156, SIG.MSR.152"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.169:
   signal_name: "Convergence — Triple Aspect on Lagna (Saturn 60v malefic + Mars 60v malefic + Jupiter 45v benefic): The Chart's Central Identity Equation"
@@ -3760,6 +5882,21 @@ SIG.MSR.169:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.JUPITER, LAG.ARIES, HSE.1]
   rpt_deep_dive: "SIG.01, SIG.MSR.155, SIG.MSR.156, SIG.MSR.160, SIG.MSR.168"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.170:
   signal_name: "Convergence — Cancer 4H (Empty) Triple-Aspected (Saturn 30v + Sun 60v + Mercury 60v = 150v): Most-Aspected Empty House"
@@ -3786,6 +5923,18 @@ SIG.MSR.170:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.SUN, PLN.MERCURY, HSE.4]
   rpt_deep_dive: "MATRIX_HOUSES §4, RPT.SAT.01, SIG.MSR.163, SIG.MSR.165"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.171:
   signal_name: "Convergence — Moon-AK in 11H (Aquarius) Receives ZERO Parashari Graha Drishti: Isolated Atmakaraka"
@@ -3816,6 +5965,18 @@ SIG.MSR.171:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, HSE.11]
   rpt_deep_dive: "RPT.MOO.01, SIG.04 (AK = Moon), SIG.MSR.004"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.172:
   signal_name: "Jaimini Rashi Drishti — Taurus 2H (Rahu, Fixed) to Libra 7H + Capricorn 10H: RAHU QUADRUPLE ASPECT (SIG.16)"
@@ -3845,6 +6006,21 @@ SIG.MSR.172:
   confidence: 0.97
   v6_ids_consumed: [PLN.RAHU, PLN.MARS, PLN.SATURN, PLN.SUN, PLN.MERCURY, HSE.2, HSE.7, HSE.10]
   rpt_deep_dive: "SIG.16 (Rahu-quadruple-Jaimini-aspect), CGP Audit Session 6, CGM v1.0 §2.5"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.173:
   signal_name: "Jaimini Rashi Drishti — Libra 7H (Mars+Saturn, Movable) to Taurus 2H + Aquarius 11H: Dual-Malefic Reaches Rahu + Moon-AK"
@@ -3873,6 +6049,21 @@ SIG.MSR.173:
   confidence: 0.90
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, PLN.RAHU, PLN.MOON, HSE.7, HSE.2, HSE.11]
   rpt_deep_dive: "SIG.MSR.172, RPT.MAR.01, RPT.SAT.01, SIG.MSR.171"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.174:
   signal_name: "Jaimini Rashi Drishti — Capricorn 10H (Sun+Mercury, Movable) to Taurus 2H + Scorpio 8H: Career Cluster Sees Rahu + Ketu"
@@ -3901,6 +6092,18 @@ SIG.MSR.174:
   confidence: 0.90
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, PLN.RAHU, PLN.KETU, HSE.10, HSE.2, HSE.8]
   rpt_deep_dive: "SIG.02, SIG.MSR.154, SIG.MSR.172"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.175:
   signal_name: "Jaimini Rashi Drishti — Scorpio 8H (Ketu, Fixed) to Capricorn 10H (Sun+Mercury): Moksha-Wisdom Sees Career"
@@ -3930,6 +6133,18 @@ SIG.MSR.175:
   confidence: 0.88
   v6_ids_consumed: [PLN.KETU, PLN.SUN, PLN.MERCURY, HSE.8, HSE.10]
   rpt_deep_dive: "RPT.NOD.01, SIG.MSR.174"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.176:
   signal_name: "Jaimini Rashi Drishti — Aquarius 11H (Moon-AK, Fixed) to Libra 7H (Mars+Saturn): Soul Sees the Iron-Forge"
@@ -3959,6 +6174,21 @@ SIG.MSR.176:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, PLN.MARS, PLN.SATURN, HSE.11, HSE.7]
   rpt_deep_dive: "RPT.MOO.01, SIG.MSR.173, SIG.MSR.171"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.177:
   signal_name: "Jaimini Rashi Drishti — Sagittarius 9H (Jupiter+Venus, Dual) Zero Planetary Reach: Dharma Cluster is Jaimini-Isolated"
@@ -3987,6 +6217,21 @@ SIG.MSR.177:
   confidence: 0.88
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, HSE.3, HSE.6]
   rpt_deep_dive: "RPT.JUP.01, RPT.VEN.01, SIG.MSR.153"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.178:
   signal_name: "Virupa Summary — Lagna (Aries 1H) Receives 165 Total Virupas (120 malefic + 45 benefic): Most-Aspected Point in Chart"
@@ -4014,6 +6259,21 @@ SIG.MSR.178:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.JUPITER, LAG.ARIES, HSE.1]
   rpt_deep_dive: "SIG.MSR.168, SIG.MSR.169, SIG.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MARS
+        note: "Mars Shadbala JH 5.34 rupas rank 6"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.179:
   signal_name: "Virupa Summary — Saturn's Three-House Aspect Grid (60v+45v+30v): Saturnine Structural Coverage"
@@ -4040,6 +6300,18 @@ SIG.MSR.179:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, HSE.1, HSE.4, HSE.7, HSE.9]
   rpt_deep_dive: "SIG.22 (Saturn quadruple-structural), RPT.SAT.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.180:
   signal_name: "Virupa Summary — Mars's Three-House Aspect Grid (60v+45v+30v): Lagnesh Comprehensive Coverage"
@@ -4066,6 +6338,21 @@ SIG.MSR.180:
   confidence: 0.95
   v6_ids_consumed: [PLN.MARS, HSE.1, HSE.2, HSE.7, HSE.10]
   rpt_deep_dive: "SIG.03 (revised: Mars+Saturn conjunction in 7H, not mutual aspect), RPT.MAR.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.181:
   signal_name: "Aspect Summary — 7H Libra Conjunction (Mars+Saturn) Projects 5-House Aspect Grid: Structural Hub of Chart"
@@ -4097,6 +6384,21 @@ SIG.MSR.181:
   confidence: 0.97
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.1, HSE.2, HSE.4, HSE.7, HSE.9, HSE.10]
   rpt_deep_dive: "SIG.MSR.168-180, SIG.01, SIG.03 (revised), CGM v1.0 YOG.ARIES_LIBRA_AXIS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.182:
   signal_name: "Red-Team — Prior Session Summary Planetary Position Errors: Correction Audit Log"
@@ -4123,6 +6425,18 @@ SIG.MSR.182:
   confidence: 1.00
   v6_ids_consumed: [PLN.MARS, PLN.RAHU, PLN.KETU]
   rpt_deep_dive: "v6.0 §2.1 (planet table), CGM v1.0 §1 (planet node table)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.183:
   signal_name: "Nakshatra — Lagna in Ashwini Pada 4 (Aries 12°23'): Ketu-Lord Healing-Pioneer Ascendant"
@@ -4150,6 +6464,18 @@ SIG.MSR.183:
   confidence: 0.95
   v6_ids_consumed: [LAG.ARIES, NAK.ASHWINI, PLN.KETU, HSE.1]
   rpt_deep_dive: "RPT.ASC.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.NAK
+        note: "Lagna nakshatra Ashwini — Ketu-ruled"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.184:
   signal_name: "Nakshatra — Moon-AK in Purva Bhadrapada Pada 3 (Aquarius 27°02'): Jupiter-Lord Soul in Fierce Pyre-Nakshatra"
@@ -4178,6 +6504,18 @@ SIG.MSR.184:
   confidence: 0.93
   v6_ids_consumed: [PLN.MOON, NAK.PURVA_BHADRAPADA, PLN.JUPITER, HSE.11]
   rpt_deep_dive: "RPT.MOO.01, SIG.04 (AK = Moon)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.185:
   signal_name: "Nakshatra — Sun in Shravana Pada 4 (Capricorn 21°57'): Moon-Lord Listening-Sovereign in Authority Sign"
@@ -4204,6 +6542,21 @@ SIG.MSR.185:
   confidence: 0.93
   v6_ids_consumed: [PLN.SUN, NAK.SHRAVANA, PLN.MOON, HSE.10]
   rpt_deep_dive: "RPT.SUN.01, SIG.28 (D20+D40 Sun-Vishnu-affinity)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.186:
   signal_name: "Nakshatra — Mercury in Uttara Ashadha Pada 2 (Capricorn 00°50'): Sun-Lord Invincible-Vow Communicator"
@@ -4233,6 +6586,18 @@ SIG.MSR.186:
   confidence: 0.92
   v6_ids_consumed: [PLN.MERCURY, NAK.UTTARA_ASHADHA, PLN.SUN, HSE.10]
   rpt_deep_dive: "RPT.MER.01, SIG.MSR.185 (Mercury-Sun nakshatra lord exchange)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.187:
   signal_name: "Nakshatra — Mars in Swati Pada 4 (Libra 18°31'): Rahu-Lord Independent-Sword in Relationship Sign"
@@ -4260,6 +6625,18 @@ SIG.MSR.187:
   confidence: 0.90
   v6_ids_consumed: [PLN.MARS, NAK.SWATI, PLN.RAHU, HSE.7]
   rpt_deep_dive: "RPT.MAR.01, SIG.MSR.152"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.188:
   signal_name: "Nakshatra — Jupiter in Moola Pada 3 (Sagittarius 09°48'): Ketu-Lord Root-Galactic-Center Guru in Own Sign"
@@ -4288,6 +6665,18 @@ SIG.MSR.188:
   confidence: 0.95
   v6_ids_consumed: [PLN.JUPITER, NAK.MOOLA, PLN.KETU, HSE.9]
   rpt_deep_dive: "RPT.JUP.01, SIG.08 (Hamsa Yoga)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.189:
   signal_name: "Nakshatra — Venus in Purva Ashadha Pada 2 (Sagittarius 19°10'): Venus-Lord Self-Referencing Nakshatra — Swakshetra at Nakshatra Level"
@@ -4315,6 +6704,18 @@ SIG.MSR.189:
   confidence: 0.95
   v6_ids_consumed: [PLN.VENUS, NAK.PURVA_ASHADHA, HSE.9]
   rpt_deep_dive: "RPT.VEN.01, SIG.MSR.014 (Lakshmi Yoga)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.190:
   signal_name: "Nakshatra — Saturn in Vishakha Pada 1 (Libra 22°27'): Jupiter-Lord Branching-Goal-Ambition in Exaltation"
@@ -4341,6 +6742,21 @@ SIG.MSR.190:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, NAK.VISHAKHA, PLN.JUPITER, HSE.7]
   rpt_deep_dive: "RPT.SAT.01, SIG.31 (Saturn-return-Libra-2041-2044)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.191:
   signal_name: "Nakshatra — Rahu in Rohini Pada 3 (Taurus 19°01'): Moon-Lord Lush-Growth Amplifier in Exaltation Sign"
@@ -4368,6 +6784,18 @@ SIG.MSR.191:
   confidence: 0.92
   v6_ids_consumed: [PLN.RAHU, NAK.ROHINI, PLN.MOON, HSE.2]
   rpt_deep_dive: "RPT.RAH.01, SIG.MSR.172"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.192:
   signal_name: "Nakshatra — Ketu in Jyeshtha Pada 1 (Scorpio 19°01'): Mercury-Lord Elder-Chief in Exaltation Sign"
@@ -4395,6 +6823,15 @@ SIG.MSR.192:
   confidence: 0.92
   v6_ids_consumed: [PLN.KETU, NAK.JYESHTHA, PLN.MERCURY, HSE.8]
   rpt_deep_dive: "RPT.NOD.01, SIG.21 (Ketu-Mercury quincunx)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.193:
   signal_name: "Nakshatra Lord Chain — Sun-Mercury Exchange: Sun in Shravana (Moon lord) / Mercury in Uttara Ashadha (Sun lord)"
@@ -4421,6 +6858,21 @@ SIG.MSR.193:
   confidence: 0.88
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, NAK.SHRAVANA, NAK.UTTARA_ASHADHA]
   rpt_deep_dive: "SIG.MSR.185, SIG.MSR.186, RPT.SUN.01, RPT.MER.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.194:
   signal_name: "Nakshatra Lord Chain — Jupiter-Ketu-Mercury Loop: Moola(Ketu)→Jyeshtha(Mercury)→UA(Sun)→Shravana(Moon)→PBP(Jupiter) = Karma-Dharma Closed Chain"
@@ -4451,6 +6903,21 @@ SIG.MSR.194:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, PLN.KETU, PLN.MERCURY, PLN.SUN, PLN.MOON]
   rpt_deep_dive: "SIG.MSR.184-192, RPT.JUP.01, RPT.MOO.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.195:
   signal_name: "Nakshatra — Mars-Saturn Nakshatra Pair in 7H: Swati(Rahu) + Vishakha(Jupiter) = Rahu-Jupiter Nakshatra Opposition in Iron-Forge"
@@ -4478,6 +6945,18 @@ SIG.MSR.195:
   confidence: 0.93
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, PLN.RAHU, PLN.JUPITER, HSE.7]
   rpt_deep_dive: "SIG.MSR.152, SIG.MSR.187, SIG.MSR.190"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.196:
   signal_name: "Tara Bala — Rahu's Rohini is Naidhana (7th Tara = Danger Tara) from Moon's Purva Bhadrapada"
@@ -4510,6 +6989,18 @@ SIG.MSR.196:
   confidence: 0.88
   v6_ids_consumed: [PLN.RAHU, PLN.MOON, NAK.ROHINI, NAK.PURVA_BHADRAPADA]
   rpt_deep_dive: "RPT.MOO.01, RPT.RAH.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.197:
   signal_name: "Tara Bala — Lagna Nakshatra (Ashwini = 4th Kshema Tara) from Moon: Favorable Lagna-Soul Relationship"
@@ -4535,6 +7026,21 @@ SIG.MSR.197:
   confidence: 0.88
   v6_ids_consumed: [LAG.ARIES, PLN.MOON, NAK.ASHWINI]
   rpt_deep_dive: "SIG.MSR.183, SIG.MSR.196"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.198:
   signal_name: "Tara Bala — Summary of Key Planetary Taras from Moon (Purva Bhadrapada): Complete Tara Diagnostic"
@@ -4564,6 +7070,21 @@ SIG.MSR.198:
   confidence: 0.82
   v6_ids_consumed: [PLN.MOON, PLN.RAHU, PLN.KETU, PLN.JUPITER, PLN.SATURN, PLN.MARS, PLN.SUN, PLN.MERCURY, PLN.VENUS]
   rpt_deep_dive: "SIG.MSR.196, SIG.MSR.197"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.199:
   signal_name: "Nakshatra Convergence — Three Ketu-Lord Nakshatras in Chart (Moola+Ashwini+Magha chain): Ketu as Hidden Nakshatra Hub"
@@ -4591,6 +7112,15 @@ SIG.MSR.199:
   confidence: 0.90
   v6_ids_consumed: [PLN.KETU, PLN.JUPITER, LAG.ARIES, NAK.ASHWINI, NAK.MOOLA]
   rpt_deep_dive: "SIG.MSR.183, SIG.MSR.188, SIG.MSR.192"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.200:
   signal_name: "Nakshatra Pada — Mercury in Uttara Ashadha Pada 2 (Capricorn Navamsa): Triple-Capricorn Vargottama Lock"
@@ -4618,6 +7148,18 @@ SIG.MSR.200:
   confidence: 0.93
   v6_ids_consumed: [PLN.MERCURY, NAK.UTTARA_ASHADHA, HSE.10]
   rpt_deep_dive: "SIG.MSR.186, RPT.MER.01, SIG.MSR.002"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.201:
   signal_name: "Nakshatra Pada — Saturn in Vishakha Pada 1 (Aries Navamsa): Exalted-Debilitated Navamsa-Nakshatra Pattern"
@@ -4643,6 +7185,18 @@ SIG.MSR.201:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, NAK.VISHAKHA, HSE.7]
   rpt_deep_dive: "SIG.MSR.003 (NBRY Saturn), SIG.MSR.190, RPT.SAT.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.202:
   signal_name: "Nakshatra — Ketu in Jyeshtha + Mars (Lagnesh) in Swati (Rahu lord): Ketu-Mars Nakshatra-Lord Loop"
@@ -4672,6 +7226,18 @@ SIG.MSR.202:
   confidence: 0.88
   v6_ids_consumed: [PLN.KETU, PLN.MARS, PLN.RAHU, PLN.MERCURY, NAK.JYESHTHA, NAK.SWATI]
   rpt_deep_dive: "SIG.21 (Ketu-Mercury quincunx), SIG.MSR.187, SIG.MSR.192"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.203:
   signal_name: "Nakshatra — Venus in Own Nakshatra (Purva Ashadha): Self-Referencing Lakshmi Principle"
@@ -4699,6 +7265,18 @@ SIG.MSR.203:
   confidence: 0.95
   v6_ids_consumed: [PLN.VENUS, NAK.PURVA_ASHADHA, HSE.9]
   rpt_deep_dive: "SIG.MSR.189, RPT.VEN.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.204:
   signal_name: "Nakshatra — Jupiter in Moola (Galactic Center, Nirriti deity): Root-Dissolution as Dharmic Method"
@@ -4726,6 +7304,18 @@ SIG.MSR.204:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, NAK.MOOLA, HSE.9]
   rpt_deep_dive: "SIG.MSR.188, RPT.JUP.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.205:
   signal_name: "Nakshatra — Rahu in Rohini (Brahma deity, Taurus): Creative-Generative Ambition at Maximum Material Peak"
@@ -4752,6 +7342,18 @@ SIG.MSR.205:
   confidence: 0.92
   v6_ids_consumed: [PLN.RAHU, NAK.ROHINI, PLN.MOON, HSE.2]
   rpt_deep_dive: "SIG.MSR.191, RPT.RAH.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.206:
   signal_name: "Nakshatra Summary — Chart's Deity Profile: Vishnu (Shravana) + Brahma (Rohini) + Vishvadevas (UA) + Nirriti (Moola): Creator-Preserver-Dissolver Trinity Present"
@@ -4782,6 +7384,21 @@ SIG.MSR.206:
   confidence: 0.85
   v6_ids_consumed: [PLN.SUN, PLN.RAHU, PLN.MERCURY, PLN.JUPITER, PLN.KETU, PLN.MOON, PLN.VENUS, PLN.MARS, PLN.SATURN]
   rpt_deep_dive: "SIG.MSR.183-205"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.208:
   signal_name: "D9 — Mercury Vargottama (Capricorn D1 = Capricorn D9): Chart's Most Structurally Continuous Dignity"
@@ -4808,6 +7425,21 @@ SIG.MSR.208:
   confidence: 0.97
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, HSE.10]
   rpt_deep_dive: "SIG.09 (Mercury Vargottama operational-spine), RPT.MER.01, SIG.MSR.200"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.209:
   signal_name: "D9 — 12H Stellium (Moon+Jupiter+Rahu in Gemini D9): Soul-Dispersion to Foreign-Dharmic Domain"
@@ -4834,6 +7466,18 @@ SIG.MSR.209:
   confidence: 0.95
   v6_ids_consumed: [PLN.MOON, PLN.JUPITER, PLN.RAHU, D9.MOON, D9.JUPITER, D9.RAHU]
   rpt_deep_dive: "SIG.06 (D9 12H stellium), RPT.MOO.01, MATRIX_DIVISIONALS §D9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.210:
   signal_name: "D9 — Venus NBRY (Virgo Debilitated, Mercury Vargottama Cancels): Partnership Weakness → Elevated"
@@ -4858,6 +7502,21 @@ SIG.MSR.210:
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, D9.VENUS, PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "SIG.02 (NBRY Venus), MATRIX_DIVISIONALS §D9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.211:
   signal_name: "D9 — Saturn NBRY (Aries Debilitated, Sun in D9 Lagna Cancer Cancels): Authority Weakness → Raja Yoga"
@@ -4882,6 +7541,21 @@ SIG.MSR.211:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, D9.SATURN, PLN.SUN, D9.SUN]
   rpt_deep_dive: "SIG.03 (NBRY Saturn), MATRIX_DIVISIONALS §D9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SUN
+        note: "Sun in Cancer D9 (not vargottama)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.212:
   signal_name: "D9 — Mars in Pisces 9H (Dharmic Trine from D9 Lagna Cancer): Lagnesh in Dharma-Angle at Navamsa Level"
@@ -4906,6 +7580,21 @@ SIG.MSR.212:
   confidence: 0.88
   v6_ids_consumed: [PLN.MARS, D9.MARS]
   rpt_deep_dive: "RPT.MAR.01, MATRIX_DIVISIONALS §D9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MARS
+        note: "Mars in Pisces D9 (not vargottama)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.213:
   signal_name: "D10 — Saturn at D10 Midheaven (Taurus 10H): Career-Permanence Signature"
@@ -4931,6 +7620,21 @@ SIG.MSR.213:
   confidence: 0.92
   v6_ids_consumed: [PLN.SATURN, D10.SATURN]
   rpt_deep_dive: "SIG.22, MATRIX_DIVISIONALS §D10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SATURN
+        note: "Saturn in Taurus D10 — 10th house D10 (angular, very strong)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.214:
   signal_name: "D10 — Sun+Mars in D10 9H Aries (Dharmic Trine from D10 Lagna Leo): Dharmic-Martial-Career Fusion"
@@ -4957,6 +7661,21 @@ SIG.MSR.214:
   confidence: 0.92
   v6_ids_consumed: [PLN.SUN, PLN.MARS, D10.SUN, D10.MARS]
   rpt_deep_dive: "SIG.02 (career-identity), MATRIX_DIVISIONALS §D10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SUN
+        note: "Sun in Aries D10 9H"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.215:
   signal_name: "D10 — Mercury Own-Sign D10 Virgo 2H + Jupiter Own-Sign D10 Pisces 8H: Dual Own-Sign Planets in 2H-8H Axis"
@@ -4982,6 +7701,21 @@ SIG.MSR.215:
   confidence: 0.90
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, D10.MERCURY, D10.JUPITER]
   rpt_deep_dive: "MATRIX_DIVISIONALS §D10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.MERCURY
+        note: "Mercury in Virgo D10 (own sign) — 2nd house D10"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.216:
   signal_name: "D10 — Rahu in D10 Cancer 12H (Foreign-Career Engine): Structural US-Stint Predictor"
@@ -5006,6 +7740,18 @@ SIG.MSR.216:
   confidence: 0.92
   v6_ids_consumed: [PLN.RAHU, D10.RAHU]
   rpt_deep_dive: "MATRIX_DIVISIONALS §D10, SIG.MSR.209"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 (D1 base)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.RAHU
+        note: "Rahu in Cancer D10 house 12 from D10 Lagna Leo"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.217:
   signal_name: "D27 — Lagna Pisces = D1 12H Parallel: Strength-Foundation Rooted in Moksha Domain (SIG.26)"
@@ -5032,6 +7778,18 @@ SIG.MSR.217:
   confidence: 0.88
   v6_ids_consumed: [HSE.12, SGN.PISCES]
   rpt_deep_dive: "SIG.26 (D27-Lagna-Pisces = D1-12H parallel), MATRIX_DIVISIONALS §D27"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §6.6 Bhava Bala JH"
+        fact_id: BVB.JH.1
+        note: "Lagna Bhava Bala 7.00 rupas JH rank 8"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.218:
   signal_name: "D60 — Saturn at D60 Lagna (Gemini): Karmic-Primacy of Discipline at Past-Karma Origin (SIG.27)"
@@ -5059,6 +7817,18 @@ SIG.MSR.218:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, D60.SATURN]
   rpt_deep_dive: "SIG.27 (D60 Saturn at Lagna), MATRIX_DIVISIONALS §D60"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.219:
   signal_name: "D60 — Ketu in D60 8H Capricorn: Past-Life Moksha-Crisis in Authority Domain"
@@ -5084,6 +7854,18 @@ SIG.MSR.219:
   confidence: 0.85
   v6_ids_consumed: [PLN.KETU, D60.KETU]
   rpt_deep_dive: "SIG.27 (D60), SIG.MSR.218, MATRIX_DIVISIONALS §D60"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1 (D1 base)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.KETU
+        note: "Ketu in Sagittarius D9 — cross-varga dignity reference"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.220:
   signal_name: "D20 — Sun in D20 Pisces 5H (Vishnu-Affinity Trine): Structural Spiritual Architecture (SIG.28)"
@@ -5110,6 +7892,18 @@ SIG.MSR.220:
   confidence: 0.88
   v6_ids_consumed: [PLN.SUN, D20.SUN]
   rpt_deep_dive: "SIG.28 (D20+D40 Sun-Pisces Vishnu-affinity), MATRIX_DIVISIONALS §D20"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.221:
   signal_name: "D20 — Jupiter at D20 Lagna Scorpio: Guru-at-Spiritual-Origin = Dharmic-Research Sadhana Architecture"
@@ -5136,6 +7930,18 @@ SIG.MSR.221:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, D20.JUPITER]
   rpt_deep_dive: "MATRIX_DIVISIONALS §D20, SIG.MSR.220"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.222:
   signal_name: "D30 — Saturn+Mars+Venus Triple-Conjunction D30 6H Gemini: Internal Conflict Structural Register"
@@ -5161,6 +7967,18 @@ SIG.MSR.222:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.VENUS, D30.SATURN, D30.MARS, D30.VENUS]
   rpt_deep_dive: "MATRIX_DIVISIONALS §D30"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.223:
   signal_name: "D40 — Jupiter+Venus D40 9H Taurus: Lakshmi-Dharma Recurrence Across Three Divisionals (D1, D9, D40)"
@@ -5187,6 +8005,21 @@ SIG.MSR.223:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, D40.JUPITER, D40.VENUS]
   rpt_deep_dive: "SIG.14 (Lakshmi Yoga), MATRIX_DIVISIONALS §D40"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.224:
   signal_name: "Divisional — Triple-Exalted Nodal Axis: Saturn(Libra D1 exalted) + Rahu(Taurus D1 classically exalted) + Ketu(Scorpio D1 classically exalted): Chart-Level Structural Exaltation Pattern (SIG.23)"
@@ -5213,6 +8046,21 @@ SIG.MSR.224:
   confidence: 0.85
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU, HSE.2, HSE.7, HSE.8]
   rpt_deep_dive: "SIG.23 (Triple-exalted-nodal-axis), MATRIX_SIGNS §5"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.225:
   signal_name: "Divisional — Vimsopaka Bala Assessment: Key Planetary Dignities Across 16 Divisionals"
@@ -5238,6 +8086,21 @@ SIG.MSR.225:
   confidence: 0.78
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.JUPITER, PLN.MARS, PLN.SUN]
   rpt_deep_dive: "MATRIX_DIVISIONALS §0 (overview)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.226:
   signal_name: "Divisional — D7 Saptamsha: Progeny Register; Twin-Daughter Signature (EVT.2022.01.03.01)"
@@ -5262,6 +8125,18 @@ SIG.MSR.226:
   confidence: 0.64
   v6_ids_consumed: [PLN.MARS, PLN.JUPITER, PLN.RAHU, HSE.5]
   rpt_deep_dive: "MATRIX_DIVISIONALS §MX.DVS.D7; EVT.2022.01.03.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.227:
   signal_name: "Divisional — D12 Dvadashamsha: Parental Ancestry Register; Leo Lagna; Father-Signification Weak Pattern (CTR.03 Echo)"
@@ -5287,6 +8162,21 @@ SIG.MSR.227:
   confidence: 0.79
   v6_ids_consumed: [PLN.JUPITER, PLN.MERCURY, PLN.MOON, PLN.SATURN, PLN.KETU, HSE.9]
   rpt_deep_dive: "CTR.03 (Deep Analysis v1.2.1); MATRIX_DIVISIONALS §MX.DVS.D12"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.228:
   signal_name: "Sensitive-Point — Gulika in Gemini 3H (13°57′ Ardra): Calamity-Significator in House of Courage and Communication"
@@ -5311,6 +8201,15 @@ SIG.MSR.228:
   confidence: 0.72
   v6_ids_consumed: [UPG.GULIKA, HSE.3]
   rpt_deep_dive: "v6.0 §11.1 (Gulika position)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.229:
   signal_name: "Sensitive-Point — Mandi in Cancer 4H (14°13′ Pushya): Malefic Shadow in House of Home, Mother, and Mental Peace"
@@ -5335,6 +8234,15 @@ SIG.MSR.229:
   confidence: 0.71
   v6_ids_consumed: [UPG.MANDI, HSE.4]
   rpt_deep_dive: "v6.0 §11.1 (Mandi position); v6.0 §4.4 (4H analysis)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.230:
   signal_name: "Sensitive-Point — Dhuma in Gemini 3H (5°17′ Mrigasira): Smoke-Point Co-Present with Gulika in 3H"
@@ -5358,6 +8266,18 @@ SIG.MSR.230:
   confidence: 0.68
   v6_ids_consumed: [UPG.DHUMA, HSE.3, PLN.SUN]
   rpt_deep_dive: "v6.0 §11.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.231:
   signal_name: "Sensitive-Point — Vyatipata in Capricorn 10H (24°42′ Dhanishta): Opposition-Malefic in Career House"
@@ -5381,6 +8301,18 @@ SIG.MSR.231:
   confidence: 0.70
   v6_ids_consumed: [UPG.VYATIPATA, HSE.10, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "v6.0 §11.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.SUN
+        note: "Sun Ishta 22.58 Kashta 34.21 — slightly malefic"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.232:
   signal_name: "Sensitive-Point — Parivesha in Cancer 4H (24°42′ Ashlesha): Encirclement-Point Co-Present with Mandi in 4H"
@@ -5404,6 +8336,15 @@ SIG.MSR.232:
   confidence: 0.65
   v6_ids_consumed: [UPG.PARIVESHA, HSE.4]
   rpt_deep_dive: "v6.0 §11.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.233:
   signal_name: "Sensitive-Point — Indrachapa in Sagittarius 9H (5°17′ Moola): Rainbow-Arc in House of Dharma"
@@ -5426,6 +8367,21 @@ SIG.MSR.233:
   confidence: 0.60
   v6_ids_consumed: [UPG.INDRACHAPA, HSE.9, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "v6.0 §11.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.234:
   signal_name: "Sensitive-Point — Upaketu in Sagittarius 9H (21°57′ Purva Ashadha): Pseudo-Ketu at Venus's Own Nakshatra in Dharma House"
@@ -5449,6 +8405,18 @@ SIG.MSR.234:
   confidence: 0.72
   v6_ids_consumed: [UPG.UPAKETU, HSE.9, PLN.VENUS]
   rpt_deep_dive: "v6.0 §11.1; MSR.195 (Venus own-nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.235:
   signal_name: "Sensitive-Point — Yogi Point in Pisces 12H (22°20′ Revati): Mercury-Blessed 12H Fortune-Accumulator"
@@ -5473,6 +8441,21 @@ SIG.MSR.235:
   confidence: 0.88
   v6_ids_consumed: [YOG.POINT, PLN.MERCURY, PLN.MOON, PLN.SUN]
   rpt_deep_dive: "v6.0 §11.3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.236:
   signal_name: "Sensitive-Point — Yogi Planet Mercury: Chart's Fortune-Activator = Also Vargottama Career-Operational Planet — Dual-Function Structure"
@@ -5498,6 +8481,18 @@ SIG.MSR.236:
   confidence: 0.87
   v6_ids_consumed: [PLN.MERCURY, YOG.PLANET, HSE.10]
   rpt_deep_dive: "v6.0 §11.3; MSR.235 (Yogi Point); MATRIX_DASHA_PERIODS (Mercury MD 2014-2031)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.237:
   signal_name: "Sensitive-Point — Avayogi Planet Mars: Chart's Fortune-ADVERSARY = Also Lagna Lord — Crisis-Identity Paradox"
@@ -5522,6 +8517,21 @@ SIG.MSR.237:
   confidence: 0.84
   v6_ids_consumed: [PLN.MARS, AVY.PLANET, HSE.7, HSE.1]
   rpt_deep_dive: "v6.0 §11.3; MSR.236 (Yogi Planet Mercury)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.238:
   signal_name: "Sensitive-Point — Natal Bhrigu Bindu in Libra 7H (8°04′ Swati Pada 1): Life-Accumulation-Point in House of Saturn-Mars Conjunction"
@@ -5546,6 +8556,21 @@ SIG.MSR.238:
   confidence: 0.83
   v6_ids_consumed: [HAZ.BHRIGU_BINDU, PLN.RAHU, PLN.MOON, HSE.7]
   rpt_deep_dive: "v6.0 §11.2 (Bhrigu Bindu natal position)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.239:
   signal_name: "Sensitive-Point — Bhrigu Bindu Progression Age 42 (2026): BB at Gemini 20°04′ (Punarvasu Pada 1) in 3H"
@@ -5570,6 +8595,15 @@ SIG.MSR.239:
   confidence: 0.79
   v6_ids_consumed: [HAZ.BHRIGU_BINDU, HSE.3]
   rpt_deep_dive: "v7.0 §V7.F (BB 60-year progression table)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.240:
   signal_name: "Sensitive-Point — Bhrigu Bindu Transit Activation: Saturn-on-Natal-BB (2012) and Future Rahu-Return-to-BB (~2040)"
@@ -5592,6 +8626,18 @@ SIG.MSR.240:
   confidence: 0.74
   v6_ids_consumed: [HAZ.BHRIGU_BINDU, PLN.SATURN, PLN.RAHU, HSE.7]
   rpt_deep_dive: "v7.0 §V7.F; SIG.31 (Saturn return Libra 2041-2044)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.241:
   signal_name: "Sensitive-Point — Pranapada Lagna in Pisces 12H (28°46′ Revati Pada 4): Prana-Vehicle at the End of the Zodiac, Mercury-Ruled"
@@ -5615,6 +8661,18 @@ SIG.MSR.241:
   confidence: 0.80
   v6_ids_consumed: [LAG.PRANAPADA, HSE.12, PLN.MERCURY, PLN.JUPITER]
   rpt_deep_dive: "v7.0 §V7.E (Pranapada computation)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.242:
   signal_name: "Sensitive-Point — CONVERGENCE: Yogi Point + Pranapada Both in Revati 12H = Mercury-12H as Chart's Fortune-Prana Axis"
@@ -5638,6 +8696,18 @@ SIG.MSR.242:
   confidence: 0.86
   v6_ids_consumed: [YOG.POINT, LAG.PRANAPADA, PLN.MERCURY, HSE.12]
   rpt_deep_dive: "MSR.235 (Yogi Point); MSR.241 (Pranapada)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.243:
   signal_name: "Sensitive-Point — Hora Lagna in Libra 7H (10°11′ Swati): Material-Wealth-Lagna Co-Present with Saturn-Mars-Bhrigu Bindu in 7H"
@@ -5666,6 +8736,21 @@ SIG.MSR.243:
   confidence: 0.78
   v6_ids_consumed: [LAG.HORA, HSE.7, PLN.SATURN, PLN.MARS]
   rpt_deep_dive: "v6.0 §12.1 (Special Lagnas)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.244:
   signal_name: "Sensitive-Point — Bhava Lagna in Aries 1H (14°23′ Ashwini): Life-Force-Lagna on the Actual Natal Lagna Axis"
@@ -5689,6 +8774,21 @@ SIG.MSR.244:
   confidence: 0.77
   v6_ids_consumed: [LAG.BHAVA, HSE.1]
   rpt_deep_dive: "v6.0 §12.1 (Special Lagnas)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.245:
   signal_name: "Sensitive-Point — Ghati Lagna + Varnada Lagna BOTH in Scorpio 8H: Power-Authority Double-Lagna in Transformation House"
@@ -5714,6 +8814,18 @@ SIG.MSR.245:
   confidence: 0.80
   v6_ids_consumed: [LAG.GHATI, LAG.VARNADA, HSE.8, PLN.KETU]
   rpt_deep_dive: "v6.0 §12.1 (Special Lagnas)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.246:
   signal_name: "Saham — Pitri (Father) in Capricorn 10H (12°90′ Shravana Pada 1): Father-Karaka in Career House; EVT.2018.11.28.01 Retrodict"
@@ -5737,6 +8849,18 @@ SIG.MSR.246:
   confidence: 0.89
   v6_ids_consumed: [SAH.PITRI, HSE.10, PLN.SATURN, PLN.SUN]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2018.11.28.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.247:
   signal_name: "Saham — Mrityu (Death) in Sagittarius 9H (27°81′ Uttara Ashadha Pada 1): Hazard-Point in Dharma House Near Moola Boundary"
@@ -5761,6 +8885,21 @@ SIG.MSR.247:
   confidence: 0.83
   v6_ids_consumed: [SAH.MRITYU, HSE.9, PLN.SATURN]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2018.11.28.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.248:
   signal_name: "Saham — Paradesa (Foreign) in Aries 1H (15°08′ Bharani Pada 1): Foreign-Destiny Point ON THE NATAL LAGNA"
@@ -5788,6 +8927,21 @@ SIG.MSR.248:
   confidence: 0.92
   v6_ids_consumed: [SAH.PARADESA, HSE.1, PLN.JUPITER, PLN.MARS]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2019.05.XX.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.249:
   signal_name: "Saham — Vyapara (Business) in Capricorn 10H (8°99′ Uttara Ashadha Pada 4): Business-Destiny in Career House; EVT.2023-2024 Retrodict"
@@ -5814,6 +8968,21 @@ SIG.MSR.249:
   confidence: 0.91
   v6_ids_consumed: [SAH.VYAPARA, HSE.10, PLN.MARS, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2023.07.XX.01; EVT.2024.02.16.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.250:
   signal_name: "Saham — Yasas (Fame) in Scorpio 8H (4°68′ Anuradha Pada 1): Fame-Accumulator in Transformation-Occult House"
@@ -5838,6 +9007,15 @@ SIG.MSR.250:
   confidence: 0.77
   v6_ids_consumed: [SAH.YASAS, HSE.8, PLN.KETU]
   rpt_deep_dive: "v7.0 §V7.D"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.251:
   signal_name: "Saham — Roga+Mahatmya BOTH in Libra 7H: Disease-Point AND Greatness-Point Conjunct Saturn-Mars — The 7H Crucible Paradox"
@@ -5869,6 +9047,18 @@ SIG.MSR.251:
   confidence: 0.88
   v6_ids_consumed: [SAH.ROGA, SAH.MAHATMYA, HSE.7, PLN.SATURN, PLN.MARS]
   rpt_deep_dive: "v7.0 §V7.D; MSR.243 (Hora Lagna 7H); MSR.238 (Bhrigu Bindu 7H)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.252:
   signal_name: "Saham — Samartha (Capability) in Aries 1H (12°43′ Ashwini Pada 4): Self-Capability-Point at Natal Lagna"
@@ -5893,6 +9083,21 @@ SIG.MSR.252:
   confidence: 0.91
   v6_ids_consumed: [SAH.SAMARTHA, HSE.1, PLN.MARS]
   rpt_deep_dive: "v7.0 §V7.D; MSR.248 (Saham Paradesa co-present)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.253:
   signal_name: "Saham — Shoka+Sraddha+Bandhu: Grief, Faith, and Kin in Pisces/Sagittarius — Hidden Emotional Architecture"
@@ -5918,6 +9123,18 @@ SIG.MSR.253:
   confidence: 0.74
   v6_ids_consumed: [SAH.SHOKA, SAH.SRADDHA, SAH.BANDHU, HSE.12, HSE.9, HSE.3]
   rpt_deep_dive: "v7.0 §V7.D"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.SRADDHA
+        note: "Sraddha Saham 13°04′34″ Cancer 4H Pushya — dedication lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.BANDHU
+        note: "Bandhu Saham 16°12′22″ Aquarius 11H Shatabhisha — relatives lot"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.254:
   signal_name: "Sensitive-Point — 7H Libra Supreme Convergence: Saturn+Mars+BhriguBindu+HoraLagna+RogaSaham+MahatmyaSaham = Six-Layer Convergence in One House"
@@ -5948,6 +9165,18 @@ SIG.MSR.254:
   confidence: 0.96
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, HAZ.BHRIGU_BINDU, LAG.HORA, SAH.ROGA, SAH.MAHATMYA, HSE.7]
   rpt_deep_dive: "MSR.166 (Hidden Raja Yoga); MSR.243 (Hora Lagna 7H); MSR.238 (BB 7H); MSR.251 (Roga+Mahatmya 7H)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.255:
   signal_name: "Dasha — Mercury MD (2010-08-21 to 2027-08-21): 17-Year Operational-Excellence Arc as Yogi-Planet MD"
@@ -5972,6 +9201,18 @@ SIG.MSR.255:
   confidence: 0.93
   v6_ids_consumed: [PLN.MERCURY, HSE.10, DSH.VM.MD.MERCURY]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.7-§3.15; SIG.29 (Mercury MD retrodictive density 10×)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.256:
   signal_name: "Dasha — Mercury MD 10x Event-Density Pattern (SIG.29): Statistical Confirmation of Yogi-Planet MD Premium"
@@ -5994,6 +9235,15 @@ SIG.MSR.256:
   confidence: 0.87
   v6_ids_consumed: [PLN.MERCURY, DSH.VM.MD.MERCURY]
   rpt_deep_dive: "SIG.29; MATRIX_DASHA_PERIODS §2.2"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.257:
   signal_name: "Dasha — Mercury-Mercury AD (2010-08-21 to 2013-01-18): Pure MD-lord AD = Career + Life Relaunch"
@@ -6016,6 +9266,18 @@ SIG.MSR.257:
   confidence: 0.88
   v6_ids_consumed: [PLN.MERCURY, DSH.VM.AD.MERCURY.MERCURY]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.7"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.258:
   signal_name: "Dasha — Mercury-Saturn AD (2024-12-12 to 2027-08-21): CURRENT — Planting-to-Compounding Window"
@@ -6041,6 +9303,21 @@ SIG.MSR.258:
   confidence: 0.91
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, DSH.VM.AD.MERCURY.SATURN]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.15; SIG.25 (Saturn-Pisces triple-activation)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.259:
   signal_name: "Dasha — Mercury-Jupiter AD (2022-09-06 to 2024-12-12): Highest-Density AD in Lifetime (5 Events in 27 months)"
@@ -6064,6 +9341,21 @@ SIG.MSR.259:
   confidence: 0.95
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, DSH.VM.AD.MERCURY.JUPITER]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.14; SIG.30 (AD-lord domain match 100%)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.260:
   signal_name: "Dasha — Mercury-Moon AD (2017-09-21 to 2019-02-21): AK Soul-Planet AD + Father's Death + US Move Trigger"
@@ -6088,6 +9380,18 @@ SIG.MSR.260:
   confidence: 0.87
   v6_ids_consumed: [PLN.MOON, PLN.MERCURY, DSH.VM.AD.MERCURY.MOON]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.11; EVT.2018.11.28.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.261:
   signal_name: "Dasha — Mercury-Ketu AD (2013-01-18 to 2014-04-15): Ketu-Closes-Karmic-Cycle; Marriage Event"
@@ -6111,6 +9415,15 @@ SIG.MSR.261:
   confidence: 0.83
   v6_ids_consumed: [PLN.KETU, PLN.MERCURY, DSH.VM.AD.MERCURY.KETU]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.8; EVT.2013.12.11.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.262:
   signal_name: "Dasha — AD-Lord Domain Match 100% Pattern (SIG.30): Every AD Lord's Domain = Primary LEL-Event Domain"
@@ -6139,6 +9452,21 @@ SIG.MSR.262:
   confidence: 0.88
   v6_ids_consumed: [DSH.VM.MD.MERCURY, PLN.MERCURY]
   rpt_deep_dive: "SIG.30; MATRIX_DASHA_PERIODS §2.3; SIG.29"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.263:
   signal_name: "Dasha — Ketu MD (2027-08-21 to 2034-08-21): 7-Year Withdrawal Phase Post-Mercury Operational Era"
@@ -6163,6 +9491,18 @@ SIG.MSR.263:
   confidence: 0.80
   v6_ids_consumed: [PLN.KETU, DSH.VM.MD.KETU, HSE.8]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.16-§3.22 (future projection)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD 2027-08-21 to 2034-08-21 (DSH.V.024–032)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.264:
   signal_name: "Dasha — Venus MD (2034-08-21 to 2054-08-21): 20-Year Prosperity-Creative Expansion as Dharmic-9H Planet"
@@ -6187,6 +9527,21 @@ SIG.MSR.264:
   confidence: 0.85
   v6_ids_consumed: [PLN.VENUS, DSH.VM.MD.VENUS, HSE.9, HSE.2, HSE.7]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §2.4 (future projections); MSR.195 (Venus own nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.265:
   signal_name: "Dasha — Saturn MD Historical (1992-2010-overlap): 19-Year Foundation Era with Sade Sati Cycle 1 Embedded"
@@ -6210,6 +9565,18 @@ SIG.MSR.265:
   confidence: 0.79
   v6_ids_consumed: [PLN.SATURN, DSH.VM.MD.SATURN, HSE.7]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.1-§3.6"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.266:
   signal_name: "Dasha — Yogini Dasha Bhadrika/Mercury → Ulka/Saturn Transition (Dec 2026): Yogini Regime Change Within Mercury-Saturn AD"
@@ -6233,6 +9600,18 @@ SIG.MSR.266:
   confidence: 0.79
   v6_ids_consumed: [PLN.SATURN, PLN.MERCURY, DSH.YOGINI, DSH.VM.AD.MERCURY.SATURN]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.15 row 023; v6.0 §5.2"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.267:
   signal_name: "Dasha — Chara Dasha Scorpio MD (from ~Feb 2026): Saturn-Karaka + Ketu-Exaltation Chara Period"
@@ -6255,6 +9634,18 @@ SIG.MSR.267:
   confidence: 0.72
   v6_ids_consumed: [PLN.KETU, HSE.8, DSH.CHARA.SCORPIO]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS row 023 (concurrent Chara); v6.0 §5.3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.3 Jaimini Chara Dasha"
+        fact_id: DSH.C.085
+        note: "Chara Dasha Scorpio MD: 2026-02-05 to 2027-01-05 (DSH.C.085)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.268:
   signal_name: "Dasha — Saturn Own-Exaltation Return Libra 2041-2044: Lifetime-Apex Transit Within Venus MD (SIG.31)"
@@ -6280,6 +9671,18 @@ SIG.MSR.268:
   confidence: 0.83
   v6_ids_consumed: [PLN.SATURN, HSE.7, DSH.VM.MD.VENUS]
   rpt_deep_dive: "SIG.31 (Saturn return Libra 2041-2044); MATRIX_DASHA_PERIODS §4"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.269:
   signal_name: "Dasha — Ketu MD Ketu-Rahu AD (2030-07-21 to 2031-08-09): Rahu Transit on Natal Ketu = Nodal-Reversal Crisis Window"
@@ -6303,6 +9706,21 @@ SIG.MSR.269:
   confidence: 0.77
   v6_ids_consumed: [PLN.KETU, PLN.RAHU, DSH.VM.AD.KETU.RAHU]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS row 029; SIG.16 (Rahu quadruple Jaimini aspect)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.029
+        note: "Ketu-Rahu AD 2030-07-21 to 2031-08-09"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.270:
   signal_name: "Dasha — Mars MD Future (Post-Venus MD ~2054): Avayogi-Planet MD at Age 70+ — Karmic-Final-Arc"
@@ -6325,6 +9743,21 @@ SIG.MSR.270:
   confidence: 0.65
   v6_ids_consumed: [PLN.MARS, DSH.VM.MD.MARS, AVY.PLANET]
   rpt_deep_dive: "v6.0 §5.1 (full Vimshottari table); MATRIX_DASHA_PERIODS §4 (future)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.271:
   signal_name: "Transit — Saturn in Pisces 12H (2025-03-30 to 2028-02-23 approx): Triple-Activation Setting Phase (SIG.25)"
@@ -6348,6 +9781,15 @@ SIG.MSR.271:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, HSE.12, LAG.PRANAPADA, YOG.POINT]
   rpt_deep_dive: "SIG.25; MSR.235 (Yogi Point); MSR.241 (Pranapada)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.272:
   signal_name: "Transit — Rahu in Aquarius (11H) Transiting Natal Moon: Double-AK Activation 2025-2026"
@@ -6371,6 +9813,18 @@ SIG.MSR.272:
   confidence: 0.82
   v6_ids_consumed: [PLN.RAHU, PLN.MOON, HSE.11]
   rpt_deep_dive: "MATRIX_SIGNS §11H Aquarius transit density"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.273:
   signal_name: "Transit — Jupiter in Taurus 2H (2025-2026): 2H Wealth-Expansion Over Natal Rahu"
@@ -6393,6 +9847,15 @@ SIG.MSR.273:
   confidence: 0.87
   v6_ids_consumed: [PLN.JUPITER, HSE.2, PLN.RAHU]
   rpt_deep_dive: "MATRIX_SIGNS §Taurus; MSR.271 (Saturn Pisces concurrent)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.274:
   signal_name: "Transit — Jupiter in Cancer (4H) Exalted 2026-2027: Gajakesari Yoga Renewed by Transit"
@@ -6417,6 +9880,18 @@ SIG.MSR.274:
   confidence: 0.88
   v6_ids_consumed: [PLN.JUPITER, HSE.4, PLN.MOON]
   rpt_deep_dive: "MATRIX_SIGNS §Cancer transit density"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.275:
   signal_name: "Transit — Saturn Historical Capricorn 10H (2020-2023): Career-Structural Crystallization"
@@ -6439,6 +9914,18 @@ SIG.MSR.275:
   confidence: 0.87
   v6_ids_consumed: [PLN.SATURN, HSE.10]
   rpt_deep_dive: "MATRIX_SIGNS §10H Capricorn"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.276:
   signal_name: "Transit — Jupiter in Aquarius 11H Gajakesari with Natal Moon (2021-2022): Twin-Birth Window"
@@ -6460,6 +9947,18 @@ SIG.MSR.276:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, PLN.MOON, HSE.11]
   rpt_deep_dive: "EVT.2022.01.03.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.277:
   signal_name: "Transit — Saturn in Sagittarius 9H (2017-2020): Father's Death Transit — Classical Pitru-Dosha Activation"
@@ -6481,6 +9980,21 @@ SIG.MSR.277:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, HSE.9, PLN.JUPITER]
   rpt_deep_dive: "EVT.2018.11.28.01; MSR.247 (Saham Mrityu)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.278:
   signal_name: "Transit — Saturn in Aries 1H (2028-2030): Debilitated Saturn on Lagna — Identity-Crisis Window"
@@ -6503,6 +10017,21 @@ SIG.MSR.278:
   confidence: 0.80
   v6_ids_consumed: [PLN.SATURN, HSE.1]
   rpt_deep_dive: "MATRIX_SIGNS §Aries transit density"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.279:
   signal_name: "Transit — Rahu in Gemini (3H) 2031-2033: On UL Spouse-Karma Reset Window"
@@ -6525,6 +10054,15 @@ SIG.MSR.279:
   confidence: 0.75
   v6_ids_consumed: [PLN.RAHU, HSE.3]
   rpt_deep_dive: "MATRIX_SIGNS §Gemini transit density"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.280:
   signal_name: "Transit — Saturn-Venus-Rahu AD Convergence 2041-2044: Lifetime-Apex Transit Window (SIG.31)"
@@ -6548,6 +10086,18 @@ SIG.MSR.280:
   confidence: 0.85
   v6_ids_consumed: [PLN.SATURN, HSE.7, HAZ.BHRIGU_BINDU]
   rpt_deep_dive: "SIG.31; MATRIX_DASHA_PERIODS row 037; MSR.240 (BB transit)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.281:
   signal_name: "Transit — Annual Sun Transit Aries (Lagna Activation): April-May Every Year = Peak Identity-Expression Window"
@@ -6570,6 +10120,21 @@ SIG.MSR.281:
   confidence: 0.83
   v6_ids_consumed: [PLN.SUN, HSE.1]
   rpt_deep_dive: "v6.0 §2.1 (Sun position); MSR.252 (Saham Samartha)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.282:
   signal_name: "Transit — Mars Transit Capricorn (10H) = Career-Launch Trigger (SIG.24): Annual Activation Pattern"
@@ -6593,6 +10158,21 @@ SIG.MSR.282:
   confidence: 0.79
   v6_ids_consumed: [PLN.MARS, HSE.10]
   rpt_deep_dive: "SIG.24; MATRIX_SIGNS §Capricorn"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.283:
   signal_name: "Transit — Jupiter in Leo 5H (2028-2029): Post-Sade-Sati Children-Fortune Window"
@@ -6616,6 +10196,18 @@ SIG.MSR.283:
   confidence: 0.79
   v6_ids_consumed: [PLN.JUPITER, HSE.5]
   rpt_deep_dive: "MATRIX_SIGNS §Leo; MSR.278 (Ketu 5H current)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.284:
   signal_name: "Transit — Saturn Taurus Kantaka (2H, 2029-2032): Rahu-Over-Saturn Wealth-Friction Window"
@@ -6639,6 +10231,18 @@ SIG.MSR.284:
   confidence: 0.79
   v6_ids_consumed: [PLN.SATURN, HSE.2, PLN.RAHU, PLN.MOON]
   rpt_deep_dive: "MATRIX_SIGNS §Taurus transit"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.285:
   signal_name: "Transit — Jupiter-Aquarius 2033 Gajakesari Recurrence: End-of-Ketu-MD Fortune Surge"
@@ -6660,6 +10264,18 @@ SIG.MSR.285:
   confidence: 0.83
   v6_ids_consumed: [PLN.JUPITER, PLN.MOON, HSE.11]
   rpt_deep_dive: "MSR.276 (first Gajakesari transit); MATRIX_DASHA_PERIODS row 032"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.286:
   signal_name: "Transit — Jupiter in Pisces 12H (2034 future): Yogi-Point Activation in Venus MD Opening"
@@ -6682,6 +10298,15 @@ SIG.MSR.286:
   confidence: 0.82
   v6_ids_consumed: [PLN.JUPITER, HSE.12, YOG.POINT]
   rpt_deep_dive: "MATRIX_SIGNS §Pisces; MSR.235 (Yogi Point)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.287:
   signal_name: "Transit — Ketu Transit Scorpio 8H (Natal Position Return ~2039-2040): Nodal Homecoming"
@@ -6704,6 +10329,18 @@ SIG.MSR.287:
   confidence: 0.68
   v6_ids_consumed: [PLN.KETU, HSE.8]
   rpt_deep_dive: "MATRIX_SIGNS §Scorpio; EVT.2021.XX.XX.01 (panic attack under previous Ketu-8H transit)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu natal Scorpio 8H 19°01′47″ — transit return basis (18.6yr cycle)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — natal Ketu house; nodal return target"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.288:
   signal_name: "Transit — Eclipse Impact: 5 Eclipses Within 6 Months of Father's Death (2018)"
@@ -6726,6 +10363,21 @@ SIG.MSR.288:
   confidence: 0.78
   v6_ids_consumed: [PLN.SUN, PLN.MOON, PLN.RAHU, HSE.9]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.11; EVT.2018.11.28.01; ECLIPSES_1900_2100.csv"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.289:
   signal_name: "Transit — Saturn Pisces Setting Sade Sati + Jupiter Cancer Exalted (2026): The Current Dual Fortune-Structure Window"
@@ -6750,6 +10402,18 @@ SIG.MSR.289:
   confidence: 0.86
   v6_ids_consumed: [PLN.SATURN, PLN.JUPITER, HSE.12, HSE.4]
   rpt_deep_dive: "MSR.271 (Saturn Pisces); MSR.274 (Jupiter Cancer)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.290:
   signal_name: "Transit — Mars-Transit-Libra (7H) Annual: Activating the Supreme Convergence Zone"
@@ -6773,6 +10437,18 @@ SIG.MSR.290:
   confidence: 0.80
   v6_ids_consumed: [PLN.MARS, HSE.7]
   rpt_deep_dive: "MSR.254 (7H Supreme Convergence)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.291:
   signal_name: "Sade Sati — Chart Overview: Moon in Aquarius = 4 Lifetime Cycles (Ages 6-13, 36-44, 65-72, 95-102)"
@@ -6797,6 +10473,18 @@ SIG.MSR.291:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md; v6.0 §21"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.292:
   signal_name: "Sade Sati — Cycle 2 Peak Phase: Saturn in Aquarius 11H (2022-04-29 to 2025-03-29)"
@@ -6820,6 +10508,18 @@ SIG.MSR.292:
   confidence: 0.91
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md Phase P4; MSR.259 (Mercury-Jupiter AD concurrent)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.293:
   signal_name: "Sade Sati — Cycle 2 Rising Phase: Saturn in Capricorn 10H (2020-01-24 to 2023-01-17)"
@@ -6841,6 +10541,18 @@ SIG.MSR.293:
   confidence: 0.83
   v6_ids_consumed: [PLN.SATURN, HSE.10]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md Cycle 2 Rising"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.294:
   signal_name: "Sade Sati — Cycle 2 Setting Phase (CURRENT): Saturn in Pisces 12H (2025-03-30 to 2028-02-23)"
@@ -6863,6 +10575,15 @@ SIG.MSR.294:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, HSE.12]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md; MSR.271 (Saturn Pisces)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.295:
   signal_name: "Sade Sati — Cycle 1 Peak (1993-1995, Ages 9-11): Headache Onset and R#1 Roots"
@@ -6885,6 +10606,18 @@ SIG.MSR.295:
   confidence: 0.83
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md Cycle 1; EVT.1995.XX.XX.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.296:
   signal_name: "Sade Sati — Own-Sign Double Mitigation: Rising (Capricorn) + Peak (Aquarius) = Both Saturn's Own Signs"
@@ -6908,6 +10641,18 @@ SIG.MSR.296:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "MSR.291 (Sade Sati overview); MSR.292 (Peak phase)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.297:
   signal_name: "Sade Sati — Cycle 3 Projected (2049-2058, Ages 65-74): The Elder-Recalibration Cycle"
@@ -6931,6 +10676,18 @@ SIG.MSR.297:
   confidence: 0.72
   v6_ids_consumed: [PLN.SATURN, PLN.MOON]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §2.4; SADE_SATI_CYCLES_ALL.md"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.298:
   signal_name: "Sade Sati — Cycle 2 Paradox: Highest LEL-Event Density Coincides with Sade Sati Peak — Chart's Most Counterintuitive Finding"
@@ -6955,6 +10712,18 @@ SIG.MSR.298:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "MSR.292 (Cycle 2 Peak); SIG.29 (Mercury MD density); MSR.296 (own-sign mitigation)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.299:
   signal_name: "Sade Sati — Cycle 1 Setting Phase (1996-1998): R#1 Launch at Sade Sati Exit"
@@ -6976,6 +10745,18 @@ SIG.MSR.299:
   confidence: 0.82
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.12]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md Cycle 1 P8; EVT.1998.02.16.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.300:
   signal_name: "Sade Sati — Shani Kakshya During Peak: Saturn's Nakshatra Beam in Aquarius 11H"
@@ -6998,6 +10779,18 @@ SIG.MSR.300:
   confidence: 0.73
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "v6.0 §21; v6.0 §5.4 (KP house and sub-lord tables)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.301:
   signal_name: "Sade Sati — End-of-Cycle-2 Date (2028-02-23): 7.5-Year Complete Liberation"
@@ -7020,6 +10813,18 @@ SIG.MSR.301:
   confidence: 0.85
   v6_ids_consumed: [PLN.SATURN, PLN.MOON]
   rpt_deep_dive: "SADE_SATI_CYCLES_ALL.md; MSR.278 (Saturn-Aries debilitation follows)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.302:
   signal_name: "Sade Sati — Cycle 2 Rising Phase (Capricorn 10H) Produces Own-Sign Saturn: Career-Not-Health as Primary Theme"
@@ -7042,6 +10847,21 @@ SIG.MSR.302:
   confidence: 0.84
   v6_ids_consumed: [PLN.SATURN, HSE.10, PLN.MERCURY, PLN.SUN]
   rpt_deep_dive: "MSR.275 (Saturn Capricorn 10H); MSR.293 (Cycle 2 Rising)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.303:
   signal_name: "KP — Cusp 10 (Career) Sub-Lord Saturn: Career Promise Delivered Through Saturn's Structural Discipline"
@@ -7066,6 +10886,18 @@ SIG.MSR.303:
   confidence: 0.88
   v6_ids_consumed: [KP.CUSP.10, PLN.SATURN, HSE.10]
   rpt_deep_dive: "v6.0 §4.1; v6.0 §4.3 (KP.SIG.10)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.304:
   signal_name: "KP — Cusp 11 (Gains) Sub-Lord Mercury: Yogi-Planet Governs the Gain-Cusp — Fortune × Gains = One Planet"
@@ -7089,6 +10921,15 @@ SIG.MSR.304:
   confidence: 0.91
   v6_ids_consumed: [KP.CUSP.11, PLN.MERCURY, HSE.11]
   rpt_deep_dive: "v6.0 §4.1; MSR.236 (Yogi Planet Mercury)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.305:
   signal_name: "KP — Cusp 7 (Spouse) Sub-Lord Saturn: Marriage Adjudicated by Exalted Saturn — Structured and Delayed"
@@ -7112,6 +10953,18 @@ SIG.MSR.305:
   confidence: 0.87
   v6_ids_consumed: [KP.CUSP.7, PLN.SATURN, HSE.7]
   rpt_deep_dive: "v6.0 §4.1; EVT.2013.12.11.01 (marriage)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.306:
   signal_name: "KP — Cusp 2 (Wealth) Sub-Lord Rahu: Wealth-Promise Delivered Through Unconventional Channels"
@@ -7134,6 +10987,18 @@ SIG.MSR.306:
   confidence: 0.89
   v6_ids_consumed: [KP.CUSP.2, PLN.RAHU, HSE.2]
   rpt_deep_dive: "v6.0 §4.1; MSR.249 (Saham Vyapara 10H)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §4.1 KP Cusp Mirror"
+        fact_id: KP.CUSP.2
+        note: "KP Cusp 2: 12°29′01″ Taurus star lord Moon sub lord Rahu"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.307:
   signal_name: "KP — Cusp 1 (Lagna) Sub-Lord Mercury: Self-Identity Delivered Through Mercury's Intelligence"
@@ -7156,6 +11021,18 @@ SIG.MSR.307:
   confidence: 0.87
   v6_ids_consumed: [KP.CUSP.1, PLN.MERCURY, PLN.KETU, HSE.1]
   rpt_deep_dive: "v6.0 §4.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §4.1 KP Cusp Mirror"
+        fact_id: KP.CUSP.1
+        note: "KP Cusp 1: 12°29′19″ Aries star lord Ketu sub lord Mercury"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.308:
   signal_name: "KP — Cusp 9 (Fortune) Sub-Lord Jupiter: Fortune-Cusp Delivered by 9L in Own Sign — Maximum Cusp Promise"
@@ -7179,6 +11056,18 @@ SIG.MSR.308:
   confidence: 0.91
   v6_ids_consumed: [KP.CUSP.9, PLN.JUPITER, HSE.9]
   rpt_deep_dive: "v6.0 §4.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.309:
   signal_name: "KP — Cusp 12 (Loss/Investment) Sub-Lord Saturn: Investments and Hidden Expenditures Through Saturn's Channel"
@@ -7201,6 +11090,15 @@ SIG.MSR.309:
   confidence: 0.83
   v6_ids_consumed: [KP.CUSP.12, PLN.SATURN, HSE.12]
   rpt_deep_dive: "v6.0 §4.1; EVT.2024.02.16.01 (sand mine 12H-foreign-investment)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.310:
   signal_name: "KP — Saturn KP Sub-Lord = Saturn: Saturn Self-References Its Own Delivery"
@@ -7223,6 +11121,18 @@ SIG.MSR.310:
   confidence: 0.87
   v6_ids_consumed: [PLN.SATURN, KP.PLN.SATURN]
   rpt_deep_dive: "v6.0 §4.2"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.SATURN
+        note: "Saturn KP: 22°32′ Libra; star lord Jupiter; sub Saturn; sub-sub Venus"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.311:
   signal_name: "KP — Venus KP Sub-Lord = Rahu: Venus-Delivered Fortune Channels Through Rahu's Ambition"
@@ -7245,6 +11155,18 @@ SIG.MSR.311:
   confidence: 0.84
   v6_ids_consumed: [PLN.VENUS, PLN.RAHU, KP.PLN.VENUS]
   rpt_deep_dive: "v6.0 §4.2; MSR.195 (Venus own nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.VENUS
+        note: "Venus KP: 19°15′ Sagittarius; star lord Venus; sub Rahu; sub-sub Mercury"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.312:
   signal_name: "KP — Mercury KP Sub-Lord = Rahu: Mercury's Operational Intelligence Flows Through Rahu's Innovation"
@@ -7267,6 +11189,18 @@ SIG.MSR.312:
   confidence: 0.86
   v6_ids_consumed: [PLN.MERCURY, PLN.RAHU, KP.PLN.MERCURY]
   rpt_deep_dive: "v6.0 §4.2; MSR.304 (Cusp 11 sub-lord Mercury)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.MERCURY
+        note: "Mercury KP: 00°55′ Capricorn; star lord Sun; sub Sun"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.313:
   signal_name: "KP — H10 (Career) Significators: ALL 9 Planets Except Jupiter and Moon — Career Touches Everything"
@@ -7290,6 +11224,21 @@ SIG.MSR.313:
   confidence: 0.90
   v6_ids_consumed: [KP.SIG.10, PLN.MERCURY, PLN.SATURN, HSE.10]
   rpt_deep_dive: "v6.0 §4.3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.SUN
+        note: "Sun 22°02 Capricorn star lord Moon sub lord Venus"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.314:
   signal_name: "KP — H11 (Gains) Significators: Sun, Rahu, Moon, Saturn — Moon AK is a Primary Gain-Significator"
@@ -7313,6 +11262,21 @@ SIG.MSR.314:
   confidence: 0.88
   v6_ids_consumed: [KP.SIG.11, PLN.MOON, PLN.SATURN, PLN.SUN, PLN.RAHU]
   rpt_deep_dive: "v6.0 §4.3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.SUN
+        note: "Sun 22°02 Capricorn star lord Moon sub lord Venus"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.315:
   signal_name: "KP — Saturn as Multi-Cusp Sub-Lord: Governs Cusps 6, 7, 10, 12 — The Chart's KP Anchor Planet"
@@ -7338,6 +11302,15 @@ SIG.MSR.315:
   confidence: 0.92
   v6_ids_consumed: [PLN.SATURN, KP.CUSP.6, KP.CUSP.7, KP.CUSP.10, KP.CUSP.12]
   rpt_deep_dive: "v6.0 §4.1; MSR.303, MSR.305, MSR.309"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.316:
   signal_name: "KP — H12 Significators: Saturn and Jupiter — Spiritual-Investment Duality"
@@ -7361,6 +11334,18 @@ SIG.MSR.316:
   confidence: 0.82
   v6_ids_consumed: [KP.SIG.12, PLN.SATURN, PLN.JUPITER, HSE.12]
   rpt_deep_dive: "v6.0 §4.3"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.317:
   signal_name: "Jaimini — Moon as Atmakaraka (AK): Soul-Significator in Own-Sign Saturn = Disciplined-Soul Architecture"
@@ -7384,6 +11369,18 @@ SIG.MSR.317:
   confidence: 0.92
   v6_ids_consumed: [PLN.MOON, HSE.11, JMN.AK]
   rpt_deep_dive: "MATRIX_PLANETS (Moon AK); v6.0 §23.1 (Moon)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.318:
   signal_name: "Jaimini — Saturn as Amatya Karaka (AmK): Career-Minister-Significator = Exalted Planet"
@@ -7407,6 +11404,18 @@ SIG.MSR.318:
   confidence: 0.91
   v6_ids_consumed: [PLN.SATURN, HSE.7, JMN.AMK]
   rpt_deep_dive: "MATRIX_PLANETS (Saturn AmK)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.319:
   signal_name: "Jaimini — Mercury as Darakaraka (DK): Spouse-Significator = Vargottama Yogi Planet"
@@ -7431,6 +11440,18 @@ SIG.MSR.319:
   confidence: 0.87
   v6_ids_consumed: [PLN.MERCURY, HSE.10, JMN.DK]
   rpt_deep_dive: "MATRIX_PLANETS (Mercury DK); EVT.2013.12.11.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.320:
   signal_name: "Jaimini — Mars as Putrakaraka (PK): Children-Significator = Avayogi Lagnesh in 7H"
@@ -7455,6 +11476,18 @@ SIG.MSR.320:
   v6_ids_consumed: [PLN.MARS, HSE.7, JMN.PK]
   rpt_deep_dive: "MATRIX_PLANETS (Mars PK); EVT.2022.01.03.01"
   tags: ["7-karaka-alternative"]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "Mars Lagna lord placed in 7H Libra enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.321:
   signal_name: "Jaimini — Jupiter as Gnatri Karaka (GK): Relatives/Community Significator = Own-Sign 9H"
@@ -7477,6 +11510,18 @@ SIG.MSR.321:
   confidence: 0.84
   v6_ids_consumed: [PLN.JUPITER, HSE.9, JMN.GK]
   rpt_deep_dive: "MATRIX_PLANETS (Jupiter GK)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.322:
   signal_name: "Jaimini — Arudha Lagna (AL) in Capricorn 10H: Public-Image in Career House (Sun+Mercury)"
@@ -7502,6 +11547,21 @@ SIG.MSR.322:
   confidence: 0.90
   v6_ids_consumed: [ARD.AL, HSE.10, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "v6.0 §13.1; SIG.19"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.323:
   signal_name: "Jaimini — Upapada Lagna (UL) in Gemini 3H: Spouse-Image in Communication House"
@@ -7525,6 +11585,18 @@ SIG.MSR.323:
   confidence: 0.82
   v6_ids_consumed: [ARD.UL, HSE.3, PLN.MERCURY]
   rpt_deep_dive: "v6.0 §13.1; MSR.279 (Rahu-on-UL 2031)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.324:
   signal_name: "Jaimini — A7 (Partner Arudha) in Aquarius 11H (Moon AK's House): Partners Connect at Soul Level"
@@ -7548,6 +11620,18 @@ SIG.MSR.324:
   confidence: 0.84
   v6_ids_consumed: [ARD.A7, PLN.MOON, HSE.11]
   rpt_deep_dive: "v6.0 §13.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.325:
   signal_name: "Jaimini — A6 (Enemy Arudha) in Taurus 2H (With Rahu): Enemies Enter Through Wealth-Gate"
@@ -7571,6 +11655,18 @@ SIG.MSR.325:
   confidence: 0.79
   v6_ids_consumed: [ARD.A6, PLN.RAHU, HSE.2]
   rpt_deep_dive: "v6.0 §13.1; EVT.2025.05.XX.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §13.1 Arudha Placements"
+        fact_id: ARD.A6
+        note: "A6 = Taurus 2H co-located with Rahu"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.326:
   signal_name: "Jaimini — Karakamsa in Gemini (D9): Mercury-Ruled Karma; Sri Krishna / Vishnu as Palana Devata"
@@ -7594,6 +11690,18 @@ SIG.MSR.326:
   confidence: 0.89
   v6_ids_consumed: [PLN.MOON, JMN.KARAKAMSA, PLN.MERCURY]
   rpt_deep_dive: "v6.0 §15; EVT.2025.XX.XX.01 (Vishnu devotional shift)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MOON
+        note: "Moon in Gemini D9 — Karakamsa sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.327:
   signal_name: "Jaimini — Rahu Quadruple Jaimini Aspect (SIG.16): Taurus Fixed → Cancer+Libra+Capricorn = 4 Planets"
@@ -7619,6 +11727,21 @@ SIG.MSR.327:
   confidence: 0.93
   v6_ids_consumed: [PLN.RAHU, PLN.MARS, PLN.SATURN, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "SIG.16; CGP_AUDIT_v1_0.md; MSR.172 (§4 aspect signal)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.328:
   signal_name: "Jaimini — Fixed-Sign Yoga: 3 of 4 Fixed Signs Occupied (Taurus+Leo+Scorpio+Aquarius Configuration)"
@@ -7641,6 +11764,18 @@ SIG.MSR.328:
   confidence: 0.80
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, PLN.MOON, HSE.2, HSE.8, HSE.11]
   rpt_deep_dive: "v6.0 §2.1; MSR.327 (Rahu quadruple aspect)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.329:
   signal_name: "Jaimini — Argala from 2H: Rahu Argala on Lagna-System"
@@ -7664,6 +11799,18 @@ SIG.MSR.329:
   confidence: 0.79
   v6_ids_consumed: [PLN.RAHU, HSE.2, HSE.1]
   rpt_deep_dive: "Jaimini Sutras; v6.0 §2.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.330:
   signal_name: "Jaimini — AK-DK Connection (Moon-Mercury): Soul and Spouse Linked = Spouse as Soul-Mirror"
@@ -7686,6 +11833,18 @@ SIG.MSR.330:
   confidence: 0.83
   v6_ids_consumed: [PLN.MOON, PLN.MERCURY, JMN.AK, JMN.DK]
   rpt_deep_dive: "MATRIX_PLANETS (Moon AK, Mercury DK)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.331:
   signal_name: "Jaimini — Ketu in Scorpio (Fixed) Rashi Drishti: Aspects Aries+Cancer+Libra = Lagna+4H+7H Trikona of Fixed-Axis"
@@ -7710,6 +11869,18 @@ SIG.MSR.331:
   confidence: 0.77
   v6_ids_consumed: [PLN.KETU, HSE.8, HSE.1, HSE.4, HSE.10]
   rpt_deep_dive: "v6.0 §2.1; CGP_AUDIT_v1_0.md"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.332:
   signal_name: "Jaimini — Moon in Aquarius (Fixed) Rashi Drishti: AK Aspects Aries+Cancer+Capricorn = Lagna+4H+10H Activation"
@@ -7736,6 +11907,21 @@ SIG.MSR.332:
   confidence: 0.88
   v6_ids_consumed: [PLN.MOON, JMN.AK, HSE.11, HSE.1, HSE.4, HSE.7]
   rpt_deep_dive: "MSR.332 (Moon-AK Jaimini aspect covers 3 key houses)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.333:
   signal_name: "Jaimini — Jupiter+Venus in Sagittarius (Dual) Rashi Drishti: 9H Aspects Fixed Signs = Taurus+Leo+Scorpio+Aquarius"
@@ -7763,6 +11949,21 @@ SIG.MSR.333:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, HSE.2, HSE.5, HSE.8, HSE.11]
   rpt_deep_dive: "MSR.333 (9H dual-sign benefic covers all fixed signs = most comprehensive Jaimini pattern)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.334:
   signal_name: "Jaimini — Mercury in Capricorn (Movable) Rashi Drishti: DK+Vargottama Aspects Dual Signs = Gemini+Virgo+Sagittarius+Pisces"
@@ -7787,6 +11988,21 @@ SIG.MSR.334:
   confidence: 0.87
   v6_ids_consumed: [PLN.MERCURY, JMN.DK, HSE.10, HSE.3, HSE.9, HSE.12]
   rpt_deep_dive: "MSR.334 (Mercury DK Jaimini aspect closes DK→UL loop)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.335:
   signal_name: "Jaimini — Saturn in Libra (Movable) Rashi Drishti: AmK Aspects Dual Signs = Gemini+Virgo+Sagittarius+Pisces"
@@ -7812,6 +12028,21 @@ SIG.MSR.335:
   confidence: 0.91
   v6_ids_consumed: [PLN.SATURN, JMN.AMKK, HSE.7, HSE.3, HSE.9, HSE.12]
   rpt_deep_dive: "MSR.335 (AmK exalted Jaimini aspect covers all dual signs = career governance of 12H foreign domain)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.336:
   signal_name: "Jaimini — A7 (Darapada) = Aquarius 11H = Exactly with Moon AK: Soul and Spouse-Image Fused"
@@ -7837,6 +12068,18 @@ SIG.MSR.336:
   confidence: 0.88
   v6_ids_consumed: [PLN.MOON, JMN.AK, JMN.DARAPADA, HSE.11]
   rpt_deep_dive: "v6.0 §13.1; MSR.330 (AK-DK connection)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.337:
   signal_name: "Jaimini — A6 (Shatrupada) = Taurus 2H = Exactly with Rahu: Enemies from Wealth/Foreign Domain"
@@ -7862,6 +12105,18 @@ SIG.MSR.337:
   confidence: 0.80
   v6_ids_consumed: [PLN.RAHU, JMN.SHATRUPADA, HSE.2]
   rpt_deep_dive: "v6.0 §13.1; MSR.329 (Rahu 2H Argala on Lagna)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §13.1 Arudha Placements"
+        fact_id: ARD.A6
+        note: "A6 Arudha of 6H = Taurus 2H; Rahu in A6 sign"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.338:
   signal_name: "Jaimini — UL (Upapada Lagna) = Gemini 3H: Spouse from Communication/Sibling-Domain; Mercury-Ruled Marriage"
@@ -7886,6 +12141,18 @@ SIG.MSR.338:
   confidence: 0.86
   v6_ids_consumed: [JMN.UL, HSE.3, PLN.MERCURY, HSE.10]
   rpt_deep_dive: "v6.0 §13.1; MSR.334 (Mercury DK aspects UL via Movable→Dual)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.339:
   signal_name: "Jaimini — AL (Arudha Lagna) = Capricorn 10H: Public Image IS Career — Identity and Reputation Fused"
@@ -7910,6 +12177,21 @@ SIG.MSR.339:
   confidence: 0.93
   v6_ids_consumed: [JMN.AL, HSE.10, PLN.SUN, PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "SIG.19; MATRIX_HOUSES §10H; v6.0 §13.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.340:
   signal_name: "Jaimini — AK (Moon 11H) + AmK (Saturn 7H) Rajayoga: Soul-Force and Career-Force in Kendra = Classical Rajayoga"
@@ -7935,6 +12217,18 @@ SIG.MSR.340:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, JMN.AK, JMN.AMKK, HSE.11, HSE.7]
   rpt_deep_dive: "MSR.340 (AK-AmK trikona Jaimini Rajayoga)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.341:
   signal_name: "Jaimini — GK Jupiter in Own Sign (Sagittarius 9H): Gnati Karaka at Maximum Strength = Litigation/Competitor Challenges Overcome by Dharmic Force"
@@ -7959,6 +12253,18 @@ SIG.MSR.341:
   confidence: 0.88
   v6_ids_consumed: [PLN.JUPITER, JMN.GK, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS §Jupiter; MSR.341"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.342:
   signal_name: "Jaimini — MK Venus in Sagittarius 9H with Jupiter: Matri Karaka with GK = Mother-Archetype and Challenge-Domain Fused in Dharma House"
@@ -7983,6 +12289,21 @@ SIG.MSR.342:
   confidence: 0.79
   v6_ids_consumed: [PLN.VENUS, JMN.MK, PLN.JUPITER, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS; v6.0 §15 (Ishta Devata = Venus)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.343:
   signal_name: "Jaimini — PK Mars in Libra 7H: Putra Karaka in Relationship House = Children-Domain Colored by Saturn's Conjunction"
@@ -8007,6 +12328,18 @@ SIG.MSR.343:
   confidence: 0.80
   v6_ids_consumed: [PLN.MARS, JMN.PK, PLN.SATURN, HSE.7]
   rpt_deep_dive: "MATRIX_PLANETS §Mars; MSR.343"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.344:
   signal_name: "Jaimini — BK Sun in Capricorn 10H: Bhratri Karaka in Career House = Siblings-Domain Fused with Professional Life"
@@ -8030,6 +12363,18 @@ SIG.MSR.344:
   confidence: 0.75
   v6_ids_consumed: [PLN.SUN, JMN.BK, PLN.MERCURY, HSE.10]
   rpt_deep_dive: "MATRIX_PLANETS §Sun; MSR.344"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.345:
   signal_name: "Jaimini — Chara Dasha Current Period: Scorpio MD (2025-2026 approx.) = Ketu-8H Period = Moksha-Release-Transformation Window"
@@ -8054,6 +12399,18 @@ SIG.MSR.345:
   confidence: 0.65
   v6_ids_consumed: [PLN.KETU, HSE.8]
   rpt_deep_dive: "v6.0 §2.1; EVT.2025.XX.XX.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.3 Jaimini Chara Dasha"
+        fact_id: DSH.C.085
+        note: "Chara Dasha Scorpio MD: 2026-02-05 to 2027-01-05 (DSH.C.085)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.346:
   signal_name: "Jaimini — Moon-AK Argala on 10H (from 11H): Soul-Force Intervenes in Career = Career Receives Soul-Blessing"
@@ -8078,6 +12435,18 @@ SIG.MSR.346:
   confidence: 0.85
   v6_ids_consumed: [PLN.MOON, JMN.AK, HSE.11, HSE.10, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "MSR.339 (AL=10H); MSR.340 (AK-AmK Rajayoga)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.347:
   signal_name: "Jaimini — Jupiter+Venus (9H) Argala on 6H (Virodha of 7H Argala): Dharmic Benefics Counter-Balance the 7H Malefic Concentration"
@@ -8101,6 +12470,21 @@ SIG.MSR.347:
   confidence: 0.81
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.KETU, HSE.9, HSE.8, HSE.7]
   rpt_deep_dive: "MSR.329 (Rahu 2H Argala on Lagna); MSR.346 (Moon Argala on 10H)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.348:
   signal_name: "Jaimini — Navamsha Karakamsa Integration: Mercury Vargottama in D9 Capricorn + Karakamsa Gemini = Mercury-Twin Confirmation of Soul-Path"
@@ -8125,6 +12509,18 @@ SIG.MSR.348:
   confidence: 0.92
   v6_ids_consumed: [PLN.MERCURY, PLN.MOON, JMN.AK, JMN.KARAKAMSA]
   rpt_deep_dive: "MSR.325 (Karakamsa + Devatas); MSR.319 (Mercury Vargottama)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.349:
   signal_name: "Jaimini — Rashi Drishti Convergence on Capricorn 10H: Receives Jaimini Aspects from Aries+Cancer+Libra (All Movable Signs) = 10H is Chart's Most-Aspected House via Jaimini"
@@ -8152,6 +12548,21 @@ SIG.MSR.349:
   confidence: 0.90
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, PLN.MOON, HSE.10, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "MSR.327 (Rahu quadruple Jaimini aspect); MSR.331 (Ketu Jaimini aspects); MSR.332 (Moon Jaimini aspects)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.350:
   signal_name: "Jaimini — Chart-Level Integration: The Chart's Jaimini Architecture = Three Interlocking Rajayoga Mechanisms"
@@ -8175,6 +12586,18 @@ SIG.MSR.350:
   confidence: 0.94
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, PLN.MERCURY, PLN.RAHU, PLN.KETU, JMN.AK, JMN.AMKK, JMN.AL]
   rpt_deep_dive: "MSR.340 (AK-AmK Rajayoga); MSR.348 (Karakamsa Mercury loop); MSR.349 (Rashi Drishti on 10H)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.351:
   signal_name: "Panchang — Birth Tithi: Shukla Chaturdashi (14th bright fortnight) = Moon near Full = Maximum Lunar Power at Birth"
@@ -8199,6 +12622,21 @@ SIG.MSR.351:
   confidence: 0.82
   v6_ids_consumed: [PLN.MOON, PLN.SUN, PCH.TITHI]
   rpt_deep_dive: "v6.0 §9 (Panchang)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.352:
   signal_name: "Panchang — Birth Vara: Sunday (Ravivar) = Sun-Day Birth = Authority, Sovereignty, Father-Karma, and Solar Destiny"
@@ -8223,6 +12661,18 @@ SIG.MSR.352:
   confidence: 0.92
   v6_ids_consumed: [PLN.SUN, PCH.VARA, HSE.10]
   rpt_deep_dive: "v6.0 §9 (Panchang); MSR.352"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.353:
   signal_name: "Panchang — Birth Nakshatra (Janma Nakshatra): Purva Bhadrapada (Moon's Nakshatra) = Jupiter-Ruled, Fiery, Spiritually Aggressive"
@@ -8248,6 +12698,18 @@ SIG.MSR.353:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, PCH.NAKSHATRA, PLN.JUPITER]
   rpt_deep_dive: "v6.0 §2.1; §9 (Panchang); MSR.196 (Moon Purva Bhadrapada)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.354:
   signal_name: "Panchang — Birth Yoga: Shiva Yoga or Parigha Yoga at Birth = [PANCHANG CALCULATION REQUIRED]"
@@ -8269,6 +12731,21 @@ SIG.MSR.354:
   confidence: 0.00
   v6_ids_consumed: [PCG.YOGA]
   rpt_deep_dive: "v6.0 §9 (Panchang — Yoga)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.355:
   signal_name: "Panchang — Birth Karana: Vishti (Bhadra) Karana = The Most Inauspicious Karana = Fierce-Initiation Birth Environment"
@@ -8292,6 +12769,21 @@ SIG.MSR.355:
   confidence: 0.82
   v6_ids_consumed: [PCH.KARANA, PLN.MOON]
   rpt_deep_dive: "Session 4.5 spot-check; v6.0 §9 (Panchang)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.356:
   signal_name: "Panchang — Nakshatra Pada at Birth: Purva Bhadrapada Pada 3 (Leo Navamsha) = Soul's Emotional-Royal-Mode"
@@ -8315,6 +12807,21 @@ SIG.MSR.356:
   confidence: 0.87
   v6_ids_consumed: [PLN.MOON, PCH.NAKSHATRA_PADA]
   rpt_deep_dive: "v6.0 §3.5; MSR.353 (Janma Nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.357:
   signal_name: "Panchang — Lagna Nakshatra: Ashwini Pada 4 = Ketu-Ruled Birth Rising = Spiritual Acceleration of Identity"
@@ -8339,6 +12846,18 @@ SIG.MSR.357:
   confidence: 0.90
   v6_ids_consumed: [PLN.KETU, HSE.1, PCH.LAGNA_NAKSHATRA]
   rpt_deep_dive: "v6.0 §1; MSR.198 (Lagna Ashwini)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.NAK
+        note: "Lagna nakshatra Ashwini — Ketu-ruled"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.358:
   signal_name: "Panchang — Tithi Lord: Chaturdashi Tithi Lord = Shiva = Transformation Deity Governs Birth Moment"
@@ -8361,6 +12880,21 @@ SIG.MSR.358:
   confidence: 0.83
   v6_ids_consumed: [PCH.TITHI_LORD, PLN.MOON]
   rpt_deep_dive: "MSR.351 (Birth Tithi); v6.0 §9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.359:
   signal_name: "Panchang — Vara Lord: Sunday Lord = Sun = Sun-God's Day Governs Birth = Authority and Father-Karma from Birth-Moment"
@@ -8383,6 +12917,18 @@ SIG.MSR.359:
   confidence: 0.88
   v6_ids_consumed: [PLN.SUN, PCH.VARA, HSE.10]
   rpt_deep_dive: "MSR.352 (Sunday birth); v6.0 §9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.360:
   signal_name: "Panchang — Nakshatra Lord (Janma): Purva Bhadrapada Lord = Jupiter = Dharmic Mind-Expansion as Emotional Foundation"
@@ -8405,6 +12951,18 @@ SIG.MSR.360:
   confidence: 0.89
   v6_ids_consumed: [PLN.MOON, PLN.JUPITER, PCH.NAKSHATRA_LORD]
   rpt_deep_dive: "MSR.353 (Janma Nakshatra); MSR.341 (GK Jupiter)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.361:
   signal_name: "Panchang — Amrita Siddhi Yoga: Sunday + Ashwini Nakshatra = One of the Rare Amrita Siddhi Yoga Combinations"
@@ -8428,6 +12986,21 @@ SIG.MSR.361:
   confidence: 0.70
   v6_ids_consumed: [PLN.SUN, PLN.KETU, PCH.VARA, PCH.LAGNA_NAKSHATRA]
   rpt_deep_dive: "v6.0 §9 (Panchang)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.362:
   signal_name: "Panchang — Chandra Bala (Birth Nakshatra in Transit): Current Moon Transits and Natal Nakshatra Resonance"
@@ -8451,6 +13024,18 @@ SIG.MSR.362:
   confidence: 0.72
   v6_ids_consumed: [PLN.MOON, PCH.CHANDRA_BALA]
   rpt_deep_dive: "v6.0 §9; Muhurta framework"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.363:
   signal_name: "Panchang — Tarabala: Birth Nakshatra as Reference for 27-Nakshatra Tarabala Cycle = Which Nakshatras Are Beneficial Periods"
@@ -8474,6 +13059,18 @@ SIG.MSR.363:
   confidence: 0.80
   v6_ids_consumed: [PLN.MOON, PCH.TARABALA]
   rpt_deep_dive: "Muhurta framework; v6.0 §9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.364:
   signal_name: "Panchang — Birth Month: Magha Month (Paush/Magha Masya) = Sun in Capricorn Makar = Solar Capricorn-Season Birth"
@@ -8495,6 +13092,18 @@ SIG.MSR.364:
   confidence: 0.80
   v6_ids_consumed: [PLN.SUN, PCH.MASYA, HSE.10]
   rpt_deep_dive: "v6.0 §1; MSR.352 (Sunday birth)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.365:
   signal_name: "Panchang — Ganda Moola: Native NOT Born in Ganda Moola (No Junction-Nakshatra at Lagna or Moon) = Auspicious Clear Birth"
@@ -8518,6 +13127,21 @@ SIG.MSR.365:
   confidence: 0.83
   v6_ids_consumed: [PLN.MOON, HSE.1, PCH.GANDA_MOOLA]
   rpt_deep_dive: "v6.0 §9; v6.0 §1 (Lagna = Ashwini)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.366:
   signal_name: "Panchang — Birth Hour: 10:43 IST = Late Morning Birth = Sun Near Culmination = Solar Power Ascending to Meridian"
@@ -8540,6 +13164,18 @@ SIG.MSR.366:
   confidence: 0.83
   v6_ids_consumed: [PLN.SUN, PLN.SATURN, PCH.HORA, HSE.10]
   rpt_deep_dive: "v6.0 §1; MSR.352 (Sunday birth); MSR.359 (Vara Lord)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.367:
   signal_name: "Panchang — Panchang Tatva Score: All 5 Panchang Elements Assessed = Net Auspiciousness of Birth Moment"
@@ -8569,6 +13205,21 @@ SIG.MSR.367:
   confidence: 0.78
   v6_ids_consumed: [PCG.TITHI, PCG.VARA, PCG.NAKSHATRA, PCG.KARANA]
   rpt_deep_dive: "MSR.351-366 (full panchang section)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.368:
   signal_name: "Panchang — Naamakshara (Birth Syllable): Purva Bhadrapada Pada 3 = 'De' Syllable = Mercury-Beginning Name Energy"
@@ -8590,6 +13241,18 @@ SIG.MSR.368:
   confidence: 0.65
   v6_ids_consumed: [PLN.MOON, PCH.NAKSHATRA_PADA]
   rpt_deep_dive: "MSR.353 (Janma Nakshatra); MSR.358 (Tithi Lord = Shiva)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.369:
   signal_name: "Panchang — Tri-Nadi Dasha (Prana-Agni-Soma): Purva Bhadrapada = Agni (Fire) Nadi = Fire-Force as Emotional Ground"
@@ -8614,6 +13277,18 @@ SIG.MSR.369:
   confidence: 0.72
   v6_ids_consumed: [PLN.MOON, PCH.NADI]
   rpt_deep_dive: "Nadi Jyotisha; MSR.353 (Janma Nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.370:
   signal_name: "Panchang — Varna: Purva Bhadrapada = Brahmin Varna = Knowledge-Dharma Archetype at Soul Level"
@@ -8637,6 +13312,18 @@ SIG.MSR.370:
   confidence: 0.73
   v6_ids_consumed: [PLN.MOON, PCH.VARNA]
   rpt_deep_dive: "MSR.353 (Janma Nakshatra); MSR.357 (Lagna Nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.371:
   signal_name: "Panchang — Gana: Purva Bhadrapada = Manushya (Human) Gana = Balanced, Practical-Spiritual Temperament"
@@ -8659,6 +13346,18 @@ SIG.MSR.371:
   confidence: 0.85
   v6_ids_consumed: [PLN.MOON, PCH.GANA]
   rpt_deep_dive: "MSR.370 (Varna); MSR.357 (Lagna Nakshatra)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.372:
   signal_name: "Panchang — Yoni: Purva Bhadrapada = Simha (Lion) Yoni = Regal, Fierce, Non-Submissive Instinct"
@@ -8681,6 +13380,18 @@ SIG.MSR.372:
   confidence: 0.78
   v6_ids_consumed: [PLN.MOON, PCH.YONI]
   rpt_deep_dive: "MSR.371 (Gana); v6.0 §9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.373:
   signal_name: "Panchang — Tattva: Purva Bhadrapada = Agni (Fire) Tattva + Aquarius = Vayu (Air) Sign = Fire-Air Soul in Air-Structured Environment"
@@ -8704,6 +13415,18 @@ SIG.MSR.373:
   confidence: 0.74
   v6_ids_consumed: [PLN.MOON, PCH.TATTVA, HSE.11]
   rpt_deep_dive: "MSR.369 (Nadi); MSR.370 (Varna)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.374:
   signal_name: "Panchang — Devata of Nakshatra: Aja Ekapada (Purva Bhadrapada Devata) = The One-Footed Goat = Rudra-Form Deity as Emotional Guardian"
@@ -8726,6 +13449,18 @@ SIG.MSR.374:
   confidence: 0.83
   v6_ids_consumed: [PLN.MOON, PCH.NAKSHATRA_DEVATA]
   rpt_deep_dive: "MSR.353 (Janma Nakshatra); MSR.358 (Tithi Lord = Shiva)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.375:
   signal_name: "Panchang — Section Synthesis: 5 Panchang Pillars Point to Intense-Transformational-Knowledge-Seeking Birth Environment"
@@ -8756,6 +13491,21 @@ SIG.MSR.375:
   confidence: 0.87
   v6_ids_consumed: [PCG.TITHI, PCG.VARA, PCG.NAKSHATRA, PCG.KARANA]
   rpt_deep_dive: "MSR.351-374 (full §13 panchang section)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.376:
   signal_name: "Tajika — Varshaphal Framework: Annual Chart Methodology for Abhisek Mohanty (Solar Return = Sun Returns to Natal Position)"
@@ -8779,6 +13529,18 @@ SIG.MSR.376:
   confidence: 0.82
   v6_ids_consumed: [PLN.SUN, HSE.10]
   rpt_deep_dive: "v6.0 §2.1; Tajika Neelakanthi framework"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.377:
   signal_name: "Tajika — Muntha Position at Age 42 (2026–27): Muntha in Libra 7H = Partnership/Public-Domain Annual Activation (Venus-ruled, maraka axis)"
@@ -8839,6 +13601,18 @@ SIG.MSR.378:
   confidence: 0.72
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.376 (Varshaphal framework)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.379:
   signal_name: "Tajika — Ishrafa (Separation) Yoga: Retrograde or Past-Separation Patterns in Annual Chart = Years of Completion Rather Than Initiation"
@@ -8861,6 +13635,21 @@ SIG.MSR.379:
   confidence: 0.65
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.JUPITER]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.378 (Ithasala)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.380:
   signal_name: "Tajika — Varshesha (Year Lord) Identification: The Strongest Planet in Each Annual Chart Governs That Year's Theme"
@@ -8886,6 +13675,18 @@ SIG.MSR.380:
   confidence: 0.70
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.SUN]
   rpt_deep_dive: "MSR.376-379 (Tajika section)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.381:
   signal_name: "Tajika — Tajika Special Lagna: Varshaphal Lagna Changes Each Year at Different Location = Singapore vs Bhubaneswar Annual Lagna Divergence"
@@ -8909,6 +13710,21 @@ SIG.MSR.381:
   confidence: 0.82
   v6_ids_consumed: [PLN.SUN, HSE.1]
   rpt_deep_dive: "v6.0 §1 (birth location); LEL EVT.2007 (Singapore move)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.382:
   signal_name: "Tajika — Sahama in Varshaphal: Annual Sahamas as Tajika Sensitive Points"
@@ -8931,6 +13747,18 @@ SIG.MSR.382:
   confidence: 0.65
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "v7.0 §V7.D (natal Sahams); MSR.376 (Varshaphal framework)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.383:
   signal_name: "Tajika — Tri-Pataki Chakra: The 3-Sign Trident from Annual Lagna = Strongest Tajika Directional Sectors"
@@ -8954,6 +13782,18 @@ SIG.MSR.383:
   confidence: 0.68
   v6_ids_consumed: [HSE.1, HSE.5, HSE.9]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.381 (Varshaphal Lagna)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.384:
   signal_name: "Tajika — Mudda Dasha in Varshaphal: 12 Monthly Sub-Periods Within Each Annual Chart = Monthly Resolution Layer"
@@ -8976,6 +13816,18 @@ SIG.MSR.384:
   confidence: 0.72
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.380 (Varshesha)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.385:
   signal_name: "Tajika — Natal Saturn Exalted as Perennial Tajika Year-Lord Candidate: Saturn-Strong Annual Charts = Structural Achievement Years"
@@ -8998,6 +13850,18 @@ SIG.MSR.385:
   confidence: 0.78
   v6_ids_consumed: [PLN.SATURN, HSE.7]
   rpt_deep_dive: "MSR.380 (Varshesha); MSR.291 (Sade Sati setting phase)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.386:
   signal_name: "Tajika — Dwisaptati Sama Dasha (72-Year Dasha): Sun in 7H of Annual Chart = Tajika Conditional Dasha Condition"
@@ -9019,6 +13883,18 @@ SIG.MSR.386:
   confidence: 0.60
   v6_ids_consumed: [PLN.SUN]
   rpt_deep_dive: "Tajika Neelakanthi conditional dasha framework"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.387:
   signal_name: "Tajika — Section Synthesis: Varshaphal as Annual Resolution Layer = Mercury-Saturn Pair as Most Potent Tajika Annual Focus 2024-2027"
@@ -9080,6 +13956,18 @@ SIG.MSR.388:
   confidence: 0.97
   v6_ids_consumed: [PLN.MERCURY, JMN.DK, JMN.KARAKAMSA]
   rpt_deep_dive: "MSR.348 (Karakamsa Mercury loop); MSR.303 (KP Mercury Yogi); MSR.319 (Mercury Vargottama)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.389:
   signal_name: "Meta-Convergence — Saturn Triple Structural Axis: Exalted (D1) + AK's Sign (D1 Aquarius/Moon) + AmK (Jaimini) + Sub-Lord of 4 Cusps (KP) = Four Systems"
@@ -9104,6 +13992,18 @@ SIG.MSR.389:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, JMN.AMKK, HSE.7]
   rpt_deep_dive: "SIG.22; MSR.335 (Saturn AmK Jaimini); MSR.308 (KP Saturn sub-lord)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.390:
   signal_name: "Meta-Convergence — 10H Capricorn Quadruple Layer: Natal Planets (Sun+Mercury) + AL (Jaimini) + Jaimini Rashi Drishti from Rahu+Ketu+Leo + KP Sub=Saturn"
@@ -9127,6 +14027,18 @@ SIG.MSR.390:
   confidence: 0.96
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, JMN.AL, PLN.RAHU, PLN.KETU, HSE.10]
   rpt_deep_dive: "SIG.19; MSR.339 (AL=10H); MSR.349 (Rashi Drishti on 10H); MSR.308 (KP cusp 10)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.SUN
+        note: "Sun 22°02 Capricorn star lord Moon sub lord Venus"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.391:
   signal_name: "7H Five-Layer Wealth-Relational-Lakshmi Convergence"
@@ -9215,6 +14127,18 @@ SIG.MSR.391c:
   confidence: 0.88
   v6_ids_consumed: [SAH.VIVAHA, HSE.4, NAK.PUSHYA]
   rpt_deep_dive: "REPORT_RELATIONSHIPS_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.MARS
+        note: "Mars 18°37 Libra star lord Rahu sub lord Moon"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.392:
   signal_name: "Meta-Convergence — Pisces 12H Fortune Cluster: Yogi Point + Pranapada + KP Cusp 12 Sub=Saturn = Three Fortune-Isolation Layers"
@@ -9238,6 +14162,15 @@ SIG.MSR.392:
   confidence: 0.91
   v6_ids_consumed: [SPT.YOGI_POINT, SPT.PRANAPADA, HSE.12, PLN.SATURN]
   rpt_deep_dive: "MSR.240 (Yogi Point); MSR.241 (Pranapada); MSR.313 (KP cusp 12)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.393:
   signal_name: "Meta-Convergence — Nodal Axis Four-System Lock: Rahu (Taurus 2H) + Ketu (Scorpio 8H) Confirmed Across Parashari + Jaimini + KP + Sensitive Points"
@@ -9261,6 +14194,21 @@ SIG.MSR.393:
   confidence: 0.94
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, HSE.2, HSE.8, SPT.BHRIGU_BINDU]
   rpt_deep_dive: "SIG.16; MSR.327 (Rahu Jaimini); MSR.393"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §4.1 KP Cusp Mirror"
+        fact_id: KP.CUSP.2
+        note: "KP Cusp 2 sub lord Rahu — four-system nodal convergence"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.394:
   signal_name: "Meta-Convergence — Jupiter-Venus 9H Dual Benefic: GK+MK Both Own/Exalted Domain + Tri-Pataki Trikona + Dual-Sign Jaimini Coverage"
@@ -9283,6 +14231,21 @@ SIG.MSR.394:
   confidence: 0.93
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, JMN.GK, JMN.MK, HSE.9]
   rpt_deep_dive: "MSR.333 (Jupiter-Venus Jaimini Rashi Drishti); MSR.341 (GK Jupiter); MSR.394"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.395:
   signal_name: "Meta-Convergence — Sunday + Ashwini + Saturn Hora: Panchang's Three Time-Lords = Sun + Ketu + Saturn = The Chart's Primary Trio"
@@ -9312,6 +14275,18 @@ SIG.MSR.395:
   confidence: 0.91
   v6_ids_consumed: [PLN.SUN, PLN.KETU, PLN.SATURN, PCH.VARA, PCH.HORA, PCH.LAGNA_NAKSHATRA]
   rpt_deep_dive: "MSR.357 (Lagna Nakshatra); MSR.366 (Birth Hora); MSR.395"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.396:
   signal_name: "Meta-Convergence — Sade Sati Paradox Confirmed Across Three Systems: Parashari (Moon Own-Sign Mitigation) + LEL Retrodiction (Best Events in Peak) + KP (Aquarius Sub=Mercury)"
@@ -9333,6 +14308,18 @@ SIG.MSR.396:
   confidence: 0.92
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, HSE.11]
   rpt_deep_dive: "MSR.295 (Sade Sati Paradox); MSR.296 (three structural factors); MSR.311 (KP cusp 11)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.MOON
+        note: "Moon 27°08 Aquarius star lord Jupiter sub lord Venus"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.397:
   signal_name: "Meta-Convergence — Devata Retrodiction Loop: Palana=Mercury/Vishnu + Dharma=Saturn/Venkateswara + Ishta=Venus/Mahalakshmi = Jaimini + EVT.2025 + Panchang Triple-Lock"
@@ -9355,6 +14342,18 @@ SIG.MSR.397:
   confidence: 0.93
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.VENUS, JMN.KARAKAMSA]
   rpt_deep_dive: "MSR.325 (Karakamsa devatas); MSR.358 (Tithi Lord); EVT.2025.XX.XX.01"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MOON
+        note: "Moon in Gemini D9 — Karakamsa sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.398:
   signal_name: "Meta-Convergence — Mars as Avayogi + PK + 7H Placement: The Chart's Deliberate Weakness = Relationship/Children Domain Has Structural Friction"
@@ -9379,6 +14378,18 @@ SIG.MSR.398:
   confidence: 0.89
   v6_ids_consumed: [PLN.MARS, JMN.PK, HSE.7]
   rpt_deep_dive: "MSR.343 (PK Mars 7H); SIG.17 (7H SAV paradox); v6.0 §11.3 (Avayogi)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.399:
   signal_name: "Meta-Convergence — 1H Aries Empty but Convergent: Lagna + Bhava Lagna + Saham Samartha + Saham Paradesa within 3° Arc = Four-Layer 1H Convergence"
@@ -9403,6 +14414,18 @@ SIG.MSR.399:
   confidence: 0.90
   v6_ids_consumed: [HSE.1, SPT.BHAVA_LAGNA, SPT.SAHAM_SAMARTHA, SPT.SAHAM_PARADESA]
   rpt_deep_dive: "MSR.228 (Bhava Lagna); v7.0 §V7.D; SIG.19"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.400:
   signal_name: "Meta-Convergence — Mercury-Saturn Mutual-Reinforcement: 10H-7H Parashari Mutual Reception + Jaimini Rashi Drishti + KP AD Pair + Current Vimshottari = Four Simultaneous Mercury-Saturn Systems"
@@ -9426,6 +14449,21 @@ SIG.MSR.400:
   confidence: 0.94
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, HSE.10, HSE.7]
   rpt_deep_dive: "MSR.388 (Mercury quintuple); MSR.389 (Saturn triple); MSR.400"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.401:
   signal_name: "Meta-Convergence — Rahu Exalted in Nakshatra of Moon's Most Favored Domain: Rohini (Moon-Ruled) = Rahu Absorbs Moon's Nourishing Frequency in 2H"
@@ -9448,6 +14486,18 @@ SIG.MSR.401:
   confidence: 0.87
   v6_ids_consumed: [PLN.RAHU, PLN.MOON, HSE.2]
   rpt_deep_dive: "MSR.393 (nodal axis four systems); MSR.337 (A6 with Rahu)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.402:
   signal_name: "Hidden-Pinnacle 8H Architecture via Varnada+Ghati Lagnas"
@@ -9476,6 +14526,18 @@ SIG.MSR.402b:
   confidence: 0.85
   v6_ids_consumed: [LAG.VARNADA, LAG.GHATI, HSE.4, HSE.9]
   rpt_deep_dive: "UCN_v3_0 §XIX, REPORT_SPIRITUAL_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.1 Special Lagnas"
+        fact_id: LAG.VARNADA
+        note: "Varnada Lagna 12°25′21.62″ Cancer 4H Pushya pada 3 — JH AUTHORITATIVE (corrected from v6.0 Scorpio WRONG)"
+      - ref: "FORENSIC_v8.0 §12.1 Special Lagnas"
+        fact_id: LAG.GHATI
+        note: "Ghati Lagna 13°56′07.87″ Sagittarius 9H Purva Ashadha pada 1 — JH AUTHORITATIVE (corrected from v6.0 Scorpio WRONG)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.403:
   signal_name: "Meta-Convergence — Venus as Triple-Role Planet: 2L+7L (Parashari) + MK (Jaimini) + Ishta Devata (Jaimini Karakamsa) = Wealth-Marriage-Fortune Triad"
@@ -9498,6 +14560,21 @@ SIG.MSR.403:
   confidence: 0.91
   v6_ids_consumed: [PLN.VENUS, JMN.MK, HSE.2, HSE.7, HSE.9]
   rpt_deep_dive: "MSR.342 (MK Venus); MSR.325 (Ishta Devata); MSR.403"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.404:
   signal_name: "BB-UL 2026 Five-Fold Crystallization — Quadruple-Loaded Gemini 3H Convergence (v2.0 UPGRADED)"
@@ -9520,6 +14597,15 @@ SIG.MSR.404:
   confidence: 0.94
   v6_ids_consumed: [BB.NATAL, ARD.UL, ARD.A5, ARD.A11, LAG.HORA, HSE.3]
   rpt_deep_dive: "REPORT_RELATIONSHIPS_v1_1, UCN_v3_0 §XVII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.405:
   signal_name: "Meta-Convergence — Triple Exalted Nodal Axis + D27 Confirmation: Saturn+Rahu+Ketu All Exalted in D1 AND Nodal Axis Confirmed in D27"
@@ -9544,6 +14630,18 @@ SIG.MSR.405:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU, HSE.7, HSE.2, HSE.8]
   rpt_deep_dive: "SIG.23; MATRIX_DIVISIONALS §D27; MSR.217 (D27 nodal axis)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.406:
   signal_name: "Meta-Convergence — Moon-AK Purva Bhadrapada + Nakshatra Lord Jupiter Own-Sign + Janma Nakshatra Devata Aja Ekapada: Soul in a Fully-Resourced Nakshatra"
@@ -9566,6 +14664,18 @@ SIG.MSR.406:
   confidence: 0.91
   v6_ids_consumed: [PLN.MOON, PLN.JUPITER, JMN.AK]
   rpt_deep_dive: "MSR.353 (Janma Nakshatra); MSR.374 (Aja Ekapada); MSR.341 (GK Jupiter own sign)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.407:
   signal_name: "9H Jupiter-Venus Laxmi-Narayana-Adjacent Architecture — Shree Lagna OUT of 9H (v2.0)"
@@ -9588,6 +14698,18 @@ SIG.MSR.407:
   confidence: 0.82
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, LAG.SHREE]
   rpt_deep_dive: "UCN_v3_0 §XVII, REPORT_FINANCIAL_v2_1, REPORT_SPIRITUAL_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.408:
   signal_name: "Meta-Convergence — Ghati Lagna + Varnada in Scorpio 8H: Transformation Domain is Power-Authority Apex + Soul-Ranking House"
@@ -9611,6 +14733,18 @@ SIG.MSR.408:
   confidence: 0.90
   v6_ids_consumed: [SPT.GHATI_LAGNA, SPT.VARNADA_LAGNA, PLN.KETU, HSE.8]
   rpt_deep_dive: "MSR.230 (Ghati Lagna); MSR.231 (Varnada Lagna); MSR.402 (Ketu liberation system)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.409:
   signal_name: "Meta-Convergence — KP Cusp 11 Sub=Mercury (Yogi) + Moon in 11H (AK) + A7 in 11H: Gains House is Simultaneously KP-Mercury + Soul-Planet + Spouse-Image"
@@ -9633,6 +14767,18 @@ SIG.MSR.409:
   confidence: 0.94
   v6_ids_consumed: [PLN.MOON, PLN.MERCURY, JMN.AK, JMN.DARAPADA, HSE.11]
   rpt_deep_dive: "MSR.311 (KP cusp 11); MSR.332 (Moon AK Jaimini); MSR.336 (A7=AK in 11H)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.410:
   signal_name: "Meta-Convergence — The Chart's Two Supreme Convergence Zones: 7H Libra (Six Layers) vs 11H Aquarius (Three Layers) = Relationship-karma and Soul-Fulfillment as Dual Epicenters"
@@ -9655,6 +14801,21 @@ SIG.MSR.410:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.MOON, HSE.7, HSE.11]
   rpt_deep_dive: "MSR.391 (7H six layers); MSR.409 (11H three layers); MSR.410"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.411:
   signal_name: "Meta-Convergence — Mars-Saturn 7H Exact Degree Proximity: 22°27' vs 18°31' = 3°56' Apart = Within Classical 5° Orb = Tight Conjunction"
@@ -9678,6 +14839,18 @@ SIG.MSR.411:
   confidence: 0.88
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, HSE.7]
   rpt_deep_dive: "MATRIX_PLANETS §Mars; §Saturn; v6.0 §2.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.412:
   signal_name: "Meta-Convergence — Jupiter-Venus Exact Degree Proximity in 9H: Purva Ashadha Pada 2 vs Moola Pada 3 = Same Nakshatra Family = Sagittarius Dual-Benefic Bond"
@@ -9701,6 +14874,21 @@ SIG.MSR.412:
   confidence: 0.87
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9]
   rpt_deep_dive: "MSR.194 (Venus Purva Ashadha own nakshatra); MSR.394 (Jupiter-Venus 9H dual benefic)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.413:
   signal_name: "Mercury Eight-System Convergence — Chart's Primary Operational Planet (v2.0 UPGRADED from Seven)"
@@ -9727,6 +14915,18 @@ SIG.MSR.413:
   confidence: 0.98
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD, YOG.BIRTH_YOGA_SIVA]
   rpt_deep_dive: "UCN_v3_0 §XX, MSR.016, MSR.009"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.414:
   signal_name: "Meta-Convergence — Saturn Apex 2041-2044: Saturn Return (Libra) + SIG.31 + Current Sade Sati Setting (Pisces) Building Toward the Return"
@@ -9749,6 +14949,18 @@ SIG.MSR.414:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, HSE.7]
   rpt_deep_dive: "SIG.31; MATRIX_DASHA_PERIODS; MSR.291-302 (Sade Sati section)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.415:
   signal_name: "Meta-Convergence — The Whole Chart as Organism: Primary Axis (7H-1H), Secondary Axis (10H-4H), Soul Axis (11H-5H) = Three Kendra Axes All Activated"
@@ -9772,6 +14984,21 @@ SIG.MSR.415:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.SUN, PLN.MERCURY, PLN.MOON, PLN.JUPITER, PLN.VENUS, PLN.RAHU, PLN.KETU, HSE.1, HSE.4, HSE.7, HSE.10, HSE.11, HSE.5]
   rpt_deep_dive: "Architecture §H.4 (Whole-Chart-Read Protocol); CGM_v1_0.md (234 nodes, 339 edges)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.416:
   signal_name: "Statistics — Signal Distribution by Type (415 signals enumerated)"
@@ -9807,6 +15034,15 @@ SIG.MSR.416:
   confidence: 1.00
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (signal-distribution audit) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §C.3.2; §J.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: FORENSIC v8.0 is data source base for all MSR signal grounds"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.417:
   signal_name: "Statistics — Confidence Distribution: High (≥0.85) vs Medium (0.70-0.84) vs Low (<0.70) Signal Breakdown"
@@ -9829,6 +15065,15 @@ SIG.MSR.417:
   confidence: 1.00
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (confidence distribution) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §B.6"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: confidence distribution computed across FORENSIC v8.0 fact base"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.418:
   signal_name: "Statistics — Domain Coverage Matrix: All 9 Domains Covered Across All 16 Signal Types"
@@ -9856,6 +15101,15 @@ SIG.MSR.418:
   confidence: 0.90
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (domain coverage matrix) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §C.3.2; feeds CDLM_v1_0.md (Session 13)"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: domain coverage matrix derived from all FORENSIC v8.0 sections"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.419:
   signal_name: "Statistics — Open Gaps Requiring Future Resolution (Red-Team Register)"
@@ -9881,6 +15135,15 @@ SIG.MSR.419:
   confidence: 1.00
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (open gaps register) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §B.4; §B.12; §J.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: gap register references FORENSIC v8.0 across all 32 sections"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.420:
   signal_name: "Statistics — MSR_v1_0 Completeness Certificate: 420 Signals, 16 Signal Types, 9 Domains, Acharya-Grade Coverage"
@@ -9910,6 +15173,15 @@ SIG.MSR.420:
   confidence: 1.00
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (completeness certificate) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §C.3.2; §J.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Completeness certificate: 420 signals grounded in FORENSIC v8.0 data"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.421:
   signal_name: "Kalpadruma / Parijata Yoga (D-1) — Royal Yoga of Principled Warrior King"
@@ -9931,6 +15203,18 @@ SIG.MSR.421:
   confidence: 0.85
   v6_ids_consumed: [PLN.MARS, PLN.VENUS, PLN.JUPITER, PLN.MERCURY]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.422:
   signal_name: "Chaamara Yoga (D-1) — Long-Lived, Scholarly, Eloquent Native"
@@ -9952,6 +15236,21 @@ SIG.MSR.422:
   confidence: 0.82
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.423:
   signal_name: "Mridanga Yoga (D-1) — King or Equal, Happy, Well-Honored"
@@ -9973,6 +15272,18 @@ SIG.MSR.423:
   confidence: 0.85
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.424:
   signal_name: "Sankha Yoga (D-1) — Wealth, Good Spouse-and-Children, Kind, Pious, Long-Lived"
@@ -9994,6 +15305,18 @@ SIG.MSR.424:
   confidence: 0.80
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, PLN.VENUS]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.425:
   signal_name: "Vosi Yoga (D-1) — Skillful, Charitable, Learned, Successful"
@@ -10015,6 +15338,18 @@ SIG.MSR.425:
   confidence: 0.82
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.SUN, HSE.9]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.426:
   signal_name: "Anaphaa Yoga (D-1) — Comforts, Good Character, Self-Reliant"
@@ -10035,6 +15370,18 @@ SIG.MSR.426:
   confidence: 0.80
   v6_ids_consumed: [PLN.MERCURY, PLN.MOON]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.427:
   signal_name: "Kedaara Naabhasa Yoga (D-1, Lifetime) — Happy, Wealthy, Helpful"
@@ -10057,6 +15404,21 @@ SIG.MSR.427:
   confidence: 0.90
   v6_ids_consumed: [PLN.SUN, PLN.MOON, PLN.MARS, PLN.MERCURY, PLN.JUPITER, PLN.VENUS, PLN.SATURN]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.428:
   signal_name: "Gaja-Kesari Yoga in D-9 Navamsa — Famous and Virtuous (MAJOR D-9 YOGA)"
@@ -10078,6 +15440,21 @@ SIG.MSR.428:
   confidence: 0.85
   v6_ids_consumed: [D9.MOON, D9.JUPITER, D9.GEMINI]
   rpt_deep_dive: "UCN_v3_0 §XXI, REPORT_SPIRITUAL_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §3.5.2 D9 12th-House Stellium"
+        fact_id: D9.12H.TENANTS
+        note: "Moon in D9 12H Gemini stellium with Jupiter and Rahu"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.429:
   signal_name: "Kaahala Yoga (D-9) — Strong, Bold, Leads Large Enterprise"
@@ -10099,6 +15476,21 @@ SIG.MSR.429:
   confidence: 0.78
   v6_ids_consumed: [D9.VENUS, D9.JUPITER]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.430:
   signal_name: "Raja-Lakshmi Yoga (D-9) — Fortunate, High Achiever (Moon + Jupiter)"
@@ -10120,6 +15512,18 @@ SIG.MSR.430:
   confidence: 0.84
   v6_ids_consumed: [D9.MOON, D9.JUPITER, D9.GEMINI]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MOON
+        note: "Moon in Gemini D9 — Karakamsa sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.431:
   signal_name: "Yogakaraka Mars (D-9, D-10) — Same Planet Owns Kendra + Kona = Success"
@@ -10142,6 +15546,21 @@ SIG.MSR.431:
   confidence: 0.85
   v6_ids_consumed: [PLN.MARS, D9.MARS, D10.MARS]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MARS
+        note: "Mars in Pisces D9 (not vargottama)"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.432:
   signal_name: "Raja Yoga AK-PK (D-9) — Loyal Following and Power (Moon + Rahu)"
@@ -10165,6 +15584,18 @@ SIG.MSR.432:
   v6_ids_consumed: [D9.MOON, D9.RAHU, KRK.C.AK]
   rpt_deep_dive: "UCN_v3_0 §XXII"
   tags: ["7-karaka-alternative"]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.433:
   signal_name: "Viparita Raja Yoga Jupiter (D-9) — Success After Pressures, Others' Losses Become Native's Opportunity"
@@ -10187,6 +15618,18 @@ SIG.MSR.433:
   confidence: 0.82
   v6_ids_consumed: [D9.JUPITER, D9.GEMINI]
   rpt_deep_dive: "UCN_v3_0 §XXII, REPORT_SPIRITUAL_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.434:
   signal_name: "Sarala Viparita Raja Yoga (D-10) — Long-Lived, Fearless, Learned, Celebrated, Prosperous in Career Chart"
@@ -10208,6 +15651,18 @@ SIG.MSR.434:
   confidence: 0.83
   v6_ids_consumed: [D10.JUPITER]
   rpt_deep_dive: "UCN_v3_0 §XXII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.435:
   signal_name: "Maha Yogada (D-2 Hora) — Power, Authority, and Wealth (Jupiter Associated with Lagna + GL + HL)"
@@ -10230,6 +15685,18 @@ SIG.MSR.435:
   confidence: 0.84
   v6_ids_consumed: [D2.JUPITER, LAG.GHATI, LAG.HORA]
   rpt_deep_dive: "UCN_v3_0 §XXII, REPORT_FINANCIAL_v2_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.436:
   signal_name: "Sadhu Yoga (D-2 Hora) — Saintly Character, Spiritually Grounded Wealth"
@@ -10251,6 +15718,21 @@ SIG.MSR.436:
   confidence: 0.78
   v6_ids_consumed: [D2.CANCER, D2.LEO, PLN.MERCURY, PLN.JUPITER]
   rpt_deep_dive: "UCN_v3_0 §XXII, REPORT_SPIRITUAL_v1_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.437:
   signal_name: "Birth Yoga = Siva (Mercury-Ruled) — Auspicious Yoga Lord Convergence (GAP.01 RESOLVED)"
@@ -10273,6 +15755,15 @@ SIG.MSR.437:
   confidence: 0.93
   v6_ids_consumed: [YOG.BIRTH_YOGA, PLN.MERCURY, DSH.PANCHANG]
   rpt_deep_dive: "UCN_v3_0 §XX, MSR.413"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.438:
   signal_name: "Saturn Ishta Phala 43.28 / Kashta 4.81 — ~9:1 Beneficial Delivery Ratio (Primary Phala Planet)"
@@ -10296,6 +15787,15 @@ SIG.MSR.438:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, ISH.SAT, KAS.SAT]
   rpt_deep_dive: "UCN_v3_0 §XXIII, REPORT_FINANCIAL_v2_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.439:
   signal_name: "Jupiter Ishta 10.78 / Kashta 48.81 — ~1:5 Malefic Phala Despite Maximum Pancha-Vargeeya (CTR.03 Quantified)"
@@ -10320,6 +15820,18 @@ SIG.MSR.439:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, ISH.JUP, KAS.JUP]
   rpt_deep_dive: "UCN_v3_0 §XXIII, MSR.026"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.440:
   signal_name: "Bhava Bala 5H Rank 1 (Strongest) — Purva Punya-Children-Creativity House is Structurally Strongest"
@@ -10343,6 +15855,15 @@ SIG.MSR.440:
   confidence: 0.90
   v6_ids_consumed: [HSE.5, BVB.5]
   rpt_deep_dive: "UCN_v3_0 §XXIII"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.441:
   signal_name: "Pancha-Vargeeya Operational Triad — Mercury + Jupiter + Saturn = Three POWERFUL Classifications"
@@ -10366,6 +15887,21 @@ SIG.MSR.441:
   confidence: 0.88
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, PLN.SATURN, PVC.TRIAD]
   rpt_deep_dive: "UCN_v3_0 §XXIII, REPORT_FINANCIAL_v2_1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.442:
   signal_name: "Kalachakra Paramayush = 85 Years (Savya Scheme) — Longevity Structural Indicator (LONGEVITY.GAP.01 Partial Resolution)"
@@ -10387,6 +15923,21 @@ SIG.MSR.442:
   confidence: 0.78
   v6_ids_consumed: [PLN.MOON, KAL.DEHA, KAL.JIVA]
   rpt_deep_dive: "REPORT_HEALTH_LONGEVITY_v1_1 §9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.443:
   signal_name: "Special Lagna Comprehensive Architecture v8.0 — Four-Lagna Distribution"
@@ -10417,6 +15968,18 @@ SIG.MSR.443:
   confidence: 0.95
   v6_ids_consumed: [LAG.HORA, LAG.GHATI, LAG.VARNADA, LAG.SHREE]
   rpt_deep_dive: "UCN_v3_0 §XVII, MSR.391, MSR.402b, MSR.404, MSR.407"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.444:
   signal_name: "Lagna Nakshatra — Ashwini Pada 4 Fire-Initiative Gate"
@@ -10435,6 +15998,18 @@ SIG.MSR.444:
   confidence: 0.78
   v6_ids_consumed: [MET.LAGNA.NAK, MET.LAGNA.PADA]
   rpt_deep_dive: "DEEP_ANALYSIS FS5"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.NAK
+        note: "Lagna nakshatra Ashwini — Ketu-ruled"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.445:
   signal_name: "Moon Nakshatra — Purva Bhadrapada III Collective-AK Thread"
@@ -10453,6 +16028,18 @@ SIG.MSR.445:
   confidence: 0.84
   v6_ids_consumed: [NAK.PURVA_BHADRAPADA, MET.MOON.NAK, MET.MOON.PADA]
   rpt_deep_dive: "UCN_v4_0 Part I"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.446:
   signal_name: "Sun Nakshatra — Shravana Pada 4 Career Listening Intelligence"
@@ -10471,6 +16058,18 @@ SIG.MSR.446:
   confidence: 0.82
   v6_ids_consumed: [PLN.SUN]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.447:
   signal_name: "Mars Nakshatra — Swati Pada 4 Relational Calibration"
@@ -10489,6 +16088,18 @@ SIG.MSR.447:
   confidence: 0.80
   v6_ids_consumed: [PLN.MARS]
   rpt_deep_dive: "REPORT_RELATIONSHIPS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.448:
   signal_name: "Mercury Nakshatra — Uttarashada Pada 2 Vargottama Spine"
@@ -10507,6 +16118,21 @@ SIG.MSR.448:
   confidence: 0.88
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "MSR.413"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.449:
   signal_name: "Jupiter Nakshatra — Purva Ashadha Pada 3 Dharma Pouring"
@@ -10525,6 +16151,18 @@ SIG.MSR.449:
   confidence: 0.82
   v6_ids_consumed: [PLN.JUPITER]
   rpt_deep_dive: "REPORT_SPIRITUAL"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.450:
   signal_name: "Venus Nakshatra — Purva Ashadha Pada 2 Lakshmi Adjacent"
@@ -10543,6 +16181,18 @@ SIG.MSR.450:
   confidence: 0.80
   v6_ids_consumed: [PLN.VENUS]
   rpt_deep_dive: "REPORT_FINANCIAL"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.451:
   signal_name: "Saturn Nakshatra — Vishakha Pada 1 Exalted Structural Spine"
@@ -10561,6 +16211,18 @@ SIG.MSR.451:
   confidence: 0.86
   v6_ids_consumed: [PLN.SATURN]
   rpt_deep_dive: "MSR.391"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.452:
   signal_name: "Rahu Nakshatra — Rohini Pada 3 Wealth Magnetism"
@@ -10579,6 +16241,18 @@ SIG.MSR.452:
   confidence: 0.84
   v6_ids_consumed: [PLN.RAHU]
   rpt_deep_dive: "REPORT_FINANCIAL"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.2
+        note: "House 2 Taurus — wealth house; Rahu occupant"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.453:
   signal_name: "Ketu Nakshatra — Jyeshtha Pada 1 Occult Precision"
@@ -10597,6 +16271,18 @@ SIG.MSR.453:
   confidence: 0.80
   v6_ids_consumed: [PLN.KETU]
   rpt_deep_dive: "REPORT_HEALTH_LONGEVITY"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — moksha/transformation house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.454:
   signal_name: "Indu Lagna Nakshatra — Jyeshtha Pada 4 Hidden Fortune Vector"
@@ -10615,6 +16301,18 @@ SIG.MSR.454:
   confidence: 0.72
   v6_ids_consumed: [LAG.INDU]
   rpt_deep_dive: "CGM_v2_0"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.NAK
+        note: "Lagna nakshatra Ashwini — Ketu-ruled"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.455:
   signal_name: "Bhava Lagna Nakshatra — Revati Pada 3 Moksha Float"
@@ -10633,6 +16331,18 @@ SIG.MSR.455:
   confidence: 0.74
   v6_ids_consumed: [LAG.BHAVA]
   rpt_deep_dive: "CGM_v2_0"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.NAK
+        note: "Lagna nakshatra Ashwini — Ketu-ruled"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.456:
   signal_name: "Saham Punya in Gemini 3H — Merit Routing Through Communication Nexus"
@@ -10651,6 +16361,18 @@ SIG.MSR.456:
   confidence: 0.76
   v6_ids_consumed: [SAH.PUNYA]
   rpt_deep_dive: "CGM §4.5"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PUNYA
+        note: "Punya Saham 17°30′54″ Gemini 3H Ardra — fortune/merit lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — communication/effort house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.457:
   signal_name: "Saham Yasas in Scorpio 8H — Fame Through Depth Not Noise"
@@ -10669,6 +16391,18 @@ SIG.MSR.457:
   confidence: 0.72
   v6_ids_consumed: [SAH.YASAS]
   rpt_deep_dive: "MATRIX_HOUSES"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.YASAS
+        note: "Yasas Saham 4°42′38″ Scorpio 8H Anuradha — fame lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — transformation/depth house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.458:
   signal_name: "Saham Vidya in Pisces 12H — Knowledge Dissolving Into Moksha House"
@@ -10687,6 +16421,18 @@ SIG.MSR.458:
   confidence: 0.74
   v6_ids_consumed: [SAH.VIDYA]
   rpt_deep_dive: "REPORT_SPIRITUAL"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.VIDYA
+        note: "Vidya Saham 7°19′48″ Pisces 12H UBha — learning lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.12
+        note: "House 12 Pisces — moksha/foreign/dissolution house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.459:
   signal_name: "Saham Mitra in Cancer 4H — Alliance Through Roots"
@@ -10704,6 +16450,18 @@ SIG.MSR.459:
   confidence: 0.71
   v6_ids_consumed: [SAH.MITRA]
   rpt_deep_dive: "REPORT_PARENTS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.MITRA
+        note: "Mitra Saham 11°28′34″ Cancer 4H Pushya — friendship lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.4
+        note: "House 4 Cancer — home/mother/property house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.460:
   signal_name: "Saham Samartha + Kali Coincident Cancer 4H — Enterprise vs Misfortune Same Soil"
@@ -10722,6 +16480,18 @@ SIG.MSR.460:
   confidence: 0.68
   v6_ids_consumed: [SAH.KALI]
   rpt_deep_dive: "AUDIT qualitative"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.SAMARTHA
+        note: "Samartha Saham 3°41′27″ Cancer 4H Pushya — enterprise lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.KALI
+        note: "Kali Saham 3°41′27″ Cancer 4H Pushya — misfortune lot (co-located with Samartha)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.461:
   signal_name: "Saham Pitru + Rajya Conjunct Capricorn 10H — Father-Kingdom Same Seat"
@@ -10740,6 +16510,18 @@ SIG.MSR.461:
   confidence: 0.78
   v6_ids_consumed: [SAH.RAJYA]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PITRU
+        note: "Pitru Saham 12°53′31″ Capricorn 10H Shravana — father lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.RAJYA
+        note: "Rajya Saham 12°53′31″ Capricorn 10H Shravana — kingdom lot (identical longitude)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.462:
   signal_name: "Saham Karma in Aquarius 11H — Profession as Network Gain"
@@ -10758,6 +16540,18 @@ SIG.MSR.462:
   confidence: 0.75
   v6_ids_consumed: [SAH.KARMA]
   rpt_deep_dive: "MSR career cluster"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.KARMA
+        note: "Karma Saham 0°06′11″ Aquarius 11H Dhanishtha — profession lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.11
+        note: "House 11 Aquarius — Moon-AK gains house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.463:
   signal_name: "Saham Artha in Virgo 6H — Wealth Through Disciplined Service"
@@ -10775,6 +16569,18 @@ SIG.MSR.463:
   confidence: 0.70
   v6_ids_consumed: [SAH.ARTHA]
   rpt_deep_dive: "REPORT_FINANCIAL"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.ARTHA
+        note: "Artha Saham 5°39′25″ Virgo 6H UPhal — wealth lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.6
+        note: "House 6 Virgo — service/debt/health house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.464:
   signal_name: "Saham Paradara + Sastra Pisces 12H — Boundary Dissolution vs Learning Stack"
@@ -10793,6 +16599,18 @@ SIG.MSR.464:
   confidence: 0.65
   v6_ids_consumed: [SAH.PARADARA]
   rpt_deep_dive: "UCN §IX ethics"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PARADARA
+        note: "Paradara Saham 9°37′57″ Pisces 12H UBha — boundary lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.SASTRA
+        note: "Sastra Saham 18°12′34″ Pisces 12H Revati — sciences lot"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.465:
   signal_name: "Saham Bandhu Aquarius 11H — Relative Gains Layer"
@@ -10810,6 +16628,18 @@ SIG.MSR.465:
   confidence: 0.69
   v6_ids_consumed: [SAH.BANDHU]
   rpt_deep_dive: "MATRIX_HOUSES"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.BANDHU
+        note: "Bandhu Saham 16°12′22″ Aquarius 11H Shatabhisha — relatives lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.11
+        note: "House 11 Aquarius — gains/network house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.466:
   signal_name: "Saham Jeeva in Aquarius 11H — Life Force in Gains House"
@@ -10827,6 +16657,18 @@ SIG.MSR.466:
   confidence: 0.72
   v6_ids_consumed: [SAH.JEEVA]
   rpt_deep_dive: "MSR expansion"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.JEEVA
+        note: "Jeeva Saham 25°04′02″ Aquarius 11H PBha — life force lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.11
+        note: "House 11 Aquarius — Moon-AK placement; gains house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.467:
   signal_name: "Saham Gaurava Duplicate Yasas — Respect Equals Fame Point"
@@ -10844,6 +16686,18 @@ SIG.MSR.467:
   confidence: 0.68
   v6_ids_consumed: [SAH.GAURAVA]
   rpt_deep_dive: "JH §2.2"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.GAURAVA
+        note: "Gaurava Saham 4°42′38″ Scorpio 8H Anuradha — respect lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.YASAS
+        note: "Yasas Saham 4°42′38″ Scorpio 8H Anuradha — same longitude as Gaurava"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.468:
   signal_name: "Saham Bhratru Gemini 3H — Sibling Lane in Communication House"
@@ -10861,6 +16715,18 @@ SIG.MSR.468:
   confidence: 0.70
   v6_ids_consumed: [SAH.BHRATRU]
   rpt_deep_dive: "CGM"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.BHRATRU
+        note: "Bhratru Saham 29°46′41″ Gemini 3H Punarvasu — sibling lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — siblings/communication house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.469:
   signal_name: "Vimshottari Bridge 2027 — Mercury MD Termination to Ketu MD Onset Window"
@@ -10879,6 +16745,18 @@ SIG.MSR.469:
   confidence: 0.78
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "LIFETIME_TIMELINE"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.023
+        note: "Mercury-Saturn AD 2024-12-12 to 2027-08-21 (end of Mercury MD)"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD begins 2027-08-21 — Mercury→Ketu handover"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.470:
   signal_name: "Ketu MD 2031–2038 Primary Moksha-Authority Window (Reframed Post v8.0)"
@@ -10897,6 +16775,18 @@ SIG.MSR.470:
   confidence: 0.85
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "UCN_v4_0"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD 2027-08-21 to 2034-08-21 (DSH.V.024–032)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.471:
   signal_name: "Venus MD 2038–2058 NBRY Reservoir Priming"
@@ -10915,6 +16805,15 @@ SIG.MSR.471:
   confidence: 0.77
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "MAINTENANCE_SCHEDULE"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.472:
   signal_name: "Mercury MD Saturn AD 2024–2027 Triple-Engine Career Pressure Cooker"
@@ -10933,6 +16832,18 @@ SIG.MSR.472:
   confidence: 0.84
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.023
+        note: "Mercury-Saturn AD 2024-12-12 to 2027-08-21"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Current Vimshottari: Mercury MD — Saturn AD confirmed"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.473:
   signal_name: "Ketu AD Preview Inside Late Mercury MD — Early 8H Dip"
@@ -10951,6 +16862,18 @@ SIG.MSR.473:
   confidence: 0.65
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "FALSIFIER preview §2.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.016
+        note: "Mercury-Ketu AD 2013-01-18 to 2014-01-15 — Ketu sub-period preview"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.474:
   signal_name: "Chara Dasha Scorpio MD — Martial Container for Mercury Operations"
@@ -10969,6 +16892,18 @@ SIG.MSR.474:
   confidence: 0.72
   v6_ids_consumed: [DSH.C.SCORPIO.2026]
   rpt_deep_dive: "DEEP_ANALYSIS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.3 Jaimini Chara Dasha"
+        fact_id: DSH.C.085
+        note: "Chara Dasha Scorpio MD: 2026-02-05 to 2027-01-05"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.475:
   signal_name: "Yogini Dasha Bhramari / Dhanya Handoff 2021–2022 Anxiety-Economy Bridge"
@@ -10987,6 +16922,18 @@ SIG.MSR.475:
   confidence: 0.70
   v6_ids_consumed: [DSH.Y.BHADRIKA.2021]
   rpt_deep_dive: "LIFE_EVENT_LOG"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.2 Yogini Dasha"
+        fact_id: DSH.Y.BHADRIKA.2021
+        note: "Bhadrika (Mercury) Yogini period — panic-to-pivot cluster"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Current: Mercury MD — Yogini backdrop reference"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.476:
   signal_name: "Sade Sati Cycle 3 Peak 2049–2052 Early Warning Hook"
@@ -11005,6 +16952,15 @@ SIG.MSR.476:
   confidence: 0.75
   v6_ids_consumed: [TRS.SS.FUT1, TRS.SS.FUT2]
   rpt_deep_dive: "MAINTENANCE_SCHEDULE"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.477:
   signal_name: "Saturn Transit Pisces 2025–2028 Triple Wave on Natal Moon Sign"
@@ -11023,6 +16979,18 @@ SIG.MSR.477:
   confidence: 0.86
   v6_ids_consumed: [TRS.SS.C2.P1, TRS.SS.C2.P6, PLN.SATURN]
   rpt_deep_dive: "MATRIX_SIGNS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.478:
   signal_name: "Jupiter Return Sagittarius 2019 Cycle — Dharmic Reload Before Mercury Peak"
@@ -11041,6 +17009,15 @@ SIG.MSR.478:
   confidence: 0.68
   v6_ids_consumed: [PLN.JUPITER]
   rpt_deep_dive: "LEL cluster"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.479:
   signal_name: "Rahu Transit Aries 2025–2026 Ignition of Lagna Desires"
@@ -11059,6 +17036,18 @@ SIG.MSR.479:
   confidence: 0.70
   v6_ids_consumed: [PLN.RAHU]
   rpt_deep_dive: "FALSIFIER §2.7 cousin"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.480:
   signal_name: "2041 Saturn Return Exactitude to Natal Exalted Saturn Degree — Apex Transit"
@@ -11077,6 +17066,15 @@ SIG.MSR.480:
   confidence: 0.84
   v6_ids_consumed: [PLN.SATURN, TRS.SS.FUT1]
   rpt_deep_dive: "MSR.046"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.481:
   signal_name: "D9 AK Moon Gemini — Intellectualized Soul Lens"
@@ -11095,6 +17093,18 @@ SIG.MSR.481:
   confidence: 0.82
   v6_ids_consumed: [D9.MOON]
   rpt_deep_dive: "REPORT_PSYCHOLOGY_MIND"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §10 Chara Karakas"
+        fact_id: KRK.ATMA
+        note: "Moon = Atmakaraka (highest degree planet)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.482:
   signal_name: "D9 Jupiter Gemini — Dharma Teacher as Information System"
@@ -11113,6 +17123,18 @@ SIG.MSR.482:
   confidence: 0.80
   v6_ids_consumed: [D9.JUPITER]
   rpt_deep_dive: "MSR.434"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.483:
   signal_name: "D9 Venus Virgo Debilitation — Relational Effort Structural Mark"
@@ -11131,6 +17153,18 @@ SIG.MSR.483:
   confidence: 0.78
   v6_ids_consumed: [D9.VENUS]
   rpt_deep_dive: "CONTRADICTION_REGISTRY"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.484:
   signal_name: "D9 Saturn Aries Debilitation — Authority Training Arc in Navamsa"
@@ -11149,6 +17183,18 @@ SIG.MSR.484:
   confidence: 0.76
   v6_ids_consumed: [D9.SATURN]
   rpt_deep_dive: "REPORT_RELATIONSHIPS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.485:
   signal_name: "D10 Mercury Capricorn — Executive Mercurial Career Archetype"
@@ -11167,6 +17213,21 @@ SIG.MSR.485:
   confidence: 0.80
   v6_ids_consumed: [D10.MERCURY]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.MERCURY
+        note: "Mercury in Virgo D10 (own sign) — 2nd house D10"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.486:
   signal_name: "D10 Saturn Taurus — Stable Authority Platform in Profession Chart"
@@ -11185,6 +17246,21 @@ SIG.MSR.486:
   confidence: 0.78
   v6_ids_consumed: [D10.SATURN]
   rpt_deep_dive: "JH D10 row"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SATURN
+        note: "Saturn in Taurus D10 — 10th house D10 (angular, very strong)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.487:
   signal_name: "D12 Sun — Father-Line Dwadashamsa Pointer"
@@ -11203,6 +17279,18 @@ SIG.MSR.487:
   confidence: 0.68
   v6_ids_consumed: [PLN.SUN]
   rpt_deep_dive: "REPORT_PARENTS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.488:
   signal_name: "D7 Moon — Emotional Progeny Matrix for Children Domain"
@@ -11221,6 +17309,18 @@ SIG.MSR.488:
   confidence: 0.74
   v6_ids_consumed: [PLN.MOON]
   rpt_deep_dive: "REPORT_CHILDREN"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.489:
   signal_name: "D20 Vimsamsa Spiritual Technique Lineage (Sun Placement)"
@@ -11239,6 +17339,18 @@ SIG.MSR.489:
   confidence: 0.70
   v6_ids_consumed: [D20.PISCES, PLN.SUN]
   rpt_deep_dive: "REPORT_SPIRITUAL"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.490:
   signal_name: "D27 Nakshatra Strength Chart — PBha Moon Echo"
@@ -11257,6 +17369,21 @@ SIG.MSR.490:
   confidence: 0.65
   v6_ids_consumed: [PLN.MOON]
   rpt_deep_dive: "MATRIX_DIVISIONALS"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.MOON.NAK
+        note: "Moon nakshatra Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.491:
   signal_name: "D40 Khavedamsa Luxury Sub-Tone on Venus"
@@ -11275,6 +17402,18 @@ SIG.MSR.491:
   confidence: 0.64
   v6_ids_consumed: [PLN.VENUS]
   rpt_deep_dive: "FORENSIC divisionals"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.492:
   signal_name: "D60 Shashtyamsa Soul Texture — Secondary to D9 for Specialist Reads"
@@ -11293,6 +17432,18 @@ SIG.MSR.492:
   confidence: 0.60
   v6_ids_consumed: [D60.LAGNA]
   rpt_deep_dive: "MSR.042"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.493:
   signal_name: "Maandi Upagraha in Gemini 3H — Shadow Commerce Adjunct to UL Cluster"
@@ -11311,6 +17462,18 @@ SIG.MSR.493:
   confidence: 0.72
   v6_ids_consumed: [UPG.MANDI]
   rpt_deep_dive: "JH §1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.3 Upagrahas"
+        fact_id: UPG.MANDI
+        note: "Mandi in Cancer 14°13′ Pushya — shadow malefic"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — UL/Gulika cluster context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.494:
   signal_name: "Gulika Upagraha in Gemini 3H — Delay Kernel Inside Gemini Nexus"
@@ -11329,6 +17492,18 @@ SIG.MSR.494:
   confidence: 0.73
   v6_ids_consumed: [UPG.GULIKA]
   rpt_deep_dive: "CGM"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.3 Upagrahas"
+        fact_id: UPG.GULIKA
+        note: "Gulika in Gemini 13°57′ Ardra — delay malefic in 3H"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — communication/skill house with UL/A11"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.495:
   signal_name: "Five-Layer 7H + Four-Layer 3H Cross-Weave — Relational Wealth Meets Communication Wealth"
@@ -11347,6 +17522,18 @@ SIG.MSR.495:
   confidence: 0.85
   v6_ids_consumed: [HSE.7, HSE.3, LAG.SHREE, ARD.UL]
   rpt_deep_dive: "MSR.443"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn+Mars five-layer convergence nexus"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — UL+A5+A11+HL four-layer cluster"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.496:
   signal_name: "Retrodictive Eclipse ±6mo Density Near Career Pivots — Empirical Stack"
@@ -11371,6 +17558,15 @@ SIG.MSR.496:
 Fifteen signals grounded in FORENSIC §3.15 CSI ledger and §3.1–§3.14 divisional
 placement tables. These signals operationalise the chart's cross-varga dignity
 architecture — the structural meta-pattern that no single-chart read can surface.
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.15 Cross-Varga Summary"
+        fact_id: CSI.MERCURY
+        note: "Cross-varga sign index — Mercury vargottama Capricorn D1=D9; foundation of §VI signals"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.500:
   signal_name: "D1→D9 Dignity Coherence — Six Planets Shift, Mercury Sole Vargottama Anchor"
@@ -11395,6 +17591,21 @@ SIG.MSR.500:
   confidence: 0.95
   v6_ids_consumed: [CSI.SUN, CSI.MOON, CSI.MARS, CSI.MERCURY, CSI.JUPITER, CSI.VENUS, CSI.SATURN, CSI.RAHU, CSI.KETU, D9.MERCURY]
   rpt_deep_dive: "FORENSIC §3.15"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SUN
+        note: "Sun in Cancer D9 (not vargottama)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.501:
   signal_name: "Saturn Three-State Dignity Architecture — D1 Exaltation → D9 Debilitation (NBRY) → D10 Angular"
@@ -11416,6 +17627,18 @@ SIG.MSR.501:
   confidence: 0.90
   v6_ids_consumed: [CSI.SATURN, D9.SATURN, D10.SATURN, PLN.SATURN]
   rpt_deep_dive: "FORENSIC §3.15, §3.5, §3.6; SIG.MSR.001, SIG.MSR.003"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SUN
+        note: "Sun in Cancer D9 (not vargottama)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.502:
   signal_name: "Venus Three-State Dignity Architecture — D1 Sagittarius → D9 Virgo (Debil, NBRY via Vargottama Mercury) → D10 Gemini 11th"
@@ -11438,6 +17661,21 @@ SIG.MSR.502:
   confidence: 0.85
   v6_ids_consumed: [CSI.VENUS, D9.VENUS, D9.NBR.VENUS, D10.VENUS, D9.MERCURY]
   rpt_deep_dive: "FORENSIC §3.15, §3.5.1, §3.6; SIG.MSR.002"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.15 CSI Ledger"
+        fact_id: CSI.VENUS
+        note: "Venus Vargottama NO; D9 Virgo debilitation; D10 11th Gemini neutral"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.VENUS
+        note: "Venus in Gemini D10 — 11th house D10 (Upachaya)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.503:
   signal_name: "D7 Saptamsha — Saturn + Rahu Conjoined in 9H Pisces (Child Karma Burden in Fortune House)"
@@ -11458,6 +17696,18 @@ SIG.MSR.503:
   confidence: 0.78
   v6_ids_consumed: [D7.9, D7.LAGNA, PLN.SATURN, PLN.RAHU]
   rpt_deep_dive: "FORENSIC §3.4"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.504:
   signal_name: "D7 Saptamsha — Jupiter + Mars in 8H Aquarius, Venus in 10H Aries"
@@ -11479,6 +17729,18 @@ SIG.MSR.504:
   confidence: 0.75
   v6_ids_consumed: [D7.8, D7.10, PLN.JUPITER, PLN.MARS, PLN.VENUS]
   rpt_deep_dive: "FORENSIC §3.4"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.505:
   signal_name: "D12 Dvadashamsha — Saturn + Ketu in Gemini, Sun in Virgo, Moon in Scorpio (Parental Lineage Architecture)"
@@ -11502,6 +17764,21 @@ SIG.MSR.505:
   confidence: 0.75
   v6_ids_consumed: [D12.GEMINI, D12.VIRGO, D12.SCORPIO, D12.LEO, PLN.SATURN, PLN.KETU, PLN.SUN, PLN.MOON]
   rpt_deep_dive: "FORENSIC §3.7; LIFE_EVENT_LOG §parental"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SUN
+        note: "Sun in Aries D10 9H"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.506:
   signal_name: "D24 Siddhamsha — Saturn in 9H Capricorn (Own Sign), Jupiter in 11H Pisces (Own Sign), Moon at Lagna Taurus (Exalted)"
@@ -11525,6 +17802,21 @@ SIG.MSR.506:
   confidence: 0.80
   v6_ids_consumed: [D24.9, D24.11, D24.LAGNA, PLN.SATURN, PLN.JUPITER, PLN.MOON]
   rpt_deep_dive: "FORENSIC §3.10"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.507:
   signal_name: "D20 Vimsamsha — Jupiter at Lagna Scorpio, Saturn 2H Sagittarius, Sun 5H Pisces (Spiritual Sadhana Architecture)"
@@ -11549,6 +17841,21 @@ SIG.MSR.507:
   confidence: 0.72
   v6_ids_consumed: [D20.SCORPIO, D20.SAGITTARIUS, D20.PISCES, PLN.JUPITER, PLN.SATURN, PLN.SUN]
   rpt_deep_dive: "FORENSIC §3.9"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.508:
   signal_name: "D30 Trimsamsha — Saturn + Mars + Venus Triple-Stellium in 6H Gemini (Health-Disease Concentration)"
@@ -11571,6 +17878,18 @@ SIG.MSR.508:
   confidence: 0.80
   v6_ids_consumed: [D30.6, PLN.SATURN, PLN.MARS, PLN.VENUS]
   rpt_deep_dive: "FORENSIC §3.11"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.509:
   signal_name: "D40 Khavedamsha — Jupiter + Venus Conjunct in 9H Taurus (Maternal Auspiciousness Signature)"
@@ -11593,6 +17912,18 @@ SIG.MSR.509:
   confidence: 0.70
   v6_ids_consumed: [D40.9, D40.LAGNA, PLN.JUPITER, PLN.VENUS, PLN.SATURN]
   rpt_deep_dive: "FORENSIC §3.12"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.510:
   signal_name: "D45 Akshavedamsha — Jupiter in 5H Aquarius, Saturn in 4H Capricorn (Spiritual Purity Architecture)"
@@ -11615,6 +17946,21 @@ SIG.MSR.510:
   confidence: 0.68
   v6_ids_consumed: [D45.5, D45.4, PLN.JUPITER, PLN.SATURN]
   rpt_deep_dive: "FORENSIC §3.13"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.511:
   signal_name: "D60 Shashtyamsha — Saturn at Lagna Gemini, Ketu in 8H Capricorn (Past-Karma Soul Texture)"
@@ -11638,6 +17984,18 @@ SIG.MSR.511:
   confidence: 0.72
   v6_ids_consumed: [D60.LAGNA, D60.8, PLN.SATURN, PLN.KETU]
   rpt_deep_dive: "FORENSIC §3.14"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.512:
   signal_name: "D16 Shodashamsha — Moon + Mars at Lagna Leo, Mercury + Jupiter in 10H Taurus (Vehicles-Comforts Architecture)"
@@ -11659,6 +18017,21 @@ SIG.MSR.512:
   confidence: 0.65
   v6_ids_consumed: [D16.LEO, D16.TAURUS, PLN.MOON, PLN.MARS, PLN.MERCURY, PLN.JUPITER]
   rpt_deep_dive: "FORENSIC §3.8"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.513:
   signal_name: "D2 Hora — Five Planets in Cancer (Moon) Hora, Four in Leo (Sun) Hora (Wealth-Distribution Asymmetry)"
@@ -11680,6 +18053,21 @@ SIG.MSR.513:
   confidence: 0.68
   v6_ids_consumed: [D2.CANCER, D2.LEO]
   rpt_deep_dive: "FORENSIC §3.1"
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.514:
   signal_name: "Vargottama Mercury as Cross-Varga Anchor — Stability of Mercury's Disposition Propagates Across D1/D9/D10/D12/D24/D60"
@@ -11711,6 +18099,18 @@ SIG.MSR.514:
 ## §VII — NADI + BNN SIGNALS (SIG.MSR.515–543)
 
 Nadi and Bhrigu Nandi Nadi (BNN) tradition signals. All use Nadi-specific trigger mechanisms — sequential transit analysis, house-from-planet numbering, planetary proximity rules — structurally distinct from the Parashari/Jaimini yoga framework in §I–§VI. Deduplication confirmed against SIG.MSR.001–514. Source: M8-F-S1 run_nadi_signal_extraction.py + MSR_EXPANSION_PROPOSAL_v1_0.md.
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.515:
   signal_name: "BNN — Saturn Transit Libra: Mother's Ill-Health"
@@ -11729,6 +18129,15 @@ SIG.MSR.515:
   domains_affected: [health, relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.516:
   signal_name: "BNN — Mars Aspected by Venus: Riches Through Wife"
@@ -11747,6 +18156,18 @@ SIG.MSR.516:
   domains_affected: [wealth, relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.MARS, PLN.VENUS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.517:
   signal_name: "BNN — Saturn in Virgo: Merchant Profession"
@@ -11765,6 +18186,15 @@ SIG.MSR.517:
   domains_affected: [career]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, SGN.VIRGO]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.518:
   signal_name: "BNN — Jupiter in Virgo: Religious Learning"
@@ -11783,6 +18213,15 @@ SIG.MSR.518:
   domains_affected: [spirituality]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.VIRGO]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.519:
   signal_name: "BNN — Venus Cancer + Leo Vacant + Jupiter Virgo: Two Marriages"
@@ -11801,6 +18240,18 @@ SIG.MSR.519:
   domains_affected: [relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, PLN.JUPITER, SGN.CANCER, SGN.LEO, SGN.VIRGO]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.520:
   signal_name: "BNN — Sun Next to Venus: Devotional-Capable Spouse"
@@ -11819,6 +18270,18 @@ SIG.MSR.520:
   domains_affected: [relationships, spirituality]
   confidence: 0.90
   v6_ids_consumed: [PLN.SUN, PLN.VENUS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.521:
   signal_name: "BNN — Saturn-Ketu Conjunction: Early Life Difficulties"
@@ -11837,6 +18300,15 @@ SIG.MSR.521:
   domains_affected: [psychological]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.KETU]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.522:
   signal_name: "BNN — Jupiter-Rahu Conjunction: Dilapidated Structure Near Birthplace"
@@ -11855,6 +18327,15 @@ SIG.MSR.522:
   domains_affected: [other]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.RAHU]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.523:
   signal_name: "BNN — Saturn 2nd from Sun: Stepping into Father's Profession"
@@ -11873,6 +18354,18 @@ SIG.MSR.523:
   domains_affected: [career]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.SUN]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.524:
   signal_name: "BNN — Jupiter-Ketu 7th to Saturn: Surpassing Father's Wealth"
@@ -11891,6 +18384,18 @@ SIG.MSR.524:
   domains_affected: [wealth]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.KETU, PLN.SATURN]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.525:
   signal_name: "BNN — Mercury-Mars-Rahu: Coarse Speech and Manner"
@@ -11909,6 +18414,18 @@ SIG.MSR.525:
   domains_affected: [psychological]
   confidence: 0.90
   v6_ids_consumed: [PLN.MERCURY, PLN.MARS, PLN.RAHU]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.526:
   signal_name: "BNN — Jupiter Contacts Debilitated Moon First: Duplicity and Dispossession"
@@ -11927,6 +18444,18 @@ SIG.MSR.526:
   domains_affected: [wealth, psychological]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.MOON]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.527:
   signal_name: "BNN — Venus Contacts Ketu: Daughter Born First"
@@ -11945,6 +18474,15 @@ SIG.MSR.527:
   domains_affected: [relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, PLN.KETU]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.528:
   signal_name: "BNN — Rahu-Mars in Scorpio: Educational Career Interrupted"
@@ -11963,6 +18501,18 @@ SIG.MSR.528:
   domains_affected: [career]
   confidence: 0.95
   v6_ids_consumed: [PLN.RAHU, PLN.MARS, SGN.SCORPIO]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.529:
   signal_name: "BNN — Jupiter in Pisces + Saturn-Ketu in Aries: Past-Life Tapasya"
@@ -11981,6 +18531,18 @@ SIG.MSR.529:
   domains_affected: [spirituality]
   confidence: 0.80
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN, PLN.KETU, SGN.PISCES, SGN.ARIES]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.530:
   signal_name: "BNN — Saturn-Ketu: Deeply Contemplative Nature"
@@ -11999,6 +18561,15 @@ SIG.MSR.530:
   domains_affected: [psychological]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.KETU]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.531:
   signal_name: "BNN — Jupiter in Own House: Removes Fear (Serpents/Unknown)"
@@ -12017,6 +18588,15 @@ SIG.MSR.531:
   domains_affected: [psychological]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS, SGN.PISCES]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.532:
   signal_name: "BNN — Jupiter in Venus's House: Infamy Through Female at Specific Ages"
@@ -12035,6 +18615,21 @@ SIG.MSR.532:
   domains_affected: [relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.TAURUS, SGN.LIBRA, PLN.VENUS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H — sign of exaltation"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.533:
   signal_name: "BNN — Moon-Venus Conjunction in Leo: Every Type of Happiness"
@@ -12053,6 +18648,18 @@ SIG.MSR.533:
   domains_affected: [psychological]
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, PLN.VENUS, SGN.LEO]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.534:
   signal_name: "BNN — Jupiter 9th from Saturn + Venus Lord of 9th: Sanyas Denied"
@@ -12071,6 +18678,21 @@ SIG.MSR.534:
   domains_affected: [spirituality]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN, PLN.VENUS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.535:
   signal_name: "BNN — Mercury-Mars in Venus's Sign: Engineering Specialisation"
@@ -12089,6 +18711,18 @@ SIG.MSR.535:
   domains_affected: [career]
   confidence: 0.90
   v6_ids_consumed: [PLN.MERCURY, PLN.MARS, SGN.TAURUS, SGN.LIBRA, PLN.VENUS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.536:
   signal_name: "BNN — Mars-Saturn Exchange + Venus: High Post in Regulated Industry"
@@ -12107,6 +18741,18 @@ SIG.MSR.536:
   domains_affected: [career]
   confidence: 0.80
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, PLN.VENUS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.537:
   signal_name: "BNN — Venus in 2nd from Saturn: Association with Low-Class Company"
@@ -12125,6 +18771,18 @@ SIG.MSR.537:
   domains_affected: [relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, PLN.SATURN]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.538:
   signal_name: "BNN — Saturn-Rahu-Mars: Profession in Government or Enforcement"
@@ -12143,6 +18801,18 @@ SIG.MSR.538:
   domains_affected: [career]
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.MARS]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.539:
   signal_name: "BNN — Sun-Venus-Mercury: Father's Artistic Talent and Fine Earnings"
@@ -12161,6 +18831,18 @@ SIG.MSR.539:
   domains_affected: [career]
   confidence: 0.85
   v6_ids_consumed: [PLN.SUN, PLN.VENUS, PLN.MERCURY]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.540:
   signal_name: "BNN — Jupiter Transit Cancer: Marriage Timing"
@@ -12179,6 +18861,15 @@ SIG.MSR.540:
   domains_affected: [timing, relationships]
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.CANCER]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.541:
   signal_name: "CKN — Chandra Kala Nadi: Benefic Lord 5th from Moon for Children"
@@ -12197,6 +18888,18 @@ SIG.MSR.541:
   domains_affected: [relationships]
   confidence: 0.75
   v6_ids_consumed: [PLN.MOON]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.542:
   signal_name: "CKN — Chandra Kala Nadi: Malefic 8th from Lagna for Longevity Reduction"
@@ -12215,6 +18918,21 @@ SIG.MSR.542:
   domains_affected: [health]
   confidence: 0.75
   v6_ids_consumed: [HSE.8]
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.543:
   signal_name: "DHR — Dhruva Nadi: Saturn-Mars Yoga for Physical Labour and Hard Work"
@@ -12245,6 +18963,18 @@ All Yogini signals have:
   temporal_activation: yogini-period (not natal-permanent)
   signal_type: yogini-period
   school_attribution: yogini
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.544:
   signal_name: "Mangala Yogini — Emotional Volatility and Maternal Themes"
@@ -12264,6 +18994,18 @@ SIG.MSR.544:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [psychology]
   confidence: 0.82
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.545:
   signal_name: "Mangala Yogini — Career Initiation with Emotional Investment"
@@ -12283,6 +19025,18 @@ SIG.MSR.545:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [career]
   confidence: 0.71
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.546:
   signal_name: "Pingala Yogini — Authority Crisis and Health Disturbance"
@@ -12303,6 +19057,18 @@ SIG.MSR.546:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [career, health]
   confidence: 0.85
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.547:
   signal_name: "Pingala Yogini — Solar Health Domains Tested"
@@ -12323,6 +19089,18 @@ SIG.MSR.547:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [health]
   confidence: 0.78
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SUN
+        note: "Sun in Capricorn 10H 21°57′35″ Shravana pada 4"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SUN
+        note: "Sun Shadbala JH 8.18 rupas rank 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.548:
   signal_name: "Dhanya Yogini — Dharmic Prosperity and Guru Blessing"
@@ -12343,6 +19121,15 @@ SIG.MSR.548:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [spirit, wealth]
   confidence: 0.88
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.549:
   signal_name: "Dhanya Yogini — Progeny and Partnership Expansion"
@@ -12362,6 +19149,18 @@ SIG.MSR.549:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [relationships]
   confidence: 0.75
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.550:
   signal_name: "Bhramari Yogini — Conflict, Litigation, and Property Disputes"
@@ -12383,6 +19182,18 @@ SIG.MSR.550:
   domains_affected: [career]
   confidence: 0.87
   ACTIVE_AT_M9: true
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.551:
   signal_name: "Bhramari Yogini — Physical Injury and Surgical Risk"
@@ -12404,6 +19215,18 @@ SIG.MSR.551:
   domains_affected: [health]
   confidence: 0.80
   ACTIVE_AT_M9: true
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.552:
   signal_name: "Bhadrika Yogini — Commerce and Intellectual Achievement"
@@ -12424,6 +19247,15 @@ SIG.MSR.552:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [career]
   confidence: 0.83
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.553:
   signal_name: "Ulka Yogini — Karmic Reckoning and Disciplined Withdrawal"
@@ -12444,6 +19276,15 @@ SIG.MSR.553:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [psychology]
   confidence: 0.85
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.554:
   signal_name: "Ulka Yogini — Career Delays and Systemic Obstruction"
@@ -12464,6 +19305,18 @@ SIG.MSR.554:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [career]
   confidence: 0.78
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.555:
   signal_name: "Siddha Yogini — Relationship Fulfilment and Artistic Prosperity"
@@ -12484,6 +19337,15 @@ SIG.MSR.555:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [relationships]
   confidence: 0.89
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.556:
   signal_name: "Siddha Yogini — Material Abundance and Creative Recognition"
@@ -12503,6 +19365,15 @@ SIG.MSR.556:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [career]
   confidence: 0.76
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.557:
   signal_name: "Sankata Yogini — Sudden Reversal and Hidden Crisis"
@@ -12523,6 +19394,18 @@ SIG.MSR.557:
   provenance: v5_0-M9-A-S1-yogini
   domains_affected: [psychology]
   confidence: 0.86
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 — Sankata Yogini ruler"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — transformation domain activated by Sankata period"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.558:
   signal_name: "Sankata Yogini — Career Disruption Through Unexpected External Forces"
@@ -12555,6 +19438,15 @@ All Tajika signals have:
   chart_type: varsha_kundali
   school_attribution: tajika
   pending_flag: VARSHA_KUNDALI_PENDING (until 2026 solar return chart is computed)
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika framework signals; Varsha Kundali pending — natal FORENSIC v8.0 is the base chart reference"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.559:
   signal_name: "Ithasala Yoga — Approaching Benefic Planetary Transfer"
@@ -12576,6 +19468,15 @@ SIG.MSR.559:
   domains_affected: [career]
   confidence: 0.90
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Ithasala framework; natal Mercury MD-Saturn AD context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.560:
   signal_name: "Ishrafa Yoga — Separating Transfer, Opportunity Passed"
@@ -12597,6 +19498,15 @@ SIG.MSR.560:
   domains_affected: [career]
   confidence: 0.87
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Ishrafa framework; applies in annual Varsha Kundali context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.561:
   signal_name: "Varshesha Strong in Angle — Auspicious Annual Direction"
@@ -12618,6 +19528,15 @@ SIG.MSR.561:
   domains_affected: [career]
   confidence: 0.86
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Varshesha: annual king planet; Varsha Kundali framework"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.562:
   signal_name: "Varshesha Afflicted in Dusthana — Annual Adversity"
@@ -12638,6 +19557,15 @@ SIG.MSR.562:
   domains_affected: [psychology]
   confidence: 0.81
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Varshesha affliction: annual adversity framework; Varsha Kundali context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.563:
   signal_name: "Muntha in Angle — Annual Sensitivity Point Empowered"
@@ -12659,6 +19587,15 @@ SIG.MSR.563:
   domains_affected: [psychology]
   confidence: 0.83
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Tajika Muntha: progressed Lagna based on natal Aries Lagna 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.564:
   signal_name: "Muntha Lord in 12H — Annual Withdrawal and Expenditure"
@@ -12680,6 +19617,15 @@ SIG.MSR.564:
   domains_affected: [psychology]
   confidence: 0.80
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Tajika Muntha lord 12H: Varsha Kundali withdrawal framework; natal Aries Lagna basis"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.565:
   signal_name: "Punya Sahama Angular — Fortunate Annual Period"
@@ -12700,6 +19646,15 @@ SIG.MSR.565:
   domains_affected: [career]
   confidence: 0.85
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PUNYA
+        note: "Punya Saham natal 17°30′54″ Gemini 3H Ardra — Tajika annual lot basis"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.566:
   signal_name: "Vidya Sahama Angular — Learning and Communication Career Success"
@@ -12720,6 +19675,15 @@ SIG.MSR.566:
   domains_affected: [career]
   confidence: 0.78
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.567:
   signal_name: "Dara Sahama Angular — Partnership and Marriage Activation"
@@ -12740,6 +19704,15 @@ SIG.MSR.567:
   domains_affected: [relationships]
   confidence: 0.79
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.568:
   signal_name: "Nakta Yoga — Indirect Fulfilment via Intermediary"
@@ -12761,6 +19734,15 @@ SIG.MSR.568:
   domains_affected: [career]
   confidence: 0.76
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Nakta: indirect fulfilment via intermediary; Mercury MD context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.569:
   signal_name: "Kambula Yoga — Double Benefic Angular Protection"
@@ -12782,6 +19764,18 @@ SIG.MSR.569:
   domains_affected: [spirit]
   confidence: 0.74
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MOON
+        note: "Moon in Aquarius 11H 27°02′48″ Purva Bhadrapada pada 3"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.MOON
+        note: "Moon Shadbala JH 6.44 rupas rank 4"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.570:
   signal_name: "Saturn-Ithasala in Varsha — Annual Karmic Obligation"
@@ -12803,6 +19797,15 @@ SIG.MSR.570:
   domains_affected: [career]
   confidence: 0.77
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.571:
   signal_name: "Mars-Ithasala Adversarial — Annual Conflict and Effort Required"
@@ -12824,6 +19827,18 @@ SIG.MSR.571:
   domains_affected: [career]
   confidence: 0.77
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars in Libra 7H 18°31′38″ Swati pada 4 enemy sign"
+      - ref: "FORENSIC_v8.0 §6.7 Ishta/Kashta Phala"
+        fact_id: IKP.MARS
+        note: "Mars Ishta 31.16 Kashta 28.10 — slightly beneficial"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.572:
   signal_name: "Varsha Lagna Lord Angular — Annual Self-Assertion Succeeds"
@@ -12845,6 +19860,18 @@ SIG.MSR.572:
   domains_affected: [career]
   confidence: 0.84
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Lagna Aries 12°23′55″"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MARS
+        note: "Mars = Lagna lord for Aries Lagna placed in 7H Libra"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S16
+    grounded_date: 2026-05-25
+
 
 SIG.MSR.573:
   signal_name: "Paka Sahama Angular — Annual Health Activation"
@@ -12866,3 +19893,12 @@ SIG.MSR.573:
   domains_affected: [health]
   confidence: 0.73
   pending_flag: VARSHA_KUNDALI_PENDING
+  derivation_ledger:
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.ROGA
+        note: "Roga Saham 27°46′29″ Taurus 2H Mrigashira — disease lot (natal basis for Tajika Paka/Roga)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
+

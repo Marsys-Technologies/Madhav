@@ -1,11 +1,13 @@
 ---
 artifact: GCS_LAYOUT_v1_0.md
-version: 1.0
+version: 1.1
 status: CURRENT
 purpose: Canonical bucket structure for marsys source artifacts
 parent_authoritative_source: VALIDATED_ASSET_REGISTRY_v1_0.json
 created_at: 2026-04-28
 created_by: Phase_14A_GCS_Foundation
+changelog:
+  - "v1.1 (2026-05-25): MSR v3+v4 marked superseded; MSR_v5_0 primary; ephemeris section updated"
 ---
 
 # GCS Layout — MARSYS Source Buckets
@@ -58,12 +60,15 @@ gs://madhav-marsys-sources/
 │   ├── ephemeris/
 │   │   ├── EPHEMERIS_MONTHLY_1900_2100.csv           ← coverage gap GAP.L1.01 (not yet generated)
 │   │   ├── ECLIPSES_1900_2100.csv                   ← coverage gap (not yet generated)
-│   │   └── RETROGRADES_1900_2100.csv                ← coverage gap (not yet generated)
+│   │   ├── RETROGRADES_1900_2100.csv                ← coverage gap (not yet generated)
+│   │   └── panchanga_daily (SQL)                    ← Phase 4C COMPLETE: 73,414 rows live (1900-01-01→2100-12-31, build_id phase-4c-enrich-20260521-r2)
 │   └── sources/
 │       ├── EVENT_CHART_STATES_v1_0.md
 │       └── JHORA_TRANSCRIPTION_v8_0_SOURCE.md
 ├── L2_5/
-│   ├── MSR_v3_0.md                                  ← canonical_id: MSR
+│   ├── MSR_v5_0.md                                  ← canonical_id: MSR (PRIMARY; 573 signals)
+│   ├── MSR_v4_0.md                                  ← SUPERSEDED → 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/
+│   ├── MSR_v3_0.md                                  ← SUPERSEDED → 99_ARCHIVE/025_HOLISTIC_SYNTHESIS/
 │   ├── UCN_v4_0.md                                  ← canonical_id: UCN
 │   ├── CDLM_v1_1.md                                 ← canonical_id: CDLM
 │   ├── RM_v2_0.md                                   ← canonical_id: RM
@@ -118,7 +123,7 @@ gs://madhav-marsys-sources/
             └── school_disagreement_register.json
 ```
 
-*(L2_5/ also receives MSR_v5_0.md at M9-A-S1 close: `gs://madhav-marsys-sources/L2_5/MSR_v5_0.md`)*
+*(MSR_v5_0.md is PRIMARY at L2_5/ (573 signals, CURRENT). MSR_v3_0.md and MSR_v4_0.md are SUPERSEDED and archived to `99_ARCHIVE/025_HOLISTIC_SYNTHESIS/` as of 2026-05-25.)*
 
 **Notes:**
 - `L1/ephemeris/` paths are reserved; files don't exist locally yet (coverage gaps). The sync script skips non-existent files.

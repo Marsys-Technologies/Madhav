@@ -28,7 +28,7 @@ overrides:
     preferred_for: [interpretive, resonance, cross_domain]
     cost_weight: 0.6
   MSR:
-    path_pattern: "MSR_v3_0"
+    path_pattern: "MSR_v5_0"
     preferred_for: [factual, interpretive, cross_domain]
     cost_weight: 0.9
   LEL:
@@ -99,7 +99,7 @@ mirror_pairs:
     description: "FILE_REGISTRY (now CAPABILITY_MANIFEST) ↔ Gemini-side L2.5 path block"
     claude_side: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
     gemini_side: "L2.5 canonical-path block in .geminirules layer-architecture section"
-    enforcement_rule: "Compare L2.5 path subset Gemini-side carries (MSR_v3_0 / UCN_v4_0 / CDLM_v1_1 / CGM_v9_0 / RM_v2_0) against manifest entries. FAIL on path disagreement."
+    enforcement_rule: "Compare L2.5 path subset Gemini-side carries (MSR_v5_0 / UCN_v4_0 / CDLM_v1_1 / CGM_v9_0 / RM_v2_0) against manifest entries. FAIL on path disagreement."
     known_asymmetries:
       - "Gemini-side carries only L2.5 paths relevant to L4 Discovery Layer; does not mirror full manifest inventory"
     mirror_mode: adapted_parity_subset
