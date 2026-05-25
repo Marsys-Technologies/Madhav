@@ -27807,3 +27807,50 @@ session_close:
     SRP test PRs #166-169 open for review, non-blocking.
     Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md.
 ```
+
+---
+
+## SRP-HYGIENE (2026-05-26)
+
+**Session type:** hygiene
+**Objective:** Worktree cleanup + stale branch deletion post SRP-DEPLOY
+**Predecessor:** SRP-DEPLOY
+
+**Worktrees removed (11):** MadhavSRP-F1, MadhavSRP-F2, MadhavSRP-A1, MadhavSRP-A2, MadhavSRP-T1, MadhavSRP-T2, MadhavSRP-T3, MadhavSRP-T4, MadhavGISMCP-S1, MadhavGISMCP-S2, MadhavICR.
+
+**icr/s2-l1-truth-index investigation:** Single unique commit 224cb771 added 4 files (l1_truth_index.ts scorer, CLI runner, tests, L1_TRUTH_INDEX_REPORT_v1_0.md). All 4 files already present on main — landed via a different path. Verdict: SAFE-DELETED.
+
+**Remote branches deleted (46):** All confirmed merged to main via prior session merge-base checks. 2 were pre-already-gone (governance/uda1-parity-close + governance/uda234-parity-close). git fetch --prune run; remote tracking refs clean.
+
+**Remote branches remaining (7):** origin/main, origin/test/srp-t1-portal-unit, origin/test/srp-t2-mcp-unit, origin/test/srp-t3-integration, origin/test/srp-t4-system (PRs #166-#169 open), origin/feature/conductor-to-main, origin/fix/chat-v2-r5/D3-correction-out-of-domain-emission.
+
+**Worktrees remaining:** main + 5 locked agent worktrees + marsys-m6-prospective (feature/m6-prospective-testing). 7 total.
+
+**CURRENT_STATE:** Bumped v5.58 → v5.59.
+
+```yaml
+session_close:
+  session_id: SRP-HYGIENE
+  close_timestamp: 2026-05-26T02:20:00+05:30
+  acceptance_criteria_met: true
+  all_acceptance_criteria_met: true
+  commits_this_session:
+    - sha: TBD
+      message: "governance(srp-hygiene): close SRP-HYGIENE — 11 worktrees removed, 46 branches deleted, CURRENT_STATE v5.59"
+      branch: main
+  current_state_version: "5.59"
+  session_log_updated: true
+  mirror_updates_propagated: false
+  carry_forwards:
+    - "PRs #166/#167/#168/#169 (test/srp-t1 through srp-t4) pending merge review"
+    - "feature/m6-prospective-testing: local-only M6 WIP — push to origin when M6-A-S1 opens formally"
+    - "feature/conductor-to-main: investigate whether merged or still needed"
+    - "fix/chat-v2-r5/D3-correction-out-of-domain-emission: investigate whether merged or still needed"
+  close_criteria_met: true
+  handoff_notes: >
+    SRP-HYGIENE complete. Repository is clean: 11 stale worktrees removed,
+    46 merged remote branches deleted, tracking refs pruned.
+    Remaining remote branches: main + 4 open-PR test branches + 2 for review.
+    Local: main + feature/m6-prospective-testing (M6 WIP).
+    Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md.
+```

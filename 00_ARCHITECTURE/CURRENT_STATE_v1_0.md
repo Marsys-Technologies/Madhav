@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.58
+version: 5.59
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.59 (2026-05-26, SRP-HYGIENE):
+    **SRP-HYGIENE COMPLETE — 11 worktrees removed; 46 remote branches deleted (all merged to main); git remote pruned. icr/s2-l1-truth-index: SAFE-DELETED (all 4 files from its single unique commit already present on main). Remaining remote branches: main + test/srp-t1 through srp-t4 (PRs #166-#169 open) + feature/conductor-to-main + fix/chat-v2-r5/D3-correction-out-of-domain-emission (7 total). No application code modified.**
+    Key outcomes: (1) Worktrees pruned: MadhavSRP-F1/F2/A1/A2/T1/T2/T3/T4 + MadhavGISMCP-S1/S2 + MadhavICR (11 total). (2) Remote branches deleted: 46 (all verified merged; 2 pre-already-gone: governance/uda1-parity-close + governance/uda234-parity-close). (3) git fetch --prune run; tracking refs clean. (4) Kept: test/srp-t1–t4 (open PRs #166-#169), feature/m6-prospective-testing (M6 WIP local-only), feature/conductor-to-main + fix/chat-v2-r5/D3-correction-out-of-domain-emission (not in deletion list — retained for review). Agent worktrees untouched.
+    files_touched: ["00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (hygiene session; no macro-phase change).
+    last_session_id: SRP-HYGIENE. predecessor_session: SRP-DEPLOY.
+    carry_forwards: ["PRs #166/#167/#168/#169 (test/srp-t1 through srp-t4) pending merge review", "feature/m6-prospective-testing: local-only M6 WIP — push to origin when M6-A-S1 opens formally", "feature/conductor-to-main: investigate whether merged or still needed", "fix/chat-v2-r5/D3-correction-out-of-domain-emission: investigate whether merged or still needed"]
+    next_session_objective: "Hygiene complete. Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md."
+    file_updated_at: 2026-05-26. file_updated_by_session: SRP-HYGIENE.
   - v5.58 (2026-05-26, SRP-DEPLOY):
     **SRP-DEPLOY COMPLETE — SRP-F-1 (portal) + SRP-F-2 (MCP) fixes live in production. amjis-web revision: amjis-web-00406-g2s. amjis-mcp revision: amjis-mcp-00016-86n. KNOWN_PRE_EXISTING_FAILURES.md updated to v1.5 (35 pre-existing failures documented; corrects v1.4 false-zero). PRs #166/#167/#168/#169 remain open (test-suite branches, non-blocking).**
     Key outcomes: (1) FIX-1: primitives_registry whitelists 37 tools (was 23). (2) FIX-2: forward_looking reads params from request context. (3) FIX-3: valence enum matches DB schema. (4) FIX-4: sample_step cast to integer. (5) FIX-5: significance field name + type corrected in lel_query.ts. (6) FIX-6: lel_query source_version annotation updated to v1.7. (7) KNOWN_PRE_EXISTING_FAILURES v1.5 documents 35 pre-existing failures (13 platform + 22 platform-mcp); SRP-specific tests all GREEN.
