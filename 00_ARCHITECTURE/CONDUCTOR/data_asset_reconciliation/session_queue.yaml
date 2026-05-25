@@ -236,7 +236,7 @@ sessions:
     phase: 5
     name: "B.3 grounding backfill — house-based + dasha + divisional + classical-specific signals"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S18.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 90
     depends_on: [DAR-P5-S17]
     gate_commands:
@@ -247,7 +247,7 @@ sessions:
     phase: 5
     name: "B.3 grounding backfill — Nadi/BNN + Yogini/Tajaka signals (SIG.MSR.515–573)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S19.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 90
     depends_on: [DAR-P5-S18]
     gate_commands:

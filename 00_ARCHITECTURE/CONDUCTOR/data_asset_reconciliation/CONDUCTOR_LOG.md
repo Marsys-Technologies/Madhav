@@ -54,3 +54,12 @@ Notes: 567 stubs injected into MSR_v5_0.md. 309 signals grounded (Lagna=83, Sun=
 Gate results: 4/4 PASS
 Commit: 6344b496
 Notes: 196 signals grounded (Mercury=61, Jupiter=75, Venus=49, Saturn=72). Total GROUNDED=505. 62 PENDING remain for S18-S19 (Rahu/Ketu, house-domain, dasha, nadi/BNN, Yogini/Tajaka).
+
+## DAR-P5-S18 — COMPLETE — 2026-05-25
+Gate results: 2/2 PASS
+Commit: 63aeae7a
+Notes: All remaining 62 PENDING signals grounded (100%). Sub-agent also pre-grounded S19 scope (Nadi/BNN + Yogini/Tajaka). Total GROUNDED=567/567.
+
+## DAR-P5-S19 — COMPLETE — 2026-05-25 (grounded in S18)
+Gate results: 2/2 PASS (pre-verified via S18 work)
+Notes: grounded_nadi_bnn and grounded_yogini_tajaka both set DONE by S18 sub-agent. No additional work required. Gates pass on existing GROUNDING_PROGRESS.yaml.
