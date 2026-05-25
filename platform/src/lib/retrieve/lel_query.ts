@@ -149,7 +149,7 @@ async function retrieveImpl(
       source_section: row.source_section,
     }),
     source_canonical_id: 'LEL',
-    source_version: '1.6',
+    source_version: '1.7',
     confidence: 1.0,      // Ground-truth recorded events — confidence is always 1.0
     significance: 1.0,    // LEL events are definitionally significant L1 facts
   }))

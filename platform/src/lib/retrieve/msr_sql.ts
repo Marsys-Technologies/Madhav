@@ -101,7 +101,7 @@ async function retrieve(plan: QueryPlan, params?: Record<string, unknown>): Prom
     void writeToolExecutionLog({
       query_id: plan.query_plan_id,
       tool_name: TOOL_NAME,
-      params_json: { domains: plan.domains, planets: plan.planets ?? [], forward_looking: plan.forward_looking },
+      params_json: { domains: params?.domain ?? plan.domains, planets: plan.planets ?? [], forward_looking: params?.forward_looking ?? plan.forward_looking },
       status: 'error',
       rows_returned: 0,
       latency_ms: Date.now() - start,
@@ -150,7 +150,16 @@ async function retrieveImpl(
   const domainFilter: string[] | null = effectiveDomains.length > 0 ? effectiveDomains : null
   const planetFilter: string[] | null =
     plan.planets && plan.planets.length > 0 ? plan.planets : null
-  const forwardLookingFilter: boolean | null = plan.forward_looking ? true : null
+  // FIX-2: read forward_looking from params first, fall back to plan.
+  // When params.forward_looking === true: filter to forward-looking signals only.
+  // When params.forward_looking === false: no filter (pass null → SQL IS NULL no-op).
+  // When params.forward_looking is absent: fall back to plan.forward_looking (preserves
+  // existing behaviour for non-primitive callers).
+  const rawForwardLooking = (params as Record<string, unknown>)?.forward_looking
+  const forwardLookingFilter: boolean | null =
+    rawForwardLooking === true ? true :
+    rawForwardLooking === false ? null :
+    plan.forward_looking ? true : null
 
   // New signal-property filters (from MsrSqlInput; all optional, backward-compatible)
   const msrInput = params as MsrSqlInput | undefined
@@ -290,9 +299,9 @@ async function retrieveImpl(
     tool_version: TOOL_VERSION,
     invocation_params: {
       native_id: nativeId,
-      domains: plan.domains,
+      domains: effectiveDomains,
       planets: plan.planets ?? [],
-      forward_looking: plan.forward_looking,
+      forward_looking: forwardLookingFilter,  // FIX-7: actual SQL filter value, not plan.forward_looking
       confidence_floor: confidenceFloor,
       signal_type: signalTypeFilter,
       temporal_activation: temporalFilter,
