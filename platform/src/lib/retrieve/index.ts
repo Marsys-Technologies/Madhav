@@ -18,6 +18,8 @@
  * UDA-1-S2: get_planet_avastha, get_shadbala_full — avastha 3-step fallback + shadbala roll-up (tools 39-40)
  * UDA-1-S3: query_jaimini_chara_dasha — Jaimini Chara Dasha active period + full timeline (tool 41)
  * UDA-1-S4: query_planetary_period_predictions — classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
+ * UDA-1-S5: query_dasamsha_career — D10 career indicator rules (tool 43)
+ * UDA-1-S5: query_shashtiamsha — D60 Shashtiamsha karma pada analysis (tool 44)
  */
 
 import * as msrSql from './msr_sql'
@@ -101,6 +103,10 @@ import * as queryJaiminiCharaDasha from './query_jaimini_chara_dasha'
 // UDA-1-S4 — Classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
 import * as queryPlanetaryPeriodPredictions from './query_planetary_period_predictions'
 
+// UDA-1-S5 — D10 career indicator rules + D60 Shashtiamsha karma pada analysis (tools 43-44)
+import * as queryDasamshhaCareer from './query_dasamsha_career'
+import * as queryShashtiamsha from './query_shashtiamsha'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -147,6 +153,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   getShadbalaFull.tool,
   queryJaiminiCharaDasha.tool,
   queryPlanetaryPeriodPredictions.tool,
+  queryDasamshhaCareer.tool,
+  queryShashtiamsha.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
