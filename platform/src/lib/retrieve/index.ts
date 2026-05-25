@@ -23,6 +23,7 @@
  * UDA-1-S6: query_eclipse_transits, query_planet_war — eclipse detection + Graha Yuddha (tools 45-46)
  * UDA-1-S7: query_drekkana_drishti, query_remedies_prescribed — Jaimini Drekkana Drishti + remedial codex cross-reference (tools 47-48)
  * UDA-1-S8: tara_balam_for_native, chandra_balam_for_native, muhurta_finder — Tara Bala + Chandra Bala + Muhurta Finder with native overlay (tools 49-51)
+ * R2-S1/S2: query_tara_balam, query_chandra_balam, jaimini_chara_dasha, jaimini_chara_dasha_full — canonical-name aliases for MCP primitive dispatch (tools 52-55)
  */
 
 import * as msrSql from './msr_sql'
@@ -123,6 +124,12 @@ import * as taraBalamForNative from './tara_balam_for_native'
 import * as chandraBalamForNative from './chandra_balam_for_native'
 import * as muhurtaFinder from './muhurta_finder'
 
+// R2-S1/S2 — Canonical-name aliases for MCP primitive dispatch (tools 52-55)
+import * as queryTaraBalam from './query_tara_balam'
+import * as queryChandraBalam from './query_chandra_balam'
+import * as jaiminiCharaDasha from './jaimini_chara_dasha'
+import * as jaiminiCharaDashaFull from './jaimini_chara_dasha_full'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -193,6 +200,11 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   taraBalamForNative.tool,
   chandraBalamForNative.tool,
   muhurtaFinder.tool,
+  // R2-S1/S2 canonical-name aliases for MCP primitive dispatch
+  queryTaraBalam.tool,
+  queryChandraBalam.tool,
+  jaiminiCharaDasha.tool,
+  jaiminiCharaDashaFull.tool,
   // UDA-3-S1 canonical-name aliases (getTool resolves by name; these ensure the
   // canonical MCP names resolve in the portal agentic loop — Channel B parity).
   chartFactsQueryAlias,  // 'query_chart_facts' → chart_facts_query handler

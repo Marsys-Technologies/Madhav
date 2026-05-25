@@ -23,7 +23,7 @@ export const DATA_COVERAGE_DESCRIPTION = buildToolDescription({
     'Use data_coverage before calling a tool that relies on backfilled data (query_chart_facts ' +
     'with category kp_cusp, varshphal, shadbala, etc.) to verify data is present. ' +
     'Use tool_health for operational metrics; use data_coverage for data availability.',
-  tierNote: 'Available: super_admin + acharya only. client tier = 403.',
+  tierNote: 'Available: all tiers (unconditional — R1 de-gating).',
 })
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
@@ -50,15 +50,6 @@ export function registerDataCoverage(
 
     async (input: DataCoverageInput) => {
       const principal = getPrincipal()
-
-      // Tier gate
-      if (principal.audience_tier === 'client' || principal.audience_tier === 'public_redacted') {
-        return errorResult({
-          ok: false,
-          error: 'Forbidden',
-          message: 'data_coverage is restricted to super_admin and acharya tiers.',
-        })
-      }
 
       try {
         const response = await fetch(`${PLATFORM_URL}/api/mcp/health/coverage`, {

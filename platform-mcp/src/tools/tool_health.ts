@@ -21,7 +21,7 @@ export const TOOL_HEALTH_DESCRIPTION = buildToolDescription({
     'Use to understand the operational state of the MCP server: which tools have elevated error rates, ' +
     'which have pending audit findings. Essential for operator debugging. ' +
     'Do NOT use to answer chart questions — use query_signals or holistic_bundle for that.',
-  tierNote: 'Available: super_admin + acharya only. client tier = 403.',
+  tierNote: 'Available: all tiers (unconditional — R1 de-gating).',
 })
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
@@ -48,15 +48,6 @@ export function registerToolHealth(
 
     async (input: ToolHealthInput) => {
       const principal = getPrincipal()
-
-      // Tier gate
-      if (principal.audience_tier === 'client' || principal.audience_tier === 'public_redacted') {
-        return errorResult({
-          ok: false,
-          error: 'Forbidden',
-          message: 'tool_health is restricted to super_admin and acharya tiers. See marsys://house-rules.',
-        })
-      }
 
       try {
         const response = await fetch(`${PLATFORM_URL}/api/mcp/health/tools`, {
