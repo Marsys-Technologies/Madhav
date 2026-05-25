@@ -3728,6 +3728,436 @@
       "status": "CURRENT",
       "version": "1.0",
       "description": "RM remedial map walk"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_CHART_FACTS",
+      "path": "platform-mcp/src/tools/query_chart_facts.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_chart_facts",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Chart facts parametric retrieval: strengths, BAV, yogas, placements"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_SIGNALS",
+      "path": "platform-mcp/src/tools/query_signals.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_signals",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "MSR signal corpus lookup with LL.1 calibration"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_DASHA_PERIODS",
+      "path": "platform-mcp/src/tools/query_dasha_periods.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_dasha_periods",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Vimshottari dasha schedule with PD/SD sub-period levels"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_PANCHANGA",
+      "path": "platform-mcp/src/tools/query_panchanga.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_panchanga",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Daily panchanga with enrichment fields"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_EPHEMERIS",
+      "path": "platform-mcp/src/tools/query_ephemeris.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_ephemeris",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Planetary positions from ephemeris_daily"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_TRANSIT_EVENT",
+      "path": "platform-mcp/src/tools/query_transit_event.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_transit_event",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Transit event search"
+    },
+    {
+      "canonical_id": "MCP_TOOL_LEL_QUERY",
+      "path": "platform-mcp/src/tools/lel_query.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "lel_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Life Event Log ground-truth retrieval"
+    },
+    {
+      "canonical_id": "MCP_TOOL_VECTOR_SEARCH",
+      "path": "platform-mcp/src/tools/vector_search.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "vector_search",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Semantic search over rag_chunks"
+    },
+    {
+      "canonical_id": "MCP_TOOL_GET_CGM_SUBGRAPH",
+      "path": "platform-mcp/src/tools/get_cgm_subgraph.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "get_cgm_subgraph",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "CGM causal graph subgraph"
+    },
+    {
+      "canonical_id": "MCP_TOOL_CROSS_SCHOOL_LOOKUP",
+      "path": "platform-mcp/src/tools/cross_school_lookup.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "cross_school_lookup",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Cross-school signal triangulation"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_VARSHPHAL",
+      "path": "platform-mcp/src/tools/query_varshphal.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_varshphal",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Varshaphala annual chart lookup"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_DIVISIONAL_CHART",
+      "path": "platform-mcp/src/tools/query_divisional_chart.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_divisional_chart",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Divisional chart positions"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_REMEDIAL_MANTRAS",
+      "path": "platform-mcp/src/tools/query_remedial_mantras.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_remedial_mantras",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Remedial mantra corpus search"
+    },
+    {
+      "canonical_id": "MCP_TOOL_MUHURTA_FINDER",
+      "path": "platform-mcp/src/tools/muhurta_finder.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "muhurta_finder",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Auspicious muhurta window finder"
+    },
+    {
+      "canonical_id": "MCP_TOOL_TARA_BALAM_FOR_NATIVE",
+      "path": "platform-mcp/src/tools/tara_balam_for_native.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "tara_balam_for_native",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Tara Bala (Star Strength) for native"
+    },
+    {
+      "canonical_id": "MCP_TOOL_CHANDRA_BALAM_FOR_NATIVE",
+      "path": "platform-mcp/src/tools/chandra_balam_for_native.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "chandra_balam_for_native",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Chandra Bala (Moon Strength) for native"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_TRANSITS_OVER_NATAL",
+      "path": "platform-mcp/src/tools/query_transits_over_natal.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_transits_over_natal",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Transit-to-natal aspect windows"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_YOGAS_ACTIVE_NOW",
+      "path": "platform-mcp/src/tools/query_yogas_active_now.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_yogas_active_now",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Yoga activation status vs current dasha"
+    },
+    {
+      "canonical_id": "MCP_TOOL_GET_PLANET_AVASTHA",
+      "path": "platform-mcp/src/tools/get_planet_avastha.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "get_planet_avastha",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Planetary avastha (state) lookup"
+    },
+    {
+      "canonical_id": "MCP_TOOL_GET_SHADBALA_FULL",
+      "path": "platform-mcp/src/tools/get_shadbala_full.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "get_shadbala_full",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Full Shadbala roll-up with classical minimums"
+    },
+    {
+      "canonical_id": "MCP_TOOL_INTERPRET_CURRENT_DASHA",
+      "path": "platform-mcp/src/tools/interpret_current_dasha.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "interpret_current_dasha",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Current dasha interpretation"
+    },
+    {
+      "canonical_id": "MCP_TOOL_LIST_CANONICAL_ARTIFACT_VERSIONS",
+      "path": "platform-mcp/src/tools/list_canonical_artifact_versions.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "list_canonical_artifact_versions",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "List canonical artifact versions"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_DREKKANA_DRISHTI",
+      "path": "platform-mcp/src/tools/query_drekkana_drishti.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_drekkana_drishti",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Jaimini Drekkana Drishti aspects"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_JAIMINI_CHARA_DASHA",
+      "path": "platform-mcp/src/tools/query_jaimini_chara_dasha.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_jaimini_chara_dasha",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Jaimini Chara Dasha schedule"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_PLANETARY_PERIOD_PREDICTIONS",
+      "path": "platform-mcp/src/tools/query_planetary_period_predictions.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_planetary_period_predictions",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Classical predictions for MD/AD combinations"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_DASAMSHA_CAREER",
+      "path": "platform-mcp/src/tools/query_dasamsha_career.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_dasamsha_career",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "D10 Dasamsha career analysis"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_SHASHTIAMSHA",
+      "path": "platform-mcp/src/tools/query_shashtiamsha.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_shashtiamsha",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "D60 Shashtiamsha karma analysis"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_ECLIPSE_TRANSITS",
+      "path": "platform-mcp/src/tools/query_eclipse_transits.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_eclipse_transits",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Eclipse detection in date range"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_PLANET_WAR",
+      "path": "platform-mcp/src/tools/query_planet_war.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_planet_war",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Graha Yuddha planetary war detection"
+    },
+    {
+      "canonical_id": "MCP_TOOL_QUERY_REMEDIES_PRESCRIBED",
+      "path": "platform-mcp/src/tools/query_remedies_prescribed.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "query_remedies_prescribed",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Remedial prescription cross-reference"
+    },
+    {
+      "canonical_id": "MCP_TOOL_READ_ASSET",
+      "path": "platform-mcp/src/tools/read_asset.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "read_asset",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Read a canonical L1/L2 asset file"
+    },
+    {
+      "canonical_id": "MCP_TOOL_READ_CLASSICAL_TEXT",
+      "path": "platform-mcp/src/tools/read_classical_text.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "read_classical_text",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Read classical text corpus chunks"
+    },
+    {
+      "canonical_id": "MCP_TOOL_LIST_ASSETS",
+      "path": "platform-mcp/src/tools/list_assets.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "list_assets",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "List available canonical assets"
+    },
+    {
+      "canonical_id": "MCP_TOOL_GET_TRACE",
+      "path": "platform-mcp/src/tools/get_trace.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "get_trace",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Retrieve query trace by trace_id"
+    },
+    {
+      "canonical_id": "MCP_TOOL_LIST_RECENT_QUERIES",
+      "path": "platform-mcp/src/tools/list_recent_queries.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "list_recent_queries",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "List recent MCP queries"
+    },
+    {
+      "canonical_id": "MCP_TOOL_LOG_PREDICTION",
+      "path": "platform-mcp/src/tools/log_prediction.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "log_prediction",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Log a time-indexed prediction"
+    },
+    {
+      "canonical_id": "MCP_TOOL_RECORD_OUTCOME",
+      "path": "platform-mcp/src/tools/record_outcome.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "record_outcome",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Record an outcome against a prediction"
+    },
+    {
+      "canonical_id": "MCP_TOOL_FLAG_DISAGREEMENT",
+      "path": "platform-mcp/src/tools/flag_disagreement.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "flag_disagreement",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Flag a disagreement for governance review"
+    },
+    {
+      "canonical_id": "MCP_TOOL_CHART_SUMMARY",
+      "path": "platform-mcp/src/tools/chart_summary.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "chart_summary",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Chart summary holistic snapshot"
+    },
+    {
+      "canonical_id": "MCP_TOOL_HOLISTIC_BUNDLE",
+      "path": "platform-mcp/src/tools/holistic_bundle.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "holistic_bundle",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Holistic multi-layer synthesis bundle"
+    },
+    {
+      "canonical_id": "MCP_TOOL_MULTI_SCHOOL_BUNDLE",
+      "path": "platform-mcp/src/tools/multi_school_bundle.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "multi_school_bundle",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Multi-school synthesis bundle"
+    },
+    {
+      "canonical_id": "MCP_TOOL_TOOL_HEALTH",
+      "path": "platform-mcp/src/tools/tool_health.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "tool_health",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Tool health check"
+    },
+    {
+      "canonical_id": "MCP_TOOL_DATA_COVERAGE",
+      "path": "platform-mcp/src/tools/data_coverage.ts",
+      "channel": "mcp",
+      "type": "retrieval_tool",
+      "tool_name": "data_coverage",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Data coverage audit"
     }
   ],
   "last_updated_by": "COV-S6",
