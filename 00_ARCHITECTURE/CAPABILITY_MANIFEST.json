@@ -53,7 +53,14 @@
       ],
       "cost_weight": 1,
       "always_required": true,
-      "tool_name": "chart_facts_query"
+      "tool_name": "chart_facts_query",
+      "chart_facts_db_row_count": 767,
+      "chart_facts_yaml_version": "1.2",
+      "chart_facts_yaml_fact_count": 783,
+      "chart_facts_db_unique_fact_ids": 767,
+      "chart_facts_db_categories": 36,
+      "chart_facts_last_loaded_session": "DAR-P4-S14",
+      "chart_facts_last_loaded_build_id": "dar-p4-s14-2026-05-25"
     },
     {
       "canonical_id": "LEL",
