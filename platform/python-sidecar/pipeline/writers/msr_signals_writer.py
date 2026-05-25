@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 TABLE_STAGING = "l25_msr_signals_staging"
 TABLE_LIVE = "l25_msr_signals"
-EXPECTED_COUNT = 514
+EXPECTED_COUNT = 573
 
 _INSERT_SQL = f"""
 INSERT INTO {TABLE_STAGING}
@@ -103,10 +103,10 @@ class MSRSignalsWriter(IBuildWriter):
 
     def validate_staging(self, build_id: str) -> ValidationResult:
         """
-        Verify that l25_msr_signals_staging has exactly 514 rows for this build_id.
+        Verify that l25_msr_signals_staging has exactly 573 rows for this build_id.
 
         Returns:
-            ValidationResult(valid=True, chunk_count=514) on success.
+            ValidationResult(valid=True, chunk_count=573) on success.
         """
         with psycopg.connect(_db_url()) as conn:
             row = conn.execute(

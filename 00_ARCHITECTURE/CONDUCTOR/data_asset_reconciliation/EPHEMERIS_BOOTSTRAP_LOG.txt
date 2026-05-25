@@ -1,0 +1,103 @@
+2026-05-25 11:10:00,392 INFO bootstrap_ephemeris: build_id=dar-p6-s22-mean-node-20260525-111000 start=1900-01-01 end=2100-12-31 dry_run=False
+2026-05-25 11:10:00,393 INFO Sripati cusps for native (Aries lagna, Bhubaneswar): [12.418921917647516, 39.27095134866415, 66.12298077968077, 92.9750102106974, 126.12298077968077, 159.27095134866414, 192.4189219176475, 219.27095134866414, 246.12298077968077, 272.9750102106974, 306.1229807796808, 339.27095134866414]
+2026-05-25 11:10:00,393 INFO Expected rows: 73414 days × 9 planets = 660726
+2026-05-25 11:10:00,843 INFO Fetching CSV for spot-check (100 rows)…
+2026-05-25 11:10:02,612 INFO CSV spot-check PASS: 100 sampled rows within 0.010°
+2026-05-25 11:43:36,904 INFO bootstrap_ephemeris: build_id=dar-p6-s22-mean-node-20260525 start=1900-01-01 end=2100-12-31 dry_run=False
+2026-05-25 11:43:36,904 INFO Sripati cusps for native (Aries lagna, Bhubaneswar): [12.418921917647516, 39.27095134866415, 66.12298077968077, 92.9750102106974, 126.12298077968077, 159.27095134866414, 192.4189219176475, 219.27095134866414, 246.12298077968077, 272.9750102106974, 306.1229807796808, 339.27095134866414]
+2026-05-25 11:43:36,904 INFO Expected rows: 73414 days × 9 planets = 660726
+Traceback (most recent call last):
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 624, in <module>
+    main()
+    ~~~~^^
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 613, in main
+    count = run(
+        build_id=args.build_id,
+    ...<3 lines>...
+        skip_csv_check=args.skip_csv_check,
+    )
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 514, in run
+    db_url = os.environ["DATABASE_URL"]
+             ~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "<frozen os>", line 717, in __getitem__
+KeyError: 'DATABASE_URL'
+EXIT:1
+2026-05-25 11:43:56,183 INFO bootstrap_ephemeris: build_id=dar-p6-s22-mean-node-20260525 start=1900-01-01 end=2100-12-31 dry_run=False
+2026-05-25 11:43:56,183 INFO Sripati cusps for native (Aries lagna, Bhubaneswar): [12.418921917647516, 39.27095134866415, 66.12298077968077, 92.9750102106974, 126.12298077968077, 159.27095134866414, 192.4189219176475, 219.27095134866414, 246.12298077968077, 272.9750102106974, 306.1229807796808, 339.27095134866414]
+2026-05-25 11:43:56,183 INFO Expected rows: 73414 days × 9 planets = 660726
+Traceback (most recent call last):
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 624, in <module>
+    main()
+    ~~~~^^
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 613, in main
+    count = run(
+        build_id=args.build_id,
+    ...<3 lines>...
+        skip_csv_check=args.skip_csv_check,
+    )
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 515, in run
+    existing = _check_existing_rows(db_url, build_id)
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 479, in _check_existing_rows
+    raise RuntimeError(
+    ...<4 lines>...
+    )
+RuntimeError: ephemeris_daily_staging already has 50040 rows for build_id='dar-p6-s22-mean-node-20260525-111000'. Refusing to overwrite with build_id='dar-p6-s22-mean-node-20260525'. TRUNCATE ephemeris_daily_staging before re-running.
+EXIT:1
+2026-05-25 12:10:51,071 INFO bootstrap_ephemeris: build_id=dar-p6-s22-mean-node-20260525-r2 start=1900-01-01 end=2100-12-31 dry_run=False
+2026-05-25 12:10:51,071 INFO Sripati cusps for native (Aries lagna, Bhubaneswar): [12.418921917647516, 39.27095134866415, 66.12298077968077, 92.9750102106974, 126.12298077968077, 159.27095134866414, 192.4189219176475, 219.27095134866414, 246.12298077968077, 272.9750102106974, 306.1229807796808, 339.27095134866414]
+2026-05-25 12:10:51,071 INFO Expected rows: 73414 days × 9 planets = 660726
+2026-05-25 12:10:51,681 INFO Fetching CSV for spot-check (100 rows)…
+2026-05-25 12:10:53,673 INFO CSV spot-check PASS: 100 sampled rows within 0.010°
+Traceback (most recent call last):
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 624, in <module>
+    main()
+    ~~~~^^
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 613, in main
+    count = run(
+        build_id=args.build_id,
+    ...<3 lines>...
+        skip_csv_check=args.skip_csv_check,
+    )
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 570, in run
+    rows = _compute_day(swe, jd, build_id, d, prior_day_signs, native_sripati_cusps)
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 196, in _compute_day
+    from .ephemeris_derivations import (
+    ...<3 lines>...
+    )
+ImportError: attempted relative import with no known parent package
+EXIT:1
+(eval):1: command not found: python
+EXIT:127
+2026-05-25 12:12:21,595 INFO bootstrap_ephemeris: build_id=dar-p6-s22-mean-node-20260525-r4 start=1900-01-01 end=2100-12-31 dry_run=False
+2026-05-25 12:12:21,595 INFO Sripati cusps for native (Aries lagna, Bhubaneswar): [12.418921917647516, 39.27095134866415, 66.12298077968077, 92.9750102106974, 126.12298077968077, 159.27095134866414, 192.4189219176475, 219.27095134866414, 246.12298077968077, 272.9750102106974, 306.1229807796808, 339.27095134866414]
+2026-05-25 12:12:21,595 INFO Expected rows: 73414 days × 9 planets = 660726
+2026-05-25 12:12:22,178 INFO Fetching CSV for spot-check (100 rows)…
+2026-05-25 12:12:23,932 INFO CSV spot-check PASS: 100 sampled rows within 0.010°
+2026-05-25 12:14:40,018 INFO bootstrap_ephemeris: build_id=dar-p6-s22-mean-node-20260525-r5 start=1900-01-01 end=2100-12-31 dry_run=False
+2026-05-25 12:14:40,018 INFO Sripati cusps for native (Aries lagna, Bhubaneswar): [12.418921917647516, 39.27095134866415, 66.12298077968077, 92.9750102106974, 126.12298077968077, 159.27095134866414, 192.4189219176475, 219.27095134866414, 246.12298077968077, 272.9750102106974, 306.1229807796808, 339.27095134866414]
+2026-05-25 12:14:40,018 INFO Expected rows: 73414 days × 9 planets = 660726
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 624, in <module>
+    main()
+    ~~~~^^
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 613, in main
+    count = run(
+        build_id=args.build_id,
+    ...<3 lines>...
+        skip_csv_check=args.skip_csv_check,
+    )
+  File "/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/bootstrap_ephemeris.py", line 514, in run
+    db_url = os.environ["DATABASE_URL"]
+             ~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "<frozen os>", line 717, in __getitem__
+KeyError: 'DATABASE_URL'
+EXIT:1
+2026-05-25 12:23:58,759 INFO bootstrap_ephemeris complete: 73414 days, 660726 rows written, build_id=dar-p6-s22-mean-node-20260525-r4
+Done: 660726 rows processed.
+EXIT:0
+
+bootstrap_complete: true
+exit_code: 0
+completed_at: 2026-05-25T06:56:44Z

@@ -1,44 +1,79 @@
 /**
- * query_remedial_mantras.ts — MCP Tier 3 surgical primitive: remedial codex RAG filter.
+ * query_remedial_mantras.ts — MCP Tier 3 surgical primitive: remedial codex lookup.
  *
- * What it does: Queries rag_chunks where doc_type='l4_remedial', returning L4 remedial
- * prescriptions — planetary propitiation, gemology, mantra, yantra, devata, lifestyle
- * protocols. Filters by planet name, house, and/or free-text condition keyword.
+ * What it does: Returns remedial measures (mantras, gemstones, yantras, devata
+ * worship, dinacharya, propitiation rites) from the MARSYS remedial codex,
+ * filtered by planet, practice type, or keyword. The codex is stored in the
+ * remedial_codex table and pre-indexed from classical sources (BPHS, Phala
+ * Deepika, Jataka Parijata).
  *
- * Source engine: platform/src/lib/retrieve/remedial_codex_query.ts
- * DB table:      rag_chunks (WHERE doc_type = 'l4_remedial')
+ * Source: platform/src/lib/retrieve/remedial_codex_query.ts
+ * Data: remedial_codex table, migrations/026_remedial_codex.sql
+ * Engine: platform/scripts/data/load_remedial_codex.py
  *
- * TR-P4-S1: new MCP wrapper.
+ * Practice types:
+ *   gemstone   — Ratna (gemstone prescriptions, finger, metal, weight)
+ *   mantra     — Vedic and Tantric mantra prescriptions with japa count
+ *   yantra     — Geometric yantra forms and installation rites
+ *   devata     — Deity worship (devata, day, flower, naivedya)
+ *   dinacharya — Daily routine and lifestyle adjustments
+ *   propit     — Propitiation rites (daan, havan, charity)
+ *
+ * When to prefer: Use for "What gemstone should I wear for Saturn?",
+ * "What mantra remedies are prescribed for Rahu?", or any remedial/
+ * prescription lookup. Prefer holistic_bundle for remedies synthesized
+ * against the chart's specific afflictions and dasha context.
+ *
+ * Output shape preview: {ok, result: {remedies: {planet, practice_type,
+ *   prescription, source_ref, classical_authority}[]}, trace_id,
+ *   epistemics: {surgical: true}}.
+ *
+ * Example: query_remedial_mantras({planet: "Saturn", practice_type: "mantra"}) →
+ *   {ok: true, result: {remedies: [{planet: "Saturn", practice_type: "mantra",
+ *   prescription: "Om Sham Shanicharaya Namah (108x, Saturday)", source_ref: "..."}]}, ...}
  */
 
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
-import type { Principal } from '../types.js'
 import { okResult, errorResult } from './_envelope.js'
+import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
 
-const QUERY_REMEDIAL_MANTRAS_DESCRIPTION =
-  'Remedial codex RAG lookup. Returns L4 remedial prescriptions — planetary propitiation, ' +
-  'gemology, mantra, yantra, devata, and lifestyle protocols — from the rag_chunks corpus ' +
-  '(doc_type = l4_remedial). Filter by planet (e.g. "Saturn"), house (1–12), and/or ' +
-  'a free-text condition query (e.g. "debilitated Mars", "Rahu in 7th"). ' +
-  'At least one of planet, house, or condition should be provided for meaningful results. ' +
-  'Returns up to 8 chunks by default (max 20). Each chunk carries content + chunk_id.'
+const PRACTICE_TYPES = [
+  'gemstone', 'mantra', 'yantra', 'devata', 'dinacharya', 'propit',
+] as const
+
+const PLANETS = [
+  'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu',
+] as const
+
+export const QUERY_REMEDIAL_MANTRAS_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns remedial measures from the MARSYS remedial codex — mantras, gemstones, ' +
+    'yantras, devata worship, dinacharya, and propitiation rites — indexed from classical sources ' +
+    '(BPHS, Phala Deepika, Jataka Parijata). Filter by planet, practice type, or keyword.',
+  enumSource: [...PLANETS, ...PRACTICE_TYPES] as readonly string[],
+  coverageHint: 'remedial_codex table; classical remedial prescriptions from BPHS + secondary texts',
+  whenToPrefer:
+    'Use for "What gemstone for Saturn?", "Rahu mantra prescriptions", or any remedial codex lookup. ' +
+    'Prefer holistic_bundle for remedies synthesized against the chart\'s specific afflictions and dasha.',
+})
 
 const QueryRemedialMantrasInputSchema = z.object({
-  planet: z.string().optional().describe(
-    "Planet name to filter remedies for, e.g. 'Saturn', 'Mars', 'Rahu'."
+  planet: z.enum(PLANETS).optional().describe(
+    'Filter by graha. One of: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu.'
   ),
-  house: z.number().int().min(1).max(12).optional().describe(
-    'House number (1–12) to include in the query, e.g. 7 → filters for "house 7" remedies.'
+  practice_type: z.enum(PRACTICE_TYPES).optional().describe(
+    'Filter by practice type. One of: gemstone (ratna), mantra (japa), yantra, devata (worship), ' +
+    'dinacharya (daily routine), propit (propitiation/daan/havan).'
   ),
-  condition: z.string().optional().describe(
-    "Free-text condition query, e.g. 'debilitated Mars', 'Ketu affliction', 'neecha bhanga'."
+  keyword: z.string().optional().describe(
+    'Free-text keyword search within the codex (e.g., "Saturday fast", "blue sapphire", "Hanuman").'
   ),
-  limit: z.number().int().min(1).max(20).optional().default(8).describe(
-    'Max number of chunks to return (default 8, max 20).'
+  limit: z.number().int().min(1).max(50).optional().describe(
+    'Maximum number of remedial entries to return. Default: 10. Max: 50.'
   ),
-  tier: z.string().optional().default('super_admin'),
 })
 
 type QueryRemedialMantrasInput = z.infer<typeof QueryRemedialMantrasInputSchema>
@@ -53,27 +88,16 @@ export function registerQueryRemedialMantras(
     QueryRemedialMantrasInputSchema.shape,
     async (args: QueryRemedialMantrasInput) => {
       const principal = getPrincipal()
-
-      // Build a combined keyword query from planet, house, condition.
-      // The underlying remedial_codex_query engine accepts: planet, keyword, limit.
-      // We pass `planet` directly and compose a `keyword` from house + condition.
-      const keywordParts: string[] = []
-      if (args.house !== undefined) keywordParts.push(`house ${args.house}`)
-      if (args.condition) keywordParts.push(args.condition)
-      const keyword = keywordParts.length > 0 ? keywordParts.join(' ') : undefined
-
-      const params: Record<string, unknown> = {
-        limit: args.limit ?? 8,
-      }
-      if (args.planet) params['planet'] = args.planet
-      if (keyword) params['keyword'] = keyword
-
       const { status, envelope } = await callPlatformPrimitive(
-        'remedial_codex_query',
-        params,
+        'query_remedial_mantras',
+        {
+          planet: args.planet,
+          practice_type: args.practice_type,
+          keyword: args.keyword,
+          limit: args.limit,
+        },
         principal
       )
-
       if (!envelope.ok || status >= 400) {
         return errorResult(envelope)
       }

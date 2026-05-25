@@ -508,7 +508,7 @@ Two workstreams run in parallel with code macro-phases. The schema is extensible
 - **Owner:** Native authors; Claude validates schema at session close.
 - **Schema pointer:** `01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md` (current at v1.2; upgraded at native's cadence).
 - **Entry-point:** LEL entry template (path: `01_FACTS_LAYER/LEL_ENTRY_TEMPLATE_v1_0.md`, created on first new entry after v2.0 publication per Step 5 propagation cascade; if not yet present, native creates entries inline in LEL file and Claude retrofits the template).
-- **Activation:** Always on from Session 2 onward (current state per CLAUDE.md; LEL v1.2 contains 36 events + 5 period summaries + 6 chronic patterns per GA.9).
+- **Activation:** Always on from Session 2 onward (current state per CLAUDE.md; LEL v1.7 contains 57 events + 5 period summaries + 8 chronic patterns per GA.9).
 - **Duration envelope:** Project lifetime.
 - **Feeds into:** [M4 (calibration), M7 (cohort-mode calibration via native-as-subject cross-reference), M9 (multi-school inter-school score tests)].
 - **Minimum-volume gate (for feeds_into unlock):** M4 requires ≥ 40 LEL events spanning ≥ 5 years.

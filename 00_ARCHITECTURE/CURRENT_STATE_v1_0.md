@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.53
+version: 5.55
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,24 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.55 (2026-05-25, DAR-LAND-ON-MAIN):
+    **DAR land-on-main + worktree cleanup COMPLETE — 3 cherry-pick commits landed on main (a403b05a tooling remediation, 8f0b89b5 universal parity artifacts, 49108498 DAR Cowork planning artifacts); ef6d347f merge commit skipped (empty — content already on main via abef72b2). feature/data-asset-reconciliation + fix/ci-gate-cleanup branches deleted (local + remote). Worktree MadhavDataAsset removed (--force). CLAUDE.md §E DAR bullet added. Gemini mirrors updated. No macro-phase change.**
+    Key outcomes: (1) fix/ci-gate-cleanup pushed to origin (stale MERGE_HEAD artifact cleared). (2) Cherry-picks to main at MadhavToolingFix: a403b05a PASS (5 platform-mcp conflict files accepted INCOMING); 8f0b89b5 PASS clean; 49108498 PASS clean; ef6d347f SKIP (empty cherry-pick — abef72b2 already contains all DAR content via ffdc3297 merge). (3) main pushed to origin/main at 45b049ad. (4) DAR_CLOSE_v1_0.md at 00_ARCHITECTURE/ confirmed status=COMPLETE sessions_completed=26. (5) MadhavDataAsset worktree removed --force (had untracked files). Madhav main worktree detached HEAD (ef6d347f — cannot remove main working tree via git worktree remove). (6) Remote branches feature/data-asset-reconciliation + fix/ci-gate-cleanup deleted. (7) Local tracking branches deleted; stale lock files cleared; remote prune run. (8) CLAUDE.md §E DAR COMPLETE bullet; .geminirules + .gemini/project_state.md mirror adapted-parity update.
+    files_touched: ["CLAUDE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", ".geminirules", ".gemini/project_state.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (git-ops/governance session; no macro-phase change).
+    last_session_id: DAR-LAND-ON-MAIN. predecessor_session: DAR-P7-S26-CLOSE.
+    carry_forwards: ["Madhav main worktree: currently detached HEAD at ef6d347f — operator should git checkout main (or another branch) in that directory; note main is locked to MadhavToolingFix worktree so use a different branch or delete MadhavToolingFix worktree first", "amjis-mcp sidecar redeploy pending (tooling remediation v1.0 — bace7b45 / PR #159)", "Ephemeris 1900-1930 row gap (~100k rows): deferred V1.3 queue", "build_manifests auto-registration audit: deferred V1.3 queue"]
+    next_session_objective: "DAR fully on main. Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md or amjis-mcp sidecar redeploy (tooling remediation v1.0)."
+    file_updated_at: 2026-05-25. file_updated_by_session: DAR-LAND-ON-MAIN.
+  - v5.54 (2026-05-25, DAR-P7-S26-CLOSE):
+    **Data Asset Reconciliation (DAR) COMPLETE — all 26 sessions finished; all 19 findings resolved; feature/data-asset-reconciliation merged to main. Sealing artifact: 00_ARCHITECTURE/DAR_CLOSE_v1_0.md.**
+    Key outcomes: MSR v5.1 (573/573 signals B.3-grounded); chart_facts 767 rows/36 categories; ephemeris_daily rebuilt MEAN_NODE (560,646 rows, 1930-2100); rag_chunks 6,990 rows; school_signal_coverage 4,011 rows; ICR+MCP routes confirmed MSR_v5_0; CGM/UCN/CDLM cross-ref integrity PASS; MP.1+MP.2 mirrors updated. Residuals: ephemeris 1900-1930 gap (non-blocking), build_manifests auto-registration, lel_events table absent — all deferred to V1.3 queue.
+    files_touched: ["00_ARCHITECTURE/DAR_CLOSE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/session_queue.yaml", "00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CONDUCTOR_LOG.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (DAR concurrent workstream close; no macro-phase change).
+    last_session_id: DAR-P7-S26. predecessor_session: DAR-P7-S25.
+    carry_forwards: ["Worktree MadhavDataAsset: retire manually after operator verification (cannot remove from within worktree)", "Ephemeris backfill 1900-1930 (100,080 rows): deferred to V1.3 queue", "build_manifests auto-registration audit: deferred to V1.3 queue"]
+    next_session_objective: "DAR complete. Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md."
+    file_updated_at: 2026-05-25. file_updated_by_session: DAR-P7-S26.
   - v5.53 (2026-05-23, R11G-S7-GOVERNANCE-CLOSE):
     **R11.G COMPLETE. Tool executor wired (mcp_tool_executor.ts), SettingsDropdown ships, NEXT_PUBLIC parity flags activated. PR #152, merge SHA 52e18cb5, Cloud Run amjis-web-00367-b59. KNOWN_PRE_EXISTING_FAILURES.md updated to v1.3 (18 pre-existing, 0 R11.G regressions).**
     Key outcomes: (A) PR #152 squash-merged to main (SHA 52e18cb5): mcp_tool_executor.ts implements real MCP dispatch to MARSYS retrieval tool registry; all 5 provider gates in route.ts pass executeMCPTool to runAgenticLoop (replaces stub null executor from R11.F). Tool errors return "ERROR: <msg>" strings; loop does not abort. (B) SettingsDropdown.tsx shipped: gear icon → "Chat experience" section → "Classic Marsys" (default) / "Claude-style chat" radio options; MultiProviderParityToggle.tsx deleted. (C) deploy.yml NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY + NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL defaulted true; Settings dropdown now visible in production; default localStorage (null) → Classic shell (no surprise change for existing users). (D) 37 new tests: agentic-loop-engine.test.ts (5), SettingsDropdown.test.tsx (12), useMultiProviderParity.test.tsx (7), r11g-server-smoke/ (13); all PASS. (E) KNOWN_PRE_EXISTING_FAILURES.md v1.3 baseline: 18 pre-existing, 0 R11.G regressions. (F) ROLLOUT_PHASE_R11G_RESULT.md authored. (G) STREAM_R11V2_COMPLETE.md §8 added. (H) CLAUDE.md v4.0. (I) MP.1+MP.2 mirrors updated.

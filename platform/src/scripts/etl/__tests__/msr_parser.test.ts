@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { parseMsrSignals } from '../msr_parser'
 
-const content = readFileSync('/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md', 'utf-8')
+const content = readFileSync('/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v5_0.md', 'utf-8')
 
 describe('parseMsrSignals', () => {
   const signals = parseMsrSignals(content)

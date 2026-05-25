@@ -27,7 +27,7 @@ All closed artifacts as of Session 35:
 | FORENSIC_DATA_v8_0_SUPPLEMENT | 8.0-supp | **SUPERSEDED** | Integrated into v8.0; superseded in FIX_SESSION_003_deferred |
 | **FORENSIC_ASTROLOGICAL_DATA_v8_0** | **8.0** | **CURRENT** | **FIX_SESSION_003_deferred — unified L1; all corrections integrated; 1,950 lines** |
 | LIFE_EVENT_LOG_v1_1 | 1.1 | **SUPERSEDED** | Superseded by LIFE_EVENT_LOG_v1_2 (pre-rebuild; registry row corrected 2026-04-24 at STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION per drift-detector finding on GA.9-adjacent registry staleness) |
-| **LIFE_EVENT_LOG_v1_2** | **1.2** | **CURRENT** | 36 events + 5 period summaries + 6 chronic patterns; Swiss-Ephemeris-populated chart_states; confidence 0.89; MP v2.0 names LEL as M4 prerequisite with cadence "Start immediately; do not defer." |
+| **LIFE_EVENT_LOG_v1_2** | **1.7** | **CURRENT** | 57 events + 5 period summaries + 8 chronic patterns; Swiss-Ephemeris-populated chart_states; confidence 0.89; MP v2.0 names LEL as M4 prerequisite with cadence "Start immediately; do not defer." |
 | EXTERNAL_COMPUTATION_SPEC | 1.0 | CLOSED (pending native execution) | Session 3 |
 | CGP_AUDIT_v1_0 | 1.0 | CLOSED | Session 6 |
 

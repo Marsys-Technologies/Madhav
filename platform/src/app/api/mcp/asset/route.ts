@@ -47,7 +47,7 @@ function validateServiceToken(req: Request): boolean {
 // so we go one level up to reach the repo root.
 
 const SAFE_ASSET_MAP: Record<string, string> = {
-  MSR:                  '025_HOLISTIC_SYNTHESIS/MSR_v3_0.md',
+  MSR:                  '025_HOLISTIC_SYNTHESIS/MSR_v5_0.md',
   UCN:                  '025_HOLISTIC_SYNTHESIS/UCN_v4_0.md',
   CDLM:                 '025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md',
   CGM:                  '025_HOLISTIC_SYNTHESIS/CGM_v9_0.md',
@@ -58,8 +58,11 @@ const SAFE_ASSET_MAP: Record<string, string> = {
   PROJECT_ARCHITECTURE: '00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md',
 }
 
-// Repository root = one directory above the Next.js platform/ directory.
-const REPO_ROOT = join(process.cwd(), '..')
+// MARSYS_REPO_ROOT is baked into the container image by platform/Dockerfile
+// (ENV MARSYS_REPO_ROOT=/app in the runner stage, which also copies 01_FACTS_LAYER/
+// and 025_HOLISTIC_SYNTHESIS/ into /app). Fallback to cwd/.. for local dev where
+// process.cwd() is the platform/ directory and the repo root is one level up.
+const REPO_ROOT = process.env.MARSYS_REPO_ROOT ?? join(process.cwd(), '..')
 
 // ── Section filter ────────────────────────────────────────────────────────────
 

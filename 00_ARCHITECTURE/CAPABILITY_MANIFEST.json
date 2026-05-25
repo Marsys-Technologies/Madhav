@@ -53,12 +53,19 @@
       ],
       "cost_weight": 1,
       "always_required": true,
-      "tool_name": "chart_facts_query"
+      "tool_name": "chart_facts_query",
+      "chart_facts_db_row_count": 767,
+      "chart_facts_yaml_version": "1.2",
+      "chart_facts_yaml_fact_count": 783,
+      "chart_facts_db_unique_fact_ids": 767,
+      "chart_facts_db_categories": 36,
+      "chart_facts_last_loaded_session": "DAR-P4-S14",
+      "chart_facts_last_loaded_build_id": "dar-p4-s14-2026-05-25"
     },
     {
       "canonical_id": "LEL",
       "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
-      "version": "1.6",
+      "version": "1.7",
       "status": "CURRENT",
       "layer": "L1",
       "expose_to_chat": true,
@@ -161,7 +168,7 @@
     {
       "canonical_id": "MSR",
       "path": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
-      "version": "5.0",
+      "version": "5.1",
       "status": "CURRENT",
       "layer": "L2.5",
       "expose_to_chat": true,
@@ -169,7 +176,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "m9a-s1-msr-v5-573signals",
+      "fingerprint": "dar-p5-s20-msr-v5-1-573signals-grounded",
       "native_id": "abhisek",
       "preferred_for": [
         "factual",
@@ -1242,7 +1249,7 @@
       "canonical_id": "RETRIEVAL_TOOL_lel_query",
       "tool_name": "lel_query",
       "tool_description": "Retrieves ground-truth life events from LEL — recorded dates categories chart states",
-      "description": "Queries life_events table — 36 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "description": "Queries life_events table — 57 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
       "query_schema": {
         "type": "object",
         "properties": {

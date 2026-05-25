@@ -1,44 +1,53 @@
 /**
- * query_varshphal.ts — MCP Tier 3 surgical primitive: Varshaphala (Tajika) annual-chart lookup.
+ * query_varshphal.ts — MCP Tier 3 surgical primitive: Tajaka annual chart lookup.
  *
- * What it does: Queries the varshaphala table for a given chart_id and target year,
- * returning the Solar Return UTC, Ascendant, and 9-graha sidereal positions.
- * This is a direct L1 data read — no synthesis or planner.
+ * What it does: Returns the Tajaka (solar return) annual chart for a given year —
+ * planet positions in the Varshaphala lagna, solar return UTC timestamp, and
+ * ayanamsha used. The underlying `query_varshaphala` retrieval tool reads from
+ * the `varshaphala` table (pre-computed by compute_varshaphala.py).
  *
- * Source engine: platform/src/lib/retrieve/query_varshaphala.ts
- * DB table:      varshaphala (migration 025_varshaphala.sql)
- * Coverage:      1984–2061 for native chart (pyswisseph + Lahiri ayanamsha)
+ * Source: platform/src/lib/retrieve/query_varshaphala.ts
+ * Data: varshaphala table, migrations/025_varshaphala.sql
+ * Engine: platform/scripts/temporal/compute_varshaphala.py
  *
- * Note: Year-lord (Varshesha) and Muntha are NOT included — they live at the
- * synthesis layer.
+ * Note: Year-lord (Varshesha) and Muntha are NOT in the engine output —
+ * they live at the synthesis layer. Use holistic_bundle for synthesized
+ * Varshaphala interpretation.
  *
- * Tier visibility: super_admin + acharya only (varshaphal is advanced Tajika;
- * client tier uses holistic_bundle for temporal context).
+ * When to prefer: Use for "What is the annual chart for year X?", "Which
+ * planets are strong in the 2026 solar return?", or any Tajaka analysis.
+ * Prefer holistic_bundle when you need Varshaphala synthesized against the natal chart.
  *
- * TR-P4-S1: new MCP wrapper.
+ * Output shape preview: {ok, result: {varshaphala: {year, solar_return_utc,
+ *   ascendant_sidereal, ascendant_sign, planet_positions, ayanamsha}[]}, trace_id,
+ *   epistemics: {surgical: true}}.
+ *
+ * Example: query_varshphal({year: 2026}) →
+ *   {ok: true, result: {varshaphala: [{year: 2026, solar_return_utc: "2026-02-05T...",
+ *   ascendant_sign: "Sagittarius", planet_positions: {...}}]}, ...}
  */
 
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
-import type { Principal } from '../types.js'
 import { okResult, errorResult } from './_envelope.js'
+import type { Principal } from '../types.js'
+import { buildToolDescription } from './description_builder.js'
 
 const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
-const QUERY_VARSHPHAL_DESCRIPTION =
-  'Varshaphala (Tajika) annual-chart lookup. Returns the Solar Return UTC, Ascendant, ' +
-  'and 9-graha sidereal positions for the requested Gregorian year (single year) or a ' +
-  'range of years (year_start + year_end, max 20 years). ' +
-  'The substrate is engine-computed via pyswisseph + Lahiri; covers 1984–2061 for the native chart. ' +
-  'Year-lord (Varshesha) and Muntha are synthesis-layer outputs — not included here. ' +
-  'Prefer query_chart_facts({category: "varshphal"}) for individual varshphal chart_facts rows. ' +
-  'Tier: super_admin + acharya only.'
+export const QUERY_VARSHPHAL_DESCRIPTION = buildToolDescription({
+  baseDescription:
+    'What it does: Returns the Tajaka (solar return) annual chart for a given year or year range — ' +
+    'planet positions in the Varshaphala lagna, solar return UTC timestamp, ascendant, and ayanamsha. ' +
+    'Data is pre-computed by the Varshaphala engine and stored in the varshaphala table.',
+  coverageHint: 'varshaphala table; pre-computed Tajaka positions; year-lord and Muntha at synthesis layer only',
+  whenToPrefer:
+    'Use for "What is the 2026 annual chart?", "Which planets dominate this solar return?", or any Tajaka placement query. ' +
+    'Prefer holistic_bundle for synthesised Varshaphala interpretation against the natal chart.',
+})
 
 const QueryVarshphalInputSchema = z.object({
-  chart_id: z.string().optional().describe(
-    "Chart UUID; defaults to the native's chart (362f9f17-95a5-490b-a5a7-027d3e0efda0)."
-  ),
   year: z.number().int().min(1900).max(2100).optional().describe(
     'Gregorian year for the Solar Return, e.g. 2026. Use for single-year lookup.'
   ),
@@ -48,7 +57,9 @@ const QueryVarshphalInputSchema = z.object({
   year_end: z.number().int().min(1900).max(2100).optional().describe(
     'End year for range query (inclusive, max 20 years from year_start).'
   ),
-  tier: z.string().optional().default('super_admin'),
+  ayanamsha: z.string().optional().describe(
+    'Ayanamsha system. Default: "lahiri". Options: lahiri, raman, krishnamurti.'
+  ),
 })
 
 type QueryVarshphalInput = z.infer<typeof QueryVarshphalInputSchema>
@@ -73,7 +84,7 @@ export function registerQueryVarshphal(
         })
       }
 
-      const chart_id = args.chart_id ?? NATIVE_CHART_ID
+      const chart_id = NATIVE_CHART_ID
 
       // Range mode: year_start + year_end provided.
       if (args.year_start !== undefined && args.year_end !== undefined) {
@@ -84,7 +95,7 @@ export function registerQueryVarshphal(
           years.map(y =>
             callPlatformPrimitive(
               'query_varshaphala',
-              { chart_id, year: y },
+              { chart_id, year: y, ayanamsha: args.ayanamsha },
               principal
             )
           )
@@ -101,7 +112,7 @@ export function registerQueryVarshphal(
         })
       }
 
-      // Single-year mode (backward compatible).
+      // Single-year mode.
       if (args.year === undefined) {
         return errorResult({
           ok: false,
@@ -111,14 +122,14 @@ export function registerQueryVarshphal(
       }
 
       const { status, envelope } = await callPlatformPrimitive(
-        'query_varshaphala',
+        'query_varshphal',
         {
           chart_id,
           year: args.year,
+          ayanamsha: args.ayanamsha,
         },
         principal
       )
-
       if (!envelope.ok || status >= 400) {
         return errorResult(envelope)
       }
