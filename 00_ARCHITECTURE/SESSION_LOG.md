@@ -27870,3 +27870,26 @@ session_close:
 - commits: 747518fb, 463a6b9f, 871b3b15
 - branch: fix/gismcp-r3
 - next_action: operator merges fix/gismcp-r3 to main after fix/gismcp-r1-r2
+
+---
+
+## CLEANUP-1 | Hygiene: WAVE_1_SEAL + CONSUME_UI_V2_ENABLED removal | 2026-05-26
+- session_id: CLEANUP-1
+  session_type: hygiene
+  opened: 2026-05-26
+  closed: 2026-05-26
+  objective: >
+    Land WAVE_1_SEAL; delete feature/conductor-to-main;
+    remove CONSUME_UI_V2_ENABLED flag; print SRP PR merge commands
+  close_criteria_met: true
+  deliverables:
+    - WAVE_1_SEAL_v1_0.md landed on main (commit e2231965)
+    - feature/conductor-to-main deleted (5 remote branches remain: main + 4 srp-test)
+    - CONSUME_UI_V2_ENABLED removed from 5 files + test retired; gcloud step queued for operator (commit 81d75bee)
+    - SRP test PR merge commands printed (#166–#169)
+    - CURRENT_STATE v5.60
+  carry_forwards:
+    - gcloud --remove-env-vars MARSYS_FLAG_CONSUME_UI_V2_ENABLED (operator step post-deploy)
+    - gh pr merge 166/167/168/169 (operator step when ready)
+  current_state_updated: true
+  mirror_updates_propagated: false

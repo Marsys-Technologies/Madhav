@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.59
+version: 5.60
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.60 (2026-05-26, CLEANUP-1):
+    **CLEANUP-1 COMPLETE — WAVE_1_SEAL_v1_0.md landed on main; feature/conductor-to-main deleted (5 remote branches now remain: main + 4 srp-test branches). CONSUME_UI_V2_ENABLED flag removed (feature_flags.ts + ConsumeChatV2 props + 2 consume pages + deploy.yml + test file retired; gcloud --remove-env-vars queued as operator step post-deploy). SRP test PRs #166–#169 merge commands printed for operator. No application behaviour changes.**
+    files_touched: ["00_ARCHITECTURE/WAVE_1_SEAL_v1_0.md", "platform/src/lib/config/feature_flags.ts", "platform/src/components/consume/ConsumeChatV2.tsx", "platform/src/app/clients/[id]/consume/page.tsx", "platform/src/app/clients/[id]/consume/[conversationId]/page.tsx", ".github/workflows/deploy.yml", "platform/tests/unit/chat-v2/feature_flags.test.ts", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (cleanup session; no macro-phase change).
+    last_session_id: CLEANUP-1. predecessor_session: SRP-HYGIENE.
+    carry_forwards: ["Operator: run gcloud --remove-env-vars MARSYS_FLAG_CONSUME_UI_V2_ENABLED after next deploy", "Operator: merge PRs #166–#169 via gh pr merge when ready", "Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md"]
+    next_session_objective: "All SRP + hygiene work complete. Open M6-A-S1."
+    file_updated_at: 2026-05-26. file_updated_by_session: CLEANUP-1.
   - v5.59 (2026-05-26, SRP-HYGIENE):
     **SRP-HYGIENE COMPLETE — 11 worktrees removed; 46 remote branches deleted (all merged to main); git remote pruned. icr/s2-l1-truth-index: SAFE-DELETED (all 4 files from its single unique commit already present on main). Remaining remote branches: main + test/srp-t1 through srp-t4 (PRs #166-#169 open) + feature/conductor-to-main + fix/chat-v2-r5/D3-correction-out-of-domain-emission (7 total). No application code modified.**
     Key outcomes: (1) Worktrees pruned: MadhavSRP-F1/F2/A1/A2/T1/T2/T3/T4 + MadhavGISMCP-S1/S2 + MadhavICR (11 total). (2) Remote branches deleted: 46 (all verified merged; 2 pre-already-gone: governance/uda1-parity-close + governance/uda234-parity-close). (3) git fetch --prune run; tracking refs clean. (4) Kept: test/srp-t1–t4 (open PRs #166-#169), feature/m6-prospective-testing (M6 WIP local-only), feature/conductor-to-main + fix/chat-v2-r5/D3-correction-out-of-domain-emission (not in deletion list — retained for review). Agent worktrees untouched.
