@@ -1,0 +1,89 @@
+---
+# GISMCP Remediation — Stream 1 Session Queue
+# Covers: R1 (de-gating) + R2 (stub engines)
+# Worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+# Branch: fix/gismcp-r1-r2
+# Conductor: run STREAM1_CONDUCTOR_PROMPT.md
+---
+
+sessions:
+
+  - id: R1-S1
+    title: "server.ts de-gating — remove tier conditional, audit observability tools"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R1_S1_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+    status: COMPLETE
+    completed_at: 2026-05-26
+    commit: d5ba6774
+    check_commands:
+      - "! grep -q \"tier !== 'client'\" /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp/src/server.ts"
+      - "grep -q 'registerToolHealth(server)' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp/src/server.ts"
+      - "grep -q 'registerDataCoverage(server)' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp/src/server.ts"
+      - "grep -q 'registerLogPrediction(server)' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp/src/server.ts"
+
+  - id: R1-T1
+    title: "R1 tests — tier visibility unit + integration tests"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R1_T1_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+    status: COMPLETE
+    completed_at: 2026-05-26
+    commit: feec914f
+    depends_on: [R1-S1]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp/src/__tests__/server_tier_visibility.test.ts"
+      - "cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp && npx vitest run src/__tests__/server_tier_visibility.test.ts 2>&1 | grep -q '0 failed'"
+
+  - id: R2-S1
+    title: "query_tara_balam + query_chandra_balam retrieval engines"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R2_S1_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+    status: COMPLETE
+    completed_at: 2026-05-26
+    commit: 9b001bcc
+    depends_on: [R1-T1]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/query_tara_balam.ts"
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/query_chandra_balam.ts"
+      - "grep -q 'query_tara_balam' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/index.ts"
+      - "grep -q 'query_chandra_balam' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/index.ts"
+
+  - id: R2-S2
+    title: "jaimini_chara_dasha + jaimini_chara_dasha_full retrieval engines"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R2_S2_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+    status: COMPLETE
+    completed_at: 2026-05-26
+    commit: 9b001bcc
+    depends_on: [R2-S1]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/jaimini_chara_dasha.ts"
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/jaimini_chara_dasha_full.ts"
+      - "grep -q 'jaimini_chara_dasha' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/index.ts"
+
+  - id: R2-T1
+    title: "Integration tests — all 4 new engines against DB proxy"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R2_T1_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+    status: COMPLETE
+    completed_at: 2026-05-26
+    commit: 9b001bcc
+    depends_on: [R2-S2]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/__tests__/query_tara_balam.test.ts"
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/__tests__/query_chandra_balam.test.ts"
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/lib/retrieve/__tests__/jaimini_chara_dasha.test.ts"
+      - "DB_PROXY_PORT=5433 cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform && npx vitest run src/lib/retrieve/__tests__/query_tara_balam.test.ts src/lib/retrieve/__tests__/query_chandra_balam.test.ts src/lib/retrieve/__tests__/jaimini_chara_dasha.test.ts 2>&1 | grep -qE '0 failed|Tests.*pass'"
+
+  - id: R2-T2
+    title: "MCP smoke + full platform vitest + Stream 1 seal"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R2_T2_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1
+    status: COMPLETE
+    completed_at: 2026-05-26
+    commit: 4c83257f
+    depends_on: [R2-T1]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform/src/__tests__/integration/mcp_stub_engines.integration.test.ts"
+      - "cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform && npx vitest run 2>&1 | grep -q '0 failed'"
+      - "cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/platform-mcp && npx vitest run 2>&1 | grep -q '0 failed'"
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S1/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/STREAM1_COMPLETE.md"
