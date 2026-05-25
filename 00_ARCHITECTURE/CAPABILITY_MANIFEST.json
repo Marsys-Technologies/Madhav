@@ -3368,6 +3368,366 @@
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant."
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_MSR_SQL",
+      "path": "platform/src/lib/retrieve/msr_sql.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "msr_sql",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "MSR signals with LL.1 calibration, domain floors, Pancha-MP dedup"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_PATTERN_REGISTER",
+      "path": "platform/src/lib/retrieve/pattern_register.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "pattern_register",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Cross-domain pattern registry lookup"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_RESONANCE_REGISTER",
+      "path": "platform/src/lib/retrieve/resonance_register.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "resonance_register",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Signal resonance patterns"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CLUSTER_ATLAS",
+      "path": "platform/src/lib/retrieve/cluster_atlas.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "cluster_atlas",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Signal cluster atlas"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CONTRADICTION_REGISTER",
+      "path": "platform/src/lib/retrieve/contradiction_register.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "contradiction_register",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Contradictions and tensions between signals"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_TEMPORAL",
+      "path": "platform/src/lib/retrieve/temporal.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "temporal",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Vedic temporal data: sade sati, eclipses, retrogrades, dasha chain"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_MSR_AGGREGATE",
+      "path": "platform/src/lib/retrieve/query_msr_aggregate.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_msr_aggregate",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "MSR signal aggregates by domain/planet"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CGM_GRAPH_WALK",
+      "path": "platform/src/lib/retrieve/cgm_graph_walk.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "cgm_graph_walk",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "CGM causal graph walk"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_MANIFEST_QUERY",
+      "path": "platform/src/lib/retrieve/manifest_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "manifest_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Manifest capability query"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_VECTOR_SEARCH",
+      "path": "platform/src/lib/retrieve/vector_search.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "vector_search",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Semantic similarity search over rag_chunks"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_KP_QUERY",
+      "path": "platform/src/lib/retrieve/kp_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "kp_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "KP sub-lord + significator data"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_SAHAM_QUERY",
+      "path": "platform/src/lib/retrieve/saham_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "saham_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Arabic parts (Saham) data"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_DIVISIONAL_QUERY",
+      "path": "platform/src/lib/retrieve/divisional_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "divisional_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Divisional chart positions (D1-D60)"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CHART_FACTS_QUERY",
+      "path": "platform/src/lib/retrieve/chart_facts_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "chart_facts_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Chart facts: strengths, BAV, placements, yogas"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CROSS_VARGA_DIGNITY_QUERY",
+      "path": "platform/src/lib/retrieve/cross_varga_dignity_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "cross_varga_dignity_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Cross-divisional dignity surface D1/D9/D10"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_DOMAIN_REPORT_QUERY",
+      "path": "platform/src/lib/retrieve/domain_report_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "domain_report_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Domain-specific astrological reports"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_REMEDIAL_CODEX_QUERY",
+      "path": "platform/src/lib/retrieve/remedial_codex_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "remedial_codex_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Remedial measures codex lookup"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_TIMELINE_QUERY",
+      "path": "platform/src/lib/retrieve/timeline_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "timeline_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Dasha arc timeline from rag_chunks (structural L5)"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_SIGNAL_STATE",
+      "path": "platform/src/lib/retrieve/query_signal_state.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_signal_state",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Signal state surface M3-B"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_KP_RULING_PLANETS",
+      "path": "platform/src/lib/retrieve/query_kp_ruling_planets.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_kp_ruling_planets",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "KP ruling planets substrate + Varshaphala"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_VARSHAPHALA",
+      "path": "platform/src/lib/retrieve/query_varshaphala.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_varshaphala",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Varshaphala annual chart with year_start/year_end range"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_LEL_QUERY",
+      "path": "platform/src/lib/retrieve/lel_query.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "lel_query",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Life Event Log ground-truth events from life_events table"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CLASSICAL_TEXT_SEARCH_TOOL",
+      "path": "platform/src/lib/retrieve/classical_text_search_tool.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "classical_text_search_tool",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Classical corpus search"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CLASSICAL_ATTRIBUTION_LOOKUP_TOOL",
+      "path": "platform/src/lib/retrieve/classical_attribution_lookup_tool.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "classical_attribution_lookup_tool",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Classical attribution lookup"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_MULTI_SCHOOL_SIGNAL_LOOKUP_TOOL",
+      "path": "platform/src/lib/retrieve/multi_school_signal_lookup_tool.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "multi_school_signal_lookup_tool",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Multi-school signal triangulation"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_CONVERGENCE_SCORE_LOOKUP_TOOL",
+      "path": "platform/src/lib/retrieve/convergence_score_lookup_tool.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "convergence_score_lookup_tool",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "School convergence score lookup"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_EPHEMERIS",
+      "path": "platform/src/lib/retrieve/query_ephemeris.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_ephemeris",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Date-indexed planetary positions from ephemeris_daily"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_PANCHANGA",
+      "path": "platform/src/lib/retrieve/query_panchanga.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_panchanga",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Daily panchanga: tithi, vara, nakshatra, yoga, karana"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_TRANSIT_EVENT",
+      "path": "platform/src/lib/retrieve/query_transit_event.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_transit_event",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Transit event search: when does X happen?"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_DASHA_PERIODS",
+      "path": "platform/src/lib/retrieve/query_dasha_periods.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_dasha_periods",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Vimshottari dasha schedule with PD/SD sub-period support"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_MUHURAT",
+      "path": "platform/src/lib/retrieve/query_muhurat.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_muhurat",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Muhurta sidecar wrapper"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_JAIMINI_DRISHTI",
+      "path": "platform/src/lib/retrieve/query_jaimini_drishti.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_jaimini_drishti",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "Jaimini Drishti sidecar wrapper"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_V7_ADDITIONS",
+      "path": "platform/src/lib/retrieve/query_v7_additions.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_v7_additions",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "V7 additions sidecar wrapper"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_UCN_WALK",
+      "path": "platform/src/lib/retrieve/query_ucn_walk.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_ucn_walk",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "UCN structural graph walk"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_CDLM_LOOKUP",
+      "path": "platform/src/lib/retrieve/query_cdlm_lookup.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_cdlm_lookup",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "CDLM cross-domain linkage matrix lookup"
+    },
+    {
+      "canonical_id": "PORTAL_TOOL_QUERY_RM_WALK",
+      "path": "platform/src/lib/retrieve/query_rm_walk.ts",
+      "channel": "portal",
+      "type": "retrieval_tool",
+      "tool_name": "query_rm_walk",
+      "status": "CURRENT",
+      "version": "1.0",
+      "description": "RM remedial map walk"
     }
   ],
   "last_updated_by": "COV-S6",
