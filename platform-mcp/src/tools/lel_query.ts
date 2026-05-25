@@ -18,10 +18,8 @@
  *   category — optional; event category filter (e.g. "career", "health",
  *     "relationship", "relocation", "education", "chronic").
  *   date_range — optional {start, end} ISO dates; filters events to the range.
- *   significance_tier — optional enum "major" | "moderate" | "minor"; preferred over
- *     min_significance. major=≥0.8, moderate=≥0.5, minor=≥0.2.
- *   min_significance — optional float 0.0–1.0; filters to events at or above threshold.
- *     Ignored when significance_tier is also set.
+ *   significance_tier — optional enum "major" | "moderate" | "minor".
+ *     major=≥0.8, moderate=≥0.5, minor=≥0.2.
  *
  * Output shape preview: {ok, result: {events: LelEvent[]}, trace_id,
  *   epistemics: {surgical: true}}.
@@ -63,12 +61,7 @@ const LelQueryInputSchema = z.object({
     end: z.string().describe('ISO end date (YYYY-MM-DD).'),
   }).optional().describe('Filter events to this date range.'),
   significance_tier: z.enum(['major', 'moderate', 'minor']).optional().describe(
-    'Filter by significance tier. major=≥0.8, moderate=≥0.5, minor=≥0.2. ' +
-    'Alternative to min_significance float. If both are set, significance_tier takes precedence.'
-  ),
-  min_significance: z.number().min(0).max(1).optional().describe(
-    'Minimum significance threshold (0.0–1.0). Filters to events at or above this level. ' +
-    'Prefer significance_tier for human-readable filtering. Ignored when significance_tier is set.'
+    'Filter by significance tier. major=≥0.8, moderate=≥0.5, minor=≥0.2.'
   ),
 })
 
@@ -91,14 +84,8 @@ export function registerLelQuery(
           ...(args.category ? { category: args.category } : {}),
           ...(args.date_range ? { date_range: args.date_range } : {}),
           // FIX-5: send significance tier string directly instead of mapping to a float.
-          // platform lel_query reads params?.significance as LelQueryInput['significance'] = 'major'|'moderate'|'minor'.
-          // The old code mapped to float (0.8) and sent { min_significance: 0.8 } — field name and type both wrong.
-          // significance_tier takes precedence over min_significance when both are provided.
-          ...(args.significance_tier !== undefined
-            ? { significance: args.significance_tier }
-            : args.min_significance !== undefined
-              ? { significance: args.min_significance }
-              : {}),
+          // platform lel_query reads params?.significance as 'major'|'moderate'|'minor'.
+          ...(args.significance_tier !== undefined ? { significance: args.significance_tier } : {}),
         },
         principal
       )
