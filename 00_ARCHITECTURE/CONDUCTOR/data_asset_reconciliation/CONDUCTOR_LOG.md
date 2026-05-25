@@ -44,3 +44,8 @@ CONTEXT_LIMIT_REACHED — next session: DAR-P5-S15 — re-kick Conductor from th
 Gate results: 2/2 PASS
 Commit: a6ea5636
 Notes: Script parses 569 signals (4 known ID gaps per MSR frontmatter); stubs_generated=567, already_grounded=2 (MSR.377 + MSR.387). Dry-run only — MSR file not modified.
+
+## DAR-P5-S16 — COMPLETE — 2026-05-25
+Gate results: 4/4 PASS
+Commit: af1ca8dd
+Notes: 567 stubs injected into MSR_v5_0.md. 309 signals grounded (Lagna=83, Sun=100, Moon=134, Mars=96). GROUNDING_PROGRESS.yaml created. 258 signals remain PENDING for S17–S19.
