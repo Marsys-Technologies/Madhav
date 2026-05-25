@@ -20,6 +20,7 @@
  * UDA-1-S4: query_planetary_period_predictions — classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
  * UDA-1-S5: query_dasamsha_career — D10 career indicator rules (tool 43)
  * UDA-1-S5: query_shashtiamsha — D60 Shashtiamsha karma pada analysis (tool 44)
+ * UDA-1-S6: query_eclipse_transits, query_planet_war — eclipse detection + Graha Yuddha (tools 45-46)
  */
 
 import * as msrSql from './msr_sql'
@@ -107,6 +108,10 @@ import * as queryPlanetaryPeriodPredictions from './query_planetary_period_predi
 import * as queryDasamshhaCareer from './query_dasamsha_career'
 import * as queryShashtiamsha from './query_shashtiamsha'
 
+// UDA-1-S6 — Eclipse detection + Graha Yuddha (tools 45-46)
+import * as queryEclipseTransits from './query_eclipse_transits'
+import * as queryPlanetWar from './query_planet_war'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -155,6 +160,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryPlanetaryPeriodPredictions.tool,
   queryDasamshhaCareer.tool,
   queryShashtiamsha.tool,
+  queryEclipseTransits.tool,
+  queryPlanetWar.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
