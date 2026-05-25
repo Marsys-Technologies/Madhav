@@ -41,6 +41,7 @@ SIG.MSR.001:
   v6_ids_consumed: [PLN.SATURN, SBL.SAT, HSE.7, BVB.7]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.STR.01, CTR.01"
   prior_id: SIG.01
+  forensic_ref: "FORENSIC §26 <!-- Yogas Register — Sasha Mahapurusha Yoga Saturn exalted 7H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -249,6 +250,7 @@ SIG.MSR.007:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.MERCURY, HSE.9, HSE.10]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.YOG.01.C"
   prior_id: SIG.07
+  forensic_ref: "FORENSIC §26 <!-- Yogas Register — Saraswati Yoga Jupiter+Venus+Mercury -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -322,6 +324,7 @@ SIG.MSR.009:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "RPT.STR.01.C, RPT.YOG.01.A, RPT.DSH.01.A"
   prior_id: SIG.09
+  forensic_ref: "FORENSIC §3.5 <!-- D9 Navamsa — Mercury Vargottama Capricorn D1=D9 -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -566,6 +569,7 @@ SIG.MSR.016:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "RPT.STR.01.C, RPT.DSH.01.A"
   prior_id: CVG.01
+  forensic_ref: "FORENSIC §3.5 <!-- D9 Navamsa — Mercury Vargottama six-factor convergence -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -1832,6 +1836,7 @@ SIG.MSR.053:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA, SBL.SAT, HSE.7]
   rpt_deep_dive: "SIG.MSR.001, RPT.YOG.01.A, RPT.HSE.02.B"
+  forensic_ref: "FORENSIC §6.2 <!-- Shadbala Totals — Saturn exaltation Uccha Bala 59.18 virupa -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -5229,6 +5234,7 @@ SIG.MSR.152:
   confidence: 0.97
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.7, SGN.LIBRA]
   rpt_deep_dive: "SIG.01 (authority-through-tension), RPT.SAT.01, RPT.MAR.01, SIG.03 (revised from mutual-aspect to conjunction)"
+  forensic_ref: "FORENSIC §26 <!-- Yogas Register — Hidden Raja Yoga Mars+Saturn 7H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -5345,6 +5351,7 @@ SIG.MSR.155:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, LAG.ARIES, HSE.1, HSE.7]
   rpt_deep_dive: "SIG.01 (authority-through-tension), RPT.SAT.01, SIG.22 (Saturn quadruple-structural-activation)"
+  forensic_ref: "FORENSIC §16.1 <!-- Classical Vedic Aspects — Saturn 7th drishti to Lagna -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
@@ -5839,6 +5846,7 @@ SIG.MSR.168:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, LAG.ARIES, HSE.1, HSE.7]
   rpt_deep_dive: "SIG.01 (authority-through-tension), SIG.MSR.155, SIG.MSR.156, SIG.MSR.152"
+  forensic_ref: "FORENSIC §6.7 <!-- Ishta/Kashta Phala — aspect virupa strength comparison -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -5882,6 +5890,7 @@ SIG.MSR.169:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.JUPITER, LAG.ARIES, HSE.1]
   rpt_deep_dive: "SIG.01, SIG.MSR.155, SIG.MSR.156, SIG.MSR.160, SIG.MSR.168"
+  forensic_ref: "FORENSIC §6.7 <!-- Ishta/Kashta Phala — triple aspect virupa total on Lagna -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -6006,6 +6015,7 @@ SIG.MSR.172:
   confidence: 0.97
   v6_ids_consumed: [PLN.RAHU, PLN.MARS, PLN.SATURN, PLN.SUN, PLN.MERCURY, HSE.2, HSE.7, HSE.10]
   rpt_deep_dive: "SIG.16 (Rahu-quadruple-Jaimini-aspect), CGP Audit Session 6, CGM v1.0 §2.5"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — Rahu Jaimini rashi drishti quadruple aspect -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -6259,6 +6269,7 @@ SIG.MSR.178:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.JUPITER, LAG.ARIES, HSE.1]
   rpt_deep_dive: "SIG.MSR.168, SIG.MSR.169, SIG.01"
+  forensic_ref: "FORENSIC §6.2 <!-- Shadbala Totals and Ranking — virupa accumulation basis -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -6300,6 +6311,7 @@ SIG.MSR.179:
   confidence: 0.97
   v6_ids_consumed: [PLN.SATURN, HSE.1, HSE.4, HSE.7, HSE.9]
   rpt_deep_dive: "SIG.22 (Saturn quadruple-structural), RPT.SAT.01"
+  forensic_ref: "FORENSIC §16.1 <!-- Classical Vedic Aspects — Saturn three-house virupa grid -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
@@ -6384,6 +6396,7 @@ SIG.MSR.181:
   confidence: 0.97
   v6_ids_consumed: [PLN.MARS, PLN.SATURN, HSE.1, HSE.2, HSE.4, HSE.7, HSE.9, HSE.10]
   rpt_deep_dive: "SIG.MSR.168-180, SIG.01, SIG.03 (revised), CGM v1.0 YOG.ARIES_LIBRA_AXIS"
+  forensic_ref: "FORENSIC §16.1 <!-- Classical Vedic Aspects — 7H conjunction projects 5-house grid -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -6742,6 +6755,7 @@ SIG.MSR.190:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, NAK.VISHAKHA, PLN.JUPITER, HSE.7]
   rpt_deep_dive: "RPT.SAT.01, SIG.31 (Saturn-return-Libra-2041-2044)"
+  forensic_ref: "FORENSIC §2.1 <!-- D1 Planet Positions — Saturn Vishakha pada 1 nakshatra -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -7425,6 +7439,7 @@ SIG.MSR.208:
   confidence: 0.97
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, HSE.10]
   rpt_deep_dive: "SIG.09 (Mercury Vargottama operational-spine), RPT.MER.01, SIG.MSR.200"
+  forensic_ref: "FORENSIC §3.5 <!-- D9 Navamsa — Mercury Vargottama structural continuity -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -8927,6 +8942,7 @@ SIG.MSR.248:
   confidence: 0.92
   v6_ids_consumed: [SAH.PARADESA, HSE.1, PLN.JUPITER, PLN.MARS]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2019.05.XX.01"
+  forensic_ref: "FORENSIC §12.2 <!-- Tajika Sahams — Paradesa foreign-destiny Aries 1H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -8968,6 +8984,7 @@ SIG.MSR.249:
   confidence: 0.91
   v6_ids_consumed: [SAH.VYAPARA, HSE.10, PLN.MARS, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2023.07.XX.01; EVT.2024.02.16.01"
+  forensic_ref: "FORENSIC §12.2 <!-- Tajika Sahams — Vyapara business-destiny Capricorn 10H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9165,6 +9182,7 @@ SIG.MSR.254:
   confidence: 0.96
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, HAZ.BHRIGU_BINDU, LAG.HORA, SAH.ROGA, SAH.MAHATMYA, HSE.7]
   rpt_deep_dive: "MSR.166 (Hidden Raja Yoga); MSR.243 (Hora Lagna 7H); MSR.238 (BB 7H); MSR.251 (Roga+Mahatmya 7H)"
+  forensic_ref: "FORENSIC §6.7 <!-- Ishta/Kashta Phala — 7H six-layer convergence zone -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9201,6 +9219,7 @@ SIG.MSR.255:
   confidence: 0.93
   v6_ids_consumed: [PLN.MERCURY, HSE.10, DSH.VM.MD.MERCURY]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.7-§3.15; SIG.29 (Mercury MD retrodictive density 10×)"
+  forensic_ref: "FORENSIC §5.1 <!-- Vimshottari Dasha — Mercury MD 2010-2027 operational arc -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9266,6 +9285,7 @@ SIG.MSR.257:
   confidence: 0.88
   v6_ids_consumed: [PLN.MERCURY, DSH.VM.AD.MERCURY.MERCURY]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.7"
+  forensic_ref: "FORENSIC §5.1 <!-- Vimshottari Dasha — Mercury-Mercury AD 2010-2013 -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9341,6 +9361,7 @@ SIG.MSR.259:
   confidence: 0.95
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, DSH.VM.AD.MERCURY.JUPITER]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.14; SIG.30 (AD-lord domain match 100%)"
+  forensic_ref: "FORENSIC §5.1 <!-- Vimshottari Dasha — Mercury-Jupiter AD 2022-2024 -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9452,6 +9473,7 @@ SIG.MSR.262:
   confidence: 0.88
   v6_ids_consumed: [DSH.VM.MD.MERCURY, PLN.MERCURY]
   rpt_deep_dive: "SIG.30; MATRIX_DASHA_PERIODS §2.3; SIG.29"
+  forensic_ref: "FORENSIC §5.1 <!-- Vimshottari Dasha — AD-lord domain match 100% pattern -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9947,6 +9969,7 @@ SIG.MSR.276:
   confidence: 0.92
   v6_ids_consumed: [PLN.JUPITER, PLN.MOON, HSE.11]
   rpt_deep_dive: "EVT.2022.01.03.01"
+  forensic_ref: "FORENSIC §2.2 <!-- D1 Sign Occupancy — Moon 11H Aquarius Gajakesari natal -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -9980,6 +10003,7 @@ SIG.MSR.277:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, HSE.9, PLN.JUPITER]
   rpt_deep_dive: "EVT.2018.11.28.01; MSR.247 (Saham Mrityu)"
+  forensic_ref: "FORENSIC §2.2 <!-- D1 Sign Occupancy — 9H Sagittarius natal Jupiter+Venus tenants -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -10712,6 +10736,7 @@ SIG.MSR.298:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MOON, HSE.11]
   rpt_deep_dive: "MSR.292 (Cycle 2 Peak); SIG.29 (Mercury MD density); MSR.296 (own-sign mitigation)"
+  forensic_ref: "FORENSIC §21 <!-- Sade Sati Cycles — Cycle 2 paradox high LEL-event density -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -10921,6 +10946,7 @@ SIG.MSR.304:
   confidence: 0.91
   v6_ids_consumed: [KP.CUSP.11, PLN.MERCURY, HSE.11]
   rpt_deep_dive: "v6.0 §4.1; MSR.236 (Yogi Planet Mercury)"
+  forensic_ref: "FORENSIC §4.1 <!-- KP Cusp Mirror — Cusp 11 sub-lord Mercury -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -11056,6 +11082,7 @@ SIG.MSR.308:
   confidence: 0.91
   v6_ids_consumed: [KP.CUSP.9, PLN.JUPITER, HSE.9]
   rpt_deep_dive: "v6.0 §4.1"
+  forensic_ref: "FORENSIC §4.1 <!-- KP Cusp Mirror — Cusp 9 sub-lord Jupiter own sign -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -11302,6 +11329,7 @@ SIG.MSR.315:
   confidence: 0.92
   v6_ids_consumed: [PLN.SATURN, KP.CUSP.6, KP.CUSP.7, KP.CUSP.10, KP.CUSP.12]
   rpt_deep_dive: "v6.0 §4.1; MSR.303, MSR.305, MSR.309"
+  forensic_ref: "FORENSIC §4.1 <!-- KP Cusp Mirror — Saturn governs cusps 6,7,10,12 -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -11369,6 +11397,7 @@ SIG.MSR.317:
   confidence: 0.92
   v6_ids_consumed: [PLN.MOON, HSE.11, JMN.AK]
   rpt_deep_dive: "MATRIX_PLANETS (Moon AK); v6.0 §23.1 (Moon)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — Moon as Atmakaraka (AK) -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -11404,6 +11433,7 @@ SIG.MSR.318:
   confidence: 0.91
   v6_ids_consumed: [PLN.SATURN, HSE.7, JMN.AMK]
   rpt_deep_dive: "MATRIX_PLANETS (Saturn AmK)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — Saturn as Amatya Karaka AmK -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -11727,6 +11757,7 @@ SIG.MSR.327:
   confidence: 0.93
   v6_ids_consumed: [PLN.RAHU, PLN.MARS, PLN.SATURN, PLN.SUN, PLN.MERCURY]
   rpt_deep_dive: "SIG.16; CGP_AUDIT_v1_0.md; MSR.172 (§4 aspect signal)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — Rahu Jaimini aspect from Taurus 2H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -12177,6 +12208,7 @@ SIG.MSR.339:
   confidence: 0.93
   v6_ids_consumed: [JMN.AL, HSE.10, PLN.SUN, PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "SIG.19; MATRIX_HOUSES §10H; v6.0 §13.1"
+  forensic_ref: "FORENSIC §13.1 <!-- Arudha Placements — AL Capricorn 10H public image -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -12217,6 +12249,7 @@ SIG.MSR.340:
   confidence: 0.90
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, JMN.AK, JMN.AMKK, HSE.11, HSE.7]
   rpt_deep_dive: "MSR.340 (AK-AmK trikona Jaimini Rajayoga)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — AK+AmK rajayoga Moon+Saturn -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -12586,6 +12619,7 @@ SIG.MSR.350:
   confidence: 0.94
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, PLN.MERCURY, PLN.RAHU, PLN.KETU, JMN.AK, JMN.AMKK, JMN.AL]
   rpt_deep_dive: "MSR.340 (AK-AmK Rajayoga); MSR.348 (Karakamsa Mercury loop); MSR.349 (Rashi Drishti on 10H)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — Jaimini architecture integration -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -13956,6 +13990,7 @@ SIG.MSR.388:
   confidence: 0.97
   v6_ids_consumed: [PLN.MERCURY, JMN.DK, JMN.KARAKAMSA]
   rpt_deep_dive: "MSR.348 (Karakamsa Mercury loop); MSR.303 (KP Mercury Yogi); MSR.319 (Mercury Vargottama)"
+  forensic_ref: "FORENSIC §2.2 <!-- D1 Sign Occupancy — Mercury quintuple role mapping -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -13992,6 +14027,7 @@ SIG.MSR.389:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, JMN.AMKK, HSE.7]
   rpt_deep_dive: "SIG.22; MSR.335 (Saturn AmK Jaimini); MSR.308 (KP Saturn sub-lord)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — Saturn triple structural axis AK context -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14027,6 +14063,7 @@ SIG.MSR.390:
   confidence: 0.96
   v6_ids_consumed: [PLN.SUN, PLN.MERCURY, JMN.AL, PLN.RAHU, PLN.KETU, HSE.10]
   rpt_deep_dive: "SIG.19; MSR.339 (AL=10H); MSR.349 (Rashi Drishti on 10H); MSR.308 (KP cusp 10)"
+  forensic_ref: "FORENSIC §4.2 <!-- KP Planetary Positions — 10H quadruple layer KP sub-lords -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14194,6 +14231,7 @@ SIG.MSR.393:
   confidence: 0.94
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, HSE.2, HSE.8, SPT.BHRIGU_BINDU]
   rpt_deep_dive: "SIG.16; MSR.327 (Rahu Jaimini); MSR.393"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — nodal axis four-system lock -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14231,6 +14269,7 @@ SIG.MSR.394:
   confidence: 0.93
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, JMN.GK, JMN.MK, HSE.9]
   rpt_deep_dive: "MSR.333 (Jupiter-Venus Jaimini Rashi Drishti); MSR.341 (GK Jupiter); MSR.394"
+  forensic_ref: "FORENSIC §2.2 <!-- D1 Sign Occupancy — Jupiter+Venus 9H dual benefic -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14308,6 +14347,7 @@ SIG.MSR.396:
   confidence: 0.92
   v6_ids_consumed: [PLN.MOON, PLN.SATURN, HSE.11]
   rpt_deep_dive: "MSR.295 (Sade Sati Paradox); MSR.296 (three structural factors); MSR.311 (KP cusp 11)"
+  forensic_ref: "FORENSIC §21 <!-- Sade Sati Cycles — paradox confirmed three systems -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14342,6 +14382,7 @@ SIG.MSR.397:
   confidence: 0.93
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.VENUS, JMN.KARAKAMSA]
   rpt_deep_dive: "MSR.325 (Karakamsa devatas); MSR.358 (Tithi Lord); EVT.2025.XX.XX.01"
+  forensic_ref: "FORENSIC §3.5 <!-- D9 Navamsa — devata retrodiction via Vargottama Mercury -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14449,6 +14490,7 @@ SIG.MSR.400:
   confidence: 0.94
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, HSE.10, HSE.7]
   rpt_deep_dive: "MSR.388 (Mercury quintuple); MSR.389 (Saturn triple); MSR.400"
+  forensic_ref: "FORENSIC §2.2 <!-- D1 Sign Occupancy — Mercury-Saturn mutual reinforcement 10H-7H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14597,6 +14639,7 @@ SIG.MSR.404:
   confidence: 0.94
   v6_ids_consumed: [BB.NATAL, ARD.UL, ARD.A5, ARD.A11, LAG.HORA, HSE.3]
   rpt_deep_dive: "REPORT_RELATIONSHIPS_v1_1, UCN_v3_0 §XVII"
+  forensic_ref: "FORENSIC §13.1 <!-- Arudha Placements — UL+A5+A11+Hora Lagna Gemini 3H -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14630,6 +14673,7 @@ SIG.MSR.405:
   confidence: 0.95
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU, HSE.7, HSE.2, HSE.8]
   rpt_deep_dive: "SIG.23; MATRIX_DIVISIONALS §D27; MSR.217 (D27 nodal axis)"
+  forensic_ref: "FORENSIC §2.2 <!-- D1 Sign Occupancy — Rahu/Ketu nodal axis triple exaltation -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14767,6 +14811,7 @@ SIG.MSR.409:
   confidence: 0.94
   v6_ids_consumed: [PLN.MOON, PLN.MERCURY, JMN.AK, JMN.DARAPADA, HSE.11]
   rpt_deep_dive: "MSR.311 (KP cusp 11); MSR.332 (Moon AK Jaimini); MSR.336 (A7=AK in 11H)"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — KP Cusp 11 + Moon AK + A7 convergence -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14801,6 +14846,7 @@ SIG.MSR.410:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.MOON, HSE.7, HSE.11]
   rpt_deep_dive: "MSR.391 (7H six layers); MSR.409 (11H three layers); MSR.410"
+  forensic_ref: "FORENSIC §10.1 <!-- Chara Karakas — two supreme convergence zones synthesis -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14915,6 +14961,7 @@ SIG.MSR.413:
   confidence: 0.98
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD, YOG.BIRTH_YOGA_SIVA]
   rpt_deep_dive: "UCN_v3_0 §XX, MSR.016, MSR.009"
+  forensic_ref: "FORENSIC §3.5 <!-- D9 Navamsa — Mercury Vargottama eight-system lock -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -14984,6 +15031,7 @@ SIG.MSR.415:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, PLN.MARS, PLN.SUN, PLN.MERCURY, PLN.MOON, PLN.JUPITER, PLN.VENUS, PLN.RAHU, PLN.KETU, HSE.1, HSE.4, HSE.7, HSE.10, HSE.11, HSE.5]
   rpt_deep_dive: "Architecture §H.4 (Whole-Chart-Read Protocol); CGM_v1_0.md (234 nodes, 339 edges)"
+  forensic_ref: "FORENSIC §6.2 <!-- Shadbala Totals — whole chart organism structural axis -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -15787,6 +15835,7 @@ SIG.MSR.438:
   confidence: 0.93
   v6_ids_consumed: [PLN.SATURN, ISH.SAT, KAS.SAT]
   rpt_deep_dive: "UCN_v3_0 §XXIII, REPORT_FINANCIAL_v2_1"
+  forensic_ref: "FORENSIC §6.7 <!-- Ishta/Kashta Phala — Saturn 43.28 Ishta 4.81 Kashta ratio -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
@@ -17591,6 +17640,7 @@ SIG.MSR.500:
   confidence: 0.95
   v6_ids_consumed: [CSI.SUN, CSI.MOON, CSI.MARS, CSI.MERCURY, CSI.JUPITER, CSI.VENUS, CSI.SATURN, CSI.RAHU, CSI.KETU, D9.MERCURY]
   rpt_deep_dive: "FORENSIC §3.15"
+  forensic_ref: "FORENSIC §3.5 <!-- D9 Navamsa — D1→D9 dignity coherence six planets -->"
   derivation_ledger:
     l1_sources:
       - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
