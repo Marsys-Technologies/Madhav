@@ -47,7 +47,6 @@ vi.mock('./InlineToolFlow', () => ({
 const makeAssistantMessage = (text: string): UIMessage => ({
   id: 'test-msg-1',
   role: 'assistant',
-  content: text,
   parts: [{ type: 'text', text }],
 });
 

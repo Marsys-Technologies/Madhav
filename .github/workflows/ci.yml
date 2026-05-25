@@ -22,7 +22,7 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
       - name: tsc — src only (exclude tests)
-        run: npx tsc --noEmit --skipLibCheck 2>&1 | grep -v "tests/" || true
+        run: npx tsc --noEmit --skipLibCheck 2>&1 | grep -v "tests/\|\.test\.\|__tests__" || true
 
   unit-tests:
     name: Unit Tests
@@ -40,7 +40,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - run: npm test -- --reporter=verbose 2>&1 | tail -40
+      - run: npm test -- --reporter=verbose
 
   planner-regression:
     name: Planner Regression Gate
