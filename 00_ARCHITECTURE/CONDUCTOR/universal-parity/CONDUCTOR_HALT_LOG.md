@@ -13,7 +13,15 @@ A halt is written here when:
 
 ## Open Halts
 
-*(None — campaign not yet started)*
+### HAP-1
+- **Type:** HUMAN_APPROVAL_CHECKPOINT
+- **After session:** UDA-Q-S8
+- **Timestamp:** 2026-05-25
+- **Status:** AWAITING_APPROVAL
+- **What was completed:** UDA-Q phase (8 sessions) — all 7 quality delta backports implemented and verified. PRE-S1 diagnostic baseline established (36 portal tools / 43 MCP tools / 21 catalog gap). Quality gaps: 7/7 closed (pratyantar/sookshma sub-periods → portal; date_range/sample_step/return_changes_only/1825-day guard → portal ephemeris; include_empty_counts/populated_count → portal chart_facts_query; chart_state/significance_tier_enum → MCP lel_query; year_start/year_end range → MCP varshphal; dasha_lord/valence/temporal_activation filters → portal msr_sql; LL.1 weights/calibration/Pancha-MP dedup → MCP query_signals).
+- **What comes next:** UDA-0 phase (3 sessions) — CAPABILITY_MANIFEST.json audit + dedup, then registration of all 36 portal RETRIEVAL_TOOLS, then registration of all MCP tools + catalog.ts fix.
+- **Required action:** Native reviews the 7 quality backport changes across platform/ and platform-mcp/. If satisfied, re-kick conductor (it will resume from UDA-0-S1). If any backport needs revision, fix it and mark this HAP resolved before re-kicking.
+- **Resolution:** (pending)
 
 ---
 

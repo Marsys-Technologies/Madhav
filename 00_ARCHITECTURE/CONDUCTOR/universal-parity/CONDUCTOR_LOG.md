@@ -12,13 +12,23 @@
 
 | Run | Date | Sessions Attempted | Sessions Passed | Sessions Halted | Notes |
 |-----|------|--------------------|-----------------|-----------------|-------|
-| — | — | — | — | — | Not yet started |
+| 1 | 2026-05-25 | 1 | 1 | 0 | SP1 Run 1 started |
 
 ---
 
 ## Session-Level Log
 
-*(Populated by conductor at each sub-agent close)*
+| Session | Date | Status | Gates | Git SHA | Notes |
+|---------|------|--------|-------|---------|-------|
+| PRE-S1 | 2026-05-25 | PASS | 3/3 green | 5e20dcc7 | 36 portal / 43 MCP / 22 catalog / 21 catalog gap / 7 quality gaps |
+| UDA-Q-S1 | 2026-05-25 | PASS | 4/4 green | 5d710fc5 | pratyantar + sookshma sub-periods added to portal query_dasha_periods |
+| UDA-Q-S2 | 2026-05-25 | PASS | 3/3 green | 20d30fda | date_range, sample_step, return_changes_only, 1825-day guard → portal query_ephemeris |
+| UDA-Q-S3 | 2026-05-25 | PASS | 2/2 green | b131e46a | include_empty_counts + populated_count → portal chart_facts_query |
+| UDA-Q-S4 | 2026-05-25 | PASS | 3/3 green | 807f641e | chart_state + significance_tier enum → MCP lel_query |
+| UDA-Q-S5 | 2026-05-25 | PASS | 2/2 green | 11e20559 | year_start/year_end range → MCP query_varshphal |
+| UDA-Q-S6 | 2026-05-25 | PASS | 3/3 green | cc91b039 | dasha_lord + valence + temporal_activation → portal msr_sql |
+| UDA-Q-S7 | 2026-05-25 | PASS | 2/2 green | 1909074a | LL.1 calibration + domain floors + Pancha-MP dedup → MCP query_signals |
+| UDA-Q-S8 | 2026-05-25 | PASS | 3/3 green | ee0a9182 | 7/7 quality gaps verified. HAP-1 written. |
 
 ---
 

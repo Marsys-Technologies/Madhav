@@ -24,7 +24,7 @@ sessions:
 
   - id: PRE-S1
     name: "Diagnostic Baseline"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_PRE_S1_v1_0.md"
     gate_commands:
@@ -40,7 +40,7 @@ sessions:
 
   - id: UDA-Q-S1
     name: "Quality Backport: query_dasha_periods PD/SD → portal"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S1_v1_0.md"
     gate_commands:
@@ -57,7 +57,7 @@ sessions:
 
   - id: UDA-Q-S2
     name: "Quality Backport: query_ephemeris enhancements → portal"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S2_v1_0.md"
     gate_commands:
@@ -71,7 +71,7 @@ sessions:
 
   - id: UDA-Q-S3
     name: "Quality Backport: chart_facts_query populated_count → portal"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S3_v1_0.md"
     gate_commands:
@@ -82,7 +82,7 @@ sessions:
 
   - id: UDA-Q-S4
     name: "Quality Backport: lel_query chart_state + significance enum → MCP"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S4_v1_0.md"
     gate_commands:
@@ -96,7 +96,7 @@ sessions:
 
   - id: UDA-Q-S5
     name: "Quality Backport: query_varshphal year range support → MCP"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S5_v1_0.md"
     gate_commands:
@@ -107,7 +107,7 @@ sessions:
 
   - id: UDA-Q-S6
     name: "Quality Backport: msr_sql filter enrichment → portal (dasha_lord/valence/temporal_activation)"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S6_v1_0.md"
     gate_commands:
@@ -121,7 +121,7 @@ sessions:
 
   - id: UDA-Q-S7
     name: "Quality Backport: LL.1 calibration → MCP query_signals"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S7_v1_0.md"
     gate_commands:
@@ -132,7 +132,7 @@ sessions:
 
   - id: UDA-Q-S8
     name: "Quality Delta Verification Audit"
-    status: pending
+    status: completed
     conductor_run: 1
     requires_hap: true
     hap_id: HAP-1
