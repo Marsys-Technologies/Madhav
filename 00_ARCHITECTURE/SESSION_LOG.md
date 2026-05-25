@@ -27854,3 +27854,19 @@ session_close:
     Local: main + feature/m6-prospective-testing (M6 WIP).
     Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md.
 ```
+---
+
+## R3-SEAL | GISMCP Remediation Stream 2 | 2026-05-26
+- session_type: remediation_seal
+- phase: GISMCP-R3
+- stream: 2
+- outcome: COMPLETE
+- msr_grounding_verified: true
+- grounded_count: 573
+- ungrounded_count: 0
+- verification_method: live DB query via Cloud SQL Auth Proxy (port 5433)
+- tests: msr_grounding.integration.test.ts — 6/6 PASS with DB_PROXY_PORT; 6/6 SKIP without
+- files_changed: MSR_GROUNDING_AUDIT.md, STREAM2_COMPLETE.md, SESSION_LOG.md, platform/src/__tests__/integration/msr_grounding.integration.test.ts
+- commits: 747518fb, 463a6b9f, 871b3b15
+- branch: fix/gismcp-r3
+- next_action: operator merges fix/gismcp-r3 to main after fix/gismcp-r1-r2
