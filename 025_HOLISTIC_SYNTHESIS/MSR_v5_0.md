@@ -41,10 +41,19 @@ SIG.MSR.001:
   rpt_deep_dive: "RPT.YOG.01.A, RPT.STR.01, CTR.01"
   prior_id: SIG.01
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.002:
@@ -68,10 +77,19 @@ SIG.MSR.002:
   rpt_deep_dive: "RPT.YOG.01.A"
   prior_id: SIG.02
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.003:
@@ -231,10 +249,19 @@ SIG.MSR.007:
   rpt_deep_dive: "RPT.YOG.01.A, RPT.YOG.01.C"
   prior_id: SIG.07
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.008:
@@ -258,10 +285,19 @@ SIG.MSR.008:
   rpt_deep_dive: "RPT.YOG.01.A, RPT.HSE.01.D"
   prior_id: SIG.08
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.009:
@@ -286,10 +322,16 @@ SIG.MSR.009:
   rpt_deep_dive: "RPT.STR.01.C, RPT.YOG.01.A, RPT.DSH.01.A"
   prior_id: SIG.09
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.010:
@@ -378,10 +420,19 @@ SIG.MSR.012:
   rpt_deep_dive: "RPT.HSE.02.C, RPT.DEV.01"
   prior_id: SIG.12
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.VENUS
+        note: "Venus Shadbala rank 7 (4.80 rupas JH)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.013:
@@ -509,10 +560,16 @@ SIG.MSR.016:
   rpt_deep_dive: "RPT.STR.01.C, RPT.DSH.01.A"
   prior_id: CVG.01
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.017:
@@ -537,10 +594,16 @@ SIG.MSR.017:
   rpt_deep_dive: "RPT.HSE.01.D, RPT.YOG.01.A"
   prior_id: CVG.02
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.018:
@@ -634,10 +697,19 @@ SIG.MSR.020:
   rpt_deep_dive: "RPT.DSH.01.A, RPT.HSE.02.B"
   prior_id: CVG.05
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.021:
@@ -661,10 +733,16 @@ SIG.MSR.021:
   rpt_deep_dive: "RPT.HSE.01.D"
   prior_id: CVG.06
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.022:
@@ -759,10 +837,16 @@ SIG.MSR.024:
   v6_ids_consumed: [PLN.SATURN, SBL.SAT, ISH.SAT, KAS.SAT]
   rpt_deep_dive: "REPORT_FINANCIAL_v2_1, UCN_v3_0 §XXIII"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.025:
@@ -819,10 +903,16 @@ SIG.MSR.026:
   rpt_deep_dive: "RPT.RED.03"
   prior_id: CTR.03
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.027:
@@ -877,10 +967,16 @@ SIG.MSR.028:
   rpt_deep_dive: "RPT.RED.05"
   prior_id: CTR.05
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.029:
@@ -1109,10 +1205,16 @@ SIG.MSR.035:
   rpt_deep_dive: "RPT.STR.01.C, RPT.DSH.01"
   prior_id: SIG.20
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.036:
@@ -1138,10 +1240,16 @@ SIG.MSR.036:
   rpt_deep_dive: "MATRIX_PLANETS §4.MERCURY, §4.KETU, RPT.DSH.02"
   prior_id: SIG.21
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.037:
@@ -1167,10 +1275,16 @@ SIG.MSR.037:
   rpt_deep_dive: "RPT.DSH.01.A, MATRIX_PLANETS §4.SATURN"
   prior_id: SIG.22
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.038:
@@ -1196,10 +1310,16 @@ SIG.MSR.038:
   rpt_deep_dive: "MATRIX_SIGNS §3.LIBRA, §3.TAURUS, §3.SCORPIO"
   prior_id: SIG.23
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.039:
@@ -1400,10 +1520,13 @@ SIG.MSR.044:
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4.MERCURY_MD"
   prior_id: SIG.29
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.045:
@@ -1429,10 +1552,13 @@ SIG.MSR.045:
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4"
   prior_id: SIG.30
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.046:
@@ -1458,10 +1584,16 @@ SIG.MSR.046:
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4.FUTURE_APEX"
   prior_id: SIG.31
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.047:
@@ -1586,10 +1718,19 @@ SIG.MSR.050:
   v6_ids_consumed: [PLN.MERCURY, SGN.CAPRICORN, D9.MERCURY]
   rpt_deep_dive: "RPT.STR.01.C"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.051:
@@ -1614,10 +1755,16 @@ SIG.MSR.051:
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS, HSE.9, SBL.JUP]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.HSE.01.D"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.052:
@@ -1642,10 +1789,19 @@ SIG.MSR.052:
   v6_ids_consumed: [PLN.VENUS, SGN.SAGITTARIUS, SBL.VENUS]
   rpt_deep_dive: "RPT.HSE.02.C, RPT.DEV.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H — own sign"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.VENUS
+        note: "Venus Shadbala rank 7 (4.80 rupas JH)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.053:
@@ -1670,10 +1826,19 @@ SIG.MSR.053:
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA, SBL.SAT, HSE.7]
   rpt_deep_dive: "SIG.MSR.001, RPT.YOG.01.A, RPT.HSE.02.B"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.054:
@@ -1752,10 +1917,16 @@ SIG.MSR.056:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, SGN.CAPRICORN]
   rpt_deep_dive: "RPT.STR.01.C, SIG.MSR.009"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.057:
@@ -1780,10 +1951,19 @@ SIG.MSR.057:
   v6_ids_consumed: [PLN.VENUS, D9.VENUS, PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "RPT.YOG.01.A, SIG.MSR.002"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.058:
@@ -1873,10 +2053,16 @@ SIG.MSR.060:
   v6_ids_consumed: [PLN.JUPITER, D9.JUPITER, SGN.GEMINI]
   rpt_deep_dive: "SIG.MSR.006, RPT.DVS.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.061:
@@ -1936,10 +2122,19 @@ SIG.MSR.062:
   v6_ids_consumed: [PLN.SATURN, D10.SATURN, SGN.TAURUS]
   rpt_deep_dive: "RPT.DVS.01, MATRIX_DIVISIONALS §4.D10"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SATURN
+        note: "Saturn in Taurus D10 — 10th house D10 (angular, very strong)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.063:
@@ -1999,10 +2194,16 @@ SIG.MSR.064:
   v6_ids_consumed: [PLN.MERCURY, D10.MERCURY, SGN.VIRGO]
   rpt_deep_dive: "RPT.DVS.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.MERCURY
+        note: "Mercury in Virgo D10 (own sign) — 2nd house D10"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.065:
@@ -2058,10 +2259,16 @@ SIG.MSR.066:
   v6_ids_consumed: [PLN.JUPITER, D7.JUPITER, SGN.SAGITTARIUS]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D7"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.067:
@@ -2084,10 +2291,16 @@ SIG.MSR.067:
   v6_ids_consumed: [PLN.SATURN, D9.SATURN]
   rpt_deep_dive: "SIG.MSR.058"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.068:
@@ -2136,10 +2349,13 @@ SIG.MSR.069:
   v6_ids_consumed: [PLN.JUPITER, D3.JUPITER]
   rpt_deep_dive: "MATRIX_DIVISIONALS §4.D3"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.070:
@@ -2195,10 +2411,16 @@ SIG.MSR.071:
   v6_ids_consumed: [PLN.SATURN, SBL.SAT]
   rpt_deep_dive: "SIG.MSR.024, RPT.RED.02"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.072:
@@ -2255,10 +2477,13 @@ SIG.MSR.073:
   v6_ids_consumed: [PLN.JUPITER, VMS.JUPITER]
   rpt_deep_dive: "MATRIX_PLANETS §4.JUPITER"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.074:
@@ -2384,10 +2609,16 @@ SIG.MSR.077:
   v6_ids_consumed: [PLN.JUPITER, HSE.12, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.C, RPT.HSE.01.D"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.078:
@@ -2411,10 +2642,16 @@ SIG.MSR.078:
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.D, SIG.MSR.017"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.079:
@@ -2438,10 +2675,19 @@ SIG.MSR.079:
   v6_ids_consumed: [PLN.SATURN, HSE.10, HSE.7]
   rpt_deep_dive: "RPT.DVS.01, RPT.HSE.02.B"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.080:
@@ -2465,10 +2711,16 @@ SIG.MSR.080:
   v6_ids_consumed: [PLN.SATURN, HSE.11, HSE.7]
   rpt_deep_dive: "RPT.HSE.01.B, MATRIX_HOUSES §4.11"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.081:
@@ -2492,10 +2744,16 @@ SIG.MSR.081:
   v6_ids_consumed: [PLN.VENUS, HSE.2, HSE.9]
   rpt_deep_dive: "RPT.HSE.01.D, RPT.HSE.02.A"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.082:
@@ -2519,10 +2777,19 @@ SIG.MSR.082:
   v6_ids_consumed: [PLN.VENUS, HSE.7, HSE.9]
   rpt_deep_dive: "RPT.HSE.02.C"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.083:
@@ -2609,10 +2876,16 @@ SIG.MSR.085:
   v6_ids_consumed: [PLN.MERCURY, HSE.3, HSE.10]
   rpt_deep_dive: "RPT.HSE.01.A, MATRIX_HOUSES §4.3"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.086:
@@ -2670,10 +2943,16 @@ SIG.MSR.087:
   v6_ids_consumed: [PLN.MERCURY, HSE.6, HSE.10]
   rpt_deep_dive: "MATRIX_HOUSES §4.6, §4.10"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.088:
@@ -2732,10 +3011,16 @@ SIG.MSR.089:
   rpt_deep_dive: "RPT.YOG.01.A, SIG.MSR.051"
   reconciliation: "FIX_SESSION_002 2026-04-18 — Added classical-source variance note per AUDIT WS2.05; confidence 0.88→0.82 reflecting source-dependency; both BPHS and Phaladeepika traditions now cited."
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.090:
@@ -2759,10 +3044,16 @@ SIG.MSR.090:
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA, SBL.SAT]
   rpt_deep_dive: "SIG.MSR.053"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §6.2 Shadbala Totals"
+        fact_id: SBL.TOTAL.SATURN
+        note: "Saturn Shadbala rank 1 (8.79 rupas JH) — highest strength in chart"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.091:
@@ -2786,10 +3077,16 @@ SIG.MSR.091:
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS, HSE.9]
   rpt_deep_dive: "SIG.MSR.017, SIG.MSR.021"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.092:
@@ -2848,10 +3145,16 @@ SIG.MSR.093:
   v6_ids_consumed: [PLN.RAHU, PLN.VENUS, HSE.2, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS §4.RAHU"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.094:
@@ -2875,10 +3178,16 @@ SIG.MSR.094:
   v6_ids_consumed: [PLN.SATURN, KRK.C.AMK, HSE.7]
   rpt_deep_dive: "RPT.DSH.01.A, MATRIX_PLANETS §4.SATURN"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.095:
@@ -2935,10 +3244,16 @@ SIG.MSR.096:
   v6_ids_consumed: [PLN.MERCURY, KRK.C.DK, HSE.10]
   rpt_deep_dive: "MATRIX_PLANETS §4.MERCURY"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.097:
@@ -3106,10 +3421,16 @@ SIG.MSR.101:
   v6_ids_consumed: [PLN.MERCURY, HSE.10, SGN.CAPRICORN]
   rpt_deep_dive: "RPT.YOG.01.A"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.102:
@@ -3134,10 +3455,16 @@ SIG.MSR.102:
   v6_ids_consumed: [PLN.VENUS, PLN.SATURN, HSE.2, HSE.11]
   rpt_deep_dive: "RPT.YOG.01.A, MATRIX_HOUSES §4.2, §4.11"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.103:
@@ -3195,10 +3522,16 @@ SIG.MSR.104:
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "SIG.MSR.008, SIG.MSR.017"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.105:
@@ -3291,10 +3624,19 @@ SIG.MSR.107:
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN, HSE.9, HSE.10]
   rpt_deep_dive: "RPT.YOG.01.A, RPT.DSH.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.108:
@@ -3534,10 +3876,13 @@ SIG.MSR.114:
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU]
   rpt_deep_dive: "SIG.MSR.038"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.115:
@@ -3562,10 +3907,16 @@ SIG.MSR.115:
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, HSE.6, HSE.12]
   rpt_deep_dive: "MATRIX_HOUSES §4.6, §4.12"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.116:
@@ -3624,10 +3975,16 @@ SIG.MSR.117:
   v6_ids_consumed: [PLN.JUPITER, HSE.9]
   rpt_deep_dive: "SIG.MSR.021, CVG.06"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.118:
@@ -3686,10 +4043,19 @@ SIG.MSR.119:
   v6_ids_consumed: [PLN.VENUS, HSE.9]
   rpt_deep_dive: "SIG.MSR.052"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H — own sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.120:
@@ -3788,10 +4154,16 @@ SIG.MSR.122:
   v6_ids_consumed: [PLN.JUPITER]
   rpt_deep_dive: "CVG.02, SIG.MSR.017"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.123:
@@ -3923,10 +4295,16 @@ SIG.MSR.126:
   v6_ids_consumed: [PLN.JUPITER, HSE.12, HSE.9]
   rpt_deep_dive: "SIG.MSR.077, RPT.HSE.01.C"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.127:
@@ -3988,10 +4366,19 @@ SIG.MSR.128:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.MERCURY, HSE.9, HSE.10]
   rpt_deep_dive: "SIG.MSR.007, RPT.YOG.01.C"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.129:
@@ -4112,10 +4499,13 @@ SIG.MSR.132:
   v6_ids_consumed: [PLN.MERCURY, DSH.V.MERCURY_MD, DSH.V.SAT_AD]
   rpt_deep_dive: "RPT.DSH.01.A, RPT.DSH.01.C"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.133:
@@ -4139,10 +4529,13 @@ SIG.MSR.133:
   v6_ids_consumed: [PLN.SATURN, DSH.V.SAT_AD]
   rpt_deep_dive: "SIG.MSR.020, SIG.MSR.037"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.134:
@@ -4203,10 +4596,16 @@ SIG.MSR.135:
   v6_ids_consumed: [PLN.MERCURY, YOG.POINT]
   rpt_deep_dive: "RPT.STR.01.C, SIG.MSR.009"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.136:
@@ -4265,10 +4664,19 @@ SIG.MSR.137:
   v6_ids_consumed: [PLN.SATURN, PLN.VENUS, PLN.JUPITER, SGN.LIBRA, SGN.SAGITTARIUS]
   rpt_deep_dive: "CGM §4.1 Dispositorship, CVG.02"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.138:
@@ -4366,10 +4774,13 @@ SIG.MSR.140:
   v6_ids_consumed: [PLN.MERCURY, DSH.V.MERCURY_MD]
   rpt_deep_dive: "SIG.MSR.132, RPT.DSH.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.141:
@@ -4538,10 +4949,19 @@ SIG.MSR.145:
   v6_ids_consumed: [PLN.SATURN, PLN.VENUS, SGN.LIBRA, SGN.SAGITTARIUS]
   rpt_deep_dive: "CGM §4.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H — own sign"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.146:
@@ -4599,10 +5019,19 @@ SIG.MSR.147:
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, HSE.10]
   rpt_deep_dive: "RPT.STR.01.C"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.148:
@@ -4725,10 +5154,16 @@ SIG.MSR.151:
   v6_ids_consumed: [PLN.VENUS, DSH.V.VENUS_MD, HSE.9]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §4.VENUS_MD, SIG.MSR.046"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.152:
@@ -4796,10 +5231,19 @@ SIG.MSR.153:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, SGN.SAGITTARIUS]
   rpt_deep_dive: "SIG.04 (dharmic-material engine), SIG.08 (Hamsa Yoga), RPT.JUP.01, RPT.VEN.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.154:
@@ -5160,10 +5604,16 @@ SIG.MSR.163:
   v6_ids_consumed: [PLN.SATURN, HSE.4, HSE.7]
   rpt_deep_dive: "RPT.SAT.01, MATRIX_HOUSES §4"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.164:
@@ -5191,10 +5641,16 @@ SIG.MSR.164:
   v6_ids_consumed: [PLN.JUPITER, HSE.3, HSE.5, HSE.9]
   rpt_deep_dive: "RPT.JUP.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.165:
@@ -5296,10 +5752,16 @@ SIG.MSR.167:
   v6_ids_consumed: [PLN.VENUS, HSE.3, HSE.9]
   rpt_deep_dive: "RPT.VEN.01, SIG.MSR.164"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.168:
@@ -5707,10 +6169,19 @@ SIG.MSR.177:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, HSE.3, HSE.6]
   rpt_deep_dive: "RPT.JUP.01, RPT.VEN.01, SIG.MSR.153"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.178:
@@ -6146,10 +6617,16 @@ SIG.MSR.188:
   v6_ids_consumed: [PLN.JUPITER, NAK.MOOLA, PLN.KETU, HSE.9]
   rpt_deep_dive: "RPT.JUP.01, SIG.08 (Hamsa Yoga)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.189:
@@ -6179,10 +6656,16 @@ SIG.MSR.189:
   v6_ids_consumed: [PLN.VENUS, NAK.PURVA_ASHADHA, HSE.9]
   rpt_deep_dive: "RPT.VEN.01, SIG.MSR.014 (Lakshmi Yoga)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.190:
@@ -6211,10 +6694,19 @@ SIG.MSR.190:
   v6_ids_consumed: [PLN.SATURN, NAK.VISHAKHA, PLN.JUPITER, HSE.7]
   rpt_deep_dive: "RPT.SAT.01, SIG.31 (Saturn-return-Libra-2041-2044)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.191:
@@ -6283,10 +6775,13 @@ SIG.MSR.192:
   v6_ids_consumed: [PLN.KETU, NAK.JYESHTHA, PLN.MERCURY, HSE.8]
   rpt_deep_dive: "RPT.NOD.01, SIG.21 (Ketu-Mercury quincunx)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.193:
@@ -6569,10 +7064,13 @@ SIG.MSR.199:
   v6_ids_consumed: [PLN.KETU, PLN.JUPITER, LAG.ARIES, NAK.ASHWINI, NAK.MOOLA]
   rpt_deep_dive: "SIG.MSR.183, SIG.MSR.188, SIG.MSR.192"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.200:
@@ -6602,10 +7100,16 @@ SIG.MSR.200:
   v6_ids_consumed: [PLN.MERCURY, NAK.UTTARA_ASHADHA, HSE.10]
   rpt_deep_dive: "SIG.MSR.186, RPT.MER.01, SIG.MSR.002"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.201:
@@ -6633,10 +7137,16 @@ SIG.MSR.201:
   v6_ids_consumed: [PLN.SATURN, NAK.VISHAKHA, HSE.7]
   rpt_deep_dive: "SIG.MSR.003 (NBRY Saturn), SIG.MSR.190, RPT.SAT.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.202:
@@ -6707,10 +7217,16 @@ SIG.MSR.203:
   v6_ids_consumed: [PLN.VENUS, NAK.PURVA_ASHADHA, HSE.9]
   rpt_deep_dive: "SIG.MSR.189, RPT.VEN.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.204:
@@ -6740,10 +7256,16 @@ SIG.MSR.204:
   v6_ids_consumed: [PLN.JUPITER, NAK.MOOLA, HSE.9]
   rpt_deep_dive: "SIG.MSR.188, RPT.JUP.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.205:
@@ -6855,10 +7377,19 @@ SIG.MSR.208:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, HSE.10]
   rpt_deep_dive: "SIG.09 (Mercury Vargottama operational-spine), RPT.MER.01, SIG.MSR.200"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.209:
@@ -6923,10 +7454,19 @@ SIG.MSR.210:
   v6_ids_consumed: [PLN.VENUS, D9.VENUS, PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "SIG.02 (NBRY Venus), MATRIX_DIVISIONALS §D9"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.211:
@@ -7032,10 +7572,19 @@ SIG.MSR.213:
   v6_ids_consumed: [PLN.SATURN, D10.SATURN]
   rpt_deep_dive: "SIG.22, MATRIX_DIVISIONALS §D10"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SATURN
+        note: "Saturn in Taurus D10 — 10th house D10 (angular, very strong)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.214:
@@ -7104,10 +7653,19 @@ SIG.MSR.215:
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, D10.MERCURY, D10.JUPITER]
   rpt_deep_dive: "MATRIX_DIVISIONALS §D10"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.MERCURY
+        note: "Mercury in Virgo D10 (own sign) — 2nd house D10"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.216:
@@ -7387,10 +7945,19 @@ SIG.MSR.223:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, D40.JUPITER, D40.VENUS]
   rpt_deep_dive: "SIG.14 (Lakshmi Yoga), MATRIX_DIVISIONALS §D40"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.224:
@@ -7419,10 +7986,19 @@ SIG.MSR.224:
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU, HSE.2, HSE.7, HSE.8]
   rpt_deep_dive: "SIG.23 (Triple-exalted-nodal-axis), MATRIX_SIGNS §5"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.225:
@@ -7565,10 +8141,13 @@ SIG.MSR.228:
   v6_ids_consumed: [UPG.GULIKA, HSE.3]
   rpt_deep_dive: "v6.0 §11.1 (Gulika position)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.229:
@@ -7595,10 +8174,13 @@ SIG.MSR.229:
   v6_ids_consumed: [UPG.MANDI, HSE.4]
   rpt_deep_dive: "v6.0 §11.1 (Mandi position); v6.0 §4.4 (4H analysis)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.230:
@@ -7694,10 +8276,13 @@ SIG.MSR.232:
   v6_ids_consumed: [UPG.PARIVESHA, HSE.4]
   rpt_deep_dive: "v6.0 §11.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.233:
@@ -7722,10 +8307,19 @@ SIG.MSR.233:
   v6_ids_consumed: [UPG.INDRACHAPA, HSE.9, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "v6.0 §11.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.234:
@@ -7751,10 +8345,16 @@ SIG.MSR.234:
   v6_ids_consumed: [UPG.UPAKETU, HSE.9, PLN.VENUS]
   rpt_deep_dive: "v6.0 §11.1; MSR.195 (Venus own-nakshatra)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.235:
@@ -7821,10 +8421,16 @@ SIG.MSR.236:
   v6_ids_consumed: [PLN.MERCURY, YOG.PLANET, HSE.10]
   rpt_deep_dive: "v6.0 §11.3; MSR.235 (Yogi Point); MATRIX_DASHA_PERIODS (Mercury MD 2014-2031)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.237:
@@ -7929,10 +8535,13 @@ SIG.MSR.239:
   v6_ids_consumed: [HAZ.BHRIGU_BINDU, HSE.3]
   rpt_deep_dive: "v7.0 §V7.F (BB 60-year progression table)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.240:
@@ -7957,10 +8566,16 @@ SIG.MSR.240:
   v6_ids_consumed: [HAZ.BHRIGU_BINDU, PLN.SATURN, PLN.RAHU, HSE.7]
   rpt_deep_dive: "v7.0 §V7.F; SIG.31 (Saturn return Libra 2041-2044)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.241:
@@ -8021,10 +8636,16 @@ SIG.MSR.242:
   v6_ids_consumed: [YOG.POINT, LAG.PRANAPADA, PLN.MERCURY, HSE.12]
   rpt_deep_dive: "MSR.235 (Yogi Point); MSR.241 (Pranapada)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.243:
@@ -8204,10 +8825,19 @@ SIG.MSR.247:
   v6_ids_consumed: [SAH.MRITYU, HSE.9, PLN.SATURN]
   rpt_deep_dive: "v7.0 §V7.D; EVT.2018.11.28.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.248:
@@ -8317,10 +8947,13 @@ SIG.MSR.250:
   v6_ids_consumed: [SAH.YASAS, HSE.8, PLN.KETU]
   rpt_deep_dive: "v7.0 §V7.D"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.251:
@@ -8502,10 +9135,16 @@ SIG.MSR.255:
   v6_ids_consumed: [PLN.MERCURY, HSE.10, DSH.VM.MD.MERCURY]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.7-§3.15; SIG.29 (Mercury MD retrodictive density 10×)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.256:
@@ -8530,10 +9169,13 @@ SIG.MSR.256:
   v6_ids_consumed: [PLN.MERCURY, DSH.VM.MD.MERCURY]
   rpt_deep_dive: "SIG.29; MATRIX_DASHA_PERIODS §2.2"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.257:
@@ -8558,10 +9200,16 @@ SIG.MSR.257:
   v6_ids_consumed: [PLN.MERCURY, DSH.VM.AD.MERCURY.MERCURY]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.7"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.258:
@@ -8589,10 +9237,19 @@ SIG.MSR.258:
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, DSH.VM.AD.MERCURY.SATURN]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.15; SIG.25 (Saturn-Pisces triple-activation)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.259:
@@ -8618,10 +9275,19 @@ SIG.MSR.259:
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, DSH.VM.AD.MERCURY.JUPITER]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.14; SIG.30 (AD-lord domain match 100%)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.260:
@@ -8683,10 +9349,13 @@ SIG.MSR.261:
   v6_ids_consumed: [PLN.KETU, PLN.MERCURY, DSH.VM.AD.MERCURY.KETU]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.8; EVT.2013.12.11.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.262:
@@ -8786,10 +9455,19 @@ SIG.MSR.264:
   v6_ids_consumed: [PLN.VENUS, DSH.VM.MD.VENUS, HSE.9, HSE.2, HSE.7]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §2.4 (future projections); MSR.195 (Venus own nakshatra)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.265:
@@ -8850,10 +9528,16 @@ SIG.MSR.266:
   v6_ids_consumed: [PLN.SATURN, PLN.MERCURY, DSH.YOGINI, DSH.VM.AD.MERCURY.SATURN]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.15 row 023; v6.0 §5.2"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.267:
@@ -8909,10 +9593,16 @@ SIG.MSR.268:
   v6_ids_consumed: [PLN.SATURN, HSE.7, DSH.VM.MD.VENUS]
   rpt_deep_dive: "SIG.31 (Saturn return Libra 2041-2044); MATRIX_DASHA_PERIODS §4"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.269:
@@ -9070,10 +9760,13 @@ SIG.MSR.273:
   v6_ids_consumed: [PLN.JUPITER, HSE.2, PLN.RAHU]
   rpt_deep_dive: "MATRIX_SIGNS §Taurus; MSR.271 (Saturn Pisces concurrent)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.274:
@@ -9200,10 +9893,19 @@ SIG.MSR.277:
   v6_ids_consumed: [PLN.SATURN, HSE.9, PLN.JUPITER]
   rpt_deep_dive: "EVT.2018.11.28.01; MSR.247 (Saham Mrityu)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.278:
@@ -9265,10 +9967,13 @@ SIG.MSR.279:
   v6_ids_consumed: [PLN.RAHU, HSE.3]
   rpt_deep_dive: "MATRIX_SIGNS §Gemini transit density"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.280:
@@ -9294,10 +9999,16 @@ SIG.MSR.280:
   v6_ids_consumed: [PLN.SATURN, HSE.7, HAZ.BHRIGU_BINDU]
   rpt_deep_dive: "SIG.31; MATRIX_DASHA_PERIODS row 037; MSR.240 (BB transit)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.281:
@@ -9500,10 +10211,13 @@ SIG.MSR.286:
   v6_ids_consumed: [PLN.JUPITER, HSE.12, YOG.POINT]
   rpt_deep_dive: "MATRIX_SIGNS §Pisces; MSR.235 (Yogi Point)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.287:
@@ -10079,10 +10793,16 @@ SIG.MSR.303:
   v6_ids_consumed: [KP.CUSP.10, PLN.SATURN, HSE.10]
   rpt_deep_dive: "v6.0 §4.1; v6.0 §4.3 (KP.SIG.10)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.304:
@@ -10108,10 +10828,13 @@ SIG.MSR.304:
   v6_ids_consumed: [KP.CUSP.11, PLN.MERCURY, HSE.11]
   rpt_deep_dive: "v6.0 §4.1; MSR.236 (Yogi Planet Mercury)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.305:
@@ -10137,10 +10860,16 @@ SIG.MSR.305:
   v6_ids_consumed: [KP.CUSP.7, PLN.SATURN, HSE.7]
   rpt_deep_dive: "v6.0 §4.1; EVT.2013.12.11.01 (marriage)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.306:
@@ -10228,10 +10957,16 @@ SIG.MSR.308:
   v6_ids_consumed: [KP.CUSP.9, PLN.JUPITER, HSE.9]
   rpt_deep_dive: "v6.0 §4.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.309:
@@ -10256,10 +10991,13 @@ SIG.MSR.309:
   v6_ids_consumed: [KP.CUSP.12, PLN.SATURN, HSE.12]
   rpt_deep_dive: "v6.0 §4.1; EVT.2024.02.16.01 (sand mine 12H-foreign-investment)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.310:
@@ -10284,10 +11022,16 @@ SIG.MSR.310:
   v6_ids_consumed: [PLN.SATURN, KP.PLN.SATURN]
   rpt_deep_dive: "v6.0 §4.2"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.SATURN
+        note: "Saturn KP: 22°32′ Libra; star lord Jupiter; sub Saturn; sub-sub Venus"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.311:
@@ -10312,10 +11056,16 @@ SIG.MSR.311:
   v6_ids_consumed: [PLN.VENUS, PLN.RAHU, KP.PLN.VENUS]
   rpt_deep_dive: "v6.0 §4.2; MSR.195 (Venus own nakshatra)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.VENUS
+        note: "Venus KP: 19°15′ Sagittarius; star lord Venus; sub Rahu; sub-sub Mercury"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.312:
@@ -10340,10 +11090,16 @@ SIG.MSR.312:
   v6_ids_consumed: [PLN.MERCURY, PLN.RAHU, KP.PLN.MERCURY]
   rpt_deep_dive: "v6.0 §4.2; MSR.304 (Cusp 11 sub-lord Mercury)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §4.2 KP Planetary Positions"
+        fact_id: KP.PLN.MERCURY
+        note: "Mercury KP: 00°55′ Capricorn; star lord Sun; sub Sun"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.313:
@@ -10447,10 +11203,13 @@ SIG.MSR.315:
   v6_ids_consumed: [PLN.SATURN, KP.CUSP.6, KP.CUSP.7, KP.CUSP.10, KP.CUSP.12]
   rpt_deep_dive: "v6.0 §4.1; MSR.303, MSR.305, MSR.309"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.316:
@@ -10476,10 +11235,16 @@ SIG.MSR.316:
   v6_ids_consumed: [KP.SIG.12, PLN.SATURN, PLN.JUPITER, HSE.12]
   rpt_deep_dive: "v6.0 §4.3"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.317:
@@ -10540,10 +11305,16 @@ SIG.MSR.318:
   v6_ids_consumed: [PLN.SATURN, HSE.7, JMN.AMK]
   rpt_deep_dive: "MATRIX_PLANETS (Saturn AmK)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.319:
@@ -10570,10 +11341,16 @@ SIG.MSR.319:
   v6_ids_consumed: [PLN.MERCURY, HSE.10, JMN.DK]
   rpt_deep_dive: "MATRIX_PLANETS (Mercury DK); EVT.2013.12.11.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.320:
@@ -10634,10 +11411,16 @@ SIG.MSR.321:
   v6_ids_consumed: [PLN.JUPITER, HSE.9, JMN.GK]
   rpt_deep_dive: "MATRIX_PLANETS (Jupiter GK)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.322:
@@ -11061,10 +11844,19 @@ SIG.MSR.333:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9, HSE.2, HSE.5, HSE.8, HSE.11]
   rpt_deep_dive: "MSR.333 (9H dual-sign benefic covers all fixed signs = most comprehensive Jaimini pattern)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.334:
@@ -11091,10 +11883,19 @@ SIG.MSR.334:
   v6_ids_consumed: [PLN.MERCURY, JMN.DK, HSE.10, HSE.3, HSE.9, HSE.12]
   rpt_deep_dive: "MSR.334 (Mercury DK Jaimini aspect closes DK→UL loop)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.335:
@@ -11122,10 +11923,19 @@ SIG.MSR.335:
   v6_ids_consumed: [PLN.SATURN, JMN.AMKK, HSE.7, HSE.3, HSE.9, HSE.12]
   rpt_deep_dive: "MSR.335 (AmK exalted Jaimini aspect covers all dual signs = career governance of 12H foreign domain)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.336:
@@ -11332,10 +12142,16 @@ SIG.MSR.341:
   v6_ids_consumed: [PLN.JUPITER, JMN.GK, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS §Jupiter; MSR.341"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.342:
@@ -11362,10 +12178,19 @@ SIG.MSR.342:
   v6_ids_consumed: [PLN.VENUS, JMN.MK, PLN.JUPITER, HSE.9]
   rpt_deep_dive: "MATRIX_PLANETS; v6.0 §15 (Ishta Devata = Venus)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.343:
@@ -11528,10 +12353,19 @@ SIG.MSR.347:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, PLN.KETU, HSE.9, HSE.8, HSE.7]
   rpt_deep_dive: "MSR.329 (Rahu 2H Argala on Lagna); MSR.346 (Moon Argala on 10H)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.348:
@@ -12650,10 +13484,16 @@ SIG.MSR.378:
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.376 (Varshaphal framework)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.379:
@@ -12678,10 +13518,19 @@ SIG.MSR.379:
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, PLN.JUPITER]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.378 (Ithasala)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.380:
@@ -12850,10 +13699,16 @@ SIG.MSR.384:
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN]
   rpt_deep_dive: "Tajika Neelakanthi; MSR.380 (Varshesha)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.385:
@@ -12878,10 +13733,16 @@ SIG.MSR.385:
   v6_ids_consumed: [PLN.SATURN, HSE.7]
   rpt_deep_dive: "MSR.380 (Varshesha); MSR.291 (Sade Sati setting phase)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.386:
@@ -12978,10 +13839,16 @@ SIG.MSR.388:
   v6_ids_consumed: [PLN.MERCURY, JMN.DK, JMN.KARAKAMSA]
   rpt_deep_dive: "MSR.348 (Karakamsa Mercury loop); MSR.303 (KP Mercury Yogi); MSR.319 (Mercury Vargottama)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.389:
@@ -13178,10 +14045,13 @@ SIG.MSR.392:
   v6_ids_consumed: [SPT.YOGI_POINT, SPT.PRANAPADA, HSE.12, PLN.SATURN]
   rpt_deep_dive: "MSR.240 (Yogi Point); MSR.241 (Pranapada); MSR.313 (KP cusp 12)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.393:
@@ -13235,10 +14105,19 @@ SIG.MSR.394:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, JMN.GK, JMN.MK, HSE.9]
   rpt_deep_dive: "MSR.333 (Jupiter-Venus Jaimini Rashi Drishti); MSR.341 (GK Jupiter); MSR.394"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.395:
@@ -13444,10 +14323,19 @@ SIG.MSR.400:
   v6_ids_consumed: [PLN.MERCURY, PLN.SATURN, HSE.10, HSE.7]
   rpt_deep_dive: "MSR.388 (Mercury quintuple); MSR.389 (Saturn triple); MSR.400"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.401:
@@ -13540,10 +14428,19 @@ SIG.MSR.403:
   v6_ids_consumed: [PLN.VENUS, JMN.MK, HSE.2, HSE.7, HSE.9]
   rpt_deep_dive: "MSR.342 (MK Venus); MSR.325 (Ishta Devata); MSR.403"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.404:
@@ -13568,10 +14465,13 @@ SIG.MSR.404:
   v6_ids_consumed: [BB.NATAL, ARD.UL, ARD.A5, ARD.A11, LAG.HORA, HSE.3]
   rpt_deep_dive: "REPORT_RELATIONSHIPS_v1_1, UCN_v3_0 §XVII"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.405:
@@ -13598,10 +14498,16 @@ SIG.MSR.405:
   v6_ids_consumed: [PLN.SATURN, PLN.RAHU, PLN.KETU, HSE.7, HSE.2, HSE.8]
   rpt_deep_dive: "SIG.23; MATRIX_DIVISIONALS §D27; MSR.217 (D27 nodal axis)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.406:
@@ -13836,10 +14742,19 @@ SIG.MSR.412:
   v6_ids_consumed: [PLN.JUPITER, PLN.VENUS, HSE.9]
   rpt_deep_dive: "MSR.194 (Venus Purva Ashadha own nakshatra); MSR.394 (Jupiter-Venus 9H dual benefic)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.413:
@@ -13868,10 +14783,16 @@ SIG.MSR.413:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY, DSH.V.MERCURY_MD, YOG.BIRTH_YOGA_SIVA]
   rpt_deep_dive: "UCN_v3_0 §XX, MSR.016, MSR.009"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.414:
@@ -13896,10 +14817,16 @@ SIG.MSR.414:
   v6_ids_consumed: [PLN.SATURN, HSE.7]
   rpt_deep_dive: "SIG.31; MATRIX_DASHA_PERIODS; MSR.291-302 (Sade Sati section)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.415:
@@ -14162,10 +15089,19 @@ SIG.MSR.422:
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, PLN.VENUS]
   rpt_deep_dive: "UCN_v3_0 §XXII"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.423:
@@ -14189,10 +15125,16 @@ SIG.MSR.423:
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN]
   rpt_deep_dive: "UCN_v3_0 §XXII"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.424:
@@ -14387,10 +15329,19 @@ SIG.MSR.429:
   v6_ids_consumed: [D9.VENUS, D9.JUPITER]
   rpt_deep_dive: "UCN_v3_0 §XXII"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.430:
@@ -14520,10 +15471,16 @@ SIG.MSR.433:
   v6_ids_consumed: [D9.JUPITER, D9.GEMINI]
   rpt_deep_dive: "UCN_v3_0 §XXII, REPORT_SPIRITUAL_v1_1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.434:
@@ -14614,10 +15571,19 @@ SIG.MSR.436:
   v6_ids_consumed: [D2.CANCER, D2.LEO, PLN.MERCURY, PLN.JUPITER]
   rpt_deep_dive: "UCN_v3_0 §XXII, REPORT_SPIRITUAL_v1_1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.437:
@@ -14642,10 +15608,13 @@ SIG.MSR.437:
   v6_ids_consumed: [YOG.BIRTH_YOGA, PLN.MERCURY, DSH.PANCHANG]
   rpt_deep_dive: "UCN_v3_0 §XX, MSR.413"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.438:
@@ -14671,10 +15640,13 @@ SIG.MSR.438:
   v6_ids_consumed: [PLN.SATURN, ISH.SAT, KAS.SAT]
   rpt_deep_dive: "UCN_v3_0 §XXIII, REPORT_FINANCIAL_v2_1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.439:
@@ -14701,10 +15673,16 @@ SIG.MSR.439:
   v6_ids_consumed: [PLN.JUPITER, ISH.JUP, KAS.JUP]
   rpt_deep_dive: "UCN_v3_0 §XXIII, MSR.026"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.440:
@@ -14730,10 +15708,13 @@ SIG.MSR.440:
   v6_ids_consumed: [HSE.5, BVB.5]
   rpt_deep_dive: "UCN_v3_0 §XXIII"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.441:
@@ -14759,10 +15740,19 @@ SIG.MSR.441:
   v6_ids_consumed: [PLN.MERCURY, PLN.JUPITER, PLN.SATURN, PVC.TRIAD]
   rpt_deep_dive: "UCN_v3_0 §XXIII, REPORT_FINANCIAL_v2_1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.442:
@@ -14981,10 +15971,19 @@ SIG.MSR.448:
   v6_ids_consumed: [PLN.MERCURY, D9.MERCURY]
   rpt_deep_dive: "MSR.413"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.449:
@@ -15005,10 +16004,16 @@ SIG.MSR.449:
   v6_ids_consumed: [PLN.JUPITER]
   rpt_deep_dive: "REPORT_SPIRITUAL"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.450:
@@ -15029,10 +16034,16 @@ SIG.MSR.450:
   v6_ids_consumed: [PLN.VENUS]
   rpt_deep_dive: "REPORT_FINANCIAL"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.9
+        note: "House 9 Sagittarius — Jupiter and Venus tenants; dharma/fortune house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.451:
@@ -15053,10 +16064,16 @@ SIG.MSR.451:
   v6_ids_consumed: [PLN.SATURN]
   rpt_deep_dive: "MSR.391"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.452:
@@ -15539,10 +16556,13 @@ SIG.MSR.471:
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "MAINTENANCE_SCHEDULE"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.472:
@@ -15659,10 +16679,13 @@ SIG.MSR.476:
   v6_ids_consumed: [TRS.SS.FUT1, TRS.SS.FUT2]
   rpt_deep_dive: "MAINTENANCE_SCHEDULE"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.477:
@@ -15713,10 +16736,13 @@ SIG.MSR.478:
   v6_ids_consumed: [PLN.JUPITER]
   rpt_deep_dive: "LEL cluster"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.479:
@@ -15767,10 +16793,13 @@ SIG.MSR.480:
   v6_ids_consumed: [PLN.SATURN, TRS.SS.FUT1]
   rpt_deep_dive: "MSR.046"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.481:
@@ -15821,10 +16850,16 @@ SIG.MSR.482:
   v6_ids_consumed: [D9.JUPITER]
   rpt_deep_dive: "MSR.434"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.483:
@@ -15845,10 +16880,16 @@ SIG.MSR.483:
   v6_ids_consumed: [D9.VENUS]
   rpt_deep_dive: "CONTRADICTION_REGISTRY"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.484:
@@ -15869,10 +16910,16 @@ SIG.MSR.484:
   v6_ids_consumed: [D9.SATURN]
   rpt_deep_dive: "REPORT_RELATIONSHIPS"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.485:
@@ -15893,10 +16940,19 @@ SIG.MSR.485:
   v6_ids_consumed: [D10.MERCURY]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.MERCURY
+        note: "Mercury in Virgo D10 (own sign) — 2nd house D10"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.MERCURY
+        note: "Mercury in Capricorn D9 — Vargottama (same sign D1 and D9)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.486:
@@ -15917,10 +16973,19 @@ SIG.MSR.486:
   v6_ids_consumed: [D10.SATURN]
   rpt_deep_dive: "JH D10 row"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.SATURN
+        note: "Saturn in Taurus D10 — 10th house D10 (angular, very strong)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.SATURN
+        note: "Saturn in Aries D9 — debilitated; Neecha Bhanga via Sun in Cancer D9 Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.487:
@@ -16064,10 +17129,16 @@ SIG.MSR.491:
   v6_ids_consumed: [PLN.VENUS]
   rpt_deep_dive: "FORENSIC divisionals"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.492:
@@ -16296,10 +17367,19 @@ SIG.MSR.502:
   v6_ids_consumed: [CSI.VENUS, D9.VENUS, D9.NBR.VENUS, D10.VENUS, D9.MERCURY]
   rpt_deep_dive: "FORENSIC §3.15, §3.5.1, §3.6; SIG.MSR.002"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.15 CSI Ledger"
+        fact_id: CSI.VENUS
+        note: "Venus Vargottama NO; D9 Virgo debilitation; D10 11th Gemini neutral"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.VENUS
+        note: "Venus in Virgo D9 — debilitated; Neecha Bhanga via Mercury Vargottama"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.VENUS
+        note: "Venus in Gemini D10 — 11th house D10 (Upachaya)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.503:
@@ -16572,10 +17652,19 @@ SIG.MSR.510:
   v6_ids_consumed: [D45.5, D45.4, PLN.JUPITER, PLN.SATURN]
   rpt_deep_dive: "FORENSIC §3.13"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.JUPITER
+        note: "Jupiter in Gemini D9 — not vargottama; 12H stellium dispositor"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.511:
@@ -16746,10 +17835,13 @@ SIG.MSR.515:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, SGN.LIBRA]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.516:
@@ -16800,10 +17892,13 @@ SIG.MSR.517:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, SGN.VIRGO]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.518:
@@ -16824,10 +17919,13 @@ SIG.MSR.518:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.VIRGO]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.519:
@@ -16848,10 +17946,16 @@ SIG.MSR.519:
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, PLN.JUPITER, SGN.CANCER, SGN.LEO, SGN.VIRGO]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.520:
@@ -16902,10 +18006,13 @@ SIG.MSR.521:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.KETU]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.522:
@@ -16926,10 +18033,13 @@ SIG.MSR.522:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.RAHU]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.523:
@@ -16980,10 +18090,16 @@ SIG.MSR.524:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.KETU, PLN.SATURN]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.525:
@@ -17064,10 +18180,13 @@ SIG.MSR.527:
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, PLN.KETU]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.528:
@@ -17118,10 +18237,16 @@ SIG.MSR.529:
   confidence: 0.80
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN, PLN.KETU, SGN.PISCES, SGN.ARIES]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.530:
@@ -17142,10 +18267,13 @@ SIG.MSR.530:
   confidence: 0.90
   v6_ids_consumed: [PLN.SATURN, PLN.KETU]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.531:
@@ -17166,10 +18294,13 @@ SIG.MSR.531:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.SAGITTARIUS, SGN.PISCES]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.532:
@@ -17190,10 +18321,19 @@ SIG.MSR.532:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.TAURUS, SGN.LIBRA, PLN.VENUS]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H — sign of exaltation"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.533:
@@ -17244,10 +18384,19 @@ SIG.MSR.534:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, PLN.SATURN, PLN.VENUS]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.535:
@@ -17328,10 +18477,16 @@ SIG.MSR.537:
   confidence: 0.90
   v6_ids_consumed: [PLN.VENUS, PLN.SATURN]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.538:
@@ -17412,10 +18567,13 @@ SIG.MSR.540:
   confidence: 0.90
   v6_ids_consumed: [PLN.JUPITER, SGN.CANCER]
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.541:
@@ -17669,10 +18827,13 @@ SIG.MSR.548:
   domains_affected: [spirit, wealth]
   confidence: 0.88
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.549:
@@ -17694,10 +18855,16 @@ SIG.MSR.549:
   domains_affected: [relationships]
   confidence: 0.75
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.JUPITER
+        note: "Jupiter in Sagittarius 9H 09°48′28″ Moola pada 3 (own sign)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn and Mars tenants; spouse/partnership house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.550:
@@ -17786,10 +18953,13 @@ SIG.MSR.552:
   domains_affected: [career]
   confidence: 0.83
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.553:
@@ -17812,10 +18982,13 @@ SIG.MSR.553:
   domains_affected: [psychology]
   confidence: 0.85
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.554:
@@ -17838,10 +19011,16 @@ SIG.MSR.554:
   domains_affected: [career]
   confidence: 0.78
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.10
+        note: "House 10 Capricorn — Sun and Mercury tenants; career/status house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.555:
@@ -17864,10 +19043,13 @@ SIG.MSR.555:
   domains_affected: [relationships]
   confidence: 0.89
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.556:
@@ -17889,10 +19071,13 @@ SIG.MSR.556:
   domains_affected: [career]
   confidence: 0.76
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.557:
@@ -18166,10 +19351,13 @@ SIG.MSR.566:
   confidence: 0.78
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.MERCURY
+        note: "Mercury in Capricorn 10H 00°50′11″ Uttara Ashadha pada 2; Vargottama"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.567:
@@ -18192,10 +19380,13 @@ SIG.MSR.567:
   confidence: 0.79
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.VENUS
+        note: "Venus in Sagittarius 9H 19°10′12″ Purva Ashadha pada 2"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.568:
@@ -18279,10 +19470,13 @@ SIG.MSR.570:
   confidence: 0.77
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.SATURN
+        note: "Saturn in Libra 7H 22°27′04″ Vishakha pada 1 (exalted — max dignity)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S17
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.571:

@@ -6,15 +6,15 @@ grounded_lagna: DONE      # DAR-P5-S16 (2026-05-25): 83 signals grounded
 grounded_sun: DONE        # DAR-P5-S16 (2026-05-25): 100 signals grounded
 grounded_moon: DONE       # DAR-P5-S16 (2026-05-25): 134 signals grounded
 grounded_mars: DONE       # DAR-P5-S16 (2026-05-25): 96 signals grounded
-grounded_mercury: PENDING
-grounded_jupiter: PENDING
-grounded_venus: PENDING
-grounded_saturn: PENDING
+grounded_mercury: DONE     # DAR-P5-S17 (2026-05-25): 61 signals grounded
+grounded_jupiter: DONE     # DAR-P5-S17 (2026-05-25): 75 signals grounded
+grounded_venus: DONE       # DAR-P5-S17 (2026-05-25): 49 signals grounded
+grounded_saturn: DONE      # DAR-P5-S17 (2026-05-25): 72 signals grounded
 grounded_house_domain: PENDING
 grounded_dasha: PENDING
 grounded_nadi_bnn: PENDING
 grounded_yogini_tajaka: PENDING
-total_grounded: 309
+total_grounded: 505
 last_updated: 2026-05-25
 
 # Session notes:
@@ -31,3 +31,17 @@ last_updated: 2026-05-25
 #             KP.PLN.MARS, CSI.MARS, HSE.7
 #   - 258 signals remain PENDING (Mercury, Jupiter, Venus, Saturn,
 #     house domain, dasha, nadi/BNN, Yogini/Tajaka)
+#
+# DAR-P5-S17 (2026-05-25):
+#   - Grounded 196 signals across Mercury/Jupiter/Venus/Saturn domains
+#   - Signals with multiple planet entities counted in each matching domain
+#   - FORENSIC v8.0 fact IDs used:
+#     Mercury: PLN.MERCURY, D9.MERCURY, D10.MERCURY, CSI.MERCURY,
+#              KP.PLN.MERCURY, CDL.MERCURY, SBL.TOTAL.MERCURY
+#     Jupiter: PLN.JUPITER, D9.JUPITER, D10.JUPITER, CSI.JUPITER,
+#              KP.PLN.JUPITER, CDL.JUPITER, SBL.TOTAL.JUPITER
+#     Venus:   PLN.VENUS, D9.VENUS, D10.VENUS, CSI.VENUS,
+#              KP.PLN.VENUS, CDL.VENUS, SBL.TOTAL.VENUS
+#     Saturn:  PLN.SATURN, D9.SATURN, D10.SATURN, CSI.SATURN,
+#              KP.PLN.SATURN, CDL.SATURN, SBL.TOTAL.SATURN
+#   - 62 signals remain PENDING (Rahu/Ketu, house-domain, dasha, nadi/BNN, Yogini/Tajaka)
