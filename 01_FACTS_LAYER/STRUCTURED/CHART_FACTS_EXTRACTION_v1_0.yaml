@@ -1,5 +1,5 @@
 ---
-schema_version: "1.1"
+schema_version: "1.2"
 source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md
 extracted_at: "2026-05-10"
 extracted_by: "direct_read by Claude Code (Opus 4.7) — VARGA-ETL-FULL-S1-CPA"
@@ -16,6 +16,15 @@ v1_1_changelog: |
     §21 Sade Sati transit (8 TRS.SS.* rows)
     PLN.MERCURY value_json now carries vargottama: true (D1.h)
   See 00_ARCHITECTURE/CHART_FACTS_PIPELINE_AUDIT_v1_0.md for the race-condition rationale.
+v1_2_changelog: |
+  v1.2 (2026-05-25): DAR-P4-S11/S12/S13 added 14 new categories.
+    S11: ashtakavarga, sthira_karaka, upagraha, bhrigu_bindu
+    S12: yogi_avayogi, mrityu_bhaga, chalit_kinetic, avastha, longevity
+    S13: narayana_dasha, moola_dasha, sudasa, ishta_kashta, pancha_vargeeya
+    narayana_dasha / moola_dasha / sudasa = EXTERNAL_COMPUTATION_REQUIRED
+      (FORENSIC v8.0 §25.1–25.3 mark these INTENTIONALLY EXCLUDED per Vimshottari-primary policy)
+    ishta_kashta: 7 planets sourced verbatim from FORENSIC v8.0 §6.7
+    pancha_vargeeya: 7 planets sourced verbatim from FORENSIC v8.0 §6.8
 facts:
   # ── §1.1 Birth Metadata ───────────────────────────────────────────────────
   - fact_id: MET.NAME
@@ -5685,4 +5694,255 @@ facts:
     value_json: {gap_id: "LONGEVITY.GAP.01", status: CLOSED, anchor: "Kalachakra Paramayush = 85 years"}
     source_section: "§24.2 row 4"
     forensic_ref: "FORENSIC v8.0 §24.2 — Ayurdasaya Status (LONGEVITY.GAP.01)"
+    extraction_method: direct_read
+  # ── §25.2 Narayana Dasha (Jaimini, JH) ──────────────────────────────────────
+  # FORENSIC v8.0 §25.2 marks Narayana Dasha INTENTIONALLY EXCLUDED:
+  # "Vimshottari primary; optional Jaimini-derived system". No period data provided.
+  # B.10 discipline: marking EXTERNAL_COMPUTATION_REQUIRED.
+  - fact_id: NDH.STATUS
+    category: narayana_dasha
+    divisional_chart: D1
+    value_text: "EXTERNAL_COMPUTATION_REQUIRED — Narayana Dasha sign periods not present in FORENSIC v8.0"
+    value_json:
+      status: EXTERNAL_COMPUTATION_REQUIRED
+      reason: "FORENSIC v8.0 §25.2 INTENTIONALLY EXCLUDED: Vimshottari is primary; Narayana Dasha is optional Jaimini-derived system. No period data provided in FORENSIC."
+      computation_spec: "Requires JH Narayana Dasha tab export: Lagna-based sign sequence with start/end years for each sign period (native birth 1984-02-05)"
+      forensic_note: "FORENSIC v8.0 §25.2 row 1 — INTENTIONALLY EXCLUDED marker"
+    source_section: "§25.2 row 1"
+    forensic_ref: "FORENSIC v8.0 §25.2 — Narayana Dasha (Jaimini, JH)"
+    extraction_method: direct_read
+  # ── §25.1 Moola Dasha (JH) ───────────────────────────────────────────────────
+  # FORENSIC v8.0 §25.1 marks Moola Dasha INTENTIONALLY EXCLUDED:
+  # "Vimshottari primary; optional Jaimini-derived system". No period data provided.
+  # B.10 discipline: marking EXTERNAL_COMPUTATION_REQUIRED.
+  - fact_id: MLD.STATUS
+    category: moola_dasha
+    divisional_chart: D1
+    value_text: "EXTERNAL_COMPUTATION_REQUIRED — Moola Dasha periods not present in FORENSIC v8.0"
+    value_json:
+      status: EXTERNAL_COMPUTATION_REQUIRED
+      reason: "FORENSIC v8.0 §25.1 INTENTIONALLY EXCLUDED: Vimshottari is primary; Moola Dasha is optional Jaimini-derived system. No period data provided in FORENSIC."
+      computation_spec: "Requires JH Moola Dasha tab export: planetary sequence and period lengths for the native (birth 1984-02-05)"
+      forensic_note: "FORENSIC v8.0 §25.1 row 1 — INTENTIONALLY EXCLUDED marker"
+    source_section: "§25.1 row 1"
+    forensic_ref: "FORENSIC v8.0 §25.1 — Moola Dasha (JH)"
+    extraction_method: direct_read
+  # ── §25.3 Sudasa Dasha (JH) ──────────────────────────────────────────────────
+  # FORENSIC v8.0 §25.3 marks Sudasa INTENTIONALLY EXCLUDED:
+  # "Vimshottari primary; optional specialized system". No period data provided.
+  # B.10 discipline: marking EXTERNAL_COMPUTATION_REQUIRED.
+  - fact_id: SUD.STATUS
+    category: sudasa
+    divisional_chart: D1
+    value_text: "EXTERNAL_COMPUTATION_REQUIRED — Sudasa Dasha periods not present in FORENSIC v8.0"
+    value_json:
+      status: EXTERNAL_COMPUTATION_REQUIRED
+      reason: "FORENSIC v8.0 §25.3 INTENTIONALLY EXCLUDED: Vimshottari is primary; Sudasa is optional specialized conditional dasha. No period data provided in FORENSIC."
+      computation_spec: "Requires JH Sudasa tab export: sign sequence with start/end years for each period (native birth 1984-02-05)"
+      forensic_note: "FORENSIC v8.0 §25.3 row 1 — INTENTIONALLY EXCLUDED marker"
+    source_section: "§25.3 row 1"
+    forensic_ref: "FORENSIC v8.0 §25.3 — Sudasa Dasha (JH)"
+    extraction_method: direct_read
+  # ── §6.7 Ishta / Kashta Phala ────────────────────────────────────────────────
+  # Source: FORENSIC v8.0 §6.7. Ishta = benefic output; Kashta = malefic output.
+  # 7 planets present; Rahu/Ketu absent from FORENSIC source (JH does not compute for nodes).
+  - fact_id: IKP.SATURN
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 43.28
+    value_text: "Saturn — Ishta Phala: 43.28 | Kashta Phala: 4.81 | ~9:1 beneficial — chart's primary benefic deliverer"
+    value_json:
+      planet: Saturn
+      ishta_phala: 43.28
+      kashta_phala: 4.81
+      net_assessment: "~9:1 beneficial — chart's primary benefic deliverer"
+    source_section: "§6.7 row 1"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.SATURN)"
+    extraction_method: direct_read
+  - fact_id: IKP.MARS
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 31.16
+    value_text: "Mars — Ishta Phala: 31.16 | Kashta Phala: 28.10 | slightly beneficial"
+    value_json:
+      planet: Mars
+      ishta_phala: 31.16
+      kashta_phala: 28.10
+      net_assessment: "slightly beneficial"
+    source_section: "§6.7 row 2"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.MARS)"
+    extraction_method: direct_read
+  - fact_id: IKP.VENUS
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 23.59
+    value_text: "Venus — Ishta Phala: 23.59 | Kashta Phala: 35.97 | slightly malefic"
+    value_json:
+      planet: Venus
+      ishta_phala: 23.59
+      kashta_phala: 35.97
+      net_assessment: "slightly malefic"
+    source_section: "§6.7 row 3"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.VENUS)"
+    extraction_method: direct_read
+  - fact_id: IKP.SUN
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 22.58
+    value_text: "Sun — Ishta Phala: 22.58 | Kashta Phala: 34.21 | slightly malefic"
+    value_json:
+      planet: Sun
+      ishta_phala: 22.58
+      kashta_phala: 34.21
+      net_assessment: "slightly malefic"
+    source_section: "§6.7 row 4"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.SUN)"
+    extraction_method: direct_read
+  - fact_id: IKP.MOON
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 21.09
+    value_text: "Moon — Ishta Phala: 21.09 | Kashta Phala: 32.58 | slightly malefic"
+    value_json:
+      planet: Moon
+      ishta_phala: 21.09
+      kashta_phala: 32.58
+      net_assessment: "slightly malefic"
+    source_section: "§6.7 row 5"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.MOON)"
+    extraction_method: direct_read
+  - fact_id: IKP.MERCURY
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 20.89
+    value_text: "Mercury — Ishta Phala: 20.89 | Kashta Phala: 38.65 | malefic (6L dual-governance)"
+    value_json:
+      planet: Mercury
+      ishta_phala: 20.89
+      kashta_phala: 38.65
+      net_assessment: "malefic (6L dual-governance)"
+    source_section: "§6.7 row 6"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.MERCURY)"
+    extraction_method: direct_read
+  - fact_id: IKP.JUPITER
+    category: ishta_kashta
+    divisional_chart: D1
+    value_number: 10.78
+    value_text: "Jupiter — Ishta Phala: 10.78 | Kashta Phala: 48.81 | ~1:5 malefic — dignified but Phalita-weak"
+    value_json:
+      planet: Jupiter
+      ishta_phala: 10.78
+      kashta_phala: 48.81
+      net_assessment: "~1:5 malefic — dignified but Phalita-weak"
+    source_section: "§6.7 row 7"
+    forensic_ref: "FORENSIC v8.0 §6.7 — Ishta/Kashta Phala (IKP.JUPITER)"
+    extraction_method: direct_read
+  - fact_id: IKP.NOTE
+    category: ishta_kashta
+    divisional_chart: D1
+    value_text: "Rahu and Ketu absent from FORENSIC v8.0 §6.7 — JH does not compute Ishta/Kashta for shadow planets"
+    value_json:
+      note: "Rahu/Ketu not in FORENSIC §6.7 source; JH Ishta/Kashta computed for 7 visible grahas only"
+      structural_note: "Saturn exalted 7H delivers 9:1 benefic Phala; Jupiter in own-sign 9H is Phalita-weakest (~1:5 malefic). Empirical basis for CTR.03 (Jupiter paradox)."
+    source_section: "§6.7 structural note"
+    forensic_ref: "FORENSIC v8.0 §6.7 structural note"
+    extraction_method: direct_read
+  # ── §6.8 Pancha-Vargeeya Classification ──────────────────────────────────────
+  # Source: FORENSIC v8.0 §6.8. Composite strength across 5 key vargas (Rasi+Hora+Drekkana+Navamsha+Dvadashamsha).
+  # 7 planets present; Rahu/Ketu absent from FORENSIC source (nodes not scored by JH in this system).
+  - fact_id: PVC.JUPITER
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 14.76
+    value_text: "Jupiter — Pancha-Vargeeya Score: 14.76 | Classification: POWERFUL (highest)"
+    value_json:
+      planet: Jupiter
+      score: 14.76
+      classification: POWERFUL
+      rank_note: "highest score in chart"
+    source_section: "§6.8 row 1"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.JUPITER)"
+    extraction_method: direct_read
+  - fact_id: PVC.SATURN
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 12.12
+    value_text: "Saturn — Pancha-Vargeeya Score: 12.12 | Classification: POWERFUL"
+    value_json:
+      planet: Saturn
+      score: 12.12
+      classification: POWERFUL
+    source_section: "§6.8 row 2"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.SATURN)"
+    extraction_method: direct_read
+  - fact_id: PVC.MERCURY
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 11.43
+    value_text: "Mercury — Pancha-Vargeeya Score: 11.43 | Classification: POWERFUL"
+    value_json:
+      planet: Mercury
+      score: 11.43
+      classification: POWERFUL
+    source_section: "§6.8 row 3"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.MERCURY)"
+    extraction_method: direct_read
+  - fact_id: PVC.VENUS
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 7.28
+    value_text: "Venus — Pancha-Vargeeya Score: 7.28 | Classification: Ordinary"
+    value_json:
+      planet: Venus
+      score: 7.28
+      classification: Ordinary
+    source_section: "§6.8 row 4"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.VENUS)"
+    extraction_method: direct_read
+  - fact_id: PVC.MARS
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 7.24
+    value_text: "Mars — Pancha-Vargeeya Score: 7.24 | Classification: Ordinary"
+    value_json:
+      planet: Mars
+      score: 7.24
+      classification: Ordinary
+    source_section: "§6.8 row 5"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.MARS)"
+    extraction_method: direct_read
+  - fact_id: PVC.MOON
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 6.92
+    value_text: "Moon — Pancha-Vargeeya Score: 6.92 | Classification: Ordinary"
+    value_json:
+      planet: Moon
+      score: 6.92
+      classification: Ordinary
+    source_section: "§6.8 row 6"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.MOON)"
+    extraction_method: direct_read
+  - fact_id: PVC.SUN
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_number: 6.90
+    value_text: "Sun — Pancha-Vargeeya Score: 6.90 | Classification: Ordinary"
+    value_json:
+      planet: Sun
+      score: 6.90
+      classification: Ordinary
+    source_section: "§6.8 row 7"
+    forensic_ref: "FORENSIC v8.0 §6.8 — Pancha-Vargeeya Classification (PVC.SUN)"
+    extraction_method: direct_read
+  - fact_id: PVC.NOTE
+    category: pancha_vargeeya
+    divisional_chart: D1
+    value_text: "Operational triad: Mercury (primary instrument — 8-system convergence, PVC POWERFUL), Saturn (primary deliverer — AmK exalted, Shadbala JH #1, Ishta #1, PVC POWERFUL), Jupiter (primary authorizer — 9L own-sign, PVC MOST POWERFUL, but Phalita-weak per §6.7)"
+    value_json:
+      note: "Rahu/Ketu not in FORENSIC §6.8 source; JH Pancha-Vargeeya computed for 7 visible grahas only"
+      operational_triad: "Jupiter (14.76 POWERFUL) + Saturn (12.12 POWERFUL) + Mercury (11.43 POWERFUL)"
+      structural_note: "Jupiter highest PVC score yet Phalita-weakest (§6.7 CTR.03 Jupiter paradox)"
+    source_section: "§6.8 structural note"
+    forensic_ref: "FORENSIC v8.0 §6.8 structural note"
     extraction_method: direct_read
