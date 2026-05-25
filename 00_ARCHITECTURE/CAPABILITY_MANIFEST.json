@@ -168,7 +168,7 @@
     {
       "canonical_id": "MSR",
       "path": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
-      "version": "5.0",
+      "version": "5.1",
       "status": "CURRENT",
       "layer": "L2.5",
       "expose_to_chat": true,
@@ -176,7 +176,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "m9a-s1-msr-v5-573signals",
+      "fingerprint": "dar-p5-s20-msr-v5-1-573signals-grounded",
       "native_id": "abhisek",
       "preferred_for": [
         "factual",

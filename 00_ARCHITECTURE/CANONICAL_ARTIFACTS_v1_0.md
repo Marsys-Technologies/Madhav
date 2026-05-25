@@ -129,9 +129,9 @@ Life Event Log v1.2 is CURRENT. MP v2.0 names LEL as M4 prerequisite with cadenc
 ```yaml
 canonical_id: MSR
 path: 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
-version: "5.0"
+version: "5.1"
 status: CURRENT
-fingerprint_sha256: ROTATED_M9-A-S1-2026-05-14
+fingerprint_sha256: ROTATED_DAR-P5-S20-2026-05-25
 predecessor_path: 025_HOLISTIC_SYNTHESIS/MSR_v4_0.md
 mirror_obligations:
   claude_side: 025_HOLISTIC_SYNTHESIS/MSR_v5_0.md
@@ -139,8 +139,8 @@ mirror_obligations:
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "MSR is Claude-authored; Gemini consumes at L4. The Gemini-side L2.5 canonical-path block in .geminirules (MP.5) names MSR_v5_0 as CURRENT — that declaration is a path pointer, not a content mirror."
-last_verified_session: M9-A-S1
-last_verified_on: 2026-05-14
+last_verified_session: DAR-P5-S20
+last_verified_on: 2026-05-25
 numeric_invariants:
   signal_count: 573
 notes: "573 signals: 543 natal (v4.0) + §VIII 15 Yogini signals (SIG.MSR.544–558) + §IX 15 Tajika signals (SIG.MSR.559–573). MSR_v4_0.md retained as SUPERSEDED predecessor. M9-A-S1 2026-05-14."

@@ -1,6 +1,6 @@
 ---
 artifact: MSR_v5_0.md
-version: "5.0"
+version: 5.1
 canonical_id: MSR
 status: CURRENT
 predecessor: MSR_v4_0.md (543 signals)
@@ -13,6 +13,7 @@ signal_count: 573
 v3_1_changelog: "VARGA-ETL-FULL-S1 D12 (2026-05-10): added §VI — 15 Cross-Varga Dignity Signals SIG.MSR.500–514. Sourced from FORENSIC §3.15 CSI ledger + §3.1–§3.14 divisional placement tables. No prior signal mutated."
 v3_1_reconciliation_note: "M5-A-S1 (2026-05-13): Signal-completeness reconciliation. grep-count confirms 514 authored SIG.MSR.* entries, exactly matching signal_count:514. Four ID gaps are confirmed numbering artifacts — SIG.MSR.207 (between 206 and 208; skipped during v1.0 authoring) and SIG.MSR.497–499 (between 496 and 500; v2.0 closed at 496 before v3.1 added 500–514). No content is missing; the gaps are artifacts of in-session renumbering. Platform comparison (msr_domain_buckets.json) not available in this worktree; structural count is confirmed correct."
 v4_0_changelog: "M8-F-S1 (2026-05-14): added §VII — 29 Nadi + BNN Signals SIG.MSR.515–543. Extracted from Bhrigu Nandi Nadi (25 signals), Chandra Kala Nadi (2 signals), Dhruva Nadi (1 signal), and 1 cross-source signal. All use Nadi-specific trigger mechanisms (sequential transit analysis, house-from-planet counting) absent from Parashari/Jaimini framework. Dedup confirmed against SIG.MSR.001–514; no prior signal mutated. Source: MSR_EXPANSION_PROPOSAL_v1_0.md + BNN_SIGNAL_EXTRACTION_v1_0.md + NADI_SIGNAL_EXTRACTION_v1_0.md."
+v5_1_changelog: "DAR-P5-S20 (2026-05-25): B.3 derivation_ledger grounding complete via DAR workstream (567/569 parseable signals grounded; 2 signals already had derivation_ledger blocks prior to DAR; 4 known ID gaps in numbering: SIG.MSR.207, SIG.MSR.497–499). All grounding_status fields set to GROUNDED across all 12 domains (Lagna, Sun, Moon, Mars via DAR-P5-S16; Mercury, Jupiter, Venus, Saturn via DAR-P5-S17; house_domain, dasha, nadi_bnn, yogini_tajaka via DAR-P5-S18). Canonical total: 573 signals."
 ---
 
 # MSR_v5_0 — MASTER SIGNAL REGISTER (UNIFIED)
