@@ -23,9 +23,9 @@ import {
 } from '@/lib/mcp/primitives_registry'
 
 describe('primitives_registry — isAllowedSurgicalTool', () => {
-  it('returns true for all 11 MCP-facing tool names', () => {
+  it('returns true for all 23 whitelisted tool names', () => {
     const mcpToolNames = Object.keys(MCP_TO_RETRIEVAL_TOOL)
-    expect(mcpToolNames).toHaveLength(11)
+    expect(mcpToolNames).toHaveLength(23)
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
@@ -39,14 +39,15 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
     expect(isAllowedSurgicalTool('__proto__')).toBe(false)
   })
 
-  it('MCP_TO_RETRIEVAL_TOOL maps all 11 entries to valid SURGICAL_TOOLS members', () => {
+  it('MCP_TO_RETRIEVAL_TOOL maps all entries to valid SURGICAL_TOOLS members', () => {
     for (const [, retrievalName] of Object.entries(MCP_TO_RETRIEVAL_TOOL)) {
       expect(SURGICAL_TOOLS).toContain(retrievalName)
     }
   })
 
-  it('all 11 expected MCP tool names are present in the whitelist', () => {
+  it('all 23 expected tool names are present in the whitelist', () => {
     const expected = [
+      // Original 11
       'query_chart_facts',
       'query_signals',
       'query_dasha_periods',
@@ -58,6 +59,20 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
       'get_cgm_subgraph',
       'cross_school_lookup',
       'read_classical_text',
+      // TR Wave Class A — MCP-facing names
+      'query_varshphal',
+      'query_divisional_chart',
+      'query_remedial_mantras',
+      'muhurta_finder',
+      // TR Wave Class A — retrieval-name aliases (wrappers call with retrieval name)
+      'query_varshaphala',
+      'divisional_query',
+      'remedial_codex_query',
+      'query_muhurat',
+      // TR Wave Class B/C stubs
+      'query_tara_balam',
+      'query_chandra_balam',
+      'jaimini_chara_dasha',
     ]
     for (const name of expected) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
