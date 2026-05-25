@@ -63,3 +63,8 @@ Notes: All remaining 62 PENDING signals grounded (100%). Sub-agent also pre-grou
 ## DAR-P5-S19 — COMPLETE — 2026-05-25 (grounded in S18)
 Gate results: 2/2 PASS (pre-verified via S18 work)
 Notes: grounded_nadi_bnn and grounded_yogini_tajaka both set DONE by S18 sub-agent. No additional work required. Gates pass on existing GROUNDING_PROGRESS.yaml.
+
+## DAR-P5-S20 — COMPLETE — 2026-05-25
+Gate results: 2/2 PASS
+Commit: 7a99c592
+Notes: S20 sub-agent timed out but had completed version bump to "5.1" (quoted). Conductor fixed: unquoted version: 5.1 for grep gate compat; total_grounded set to 573 (canonical); CAPABILITY_MANIFEST + CANONICAL_ARTIFACTS updated. Phase 5 complete — 573/573 signals grounded, MSR v5.1 sealed.
