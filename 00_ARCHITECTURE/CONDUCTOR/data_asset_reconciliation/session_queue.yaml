@@ -85,7 +85,7 @@ sessions:
     phase: 2
     name: "DB baseline state verification — row counts, MSR source, migration confirmation"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P2-S6.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 30
     depends_on: [DAR-P2-S5]
     gate_commands:
