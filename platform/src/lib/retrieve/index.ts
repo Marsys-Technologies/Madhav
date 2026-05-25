@@ -17,6 +17,7 @@
  * UDA-1-S1: query_transits_over_natal, query_yogas_active_now — transit windows + yoga activation (tools 37-38)
  * UDA-1-S2: get_planet_avastha, get_shadbala_full — avastha 3-step fallback + shadbala roll-up (tools 39-40)
  * UDA-1-S3: query_jaimini_chara_dasha — Jaimini Chara Dasha active period + full timeline (tool 41)
+ * UDA-1-S4: query_planetary_period_predictions — classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
  */
 
 import * as msrSql from './msr_sql'
@@ -97,6 +98,9 @@ import * as getShadbalaFull from './get_shadbala_full'
 // UDA-1-S3 — Jaimini Chara Dasha active period + full 12-rashi timeline (tool 41)
 import * as queryJaiminiCharaDasha from './query_jaimini_chara_dasha'
 
+// UDA-1-S4 — Classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
+import * as queryPlanetaryPeriodPredictions from './query_planetary_period_predictions'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -142,6 +146,7 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   getPlanetAvastha.tool,
   getShadbalaFull.tool,
   queryJaiminiCharaDasha.tool,
+  queryPlanetaryPeriodPredictions.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
