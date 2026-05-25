@@ -348,7 +348,7 @@ sessions:
 
 - id: UDA-2-S1
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S1_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -357,7 +357,7 @@ sessions:
 
 - id: UDA-2-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S2_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -366,7 +366,7 @@ sessions:
 
 - id: UDA-2-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S3_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -377,7 +377,7 @@ sessions:
 
 - id: UDA-2-S4
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S4_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -388,7 +388,7 @@ sessions:
 
 - id: UDA-2-S5
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S5_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -399,7 +399,7 @@ sessions:
 
 - id: UDA-2-S6
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S6_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -410,7 +410,7 @@ sessions:
 
 - id: UDA-2-S7
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S7_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -421,7 +421,7 @@ sessions:
 
 - id: UDA-2-S8
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S8_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -432,7 +432,7 @@ sessions:
 
 - id: UDA-2-S9
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S9_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
@@ -441,7 +441,7 @@ sessions:
 
 - id: UDA-2-S10
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S10_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - python3 -c "import json; d=json.load(open('/Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/CAPABILITY_MANIFEST.json')); both=[t for t in d.get('tools',[]) if t.get('channel')=='both']; print(f'channel:both tools: {len(both)}'); assert len(both)>=29,'FAIL'; print('PASS')"
@@ -450,7 +450,7 @@ sessions:
 
 - id: UDA-3-S1
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_3_S1_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/INTERFACE_NORMALIZATION_REGISTER_v1_0.md && echo PASS
@@ -459,7 +459,7 @@ sessions:
 
 - id: UDA-3-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_3_S2_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - grep -q 'schema_parity\|§2\|Schema Parity' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/INTERFACE_NORMALIZATION_REGISTER_v1_0.md && echo PASS
@@ -467,7 +467,7 @@ sessions:
 
 - id: UDA-3-S3
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_3_S3_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - grep -rq 'R-NRM.1' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform/src/lib/planner/ && echo PASS
@@ -477,7 +477,7 @@ sessions:
 
 - id: UDA-4-S1
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_4_S1_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/MSR_CITATION_SCAFFOLDS_v1_0.md && echo PASS
@@ -485,7 +485,7 @@ sessions:
 
 - id: UDA-4-S2
   brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_4_S2_v1_0.md
-  status: pending
+  status: completed
   requires_hap: false
   gate_commands:
     - grep -q 'build_manifests' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform/python-sidecar/scripts/bootstrap_panchanga.py && echo PASS

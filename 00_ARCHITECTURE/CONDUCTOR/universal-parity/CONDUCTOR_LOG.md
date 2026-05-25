@@ -58,3 +58,19 @@
 | TEST-2 complete | — | — | — |
 | TEST-3 complete | — | — | — |
 | TEST-4 complete (CAMPAIGN CLOSE) | — | — | — |
+| UDA-2-S1 | 2026-05-25T13:38:36Z | PASS | 3 gates green | b9044846 |
+| UDA-2-S2 | 2026-05-25T13:41:36Z | PASS | 3 gates green | 6063652f |
+| UDA-2-S3 | 2026-05-25T13:45:33Z | PASS | 5 gates green | f16ec96a |
+| UDA-2-S4 | 2026-05-25T13:49:48Z | PASS | 5 gates green | 1ed41418 |
+| UDA-2-S5 | 2026-05-25T13:54:00Z | PASS | 5 gates green | fac2e38c |
+| UDA-2-S6 | 2026-05-25T13:57:51Z | PASS | 5 gates green | 8c3c3f27 |
+| UDA-2-S7 | 2026-05-25T14:02:38Z | PASS | 5 gates green | df811245 |
+| UDA-2-S8 | 2026-05-25T14:07:49Z | PASS | 5 gates green | 11f74e4e |
+| UDA-2-S9 | 2026-05-25T14:09:50Z | PASS | 2 gates green | 1328076f |
+| UDA-2-S10 | 2026-05-25T14:11:40Z | PASS | 2 gates green | 28fdc3fa |
+| UDA-3-S1 | 2026-05-25T14:19:46Z | PASS | 2/3 gates green; gate-3 platform-tsc pre-existing test errors only (trace-audit.test.ts + stop-and-retain-r11c.spec.ts) — source file retrieve/index.ts clean | 0eb252c5 |
+| UDA-3-S2 | 2026-05-25T14:25:06Z | PASS | 2 gates green | bbd815bb |
+| UDA-3-S3 | 2026-05-25T14:27:30Z | PASS | 3 gates green | de728ebb |
+| UDA-4-S1 | 2026-05-25T14:36:29Z | PASS | 2 gates green | 9a1175b3 |
+| UDA-4-S2 | 2026-05-25T14:38:38Z | PASS | 2 gates green | 36e10347 |
+| RUN 3 COMPLETE | 2026-05-25T14:38:38Z | PASS | 15/15 sessions passed | — |
