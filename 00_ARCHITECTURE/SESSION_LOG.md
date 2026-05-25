@@ -27893,3 +27893,29 @@ session_close:
     - gh pr merge 166/167/168/169 (operator step when ready)
   current_state_updated: true
   mirror_updates_propagated: false
+
+---
+
+## GISMCP-DEPLOY | 2026-05-26
+
+```yaml
+session_id: GISMCP-DEPLOY-2026-05-26
+type: operator_deploy
+date: 2026-05-26
+phases_completed:
+  - merge: fix/gismcp-r3 + fix/gismcp-r1-r2 → main
+  - deploy: amjis-web (R2 retrieval engines) → amjis-web-00411-p6g
+  - deploy: amjis-mcp sidecar (R1 server.ts de-gating) → amjis-mcp-00017-6nl
+  - cleanup: worktrees MadhavGISMCP-S1 + MadhavGISMCP-S2 retired (already removed by SRP-HYGIENE)
+  - cleanup: branches fix/gismcp-r1-r2 + fix/gismcp-r3 deleted (local + remote)
+  - governance: CLAUDE.md v4.6 + CURRENT_STATE v5.61 + SESSION_LOG updated
+deliverables:
+  R1: All 40 MCP tools unconditional (tier gate removed from server.ts, tool_health.ts, data_coverage.ts)
+  R2: RETRIEVAL_TOOLS 51→55 (query_tara_balam, query_chandra_balam, jaimini_chara_dasha, jaimini_chara_dasha_full)
+  R3: MSR signals 573/573 VERIFIED_NO_GAP
+cloud_run:
+  amjis_web: amjis-web-00411-p6g
+  amjis_mcp: amjis-mcp-00017-6nl
+post_deploy_errors: 0
+outcome: COMPLETE
+```

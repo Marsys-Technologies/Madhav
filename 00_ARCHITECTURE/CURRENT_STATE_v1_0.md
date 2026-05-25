@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.60
+version: 5.61
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.61 (2026-05-26, GISMCP-DEPLOY):
+    **GISMCP Remediation COMPLETE — all 40 MCP tools unconditional (tier gate removed from server.ts); RETRIEVAL_TOOLS 51→55 (4 canonical-name aliases: query_tara_balam, query_chandra_balam, jaimini_chara_dasha, jaimini_chara_dasha_full); MSR signals 573/573 VERIFIED_NO_GAP. Both streams merged to main (8a30382b). amjis-web-00411-p6g + amjis-mcp-00017-6nl deployed. Worktrees MadhavGISMCP-S1 + MadhavGISMCP-S2 retired. Branches fix/gismcp-r1-r2 + fix/gismcp-r3 deleted. 0 ERROR logs post-deploy.**
+    files_touched: ["CLAUDE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "platform-mcp/src/server.ts", "platform-mcp/src/tools/tool_health.ts", "platform-mcp/src/tools/data_coverage.ts", "platform/src/lib/retrieve/query_tara_balam.ts", "platform/src/lib/retrieve/query_chandra_balam.ts", "platform/src/lib/retrieve/jaimini_chara_dasha.ts", "platform/src/lib/retrieve/jaimini_chara_dasha_full.ts"]
+    active_phase_plan_sub_phase: M6 INCOMING (deploy session; no macro-phase change).
+    last_session_id: GISMCP-DEPLOY. predecessor_session: CLEANUP-1.
+    carry_forwards: ["Operator: run gcloud --remove-env-vars MARSYS_FLAG_CONSUME_UI_V2_ENABLED after next deploy", "Operator: merge PRs #166–#169 via gh pr merge when ready", "Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md"]
+    next_session_objective: "All GISMCP remediation deployed. Open M6-A-S1."
+    file_updated_at: 2026-05-26. file_updated_by_session: GISMCP-DEPLOY.
   - v5.60 (2026-05-26, CLEANUP-1):
     **CLEANUP-1 COMPLETE — WAVE_1_SEAL_v1_0.md landed on main; feature/conductor-to-main deleted (5 remote branches now remain: main + 4 srp-test branches). CONSUME_UI_V2_ENABLED flag removed (feature_flags.ts + ConsumeChatV2 props + 2 consume pages + deploy.yml + test file retired; gcloud --remove-env-vars queued as operator step post-deploy). SRP test PRs #166–#169 merge commands printed for operator. No application behaviour changes.**
     files_touched: ["00_ARCHITECTURE/WAVE_1_SEAL_v1_0.md", "platform/src/lib/config/feature_flags.ts", "platform/src/components/consume/ConsumeChatV2.tsx", "platform/src/app/clients/[id]/consume/page.tsx", "platform/src/app/clients/[id]/consume/[conversationId]/page.tsx", ".github/workflows/deploy.yml", "platform/tests/unit/chat-v2/feature_flags.test.ts", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
