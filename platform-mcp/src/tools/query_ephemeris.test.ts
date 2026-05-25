@@ -183,8 +183,11 @@ describe('query_ephemeris — C5 date_range + sample_step fix', () => {
     expect(mockCallPlatformPrimitive).toHaveBeenCalledTimes(1)
   })
 
-  // AC.4: sample_step is forwarded to the primitive
-  it('AC.4 — sample_step="7d" is included in toolParams', async () => {
+  // AC.4: sample_step is forwarded to the primitive as an integer (FIX-4)
+  // The MCP schema accepts "1d"|"7d"|"30d" strings for UX clarity, but the platform
+  // primitive reads sample_step as a number. "7d" > 1 evaluates to false (NaN), so
+  // the tool must convert to integer days before calling the primitive.
+  it('AC.4 — sample_step="7d" is sent to primitive as integer 7 (not string)', async () => {
     const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
     mockCallPlatformPrimitive.mockResolvedValue(buildEphemerisEnvelope([]))
 
@@ -195,10 +198,11 @@ describe('query_ephemeris — C5 date_range + sample_step fix', () => {
     })
 
     const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
-    expect(params['sample_step']).toBe('7d')
+    expect(params['sample_step']).toBe(7)
+    expect(typeof params['sample_step']).toBe('number')
   })
 
-  it('AC.4 — sample_step="30d" is included in toolParams', async () => {
+  it('AC.4 — sample_step="30d" is sent to primitive as integer 30 (not string)', async () => {
     const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
     mockCallPlatformPrimitive.mockResolvedValue(buildEphemerisEnvelope([]))
 
@@ -209,10 +213,11 @@ describe('query_ephemeris — C5 date_range + sample_step fix', () => {
     })
 
     const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
-    expect(params['sample_step']).toBe('30d')
+    expect(params['sample_step']).toBe(30)
+    expect(typeof params['sample_step']).toBe('number')
   })
 
-  it('AC.4 — sample_step defaults to "1d" when not provided', async () => {
+  it('AC.4 — sample_step defaults to integer 1 when not provided', async () => {
     const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
     mockCallPlatformPrimitive.mockResolvedValue(buildEphemerisEnvelope([]))
 
@@ -222,7 +227,8 @@ describe('query_ephemeris — C5 date_range + sample_step fix', () => {
     })
 
     const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
-    expect(params['sample_step']).toBe('1d')
+    expect(params['sample_step']).toBe(1)
+    expect(typeof params['sample_step']).toBe('number')
   })
 
   it('AC.4 — return_changes_only=true is forwarded to toolParams', async () => {

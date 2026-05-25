@@ -178,8 +178,8 @@ const QuerySignalsInputSchema = z.object({
   forward_looking: z.boolean().optional().describe(
     'If true, return only prospective (forward-looking) signals.'
   ),
-  valence: z.enum(['positive', 'negative', 'neutral']).optional().describe(
-    'Filter by signal valence. "positive" = benefic outcomes; "negative" = malefic/challenging; "neutral" = mixed or context-dependent.'
+  valence: z.enum(['benefic', 'malefic', 'context-dependent']).optional().describe(
+    'Filter by signal valence. "benefic" = helpful/positive outcomes; "malefic" = challenging/difficult; "context-dependent" = mixed or situational.'
   ),
   temporal_activation: z.enum(['permanent', 'dasha_tied', 'transit_tied']).optional().describe(
     'Filter by activation pattern. "permanent" = natal, always active; "dasha_tied" = active only in specific dasha periods; "transit_tied" = active only during specific transits.'

@@ -50,6 +50,15 @@ export const QUERY_EPHEMERIS_DESCRIPTION = buildToolDescription({
 
 const MAX_DATE_RANGE_DAYS = 1825  // 5 years
 
+/** Maps sample_step string enum to integer number of days for the platform primitive.
+ * The platform's QueryEphemerisInput.sample_step is a number, not a string.
+ * "7d" > 1 evaluates to false (NaN comparison); sending 7 correctly triggers downsampling. */
+const SAMPLE_STEP_DAYS: Record<string, number> = {
+  '1d': 1,
+  '7d': 7,
+  '30d': 30,
+}
+
 const QueryEphemerisInputSchema = z.object({
   planet: z.union([z.enum(PLANETS), z.array(z.enum(PLANETS))]).optional().describe(
     'Jyotish graha(s). One of or an array of: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu. ' +
@@ -131,7 +140,9 @@ export function registerQueryEphemeris(
           // Pass planets as array (primitive accepts both planet and planets)
           ...(planetsArray.length === 1 ? { planet: planetsArray[0] } : {}),
           ...(planetsArray.length > 1 ? { planets: planetsArray } : {}),
-          sample_step: args.sample_step ?? '1d',
+          // FIX-4: convert string enum ("7d") to integer days (7) for the platform primitive.
+          // platform QueryEphemerisInput.sample_step is number; "7d" > 1 is false (NaN), so never downsamples.
+          sample_step: SAMPLE_STEP_DAYS[args.sample_step ?? '1d'] ?? 1,
           return_changes_only: args.return_changes_only ?? false,
           ...(args.derived_fields !== undefined ? { derived_fields: args.derived_fields } : {}),
         },
