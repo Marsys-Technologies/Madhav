@@ -109,7 +109,7 @@ sessions:
     phase: 3
     name: "Populate msr_signals (migration-009) + l25_msr_signals from MSR v5.0"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S8.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 60
     depends_on: [DAR-P3-S7, DAR-P2-S6]
     gate_commands:
