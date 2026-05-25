@@ -1,7 +1,7 @@
 /**
- * catalog.ts — MCPT v3.2 Phase 4c (UDA-0-S3): Tool description catalog for lint testing.
+ * catalog.ts — MCPT v3.2 Phase 4c (UDA-0-S3, updated UDA-2-S9): Tool description catalog for lint testing.
  *
- * Exports an array of { name, description } entries for all 43 registered MCP tools.
+ * Exports an array of { name, description } entries for all 57 registered MCP tools.
  * Used by test/tool_descriptions.test.ts to enforce the Phase 3 lint gate:
  *   - every description starts with a disambiguator sentence
  *   - every description contains "When to prefer:"
@@ -39,6 +39,22 @@ import { QUERY_ECLIPSE_TRANSITS_DESCRIPTION } from './query_eclipse_transits.js'
 import { QUERY_PLANET_WAR_DESCRIPTION } from './query_planet_war.js'
 import { LIST_ASSETS_DESCRIPTION } from './list_assets.js'
 
+// Tier 3: UDA-2 additions (S1–S8)
+import { MSR_SQL_DESCRIPTION } from './msr_sql.js'
+import { TEMPORAL_DESCRIPTION } from './temporal.js'
+import { KP_QUERY_DESCRIPTION } from './kp_query.js'
+import { QUERY_KP_RULING_PLANETS_DESCRIPTION } from './query_kp_ruling_planets.js'
+import { PATTERN_REGISTER_DESCRIPTION } from './pattern_register.js'
+import { RESONANCE_REGISTER_DESCRIPTION } from './resonance_register.js'
+import { CLUSTER_ATLAS_DESCRIPTION } from './cluster_atlas.js'
+import { CONTRADICTION_REGISTER_DESCRIPTION } from './contradiction_register.js'
+import { QUERY_UCN_WALK_DESCRIPTION } from './query_ucn_walk.js'
+import { QUERY_CDLM_LOOKUP_DESCRIPTION } from './query_cdlm_lookup.js'
+import { QUERY_RM_WALK_DESCRIPTION } from './query_rm_walk.js'
+import { QUERY_JAIMINI_DRISHTI_DESCRIPTION } from './query_jaimini_drishti.js'
+import { TIMELINE_QUERY_DESCRIPTION } from './timeline_query.js'
+import { QUERY_SIGNAL_STATE_DESCRIPTION } from './query_signal_state.js'
+
 // Tier 4: raw-asset reads
 import { READ_ASSET_DESCRIPTION } from './read_asset.js'
 import { READ_CLASSICAL_TEXT_DESCRIPTION } from './read_classical_text.js'
@@ -60,7 +76,7 @@ export interface ToolCatalogEntry {
 }
 
 /**
- * CATALOG — all 43 MCP tools with their current descriptions.
+ * CATALOG — all 57 MCP tools with their current descriptions.
  * Order mirrors server.ts tool registration order.
  */
 export const CATALOG: ToolCatalogEntry[] = [
@@ -102,6 +118,22 @@ export const CATALOG: ToolCatalogEntry[] = [
   { name: 'query_eclipse_transits', description: QUERY_ECLIPSE_TRANSITS_DESCRIPTION },
   { name: 'query_planet_war', description: QUERY_PLANET_WAR_DESCRIPTION },
   { name: 'query_remedies_prescribed', description: 'Remedial prescription cross-reference from remedies table. When to prefer: use when retrieving previously prescribed remedies for specific afflictions or planets.' },
+
+  // Tier 3: UDA-2 additions (S1–S8) — portal-only → MCP parity
+  { name: 'msr_sql', description: MSR_SQL_DESCRIPTION },
+  { name: 'temporal', description: TEMPORAL_DESCRIPTION },
+  { name: 'kp_query', description: KP_QUERY_DESCRIPTION },
+  { name: 'query_kp_ruling_planets', description: QUERY_KP_RULING_PLANETS_DESCRIPTION },
+  { name: 'pattern_register', description: PATTERN_REGISTER_DESCRIPTION },
+  { name: 'resonance_register', description: RESONANCE_REGISTER_DESCRIPTION },
+  { name: 'cluster_atlas', description: CLUSTER_ATLAS_DESCRIPTION },
+  { name: 'contradiction_register', description: CONTRADICTION_REGISTER_DESCRIPTION },
+  { name: 'query_ucn_walk', description: QUERY_UCN_WALK_DESCRIPTION },
+  { name: 'query_cdlm_lookup', description: QUERY_CDLM_LOOKUP_DESCRIPTION },
+  { name: 'query_rm_walk', description: QUERY_RM_WALK_DESCRIPTION },
+  { name: 'query_jaimini_drishti', description: QUERY_JAIMINI_DRISHTI_DESCRIPTION },
+  { name: 'timeline_query', description: TIMELINE_QUERY_DESCRIPTION },
+  { name: 'query_signal_state', description: QUERY_SIGNAL_STATE_DESCRIPTION },
 
   // Tier 4: raw-asset reads
   { name: 'list_assets', description: LIST_ASSETS_DESCRIPTION },
