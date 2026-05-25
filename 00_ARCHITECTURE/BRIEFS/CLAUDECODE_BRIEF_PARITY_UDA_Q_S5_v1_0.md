@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-Q-S5: query_varshphal year range to MCP"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-Q-S5: Quality Backport query_varshphal year range support → MCP"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_Q_S5
 version: 1.0
 status: CURRENT
@@ -8,20 +8,25 @@ session_id: UDA-Q-S5
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-Q-S5 — Add year range support to MCP query_varshphal
+# UDA-Q-S5 — Quality Backport: query_varshphal year range support → MCP
 
 ## 1. Context
 
-The portal `platform/src/lib/retrieve/query_varshaphala.ts` (204 lines) supports range queries:
-- `year`: single year
-- `year_start` + `year_end`: range (returns all years from start to end inclusive)
+The portal version of `query_varshaphala` (`platform/src/lib/retrieve/query_varshaphala.ts`)
+supports a `year_start` / `year_end` range query — returning multiple annual charts at once.
+The MCP version (`platform-mcp/src/tools/query_varshphal.ts`) accepts only a single `year`
+parameter and returns exactly one annual chart.
 
-The MCP `platform-mcp/src/tools/query_varshphal.ts` (84 lines, from TR) only supports:
-- `year: z.number().int().min(1900).max(2100)` — single year only
+This session adds `year_start` / `year_end` range support to the MCP tool so that callers
+can request, for example, "Varshphal for years 2025 through 2030" in a single tool call.
 
-This session adds `year_start`/`year_end` range support to the MCP tool, matching portal capability.
+**Source of truth (read-only):** `platform/src/lib/retrieve/query_varshaphala.ts`
+**Target to modify:** `platform-mcp/src/tools/query_varshphal.ts`
+
+---
 
 ## 2. Scope
 
@@ -29,88 +34,88 @@ This session adds `year_start`/`year_end` range support to the MCP tool, matchin
 - `platform-mcp/src/tools/query_varshphal.ts`
 
 **must_not_touch:**
-- `platform/src/lib/retrieve/query_varshaphala.ts` (reference only)
+- `platform/src/lib/retrieve/query_varshaphala.ts` (source reference only)
 - `platform-mcp/src/server.ts`
-- `platform-mcp/src/tools/catalog.ts`
-- All portal files
-- Governance files
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform/src/lib/retrieve/query_varshaphala.ts` — source of truth for range support
-2. `platform-mcp/src/tools/query_varshphal.ts` — current MCP version
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.Q5.1: `platform-mcp/src/tools/query_varshphal.ts` Zod schema includes `year_start?: number` and `year_end?: number`
+- [ ] AC.Q5.2: When `year_start` and `year_end` are provided, the tool returns an array of annual charts for each year in the range (inclusive)
+- [ ] AC.Q5.3: Range is capped at a maximum of 20 years to prevent runaway queries
+- [ ] AC.Q5.4: Single `year` mode still works as before (backward compatible)
+- [ ] AC.Q5.5: `cd platform-mcp && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.Q5.6: Commit message contains `UDA-Q-S5`
 
-- [ ] AC.1: `year_start: z.number().int().min(1900).max(2100).optional()` added to input schema
-- [ ] AC.2: `year_end: z.number().int().min(1900).max(2100).optional()` added to input schema
-- [ ] AC.3: When `year_start` and `year_end` provided (without `year`), query returns all varshaphal records from `year_start` to `year_end` inclusive
-- [ ] AC.4: When only `year` provided, single-year behavior unchanged (backward compat)
-- [ ] AC.5: `year_end` must be >= `year_start`; return `{ error: "year_end must be >= year_start" }` if not
-- [ ] AC.6: Range span capped at 10 years max to prevent oversized results
-- [ ] AC.7: TypeScript compiles: `cd platform-mcp && npx tsc --noEmit`
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read both files
+### Step 1 — Read both tools
 
 ```bash
 cat platform/src/lib/retrieve/query_varshaphala.ts
 cat platform-mcp/src/tools/query_varshphal.ts
 ```
 
-### Step 2 — Update schema
+Understand how the platform primitive is called and how the response is shaped.
+
+### Step 2 — Add year_start / year_end to Zod schema
 
 ```typescript
-const inputSchema = z.object({
-  chart_id: z.string().uuid(),
-  year: z.number().int().min(1900).max(2100).optional(),
-  year_start: z.number().int().min(1900).max(2100).optional(),
-  year_end: z.number().int().min(1900).max(2100).optional(),
-  // preserve any existing params
-}).refine(d => d.year || (d.year_start && d.year_end), {
-  message: 'Provide either year or both year_start and year_end'
-});
+year_start: z.number().int().min(1900).max(2100).optional().describe(
+  'Start year for range query (inclusive). Use with year_end for multi-year retrieval.'
+),
+year_end: z.number().int().min(1900).max(2100).optional().describe(
+  'End year for range query (inclusive, max 20 years from year_start).'
+),
 ```
 
-### Step 3 — Add range validation
+### Step 3 — Implement range logic
 
 ```typescript
-if (year_start && year_end) {
-  if (year_end < year_start) return { error: 'year_end must be >= year_start' };
-  if (year_end - year_start > 10) return { error: 'Range exceeds 10-year maximum' };
+if (args.year_start && args.year_end) {
+  const start = args.year_start
+  const end = Math.min(args.year_end, start + 19) // cap at 20 years
+  const years = Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  const results = await Promise.all(
+    years.map(y => callPlatformPrimitive('query_varshaphala', { chart_id, year: y }, principal))
+  )
+  return okResult({ mode: 'range', year_start: start, year_end: end, charts: results.map(r => r.result) })
 }
+// single year mode (existing path)
 ```
 
-### Step 4 — Build range query
-
-Port from portal tool. If `year_start`/`year_end` provided:
-```sql
-SELECT * FROM varshaphal
-WHERE chart_id = $1 AND year >= $2 AND year <= $3
-ORDER BY year ASC
-```
-
-### Step 5 — TypeScript check
+### Step 4 — TypeScript compile check
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform-mcp && npx tsc --noEmit 2>&1 | head -40
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform-mcp && npx tsc --noEmit
 ```
 
-### Step 6 — Commit
+### Step 5 — Commit
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
 git add platform-mcp/src/tools/query_varshphal.ts
-git commit -m "feat(UDA-Q-S5): add year range support to MCP query_varshphal
+git commit -m "feat(UDA-Q-S5): add year_start/year_end range support to MCP query_varshphal
 
-- year_start + year_end params for multi-year queries
-- Range capped at 10 years; validated year_end >= year_start
-- Single-year 'year' param behavior unchanged
-- TypeScript clean
-
-Quality gap closed: MCP query_varshphal now == portal range capability."
+Backports portal year range capability. Max 20 years. Backward compatible.
+tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "year_start\|year_end" platform-mcp/src/tools/query_varshphal.ts && echo 'GATE_UDA_Q_S5_RANGE: PASS'
+git log --oneline -3 | grep -q 'UDA-Q-S5' && echo 'GATE_UDA_Q_S5_COMMIT: PASS'
+```
+
+All 2 gates must print PASS.
 
 ---
 

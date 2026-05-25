@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-1-S1: Port query_transits_over_natal + query_yogas_active_now to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-1-S1: Port query_transits_over_natal + query_yogas_active_now → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_1_S1
 version: 1.0
 status: CURRENT
@@ -8,127 +8,149 @@ session_id: UDA-1-S1
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-1-S1 — Port transit-over-natal + yogas-active tools to portal
+# UDA-1-S1 — Port to portal: query_transits_over_natal + query_yogas_active_now
 
 ## 1. Context
 
-These two MCP tools exist only in the MCP sidecar and are unavailable to the portal (both Classic Marsys planner path and Claude-style agentic loop). Portal routing cannot call them even if the planner proposes them — `executeMCPTool()` returns `ERROR: Unknown tool`.
+Two MCP tools — `query_transits_over_natal` and `query_yogas_active_now` — exist only in
+`platform-mcp/src/tools/` and are not available as portal RETRIEVAL_TOOLS. This session
+ports both to the portal channel.
 
-**Pattern for all UDA-1 sessions:** Read the MCP tool → create a matching portal retrieve file → register in `index.ts` → TypeScript check → commit. The portal file wraps the same SQL, adapted to the portal's DB connection pattern (pg pool, not MCP's DB client).
+**MCP source files (read-only references):**
+- `platform-mcp/src/tools/query_transits_over_natal.ts`
+- `platform-mcp/src/tools/query_yogas_active_now.ts`
+
+**Portal target files (create new):**
+- `platform/src/lib/retrieve/query_transits_over_natal.ts`
+- `platform/src/lib/retrieve/query_yogas_active_now.ts`
+
+**Portal registration target (modify):**
+- `platform/src/lib/retrieve/index.ts` — add both tools to RETRIEVAL_TOOLS
+
+---
 
 ## 2. Scope
 
 **may_touch:**
 - `platform/src/lib/retrieve/query_transits_over_natal.ts` (create)
 - `platform/src/lib/retrieve/query_yogas_active_now.ts` (create)
-- `platform/src/lib/retrieve/index.ts` (add two registrations)
+- `platform/src/lib/retrieve/index.ts` (add registrations)
 
 **must_not_touch:**
-- `platform-mcp/src/tools/query_transits_over_natal.ts` (reference only)
-- `platform-mcp/src/tools/query_yogas_active_now.ts` (reference only)
-- Any `platform-mcp/` files
-- Governance files
+- `platform-mcp/` (source reference only)
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_transits_over_natal.ts` — MCP source
-2. `platform-mcp/src/tools/query_yogas_active_now.ts` — MCP source
-3. `platform/src/lib/retrieve/index.ts` — to understand registration pattern
-4. One existing portal tool (e.g., `platform/src/lib/retrieve/query_transit_event.ts`) — to understand the portal DB connection pattern
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.1_1.1: `platform/src/lib/retrieve/query_transits_over_natal.ts` exists
+- [ ] AC.1_1.2: `platform/src/lib/retrieve/query_yogas_active_now.ts` exists
+- [ ] AC.1_1.3: Both tools are exported from `platform/src/lib/retrieve/index.ts` and appear in `RETRIEVAL_TOOLS`
+- [ ] AC.1_1.4: Both tools conform to the `RetrievalTool` interface (have `name`, `description`, `execute` function)
+- [ ] AC.1_1.5: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.1_1.6: Commit message contains `UDA-1-S1`
 
-- [ ] AC.1: `platform/src/lib/retrieve/query_transits_over_natal.ts` created — matches MCP input schema
-- [ ] AC.2: `platform/src/lib/retrieve/query_yogas_active_now.ts` created — matches MCP input schema
-- [ ] AC.3: Both tools registered in `platform/src/lib/retrieve/index.ts` RETRIEVAL_TOOLS array
-- [ ] AC.4: Both tools use the portal's DB connection pattern (not MCP's pattern)
-- [ ] AC.5: Tool names in `index.ts` exactly match: `query_transits_over_natal` and `query_yogas_active_now`
-- [ ] AC.6: TypeScript compiles: `cd platform && npx tsc --noEmit`
-- [ ] AC.7: No import errors — all dependencies exist in portal codebase
+---
 
-## 5. Implementation Pattern (apply to both tools)
+## 4. Step-by-Step Execution
 
-### Step 1 — Read the MCP implementation
+### Step 1 — Read MCP source files
 
 ```bash
 cat platform-mcp/src/tools/query_transits_over_natal.ts
 cat platform-mcp/src/tools/query_yogas_active_now.ts
 ```
 
-For each tool, note:
-- The Zod input schema (all params)
-- The SQL query string and parameterization
-- The output row shape
-- Any helper functions
+Also read the portal RetrievalTool interface:
+```bash
+cat platform/src/lib/retrieve/types.ts | head -60
+```
 
-### Step 2 — Read the portal DB pattern
+And a sample portal tool for interface pattern:
+```bash
+cat platform/src/lib/retrieve/query_dasha_periods.ts | head -80
+```
+
+### Step 2 — Create query_transits_over_natal.ts (portal version)
+
+The portal version wraps the same computation logic but uses:
+- `getStorageClient()` for DB access (via the portal's storage abstraction)
+- The `RetrievalTool` interface with `execute(input: QueryPlan): Promise<ToolBundleResult>`
+- The existing portal `query_ephemeris` tool as a dependency (call it directly)
+- The existing portal `chart_facts_query` tool to fetch natal longitudes
+
+Key computation: given `date_range`, `target_natal_point`, `orb_degrees`, `transit_planets`,
+`aspects` — find transit windows where a transit planet forms an aspect to the natal point.
+
+Port the algorithm directly from the MCP tool, adapting to use portal storage patterns.
+
+### Step 3 — Create query_yogas_active_now.ts (portal version)
+
+The portal version:
+1. Calls `chart_facts_query` with `category: "yoga"` to get natal yoga rows
+2. Calls `query_dasha_periods` with `as_of_date` (default today) to get active MD/AD
+3. Classifies each yoga as "active", "latent", or "dormant" based on planet match
+4. Returns classified list with activation reasons
+
+Port the classification algorithm from the MCP tool.
+
+### Step 4 — Add to index.ts
+
+Add imports and RETRIEVAL_TOOLS entries at the end of `platform/src/lib/retrieve/index.ts`:
+
+```typescript
+// UDA-1-S1: ports from MCP — transit-to-natal aspects + yoga activation
+import * as queryTransitsOverNatal from './query_transits_over_natal'
+import * as queryYogasActiveNow from './query_yogas_active_now'
+```
+
+Add to RETRIEVAL_TOOLS array:
+```typescript
+queryTransitsOverNatal.tool,
+queryYogasActiveNow.tool,
+```
+
+(Use whatever export name the tool uses, following the existing pattern in index.ts.)
+
+### Step 5 — TypeScript compile check
 
 ```bash
-cat platform/src/lib/retrieve/query_transit_event.ts
-head -60 platform/src/lib/retrieve/index.ts
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform && npx tsc --noEmit
 ```
 
-Note: the portal uses a different DB client/pool than MCP. Adapt the MCP tool's `db.query()` calls to the portal's equivalent (likely `pool.query()` or a `withClient()` wrapper).
-
-### Step 3 — Create portal files
-
-Create `platform/src/lib/retrieve/query_transits_over_natal.ts`:
-```typescript
-// Ported from platform-mcp/src/tools/query_transits_over_natal.ts
-// UDA-1-S1: Universal Parity Campaign
-import { z } from 'zod';
-import { <portal_db_import> } from '<portal_db_path>';
-
-const inputSchema = z.object({
-  // ... (copy from MCP tool) ...
-});
-
-export async function queryTransitsOverNatal(input: z.infer<typeof inputSchema>) {
-  const validated = inputSchema.parse(input);
-  // ... (adapted SQL from MCP tool) ...
-}
-
-export const queryTransitsOverNatalTool = {
-  name: 'query_transits_over_natal',
-  description: '<copy from MCP tool>',
-  inputSchema,
-  execute: queryTransitsOverNatal,
-};
-```
-
-Repeat for `query_yogas_active_now.ts`.
-
-### Step 4 — Register in index.ts
-
-In `platform/src/lib/retrieve/index.ts`, add:
-```typescript
-import { queryTransitsOverNatalTool } from './query_transits_over_natal';
-import { queryYogasActiveNowTool } from './query_yogas_active_now';
-```
-
-And add both to the RETRIEVAL_TOOLS array.
-
-### Step 5 — TypeScript check
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
-```
+Fix any errors.
 
 ### Step 6 — Commit
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add platform/src/lib/retrieve/query_transits_over_natal.ts
-git add platform/src/lib/retrieve/query_yogas_active_now.ts
-git add platform/src/lib/retrieve/index.ts
+git add platform/src/lib/retrieve/query_transits_over_natal.ts \
+        platform/src/lib/retrieve/query_yogas_active_now.ts \
+        platform/src/lib/retrieve/index.ts
 git commit -m "feat(UDA-1-S1): port query_transits_over_natal + query_yogas_active_now to portal
 
-Both tools now available in portal RETRIEVAL_TOOLS (Classic + Claude-style).
-Adapted from MCP implementations; portal DB connection pattern applied.
-TypeScript clean."
+Both tools adapted from MCP and registered in RETRIEVAL_TOOLS.
+tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "query_transits_over_natal\|transits_over_natal" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S1_TRANSITS: PASS'
+grep -q "query_yogas_active_now\|yogas_active_now" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S1_YOGAS: PASS'
+test -f platform/src/lib/retrieve/query_transits_over_natal.ts && echo 'GATE_UDA_1_S1_FILE_TRANSITS: PASS'
+test -f platform/src/lib/retrieve/query_yogas_active_now.ts && echo 'GATE_UDA_1_S1_FILE_YOGAS: PASS'
+git log --oneline -3 | grep -q 'UDA-1-S1' && echo 'GATE_UDA_1_S1_COMMIT: PASS'
+```
+
+All 5 gates must print PASS.
 
 ---
 

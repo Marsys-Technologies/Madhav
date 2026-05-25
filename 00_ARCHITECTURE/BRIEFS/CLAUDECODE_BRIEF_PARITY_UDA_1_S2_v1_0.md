@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-1-S2: Port get_planet_avastha + get_shadbala_full to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-1-S2: Port get_planet_avastha + get_shadbala_full → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_1_S2
 version: 1.0
 status: CURRENT
@@ -8,91 +8,151 @@ session_id: UDA-1-S2
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-1-S2 — Port avastha + shadbala tools to portal
+# UDA-1-S2 — Port to portal: get_planet_avastha + get_shadbala_full
 
 ## 1. Context
 
-Two MCP-only tools to port. **Important:** the portal may already have a `shadbala_query.ts` — check before creating a new file. If an equivalent exists, compare schemas and either upgrade the existing file or register the MCP version under the new name.
+Two MCP surgical primitives — `get_planet_avastha` and `get_shadbala_full` — are not available
+as portal RETRIEVAL_TOOLS. This session ports both.
 
-- `get_planet_avastha` — returns the avastha (planetary state/dignity) breakdown for each planet: bal avastha, jagrut/swapna/sushupti, shayana/upaveshana/netrapani, etc. Rich planetary state data used in interpretation.
-- `get_shadbala_full` — returns the complete shadbala (six-fold strength) calculation: sthana bala, dig bala, kala bala, chesta bala, naisargika bala, drig bala, with totals and relative rankings.
+**What they do:**
+
+`get_planet_avastha`: Returns the avastha (planetary state) for a given planet from
+`chart_facts` category "avastha", with classical meaning. Fallback chain:
+1. chart_facts category "avastha" direct lookup
+2. chart_facts category "dignity_scores" → infer avastha from dignity
+3. Default "Mudita" (neutral-positive)
+
+`get_shadbala_full`: Queries all shadbala component rows from chart_facts, groups by the
+6 canonical components (Sthana, Dig, Kala, Cheshta, Naisargika, Drig), sums each, and
+returns total virupa + rupa with sufficiency check against classical minimums.
+
+**MCP source files (read-only references):**
+- `platform-mcp/src/tools/get_planet_avastha.ts`
+- `platform-mcp/src/tools/get_shadbala_full.ts`
+
+**Portal target files (create):**
+- `platform/src/lib/retrieve/get_planet_avastha.ts`
+- `platform/src/lib/retrieve/get_shadbala_full.ts`
+
+---
 
 ## 2. Scope
 
 **may_touch:**
 - `platform/src/lib/retrieve/get_planet_avastha.ts` (create)
-- `platform/src/lib/retrieve/get_shadbala_full.ts` (create, or upgrade existing `shadbala_query.ts` if present)
-- `platform/src/lib/retrieve/index.ts`
+- `platform/src/lib/retrieve/get_shadbala_full.ts` (create)
+- `platform/src/lib/retrieve/index.ts` (add registrations)
 
 **must_not_touch:**
-- MCP tool files (reference only)
-- All `platform-mcp/` files
-- Governance files
+- `platform-mcp/` (source reference only)
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/get_planet_avastha.ts`
-2. `platform-mcp/src/tools/get_shadbala_full.ts`
-3. `platform/src/lib/retrieve/` — list to check for existing shadbala tool
-4. `platform/src/lib/retrieve/index.ts` — registration pattern
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.1_2.1: `platform/src/lib/retrieve/get_planet_avastha.ts` exists and exports a RetrievalTool
+- [ ] AC.1_2.2: `platform/src/lib/retrieve/get_shadbala_full.ts` exists and exports a RetrievalTool
+- [ ] AC.1_2.3: Both tools registered in `index.ts` RETRIEVAL_TOOLS
+- [ ] AC.1_2.4: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.1_2.5: Commit message contains `UDA-1-S2`
 
-- [ ] AC.1: `get_planet_avastha` available in portal RETRIEVAL_TOOLS (new file or upgraded existing)
-- [ ] AC.2: `get_shadbala_full` available in portal RETRIEVAL_TOOLS (new file or upgraded existing `shadbala_query.ts` — if upgrading, keep original name registered too for backward compat)
-- [ ] AC.3: Both tools registered in `index.ts` with exact names matching MCP tool names
-- [ ] AC.4: Input schemas match MCP versions exactly (same params, same types)
-- [ ] AC.5: TypeScript compiles clean
-- [ ] AC.6: If an existing portal shadbala tool was upgraded, old tool name still resolves (add an alias entry in `index.ts`)
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Check for existing tools
+### Step 1 — Read MCP source files
 
 ```bash
-ls platform/src/lib/retrieve/ | grep -i "shadbala\|avastha"
-```
-
-If `shadbala_query.ts` exists:
-```bash
-cat platform/src/lib/retrieve/shadbala_query.ts
+cat platform-mcp/src/tools/get_planet_avastha.ts
 cat platform-mcp/src/tools/get_shadbala_full.ts
+cat platform/src/lib/retrieve/chart_facts_query.ts | head -80  # for storage pattern
 ```
 
-Compare schemas. If MCP has more fields (likely), upgrade the portal file to match but keep both `shadbala_query` AND `get_shadbala_full` registered (one can delegate to the other).
+### Step 2 — Create get_planet_avastha.ts (portal version)
 
-### Step 2 — Create/upgrade files
+Implement using `getStorageClient()`:
 
-Follow UDA-1-S1 porting pattern: copy SQL + schema from MCP, adapt to portal DB client.
+```typescript
+// platform/src/lib/retrieve/get_planet_avastha.ts
+import { getStorageClient } from '@/lib/storage'
+import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './types'
 
-For `get_planet_avastha.ts`: straightforward port — no existing equivalent.
-For `get_shadbala_full.ts`: if upgrading existing, add `get_shadbala_full` as an alias export that calls the upgraded `shadbala_query` with full params.
+const AVASTHA_MEANINGS: Record<string, string> = {
+  Lajjita: 'Ashamed — significations suppressed, shame, inhibition',
+  Garvita: 'Proud — significations elevated, confidence, status',
+  Kshudita: 'Hungry — significations unfulfilled, longing, dissatisfaction',
+  Trushita: 'Thirsty — restless, unfulfilled desires',
+  Mudita: 'Delighted — significations flow naturally, contentment',
+  Kshobhita: 'Agitated — volatility, disturbance, conflict',
+}
 
-### Step 3 — Register in index.ts
-
-Add new exports and RETRIEVAL_TOOLS entries.
-
-### Step 4 — TypeScript check
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
+// ... implement execute() to query chart_facts for avastha row for the given planet
+// with the three-step fallback from the MCP tool
 ```
 
-### Step 5 — Commit
+### Step 3 — Create get_shadbala_full.ts (portal version)
+
+Implement using `getStorageClient()`:
+
+```typescript
+// platform/src/lib/retrieve/get_shadbala_full.ts
+const CLASSICAL_MINIMUMS: Record<string, number> = {
+  Sun: 6.5, Moon: 6.0, Mars: 5.0, Mercury: 7.0, Jupiter: 6.5, Venus: 5.5, Saturn: 5.0,
+}
+
+const SHADBALA_COMPONENTS = [
+  'sthana_bala', 'dig_bala', 'kala_bala', 'cheshta_bala', 'naisargika_bala', 'drig_bala',
+]
+
+// Query chart_facts WHERE category = 'shadbala', group by planet, sum components,
+// compare to classical minimums, return roll-up
+```
+
+### Step 4 — Register in index.ts
+
+```typescript
+import * as getPlanetAvastha from './get_planet_avastha'
+import * as getShadbalaFull from './get_shadbala_full'
+```
+
+Add to RETRIEVAL_TOOLS.
+
+### Step 5 — TypeScript compile check
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add platform/src/lib/retrieve/get_planet_avastha.ts
-git add platform/src/lib/retrieve/get_shadbala_full.ts  # or shadbala_query.ts if upgraded
-git add platform/src/lib/retrieve/index.ts
+cd platform && npx tsc --noEmit
+```
+
+### Step 6 — Commit
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+git add platform/src/lib/retrieve/get_planet_avastha.ts \
+        platform/src/lib/retrieve/get_shadbala_full.ts \
+        platform/src/lib/retrieve/index.ts
 git commit -m "feat(UDA-1-S2): port get_planet_avastha + get_shadbala_full to portal
 
-Both avastha and full shadbala strength now available in portal RETRIEVAL_TOOLS.
-<note if shadbala_query.ts was upgraded; old name preserved for compat>
-TypeScript clean."
+Avastha 3-step fallback chain; Shadbala 6-component roll-up with classical minimums.
+tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "get_planet_avastha\|planet_avastha" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S2_AVASTHA: PASS'
+grep -q "get_shadbala_full\|shadbala_full" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S2_SHADBALA: PASS'
+git log --oneline -3 | grep -q 'UDA-1-S2' && echo 'GATE_UDA_1_S2_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-Q-S3: chart_facts_query populated_count to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-Q-S3: Quality Backport chart_facts_query populated_count → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_Q_S3
 version: 1.0
 status: CURRENT
@@ -8,19 +8,27 @@ session_id: UDA-Q-S3
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-Q-S3 — Backport chart_facts introspection fields to portal
+# UDA-Q-S3 — Quality Backport: chart_facts_query populated_count → portal
 
 ## 1. Context
 
-The MCP `platform-mcp/src/tools/query_chart_facts.ts` (enhanced TR-P3-S2) adds:
-- `include_empty_counts: boolean` — when true, categories with 0 matching rows are still returned in the response (shows data coverage gaps)
-- `populated_count` annotated on each returned category bucket — the number of rows with non-null values
+The MCP version of `query_chart_facts` (`platform-mcp/src/tools/query_chart_facts.ts`) has two
+enhancements not present in the portal `chart_facts_query.ts`:
 
-The portal `platform/src/lib/retrieve/chart_facts_query.ts` has all 27 categories but omits both fields. This session adds them.
+1. **`include_empty_counts: boolean`** — when true, appends a `category_counts` object showing
+   how many rows each category has (including zero-count categories). Useful for inventory / debugging.
+2. **`populated_count` annotation** — each returned row (or the summary) carries a `populated_count`
+   field showing the total number of non-null `value_json` rows for that category.
 
-Both tools query the `chart_facts` table. The portal tool file name is `chart_facts_query.ts` (different from MCP's `query_chart_facts.ts`).
+This session adds both enhancements to `platform/src/lib/retrieve/chart_facts_query.ts`.
+
+**Source of truth (read-only):** `platform-mcp/src/tools/query_chart_facts.ts`
+**Target to modify:** `platform/src/lib/retrieve/chart_facts_query.ts`
+
+---
 
 ## 2. Scope
 
@@ -28,90 +36,92 @@ Both tools query the `chart_facts` table. The portal tool file name is `chart_fa
 - `platform/src/lib/retrieve/chart_facts_query.ts`
 
 **must_not_touch:**
-- `platform-mcp/src/tools/query_chart_facts.ts` (reference only)
+- `platform-mcp/` (source reference only)
 - `platform/src/lib/retrieve/index.ts`
-- All `platform-mcp/` files
-- Governance files
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_chart_facts.ts` — source of truth for the two new fields
-2. `platform/src/lib/retrieve/chart_facts_query.ts` — current portal version
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.Q3.1: `ChartFactsQueryInput` includes `include_empty_counts?: boolean`
+- [ ] AC.Q3.2: The response type or return shape includes a `populated_count` field (on the summary or per-row)
+- [ ] AC.Q3.3: When `include_empty_counts=true`, the tool issues an additional COUNT query per category and returns results
+- [ ] AC.Q3.4: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.Q3.5: Commit message contains `UDA-Q-S3`
 
-- [ ] AC.1: `include_empty_counts: z.boolean().optional().default(false)` added to input schema
-- [ ] AC.2: When `include_empty_counts=true`, categories with 0 rows are included in response with `count: 0` and `populated_count: 0`
-- [ ] AC.3: When `include_empty_counts=false` (default), behavior is identical to current (zero-count categories excluded)
-- [ ] AC.4: Each returned category bucket includes `populated_count: number` — count of rows where the primary value field is NOT NULL
-- [ ] AC.5: TypeScript compiles: `cd platform && npx tsc --noEmit`
-- [ ] AC.6: Existing category filter / `categories[]` param behavior unchanged
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read both files
+### Step 1 — Read both tools
 
 ```bash
 cat platform-mcp/src/tools/query_chart_facts.ts
 cat platform/src/lib/retrieve/chart_facts_query.ts
 ```
 
-### Step 2 — Add input schema fields
+### Step 2 — Add include_empty_counts to input interface
 
-In the portal tool's Zod schema, add:
 ```typescript
-include_empty_counts: z.boolean().optional().default(false),
+/** When true, appends category_counts: Record<category, number> to the response. */
+include_empty_counts?: boolean
 ```
 
-### Step 3 — Compute populated_count
+### Step 3 — Add populated_count to response type
 
-After the main SQL query returns rows per category bucket, add a secondary count:
-```sql
-SELECT COUNT(*) as populated_count 
-FROM chart_facts 
-WHERE chart_id = $1 
-  AND category = $2 
-  AND value IS NOT NULL
-```
-
-Or compute it in-application from the returned rows. Port the approach from the MCP tool.
-
-### Step 4 — Handle include_empty_counts
-
-After assembling all category buckets:
+In the return value / ToolBundle content, add:
 ```typescript
-if (!include_empty_counts) {
-  results = results.filter(bucket => bucket.count > 0);
-}
+populated_count?: number  // total non-null value_json rows for the queried category
 ```
 
-### Step 5 — Attach populated_count to each bucket
-
-Ensure each item in the returned array has:
+This can be computed alongside the main query:
 ```typescript
-{ category: string, count: number, populated_count: number, rows: [...] }
+const countResult = await storage.query(
+  `SELECT COUNT(*) as cnt FROM chart_facts WHERE chart_id=$1 AND value_json IS NOT NULL ${categoryClause}`,
+  params
+)
+const populated_count = parseInt(countResult.rows[0]?.cnt ?? '0', 10)
 ```
 
-### Step 6 — TypeScript check
+### Step 4 — Implement include_empty_counts
+
+When `input.include_empty_counts === true`, after the main query fetch all categories and their counts:
+```typescript
+const categoryCounts = await storage.query(
+  `SELECT category, COUNT(*) as cnt FROM chart_facts WHERE chart_id=$1 GROUP BY category ORDER BY category`,
+  [chartId]
+)
+```
+Return as `category_counts: Object.fromEntries(categoryCounts.rows.map(r => [r.category, parseInt(r.cnt)]))`
+
+### Step 5 — TypeScript compile check
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform && npx tsc --noEmit
 ```
 
-### Step 7 — Commit
+### Step 6 — Commit
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
 git add platform/src/lib/retrieve/chart_facts_query.ts
-git commit -m "feat(UDA-Q-S3): backport chart_facts introspection fields to portal
+git commit -m "feat(UDA-Q-S3): backport include_empty_counts + populated_count to portal chart_facts_query
 
-- include_empty_counts: boolean (show zero-row categories)
-- populated_count: number annotated per category bucket
-- Existing filter/category behavior unchanged
-- TypeScript clean
-
-Quality gap closed: portal chart_facts_query now == MCP depth."
+Matches MCP quality level. tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "include_empty_counts\|populated_count" platform/src/lib/retrieve/chart_facts_query.ts && echo 'GATE_UDA_Q_S3_FIELDS: PASS'
+git log --oneline -3 | grep -q 'UDA-Q-S3' && echo 'GATE_UDA_Q_S3_COMMIT: PASS'
+```
+
+All 2 gates must print PASS.
 
 ---
 

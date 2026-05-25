@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-Q-S4: lel_query chart_state + significance enum to MCP"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-Q-S4: Quality Backport lel_query chart_state + significance enum → MCP"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_Q_S4
 version: 1.0
 status: CURRENT
@@ -8,24 +8,29 @@ session_id: UDA-Q-S4
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-Q-S4 — Upgrade MCP lel_query to portal depth
+# UDA-Q-S4 — Quality Backport: lel_query chart_state + significance enum → MCP
 
 ## 1. Context
 
-The portal `platform/src/lib/retrieve/lel_query.ts` (230 lines) is richer than the MCP version:
+The portal version of `lel_query` (`platform/src/lib/retrieve/lel_query.ts`) is ahead of the
+MCP version (`platform-mcp/src/tools/lel_query.ts`) in two ways:
 
-**Portal advantages over MCP:**
-1. Selects `chart_state` column (Swiss Ephemeris snapshot per event — planetary positions at event date)
-2. `min_significance` filter accepts string enum: `'major' | 'moderate' | 'minor'` (not just a float)
-3. Returns `significance` as enum string in each row
+1. **`chart_state` column** — the portal tool retrieves the `chart_state` JSONB column from
+   `life_events` (Swiss Ephemeris planetary positions at the time of each event). The MCP
+   version does not include this field in its SELECT or output.
+2. **Significance enum** — the portal tool filters by significance using a proper
+   `"major" | "moderate" | "minor"` tier enum (mapped to float ranges internally).
+   The MCP uses a raw float `min_significance: float` which callers must know the scale for.
 
-**MCP `platform-mcp/src/tools/lel_query.ts`** (90 lines):
-- Omits `chart_state` from SELECT and output
-- `min_significance: z.number().min(0).max(1)` — float-only, no enum variant
+This session backports both enhancements into `platform-mcp/src/tools/lel_query.ts`.
 
-This session upgrades the MCP lel_query to match portal depth. Both versions continue to work; MCP gains the missing fields.
+**Source of truth (read-only):** `platform/src/lib/retrieve/lel_query.ts`
+**Target to modify:** `platform-mcp/src/tools/lel_query.ts`
+
+---
 
 ## 2. Scope
 
@@ -33,85 +38,76 @@ This session upgrades the MCP lel_query to match portal depth. Both versions con
 - `platform-mcp/src/tools/lel_query.ts`
 
 **must_not_touch:**
-- `platform/src/lib/retrieve/lel_query.ts` (reference only — the richer source)
-- `platform-mcp/src/server.ts`
-- `platform-mcp/src/tools/catalog.ts`
-- All portal files
-- Governance files
+- `platform/src/lib/retrieve/lel_query.ts` (source reference only)
+- `platform-mcp/src/server.ts` (no registration changes)
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform/src/lib/retrieve/lel_query.ts` — source of truth (richer version)
-2. `platform-mcp/src/tools/lel_query.ts` — current degraded MCP version
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.Q4.1: `platform-mcp/src/tools/lel_query.ts` includes `chart_state` in the SELECT query or response enrichment
+- [ ] AC.Q4.2: The MCP tool accepts `significance_tier?: "major" | "moderate" | "minor"` in its Zod schema (in addition to or replacing the raw float)
+- [ ] AC.Q4.3: `significance_tier` is mapped to float thresholds: `major ≥ 0.8`, `moderate ≥ 0.5`, `minor ≥ 0.2`
+- [ ] AC.Q4.4: `cd platform-mcp && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.Q4.5: Commit message contains `UDA-Q-S4`
 
-- [ ] AC.1: MCP `lel_query` SELECT query includes `chart_state` column
-- [ ] AC.2: `chart_state` returned in each row of the MCP response (as JSON string or object)
-- [ ] AC.3: `min_significance` accepts BOTH float (backward compat) AND string enum `'major' | 'moderate' | 'minor'`
-- [ ] AC.4: When string enum provided, map to float threshold: `major` → `≥0.8`, `moderate` → `≥0.5`, `minor` → `≥0.0` (or port the exact mapping from portal)
-- [ ] AC.5: `significance` field in returned rows is the string enum value (not raw float), matching portal output format
-- [ ] AC.6: TypeScript compiles: `cd platform-mcp && npx tsc --noEmit` (or equivalent check)
-- [ ] AC.7: Existing MCP float-based `min_significance` queries still return results (no regression)
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read both files
+### Step 1 — Read both tool files
 
 ```bash
 cat platform/src/lib/retrieve/lel_query.ts
 cat platform-mcp/src/tools/lel_query.ts
 ```
 
-### Step 2 — Upgrade SELECT in MCP tool
+Understand:
+- How the portal tool queries `chart_state` from the DB
+- The portal's significance tier enum logic
+- How the MCP tool calls `callPlatformPrimitive` (it proxies to the portal lel_query)
 
-In the SQL query string, add `chart_state` to the SELECT columns:
-```sql
-SELECT event_id, event_date, category, description, significance, 
-       chart_state, source_section
-FROM life_event_log
-WHERE chart_id = $1
+### Step 2 — Add significance_tier to Zod schema
+
+In `platform-mcp/src/tools/lel_query.ts`, add to the Zod schema:
+
+```typescript
+significance_tier: z.enum(['major', 'moderate', 'minor']).optional().describe(
+  'Filter by significance tier. major=≥0.8, moderate=≥0.5, minor=≥0.2. ' +
+  'Alternative to min_significance float. If both are set, significance_tier takes precedence.'
+),
 ```
 
-Check the actual table column name by referencing the portal tool's query.
+### Step 3 — Map significance_tier to float before passing to platform primitive
 
-### Step 3 — Upgrade min_significance schema
-
-Replace the float-only schema with a union:
 ```typescript
-min_significance: z.union([
-  z.number().min(0).max(1),
-  z.enum(['major', 'moderate', 'minor'])
-]).optional().default(0),
-```
-
-Add significance-to-float mapping:
-```typescript
-const SIG_FLOOR: Record<string, number> = {
-  major: 0.8, moderate: 0.5, minor: 0.0
-};
-function resolveMinSig(val: number | string): number {
-  if (typeof val === 'string') return SIG_FLOOR[val] ?? 0;
-  return val;
+let resolvedMinSignificance = args.min_significance
+if (args.significance_tier) {
+  const tierMap = { major: 0.8, moderate: 0.5, minor: 0.2 }
+  resolvedMinSignificance = tierMap[args.significance_tier]
 }
 ```
 
-### Step 4 — Map significance float → enum in output
+Pass `resolvedMinSignificance` to `callPlatformPrimitive`.
 
-When constructing the returned rows, map the stored float back to enum:
+### Step 4 — Add chart_state to the response
+
+The MCP tool calls `callPlatformPrimitive('lel_query', ...)` which proxies to the portal tool.
+If the portal tool already returns `chart_state`, it will flow through automatically. Verify
+by checking the portal tool's response shape. If `chart_state` is not being returned by the
+platform primitive, add it explicitly to the SELECT or the response enrichment in `lel_query.ts`.
+
+If the MCP is directly querying the DB (check the source), add:
 ```typescript
-function sigToEnum(val: number): string {
-  if (val >= 0.8) return 'major';
-  if (val >= 0.5) return 'moderate';
-  return 'minor';
-}
+SELECT *, chart_state FROM life_events WHERE ...
 ```
 
-### Step 5 — TypeScript check
+### Step 5 — TypeScript compile check
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform-mcp
-npx tsc --noEmit 2>&1 | head -40
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform-mcp && npx tsc --noEmit
 ```
 
 ### Step 6 — Commit
@@ -119,16 +115,23 @@ npx tsc --noEmit 2>&1 | head -40
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
 git add platform-mcp/src/tools/lel_query.ts
-git commit -m "feat(UDA-Q-S4): upgrade MCP lel_query to portal depth
+git commit -m "feat(UDA-Q-S4): backport chart_state + significance enum to MCP lel_query
 
-- chart_state column added to SELECT and response
-- min_significance accepts string enum (major/moderate/minor) + float
-- significance returned as enum string in output rows
-- Backward compat: float min_significance still works
-- TypeScript clean
-
-Quality gap closed: MCP lel_query now == portal depth."
+Adds chart_state retrieval and significance_tier enum (major/moderate/minor)
+to match portal quality level. tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "chart_state" platform-mcp/src/tools/lel_query.ts && echo 'GATE_UDA_Q_S4_CHART_STATE: PASS'
+grep -q "major\|moderate\|minor" platform-mcp/src/tools/lel_query.ts && echo 'GATE_UDA_Q_S4_SIGNIFICANCE: PASS'
+git log --oneline -3 | grep -q 'UDA-Q-S4' && echo 'GATE_UDA_Q_S4_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

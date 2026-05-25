@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-Q-S2: query_ephemeris enhancements to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-Q-S2: Quality Backport query_ephemeris enhancements → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_Q_S2
 version: 1.0
 status: CURRENT
@@ -8,19 +8,27 @@ session_id: UDA-Q-S2
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-Q-S2 — Backport ephemeris enhancements to portal
+# UDA-Q-S2 — Quality Backport: query_ephemeris enhancements → portal
 
 ## 1. Context
 
-The MCP `platform-mcp/src/tools/query_ephemeris.ts` (enhanced by TR-P1-S2) has:
-- Structured `date_range: { from: string, to: string }` object (required)
-- `sample_step: enum('1d','7d','30d')` parameter (default `'1d'`)
-- `return_changes_only: boolean` parameter (default `false`) — omits rows where no sign/nakshatra change occurred
-- 1825-day (5-year) span guard with a clean error message
+The MCP version of `query_ephemeris` (`platform-mcp/src/tools/query_ephemeris.ts`) added several
+enhancements not yet present in the portal version (`platform/src/lib/retrieve/query_ephemeris.ts`):
 
-The portal `platform/src/lib/retrieve/query_ephemeris.ts` uses flat `start_date`/`end_date` string params, has no `sample_step`, no `return_changes_only`, and no span guard. This session brings the portal version to full parity.
+1. **`date_range` struct parameter** — a `{start, end}` object (alternative to separate `start_date`/`end_date`)
+2. **`sample_step` parameter** — an integer N to return every Nth row (reduces token volume for wide ranges)
+3. **`return_changes_only` parameter** — boolean; when true, only return rows where planet sign/dignity changes vs prior row
+4. **1825-day span guard** — rejects ranges exceeding 5 years (1825 days) with a descriptive error
+
+This session backports these four enhancements to the portal tool.
+
+**Source of truth (read-only):** `platform-mcp/src/tools/query_ephemeris.ts`
+**Target to modify:** `platform/src/lib/retrieve/query_ephemeris.ts`
+
+---
 
 ## 2. Scope
 
@@ -28,95 +36,110 @@ The portal `platform/src/lib/retrieve/query_ephemeris.ts` uses flat `start_date`
 - `platform/src/lib/retrieve/query_ephemeris.ts`
 
 **must_not_touch:**
-- `platform-mcp/src/tools/query_ephemeris.ts` (reference only)
+- `platform-mcp/` (source reference only)
 - `platform/src/lib/retrieve/index.ts`
-- All `platform-mcp/` files
-- Governance files
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_ephemeris.ts` — source of truth
-2. `platform/src/lib/retrieve/query_ephemeris.ts` — current portal version
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.Q2.1: Portal `QueryEphemerisInput` includes `date_range?: { start: string; end: string }` OR the existing `start_date`/`end_date` params now accept the range struct pattern (either approach is acceptable as long as `date_range` appears in the file)
+- [ ] AC.Q2.2: Portal tool accepts `sample_step?: number` parameter
+- [ ] AC.Q2.3: Portal tool accepts `return_changes_only?: boolean` parameter
+- [ ] AC.Q2.4: A 1825-day guard is present — the tool returns an error or empty result for ranges exceeding 1825 days
+- [ ] AC.Q2.5: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.Q2.6: Commit message contains `UDA-Q-S2`
 
-- [ ] AC.1: Input schema accepts `date_range: z.object({ from: z.string(), to: z.string() })` as primary date input (keep backward compat with `start_date`/`end_date` via alias or deprecation comment if present callers need them)
-- [ ] AC.2: `sample_step: z.enum(['1d','7d','30d']).optional().default('1d')` added
-- [ ] AC.3: `return_changes_only: z.boolean().optional().default(false)` added
-- [ ] AC.4: Span guard: if `(to - from) > 1825 days`, return error `{ error: "Date range exceeds 5-year maximum (1825 days). Split into smaller windows." }`
-- [ ] AC.5: When `return_changes_only=true`, rows where sign AND nakshatra are unchanged from previous row are filtered out
-- [ ] AC.6: When `sample_step='7d'` or `'30d'`, query respects the step (either SQL `WHERE date_trunc` or application-side sampling)
-- [ ] AC.7: TypeScript compiles: `cd platform && npx tsc --noEmit`
-- [ ] AC.8: Existing queries with `start_date`/`end_date` still work (backward compatible)
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read both files
+### Step 1 — Read both tools
 
 ```bash
 cat platform-mcp/src/tools/query_ephemeris.ts
 cat platform/src/lib/retrieve/query_ephemeris.ts
 ```
 
-### Step 2 — Update input schema
+Understand the portal's existing `QueryEphemerisInput` interface shape and its DB query path.
 
-Replace or augment the existing schema. Accept both forms:
+### Step 2 — Add new parameters to QueryEphemerisInput
+
 ```typescript
-const inputSchema = z.object({
-  // New primary form (matches MCP)
-  date_range: z.object({ from: z.string(), to: z.string() }).optional(),
-  // Legacy backward-compat
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
-  sample_step: z.enum(['1d', '7d', '30d']).optional().default('1d'),
-  return_changes_only: z.boolean().optional().default(false),
-  // existing params preserved
-  planets: z.array(z.string()).optional(),
-});
+/** Alternative range input: { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }. */
+date_range?: { start: string; end: string }
+/** If set, return every Nth row (e.g. sample_step=7 returns weekly samples). */
+sample_step?: number
+/** If true, only return rows where sign or dignity changed since the prior row. */
+return_changes_only?: boolean
 ```
 
-Resolve `from`/`to` in handler: prefer `date_range` if present, fall back to `start_date`/`end_date`.
+### Step 3 — Merge date_range into start_date/end_date
 
-### Step 3 — Add span guard
+Near the top of the execute function, normalize:
+```typescript
+const resolvedStart = input.date_range?.start ?? input.start_date
+const resolvedEnd   = input.date_range?.end   ?? input.end_date
+```
+
+### Step 4 — Add 1825-day span guard
 
 ```typescript
-const fromMs = new Date(from).getTime();
-const toMs = new Date(to).getTime();
-const days = (toMs - fromMs) / (1000 * 60 * 60 * 24);
-if (days > 1825) {
-  return { error: 'Date range exceeds 5-year maximum (1825 days). Split into smaller windows.' };
+if (resolvedStart && resolvedEnd) {
+  const spanDays = (new Date(resolvedEnd).getTime() - new Date(resolvedStart).getTime()) / 86_400_000
+  if (spanDays > 1825) {
+    return { ok: false, error: `Date range exceeds 1825-day limit (requested ${Math.round(spanDays)} days). Narrow the range or use sample_step.` }
+  }
 }
 ```
 
-### Step 4 — Implement sample_step
+### Step 5 — Implement sample_step
 
-For `'7d'` and `'30d'`, apply post-query filtering on the result rows (keep every Nth row where N = step days), OR add a SQL `AND EXTRACT(DOY FROM date) % <step> = 0` clause. Port the approach from the MCP tool.
-
-### Step 5 — Implement return_changes_only
-
-Post-filter: keep a row only if `sign` or `nakshatra` differs from the previous row for that planet. Port from the MCP tool.
-
-### Step 6 — TypeScript check
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
+After fetching rows, if `sample_step` is set and > 1:
+```typescript
+const rows = rawRows.filter((_, i) => i % input.sample_step! === 0)
 ```
 
-### Step 7 — Commit
+### Step 6 — Implement return_changes_only
+
+After fetching (or sampling) rows, if `return_changes_only`:
+```typescript
+const filtered = rows.filter((row, i) => {
+  if (i === 0) return true
+  const prev = rows[i - 1]!
+  return row.sign !== prev.sign || row.dignity !== prev.dignity
+})
+```
+
+### Step 7 — TypeScript compile check
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform && npx tsc --noEmit
+```
+
+### Step 8 — Commit
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
 git add platform/src/lib/retrieve/query_ephemeris.ts
-git commit -m "feat(UDA-Q-S2): backport ephemeris enhancements to portal
+git commit -m "feat(UDA-Q-S2): backport date_range, sample_step, return_changes_only, 1825-day guard to portal query_ephemeris
 
-- date_range: {from, to} object input (legacy start_date/end_date kept)
-- sample_step: '1d' | '7d' | '30d' (default '1d')
-- return_changes_only: boolean (filters unchanged sign/nakshatra rows)
-- 1825-day span guard with clean error message
-- TypeScript clean
-
-Quality gap closed: portal query_ephemeris now == MCP depth."
+Matches MCP quality level. tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "date_range\|sample_step\|return_changes_only" platform/src/lib/retrieve/query_ephemeris.ts && echo 'GATE_UDA_Q_S2_PARAMS: PASS'
+grep -q "1825\|span" platform/src/lib/retrieve/query_ephemeris.ts && echo 'GATE_UDA_Q_S2_GUARD: PASS'
+git log --oneline -3 | grep -q 'UDA-Q-S2' && echo 'GATE_UDA_Q_S2_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

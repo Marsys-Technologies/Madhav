@@ -14,6 +14,15 @@
  * Phase 4D: query_transit_event — transit event search: when does X happen? (1 tool; 29th total)
  * COV-S4: query_muhurat, query_jaimini_drishti, query_v7_additions — sidecar wrappers (tools 31-33)
  * COV-S5: query_ucn_walk, query_cdlm_lookup, query_rm_walk — L2.5 structural graph tools (tools 34-36)
+ * UDA-1-S1: query_transits_over_natal, query_yogas_active_now — transit windows + yoga activation (tools 37-38)
+ * UDA-1-S2: get_planet_avastha, get_shadbala_full — avastha 3-step fallback + shadbala roll-up (tools 39-40)
+ * UDA-1-S3: query_jaimini_chara_dasha — Jaimini Chara Dasha active period + full timeline (tool 41)
+ * UDA-1-S4: query_planetary_period_predictions — classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
+ * UDA-1-S5: query_dasamsha_career — D10 career indicator rules (tool 43)
+ * UDA-1-S5: query_shashtiamsha — D60 Shashtiamsha karma pada analysis (tool 44)
+ * UDA-1-S6: query_eclipse_transits, query_planet_war — eclipse detection + Graha Yuddha (tools 45-46)
+ * UDA-1-S7: query_drekkana_drishti, query_remedies_prescribed — Jaimini Drekkana Drishti + remedial codex cross-reference (tools 47-48)
+ * UDA-1-S8: tara_balam_for_native, chandra_balam_for_native, muhurta_finder — Tara Bala + Chandra Bala + Muhurta Finder with native overlay (tools 49-51)
  */
 
 import * as msrSql from './msr_sql'
@@ -83,6 +92,37 @@ import * as queryUcnWalk from './query_ucn_walk'
 import * as queryCdlmLookup from './query_cdlm_lookup'
 import * as queryRmWalk from './query_rm_walk'
 
+// UDA-1-S1 — transit-to-natal windows + yoga activation (tools 37-38)
+import * as queryTransitsOverNatal from './query_transits_over_natal'
+import * as queryYogasActiveNow from './query_yogas_active_now'
+
+// UDA-1-S2 — avastha 3-step fallback + shadbala 6-component roll-up (tools 39-40)
+import * as getPlanetAvastha from './get_planet_avastha'
+import * as getShadbalaFull from './get_shadbala_full'
+
+// UDA-1-S3 — Jaimini Chara Dasha active period + full 12-rashi timeline (tool 41)
+import * as queryJaiminiCharaDasha from './query_jaimini_chara_dasha'
+
+// UDA-1-S4 — Classical MD/AD prediction recipes via vector_search + classical text merge (tool 42)
+import * as queryPlanetaryPeriodPredictions from './query_planetary_period_predictions'
+
+// UDA-1-S5 — D10 career indicator rules + D60 Shashtiamsha karma pada analysis (tools 43-44)
+import * as queryDasamshhaCareer from './query_dasamsha_career'
+import * as queryShashtiamsha from './query_shashtiamsha'
+
+// UDA-1-S6 — Eclipse detection + Graha Yuddha (tools 45-46)
+import * as queryEclipseTransits from './query_eclipse_transits'
+import * as queryPlanetWar from './query_planet_war'
+
+// UDA-1-S7 — Jaimini Drekkana Drishti + remedial codex cross-reference (tools 47-48)
+import * as queryDrekkanaDisthi from './query_drekkana_drishti'
+import * as queryRemediesPrescribed from './query_remedies_prescribed'
+
+// UDA-1-S8 — Tara Bala + Chandra Bala + Muhurta Finder with native overlay (tools 49-51)
+import * as taraBalamForNative from './tara_balam_for_native'
+import * as chandraBalamForNative from './chandra_balam_for_native'
+import * as muhurtaFinder from './muhurta_finder'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -123,6 +163,21 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryUcnWalk.tool,
   queryCdlmLookup.tool,
   queryRmWalk.tool,
+  queryTransitsOverNatal.tool,
+  queryYogasActiveNow.tool,
+  getPlanetAvastha.tool,
+  getShadbalaFull.tool,
+  queryJaiminiCharaDasha.tool,
+  queryPlanetaryPeriodPredictions.tool,
+  queryDasamshhaCareer.tool,
+  queryShashtiamsha.tool,
+  queryEclipseTransits.tool,
+  queryPlanetWar.tool,
+  queryDrekkanaDisthi.tool,
+  queryRemediesPrescribed.tool,
+  taraBalamForNative.tool,
+  chandraBalamForNative.tool,
+  muhurtaFinder.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

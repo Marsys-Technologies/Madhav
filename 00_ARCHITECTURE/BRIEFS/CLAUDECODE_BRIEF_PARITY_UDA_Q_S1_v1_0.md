@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-Q-S1: query_dasha_periods PD/SD backport to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-Q-S1: Quality Backport query_dasha_periods PD/SD → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_Q_S1
 version: 1.0
 status: CURRENT
@@ -8,20 +8,25 @@ session_id: UDA-Q-S1
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-Q-S1 — Backport pratyantar/sookshma dasha levels to portal
+# UDA-Q-S1 — Quality Backport: query_dasha_periods PD/SD → portal
 
 ## 1. Context
 
-The MCP tool `platform-mcp/src/tools/query_dasha_periods.ts` (enhanced by TR-P7-S1, bace7b45) supports four dasha levels: `maha`, `antar`, `pratyantar`, and `sookshma`. It computes sub-period durations via:
+The MCP version of `query_dasha_periods` (at `platform-mcp/src/tools/query_dasha_periods.ts`) has
+a `level` parameter supporting `"pratyantar"` and `"sookshma"` sub-period levels (PD and SD),
+computed via Vimshottari planet ratios. The portal version at
+`platform/src/lib/retrieve/query_dasha_periods.ts` only supports level `"M" | "A" | "P" | "all"`
+and does not compute sub-periods dynamically.
 
-```
-PD duration = AD_duration × (vimshottari_years[planet] / 120)
-SD duration = PD_duration × (vimshottari_years[planet] / 120)
-```
+This session backports the MCP's PD/SD sub-period computation into the portal tool.
 
-The portal tool `platform/src/lib/retrieve/query_dasha_periods.ts` only returns MD+AD. This session ports the pratyantar and sookshma levels to the portal tool so both channels are identical in depth.
+**Source of truth (read-only):** `platform-mcp/src/tools/query_dasha_periods.ts`
+**Target to modify:** `platform/src/lib/retrieve/query_dasha_periods.ts`
+
+---
 
 ## 2. Scope
 
@@ -29,89 +34,138 @@ The portal tool `platform/src/lib/retrieve/query_dasha_periods.ts` only returns 
 - `platform/src/lib/retrieve/query_dasha_periods.ts`
 
 **must_not_touch:**
-- `platform-mcp/src/tools/query_dasha_periods.ts` (reference only — do not modify)
-- `platform/src/lib/retrieve/index.ts` (no registration changes needed — tool already registered)
-- `platform-mcp/` any other files
-- All governance files (`CLAUDE.md`, `CURRENT_STATE_v1_0.md`, `SESSION_LOG.md`)
+- `platform-mcp/` (source reference only — do not modify)
+- `platform/src/lib/retrieve/index.ts` (no registration changes needed)
+- Any governance files (`CLAUDE.md`, `CURRENT_STATE_v1_0.md`, `SESSION_LOG.md`)
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_dasha_periods.ts` — source of truth for enhanced implementation
-2. `platform/src/lib/retrieve/query_dasha_periods.ts` — current degraded portal version to be upgraded
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.Q1.1: Portal `query_dasha_periods.ts` accepts a `level` parameter supporting at minimum `"pratyantar"` and `"sookshma"` values
+- [ ] AC.Q1.2: When `level="pratyantar"`, each MD/AD row in the response carries a `sub_periods` array of PD rows
+- [ ] AC.Q1.3: When `level="sookshma"`, each MD/AD/PD row carries a `sub_periods` array of SD rows
+- [ ] AC.Q1.4: Sub-period computation uses the same Vimshottari planet ratios as the MCP version (`VIMSHOTTARI_YEARS` map from the MCP tool)
+- [ ] AC.Q1.5: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.Q1.6: Commit message contains `UDA-Q-S1`
 
-- [ ] AC.1: `level` param accepts `'maha' | 'antar' | 'pratyantar' | 'sookshma'` (add `pratyantar` and `sookshma` to existing portal enum)
-- [ ] AC.2: `computePratyantar(adRows, planet)` function added — computes PD duration = `ad_duration_days × (vimshottari_years[planet] / 120)` for each AD; returns sub_periods array
-- [ ] AC.3: `computeSookshma(pdRows, planet)` function added — same formula applied to PD durations
-- [ ] AC.4: When `level === 'pratyantar'`, response includes `sub_periods` array nested under each AD
-- [ ] AC.5: When `level === 'sookshma'`, response includes `sub_periods` nested under each PD
-- [ ] AC.6: Existing `maha` and `antar` behavior is UNCHANGED — no regression
-- [ ] AC.7: TypeScript compiles without errors: `cd platform && npx tsc --noEmit`
-- [ ] AC.8: Vimshottari years map present: `{ Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17, Ketu: 7, Venus: 20 }`
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read both files
+### Step 1 — Read both tool files
 
 ```bash
 cat platform-mcp/src/tools/query_dasha_periods.ts
 cat platform/src/lib/retrieve/query_dasha_periods.ts
 ```
 
-### Step 2 — Add vimshottari years constant
+Understand:
+- The MCP's `VIMSHOTTARI_YEARS` constant and `VIMSHOTTARI_TOTAL_YEARS = 120`
+- The MCP's `computeSubPeriods` logic (or equivalent inline logic)
+- The portal's existing `QueryDashaPeriodsInput` interface and response shape
 
-In `platform/src/lib/retrieve/query_dasha_periods.ts`, add near the top (after imports):
+### Step 2 — Add Vimshottari constants
+
+In `platform/src/lib/retrieve/query_dasha_periods.ts`, add (or verify already present):
 
 ```typescript
+const VIMSHOTTARI_TOTAL_YEARS = 120
 const VIMSHOTTARI_YEARS: Record<string, number> = {
   Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16,
-  Saturn: 19, Mercury: 17, Ketu: 7, Venus: 20
-};
+  Saturn: 19, Mercury: 17, Ketu: 7, Venus: 20,
+}
+const VIMSHOTTARI_SEQUENCE = ['Sun','Moon','Mars','Rahu','Jupiter','Saturn','Mercury','Ketu','Venus']
 ```
 
-### Step 3 — Add level enum to input schema
+### Step 3 — Extend QueryDashaPeriodsInput
 
-Expand the existing `level` Zod schema (or add it if absent):
+Add `"pratyantar" | "sookshma"` to the existing `DashaLevel` type, or add a new field:
+
 ```typescript
-level: z.enum(['maha', 'antar', 'pratyantar', 'sookshma']).optional().default('antar')
+/** Sub-period depth: 'pratyantar' adds PD sub_periods to each AD; 'sookshma' adds SD sub_periods to each PD. */
+sub_level?: 'pratyantar' | 'sookshma'
 ```
 
-### Step 4 — Add computePratyantar and computeSookshma helpers
+(If the existing `level` field already exists and uses `'P'` semantics, add `sub_level` as a separate parameter to avoid breaking callers.)
 
-Port directly from the MCP tool — the logic is identical. The helpers iterate over AD rows and compute fractional sub-periods using the planet's vimshottari fraction.
+### Step 4 — Implement sub-period computation
 
-### Step 5 — Wire level dispatch
+Port the sub-period computation from the MCP tool. Key logic:
 
-In the main handler function, after computing AD rows, dispatch on `level`:
-- `'pratyantar'` → call `computePratyantar()` and attach `sub_periods` to each AD row
-- `'sookshma'` → call `computePratyantar()` then `computeSookshma()` and attach nested
+```typescript
+function computeSubPeriods(
+  parentLord: string,
+  parentStart: Date,
+  parentEnd: Date,
+): Array<{ lord: string; start_date: string; end_date: string; duration_days: number }> {
+  const parentMs = parentEnd.getTime() - parentStart.getTime()
+  const sequence = buildSequenceFrom(parentLord) // rotate VIMSHOTTARI_SEQUENCE to start at parentLord
+  const subs = []
+  let cursor = parentStart.getTime()
+  for (const lord of sequence) {
+    const ratio = VIMSHOTTARI_YEARS[lord]! / VIMSHOTTARI_TOTAL_YEARS
+    const durationMs = parentMs * ratio
+    const subStart = new Date(cursor)
+    const subEnd = new Date(cursor + durationMs)
+    subs.push({
+      lord,
+      start_date: subStart.toISOString().slice(0, 10),
+      end_date: subEnd.toISOString().slice(0, 10),
+      duration_days: Math.round(durationMs / 86_400_000),
+    })
+    cursor += durationMs
+  }
+  return subs
+}
+```
 
-### Step 6 — TypeScript check
+### Step 5 — Wire sub_periods into response
+
+After the portal tool retrieves its normal rows, if `sub_level === 'pratyantar'`, decorate each row with `sub_periods` by calling `computeSubPeriods(row.ad_lord, row.start_date, row.end_date)`.
+
+If `sub_level === 'sookshma'`, first compute PD sub_periods for each AD row, then for each PD also compute SD sub_periods.
+
+### Step 6 — TypeScript compile check
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform
-npx tsc --noEmit 2>&1 | head -40
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform && npx tsc --noEmit
 ```
 
-Fix any type errors before committing.
+Fix any errors before committing.
 
 ### Step 7 — Commit
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
 git add platform/src/lib/retrieve/query_dasha_periods.ts
-git commit -m "feat(UDA-Q-S1): backport pratyantar/sookshma dasha levels to portal
+git commit -m "feat(UDA-Q-S1): backport PD/SD sub-period levels to portal query_dasha_periods
 
-Portal query_dasha_periods now matches MCP depth:
-- level enum: maha | antar | pratyantar | sookshma
-- computePratyantar(): PD = AD_days × (vimshottari_years[P] / 120)
-- computeSookshma(): SD = PD_days × (vimshottari_years[P] / 120)
-- sub_periods[] nested in response at both levels
-- Existing maha/antar behavior unchanged
-
-Quality gap closed: portal now == MCP for dasha depth."
+Adds sub_level param ('pratyantar'|'sookshma') to portal tool, matching
+MCP quality level. Sub-periods computed via Vimshottari planet ratios.
+tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+# Gate 1: pratyantar in file
+grep -q "pratyantar" platform/src/lib/retrieve/query_dasha_periods.ts && echo 'GATE_UDA_Q_S1_PRATYANTAR: PASS'
+
+# Gate 2: sookshma in file
+grep -q "sookshma" platform/src/lib/retrieve/query_dasha_periods.ts && echo 'GATE_UDA_Q_S1_SOOKSHMA: PASS'
+
+# Gate 3: sub_periods computation present
+grep -q "computePratyantar\|sub_periods" platform/src/lib/retrieve/query_dasha_periods.ts && echo 'GATE_UDA_Q_S1_SUBPERIODS: PASS'
+
+# Gate 4: commit present
+git log --oneline -3 | grep -q 'UDA-Q-S1' && echo 'GATE_UDA_Q_S1_COMMIT: PASS'
+```
+
+All 4 gates must print PASS.
 
 ---
 

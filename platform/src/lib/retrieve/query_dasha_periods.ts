@@ -22,6 +22,10 @@
  * sidecar which returns the active 5-level chain at ONE date only. This
  * tool returns the schedule from the canonical chart_facts table, with
  * full upcoming + historical visibility.
+ *
+ * UDA-Q-S1: sub_level param ('pratyantar'|'sookshma') backported from MCP
+ * quality version. Sub-periods computed via Vimshottari planet ratios
+ * matching platform-mcp/src/tools/query_dasha_periods.ts implementation.
  */
 
 import crypto from 'crypto'
@@ -30,10 +34,114 @@ import { writeToolExecutionLog } from '@/lib/db/monitoring-write'
 import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './types'
 
 const TOOL_NAME = 'query_dasha_periods'
-const TOOL_VERSION = '1.0.0'
+const TOOL_VERSION = '1.1.0'
 
 type DashaSystem = 'vimshottari' | 'yogini' | 'chara'
 type DashaLevel = 'M' | 'A' | 'P' | 'all'
+
+// ── Vimshottari constants (UDA-Q-S1) ─────────────────────────────────────────
+
+/** Total Vimshottari cycle in years (used as divisor for sub-period ratios). */
+const VIMSHOTTARI_TOTAL_YEARS = 120
+
+/**
+ * Canonical Vimshottari years per planet.
+ * Order: Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury, Ketu, Venus.
+ */
+const VIMSHOTTARI_YEARS: Record<string, number> = {
+  Sun: 6,
+  Moon: 10,
+  Mars: 7,
+  Rahu: 18,
+  Jupiter: 16,
+  Saturn: 19,
+  Mercury: 17,
+  Ketu: 7,
+  Venus: 20,
+}
+
+/** Canonical planet order for sub-period sequences (Vimshottari sequence). */
+const VIMSHOTTARI_SEQUENCE = [
+  'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter',
+  'Saturn', 'Mercury', 'Ketu', 'Venus',
+]
+
+// ── Sub-period computation helpers (UDA-Q-S1) ────────────────────────────────
+
+interface SubPeriod {
+  planet: string
+  start_date: string
+  end_date: string
+  duration_days: number
+}
+
+/**
+ * Compute the 9 Pratyantar Dasha (PD) sub-periods for a given Antardasha.
+ *
+ * For planet P within AD of planet A within MD of planet M:
+ *   duration_PD(P) = duration_AD × (vimshottari_years[P] / 120)
+ *
+ * The sub-period sequence starts at the AD start date, beginning with the
+ * planet whose index in VIMSHOTTARI_SEQUENCE follows (or equals) the AD lord.
+ */
+export function computePratyantar(
+  adLord: string,
+  adStartDate: string,
+  adEndDate: string,
+): SubPeriod[] {
+  const adStart = new Date(adStartDate)
+  const adEnd = new Date(adEndDate)
+  const adDurationMs = adEnd.getTime() - adStart.getTime()
+
+  const startIndex = VIMSHOTTARI_SEQUENCE.indexOf(adLord)
+  // If unknown lord, start from 0
+  const base = startIndex < 0 ? 0 : startIndex
+
+  const sub: SubPeriod[] = []
+  let cursor = adStart
+
+  for (let i = 0; i < 9; i++) {
+    const planet = VIMSHOTTARI_SEQUENCE[(base + i) % 9]!
+    const ratio = (VIMSHOTTARI_YEARS[planet] ?? 0) / VIMSHOTTARI_TOTAL_YEARS
+    const durationMs = adDurationMs * ratio
+    const durationDays = Math.round(durationMs / 86_400_000)
+    const periodEnd = new Date(cursor.getTime() + durationMs)
+
+    sub.push({
+      planet,
+      start_date: cursor.toISOString().slice(0, 10),
+      end_date: periodEnd.toISOString().slice(0, 10),
+      duration_days: durationDays,
+    })
+    cursor = periodEnd
+  }
+
+  // Clamp last sub-period end to AD end to avoid floating-point drift
+  if (sub.length > 0) {
+    sub[sub.length - 1]!.end_date = adEndDate
+    const lastStart = new Date(sub[sub.length - 1]!.start_date)
+    sub[sub.length - 1]!.duration_days = Math.round(
+      (adEnd.getTime() - lastStart.getTime()) / 86_400_000
+    )
+  }
+
+  return sub
+}
+
+/**
+ * Compute the 9 Sookshma Dasha (SD) sub-periods for a given Pratyantar.
+ *
+ * For planet S within PD of planet P:
+ *   duration_SD(S) = duration_PD × (vimshottari_years[S] / 120)
+ */
+export function computeSookshma(
+  pdLord: string,
+  pdStartDate: string,
+  pdEndDate: string,
+): SubPeriod[] {
+  // Same algorithm as computePratyantar but applied to the PD duration
+  return computePratyantar(pdLord, pdStartDate, pdEndDate)
+}
 
 const SYSTEM_CATEGORY: Record<DashaSystem, string> = {
   vimshottari: 'dasha_vimshottari',
@@ -46,6 +154,13 @@ export interface QueryDashaPeriodsInput {
   system?: DashaSystem
   /** Default 'all'. 'M' deduplicates to one row per MD cluster (the AD row where ad_lord == md_lord). */
   level?: DashaLevel
+  /**
+   * Sub-period depth (UDA-Q-S1).
+   * 'pratyantar' — each AD row in the response carries a sub_periods array of 9 PD rows.
+   * 'sookshma'   — each AD row carries PD sub_periods, and each PD row carries 9 SD sub_periods.
+   * Sub-periods are computed dynamically from Vimshottari planet ratios; they are not stored in DB.
+   */
+  sub_level?: 'pratyantar' | 'sookshma'
   /** ISO date (YYYY-MM-DD). Returns rows whose start_date <= d < end_date. */
   as_of_date?: string
   /** If set, returns next N MD-transition rows after as_of_date (or today). */
@@ -223,9 +338,12 @@ async function retrieveImpl(
     filteredRows = capped.reverse()
   }
 
+  // Build sub_periods enrichment if sub_level is set (UDA-Q-S1)
+  const subLevel = input.sub_level
+
   const results: ToolBundleResult[] = filteredRows.length > 0
-    ? filteredRows.map(r => ({
-        content: JSON.stringify({
+    ? filteredRows.map(r => {
+        const baseRecord: Record<string, unknown> = {
           fact_id: r.fact_id,
           system,
           level: r.value_json.ad_lord === r.value_json.md_lord ? 'M_start' : 'A',
@@ -234,12 +352,34 @@ async function retrieveImpl(
           start_date: r.value_json.start_date,
           end_date: r.value_json.end_date,
           source_section: r.source_section,
-        }),
-        source_canonical_id: 'FORENSIC',
-        source_version: '8.0',
-        confidence: 1.0,
-        significance: 1.0,
-      }))
+        }
+
+        if (subLevel === 'pratyantar') {
+          baseRecord['sub_periods'] = computePratyantar(
+            r.value_json.ad_lord,
+            r.value_json.start_date,
+            r.value_json.end_date,
+          )
+        } else if (subLevel === 'sookshma') {
+          const pdPeriods = computePratyantar(
+            r.value_json.ad_lord,
+            r.value_json.start_date,
+            r.value_json.end_date,
+          )
+          baseRecord['sub_periods'] = pdPeriods.map(pd => ({
+            ...pd,
+            sub_periods: computeSookshma(pd.planet, pd.start_date, pd.end_date),
+          }))
+        }
+
+        return {
+          content: JSON.stringify(baseRecord),
+          source_canonical_id: 'FORENSIC',
+          source_version: '8.0',
+          confidence: 1.0,
+          significance: 1.0,
+        }
+      })
     : [{
         content: JSON.stringify({
           note: `No ${category} rows match the given filters. Available date range: 1984-02-05 to 2060-08-21.`,

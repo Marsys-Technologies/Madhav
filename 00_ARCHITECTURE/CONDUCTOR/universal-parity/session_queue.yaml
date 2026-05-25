@@ -1,0 +1,345 @@
+---
+# Universal Parity Campaign — SP1 Conductor Run 1
+# 20 sessions pre-authored; all briefs in 00_ARCHITECTURE/BRIEFS/
+# Context budget: 20 sub-agents per orchestrator chat
+# After Run 1 closes (HAP-2): native reviews, then Run 2 briefs are authored separately.
+
+meta:
+  campaign: universal-parity
+  super_phase: SP1
+  conductor_run: 1
+  total_sessions: 20
+  context_budget: 20
+  branch: feature/universal-parity
+  worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+  constants_file: 00_ARCHITECTURE/CONDUCTOR/universal-parity/CAMPAIGN_CONSTANTS.yaml
+  halt_log: 00_ARCHITECTURE/CONDUCTOR/universal-parity/CONDUCTOR_HALT_LOG.md
+  session_log: 00_ARCHITECTURE/CONDUCTOR/universal-parity/CONDUCTOR_LOG.md
+
+sessions:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # PRE — Diagnostic
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: PRE-S1
+    name: "Diagnostic Baseline"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_PRE_S1_v1_0.md"
+    gate_commands:
+      - >
+        node -e "JSON.parse(require('fs').readFileSync('eval-results/parity_baseline_pre_campaign.json','utf8'));
+        console.log('GATE_PRE_S1_JSON: PASS')"
+      - "test -f eval-results/PRE_S1_DIAGNOSTIC_REPORT.md && echo 'GATE_PRE_S1_REPORT: PASS'"
+      - "git log --oneline -3 | grep -q 'PRE-S1' && echo 'GATE_PRE_S1_COMMIT: PASS'"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # UDA-Q — Quality Delta Cross-Pollination (8 sessions)
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: UDA-Q-S1
+    name: "Quality Backport: query_dasha_periods PD/SD → portal"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S1_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "pratyantar" platform/src/lib/retrieve/query_dasha_periods.ts &&
+        echo 'GATE_UDA_Q_S1_PRATYANTAR: PASS'
+      - >
+        grep -q "sookshma" platform/src/lib/retrieve/query_dasha_periods.ts &&
+        echo 'GATE_UDA_Q_S1_SOOKSHMA: PASS'
+      - >
+        grep -q "computePratyantar\|sub_periods" platform/src/lib/retrieve/query_dasha_periods.ts &&
+        echo 'GATE_UDA_Q_S1_SUBPERIODS: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S1' && echo 'GATE_UDA_Q_S1_COMMIT: PASS'"
+
+  - id: UDA-Q-S2
+    name: "Quality Backport: query_ephemeris enhancements → portal"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S2_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "date_range\|sample_step\|return_changes_only" platform/src/lib/retrieve/query_ephemeris.ts &&
+        echo 'GATE_UDA_Q_S2_PARAMS: PASS'
+      - >
+        grep -q "1825\|span" platform/src/lib/retrieve/query_ephemeris.ts &&
+        echo 'GATE_UDA_Q_S2_GUARD: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S2' && echo 'GATE_UDA_Q_S2_COMMIT: PASS'"
+
+  - id: UDA-Q-S3
+    name: "Quality Backport: chart_facts_query populated_count → portal"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S3_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "include_empty_counts\|populated_count" platform/src/lib/retrieve/chart_facts_query.ts &&
+        echo 'GATE_UDA_Q_S3_FIELDS: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S3' && echo 'GATE_UDA_Q_S3_COMMIT: PASS'"
+
+  - id: UDA-Q-S4
+    name: "Quality Backport: lel_query chart_state + significance enum → MCP"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S4_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "chart_state" platform-mcp/src/tools/lel_query.ts &&
+        echo 'GATE_UDA_Q_S4_CHART_STATE: PASS'
+      - >
+        grep -q "major\|moderate\|minor" platform-mcp/src/tools/lel_query.ts &&
+        echo 'GATE_UDA_Q_S4_SIGNIFICANCE: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S4' && echo 'GATE_UDA_Q_S4_COMMIT: PASS'"
+
+  - id: UDA-Q-S5
+    name: "Quality Backport: query_varshphal year range support → MCP"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S5_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "year_start\|year_end" platform-mcp/src/tools/query_varshphal.ts &&
+        echo 'GATE_UDA_Q_S5_RANGE: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S5' && echo 'GATE_UDA_Q_S5_COMMIT: PASS'"
+
+  - id: UDA-Q-S6
+    name: "Quality Backport: msr_sql filter enrichment → portal (dasha_lord/valence/temporal_activation)"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S6_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "dasha_lord" platform/src/lib/retrieve/msr_sql.ts &&
+        echo 'GATE_UDA_Q_S6_DASHA_LORD: PASS'
+      - >
+        grep -q "valence\|temporal_activation" platform/src/lib/retrieve/msr_sql.ts &&
+        echo 'GATE_UDA_Q_S6_FILTERS: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S6' && echo 'GATE_UDA_Q_S6_COMMIT: PASS'"
+
+  - id: UDA-Q-S7
+    name: "Quality Backport: LL.1 calibration → MCP query_signals"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S7_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "ll1_weights\|calibrat\|confidence.*floor\|domain_floor" platform-mcp/src/tools/query_signals.ts &&
+        echo 'GATE_UDA_Q_S7_LL1: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-Q-S7' && echo 'GATE_UDA_Q_S7_COMMIT: PASS'"
+
+  - id: UDA-Q-S8
+    name: "Quality Delta Verification Audit"
+    status: completed
+    conductor_run: 1
+    requires_hap: true
+    hap_id: HAP-1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_Q_S8_v1_0.md"
+    gate_commands:
+      - "test -f eval-results/UDA_Q_S8_QUALITY_AUDIT.json && echo 'GATE_UDA_Q_S8_JSON: PASS'"
+      - >
+        node -e "
+          const r = JSON.parse(require('fs').readFileSync('eval-results/UDA_Q_S8_QUALITY_AUDIT.json','utf8'));
+          if (r.open_quality_gaps && r.open_quality_gaps.length > 0) {
+            console.error('GATE_UDA_Q_S8_GAPS: FAIL — ' + r.open_quality_gaps.length + ' open gaps');
+            process.exit(1);
+          }
+          console.log('GATE_UDA_Q_S8_GAPS: PASS');
+        "
+      - "git log --oneline -3 | grep -q 'UDA-Q-S8' && echo 'GATE_UDA_Q_S8_COMMIT: PASS'"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # UDA-0 — Manifest Foundation (3 sessions)
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: UDA-0-S1
+    name: "Manifest: Audit + deduplicate CAPABILITY_MANIFEST.json"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_0_S1_v1_0.md"
+    gate_commands:
+      - >
+        node -e "
+          const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+          const ids = m.entries.map(e => e.canonical_id);
+          const dupes = ids.filter((id,i) => ids.indexOf(id) !== i);
+          if (dupes.length > 0) { console.error('GATE_UDA_0_S1_DUPES: FAIL — ' + dupes); process.exit(1); }
+          console.log('GATE_UDA_0_S1_DUPES: PASS');
+        "
+      - "test -f eval-results/UDA_0_S1_MANIFEST_AUDIT.md && echo 'GATE_UDA_0_S1_AUDIT: PASS'"
+      - "git log --oneline -3 | grep -q 'UDA-0-S1' && echo 'GATE_UDA_0_S1_COMMIT: PASS'"
+
+  - id: UDA-0-S2
+    name: "Manifest: Register all 36 portal RETRIEVAL_TOOLS"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_0_S2_v1_0.md"
+    gate_commands:
+      - >
+        node -e "
+          const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+          const portalTools = m.entries.filter(e => e.channel === 'portal' && e.type === 'retrieval_tool');
+          if (portalTools.length < 36) {
+            console.error('GATE_UDA_0_S2_COUNT: FAIL — found ' + portalTools.length + ', expected 36');
+            process.exit(1);
+          }
+          console.log('GATE_UDA_0_S2_COUNT: PASS (' + portalTools.length + ' portal tools)');
+        "
+      - "git log --oneline -3 | grep -q 'UDA-0-S2' && echo 'GATE_UDA_0_S2_COMMIT: PASS'"
+
+  - id: UDA-0-S3
+    name: "Manifest: Register all 41 MCP tools + fix catalog.ts"
+    status: completed
+    conductor_run: 1
+    requires_hap: true
+    hap_id: HAP-2
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_0_S3_v1_0.md"
+    gate_commands:
+      - >
+        node -e "
+          const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+          const mcpTools = m.entries.filter(e => e.channel === 'mcp' && e.type === 'retrieval_tool');
+          if (mcpTools.length < 41) {
+            console.error('GATE_UDA_0_S3_MANIFEST: FAIL — found ' + mcpTools.length + ', expected 41');
+            process.exit(1);
+          }
+          console.log('GATE_UDA_0_S3_MANIFEST: PASS (' + mcpTools.length + ' MCP tools)');
+        "
+      - >
+        node -e "
+          const src = require('fs').readFileSync('platform-mcp/src/tools/catalog.ts','utf8');
+          const names = src.match(/name:\s*['\"][^'\"]+['\"]/g) || [];
+          if (names.length < 41) {
+            console.error('GATE_UDA_0_S3_CATALOG: FAIL — found ' + names.length + ', expected 41');
+            process.exit(1);
+          }
+          console.log('GATE_UDA_0_S3_CATALOG: PASS (' + names.length + ' entries)');
+        "
+      - "git log --oneline -3 | grep -q 'UDA-0-S3' && echo 'GATE_UDA_0_S3_COMMIT: PASS'"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # UDA-1 — Port 14 MCP Class B engines → portal RETRIEVAL_TOOLS (8 sessions)
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: UDA-1-S1
+    name: "Port to portal: query_transits_over_natal + query_yogas_active_now"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S1_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "query_transits_over_natal\|transits_over_natal" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S1_TRANSITS: PASS'
+      - >
+        grep -q "query_yogas_active_now\|yogas_active_now" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S1_YOGAS: PASS'
+      - >
+        test -f platform/src/lib/retrieve/query_transits_over_natal.ts &&
+        echo 'GATE_UDA_1_S1_FILE_TRANSITS: PASS'
+      - >
+        test -f platform/src/lib/retrieve/query_yogas_active_now.ts &&
+        echo 'GATE_UDA_1_S1_FILE_YOGAS: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S1' && echo 'GATE_UDA_1_S1_COMMIT: PASS'"
+
+  - id: UDA-1-S2
+    name: "Port to portal: get_planet_avastha + get_shadbala_full"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S2_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "get_planet_avastha\|planet_avastha" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S2_AVASTHA: PASS'
+      - >
+        grep -q "get_shadbala_full\|shadbala_full" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S2_SHADBALA: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S2' && echo 'GATE_UDA_1_S2_COMMIT: PASS'"
+
+  - id: UDA-1-S3
+    name: "Port to portal: query_jaimini_chara_dasha"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S3_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "query_jaimini_chara_dasha\|jaimini_chara_dasha" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S3_JCD: PASS'
+      - >
+        test -f platform/src/lib/retrieve/query_jaimini_chara_dasha.ts &&
+        echo 'GATE_UDA_1_S3_FILE: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S3' && echo 'GATE_UDA_1_S3_COMMIT: PASS'"
+
+  - id: UDA-1-S4
+    name: "Port to portal: query_planetary_period_predictions"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S4_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "query_planetary_period_predictions\|planetary_period_predictions" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S4_PPP: PASS'
+      - >
+        test -f platform/src/lib/retrieve/query_planetary_period_predictions.ts &&
+        echo 'GATE_UDA_1_S4_FILE: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S4' && echo 'GATE_UDA_1_S4_COMMIT: PASS'"
+
+  - id: UDA-1-S5
+    name: "Port to portal: query_dasamsha_career + query_shashtiamsha"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S5_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "query_dasamsha_career\|dasamsha_career" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S5_DASAMSHA: PASS'
+      - >
+        grep -q "query_shashtiamsha\|shashtiamsha" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S5_SHASHTIAMSHA: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S5' && echo 'GATE_UDA_1_S5_COMMIT: PASS'"
+
+  - id: UDA-1-S6
+    name: "Port to portal: query_eclipse_transits + query_planet_war"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S6_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "query_eclipse_transits\|eclipse_transits" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S6_ECLIPSE: PASS'
+      - >
+        grep -q "query_planet_war\|planet_war" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S6_PLANETWAR: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S6' && echo 'GATE_UDA_1_S6_COMMIT: PASS'"
+
+  - id: UDA-1-S7
+    name: "Port to portal: query_drekkana_drishti + query_remedies_prescribed"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S7_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "query_drekkana_drishti\|drekkana_drishti" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S7_DREKKANA: PASS'
+      - >
+        grep -q "query_remedies_prescribed\|remedies_prescribed" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S7_REMEDIES: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S7' && echo 'GATE_UDA_1_S7_COMMIT: PASS'"
+
+  - id: UDA-1-S8
+    name: "Port to portal: tara_balam_for_native + chandra_balam_for_native + muhurta_finder"
+    status: completed
+    conductor_run: 1
+    brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S8_v1_0.md"
+    gate_commands:
+      - >
+        grep -q "tara_balam_for_native\|tara_balam" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S8_TARA: PASS'
+      - >
+        grep -q "chandra_balam_for_native\|chandra_balam" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S8_CHANDRA: PASS'
+      - >
+        grep -q "muhurta_finder\|muhurta" platform/src/lib/retrieve/index.ts &&
+        echo 'GATE_UDA_1_S8_MUHURTA: PASS'
+      - "git log --oneline -3 | grep -q 'UDA-1-S8' && echo 'GATE_UDA_1_S8_COMMIT: PASS'"

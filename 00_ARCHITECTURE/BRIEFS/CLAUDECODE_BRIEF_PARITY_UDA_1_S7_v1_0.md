@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-1-S7: Port query_drekkana_drishti + query_remedies_prescribed to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-1-S7: Port query_drekkana_drishti + query_remedies_prescribed → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_1_S7
 version: 1.0
 status: CURRENT
@@ -8,83 +8,144 @@ session_id: UDA-1-S7
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-1-S7 — Port drekkana drishti + prescribed remedies tools to portal
+# UDA-1-S7 — Port to portal: query_drekkana_drishti + query_remedies_prescribed
 
 ## 1. Context
 
-- `query_drekkana_drishti` — returns Jaimini's Drekkana Drishti (aspect in the D3/Drekkana divisional). Different from Parashari rashi drishti — based on drekkana positions. Used in Jaimini analysis for sibling and co-born significations.
-- `query_remedies_prescribed` — returns remedies that have been logged/prescribed for the native (from the Learning Layer or a dedicated remedies table). Returns: remedy_type, prescription, prescribed_date, compliance_status. Distinct from `query_remedial_mantras` (which is static classical guidance) — this returns the operationalized remedy log.
+**`query_drekkana_drishti` (Jaimini Drekkana Drishti):**
+1. Fetches D3 chart positions via `divisional_query({varga:"D3"})`
+2. Classifies each sign as moveable / fixed / dual
+3. Applies Jaimini Drekkana Drishti rules:
+   - Moveable signs: aspect ALL signs EXCEPT 2nd and 12th from them
+   - Fixed signs: aspect all OTHER fixed signs
+   - Dual signs: aspect all OTHER dual signs
+4. Returns: per-planet drekkana sign, type, drishti targets, mutual aspects
+
+**`query_remedies_prescribed` (Remedial Prescription Cross-Reference):**
+1. Builds composite search query from `affliction`, `planet`, `house`, `condition` params
+2. Calls `remedial_codex_query` (the existing portal tool) for remedy matches
+3. Optionally enriches with chart_facts remedy/strength rows for the planet
+4. Detects remedy_type from content keywords (mantra/gem/ritual/charity)
+5. Filters by `remedy_type` if not "all"
+6. Returns top 10 structured remedy results
+
+**MCP source files (read-only):**
+- `platform-mcp/src/tools/query_drekkana_drishti.ts`
+- `platform-mcp/src/tools/query_remedies_prescribed.ts`
+
+**Portal target files (create):**
+- `platform/src/lib/retrieve/query_drekkana_drishti.ts`
+- `platform/src/lib/retrieve/query_remedies_prescribed.ts`
+
+---
 
 ## 2. Scope
 
 **may_touch:**
 - `platform/src/lib/retrieve/query_drekkana_drishti.ts` (create)
 - `platform/src/lib/retrieve/query_remedies_prescribed.ts` (create)
-- `platform/src/lib/retrieve/index.ts`
+- `platform/src/lib/retrieve/index.ts` (add registrations)
 
 **must_not_touch:**
-- MCP tool files (reference only)
-- All `platform-mcp/` files
-- Governance files
+- `platform-mcp/` (source reference only)
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_drekkana_drishti.ts`
-2. `platform-mcp/src/tools/query_remedies_prescribed.ts`
-3. `platform/src/lib/retrieve/index.ts`
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.1_7.1: `platform/src/lib/retrieve/query_drekkana_drishti.ts` exists and exports a RetrievalTool
+- [ ] AC.1_7.2: `platform/src/lib/retrieve/query_remedies_prescribed.ts` exists and exports a RetrievalTool
+- [ ] AC.1_7.3: Both tools registered in `index.ts` RETRIEVAL_TOOLS
+- [ ] AC.1_7.4: `query_drekkana_drishti` calls portal `divisional_query`; `query_remedies_prescribed` calls portal `remedial_codex_query`
+- [ ] AC.1_7.5: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.1_7.6: Commit message contains `UDA-1-S7`
 
-- [ ] AC.1: `query_drekkana_drishti` in portal RETRIEVAL_TOOLS — returns D3 aspect relationships
-- [ ] AC.2: `query_remedies_prescribed` in portal RETRIEVAL_TOOLS — returns remedy log rows
-- [ ] AC.3: `query_remedies_prescribed` returns graceful empty result if remedies table doesn't exist in portal DB
-- [ ] AC.4: Both registered in `index.ts` with exact name match to MCP
-- [ ] AC.5: TypeScript compiles clean
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read MCP implementations
+### Step 1 — Read MCP source files
 
 ```bash
 cat platform-mcp/src/tools/query_drekkana_drishti.ts
 cat platform-mcp/src/tools/query_remedies_prescribed.ts
+cat platform/src/lib/retrieve/remedial_codex_query.ts | head -60
 ```
 
-Note the table names. For `query_remedies_prescribed`, check if a remedies table exists in portal DB migrations:
-```bash
-grep -r "remedies\|remedy" platform/supabase/migrations/ | head -10
+### Step 2 — Create query_drekkana_drishti.ts (portal version)
+
+Sign type classification:
+```typescript
+const MOVEABLE_SIGNS = ['Aries', 'Cancer', 'Libra', 'Capricorn']
+const FIXED_SIGNS    = ['Taurus', 'Leo', 'Scorpio', 'Aquarius']
+const DUAL_SIGNS     = ['Gemini', 'Virgo', 'Sagittarius', 'Pisces']
+const ALL_SIGNS      = [...MOVEABLE_SIGNS, ...FIXED_SIGNS, ...DUAL_SIGNS]
+
+function getDrishtiTargets(sign: string): string[] {
+  if (MOVEABLE_SIGNS.includes(sign)) {
+    const idx = ALL_SIGNS.indexOf(sign)
+    const adj2nd  = ALL_SIGNS[(idx + 1) % 12]!
+    const adj12th = ALL_SIGNS[(idx + 11) % 12]!
+    return ALL_SIGNS.filter(s => s !== sign && s !== adj2nd && s !== adj12th)
+  }
+  if (FIXED_SIGNS.includes(sign)) return FIXED_SIGNS.filter(s => s !== sign)
+  if (DUAL_SIGNS.includes(sign))  return DUAL_SIGNS.filter(s => s !== sign)
+  return []
+}
 ```
 
-### Step 2 — Port both tools
+Call portal `divisional_query` with `divisional_chart: "D3"` to get D3 positions.
 
-Follow UDA-1-S1 porting pattern.
+### Step 3 — Create query_remedies_prescribed.ts (portal version)
 
-For `query_drekkana_drishti`: likely queries divisional positions table with `division = 3` and computes aspect relationships. May require the same D3 position data that `divisional_query` accesses.
+Call portal `remedial_codex_query` tool's execute function with the built search query.
+Then optionally call `chart_facts_query` for the planet's remedy rows.
+Detect remedy_type from content keywords (same keywords as MCP: "mantra", "gem", "ritual", "donate").
 
-For `query_remedies_prescribed`: wrap in try/catch to handle missing table gracefully (same pattern as UDA-1-S4 for prediction log).
+### Step 4 — Register in index.ts
 
-### Step 3 — Register and compile
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
+```typescript
+import * as queryDrekkanaDrishti from './query_drekkana_drishti'
+import * as queryRemediesPrescribed from './query_remedies_prescribed'
 ```
 
-### Step 4 — Commit
+Add to RETRIEVAL_TOOLS.
+
+### Step 5 — TypeScript compile check
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add platform/src/lib/retrieve/query_drekkana_drishti.ts
-git add platform/src/lib/retrieve/query_remedies_prescribed.ts
-git add platform/src/lib/retrieve/index.ts
+cd platform && npx tsc --noEmit
+```
+
+### Step 6 — Commit
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+git add platform/src/lib/retrieve/query_drekkana_drishti.ts \
+        platform/src/lib/retrieve/query_remedies_prescribed.ts \
+        platform/src/lib/retrieve/index.ts
 git commit -m "feat(UDA-1-S7): port query_drekkana_drishti + query_remedies_prescribed to portal
 
-Drekkana Drishti (Jaimini D3 aspects) and prescribed remedies log
-now available in portal RETRIEVAL_TOOLS.
-Remedies tool gracefully handles missing table.
-TypeScript clean."
+Jaimini Drekkana Drishti aspect system; remedial codex cross-reference.
+tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "query_drekkana_drishti\|drekkana_drishti" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S7_DREKKANA: PASS'
+grep -q "query_remedies_prescribed\|remedies_prescribed" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S7_REMEDIES: PASS'
+git log --oneline -3 | grep -q 'UDA-1-S7' && echo 'GATE_UDA_1_S7_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

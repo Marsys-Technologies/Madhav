@@ -34,6 +34,8 @@ import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 
+const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+
 export const QUERY_VARSHPHAL_DESCRIPTION = buildToolDescription({
   baseDescription:
     'What it does: Returns the Tajaka (solar return) annual chart for a given year or year range — ' +
@@ -46,14 +48,14 @@ export const QUERY_VARSHPHAL_DESCRIPTION = buildToolDescription({
 })
 
 const QueryVarshphalInputSchema = z.object({
-  year: z.number().int().optional().describe(
-    'Target solar return year (e.g. 2026). Omit to return all available years.'
+  year: z.number().int().min(1900).max(2100).optional().describe(
+    'Gregorian year for the Solar Return, e.g. 2026. Use for single-year lookup.'
   ),
-  year_start: z.number().int().optional().describe(
-    'Start of year range (inclusive). Use with year_end for multi-year retrieval.'
+  year_start: z.number().int().min(1900).max(2100).optional().describe(
+    'Start year for range query (inclusive). Use with year_end for multi-year retrieval.'
   ),
-  year_end: z.number().int().optional().describe(
-    'End of year range (inclusive). Use with year_start for multi-year retrieval.'
+  year_end: z.number().int().min(1900).max(2100).optional().describe(
+    'End year for range query (inclusive, max 20 years from year_start).'
   ),
   ayanamsha: z.string().optional().describe(
     'Ayanamsha system. Default: "lahiri". Options: lahiri, raman, krishnamurti.'
@@ -72,12 +74,58 @@ export function registerQueryVarshphal(
     QueryVarshphalInputSchema.shape,
     async (args: QueryVarshphalInput) => {
       const principal = getPrincipal()
+
+      // Tier check: super_admin + acharya only.
+      if (principal.audience_tier === 'client') {
+        return errorResult({
+          ok: false,
+          error: 'Forbidden',
+          message: 'query_varshphal is restricted to super_admin and acharya tiers.',
+        })
+      }
+
+      const chart_id = NATIVE_CHART_ID
+
+      // Range mode: year_start + year_end provided.
+      if (args.year_start !== undefined && args.year_end !== undefined) {
+        const start = args.year_start
+        const end = Math.min(args.year_end, start + 19) // cap at 20 years
+        const years = Array.from({ length: end - start + 1 }, (_, i) => start + i)
+        const results = await Promise.all(
+          years.map(y =>
+            callPlatformPrimitive(
+              'query_varshaphala',
+              { chart_id, year: y, ayanamsha: args.ayanamsha },
+              principal
+            )
+          )
+        )
+        const failed = results.find(r => !r.envelope.ok || r.status >= 400)
+        if (failed) {
+          return errorResult(failed.envelope)
+        }
+        return okResult({
+          mode: 'range',
+          year_start: start,
+          year_end: end,
+          charts: results.map(r => r.envelope),
+        })
+      }
+
+      // Single-year mode.
+      if (args.year === undefined) {
+        return errorResult({
+          ok: false,
+          error: 'BadRequest',
+          message: 'Provide either year (single) or both year_start and year_end (range).',
+        })
+      }
+
       const { status, envelope } = await callPlatformPrimitive(
         'query_varshphal',
         {
+          chart_id,
           year: args.year,
-          year_start: args.year_start,
-          year_end: args.year_end,
           ayanamsha: args.ayanamsha,
         },
         principal

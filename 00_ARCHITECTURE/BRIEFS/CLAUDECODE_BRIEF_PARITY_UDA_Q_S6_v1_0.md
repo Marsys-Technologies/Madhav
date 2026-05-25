@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-Q-S6: msr_sql filter enrichment to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-Q-S6: Quality Backport msr_sql filter enrichment → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_Q_S6
 version: 1.0
 status: CURRENT
@@ -8,115 +8,143 @@ session_id: UDA-Q-S6
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-Q-S6 — Backport MCP query_signals filter richness to portal msr_sql
+# UDA-Q-S6 — Quality Backport: msr_sql filter enrichment → portal
 
 ## 1. Context
 
-The MCP `platform-mcp/src/tools/query_signals.ts` (enhanced TR-P1-S2) has filter params the portal `platform/src/lib/retrieve/msr_sql.ts` is missing:
-- `dasha_lord: string` — filter signals where dasha_lord field matches a planet
-- `valence: enum('positive','negative','mixed','neutral')` — filter by signal valence
-- `temporal_activation: boolean` — filter for temporally active signals only
-- `forward_looking: boolean` — filter prospective signals only
-- `domains: string[]` — multi-domain filter (portal only has single `domain`)
+The MCP version of the MSR signal query (`platform-mcp/src/tools/query_signals.ts`) exposes
+three filter parameters not present in the portal `msr_sql.ts`:
 
-Meanwhile portal's `msr_sql.ts` has LL.1 calibration that MCP is missing (addressed in UDA-Q-S7).
+1. **`dasha_lord`** — filter signals whose `dasha_activations` JSON array contains a specific planet lord
+2. **`valence`** — filter to `"positive" | "negative" | "mixed"` valence
+3. **`temporal_activation`** — filter to `"natal" | "transit" | "dasha"` activation mode
 
-This session adds the MCP's richer filters to the portal `msr_sql.ts`. The LL.1 calibration already present in portal is PRESERVED.
+The portal `msr_sql.ts` already has rich filtering (domain, confidence floor, LL.1 weights,
+Pancha-MP clique dedup) but lacks these three MCP-added dimensions.
+
+This session adds all three filter parameters to `platform/src/lib/retrieve/msr_sql.ts`.
+
+**Source of truth (read-only):** `platform-mcp/src/tools/query_signals.ts`
+**Target to modify:** `platform/src/lib/retrieve/msr_sql.ts`
+
+---
 
 ## 2. Scope
 
 **may_touch:**
 - `platform/src/lib/retrieve/msr_sql.ts`
+- `platform/src/lib/retrieve/types.ts` (if `MsrSqlInput` is defined there)
 
 **must_not_touch:**
-- `platform-mcp/src/tools/query_signals.ts` (reference only)
+- `platform-mcp/` (source reference only)
 - `platform/src/lib/retrieve/index.ts`
-- `01_FACTS_LAYER/ll1_weights_promoted_v1_0.json` (read-only if needed)
-- All `platform-mcp/` files
-- Governance files
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_signals.ts` — source of filter-rich params
-2. `platform/src/lib/retrieve/msr_sql.ts` — current portal version with LL.1 calibration
-3. `01_FACTS_LAYER/ll1_weights_promoted_v1_0.json` — LL.1 weight file (reference for calibration logic)
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.Q6.1: `MsrSqlInput` (in `msr_sql.ts` or `types.ts`) includes `dasha_lord?: string`
+- [ ] AC.Q6.2: `MsrSqlInput` includes `valence?: "positive" | "negative" | "mixed"`
+- [ ] AC.Q6.3: `MsrSqlInput` includes `temporal_activation?: "natal" | "transit" | "dasha"`
+- [ ] AC.Q6.4: Each new filter is actually applied in the SQL query or post-filter logic
+- [ ] AC.Q6.5: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.Q6.6: Commit message contains `UDA-Q-S6`
 
-- [ ] AC.1: `dasha_lord: z.string().optional()` added — filters `WHERE dasha_lord = $N`
-- [ ] AC.2: `valence: z.enum(['positive','negative','mixed','neutral']).optional()` added — filters `WHERE valence = $N`
-- [ ] AC.3: `temporal_activation: z.boolean().optional()` added — when true, filters `WHERE temporal_activation = true`
-- [ ] AC.4: `forward_looking: z.boolean().optional()` added — when true, filters for prospective signals
-- [ ] AC.5: `domains: z.array(z.string()).optional()` added — when provided, filters `WHERE domain = ANY($N)` (multi-domain)
-- [ ] AC.6: Existing LL.1 calibration (domain-specific confidence floors: finance/wealth at 0.35, default 0.55) is PRESERVED exactly — do not remove or alter calibration code
-- [ ] AC.7: Existing `domain` single-filter param preserved for backward compat (if `domain` provided without `domains`, still works)
-- [ ] AC.8: TypeScript compiles: `cd platform && npx tsc --noEmit`
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Read both files
+### Step 1 — Read both tools
 
 ```bash
 cat platform-mcp/src/tools/query_signals.ts
 cat platform/src/lib/retrieve/msr_sql.ts
+grep -n "MsrSqlInput" platform/src/lib/retrieve/types.ts
 ```
 
-Identify the LL.1 calibration block in `msr_sql.ts` — mark it clearly with a comment like `// LL.1 CALIBRATION — DO NOT REMOVE` so it's protected.
+Identify where `MsrSqlInput` is defined and how the SQL query is constructed.
 
-### Step 2 — Add params to Zod schema
+### Step 2 — Add three new fields to MsrSqlInput
 
-Add the five new optional params to the existing schema without touching existing params:
+Find the `MsrSqlInput` interface (either in `types.ts` or inline in `msr_sql.ts`) and add:
+
 ```typescript
-dasha_lord: z.string().optional(),
-valence: z.enum(['positive', 'negative', 'mixed', 'neutral']).optional(),
-temporal_activation: z.boolean().optional(),
-forward_looking: z.boolean().optional(),
-domains: z.array(z.string()).optional(),
+/** Filter to signals where dasha_activations JSON array contains this planet lord. */
+dasha_lord?: string
+/** Filter to signals by valence. */
+valence?: 'positive' | 'negative' | 'mixed'
+/** Filter to signals by temporal activation mode. */
+temporal_activation?: 'natal' | 'transit' | 'dasha'
 ```
 
-### Step 3 — Add SQL filter clauses
+### Step 3 — Apply dasha_lord filter
 
-In the WHERE clause builder (or wherever `AND` conditions are assembled), add:
+The `msr_signals` table has a `dasha_activations` column (likely JSONB array of planet names).
+Add a WHERE clause condition:
+
 ```typescript
-if (dasha_lord) { clauses.push(`dasha_lord = $${params.push(dasha_lord)}`); }
-if (valence) { clauses.push(`valence = $${params.push(valence)}`); }
-if (temporal_activation !== undefined) { clauses.push(`temporal_activation = $${params.push(temporal_activation)}`); }
-if (forward_looking !== undefined) { clauses.push(`forward_looking = $${params.push(forward_looking)}`); }
-if (domains && domains.length > 0) { clauses.push(`domain = ANY($${params.push(domains)})`); }
+if (input.dasha_lord) {
+  conditions.push(`dasha_activations @> $${params.length + 1}::jsonb`)
+  params.push(JSON.stringify([input.dasha_lord]))
+}
 ```
 
-If columns don't exist in the table, log a warning and skip that filter rather than erroring. Check actual column names against the MCP tool's SQL.
-
-### Step 4 — Preserve LL.1 calibration
-
-After the SQL query returns results, the LL.1 weight adjustment must still run on the result set. Do NOT remove the calibration block. Verify it still executes after the new filters are applied.
-
-### Step 5 — TypeScript check
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
+Or if post-filtering from rows:
+```typescript
+.filter(row => !input.dasha_lord ||
+  (row.dasha_activations as string[] | null)?.includes(input.dasha_lord))
 ```
 
-### Step 6 — Commit
+### Step 4 — Apply valence filter
+
+```typescript
+if (input.valence) {
+  conditions.push(`valence = $${params.length + 1}`)
+  params.push(input.valence)
+}
+```
+
+### Step 5 — Apply temporal_activation filter
+
+```typescript
+if (input.temporal_activation) {
+  conditions.push(`temporal_activation = $${params.length + 1}`)
+  params.push(input.temporal_activation)
+}
+```
+
+### Step 6 — TypeScript compile check
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add platform/src/lib/retrieve/msr_sql.ts
-git commit -m "feat(UDA-Q-S6): backport MCP filter richness to portal msr_sql
-
-Added filter params from query_signals:
-- dasha_lord: string filter
-- valence: positive|negative|mixed|neutral enum
-- temporal_activation: boolean filter
-- forward_looking: boolean filter
-- domains: string[] multi-domain filter
-
-LL.1 calibration PRESERVED (domain-specific confidence floors intact).
-Backward compat: existing domain + min_confidence params unchanged.
-TypeScript clean."
+cd platform && npx tsc --noEmit
 ```
+
+### Step 7 — Commit
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+git add platform/src/lib/retrieve/msr_sql.ts platform/src/lib/retrieve/types.ts
+git commit -m "feat(UDA-Q-S6): add dasha_lord, valence, temporal_activation filters to portal msr_sql
+
+Backports MCP query_signals filter dimensions. tsc: 0 errors."
+```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "dasha_lord" platform/src/lib/retrieve/msr_sql.ts && echo 'GATE_UDA_Q_S6_DASHA_LORD: PASS'
+grep -q "valence\|temporal_activation" platform/src/lib/retrieve/msr_sql.ts && echo 'GATE_UDA_Q_S6_FILTERS: PASS'
+git log --oneline -3 | grep -q 'UDA-Q-S6' && echo 'GATE_UDA_Q_S6_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

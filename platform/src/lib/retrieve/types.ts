@@ -84,10 +84,18 @@ export interface ToolBundle {
 export interface MsrSqlInput {
   /** Filter to specific signal_type values (e.g. ['yoga', 'aspect']). */
   signal_type?: string[]
-  /** Filter to specific temporal_activation values (e.g. ['natal-permanent']). */
-  temporal_activation?: string[]
-  /** Filter to specific valence values (e.g. ['benefic', 'mixed']). */
-  valence?: string[]
+  /**
+   * Filter to specific temporal_activation values.
+   * Accepts a single value ('natal' | 'transit' | 'dasha') or an array of
+   * values (e.g. ['natal-permanent']) for backward-compatible multi-value use.
+   */
+  temporal_activation?: 'natal' | 'transit' | 'dasha' | string | string[]
+  /**
+   * Filter to specific valence values.
+   * Accepts a single value ('positive' | 'negative' | 'mixed') or an array of
+   * values (e.g. ['benefic', 'mixed']) for backward-compatible multi-value use.
+   */
+  valence?: 'positive' | 'negative' | 'mixed' | string | string[]
   /** Filter to signals whose entities_involved array contains any of these entity IDs. */
   entities_involved_any?: string[]
   /**
@@ -96,6 +104,12 @@ export interface MsrSqlInput {
    * prepends "DSH.MD." to convert to entity IDs and merges with entities_involved_any.
    */
   dasha_activation?: string[]
+  /**
+   * Filter to signals where dasha_activations JSON array contains this planet lord.
+   * Single-value scalar convenience — e.g. "Saturn", "Ketu".
+   * Merged with dasha_activation[] if both are provided.
+   */
+  dasha_lord?: string
 }
 
 export interface RetrievalTool {

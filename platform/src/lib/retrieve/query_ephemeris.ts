@@ -41,6 +41,8 @@ export interface QueryEphemerisInput {
   start_date?: string
   /** End of date range (YYYY-MM-DD). Required when start_date is set. */
   end_date?: string
+  /** Alternative range input: { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }. Takes precedence over start_date/end_date if both are supplied. */
+  date_range?: { start: string; end: string }
   /** Single planet (canonical or capitalized name, normalized to lowercase). */
   planet?: string
   /** Multiple planets. */
@@ -53,6 +55,10 @@ export interface QueryEphemerisInput {
    * tight queries. Pass a subset to include only specific fields.
    */
   derived_fields?: DerivedField[]
+  /** If set to N (N > 1), return every Nth row (e.g. sample_step=7 returns weekly samples). Reduces token volume for wide ranges. */
+  sample_step?: number
+  /** If true, only return rows where sign or dignity changed since the prior row. */
+  return_changes_only?: boolean
 }
 
 interface EphemerisRow {
@@ -92,13 +98,17 @@ function buildWhere(p: QueryEphemerisInput): { where: string; args: unknown[] } 
   const args: unknown[] = []
   let idx = 1
 
+  // Normalize date_range into start_date/end_date (date_range takes precedence)
+  const resolvedStart = p.date_range?.start ?? p.start_date
+  const resolvedEnd   = p.date_range?.end   ?? p.end_date
+
   // Date conditions
-  if (p.start_date && p.end_date) {
+  if (resolvedStart && resolvedEnd) {
     conditions.push(`date >= $${idx}::date`)
-    args.push(p.start_date)
+    args.push(resolvedStart)
     idx++
     conditions.push(`date <= $${idx}::date`)
-    args.push(p.end_date)
+    args.push(resolvedEnd)
     idx++
   } else if (p.date) {
     conditions.push(`date = $${idx}::date`)
@@ -159,6 +169,18 @@ async function retrieveImpl(
   const input = (params ?? {}) as QueryEphemerisInput
   const limit = Math.max(1, Math.min(500, input.limit ?? 100))
 
+  // 1825-day span guard (5-year maximum)
+  const resolvedStart = input.date_range?.start ?? input.start_date
+  const resolvedEnd   = input.date_range?.end   ?? input.end_date
+  if (resolvedStart && resolvedEnd) {
+    const spanDays = (new Date(resolvedEnd).getTime() - new Date(resolvedStart).getTime()) / 86_400_000
+    if (spanDays > 1825) {
+      throw new Error(
+        `Date range exceeds 1825-day limit (requested ${Math.round(spanDays)} days). Narrow the range or use sample_step.`
+      )
+    }
+  }
+
   const { where, args } = buildWhere(input)
 
   const sql = `
@@ -191,7 +213,21 @@ async function retrieveImpl(
 
   const storage = getStorageClient()
   const result = await storage.query(sql, args)
-  const rows = result.rows as EphemerisRow[]
+  let rows = result.rows as EphemerisRow[]
+
+  // Apply sample_step: return every Nth row (reduces token volume for wide ranges)
+  if (input.sample_step !== undefined && input.sample_step > 1) {
+    rows = rows.filter((_, i) => i % input.sample_step! === 0)
+  }
+
+  // Apply return_changes_only: only rows where sign or dignity changed vs prior row
+  if (input.return_changes_only) {
+    rows = rows.filter((row, i) => {
+      if (i === 0) return true
+      const prev = rows[i - 1]!
+      return row.sign !== prev.sign || row.dignity_d1 !== prev.dignity_d1
+    })
+  }
 
   // Determine which derived fields to include (default: all).
   const derivedFields: DerivedField[] =

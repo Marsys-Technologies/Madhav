@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-1-S5: Port query_dasamsha_career + query_shashtiamsha to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-1-S5: Port query_dasamsha_career + query_shashtiamsha → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_1_S5
 version: 1.0
 status: CURRENT
@@ -8,87 +8,137 @@ session_id: UDA-1-S5
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-1-S5 — Port D10 career + D60 shashtiamsha tools to portal
+# UDA-1-S5 — Port to portal: query_dasamsha_career + query_shashtiamsha
 
 ## 1. Context
 
-Two divisional chart tools:
-- `query_dasamsha_career` — queries D10 (Dasamsha) divisional chart data for career/profession analysis. Returns the D10 lagna, planetary positions in D10, and career-relevant signals. Essential for career questions.
-- `query_shashtiamsha` — queries D60 (Shashtiamsha), the finest divisional (1/60th division). Each D60 lord carries specific classical qualities. Used for past-life karma and overall life path analysis.
+Two MCP divisional-chart analysis tools need to be ported to the portal:
 
-**Important:** The portal has `divisional_query.ts` — check if it already covers D10 and D60. If it does, assess whether the MCP-specific tools add anything beyond what `divisional_query` already returns. Port only if the MCP tools add distinct value (more targeted SQL, career-specific signals, D60 lord assignments).
+**`query_dasamsha_career` (D10 Career Analysis):**
+1. Fetches D10 chart positions via `divisional_query({varga:"D10"})`
+2. Parses planet sign/house positions in D10
+3. Applies classical career-indicator rules (10H lord placement, career planet positions)
+4. Returns `{ d10_ascendant, planets, career_indicators }`
+
+**`query_shashtiamsha` (D60 Karma Analysis):**
+1. Fetches D60 chart positions via `divisional_query({varga:"D60"})`
+2. Maps each planet's D60 position to a classical pada name + interpretation
+3. Pada names cycle: Ghora, Rakshasa, Deva... (12 names × 5 repeats = 60 padas, 0.5° each)
+4. Returns `{ planets: [{planet, d60_sign, d60_house, d60_pada_number, d60_pada_name, d60_interpretation}] }`
+
+**MCP source files (read-only):**
+- `platform-mcp/src/tools/query_dasamsha_career.ts`
+- `platform-mcp/src/tools/query_shashtiamsha.ts`
+
+**Portal target files (create):**
+- `platform/src/lib/retrieve/query_dasamsha_career.ts`
+- `platform/src/lib/retrieve/query_shashtiamsha.ts`
+
+---
 
 ## 2. Scope
 
 **may_touch:**
-- `platform/src/lib/retrieve/query_dasamsha_career.ts` (create if needed)
-- `platform/src/lib/retrieve/query_shashtiamsha.ts` (create if needed)
-- `platform/src/lib/retrieve/divisional_query.ts` (upgrade if covering both — optional)
-- `platform/src/lib/retrieve/index.ts`
+- `platform/src/lib/retrieve/query_dasamsha_career.ts` (create)
+- `platform/src/lib/retrieve/query_shashtiamsha.ts` (create)
+- `platform/src/lib/retrieve/index.ts` (add registrations)
 
 **must_not_touch:**
-- MCP tool files (reference only)
-- All `platform-mcp/` files
-- Governance files
+- `platform-mcp/` (source reference only)
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_dasamsha_career.ts`
-2. `platform-mcp/src/tools/query_shashtiamsha.ts`
-3. `platform/src/lib/retrieve/divisional_query.ts` — check overlap
-4. `platform/src/lib/retrieve/index.ts`
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.1_5.1: `platform/src/lib/retrieve/query_dasamsha_career.ts` exists and exports a RetrievalTool
+- [ ] AC.1_5.2: `platform/src/lib/retrieve/query_shashtiamsha.ts` exists and exports a RetrievalTool
+- [ ] AC.1_5.3: Both tools registered in `index.ts` RETRIEVAL_TOOLS
+- [ ] AC.1_5.4: Both tools call portal `divisional_query` (the existing portal tool) to fetch chart data
+- [ ] AC.1_5.5: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.1_5.6: Commit message contains `UDA-1-S5`
 
-- [ ] AC.1: `query_dasamsha_career` in portal RETRIEVAL_TOOLS — either new file or registered alias
-- [ ] AC.2: `query_shashtiamsha` in portal RETRIEVAL_TOOLS — either new file or registered alias
-- [ ] AC.3: If `divisional_query` already covers both by passing `division: 10` or `division: 60`, add named wrappers that pre-fill those params (for planner discoverability)
-- [ ] AC.4: D10-specific career signals returned (not just generic divisional positions)
-- [ ] AC.5: D60 shashtiamsha lord names returned per planet
-- [ ] AC.6: TypeScript compiles clean
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Compare MCP tools vs portal divisional_query
+### Step 1 — Read source files and portal divisional_query
 
 ```bash
 cat platform-mcp/src/tools/query_dasamsha_career.ts
 cat platform-mcp/src/tools/query_shashtiamsha.ts
-cat platform/src/lib/retrieve/divisional_query.ts
+cat platform/src/lib/retrieve/divisional_query.ts | head -80
 ```
 
-If `divisional_query` is a generic divisional tool (takes `division_number` param), create thin named wrappers:
+### Step 2 — Create query_dasamsha_career.ts
+
+Port the career rules:
+- 10H lord in any D10 house = career indicator
+- Sun, Saturn, Mercury in D10 10H = additional strength
+- 10H lord in own sign / exalted / kendra (1,4,7,10) / trikona (1,5,9) = favourable
+- 10H lord in 6H / 8H / 12H = career obstacle
+
+Call the portal's `divisional_query` tool execute function directly (do not use MCP callPlatformPrimitive).
+
+### Step 3 — Create query_shashtiamsha.ts
+
+Port the D60 pada names array and calculation:
 ```typescript
-// query_dasamsha_career.ts
-export const queryDasamshhaCareerTool = {
-  name: 'query_dasamsha_career',
-  description: 'Query D10 Dasamsha divisional chart for career analysis',
-  inputSchema: z.object({ chart_id: z.string().uuid() }),
-  execute: (input) => divisionalQuery({ ...input, division: 10, include_career_signals: true }),
-};
+const D60_PADA_NAMES = [
+  'Ghora', 'Rakshasa', 'Deva', 'Kubera', 'Yaksha', 'Kinnar',
+  'Bhrashta', 'Kulaghna', 'Garala', 'Vahni', 'Maya', 'Purishaka',
+]
+
+function getPadaName(longitudeInSign: number): { pada_number: number; pada_name: string } {
+  const padaNumber = Math.max(1, Math.ceil(longitudeInSign / 0.5))
+  const pada_name = D60_PADA_NAMES[(padaNumber - 1) % 12]!
+  return { pada_number: padaNumber, pada_name }
+}
 ```
 
-If `divisional_query` doesn't cover career signals, create a full port from MCP.
+### Step 4 — Register in index.ts
 
-### Step 2 — Create files and register
+```typescript
+import * as queryDasamshaaCareer from './query_dasamsha_career'
+import * as queryShashtiamsha from './query_shashtiamsha'
+```
 
-Follow UDA-1-S1 porting pattern.
+Add to RETRIEVAL_TOOLS.
 
-### Step 3 — TypeScript check and commit
+### Step 5 — TypeScript compile check
 
 ```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
-git add platform/src/lib/retrieve/query_dasamsha_career.ts
-git add platform/src/lib/retrieve/query_shashtiamsha.ts
-git add platform/src/lib/retrieve/index.ts
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform && npx tsc --noEmit
+```
+
+### Step 6 — Commit
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+git add platform/src/lib/retrieve/query_dasamsha_career.ts \
+        platform/src/lib/retrieve/query_shashtiamsha.ts \
+        platform/src/lib/retrieve/index.ts
 git commit -m "feat(UDA-1-S5): port query_dasamsha_career + query_shashtiamsha to portal
 
-D10 career tool and D60 shashtiamsha tool now in portal RETRIEVAL_TOOLS.
-<note if wrappers over divisional_query or full ports>
-TypeScript clean."
+D10 career indicator rules; D60 Shashtiamsha karma pada analysis.
+tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "query_dasamsha_career\|dasamsha_career" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S5_DASAMSHA: PASS'
+grep -q "query_shashtiamsha\|shashtiamsha" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S5_SHASHTIAMSHA: PASS'
+git log --oneline -3 | grep -q 'UDA-1-S5' && echo 'GATE_UDA_1_S5_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

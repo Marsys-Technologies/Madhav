@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-0-S1: CAPABILITY_MANIFEST audit + dedup"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-0-S1: Manifest Audit + Deduplicate CAPABILITY_MANIFEST.json"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_0_S1
 version: 1.0
 status: CURRENT
@@ -8,142 +8,173 @@ session_id: UDA-0-S1
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-0-S1 — Audit and clean CAPABILITY_MANIFEST.json
+# UDA-0-S1 — Manifest: Audit + Deduplicate CAPABILITY_MANIFEST.json
 
 ## 1. Context
 
-`00_ARCHITECTURE/CAPABILITY_MANIFEST.json` has 169 entries with the following known defects (from PRE-S1 diagnostic):
-- Duplicate `canonical_id` values for classical text search entries (4 duplicates)
-- Tool entries with `status: null` and `path: null/MISSING` (at minimum: lel_query, UCN_WALK_TOOL, CDLM_LOOKUP_TOOL, RM_WALK_TOOL)
-- `TOOL_27_MULTI_SCHOOL_SIGNAL_LOOKUP` has `status: STUB`
-- Zero MCP tools registered
-- `entry_count` field may be stale
+`00_ARCHITECTURE/CAPABILITY_MANIFEST.json` is the project's single source of truth for all
+canonical artifacts. Before populating it with all portal and MCP tools, this session audits
+the existing manifest for:
 
-This session fixes ALL manifest defects and produces a clean, valid manifest ready for UDA-0-S2 (portal tool registration). No tool entries are added in this session — only cleanup.
+1. **Duplicate `canonical_id` values** — must be zero
+2. **Entries without required fields** (`canonical_id`, `path`, `status`, `version`)
+3. **Stale or incorrect paths** (files that no longer exist at declared paths)
+4. **Tool entries** — count how many retrieval tool entries currently exist per channel
+
+The session writes a human-readable audit report and leaves the manifest clean (no duplicates).
+
+---
 
 ## 2. Scope
 
 **may_touch:**
-- `00_ARCHITECTURE/CAPABILITY_MANIFEST.json`
+- `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` (dedup only — remove exact duplicate entries)
+- `eval-results/UDA_0_S1_MANIFEST_AUDIT.md` (create)
 
 **must_not_touch:**
-- Any `platform/` files
-- Any `platform-mcp/` files
-- `00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md`
-- Governance files
+- Any files under `platform/` or `platform-mcp/`
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` — full read; audit every entry
-2. `platform/src/lib/retrieve/index.ts` — to identify correct names/paths for defective tool entries
-3. `platform-mcp/src/tools/catalog.ts` — to understand MCP tool shapes (for later sessions)
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.0_1.1: No duplicate `canonical_id` values in manifest after this session
+- [ ] AC.0_1.2: `eval-results/UDA_0_S1_MANIFEST_AUDIT.md` exists with full audit report
+- [ ] AC.0_1.3: Audit report includes: total entry count, duplicate count (pre/post), missing-field entries, stale-path entries, current tool entry counts per channel
+- [ ] AC.0_1.4: `cd platform && npx tsc --noEmit` passes with 0 errors (no code changes expected; verify manifest is still valid JSON)
+- [ ] AC.0_1.5: Commit message contains `UDA-0-S1`
 
-- [ ] AC.1: Zero duplicate `canonical_id` values — every entry has a unique canonical_id
-- [ ] AC.2: Zero entries with `status: null` — all entries have a non-null status
-- [ ] AC.3: Zero entries with `path: null` or `path: "MISSING"` — all entries have a resolved path OR a documented reason (e.g., `path: "N/A - runtime tool"`)
-- [ ] AC.4: `TOOL_27_MULTI_SCHOOL_SIGNAL_LOOKUP` status updated from `STUB` to `CURRENT` if the tool exists, or `DEPRECATED` if it does not
-- [ ] AC.5: `entry_count` field updated to match actual `entries` array length
-- [ ] AC.6: Manifest is valid JSON: `node -e "JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8')); console.log('valid')"`
-- [ ] AC.7: Audit report at `eval-results/UDA_0_S1_MANIFEST_AUDIT.md`
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Load and inspect the manifest
+### Step 1 — Count and list all entries
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+node -e "
+  const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+  console.log('total entries:', m.entries.length);
+  const byType = {};
+  m.entries.forEach(e => { byType[e.type] = (byType[e.type]||0)+1; });
+  console.log('by type:', JSON.stringify(byType, null, 2));
+"
+```
+
+### Step 2 — Detect duplicates
 
 ```bash
 node -e "
   const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
-  console.log('Total entries:', m.entries.length);
-  console.log('entry_count field:', m.entry_count);
-  
-  // Find duplicates
   const ids = m.entries.map(e => e.canonical_id);
-  const dupes = ids.filter((id,i) => ids.indexOf(id) !== i);
-  console.log('Duplicate canonical_ids:', dupes);
-  
-  // Find null status
-  const nullStatus = m.entries.filter(e => !e.status).map(e => e.canonical_id);
-  console.log('Null status:', nullStatus);
-  
-  // Find missing path
-  const missingPath = m.entries.filter(e => !e.path || e.path === 'MISSING').map(e => e.canonical_id);
-  console.log('Missing path:', missingPath);
-  
-  // Find stubs
-  const stubs = m.entries.filter(e => e.status === 'STUB').map(e => e.canonical_id);
-  console.log('STUBs:', stubs);
+  const seen = new Set(); const dupes = [];
+  ids.forEach(id => { if (seen.has(id)) dupes.push(id); else seen.add(id); });
+  console.log('duplicate canonical_ids:', dupes.length ? dupes.join(', ') : 'NONE');
 "
 ```
 
-### Step 2 — Fix duplicate entries
+### Step 3 — Detect missing-field entries
 
-For classical text search duplicates: keep the most complete/accurate entry, remove the duplicates. Use a unique suffix if needed (`_BPHS`, `_JAIMINI`, etc.).
-
-### Step 3 — Resolve null-status entries
-
-For each null-status tool entry:
-- If the tool file exists in `platform/src/lib/retrieve/` → set `status: "CURRENT"`
-- If the tool file exists in `platform-mcp/src/tools/` → set `status: "CURRENT"`
-- If tool doesn't exist → set `status: "DEPRECATED"` with a `deprecated_reason` field
-
-### Step 4 — Resolve null/MISSING paths
-
-For each null-path tool entry:
-- Portal tools: resolve to `platform/src/lib/retrieve/<tool_name>.ts`
-- MCP tools: resolve to `platform-mcp/src/tools/<tool_name>.ts`
-- Runtime tools with no file: set `path: "N/A"` with comment `runtime_only: true`
-
-### Step 5 — Resolve STUB entries
-
-Check if `TOOL_27_MULTI_SCHOOL_SIGNAL_LOOKUP` (or equivalent) exists:
 ```bash
-grep -r "multi_school\|multi-school" platform/src/lib/retrieve/ | head -5
-grep -r "multi_school\|multi-school" platform-mcp/src/tools/ | head -5
-```
-Update status accordingly.
-
-### Step 6 — Update entry_count
-
-```javascript
-m.entry_count = m.entries.length;
+node -e "
+  const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+  const REQUIRED = ['canonical_id', 'status', 'version'];
+  const bad = m.entries.filter(e => REQUIRED.some(f => !e[f]));
+  console.log('entries missing required fields:', bad.length);
+  bad.slice(0,10).forEach(e => console.log(' -', e.canonical_id || '(no id)', JSON.stringify(Object.keys(e))));
+"
 ```
 
-### Step 7 — Write cleaned manifest
+### Step 4 — Detect stale paths
 
 ```bash
 node -e "
   const fs = require('fs');
   const m = JSON.parse(fs.readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
-  // ... (apply all fixes above) ...
-  fs.writeFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', JSON.stringify(m, null, 2));
-  console.log('Written. entries:', m.entries.length);
+  const stale = m.entries.filter(e => e.path && !fs.existsSync(e.path));
+  console.log('stale paths:', stale.length);
+  stale.slice(0,10).forEach(e => console.log(' -', e.canonical_id, '->', e.path));
 "
 ```
 
-### Step 8 — Write audit report
+### Step 5 — Count tool entries per channel
+
+```bash
+node -e "
+  const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+  const portal = m.entries.filter(e => e.channel === 'portal' && e.type === 'retrieval_tool');
+  const mcp = m.entries.filter(e => e.channel === 'mcp' && e.type === 'retrieval_tool');
+  const noChannel = m.entries.filter(e => e.type === 'retrieval_tool' && !e.channel);
+  console.log('portal retrieval_tools:', portal.length);
+  console.log('mcp retrieval_tools:', mcp.length);
+  console.log('retrieval_tools missing channel:', noChannel.length);
+"
+```
+
+### Step 6 — Remove duplicates from manifest
+
+If duplicates were found in Step 2:
+```bash
+node -e "
+  const fs = require('fs');
+  const m = JSON.parse(fs.readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+  const seen = new Set();
+  m.entries = m.entries.filter(e => {
+    if (seen.has(e.canonical_id)) return false;
+    seen.add(e.canonical_id);
+    return true;
+  });
+  fs.writeFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', JSON.stringify(m, null, 2) + '\n');
+  console.log('deduped. new count:', m.entries.length);
+"
+```
+
+If no duplicates, skip this step.
+
+### Step 7 — Write audit report
 
 Write `eval-results/UDA_0_S1_MANIFEST_AUDIT.md` with:
-- Pre-fix counts (duplicates, null-status, missing-path, STUBs)
-- Post-fix counts (all zeros)
-- List of every change made (which entry, what was fixed)
+- Summary table: total entries, pre-dedup duplicates, post-dedup count, missing-field count, stale-path count
+- Per-channel tool counts
+- List of any stale paths found (or "none")
+- List of any missing-field entries (or "none")
+- Conclusion: manifest is clean and ready for UDA-0-S2 population
 
-### Step 9 — Commit
+### Step 8 — Commit
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
-git add eval-results/UDA_0_S1_MANIFEST_AUDIT.md
-git commit -m "fix(UDA-0-S1): CAPABILITY_MANIFEST dedup + null-field resolution
+git add 00_ARCHITECTURE/CAPABILITY_MANIFEST.json eval-results/UDA_0_S1_MANIFEST_AUDIT.md
+git commit -m "audit(UDA-0-S1): CAPABILITY_MANIFEST dedup + audit report
 
-Pre-fix:  <N> dupes, <N> null-status, <N> missing-path, <N> STUBs
-Post-fix: 0 dupes, 0 null-status, 0 missing-path, 0 STUBs
-entry_count updated to match actual entries array length.
-Audit report: eval-results/UDA_0_S1_MANIFEST_AUDIT.md"
+Pre: <N> entries, <D> duplicates. Post: <N-D> entries, 0 duplicates.
+Stale paths: <S>. Missing-field entries: <M>.
+Portal tools registered: <P>. MCP tools registered: <C>."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+node -e "
+  const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+  const ids = m.entries.map(e => e.canonical_id);
+  const dupes = ids.filter((id,i) => ids.indexOf(id) !== i);
+  if (dupes.length > 0) { console.error('GATE_UDA_0_S1_DUPES: FAIL — ' + dupes); process.exit(1); }
+  console.log('GATE_UDA_0_S1_DUPES: PASS');
+"
+
+test -f eval-results/UDA_0_S1_MANIFEST_AUDIT.md && echo 'GATE_UDA_0_S1_AUDIT: PASS'
+
+git log --oneline -3 | grep -q 'UDA-0-S1' && echo 'GATE_UDA_0_S1_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

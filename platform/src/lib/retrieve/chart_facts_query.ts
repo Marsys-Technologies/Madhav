@@ -62,6 +62,14 @@ export interface ChartFactsQueryInput {
    * Used by the MCP query_chart_facts tool when the `categories` array param is provided.
    */
   batched?: boolean
+  /**
+   * UDA-Q-S3: When true, appends a category_counts object showing how many rows each
+   * category has (including zero-count categories). Each result also carries a
+   * populated_count field showing the total number of non-null value_json rows for the
+   * queried category. When false (default), only returns categories that have at least
+   * one row, each annotated with populated_count.
+   */
+  include_empty_counts?: boolean
 }
 
 interface ChartFactsRow {
@@ -223,7 +231,49 @@ async function retrieveImpl(
     LIMIT ${limit}
   `.trim()
 
-  const { rows } = await getStorageClient().query<ChartFactsRow>(sql, args)
+  const storage = getStorageClient()
+  const { rows } = await storage.query<ChartFactsRow>(sql, args)
+
+  // UDA-Q-S3: Compute populated_count — total non-null value_json rows for the queried
+  // category (using the same WHERE clause but without LIMIT and counting only non-null rows).
+  const { where: countWhere, args: countArgs } = buildWhereClause(p)
+  const countSql = `SELECT COUNT(*) AS cnt FROM chart_facts WHERE ${countWhere} AND value_json IS NOT NULL`
+  const countResult = await storage.query<{ cnt: string }>(countSql, countArgs)
+  const populated_count = parseInt(countResult.rows[0]?.cnt ?? '0', 10)
+
+  // UDA-Q-S3: When include_empty_counts=true, fetch per-category counts for all known
+  // categories so callers can see inventory across the whole table.
+  let category_counts: Record<string, number> | undefined
+  if (p.include_empty_counts === true) {
+    const catCountSql = `
+      SELECT category, COUNT(*) AS cnt
+      FROM chart_facts
+      WHERE is_stale = false
+      GROUP BY category
+      ORDER BY category
+    `.trim()
+    const catCountResult = await storage.query<{ category: string; cnt: string }>(catCountSql, [])
+    const countMap: Record<string, number> = {}
+    for (const r of catCountResult.rows) {
+      countMap[r.category] = parseInt(r.cnt, 10)
+    }
+    // Ensure all known categories appear even if they have 0 rows
+    const allCategories: ChartFactsCategory[] = [
+      'house', 'dasha_chara', 'planet', 'dasha_vimshottari', 'saham',
+      'sensitive_point', 'birth_metadata', 'strength_extra', 'yoga',
+      'dasha_yogini', 'deity_assignment', 'shadbala', 'ashtakavarga_sav',
+      'kp_cusp', 'navatara', 'panchang', 'cusp', 'arudha_occupancy',
+      'bhava_bala', 'chandra_placement', 'mrityu_bhaga', 'longevity_indicator',
+      'arudha', 'aspect', 'chalit_shift', 'kp_planet', 'special_lagna',
+      'strength', 'upagraha', 'ashtakavarga_bav', 'kakshya_zone',
+      'mercury_convergence', 'ashtakavarga_pinda', 'ishta_kashta',
+      'kp_significator', 'varshphal', 'avastha',
+    ]
+    category_counts = {}
+    for (const cat of allCategories) {
+      category_counts[cat] = countMap[cat] ?? 0
+    }
+  }
 
   // MCPT v3.2 P4b: When batched=true, group rows by category and emit a single
   // result item with { rows_by_category: { [category]: row[] } } for one-round-trip
@@ -244,29 +294,71 @@ async function retrieveImpl(
         source: row.source_section,
       })
     }
+    const payload: Record<string, unknown> = {
+      rows_by_category: grouped,
+      populated_count,
+    }
+    if (category_counts !== undefined) {
+      payload['category_counts'] = category_counts
+    }
     results = [{
-      content: JSON.stringify({ rows_by_category: grouped }),
+      content: JSON.stringify(payload),
       source_canonical_id: 'FORENSIC',
       source_version: '8.0',
       confidence: 1.0,
       significance: 0.9,
     }]
   } else {
-    results = rows.map((row) => ({
-      content: JSON.stringify({
-        fact_id: row.fact_id,
-        category: row.category,
-        divisional_chart: row.divisional_chart,
-        value_text: row.value_text,
-        value_number: row.value_number,
-        data: row.value_json,
-        source: row.source_section,
-      }),
-      source_canonical_id: 'FORENSIC',
-      source_version: '8.0',
-      confidence: 1.0,
-      significance: 0.9,
-    }))
+    const basePayload = (row: ChartFactsRow): Record<string, unknown> => ({
+      fact_id: row.fact_id,
+      category: row.category,
+      divisional_chart: row.divisional_chart,
+      value_text: row.value_text,
+      value_number: row.value_number,
+      data: row.value_json,
+      source: row.source_section,
+    })
+    if (rows.length > 0) {
+      // Annotate the first result with populated_count (and category_counts if requested);
+      // remaining rows are plain fact rows without the meta fields.
+      const [firstRow, ...restRows] = rows
+      const firstPayload: Record<string, unknown> = {
+        ...basePayload(firstRow!),
+        populated_count,
+      }
+      if (category_counts !== undefined) {
+        firstPayload['category_counts'] = category_counts
+      }
+      results = [
+        {
+          content: JSON.stringify(firstPayload),
+          source_canonical_id: 'FORENSIC',
+          source_version: '8.0',
+          confidence: 1.0,
+          significance: 0.9,
+        },
+        ...restRows.map((row) => ({
+          content: JSON.stringify(basePayload(row)),
+          source_canonical_id: 'FORENSIC',
+          source_version: '8.0',
+          confidence: 1.0,
+          significance: 0.9,
+        })),
+      ]
+    } else {
+      // Zero rows: emit a single summary-only result with populated_count
+      const summaryPayload: Record<string, unknown> = { populated_count }
+      if (category_counts !== undefined) {
+        summaryPayload['category_counts'] = category_counts
+      }
+      results = [{
+        content: JSON.stringify(summaryPayload),
+        source_canonical_id: 'FORENSIC',
+        source_version: '8.0',
+        confidence: 1.0,
+        significance: 0.9,
+      }]
+    }
   }
 
   const result_hash =

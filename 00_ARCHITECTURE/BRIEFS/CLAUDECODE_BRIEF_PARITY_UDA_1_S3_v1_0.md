@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-1-S3: Port query_jaimini_chara_dasha to portal"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-1-S3: Port query_jaimini_chara_dasha → portal"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_1_S3
 version: 1.0
 status: CURRENT
@@ -8,78 +8,110 @@ session_id: UDA-1-S3
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-1-S3 — Port Jaimini Chara Dasha tool to portal
+# UDA-1-S3 — Port to portal: query_jaimini_chara_dasha
 
 ## 1. Context
 
-`query_jaimini_chara_dasha` returns the Jaimini Chara Dasha periods for a native — the rashi-based Jaimini system's major and sub-periods with their start/end dates. This is essential for multi-school synthesis (Parashari + Jaimini comparison is a core B.11 whole-chart-read requirement). Currently MCP-only; the portal planner cannot retrieve Jaimini Chara Dasha even when it should.
+`query_jaimini_chara_dasha` is a MCP surgical primitive that computes the Jaimini Chara Dasha
+schedule. It exists only in `platform-mcp/src/tools/query_jaimini_chara_dasha.ts` and is not
+available as a portal RETRIEVAL_TOOL.
 
-Note: The portal may have a partial Jaimini tool under a different name. Check `platform/src/lib/retrieve/` for any `jaimini*.ts` file. If one exists, compare and upgrade rather than duplicate.
+**What it does:**
+- Computes Jaimini Chara Dasha (12-rashi based timing system) for the native's sidereal chart
+- Derives period lengths from sign lord's longitude in its own sign (odd vs even rashi rules)
+- Returns active rashi dasha + antar dasha for a given date, OR full 12-rashi timeline
+- Data source: Python sidecar `/jaimini_drishti/chara_dasha` endpoint
+
+**MCP source (read-only):** `platform-mcp/src/tools/query_jaimini_chara_dasha.ts`
+**Portal target (create):** `platform/src/lib/retrieve/query_jaimini_chara_dasha.ts`
+
+---
 
 ## 2. Scope
 
 **may_touch:**
-- `platform/src/lib/retrieve/query_jaimini_chara_dasha.ts` (create or upgrade existing)
-- `platform/src/lib/retrieve/index.ts`
+- `platform/src/lib/retrieve/query_jaimini_chara_dasha.ts` (create)
+- `platform/src/lib/retrieve/index.ts` (add registration)
 
 **must_not_touch:**
-- `platform-mcp/src/tools/query_jaimini_chara_dasha.ts` (reference only)
-- All `platform-mcp/` files
-- Governance files
+- `platform-mcp/` (source reference only)
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/tools/query_jaimini_chara_dasha.ts`
-2. `platform/src/lib/retrieve/` — scan for existing jaimini tools
-3. `platform/src/lib/retrieve/index.ts`
-4. One existing portal tool for DB connection pattern
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.1_3.1: `platform/src/lib/retrieve/query_jaimini_chara_dasha.ts` exists and exports a RetrievalTool
+- [ ] AC.1_3.2: Tool is registered in `index.ts` RETRIEVAL_TOOLS
+- [ ] AC.1_3.3: Tool calls the Python sidecar `/jaimini_drishti/chara_dasha` endpoint (same as MCP version) OR computes directly using the same algorithm
+- [ ] AC.1_3.4: `cd platform && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.1_3.5: Commit message contains `UDA-1-S3`
 
-- [ ] AC.1: `query_jaimini_chara_dasha` in portal RETRIEVAL_TOOLS with exact name match
-- [ ] AC.2: Input schema matches MCP (at minimum: `chart_id`, `level` for MD/AD distinction)
-- [ ] AC.3: Output includes: rashi_sign as dasha lord, start_date, end_date, duration_years for each period
-- [ ] AC.4: Registered in `index.ts`
-- [ ] AC.5: TypeScript compiles clean
+---
 
-## 5. Implementation Steps
+## 4. Step-by-Step Execution
 
-### Step 1 — Scan for existing Jaimini tools
+### Step 1 — Read MCP source and portal sidecar call patterns
 
 ```bash
-ls platform/src/lib/retrieve/ | grep -i jaimini
 cat platform-mcp/src/tools/query_jaimini_chara_dasha.ts
+# Find how existing portal tools call the Python sidecar
+grep -n "sidecar\|python\|/api/compute\|temporal" platform/src/lib/retrieve/temporal.ts | head -30
+cat platform/src/lib/retrieve/query_muhurat.ts | head -60
 ```
 
-### Step 2 — Port or create
+### Step 2 — Create query_jaimini_chara_dasha.ts (portal version)
 
-Follow UDA-1-S1 pattern. The Jaimini Chara Dasha calculation is likely:
-- SQL against a `jaimini_dasha` or `chara_dasha` table in the DB
-- Returns periods with rashi signs as period lords (Ar, Ta, Ge... rather than planets)
-- Level param for major/antara distinction
+Adapt the MCP tool to portal patterns:
+- Use `getStorageClient()` for native chart_id lookup if needed
+- Call the Python sidecar using the portal's sidecar HTTP client (same pattern as `query_muhurat.ts`)
+- Implement fallback: if sidecar is unavailable, compute directly from the MCP algorithm
+  (port the Jaimini period calculation: odd rashis = 30 - floor(lord_lon), even = floor + 1)
 
-Key: Jaimini Chara Dasha lords are RASHIS not planets — ensure the output schema reflects this (e.g., `rashi_lord: string` not `planet_lord: string`).
+Key inputs: `date?: string` (active dasha mode) OR `mode: 'full'` (full timeline)
+Key output: `{ active_rashi_dasha, active_antar_dasha }` OR `{ full_periods }`
 
-### Step 3 — Register and compile
+### Step 3 — Register in index.ts
 
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity/platform && npx tsc --noEmit 2>&1 | head -40
+```typescript
+// UDA-1-S3: Jaimini Chara Dasha
+import * as queryJaiminiCharaDasha from './query_jaimini_chara_dasha'
 ```
 
-### Step 4 — Commit
+Add to RETRIEVAL_TOOLS array.
+
+### Step 4 — TypeScript compile check
 
 ```bash
 cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add platform/src/lib/retrieve/query_jaimini_chara_dasha.ts
-git add platform/src/lib/retrieve/index.ts
+cd platform && npx tsc --noEmit
+```
+
+### Step 5 — Commit
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+git add platform/src/lib/retrieve/query_jaimini_chara_dasha.ts \
+        platform/src/lib/retrieve/index.ts
 git commit -m "feat(UDA-1-S3): port query_jaimini_chara_dasha to portal
 
-Jaimini Chara Dasha (rashi-based periods) now available in portal.
-Critical for multi-school B.11 whole-chart-read compliance.
-TypeScript clean."
+Jaimini Chara Dasha active period + full timeline. tsc: 0 errors."
 ```
+
+---
+
+## 5. Gate Commands
+
+```bash
+grep -q "query_jaimini_chara_dasha\|jaimini_chara_dasha" platform/src/lib/retrieve/index.ts && echo 'GATE_UDA_1_S3_JCD: PASS'
+test -f platform/src/lib/retrieve/query_jaimini_chara_dasha.ts && echo 'GATE_UDA_1_S3_FILE: PASS'
+git log --oneline -3 | grep -q 'UDA-1-S3' && echo 'GATE_UDA_1_S3_COMMIT: PASS'
+```
+
+All 3 gates must print PASS.
 
 ---
 

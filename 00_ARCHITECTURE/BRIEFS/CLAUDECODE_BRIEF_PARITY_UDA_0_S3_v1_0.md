@@ -1,5 +1,5 @@
 ---
-title: "CLAUDECODE_BRIEF — Parity UDA-0-S3: Register 41 MCP tools in manifest + fix catalog.ts"
+title: "CLAUDECODE_BRIEF — Parity Campaign UDA-0-S3: Manifest Register all 41 MCP tools + fix catalog.ts"
 canonical_id: CLAUDECODE_BRIEF_PARITY_UDA_0_S3
 version: 1.0
 status: CURRENT
@@ -8,151 +8,216 @@ session_id: UDA-0-S3
 campaign: universal-parity
 branch: feature/universal-parity
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavParity
-requires_hap: HAP-2
+authored_by: Conductor (2026-05-25)
 ---
 
-# UDA-0-S3 — Register all MCP tools in manifest + complete catalog.ts
+# UDA-0-S3 — Manifest: Register all 41 MCP tools + fix catalog.ts
 
 ## 1. Context
 
-Two gaps to close in this session:
+This session completes the manifest population by registering all MCP tools
+(`platform-mcp/src/server.ts` registered tools) as `channel: "mcp"`, `type: "retrieval_tool"`
+entries in `CAPABILITY_MANIFEST.json`. It also ensures `platform-mcp/src/tools/catalog.ts`
+has entries for every registered tool.
 
-**Gap A — CAPABILITY_MANIFEST:** Zero MCP tools currently registered. After TR (bace7b45) the MCP sidecar has 41 registered tools (`platform-mcp/src/server.ts`). All 41 need manifest entries with `channel: "mcp"`.
+The MCP tools registered in `server.ts` are (from the import list):
+query_chart_facts, query_signals, query_dasha_periods, query_panchanga, query_ephemeris,
+query_transit_event, lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
+query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
+tara_balam_for_native, chandra_balam_for_native, query_transits_over_natal,
+query_yogas_active_now, get_planet_avastha, get_shadbala_full, interpret_current_dasha,
+list_canonical_artifact_versions, query_drekkana_drishti, query_jaimini_chara_dasha,
+query_planetary_period_predictions, query_dasamsha_career, query_shashtiamsha,
+query_eclipse_transits, query_planet_war, query_remedies_prescribed, read_asset,
+read_classical_text, list_assets, get_trace, list_recent_queries, log_prediction,
+record_outcome, flag_disagreement, chart_summary, holistic_bundle, multi_school_bundle,
+tool_health, data_coverage.
 
-**Gap B — catalog.ts:** `platform-mcp/src/tools/catalog.ts` has only 23 entries. The 18 tools added by TR to `server.ts` are missing from catalog.ts. The catalog is used by the MCP `tool_health` and `data_coverage` meta-tools to enumerate available tools. This is a functional gap — meta-tools return incomplete data.
+Count the exact number from server.ts imports and use that as the target.
 
-After this session, **HAP-2** fires — conductor halts for native review before UDA-1 begins.
+After this session, HAP-2 fires and the native reviews the manifest before UDA-1 begins.
+
+---
 
 ## 2. Scope
 
 **may_touch:**
 - `00_ARCHITECTURE/CAPABILITY_MANIFEST.json`
-- `platform-mcp/src/tools/catalog.ts`
+- `platform-mcp/src/tools/catalog.ts` (add missing entries only)
 
 **must_not_touch:**
-- `platform-mcp/src/server.ts` (reference only)
-- Any `platform/` files
-- Governance files
+- `platform-mcp/src/server.ts` (read only to count tools)
+- Any files under `platform/`
+- Any governance files
 
-## 3. Files to read before starting
+---
 
-1. `platform-mcp/src/server.ts` — authoritative list of 41 registered MCP tools (all imports)
-2. `platform-mcp/src/tools/catalog.ts` — current 23-entry catalog (to be completed)
-3. `platform-mcp/src/tools/` directory listing — all tool files
-4. `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` — current state after UDA-0-S2
+## 3. Acceptance Criteria
 
-## 4. Acceptance Criteria
+- [ ] AC.0_3.1: `CAPABILITY_MANIFEST.json` has ≥ 41 entries with `channel: "mcp"` AND `type: "retrieval_tool"`
+- [ ] AC.0_3.2: Each MCP tool entry has `canonical_id`, `path`, `channel: "mcp"`, `type: "retrieval_tool"`, `status: "CURRENT"`, `version: "1.0"`
+- [ ] AC.0_3.3: `platform-mcp/src/tools/catalog.ts` has ≥ 41 tool name entries
+- [ ] AC.0_3.4: No duplicate `canonical_id` values in manifest
+- [ ] AC.0_3.5: `cd platform-mcp && npx tsc --noEmit` passes with 0 errors
+- [ ] AC.0_3.6: Commit message contains `UDA-0-S3`
 
-**Manifest:**
-- [ ] AC.1: Manifest has exactly 41 entries with `channel: "mcp"` and `type: "retrieval_tool"`
-- [ ] AC.2: Each MCP entry has: `canonical_id`, `name`, `path`, `status`, `description`, `input_schema_summary`, `output_summary`
-- [ ] AC.3: `entry_count` updated to reflect total (now 36 portal + 41 MCP + other entries)
+---
 
-**catalog.ts:**
-- [ ] AC.4: `platform-mcp/src/tools/catalog.ts` has entries for all 41 tools registered in `server.ts`
-- [ ] AC.5: Each new catalog entry follows the existing shape (read existing entries for the exact TypeScript interface)
-- [ ] AC.6: TypeScript compiles: `cd platform-mcp && npx tsc --noEmit`
-- [ ] AC.7: `tool_health` meta-tool (if callable) returns 41 tools (not 23)
+## 4. Step-by-Step Execution
 
-## 5. Implementation Steps
-
-### Step 1 — Extract all 41 MCP tool names from server.ts
+### Step 1 — Count MCP tools in server.ts
 
 ```bash
-grep "^import { register" platform-mcp/src/server.ts | \
-  sed "s/.*register//;s/ .*//"
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+grep "^import { register" platform-mcp/src/server.ts | wc -l
+grep "^import { register" platform-mcp/src/server.ts | sed "s/.*from '\.\///;s/\.js'.*//"
 ```
 
-This gives the function names. Derive tool names from them (e.g., `registerQueryChartFacts` → `query_chart_facts`).
+### Step 2 — Check current catalog.ts entries
 
-Also get the exact registered names from the tool files:
 ```bash
-for f in platform-mcp/src/tools/*.ts; do
-  name=$(grep -m1 "name:" "$f" | sed "s/.*name: *['\"]//;s/['\"].*//")
-  echo "$f: $name"
-done
+grep "name:" platform-mcp/src/tools/catalog.ts | grep -v "//" | wc -l
+grep "name:" platform-mcp/src/tools/catalog.ts | grep -v "//" | sed "s/.*name: *['\"]//;s/['\"].*//"
 ```
 
-### Step 2 — Identify the 18 missing catalog.ts entries
+### Step 3 — Add missing MCP tools to manifest
 
-Compare the 41 server.ts tools against the 23 catalog.ts entries:
 ```bash
 node -e "
-  const catalog = require('fs').readFileSync('platform-mcp/src/tools/catalog.ts','utf8');
-  const catalogNames = [...catalog.matchAll(/name:\s*['\"]([^'\"]+)['\"]/g)].map(m => m[1]);
-  console.log('Catalog entries:', catalogNames.length, catalogNames);
+  const fs = require('fs');
+  const m = JSON.parse(fs.readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
+
+  const mcpTools = [
+    { name: 'query_chart_facts', desc: 'Chart facts parametric retrieval: strengths, BAV, yogas, placements' },
+    { name: 'query_signals', desc: 'MSR signal corpus lookup with LL.1 calibration' },
+    { name: 'query_dasha_periods', desc: 'Vimshottari dasha schedule with PD/SD sub-period levels' },
+    { name: 'query_panchanga', desc: 'Daily panchanga with enrichment fields' },
+    { name: 'query_ephemeris', desc: 'Planetary positions from ephemeris_daily' },
+    { name: 'query_transit_event', desc: 'Transit event search' },
+    { name: 'lel_query', desc: 'Life Event Log ground-truth retrieval' },
+    { name: 'vector_search', desc: 'Semantic search over rag_chunks' },
+    { name: 'get_cgm_subgraph', desc: 'CGM causal graph subgraph' },
+    { name: 'cross_school_lookup', desc: 'Cross-school signal triangulation' },
+    { name: 'query_varshphal', desc: 'Varshaphala annual chart lookup' },
+    { name: 'query_divisional_chart', desc: 'Divisional chart positions' },
+    { name: 'query_remedial_mantras', desc: 'Remedial mantra corpus search' },
+    { name: 'muhurta_finder', desc: 'Auspicious muhurta window finder' },
+    { name: 'tara_balam_for_native', desc: 'Tara Bala (Star Strength) for native' },
+    { name: 'chandra_balam_for_native', desc: 'Chandra Bala (Moon Strength) for native' },
+    { name: 'query_transits_over_natal', desc: 'Transit-to-natal aspect windows' },
+    { name: 'query_yogas_active_now', desc: 'Yoga activation status vs current dasha' },
+    { name: 'get_planet_avastha', desc: 'Planetary avastha (state) lookup' },
+    { name: 'get_shadbala_full', desc: 'Full Shadbala roll-up with classical minimums' },
+    { name: 'interpret_current_dasha', desc: 'Current dasha interpretation' },
+    { name: 'list_canonical_artifact_versions', desc: 'List canonical artifact versions' },
+    { name: 'query_drekkana_drishti', desc: 'Jaimini Drekkana Drishti aspects' },
+    { name: 'query_jaimini_chara_dasha', desc: 'Jaimini Chara Dasha schedule' },
+    { name: 'query_planetary_period_predictions', desc: 'Classical predictions for MD/AD combinations' },
+    { name: 'query_dasamsha_career', desc: 'D10 Dasamsha career analysis' },
+    { name: 'query_shashtiamsha', desc: 'D60 Shashtiamsha karma analysis' },
+    { name: 'query_eclipse_transits', desc: 'Eclipse detection in date range' },
+    { name: 'query_planet_war', desc: 'Graha Yuddha planetary war detection' },
+    { name: 'query_remedies_prescribed', desc: 'Remedial prescription cross-reference' },
+    { name: 'read_asset', desc: 'Read a canonical L1/L2 asset file' },
+    { name: 'read_classical_text', desc: 'Read classical text corpus chunks' },
+    { name: 'list_assets', desc: 'List available canonical assets' },
+    { name: 'get_trace', desc: 'Retrieve query trace by trace_id' },
+    { name: 'list_recent_queries', desc: 'List recent MCP queries' },
+    { name: 'log_prediction', desc: 'Log a time-indexed prediction' },
+    { name: 'record_outcome', desc: 'Record an outcome against a prediction' },
+    { name: 'flag_disagreement', desc: 'Flag a disagreement for governance review' },
+    { name: 'chart_summary', desc: 'Chart summary holistic snapshot' },
+    { name: 'holistic_bundle', desc: 'Holistic multi-layer synthesis bundle' },
+    { name: 'multi_school_bundle', desc: 'Multi-school synthesis bundle' },
+    { name: 'tool_health', desc: 'Tool health check' },
+    { name: 'data_coverage', desc: 'Data coverage audit' },
+  ];
+
+  const existingIds = new Set(m.entries.map(e => e.canonical_id));
+
+  mcpTools.forEach(t => {
+    const id = 'MCP_TOOL_' + t.name.toUpperCase();
+    if (!existingIds.has(id)) {
+      m.entries.push({
+        canonical_id: id,
+        path: 'platform-mcp/src/tools/' + t.name + '.ts',
+        channel: 'mcp',
+        type: 'retrieval_tool',
+        tool_name: t.name,
+        status: 'CURRENT',
+        version: '1.0',
+        description: t.desc,
+      });
+      existingIds.add(id);
+    }
+  });
+
+  fs.writeFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', JSON.stringify(m, null, 2) + '\n');
+  const mcpRegistered = m.entries.filter(e => e.channel === 'mcp' && e.type === 'retrieval_tool');
+  console.log('mcp retrieval_tools now:', mcpRegistered.length);
 "
 ```
 
-The 18 missing are the TR additions: query_transits_over_natal, query_yogas_active_now, get_planet_avastha, get_shadbala_full, query_drekkana_drishti, query_jaimini_chara_dasha, query_planetary_period_predictions, query_dasamsha_career, query_shashtiamsha, query_eclipse_transits, query_planet_war, query_remedies_prescribed, tara_balam_for_native, chandra_balam_for_native, muhurta_finder, query_varshphal (if name differs from existing), query_divisional_chart, query_remedial_mantras.
-
-### Step 3 — Read existing catalog entry shape
+### Step 4 — Check catalog.ts for missing entries
 
 ```bash
-head -60 platform-mcp/src/tools/catalog.ts
+cat platform-mcp/src/tools/catalog.ts
 ```
 
-Each entry likely has: `name`, `description`, `inputSchema`, `category` or similar. Match the exact interface.
-
-### Step 4 — Add 18 missing entries to catalog.ts
-
-For each missing tool, read its tool file to extract the description and input schema, then add a catalog entry matching the existing interface pattern.
-
-### Step 5 — Build 41 manifest entries for MCP
-
-For each of the 41 MCP tools, add a manifest entry:
-```json
-{
-  "canonical_id": "MCP_TOOL_<NAME_UPPER>",
-  "type": "retrieval_tool",
-  "channel": "mcp",
-  "name": "<tool_name>",
-  "path": "platform-mcp/src/tools/<file>.ts",
-  "status": "CURRENT",
-  "description": "<one line>",
-  "input_schema_summary": "<key params>",
-  "output_summary": "<what is returned>",
-  "added_campaign": "universal-parity"
-}
+If any registered tool is missing from `catalog.ts`, add it. The catalog format is typically:
+```typescript
+{ name: 'tool_name', description: '...', surgical: true|false, tier: [...] }
 ```
 
-### Step 6 — Validate
+Add missing entries to the CATALOG array in `catalog.ts`.
+
+### Step 5 — TypeScript compile check
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+cd platform-mcp && npx tsc --noEmit
+```
+
+### Step 6 — Commit
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
+git add 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform-mcp/src/tools/catalog.ts
+git commit -m "feat(UDA-0-S3): register all MCP tools in CAPABILITY_MANIFEST + catalog.ts
+
+MCP tools: <N> entries. catalog.ts: <N> entries. tsc: 0 errors.
+HAP-2 gate artifact ready."
+```
+
+---
+
+## 5. Gate Commands
 
 ```bash
 node -e "
   const m = JSON.parse(require('fs').readFileSync('00_ARCHITECTURE/CAPABILITY_MANIFEST.json','utf8'));
-  const mcp = m.entries.filter(e => e.channel === 'mcp' && e.type === 'retrieval_tool');
-  console.log('MCP tools in manifest:', mcp.length);
+  const mcpTools = m.entries.filter(e => e.channel === 'mcp' && e.type === 'retrieval_tool');
+  if (mcpTools.length < 41) {
+    console.error('GATE_UDA_0_S3_MANIFEST: FAIL — found ' + mcpTools.length + ', expected 41');
+    process.exit(1);
+  }
+  console.log('GATE_UDA_0_S3_MANIFEST: PASS (' + mcpTools.length + ' MCP tools)');
 "
-```
 
-```bash
 node -e "
   const src = require('fs').readFileSync('platform-mcp/src/tools/catalog.ts','utf8');
-  const names = [...src.matchAll(/name:\s*['\"]([^'\"]+)['\"]/g)].map(m => m[1]);
-  console.log('Catalog entries:', names.length);
+  const names = src.match(/name:\s*['\"][^'\"]+['\"]/g) || [];
+  if (names.length < 41) {
+    console.error('GATE_UDA_0_S3_CATALOG: FAIL — found ' + names.length + ', expected 41');
+    process.exit(1);
+  }
+  console.log('GATE_UDA_0_S3_CATALOG: PASS (' + names.length + ' entries)');
 "
+
+git log --oneline -3 | grep -q 'UDA-0-S3' && echo 'GATE_UDA_0_S3_COMMIT: PASS'
 ```
 
-```bash
-cd platform-mcp && npx tsc --noEmit 2>&1 | head -20
-```
-
-### Step 7 — Commit
-
-```bash
-cd /Users/Dev/Vibe-Coding/Apps/MadhavParity
-git add 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
-git add platform-mcp/src/tools/catalog.ts
-git commit -m "feat(UDA-0-S3): register 41 MCP tools in manifest + complete catalog.ts
-
-Manifest: 41 MCP tool entries added (channel=mcp, type=retrieval_tool)
-catalog.ts: 18 missing TR tools added (was 23, now 41)
-Total manifest entries: <N> (36 portal + 41 MCP + others)
-TypeScript clean.
-
-HAP-2: Halting for native review before UDA-1 (portal porting) begins."
-```
+All 3 gates must print PASS.
 
 ---
 
