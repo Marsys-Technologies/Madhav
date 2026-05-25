@@ -343,3 +343,150 @@ sessions:
         grep -q "muhurta_finder\|muhurta" platform/src/lib/retrieve/index.ts &&
         echo 'GATE_UDA_1_S8_MUHURTA: PASS'
       - "git log --oneline -3 | grep -q 'UDA-1-S8' && echo 'GATE_UDA_1_S8_COMMIT: PASS'"
+
+# —— UDA-2: Port portal-only tools to MCP (Run 3) ————————————————————————————
+
+- id: UDA-2-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S1_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/msr_sql.ts && echo PASS
+    - grep -q 'registerMsrSql' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S2_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/temporal.ts && echo PASS
+    - grep -q 'registerTemporal' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S3_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/kp_query.ts && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/query_kp_ruling_planets.ts && echo PASS
+    - grep -q 'registerKpQuery' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+    - grep -q 'registerQueryKpRulingPlanets' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S4
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S4_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/pattern_register.ts && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/resonance_register.ts && echo PASS
+    - grep -q 'registerPatternRegister' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+    - grep -q 'registerResonanceRegister' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S5
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S5_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/cluster_atlas.ts && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/contradiction_register.ts && echo PASS
+    - grep -q 'registerClusterAtlas' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+    - grep -q 'registerContradictionRegister' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S6
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S6_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/query_ucn_walk.ts && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/query_cdlm_lookup.ts && echo PASS
+    - grep -q 'registerQueryUcnWalk' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+    - grep -q 'registerQueryCdlmLookup' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S7
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S7_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/query_rm_walk.ts && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/query_jaimini_drishti.ts && echo PASS
+    - grep -q 'registerQueryRmWalk' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+    - grep -q 'registerQueryJaiminiDrishti' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S8
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S8_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/timeline_query.ts && echo PASS
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/query_signal_state.ts && echo PASS
+    - grep -q 'registerTimelineQuery' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+    - grep -q 'registerQuerySignalState' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/server.ts && echo PASS
+
+- id: UDA-2-S9
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S9_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+    - grep -q 'catalog.ts' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/catalog.ts && echo PASS
+    - grep -c 'name:' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp/src/tools/catalog.ts | awk '{if($1>=14) print "PASS"; else print "FAIL: only " $1 " catalog entries"}'
+
+- id: UDA-2-S10
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_2_S10_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - python3 -c "import json; d=json.load(open('/Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/CAPABILITY_MANIFEST.json')); both=[t for t in d.get('tools',[]) if t.get('channel')=='both']; print(f'channel:both tools: {len(both)}'); assert len(both)>=29,'FAIL'; print('PASS')"
+
+# —— UDA-3: Interface normalization ——————————————————————————————————————————
+
+- id: UDA-3-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_3_S1_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/INTERFACE_NORMALIZATION_REGISTER_v1_0.md && echo PASS
+    - grep -c 'query_chart_facts\|query_varshphal\|read_classical_text' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/INTERFACE_NORMALIZATION_REGISTER_v1_0.md | awk '{if($1>=3) print "PASS"; else print "FAIL"}'
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform && npx tsc --noEmit && echo PASS
+
+- id: UDA-3-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_3_S2_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - grep -q 'schema_parity\|§2\|Schema Parity' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/INTERFACE_NORMALIZATION_REGISTER_v1_0.md && echo PASS
+    - cd /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform-mcp && npx tsc --noEmit && echo PASS
+
+- id: UDA-3-S3
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_3_S3_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - grep -rq 'R-NRM.1' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform/src/lib/planner/ && echo PASS
+    - grep -q 'R-NRM.1' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/.geminirules && echo PASS
+
+# —— UDA-4: V1.3 audit queue items ——————————————————————————————————————————
+
+- id: UDA-4-S1
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_4_S1_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - test -f /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/MSR_CITATION_SCAFFOLDS_v1_0.md && echo PASS
+    - grep -c 'MSR\.' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/00_ARCHITECTURE/MSR_CITATION_SCAFFOLDS_v1_0.md | awk '{if($1>=50) print "PASS"; else print "FAIL: only " $1 " entries"}'
+
+- id: UDA-4-S2
+  brief_path: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_4_S2_v1_0.md
+  status: pending
+  requires_hap: false
+  gate_commands:
+    - grep -q 'build_manifests' /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform/python-sidecar/scripts/bootstrap_panchanga.py && echo PASS
+    - python3 -m py_compile /Users/Dev/Vibe-Coding/Apps/MadhavParity2/platform/python-sidecar/scripts/bootstrap_panchanga.py && echo PASS
