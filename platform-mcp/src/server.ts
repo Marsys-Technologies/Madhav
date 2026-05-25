@@ -5,7 +5,7 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 40 tools registered (v4.5, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2 + UDA-2-S3 + UDA-2-S4 + UDA-2-S5 + UDA-2-S6 + UDA-2-S7 + UDA-2-S8).
+ * - 40 tools registered (v4.5, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1..S8 + R1 de-gating). All 40 unconditional for every tier.
  *
  * Tool count (v4.5, 40 tools):
  *   Tier 1 super-endpoint (1): chart_summary
@@ -227,16 +227,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerGetTrace(server, getPrincipal)
   registerListRecentQueries(server, getPrincipal)
 
-  // Ops tools: hidden from client tier per OPS_TOOLS set in tier_catalog.ts.
-  // OPS_TOOLS is the single source of truth — server.ts gates registration here
-  // to match getCatalogForTier's filtering behavior.
-  if (tier !== 'client') {
-    registerToolHealth(server, getPrincipal)
-    registerDataCoverage(server, getPrincipal)
-    registerLogPrediction(server, getPrincipal)
-    registerRecordOutcome(server, getPrincipal)
-    registerFlagDisagreement(server, getPrincipal)
-  }
+  // All ops tools registered unconditionally — native is super_admin of his own instrument.
+  registerToolHealth(server, getPrincipal)
+  registerDataCoverage(server, getPrincipal)
+  registerLogPrediction(server, getPrincipal)
+  registerRecordOutcome(server, getPrincipal)
+  registerFlagDisagreement(server, getPrincipal)
 
   // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({

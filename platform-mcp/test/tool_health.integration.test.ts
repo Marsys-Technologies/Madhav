@@ -60,14 +60,14 @@ describe('tool_health MCP tool', () => {
     expect(typeof server.callTool).toBe('function')
   })
 
-  it('returns 403-equivalent for client tier', async () => {
+  it('returns ok: true for client tier after R1 de-gating (all tiers unconditional)', async () => {
     const server = createMockServer()
     registerToolHealth(server as unknown as McpServer, () => CLIENT_PRINCIPAL)
 
     const result = await server.callTool('tool_health', { lookback_hours: 24 })
-    expect(result.isError).toBe(true)
-    const parsed = JSON.parse(result.content[0]?.text ?? '{}') as { error?: string }
-    expect(parsed.error).toBe('Forbidden')
+    expect(result.isError).toBeFalsy()
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}') as { ok?: boolean }
+    expect(parsed.ok).toBe(true)
   })
 
   it('calls platform /api/mcp/health/tools for super_admin', async () => {
