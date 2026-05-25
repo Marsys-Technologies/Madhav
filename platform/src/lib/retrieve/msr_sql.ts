@@ -154,15 +154,26 @@ async function retrieveImpl(
 
   // New signal-property filters (from MsrSqlInput; all optional, backward-compatible)
   const msrInput = params as MsrSqlInput | undefined
+
+  // Normalize temporal_activation: accepts scalar string OR string[] (UDA-Q-S6 backport).
+  const rawTemporal = msrInput?.temporal_activation
+  const temporalArr: string[] = rawTemporal == null
+    ? []
+    : Array.isArray(rawTemporal) ? rawTemporal : [rawTemporal]
   const signalTypeFilter: string[] | null =
     msrInput?.signal_type && msrInput.signal_type.length > 0 ? msrInput.signal_type : null
-  const temporalFilter: string[] | null =
-    msrInput?.temporal_activation && msrInput.temporal_activation.length > 0
-      ? msrInput.temporal_activation
-      : null
-  const valenceFilter: string[] | null =
-    msrInput?.valence && msrInput.valence.length > 0 ? msrInput.valence : null
-  const dashaEntities: string[] = (msrInput?.dasha_activation ?? []).map(
+  const temporalFilter: string[] | null = temporalArr.length > 0 ? temporalArr : null
+
+  // Normalize valence: accepts scalar string OR string[] (UDA-Q-S6 backport).
+  const rawValence = msrInput?.valence
+  const valenceArr: string[] = rawValence == null
+    ? []
+    : Array.isArray(rawValence) ? rawValence : [rawValence]
+  const valenceFilter: string[] | null = valenceArr.length > 0 ? valenceArr : null
+
+  // dasha_lord (UDA-Q-S6): single-value convenience scalar merged into dasha_activation.
+  const dashaLordExtra: string[] = msrInput?.dasha_lord ? [msrInput.dasha_lord] : []
+  const dashaEntities: string[] = [...(msrInput?.dasha_activation ?? []), ...dashaLordExtra].map(
     lord => `DSH.MD.${lord.toUpperCase()}`
   )
   const rawEntities = [
