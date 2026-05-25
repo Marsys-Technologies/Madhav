@@ -5,18 +5,19 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 28 tools registered (v3.9, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2).
+ * - 30 tools registered (v4.0, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2 + UDA-2-S3).
  *
- * Tool count (v3.9, 28 tools):
+ * Tool count (v4.0, 30 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (16): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (18): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
  *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
- *                msr_sql, temporal
+ *                msr_sql, temporal, kp_query, query_kp_ruling_planets
  *                (last 4 added TR Wave PR #159 — Class A: engine existed;
- *                temporal added UDA-2-S2 — portal-only → MCP parity)
+ *                temporal added UDA-2-S2 — portal-only → MCP parity;
+ *                kp_query + query_kp_ruling_planets added UDA-2-S3 — KP system parity)
  *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
@@ -53,6 +54,9 @@ import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 import { registerMsrSql } from './tools/msr_sql.js'
 // Tier 3: UDA-2-S2 — temporal portal-only → MCP parity
 import { registerTemporal } from './tools/temporal.js'
+// Tier 3: UDA-2-S3 — kp_query + query_kp_ruling_planets portal-only → MCP parity
+import { registerKpQuery } from './tools/kp_query.js'
+import { registerQueryKpRulingPlanets } from './tools/query_kp_ruling_planets.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -177,6 +181,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerMuhurtaFinder(server, getPrincipal)
   registerMsrSql(server, getPrincipal)
   registerTemporal(server, getPrincipal)
+  registerKpQuery(server, getPrincipal)
+  registerQueryKpRulingPlanets(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
