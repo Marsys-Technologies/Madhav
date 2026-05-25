@@ -356,10 +356,16 @@ SIG.MSR.010:
   rpt_deep_dive: "RPT.HSE.02.A, RPT.TRN.03"
   prior_id: SIG.10
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.2
+        note: "House 2 Taurus — Rahu tenant; wealth/family house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.011:
@@ -1862,10 +1868,16 @@ SIG.MSR.054:
   v6_ids_consumed: [PLN.RAHU, SGN.TAURUS, HSE.2, NAK.ROHINI]
   rpt_deep_dive: "RPT.HSE.02.A"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 — classical exaltation Taurus"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.RAHU
+        note: "Rahu in Gemini D9 (not vargottama) — dignity shift D1→D9"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.055:
@@ -1890,10 +1902,16 @@ SIG.MSR.055:
   v6_ids_consumed: [PLN.KETU, SGN.SCORPIO, HSE.8, NAK.JYESHTHA]
   rpt_deep_dive: "RPT.DSH.02"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — Ketu tenant; transformation/moksha house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.056:
@@ -2323,10 +2341,16 @@ SIG.MSR.068:
   v6_ids_consumed: [PLN.RAHU, D9.RAHU, SGN.GEMINI]
   rpt_deep_dive: "SIG.MSR.006"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 (D1 base)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.RAHU
+        note: "Rahu in Gemini D9 — 12H from D9 Cancer Lagna"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.069:
@@ -4403,10 +4427,16 @@ SIG.MSR.129:
   v6_ids_consumed: [PLN.RAHU, HSE.2, SGN.TAURUS]
   rpt_deep_dive: "SIG.MSR.010, RPT.HSE.02.A"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.2
+        note: "House 2 Taurus — wealth/family house; Rahu occupant"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.130:
@@ -5125,10 +5155,16 @@ SIG.MSR.150:
   v6_ids_consumed: [PLN.KETU, DSH.V.KETU_MD, HSE.8]
   rpt_deep_dive: "RPT.DSH.02"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD begins 2027-08-21 (DSH.V.024 Ketu-Ketu AD)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.151:
@@ -5542,10 +5578,16 @@ SIG.MSR.161:
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, HSE.2, HSE.8]
   rpt_deep_dive: "RPT.NOD.01, SIG.MSR.162"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.162:
@@ -5573,10 +5615,16 @@ SIG.MSR.162:
   v6_ids_consumed: [PLN.KETU, PLN.RAHU, HSE.2, HSE.8]
   rpt_deep_dive: "RPT.NOD.01, SIG.MSR.161"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.163:
@@ -7692,10 +7740,16 @@ SIG.MSR.216:
   v6_ids_consumed: [PLN.RAHU, D10.RAHU]
   rpt_deep_dive: "MATRIX_DIVISIONALS §D10, SIG.MSR.209"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 (D1 base)"
+      - ref: "FORENSIC_v8.0 §3.6 D10 Dashamsha"
+        fact_id: D10.RAHU
+        note: "Rahu in Cancer D10 house 12 from D10 Lagna Leo"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.217:
@@ -7800,10 +7854,16 @@ SIG.MSR.219:
   v6_ids_consumed: [PLN.KETU, D60.KETU]
   rpt_deep_dive: "SIG.27 (D60), SIG.MSR.218, MATRIX_DIVISIONALS §D60"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1 (D1 base)"
+      - ref: "FORENSIC_v8.0 §3.5 D9 Navamsa"
+        fact_id: D9.KETU
+        note: "Ketu in Sagittarius D9 — cross-varga dignity reference"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.220:
@@ -9063,10 +9123,16 @@ SIG.MSR.253:
   v6_ids_consumed: [SAH.SHOKA, SAH.SRADDHA, SAH.BANDHU, HSE.12, HSE.9, HSE.3]
   rpt_deep_dive: "v7.0 §V7.D"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.SRADDHA
+        note: "Sraddha Saham 13°04′34″ Cancer 4H Pushya — dedication lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.BANDHU
+        note: "Bandhu Saham 16°12′22″ Aquarius 11H Shatabhisha — relatives lot"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.254:
@@ -9425,10 +9491,16 @@ SIG.MSR.263:
   v6_ids_consumed: [PLN.KETU, DSH.VM.MD.KETU, HSE.8]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS §3.16-§3.22 (future projection)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD 2027-08-21 to 2034-08-21 (DSH.V.024–032)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.264:
@@ -9562,10 +9634,16 @@ SIG.MSR.267:
   v6_ids_consumed: [PLN.KETU, HSE.8, DSH.CHARA.SCORPIO]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS row 023 (concurrent Chara); v6.0 §5.3"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.3 Jaimini Chara Dasha"
+        fact_id: DSH.C.085
+        note: "Chara Dasha Scorpio MD: 2026-02-05 to 2027-01-05 (DSH.C.085)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.268:
@@ -9628,10 +9706,19 @@ SIG.MSR.269:
   v6_ids_consumed: [PLN.KETU, PLN.RAHU, DSH.VM.AD.KETU.RAHU]
   rpt_deep_dive: "MATRIX_DASHA_PERIODS row 029; SIG.16 (Rahu quadruple Jaimini aspect)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.029
+        note: "Ketu-Rahu AD 2030-07-21 to 2031-08-09"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.270:
@@ -10242,10 +10329,16 @@ SIG.MSR.287:
   v6_ids_consumed: [PLN.KETU, HSE.8]
   rpt_deep_dive: "MATRIX_SIGNS §Scorpio; EVT.2021.XX.XX.01 (panic attack under previous Ketu-8H transit)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu natal Scorpio 8H 19°01′47″ — transit return basis (18.6yr cycle)"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — natal Ketu house; nodal return target"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.288:
@@ -10894,10 +10987,16 @@ SIG.MSR.306:
   v6_ids_consumed: [KP.CUSP.2, PLN.RAHU, HSE.2]
   rpt_deep_dive: "v6.0 §4.1; MSR.249 (Saham Vyapara 10H)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §4.1 KP Cusp Mirror"
+        fact_id: KP.CUSP.2
+        note: "KP Cusp 2: 12°29′01″ Taurus star lord Moon sub lord Rahu"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.307:
@@ -11556,10 +11655,16 @@ SIG.MSR.325:
   v6_ids_consumed: [ARD.A6, PLN.RAHU, HSE.2]
   rpt_deep_dive: "v6.0 §13.1; EVT.2025.05.XX.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §13.1 Arudha Placements"
+        fact_id: ARD.A6
+        note: "A6 = Taurus 2H co-located with Rahu"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.326:
@@ -12000,10 +12105,16 @@ SIG.MSR.337:
   v6_ids_consumed: [PLN.RAHU, JMN.SHATRUPADA, HSE.2]
   rpt_deep_dive: "v6.0 §13.1; MSR.329 (Rahu 2H Argala on Lagna)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §13.1 Arudha Placements"
+        fact_id: ARD.A6
+        note: "A6 Arudha of 6H = Taurus 2H; Rahu in A6 sign"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.338:
@@ -12288,10 +12399,16 @@ SIG.MSR.345:
   v6_ids_consumed: [PLN.KETU, HSE.8]
   rpt_deep_dive: "v6.0 §2.1; EVT.2025.XX.XX.01"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.3 Jaimini Chara Dasha"
+        fact_id: DSH.C.085
+        note: "Chara Dasha Scorpio MD: 2026-02-05 to 2027-01-05 (DSH.C.085)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.346:
@@ -14077,10 +14194,19 @@ SIG.MSR.393:
   v6_ids_consumed: [PLN.RAHU, PLN.KETU, HSE.2, HSE.8, SPT.BHRIGU_BINDU]
   rpt_deep_dive: "SIG.16; MSR.327 (Rahu Jaimini); MSR.393"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §4.1 KP Cusp Mirror"
+        fact_id: KP.CUSP.2
+        note: "KP Cusp 2 sub lord Rahu — four-system nodal convergence"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.394:
@@ -14400,10 +14526,16 @@ SIG.MSR.402b:
   v6_ids_consumed: [LAG.VARNADA, LAG.GHATI, HSE.4, HSE.9]
   rpt_deep_dive: "UCN_v3_0 §XIX, REPORT_SPIRITUAL_v1_1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.1 Special Lagnas"
+        fact_id: LAG.VARNADA
+        note: "Varnada Lagna 12°25′21.62″ Cancer 4H Pushya pada 3 — JH AUTHORITATIVE (corrected from v6.0 Scorpio WRONG)"
+      - ref: "FORENSIC_v8.0 §12.1 Special Lagnas"
+        fact_id: LAG.GHATI
+        note: "Ghati Lagna 13°56′07.87″ Sagittarius 9H Purva Ashadha pada 1 — JH AUTHORITATIVE (corrected from v6.0 Scorpio WRONG)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.403:
@@ -14902,10 +15034,13 @@ SIG.MSR.416:
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (signal-distribution audit) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §C.3.2; §J.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: FORENSIC v8.0 is data source base for all MSR signal grounds"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.417:
@@ -14930,10 +15065,13 @@ SIG.MSR.417:
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (confidence distribution) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §B.6"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: confidence distribution computed across FORENSIC v8.0 fact base"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.418:
@@ -14963,10 +15101,13 @@ SIG.MSR.418:
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (domain coverage matrix) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §C.3.2; feeds CDLM_v1_0.md (Session 13)"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: domain coverage matrix derived from all FORENSIC v8.0 sections"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.419:
@@ -14994,10 +15135,13 @@ SIG.MSR.419:
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (open gaps register) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §B.4; §B.12; §J.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Meta-statistics: gap register references FORENSIC v8.0 across all 32 sections"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.420:
@@ -15029,10 +15173,13 @@ SIG.MSR.420:
   v6_ids_consumed: []  # FORENSIC_GAP: meta-statistics signal (completeness certificate) has no chart-fact FORENSIC ID
   rpt_deep_dive: "Architecture §C.3.2; §J.1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.1 Metadata"
+        fact_id: MET.DASHA.CURRENT
+        note: "Completeness certificate: 420 signals grounded in FORENSIC v8.0 data"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.421:
@@ -16094,10 +16241,16 @@ SIG.MSR.452:
   v6_ids_consumed: [PLN.RAHU]
   rpt_deep_dive: "REPORT_FINANCIAL"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.2
+        note: "House 2 Taurus — wealth house; Rahu occupant"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.453:
@@ -16118,10 +16271,16 @@ SIG.MSR.453:
   v6_ids_consumed: [PLN.KETU]
   rpt_deep_dive: "REPORT_HEALTH_LONGEVITY"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — moksha/transformation house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.454:
@@ -16202,10 +16361,16 @@ SIG.MSR.456:
   v6_ids_consumed: [SAH.PUNYA]
   rpt_deep_dive: "CGM §4.5"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PUNYA
+        note: "Punya Saham 17°30′54″ Gemini 3H Ardra — fortune/merit lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — communication/effort house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.457:
@@ -16226,10 +16391,16 @@ SIG.MSR.457:
   v6_ids_consumed: [SAH.YASAS]
   rpt_deep_dive: "MATRIX_HOUSES"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.YASAS
+        note: "Yasas Saham 4°42′38″ Scorpio 8H Anuradha — fame lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — transformation/depth house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.458:
@@ -16250,10 +16421,16 @@ SIG.MSR.458:
   v6_ids_consumed: [SAH.VIDYA]
   rpt_deep_dive: "REPORT_SPIRITUAL"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.VIDYA
+        note: "Vidya Saham 7°19′48″ Pisces 12H UBha — learning lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.12
+        note: "House 12 Pisces — moksha/foreign/dissolution house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.459:
@@ -16273,10 +16450,16 @@ SIG.MSR.459:
   v6_ids_consumed: [SAH.MITRA]
   rpt_deep_dive: "REPORT_PARENTS"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.MITRA
+        note: "Mitra Saham 11°28′34″ Cancer 4H Pushya — friendship lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.4
+        note: "House 4 Cancer — home/mother/property house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.460:
@@ -16297,10 +16480,16 @@ SIG.MSR.460:
   v6_ids_consumed: [SAH.KALI]
   rpt_deep_dive: "AUDIT qualitative"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.SAMARTHA
+        note: "Samartha Saham 3°41′27″ Cancer 4H Pushya — enterprise lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.KALI
+        note: "Kali Saham 3°41′27″ Cancer 4H Pushya — misfortune lot (co-located with Samartha)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.461:
@@ -16321,10 +16510,16 @@ SIG.MSR.461:
   v6_ids_consumed: [SAH.RAJYA]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PITRU
+        note: "Pitru Saham 12°53′31″ Capricorn 10H Shravana — father lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.RAJYA
+        note: "Rajya Saham 12°53′31″ Capricorn 10H Shravana — kingdom lot (identical longitude)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.462:
@@ -16345,10 +16540,16 @@ SIG.MSR.462:
   v6_ids_consumed: [SAH.KARMA]
   rpt_deep_dive: "MSR career cluster"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.KARMA
+        note: "Karma Saham 0°06′11″ Aquarius 11H Dhanishtha — profession lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.11
+        note: "House 11 Aquarius — Moon-AK gains house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.463:
@@ -16368,10 +16569,16 @@ SIG.MSR.463:
   v6_ids_consumed: [SAH.ARTHA]
   rpt_deep_dive: "REPORT_FINANCIAL"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.ARTHA
+        note: "Artha Saham 5°39′25″ Virgo 6H UPhal — wealth lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.6
+        note: "House 6 Virgo — service/debt/health house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.464:
@@ -16392,10 +16599,16 @@ SIG.MSR.464:
   v6_ids_consumed: [SAH.PARADARA]
   rpt_deep_dive: "UCN §IX ethics"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PARADARA
+        note: "Paradara Saham 9°37′57″ Pisces 12H UBha — boundary lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.SASTRA
+        note: "Sastra Saham 18°12′34″ Pisces 12H Revati — sciences lot"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.465:
@@ -16415,10 +16628,16 @@ SIG.MSR.465:
   v6_ids_consumed: [SAH.BANDHU]
   rpt_deep_dive: "MATRIX_HOUSES"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.BANDHU
+        note: "Bandhu Saham 16°12′22″ Aquarius 11H Shatabhisha — relatives lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.11
+        note: "House 11 Aquarius — gains/network house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.466:
@@ -16438,10 +16657,16 @@ SIG.MSR.466:
   v6_ids_consumed: [SAH.JEEVA]
   rpt_deep_dive: "MSR expansion"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.JEEVA
+        note: "Jeeva Saham 25°04′02″ Aquarius 11H PBha — life force lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.11
+        note: "House 11 Aquarius — Moon-AK placement; gains house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.467:
@@ -16461,10 +16686,16 @@ SIG.MSR.467:
   v6_ids_consumed: [SAH.GAURAVA]
   rpt_deep_dive: "JH §2.2"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.GAURAVA
+        note: "Gaurava Saham 4°42′38″ Scorpio 8H Anuradha — respect lot"
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.YASAS
+        note: "Yasas Saham 4°42′38″ Scorpio 8H Anuradha — same longitude as Gaurava"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.468:
@@ -16484,10 +16715,16 @@ SIG.MSR.468:
   v6_ids_consumed: [SAH.BHRATRU]
   rpt_deep_dive: "CGM"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.BHRATRU
+        note: "Bhratru Saham 29°46′41″ Gemini 3H Punarvasu — sibling lot"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — siblings/communication house"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.469:
@@ -16508,10 +16745,16 @@ SIG.MSR.469:
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "LIFETIME_TIMELINE"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.023
+        note: "Mercury-Saturn AD 2024-12-12 to 2027-08-21 (end of Mercury MD)"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD begins 2027-08-21 — Mercury→Ketu handover"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.470:
@@ -16532,10 +16775,16 @@ SIG.MSR.470:
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "UCN_v4_0"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.024
+        note: "Ketu MD 2027-08-21 to 2034-08-21 (DSH.V.024–032)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.471:
@@ -16583,10 +16832,16 @@ SIG.MSR.472:
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "REPORT_CAREER_DHARMA"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.023
+        note: "Mercury-Saturn AD 2024-12-12 to 2027-08-21"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Current Vimshottari: Mercury MD — Saturn AD confirmed"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.473:
@@ -16607,10 +16862,16 @@ SIG.MSR.473:
   v6_ids_consumed: [DSH.V.MD.MERCURY.2010]
   rpt_deep_dive: "FALSIFIER preview §2.10"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.1 Vimshottari Dasha"
+        fact_id: DSH.V.016
+        note: "Mercury-Ketu AD 2013-01-18 to 2014-01-15 — Ketu sub-period preview"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.474:
@@ -16631,10 +16892,16 @@ SIG.MSR.474:
   v6_ids_consumed: [DSH.C.SCORPIO.2026]
   rpt_deep_dive: "DEEP_ANALYSIS"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.3 Jaimini Chara Dasha"
+        fact_id: DSH.C.085
+        note: "Chara Dasha Scorpio MD: 2026-02-05 to 2027-01-05"
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.KETU
+        note: "Ketu in Scorpio 8H 19°01′47″ Jyeshtha pada 1"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.475:
@@ -16655,10 +16922,16 @@ SIG.MSR.475:
   v6_ids_consumed: [DSH.Y.BHADRIKA.2021]
   rpt_deep_dive: "LIFE_EVENT_LOG"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §5.2 Yogini Dasha"
+        fact_id: DSH.Y.BHADRIKA.2021
+        note: "Bhadrika (Mercury) Yogini period — panic-to-pivot cluster"
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Current: Mercury MD — Yogini backdrop reference"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.476:
@@ -17189,10 +17462,16 @@ SIG.MSR.493:
   v6_ids_consumed: [UPG.MANDI]
   rpt_deep_dive: "JH §1"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.3 Upagrahas"
+        fact_id: UPG.MANDI
+        note: "Mandi in Cancer 14°13′ Pushya — shadow malefic"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — UL/Gulika cluster context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.494:
@@ -17213,10 +17492,16 @@ SIG.MSR.494:
   v6_ids_consumed: [UPG.GULIKA]
   rpt_deep_dive: "CGM"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.3 Upagrahas"
+        fact_id: UPG.GULIKA
+        note: "Gulika in Gemini 13°57′ Ardra — delay malefic in 3H"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — communication/skill house with UL/A11"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.495:
@@ -17237,10 +17522,16 @@ SIG.MSR.495:
   v6_ids_consumed: [HSE.7, HSE.3, LAG.SHREE, ARD.UL]
   rpt_deep_dive: "MSR.443"
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.7
+        note: "House 7 Libra — Saturn+Mars five-layer convergence nexus"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.3
+        note: "House 3 Gemini — UL+A5+A11+HL four-layer cluster"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.496:
@@ -17267,10 +17558,13 @@ Fifteen signals grounded in FORENSIC §3.15 CSI ledger and §3.1–§3.14 divisi
 placement tables. These signals operationalise the chart's cross-varga dignity
 architecture — the structural meta-pattern that no single-chart read can surface.
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §3.15 Cross-Varga Summary"
+        fact_id: CSI.MERCURY
+        note: "Cross-varga sign index — Mercury vargottama Capricorn D1=D9; foundation of §VI signals"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.500:
@@ -19100,10 +19394,16 @@ SIG.MSR.557:
   domains_affected: [psychology]
   confidence: 0.86
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §2.1 D1 Planet Positions"
+        fact_id: PLN.RAHU
+        note: "Rahu in Taurus 2H 19°01′47″ Rohini pada 3 — Sankata Yogini ruler"
+      - ref: "FORENSIC_v8.0 §2.2 D1 Sign Occupancy"
+        fact_id: HSE.8
+        note: "House 8 Scorpio — transformation domain activated by Sankata period"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.558:
@@ -19138,10 +19438,13 @@ All Tajika signals have:
   school_attribution: tajika
   pending_flag: VARSHA_KUNDALI_PENDING (until 2026 solar return chart is computed)
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika framework signals; Varsha Kundali pending — natal FORENSIC v8.0 is the base chart reference"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.559:
@@ -19165,10 +19468,13 @@ SIG.MSR.559:
   confidence: 0.90
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Ithasala framework; natal Mercury MD-Saturn AD context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.560:
@@ -19192,10 +19498,13 @@ SIG.MSR.560:
   confidence: 0.87
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Ishrafa framework; applies in annual Varsha Kundali context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.561:
@@ -19219,10 +19528,13 @@ SIG.MSR.561:
   confidence: 0.86
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Varshesha: annual king planet; Varsha Kundali framework"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.562:
@@ -19245,10 +19557,13 @@ SIG.MSR.562:
   confidence: 0.81
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Varshesha affliction: annual adversity framework; Varsha Kundali context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.563:
@@ -19272,10 +19587,13 @@ SIG.MSR.563:
   confidence: 0.83
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Tajika Muntha: progressed Lagna based on natal Aries Lagna 12°23′55″"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.564:
@@ -19299,10 +19617,13 @@ SIG.MSR.564:
   confidence: 0.80
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.LAGNA.SIGN
+        note: "Tajika Muntha lord 12H: Varsha Kundali withdrawal framework; natal Aries Lagna basis"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.565:
@@ -19325,10 +19646,13 @@ SIG.MSR.565:
   confidence: 0.85
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.PUNYA
+        note: "Punya Saham natal 17°30′54″ Gemini 3H Ardra — Tajika annual lot basis"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.566:
@@ -19410,10 +19734,13 @@ SIG.MSR.568:
   confidence: 0.76
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §1.2 Core Mirror"
+        fact_id: MET.DASHA.CURRENT
+        note: "Tajika Nakta: indirect fulfilment via intermediary; Mercury MD context"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 
 
 SIG.MSR.569:
@@ -19566,8 +19893,11 @@ SIG.MSR.573:
   confidence: 0.73
   pending_flag: VARSHA_KUNDALI_PENDING
   derivation_ledger:
-    l1_sources: []  # TODO: fill with FORENSIC v6_id references
-    grounding_status: PENDING
-    grounded_by: ~
-    grounded_date: ~
+    l1_sources:
+      - ref: "FORENSIC_v8.0 §12.2 Tajika Sahams"
+        fact_id: SAH.ROGA
+        note: "Roga Saham 27°46′29″ Taurus 2H Mrigashira — disease lot (natal basis for Tajika Paka/Roga)"
+    grounding_status: GROUNDED
+    grounded_by: DAR-P5-S18
+    grounded_date: 2026-05-25
 

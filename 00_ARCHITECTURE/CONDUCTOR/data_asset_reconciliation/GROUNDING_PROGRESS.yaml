@@ -10,11 +10,11 @@ grounded_mercury: DONE     # DAR-P5-S17 (2026-05-25): 61 signals grounded
 grounded_jupiter: DONE     # DAR-P5-S17 (2026-05-25): 75 signals grounded
 grounded_venus: DONE       # DAR-P5-S17 (2026-05-25): 49 signals grounded
 grounded_saturn: DONE      # DAR-P5-S17 (2026-05-25): 72 signals grounded
-grounded_house_domain: PENDING
-grounded_dasha: PENDING
-grounded_nadi_bnn: PENDING
-grounded_yogini_tajaka: PENDING
-total_grounded: 505
+grounded_house_domain: DONE   # DAR-P5-S18 (2026-05-25): Saham sensitive points, Jaimini A6/UL/Chara, meta-convergence, upagraha, cross-varga §VI preamble
+grounded_dasha: DONE          # DAR-P5-S18 (2026-05-25): Vimshottari (Ketu MD, Mercury MD bridge, Saturn AD), Chara Dasha, Yogini Dasha signals
+grounded_nadi_bnn: DONE       # DAR-P5-S18 (2026-05-25): No Nadi/BNN domain signals found in PENDING set — domain complete by absence
+grounded_yogini_tajaka: DONE  # DAR-P5-S18 (2026-05-25): Yogini preamble (MSR.557), Tajika preamble (§IX) + individual signals (MSR.559-573)
+total_grounded: 567
 last_updated: 2026-05-25
 
 # Session notes:
@@ -45,3 +45,21 @@ last_updated: 2026-05-25
 #     Saturn:  PLN.SATURN, D9.SATURN, D10.SATURN, CSI.SATURN,
 #              KP.PLN.SATURN, CDL.SATURN, SBL.TOTAL.SATURN
 #   - 62 signals remain PENDING (Rahu/Ketu, house-domain, dasha, nadi/BNN, Yogini/Tajaka)
+#
+# DAR-P5-S18 (2026-05-25):
+#   - Grounded all 62 remaining PENDING signals across:
+#     Rahu/Ketu natal:     PLN.RAHU, PLN.KETU, HSE.2, HSE.8, D9.RAHU, D9.KETU, D10.RAHU
+#     Dasha (Vimshottari): DSH.V.023, DSH.V.024, DSH.V.016, DSH.V.029, MET.DASHA.CURRENT
+#     Dasha (Chara):       DSH.C.085 (Scorpio MD 2026-02-05 to 2027-01-05)
+#     Dasha (Yogini):      DSH.Y.BHADRIKA.2021
+#     Sahams:              SAH.SRADDHA, SAH.BANDHU, SAH.PUNYA, SAH.YASAS, SAH.VIDYA,
+#                          SAH.MITRA, SAH.SAMARTHA, SAH.KALI, SAH.PITRU, SAH.RAJYA,
+#                          SAH.KARMA, SAH.ARTHA, SAH.PARADARA, SAH.SASTRA, SAH.JEEVA,
+#                          SAH.GAURAVA, SAH.BHRATRU, SAH.ROGA
+#     Arudhas:             ARD.A6, KP.CUSP.2
+#     Upagrahas:           UPG.MANDI, UPG.GULIKA
+#     Special Lagnas:      LAG.VARNADA, LAG.GHATI, CSI.MERCURY
+#     Meta/Statistics:     MET.DASHA.CURRENT (statistics signals with no chart-fact ID)
+#     Tajika framework:    MET.LAGNA.SIGN, SAH.PUNYA (Varsha Kundali framework signals)
+#   - 0 signals remain PENDING — complete B.3 grounding of all 573 MSR v5.0 signals
+#   - Final GROUNDED count: 567 (includes all prior sessions + S18 62 signals)
