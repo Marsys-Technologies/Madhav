@@ -1,14 +1,16 @@
 ---
 title: Interface Normalization Register
 canonical_id: INTERFACE_NORMALIZATION_REGISTER
-version: 1.0
+version: 1.1
 status: CURRENT
 authored: 2026-05-25
 authored_by: UDA-3-S1
+amended: 2026-05-25
+amended_by: UDA-3-S2
 phase: Universal Parity Campaign — UDA-3
 ---
 
-# Interface Normalization Register v1.0
+# Interface Normalization Register v1.1
 
 Produced by UDA-3-S1. Lists every tool that exists in both portal (Channel A/B) and MCP (Channel C),
 with the canonical name, current portal name, current MCP name, normalization status, and any
@@ -143,4 +145,47 @@ They are intentionally MCP-only (write tools, meta tools, composition tools).
 
 ---
 
-*INTERFACE_NORMALIZATION_REGISTER v1.0 — authored 2026-05-25 — UDA-3-S1*
+## §6 — Schema Parity Audit (UDA-3-S2)
+
+Produced by UDA-3-S2. For each of the 14 UDA-2 tools (ported from portal-only to both channels),
+compares the portal `retrieve(plan, params)` accepted input shape against the MCP Zod schema in
+`platform-mcp/src/tools/*.ts`. Gaps are classified HIGH (meaningfully changes data returned) or
+LOW (cosmetic, additive, or safely ignored).
+
+**Severity definitions:**
+- HIGH: a missing param that narrows/filters query results, selects a different data source, or
+  controls a distinct sidecar endpoint — omitting it means MCP callers cannot access data the
+  portal returns.
+- LOW: a param that is unused/UI-hint only, a broader default (higher max), or an additive
+  MCP-only param with no portal counterpart.
+
+| tool | portal_params | mcp_params_pre_fix | gaps | severity | fix_applied |
+|---|---|---|---|---|---|
+| `msr_sql` | `domain`, `domains[]`, `forward_looking`, `confidence_floor`, `chart_id`, `signal_type` (as array), `temporal_activation` (str\|str[]), `valence` (str\|str[]), `dasha_activation[]`, `dasha_lord`, `entities_involved_any[]`, `native_id`, `limit` | `domain`, `domains[]`, `forward_looking`, `confidence_floor`, `chart_id`, `signal_type` (str), `limit` | MCP missing: `temporal_activation`, `valence`, `dasha_activation`, `dasha_lord`, `entities_involved_any`, `native_id` | HIGH | YES — added all 6 missing params to `MsrSqlInputSchema` and dispatch block |
+| `temporal` | Plan-driven: `forward_looking`, `time_window` (start/end), `dasha_context_required`, `sade_sati_query`, `eclipse_query`, `retrograde_query`, `retrograde_planet`; MCP-mapped: `date_from`, `date_to`, `include_transits`, `include_ephemeris`, `include_dashas` | `date_from`, `date_to`, `include_transits`, `include_ephemeris`, `include_dashas`, `chart_id` | MCP missing: `include_sade_sati`, `include_eclipses`, `include_retrogrades`, `retrograde_planet` — each triggers a distinct sidecar endpoint | HIGH | YES — added `include_sade_sati`, `include_eclipses`, `include_retrogrades`, `retrograde_planet` to `TemporalInputSchema` and dispatch block |
+| `kp_query` | `cusp` (int 1–12), `planet` (string), `query_type` (enum 5 values) | `cusp`, `planet`, `query_type` | None | — | N/A |
+| `query_kp_ruling_planets` | `chart_id`, `planet`, `ayanamsha` | `chart_id` | MCP missing: `planet` (narrows to a specific graha), `ayanamsha` (selects a different computation set) | HIGH | YES — added `planet` and `ayanamsha` to `QueryKpRulingPlanetsInputSchema` and dispatch block |
+| `pattern_register` | Plan-driven only (`domains`, `forward_looking`; no explicit params consumed) | `domain`, `keyword`, `min_confidence`, `limit` | MCP adds `keyword` + `min_confidence` + `limit` (MCP-only additive). Portal `forward_looking` not exposed in MCP (LOW — ordering hint, not a hard filter in portal implementation) | LOW | N/A |
+| `resonance_register` | Plan-driven only (`domains`; no explicit params consumed) | `domain`, `keyword`, `min_confidence`, `limit` | MCP adds `keyword` + `min_confidence` + `limit` (MCP-only additive). Symmetric to pattern_register | LOW | N/A |
+| `cluster_atlas` | Plan-driven (`domains`, `graph_seed_hints` as preferred cluster list) | `domain`, `sub_domain`, `min_size`, `limit` | Portal `graph_seed_hints` (cluster ordering hint) not in MCP — LOW (it's a re-ordering preference, not a filter that hides data). MCP adds `sub_domain` + `min_size` (MCP-only additive) | LOW | N/A |
+| `contradiction_register` | Plan-driven (`domains`; no explicit params consumed) | `domain`, `contradiction_class`, `limit` | MCP adds `contradiction_class` filtering (MCP-only additive). No portal param missing | LOW | N/A |
+| `query_ucn_walk` | `seed_signal_id`, `depth` | `seed_signal_id`, `depth` | None | — | N/A |
+| `query_cdlm_lookup` | `domain_a`, `domain_b`, `signal_id` | `domain_a`, `domain_b`, `signal_id` | None | — | N/A |
+| `query_rm_walk` | `seed_signal_id`, `depth` | `seed_signal_id` | MCP missing `depth` — but `depth` is accepted-and-unused in portal (reserved for future graph-walk) | LOW | N/A |
+| `query_jaimini_drishti` | `params: Record<string,unknown>` | `params: Record<string,unknown>` | None | — | N/A |
+| `timeline_query` | `dasha_name`, `keyword`, `limit` (portal max 15) | `dasha_name`, `keyword`, `limit` (MCP max 50) | MCP max is higher (50 vs 15) — caller can request more results via MCP. Not a gap; MCP is more capable | LOW | N/A |
+| `query_signal_state` | `chart_id`, `query_date`, `end_date`, `signal_ids[]`, `states[]`, `dasha_system`, `limit` (max 500) | `chart_id`, `date` (→`query_date`), `end_date`, `state_filter` (single enum→`states[]`), `limit` (max 200) | MCP missing: `signal_ids[]` (restrict to specific signal IDs), `dasha_system` (filter by computation system). Also MCP max limit was 200 vs portal 500 | HIGH | YES — added `signal_ids[]` and `dasha_system` to `QuerySignalStateInputSchema` and dispatch block; raised max limit to 500 |
+
+**Summary of HIGH gaps fixed (UDA-3-S2):**
+- `msr_sql`: +6 params (`temporal_activation`, `valence`, `dasha_activation`, `dasha_lord`, `entities_involved_any`, `native_id`)
+- `temporal`: +4 params (`include_sade_sati`, `include_eclipses`, `include_retrogrades`, `retrograde_planet`)
+- `query_kp_ruling_planets`: +2 params (`planet`, `ayanamsha`)
+- `query_signal_state`: +2 params (`signal_ids`, `dasha_system`); max limit raised 200→500
+
+**LOW gaps not fixed (by design):** `pattern_register` forward_looking exposure, `cluster_atlas` graph_seed_hints, `query_rm_walk` depth, `timeline_query` max limit difference — all are either ordering hints, unused params, or additive MCP-only capabilities.
+
+**tsc result:** `npx tsc --noEmit` exits 0 after all fixes applied (2026-05-25, UDA-3-S2).
+
+---
+
+*INTERFACE_NORMALIZATION_REGISTER v1.1 — amended 2026-05-25 — UDA-3-S2 schema parity audit + HIGH-severity gap fixes appended as §6.*

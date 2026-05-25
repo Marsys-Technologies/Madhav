@@ -69,6 +69,29 @@ const MsrSqlInputSchema = z.object({
   signal_type: z.string().optional().describe(
     'Filter by signal type. Examples: "yoga", "aspect", "transit", "planetary_strength".'
   ),
+  temporal_activation: z.union([z.string(), z.array(z.string())]).optional().describe(
+    'Filter by temporal activation label(s). Accepts a single string or array. ' +
+    'Examples: "natal", "transit", "dasha". Matches the temporal_activation column in msr_signals.'
+  ),
+  valence: z.union([z.string(), z.array(z.string())]).optional().describe(
+    'Filter by signal valence(s). Accepts a single string or array. ' +
+    'Examples: "benefic", "malefic", "neutral". Matches the valence column in msr_signals.'
+  ),
+  dasha_activation: z.array(z.string()).optional().describe(
+    'Filter to signals activated by specific dasha lords. Each entry is a planet name (e.g. "Mercury", "Saturn"). ' +
+    'Converted to DSH.MD.PLANET entity keys and matched against entities_involved.'
+  ),
+  dasha_lord: z.string().optional().describe(
+    'Convenience scalar for a single dasha lord filter (e.g. "Mercury"). ' +
+    'Merged into dasha_activation automatically. Use dasha_activation[] for multiple lords.'
+  ),
+  entities_involved_any: z.array(z.string()).optional().describe(
+    'Filter to signals where entities_involved JSONB contains any of these entity keys. ' +
+    'Examples: ["DSH.MD.MERCURY", "DSH.AD.VENUS"]. Combined with dasha_activation entries.'
+  ),
+  native_id: z.string().optional().describe(
+    'Override the native ID. Defaults to "abhisek_mohanty". Use only when querying a non-native chart.'
+  ),
   limit: z.number().int().min(1).max(500).optional().default(50).describe(
     'Max signals to return (default 50, max 500).'
   ),
@@ -95,6 +118,12 @@ export function registerMsrSql(
           ...(args.confidence_floor !== undefined ? { confidence_floor: args.confidence_floor } : {}),
           ...(args.chart_id ? { chart_id: args.chart_id } : {}),
           ...(args.signal_type ? { signal_type: [args.signal_type] } : {}),
+          ...(args.temporal_activation !== undefined ? { temporal_activation: args.temporal_activation } : {}),
+          ...(args.valence !== undefined ? { valence: args.valence } : {}),
+          ...(args.dasha_activation && args.dasha_activation.length > 0 ? { dasha_activation: args.dasha_activation } : {}),
+          ...(args.dasha_lord ? { dasha_lord: args.dasha_lord } : {}),
+          ...(args.entities_involved_any && args.entities_involved_any.length > 0 ? { entities_involved_any: args.entities_involved_any } : {}),
+          ...(args.native_id ? { native_id: args.native_id } : {}),
           limit: args.limit ?? 50,
         },
         principal

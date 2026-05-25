@@ -61,8 +61,16 @@ const QuerySignalStateInputSchema = z.object({
     'Restrict results to signals in a specific state: "lit" (fully active), "ripening" (approaching peak), ' +
     'or "dormant" (inactive/background). When omitted, all states are returned.'
   ),
-  limit: z.number().int().min(1).max(200).optional().default(50).describe(
-    'Max signal-state rows to return (default 50, max 200).'
+  signal_ids: z.array(z.string()).optional().describe(
+    'Restrict results to specific MSR signal IDs (e.g. ["SIG.MSR.001", "SIG.MSR.002"]). ' +
+    'When omitted, all signals are returned. Useful for checking activation state of known signals of interest.'
+  ),
+  dasha_system: z.string().optional().describe(
+    'Restrict results to a specific dasha computation system (e.g. "vimshottari"). ' +
+    'When omitted, all dasha systems are returned.'
+  ),
+  limit: z.number().int().min(1).max(500).optional().default(50).describe(
+    'Max signal-state rows to return (default 50, max 500).'
   ),
 })
 
@@ -87,6 +95,8 @@ export function registerQuerySignalState(
           ...(args.end_date !== undefined ? { end_date: args.end_date } : {}),
           // Portal tool uses states[] array; map single state_filter to states array
           ...(args.state_filter !== undefined ? { states: [args.state_filter] } : {}),
+          ...(args.signal_ids && args.signal_ids.length > 0 ? { signal_ids: args.signal_ids } : {}),
+          ...(args.dasha_system ? { dasha_system: args.dasha_system } : {}),
           limit: args.limit ?? 50,
         },
         principal

@@ -47,6 +47,14 @@ const QueryKpRulingPlanetsInputSchema = z.object({
   chart_id: z.string().uuid().optional().describe(
     'UUID of a specific chart to scope the query to. Defaults to the native chart (Abhisek Mohanty).'
   ),
+  planet: z.string().optional().describe(
+    'Filter results to a specific planet (e.g. "Sun", "Moon", "Saturn", "Mercury"). ' +
+    'When omitted, returns all 9 grahas. Case-insensitive partial match against the planet name.'
+  ),
+  ayanamsha: z.string().optional().describe(
+    'Ayanamsha system to use for the lookup (e.g. "lahiri", "raman", "krishnamurti"). ' +
+    'Defaults to "lahiri". Must match the ayanamsha value stored in kp_sublords for the requested chart.'
+  ),
 })
 
 type QueryKpRulingPlanetsInput = z.infer<typeof QueryKpRulingPlanetsInputSchema>
@@ -65,6 +73,8 @@ export function registerQueryKpRulingPlanets(
         'query_kp_ruling_planets',
         {
           ...(args.chart_id ? { chart_id: args.chart_id } : {}),
+          ...(args.planet ? { planet: args.planet } : {}),
+          ...(args.ayanamsha ? { ayanamsha: args.ayanamsha } : {}),
         },
         principal
       )

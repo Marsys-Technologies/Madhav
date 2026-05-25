@@ -64,6 +64,22 @@ const TemporalInputSchema = z.object({
   include_dashas: z.boolean().optional().default(false).describe(
     'If true, include the /dasha_chain sidecar call — active Vimshottari dasha/antardasha chain at date_from.'
   ),
+  include_sade_sati: z.boolean().optional().default(false).describe(
+    'If true, include the /sade_sati sidecar call — Saturn transit phase analysis for the native. ' +
+    'Use when the query asks about Sade Sati or Saturn transit phases.'
+  ),
+  include_eclipses: z.boolean().optional().default(false).describe(
+    'If true, include the /eclipses sidecar call — eclipse events within the date_from/date_to window. ' +
+    'Requires both date_from and date_to to be set.'
+  ),
+  include_retrogrades: z.boolean().optional().default(false).describe(
+    'If true, include the /retrogrades sidecar call — retrograde station events within the date window. ' +
+    'Use when the query asks about retrograde periods or planetary stations.'
+  ),
+  retrograde_planet: z.string().optional().describe(
+    'Restrict retrograde data to a specific planet (e.g. "Mercury", "Venus"). ' +
+    'Only meaningful when include_retrogrades is true.'
+  ),
   chart_id: z.string().uuid().optional().describe(
     'UUID of a specific chart to scope the query to. Defaults to the native chart (Abhisek Mohanty).'
   ),
@@ -89,6 +105,10 @@ export function registerTemporal(
           ...(args.include_transits !== undefined ? { include_transits: args.include_transits } : {}),
           ...(args.include_ephemeris !== undefined ? { include_ephemeris: args.include_ephemeris } : {}),
           ...(args.include_dashas !== undefined ? { include_dashas: args.include_dashas } : {}),
+          ...(args.include_sade_sati !== undefined ? { include_sade_sati: args.include_sade_sati } : {}),
+          ...(args.include_eclipses !== undefined ? { include_eclipses: args.include_eclipses } : {}),
+          ...(args.include_retrogrades !== undefined ? { include_retrogrades: args.include_retrogrades } : {}),
+          ...(args.retrograde_planet ? { retrograde_planet: args.retrograde_planet } : {}),
           ...(args.chart_id ? { chart_id: args.chart_id } : {}),
         },
         principal
