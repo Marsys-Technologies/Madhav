@@ -98,7 +98,7 @@ sessions:
     phase: 3
     name: "MSR pipeline dry-run + validation — verify 573 signals extract cleanly"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S7.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 45
     depends_on: [DAR-P1-S2]
     gate_commands:
