@@ -33,6 +33,121 @@ import type { Principal } from '../types.js'
 import { okResult, errorResult } from './_envelope.js'
 import { buildToolDescription } from './description_builder.js'
 
+// ── LL.1 calibration constants (backport from portal msr_sql.ts, NAP.M4.5 approved) ──────────
+
+// LL.1 production weights — inlined from
+// 06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/signal_weights/production/ll1_weights_promoted_v1_0.json
+// (30 signals, NAP.M4.5 approved 2026-05-02). Signals absent from this map default to 1.0.
+const LL1_PRODUCTION_WEIGHTS = new Map<string, number>([
+  ['SIG.MSR.001', 1.0],     // prior_id SIG.01
+  ['SIG.MSR.009', 1.0],     // prior_id SIG.09
+  ['SIG.MSR.010', 1.0],     // prior_id SIG.10
+  ['SIG.MSR.012', 1.0],     // prior_id SIG.12
+  ['SIG.MSR.013', 1.0],     // prior_id SIG.13 + direct
+  ['SIG.MSR.015', 1.0],     // prior_id SIG.15
+  ['SIG.MSR.030', 1.0],
+  ['SIG.MSR.118', 0.4545],
+  ['SIG.MSR.119', 0.4545],
+  ['SIG.MSR.143', 0.4545],
+  ['SIG.MSR.145', 0.9091],
+  ['SIG.MSR.163', 1.0],
+  ['SIG.MSR.170', 1.0],
+  ['SIG.MSR.198', 1.0],
+  ['SIG.MSR.229', 1.0],
+  ['SIG.MSR.251', 1.0],
+  ['SIG.MSR.278', 1.0],
+  ['SIG.MSR.291', 1.0],
+  ['SIG.MSR.295', 1.0],
+  ['SIG.MSR.297', 1.0],
+  ['SIG.MSR.300', 1.0],
+  ['SIG.MSR.301', 1.0],
+  ['SIG.MSR.391', 1.0],
+  ['SIG.MSR.402', 0.7273],
+  ['SIG.MSR.476', 1.0],
+])
+
+// Domain-specific confidence floors.
+// Finance/wealth signals cluster in the 0.35–0.60 range; global 0.6 floor over-filters them.
+const FINANCE_WEALTH_DOMAINS = new Set(['finance', 'wealth'])
+const DEFAULT_CONFIDENCE_FLOOR = 0.6
+const FINANCE_WEALTH_CONFIDENCE_FLOOR = 0.35
+
+// LL.3 R.LL3.2 — Pancha-Mahapurusha clique dedup.
+// These 7 signal IDs form one natal yoga; consolidate to MAX-weight entry to prevent
+// N× double-counting. SIG.MSR.402 is invalidated; SIG.MSR.402b is the corrected form —
+// both are included so the modifier fires regardless of DB state.
+const PANCHA_MP_CLIQUE = new Set([
+  'SIG.MSR.117', 'SIG.MSR.118', 'SIG.MSR.119',
+  'SIG.MSR.143', 'SIG.MSR.145',
+  'SIG.MSR.402', 'SIG.MSR.402b',
+])
+const PANCHA_MP_CONSOLIDATED_ID = 'PANCHA_MP_CLIQUE_CONSOLIDATED'
+
+interface ToolBundleResult {
+  content: string
+  source_canonical_id: string
+  source_version?: string
+  confidence?: number
+  significance?: number
+  signal_id?: string
+  [key: string]: unknown
+}
+
+/**
+ * Apply LL.1 calibration to a set of ToolBundleResults:
+ *   1. Multiply confidence by LL.1 weight (signals absent from map → weight 1.0).
+ *   2. Filter out results that fall below the domain confidence floor.
+ *   3. Deduplicate the Pancha-MP clique to a single MAX-weight entry.
+ *
+ * The domain parameter is used only for determining the confidence floor;
+ * it should match the domain(s) requested by the caller.
+ */
+function calibrateResults(
+  results: ToolBundleResult[],
+  domain?: string,
+  domains?: string[],
+): ToolBundleResult[] {
+  const effectiveDomains = domains && domains.length > 0
+    ? domains
+    : domain ? [domain] : []
+
+  const isFinanceWealth = effectiveDomains.some(d => FINANCE_WEALTH_DOMAINS.has(d))
+  const domain_floor = isFinanceWealth
+    ? FINANCE_WEALTH_CONFIDENCE_FLOOR
+    : DEFAULT_CONFIDENCE_FLOOR
+
+  // Step 1: apply LL.1 weights to calibrate confidence
+  let calibrated: ToolBundleResult[] = results.map(r => ({
+    ...r,
+    confidence: (r.confidence ?? 0) * (r.signal_id != null ? (LL1_PRODUCTION_WEIGHTS.get(r.signal_id) ?? 1.0) : 1.0),
+  }))
+
+  // Step 2: apply confidence floor — drop calibrated results below the floor
+  calibrated = calibrated.filter(r => (r.confidence ?? 0) >= domain_floor)
+
+  // Step 3: Pancha-MP clique dedup — consolidate ≥2 clique members to MAX entry
+  const cliqueMembers = calibrated.filter(r => r.signal_id != null && PANCHA_MP_CLIQUE.has(r.signal_id))
+  if (cliqueMembers.length >= 2) {
+    const nonClique = calibrated.filter(r => r.signal_id == null || !PANCHA_MP_CLIQUE.has(r.signal_id))
+    const maxEntry = cliqueMembers.reduce((a, b) =>
+      (a.confidence ?? 0) >= (b.confidence ?? 0) ? a : b
+    )
+    calibrated = [
+      ...nonClique,
+      {
+        ...maxEntry,
+        signal_id: PANCHA_MP_CONSOLIDATED_ID,
+        content:
+          `[PANCHA_MP_CLUSTER] Pancha-Mahapurusha yoga configuration: ${cliqueMembers.map(r => r.signal_id).join(', ')}. ` +
+          `Consolidated per LL.3 R.LL3.2 cluster-modifier (prevents ${cliqueMembers.length}× double-counting). ` +
+          `Representative signal: ${maxEntry.content}`,
+      },
+    ]
+  }
+
+  return calibrated
+}
+
 export const QUERY_SIGNALS_DESCRIPTION = buildToolDescription({
   baseDescription:
     'What it does: Queries the MSR signal corpus (499+ astrological signals) with structured ' +
@@ -104,6 +219,22 @@ export function registerQuerySignals(
       if (!envelope.ok || status >= 400) {
         return errorResult(envelope)
       }
+
+      // Apply LL.1 calibration: weights, domain confidence floors, Pancha-MP clique dedup.
+      // Mirrors the calibration applied by portal msr_sql.ts (NAP.M4.5 approved).
+      const rawEnvelope = envelope as unknown as {
+        result?: { results?: ToolBundleResult[] }
+        [key: string]: unknown
+      }
+      if (
+        rawEnvelope.result != null &&
+        typeof rawEnvelope.result === 'object' &&
+        Array.isArray((rawEnvelope.result as { results?: unknown }).results)
+      ) {
+        const bundle = rawEnvelope.result as { results: ToolBundleResult[]; [key: string]: unknown }
+        bundle.results = calibrateResults(bundle.results, args.domain, args.domains)
+      }
+
       return okResult(envelope)
     }
   )
