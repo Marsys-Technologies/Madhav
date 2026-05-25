@@ -32,6 +32,14 @@
 | UDA-0-S1 | 2026-05-25 | PASS | 3/3 green | c9494bc3 | Manifest audited: 22 id→canonical_id promotions; 0 dupes; 0 stale paths |
 | UDA-0-S2 | 2026-05-25 | PASS | 2/2 green | bc89d1cf | 36 portal RETRIEVAL_TOOLS registered in manifest |
 | UDA-0-S3 | 2026-05-25 | PASS | 3/3 green | e3a7ae47 | 43 MCP tools in manifest; catalog.ts 22→43 entries. HAP-2 written. |
+| UDA-1-S1 | 2026-05-25 | PASS | 5/5 green | a5a78bd3 | query_transits_over_natal + query_yogas_active_now ported to portal RETRIEVAL_TOOLS (38 total) |
+| UDA-1-S2 | 2026-05-25 | PASS | 3/3 green | 90e0e7b1 | get_planet_avastha (3-step fallback) + get_shadbala_full (6-component roll-up) ported (40 total) |
+| UDA-1-S3 | 2026-05-25 | PASS | 3/3 green | 78e05e52 | query_jaimini_chara_dasha ported via sidecar /jaimini_drishti/chara_dasha (41 total) |
+| UDA-1-S4 | 2026-05-25 | PASS | 3/3 green | 7eeef9a7 | query_planetary_period_predictions: vector+classical merge composition (42 total) |
+| UDA-1-S5 | 2026-05-25 | PASS | 3/3 green | b601a71d | query_dasamsha_career (D10) + query_shashtiamsha (D60 pada) ported (44 total) |
+| UDA-1-S6 | 2026-05-25 | PASS | 3/3 green | 4d95f28a | query_eclipse_transits + query_planet_war (Graha Yuddha) ported (46 total) |
+| UDA-1-S7 | 2026-05-25 | PASS | 3/3 green | 1dac292f | query_drekkana_drishti (Jaimini aspects) + query_remedies_prescribed ported (48 total) |
+| UDA-1-S8 | 2026-05-25 | PASS | 4/4 green | d526a5f4 | tara_balam_for_native + chandra_balam_for_native + muhurta_finder ported (51 total). UDA-1 COMPLETE. |
 
 ---
 

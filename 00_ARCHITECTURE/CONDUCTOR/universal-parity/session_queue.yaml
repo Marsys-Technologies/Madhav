@@ -225,7 +225,7 @@ sessions:
 
   - id: UDA-1-S1
     name: "Port to portal: query_transits_over_natal + query_yogas_active_now"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S1_v1_0.md"
     gate_commands:
@@ -245,7 +245,7 @@ sessions:
 
   - id: UDA-1-S2
     name: "Port to portal: get_planet_avastha + get_shadbala_full"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S2_v1_0.md"
     gate_commands:
@@ -259,7 +259,7 @@ sessions:
 
   - id: UDA-1-S3
     name: "Port to portal: query_jaimini_chara_dasha"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S3_v1_0.md"
     gate_commands:
@@ -273,7 +273,7 @@ sessions:
 
   - id: UDA-1-S4
     name: "Port to portal: query_planetary_period_predictions"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S4_v1_0.md"
     gate_commands:
@@ -287,7 +287,7 @@ sessions:
 
   - id: UDA-1-S5
     name: "Port to portal: query_dasamsha_career + query_shashtiamsha"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S5_v1_0.md"
     gate_commands:
@@ -301,7 +301,7 @@ sessions:
 
   - id: UDA-1-S6
     name: "Port to portal: query_eclipse_transits + query_planet_war"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S6_v1_0.md"
     gate_commands:
@@ -315,7 +315,7 @@ sessions:
 
   - id: UDA-1-S7
     name: "Port to portal: query_drekkana_drishti + query_remedies_prescribed"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S7_v1_0.md"
     gate_commands:
@@ -329,7 +329,7 @@ sessions:
 
   - id: UDA-1-S8
     name: "Port to portal: tara_balam_for_native + chandra_balam_for_native + muhurta_finder"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_1_S8_v1_0.md"
     gate_commands:
