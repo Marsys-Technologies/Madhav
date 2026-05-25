@@ -196,7 +196,7 @@ describe('query_dasha_periods bundle shape', () => {
     const bundle = await tool.retrieve(basePlan, {})
 
     expect(bundle.tool_name).toBe('query_dasha_periods')
-    expect(bundle.tool_version).toBe('1.0.0')
+    expect(bundle.tool_version).toBe('1.1.0')
     expect(typeof bundle.tool_bundle_id).toBe('string')
     expect(bundle.tool_bundle_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/

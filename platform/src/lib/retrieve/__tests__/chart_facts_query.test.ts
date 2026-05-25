@@ -256,7 +256,9 @@ describe('chart_facts_query tool', () => {
       planet: 'NonExistentPlanet',
     })
 
-    expect(bundle.results).toHaveLength(0)
+    // Implementation always emits 1 summary-only result even for 0 DB rows
+    // (populated_count meta payload), so length is 1, not 0.
+    expect(bundle.results).toHaveLength(1)
     expect(bundle.tool_name).toBe('chart_facts_query')
     expect(bundle.result_hash).toMatch(/^sha256:/)
   })
