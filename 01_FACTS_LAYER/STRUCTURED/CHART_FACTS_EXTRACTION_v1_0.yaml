@@ -5301,3 +5301,388 @@ facts:
     source_section: "§11.2 row 8"
     forensic_ref: "FORENSIC v8.0 §11.2 — Bhrigu Bindu (Destiny Point)"
     extraction_method: direct_read
+  # ── §11.3 Yogi / Avayogi ──────────────────────────────────────────────────
+  - fact_id: YOG.FORMULA
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: "Sun_abs + Moon_abs + 93°20′ mod 360"
+    value_json: {formula: "Sun_abs + Moon_abs + 93°20′ mod 360"}
+    source_section: "§11.3 row 1"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.INPUT.SUN
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_number: 291.96
+    value_text: "Sun absolute longitude: 291.96°"
+    value_json: {input: Sun_abs, value_deg: 291.96}
+    source_section: "§11.3 row 2"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.INPUT.MOON
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_number: 327.05
+    value_text: "Moon absolute longitude: 327.05°"
+    value_json: {input: Moon_abs, value_deg: 327.05}
+    source_section: "§11.3 row 3"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.INPUT.CONST
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: "93°20′ (93.33°)"
+    value_json: {fixed_arc_deg: "93°20′", fixed_arc_decimal: 93.33}
+    source_section: "§11.3 row 4"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.POINT.ABS
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_number: 352.34
+    value_text: "Yogi Point absolute longitude: 352.34°"
+    value_json: {yogi_point_abs: 352.34}
+    source_section: "§11.3 row 5"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.POINT.SIGN
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: Pisces
+    value_json: {yogi_point_sign: Pisces}
+    source_section: "§11.3 row 6"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.POINT.DEG
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: "22°20′"
+    value_json: {yogi_point_degree: "22°20′"}
+    source_section: "§11.3 row 7"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.POINT.NAK
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: Revati
+    value_json: {yogi_point_nakshatra: Revati}
+    source_section: "§11.3 row 8"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: YOG.PLANET
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: "Mercury (ruler of Revati)"
+    value_json: {yogi_planet: Mercury, nakshatra_ruled: Revati, jh_note: "Mercury = Yogi (Duplicate Yogi)"}
+    source_section: "§11.3 row 9"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: AVY.PATH
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: "6th nakshatra from Revati = Mrigasira"
+    value_json: {avayogi_path: "6th nakshatra from Revati", nakshatra: Mrigasira}
+    source_section: "§11.3 row 10"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  - fact_id: AVY.PLANET
+    category: yogi_avayogi
+    divisional_chart: D1
+    value_text: "Mars (ruler of Mrigasira)"
+    value_json: {avayogi_planet: Mars, nakshatra_ruled: Mrigasira}
+    source_section: "§11.3 row 11"
+    forensic_ref: "FORENSIC v8.0 §11.3 — Yogi / Avayogi"
+    extraction_method: direct_read
+  # ── §11.5 Mrityu Bhaga ────────────────────────────────────────────────────
+  - fact_id: HAZ.SUN
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Sun in Capricorn 21°57′; Mrityu Bhaga 20°; differential 1°57′; Safe"
+    value_json: {planet: Sun, sign: Capricorn, planet_degree: "21°57′", mrityu_bhaga_degree: "20°", differential: "1°57′", status: Safe}
+    source_section: "§11.5 row 1"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.MOON
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Moon in Aquarius 27°02′; Mrityu Bhaga 21°; differential 6°02′; Safe"
+    value_json: {planet: Moon, sign: Aquarius, planet_degree: "27°02′", mrityu_bhaga_degree: "21°", differential: "6°02′", status: Safe}
+    source_section: "§11.5 row 2"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.MARS
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Mars in Libra 18°31′; Mrityu Bhaga 26°; differential 7°29′; Safe"
+    value_json: {planet: Mars, sign: Libra, planet_degree: "18°31′", mrityu_bhaga_degree: "26°", differential: "7°29′", status: Safe}
+    source_section: "§11.5 row 3"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.MERCURY
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Mercury in Capricorn 00°50′; Mrityu Bhaga 12°; differential 11°10′; Safe"
+    value_json: {planet: Mercury, sign: Capricorn, planet_degree: "00°50′", mrityu_bhaga_degree: "12°", differential: "11°10′", status: Safe}
+    source_section: "§11.5 row 4"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.JUPITER
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Jupiter in Sagittarius 09°48′; Mrityu Bhaga 13°; differential 3°12′; Safe"
+    value_json: {planet: Jupiter, sign: Sagittarius, planet_degree: "09°48′", mrityu_bhaga_degree: "13°", differential: "3°12′", status: Safe}
+    source_section: "§11.5 row 5"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.VENUS
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Venus in Sagittarius 19°10′; Mrityu Bhaga 6°; differential 13°10′; Safe"
+    value_json: {planet: Venus, sign: Sagittarius, planet_degree: "19°10′", mrityu_bhaga_degree: "6°", differential: "13°10′", status: Safe}
+    source_section: "§11.5 row 6"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.SATURN
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Saturn in Libra 22°27′; Mrityu Bhaga 4°; differential 18°27′; Safe"
+    value_json: {planet: Saturn, sign: Libra, planet_degree: "22°27′", mrityu_bhaga_degree: "4°", differential: "18°27′", status: Safe}
+    source_section: "§11.5 row 7"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.RAHU
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Rahu in Taurus 19°01′; Mrityu Bhaga 14°; differential 5°01′; Safe"
+    value_json: {planet: Rahu, sign: Taurus, planet_degree: "19°01′", mrityu_bhaga_degree: "14°", differential: "5°01′", status: Safe}
+    source_section: "§11.5 row 8"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.KETU
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Ketu in Scorpio 19°01′; Mrityu Bhaga 22°; differential 2°59′; Safe"
+    value_json: {planet: Ketu, sign: Scorpio, planet_degree: "19°01′", mrityu_bhaga_degree: "22°", differential: "2°59′", status: Safe}
+    source_section: "§11.5 row 9"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.LAGNA
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Lagna in Aries 12°23′; Mrityu Bhaga 8°; differential 4°23′; Safe"
+    value_json: {point: Lagna, sign: Aries, degree: "12°23′", mrityu_bhaga_degree: "8°", differential: "4°23′", status: Safe}
+    source_section: "§11.5 row 10"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  - fact_id: HAZ.MANDI
+    category: mrityu_bhaga
+    divisional_chart: D1
+    value_text: "Mandi in Cancer 14°13′; Mrityu Bhaga 22°; differential 7°47′; Safe"
+    value_json: {point: Mandi, sign: Cancer, degree: "14°13′", mrityu_bhaga_degree: "22°", differential: "7°47′", status: Safe, jh_note: "All planets SAFE from Mrityu Bhaga"}
+    source_section: "§11.5 row 11"
+    forensic_ref: "FORENSIC v8.0 §11.5 — Hazards — Mrityu Bhaga"
+    extraction_method: direct_read
+  # ── §17 Chalit Kinetic Shifts ─────────────────────────────────────────────
+  - fact_id: CKS.SUN
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Sun: Rashi 10H → Chalit 11H; shift +1 (Career → Gains)"
+    value_json: {planet: Sun, rashi_house: 10, chalit_house: 11, shift: 1, note: "Career → Gains"}
+    source_section: "§17 row 1"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.MOON
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Moon: Rashi 11H → Chalit 12H; shift +1 (Gains → Loss/Foreign)"
+    value_json: {planet: Moon, rashi_house: 11, chalit_house: 12, shift: 1, note: "Gains → Loss/Foreign"}
+    source_section: "§17 row 2"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.MERCURY
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Mercury: Rashi 10H → Chalit 10H; shift 0 (nearest-to-cusp planet, 2.14° from House 10 cusp)"
+    value_json: {planet: Mercury, rashi_house: 10, chalit_house: 10, shift: 0, note: "nearest-to-cusp planet — 2.14° from House 10 cusp"}
+    source_section: "§17 row 3"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.MARS
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Mars: Rashi 7H → Chalit 7H; shift 0"
+    value_json: {planet: Mars, rashi_house: 7, chalit_house: 7, shift: 0}
+    source_section: "§17 row 4"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.SATURN
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Saturn: Rashi 7H → Chalit 7H; shift 0"
+    value_json: {planet: Saturn, rashi_house: 7, chalit_house: 7, shift: 0}
+    source_section: "§17 row 5"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.JUPITER
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Jupiter: Rashi 9H → Chalit 9H; shift 0"
+    value_json: {planet: Jupiter, rashi_house: 9, chalit_house: 9, shift: 0}
+    source_section: "§17 row 6"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.VENUS
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Venus: Rashi 9H → Chalit 9H; shift 0"
+    value_json: {planet: Venus, rashi_house: 9, chalit_house: 9, shift: 0}
+    source_section: "§17 row 7"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.RAHU
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Rahu: Rashi 2H → Chalit 2H; shift 0"
+    value_json: {planet: Rahu, rashi_house: 2, chalit_house: 2, shift: 0}
+    source_section: "§17 row 8"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  - fact_id: CKS.KETU
+    category: chalit_kinetic
+    divisional_chart: D1
+    value_text: "Ketu: Rashi 8H → Chalit 8H; shift 0"
+    value_json: {planet: Ketu, rashi_house: 8, chalit_house: 8, shift: 0}
+    source_section: "§17 row 9"
+    forensic_ref: "FORENSIC v8.0 §17 — Chalit Kinetic Shifts"
+    extraction_method: direct_read
+  # ── §9.1 Avastha Diagnostics ─────────────────────────────────────────────
+  - fact_id: AVS.MERCURY
+    category: avastha
+    divisional_chart: D1
+    value_text: "Mercury: Jagratadi=Susupta; Baladi=Mrat; Deeptadi=Shant (Current Vimshottari MD Lord)"
+    value_json: {planet: Mercury, role: "Current Vimshottari MD Lord", jagratadi: Susupta, baladi: Mrat, deeptadi: Shant}
+    source_section: "§9.1 row 1"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  - fact_id: AVS.SATURN
+    category: avastha
+    divisional_chart: D1
+    value_text: "Saturn: Jagratadi=Susupta; Baladi=Vradha; Deeptadi=Muditha (Current Vimshottari AD Lord)"
+    value_json: {planet: Saturn, role: "Current Vimshottari AD Lord", jagratadi: Susupta, baladi: Vradha, deeptadi: Muditha}
+    source_section: "§9.1 row 2"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  - fact_id: AVS.JUPITER
+    category: avastha
+    divisional_chart: D1
+    value_text: "Jupiter: Jagratadi=Jaagrat; Baladi=Kumar; Deeptadi=Swatha (9th Lord)"
+    value_json: {planet: Jupiter, role: "9th Lord", jagratadi: Jaagrat, baladi: Kumar, deeptadi: Swatha}
+    source_section: "§9.1 row 3"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  - fact_id: AVS.MOON
+    category: avastha
+    divisional_chart: D1
+    value_text: "Moon: Jagratadi=Susupta; Baladi=Mrat; Deeptadi=Shant (Mind / Chandra Lagna)"
+    value_json: {planet: Moon, role: "Mind / Chandra Lagna", jagratadi: Susupta, baladi: Mrat, deeptadi: Shant}
+    source_section: "§9.1 row 4"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  - fact_id: AVS.MARS
+    category: avastha
+    divisional_chart: D1
+    value_text: "Mars: Jagratadi=Swapna; Baladi=Vradha; Deeptadi=Deepta (Lagna Lord)"
+    value_json: {planet: Mars, role: "Lagna Lord", jagratadi: Swapna, baladi: Vradha, deeptadi: Deepta}
+    source_section: "§9.1 row 5"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  - fact_id: AVS.SUN
+    category: avastha
+    divisional_chart: D1
+    value_text: "Sun: Jagratadi=Jaagrat; Baladi=Kumar; Deeptadi=Deena (10th Lord)"
+    value_json: {planet: Sun, role: "10th Lord", jagratadi: Jaagrat, baladi: Kumar, deeptadi: Deena}
+    source_section: "§9.1 row 6"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  - fact_id: AVS.VENUS
+    category: avastha
+    divisional_chart: D1
+    value_text: "Venus: Jagratadi=Swapna; Baladi=Vradha; Deeptadi=Swatha (2nd and 7th Lord)"
+    value_json: {planet: Venus, role: "2nd and 7th Lord", jagratadi: Swapna, baladi: Vradha, deeptadi: Swatha}
+    source_section: "§9.1 row 7"
+    forensic_ref: "FORENSIC v8.0 §9.1 — Jagratadi / Baladi / Deeptadi States"
+    extraction_method: direct_read
+  # ── §24 Longevity Indicators ──────────────────────────────────────────────
+  - fact_id: LON.KALACHAKRA.DEHA
+    category: longevity
+    divisional_chart: D1
+    value_text: "Deha Rashi: Taurus"
+    value_json: {field: Deha_Rashi, value: Taurus}
+    source_section: "§24.1 row 1"
+    forensic_ref: "FORENSIC v8.0 §24.1 — Kalachakra Paramayush"
+    extraction_method: direct_read
+  - fact_id: LON.KALACHAKRA.JIVA
+    category: longevity
+    divisional_chart: D1
+    value_text: "Jiva Rashi: Gemini"
+    value_json: {field: Jiva_Rashi, value: Gemini}
+    source_section: "§24.1 row 2"
+    forensic_ref: "FORENSIC v8.0 §24.1 — Kalachakra Paramayush"
+    extraction_method: direct_read
+  - fact_id: LON.KALACHAKRA.SCHEME
+    category: longevity
+    divisional_chart: D1
+    value_text: "Kalachakra scheme: Savya"
+    value_json: {field: Scheme, value: Savya}
+    source_section: "§24.1 row 3"
+    forensic_ref: "FORENSIC v8.0 §24.1 — Kalachakra Paramayush"
+    extraction_method: direct_read
+  - fact_id: LON.KALACHAKRA.PARAMAYUSH
+    category: longevity
+    divisional_chart: D1
+    value_number: 85
+    value_text: "Kalachakra Paramayush: 85 years"
+    value_json: {field: Paramayush, value_years: 85, governance_note: "Adopted as authoritative longevity anchor per GOVERNANCE_STACK; Parashari trio (Pindayu/Nisargayu/Amsayu) intentionally excluded"}
+    source_section: "§24.1 row 4"
+    forensic_ref: "FORENSIC v8.0 §24.1 — Kalachakra Paramayush; §24.2 Ayurdasaya Status"
+    extraction_method: direct_read
+  - fact_id: LON.KALACHAKRA.SOURCE
+    category: longevity
+    divisional_chart: D1
+    value_text: "Source: JH export, JHORA_TRANSCRIPTION §10.7"
+    value_json: {source: "JH export, JHORA_TRANSCRIPTION §10.7"}
+    source_section: "§24.1 row 5"
+    forensic_ref: "FORENSIC v8.0 §24.1 — Kalachakra Paramayush"
+    extraction_method: direct_read
+  - fact_id: LON.PINDAYU
+    category: longevity
+    divisional_chart: D1
+    value_text: "INTENTIONALLY EXCLUDED — Kalachakra Paramayush = 85yr authoritative; Parashari trio optional"
+    value_json: {status: INTENTIONALLY_EXCLUDED, reason: "Kalachakra Paramayush = 85yr is authoritative per GOVERNANCE_STACK; Parashari trio optional"}
+    source_section: "§24.2 row 1"
+    forensic_ref: "FORENSIC v8.0 §24.2 — Ayurdasaya Status (LONGEVITY.GAP.01)"
+    extraction_method: direct_read
+  - fact_id: LON.NISARGAYU
+    category: longevity
+    divisional_chart: D1
+    value_text: "INTENTIONALLY EXCLUDED — Kalachakra anchor suffices"
+    value_json: {status: INTENTIONALLY_EXCLUDED, reason: "Kalachakra anchor suffices"}
+    source_section: "§24.2 row 2"
+    forensic_ref: "FORENSIC v8.0 §24.2 — Ayurdasaya Status (LONGEVITY.GAP.01)"
+    extraction_method: direct_read
+  - fact_id: LON.AMSAYU
+    category: longevity
+    divisional_chart: D1
+    value_text: "INTENTIONALLY EXCLUDED — Kalachakra anchor suffices"
+    value_json: {status: INTENTIONALLY_EXCLUDED, reason: "Kalachakra anchor suffices"}
+    source_section: "§24.2 row 3"
+    forensic_ref: "FORENSIC v8.0 §24.2 — Ayurdasaya Status (LONGEVITY.GAP.01)"
+    extraction_method: direct_read
+  - fact_id: LON.GAP.STATUS
+    category: longevity
+    divisional_chart: D1
+    value_text: "LONGEVITY.GAP.01 CLOSED — Kalachakra Paramayush = 85yr; Parashari methods optional"
+    value_json: {gap_id: "LONGEVITY.GAP.01", status: CLOSED, anchor: "Kalachakra Paramayush = 85 years"}
+    source_section: "§24.2 row 4"
+    forensic_ref: "FORENSIC v8.0 §24.2 — Ayurdasaya Status (LONGEVITY.GAP.01)"
+    extraction_method: direct_read
