@@ -140,4 +140,73 @@ describe('lel_query tool', () => {
       expect.objectContaining({ status: 'error', tool_name: 'lel_query', error_code: 'boom' }),
     )
   })
+
+  // FIX-5 regression: significance filter is applied in SQL when provided
+  describe('FIX-5 regression: significance filter in SQL (not min_significance)', () => {
+    it('params.significance="major" includes significance condition in SQL', async () => {
+      mockQuery.mockResolvedValue({ rows: [careerEvent], rowCount: 1 })
+
+      await tool.retrieve(basePlan, { significance: 'major' })
+
+      const sql: string = mockQuery.mock.calls[0][0]
+      expect(sql).toContain('significance')
+      const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+      expect(sqlParams).toContain('major')
+    })
+
+    it('params.significance="minor" includes significance condition with value "minor"', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      await tool.retrieve(basePlan, { significance: 'minor' })
+
+      const sql: string = mockQuery.mock.calls[0][0]
+      expect(sql).toContain('significance')
+      const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+      expect(sqlParams).toContain('minor')
+    })
+
+    it('no params.significance — SQL does not include significance condition', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      await tool.retrieve(basePlan, {})
+
+      const sql: string = mockQuery.mock.calls[0][0]
+      // Without significance param, the WHERE clause should not contain "significance ="
+      expect(sql).not.toMatch(/significance\s*=/)
+    })
+
+    it('params.significance passed as SQL parameter (not string-interpolated into SQL)', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      await tool.retrieve(basePlan, { significance: 'moderate' })
+
+      // The SQL should be parameterized; the value should appear in the args, not the SQL string
+      const sql: string = mockQuery.mock.calls[0][0]
+      expect(sql).not.toContain('moderate')
+      const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+      expect(sqlParams).toContain('moderate')
+    })
+
+    it('invocation_params.significance reflects the filter value used', async () => {
+      mockQuery.mockResolvedValue({ rows: [careerEvent], rowCount: 1 })
+
+      const bundle = await tool.retrieve(basePlan, { significance: 'major' })
+
+      expect(bundle.invocation_params.significance).toBe('major')
+    })
+  })
+
+  // FIX-6 regression: source_version is 1.7 in all result rows
+  describe('FIX-6 regression: source_version 1.7 in results', () => {
+    it('all result rows have source_version 1.7', async () => {
+      const rows = makeLelRows(5)
+      mockQuery.mockResolvedValue({ rows, rowCount: 5 })
+
+      const bundle = await tool.retrieve(basePlan)
+
+      for (const result of bundle.results) {
+        expect(result.source_version).toBe('1.7')
+      }
+    })
+  })
 })
