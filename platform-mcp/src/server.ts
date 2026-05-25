@@ -5,15 +5,16 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 26 tools registered (v3.7, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159).
+ * - 27 tools registered (v3.8, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1).
  *
- * Tool count (v3.7, 26 tools):
+ * Tool count (v3.8, 27 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (14): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (15): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
- *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder
+ *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
+ *                msr_sql
  *                (last 4 added TR Wave PR #159 — Class A: engine existed)
  *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
  *   Tier 5 observability (2): get_trace, list_recent_queries
@@ -47,6 +48,8 @@ import { registerQueryVarshphal } from './tools/query_varshphal.js'
 import { registerQueryDivisionalChart } from './tools/query_divisional_chart.js'
 import { registerQueryRemedialMantras } from './tools/query_remedial_mantras.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
+// Tier 3: UDA-2-S1 — msr_sql portal-only → MCP parity
+import { registerMsrSql } from './tools/msr_sql.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -169,6 +172,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerQueryDivisionalChart(server, getPrincipal)
   registerQueryRemedialMantras(server, getPrincipal)
   registerMuhurtaFinder(server, getPrincipal)
+  registerMsrSql(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
