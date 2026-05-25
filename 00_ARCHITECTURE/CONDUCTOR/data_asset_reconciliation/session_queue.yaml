@@ -122,7 +122,7 @@ sessions:
     phase: 3
     name: "Rebuild MSR rag_chunks from v5.0 (573 signals) + re-embed vectors"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S9.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 60
     depends_on: [DAR-P3-S8]
     gate_commands:
