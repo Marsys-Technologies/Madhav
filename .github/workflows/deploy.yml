@@ -1,9 +1,14 @@
 name: Deploy to Cloud Run
 
 on:
-  push:
-    branches:
-      - main
+  # Deploy only after CI passes — prevents deploying broken builds.
+  # workflow_run fires when "CI — Ganga Quality Gate" completes on main;
+  # the condition below gates on conclusion == 'success'.
+  workflow_run:
+    workflows: ["CI — Ganga Quality Gate"]
+    types: [completed]
+    branches: [main]
+  # Keep workflow_dispatch for emergency manual deploys (bypasses CI gate).
   workflow_dispatch:
 
 env:
@@ -15,6 +20,9 @@ jobs:
   deploy-web:
     name: Build & Deploy Web
     runs-on: ubuntu-latest
+    # On workflow_run events, only proceed if CI passed.
+    # workflow_dispatch bypasses this (emergency manual deploy).
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
 
     permissions:
       contents: read
@@ -105,13 +113,11 @@ jobs:
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             BUILD_STATE_GCS_BASE=https://storage.googleapis.com/madhav-marsys-build-artifacts
-            NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
-            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-            NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
+            # NOTE: NEXT_PUBLIC_FIREBASE_* are intentionally absent here.
+            # They are NEXT_PUBLIC_ flags baked into the bundle at build time
+            # (see build-args above). Setting them as Cloud Run env_vars has
+            # zero effect — Next.js never reads them at runtime.
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:latest
             DB_PASSWORD=amjis-db-password:latest
@@ -131,6 +137,7 @@ jobs:
   deploy-sidecar:
     name: Build & Deploy Sidecar
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
 
     permissions:
       contents: read

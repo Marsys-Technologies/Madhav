@@ -51,11 +51,26 @@ steps:
       - 'NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true'
       - '--build-arg'
       - 'NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_APP_URL=https://amjis-web.run.app'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_NIM_STACK_DEGRADED=false'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:$SHORT_SHA'
       - '-t'
       - 'asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:latest'
       - 'platform'
 
 images:
+  - 'asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:$SHORT_SHA'
   - 'asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:latest'
 
 options:
