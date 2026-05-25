@@ -269,6 +269,29 @@ coverage bugs.
 
 ---
 
+# INTERFACE_NORMALIZATION_RULES — Added UDA-3-S3 (2026-05-25), mirror pair MP.1
+# Adapted-parity mirror of PLANNER_PROMPT_v2_0.md v2.7 R-NRM.1.
+# Semantic equivalence with Claude-side rule; Gemini-idiom phrasing throughout.
+
+## Interface Normalization Rules (Gemini-side)
+
+**R-NRM.1 — Canonical tool names (Gemini idiom)**
+When a tool exists in both the portal (RETRIEVAL_TOOLS channel) and the MCP channel
+with different names, each channel uses its own canonical name:
+- Portal context: use the portal canonical name (as registered in CAPABILITY_MANIFEST
+  under the portal tool entry).
+- MCP context: use the MCP tool name (as registered in CAPABILITY_MANIFEST under the
+  MCP tool entry).
+Both names are declared in `alias_names[]` in `CAPABILITY_MANIFEST.json`. Do not invent
+or guess tool names that are absent from the INTERFACE_NORMALIZATION_REGISTER. When the
+channel is ambiguous, resolve the name against `alias_names[]` before emitting any tool
+invocation — a name not found there is a governance violation equivalent to citing an
+unregistered artifact.
+
+# END INTERFACE_NORMALIZATION_RULES
+
+---
+
 *End of .geminirules — footer amended 2026-04-27 at Madhav_COW_M2A_Exec_12_BRIEF_AUTHORING (Cowork governance aside — B.6 brief authored): CLAUDECODE_BRIEF.md for Exec_12 READY; §F state unchanged (B.5 COMPLETE; red_team_counter: 0); next execution session: Madhav_M2A_Exec_12 (B.6 Hybrid Retrieval Library). §F substantive state block will be updated at Exec_12 close by the Claude Code executor.*
 *Footer amended 2026-04-27 at Madhav_COW_M2A_Exec_13_BRIEF_AUTHORING (Cowork governance aside — B.7 brief authored): CLAUDECODE_BRIEF.md for Exec_13 READY; §F state unchanged (B.6 COMPLETE, M2B CLOSED; red_team_counter: 0); next execution session: Madhav_M2A_Exec_13 (B.7 Router + Plan Library, M2C begins). Router runtime = claude-opus-4-6 (Q1); no M2C_EXEC_PLAN (Q2).*
 *B.7 COMPLETE — Madhav_M2A_Exec_13 (2026-04-27): Router + Plan Library. QueryPlan schema (7 fields), plans_v1_0.md taxonomy (5 types), router_v1_0.md prompt (2 disambiguation rules), router.py (claude-opus-4-6, WCR enforcer), rag_router.py (POST /rag/route), routerClient.ts, golden eval 20/20 PASS (100%), WCR invariant 15/15 PASS. red_team_counter: 1. M2C active. Next: Madhav_M2A_Exec_14 (B.8).*

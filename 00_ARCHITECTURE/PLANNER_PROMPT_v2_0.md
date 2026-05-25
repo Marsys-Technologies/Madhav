@@ -1,6 +1,6 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.6
+version: 2.7
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
 planner_blind_fix:
@@ -990,6 +990,14 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
   R-SCH.1 — Read schemas before use
         Before the first invocation of any tool in a session, read its full schema description.
         If the tool is new (added in a phase post-P0), call list_assets() to confirm availability.
+
+  R-NRM.1 — Canonical tool names
+        When a tool exists in both the portal (RETRIEVAL_TOOLS) and MCP with different names,
+        the portal planner uses the canonical portal name; the MCP consumer uses the MCP name.
+        Both names are declared in CAPABILITY_MANIFEST alias_names[]. Do not invent names not
+        present in the INTERFACE_NORMALIZATION_REGISTER. If a query arrives in a context where
+        the channel is ambiguous, resolve the name against the manifest alias_names[] field
+        before emitting a tool_calls entry — never guess or use a name not listed there.
 
 Style rules (unchanged from v1.7):
 
@@ -2330,8 +2338,16 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.0.8 content extension 2026-05-21 (COV-S5) — R-UCN, R-CDLM, R-RM routing rules for query_ucn_walk, query_cdlm_lookup, query_rm_walk (L2.5 structural graph tools, tools 34–36)*
 *v2.5 content extension 2026-05-25 (TR-P10-S1) — R-TD.1 (session-start diagnostic), R-NDE.1 (no date estimation), R-LP.1 (log_prediction mandatory), R-FD.1 (flag_disagreement on broken tools), R-CS.1 (cross-school before high-confidence). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.1–10.5.*
 *v2.6 content extension 2026-05-25 (TR-P10-S2) — R-CS.2 (pre-compute chart summary), R-CGM.1 (CGM + vector proactive use), R-TRI.1 (triangulate before asserting), R-PER.1 (mark permanence), R-SCH.1 (read schemas before use). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.6–10.10. MP.1 mirror propagated to .geminirules TOOLING_REMEDIATION_RULES section (all 10 rules).*
+*v2.7 content extension 2026-05-25 (UDA-3-S3) — R-NRM.1 (canonical tool names) added. Declares that portal planner uses portal canonical names and MCP consumer uses MCP names; both resolved against CAPABILITY_MANIFEST alias_names[]; names not in INTERFACE_NORMALIZATION_REGISTER are forbidden. MP.1 mirror propagated to .geminirules INTERFACE_NORMALIZATION_RULES section.*
 
 ## Changelog
+
+### v2.7 — 2026-05-25 (UDA-3-S3)
+Added R-NRM.1 (canonical tool names): when a tool exists in both the portal and MCP
+with different names, each channel uses its own canonical name as declared in
+CAPABILITY_MANIFEST alias_names[]. Forbids inventing names not present in the
+INTERFACE_NORMALIZATION_REGISTER. MP.1 mirror propagated to .geminirules
+INTERFACE_NORMALIZATION_RULES section.
 
 ### v2.6 — 2026-05-25 (TR-P10-S2)
 Added R-CS.2 (pre-compute chart summary), R-CGM.1 (CGM + vector proactive use),
