@@ -45,7 +45,7 @@ sessions:
     phase: 1
     name: "Archive MSR v3+v4 + GCS_LAYOUT v1.1 + LEL references across 9 files"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P1-S3.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 50
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
@@ -54,7 +54,7 @@ sessions:
       - "! test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
       - "grep -q 'version: 1.1' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/GCS_LAYOUT_v1_0.md"
       - "grep -q 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/GCS_LAYOUT_v1_0.md"
-      - "grep -q 'version: 1.7' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - "grep -q '\"version\": \"1.7\"' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
       - "grep -q '57 events' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
 
   - id: DAR-P1-S4
