@@ -4,86 +4,72 @@ phase: 6
 status: PENDING
 branch: feature/data-asset-reconciliation
 worktree: /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset
-depends_on: [DAR-HG-3]
+estimated_minutes: 360
 may_touch:
-  - 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md  # create
+  - 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
 must_not_touch:
-  - platform/migrations/
   - 025_HOLISTIC_SYNTHESIS/
-  - 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+  - platform/src/
+  - platform/python-sidecar/pipeline/extractors/
+  - platform/python-sidecar/pipeline/writers/
+  - platform/python-sidecar/pipeline/bootstrap_ephemeris.py
 ---
 
-# DAR-P6-S22: Post-ephemeris rebuild verification
+# DAR-P6-S22: Run ephemeris bootstrap synchronously (MEAN_NODE, ~4–6 hours)
 
-## Context
+Context: The production ephemeris_daily table (657,450 rows) contains TRUE_NODE Rahu/Ketu
+data. Commit c63ef9f9 (2026-05-19) fixed bootstrap_ephemeris.py to use MEAN_NODE instead.
+The production table has NOT been rebuilt since the fix. This session runs the full rebuild.
 
-HG-3 is complete — the operator ran `bootstrap_ephemeris.py` with MEAN_NODE flag.
-This session verifies the rebuild is correct: row count, node type, bhava_chalit coverage,
-and a FORENSIC spot-check of Rahu at the native's birth date (1984-02-05).
+WARNING: This session is expected to run for 4–6 hours. Do not interrupt it.
+The gate commands for this session will not pass until the bootstrap completes successfully.
 
 ## Steps
 
-1. Total row count:
-   ```bash
-   psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily;"
-   ```
-   Expected: 657,450 (1800-01-01 to 2600-12-31 at daily granularity).
+### 1. Start DB proxy
+  bash /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/scripts/start_db_proxy.sh &
+  PROXY_PID=$!
+  sleep 20
+  nc -z localhost 5433 && echo "PROXY_READY" || (echo "PROXY_FAILED" && exit 1)
 
-2. Node type confirmation:
-   ```bash
-   psql "$DATABASE_URL" -c "SELECT DISTINCT node_type FROM ephemeris_daily;"
-   ```
-   Expected: `MEAN_NODE` only (no TRUE_NODE rows).
+### 2. Verify bootstrap uses MEAN_NODE (from pre-rebuild check in DAR-P6-S21)
+  grep -n 'MEAN_NODE\|mean_node\|TRUE_NODE\|true_node\|node_type' \
+    platform/python-sidecar/pipeline/bootstrap_ephemeris.py | head -30
 
-3. bhava_chalit null check:
-   ```bash
-   psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily WHERE bhava_chalit_house IS NULL;"
-   ```
-   Expected: 0
+  If TRUE_NODE is still hardcoded anywhere, apply the fix before proceeding:
+  Replace the node_type or equivalent parameter with MEAN_NODE.
 
-4. Rahu spot-check at FORENSIC birth date (1984-02-05):
-   ```bash
-   psql "$DATABASE_URL" -c "
-   SELECT planet, longitude, nakshatra, nakshatra_pada
-   FROM ephemeris_daily
-   WHERE date = '1984-02-05' AND planet IN ('Rahu', 'Ketu');"
-   ```
-   Cross-check Rahu nakshatra against `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md`
-   declaration. They must match (MEAN_NODE Rahu position at 1984-02-05).
+  The EPHEMERIS_PRE_REBUILD_CHECK.md from DAR-P6-S21 should confirm
+  bootstrap_script_node_type: MEAN_NODE — if it says TRUE_NODE, stop and fix first.
 
-5. 50 random-date sanity checks:
-   ```bash
-   psql "$DATABASE_URL" -c "
-   SELECT date, COUNT(*) as planet_count FROM ephemeris_daily
-   WHERE date IN (SELECT date FROM ephemeris_daily ORDER BY random() LIMIT 50)
-   GROUP BY date HAVING COUNT(*) < 10 ORDER BY date;"
-   ```
-   Expected: 0 rows (every date should have all planets).
+### 3. Run the bootstrap synchronously
+This command will run for approximately 4–6 hours. Execute it and wait for completion.
+Do not background it — wait for the process to exit with code 0.
 
-6. Create `00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md`:
-   ```yaml
-   # Ephemeris Post-Rebuild Verification Report
-   # Generated: [timestamp]
+  python3 platform/python-sidecar/pipeline/bootstrap_ephemeris.py \
+    2>&1 | tee 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
+  
+  BOOTSTRAP_EXIT=$?
 
-   row_count: 657450
-   node_type_in_db: MEAN_NODE
-   bhava_chalit_null_count: 0
-   birth_date_rahu_spot_check: PASS  # or FAIL with actual vs expected
-   rahu_nakshatra_1984_02_05: <nakshatra name>
-   forensic_rahu_nakshatra: <from FORENSIC v8.0>
-   random_date_coverage_check: PASS
-   rebuild_status: COMPLETE
-   ```
+  If the script requires additional arguments (e.g. --rebuild, --node-type), check:
+    python3 platform/python-sidecar/pipeline/bootstrap_ephemeris.py --help
+  Then re-run with the correct flags, still piping to the log file.
 
-7. Commit:
-   ```
-   dar: P6-S22 ephemeris post-rebuild verification PASS — MEAN_NODE confirmed, 657450 rows
-   ```
+### 4. Verify successful completion
+  if [ $BOOTSTRAP_EXIT -ne 0 ]; then
+    echo "BOOTSTRAP FAILED with exit code $BOOTSTRAP_EXIT"
+    tail -100 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
+    exit 1
+  fi
+  
+  tail -30 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
+  echo "Bootstrap completed successfully."
 
-## Acceptance criteria
+### 5. Write completion markers to the log
+  echo "" >> 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
+  echo "bootstrap_complete: true" >> 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
+  echo "exit_code: 0" >> 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
+  echo "completed_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt
 
-- `test -f 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md` → TRUE
-- `grep 'node_type_in_db: MEAN_NODE' EPHEMERIS_POST_REBUILD_REPORT.md` → match
-- `grep 'birth_date_rahu_spot_check: PASS' EPHEMERIS_POST_REBUILD_REPORT.md` → match
-- `grep 'row_count: 657450' EPHEMERIS_POST_REBUILD_REPORT.md` → match
-- `grep 'bhava_chalit_null_count: 0' EPHEMERIS_POST_REBUILD_REPORT.md` → match
+### 6. Stop proxy
+  kill $PROXY_PID 2>/dev/null || true

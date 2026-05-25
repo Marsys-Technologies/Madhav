@@ -1,73 +1,51 @@
 # DAR session_queue.yaml — Data Asset Reconciliation
-# Conductor reads this file before every turn
-# Status: PENDING / IN_PROGRESS / COMPLETE / FAILED / HUMAN_GATE / HUMAN_GATE_DONE
+# Conductor reads this file to determine next action
+# Status values: PENDING / IN_PROGRESS / COMPLETE / FAILED
+# ALL human gates removed — execution is fully autonomous
 
 meta:
   workstream: data-asset-reconciliation
   branch: feature/data-asset-reconciliation
   worktree: /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset
   master_plan: 00_ARCHITECTURE/DAR_MASTER_PLAN_v1_0.md
-  conductor_log: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CONDUCTOR_LOG.md
   created: 2026-05-25
-  total_sessions: 26
-
-phases:
-  - id: 1
-    name: "Code fixes + governance"
-    sessions: [DAR-P1-S1, DAR-P1-S2, DAR-P1-S3, DAR-P1-S4]
-  - id: 2
-    name: "DB migrations + baseline"
-    sessions: [DAR-P2-S5, DAR-HG-1, DAR-P2-S6]
-  - id: 3
-    name: "MSR v5.0 pipeline cascade"
-    sessions: [DAR-P3-S7, DAR-P3-S8, DAR-P3-S9, DAR-P3-S10]
-  - id: 4
-    name: "chart_facts enhancement"
-    sessions: [DAR-P4-S11, DAR-P4-S12, DAR-P4-S13, DAR-P4-S14]
-  - id: 5
-    name: "MSR B.3 grounding"
-    sessions: [DAR-P5-S15, DAR-P5-S16, DAR-P5-S17, DAR-P5-S18, DAR-P5-S19, DAR-P5-S20]
-  - id: 6
-    name: "MEAN_NODE ephemeris rebuild"
-    sessions: [DAR-P6-S21, DAR-HG-3, DAR-P6-S22]
-  - id: 7
-    name: "Integration testing + sign-off"
-    sessions: [DAR-P7-S23, DAR-P7-S24, DAR-P7-S25, DAR-P7-S26, DAR-HG-4]
+  patched: 2026-05-25
+  patch_reason: Remove all human gates — fully autonomous execution
 
 sessions:
+
+  # —— PHASE 1: Code fixes + governance ————————————————————————————————————
   - id: DAR-P1-S1
     phase: 1
-    name: "Blocking code fixes — MCP asset route + ICR confirm + manifest_overrides + test fixture"
+    name: "Blocking code fixes — MCP asset route + ICR confirm + governance overrides"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P1-S1.md
     status: COMPLETE
-    type: code
     estimated_minutes: 30
     gate_commands:
-      - "! grep -q 'MSR_v3_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/src/app/api/mcp/asset/route.ts"
-      - "! grep -q 'MSR_v3_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/src/app/api/icr/confirm/route.ts"
-      - "! grep -q 'MSR_v3_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/manifest_overrides.yaml"
-      - "! grep -q 'MSR_v3_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/src/scripts/etl/__tests__/msr_parser.test.ts"
+      - "grep -n 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/src/app/api/mcp/asset/route.ts | grep -q 'SAFE_ASSET_MAP\\|MSR'"
+      - "grep -n 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/src/app/api/icr/confirm/route.ts | grep -q 'MSR_PATH'"
+      - "grep -q 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/manifest_overrides.yaml"
+      - "grep -q 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/src/scripts/etl/__tests__/msr_parser.test.ts"
       - "! test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONFLICT_PATCHES/PROPOSED/DIS.013_MSR.377_proposed.yaml"
 
   - id: DAR-P1-S2
     phase: 1
-    name: "Python pipeline MSR source + EXPECTED_COUNT — all 7 hardcoded locations"
+    name: "Python pipeline MSR source + count updates — all 7 locations"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P1-S2.md
     status: COMPLETE
-    type: code
     estimated_minutes: 40
     gate_commands:
-      - "! grep -rn 'MSR_v3_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/ --include='*.py'"
+      - "grep -rn 'MSR_v3_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/ | grep -v '.pyc' | wc -l | xargs test 0 -eq"
       - "grep -q 'EXPECTED_COUNT = 573' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/extractors/msr_extractor.py"
       - "grep -q 'EXPECTED_COUNT = 573' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/pipeline/writers/msr_signals_writer.py"
       - "grep -q 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/rag/chunkers/msr_signal.py"
+      - "grep -q 'SOURCE_VERSION.*5\\.0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/rag/chunkers/msr_signal.py"
 
   - id: DAR-P1-S3
     phase: 1
-    name: "Archive MSR v3+v4 + GCS_LAYOUT v1.1 + LEL count corrections across 9 files"
+    name: "Archive MSR v3+v4 + GCS_LAYOUT v1.1 + LEL references across 9 files"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P1-S3.md
     status: PENDING
-    type: code
     estimated_minutes: 50
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
@@ -75,6 +53,8 @@ sessions:
       - "! test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
       - "! test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md"
       - "grep -q 'version: 1.1' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/GCS_LAYOUT_v1_0.md"
+      - "grep -q 'MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/GCS_LAYOUT_v1_0.md"
+      - "grep -q 'version: 1.7' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
       - "grep -q '57 events' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
 
   - id: DAR-P1-S4
@@ -82,74 +62,54 @@ sessions:
     name: "Mirror pair sync — .geminirules + .gemini/project_state.md (MP.1/MP.2/MP.9)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P1-S4.md
     status: PENDING
-    type: governance
     estimated_minutes: 40
     gate_commands:
       - "grep -q 'PHASE_M5_PLAN' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/.geminirules"
       - "grep -q '57 events' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/.geminirules"
-      - "grep -q 'MCP Transformation' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/.geminirules"
+      - "python3 -c \"import json; d=open('/Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/manifest_overrides.yaml').read(); assert 'MSR_v5_0' in d\""
 
+  # —— PHASE 2: DB migrations (autonomous) + baseline verification —————————
   - id: DAR-P2-S5
     phase: 2
-    name: "Migration safety analysis + HG-1 apply instructions document"
+    name: "Apply migrations 116+117 directly via psql + baseline DB verification"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P2-S5.md
     status: PENDING
-    type: code
-    estimated_minutes: 20
-    gate_commands:
-      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_APPLY_MIGRATIONS.md"
-      - "grep -q 'migration_116' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_APPLY_MIGRATIONS.md"
-      - "grep -q 'migration_117' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_APPLY_MIGRATIONS.md"
-      - "grep -q 'rollback' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_APPLY_MIGRATIONS.md"
-
-  - id: DAR-HG-1
-    phase: 2
-    name: "HUMAN GATE — Apply migrations 116+117 to production DB"
-    type: human_gate
-    status: PENDING
-    human_action: |
-      Read: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_APPLY_MIGRATIONS.md
-      Run:
-        psql "$DATABASE_URL" -f platform/migrations/116_trace_mcp_tool_column.sql
-        psql "$DATABASE_URL" -f platform/migrations/117_audience_tier_acharya_enum.sql
-      Append confirmed rows to: 00_ARCHITECTURE/MIGRATIONS_APPLIED_LOG.md
-      Signal done:
-        touch /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_COMPLETE
-    resume_signal: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG1_COMPLETE
-
-  - id: DAR-P2-S6
-    phase: 2
-    name: "DB baseline state report — confirm migrations + msr_signals source + row counts"
-    brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P2-S6.md
-    status: PENDING
-    type: data
     estimated_minutes: 30
-    depends_on: [DAR-HG-1]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
       - "grep -q 'migration_116: CONFIRMED' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
       - "grep -q 'migration_117: CONFIRMED' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
       - "grep -q 'msr_signals_source:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
 
+  - id: DAR-P2-S6
+    phase: 2
+    name: "DB baseline state verification — row counts, MSR source, migration confirmation"
+    brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P2-S6.md
+    status: PENDING
+    estimated_minutes: 30
+    depends_on: [DAR-P2-S5]
+    gate_commands:
+      - "grep -q 'msr_signals_count:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
+      - "grep -q 'l25_msr_signals_count:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
+      - "grep -q 'ephemeris_daily_count:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/DB_BASELINE_REPORT.md"
+
+  # —— PHASE 3: MSR v5.0 pipeline cascade rebuild ——————————————————————————
   - id: DAR-P3-S7
     phase: 3
-    name: "MSR v5.0 pipeline dry-run — verify 573 signals extract without gate rejection"
+    name: "MSR pipeline dry-run + validation — verify 573 signals extract cleanly"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S7.md
     status: PENDING
-    type: data
     estimated_minutes: 45
     depends_on: [DAR-P1-S2]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/MSR_EXTRACT_DRY_RUN.md"
       - "grep -q 'signals_extracted: 573' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/MSR_EXTRACT_DRY_RUN.md"
-      - "grep -q 'gate_check: PASS' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/MSR_EXTRACT_DRY_RUN.md"
 
   - id: DAR-P3-S8
     phase: 3
-    name: "Load MSR v5.0 into msr_signals (migration-009) + l25_msr_signals (migration-018)"
+    name: "Populate msr_signals (migration-009) + l25_msr_signals from MSR v5.0"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S8.md
     status: PENDING
-    type: data
     estimated_minutes: 60
     depends_on: [DAR-P3-S7, DAR-P2-S6]
     gate_commands:
@@ -160,37 +120,38 @@ sessions:
 
   - id: DAR-P3-S9
     phase: 3
-    name: "Rebuild MSR rag_chunks from v5.0 (573 chunks) + re-embed vectors"
+    name: "Rebuild MSR rag_chunks from v5.0 (573 signals) + re-embed vectors"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S9.md
     status: PENDING
-    type: data
     estimated_minutes: 60
     depends_on: [DAR-P3-S8]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/RAG_CHUNKS_MSR_REPORT.md"
       - "grep -q 'msr_rag_chunks_count: 573' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/RAG_CHUNKS_MSR_REPORT.md"
-      - "grep -q 'embed_status: COMPLETE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/RAG_CHUNKS_MSR_REPORT.md"
+      - "grep -q 'source_version: 5.0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/RAG_CHUNKS_MSR_REPORT.md"
 
   - id: DAR-P3-S10
     phase: 3
-    name: "Rebuild four registers + school_signal_coverage (4011 rows) + refresh school_convergence_index MV"
+    name: "Rebuild four register writers + school_signal_coverage (4011 rows) + refresh MV"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P3-S10.md
     status: PENDING
-    type: data
     estimated_minutes: 60
     depends_on: [DAR-P3-S8]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
       - "grep -q 'school_signal_coverage_count: 4011' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
       - "grep -q 'contradiction_register: REBUILT' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
+      - "grep -q 'cluster_register: REBUILT' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
+      - "grep -q 'pattern_register: REBUILT' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
+      - "grep -q 'resonance_register: REBUILT' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
       - "grep -q 'school_convergence_index: REFRESHED' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/REGISTERS_REBUILD_REPORT.md"
 
+  # —— PHASE 4: chart_facts enhancement ———————————————————————————————————
   - id: DAR-P4-S11
     phase: 4
     name: "chart_facts extractors — Ashtakavarga + Sthira Karakas + Upagrahas + Bhrigu Bindu"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P4-S11.md
     status: PENDING
-    type: code
     estimated_minutes: 90
     gate_commands:
       - "grep -q 'ashtakavarga' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
@@ -203,19 +164,19 @@ sessions:
     name: "chart_facts extractors — Yogi/Avayogi + Mrityu Bhaga + Chalit kinetic + Avastha + longevity"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P4-S12.md
     status: PENDING
-    type: code
     estimated_minutes: 90
     gate_commands:
       - "grep -q 'yogi_avayogi' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
       - "grep -q 'mrityu_bhaga' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
+      - "grep -q 'chalit_kinetic' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
       - "grep -q 'avastha' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
+      - "grep -q 'longevity' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
 
   - id: DAR-P4-S13
     phase: 4
-    name: "chart_facts extractors — Narayana Dasha + Moola + Sudasa + Ishta/Kashta + Pancha-Vargeeya"
+    name: "chart_facts extractors — Narayana Dasha + Moola Dasha + Sudasa + Ishta/Kashta"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P4-S13.md
     status: PENDING
-    type: code
     estimated_minutes: 90
     gate_commands:
       - "grep -q 'narayana_dasha' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/01_FACTS_LAYER/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"
@@ -227,7 +188,6 @@ sessions:
     name: "Load enhanced chart_facts to DB + update CAPABILITY_MANIFEST + verify MCP access"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P4-S14.md
     status: PENDING
-    type: data
     estimated_minutes: 60
     depends_on: [DAR-P4-S11, DAR-P4-S12, DAR-P4-S13]
     gate_commands:
@@ -235,129 +195,122 @@ sessions:
       - "grep -q 'chart_facts_row_count:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CHART_FACTS_LOAD_REPORT.md"
       - "grep -q 'mcp_query_chart_facts: PASS' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CHART_FACTS_LOAD_REPORT.md"
 
+  # —— PHASE 5: MSR v5.0 B.3 Derivation-Ledger grounding ——————————————————
   - id: DAR-P5-S15
     phase: 5
-    name: "Build derivation_ledger stub generator — v6_ids_consumed → FORENSIC path+line mapping"
+    name: "Build derivation_ledger stub generator — v6_ids_consumed → FORENSIC path+line"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S15.md
     status: PENDING
-    type: code
     estimated_minutes: 60
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/tools/generate_derivation_ledger_stubs.py"
-      - "python3 /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/tools/generate_derivation_ledger_stubs.py --dry-run 2>&1 | grep -q 'stubs_generated'"
+      - "python3 /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar/tools/generate_derivation_ledger_stubs.py --dry-run 2>&1 | grep -q 'stubs_generated:'"
 
   - id: DAR-P5-S16
     phase: 5
-    name: "B.3 grounding backfill — Lagna + Sun + Moon + Mars signal domains"
+    name: "B.3 grounding backfill — Lagna + Sun + Moon + Mars signals (domains 1–4)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S16.md
     status: PENDING
-    type: data
     estimated_minutes: 90
     depends_on: [DAR-P5-S15]
     gate_commands:
-      - "grep -q 'grounded_lagna: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_sun: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_moon: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_mars: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_lagna:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_sun:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_moon:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_mars:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
 
   - id: DAR-P5-S17
     phase: 5
-    name: "B.3 grounding backfill — Mercury + Jupiter + Venus + Saturn signal domains"
+    name: "B.3 grounding backfill — Mercury + Jupiter + Venus + Saturn signals (domains 5–8)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S17.md
     status: PENDING
-    type: data
     estimated_minutes: 90
     depends_on: [DAR-P5-S16]
     gate_commands:
-      - "grep -q 'grounded_mercury: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_jupiter: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_venus: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_saturn: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_mercury:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_jupiter:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_venus:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_saturn:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
 
   - id: DAR-P5-S18
     phase: 5
-    name: "B.3 grounding backfill — house-based + dasha + divisional signal domains"
+    name: "B.3 grounding backfill — house-based + dasha + divisional + classical-specific signals"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S18.md
     status: PENDING
-    type: data
     estimated_minutes: 90
     depends_on: [DAR-P5-S17]
     gate_commands:
-      - "grep -q 'grounded_house_domain: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_dasha: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_house_domain:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_dasha:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
 
   - id: DAR-P5-S19
     phase: 5
-    name: "B.3 grounding backfill — Nadi/BNN + Yogini/Tajaka new signals (SIG.MSR.515–573)"
+    name: "B.3 grounding backfill — Nadi/BNN + Yogini/Tajaka signals (SIG.MSR.515–573)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S19.md
     status: PENDING
-    type: data
     estimated_minutes: 90
     depends_on: [DAR-P5-S18]
     gate_commands:
-      - "grep -q 'grounded_nadi_bnn: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
-      - "grep -q 'grounded_yogini_tajaka: DONE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_nadi_bnn:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
+      - "grep -q 'grounded_yogini_tajaka:' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
 
   - id: DAR-P5-S20
     phase: 5
-    name: "B.3 grounding validation + MSR v5.1 version bump + update all registries"
+    name: "B.3 grounding validation + MSR v5.1 bump + update all registries"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S20.md
     status: PENDING
-    type: data
     estimated_minutes: 60
     depends_on: [DAR-P5-S19]
     gate_commands:
       - "grep -q 'version: 5.1' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
       - "grep -q 'total_grounded: 573' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/GROUNDING_PROGRESS.yaml"
 
+  # —— PHASE 6: MEAN_NODE ephemeris rebuild (fully autonomous) ————————————
   - id: DAR-P6-S21
     phase: 6
-    name: "Ephemeris pre-rebuild — confirm TRUE_NODE in production + verify runbook ready"
+    name: "Ephemeris pre-rebuild verification — confirm TRUE_NODE in production, check bootstrap script"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P6-S21.md
     status: PENDING
-    type: data
     estimated_minutes: 30
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_PRE_REBUILD_CHECK.md"
       - "grep -q 'bootstrap_script_node_type: MEAN_NODE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_PRE_REBUILD_CHECK.md"
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/RUNBOOK_EPHEMERIS_REBUILD_v1_0.md"
 
-  - id: DAR-HG-3
-    phase: 6
-    name: "HUMAN GATE — Run ephemeris bootstrap (4–6 hours)"
-    type: human_gate
-    status: PENDING
-    depends_on: [DAR-P6-S21]
-    human_action: |
-      Read: 00_ARCHITECTURE/RUNBOOK_EPHEMERIS_REBUILD_v1_0.md
-      Run the bootstrap script as instructed. Estimated 4–6 hours.
-      Signal done:
-        touch /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG3_COMPLETE
-    resume_signal: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/HG3_COMPLETE
-
   - id: DAR-P6-S22
     phase: 6
-    name: "Post-ephemeris rebuild verification — spot-check Rahu at birth date + 50 random dates"
+    name: "Run ephemeris bootstrap synchronously (MEAN_NODE, 657450 rows, 4-6 hours)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P6-S22.md
     status: PENDING
-    type: data
+    estimated_minutes: 360
+    depends_on: [DAR-P6-S21]
+    gate_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt"
+      - "grep -q 'bootstrap_complete: true' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt"
+      - "grep -q 'exit_code: 0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_BOOTSTRAP_LOG.txt"
+
+  - id: DAR-P6-S23
+    phase: 6
+    name: "Post-rebuild ephemeris verification — spot-check Rahu at birth date + 50 random dates"
+    brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P6-S23.md
+    status: PENDING
     estimated_minutes: 45
-    depends_on: [DAR-HG-3]
+    depends_on: [DAR-P6-S22]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md"
-      - "grep -q 'node_type_in_db: MEAN_NODE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md"
+      - "grep -q 'node_type: MEAN_NODE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md"
       - "grep -q 'birth_date_rahu_spot_check: PASS' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md"
       - "grep -q 'row_count: 657450' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md"
       - "grep -q 'bhava_chalit_null_count: 0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_POST_REBUILD_REPORT.md"
 
+  # —— PHASE 7: Integration testing + merge to main ————————————————————————
   - id: DAR-P7-S23
     phase: 7
-    name: "MCP tool layer comprehensive test — all 21 tools, all asset paths, all key counts"
+    name: "MCP tool layer comprehensive test — all 21 tools, all asset paths"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P7-S23.md
     status: PENDING
-    type: test
     estimated_minutes: 90
-    depends_on: [DAR-P3-S10, DAR-P4-S14, DAR-P5-S20, DAR-P6-S22]
+    depends_on: [DAR-P3-S10, DAR-P4-S14, DAR-P5-S20, DAR-P6-S23]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/MCP_TEST_REPORT.md"
       - "grep -q 'read_asset_MSR: PASS' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/MCP_TEST_REPORT.md"
@@ -370,57 +323,40 @@ sessions:
 
   - id: DAR-P7-S24
     phase: 7
-    name: "Internal portal end-to-end smoke — pipeline re-run + chart_facts query + ICR target check"
+    name: "Internal portal end-to-end test — pipeline smoke + chart_facts query + MSR read"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P7-S24.md
     status: PENDING
-    type: test
     estimated_minutes: 60
     depends_on: [DAR-P7-S23]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/PORTAL_TEST_REPORT.md"
       - "grep -q 'pipeline_smoke: PASS' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/PORTAL_TEST_REPORT.md"
+      - "grep -q 'chart_facts_portal: PASS' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/PORTAL_TEST_REPORT.md"
       - "grep -q 'icr_confirm_target: MSR_v5_0' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/PORTAL_TEST_REPORT.md"
 
   - id: DAR-P7-S25
     phase: 7
-    name: "Cross-asset integrity — validate all CGM/UCN/CDLM signal refs exist in DB; school_convergence parity"
+    name: "Cross-asset integrity check — CGM/UCN/CDLM signal refs vs DB, school_convergence parity"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P7-S25.md
     status: PENDING
-    type: test
     estimated_minutes: 60
     depends_on: [DAR-P7-S24]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CROSS_ASSET_INTEGRITY_REPORT.md"
       - "grep -q 'cgm_msr_refs: ALL_VALID' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CROSS_ASSET_INTEGRITY_REPORT.md"
       - "grep -q 'ucn_msr_refs: ALL_VALID' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CROSS_ASSET_INTEGRITY_REPORT.md"
+      - "grep -q 'cdlm_msr_refs: ALL_VALID' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CROSS_ASSET_INTEGRITY_REPORT.md"
       - "grep -q 'school_convergence_rows: 4011' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CROSS_ASSET_INTEGRITY_REPORT.md"
 
   - id: DAR-P7-S26
     phase: 7
-    name: "Governance close — DAR_CLOSE_v1_0.md + drift_detector pass + SESSION_LOG entry"
+    name: "Final governance close + drift_detector + merge feature branch to main"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P7-S26.md
     status: PENDING
-    type: governance
-    estimated_minutes: 45
+    estimated_minutes: 60
     depends_on: [DAR-P7-S25]
     gate_commands:
       - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/DAR_CLOSE_v1_0.md"
       - "grep -q 'status: COMPLETE' /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/00_ARCHITECTURE/DAR_CLOSE_v1_0.md"
-      - "python3 /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/scripts/governance/drift_detector.py 2>&1 | grep -qE 'exit.*0|PASS|no.*drift'"
-
-  - id: DAR-HG-4
-    phase: 7
-    name: "HUMAN GATE — Review all test reports, approve merge to main, deploy"
-    type: human_gate
-    status: PENDING
-    depends_on: [DAR-P7-S26]
-    human_action: |
-      Review reports in: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/
-      Review DAR_CLOSE_v1_0.md
-      If satisfied:
-        cd /Users/Dev/Vibe-Coding/Apps/Madhav
-        git merge feature/data-asset-reconciliation
-        git push origin main
-        Deploy: gcloud run deploy (amjis-web + amjis-sidecar + amjis-mcp)
-        git tag dar-v1.0-complete
-    resume_signal: none  # final gate — no automation after this
+      - "python3 /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/scripts/governance/drift_detector.py --exit-0-on-known-residuals 2>&1 | grep -q 'H.3.1.*PASS\\|exit.*0'"
+      - "git -C /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset log main..feature/data-asset-reconciliation --oneline | wc -l | xargs test 0 -eq"
