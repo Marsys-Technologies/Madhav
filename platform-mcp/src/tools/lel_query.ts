@@ -40,13 +40,16 @@ import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 
+/** LEL canonical source version served by this tool. */
+export const LEL_SOURCE_VERSION = '1.7'
+
 export const LEL_QUERY_DESCRIPTION = buildToolDescription({
   baseDescription:
-    'What it does: Queries the Life Event Log (LEL) — 36 verified life events, ' +
+    'What it does: Queries the Life Event Log (LEL v1.7) — 36 verified life events, ' +
     '5 period summaries, 6 chronic patterns — with optional category, date range, and significance filters. ' +
     'Returns raw event records (including Swiss Ephemeris chart_state at event time) as ground-truth ' +
     'data for calibration and backtesting.',
-  coverageHint: 'M4 ground-truth spine; confidence up to 0.89; chart_state per event',
+  coverageHint: 'M4 ground-truth spine; LEL source_version 1.7; confidence up to 0.89; chart_state per event',
   whenToPrefer:
     'Use to retrieve verified life events ("what career events happened 2015–2020?"). ' +
     'Prefer holistic_bundle when interpretation in light of current chart state is also needed. ' +
