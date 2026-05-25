@@ -1,0 +1,18 @@
+# MSR v5.0 B.3 Derivation-Ledger grounding progress
+# Each session writes its domain key as DONE when complete
+# S20 reads this to validate all domains complete before MSR v5.1 bump
+
+grounded_lagna: PENDING
+grounded_sun: PENDING
+grounded_moon: PENDING
+grounded_mars: PENDING
+grounded_mercury: PENDING
+grounded_jupiter: PENDING
+grounded_venus: PENDING
+grounded_saturn: PENDING
+grounded_house_domain: PENDING
+grounded_dasha: PENDING
+grounded_nadi_bnn: PENDING
+grounded_yogini_tajaka: PENDING
+total_grounded: 0
+last_updated: ~
