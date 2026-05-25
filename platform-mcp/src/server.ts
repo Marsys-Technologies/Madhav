@@ -5,12 +5,12 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 38 tools registered (v4.4, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2 + UDA-2-S3 + UDA-2-S4 + UDA-2-S5 + UDA-2-S6 + UDA-2-S7).
+ * - 40 tools registered (v4.5, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2 + UDA-2-S3 + UDA-2-S4 + UDA-2-S5 + UDA-2-S6 + UDA-2-S7 + UDA-2-S8).
  *
- * Tool count (v4.4, 38 tools):
+ * Tool count (v4.5, 40 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (26): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (28): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
  *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
@@ -18,14 +18,16 @@
  *                pattern_register, resonance_register,
  *                cluster_atlas, contradiction_register,
  *                query_ucn_walk, query_cdlm_lookup,
- *                query_rm_walk, query_jaimini_drishti
+ *                query_rm_walk, query_jaimini_drishti,
+ *                timeline_query, query_signal_state
  *                (last 4 added TR Wave PR #159 — Class A: engine existed;
  *                temporal added UDA-2-S2 — portal-only → MCP parity;
  *                kp_query + query_kp_ruling_planets added UDA-2-S3 — KP system parity;
  *                pattern_register + resonance_register added UDA-2-S4 — Discovery Layer parity;
  *                cluster_atlas + contradiction_register added UDA-2-S5 — Discovery Layer cluster/contradiction parity;
  *                query_ucn_walk + query_cdlm_lookup added UDA-2-S6 — UCN + CDLM holistic-synthesis parity;
- *                query_rm_walk + query_jaimini_drishti added UDA-2-S7 — RM walk + Jaimini drishti parity)
+ *                query_rm_walk + query_jaimini_drishti added UDA-2-S7 — RM walk + Jaimini drishti parity;
+ *                timeline_query + query_signal_state added UDA-2-S8 — L5 timeline + signal state parity)
  *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
@@ -77,6 +79,9 @@ import { registerQueryCdlmLookup } from './tools/query_cdlm_lookup.js'
 // Tier 3: UDA-2-S7 — query_rm_walk + query_jaimini_drishti RM walk + Jaimini drishti parity
 import { registerQueryRmWalk } from './tools/query_rm_walk.js'
 import { registerQueryJaiminiDrishti } from './tools/query_jaimini_drishti.js'
+// Tier 3: UDA-2-S8 — timeline_query + query_signal_state L5 timeline + signal state parity
+import { registerTimelineQuery } from './tools/timeline_query.js'
+import { registerQuerySignalState } from './tools/query_signal_state.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -211,6 +216,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerQueryCdlmLookup(server, getPrincipal)
   registerQueryRmWalk(server, getPrincipal)
   registerQueryJaiminiDrishti(server, getPrincipal)
+  registerTimelineQuery(server, getPrincipal)
+  registerQuerySignalState(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
