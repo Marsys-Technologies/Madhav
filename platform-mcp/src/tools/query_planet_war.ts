@@ -247,7 +247,7 @@ function unwrapToolBundle(envelope: Record<string, unknown>): unknown {
   const resultObj = result as Record<string, unknown>
   const bundleResults = resultObj['results'] as Array<{ content: unknown }> | undefined
   if (bundleResults && bundleResults.length > 0) {
-    const raw = bundleResults[0].content
+    const raw = bundleResults[0]!.content
     if (typeof raw === 'string') {
       try { return JSON.parse(raw) } catch { /* fall through */ }
     }
@@ -289,8 +289,8 @@ export function detectPlanetWars(
     // Compare each unique pair
     for (let i = 0; i < available.length; i++) {
       for (let j = i + 1; j < available.length; j++) {
-        const p1 = available[i]
-        const p2 = available[j]
+        const p1 = available[i]!
+        const p2 = available[j]!
 
         const sep = angularSep(p1.longitude, p2.longitude)
         if (sep > WAR_ORB) continue
@@ -357,7 +357,7 @@ export function registerQueryPlanetWar(
         return errorResult(ephResult.envelope)
       }
 
-      const ephData = unwrapToolBundle(ephResult.envelope as Record<string, unknown>)
+      const ephData = unwrapToolBundle(ephResult.envelope as unknown as Record<string, unknown>)
       const byDate = groupEphemerisByDate(ephData)
 
       // ── Detect planetary wars ──────────────────────────────────────────────

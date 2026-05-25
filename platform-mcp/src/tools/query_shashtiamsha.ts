@@ -167,7 +167,7 @@ function extractSign(obj: Record<string, unknown>): string | null {
   // Fallback: "Planet in Sign" pattern in value_text
   if (typeof obj['value_text'] === 'string') {
     const match = /\bin\s+([A-Z][a-z]+)\b/.exec(obj['value_text'] as string)
-    if (match) return match[1]
+    if (match) return match[1] ?? null
   }
   return null
 }
@@ -264,7 +264,7 @@ export function registerQueryShashtiamsha(
       }
 
       // Step 2: Parse D60 positions
-      const positions = parseD60Positions(envelope as Record<string, unknown>)
+      const positions = parseD60Positions(envelope as unknown as Record<string, unknown>)
 
       // Step 3: Assemble shashtiamsha result
       const shashtiamshaResult = assembleShashtiamshaResult(positions)
@@ -272,7 +272,7 @@ export function registerQueryShashtiamsha(
       // Step 4: Return enriched result
       return okResult({
         ok: true,
-        trace_id: (envelope as Record<string, unknown>)['trace_id'] ?? null,
+        trace_id: (envelope as unknown as Record<string, unknown>)['trace_id'] ?? null,
         result: shashtiamshaResult,
         epistemics: {
           surgical: true,

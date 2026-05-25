@@ -108,7 +108,7 @@ export function computePratyantar(
   let cursor = adStart
 
   for (let i = 0; i < 9; i++) {
-    const planet = VIMSHOTTARI_ORDER[(base + i) % 9]
+    const planet = VIMSHOTTARI_ORDER[(base + i) % 9]!
     const ratio = (VIMSHOTTARI_YEARS[planet] ?? 0) / VIMSHOTTARI_TOTAL_YEARS
     const durationMs = adDurationMs * ratio
     const durationDays = Math.round(durationMs / 86_400_000)
@@ -125,9 +125,9 @@ export function computePratyantar(
 
   // Clamp last sub-period end to AD end to avoid floating-point drift
   if (sub.length > 0) {
-    sub[sub.length - 1].end_date = adEndDate
-    const lastStart = parseDate(sub[sub.length - 1].start_date)
-    sub[sub.length - 1].duration_days = Math.round(
+    sub[sub.length - 1]!.end_date = adEndDate
+    const lastStart = parseDate(sub[sub.length - 1]!.start_date)
+    sub[sub.length - 1]!.duration_days = Math.round(
       (adEnd.getTime() - lastStart.getTime()) / 86_400_000
     )
   }

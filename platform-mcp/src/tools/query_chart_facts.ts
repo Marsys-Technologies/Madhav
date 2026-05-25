@@ -173,15 +173,15 @@ export function registerQueryChartFacts(
           principal
         )
         if (countQueryResult.envelope.ok && countQueryResult.status < 400) {
-          const countEnv = countQueryResult.envelope as Record<string, unknown>
+          const countEnv = countQueryResult.envelope as unknown as Record<string, unknown>
           const countData = countEnv['result'] as Record<string, unknown> | undefined
           if (countData) {
             // Try ToolBundle.results[0].content (JSON) first, then direct rows_by_category
             const bundleResults = countData['results'] as Array<{ content: string }> | undefined
             let rowsByCat: Record<string, unknown[]> | undefined
-            if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+            if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0]!.content === 'string') {
               try {
-                const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+                const parsed = JSON.parse(bundleResults[0]!.content) as Record<string, unknown>
                 rowsByCat = parsed['rows_by_category'] as Record<string, unknown[]> | undefined
               } catch { /* ignore parse errors */ }
             }
@@ -221,7 +221,7 @@ export function registerQueryChartFacts(
 
       // --- Step 3: Annotate response with populated_count ---
       // Cast envelope result to a mutable shape so we can enrich it.
-      const envelopeResult = (envelope as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
+      const envelopeResult = (envelope as unknown as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
 
       if (envelopeResult) {
         // Try to unwrap ToolBundle.results[0].content if the platform wraps results that way.
@@ -230,9 +230,9 @@ export function registerQueryChartFacts(
         let singleRows: unknown[] | undefined
 
         const bundleResults = envelopeResult['results'] as Array<{ content: string }> | undefined
-        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0]!.content === 'string') {
           try {
-            const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+            const parsed = JSON.parse(bundleResults[0]!.content) as Record<string, unknown>
             if (isBatched && parsed['rows_by_category']) {
               rowsByCategory = parsed['rows_by_category'] as Record<string, unknown[]>
             } else if (!isBatched && parsed['rows']) {
@@ -279,10 +279,10 @@ export function registerQueryChartFacts(
           if (bundleResults && bundleResults.length > 0) {
             // ToolBundle wrapping: update the JSON string in results[0].content
             const baseContent = (() => {
-              try { return JSON.parse(bundleResults[0].content) as Record<string, unknown> } catch { return {} }
+              try { return JSON.parse(bundleResults[0]!.content) as Record<string, unknown> } catch { return {} }
             })()
             baseContent['rows_by_category'] = annotated
-            ;(envelopeResult['results'] as Array<{ content: string }>)[0].content = JSON.stringify(baseContent)
+            ;(envelopeResult['results'] as Array<{ content: string }>)[0]!.content = JSON.stringify(baseContent)
           } else {
             envelopeResult['rows_by_category'] = annotated
           }

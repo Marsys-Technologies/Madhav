@@ -344,7 +344,7 @@ export async function executeHolisticBundle(
   const finalEntries = params.return_format === 'compressed'
     ? bundle_entries.map(e => e.errored
         ? { sub_tool: e.sub_tool, errored: true as const, error_class: e.error_class, latency_ms: e.latency_ms, attempted_params: e.attempted_params }
-        : { sub_tool: e.sub_tool, errored: false as const, rows_returned: e.rows_returned, signal_ids_available: e.signal_ids_available, latency_ms: e.latency_ms }
+        : { sub_tool: e.sub_tool, errored: false as const, data: undefined as unknown, rows_returned: e.rows_returned, signal_ids_available: e.signal_ids_available, latency_ms: e.latency_ms }
       )
     : bundle_entries
 

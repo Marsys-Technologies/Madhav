@@ -132,7 +132,7 @@ function unwrapResult(envelope: Record<string, unknown>): unknown {
   // ToolBundle pattern: result.results[0].content (JSON string)
   const bundleResults = r['results'] as Array<{ content: unknown }> | undefined
   if (Array.isArray(bundleResults) && bundleResults.length > 0) {
-    const raw = bundleResults[0].content
+    const raw = bundleResults[0]!.content
     if (typeof raw === 'string') {
       try { return JSON.parse(raw) } catch { /* fall through */ }
     }
@@ -268,7 +268,7 @@ export function registerQueryRemediesPrescribed(
 
       // Hard error from remedial codex — propagate up
       if (!remedialCall.envelope.ok && remedialCall.status >= 400) {
-        return errorResult(remedialCall.envelope as Record<string, unknown>)
+        return errorResult(remedialCall.envelope as unknown as Record<string, unknown>)
       }
 
       // ── Step 3: Optionally fetch chart_facts remedy/strength rows for planet ──
@@ -285,7 +285,7 @@ export function registerQueryRemediesPrescribed(
             principal,
           )
           if (cfCall && cfCall.envelope && cfCall.envelope.ok && cfCall.status < 400) {
-            const cfData = unwrapResult(cfCall.envelope as Record<string, unknown>)
+            const cfData = unwrapResult(cfCall.envelope as unknown as Record<string, unknown>)
             chartFactsRows = extractChartFactsRemedyRows(cfData)
           }
         } catch {
@@ -294,7 +294,7 @@ export function registerQueryRemediesPrescribed(
       }
 
       // ── Step 4: Merge and convert raw results ─────────────────────────────────
-      const remedialData = unwrapResult(remedialCall.envelope as Record<string, unknown>)
+      const remedialData = unwrapResult(remedialCall.envelope as unknown as Record<string, unknown>)
       const remedialChunks = extractRemedyChunks(remedialData)
 
       const allRawRows = [...remedialChunks, ...chartFactsRows]

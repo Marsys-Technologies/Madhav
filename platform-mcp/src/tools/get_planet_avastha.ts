@@ -122,15 +122,15 @@ export function registerGetPlanetAvastha(
       }
 
       // Extract rows from the response envelope
-      const avasthaEnvelope = (avasthaResult.envelope as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
+      const avasthaEnvelope = (avasthaResult.envelope as unknown as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
 
       let avasthaRows: unknown[] = []
       if (avasthaEnvelope) {
         // Try ToolBundle results[0].content wrapping first
         const bundleResults = avasthaEnvelope['results'] as Array<{ content: string }> | undefined
-        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0]!.content === 'string') {
           try {
-            const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+            const parsed = JSON.parse(bundleResults[0]!.content) as Record<string, unknown>
             // Batched response: rows_by_category.avastha
             if (parsed['rows_by_category'] && typeof parsed['rows_by_category'] === 'object') {
               const byCategory = parsed['rows_by_category'] as Record<string, unknown[]>
@@ -193,14 +193,14 @@ export function registerGetPlanetAvastha(
       )
 
       if (dignityResult.envelope.ok && dignityResult.status < 400) {
-        const dignityEnvelope = (dignityResult.envelope as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
+        const dignityEnvelope = (dignityResult.envelope as unknown as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
         let dignityRows: unknown[] = []
 
         if (dignityEnvelope) {
           const bundleResults = dignityEnvelope['results'] as Array<{ content: string }> | undefined
-          if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+          if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0]!.content === 'string') {
             try {
-              const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+              const parsed = JSON.parse(bundleResults[0]!.content) as Record<string, unknown>
               if (parsed['rows_by_category'] && typeof parsed['rows_by_category'] === 'object') {
                 const byCategory = parsed['rows_by_category'] as Record<string, unknown[]>
                 dignityRows = byCategory['dignity_scores'] ?? []

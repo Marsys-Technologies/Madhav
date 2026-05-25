@@ -107,7 +107,7 @@ function unwrapPrimitiveResult(envelope: Record<string, unknown>): unknown {
   // ToolBundle pattern: results[0].content (JSON string)
   const bundleResults = resultObj['results'] as Array<{ content: unknown }> | undefined
   if (bundleResults && bundleResults.length > 0) {
-    const raw = bundleResults[0].content
+    const raw = bundleResults[0]!.content
     if (typeof raw === 'string') {
       try { return JSON.parse(raw) } catch { /* fall through */ }
     }
@@ -137,7 +137,7 @@ async function fetchActiveCharaDasha(
     params,
     principal,
   )
-  return { status, data: unwrapPrimitiveResult(envelope as Record<string, unknown>) }
+  return { status, data: unwrapPrimitiveResult(envelope as unknown as Record<string, unknown>) }
 }
 
 /**
@@ -159,7 +159,7 @@ async function fetchFullCharaDasha(
     params,
     principal,
   )
-  return { status, data: unwrapPrimitiveResult(envelope as Record<string, unknown>) }
+  return { status, data: unwrapPrimitiveResult(envelope as unknown as Record<string, unknown>) }
 }
 
 /**

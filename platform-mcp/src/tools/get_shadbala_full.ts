@@ -116,16 +116,16 @@ export function registerGetShadbalaFull(
       }
 
       // ── Step 2: Extract rows from response envelope ───────────────────────────
-      const resultObj = (envelope as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
+      const resultObj = (envelope as unknown as Record<string, unknown>)['result'] as Record<string, unknown> | undefined
 
       let allRows: unknown[] = []
 
       if (resultObj) {
         // Try ToolBundle results[0].content wrapping
         const bundleResults = resultObj['results'] as Array<{ content: string }> | undefined
-        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0].content === 'string') {
+        if (bundleResults && bundleResults.length > 0 && typeof bundleResults[0]!.content === 'string') {
           try {
-            const parsed = JSON.parse(bundleResults[0].content) as Record<string, unknown>
+            const parsed = JSON.parse(bundleResults[0]!.content) as Record<string, unknown>
             if (parsed['rows_by_category'] && typeof parsed['rows_by_category'] === 'object') {
               const byCategory = parsed['rows_by_category'] as Record<string, unknown[]>
               allRows = byCategory['shadbala'] ?? []

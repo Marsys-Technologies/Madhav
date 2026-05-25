@@ -89,7 +89,7 @@ export function signIndex(sign: string): number {
 export function signFromIndex(idx: number): SignName {
   // Normalize to 1-12 range
   const normalized = ((idx - 1 + 120) % 12) + 1
-  return SIGNS[normalized - 1]
+  return SIGNS[normalized - 1]!
 }
 
 /**
@@ -222,7 +222,7 @@ function extractSign(obj: Record<string, unknown>): string | null {
   // value_text may carry "Planet in Sign" phrasing
   if (typeof obj['value_text'] === 'string') {
     const match = /\bin\s+([A-Z][a-z]+)\b/.exec(obj['value_text'] as string)
-    if (match) return match[1]
+    if (match) return match[1] ?? null
   }
   return null
 }
@@ -275,8 +275,8 @@ export function computeDrekkanaResults(
   const mutual: MutualDrekkana[] = []
   for (let i = 0; i < planets.length; i++) {
     for (let j = i + 1; j < planets.length; j++) {
-      const a = planets[i]
-      const b = planets[j]
+      const a = planets[i]!
+      const b = planets[j]!
       const aAspectsB = a.drishti_targets.some(t => t.sign === b.drekkana_sign)
       const bAspectsA = b.drishti_targets.some(t => t.sign === a.drekkana_sign)
       if (aAspectsB && bAspectsA) {
@@ -347,7 +347,7 @@ export function registerQueryDrekkanaDisthi(
       }
 
       // Step 2: Parse D3 positions from the response
-      const positions = parseD3Positions(envelope as Record<string, unknown>)
+      const positions = parseD3Positions(envelope as unknown as Record<string, unknown>)
 
       // Step 3: Compute Drekkana Drishti
       const drekkanaResult = computeDrekkanaResults(positions)
@@ -355,7 +355,7 @@ export function registerQueryDrekkanaDisthi(
       // Step 4: Return enriched result
       return okResult({
         ok: true,
-        trace_id: (envelope as Record<string, unknown>)['trace_id'] ?? null,
+        trace_id: (envelope as unknown as Record<string, unknown>)['trace_id'] ?? null,
         result: drekkanaResult,
         epistemics: {
           surgical: true,

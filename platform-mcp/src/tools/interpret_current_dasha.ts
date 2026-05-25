@@ -54,7 +54,7 @@ function unwrapEnvelope(envelope: unknown): unknown {
   if (!env) return null
   const results = env['results'] as Array<{ content: unknown }> | undefined
   if (results && results.length > 0) {
-    const raw = results[0].content
+    const raw = results[0]!.content
     return typeof raw === 'string' ? JSON.parse(raw) : raw
   }
   return env['result'] ?? null
@@ -79,7 +79,7 @@ function extractDashaContext(data: unknown): DashaContext {
   // Try periods array first
   const periods = obj['periods'] as Array<Record<string, unknown>> | undefined
   if (Array.isArray(periods) && periods.length > 0) {
-    const period = periods[0]
+    const period = periods[0]!
     return {
       md: (period['mahadasha'] as string | null) ?? (period['md'] as string | null) ?? null,
       ad: (period['antardasha'] as string | null) ?? (period['ad'] as string | null) ?? null,
@@ -175,7 +175,7 @@ export function registerInterpretCurrentDasha(
       const dataSources: string[] = []
 
       if (dashaResult.envelope.ok && dashaResult.status < 400) {
-        const raw = dashaResult.envelope as Record<string, unknown>
+        const raw = dashaResult.envelope as unknown as Record<string, unknown>
         const unwrapped = unwrapEnvelope(raw)
         dashaContext = extractDashaContext(unwrapped)
         dataSources.push('query_dasha_periods')
@@ -185,7 +185,7 @@ export function registerInterpretCurrentDasha(
       let relevantYogas: Array<{ yoga_name: string; is_activated_by_dasha: boolean }> = []
 
       if (yogaResult.envelope.ok && yogaResult.status < 400) {
-        const raw = yogaResult.envelope as Record<string, unknown>
+        const raw = yogaResult.envelope as unknown as Record<string, unknown>
         const unwrapped = unwrapEnvelope(raw)
         const yogaRows = extractYogaRows(unwrapped, subsetSize)
 

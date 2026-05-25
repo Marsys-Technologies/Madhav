@@ -176,7 +176,7 @@ function unwrapToolBundle(envelope: Record<string, unknown>): unknown {
   // ToolBundle pattern: result.results[0].content (JSON string)
   const bundleResults = resultObj['results'] as Array<{ content: unknown }> | undefined
   if (bundleResults && bundleResults.length > 0) {
-    const raw = bundleResults[0].content
+    const raw = bundleResults[0]!.content
     if (typeof raw === 'string') {
       try { return JSON.parse(raw) } catch { /* fall through */ }
     }
@@ -374,17 +374,17 @@ function computeTransitEvents(
     days.sort((a, b) => a.date.localeCompare(b.date))
 
     const windows: InOrbDay[][] = []
-    let currentWindow: InOrbDay[] = [days[0]]
+    let currentWindow: InOrbDay[] = [days[0]!]
 
     for (let i = 1; i < days.length; i++) {
-      const prev = currentWindow[currentWindow.length - 1]
-      const gap = daysBetween(prev.date, days[i].date)
+      const prev = currentWindow[currentWindow.length - 1]!
+      const gap = daysBetween(prev.date, days[i]!.date)
       if (gap <= 2) {
         // Allow up to 1-day gap (gap=2 means next day)
-        currentWindow.push(days[i])
+        currentWindow.push(days[i]!)
       } else {
         windows.push(currentWindow)
-        currentWindow = [days[i]]
+        currentWindow = [days[i]!]
       }
     }
     windows.push(currentWindow)
@@ -392,11 +392,11 @@ function computeTransitEvents(
     for (const window of windows) {
       if (window.length === 0) continue
 
-      const entryDay = window[0]
-      const exitDay = window[window.length - 1]
+      const entryDay = window[0]!
+      const exitDay = window[window.length - 1]!
 
       // Find exact day (minimum residual orb)
-      let exactDay = window[0]
+      let exactDay = window[0]!
       for (const d of window) {
         if (d.residualOrb < exactDay.residualOrb) exactDay = d
       }
@@ -452,7 +452,7 @@ export function registerQueryTransitsOverNatal(
       let natalLongitude: number | null = null
 
       if (chartFactsResult.envelope.ok && chartFactsResult.status < 400) {
-        const data = unwrapToolBundle(chartFactsResult.envelope as Record<string, unknown>)
+        const data = unwrapToolBundle(chartFactsResult.envelope as unknown as Record<string, unknown>)
         natalLongitude = extractNatalLongitude(data, planetName)
       }
 
@@ -464,7 +464,7 @@ export function registerQueryTransitsOverNatal(
           principal,
         )
         if (fallbackResult.envelope.ok && fallbackResult.status < 400) {
-          const data = unwrapToolBundle(fallbackResult.envelope as Record<string, unknown>)
+          const data = unwrapToolBundle(fallbackResult.envelope as unknown as Record<string, unknown>)
           natalLongitude = extractNatalLongitude(data, planetName)
         }
       }
@@ -497,7 +497,7 @@ export function registerQueryTransitsOverNatal(
       }
 
       const ephemerisData = unwrapToolBundle(
-        ephemerisResult.envelope as Record<string, unknown>,
+        ephemerisResult.envelope as unknown as Record<string, unknown>,
       )
       const ephemerisRows = extractEphemerisRows(ephemerisData)
 

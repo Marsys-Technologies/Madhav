@@ -235,7 +235,7 @@ function unwrapToolBundle(envelope: Record<string, unknown>): unknown {
   const resultObj = result as Record<string, unknown>
   const bundleResults = resultObj['results'] as Array<{ content: unknown }> | undefined
   if (bundleResults && bundleResults.length > 0) {
-    const raw = bundleResults[0].content
+    const raw = bundleResults[0]!.content
     if (typeof raw === 'string') {
       try { return JSON.parse(raw) } catch { /* fall through */ }
     }
@@ -363,7 +363,7 @@ export function registerQueryEclipseTransits(
         return errorResult(ephResult.envelope)
       }
 
-      const ephData = unwrapToolBundle(ephResult.envelope as Record<string, unknown>)
+      const ephData = unwrapToolBundle(ephResult.envelope as unknown as Record<string, unknown>)
       const byDate = groupEphemerisByDate(ephData)
 
       // ── Detect eclipses ────────────────────────────────────────────────────

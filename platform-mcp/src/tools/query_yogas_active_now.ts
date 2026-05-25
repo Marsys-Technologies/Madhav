@@ -87,7 +87,7 @@ function unwrapEnvelope(envelope: Record<string, unknown>): unknown {
   // ToolBundle pattern: result.results[0].content (JSON string)
   const bundleResults = resultObj['results'] as Array<{ content: unknown }> | undefined
   if (bundleResults && bundleResults.length > 0) {
-    const raw = bundleResults[0].content
+    const raw = bundleResults[0]!.content
     if (typeof raw === 'string') {
       try { return JSON.parse(raw) } catch { /* fall through */ }
     }
@@ -321,7 +321,7 @@ export function registerQueryYogasActiveNow(
 
       let yogaRows: unknown[] = []
       if (yogaResult.envelope.ok && yogaResult.status < 400) {
-        const data = unwrapEnvelope(yogaResult.envelope as Record<string, unknown>)
+        const data = unwrapEnvelope(yogaResult.envelope as unknown as Record<string, unknown>)
         yogaRows = extractYogaRows(data)
       }
 

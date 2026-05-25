@@ -62,7 +62,7 @@ const CORRECTED_TENTH_LORD: Record<SignName, string> = {
 function tenthSignFrom(ascSign: string): string {
   const idx = SIGNS.indexOf(ascSign as SignName)
   if (idx < 0) return 'Unknown'
-  return SIGNS[(idx + 9) % 12]  // 10th sign = ascendant index + 9 (0-based)
+  return SIGNS[(idx + 9) % 12]!  // 10th sign = ascendant index + 9 (0-based)
 }
 
 /** Own-sign and exaltation map per planet. */
@@ -179,7 +179,7 @@ function extractSign(obj: Record<string, unknown>): string | null {
   // Fallback: "Planet in Sign" pattern in value_text
   if (typeof obj['value_text'] === 'string') {
     const match = /\bin\s+([A-Z][a-z]+)\b/.exec(obj['value_text'] as string)
-    if (match) return match[1]
+    if (match) return match[1] ?? null
   }
   return null
 }
@@ -361,7 +361,7 @@ export function registerQueryDasamshhaCareer(
       }
 
       // Step 2: Parse D10 positions
-      const positions = parseD10Positions(envelope as Record<string, unknown>)
+      const positions = parseD10Positions(envelope as unknown as Record<string, unknown>)
 
       // Step 3: Assemble career result
       const careerResult = assembleDasamshhaResult(positions)
@@ -369,7 +369,7 @@ export function registerQueryDasamshhaCareer(
       // Step 4: Return enriched result
       return okResult({
         ok: true,
-        trace_id: (envelope as Record<string, unknown>)['trace_id'] ?? null,
+        trace_id: (envelope as unknown as Record<string, unknown>)['trace_id'] ?? null,
         result: careerResult,
         epistemics: {
           surgical: true,
