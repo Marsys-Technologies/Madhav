@@ -1,6 +1,11 @@
 # DAR Conductor Log
 # Append one entry per completed/failed session
 
+## DAR-P1-S2 — COMPLETE — 2026-05-25
+Gate results: 4/4 PASS (after fixing residual docstring in source_fetcher.py — gate caught it)
+Commit: 5b1f068d + b92eb189 (source_fetcher docstring fix)
+Notes: Sub-agent correctly flagged 3 out-of-scope residuals in rag/ files (rag/ingest.py, rag/reconcilers/, rag/validators/) — tracked as follow-on items, not blocking.
+
 ## DAR-P1-S1 — COMPLETE — 2026-05-25
 Gate results: 5/5 PASS
 Commit: 7a24af73 (dar: [DAR-P1-S1] fix read_asset + ICR + manifest_overrides + test fixture; rm stale PROPOSED patch)
