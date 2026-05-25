@@ -5,17 +5,18 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 27 tools registered (v3.8, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1).
+ * - 28 tools registered (v3.9, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2).
  *
- * Tool count (v3.8, 27 tools):
+ * Tool count (v3.9, 28 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (15): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (16): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
  *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
- *                msr_sql
- *                (last 4 added TR Wave PR #159 — Class A: engine existed)
+ *                msr_sql, temporal
+ *                (last 4 added TR Wave PR #159 — Class A: engine existed;
+ *                temporal added UDA-2-S2 — portal-only → MCP parity)
  *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
@@ -50,6 +51,8 @@ import { registerQueryRemedialMantras } from './tools/query_remedial_mantras.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 // Tier 3: UDA-2-S1 — msr_sql portal-only → MCP parity
 import { registerMsrSql } from './tools/msr_sql.js'
+// Tier 3: UDA-2-S2 — temporal portal-only → MCP parity
+import { registerTemporal } from './tools/temporal.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -173,6 +176,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerQueryRemedialMantras(server, getPrincipal)
   registerMuhurtaFinder(server, getPrincipal)
   registerMsrSql(server, getPrincipal)
+  registerTemporal(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
