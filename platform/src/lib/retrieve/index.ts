@@ -22,6 +22,7 @@
  * UDA-1-S5: query_shashtiamsha — D60 Shashtiamsha karma pada analysis (tool 44)
  * UDA-1-S6: query_eclipse_transits, query_planet_war — eclipse detection + Graha Yuddha (tools 45-46)
  * UDA-1-S7: query_drekkana_drishti, query_remedies_prescribed — Jaimini Drekkana Drishti + remedial codex cross-reference (tools 47-48)
+ * UDA-1-S8: tara_balam_for_native, chandra_balam_for_native, muhurta_finder — Tara Bala + Chandra Bala + Muhurta Finder with native overlay (tools 49-51)
  */
 
 import * as msrSql from './msr_sql'
@@ -117,6 +118,11 @@ import * as queryPlanetWar from './query_planet_war'
 import * as queryDrekkanaDisthi from './query_drekkana_drishti'
 import * as queryRemediesPrescribed from './query_remedies_prescribed'
 
+// UDA-1-S8 — Tara Bala + Chandra Bala + Muhurta Finder with native overlay (tools 49-51)
+import * as taraBalamForNative from './tara_balam_for_native'
+import * as chandraBalamForNative from './chandra_balam_for_native'
+import * as muhurtaFinder from './muhurta_finder'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -169,6 +175,9 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryPlanetWar.tool,
   queryDrekkanaDisthi.tool,
   queryRemediesPrescribed.tool,
+  taraBalamForNative.tool,
+  chandraBalamForNative.tool,
+  muhurtaFinder.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
