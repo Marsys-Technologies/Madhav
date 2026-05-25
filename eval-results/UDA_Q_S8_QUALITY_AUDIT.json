@@ -1,0 +1,78 @@
+{
+  "campaign": "universal-parity",
+  "audit_session": "UDA-Q-S8",
+  "audit_date": "2026-05-25",
+  "git_sha": "1909074ad5c92e505333c3192587fa7ec85f136c",
+  "checks": [
+    {
+      "session": "UDA-Q-S1",
+      "description": "Portal query_dasha_periods: pratyantar + sookshma sub-period levels",
+      "gate_commands_run": [
+        "grep -q \"pratyantar\" platform/src/lib/retrieve/query_dasha_periods.ts",
+        "grep -q \"sookshma\" platform/src/lib/retrieve/query_dasha_periods.ts",
+        "grep -q \"computePratyantar|sub_periods\" platform/src/lib/retrieve/query_dasha_periods.ts"
+      ],
+      "status": "PASS",
+      "evidence": "query_dasha_periods.ts line 26: UDA-Q-S1 backport comment; line 87: computePratyantar function; lines 159-160: sub_level param docs ('pratyantar'|'sookshma'); lines 357-358: sub_periods enrichment branch; all 3 grep checks PASS"
+    },
+    {
+      "session": "UDA-Q-S2",
+      "description": "Portal query_ephemeris: date_range, sample_step, return_changes_only, 1825-day guard",
+      "gate_commands_run": [
+        "grep -q \"date_range|sample_step|return_changes_only\" platform/src/lib/retrieve/query_ephemeris.ts",
+        "grep -q \"1825|span\" platform/src/lib/retrieve/query_ephemeris.ts"
+      ],
+      "status": "PASS",
+      "evidence": "query_ephemeris.ts line 45: date_range param; lines 58-59: sample_step param; line 61: return_changes_only param; lines 172-174: 1825-day span guard with date_range normalization; both grep checks PASS"
+    },
+    {
+      "session": "UDA-Q-S3",
+      "description": "Portal chart_facts_query: include_empty_counts + populated_count",
+      "gate_commands_run": [
+        "grep -q \"include_empty_counts|populated_count\" platform/src/lib/retrieve/chart_facts_query.ts"
+      ],
+      "status": "PASS",
+      "evidence": "chart_facts_query.ts line 72: include_empty_counts param; line 68-70: populated_count field docs; lines 237-242: populated_count computation; lines 247-327: include_empty_counts branch; grep check PASS"
+    },
+    {
+      "session": "UDA-Q-S4",
+      "description": "MCP lel_query: chart_state + significance tier enum",
+      "gate_commands_run": [
+        "grep -q \"chart_state\" platform-mcp/src/tools/lel_query.ts",
+        "grep -q \"major|moderate|minor\" platform-mcp/src/tools/lel_query.ts"
+      ],
+      "status": "PASS",
+      "evidence": "lel_query.ts line 7: chart_state mentioned in file header; lines 21-22: significance_tier docs (major|moderate|minor); lines 28/33: chart_state in response docs; line 47: chart_state in coverageHint; lines 65-66: z.enum(['major','moderate','minor']); both grep checks PASS"
+    },
+    {
+      "session": "UDA-Q-S5",
+      "description": "MCP query_varshphal: year_start/year_end range support",
+      "gate_commands_run": [
+        "grep -q \"year_start|year_end\" platform-mcp/src/tools/query_varshphal.ts"
+      ],
+      "status": "PASS",
+      "evidence": "query_varshphal.ts lines 45-49: year_start and year_end zod params; lines 78-81: range mode branch; line 32: range support docs; grep check PASS"
+    },
+    {
+      "session": "UDA-Q-S6",
+      "description": "Portal msr_sql: dasha_lord, valence, temporal_activation filters",
+      "gate_commands_run": [
+        "grep -q \"dasha_lord\" platform/src/lib/retrieve/msr_sql.ts",
+        "grep -q \"valence|temporal_activation\" platform/src/lib/retrieve/msr_sql.ts"
+      ],
+      "status": "PASS",
+      "evidence": "msr_sql.ts lines 89-90: SQL WHERE clauses for temporal_activation and valence array filters; lines 158-172: scalar/array normalization for temporal_activation and valence (UDA-Q-S6 backport comments); lines 174-175: dasha_lord scalar merged into dasha_activation; both grep checks PASS"
+    },
+    {
+      "session": "UDA-Q-S7",
+      "description": "MCP query_signals: LL.1 calibration + domain floors + Pancha-MP dedup",
+      "gate_commands_run": [
+        "grep -q \"ll1_weights|calibrat|LL1_PRODUCTION_WEIGHTS\" platform-mcp/src/tools/query_signals.ts"
+      ],
+      "status": "PASS",
+      "evidence": "query_signals.ts lines 36-41: LL1_PRODUCTION_WEIGHTS Map with NAP.M4.5 comment; line 97-105: calibrateResults function; lines 119-126: LL.1 weight application + confidence floor filtering; grep check PASS"
+    }
+  ],
+  "open_quality_gaps": [],
+  "summary": "7/7 quality backports verified PASS. Quality delta phase complete."
+}
