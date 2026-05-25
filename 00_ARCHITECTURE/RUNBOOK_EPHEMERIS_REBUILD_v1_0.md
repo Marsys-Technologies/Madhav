@@ -1,11 +1,18 @@
 ---
 artifact: RUNBOOK_EPHEMERIS_REBUILD_v1_0
 canonical_id: RUNBOOK_EPHEMERIS_REBUILD
-version: 1.0
+version: 1.1
 status: CURRENT
 authored_on: 2026-05-19
+amended_on: 2026-05-25
+amendment_session: DAR-P6-S21
 campaign: PHASE_4_EPHEMERIS_ACCESSIBILITY
 sub_phase: 4B
+changelog:
+  - v1.1 (2026-05-25, DAR-P6-S21): Added §7 DAR MEAN_NODE Rebuild Operator Guide
+    documenting the bootstrap invocation, monitoring, verification, atomic swap,
+    and rollback procedure for the Data Asset Reconciliation rebuild.
+  - v1.0 (2026-05-19): Initial authoring for Phase 4B derived enrichment campaign.
 ---
 
 # Runbook — Ephemeris Daily Rebuild for §4.B
@@ -376,4 +383,190 @@ UPDATE ephemeris_daily SET bhava_chalit_house = NULL;
 ALTER TABLE ephemeris_daily DROP COLUMN bhava_chalit_house;
 ALTER TABLE ephemeris_daily_staging DROP COLUMN bhava_chalit_house;
 DROP INDEX IF EXISTS idx_ephemeris_bhava_chalit;
+```
+
+---
+
+## §7 DAR MEAN_NODE Rebuild — Operator Guide (DAR-P6-S21)
+
+**Context:** The Data Asset Reconciliation (DAR) campaign found `ephemeris_daily` was
+populated before the §4.B fix (2026-05-19), meaning live rows use TRUE_NODE for Rahu/Ketu.
+FORENSIC v8.0 and Jyotish tradition require MEAN_NODE. This section is the operator guide
+for executing the MEAN_NODE rebuild as part of DAR-P6-S22.
+
+**Pre-flight check artifact:**
+`00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/EPHEMERIS_PRE_REBUILD_CHECK.md`
+
+**Bootstrap script:** `platform/python-sidecar/pipeline/bootstrap_ephemeris.py`
+`swe.MEAN_NODE` is hardcoded at line 252 — no flag needed, no `--node-type` argument.
+
+**Expected row count:** 657,450 (73,050 days × 9 planets, 1900-01-01..2100-12-31)
+
+**Estimated runtime:** 4–6 hours (~110,000 rows/hour)
+
+### §7.1 Pre-flight checks
+
+```bash
+# Confirm DATABASE_URL is set and psql connects
+echo ${DATABASE_URL:-"NOT_SET"}
+psql "$DATABASE_URL" -c "SELECT 1;"
+
+# Confirm disk space >= 10 GB free
+df -h .
+
+# Confirm Python dependencies
+cd platform/python-sidecar
+python -c "import swisseph; print('swisseph OK:', swisseph.version)"
+python -c "import psycopg2; print('psycopg2 OK')" || python -c "import psycopg; print('psycopg OK')"
+
+# Confirm Swiss Ephemeris data files present
+ls platform/python-sidecar/ephe/ | head -5
+
+# Confirm ephemeris_daily_staging is empty (or truncate it)
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily_staging;"
+# If > 0 and you want a fresh run:
+psql "$DATABASE_URL" -c "TRUNCATE TABLE ephemeris_daily_staging;"
+
+# Record production baseline for audit trail
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily;"
+```
+
+### §7.2 Run bootstrap
+
+The standard invocation. No special node-type flag needed — MEAN_NODE is hardcoded.
+
+```bash
+cd /Users/Dev/Vibe-Coding/Apps/MadhavDataAsset/platform/python-sidecar
+
+# Optional dry-run on a small window first
+DATABASE_URL="$DATABASE_URL" python -m pipeline.bootstrap_ephemeris \
+  --dry-run \
+  --start 1984-02-01 \
+  --end 1984-02-10
+# Expected: 10 days × 9 planets = 90 rows computed (no DB write)
+
+# Full rebuild (writes to ephemeris_daily_staging)
+DATABASE_URL="$DATABASE_URL" python -m pipeline.bootstrap_ephemeris \
+  --build-id "ephemeris-mean-node-rebuild-$(date +%Y%m%d)" \
+  --skip-csv-check
+# Use --skip-csv-check unless GCS CSV at gs://madhav-marsys-sources/L1/ephemeris/EPHEMERIS_MONTHLY_1900_2100.csv is available.
+# Idempotent: if interrupted, re-run with the same --build-id to resume.
+```
+
+### §7.3 Monitor progress
+
+```bash
+# Poll staging row count every 30 minutes
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily_staging;"
+
+# Progress milestones (approximate):
+#   1 hour  →  ~110,000 rows
+#   2 hours →  ~220,000 rows
+#   4 hours →  ~440,000 rows
+#   6 hours →  ~657,450 rows (complete)
+```
+
+### §7.4 Verify after bootstrap completes
+
+All checks must PASS before atomic swap.
+
+```bash
+# §7.4.1 Row count = 657,450
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily_staging;"
+
+# §7.4.2 Spot-check Rahu at native birth date (1984-02-05)
+# FORENSIC v8.0: Rahu in Gemini. MEAN_NODE Rahu at 1984-02-05 ≈ 67–68° (Gemini).
+# TRUE_NODE would show same sign but slightly different longitude.
+psql "$DATABASE_URL" -c "
+  SELECT date, planet, longitude_deg, sign, sign_degree, nakshatra
+  FROM ephemeris_daily_staging
+  WHERE date = '1984-02-05' AND planet IN ('rahu','ketu')
+  ORDER BY planet;"
+# PASS: rahu sign = 'Gemini'; ketu sign = 'Sagittarius'
+
+# §7.4.3 Rahu always retrograde (MEAN_NODE convention)
+psql "$DATABASE_URL" -c "
+  SELECT COUNT(*) FROM ephemeris_daily_staging
+  WHERE planet = 'rahu' AND is_retrograde = false;"
+# PASS: count = 0
+
+# §7.4.4 No duplicate (date, planet) pairs
+psql "$DATABASE_URL" -c "
+  SELECT date, planet, COUNT(*) AS cnt
+  FROM ephemeris_daily_staging
+  GROUP BY date, planet HAVING COUNT(*) > 1 LIMIT 5;"
+# PASS: 0 rows
+
+# §7.4.5 All 9 planets present
+psql "$DATABASE_URL" -c "
+  SELECT planet, COUNT(*) AS day_count
+  FROM ephemeris_daily_staging GROUP BY planet ORDER BY planet;"
+# PASS: 9 rows, each day_count = 73050
+```
+
+### §7.5 Atomic swap
+
+Execute only after all §7.4 checks PASS.
+
+```bash
+psql "$DATABASE_URL" << 'SQL'
+BEGIN;
+DELETE FROM ephemeris_daily;
+INSERT INTO ephemeris_daily SELECT * FROM ephemeris_daily_staging;
+DO $$
+DECLARE cnt INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO cnt FROM ephemeris_daily;
+  IF cnt <> 657450 THEN
+    RAISE EXCEPTION 'Swap verification failed: expected 657450 rows, got %', cnt;
+  END IF;
+END $$;
+TRUNCATE TABLE ephemeris_daily_staging;
+COMMIT;
+SQL
+
+# Confirm live table
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM ephemeris_daily;"
+# Expected: 657,450
+```
+
+### §7.6 Post-swap smoke test
+
+```bash
+# Final spot-check on live table
+psql "$DATABASE_URL" -c "
+  SELECT date, planet, longitude_deg, sign, nakshatra
+  FROM ephemeris_daily
+  WHERE date = '1984-02-05' AND planet IN ('rahu','ketu')
+  ORDER BY planet;"
+# PASS: rahu in Gemini; ketu in Sagittarius
+
+# Rahu always retrograde in live table
+psql "$DATABASE_URL" -c "
+  SELECT COUNT(*) FROM ephemeris_daily
+  WHERE planet = 'rahu' AND is_retrograde = false;"
+# PASS: count = 0
+```
+
+### §7.7 Rollback
+
+Production `ephemeris_daily` is untouched until the swap in §7.5.
+
+**Pre-swap rollback (bootstrap failed):**
+```bash
+psql "$DATABASE_URL" -c "TRUNCATE TABLE ephemeris_daily_staging;"
+# Fix the issue, then re-run §7.2 with a new build-id.
+```
+
+**Post-swap rollback:** Restore from Cloud SQL backup taken before the rebuild began.
+
+### §7.8 Audit log entry (append after completion)
+
+Append to `00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CONDUCTOR_LOG.md`:
+```
+DAR-P6-S22 | EPHEMERIS MEAN_NODE REBUILD | COMPLETE
+  build_id: ephemeris-mean-node-rebuild-<YYYYMMDD>
+  rows_written: 657450
+  rahu_spot_check_1984-02-05: Gemini <longitude>° PASS
+  swap_completed: <timestamp>
 ```

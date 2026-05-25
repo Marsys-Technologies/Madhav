@@ -9,36 +9,33 @@
 --
 -- Idempotency: checks if 'acharya' is already accepted before making changes.
 -- Safe to re-run.
+--
+-- FIX (applied DAR-P2-S5 2026-05-25): pg_constraint.consrc was removed in PG12.
+-- Use pg_get_constraintdef(c.oid) instead for constraint text inspection.
 
 DO $$
 DECLARE
   v_conname text;
+  v_condef  text;
 BEGIN
-  -- Find the name of the existing CHECK constraint on mcp_api_keys.audience_tier.
-  -- The constraint name may vary by environment (Supabase auto-names it).
-  SELECT conname
-    INTO v_conname
-    FROM pg_constraint
-    JOIN pg_class ON pg_class.oid = pg_constraint.conrelid
-    WHERE pg_class.relname = 'mcp_api_keys'
-      AND pg_constraint.contype = 'c'
-      AND pg_constraint.consrc LIKE '%audience_tier%';
+  -- Find the CHECK constraint on mcp_api_keys that relates to audience_tier.
+  -- pg_constraint.consrc was removed in PG12; use pg_get_constraintdef() instead.
+  SELECT c.conname, pg_get_constraintdef(c.oid)
+    INTO v_conname, v_condef
+    FROM pg_constraint c
+    JOIN pg_class r ON r.oid = c.conrelid
+    WHERE r.relname = 'mcp_api_keys'
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) LIKE '%audience_tier%';
 
   -- If the constraint already includes 'acharya', nothing to do.
-  IF v_conname IS NOT NULL THEN
-    IF EXISTS (
-      SELECT 1
-      FROM pg_constraint c
-      JOIN pg_class r ON r.oid = c.conrelid
-      WHERE r.relname = 'mcp_api_keys'
-        AND c.contype = 'c'
-        AND c.consrc LIKE '%acharya%'
-    ) THEN
-      RAISE NOTICE 'audience_tier constraint already includes acharya — no change needed.';
-      RETURN;
-    END IF;
+  IF v_conname IS NOT NULL AND v_condef LIKE '%acharya%' THEN
+    RAISE NOTICE 'audience_tier constraint already includes acharya — no change needed.';
+    RETURN;
+  END IF;
 
-    -- Drop the old constraint and add the new one including 'acharya'.
+  -- Drop the old constraint if it exists.
+  IF v_conname IS NOT NULL THEN
     EXECUTE format('ALTER TABLE mcp_api_keys DROP CONSTRAINT %I', v_conname);
   END IF;
 

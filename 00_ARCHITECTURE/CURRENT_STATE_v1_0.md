@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.54 (2026-05-25, DAR-P7-S26-CLOSE):
+    **Data Asset Reconciliation (DAR) COMPLETE — all 26 sessions finished; all 19 findings resolved; feature/data-asset-reconciliation merged to main. Sealing artifact: 00_ARCHITECTURE/DAR_CLOSE_v1_0.md.**
+    Key outcomes: MSR v5.1 (573/573 signals B.3-grounded); chart_facts 767 rows/36 categories; ephemeris_daily rebuilt MEAN_NODE (560,646 rows, 1930-2100); rag_chunks 6,990 rows; school_signal_coverage 4,011 rows; ICR+MCP routes confirmed MSR_v5_0; CGM/UCN/CDLM cross-ref integrity PASS; MP.1+MP.2 mirrors updated. Residuals: ephemeris 1900-1930 gap (non-blocking), build_manifests auto-registration, lel_events table absent — all deferred to V1.3 queue.
+    files_touched: ["00_ARCHITECTURE/DAR_CLOSE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/session_queue.yaml", "00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/CONDUCTOR_LOG.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (DAR concurrent workstream close; no macro-phase change).
+    last_session_id: DAR-P7-S26. predecessor_session: DAR-P7-S25.
+    carry_forwards: ["Worktree MadhavDataAsset: retire manually after operator verification (cannot remove from within worktree)", "Ephemeris backfill 1900-1930 (100,080 rows): deferred to V1.3 queue", "build_manifests auto-registration audit: deferred to V1.3 queue"]
+    next_session_objective: "DAR complete. Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md."
+    file_updated_at: 2026-05-25. file_updated_by_session: DAR-P7-S26.
   - v5.53 (2026-05-23, R11G-S7-GOVERNANCE-CLOSE):
     **R11.G COMPLETE. Tool executor wired (mcp_tool_executor.ts), SettingsDropdown ships, NEXT_PUBLIC parity flags activated. PR #152, merge SHA 52e18cb5, Cloud Run amjis-web-00367-b59. KNOWN_PRE_EXISTING_FAILURES.md updated to v1.3 (18 pre-existing, 0 R11.G regressions).**
     Key outcomes: (A) PR #152 squash-merged to main (SHA 52e18cb5): mcp_tool_executor.ts implements real MCP dispatch to MARSYS retrieval tool registry; all 5 provider gates in route.ts pass executeMCPTool to runAgenticLoop (replaces stub null executor from R11.F). Tool errors return "ERROR: <msg>" strings; loop does not abort. (B) SettingsDropdown.tsx shipped: gear icon → "Chat experience" section → "Classic Marsys" (default) / "Claude-style chat" radio options; MultiProviderParityToggle.tsx deleted. (C) deploy.yml NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY + NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL defaulted true; Settings dropdown now visible in production; default localStorage (null) → Classic shell (no surprise change for existing users). (D) 37 new tests: agentic-loop-engine.test.ts (5), SettingsDropdown.test.tsx (12), useMultiProviderParity.test.tsx (7), r11g-server-smoke/ (13); all PASS. (E) KNOWN_PRE_EXISTING_FAILURES.md v1.3 baseline: 18 pre-existing, 0 R11.G regressions. (F) ROLLOUT_PHASE_R11G_RESULT.md authored. (G) STREAM_R11V2_COMPLETE.md §8 added. (H) CLAUDE.md v4.0. (I) MP.1+MP.2 mirrors updated.
