@@ -66,6 +66,21 @@ export const SURGICAL_TOOLS = [
   'query_chandra_balam',
   'jaimini_chara_dasha',
   'jaimini_chara_dasha_full',
+  // UDA Campaign additions — 14 portal-native tools now whitelisted for MCP primitive dispatch
+  'msr_sql',
+  'temporal',
+  'kp_query',
+  'query_kp_ruling_planets',
+  'pattern_register',
+  'resonance_register',
+  'cluster_atlas',
+  'contradiction_register',
+  'query_ucn_walk',
+  'query_cdlm_lookup',
+  'query_rm_walk',
+  'query_jaimini_drishti',
+  'timeline_query',
+  'query_signal_state',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -105,6 +120,22 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   query_chandra_balam: 'query_chandra_balam',
   jaimini_chara_dasha: 'jaimini_chara_dasha',
   jaimini_chara_dasha_full: 'jaimini_chara_dasha_full',
+  // UDA Campaign additions — 14 portal-native tools exposed as MCP primitives
+  // MCP name → platform retrieval tool name (same in all 14 cases)
+  msr_sql: 'msr_sql',
+  temporal: 'temporal',
+  kp_query: 'kp_query',
+  query_kp_ruling_planets: 'query_kp_ruling_planets',
+  pattern_register: 'pattern_register',
+  resonance_register: 'resonance_register',
+  cluster_atlas: 'cluster_atlas',
+  contradiction_register: 'contradiction_register',
+  query_ucn_walk: 'query_ucn_walk',
+  query_cdlm_lookup: 'query_cdlm_lookup',
+  query_rm_walk: 'query_rm_walk',
+  query_jaimini_drishti: 'query_jaimini_drishti',
+  timeline_query: 'timeline_query',
+  query_signal_state: 'query_signal_state',
 }
 
 /**

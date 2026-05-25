@@ -23,17 +23,19 @@ import {
 } from '@/lib/mcp/primitives_registry'
 
 describe('primitives_registry — isAllowedSurgicalTool', () => {
-  it('returns true for all 23 whitelisted tool names', () => {
+  it('returns true for all 37 whitelisted tool names', () => {
     const mcpToolNames = Object.keys(MCP_TO_RETRIEVAL_TOOL)
-    expect(mcpToolNames).toHaveLength(23)
+    expect(mcpToolNames).toHaveLength(37)
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
   })
 
   it('returns false for non-whitelisted tool names', () => {
-    expect(isAllowedSurgicalTool('pattern_register')).toBe(false)
-    expect(isAllowedSurgicalTool('resonance_register')).toBe(false)
+    // pattern_register and resonance_register are now whitelisted (UDA Campaign additions)
+    expect(isAllowedSurgicalTool('pattern_register')).toBe(true)
+    expect(isAllowedSurgicalTool('resonance_register')).toBe(true)
+    // These remain non-whitelisted
     expect(isAllowedSurgicalTool('ask_madhav')).toBe(false)
     expect(isAllowedSurgicalTool('')).toBe(false)
     expect(isAllowedSurgicalTool('__proto__')).toBe(false)
@@ -174,13 +176,14 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
   })
 
   it('Test 2 (whitelist): non-whitelisted tool returns 400 with class: validation', async () => {
-    const req = buildRequest('pattern_register')
-    const res = await POST(req, buildRouteParams('pattern_register'))
+    // pattern_register is now whitelisted (UDA Campaign); use ask_madhav which is not surgical
+    const req = buildRequest('ask_madhav')
+    const res = await POST(req, buildRouteParams('ask_madhav'))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.ok).toBe(false)
     expect(body.error.class).toBe('validation')
-    expect(body.error.message).toContain('pattern_register')
+    expect(body.error.message).toContain('ask_madhav')
   })
 
   it('Test 3 (surgical flag): happy-path call returns epistemics.surgical === true', async () => {

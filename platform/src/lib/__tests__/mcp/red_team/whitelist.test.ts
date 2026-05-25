@@ -19,13 +19,13 @@ import {
 // ── RT-04: Whitelist enforcement ─────────────────────────────────────────────
 
 describe('RT-04 — Primitive whitelist enforcement', () => {
-  it('RT-04a: non-whitelisted tool pattern_register is rejected', () => {
-    // pattern_register is in-process only (not a surgical primitive)
-    expect(isAllowedSurgicalTool('pattern_register')).toBe(false)
+  it('RT-04a: whitelisted tool pattern_register is accepted (UDA Campaign addition)', () => {
+    // pattern_register was added as a UDA surgical primitive
+    expect(isAllowedSurgicalTool('pattern_register')).toBe(true)
   })
 
-  it('RT-04b: non-whitelisted tool resonance_register is rejected', () => {
-    expect(isAllowedSurgicalTool('resonance_register')).toBe(false)
+  it('RT-04b: whitelisted tool resonance_register is accepted (UDA Campaign addition)', () => {
+    expect(isAllowedSurgicalTool('resonance_register')).toBe(true)
   })
 
   it('RT-04c: non-whitelisted tool ask_madhav is rejected (end-to-end tool, not surgical)', () => {
@@ -42,11 +42,15 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
 
   it('RT-04f: arbitrary string is rejected', () => {
     expect(isAllowedSurgicalTool('drop_table_msr_signals')).toBe(false)
-    expect(isAllowedSurgicalTool('timeline_query')).toBe(false)
-    expect(isAllowedSurgicalTool('contradiction_register')).toBe(false)
+    // timeline_query and contradiction_register are now whitelisted UDA Campaign additions
+    expect(isAllowedSurgicalTool('timeline_query')).toBe(true)
+    expect(isAllowedSurgicalTool('contradiction_register')).toBe(true)
+    // These remain unwhitelisted
+    expect(isAllowedSurgicalTool('nonexistent_tool')).toBe(false)
+    expect(isAllowedSurgicalTool('ask_madhav')).toBe(false)
   })
 
-  it('RT-04g: all original + TR Wave whitelisted names are accepted', () => {
+  it('RT-04g: all original + TR Wave + UDA whitelisted names are accepted', () => {
     const expected = [
       // Original 11
       'query_chart_facts',
@@ -70,14 +74,29 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
       'divisional_query',
       'remedial_codex_query',
       'query_muhurat',
+      // UDA Campaign additions (14 portal-native tools)
+      'msr_sql',
+      'temporal',
+      'kp_query',
+      'query_kp_ruling_planets',
+      'pattern_register',
+      'resonance_register',
+      'cluster_atlas',
+      'contradiction_register',
+      'query_ucn_walk',
+      'query_cdlm_lookup',
+      'query_rm_walk',
+      'query_jaimini_drishti',
+      'timeline_query',
+      'query_signal_state',
     ]
     for (const name of expected) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
   })
 
-  it('RT-04h: whitelist maps 23 entries (11 original + 4 MCP TR + 4 retrieval aliases + 4 stubs)', () => {
-    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(23)
+  it('RT-04h: whitelist maps 37 entries (11 original + 4 MCP TR + 4 retrieval aliases + 4 stubs + 14 UDA)', () => {
+    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(37)
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {
