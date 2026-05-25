@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.55
+version: 5.56
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.56 (2026-05-25, UDA1-GOVERNANCE-CLOSE):
+    **UDA-1 COMPLETE — Portal RETRIEVAL_TOOLS 36→51 (+15 tools). CAPABILITY_MANIFEST.json: 15 tools updated channel mcp→both. PR #161 (feature/universal-parity) merged to main at 0a2447f3. Worktrees MadhavParity + R11 series + MadhavToolingFix retired. Pending: UDA-2 (10 sessions — MCP wrappers for portal-only tools).**
+    Key outcomes: (1) CAPABILITY_MANIFEST.json — 15 tools (query_transits_over_natal, query_yogas_active_now, get_planet_avastha, get_shadbala_full, query_jaimini_chara_dasha, query_planetary_period_predictions, query_dasamsha_career, query_shashtiamsha, query_eclipse_transits, query_planet_war, query_drekkana_drishti, query_remedies_prescribed, tara_balam_for_native, chandra_balam_for_native, muhurta_finder) updated from channel:mcp to channel:both. (2) SESSION_LOG appended with UDA-1 Conductor Run 2 entry. (3) CLAUDE.md §E Universal Parity Campaign workstream added. (4) Worktrees retired: MadhavParity (feature/universal-parity merged PR #161), MadhavR11A, MadhavR11B, MadhavR11CDE, MadhavR11F, MadhavR11G (all COMPLETE per §E), MadhavToolingFix (PR #159 bace7b45 merged). (5) UDA-1 conductor run: 8/8 sessions PASS, 0 gate failures, SHAs a5a78bd3–d526a5f4.
+    files_touched: ["00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "CLAUDE.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (UDA-1 governance close; no macro-phase change).
+    last_session_id: UDA1-GOVERNANCE-CLOSE. predecessor_session: DAR-LAND-ON-MAIN.
+    carry_forwards: ["UDA-2: 10 sessions — MCP wrappers for portal-only tools (briefs not yet authored)", "UDA-3: 3 sessions — interface normalization", "UDA-4: 2 sessions — V1.3 audit queue items", "portal_retrieval_tools_count: 51 (was 36 pre-UDA-1)"]
+    next_session_objective: "UDA-2 planning: author briefs for 10 portal-only→MCP wrapper sessions. Or open M6-A-S1 per PHASE_M6_PLAN_v1_0.md."
+    file_updated_at: 2026-05-25. file_updated_by_session: UDA1-GOVERNANCE-CLOSE.
   - v5.55 (2026-05-25, DAR-LAND-ON-MAIN):
     **DAR land-on-main + worktree cleanup COMPLETE — 3 cherry-pick commits landed on main (a403b05a tooling remediation, 8f0b89b5 universal parity artifacts, 49108498 DAR Cowork planning artifacts); ef6d347f merge commit skipped (empty — content already on main via abef72b2). feature/data-asset-reconciliation + fix/ci-gate-cleanup branches deleted (local + remote). Worktree MadhavDataAsset removed (--force). CLAUDE.md §E DAR bullet added. Gemini mirrors updated. No macro-phase change.**
     Key outcomes: (1) fix/ci-gate-cleanup pushed to origin (stale MERGE_HEAD artifact cleared). (2) Cherry-picks to main at MadhavToolingFix: a403b05a PASS (5 platform-mcp conflict files accepted INCOMING); 8f0b89b5 PASS clean; 49108498 PASS clean; ef6d347f SKIP (empty cherry-pick — abef72b2 already contains all DAR content via ffdc3297 merge). (3) main pushed to origin/main at 45b049ad. (4) DAR_CLOSE_v1_0.md at 00_ARCHITECTURE/ confirmed status=COMPLETE sessions_completed=26. (5) MadhavDataAsset worktree removed --force (had untracked files). Madhav main worktree detached HEAD (ef6d347f — cannot remove main working tree via git worktree remove). (6) Remote branches feature/data-asset-reconciliation + fix/ci-gate-cleanup deleted. (7) Local tracking branches deleted; stale lock files cleared; remote prune run. (8) CLAUDE.md §E DAR COMPLETE bullet; .geminirules + .gemini/project_state.md mirror adapted-parity update.
@@ -4185,7 +4194,9 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: R11V2-PHASE-DE-ROLLOUT       # R11V2-PHASE-DE-ROLLOUT 2026-05-23: D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). deploy.yml flags fixed. STREAM_R11V2_COMPLETE.md §7 added. D/E result docs written. Predecessor R11V2-DISPATCH-WIRING-COMPLETE.
+  last_session_id: UDA1-GOVERNANCE-CLOSE         # UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
+    # === Predecessor R11V2-PHASE-DE-ROLLOUT (2026-05-23) preserved for audit ===
+    # R11V2-PHASE-DE-ROLLOUT: D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). deploy.yml flags fixed. STREAM_R11V2_COMPLETE.md §7 added. D/E result docs written. Predecessor R11V2-DISPATCH-WIRING-COMPLETE.
     # === Predecessor R11V2-DISPATCH-WIRING-COMPLETE (2026-05-22) ===
     # NATIVE-CLIENT-ID-FIX 2026-05-22: MuhuratResultsList.tsx NATIVE_CLIENT_ID corrected (abhisek_mohanty_primary → 362f9f17-95a5-490b-a5a7-027d3e0efda0); commit 246b35c6; F.2 E2E unblocked; predecessor PHASE-4C-CLOSE
     # M5-E-S1 (2026-05-14). Bayesian posterior framing (predictive.ts v3.0). LL.8 ACTIVE (LL8_SPEC v1.1).
@@ -5025,6 +5036,10 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    UDA-1 COMPLETE. UDA-2 planning: author briefs for 10 portal-only→MCP wrapper sessions.
+    portal_retrieval_tools_count: 51 (UDA-1 added 15; was 36). Or open M6-A-S1 per
+    PHASE_M6_PLAN_v1_0.md. UDA-2 (10 sessions), UDA-3 (3 sessions), UDA-4 (2 sessions) queued.
+    === Predecessor R11V2-PHASE-DE-ROLLOUT carry-forwards (superseded) preserved for audit ===
     R11V2-PHASE-DE-ROLLOUT carry-forwards: (1) D.3 Gemini cache — wire adapter.cache() →
     genai.caches.create() → cachedContent ID into route.ts dispatch block; then flip
     MARSYS_FLAG_R11D_GEMINI_CACHE=true and run 2-query verification. (2) E.1–E.4 agentic loop —
