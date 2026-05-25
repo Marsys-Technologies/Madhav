@@ -5,23 +5,25 @@
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 34 tools registered (v4.2, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2 + UDA-2-S3 + UDA-2-S4 + UDA-2-S5).
+ * - 36 tools registered (v4.3, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1 + UDA-2-S2 + UDA-2-S3 + UDA-2-S4 + UDA-2-S5 + UDA-2-S6).
  *
- * Tool count (v4.2, 34 tools):
+ * Tool count (v4.3, 36 tools):
  *   Tier 1 super-endpoint (1): chart_summary
  *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (22): query_chart_facts, query_signals, query_dasha_periods,
+ *   Tier 3 surgical primitives (24): query_chart_facts, query_signals, query_dasha_periods,
  *                query_panchanga, query_ephemeris, query_transit_event,
  *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
  *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
  *                msr_sql, temporal, kp_query, query_kp_ruling_planets,
  *                pattern_register, resonance_register,
- *                cluster_atlas, contradiction_register
+ *                cluster_atlas, contradiction_register,
+ *                query_ucn_walk, query_cdlm_lookup
  *                (last 4 added TR Wave PR #159 — Class A: engine existed;
  *                temporal added UDA-2-S2 — portal-only → MCP parity;
  *                kp_query + query_kp_ruling_planets added UDA-2-S3 — KP system parity;
  *                pattern_register + resonance_register added UDA-2-S4 — Discovery Layer parity;
- *                cluster_atlas + contradiction_register added UDA-2-S5 — Discovery Layer cluster/contradiction parity)
+ *                cluster_atlas + contradiction_register added UDA-2-S5 — Discovery Layer cluster/contradiction parity;
+ *                query_ucn_walk + query_cdlm_lookup added UDA-2-S6 — UCN + CDLM holistic-synthesis parity)
  *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
  *   Tier 5 observability (2): get_trace, list_recent_queries
  *   Tier 5 perf (2): tool_health, data_coverage
@@ -67,6 +69,9 @@ import { registerResonanceRegister } from './tools/resonance_register.js'
 // Tier 3: UDA-2-S5 — cluster_atlas + contradiction_register Discovery Layer cluster/contradiction parity
 import { registerClusterAtlas } from './tools/cluster_atlas.js'
 import { registerContradictionRegister } from './tools/contradiction_register.js'
+// Tier 3: UDA-2-S6 — query_ucn_walk + query_cdlm_lookup UCN + CDLM holistic-synthesis parity
+import { registerQueryUcnWalk } from './tools/query_ucn_walk.js'
+import { registerQueryCdlmLookup } from './tools/query_cdlm_lookup.js'
 // Tier 4: raw-asset reads
 import { registerReadAsset } from './tools/read_asset.js'
 import { registerReadClassicalText } from './tools/read_classical_text.js'
@@ -197,6 +202,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerResonanceRegister(server, getPrincipal)
   registerClusterAtlas(server, getPrincipal)
   registerContradictionRegister(server, getPrincipal)
+  registerQueryUcnWalk(server, getPrincipal)
+  registerQueryCdlmLookup(server, getPrincipal)
 
   // Register Tier 4 raw-asset reads.
   registerReadAsset(server, getPrincipal)
