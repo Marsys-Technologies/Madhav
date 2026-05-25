@@ -2,10 +2,10 @@
 # Each session writes its domain key as DONE when complete
 # S20 reads this to validate all domains complete before MSR v5.1 bump
 
-grounded_lagna: PENDING
-grounded_sun: PENDING
-grounded_moon: PENDING
-grounded_mars: PENDING
+grounded_lagna: DONE      # DAR-P5-S16 (2026-05-25): 83 signals grounded
+grounded_sun: DONE        # DAR-P5-S16 (2026-05-25): 100 signals grounded
+grounded_moon: DONE       # DAR-P5-S16 (2026-05-25): 134 signals grounded
+grounded_mars: DONE       # DAR-P5-S16 (2026-05-25): 96 signals grounded
 grounded_mercury: PENDING
 grounded_jupiter: PENDING
 grounded_venus: PENDING
@@ -14,5 +14,20 @@ grounded_house_domain: PENDING
 grounded_dasha: PENDING
 grounded_nadi_bnn: PENDING
 grounded_yogini_tajaka: PENDING
-total_grounded: 0
-last_updated: ~
+total_grounded: 309
+last_updated: 2026-05-25
+
+# Session notes:
+# DAR-P5-S16 (2026-05-25):
+#   - Ran generate_derivation_ledger_stubs.py: injected 567 PENDING stubs
+#     (2 signals already had derivation_ledger blocks from prior sessions)
+#   - Grounded 309 signals across Lagna/Sun/Moon/Mars domains
+#   - FORENSIC v8.0 fact IDs used:
+#     Lagna:  MET.LAGNA.SIGN, MET.LAGNA.NAK, HSE.1, CSP.1, BVB.JH.1, KP.CUSP.1
+#     Sun:    PLN.SUN, D9.SUN, D10.SUN, SBL.TOTAL.SUN, IKP.SUN, KP.PLN.SUN
+#     Moon:   PLN.MOON, MET.MOON.SIGN, MET.MOON.NAK, D9.MOON, D9.12H.TENANTS,
+#             KRK.ATMA, SBL.TOTAL.MOON, IKP.MOON, KP.PLN.MOON
+#     Mars:   PLN.MARS, D9.MARS, D10.MARS, SBL.TOTAL.MARS, IKP.MARS,
+#             KP.PLN.MARS, CSI.MARS, HSE.7
+#   - 258 signals remain PENDING (Mercury, Jupiter, Venus, Saturn,
+#     house domain, dasha, nadi/BNN, Yogini/Tajaka)
