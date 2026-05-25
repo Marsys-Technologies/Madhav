@@ -27741,3 +27741,69 @@ UDA-4: 50 MSR citation scaffolds (forensic_ref on highest-significance signals);
 Branch: feature/universal-parity-2 merged to main (squash). Commits b9044846..28fdc3fa. Merge SHA: 79a8168f.
 Campaign status: Universal Parity Campaign FULLY COMPLETE — all 34 sessions across UDA-Q/0/1/2/3/4 done.
 Portal RETRIEVAL_TOOLS: 51 | MCP tools: 40 | Gate failures: 0
+
+---
+
+## SRP-DEPLOY — 2026-05-26
+
+```yaml
+session_open:
+  session_id: SRP-DEPLOY
+  session_type: deploy_and_governance
+  opened: 2026-05-26T01:14:00+05:30
+  objective: >
+    Deploy SRP-F-1 (portal fixes, ce52cd52) + SRP-F-2 (MCP sidecar fixes, 649aa92a)
+    to production. Post-deploy verification. Update KNOWN_PRE_EXISTING_FAILURES.md
+    to v1.5 correcting v1.4 false-zero claim. Close SRP workstream governance.
+  may_touch:
+    - KNOWN_PRE_EXISTING_FAILURES.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch:
+    - platform/**
+    - platform-mcp/**
+    - 01_FACTS_LAYER/**
+    - 025_HOLISTIC_SYNTHESIS/**
+    - CLAUDE.md
+```
+
+SRP-DEPLOY session. All SRP code (FIX-1 through FIX-6) was already on main at HEAD 649aa92a. This session deployed, verified, and closed governance.
+
+**DEPLOY amjis-web:** GitHub Actions `deploy.yml` workflow triggered (run `26417287206`). Job `Build & Deploy Web` — COMPLETED / SUCCESS. New revision: `amjis-web-00406-g2s` (was `amjis-web-00405-6tk`). Commits included: SRP-F-1 (ce52cd52) + SRP-F-2 (649aa92a).
+
+**DEPLOY amjis-mcp:** `gcloud builds submit` from `platform-mcp/` with `_TAG=649aa92a`. Build `8818e084-94ba-4cbd-b0e1-d807003ae9a1` — SUCCESS (finished 2026-05-25T19:52:55Z). New revision: `amjis-mcp-00016-86n` (was `amjis-mcp-00015-96k`).
+
+**VERIFY:** Both services at 100% traffic on new revisions. Primitives smoke endpoint auth-gated (manual browser verify required). Sidecar GH Actions job still running for Python sidecar (SRP-unchanged; non-blocking).
+
+**VITEST:** Platform: 13 failures. Platform-MCP: 22 failures. Total: 35. All pre-existing (introduced by UDA-1 + tooling-remediation upstream PRs after v1.4 baseline). SRP introduced 0 new failures.
+
+**KNOWN_PRE_EXISTING_FAILURES v1.5:** 9 groups documented (5 platform arcs: UDA-1 spec gap, tooling-remediation ToolBundle, MSR count drift, RCS trace-audit params, ICR DIS.013 resolution; 4 platform-mcp arcs: tooling-remediation callPlatformPrimitive, tool catalog count, live-DB integration, signal-state schema). SRP fix verification table included. Commit: 82541cd8.
+
+**CURRENT_STATE:** Bumped v5.57 → v5.58.
+
+```yaml
+session_close:
+  session_id: SRP-DEPLOY
+  close_timestamp: 2026-05-26T02:30:00+05:30
+  acceptance_criteria_met: true
+  all_acceptance_criteria_met: true
+  commits_this_session:
+    - sha: 82541cd8
+      message: "governance(srp): KNOWN_PRE_EXISTING_FAILURES v1.5 — document 35 pre-existing failures"
+      branch: main
+  current_state_version: "5.58"
+  session_log_updated: true
+  mirror_updates_propagated: false
+  carry_forwards:
+    - "PRs #166/#167/#168/#169 open — test-suite branches; merge when review complete"
+    - "amjis-sidecar GH Actions redeploy in progress (Python sidecar — SRP-unchanged, non-blocking)"
+    - "primitives_registry FIX-1 smoke: manual browser verify required (auth-gated endpoint)"
+  close_criteria_met: true
+  handoff_notes: >
+    SRP-DEPLOY complete. Both SRP fix streams live in production:
+    amjis-web-00406-g2s (FIX-1/FIX-2/FIX-6 portal fixes) and
+    amjis-mcp-00016-86n (FIX-3/FIX-4/FIX-5 MCP sidecar fixes).
+    KNOWN_PRE_EXISTING_FAILURES.md updated to v1.5 with 35 documented failures.
+    SRP test PRs #166-169 open for review, non-blocking.
+    Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md.
+```

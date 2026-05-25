@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.57
+version: 5.58
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.58 (2026-05-26, SRP-DEPLOY):
+    **SRP-DEPLOY COMPLETE — SRP-F-1 (portal) + SRP-F-2 (MCP) fixes live in production. amjis-web revision: amjis-web-00406-g2s. amjis-mcp revision: amjis-mcp-00016-86n. KNOWN_PRE_EXISTING_FAILURES.md updated to v1.5 (35 pre-existing failures documented; corrects v1.4 false-zero). PRs #166/#167/#168/#169 remain open (test-suite branches, non-blocking).**
+    Key outcomes: (1) FIX-1: primitives_registry whitelists 37 tools (was 23). (2) FIX-2: forward_looking reads params from request context. (3) FIX-3: valence enum matches DB schema. (4) FIX-4: sample_step cast to integer. (5) FIX-5: significance field name + type corrected in lel_query.ts. (6) FIX-6: lel_query source_version annotation updated to v1.7. (7) KNOWN_PRE_EXISTING_FAILURES v1.5 documents 35 pre-existing failures (13 platform + 22 platform-mcp); SRP-specific tests all GREEN.
+    files_touched: ["KNOWN_PRE_EXISTING_FAILURES.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (SRP deploy + governance close; no macro-phase change).
+    last_session_id: SRP-DEPLOY. predecessor_session: UDA234-GOVERNANCE-CLOSE.
+    carry_forwards: ["PRs #166/#167/#168/#169 open — test-suite branches; merge when review complete", "amjis-sidecar GH Actions redeploy in progress (Python sidecar — SRP-unchanged, non-blocking)", "primitives smoke count manual verify required (auth-gated endpoint)"]
+    next_session_objective: "SRP complete and live. Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md."
+    file_updated_at: 2026-05-26. file_updated_by_session: SRP-DEPLOY.
   - v5.57 (2026-05-25, UDA234-GOVERNANCE-CLOSE):
     **UDA-2/3/4 COMPLETE — MCP tools 26→40 (+14 wrappers). Universal Parity Campaign FULLY COMPLETE — all 34 sessions across UDA-Q/0/1/2/3/4 done. PR #164 (feature/universal-parity-2) merged to main at 79a8168f. MadhavParity2 worktree retired. Branch feature/universal-parity-2 deleted.**
     Key outcomes: (1) UDA-2: 14 new MCP wrappers created — msr_sql, temporal, kp_query, query_kp_ruling_planets, pattern_register, resonance_register, cluster_atlas, contradiction_register, query_ucn_walk, query_cdlm_lookup, query_rm_walk, query_jaimini_drishti, timeline_query, query_signal_state. MCP tool count: 26→40. (2) UDA-3: INTERFACE_NORMALIZATION_REGISTER authored; 2 portal alias keys added; 4 HIGH schema gaps fixed; PLANNER_PROMPT v2.7 R-NRM.1 live; .geminirules mirror updated. (3) UDA-4: 50 MSR citation scaffolds on top-50 ungrouped MSR signals (forensic_ref populated); bootstrap_ephemeris.py + bootstrap_panchanga.py auto-register build_manifests on completion. (4) Conductor Run 3: 15/15 sessions PASS, 0 gate failures. (5) Universal Parity Campaign: Portal RETRIEVAL_TOOLS 51 (was 36), MCP tools 40 (was 26). Both channels at parity.
