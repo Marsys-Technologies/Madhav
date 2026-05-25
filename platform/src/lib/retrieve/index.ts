@@ -14,6 +14,7 @@
  * Phase 4D: query_transit_event — transit event search: when does X happen? (1 tool; 29th total)
  * COV-S4: query_muhurat, query_jaimini_drishti, query_v7_additions — sidecar wrappers (tools 31-33)
  * COV-S5: query_ucn_walk, query_cdlm_lookup, query_rm_walk — L2.5 structural graph tools (tools 34-36)
+ * UDA-1-S1: query_transits_over_natal, query_yogas_active_now — transit windows + yoga activation (tools 37-38)
  */
 
 import * as msrSql from './msr_sql'
@@ -83,6 +84,10 @@ import * as queryUcnWalk from './query_ucn_walk'
 import * as queryCdlmLookup from './query_cdlm_lookup'
 import * as queryRmWalk from './query_rm_walk'
 
+// UDA-1-S1 — transit-to-natal windows + yoga activation (tools 37-38)
+import * as queryTransitsOverNatal from './query_transits_over_natal'
+import * as queryYogasActiveNow from './query_yogas_active_now'
+
 export * from './types'
 import type { RetrievalTool } from './types'
 
@@ -123,6 +128,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   queryUcnWalk.tool,
   queryCdlmLookup.tool,
   queryRmWalk.tool,
+  queryTransitsOverNatal.tool,
+  queryYogasActiveNow.tool,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
