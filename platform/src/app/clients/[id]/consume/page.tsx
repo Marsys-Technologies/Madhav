@@ -120,7 +120,6 @@ export default async function ConsumePage({
   const chartMeta = [chart.birth_date, chart.birth_place].filter(Boolean).join(' · ')
 
   const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
-  const consumeUiV2Enabled = configService.getFlag('CONSUME_UI_V2_ENABLED')
   const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
   const slashEnabled = configService.getFlag('R8_SLASH_ENABLED')
   const exportEnabled = configService.getFlag('R8_EXPORT_ENABLED')
@@ -147,7 +146,6 @@ export default async function ConsumePage({
         module: c.module,
       }))}
       panelModeEnabled={panelModeEnabled}
-      consumeUiV2Enabled={consumeUiV2Enabled}
       costVisibilityEnabled={costVisibilityEnabled}
       audienceTier={audienceTier}
       initialMessages={initialMessages}

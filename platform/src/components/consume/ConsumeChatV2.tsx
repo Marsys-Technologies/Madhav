@@ -63,8 +63,6 @@ export interface ConsumeChatProps {
   initialMessages?: UIMessage[]
   panelModeEnabled?: boolean
   audienceTier?: AudienceTier
-  /** AIOps Phase 3: enables the new lifecycle-slot UI. Default false through CO.6. */
-  consumeUiV2Enabled?: boolean
   /** γ6: show per-message cost to non-admin users. Super-admin always sees cost. */
   costVisibilityEnabled?: boolean
   /** R8-S6: enable inline slash command menu in composer */
