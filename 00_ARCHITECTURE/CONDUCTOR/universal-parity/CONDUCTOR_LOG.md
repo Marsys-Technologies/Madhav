@@ -29,6 +29,9 @@
 | UDA-Q-S6 | 2026-05-25 | PASS | 3/3 green | cc91b039 | dasha_lord + valence + temporal_activation → portal msr_sql |
 | UDA-Q-S7 | 2026-05-25 | PASS | 2/2 green | 1909074a | LL.1 calibration + domain floors + Pancha-MP dedup → MCP query_signals |
 | UDA-Q-S8 | 2026-05-25 | PASS | 3/3 green | ee0a9182 | 7/7 quality gaps verified. HAP-1 written. |
+| UDA-0-S1 | 2026-05-25 | PASS | 3/3 green | c9494bc3 | Manifest audited: 22 id→canonical_id promotions; 0 dupes; 0 stale paths |
+| UDA-0-S2 | 2026-05-25 | PASS | 2/2 green | bc89d1cf | 36 portal RETRIEVAL_TOOLS registered in manifest |
+| UDA-0-S3 | 2026-05-25 | PASS | 3/3 green | e3a7ae47 | 43 MCP tools in manifest; catalog.ts 22→43 entries. HAP-2 written. |
 
 ---
 

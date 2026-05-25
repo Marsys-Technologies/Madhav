@@ -156,7 +156,7 @@ sessions:
 
   - id: UDA-0-S1
     name: "Manifest: Audit + deduplicate CAPABILITY_MANIFEST.json"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_0_S1_v1_0.md"
     gate_commands:
@@ -173,7 +173,7 @@ sessions:
 
   - id: UDA-0-S2
     name: "Manifest: Register all 36 portal RETRIEVAL_TOOLS"
-    status: pending
+    status: completed
     conductor_run: 1
     brief_path: "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_PARITY_UDA_0_S2_v1_0.md"
     gate_commands:
@@ -191,7 +191,7 @@ sessions:
 
   - id: UDA-0-S3
     name: "Manifest: Register all 41 MCP tools + fix catalog.ts"
-    status: pending
+    status: completed
     conductor_run: 1
     requires_hap: true
     hap_id: HAP-2
