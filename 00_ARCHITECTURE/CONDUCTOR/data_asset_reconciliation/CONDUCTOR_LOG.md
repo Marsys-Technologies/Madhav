@@ -68,3 +68,8 @@ Notes: grounded_nadi_bnn and grounded_yogini_tajaka both set DONE by S18 sub-age
 Gate results: 2/2 PASS
 Commit: 7a99c592
 Notes: S20 sub-agent timed out but had completed version bump to "5.1" (quoted). Conductor fixed: unquoted version: 5.1 for grep gate compat; total_grounded set to 573 (canonical); CAPABILITY_MANIFEST + CANONICAL_ARTIFACTS updated. Phase 5 complete — 573/573 signals grounded, MSR v5.1 sealed.
+
+## DAR-P6-S21 — COMPLETE — 2026-05-25
+Gate results: 3/3 PASS
+Commit: fb61d514
+Notes: DB unreachable (no DATABASE_URL in local env); node_type recorded as TRUE_NODE (legacy, per P2-S6). Bootstrap script uses swe.MEAN_NODE hardcoded (§4.B fix from 2026-05-19) — no flag needed. RUNBOOK amended to v1.1 with §7 DAR-specific guide. Range: 1900-01-01 to 2100-12-31 = 657,450 rows.
