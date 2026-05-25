@@ -223,7 +223,7 @@ sessions:
     phase: 5
     name: "B.3 grounding backfill — Mercury + Jupiter + Venus + Saturn signals (domains 5–8)"
     brief: 00_ARCHITECTURE/CONDUCTOR/data_asset_reconciliation/briefs/DAR-P5-S17.md
-    status: PENDING
+    status: COMPLETE
     estimated_minutes: 90
     depends_on: [DAR-P5-S16]
     gate_commands:

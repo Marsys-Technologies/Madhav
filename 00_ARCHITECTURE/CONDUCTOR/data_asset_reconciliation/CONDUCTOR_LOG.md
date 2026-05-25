@@ -49,3 +49,8 @@ Notes: Script parses 569 signals (4 known ID gaps per MSR frontmatter); stubs_ge
 Gate results: 4/4 PASS
 Commit: af1ca8dd
 Notes: 567 stubs injected into MSR_v5_0.md. 309 signals grounded (Lagna=83, Sun=100, Moon=134, Mars=96). GROUNDING_PROGRESS.yaml created. 258 signals remain PENDING for S17–S19.
+
+## DAR-P5-S17 — COMPLETE — 2026-05-25
+Gate results: 4/4 PASS
+Commit: 6344b496
+Notes: 196 signals grounded (Mercury=61, Jupiter=75, Venus=49, Saturn=72). Total GROUNDED=505. 62 PENDING remain for S18-S19 (Rahu/Ketu, house-domain, dasha, nadi/BNN, Yogini/Tajaka).
