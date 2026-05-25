@@ -28,7 +28,12 @@ export const HOLISTIC_BUNDLE_DESCRIPTION = buildToolDescription({
   whenToPrefer:
     'FIRST CALL when any synthesis question requires cross-layer context before reasoning. ' +
     'Use the subset param to restrict to specific layers (e.g., subset: ["MSR","DASHA"]). ' +
-    'Prefer individual surgical primitives when you need only one data type without synthesis overhead.',
+    'Prefer individual surgical primitives when you need only one data type without synthesis overhead. ' +
+    'Supplementary surgical tools (UDA-2, channel:both): msr_sql, temporal, kp_query, ' +
+    'query_kp_ruling_planets, pattern_register, resonance_register, cluster_atlas, ' +
+    'contradiction_register, query_ucn_walk, query_cdlm_lookup, query_rm_walk, ' +
+    'query_jaimini_drishti, timeline_query, query_signal_state — call these directly for ' +
+    'targeted follow-up after holistic_bundle establishes cross-layer context.',
   tierAccess: 'All tiers. Tier determines subset of bundle data returned.',
 })
 

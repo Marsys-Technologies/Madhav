@@ -3379,7 +3379,7 @@
     {
       "canonical_id": "PORTAL_TOOL_MSR_SQL",
       "path": "platform/src/lib/retrieve/msr_sql.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "msr_sql",
       "status": "CURRENT",
@@ -3389,7 +3389,7 @@
     {
       "canonical_id": "PORTAL_TOOL_PATTERN_REGISTER",
       "path": "platform/src/lib/retrieve/pattern_register.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "pattern_register",
       "status": "CURRENT",
@@ -3399,7 +3399,7 @@
     {
       "canonical_id": "PORTAL_TOOL_RESONANCE_REGISTER",
       "path": "platform/src/lib/retrieve/resonance_register.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "resonance_register",
       "status": "CURRENT",
@@ -3409,7 +3409,7 @@
     {
       "canonical_id": "PORTAL_TOOL_CLUSTER_ATLAS",
       "path": "platform/src/lib/retrieve/cluster_atlas.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "cluster_atlas",
       "status": "CURRENT",
@@ -3419,7 +3419,7 @@
     {
       "canonical_id": "PORTAL_TOOL_CONTRADICTION_REGISTER",
       "path": "platform/src/lib/retrieve/contradiction_register.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "contradiction_register",
       "status": "CURRENT",
@@ -3429,7 +3429,7 @@
     {
       "canonical_id": "PORTAL_TOOL_TEMPORAL",
       "path": "platform/src/lib/retrieve/temporal.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "temporal",
       "status": "CURRENT",
@@ -3479,7 +3479,7 @@
     {
       "canonical_id": "PORTAL_TOOL_KP_QUERY",
       "path": "platform/src/lib/retrieve/kp_query.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "kp_query",
       "status": "CURRENT",
@@ -3549,7 +3549,7 @@
     {
       "canonical_id": "PORTAL_TOOL_TIMELINE_QUERY",
       "path": "platform/src/lib/retrieve/timeline_query.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "timeline_query",
       "status": "CURRENT",
@@ -3559,7 +3559,7 @@
     {
       "canonical_id": "PORTAL_TOOL_QUERY_SIGNAL_STATE",
       "path": "platform/src/lib/retrieve/query_signal_state.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "query_signal_state",
       "status": "CURRENT",
@@ -3569,7 +3569,7 @@
     {
       "canonical_id": "PORTAL_TOOL_QUERY_KP_RULING_PLANETS",
       "path": "platform/src/lib/retrieve/query_kp_ruling_planets.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "query_kp_ruling_planets",
       "status": "CURRENT",
@@ -3689,7 +3689,7 @@
     {
       "canonical_id": "PORTAL_TOOL_QUERY_JAIMINI_DRISHTI",
       "path": "platform/src/lib/retrieve/query_jaimini_drishti.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "query_jaimini_drishti",
       "status": "CURRENT",
@@ -3709,7 +3709,7 @@
     {
       "canonical_id": "PORTAL_TOOL_QUERY_UCN_WALK",
       "path": "platform/src/lib/retrieve/query_ucn_walk.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "query_ucn_walk",
       "status": "CURRENT",
@@ -3719,7 +3719,7 @@
     {
       "canonical_id": "PORTAL_TOOL_QUERY_CDLM_LOOKUP",
       "path": "platform/src/lib/retrieve/query_cdlm_lookup.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "query_cdlm_lookup",
       "status": "CURRENT",
@@ -3729,7 +3729,7 @@
     {
       "canonical_id": "PORTAL_TOOL_QUERY_RM_WALK",
       "path": "platform/src/lib/retrieve/query_rm_walk.ts",
-      "channel": "portal",
+      "channel": "both",
       "type": "retrieval_tool",
       "tool_name": "query_rm_walk",
       "status": "CURRENT",
