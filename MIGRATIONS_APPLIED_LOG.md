@@ -114,8 +114,8 @@ executor: Claude Code (autonomous, native-authorized)
 | 067_pg_trgm_conversation_messages.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | pg_trgm extension + idx_conv_messages_body_trgm (GIN index) | R8-S3 sidebar FTS search; both objects verified |
 | 068_pin_archive_folders.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | conversation_folders, conversation_folder_members (tables), conversations.pinned (column) | R8-S4 pin/archive/folders; note: table names differ from brief assumptions; all 3 objects verified |
 | 069_performance_wiring_fixes.sql | 2026-05-22 | R8-MIGRATIONS-APPLY (CLOSEOUT-2026-05-22 follow-up) | performance_queries: retrieval_scores (jsonb), compose_bundle_latency_ms (int), latency_complete (bool) | PERF-S1 wiring; all 3 columns verified |
-| 116_trace_mcp_tool_column.sql | 2026-05-23 | MCPT-v32-P5A | query_trace_steps.mcp_tool (TEXT), idx_query_trace_steps_mcp_tool | pending apply; backfills from data_summary->>'mcp_tool' |
-| 117_audience_tier_acharya_enum.sql | 2026-05-23 | MCPT-v32-P6A | mcp_api_keys.audience_tier CHECK constraint now includes 'acharya' | pending apply; idempotent DO block |
+| 116_trace_mcp_tool_column.sql | 2026-05-25 | DAR-P2-S5 | query_trace_steps.mcp_tool (TEXT), idx_query_trace_steps_mcp_tool | APPLIED 2026-05-25; 85 historical rows backfilled; column verified present; index created |
+| 117_audience_tier_acharya_enum.sql | 2026-05-25 | DAR-P2-S5 | mcp_api_keys.audience_tier CHECK constraint now includes 'acharya' | APPLIED 2026-05-25; SQL bug fixed (pg_constraint.consrc → pg_get_constraintdef); constraint verified: ARRAY['client','super_admin','acharya'] |
 | 072_mcp_bundle_cache.sql | 2026-05-22 | inferred_from_workstream_close | mcp_bundle_cache (content-addressable 5-min bundle cache; key=sha256(query+params+tier+chart_id)) | MCPT v3.1.0-S2 |
 | 073_perf_log_extensions.sql | 2026-05-22 | inferred_from_workstream_close | tool_execution_log: 5 perf-system columns for nightly audit | MCPT v3.1.0-S4 |
 | 074_audit_findings.sql | 2026-05-22 | inferred_from_workstream_close | mcp_audit_findings, audit_job_runs | MCPT v3.1.0-S4 |
