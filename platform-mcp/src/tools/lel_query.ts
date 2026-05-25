@@ -74,12 +74,6 @@ const LelQueryInputSchema = z.object({
 
 type LelQueryInput = z.infer<typeof LelQueryInputSchema>
 
-const SIGNIFICANCE_TIER_MAP: Record<'major' | 'moderate' | 'minor', number> = {
-  major: 0.8,
-  moderate: 0.5,
-  minor: 0.2,
-}
-
 export function registerLelQuery(
   server: McpServer,
   getPrincipal: () => Principal
@@ -91,18 +85,20 @@ export function registerLelQuery(
     async (args: LelQueryInput) => {
       const principal = getPrincipal()
 
-      // significance_tier takes precedence over min_significance (maps enum → float)
-      let resolvedMinSignificance = args.min_significance
-      if (args.significance_tier) {
-        resolvedMinSignificance = SIGNIFICANCE_TIER_MAP[args.significance_tier]
-      }
-
       const { status, envelope } = await callPlatformPrimitive(
         'lel_query',
         {
           ...(args.category ? { category: args.category } : {}),
           ...(args.date_range ? { date_range: args.date_range } : {}),
-          ...(resolvedMinSignificance !== undefined ? { min_significance: resolvedMinSignificance } : {}),
+          // FIX-5: send significance tier string directly instead of mapping to a float.
+          // platform lel_query reads params?.significance as LelQueryInput['significance'] = 'major'|'moderate'|'minor'.
+          // The old code mapped to float (0.8) and sent { min_significance: 0.8 } — field name and type both wrong.
+          // significance_tier takes precedence over min_significance when both are provided.
+          ...(args.significance_tier !== undefined
+            ? { significance: args.significance_tier }
+            : args.min_significance !== undefined
+              ? { significance: args.min_significance }
+              : {}),
         },
         principal
       )

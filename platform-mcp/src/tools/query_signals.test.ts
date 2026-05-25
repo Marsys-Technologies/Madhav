@@ -163,14 +163,40 @@ describe('query_signals — C4 filter enforcement fix', () => {
   })
 
   // AC.1: valence is forwarded as an array (primitive expects string[])
-  it('AC.1 — valence="positive" is forwarded to toolParams as ["positive"]', async () => {
+  // FIX-3: valence enum uses DB vocabulary: 'benefic'/'malefic'/'context-dependent'
+  it('AC.1 — valence="benefic" is forwarded to toolParams as ["benefic"]', async () => {
     const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
     mockCallPlatformPrimitive.mockResolvedValue(buildSignalsEnvelope([]))
 
-    await callQuerySignals({ valence: 'positive' })
+    await callQuerySignals({ valence: 'benefic' })
 
     const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
-    expect(params['valence']).toEqual(['positive'])
+    expect(params['valence']).toEqual(['benefic'])
+  })
+
+  it('AC.1 — valence="malefic" is forwarded to toolParams as ["malefic"]', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildSignalsEnvelope([]))
+
+    await callQuerySignals({ valence: 'malefic' })
+
+    const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
+    expect(params['valence']).toEqual(['malefic'])
+  })
+
+  it('AC.1 — valence="context-dependent" is forwarded to toolParams as ["context-dependent"]', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildSignalsEnvelope([]))
+
+    await callQuerySignals({ valence: 'context-dependent' })
+
+    const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
+    expect(params['valence']).toEqual(['context-dependent'])
+  })
+
+  it('Zod rejects old valence vocabulary ("positive") — schema now uses DB vocabulary', async () => {
+    const result = await callQuerySignals({ valence: 'positive' })
+    expect((result as { isZodError: boolean }).isZodError).toBe(true)
   })
 
   it('Zod rejects invalid valence value', async () => {
