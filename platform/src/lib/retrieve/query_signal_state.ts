@@ -163,7 +163,11 @@ async function retrieveImpl(
     }),
     source_canonical_id: 'SIGNAL_STATES',
     source_version: '1.0',
-    confidence: r.confidence ?? 0.6,
+    confidence: r.confidence ?? (
+      r.state === 'lit'      ? 0.85 :
+      r.state === 'ripening' ? 0.65 :
+      r.state === 'dormant'  ? 0.35 : 0.5
+    ),
     significance: r.state === 'lit' ? 0.9 : r.state === 'ripening' ? 0.6 : 0.3,
     signal_id: r.signal_id,
   }))
