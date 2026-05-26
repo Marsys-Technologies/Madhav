@@ -23,10 +23,7 @@ import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './t
 const TOOL_NAME = 'query_rm_walk'
 const TOOL_VERSION = '1.0.0'
 
-const RM_PATH = path.resolve(
-  __dirname,
-  '../../../../025_HOLISTIC_SYNTHESIS/RM_v2_0.md'
-)
+const RM_PATH = path.resolve(process.cwd(), '025_HOLISTIC_SYNTHESIS/RM_v2_0.md')
 
 export interface QueryRmWalkInput {
   seed_signal_id?: string

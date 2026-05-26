@@ -23,10 +23,7 @@ import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './t
 const TOOL_NAME = 'query_cdlm_lookup'
 const TOOL_VERSION = '1.0.0'
 
-const CDLM_PATH = path.resolve(
-  __dirname,
-  '../../../../025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md'
-)
+const CDLM_PATH = path.resolve(process.cwd(), '025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md')
 
 export interface QueryCdlmLookupInput {
   domain_a?: string

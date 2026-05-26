@@ -190,6 +190,16 @@ export async function POST(request: Request, { params }: RouteParams) {
     schema_version: '1.0' as const,
   }
 
+  // Wire CGM graph traversal params from toolParams into queryPlan
+  if (retrievalToolName === 'cgm_graph_walk') {
+    if (toolParams.node_id) {
+      (queryPlan as Record<string, unknown>).graph_seed_hints = [String(toolParams.node_id)]
+    }
+    if (typeof toolParams.hops === 'number') {
+      (queryPlan as Record<string, unknown>).graph_traversal_depth = toolParams.hops
+    }
+  }
+
   // Execute the retrieval tool
   let toolResult: unknown
   try {

@@ -25,13 +25,10 @@ import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './t
 const TOOL_NAME = 'query_ucn_walk'
 const TOOL_VERSION = '1.0.0'
 
-// Resolve the UCN markdown file relative to the project root.
-// In production (Cloud Run), __dirname is within /app/platform/src/lib/retrieve/.
-// The markdown files live four levels up from this file: ../../../../025_HOLISTIC_SYNTHESIS/UCN_v4_0.md
-const UCN_PATH = path.resolve(
-  __dirname,
-  '../../../../025_HOLISTIC_SYNTHESIS/UCN_v4_0.md'
-)
+// Resolve the UCN markdown file relative to the working directory.
+// In production (Cloud Run), process.cwd() = /app/platform, and cloudbuild.yaml
+// copies 025_HOLISTIC_SYNTHESIS/ into platform/025_HOLISTIC_SYNTHESIS/ before the build.
+const UCN_PATH = path.resolve(process.cwd(), '025_HOLISTIC_SYNTHESIS/UCN_v4_0.md')
 
 export interface QueryUcnWalkInput {
   seed_signal_id?: string
