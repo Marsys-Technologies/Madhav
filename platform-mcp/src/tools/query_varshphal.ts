@@ -31,7 +31,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
-import type { Principal } from '../types.js'
+import type { Principal, McpEnvelopeSuccess } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 
 /**
@@ -116,7 +116,7 @@ export function registerQueryVarshphal(
           mode: 'range',
           year_start: start,
           year_end: end,
-          charts: results.map(r => r.envelope),
+          charts: results.map(r => (r.envelope as McpEnvelopeSuccess).result),
         })
       }
 
