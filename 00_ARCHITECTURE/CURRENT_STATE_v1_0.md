@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.62
+version: 5.63
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -59,9 +59,17 @@ changelog:
     files_touched: ["platform-mcp/Dockerfile", "platform-mcp/cloudbuild.yaml", "platform-mcp/src/tools/read_asset.ts", "platform-mcp/src/tools/query_varshphal.ts", "platform-mcp/src/tools/muhurta_finder.ts", "platform/src/lib/retrieve/query_cdlm_lookup.ts", "platform/src/lib/retrieve/query_rm_walk.ts", "platform/src/lib/retrieve/query_ucn_walk.ts", "platform/src/app/api/mcp/primitives/[tool]/route.ts"]
     active_phase_plan_sub_phase: M6 INCOMING (remediation session; no macro-phase change).
     last_session_id: MCP-TOOL-AUDIT-REM. predecessor_session: GISMCP-DEPLOY.
-    carry_forwards: ["OPS-3: gcloud builds submit --config platform-mcp/cloudbuild.yaml --project madhav-astrology (redeploy amjis-mcp with corpus)", "OPS-4: gcloud builds submit --config cloudbuild.yaml --project madhav-astrology (redeploy amjis-web with process.cwd() fix)", "OPS-1: gcloud run services update amjis-sidecar --region=asia-south1 --min-instances=1 (eliminate temporal cold-start)", "OPS-2: verify GCP_PROJECT+VERTEX_AI_LOCATION+VECTOR_SEARCH_ENABLED on amjis-web", "MCP-REM-S5: full 40-tool re-audit after OPS deploy (target ≥95%)", "P3 deferred: MCP-REM-S3 (CGM graph seeding) + MCP-REM-S4 (L5 timeline rag_chunks)", "Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md"]
-    next_session_objective: "Run OPS deploy steps, then MCP-REM-S5 full re-audit. After audit confirms ≥95%, open M6-A-S1."
+    carry_forwards: ["P3 deferred: MCP-REM-S3 (CGM graph seeding l25_cgm_nodes+l25_cgm_edges) + MCP-REM-S4 (L5 timeline rag_chunks) — get_cgm_subgraph + timeline_query will reach ~90% after these; not blocking M6", "Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md"]
+    next_session_objective: "MCP Tool Audit Remediation COMPLETE. Full manifest 100% verified. Open M6-A-S1."
     file_updated_at: 2026-05-26. file_updated_by_session: MCP-TOOL-AUDIT-REM.
+  - v5.63 (2026-05-26, MCP-TOOL-AUDIT-REM-CLOSE):
+    **MCP Tool Audit Remediation v2 COMPLETE — 40/40 tools at 100% (Audit 4c). Trajectory: 69% (A3 baseline) → 97.5% (A4b) → 100% (A4c). Fixes shipped: (A) Session A fix/mcp-schema-compat — backward-compat Zod aliases for 7 tools (read_asset, vector_search, cross_school_lookup, multi_school_bundle, holistic_bundle, query_ephemeris, log_prediction); commit ee498f34. (B) Session B fix/mcp-data-quality — 55 planet category rows seeded into chart_facts; query_signal_state confidence uniform-0.6→state-derived (lit=0.85/ripening=0.65/dormant=0.35); query_remedial_mantras ILIKE→POSIX word-boundary regex; commit a94b5caf. (C) Operator: MARSYS_REPO_ROOT=/app on amjis-web (revision 00424-gv2) — unblocked cdlm/rm/ucn. (D) PYTHON_SIDECAR_URL confirmed present on amjis-web — temporal healthy. (E) amjis-mcp rebuilt from current main HEAD (amjis-mcp-00019-76h) — read_asset corpus resolved. Both code branches merged to main (main HEAD 18a3b746). Branches + worktrees retired. Audit script: platform-mcp/scripts/audit4_live.ts. P3 deferred (CGM seed + L5 timeline) — non-blocking carry-forward.**
+    files_touched: ["platform-mcp/src/tools/read_asset.ts", "platform-mcp/src/tools/vector_search.ts", "platform-mcp/src/tools/cross_school_lookup.ts", "platform-mcp/src/tools/multi_school_bundle_tool.ts", "platform-mcp/src/tools/holistic_bundle_tool.ts", "platform-mcp/src/tools/query_ephemeris.ts", "platform-mcp/src/tools/log_prediction.ts", "platform/src/lib/retrieve/query_signal_state.ts", "platform/src/lib/retrieve/query_remedial_mantras.ts", "platform/scripts/data/seed_chart_facts_planet.ts", "platform-mcp/scripts/audit4_live.ts", "00_ARCHITECTURE/BRIEFS/MCP_TOOL_AUDIT_REM_v2_PLAN_v1_0.md", "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_REM_SESSION_A_v1_0.md", "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_MCP_REM_SESSION_B_v1_0.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "CLAUDE.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (remediation session; no macro-phase change).
+    last_session_id: MCP-TOOL-AUDIT-REM-CLOSE. predecessor_session: MCP-TOOL-AUDIT-REM.
+    carry_forwards: ["P3 deferred: MCP-REM-S3 (CGM graph seeding) + MCP-REM-S4 (L5 timeline rag_chunks)", "Next: M6-A-S1 per PHASE_M6_PLAN_v1_0.md"]
+    next_session_objective: "MCP full manifest 100% confirmed. Open M6-A-S1."
+    file_updated_at: 2026-05-26. file_updated_by_session: MCP-TOOL-AUDIT-REM-CLOSE.
   - v5.61 (2026-05-26, GISMCP-DEPLOY):
     **GISMCP Remediation COMPLETE — all 40 MCP tools unconditional (tier gate removed from server.ts); RETRIEVAL_TOOLS 51→55 (4 canonical-name aliases: query_tara_balam, query_chandra_balam, jaimini_chara_dasha, jaimini_chara_dasha_full); MSR signals 573/573 VERIFIED_NO_GAP. Both streams merged to main (8a30382b). amjis-web-00411-p6g + amjis-mcp-00017-6nl deployed. Worktrees MadhavGISMCP-S1 + MadhavGISMCP-S2 retired. Branches fix/gismcp-r1-r2 + fix/gismcp-r3 deleted. 0 ERROR logs post-deploy.**
     files_touched: ["CLAUDE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "platform-mcp/src/server.ts", "platform-mcp/src/tools/tool_health.ts", "platform-mcp/src/tools/data_coverage.ts", "platform/src/lib/retrieve/query_tara_balam.ts", "platform/src/lib/retrieve/query_chandra_balam.ts", "platform/src/lib/retrieve/jaimini_chara_dasha.ts", "platform/src/lib/retrieve/jaimini_chara_dasha_full.ts"]

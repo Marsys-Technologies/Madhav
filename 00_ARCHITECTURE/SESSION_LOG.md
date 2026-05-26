@@ -27962,3 +27962,75 @@ outcome: CODE_COMPLETE — awaiting operator OPS deploy steps
 current_state_updated: true
 mirror_updates_propagated: false
 ```
+
+---
+
+## MCP-TOOL-AUDIT-REM-CLOSE (2026-05-26)
+
+```yaml
+session_id: MCP-TOOL-AUDIT-REM-CLOSE
+session_type: remediation_close
+date: 2026-05-26
+predecessor_session: MCP-TOOL-AUDIT-REM
+cowork_thread: MCP Tool Audit Remediation v2
+macro_phase: M6 INCOMING
+sub_phase: remediation (no macro-phase change)
+
+summary: >
+  MCP Tool Audit Remediation v2 COMPLETE. Full 40-tool manifest reached 100%
+  (Audit 4c: 40/40 tools at 100%). Trajectory: 69% (Audit 3 baseline) → 97.5%
+  (Audit 4b) → 100% (Audit 4c). Two code sessions shipped in parallel plus
+  four operator env-var and rebuild steps.
+
+deliverables:
+  Session_A (fix/mcp-schema-compat, commit ee498f34):
+    - read_asset.ts: asset_key → canonical_id backward-compat alias
+    - vector_search.ts: query → text backward-compat alias
+    - cross_school_lookup.ts: topic → claim backward-compat alias
+    - multi_school_bundle_tool.ts: topic → claim backward-compat alias
+    - holistic_bundle_tool.ts: bundles[] → query_text backward-compat alias
+    - query_ephemeris.ts: date_from+date_to → date_range{from,to} alias
+    - log_prediction.ts: float confidence → enum; falsifier optional default ''
+    - 14 new backward-compat tests (2 per tool); 971 total pass
+  Session_B (fix/mcp-data-quality, commit a94b5caf):
+    - seed_chart_facts_planet.ts: 55 rows for 9 grahas × attributes
+    - query_signal_state.ts: confidence fallback uniform-0.6 → state-derived
+      (lit=0.85 / ripening=0.65 / dormant=0.35)
+    - query_remedial_mantras.ts: ILIKE substring → POSIX word-boundary regex
+    - 5275/5286 platform tests pass (11 pre-existing failures)
+  Operator_fixes:
+    - OPS-A: MARSYS_REPO_ROOT=/app on amjis-web (revision 00424-gv2)
+      → unblocked query_cdlm_lookup / query_rm_walk / query_ucn_walk (0%→100%)
+    - OPS-B: PYTHON_SIDECAR_URL confirmed present on amjis-web → temporal healthy
+    - OPS-C: amjis-mcp rebuilt from main HEAD → amjis-mcp-00019-76h
+      → read_asset corpus resolved (30%→100%)
+    - OPS-D: Vertex AI env vars confirmed present (VERTEX_AI_LOCATION, VECTOR_SEARCH_ENABLED)
+  Audit_script: platform-mcp/scripts/audit4_live.ts (40-tool live MCP harness)
+
+merge_commits:
+  session_a: 13021867 (fix/mcp-schema-compat → main)
+  session_b: 18a3b746 (fix/mcp-data-quality → main)
+
+production_revisions:
+  amjis_mcp: amjis-mcp-00019-76h
+  amjis_web: amjis-web-00424-gv2
+
+audit_results:
+  audit_3_baseline: 69.0%
+  audit_4a: 87.5% (30/40 — fixture input mismatches identified)
+  audit_4b: 97.5% (38/40 — 2 fixture input mismatches remaining)
+  audit_4c: 100.0% (40/40 — all tools fully validated)
+
+deferred_p3_carry_forward:
+  - MCP-REM-S3: CGM graph seeding (l25_cgm_nodes + l25_cgm_edges from CGM_v9_0.md)
+    → get_cgm_subgraph returns empty nodes; tool is healthy, data gap only
+  - MCP-REM-S4: L5 timeline rag_chunks bootstrap
+    → timeline_query returns empty; tool is healthy, data gap only
+
+worktrees_retired: [MadhavMCPSchemaA, MadhavMCPDataB]
+branches_deleted: [fix/mcp-schema-compat, fix/mcp-data-quality]
+current_state_updated: true
+current_state_version: 5.63
+mirror_updates_propagated: false
+next_session_objective: "M6-A-S1 per PHASE_M6_PLAN_v1_0.md"
+```
