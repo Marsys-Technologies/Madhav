@@ -31,10 +31,14 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { callPlatformPrimitive } from '../client.js'
 import { okResult, errorResult } from './_envelope.js'
-import type { Principal } from '../types.js'
+import type { Principal, McpEnvelopeSuccess } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 
-const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+/**
+ * DB key used by the varshaphala table (not the Firebase UUID).
+ * All rows in the varshaphala table are keyed by this string identifier.
+ */
+const NATIVE_CHART_ID = 'abhisek_mohanty_primary'
 
 export const QUERY_VARSHPHAL_DESCRIPTION = buildToolDescription({
   baseDescription:
@@ -60,6 +64,10 @@ const QueryVarshphalInputSchema = z.object({
   ayanamsha: z.string().optional().describe(
     'Ayanamsha system. Default: "lahiri". Options: lahiri, raman, krishnamurti.'
   ),
+  chart_id: z.string().optional().describe(
+    'Chart identifier. Defaults to the native chart (abhisek_mohanty_primary). ' +
+    'Override only when querying a non-native chart.'
+  ),
 })
 
 type QueryVarshphalInput = z.infer<typeof QueryVarshphalInputSchema>
@@ -84,7 +92,7 @@ export function registerQueryVarshphal(
         })
       }
 
-      const chart_id = NATIVE_CHART_ID
+      const chart_id = args.chart_id ?? NATIVE_CHART_ID
 
       // Range mode: year_start + year_end provided.
       if (args.year_start !== undefined && args.year_end !== undefined) {
@@ -104,11 +112,18 @@ export function registerQueryVarshphal(
         if (failed) {
           return errorResult(failed.envelope)
         }
+        const firstEnv = results[0]?.envelope as McpEnvelopeSuccess | undefined
         return okResult({
-          mode: 'range',
-          year_start: start,
-          year_end: end,
-          charts: results.map(r => r.envelope),
+          ok: true,
+          trace_id: crypto.randomUUID(),
+          audience_tier: firstEnv?.audience_tier ?? principal.audience_tier,
+          epistemics: { surgical: true, confidence_band: 'high' as const },
+          result: {
+            mode: 'range',
+            year_start: start,
+            year_end: end,
+            charts: results.map(r => (r.envelope as McpEnvelopeSuccess).result),
+          },
         })
       }
 
@@ -122,7 +137,7 @@ export function registerQueryVarshphal(
       }
 
       const { status, envelope } = await callPlatformPrimitive(
-        'query_varshphal',
+        'query_varshaphala',
         {
           chart_id,
           year: args.year,

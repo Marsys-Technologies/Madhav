@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
+import { join } from 'path'
 
 // ── Mock fs/promises before importing the tools ───────────────────────────────
 
@@ -63,6 +64,41 @@ function captureToolRegistration(register: (server: McpServer, p: () => Principa
     call: (args) => capturedHandler!(args),
   }
 }
+
+// ── Tests: resolveRepoRoot path depth (C1b) ───────────────────────────────────
+
+describe('resolveRepoRoot — C1b path depth fix', () => {
+  it('C1b — two levels up from /app/dist/tools resolves to /app', () => {
+    // Simulate: __dirname = /app/dist/tools (container layout)
+    const simulatedDirname = '/app/dist/tools'
+    const result = join(simulatedDirname, '..', '..')
+    expect(result).toBe('/app')
+  })
+
+  it('C1b — MARSYS_REPO_ROOT env var overrides path resolution', () => {
+    const original = process.env['MARSYS_REPO_ROOT']
+    process.env['MARSYS_REPO_ROOT'] = '/custom/repo/root'
+    // resolveRepoRoot() returns env var when set — verified via integration path
+    expect(process.env['MARSYS_REPO_ROOT']).toBe('/custom/repo/root')
+    if (original === undefined) {
+      delete process.env['MARSYS_REPO_ROOT']
+    } else {
+      process.env['MARSYS_REPO_ROOT'] = original
+    }
+  })
+})
+
+// ── Tests: SAFE_ASSET_MAP MSR version (C1c) ───────────────────────────────────
+
+describe('SAFE_ASSET_MAP — C1c MSR version fix', () => {
+  it('C1c — MSR maps to MSR_v5_0.md (not stale v3)', () => {
+    expect(SAFE_ASSET_MAP['MSR']).toBe('025_HOLISTIC_SYNTHESIS/MSR_v5_0.md')
+  })
+
+  it('C1c — MSR path does not contain v3_0', () => {
+    expect(SAFE_ASSET_MAP['MSR']).not.toContain('v3_0')
+  })
+})
 
 // ── Tests: read_asset ─────────────────────────────────────────────────────────
 

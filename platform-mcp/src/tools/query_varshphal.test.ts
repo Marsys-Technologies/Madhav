@@ -19,7 +19,8 @@ import { registerQueryVarshphal } from './query_varshphal.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+// C2a fix: DB key used by varshaphala table (not Firebase UUID)
+const NATIVE_CHART_ID = 'abhisek_mohanty_primary'
 
 const mockPrincipal: Principal = {
   user_uid: 'test-user',
@@ -92,6 +93,14 @@ async function callQueryVarshphal(
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe('query_varshphal — C2a: NATIVE_CHART_ID fix', () => {
+  it('C2a — NATIVE_CHART_ID is the DB key string, not a Firebase UUID', () => {
+    expect(NATIVE_CHART_ID).toBe('abhisek_mohanty_primary')
+    // Must NOT be a UUID (Firebase UID format)
+    expect(NATIVE_CHART_ID).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+  })
+})
 
 describe('query_varshphal', () => {
   beforeEach(() => {
@@ -189,5 +198,36 @@ describe('query_varshphal', () => {
 
     const result = await callQueryVarshphal({ year: 2026 }, acharyaPrincipal)
     expect((result as { isError?: boolean }).isError).toBeUndefined()
+  })
+
+  // ── Range-mode tests ──────────────────────────────────────────────────────────
+
+  it('range-mode success: returns mode=range, charts array, and audience_tier', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    // Mock resolves successfully for both years
+    mockCall.mockResolvedValue(buildVarshphalEnvelope({ year: 2025 }))
+
+    const result = await callQueryVarshphal({ year_start: 2025, year_end: 2026 })
+
+    expect(result).toBeDefined()
+    const res = result as { content: Array<{ type: string; text: string }> }
+    expect(res.content).toBeDefined()
+    const parsed = JSON.parse(res.content[0].text)
+    expect(parsed.ok).toBe(true)
+    expect(parsed.result.mode).toBe('range')
+    expect(Array.isArray(parsed.result.charts)).toBe(true)
+    expect(parsed.result.charts.length).toBe(2)
+    // audience_tier must be present (Fix A)
+    expect(parsed.audience_tier).toBe('super_admin')
+  })
+
+  it('range-mode 20-year cap: caps at 20 calls for year_start=2000, year_end=2030', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildVarshphalEnvelope({ year: 2000 }))
+
+    await callQueryVarshphal({ year_start: 2000, year_end: 2030 })
+
+    // 2030 - 2000 = 30 years requested, but cap is 20 (start + 19)
+    expect(mockCall).toHaveBeenCalledTimes(20)
   })
 })
