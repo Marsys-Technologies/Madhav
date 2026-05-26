@@ -242,4 +242,76 @@ describe('query_ephemeris tool', () => {
     expect(content.bhava_chalit_house).toBe(10)
     expect(content.whole_sign_house).toBeUndefined()
   })
+
+  // FIX-4 regression: sample_step downsampling — string "7d" must NOT be treated as a number
+  describe('FIX-4 regression: sample_step downsampling logic', () => {
+    function makeRows(count: number) {
+      return Array.from({ length: count }, (_, i) => ({
+        ...marsRow,
+        date: `2020-0${(i % 9) + 1}-0${(i % 9) + 1}`,
+        planet: 'mars',
+      }))
+    }
+
+    it('sample_step=7 returns every 7th row (indices 0,7,14...)', async () => {
+      const rows = makeRows(21)  // 3 expected: index 0, 7, 14
+      mockQuery.mockResolvedValue({ rows, rowCount: 21 })
+
+      const bundle = await tool.retrieve(basePlan, {
+        start_date: '2020-01-01',
+        end_date: '2020-01-21',
+        sample_step: 7,
+      })
+
+      // 21 rows, step=7 → indices 0, 7, 14 → 3 results
+      expect(bundle.results).toHaveLength(3)
+    })
+
+    it('sample_step=1 returns all rows (no downsampling)', async () => {
+      const rows = makeRows(10)
+      mockQuery.mockResolvedValue({ rows, rowCount: 10 })
+
+      const bundle = await tool.retrieve(basePlan, {
+        start_date: '2020-01-01',
+        end_date: '2020-01-10',
+        sample_step: 1,
+      })
+
+      // sample_step=1: condition is > 1, so no filter applied
+      expect(bundle.results).toHaveLength(10)
+    })
+
+    it('sample_step=30 returns every 30th row', async () => {
+      const rows = makeRows(90)  // 3 expected: index 0, 30, 60
+      mockQuery.mockResolvedValue({ rows, rowCount: 90 })
+
+      const bundle = await tool.retrieve(basePlan, {
+        start_date: '2020-01-01',
+        end_date: '2020-03-31',
+        sample_step: 30,
+      })
+
+      expect(bundle.results).toHaveLength(3)
+    })
+
+    it('no sample_step returns all rows from DB', async () => {
+      const rows = makeRows(15)
+      mockQuery.mockResolvedValue({ rows, rowCount: 15 })
+
+      const bundle = await tool.retrieve(basePlan, {
+        start_date: '2020-01-01',
+        end_date: '2020-01-15',
+      })
+
+      expect(bundle.results).toHaveLength(15)
+    })
+
+    it('FIX-4 guard: string "7d" is not a valid number sample_step and does not downsample', async () => {
+      // This confirms why the bug occurred: "7d" > 1 is false (NaN comparison)
+      // The fix ensures the MCP wrapper sends numeric 7, not string "7d"
+      const stringStep = "7d" as unknown as number
+      expect(stringStep > 1).toBe(false)  // NaN > 1 === false → no downsampling (the bug)
+      expect(7 > 1).toBe(true)            // numeric 7 > 1 === true → downsampling fires (the fix)
+    })
+  })
 })

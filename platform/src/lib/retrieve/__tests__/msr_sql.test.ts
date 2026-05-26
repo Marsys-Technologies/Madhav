@@ -271,4 +271,82 @@ describe('msr_sql tool', () => {
     // Explicit 0.5 should win over the 0.35 domain default
     expect(callArgs[1][4]).toBe(0.5)
   })
+
+  // FIX-2 regression: forward_looking reads from params first, plan second
+  describe('FIX-2 regression: params.forward_looking overrides plan.forward_looking', () => {
+    it('params.forward_looking=true passes true to SQL $4 (even when plan.forward_looking=false)', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      // plan.forward_looking = false but params says true
+      const plan: QueryPlan = { ...basePlan, forward_looking: false }
+      await tool.retrieve(plan, { forward_looking: true })
+
+      const callArgs = mockQuery.mock.calls[0]
+      // $4 (index 3) = forward_looking filter in SQL
+      expect(callArgs[1][3]).toBe(true)
+    })
+
+    it('params.forward_looking=false passes null to SQL $4 (no filter = all signals)', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const plan: QueryPlan = { ...basePlan, forward_looking: true }
+      await tool.retrieve(plan, { forward_looking: false })
+
+      const callArgs = mockQuery.mock.calls[0]
+      // params.forward_looking=false means "no filter" — pass null
+      expect(callArgs[1][3]).toBeNull()
+    })
+
+    it('no params.forward_looking falls back to plan.forward_looking=true → passes true to SQL $4', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const plan: QueryPlan = { ...basePlan, forward_looking: true }
+      await tool.retrieve(plan)  // no params
+
+      const callArgs = mockQuery.mock.calls[0]
+      expect(callArgs[1][3]).toBe(true)
+    })
+
+    it('no params.forward_looking and plan.forward_looking=false → passes null to SQL $4', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const plan: QueryPlan = { ...basePlan, forward_looking: false }
+      await tool.retrieve(plan)  // no params
+
+      const callArgs = mockQuery.mock.calls[0]
+      expect(callArgs[1][3]).toBeNull()
+    })
+  })
+
+  // FIX-7 regression: invocation_params.forward_looking logs actual SQL filter value, not plan.forward_looking
+  describe('FIX-7 regression: invocation_params.forward_looking = actual SQL filter value', () => {
+    it('when params.forward_looking=true, bundle.invocation_params.forward_looking is true', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const plan: QueryPlan = { ...basePlan, forward_looking: false }
+      const bundle = await tool.retrieve(plan, { forward_looking: true })
+
+      // FIX-7: the bundle must log what was actually sent to SQL, not plan.forward_looking
+      expect(bundle.invocation_params.forward_looking).toBe(true)
+    })
+
+    it('when params.forward_looking=false, bundle.invocation_params.forward_looking is null', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const plan: QueryPlan = { ...basePlan, forward_looking: true }
+      const bundle = await tool.retrieve(plan, { forward_looking: false })
+
+      // params.forward_looking=false → null SQL filter; log should reflect null
+      expect(bundle.invocation_params.forward_looking).toBeNull()
+    })
+
+    it('when plan.forward_looking=true and no params, bundle.invocation_params.forward_looking is true', async () => {
+      mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const plan: QueryPlan = { ...basePlan, forward_looking: true }
+      const bundle = await tool.retrieve(plan)
+
+      expect(bundle.invocation_params.forward_looking).toBe(true)
+    })
+  })
 })
