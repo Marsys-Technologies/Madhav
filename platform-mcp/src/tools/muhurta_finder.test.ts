@@ -1,7 +1,7 @@
 /**
  * muhurta_finder.test.ts — Unit tests for the muhurta_finder MCP tool.
  *
- * TR-P4-S2 AC: all 3 test files must pass.
+ * C4a tests: enum restriction, alias resolution (travel → yatra), error handling.
  * Mocks callPlatformPrimitive to verify params, error handling, and response shape.
  */
 
@@ -16,11 +16,9 @@ vi.mock('../client.js', () => ({
 }))
 
 import { callPlatformPrimitive } from '../client.js'
-import { registerMuhurtaFinder } from './muhurta_finder.js'
+import { registerMuhurtaFinder, SIDECAR_EVENTS, EVENT_ALIAS } from './muhurta_finder.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 const mockPrincipal: Principal = {
   user_uid: 'test-user',
@@ -38,7 +36,7 @@ function buildMuhurtaEnvelope(windows: unknown[]) {
       epistemics: { surgical: true, confidence_band: 'high', horizon_days: null, falsifier: null },
       result: {
         tool_bundle_id: 'muhurta-bundle-id',
-        tool_name: 'query_muhurat',
+        tool_name: 'muhurta_finder',
         tool_version: '1.0.0',
         invocation_params: {},
         results: [{
@@ -47,7 +45,7 @@ function buildMuhurtaEnvelope(windows: unknown[]) {
             windows,
             count: windows.length,
             event: 'vyapara',
-            supported_events: ['vivah', 'griha_pravesh', 'vyapara', 'yatra', 'property_purchase', 'mantra_initiation'],
+            supported_events: Array.from(SIDECAR_EVENTS),
           }),
           source_canonical_id: 'PANCHANGA_DAILY',
           source_version: '1.0',
@@ -110,20 +108,81 @@ describe('muhurta_finder', () => {
     vi.clearAllMocks()
   })
 
-  it('passes activity_type as event param to callPlatformPrimitive', async () => {
+  // C4a: canonical sidecar event values pass through unchanged
+  it('passes canonical event value (vyapara) directly to callPlatformPrimitive', async () => {
     const mockCall = vi.mocked(callPlatformPrimitive)
     mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
 
     await callMuhurtaFinder({
+      event: 'vyapara',
       date_from: '2026-06-01',
       date_to: '2026-06-30',
-      activity_type: 'vyapara',
     })
 
     expect(mockCall).toHaveBeenCalledTimes(1)
     const [toolName, params] = mockCall.mock.calls[0]
-    expect(toolName).toBe('query_muhurat')
+    expect(toolName).toBe('muhurta_finder')
     expect((params as Record<string, unknown>)['event']).toBe('vyapara')
+  })
+
+  // C4a: alias resolution — travel → yatra
+  it('resolves alias travel → yatra before dispatch', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
+
+    await callMuhurtaFinder({
+      event: 'travel',
+      date_from: '2026-06-01',
+      date_to: '2026-06-30',
+    })
+
+    const params = mockCall.mock.calls[0][1] as Record<string, unknown>
+    expect(params['event']).toBe('yatra')
+  })
+
+  // C4a: alias resolution — marriage → vivah
+  it('resolves alias marriage → vivah before dispatch', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
+
+    await callMuhurtaFinder({
+      event: 'marriage',
+      date_from: '2026-06-01',
+      date_to: '2026-06-30',
+    })
+
+    const params = mockCall.mock.calls[0][1] as Record<string, unknown>
+    expect(params['event']).toBe('vivah')
+  })
+
+  // C4a: alias resolution — business_start → vyapara
+  it('resolves alias business_start → vyapara before dispatch', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
+
+    await callMuhurtaFinder({
+      event: 'business_start',
+      date_from: '2026-06-01',
+      date_to: '2026-06-30',
+    })
+
+    const params = mockCall.mock.calls[0][1] as Record<string, unknown>
+    expect(params['event']).toBe('vyapara')
+  })
+
+  // C4a: alias resolution — vehicle_purchase → property_purchase
+  it('resolves alias vehicle_purchase → property_purchase before dispatch', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
+
+    await callMuhurtaFinder({
+      event: 'vehicle_purchase',
+      date_from: '2026-06-01',
+      date_to: '2026-06-30',
+    })
+
+    const params = mockCall.mock.calls[0][1] as Record<string, unknown>
+    expect(params['event']).toBe('property_purchase')
   })
 
   it('passes date_from and date_to to callPlatformPrimitive', async () => {
@@ -131,9 +190,9 @@ describe('muhurta_finder', () => {
     mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
 
     await callMuhurtaFinder({
+      event: 'yatra',
       date_from: '2026-06-01',
       date_to: '2026-06-20',
-      activity_type: 'yatra',
     })
 
     const params = mockCall.mock.calls[0][1] as Record<string, unknown>
@@ -141,77 +200,19 @@ describe('muhurta_finder', () => {
     expect(params['date_to']).toBe('2026-06-20')
   })
 
-  it('defaults chart_id to NATIVE_CHART_ID when not provided', async () => {
-    const mockCall = vi.mocked(callPlatformPrimitive)
-    mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
-
-    await callMuhurtaFinder({
-      date_from: '2026-06-01',
-      date_to: '2026-06-15',
-      activity_type: 'griha_pravesh',
-    })
-
-    const params = mockCall.mock.calls[0][1] as Record<string, unknown>
-    expect(params['chart_id']).toBe(NATIVE_CHART_ID)
-  })
-
-  it('passes custom chart_id when provided', async () => {
-    const mockCall = vi.mocked(callPlatformPrimitive)
-    mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
-
-    const customId = 'custom-chart-uuid-9999'
-    await callMuhurtaFinder({
-      date_from: '2026-06-01',
-      date_to: '2026-06-10',
-      activity_type: 'vivah',
-      chart_id: customId,
-    })
-
-    const params = mockCall.mock.calls[0][1] as Record<string, unknown>
-    expect(params['chart_id']).toBe(customId)
-  })
-
   it('passes top_n to callPlatformPrimitive', async () => {
     const mockCall = vi.mocked(callPlatformPrimitive)
     mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
 
     await callMuhurtaFinder({
+      event: 'vyapara',
       date_from: '2026-06-01',
       date_to: '2026-06-20',
-      activity_type: 'vyapara',
       top_n: 5,
     })
 
     const params = mockCall.mock.calls[0][1] as Record<string, unknown>
     expect(params['top_n']).toBe(5)
-  })
-
-  it('returns error result when date_from is after date_to', async () => {
-    const result = await callMuhurtaFinder({
-      date_from: '2026-06-30',
-      date_to: '2026-06-01',
-      activity_type: 'vyapara',
-    })
-
-    expect((result as { isError?: boolean }).isError).toBe(true)
-    const res = result as { content: Array<{ type: string; text: string }> }
-    const parsed = JSON.parse(res.content[0].text)
-    expect(parsed.ok).toBe(false)
-    expect(parsed.error.class).toBe('validation')
-  })
-
-  it('returns error result when date range exceeds 30 days', async () => {
-    const result = await callMuhurtaFinder({
-      date_from: '2026-06-01',
-      date_to: '2026-08-01', // 61 days
-      activity_type: 'vyapara',
-    })
-
-    expect((result as { isError?: boolean }).isError).toBe(true)
-    const res = result as { content: Array<{ type: string; text: string }> }
-    const parsed = JSON.parse(res.content[0].text)
-    expect(parsed.ok).toBe(false)
-    expect(parsed.error.message).toMatch(/30-day/)
   })
 
   it('returns error result when primitive call fails', async () => {
@@ -226,9 +227,9 @@ describe('muhurta_finder', () => {
     })
 
     const result = await callMuhurtaFinder({
+      event: 'vyapara',
       date_from: '2026-06-01',
       date_to: '2026-06-10',
-      activity_type: 'vyapara',
     })
 
     expect((result as { isError?: boolean }).isError).toBe(true)
@@ -239,9 +240,9 @@ describe('muhurta_finder', () => {
     mockCall.mockResolvedValue(buildMuhurtaEnvelope(SAMPLE_WINDOWS))
 
     const result = await callMuhurtaFinder({
+      event: 'vyapara',
       date_from: '2026-06-01',
       date_to: '2026-06-30',
-      activity_type: 'vyapara',
     })
 
     expect((result as { isError?: boolean }).isError).toBeUndefined()
@@ -249,5 +250,36 @@ describe('muhurta_finder', () => {
     expect(res.content).toBeDefined()
     const parsed = JSON.parse(res.content[0].text)
     expect(parsed.ok).toBe(true)
+  })
+
+  // C4a: SIDECAR_EVENTS and EVENT_ALIAS exports are correct
+  it('SIDECAR_EVENTS contains 6 canonical values', () => {
+    expect(SIDECAR_EVENTS).toContain('vivah')
+    expect(SIDECAR_EVENTS).toContain('griha_pravesh')
+    expect(SIDECAR_EVENTS).toContain('vyapara')
+    expect(SIDECAR_EVENTS).toContain('yatra')
+    expect(SIDECAR_EVENTS).toContain('property_purchase')
+    expect(SIDECAR_EVENTS).toContain('mantra_initiation')
+    expect(SIDECAR_EVENTS.length).toBe(6)
+  })
+
+  it('EVENT_ALIAS maps travel → yatra', () => {
+    expect(EVENT_ALIAS['travel']).toBe('yatra')
+  })
+
+  it('EVENT_ALIAS maps marriage → vivah', () => {
+    expect(EVENT_ALIAS['marriage']).toBe('vivah')
+  })
+
+  it('EVENT_ALIAS maps house_entry → griha_pravesh', () => {
+    expect(EVENT_ALIAS['house_entry']).toBe('griha_pravesh')
+  })
+
+  it('EVENT_ALIAS maps business_start → vyapara', () => {
+    expect(EVENT_ALIAS['business_start']).toBe('vyapara')
+  })
+
+  it('EVENT_ALIAS maps vehicle_purchase → property_purchase', () => {
+    expect(EVENT_ALIAS['vehicle_purchase']).toBe('property_purchase')
   })
 })

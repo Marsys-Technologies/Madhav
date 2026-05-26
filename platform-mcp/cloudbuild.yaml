@@ -18,11 +18,15 @@
 
 steps:
   # Step 1: Build Docker image (multi-stage — TS compile happens inside Docker)
+  # Context is the repo root so the Dockerfile can COPY canonical markdown corpus
+  # (025_HOLISTIC_SYNTHESIS/, 01_FACTS_LAYER/, 00_ARCHITECTURE/) into the image.
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-t'
       - 'gcr.io/$PROJECT_ID/amjis-mcp:${_TAG}'
+      - '-f'
+      - 'platform-mcp/Dockerfile'
       - '.'
 
   # Step 2: Push Docker image to Container Registry

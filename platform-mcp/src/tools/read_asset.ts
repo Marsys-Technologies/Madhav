@@ -14,11 +14,11 @@
  * Access control: Per decision D12 (full transparency), all authenticated
  * callers receive full file content.
  *
- * Path resolution (C9 fix — PROD_ENV: MARSYS_REPO_ROOT not set in Cloud Run):
+ * Path resolution (C1b fix — container: __dirname = /app/dist/tools, two levels up = /app):
  *   1. MARSYS_REPO_ROOT env var (set explicitly in dev or via Cloud Run env var).
- *   2. __dirname-relative: three levels up from dist/tools/ → project root.
- *      In the sidecar container (/app/dist/tools/) this resolves to /app/../..
- *      once files are copied by the Dockerfile.
+ *   2. __dirname-relative: two levels up from dist/tools/ → /app.
+ *      In the sidecar container (/app/dist/tools/) this correctly resolves to /app
+ *      where the Dockerfile copies canonical files (025_HOLISTIC_SYNTHESIS/, 01_FACTS_LAYER/).
  *   Fallback chain ensures local dev works with MARSYS_REPO_ROOT and prod works
  *   without it, as long as the Dockerfile copies the canonical files.
  */
@@ -40,18 +40,18 @@ const __dirname = dirname(__filename)
 // ── Repository root resolution ────────────────────────────────────────────────
 // Priority:
 //   1. MARSYS_REPO_ROOT env var (explicit override — works in dev and prod if set).
-//   2. __dirname-relative: dist/tools/ → up 3 levels → project root.
-//      In the container: /app/dist/tools/ → /app/ (after canonical files are
-//      copied by COPY docs/ ./docs/ in Dockerfile, they land at /app/docs/).
+//   2. __dirname-relative: dist/tools/ → up 2 levels → /app.
+//      In the container: /app/dist/tools/ → /app (canonical files copied by
+//      Dockerfile COPY directives land directly under /app).
 //      Adjust depth here if the bundle structure changes.
 
 function resolveRepoRoot(): string {
   if (process.env['MARSYS_REPO_ROOT']) {
     return process.env['MARSYS_REPO_ROOT']
   }
-  // __dirname = .../dist/tools (compiled output)
-  // go up: dist/tools → dist → app-root → repo-root
-  return join(__dirname, '..', '..', '..')
+  // __dirname = /app/dist/tools (compiled output in container)
+  // dist/tools → dist → /app
+  return join(__dirname, '..', '..')
 }
 
 // ── Supported canonical IDs ──────────────────────────────────────────────────
@@ -73,7 +73,7 @@ export type KnownCanonicalId = typeof KNOWN_CANONICAL_IDS[number]
 
 // Safe map: canonical_id → repo-relative path. Never constructed from user input.
 export const SAFE_ASSET_MAP: Record<KnownCanonicalId, string> = {
-  MSR:                  '025_HOLISTIC_SYNTHESIS/MSR_v3_0.md',
+  MSR:                  '025_HOLISTIC_SYNTHESIS/MSR_v5_0.md',
   UCN:                  '025_HOLISTIC_SYNTHESIS/UCN_v4_0.md',
   CDLM:                 '025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md',
   CGM:                  '025_HOLISTIC_SYNTHESIS/CGM_v9_0.md',

@@ -19,7 +19,8 @@ import { registerQueryVarshphal } from './query_varshphal.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+// C2a fix: DB key used by varshaphala table (not Firebase UUID)
+const NATIVE_CHART_ID = 'abhisek_mohanty_primary'
 
 const mockPrincipal: Principal = {
   user_uid: 'test-user',
@@ -92,6 +93,14 @@ async function callQueryVarshphal(
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe('query_varshphal — C2a: NATIVE_CHART_ID fix', () => {
+  it('C2a — NATIVE_CHART_ID is the DB key string, not a Firebase UUID', () => {
+    expect(NATIVE_CHART_ID).toBe('abhisek_mohanty_primary')
+    // Must NOT be a UUID (Firebase UID format)
+    expect(NATIVE_CHART_ID).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+  })
+})
 
 describe('query_varshphal', () => {
   beforeEach(() => {

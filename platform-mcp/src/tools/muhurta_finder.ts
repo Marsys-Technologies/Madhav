@@ -11,10 +11,12 @@
  * Data: muhurta_windows table + panchanga_daily table
  * Engine: platform/scripts/temporal/compute_muhurta.py
  *
- * Supported event types (common):
- *   marriage, travel, surgery, business_start, house_entry, vehicle_purchase,
- *   education_start, meditation, thread_ceremony, naming_ceremony
- *   (pass any string — the engine matches against its event taxonomy).
+ * Accepted sidecar event values:
+ *   vivah, griha_pravesh, vyapara, yatra, property_purchase, mantra_initiation
+ *
+ * Aliases (resolved before dispatch):
+ *   marriage → vivah, house_entry → griha_pravesh, business_start → vyapara,
+ *   travel → yatra, vehicle_purchase → property_purchase
  *
  * When to prefer: Use for "When is a good time to start a business?",
  * "Find an auspicious date for travel in June 2026", or any electional
@@ -24,7 +26,7 @@
  * Output shape preview: {ok, result: {windows: {start_utc, end_utc, score,
  *   tithi, vara, nakshatra, factors}[]}, trace_id, epistemics: {surgical: true}}.
  *
- * Example: muhurta_finder({event: "travel", date_from: "2026-06-01", date_to: "2026-06-30"}) →
+ * Example: muhurta_finder({event: "yatra", date_from: "2026-06-01", date_to: "2026-06-30"}) →
  *   {ok: true, result: {windows: [{start_utc: "2026-06-04T04:30:00Z",
  *   end_utc: "2026-06-04T06:15:00Z", score: 0.87, tithi: "Shukla Panchami",
  *   vara: "Guruvara", nakshatra: "Pushya", factors: [...]}]}, ...}
@@ -37,6 +39,25 @@ import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 
+// ── Sidecar event enum + alias map (C4a) ─────────────────────────────────────
+
+const SIDECAR_EVENTS = [
+  'vivah', 'griha_pravesh', 'vyapara', 'yatra',
+  'property_purchase', 'mantra_initiation'
+] as const
+
+const EVENT_ALIAS: Record<string, typeof SIDECAR_EVENTS[number]> = {
+  marriage:         'vivah',
+  house_entry:      'griha_pravesh',
+  business_start:   'vyapara',
+  travel:           'yatra',
+  vehicle_purchase: 'property_purchase',
+}
+
+const ALL_EVENT_VALUES = [...SIDECAR_EVENTS, ...Object.keys(EVENT_ALIAS)] as [string, ...string[]]
+
+export { SIDECAR_EVENTS, EVENT_ALIAS }
+
 export const MUHURTA_FINDER_DESCRIPTION = buildToolDescription({
   baseDescription:
     'What it does: Finds auspicious Muhurta (electional timing) windows for a given event type ' +
@@ -44,8 +65,8 @@ export const MUHURTA_FINDER_DESCRIPTION = buildToolDescription({
     'and classical Muhurta rules. Returns ranked windows with composite scores and driving factors.',
   coverageHint:
     'muhurta_windows table + panchanga_daily; classical Muhurta taxonomy; ' +
-    'event types: marriage, travel, surgery, business_start, house_entry, vehicle_purchase, ' +
-    'education_start, meditation, thread_ceremony, naming_ceremony, and others.',
+    'accepted event values: ' + SIDECAR_EVENTS.join(', ') + '; ' +
+    'aliases: ' + Object.keys(EVENT_ALIAS).join(', ') + '.',
   whenToPrefer:
     'Use for "When is a good time to start a business?", "Find an auspicious travel date in June", ' +
     'or any electional timing query. Prefer holistic_bundle for Muhurta analysis synthesized ' +
@@ -53,11 +74,11 @@ export const MUHURTA_FINDER_DESCRIPTION = buildToolDescription({
 })
 
 const MuhurtaFinderInputSchema = z.object({
-  event: z.string().describe(
-    'Event type for which to find a Muhurta. Common values: marriage, travel, surgery, ' +
-    'business_start, house_entry, vehicle_purchase, education_start, meditation, ' +
-    'thread_ceremony, naming_ceremony. Pass the closest match — the engine uses fuzzy taxonomy.'
-  ),
+  event: z.enum(ALL_EVENT_VALUES)
+    .describe(
+      'Event type. Accepted sidecar values: ' + SIDECAR_EVENTS.join(', ') + '. ' +
+      'Aliases: ' + Object.keys(EVENT_ALIAS).join(', ') + '.'
+    ),
   date_from: z.string().describe(
     'ISO date (YYYY-MM-DD) — start of the search window (inclusive).'
   ),
@@ -96,10 +117,14 @@ export function registerMuhurtaFinder(
     MuhurtaFinderInputSchema.shape,
     async (args: MuhurtaFinderInput) => {
       const principal = getPrincipal()
+
+      // Resolve alias to canonical sidecar event value
+      const resolvedEvent = EVENT_ALIAS[args.event] ?? args.event
+
       const { status, envelope } = await callPlatformPrimitive(
         'muhurta_finder',
         {
-          event: args.event,
+          event: resolvedEvent,
           date_from: args.date_from,
           date_to: args.date_to,
           lat: args.lat,
