@@ -220,4 +220,44 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
     const itemSource = callArg?.step?.payload?.items?.[0]?.source ?? ''
     expect(itemSource).toBe('mcp_primitive')
   })
+
+  it('Test 5 (C3a): get_cgm_subgraph with node_id wires graph_seed_hints into queryPlan', async () => {
+    // Capture the queryPlan passed to tool.retrieve to verify graph_seed_hints injection.
+    let capturedPlan: Record<string, unknown> | null = null
+    mockGetTool.mockReturnValue({
+      name: 'cgm_graph_walk',
+      version: '1.0',
+      retrieve: vi.fn().mockImplementation((plan: Record<string, unknown>) => {
+        capturedPlan = plan
+        return Promise.resolve({ nodes: [], edges: [] })
+      }),
+    } as unknown as ReturnType<typeof getTool>)
+
+    const req = buildRequest('get_cgm_subgraph', { params: { node_id: 'MERCURY_10H', hops: 2 } })
+    const res = await POST(req, buildRouteParams('get_cgm_subgraph'))
+    expect(res.status).toBe(200)
+
+    // graph_seed_hints must be present and contain the node_id value
+    expect(capturedPlan).not.toBeNull()
+    expect(capturedPlan!['graph_seed_hints']).toEqual(['MERCURY_10H'])
+    expect(capturedPlan!['graph_traversal_depth']).toBe(2)
+  })
+
+  it('Test 5b (C3a): get_cgm_subgraph without node_id does NOT add graph_seed_hints', async () => {
+    let capturedPlan: Record<string, unknown> | null = null
+    mockGetTool.mockReturnValue({
+      name: 'cgm_graph_walk',
+      version: '1.0',
+      retrieve: vi.fn().mockImplementation((plan: Record<string, unknown>) => {
+        capturedPlan = plan
+        return Promise.resolve({ nodes: [], edges: [] })
+      }),
+    } as unknown as ReturnType<typeof getTool>)
+
+    const req = buildRequest('get_cgm_subgraph', { params: {} })
+    await POST(req, buildRouteParams('get_cgm_subgraph'))
+
+    expect(capturedPlan!['graph_seed_hints']).toBeUndefined()
+    expect(capturedPlan!['graph_traversal_depth']).toBeUndefined()
+  })
 })

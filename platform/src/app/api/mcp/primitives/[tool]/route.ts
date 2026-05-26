@@ -21,6 +21,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { getTool } from '@/lib/retrieve/index'
+import type { QueryPlan } from '@/lib/router/types'
 import {
   buildEnvelope,
   buildErrorEnvelope,
@@ -175,19 +176,29 @@ export async function POST(request: Request, { params }: RouteParams) {
   const queryId = crypto.randomUUID()
 
   // Build a minimal query plan for the tool (surgical: bypasses full pipeline)
-  const queryPlan = {
+  const queryPlan: QueryPlan = {
     query_plan_id: queryId,
     query_text: `surgical_primitive:${mcpToolName}`,
-    query_class: 'holistic' as const,
+    query_class: 'holistic',
     domains: [],
     forward_looking: false,
     audience_tier: audienceTier,
     tools_authorized: [retrievalToolName],
-    history_mode: 'synthesized' as const,
+    history_mode: 'synthesized',
     panel_mode: false,
-    expected_output_shape: 'structured_data' as const,
+    expected_output_shape: 'structured_data',
     manifest_fingerprint: '',
-    schema_version: '1.0' as const,
+    schema_version: '1.0',
+  }
+
+  // Wire CGM graph traversal params from toolParams into queryPlan
+  if (retrievalToolName === 'cgm_graph_walk') {
+    if (typeof toolParams.node_id === 'string' && toolParams.node_id.trim().length > 0) {
+      queryPlan.graph_seed_hints = [toolParams.node_id.trim()]
+    }
+    if (typeof toolParams.hops === 'number') {
+      queryPlan.graph_traversal_depth = toolParams.hops
+    }
   }
 
   // Execute the retrieval tool
