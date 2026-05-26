@@ -113,10 +113,15 @@ export function registerQueryVarshphal(
           return errorResult(failed.envelope)
         }
         return okResult({
-          mode: 'range',
-          year_start: start,
-          year_end: end,
-          charts: results.map(r => (r.envelope as McpEnvelopeSuccess).result),
+          ok: true,
+          trace_id: crypto.randomUUID(),
+          epistemics: { surgical: true, confidence_band: 'high' },
+          result: {
+            mode: 'range',
+            year_start: start,
+            year_end: end,
+            charts: results.map(r => (r.envelope as McpEnvelopeSuccess).result),
+          },
         })
       }
 
