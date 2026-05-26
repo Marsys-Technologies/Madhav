@@ -49,8 +49,11 @@ export const VECTOR_SEARCH_DESCRIPTION = buildToolDescription({
     'Prefer holistic_bundle when semantically similar content needs to be synthesized into an answer.',
 })
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
 const VectorSearchInputSchema = z.object({
-  text: z.string().describe('Query text to semantically match against the RAG chunk corpus.'),
+  // Accepts `text` (new) or `query` (old callers). Handler normalizes to `text`.
+  text: z.string().optional().describe('Query text to semantically match against the RAG chunk corpus.'),
+  query: z.string().optional().describe('Backward-compat alias for text.'),
   doc_type: z.array(z.enum(DOC_TYPES)).optional().describe(
     'Filter to specific document types. Options: l1_fact, ucn_section, msr_signal, ' +
     'cdlm_cell, domain_report, rm_element.'
@@ -59,6 +62,13 @@ const VectorSearchInputSchema = z.object({
     'Number of top results to return (default 10, max 50).'
   ),
 })
+
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+// Compat schema with transform for tests — normalises query → text.
+export const VectorSearchCompatSchema = VectorSearchInputSchema.transform(i => ({
+  ...i,
+  text: i.text ?? i.query ?? '',
+})).refine(i => i.text.length > 0, { message: 'text or query is required' })
 
 type VectorSearchInput = z.infer<typeof VectorSearchInputSchema>
 
@@ -72,10 +82,12 @@ export function registerVectorSearch(
     VectorSearchInputSchema.shape,
     async (args: VectorSearchInput) => {
       const principal = getPrincipal()
+      // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+      const text = args.text ?? args.query ?? ''
       const { status, envelope } = await callPlatformPrimitive(
         'vector_search',
         {
-          text: args.text,
+          text,
           ...(args.doc_type ? { doc_type: args.doc_type } : {}),
           top_k: args.top_k ?? 10,
         },

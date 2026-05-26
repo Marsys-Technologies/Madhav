@@ -59,18 +59,23 @@ const SAMPLE_STEP_DAYS: Record<string, number> = {
   '30d': 30,
 }
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
 const QueryEphemerisInputSchema = z.object({
   planet: z.union([z.enum(PLANETS), z.array(z.enum(PLANETS))]).optional().describe(
     'Jyotish graha(s). One of or an array of: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu. ' +
     'Omit to return all 9 grahas.'
   ),
+  // Accepts nested date_range {from, to} (new) or flat date_from + date_to (old callers).
   date_range: z.object({
     from: z.string().describe('ISO start date (YYYY-MM-DD).'),
     to: z.string().describe('ISO end date (YYYY-MM-DD).'),
-  }).describe(
+  }).optional().describe(
     'Date range for position lookup. Maximum span: 1825 days (5 years). ' +
     'Use sample_step to reduce row count for wide ranges.'
   ),
+  // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+  date_from: z.string().optional().describe('Backward-compat alias: ISO start date (use date_range.from instead).'),
+  date_to: z.string().optional().describe('Backward-compat alias: ISO end date (use date_range.to instead).'),
   sample_step: z.enum(['1d', '7d', '30d']).optional().default('1d').describe(
     'Sampling interval. "1d" = every day (default); "7d" = weekly (Sundays); "30d" = monthly (1st of each month). ' +
     'Use "7d" or "30d" to reduce token cost for wide date ranges.'
@@ -84,6 +89,17 @@ const QueryEphemerisInputSchema = z.object({
   ).optional().describe(
     'Which derived columns to include. Defaults to all 7. Pass [] to skip all derived columns for token-tight queries.'
   ),
+})
+
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+// Compat schema with transform+refine for tests — normalises flat date_from/date_to → date_range.
+export const QueryEphemerisCompatSchema = QueryEphemerisInputSchema.transform(i => ({
+  ...i,
+  date_range: i.date_range ?? (i.date_from && i.date_to
+    ? { from: i.date_from, to: i.date_to }
+    : undefined),
+})).refine(i => i.date_range !== undefined, {
+  message: 'date_range (or date_from + date_to) is required',
 })
 
 type QueryEphemerisInput = z.infer<typeof QueryEphemerisInputSchema>
@@ -104,9 +120,20 @@ export function registerQueryEphemeris(
     QueryEphemerisInputSchema.shape,
     async (args: QueryEphemerisInput) => {
       const principal = getPrincipal()
+      // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+      const date_range = args.date_range ?? (args.date_from && args.date_to
+        ? { from: args.date_from, to: args.date_to }
+        : undefined)
+      if (!date_range) {
+        return errorResult({
+          ok: false,
+          error: 'date_range_required',
+          message: 'date_range ({from, to}) or flat date_from + date_to params are required',
+        })
+      }
 
       // Enforce 1825-day cap
-      const span = daysBetween(args.date_range.from, args.date_range.to)
+      const span = daysBetween(date_range.from, date_range.to)
       if (span > MAX_DATE_RANGE_DAYS) {
         const errEnvelope = {
           ok: false,
@@ -119,7 +146,7 @@ export function registerQueryEphemeris(
         const errEnvelope = {
           ok: false,
           error: 'date_range_invalid',
-          message: `date_range.from must be before date_range.to. Got from="${args.date_range.from}", to="${args.date_range.to}".`,
+          message: `date_range.from must be before date_range.to. Got from="${date_range.from}", to="${date_range.to}".`,
         }
         return errorResult(errEnvelope)
       }
@@ -135,8 +162,8 @@ export function registerQueryEphemeris(
         'query_ephemeris',
         {
           // Translate date_range.{from,to} → start_date/end_date for the primitive
-          start_date: args.date_range.from,
-          end_date: args.date_range.to,
+          start_date: date_range.from,
+          end_date: date_range.to,
           // Pass planets as array (primitive accepts both planet and planets)
           ...(planetsArray.length === 1 ? { planet: planetsArray[0] } : {}),
           ...(planetsArray.length > 1 ? { planets: planetsArray } : {}),

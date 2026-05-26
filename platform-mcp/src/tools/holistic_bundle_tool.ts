@@ -37,10 +37,14 @@ export const HOLISTIC_BUNDLE_DESCRIPTION = buildToolDescription({
   tierAccess: 'All tiers. Tier determines subset of bundle data returned.',
 })
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
 const HolisticBundleInputSchema = z.object({
-  query_text: z.string().min(3).describe(
+  // Accepts `query_text` (new) or `bundles[]` array (old callers, joined as comma list).
+  // Handler normalizes to `query_text`.
+  query_text: z.string().optional().describe(
     'The query driving the holistic read. Used to seed CGM graph walk and UCN/RM/CDLM vector searches.'
   ),
+  bundles: z.array(z.string()).optional().describe('Backward-compat alias: array of bundle names joined as query_text.'),
   focus_domains: z.array(z.string()).optional().describe(
     'Optional domain filter for the MSR signal query. Examples: ["career", "health"]. If omitted, top 100 signals by significance.'
   ),
@@ -61,6 +65,15 @@ const HolisticBundleInputSchema = z.object({
   ),
 })
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+// Compat schema with transform+refine for tests — normalises bundles[] → query_text (min 3 chars).
+export const HolisticBundleCompatSchema = HolisticBundleInputSchema.transform(i => ({
+  ...i,
+  query_text: i.query_text ?? (i.bundles && i.bundles.length > 0 ? i.bundles.join(', ') : ''),
+})).refine(i => i.query_text.length >= 3, {
+  message: 'query_text (or non-empty bundles array) required, min 3 chars',
+})
+
 type HolisticBundleInput = z.infer<typeof HolisticBundleInputSchema>
 
 export function registerHolisticBundle(
@@ -77,10 +90,12 @@ export function registerHolisticBundle(
 
     async (input: HolisticBundleInput) => {
       const principal = getPrincipal()
+      // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+      const query_text = input.query_text ?? (input.bundles?.length ? input.bundles.join(', ') : '')
 
       const envelope = await executeHolisticBundle(
         {
-          query_text: input.query_text,
+          query_text,
           focus_domains: input.focus_domains,
           time_window: input.time_window,
           subset: input.subset,

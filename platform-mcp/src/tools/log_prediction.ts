@@ -68,6 +68,7 @@ export const LOG_PREDICTION_DESCRIPTION = buildToolDescription({
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
 const LogPredictionInputSchema = z.object({
   domain: z
     .enum(['career', 'health', 'relationships', 'spiritual', 'finance', 'relocation', 'family'])
@@ -82,11 +83,29 @@ const LogPredictionInputSchema = z.object({
     .string()
     .max(2000)
     .describe('The prediction in prose. Be specific and testable. Max 2000 chars.'),
+  // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+  // Accepts float 0.0–1.0 (old callers) or enum string (new callers).
+  // Float is mapped: >0.75→high, 0.5–0.75→medium, <0.5→low.
   confidence: z
-    .enum(['high', 'medium', 'low'])
-    .describe('Calibrated confidence: high (>0.75), medium (0.5–0.75), low (<0.5).'),
+    .union([
+      z.enum(['high', 'medium', 'low']),
+      z.number().min(0).max(1),
+    ])
+    .transform(c =>
+      typeof c === 'number'
+        ? c > 0.75 ? 'high' : c >= 0.5 ? 'medium' : 'low'
+        : c
+    )
+    .describe(
+      'Calibrated confidence: high (>0.75), medium (0.5–0.75), low (<0.5). ' +
+      'Also accepts float 0.0–1.0 (backward-compat).'
+    ),
+  // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+  // falsifier is now optional with empty-string default for old callers that omit it.
   falsifier: z
     .string()
+    .optional()
+    .default('')
     .describe(
       'Specific observation that would disprove the prediction. ' +
       'Must be concrete and time-bounded — not vague hedges.'

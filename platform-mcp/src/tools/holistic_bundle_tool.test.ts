@@ -326,3 +326,52 @@ describe('holistic_bundle tool — return_format, response_meta, Zod validation 
     )
   })
 })
+
+// ── Tests: backward-compat alias (MCP-REM-Session-A 2026-05-26) ──────────────
+
+import { HolisticBundleCompatSchema } from './holistic_bundle_tool.js'
+
+describe('holistic_bundle — backward-compat alias (MCP-REM-Session-A 2026-05-26)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('A.5-OLD: accepts old param "bundles" array and joins it as query_text for executor', async () => {
+    const mockExecute = vi.mocked(executeHolisticBundle)
+    mockExecute.mockResolvedValueOnce(buildMockEnvelope())
+
+    const result = await callHolisticBundle({ bundles: ['MSR', 'CGM', 'LEL'] })
+
+    expect((result as { isZodError?: boolean }).isZodError).toBeFalsy()
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({ query_text: 'MSR, CGM, LEL' }),
+      expect.any(Object),
+    )
+  })
+
+  it('A.5-NEW: accepts new param "query_text" string and passes it correctly to executor', async () => {
+    const mockExecute = vi.mocked(executeHolisticBundle)
+    mockExecute.mockResolvedValueOnce(buildMockEnvelope())
+
+    const result = await callHolisticBundle({ query_text: 'Tell me about my career trajectory' })
+
+    expect((result as { isZodError?: boolean }).isZodError).toBeFalsy()
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({ query_text: 'Tell me about my career trajectory' }),
+      expect.any(Object),
+    )
+  })
+
+  it('A.5-COMPAT: HolisticBundleCompatSchema transforms bundles[] → query_text (joined)', () => {
+    const result = HolisticBundleCompatSchema.safeParse({ bundles: ['MSR', 'CGM'] })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.query_text).toBe('MSR, CGM')
+    }
+  })
+
+  it('A.5-COMPAT: HolisticBundleCompatSchema rejects when neither query_text nor bundles is provided', () => {
+    const result = HolisticBundleCompatSchema.safeParse({ subset_size: 100 })
+    expect(result.success).toBe(false)
+  })
+})
