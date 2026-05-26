@@ -283,3 +283,50 @@ describe('cross_school_lookup — C3 claim forwarding fix + Nadi/BNN/Yogini note
     expect(topicA).not.toBe(topicB)
   })
 })
+
+// ── Tests: backward-compat alias (MCP-REM-Session-A 2026-05-26) ──────────────
+
+import { CrossSchoolLookupCompatSchema } from './cross_school_lookup.js'
+
+describe('cross_school_lookup — backward-compat alias (MCP-REM-Session-A 2026-05-26)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('A.3-OLD: accepts old param name "topic" and forwards it as claim+topic to primitive', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildSuccessEnvelope([]))
+
+    await callCrossSchoolLookup({ topic: 'Saturn delays career in 10th house placement' })
+
+    expect((mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>)['topic'])
+      .toBe('Saturn delays career in 10th house placement')
+    expect((mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>)['claim'])
+      .toBe('Saturn delays career in 10th house placement')
+  })
+
+  it('A.3-NEW: accepts new param name "claim" and produces same result shape', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildSuccessEnvelope([]))
+
+    await callCrossSchoolLookup({ claim: 'Saturn delays career in 10th house placement' })
+
+    expect((mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>)['topic'])
+      .toBe('Saturn delays career in 10th house placement')
+  })
+
+  it('A.3-COMPAT: CrossSchoolLookupCompatSchema transforms topic → claim', () => {
+    const result = CrossSchoolLookupCompatSchema.safeParse({
+      topic: 'Saturn in 10th house delays career until 36',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.claim).toBe('Saturn in 10th house delays career until 36')
+    }
+  })
+
+  it('A.3-COMPAT: CrossSchoolLookupCompatSchema rejects when neither claim nor topic is provided', () => {
+    const result = CrossSchoolLookupCompatSchema.safeParse({ schools: ['parashara'] })
+    expect(result.success).toBe(false)
+  })
+})

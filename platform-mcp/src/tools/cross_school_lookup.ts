@@ -51,16 +51,26 @@ export const CROSS_SCHOOL_LOOKUP_DESCRIPTION = buildToolDescription({
   tierAccess: 'super_admin + acharya. Multi-school analysis is acharya-grade.',
 })
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
 const CrossSchoolLookupInputSchema = z.object({
-  claim: z.string().describe(
+  // Accepts `claim` (new) or `topic` (old callers). Handler normalizes to `claim`.
+  claim: z.string().optional().describe(
     'Astrological claim to verify across schools. State as a declarative sentence: ' +
     '"Saturn in 10th house delays career until 36" or ' +
     '"Moon-Ketu conjunction in 4th house indicates maternal separation theme".'
   ),
+  topic: z.string().optional().describe('Backward-compat alias for claim.'),
   schools: z.array(z.enum(SCHOOLS)).optional().describe(
     'Schools to check. Defaults to all four: parashara, jaimini, kp, tajaka.'
   ),
 })
+
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+// Compat schema with transform for tests — normalises topic → claim.
+export const CrossSchoolLookupCompatSchema = CrossSchoolLookupInputSchema.transform(i => ({
+  ...i,
+  claim: i.claim ?? i.topic ?? '',
+})).refine(i => i.claim.length > 0, { message: 'claim or topic is required' })
 
 type CrossSchoolLookupInput = z.infer<typeof CrossSchoolLookupInputSchema>
 
@@ -74,6 +84,8 @@ export function registerCrossSchoolLookup(
     CrossSchoolLookupInputSchema.shape,
     async (args: CrossSchoolLookupInput) => {
       const principal = getPrincipal()
+      // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+      const claim = args.claim ?? args.topic ?? ''
       // Bug fix (TR-P2-S2 / C3): the platform primitive resolves the lookup topic via
       // params.topic (falling back to plan.query_text if absent). Passing only
       // { claim: ... } caused the primitive to always query using the static fallback
@@ -83,8 +95,8 @@ export function registerCrossSchoolLookup(
       const { status, envelope } = await callPlatformPrimitive(
         'cross_school_lookup',
         {
-          topic: args.claim,
-          claim: args.claim,
+          topic: claim,
+          claim,
           ...(args.schools ? { schools: args.schools } : {}),
         },
         principal

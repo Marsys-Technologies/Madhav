@@ -317,3 +317,62 @@ describe('query_ephemeris — C5 date_range + sample_step fix', () => {
     expect(parsed['error']).toBe('date_range_invalid')
   })
 })
+
+// ── Tests: backward-compat alias (MCP-REM-Session-A 2026-05-26) ──────────────
+
+import { QueryEphemerisCompatSchema } from './query_ephemeris.js'
+
+describe('query_ephemeris — backward-compat alias (MCP-REM-Session-A 2026-05-26)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('A.6-OLD: accepts flat date_from + date_to params and maps them to start_date/end_date', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildEphemerisEnvelope([]))
+
+    const result = await callQueryEphemeris({
+      planet: 'Jupiter',
+      date_from: '2026-06-01',
+      date_to: '2026-06-30',
+    })
+
+    expect((result as { isZodError?: boolean }).isZodError).toBeFalsy()
+    expect(mockCallPlatformPrimitive).toHaveBeenCalledTimes(1)
+    const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
+    expect(params['start_date']).toBe('2026-06-01')
+    expect(params['end_date']).toBe('2026-06-30')
+  })
+
+  it('A.6-NEW: accepts nested date_range {from, to} and produces same result shape', async () => {
+    const mockCallPlatformPrimitive = vi.mocked(callPlatformPrimitive)
+    mockCallPlatformPrimitive.mockResolvedValue(buildEphemerisEnvelope([]))
+
+    const result = await callQueryEphemeris({
+      planet: 'Jupiter',
+      date_range: { from: '2026-06-01', to: '2026-06-30' },
+    })
+
+    expect((result as { isZodError?: boolean }).isZodError).toBeFalsy()
+    expect(mockCallPlatformPrimitive).toHaveBeenCalledTimes(1)
+    const params = mockCallPlatformPrimitive.mock.calls[0][1] as Record<string, unknown>
+    expect(params['start_date']).toBe('2026-06-01')
+    expect(params['end_date']).toBe('2026-06-30')
+  })
+
+  it('A.6-COMPAT: QueryEphemerisCompatSchema transforms flat date_from/date_to → date_range', () => {
+    const result = QueryEphemerisCompatSchema.safeParse({
+      date_from: '2026-01-01',
+      date_to: '2026-03-31',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.date_range).toEqual({ from: '2026-01-01', to: '2026-03-31' })
+    }
+  })
+
+  it('A.6-COMPAT: QueryEphemerisCompatSchema rejects when neither date_range nor flat params provided', () => {
+    const result = QueryEphemerisCompatSchema.safeParse({ planet: 'Saturn' })
+    expect(result.success).toBe(false)
+  })
+})

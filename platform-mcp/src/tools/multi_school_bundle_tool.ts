@@ -30,16 +30,28 @@ export const MULTI_SCHOOL_BUNDLE_DESCRIPTION = buildToolDescription({
     'Prefer cross_school_lookup directly for a lightweight stance-only check without per-school evidence.',
 })
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
 const MultiSchoolBundleInputSchema = z.object({
-  claim: z.string().min(10).describe(
+  // Accepts `claim` (new) or `topic` (old callers). Handler normalizes to `claim`.
+  claim: z.string().optional().describe(
     'Astrological claim to verify across schools. State as a declarative sentence. ' +
     'Example: "Saturn in 10th house delays career until 36" or ' +
     '"Moon-Ketu conjunction in 4th house indicates maternal separation theme".'
   ),
+  topic: z.string().optional().describe('Backward-compat alias for claim.'),
   schools: z.array(z.enum(SCHOOLS)).optional().describe(
     'Schools to include. Defaults to all four: parashara, jaimini, kp, tajaka. ' +
     'All four school evidence sets (including KP and Tajaka) are fully populated as of MCPT v3.3.'
   ),
+})
+
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+// Compat schema with transform+refine for tests — normalises topic → claim (min 10 chars).
+export const MultiSchoolBundleCompatSchema = MultiSchoolBundleInputSchema.transform(i => ({
+  ...i,
+  claim: i.claim ?? i.topic ?? '',
+})).refine(i => i.claim.length >= 10, {
+  message: 'claim (or topic) must be at least 10 characters',
 })
 
 type MultiSchoolBundleInput = z.infer<typeof MultiSchoolBundleInputSchema>
@@ -58,10 +70,12 @@ export function registerMultiSchoolBundle(
 
     async (input: MultiSchoolBundleInput) => {
       const principal = getPrincipal()
+      // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+      const claim = input.claim ?? input.topic ?? ''
 
       const envelope = await executeMultiSchoolBundle(
         {
-          claim: input.claim,
+          claim,
           schools: input.schools,
           tier: principal.audience_tier,
           chart_id: undefined,

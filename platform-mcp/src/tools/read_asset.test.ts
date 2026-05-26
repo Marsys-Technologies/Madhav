@@ -259,3 +259,60 @@ describe('list_assets — AC.2: returns ≥10 canonical_ids', () => {
     expect(ids).toContain('FORENSIC')
   })
 })
+
+// ── Tests: backward-compat alias (MCP-REM-Session-A 2026-05-26) ──────────────
+
+import { ReadAssetCompatSchema } from './read_asset.js'
+
+describe('read_asset — backward-compat alias (MCP-REM-Session-A 2026-05-26)', () => {
+  const mockReadFile = vi.mocked(readFile)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('A.1-OLD: accepts old param name "asset_key" and reads the correct asset', async () => {
+    const fakeContent = '# FORENSIC DATA\nTest content for backward-compat test.'
+    mockReadFile.mockResolvedValue(fakeContent as unknown as Buffer)
+
+    const tool = captureToolRegistration(registerReadAsset)
+    const result = await tool.call({ asset_key: 'FORENSIC' })
+
+    const res = result as { content: Array<{ type: string; text: string }> }
+    const parsed = JSON.parse(res.content[0].text)
+    expect(parsed.ok).toBe(true)
+    expect(parsed.result.canonical_id).toBe('FORENSIC')
+    expect(parsed.result.content).toBe(fakeContent)
+  })
+
+  it('A.1-NEW: accepts new param name "canonical_id" and produces same result shape', async () => {
+    const fakeContent = '# FORENSIC DATA\nTest content for new-signature test.'
+    mockReadFile.mockResolvedValue(fakeContent as unknown as Buffer)
+
+    const tool = captureToolRegistration(registerReadAsset)
+    const result = await tool.call({ canonical_id: 'FORENSIC' })
+
+    const res = result as { content: Array<{ type: string; text: string }> }
+    const parsed = JSON.parse(res.content[0].text)
+    expect(parsed.ok).toBe(true)
+    expect(parsed.result.canonical_id).toBe('FORENSIC')
+    expect(parsed.result.content).toBe(fakeContent)
+  })
+
+  it('A.1-COMPAT: ReadAssetCompatSchema transforms asset_key → canonical_id (uppercased)', () => {
+    const result = ReadAssetCompatSchema.safeParse({ asset_key: 'forensic' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.canonical_id).toBe('FORENSIC')
+    }
+  })
+
+  it('A.1-COMPAT: ReadAssetCompatSchema rejects when neither canonical_id nor asset_key is provided', () => {
+    const result = ReadAssetCompatSchema.safeParse({ section: 'some section' })
+    expect(result.success).toBe(false)
+  })
+})

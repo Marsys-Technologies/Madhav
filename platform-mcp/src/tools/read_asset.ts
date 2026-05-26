@@ -130,6 +130,19 @@ function filterToSection(content: string, section: string): string {
   return lines.slice(startLine, endLine).join('\n')
 }
 
+// --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+// Compat schema with transform+refine for tests — normalises asset_key → canonical_id.
+export const ReadAssetCompatSchema = z.object({
+  canonical_id: z.string().optional(),
+  asset_key: z.string().optional(),
+  section: z.string().optional(),
+}).transform(i => ({
+  canonical_id: (i.canonical_id ?? i.asset_key ?? '').toUpperCase(),
+  section: i.section,
+})).refine(i => i.canonical_id.length > 0, {
+  message: 'canonical_id or asset_key is required',
+})
+
 // ── Tool registration ─────────────────────────────────────────────────────────
 
 export function registerReadAsset(
@@ -142,12 +155,19 @@ export function registerReadAsset(
     READ_ASSET_DESCRIPTION,
 
     // ── Input schema ──────────────────────────────────────────────────────────
+    // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+    // Accepts `canonical_id` (new) or `asset_key` (old callers). Handler normalizes.
     {
       canonical_id: z
         .string()
+        .optional()
         .describe(
           `One of: ${KNOWN_CANONICAL_IDS.join(', ')}. Case-insensitive.`
         ),
+      asset_key: z
+        .string()
+        .optional()
+        .describe('Backward-compat alias for canonical_id.'),
       section: z
         .string()
         .optional()
@@ -159,10 +179,11 @@ export function registerReadAsset(
     },
 
     // ── Handler ────────────────────────────────────────────────────────────────
-    async ({ canonical_id, section }) => {
+    async ({ canonical_id, asset_key, section }) => {
       void getPrincipal() // auth already validated by caller; reserved for future tier checks
 
-      const normalised = canonical_id.trim().toUpperCase() as KnownCanonicalId
+      // --- backward-compat alias (MCP-REM-Session-A 2026-05-26) ---
+      const normalised = (canonical_id ?? asset_key ?? '').trim().toUpperCase() as KnownCanonicalId
       const relativePath = SAFE_ASSET_MAP[normalised]
 
       if (!relativePath) {
