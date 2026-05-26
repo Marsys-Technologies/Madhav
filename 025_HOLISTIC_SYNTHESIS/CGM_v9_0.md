@@ -2753,8 +2753,8 @@ varga: D24
 planet: PLN.MARS
 sign: Libra
 house_from_d24_lagna: 6
-dignity: debilitated
-note: "In Libra (debilitation) joined Rahu and Ketu in D24 6H."
+dignity: enemy
+note: "In Libra (enemy sign — Venus-ruled, śatru-kṣetra; Mars debilitates in Cancer not Libra) joined Rahu and Ketu in D24 6H. Corrected 2026-05-27."
 l1_source: "FORENSIC_v8_0 §3.10"
 
 node_id: DVS.D24.MERCURY
@@ -3235,7 +3235,7 @@ edges:
     properties:
       d1_sign: Libra
       d9_sign: Pisces
-      dignity_shift: "debilitated → neutral (D1 Libra is Mars debilitation; D9 Pisces is neutral)"
+      dignity_shift: "enemy → neutral (D1 Libra is Mars enemy sign — Venus-owned, śatru-kṣetra; D9 Pisces is neutral)"
     l1_source: "FORENSIC_v8_0 §3.15 CSI.MARS"
 
   - edge_id: EDGE.DT.MERCURY

@@ -116,12 +116,15 @@ const ROWS: PlanetRow[] = [
     value_number: null,
     source_section: SOURCE,
   },
-  // FORENSIC §PLN.MARS Special Role: "Lagna Lord" (Aries lagna; Libra = Mars debilitation)
+  // FORENSIC §PLN.MARS Special Role: "Lagna Lord" (Aries lagna; Libra = Mars enemy sign)
+  // NOTE: Mars debilitates in CANCER (28°), NOT Libra. Libra is Venus-owned; Mars-Venus are
+  // enemies — so Mars in Libra = śatru-kṣetra (enemy sign). Prior seeding of 'debilitated'
+  // was a factual error. Corrected 2026-05-27.
   {
     fact_id: 'PLN.MARS.DIGNITY.D1',
     category: 'planet',
     divisional_chart: 'D1',
-    value_text: 'debilitated',
+    value_text: 'enemy',
     value_number: null,
     source_section: SOURCE,
   },
