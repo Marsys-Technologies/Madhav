@@ -199,4 +199,35 @@ describe('query_varshphal', () => {
     const result = await callQueryVarshphal({ year: 2026 }, acharyaPrincipal)
     expect((result as { isError?: boolean }).isError).toBeUndefined()
   })
+
+  // ── Range-mode tests ──────────────────────────────────────────────────────────
+
+  it('range-mode success: returns mode=range, charts array, and audience_tier', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    // Mock resolves successfully for both years
+    mockCall.mockResolvedValue(buildVarshphalEnvelope({ year: 2025 }))
+
+    const result = await callQueryVarshphal({ year_start: 2025, year_end: 2026 })
+
+    expect(result).toBeDefined()
+    const res = result as { content: Array<{ type: string; text: string }> }
+    expect(res.content).toBeDefined()
+    const parsed = JSON.parse(res.content[0].text)
+    expect(parsed.ok).toBe(true)
+    expect(parsed.result.mode).toBe('range')
+    expect(Array.isArray(parsed.result.charts)).toBe(true)
+    expect(parsed.result.charts.length).toBe(2)
+    // audience_tier must be present (Fix A)
+    expect(parsed.audience_tier).toBe('super_admin')
+  })
+
+  it('range-mode 20-year cap: caps at 20 calls for year_start=2000, year_end=2030', async () => {
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildVarshphalEnvelope({ year: 2000 }))
+
+    await callQueryVarshphal({ year_start: 2000, year_end: 2030 })
+
+    // 2030 - 2000 = 30 years requested, but cap is 20 (start + 19)
+    expect(mockCall).toHaveBeenCalledTimes(20)
+  })
 })

@@ -112,10 +112,12 @@ export function registerQueryVarshphal(
         if (failed) {
           return errorResult(failed.envelope)
         }
+        const firstEnv = results[0]?.envelope as McpEnvelopeSuccess | undefined
         return okResult({
           ok: true,
           trace_id: crypto.randomUUID(),
-          epistemics: { surgical: true, confidence_band: 'high' },
+          audience_tier: firstEnv?.audience_tier ?? principal.audience_tier,
+          epistemics: { surgical: true, confidence_band: 'high' as const },
           result: {
             mode: 'range',
             year_start: start,
