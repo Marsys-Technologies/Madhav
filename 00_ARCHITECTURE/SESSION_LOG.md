@@ -27919,3 +27919,46 @@ cloud_run:
 post_deploy_errors: 0
 outcome: COMPLETE
 ```
+
+---
+
+## MCP-TOOL-AUDIT-REM | 2026-05-26
+
+```yaml
+session_id: MCP-TOOL-AUDIT-REM-2026-05-26
+type: remediation
+date: 2026-05-26
+plan_doc: 00_ARCHITECTURE/BRIEFS/MCP_TOOL_AUDIT_REMEDIATION_PLAN_v1_0.md
+methodology: subagent-driven-development (S1 + S2 parallel, sequential reviews)
+phases_completed:
+  - MCP-REM-S1: platform-mcp package fixes (fix/mcp-rem-s1 → main)
+  - MCP-REM-S2: platform package fixes (fix/mcp-rem-s2 → main)
+deliverables:
+  C1a: Docker corpus copy — build context switched to repo root (-f platform-mcp/Dockerfile .);
+       025_HOLISTIC_SYNTHESIS/ + 01_FACTS_LAYER/ + 3 00_ARCHITECTURE/ files copied into image
+  C1b: read_asset.ts resolveRepoRoot() depth 3→2 (dist/tools → dist → /app)
+  C1c: SAFE_ASSET_MAP.MSR corrected MSR_v3_0 → MSR_v5_0
+  C2a: query_varshphal.ts NATIVE_CHART_ID UUID → 'abhisek_mohanty_primary' (DB key)
+  C4a: muhurta_finder.ts event field z.string() → z.enum(SIDECAR_EVENTS + EVENT_ALIAS aliases)
+  C1d: query_cdlm_lookup/rm_walk/ucn_walk switched __dirname → process.cwd() for markdown paths
+  C3a: primitives route.ts wires node_id → graph_seed_hints for cgm_graph_walk
+       (typed QueryPlan, strict typeof guard, no unsafe cast)
+merge_commits:
+  s1: 48d0ce50 (fix/mcp-rem-s1 → main)
+  s2: d3246045 (fix/mcp-rem-s2 → main)
+tests_added: 37 new tests (11 muhurta/varshphal/read_asset in platform-mcp;
+             26 cdlm/rm/ucn/primitives in platform)
+ops_required:
+  - OPS-1: gcloud run services update amjis-sidecar --min-instances=1 (cold-start fix)
+  - OPS-2: verify GCP_PROJECT + VERTEX_AI_LOCATION + VECTOR_SEARCH_ENABLED on amjis-web
+  - OPS-3: gcloud builds submit --config platform-mcp/cloudbuild.yaml (amjis-mcp redeploy)
+  - OPS-4: gcloud builds submit --config cloudbuild.yaml (amjis-web redeploy)
+  - OPS-5: 5-min post-deploy log watch on both services
+deferred_p3:
+  - MCP-REM-S3: CGM graph seeding from CGM_v9_0.md (l25_cgm_nodes/edges tables empty)
+  - MCP-REM-S4: L5 timeline rag_chunks bootstrap (no l5_timeline doc_type rows yet)
+projected_manifest_avg: 71% → ~95% after OPS deploy
+outcome: CODE_COMPLETE — awaiting operator OPS deploy steps
+current_state_updated: true
+mirror_updates_propagated: false
+```

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.61
+version: 5.62
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.62 (2026-05-26, MCP-TOOL-AUDIT-REM):
+    **MCP Tool Audit Remediation v1.0 COMPLETE (P0+P1 fixes merged to main, d3246045). S1 (platform-mcp): Docker corpus copy (build context → repo root, 025_HOLISTIC_SYNTHESIS/ + 01_FACTS_LAYER/ in image); read_asset resolveRepoRoot() depth 3→2; SAFE_ASSET_MAP.MSR v3→v5; query_varshphal NATIVE_CHART_ID UUID→'abhisek_mohanty_primary'; muhurta_finder event z.string()→z.enum() with SIDECAR_EVENTS+EVENT_ALIAS alias map. S2 (platform): query_cdlm_lookup/rm_walk/ucn_walk switched __dirname→process.cwd() for markdown path resolution; primitives route.ts wires node_id→graph_seed_hints for cgm_graph_walk (typed QueryPlan, strict typeof guard). Projected full-manifest avg: 71%→~95% after OPS deploy. OPS steps required: deploy amjis-mcp (gcloud builds submit --config platform-mcp/cloudbuild.yaml), deploy amjis-web (gcloud builds submit --config cloudbuild.yaml), set amjis-sidecar min-instances=1, verify vector_search env vars.**
+    files_touched: ["platform-mcp/Dockerfile", "platform-mcp/cloudbuild.yaml", "platform-mcp/src/tools/read_asset.ts", "platform-mcp/src/tools/query_varshphal.ts", "platform-mcp/src/tools/muhurta_finder.ts", "platform/src/lib/retrieve/query_cdlm_lookup.ts", "platform/src/lib/retrieve/query_rm_walk.ts", "platform/src/lib/retrieve/query_ucn_walk.ts", "platform/src/app/api/mcp/primitives/[tool]/route.ts"]
+    active_phase_plan_sub_phase: M6 INCOMING (remediation session; no macro-phase change).
+    last_session_id: MCP-TOOL-AUDIT-REM. predecessor_session: GISMCP-DEPLOY.
+    carry_forwards: ["OPS-3: gcloud builds submit --config platform-mcp/cloudbuild.yaml --project madhav-astrology (redeploy amjis-mcp with corpus)", "OPS-4: gcloud builds submit --config cloudbuild.yaml --project madhav-astrology (redeploy amjis-web with process.cwd() fix)", "OPS-1: gcloud run services update amjis-sidecar --region=asia-south1 --min-instances=1 (eliminate temporal cold-start)", "OPS-2: verify GCP_PROJECT+VERTEX_AI_LOCATION+VECTOR_SEARCH_ENABLED on amjis-web", "MCP-REM-S5: full 40-tool re-audit after OPS deploy (target ≥95%)", "P3 deferred: MCP-REM-S3 (CGM graph seeding) + MCP-REM-S4 (L5 timeline rag_chunks)", "Next project work: M6-A-S1 per PHASE_M6_PLAN_v1_0.md"]
+    next_session_objective: "Run OPS deploy steps, then MCP-REM-S5 full re-audit. After audit confirms ≥95%, open M6-A-S1."
+    file_updated_at: 2026-05-26. file_updated_by_session: MCP-TOOL-AUDIT-REM.
   - v5.61 (2026-05-26, GISMCP-DEPLOY):
     **GISMCP Remediation COMPLETE — all 40 MCP tools unconditional (tier gate removed from server.ts); RETRIEVAL_TOOLS 51→55 (4 canonical-name aliases: query_tara_balam, query_chandra_balam, jaimini_chara_dasha, jaimini_chara_dasha_full); MSR signals 573/573 VERIFIED_NO_GAP. Both streams merged to main (8a30382b). amjis-web-00411-p6g + amjis-mcp-00017-6nl deployed. Worktrees MadhavGISMCP-S1 + MadhavGISMCP-S2 retired. Branches fix/gismcp-r1-r2 + fix/gismcp-r3 deleted. 0 ERROR logs post-deploy.**
     files_touched: ["CLAUDE.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "platform-mcp/src/server.ts", "platform-mcp/src/tools/tool_health.ts", "platform-mcp/src/tools/data_coverage.ts", "platform/src/lib/retrieve/query_tara_balam.ts", "platform/src/lib/retrieve/query_chandra_balam.ts", "platform/src/lib/retrieve/jaimini_chara_dasha.ts", "platform/src/lib/retrieve/jaimini_chara_dasha_full.ts"]
