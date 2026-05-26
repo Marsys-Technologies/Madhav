@@ -62,6 +62,28 @@ beforeEach(() => {
 })
 
 describe('remedial_codex_query tool', () => {
+  // --- AC-B.6: word-boundary precision filter ---
+  it('uses word-boundary regex (~*) not plain ILIKE for planet filter (AC-B.6)', async () => {
+    mockQuery.mockResolvedValue({ rows: [mercuryRow], rowCount: 1 })
+    await tool.retrieve(basePlan, { planet: 'Saturn' })
+    const sql: string = mockQuery.mock.calls[0][0]
+    // Must use regex operator ~* (not ILIKE) for precision
+    expect(sql).toContain('~*')
+    expect(sql).not.toContain('ILIKE')
+    // Word-boundary pattern: \mPlanet\M
+    const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+    expect(sqlParams.some(p => typeof p === 'string' && p.includes('\\m'))).toBe(true)
+    expect(sqlParams.some(p => typeof p === 'string' && p.includes('\\M'))).toBe(true)
+  })
+
+  it('word-boundary pattern wraps the planet name correctly', async () => {
+    mockQuery.mockResolvedValue({ rows: [mercuryRow], rowCount: 1 })
+    await tool.retrieve(basePlan, { planet: 'Mercury' })
+    const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
+    const planetParam = sqlParams.find(p => typeof p === 'string' && (p as string).includes('Mercury'))
+    expect(planetParam).toBe('\\mMercury\\M')
+  })
+
   it('retrieve() with planet:Mercury returns results', async () => {
     mockQuery.mockResolvedValue({ rows: [mercuryRow], rowCount: 1 })
     const bundle = await tool.retrieve(basePlan, { planet: 'Mercury' })

@@ -60,6 +60,50 @@ beforeEach(() => {
 })
 
 describe('query_signal_state tool', () => {
+  // --- AC-B.3 / AC-B.4 / AC-B.5: state-derived confidence fallback ---
+  it('returns 0.85 confidence for lit signal with null confidence (AC-B.3)', async () => {
+    const nullConfidenceLit = { ...litSignal, confidence: null }
+    mockQuery.mockResolvedValue({ rows: [nullConfidenceLit], rowCount: 1 })
+    const bundle = await tool.retrieve(basePlan)
+    expect(bundle.results[0].confidence).toBeCloseTo(0.85)
+  })
+
+  it('returns 0.65 confidence for ripening signal with null confidence', async () => {
+    const ripeningSignal = { ...litSignal, state: 'ripening' as const, confidence: null }
+    mockQuery.mockResolvedValue({ rows: [ripeningSignal], rowCount: 1 })
+    const bundle = await tool.retrieve(basePlan)
+    expect(bundle.results[0].confidence).toBeCloseTo(0.65)
+  })
+
+  it('returns 0.35 confidence for dormant signal with null confidence (AC-B.4)', async () => {
+    const dormantSignal = { ...litSignal, state: 'dormant' as const, confidence: null }
+    mockQuery.mockResolvedValue({ rows: [dormantSignal], rowCount: 1 })
+    const bundle = await tool.retrieve(basePlan)
+    expect(bundle.results[0].confidence).toBeCloseTo(0.35)
+    expect(bundle.results[0].confidence).toBeLessThan(0.45)
+  })
+
+  it('returns actual confidence when present and non-null (AC-B.5)', async () => {
+    const highConfidence = { ...litSignal, state: 'lit' as const, confidence: 0.92 }
+    mockQuery.mockResolvedValue({ rows: [highConfidence], rowCount: 1 })
+    const bundle = await tool.retrieve(basePlan)
+    expect(bundle.results[0].confidence).toBeCloseTo(0.92)
+  })
+
+  it('lit null-confidence returns > 0.80 (not old 0.6 value)', async () => {
+    const nullConfidenceLit = { ...litSignal, confidence: null }
+    mockQuery.mockResolvedValue({ rows: [nullConfidenceLit], rowCount: 1 })
+    const bundle = await tool.retrieve(basePlan)
+    expect(bundle.results[0].confidence).toBeGreaterThan(0.80)
+  })
+
+  it('dormant null-confidence returns < 0.45', async () => {
+    const dormantSignal = { ...litSignal, state: 'dormant' as const, confidence: null }
+    mockQuery.mockResolvedValue({ rows: [dormantSignal], rowCount: 1 })
+    const bundle = await tool.retrieve(basePlan)
+    expect(bundle.results[0].confidence).toBeLessThan(0.45)
+  })
+
   it('returns lit signal row with default chart_id + CURRENT_DATE when no params', async () => {
     mockQuery.mockResolvedValue({ rows: [litSignal], rowCount: 1 })
 

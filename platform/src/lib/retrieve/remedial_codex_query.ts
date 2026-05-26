@@ -49,8 +49,10 @@ function buildQuery(p: RemedialCodexQueryInput): { sql: string; args: unknown[] 
   let idx = 1
 
   if (p.planet) {
-    conditions.push(`content ILIKE $${idx}`)
-    args.push(`%${p.planet}%`)
+    // Word-boundary regex prevents "Saturn" matching "Saturnine" or substring-only hits.
+    // PostgreSQL POSIX: \m = word start, \M = word end.
+    conditions.push(`content ~* $${idx}`)
+    args.push(`\\m${p.planet}\\M`)
     idx++
   }
 
