@@ -1,0 +1,22 @@
+# Seeded pass fixture — env reads + Secret Manager bootstrap references.
+# This file MUST NOT trip the scanner.
+
+# Python:
+db_password = os.environ.get("DB_PASSWORD", "")
+api_key = os.environ["OPENAI_API_KEY"]
+
+# TypeScript / Node:
+const PASSWORD = process.env.SMOKE_PASSWORD ?? ''
+const DB_URL = process.env.DATABASE_URL
+
+# Bash:
+PGPASSWORD=${PGPASSWORD}
+DB_PASSWORD=${DB_PASSWORD:-}
+
+# Cloud Run secret bootstrap (env=secret-id:version):
+DB_PASSWORD=amjis-db-password:latest
+OPENAI_API_KEY=openai-api-key:latest
+ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
+
+# GitHub Actions secret reference:
+api_key: ${{ secrets.OPENAI_API_KEY }}

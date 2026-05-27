@@ -105,6 +105,30 @@ jobs:
           npx tsx scripts/governance/icr_pr_gate.ts --dry-run --synthetic
           echo "icr_pr_gate_importable: PASS"
 
+  secret-scan:
+    name: Secret Scan (unit 0b.2)
+    runs-on: ubuntu-latest
+    # Stream B modernization unit 0b.2 — on_red: halt_queue.
+    # Any literal credential introduced by a future PR fails this job.
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Self-test scanner against fixtures
+        # Validates that the scanner catches seeded fail fixtures and
+        # tolerates pass fixtures. Exits non-zero if either side breaks.
+        run: bash platform/scripts/governance/secret_scan.sh --self-test
+
+      - name: Scan tree for literal credentials
+        # Scans scripts/, platform/scripts/, platform-mcp/scripts/,
+        # .github/workflows/, and cloudbuild*.yaml files. Hard fail on
+        # any literal credential. Prefers gitleaks if on PATH.
+        run: bash platform/scripts/governance/secret_scan.sh
+
   coverage-gate:
     name: Coverage Gate (COV-S7)
     runs-on: ubuntu-latest

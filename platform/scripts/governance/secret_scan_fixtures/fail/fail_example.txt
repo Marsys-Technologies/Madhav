@@ -1,0 +1,9 @@
+# Seeded failure fixture for secret_scan.sh --self-test.
+# This file SHOULD trip the scanner. It contains a deliberately fake
+# credential. Do NOT replace it with an env read — the point is that
+# the scanner catches literal-credential patterns.
+
+password=hunter2
+
+# Also exercise a fake postgres connection string:
+DATABASE_URL=postgres://app_user:p4ssw0rd-fake-fixture-only@localhost:5432/db

@@ -1,0 +1,5 @@
+# Seeded failure fixture #2 — provider key prefix pattern.
+# This file SHOULD trip the scanner.
+
+OPENAI_API_KEY="sk-proj-AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJ"
+GOOGLE_KEY=AIzaSyAAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIII
