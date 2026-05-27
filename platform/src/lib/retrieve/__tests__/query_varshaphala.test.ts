@@ -66,7 +66,11 @@ describe('query_varshaphala tool', () => {
   it('returns annual chart row for single year param', async () => {
     mockQuery.mockResolvedValue({ rows: [yearRow], rowCount: 1 })
 
-    const bundle = await tool.retrieve(basePlan, { year: 2026 })
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+      year: 2026,
+    })
 
     expect(bundle.results).toHaveLength(1)
     const content = JSON.parse(bundle.results[0].content)
@@ -88,7 +92,10 @@ describe('query_varshaphala tool', () => {
       time_window: { start: '2026-01-01', end: '2028-12-31' },
     }
 
-    await tool.retrieve(planWithWindow)
+    await tool.retrieve(planWithWindow, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+    })
 
     const sqlParams: unknown[] = mockQuery.mock.calls[0][1]
     expect(sqlParams[0]).toBe('abhisek_mohanty_primary')
@@ -100,7 +107,11 @@ describe('query_varshaphala tool', () => {
   it('returns empty results without error when no row matches', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
-    const bundle = await tool.retrieve(basePlan, { year: 1899 })
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+      year: 1899,
+    })
 
     expect(bundle.results).toHaveLength(0)
     expect(bundle.tool_name).toBe('query_varshaphala')
@@ -110,7 +121,12 @@ describe('query_varshaphala tool', () => {
   it('returns valid ToolBundle shape', async () => {
     mockQuery.mockResolvedValue({ rows: [yearRow], rowCount: 1 })
 
-    const bundle = await tool.retrieve(basePlan, { year_start: 2026, year_end: 2027 })
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+      year_start: 2026,
+      year_end: 2027,
+    })
 
     expect(bundle.tool_name).toBe('query_varshaphala')
     expect(bundle.tool_version).toBe('1.0')
@@ -131,7 +147,13 @@ describe('query_varshaphala tool', () => {
 
   it('logs error path on DB failure and rethrows', async () => {
     mockQuery.mockRejectedValueOnce(new Error('vp_fail'))
-    await expect(tool.retrieve(basePlan, { year: 2026 })).rejects.toThrow('vp_fail')
+    await expect(
+      tool.retrieve(basePlan, {
+        chart_id: 'abhisek_mohanty_primary',
+        ayanamsha: 'lahiri',
+        year: 2026,
+      }),
+    ).rejects.toThrow('vp_fail')
     expect(writeToolExecutionLog).toHaveBeenCalledWith(
       expect.objectContaining({
         tool_name: 'query_varshaphala',

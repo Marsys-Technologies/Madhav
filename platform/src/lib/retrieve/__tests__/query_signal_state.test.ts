@@ -64,21 +64,21 @@ describe('query_signal_state tool', () => {
   it('returns 0.85 confidence for lit signal with null confidence (AC-B.3)', async () => {
     const nullConfidenceLit = { ...litSignal, confidence: null }
     mockQuery.mockResolvedValue({ rows: [nullConfidenceLit], rowCount: 1 })
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(bundle.results[0].confidence).toBeCloseTo(0.85)
   })
 
   it('returns 0.65 confidence for ripening signal with null confidence', async () => {
     const ripeningSignal = { ...litSignal, state: 'ripening' as const, confidence: null }
     mockQuery.mockResolvedValue({ rows: [ripeningSignal], rowCount: 1 })
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(bundle.results[0].confidence).toBeCloseTo(0.65)
   })
 
   it('returns 0.35 confidence for dormant signal with null confidence (AC-B.4)', async () => {
     const dormantSignal = { ...litSignal, state: 'dormant' as const, confidence: null }
     mockQuery.mockResolvedValue({ rows: [dormantSignal], rowCount: 1 })
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(bundle.results[0].confidence).toBeCloseTo(0.35)
     expect(bundle.results[0].confidence).toBeLessThan(0.45)
   })
@@ -86,28 +86,28 @@ describe('query_signal_state tool', () => {
   it('returns actual confidence when present and non-null (AC-B.5)', async () => {
     const highConfidence = { ...litSignal, state: 'lit' as const, confidence: 0.92 }
     mockQuery.mockResolvedValue({ rows: [highConfidence], rowCount: 1 })
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(bundle.results[0].confidence).toBeCloseTo(0.92)
   })
 
   it('lit null-confidence returns > 0.80 (not old 0.6 value)', async () => {
     const nullConfidenceLit = { ...litSignal, confidence: null }
     mockQuery.mockResolvedValue({ rows: [nullConfidenceLit], rowCount: 1 })
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(bundle.results[0].confidence).toBeGreaterThan(0.80)
   })
 
   it('dormant null-confidence returns < 0.45', async () => {
     const dormantSignal = { ...litSignal, state: 'dormant' as const, confidence: null }
     mockQuery.mockResolvedValue({ rows: [dormantSignal], rowCount: 1 })
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(bundle.results[0].confidence).toBeLessThan(0.45)
   })
 
   it('returns lit signal row with default chart_id + CURRENT_DATE when no params', async () => {
     mockQuery.mockResolvedValue({ rows: [litSignal], rowCount: 1 })
 
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
 
     expect(bundle.results).toHaveLength(1)
     const content = JSON.parse(bundle.results[0].content)
@@ -124,6 +124,7 @@ describe('query_signal_state tool', () => {
     mockQuery.mockResolvedValue({ rows: [litSignal], rowCount: 1 })
 
     const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
       signal_ids: ['SIG.MSR.142', 'SIG.MSR.001'],
       states: ['lit', 'ripening'],
       query_date: '2026-05-17',
@@ -142,7 +143,11 @@ describe('query_signal_state tool', () => {
   it('treats query_date as range start when end_date supplied', async () => {
     mockQuery.mockResolvedValue({ rows: [litSignal], rowCount: 1 })
 
-    await tool.retrieve(basePlan, { query_date: '2026-01-01', end_date: '2026-12-31' })
+    await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      query_date: '2026-01-01',
+      end_date: '2026-12-31',
+    })
 
     const sql: string = mockQuery.mock.calls[0][0]
     expect(sql).toContain('query_date >= $')
@@ -155,7 +160,10 @@ describe('query_signal_state tool', () => {
   it('returns diagnostic row (not empty results) when no signal rows match', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
-    const bundle = await tool.retrieve(basePlan, { query_date: '1900-01-01' })
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      query_date: '1900-01-01',
+    })
 
     // tool injects a degraded/empty diagnostic content row
     expect(bundle.results).toHaveLength(1)
@@ -167,7 +175,7 @@ describe('query_signal_state tool', () => {
 
   it('returns valid ToolBundle shape + logs error on DB throw', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [litSignal], rowCount: 1 })
-    const ok = await tool.retrieve(basePlan)
+    const ok = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(ok.tool_name).toBe('query_signal_state')
     expect(ok.tool_version).toBe('1.0.0')
     expect(ok.schema_version).toBe('1.0')
@@ -176,7 +184,7 @@ describe('query_signal_state tool', () => {
 
     // Tool degrades gracefully (does NOT throw) when DB query fails — injects diagnostic
     mockQuery.mockRejectedValueOnce(new Error('db_down'))
-    const degraded = await tool.retrieve(basePlan)
+    const degraded = await tool.retrieve(basePlan, { chart_id: 'abhisek_mohanty_primary' })
     expect(degraded.results).toHaveLength(1)
     const content = JSON.parse(degraded.results[0].content)
     expect(content.note).toContain('signal_states query failed')

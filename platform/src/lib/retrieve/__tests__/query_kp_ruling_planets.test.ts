@@ -72,11 +72,14 @@ beforeEach(() => {
 })
 
 describe('query_kp_ruling_planets tool', () => {
-  it('returns 9 grahas with default chart_id + lahiri ayanamsha', async () => {
+  it('returns 9 grahas with explicit chart_id + lahiri ayanamsha', async () => {
     const rows = makeNineGrahaRows()
     mockQuery.mockResolvedValue({ rows, rowCount: 9 })
 
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+    })
 
     expect(bundle.results).toHaveLength(9)
     expect(bundle.tool_name).toBe('query_kp_ruling_planets')
@@ -110,7 +113,11 @@ describe('query_kp_ruling_planets tool', () => {
   it('returns empty results without error when no row matches', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
-    const bundle = await tool.retrieve(basePlan, { planet: 'Pluto' })
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+      planet: 'Pluto',
+    })
 
     expect(bundle.results).toHaveLength(0)
     expect(bundle.tool_name).toBe('query_kp_ruling_planets')
@@ -120,7 +127,10 @@ describe('query_kp_ruling_planets tool', () => {
   it('returns valid ToolBundle shape', async () => {
     mockQuery.mockResolvedValue({ rows: [sunRow], rowCount: 1 })
 
-    const bundle = await tool.retrieve(basePlan)
+    const bundle = await tool.retrieve(basePlan, {
+      chart_id: 'abhisek_mohanty_primary',
+      ayanamsha: 'lahiri',
+    })
 
     expect(bundle.tool_name).toBe('query_kp_ruling_planets')
     expect(bundle.tool_version).toBe('1.0')
@@ -135,7 +145,12 @@ describe('query_kp_ruling_planets tool', () => {
 
   it('logs error path on DB failure and rethrows', async () => {
     mockQuery.mockRejectedValueOnce(new Error('kp_explode'))
-    await expect(tool.retrieve(basePlan)).rejects.toThrow('kp_explode')
+    await expect(
+      tool.retrieve(basePlan, {
+        chart_id: 'abhisek_mohanty_primary',
+        ayanamsha: 'lahiri',
+      }),
+    ).rejects.toThrow('kp_explode')
     expect(writeToolExecutionLog).toHaveBeenCalledWith(
       expect.objectContaining({
         tool_name: 'query_kp_ruling_planets',
