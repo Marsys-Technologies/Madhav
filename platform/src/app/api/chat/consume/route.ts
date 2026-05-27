@@ -1089,6 +1089,90 @@ export async function POST(request: Request) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             writer.write({ type: 'text-end', id: adapterTextPartId } as any)
           }
+          // ── 0b.1: B.11 citation gate (adapter-path parity with legacy onFinish) ─
+          // Mirrors the legacy gate at the wire (route.ts:1373-1475 onFinish branch).
+          // Cross-references SIG.MSR.NNN ids in the adapter-streamed text against the
+          // assembled context (bundle + tool results). Same MARSYS_FLAG_CITATION_GATE_OVERRIDE
+          // semantics, same data-citation-gate emission, same step_done telemetry. Errors
+          // are logged only — never thrown post-stream (would corrupt the HTTP pipe).
+          let adapterCitationGateResult: 'PASS' | 'WARN' | 'ERROR' = 'PASS'
+          let adapterCitationL1Count = 0
+          let adapterCitationL2Verified = 0
+          try {
+            const adapterAssembledContextJson = JSON.stringify({
+              bundle,
+              tool_results: validToolResults,
+            })
+            const adapterOverrideOn = configService.getFlag('CITATION_GATE_OVERRIDE')
+            const adapterCitationValidation = validateCitationsForStream(
+              adapterAccumulatedText,
+              adapterAssembledContextJson,
+              plan.query_class,
+              adapterOverrideOn,
+            )
+            adapterCitationGateResult = adapterCitationValidation.gateResult
+            adapterCitationL1Count = adapterCitationValidation.layer1Count
+            adapterCitationL2Verified = adapterCitationValidation.layer2Verified
+
+            console.log(
+              `[consume:adapter] citation_gate_l2 query_id=${queryId} ` +
+                `result=${adapterCitationValidation.gateResult} layer1=${adapterCitationValidation.layer1Count} ` +
+                `verified=${adapterCitationValidation.layer2Verified} leaked=${adapterCitationValidation.layer2Leaked}` +
+                (adapterOverrideOn && adapterCitationValidation.gateResult === 'WARN' && adapterCitationValidation.layer1Count > 0 ? ' override=on' : '') +
+                ` reason="${adapterCitationValidation.gateReason}"`
+            )
+
+            if (adapterCitationValidation.dataPart) {
+              writer.write({ type: 'data-citation-gate', data: adapterCitationValidation.dataPart })
+            }
+
+            if (adapterCitationValidation.gateResult === 'WARN') {
+              emit({
+                event: 'step_done',
+                query_id: queryId,
+                step: {
+                  query_id: queryId,
+                  conversation_id: finalConversationId,
+                  step_seq: nextSeq(),
+                  step_name: 'citation_warn',
+                  step_type: 'deterministic',
+                  status: 'done',
+                  started_at: new Date().toISOString(),
+                  completed_at: new Date().toISOString(),
+                  latency_ms: 0,
+                  data_summary: {
+                    result: adapterCitationValidation.gateReason,
+                    citation_count: adapterCitationValidation.layer1Count,
+                  },
+                  payload: {},
+                },
+              })
+            } else if (adapterCitationValidation.gateResult === 'ERROR') {
+              console.error(
+                `[consume:adapter] citation_gate_l2 HARD_BLOCK (non-throwing) ` +
+                `query_id=${queryId} reason="${adapterCitationValidation.gateReason}"`
+              )
+              emit({
+                event: 'step_done',
+                query_id: queryId,
+                step: {
+                  query_id: queryId,
+                  conversation_id: finalConversationId,
+                  step_seq: nextSeq(),
+                  step_name: 'citation_error',
+                  step_type: 'deterministic',
+                  status: 'error',
+                  started_at: new Date().toISOString(),
+                  completed_at: new Date().toISOString(),
+                  latency_ms: 0,
+                  data_summary: { result: adapterCitationValidation.gateReason, citation_count: adapterCitationValidation.layer1Count },
+                  payload: {},
+                },
+              })
+            }
+          } catch (err) {
+            console.error('[consume:adapter] citation gate error', err)
+          }
           // Write-through persistence: upsert all messages into conversation_messages.
           // This mirrors the orchestrator path's onFinish persistence block so that
           // adapter-routed conversations are restorable from the sidebar.
@@ -1163,9 +1247,9 @@ export async function POST(request: Request) {
               cgm_tokens: tokensForAdapter(n => n === 'cgm_graph_walk'),
               synthesis_model_id: modelId,
               model_max_context: modelMeta.maxInputTokens ?? null,
-              b3_compliant: true,
-              citation_count: 0,
-              verified_citations: 0,
+              b3_compliant: adapterCitationGateResult === 'PASS',
+              citation_count: adapterCitationL1Count,
+              verified_citations: adapterCitationL2Verified,
             })
 
             // onFinish parity — γ3: PPL prediction candidate detection (mirrors legacy onFinish block).
