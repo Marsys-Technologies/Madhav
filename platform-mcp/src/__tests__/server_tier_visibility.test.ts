@@ -1,7 +1,11 @@
 /**
  * server_tier_visibility.test.ts — R1-T1
- * Assert all 40 tools register unconditionally for every API key tier.
- * GISMCP Remediation R1 de-gating.
+ * Assert all 40 tools register unconditionally.
+ *
+ * GISMCP Remediation R1 de-gating made tiers redundant; Stream A
+ * 3.tier_excision (2026-05-28) removed `audience_tier` from Principal.
+ * Test retained as the "tool-count parity" invariant — exercises every
+ * register* call site once.
  */
 
 import { describe, it, expect } from 'vitest'
@@ -113,9 +117,10 @@ function registerAll(server: ReturnType<typeof createMockServer>, principal: Pri
 
 const OPS_TOOLS = ['tool_health', 'data_coverage', 'log_prediction', 'record_outcome', 'flag_disagreement']
 
+// `tier` arg retained for label-only purposes (test description); Principal no
+// longer carries audience_tier (Stream A 3.tier_excision 2026-05-28).
 const makePrincipal = (tier: string): Principal => ({
   user_uid: `uid-${tier}`,
-  audience_tier: tier,
   key_id: `key-${tier}`,
 })
 

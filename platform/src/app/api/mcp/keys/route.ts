@@ -27,10 +27,11 @@ export async function GET() {
 
   try {
     let rows: McpApiKeyRow[]
+    // audience_tier column dropped by migration 090 (Stream A 3.tier_excision 2026-05-28).
     if (ctx.profile.role === 'super_admin') {
       // Admin sees all keys
       const result = await query<McpApiKeyRow>(
-        `SELECT key_id, label, audience_tier, user_uid, scopes, created_at, last_used_at, revoked_at
+        `SELECT key_id, label, user_uid, scopes, created_at, last_used_at, revoked_at
          FROM mcp_api_keys
          ORDER BY created_at DESC`
       )
@@ -38,7 +39,7 @@ export async function GET() {
     } else {
       // Regular user sees only their own keys
       const result = await query<McpApiKeyRow>(
-        `SELECT key_id, label, audience_tier, user_uid, scopes, created_at, last_used_at, revoked_at
+        `SELECT key_id, label, user_uid, scopes, created_at, last_used_at, revoked_at
          FROM mcp_api_keys
          WHERE user_uid = $1
          ORDER BY created_at DESC`,
@@ -57,7 +58,7 @@ export async function GET() {
 
 interface CreateKeyBody {
   user_uid?: string
-  audience_tier?: string
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   label?: string
 }
 
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
   }
 
   const targetUid = body.user_uid ?? auth.user.uid
-  const audienceTier = body.audience_tier === 'super_admin' ? 'super_admin' : 'client'
+  // audience_tier excised (Stream A 3.tier_excision 2026-05-28).
   const label = body.label ? String(body.label).slice(0, 128) : null
 
   // Validate target user exists
@@ -105,16 +106,16 @@ export async function POST(request: Request) {
     const { key_id, full_key, key_hash } = await generateMcpKey(env)
 
     await query(
-      `INSERT INTO mcp_api_keys (key_id, key_hash, user_uid, audience_tier, label)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [key_id, key_hash, targetUid, audienceTier, label]
+      `INSERT INTO mcp_api_keys (key_id, key_hash, user_uid, label)
+       VALUES ($1, $2, $3, $4)`,
+      [key_id, key_hash, targetUid, label]
     )
 
     const response: McpKeyCreatedResponse = {
       key_id,
       full_key,  // Shown ONCE — never retrievable again
       label,
-      audience_tier: audienceTier,
+      // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
       user_uid: targetUid,
       created_at: new Date().toISOString(),
     }

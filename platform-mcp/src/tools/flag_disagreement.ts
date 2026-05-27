@@ -131,19 +131,9 @@ export function registerFlagDisagreement(
     async (input: FlagDisagreementInput) => {
       const principal = getPrincipal()
 
-      // T.1: flag_disagreement is a governance write tool restricted to super_admin.
-      // Acharya and client tiers can note conflicts in their responses but cannot
-      // write to the formal governance register — that requires operator trust.
-      if (principal.audience_tier !== 'super_admin') {
-        return errorResult({
-          ok: false,
-          error: {
-            class: 'TIER_FORBIDDEN',
-            message: 'flag_disagreement requires super_admin tier. ' +
-              'Acharya/client callers: note the conflict in your response instead.',
-          },
-        })
-      }
+      // T.1 tier gate removed (Stream A 3.tier_excision 2026-05-28).
+      // Per AC4: every key writes/flags and sees unredacted output.
+      // Access is now governed by authorizeChartAccess (G2) at the platform.
 
       const result = await callPlatformWrites(
         'flag_disagreement',

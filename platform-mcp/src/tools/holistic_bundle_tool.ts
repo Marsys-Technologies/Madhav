@@ -101,7 +101,7 @@ export function registerHolisticBundle(
           subset: input.subset,
           subset_size: input.subset_size,
           return_format: input.return_format,
-          tier: principal.audience_tier,
+          tier: '', // audience_tier excised; cache+audit keep field for back-compat (Stream A 3.tier_excision 2026-05-28).
           chart_id: undefined,
         },
         principal

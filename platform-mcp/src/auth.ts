@@ -95,13 +95,13 @@ export async function validateMcpKeyFromHeader(
 
     const data = (await response.json()) as KeyValidateResponse
 
-    if (!data.valid || !data.user_uid || !data.audience_tier || !data.key_id) {
+    if (!data.valid || !data.user_uid || !data.key_id) {
       return null
     }
 
     const principal: Principal = {
       user_uid: data.user_uid,
-      audience_tier: data.audience_tier,
+      // audience_tier excised (Stream A 3.tier_excision 2026-05-28).
       key_id: data.key_id,
     }
 

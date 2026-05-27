@@ -15,8 +15,7 @@ import type { PipelinePlan } from '@/lib/pipeline/types'
 export interface McpPrincipal {
   /** Firebase UID bound to the API key. */
   user_uid: string
-  /** Access tier stamped onto every MCP response and pipeline plan. */
-  audience_tier: 'client' | 'super_admin'
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28). Access is governed by authorizeChartAccess (G2).
   /** Short key prefix (key_id column) — included in audit headers. */
   key_id: string
 }
@@ -97,8 +96,7 @@ export interface McpSuccessEnvelope {
   ok: true
   /** Trace ID — same as query_id; pass to get_trace() to inspect. */
   trace_id: string
-  /** Access tier resolved from the API key. */
-  audience_tier: 'client' | 'super_admin'
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   /** Mandatory epistemics block (D7). */
   epistemics: EpistemicsBlock
   /** Tool-specific payload. */
@@ -141,7 +139,7 @@ export type McpEnvelope = McpSuccessEnvelope | McpErrorEnvelope
 export interface McpApiKeyRow {
   key_id: string
   label: string | null
-  audience_tier: 'client' | 'super_admin'
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   user_uid: string
   scopes: string[]
   created_at: string
@@ -155,7 +153,7 @@ export interface McpKeyCreatedResponse {
   /** The full bearer token — shown exactly once at creation time. */
   full_key: string
   label: string | null
-  audience_tier: 'client' | 'super_admin'
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   user_uid: string
   created_at: string
 }

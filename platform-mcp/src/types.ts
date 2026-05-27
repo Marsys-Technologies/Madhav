@@ -61,7 +61,7 @@ export interface SynthesisAuditBlock {
 export interface McpEnvelopeSuccess {
   ok: true
   trace_id: string
-  audience_tier: string
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   epistemics: EpistemicsBlock
   result: unknown
   citations: unknown[]
@@ -99,7 +99,7 @@ export interface PlatformCallResult {
 /** Resolved principal from Bearer key validation. */
 export interface Principal {
   user_uid: string
-  audience_tier: string
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   key_id: string
 }
 
@@ -109,7 +109,7 @@ export interface Principal {
 export interface KeyValidateResponse {
   valid: boolean
   user_uid?: string
-  audience_tier?: string
+  // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   key_id?: string
   error?: string
 }

@@ -1,14 +1,12 @@
 /**
  * /api/mcp/health/coverage — Data coverage endpoint.
  *
- * Tier-gated: super_admin + acharya = 200. client = 403.
- *
  * Returns data coverage report: expected vs actual row counts per tool/category.
  * Sourced from data_source_expected table (migration 076) + tool_caveats.
  * actual_rows and updated_at are real DB values; graceful fallback when table is empty
  * (Phase 7a seed load not yet applied).
  *
- * MCPT v3.2 Phase 7c
+ * MCPT v3.2 Phase 7c; tier hard-403 removed (Stream A 3.tier_excision 2026-05-28).
  */
 
 import 'server-only'
@@ -18,11 +16,7 @@ import { query } from '@/lib/db/client'
 
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-function extractPrincipal(req: NextRequest): { audience_tier: string } | null {
-  const audience_tier = req.headers.get('X-MCP-Audience-Tier')
-  if (!audience_tier) return null
-  return { audience_tier }
-}
+// extractPrincipal removed (Stream A 3.tier_excision 2026-05-28); audience_tier excised from the auth surface.
 
 function validateToken(req: NextRequest): boolean {
   const token = req.headers.get('X-MCP-Internal-Token')
@@ -50,21 +44,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const principal = extractPrincipal(req)
-  if (!principal) {
-    return NextResponse.json({ error: 'Missing principal headers' }, { status: 401 })
-  }
-
-  if (principal.audience_tier === 'client' || principal.audience_tier === 'public_redacted') {
-    return NextResponse.json(
-      {
-        error: 'Forbidden',
-        message: 'data_coverage is available to super_admin and acharya tiers only.',
-        house_rules_uri: 'marsys://house-rules',
-      },
-      { status: 403 }
-    )
-  }
+  // Tier hard-403 gate removed (Stream A 3.tier_excision 2026-05-28).
 
   const now = new Date().toISOString()
 
@@ -81,7 +61,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       return NextResponse.json({
         ok: true,
         generated_at: now,
-        tier: principal.audience_tier,
+        // tier removed (Stream A 3.tier_excision 2026-05-28).
         coverage: [],
         caveats: [],
         note: 'data_source_expected table not yet seeded — run Phase 7a seed load',
@@ -122,7 +102,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     return NextResponse.json({
       ok: true,
       generated_at: now,
-      tier: principal.audience_tier,
+      // tier removed (Stream A 3.tier_excision 2026-05-28).
       coverage,
       caveats,
     })
@@ -135,7 +115,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       return NextResponse.json({
         ok: true,
         generated_at: now,
-        tier: principal.audience_tier,
+        // tier removed (Stream A 3.tier_excision 2026-05-28).
         coverage: [],
         caveats: [],
         note: 'data_source_expected table not yet seeded — run Phase 7a seed load',

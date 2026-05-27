@@ -83,14 +83,7 @@ export function registerQueryVarshphal(
     async (args: QueryVarshphalInput) => {
       const principal = getPrincipal()
 
-      // Tier check: super_admin + acharya only.
-      if (principal.audience_tier === 'client') {
-        return errorResult({
-          ok: false,
-          error: 'Forbidden',
-          message: 'query_varshphal is restricted to super_admin and acharya tiers.',
-        })
-      }
+      // Client-tier redaction branch removed (Stream A 3.tier_excision 2026-05-28).
 
       const chart_id = args.chart_id ?? NATIVE_CHART_ID
 
@@ -113,10 +106,11 @@ export function registerQueryVarshphal(
           return errorResult(failed.envelope)
         }
         const firstEnv = results[0]?.envelope as McpEnvelopeSuccess | undefined
+        void firstEnv
         return okResult({
           ok: true,
           trace_id: crypto.randomUUID(),
-          audience_tier: firstEnv?.audience_tier ?? principal.audience_tier,
+          // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
           epistemics: { surgical: true, confidence_band: 'high' as const },
           result: {
             mode: 'range',

@@ -92,9 +92,9 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
       key_id: string
       key_hash: string
       user_uid: string
-      audience_tier: 'client' | 'super_admin'
     }>(
-      `SELECT key_id, key_hash, user_uid, audience_tier
+      // audience_tier column dropped (Stream A 3.tier_excision migration 090 2026-05-28).
+      `SELECT key_id, key_hash, user_uid
        FROM mcp_api_keys
        WHERE key_id = $1 AND revoked_at IS NULL
        LIMIT 1`,
@@ -121,7 +121,7 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
 
     return {
       user_uid: row.user_uid,
-      audience_tier: row.audience_tier,
+      // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
       key_id: row.key_id,
     }
   } catch (err) {

@@ -24,7 +24,7 @@ describe('S3 resource files exist', () => {
     'src/resources/house_rules_variants/super_admin.md',
     'src/resources/house_rules_variants/acharya.md',
     'src/resources/house_rules_variants/client.md',
-    'src/resources/house_rules_variants/public_redacted.md',
+    // public_redacted.md retired (Stream A 3.tier_excision 2026-05-28).
   ]
 
   for (const file of files) {
@@ -100,10 +100,7 @@ describe('house_rules_variants content quality', () => {
     expect(content).toContain('800')
   })
 
-  it('public_redacted.md mentions redaction policy', () => {
-    const content = readFileSync(join(variantsDir, 'public_redacted.md'), 'utf-8')
-    expect(content.toLowerCase()).toContain('redact')
-  })
+  // public_redacted.md content check retired (Stream A 3.tier_excision 2026-05-28).
 })
 
 // ── School conventions content checks ─────────────────────────────────────────

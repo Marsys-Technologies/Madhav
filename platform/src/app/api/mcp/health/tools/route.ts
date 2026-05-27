@@ -1,16 +1,14 @@
 /**
  * /api/mcp/health/tools — Tool health metrics endpoint.
  *
- * Tier-gated: super_admin + acharya = 200 with full metrics.
- *             client = 403 with house-rules reference.
- *
  * Returns aggregate health metrics for all registered MCP tools:
  *   - call_count_24h, error_rate, avg_latency_ms, audit_finding_count
  *
  * Reads from mv_tool_metrics_24h and mv_tool_grounding_24h (migration 082).
  * Graceful fallback when MVs don't exist or are empty (Phase 7b not yet applied).
  *
- * MCPT v3.2 Phase 7c
+ * MCPT v3.2 Phase 7c; tier hard-403 removed (Stream A 3.tier_excision 2026-05-28).
+ * Access is now governed by the MCP_INTERNAL_TOKEN service-to-service auth only.
  */
 
 import 'server-only'
@@ -30,11 +28,7 @@ const ALL_TOOL_NAMES = [
   'log_prediction', 'record_outcome', 'flag_disagreement',
 ]
 
-function extractPrincipal(req: NextRequest): { audience_tier: string } | null {
-  const audience_tier = req.headers.get('X-MCP-Audience-Tier')
-  if (!audience_tier) return null
-  return { audience_tier }
-}
+// extractPrincipal removed (Stream A 3.tier_excision 2026-05-28); audience_tier excised from the auth surface.
 
 function validateToken(req: NextRequest): boolean {
   const token = req.headers.get('X-MCP-Internal-Token')
@@ -61,22 +55,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const principal = extractPrincipal(req)
-  if (!principal) {
-    return NextResponse.json({ error: 'Missing principal headers' }, { status: 401 })
-  }
-
-  // Tier gate: client tier is not allowed
-  if (principal.audience_tier === 'client' || principal.audience_tier === 'public_redacted') {
-    return NextResponse.json(
-      {
-        error: 'Forbidden',
-        message: 'tool_health is available to super_admin and acharya tiers only. See house-rules for tier capabilities.',
-        house_rules_uri: 'marsys://house-rules',
-      },
-      { status: 403 }
-    )
-  }
+  // Tier hard-403 gate removed (Stream A 3.tier_excision 2026-05-28).
 
   const now = new Date().toISOString()
 
@@ -171,7 +150,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     ok: true,
     generated_at: now,
     lookback_hours: 24,
-    tier: principal.audience_tier,
+    // tier removed (Stream A 3.tier_excision 2026-05-28).
     mv_available: mvAvailable,
     tools,
     ...(mvAvailable ? {} : {

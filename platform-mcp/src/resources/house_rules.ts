@@ -5,13 +5,9 @@
  *   house_rules_variants/super_admin.md
  *   house_rules_variants/acharya.md
  *   house_rules_variants/client.md
- *   house_rules_variants/public_redacted.md
  *
- * Tier is derived from the request context. For the MCP resource API (no
- * per-request tier), we load all variants and the server selects based on
- * principal tier passed as a query param or fallback to super_admin.
- *
- * MCPT v3.1.0-S3
+ * MCPT v3.1.0-S3; public_redacted variant retired (Stream A 3.tier_excision 2026-05-28).
+ * Audience-tier system excised; resource resolves to super_admin variant by default.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -26,7 +22,7 @@ const VARIANTS_DIR = join(__dirname, 'house_rules_variants')
 // ── Load variant files ─────────────────────────────────────────────────────────
 
 function loadVariant(tier: string): string {
-  const validTiers = ['super_admin', 'acharya', 'client', 'public_redacted']
+  const validTiers = ['super_admin', 'acharya', 'client']
   const safeTier = validTiers.includes(tier) ? tier : 'super_admin'
   try {
     return readFileSync(join(VARIANTS_DIR, `${safeTier}.md`), 'utf-8')
@@ -45,7 +41,7 @@ const VARIANTS: Record<string, string> = {
   super_admin: loadVariant('super_admin'),
   acharya: loadVariant('acharya'),
   client: loadVariant('client'),
-  public_redacted: loadVariant('public_redacted'),
+  // public_redacted retired (Stream A 3.tier_excision 2026-05-28).
 }
 
 // ── Registration ───────────────────────────────────────────────────────────────

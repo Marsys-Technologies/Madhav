@@ -55,7 +55,7 @@ export function registerToolHealth(
           headers: {
             'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
             'X-MCP-User': principal.user_uid,
-            'X-MCP-Audience-Tier': principal.audience_tier,
+            // X-MCP-Audience-Tier removed (Stream A 3.tier_excision 2026-05-28).
             'X-MCP-Key-Id': principal.key_id,
           },
           signal: AbortSignal.timeout(10_000),

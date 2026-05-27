@@ -14,8 +14,10 @@
  *   X-MCP-Internal-Token: <service-secret>
  *
  * Response (200 always; check valid field):
- *   { valid: true,  user_uid, audience_tier, key_id }  — on success
- *   { valid: false, error: "reason" }                  — on failure
+ *   { valid: true,  user_uid, key_id }  — on success
+ *   { valid: false, error: "reason" }   — on failure
+ *
+ * audience_tier removed (Stream A 3.tier_excision 2026-05-28).
  */
 
 import 'server-only'
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     valid: true,
     user_uid: principal.user_uid,
-    audience_tier: principal.audience_tier,
+    // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
     key_id: principal.key_id,
   })
 }

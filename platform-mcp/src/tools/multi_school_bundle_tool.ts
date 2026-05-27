@@ -77,7 +77,7 @@ export function registerMultiSchoolBundle(
         {
           claim,
           schools: input.schools,
-          tier: principal.audience_tier,
+          tier: '', // audience_tier excised; cache+audit keep field for back-compat (Stream A 3.tier_excision 2026-05-28).
           chart_id: undefined,
         },
         principal

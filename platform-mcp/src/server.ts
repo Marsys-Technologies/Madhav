@@ -101,9 +101,7 @@ import { registerMultiSchoolBundle } from './tools/multi_school_bundle_tool.js'
 import { registerToolHealth } from './tools/tool_health.js'
 import { registerDataCoverage } from './tools/data_coverage.js'
 import type { Principal } from './types.js'
-// Tier-aware catalog (MCPT v3.2 Phase 6b)
-import { CATALOG } from './tools/catalog.js'
-import { getCatalogForTier } from './tools/tier_catalog.js'
+// Tier-aware catalog removed (Stream A 3.tier_excision 2026-05-28).
 
 const app = express()
 app.use(express.json())
@@ -147,14 +145,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
     return
   }
 
-  // T.3: URL-key auth is restricted to super_admin tier.
-  if (fromUrlParam && principal.audience_tier !== 'super_admin') {
-    res.status(401).json({
-      error: 'Unauthorized',
-      message: 'URL-key auth (?api_key=) restricted to super_admin tier; use Authorization header',
-    })
-    return
-  }
+  // URL-key auth: post tier-excision, no tier-based restriction remains.
+  // (T.3 hardening for URL-key leakage was a tier-only restriction; access
+  // is now governed by authorizeChartAccess (G2) downstream.)
+  void fromUrlParam
 
   // Each request is fully stateless: new server + transport per request.
   const server = new McpServer({
@@ -164,17 +158,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   const getPrincipal = (): Principal => principal
 
-  // Build tier-aware catalog slice for this request (MCPT v3.2 Phase 6b).
-  // getCatalogForTier returns the filtered + annotated set of ToolCatalogEntry
-  // objects for the resolved audience_tier. Only descriptions vary — handlers
-  // are identical across tiers (holistic_bundle output byte-equal for same call).
-  const tier = principal.audience_tier
-  const tierCatalog = getCatalogForTier(tier, CATALOG)
-  const tierDescByName = new Map(tierCatalog.map(e => [e.name, e.description]))
-
-  // Helper: returns the tier-adjusted description for a tool, or undefined if
-  // the tool is not in the tier catalog (caller skips registration).
-  const tierDesc = (name: string): string | undefined => tierDescByName.get(name)
+  // Tier-aware catalog removed (Stream A 3.tier_excision 2026-05-28).
+  // All 40 tools are registered unconditionally per GISMCP R1 de-gating.
 
   // Register MCP resources (marsys://chart-overview, marsys://house-rules, etc.).
   // Resources are read once at session attach — they orient Claude to the
@@ -184,9 +169,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Register Tier 1 super-endpoint.
   registerChartSummaryTool(server, getPrincipal)
 
-  // Register Tier 2 bundles (description varies by tier; handler unchanged).
-  registerHolisticBundle(server, getPrincipal, tierDesc('holistic_bundle'))
-  registerMultiSchoolBundle(server, getPrincipal, tierDesc('multi_school_bundle'))
+  // Register Tier 2 bundles (post tier-excision: no tier-specific description).
+  registerHolisticBundle(server, getPrincipal, undefined)
+  registerMultiSchoolBundle(server, getPrincipal, undefined)
 
   // Register Tier 3 surgical primitives (original 10).
   registerQueryChartFacts(server, getPrincipal)

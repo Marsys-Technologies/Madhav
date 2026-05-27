@@ -98,7 +98,7 @@ export interface MultiSchoolBundleParams {
 async function callPrimitive(
   toolName: string,
   params: Record<string, unknown>,
-  principal: { user_uid: string; audience_tier: string; key_id: string }
+  principal: { user_uid: string; key_id: string }
 ): Promise<unknown> {
   const response = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${toolName}`, {
     method: 'POST',
@@ -106,7 +106,7 @@ async function callPrimitive(
       'Content-Type': 'application/json',
       'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
       'X-MCP-User': principal.user_uid,
-      'X-MCP-Audience-Tier': principal.audience_tier,
+      // X-MCP-Audience-Tier removed (Stream A 3.tier_excision 2026-05-28).
       'X-MCP-Key-Id': principal.key_id,
     },
     body: JSON.stringify(params),
@@ -122,7 +122,7 @@ async function runSubTool(
   label: string,
   toolName: string,
   params: Record<string, unknown>,
-  principal: { user_uid: string; audience_tier: string; key_id: string },
+  principal: { user_uid: string; key_id: string },
   onEvent?: (event: MultiSchoolBundleEvent) => void
 ): Promise<MultiSchoolBundleEntry> {
   const started_at = new Date().toISOString()
@@ -246,7 +246,7 @@ function extractConvergenceScore(crossSchoolData: unknown): number | undefined {
 
 export async function executeMultiSchoolBundle(
   params: MultiSchoolBundleParams,
-  principal: { user_uid: string; audience_tier: string; key_id: string },
+  principal: { user_uid: string; key_id: string },
   onEvent?: (event: MultiSchoolBundleEvent) => void
 ): Promise<MultiSchoolBundleEnvelope> {
   const schools = params.schools?.length ? params.schools : ALL_SCHOOLS

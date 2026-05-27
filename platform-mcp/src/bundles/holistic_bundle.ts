@@ -116,7 +116,7 @@ export interface HolisticBundleParams {
 async function callPrimitive(
   toolName: string,
   params: Record<string, unknown>,
-  principal: { user_uid: string; audience_tier: string; key_id: string }
+  principal: { user_uid: string; key_id: string }
 ): Promise<unknown> {
   const response = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${toolName}`, {
     method: 'POST',
@@ -124,7 +124,7 @@ async function callPrimitive(
       'Content-Type': 'application/json',
       'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
       'X-MCP-User': principal.user_uid,
-      'X-MCP-Audience-Tier': principal.audience_tier,
+      // X-MCP-Audience-Tier removed (Stream A 3.tier_excision 2026-05-28).
       'X-MCP-Key-Id': principal.key_id,
     },
     body: JSON.stringify(params),
@@ -139,7 +139,7 @@ async function callPrimitive(
 async function runSubTool(
   name: SubToolName,
   params: Record<string, unknown>,
-  principal: { user_uid: string; audience_tier: string; key_id: string },
+  principal: { user_uid: string; key_id: string },
   onEvent?: (event: BundleEvent) => void
 ): Promise<BundleEntry> {
   const started_at = new Date().toISOString()
@@ -274,7 +274,7 @@ function extractRowCount(data: unknown): number | undefined {
  */
 export async function executeHolisticBundle(
   params: HolisticBundleParams,
-  principal: { user_uid: string; audience_tier: string; key_id: string },
+  principal: { user_uid: string; key_id: string },
   onEvent?: (event: BundleEvent) => void
 ): Promise<HolisticBundleEnvelope> {
   // Determine which sub-tools to fire

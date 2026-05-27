@@ -176,14 +176,13 @@ describe('query_varshphal', () => {
     expect((result as { isError?: boolean }).isError).toBe(true)
   })
 
-  it('returns Forbidden error for client tier', async () => {
+  it('client-tier callers reach engine (no tier gate)', async () => {
+    // Tier excised (Stream A 3.tier_excision 2026-05-28); query_varshphal
+    // no longer 403s a "client"-tier principal — every key sees engine output.
+    const mockCall = vi.mocked(callPlatformPrimitive)
+    mockCall.mockResolvedValue(buildVarshphalEnvelope({ year: 2026 }))
     const result = await callQueryVarshphal({ year: 2026 }, mockClientPrincipal)
-
-    expect((result as { isError?: boolean }).isError).toBe(true)
-    const res = result as { content: Array<{ type: string; text: string }> }
-    const parsed = JSON.parse(res.content[0].text)
-    expect(parsed.ok).toBe(false)
-    expect(parsed.error).toBe('Forbidden')
+    expect((result as { isError?: boolean }).isError).toBeUndefined()
   })
 
   it('succeeds for acharya tier', async () => {
@@ -202,9 +201,9 @@ describe('query_varshphal', () => {
 
   // ── Range-mode tests ──────────────────────────────────────────────────────────
 
-  it('range-mode success: returns mode=range, charts array, and audience_tier', async () => {
+  it('range-mode success: returns mode=range and charts array', async () => {
+    // audience_tier removed from envelope (Stream A 3.tier_excision 2026-05-28).
     const mockCall = vi.mocked(callPlatformPrimitive)
-    // Mock resolves successfully for both years
     mockCall.mockResolvedValue(buildVarshphalEnvelope({ year: 2025 }))
 
     const result = await callQueryVarshphal({ year_start: 2025, year_end: 2026 })
@@ -217,8 +216,7 @@ describe('query_varshphal', () => {
     expect(parsed.result.mode).toBe('range')
     expect(Array.isArray(parsed.result.charts)).toBe(true)
     expect(parsed.result.charts.length).toBe(2)
-    // audience_tier must be present (Fix A)
-    expect(parsed.audience_tier).toBe('super_admin')
+    expect(parsed.audience_tier).toBeUndefined()
   })
 
   it('range-mode 20-year cap: caps at 20 calls for year_start=2000, year_end=2030', async () => {
