@@ -131,3 +131,33 @@ jobs:
         # or any canonical asset layer dir has no tool_name binding (exit 2)
         # or both (exit 3). Exit 0 = all checks pass. See COV-S7_BRIEF_v1_0.md.
         run: python platform/scripts/governance/coverage_gate.py
+
+  naming-lint:
+    name: Naming Governance Gate (unit 0a.0)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      - name: Naming lint — self-test (bundled fixtures)
+        # Bundled PASS/FAIL fixtures verify the linter wires through correctly
+        # before scanning the real repo.
+        run: python platform/scripts/governance/naming_lint.py --self-test
+
+      - name: Naming lint — repo scan (baseline-aware)
+        # Fails ONLY on NEW violations not in naming_baseline.json. Pre-existing
+        # violations are reported but not failing — they're tracked for later
+        # waves to clean up. See platform/scripts/governance/naming_rules.yaml.
+        run: python platform/scripts/governance/naming_lint.py

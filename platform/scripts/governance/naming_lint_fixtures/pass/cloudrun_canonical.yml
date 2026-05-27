@@ -1,0 +1,10 @@
+# PASS fixture: canonical amjis- Cloud Run service prefix.
+# cloudrun_service_prefix rule should produce ZERO violations here.
+
+services:
+  - name: amjis-web
+    image: gcr.io/marsys/amjis-web:latest
+  - name: amjis-mcp
+    image: gcr.io/marsys/amjis-mcp:latest
+  - name: amjis-sidecar
+    image: gcr.io/marsys/amjis-sidecar:latest

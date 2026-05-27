@@ -1,0 +1,8 @@
+# FAIL fixture: legacy marsys-* Cloud Run service / image references.
+# Expected violations: cloudrun_service_prefix on marsys-pipeline + marsys-build-pipeline-job.
+
+jobs:
+  pipeline:
+    image: gcr.io/marsys/marsys-pipeline:latest
+  build-job:
+    image: gcr.io/marsys/marsys-build-pipeline-job:latest

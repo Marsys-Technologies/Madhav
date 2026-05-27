@@ -1,0 +1,720 @@
+{
+  "baseline_keys": [
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-build-pipeline-job@cloudbuild.yaml:30",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:11",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:21",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:31",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:38",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:39",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:9",
+    "cloudrun_service_prefix|platform/cloudbuild.pipeline.yaml|marsys-pipeline@platform/cloudbuild.pipeline.yaml:10",
+    "cloudrun_service_prefix|platform/cloudbuild.pipeline.yaml|marsys-pipeline@platform/cloudbuild.pipeline.yaml:13",
+    "google_env_prefix|.github/workflows/deploy.yml|GCP_PROJECT",
+    "google_env_prefix|.github/workflows/deploy.yml|GCP_REGION",
+    "google_env_prefix|.github/workflows/deploy.yml|GOOGLE_GENERATIVE_AI_API_KEY",
+    "google_env_prefix|platform/scripts/backfill_conversation_embeddings.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/bootstrap/lib/classical_text_embedder.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/cutover/stage1_smoke.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/cutover/stage1_smoke.ts|GOOGLE_GENERATIVE_AI_API_KEY",
+    "google_env_prefix|platform/scripts/eval/scorer.py|GOOGLE_GENERATIVE_AI_API_KEY",
+    "google_env_prefix|platform/scripts/grounding/msr_grounding_pipeline.ts|GCP_PROJECT",
+    "google_env_prefix|platform/scripts/pipeline_smoke_audit.py|GCP_PROJECT",
+    "google_env_prefix|platform/src/app/api/chat/consume/route.ts|GOOGLE_GENERATIVE_AI_API_KEY",
+    "google_env_prefix|platform/src/lib/aiops/catalog/fetcher_gemini.ts|GOOGLE_GENERATIVE_AI_API_KEY",
+    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts|GCP_BILLING_DATASET_ID",
+    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts|GCP_BILLING_PROJECT_ID",
+    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts|GCP_BILLING_TABLE_ID",
+    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts|GCP_BILLING_DATASET_ID",
+    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts|GCP_BILLING_PROJECT_ID",
+    "google_env_prefix|platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts|GCP_BILLING_TABLE_ID",
+    "google_env_prefix|platform/src/lib/embeddings/embedText.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/multimodal/pdf_extractor.ts|GOOGLE_APPLICATION_CREDENTIALS_JSON",
+    "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_DATASET_ID",
+    "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_PROJECT_ID",
+    "google_env_prefix|platform/src/lib/observatory/reconciliation/gemini.ts|GCP_BILLING_TABLE_ID",
+    "google_env_prefix|platform/src/lib/providers/dispatcher.ts|GOOGLE_MANIFEST",
+    "google_env_prefix|platform/src/lib/providers/google/adapter.ts|GOOGLE_LOOP_CONFIG",
+    "google_env_prefix|platform/src/lib/providers/google/adapter.ts|GOOGLE_MANIFEST",
+    "google_env_prefix|platform/src/lib/providers/google/index.ts|GOOGLE_MANIFEST",
+    "google_env_prefix|platform/src/lib/providers/google/manifest.ts|GOOGLE_MANIFEST",
+    "google_env_prefix|platform/src/lib/retrieve/__tests__/vector_search.test.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/retrieve/vector_search.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/storage/client.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/storage/gcs.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/synthesis/agentic_loop.ts|GOOGLE_LOOP_CONFIG",
+    "google_env_prefix|platform/src/lib/tools/classical_text_search.ts|GCP_PROJECT",
+    "marsys_flags|platform/src/app/api/admin/observatory/budget-rules/evaluate/run/route.ts|OBSERVATORY_ENABLED",
+    "marsys_flags|platform/src/app/api/admin/observatory/export/route.ts|OBSERVATORY_ENABLED",
+    "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/history/route.ts|OBSERVATORY_ENABLED",
+    "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/route.ts|OBSERVATORY_ENABLED",
+    "marsys_flags|platform/src/app/api/chat/consume/route.ts|CITATION_GATE_OVERRIDE",
+    "marsys_flags|platform/src/app/api/chat/consume/route.ts|HISTORY_COMPRESSION_ENABLED",
+    "marsys_flags|platform/src/app/api/chat/consume/route.ts|VALIDATOR_FAILURE_HALT",
+    "marsys_flags|platform/src/app/clients/[id]/consume/[conversationId]/page.tsx|COST_VISIBILITY_FOR_USERS",
+    "marsys_flags|platform/src/app/clients/[id]/consume/[conversationId]/page.tsx|PANEL_MODE_ENABLED",
+    "marsys_flags|platform/src/app/clients/[id]/consume/page.tsx|COST_VISIBILITY_FOR_USERS",
+    "marsys_flags|platform/src/app/clients/[id]/consume/page.tsx|PANEL_MODE_ENABLED",
+    "marsys_flags|platform/src/lib/audit/queries.ts|PANEL_MODE_ENABLED",
+    "marsys_flags|platform/src/lib/components/aiops/AuthGate.tsx|OBSERVATORY_ENABLED",
+    "marsys_flags|platform/src/lib/components/observatory/AuthGate.tsx|OBSERVATORY_ENABLED",
+    "marsys_flags|platform/src/lib/models/registry.ts|NVIDIA_PLANNER_ENABLED",
+    "marsys_flags|platform/src/lib/providers/nvidia/adapter.ts|NVIDIA_PLANNER_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_CLUSTER_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_CONTRADICTION_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_PATTERN_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_RESONANCE_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/cluster_atlas.ts|DISCOVERY_CLUSTER_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/contradiction_register.ts|DISCOVERY_CONTRADICTION_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/manifest_query.ts|MANIFEST_QUERY_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/pattern_register.ts|DISCOVERY_PATTERN_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/resonance_register.ts|DISCOVERY_RESONANCE_ENABLED",
+    "marsys_flags|platform/src/lib/retrieve/vector_search.ts|VECTOR_SEARCH_ENABLED",
+    "marsys_flags|platform/src/lib/synthesis/__tests__/panel/orchestrator_panel.test.ts|PANEL_MODE_ENABLED",
+    "marsys_flags|platform/src/lib/synthesis/history_compression.ts|HISTORY_COMPRESSION_ENABLED",
+    "marsys_flags|platform/src/lib/synthesis/orchestrator.ts|PANEL_MODE_ENABLED",
+    "marsys_flags|platform/src/lib/synthesis/panel_strategy.ts|PANEL_MODE_ENABLED",
+    "marsys_flags|platform/src/lib/synthesis/types.ts|PANEL_MODE_ENABLED",
+    "panchang_route_uniqueness|platform/src/app/api/panchanga/route.ts|platform/src/app/api/panchanga/route.ts",
+    "panchang_route_uniqueness|platform/src/app/api/panchanga|platform/src/app/api/panchanga"
+  ],
+  "generated_by": "naming_lint.py --first-run",
+  "schema_version": "1.0",
+  "violation_count": 79,
+  "violations": [
+    {
+      "file": ".github/workflows/deploy.yml",
+      "line": 10,
+      "match": "GCP_REGION",
+      "message": "forbidden Google env prefix 'GCP_REGION' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": ".github/workflows/deploy.yml",
+      "line": 102,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": ".github/workflows/deploy.yml",
+      "line": 120,
+      "match": "GOOGLE_GENERATIVE_AI_API_KEY",
+      "message": "non-canonical Google env var 'GOOGLE_GENERATIVE_AI_API_KEY' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/backfill_conversation_embeddings.ts",
+      "line": 13,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts",
+      "line": 35,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts",
+      "line": 37,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts",
+      "line": 38,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/bootstrap/lib/classical_text_embedder.ts",
+      "line": 14,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/cutover/stage1_smoke.ts",
+      "line": 320,
+      "match": "GOOGLE_GENERATIVE_AI_API_KEY",
+      "message": "non-canonical Google env var 'GOOGLE_GENERATIVE_AI_API_KEY' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/cutover/stage1_smoke.ts",
+      "line": 320,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/eval/scorer.py",
+      "line": 109,
+      "match": "GOOGLE_GENERATIVE_AI_API_KEY",
+      "message": "non-canonical Google env var 'GOOGLE_GENERATIVE_AI_API_KEY' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/grounding/msr_grounding_pipeline.ts",
+      "line": 14,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/scripts/pipeline_smoke_audit.py",
+      "line": 452,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/chat/consume/route.ts",
+      "line": 987,
+      "match": "GOOGLE_GENERATIVE_AI_API_KEY",
+      "message": "non-canonical Google env var 'GOOGLE_GENERATIVE_AI_API_KEY' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/aiops/catalog/fetcher_gemini.ts",
+      "line": 15,
+      "match": "GOOGLE_GENERATIVE_AI_API_KEY",
+      "message": "non-canonical Google env var 'GOOGLE_GENERATIVE_AI_API_KEY' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts",
+      "line": 62,
+      "match": "GCP_BILLING_PROJECT_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_PROJECT_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts",
+      "line": 63,
+      "match": "GCP_BILLING_DATASET_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_DATASET_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/gemini.test.ts",
+      "line": 64,
+      "match": "GCP_BILLING_TABLE_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts",
+      "line": 251,
+      "match": "GCP_BILLING_PROJECT_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_PROJECT_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts",
+      "line": 256,
+      "match": "GCP_BILLING_DATASET_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_DATASET_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/__tests__/reconciliation/reconciliation.test.ts",
+      "line": 257,
+      "match": "GCP_BILLING_TABLE_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/embeddings/embedText.ts",
+      "line": 10,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/multimodal/pdf_extractor.ts",
+      "line": 29,
+      "match": "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+      "message": "non-canonical Google env var 'GOOGLE_APPLICATION_CREDENTIALS_JSON' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/observatory/reconciliation/gemini.ts",
+      "line": 15,
+      "match": "GCP_BILLING_PROJECT_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_PROJECT_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/observatory/reconciliation/gemini.ts",
+      "line": 16,
+      "match": "GCP_BILLING_DATASET_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_DATASET_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/observatory/reconciliation/gemini.ts",
+      "line": 17,
+      "match": "GCP_BILLING_TABLE_ID",
+      "message": "forbidden Google env prefix 'GCP_BILLING_TABLE_ID' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/providers/dispatcher.ts",
+      "line": 32,
+      "match": "GOOGLE_MANIFEST",
+      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/providers/google/adapter.ts",
+      "line": 44,
+      "match": "GOOGLE_MANIFEST",
+      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/providers/google/adapter.ts",
+      "line": 296,
+      "match": "GOOGLE_LOOP_CONFIG",
+      "message": "non-canonical Google env var 'GOOGLE_LOOP_CONFIG' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/providers/google/index.ts",
+      "line": 2,
+      "match": "GOOGLE_MANIFEST",
+      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/providers/google/manifest.ts",
+      "line": 9,
+      "match": "GOOGLE_MANIFEST",
+      "message": "non-canonical Google env var 'GOOGLE_MANIFEST' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/__tests__/vector_search.test.ts",
+      "line": 105,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/vector_search.ts",
+      "line": 80,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/storage/client.ts",
+      "line": 6,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/storage/gcs.ts",
+      "line": 8,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/synthesis/agentic_loop.ts",
+      "line": 75,
+      "match": "GOOGLE_LOOP_CONFIG",
+      "message": "non-canonical Google env var 'GOOGLE_LOOP_CONFIG' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/tools/classical_text_search.ts",
+      "line": 55,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/admin/observatory/budget-rules/evaluate/run/route.ts",
+      "line": 10,
+      "match": "OBSERVATORY_ENABLED",
+      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/admin/observatory/export/route.ts",
+      "line": 5,
+      "match": "OBSERVATORY_ENABLED",
+      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/admin/observatory/reconciliation/history/route.ts",
+      "line": 3,
+      "match": "OBSERVATORY_ENABLED",
+      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/admin/observatory/reconciliation/route.ts",
+      "line": 4,
+      "match": "OBSERVATORY_ENABLED",
+      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/chat/consume/route.ts",
+      "line": 735,
+      "match": "VALIDATOR_FAILURE_HALT",
+      "message": "feature-flag-shaped identifier 'VALIDATOR_FAILURE_HALT' lacks the MARSYS_FLAG_ prefix",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/chat/consume/route.ts",
+      "line": 788,
+      "match": "HISTORY_COMPRESSION_ENABLED",
+      "message": "feature-flag-shaped identifier 'HISTORY_COMPRESSION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/chat/consume/route.ts",
+      "line": 1373,
+      "match": "CITATION_GATE_OVERRIDE",
+      "message": "feature-flag-shaped identifier 'CITATION_GATE_OVERRIDE' lacks the MARSYS_FLAG_ prefix",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/clients/[id]/consume/[conversationId]/page.tsx",
+      "line": 55,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/clients/[id]/consume/[conversationId]/page.tsx",
+      "line": 56,
+      "match": "COST_VISIBILITY_FOR_USERS",
+      "message": "feature-flag-shaped identifier 'COST_VISIBILITY_FOR_USERS' lacks the MARSYS_FLAG_ prefix",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/clients/[id]/consume/page.tsx",
+      "line": 122,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/clients/[id]/consume/page.tsx",
+      "line": 123,
+      "match": "COST_VISIBILITY_FOR_USERS",
+      "message": "feature-flag-shaped identifier 'COST_VISIBILITY_FOR_USERS' lacks the MARSYS_FLAG_ prefix",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/audit/queries.ts",
+      "line": 18,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/aiops/AuthGate.tsx",
+      "line": 6,
+      "match": "OBSERVATORY_ENABLED",
+      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/components/observatory/AuthGate.tsx",
+      "line": 6,
+      "match": "OBSERVATORY_ENABLED",
+      "message": "feature-flag-shaped identifier 'OBSERVATORY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_OBSERVATORY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/models/registry.ts",
+      "line": 932,
+      "match": "NVIDIA_PLANNER_ENABLED",
+      "message": "feature-flag-shaped identifier 'NVIDIA_PLANNER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_NVIDIA_PLANNER_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/providers/nvidia/adapter.ts",
+      "line": 8,
+      "match": "NVIDIA_PLANNER_ENABLED",
+      "message": "feature-flag-shaped identifier 'NVIDIA_PLANNER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_NVIDIA_PLANNER_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
+      "line": 34,
+      "match": "DISCOVERY_PATTERN_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_PATTERN_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_PATTERN_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
+      "line": 35,
+      "match": "DISCOVERY_CONTRADICTION_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_CONTRADICTION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CONTRADICTION_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
+      "line": 36,
+      "match": "DISCOVERY_RESONANCE_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_RESONANCE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_RESONANCE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
+      "line": 37,
+      "match": "DISCOVERY_CLUSTER_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_CLUSTER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CLUSTER_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/cluster_atlas.ts",
+      "line": 57,
+      "match": "DISCOVERY_CLUSTER_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_CLUSTER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CLUSTER_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/contradiction_register.ts",
+      "line": 62,
+      "match": "DISCOVERY_CONTRADICTION_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_CONTRADICTION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CONTRADICTION_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/manifest_query.ts",
+      "line": 8,
+      "match": "MANIFEST_QUERY_ENABLED",
+      "message": "feature-flag-shaped identifier 'MANIFEST_QUERY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_MANIFEST_QUERY_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/pattern_register.ts",
+      "line": 67,
+      "match": "DISCOVERY_PATTERN_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_PATTERN_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_PATTERN_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/resonance_register.ts",
+      "line": 67,
+      "match": "DISCOVERY_RESONANCE_ENABLED",
+      "message": "feature-flag-shaped identifier 'DISCOVERY_RESONANCE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_RESONANCE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/retrieve/vector_search.ts",
+      "line": 13,
+      "match": "VECTOR_SEARCH_ENABLED",
+      "message": "feature-flag-shaped identifier 'VECTOR_SEARCH_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_VECTOR_SEARCH_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/synthesis/__tests__/panel/orchestrator_panel.test.ts",
+      "line": 291,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/synthesis/history_compression.ts",
+      "line": 98,
+      "match": "HISTORY_COMPRESSION_ENABLED",
+      "message": "feature-flag-shaped identifier 'HISTORY_COMPRESSION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/synthesis/orchestrator.ts",
+      "line": 5,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/synthesis/panel_strategy.ts",
+      "line": 16,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/synthesis/types.ts",
+      "line": 65,
+      "match": "PANEL_MODE_ENABLED",
+      "message": "feature-flag-shaped identifier 'PANEL_MODE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_PANEL_MODE_ENABLED')",
+      "rule_id": "marsys_flags",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/panchanga",
+      "line": 0,
+      "match": "platform/src/app/api/panchanga",
+      "message": "duplicate route tree: both 'platform/src/app/api/panchang/' and 'platform/src/app/api/panchanga/' exist; consolidate under 'platform/src/app/api/panchang/'",
+      "rule_id": "panchang_route_uniqueness",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/app/api/panchanga/route.ts",
+      "line": 0,
+      "match": "platform/src/app/api/panchanga/route.ts",
+      "message": "route file under forbidden sibling tree 'platform/src/app/api/panchanga/' \u2014 move under 'platform/src/app/api/panchang/'",
+      "rule_id": "panchang_route_uniqueness",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 9,
+      "match": "marsys-pipeline@cloudbuild.yaml:9",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 11,
+      "match": "marsys-pipeline@cloudbuild.yaml:11",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 21,
+      "match": "marsys-pipeline@cloudbuild.yaml:21",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 30,
+      "match": "marsys-build-pipeline-job@cloudbuild.yaml:30",
+      "message": "Cloud Run service/image name 'marsys-build-pipeline-job' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 31,
+      "match": "marsys-pipeline@cloudbuild.yaml:31",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 38,
+      "match": "marsys-pipeline@cloudbuild.yaml:38",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "cloudbuild.yaml",
+      "line": 39,
+      "match": "marsys-pipeline@cloudbuild.yaml:39",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/cloudbuild.pipeline.yaml",
+      "line": 10,
+      "match": "marsys-pipeline@platform/cloudbuild.pipeline.yaml:10",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/cloudbuild.pipeline.yaml",
+      "line": 13,
+      "match": "marsys-pipeline@platform/cloudbuild.pipeline.yaml:13",
+      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
+      "rule_id": "cloudrun_service_prefix",
+      "severity": "error"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+# naming_rules.yaml — Canonical taxonomy enforced by naming_lint.py
+# Unit 0a.0 (MARSYS-JIS Platform Modernization, Stream A).
+#
+# Schema:
+#   rules:
+#     <rule_id>:
+#       enabled: bool
+#       severity: "error" | "warn"
+#       scan_globs: [str]            # globs from repo root (Python pathlib + glob semantics)
+#       (rule-specific keys below)
+#
+# Rule-specific keys per rule_id:
+#   google_env_prefix:
+#     canonical                 (str)  — required prefix for Google env vars (e.g. GOOGLE_CLOUD_)
+#     allowed_exceptions        ([str]) — exact names that may bypass the canonical prefix
+#     forbidden_prefixes        ([str]) — bare prefixes that must be migrated (e.g. GCP_)
+#   marsys_flags:
+#     pattern                   (regex) — pattern for valid MARSYS_FLAG_ names
+#     boolean_suffix            (str)   — suffix that booleans should carry
+#     suspect_identifiers       ([str]) — exact identifiers that look like feature flags but lack
+#                                          the MARSYS_FLAG_ prefix; seeded from
+#                                          platform/src/lib/config/feature_flags.ts
+#   panchang_route_uniqueness:
+#     canonical_root            (str)   — the only allowed route tree
+#     forbidden_sibling         (str)   — sibling tree that must not exist
+#   cloudrun_service_prefix:
+#     canonical                 (str)   — required Cloud Run service / image prefix (e.g. amjis-)
+#     allowlist_legacy          ([str]) — legacy names reported but not failed
+#     suspect_patterns          ([str]) — regex fragments to look for in scan files
+
+version: "1.0"
+
+rules:
+  google_env_prefix:
+    enabled: true
+    severity: "error"
+    canonical: "GOOGLE_CLOUD_"
+    allowed_exceptions:
+      - GOOGLE_APPLICATION_CREDENTIALS
+      - GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET
+      - GOOGLE_AI_API_KEY
+      - GOOGLE_API_KEY
+      - GOOGLE_GENAI_API_KEY
+      - GOOGLE_VERTEX_PROJECT
+      - GOOGLE_VERTEX_LOCATION
+      - GOOGLE_REDIRECT_URI
+      - GOOGLE_OAUTH_CLIENT_ID
+      - GOOGLE_OAUTH_CLIENT_SECRET
+    forbidden_prefixes:
+      - "GCP_"
+    scan_globs:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - "platform/src/**/*.ts"
+      - "platform/src/**/*.tsx"
+      - "platform/src/**/*.js"
+      - "platform/scripts/**/*.py"
+      - "platform/scripts/**/*.ts"
+      - "platform/*.yaml"
+      - "platform/*.yml"
+      - "deploy.yml"
+      - "cloudbuild.yaml"
+      - "cloudbuild*.yaml"
+
+  marsys_flags:
+    enabled: true
+    severity: "error"
+    pattern: "^MARSYS_FLAG_[A-Z0-9]+(_[A-Z0-9]+)*$"
+    boolean_suffix: "_ENABLED"
+    # Suspect identifiers — declared in platform/src/lib/config/feature_flags.ts
+    # but missing the MARSYS_FLAG_ prefix. Detection in code looks for the bare
+    # identifier as a string literal or symbol; the lint reports any *new*
+    # occurrence outside feature_flags.ts itself.
+    suspect_identifiers:
+      - "PANEL_MODE_ENABLED"
+      - "CITATION_GATE_OVERRIDE"
+      - "VALIDATOR_FAILURE_HALT"
+      - "AUDIT_VIEW_VISIBLE"
+      - "PANEL_CHECKBOX_VISIBLE"
+      - "BUNDLE_COMPOSER_DEBUG"
+      - "MANIFEST_QUERY_ENABLED"
+      - "VECTOR_SEARCH_ENABLED"
+      - "OBSERVATORY_ENABLED"
+      - "TRACE_ANALYTICS_ENABLED"
+      - "COST_TRACKING_ENABLED"
+      - "CITATION_CHECK_ENABLED"
+      - "LEL_CONTEXT_ENABLED"
+      - "NVIDIA_PLANNER_ENABLED"
+      - "DISCOVERY_PATTERN_ENABLED"
+      - "DISCOVERY_CONTRADICTION_ENABLED"
+      - "DISCOVERY_RESONANCE_ENABLED"
+      - "DISCOVERY_CLUSTER_ENABLED"
+      - "HISTORY_COMPRESSION_ENABLED"
+      - "COST_VISIBILITY_FOR_USERS"
+    scan_globs:
+      - "platform/src/**/*.ts"
+      - "platform/src/**/*.tsx"
+      - "platform/src/**/*.js"
+      - "platform/*.yaml"
+      - "platform/*.yml"
+      - "deploy.yml"
+      - "cloudbuild.yaml"
+      - "cloudbuild*.yaml"
+      - ".github/workflows/*.yml"
+
+  panchang_route_uniqueness:
+    enabled: true
+    severity: "error"
+    canonical_root: "platform/src/app/api/panchang"
+    forbidden_sibling: "platform/src/app/api/panchanga"
+
+  cloudrun_service_prefix:
+    enabled: true
+    severity: "error"
+    canonical: "amjis-"
+    allowlist_legacy:
+      - "marsys-build-pipeline-job"
+      - "marsys-pipeline"
+    suspect_patterns:
+      # Regex fragments matching legacy Cloud Run service / image names.
+      # Hits land in baseline on first run; later waves rename + drop them.
+      - "marsys-build-pipeline-job"
+      - "marsys-pipeline"
+    scan_globs:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - "platform/cloudbuild*.yaml"
+      - "platform-mcp/cloudbuild.yaml"
+      - "cloudbuild*.yaml"
+      - "cloudbuild-*.yaml"
+
+# Files/dirs that the linter never scans (e.g. archives, vendored copies,
+# the linter's own fixture set when running the full repo scan).
+global_excludes:
+  - "node_modules/"
+  - ".venv/"
+  - "venv/"
+  - ".git/"
+  - "99_ARCHIVE/"
+  - "platform/scripts/governance/naming_lint_fixtures/"
+  - "platform/scripts/governance/naming_baseline.json"
+  - "platform/scripts/governance/naming_rules.yaml"
+  - "platform/scripts/governance/naming_lint.py"
+  # feature_flags.ts is the DECLARATION site for the suspect identifiers — its
+  # legacy entries are the baseline. The lint only fires on NEW occurrences
+  # outside this file.
+  - "platform/src/lib/config/feature_flags.ts"
