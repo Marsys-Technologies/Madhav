@@ -302,7 +302,19 @@ export async function POST(request: Request) {
   const role = profileResult.rows[0]?.role
   const isSuperAdmin = role === 'super_admin'
 
-  if (!isSuperAdmin && chart.client_id !== user.uid) {
+  // Unit 2c (Stream B): single authorization brain. Replaces inline
+  // `chart.client_id !== user.uid`. Maps to 401 on deny; 'view' is read-only
+  // and rejects Build/edit/delete operations (this route is a read/consult
+  // surface — no mutation — so 'view' is sufficient here).
+  const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
+  const principalRole: 'guest' | 'super_admin' =
+    isSuperAdmin ? 'super_admin' : 'guest'
+  const permission = await authorizeChartAccess({
+    principal: { uid: user.uid, role: principalRole },
+    chartId,
+    db: { query },
+  })
+  if (permission === 'deny') {
     return res.forbidden()
   }
 

@@ -19,10 +19,12 @@ export default async function DashboardPage() {
   )
   const profile = (profileResult.rows[0] ?? null) as { id: string; role: string } | null
 
-  // Clients go directly to their Consume view
-  if (profile?.role === 'client') {
+  // Guests (renamed from 'client' in Unit 2c) go directly to their Consult view.
+  // Backwards-compat: until profiles migration 082 applies, also accept legacy 'client'.
+  if (profile?.role === 'guest' || profile?.role === 'client') {
+    // Unit 2c: prefer owner_id; fall back to legacy client_id during cutover.
     const chartResult = await query(
-      'SELECT * FROM charts WHERE client_id=$1 ORDER BY created_at DESC',
+      'SELECT * FROM charts WHERE owner_id=$1 OR client_id=$1 ORDER BY created_at DESC',
       [user.uid]
     )
     const chart = (chartResult.rows[0] ?? null) as { id: string } | null
