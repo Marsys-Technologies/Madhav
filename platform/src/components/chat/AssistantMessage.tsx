@@ -9,10 +9,9 @@ import { ToolCallCard } from './ToolCallCard'
 import { StreamingDots } from './StreamingDots'
 import { PreTokenIndicator } from './PreTokenIndicator'
 import { MessageActions } from './MessageActions'
-import { DisclosureTierBadge } from '@/components/disclosure/DisclosureTierBadge'
+// DisclosureTierBadge import removed (Stream A 3.tier_excision 2026-05-28); tier system excised.
 import { InlineToolFlow } from './InlineToolFlow'
 import type { Rating } from '@/hooks/useFeedback'
-import type { AudienceTier } from '@/lib/prompts/types'
 
 /**
  * Returns true if the model ID string suggests a thinking-capable provider.
@@ -106,10 +105,9 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
   // messages persisted during the R2 era before the key alignment.
   const modelLabel = (meta.model ?? meta.model_id) as string | undefined
   const styleLabel = (meta.style ?? meta.style_id) as string | undefined
-  const tier = meta.disclosure_tier as string | undefined
-  const methodologyBlock = meta.methodology_block as string | null | undefined
+  // Disclosure-tier excised (Stream A 3.tier_excision 2026-05-28); access = role + chart_grants per G2.
   const queryId = (meta.query_id ?? meta.queryId) as string | undefined
-  const isAdmin = tier === 'super_admin' || tier === 'acharya_reviewer'
+  const isAdmin = (meta.role as string | undefined) === 'super_admin'
 
   const copy = useCallback(async () => {
     try {
@@ -215,14 +213,7 @@ export function AssistantMessage({ message, isStreaming, isLast, onRegenerate, o
                   {styleLabel}
                 </span>
               ) : null}
-              {tier ? (
-                <DisclosureTierBadge
-                  tier={tier as AudienceTier}
-                  compact
-                  methodologyBlock={methodologyBlock ?? null}
-                  defaultExpanded={false}
-                />
-              ) : null}
+              {/* DisclosureTierBadge removed (Stream A 3.tier_excision 2026-05-28). */}
               {timestamp ? (
                 <time dateTime={timestamp.toISOString()} className="font-sans normal-case tracking-normal">
                   {timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}

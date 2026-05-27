@@ -37,9 +37,7 @@ vi.mock('./StreamingDots', () => ({
 vi.mock('./MessageActions', () => ({
   MessageActions: () => <div data-testid="message-actions" />,
 }));
-vi.mock('@/components/disclosure/DisclosureTierBadge', () => ({
-  DisclosureTierBadge: () => null,
-}));
+// DisclosureTierBadge mock removed (Stream A 3.tier_excision 2026-05-28).
 vi.mock('./InlineToolFlow', () => ({
   InlineToolFlow: () => null,
 }));

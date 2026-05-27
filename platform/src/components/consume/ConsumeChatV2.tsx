@@ -30,7 +30,6 @@ import { SlashCommandMenu } from '@/components/chat/SlashCommandMenu'
 import { ShortcutsDialog } from '@/components/chat/ShortcutsDialog'
 import { ModelStylePicker } from '@/components/chat/ModelStylePicker'
 import type { StyleId } from '@/components/chat/ModelStylePicker'
-import { TierPicker } from '@/components/consume/TierPicker'
 import { useChatPreferences, useLastPrompt, useTextScale, TEXT_SCALES } from '@/hooks/useChatPreferences'
 import type { AudienceTier } from '@/lib/prompts/types'
 import type { ModelStack } from '@/lib/models/registry'
@@ -1480,9 +1479,7 @@ function V2BottomBar() {
         >
           Life Events: {lelEnabled ? 'On' : 'Off'}
         </button>
-        {audienceTier === 'super_admin' && (
-          <TierPicker tier={activeTier} onChange={setActiveTierOverride} />
-        )}
+        {/* TierPicker removed (Stream A 3.tier_excision 2026-05-28). Depth is now planner-auto-selected by query class. */}
         <PanelModeToggle />
         {/* R11.G: Settings dropdown — replaces inline parity toggle */}
         <SettingsDropdown />
