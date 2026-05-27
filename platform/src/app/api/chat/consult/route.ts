@@ -107,11 +107,13 @@ import { getProjectForConversation } from '@/lib/projects'
 import { getPersonaForSynthesis } from '@/lib/personas'
 
 // Unit 3.gateway_pipeline_isolation — the thin selector. Flag-gated by
-// MARSYS_FLAG_PIPELINE_SELECTOR (default OFF). When OFF, the inline body
-// below is the legacy path and behaviour is byte-identical (AC.3). When ON,
-// the route delegates pipeline strategy selection to platform/src/lib/pipelines/.
-// Shared stages (auth + chart resolution, B.11 floor injection) are now
-// importable from `@/lib/pipelines/shared` and exercised by both pipelines.
+// MARSYS_FLAG_PIPELINE_SELECTOR — default ON post-3.cutover (G5b set 2026-05-28).
+// When ON (the default), the route delegates pipeline strategy selection to
+// platform/src/lib/pipelines/. Operator opts out by setting the env-var to
+// 'false', in which case the inline legacy decision body is used.
+// Shared stages (auth + chart resolution, B.11 floor injection, onFinish
+// write-through) are importable from `@/lib/pipelines/shared` and exercised
+// by both pipelines.
 import {
   selectPipelineForRequest,
   isPipelineSelectorEnabled,
@@ -978,11 +980,11 @@ export async function POST(request: Request) {
       const loopFlagKey = ADAPTER_TO_LOOP_FLAG[adapterId]
       const useAgenticLoop = loopFlagKey ? configService.getFlag(loopFlagKey as Parameters<typeof configService.getFlag>[0]) : false
 
-      // Unit 3.gateway_pipeline_isolation — thin selector hook. When
-      // MARSYS_FLAG_PIPELINE_SELECTOR=true the route delegates pipeline
-      // strategy resolution to platform/src/lib/pipelines/. Until G5b lands
-      // the actual run() body remains in this file; the selector ensures the
-      // structural cutover lands atomically when the streaming surface moves.
+      // Unit 3.gateway_pipeline_isolation + 3.cutover — thin selector hook.
+      // MARSYS_FLAG_PIPELINE_SELECTOR defaults ON post-G5b (2026-05-28). The
+      // route delegates pipeline strategy resolution to platform/src/lib/pipelines/.
+      // The actual run() body remains in this file pending 3.legacy_delete;
+      // the selector ensures the structural cutover landed atomically with G5b.
       if (isPipelineSelectorEnabled()) {
         const sel = selectPipelineForRequest(adapterId)
         // The selector must agree with the legacy decision. Diverging here

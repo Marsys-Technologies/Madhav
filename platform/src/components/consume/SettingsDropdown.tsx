@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * SettingsDropdown — R11.G (Toggle Redesign)
+ * SettingsDropdown — R11.G (Toggle Redesign), 3.cutover (Selector Default Flip)
  *
  * Replaces the inline MultiProviderParityToggle with a polished gear-icon
  * dropdown. Two clearly labelled radio options let users choose their
@@ -11,7 +11,15 @@
  * is false (build-time kill-switch). Only visible when operator enables the env-var.
  *
  * STATE: Reads from / writes to localStorage via useChatShellMode().
- * Default (null storage key) resolves to 'classic' — no surprise for existing users.
+ *
+ * BACKEND PIPELINE SELECTOR (3.cutover, G5b — 2026-05-28):
+ *   Independent of this UI control. The new pipeline-selection seam at
+ *   `@/lib/pipelines/selector.ts::isPipelineSelectorEnabled()` now defaults ON;
+ *   operator opts out with `MARSYS_FLAG_PIPELINE_SELECTOR=false`. Adapter onFinish
+ *   write-through reached parity with legacy via `runOnFinishWriteThrough`
+ *   (proved by `onfinish_parity.golden.test.ts`). Legacy code path remains
+ *   reachable behind the flag and is NOT deleted in this unit — that lands
+ *   in 3.legacy_delete.
  *
  * CLOSE: Click outside the menu to dismiss (mousedown listener on document).
  */

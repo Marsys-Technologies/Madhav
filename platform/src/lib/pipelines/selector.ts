@@ -69,9 +69,17 @@ export function selectPipelineForRequest(adapterId: string): {
   return { kind, pipeline: getPipeline(kind) }
 }
 
-/** True when the new selector should be used. Default OFF until G5b. */
+/**
+ * True when the new pipeline selector should be used. Default ON post-3.cutover
+ * (G5b set 2026-05-28 — adapter onFinish write-through reached parity with
+ * legacy via `runOnFinishWriteThrough`, proved by onfinish_parity.golden.test.ts).
+ *
+ * Legacy reachability: set `MARSYS_FLAG_PIPELINE_SELECTOR=false` (env-var or
+ * config) to revert to the inline legacy decision at the dispatch site. The
+ * legacy code path is NOT deleted in this unit — that lands in 3.legacy_delete.
+ */
 export function isPipelineSelectorEnabled(): boolean {
-  // Read via configService when available; default false. The config service
+  // Read via configService when available; default true. The config service
   // is the canonical entry; env-var fallback keeps tests + non-Next contexts
   // working without bootstrapping the full config.
   try {
@@ -82,5 +90,6 @@ export function isPipelineSelectorEnabled(): boolean {
   } catch {
     // fall through to env
   }
-  return process.env.MARSYS_FLAG_PIPELINE_SELECTOR === 'true'
+  // Default ON. Operator opts out by explicitly setting the env-var to 'false'.
+  return process.env.MARSYS_FLAG_PIPELINE_SELECTOR !== 'false'
 }
