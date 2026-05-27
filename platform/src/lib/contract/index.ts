@@ -34,3 +34,17 @@ export {
   CONTRACT_TOOL_NAMES,
   type ContractCatalogEntry,
 } from './catalog'
+export {
+  TOOL_METADATA,
+  TOOL_METADATA_BY_NAME,
+  TOOL_METADATA_NAMES,
+  EXPECTED_ASSETS,
+  getToolMetadata,
+  auditToolAssetReconciliation,
+  isReconciliationGreen,
+  type ToolReconciliationEntry,
+  type ToolSurface,
+  type ToolIntent,
+  type LiveAssetId,
+  type CoverageReport,
+} from './tool_metadata'
