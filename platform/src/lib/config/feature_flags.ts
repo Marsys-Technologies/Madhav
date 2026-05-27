@@ -285,7 +285,10 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // R11V2_MULTI_PROVIDER_PARITY: flipped true at A-S11 (runtime toggle wired).
   R11V2_MULTI_PROVIDER_PARITY: false,
   // R11V2_USE_ADAPTERS: flipped true after A-S7 dispatcher smoke passes on all 5 providers.
-  R11V2_USE_ADAPTERS: false,
+  // Default flipped true by Stream A 3.legacy_delete 2026-05-28 — legacy synthesis trio
+  // deleted; adapter dispatch is the only path. Operator opts out by setting
+  // MARSYS_FLAG_R11V2_USE_ADAPTERS=false (which now throws unmapped-stack errors).
+  R11V2_USE_ADAPTERS: true,
   // R11V2_CAPABILITY_TELEMETRY: flipped true after A-S9 Observatory wiring verified.
   R11V2_CAPABILITY_TELEMETRY: false,
   // R11.B Look-and-Feel umbrella gate — default false until full smoke (R11B-MERGE gate).
