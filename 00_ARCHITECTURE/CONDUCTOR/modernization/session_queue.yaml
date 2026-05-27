@@ -122,22 +122,35 @@ units:
   # ── Waves 2/3/4 — placeholders; briefs authored when their gates approach ──────
   - id: 2b
     wave: 2
-    brief: TBD_briefs/BRIEF_2b_unified_contract.md
+    brief: briefs/BRIEF_2b_unified_contract.md
+    stream: A
     blockedBy: [naming_ci]
     sets_gate: G3_contract
-    status: not_yet_detailed
+    may_touch: ["platform/src/lib/contract/**", "platform/src/lib/retrieve/index.ts", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "platform-mcp/src/**"]
+    must_not_touch: ["platform/src/app/api/chat/consume/route.ts", "platform/migrations/**", "platform/python-sidecar/**"]
+    check_commands: ["npx vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts"]
+    on_red: rollback
   - id: 2c
     wave: 2
-    brief: TBD_briefs/BRIEF_2c_tenancy_authz.md
+    brief: briefs/BRIEF_2c_tenancy_authz.md
+    stream: B
     blockedBy: [naming_ci]
     sets_gate: G2_authz_live
-    file_fence_note: "shares charts table with 2a — sequence, never concurrent"
-    status: not_yet_detailed
+    file_fence_note: "shares the charts table with 2a — NEVER run concurrently with 2a; shares platform/migrations/** with 2d — coordinate migration numbers or serialize"
+    may_touch: ["platform/src/lib/auth/**", "platform/src/app/api/clients/**", "platform/src/app/api/chat/consume/route.ts", "platform/migrations/**", "platform/src/app/dashboard/**"]
+    must_not_touch: ["platform/src/lib/retrieve/**", "platform/python-sidecar/**", "platform/src/lib/contract/**"]
+    check_commands: ["npx vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts"]
+    on_red: rollback
   - id: 2d
     wave: 2
-    brief: TBD_briefs/BRIEF_2d_command_center.md
+    brief: briefs/BRIEF_2d_command_center.md
+    stream: C
     blockedBy: [naming_ci]
-    status: not_yet_detailed
+    file_fence_note: "shares platform/migrations/** with 2c — coordinate migration numbers or serialize the migration step"
+    may_touch: ["platform/src/app/cockpit/**", "platform/src/lib/config/**", "platform/migrations/**", "platform/src/lib/gates/**"]
+    must_not_touch: ["platform/python-sidecar/**", "platform/src/lib/auth/**", "platform/src/lib/contract/**"]
+    check_commands: ["npx vitest run platform/src/app/cockpit/__tests__/command_center.test.ts"]
+    on_red: rollback
   - id: 2a
     wave: 2
     brief: TBD_briefs/BRIEF_2a_l25_build.md

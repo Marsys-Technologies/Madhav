@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "source": "jagannatha_hora",
+    "jh_version": "Combined JH PDF export (JH 1/3/4), per native",
+    "exported_at_iso": "2026-04-18",
+    "subject_label": "Abhisek Mohanty",
+    "datetime_iso": "1984-02-05T10:43:00+05:30",
+    "tz_offset_hours": 5.5,
+    "latitude_deg": 20.233333,
+    "longitude_deg": 85.833333,
+    "place_name": "Bhubaneswar, India"
+  },
+
+  "ayanamsha": {
+    "name": "Lahiri (Chitrapaksha True)",
+    "value_deg_at_birth": 23.619383
+  },
+
+  "ascendant": {
+    "longitude_deg": 12.422672,
+    "sign": "Aries",
+    "nakshatra": "Ashwini",
+    "pada": 4
+  },
+
+  "grahas": [
+    { "name": "Sun",     "longitude_deg": 291.978158, "sign": "Capricorn",   "nakshatra": "Shravana",          "pada": 4, "retrograde": false, "dignity": "enemy" },
+    { "name": "Moon",    "longitude_deg": 327.070586, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada",  "pada": 3, "retrograde": false, "dignity": "neutral" },
+    { "name": "Mars",    "longitude_deg": 198.534697, "sign": "Libra",       "nakshatra": "Swati",             "pada": 4, "retrograde": false, "dignity": "enemy" },
+    { "name": "Mercury", "longitude_deg": 270.854300, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha",    "pada": 2, "retrograde": false, "dignity": "neutral" },
+    { "name": "Jupiter", "longitude_deg": 249.802983, "sign": "Sagittarius", "nakshatra": "Mula",              "pada": 3, "retrograde": false, "dignity": "own" },
+    { "name": "Venus",   "longitude_deg": 259.188228, "sign": "Sagittarius", "nakshatra": "Purva Ashadha",     "pada": 2, "retrograde": false, "dignity": "neutral" },
+    { "name": "Saturn",  "longitude_deg": 202.447569, "sign": "Libra",       "nakshatra": "Vishakha",          "pada": 1, "retrograde": false, "dignity": "exalted" },
+    { "name": "Rahu",    "longitude_deg": 49.048586,  "sign": "Taurus",      "nakshatra": "Rohini",            "pada": 3, "retrograde": true,  "dignity": "neutral" },
+    { "name": "Ketu",    "longitude_deg": 229.048586, "sign": "Scorpio",     "nakshatra": "Jyeshtha",          "pada": 1, "retrograde": true,  "dignity": "neutral" }
+  ],
+
+  "vargas": {
+    "D1": {
+      "Ascendant": {"sign": "Aries"},
+      "Sun": {"sign": "Capricorn"}, "Moon": {"sign": "Aquarius"}, "Mars": {"sign": "Libra"},
+      "Mercury": {"sign": "Capricorn"}, "Jupiter": {"sign": "Sagittarius"}, "Venus": {"sign": "Sagittarius"},
+      "Saturn": {"sign": "Libra"}, "Rahu": {"sign": "Taurus"}, "Ketu": {"sign": "Scorpio"}
+    },
+    "D9": {
+      "Ascendant": {"sign": "Cancer"},
+      "Sun": {"sign": "Cancer"}, "Moon": {"sign": "Gemini"}, "Mars": {"sign": "Pisces"},
+      "Mercury": {"sign": "Capricorn"}, "Jupiter": {"sign": "Gemini"}, "Venus": {"sign": "Virgo"},
+      "Saturn": {"sign": "Aries"}, "Rahu": {"sign": "Gemini"}, "Ketu": {"sign": "Sagittarius"}
+    }
+  },
+
+  "vimshottari": {
+    "birth_mahadasha_lord": "Jupiter",
+    "sequence": [
+      {"lord": "Jupiter", "start_iso": "1975-08-14", "end_iso": "1991-08-14"},
+      {"lord": "Saturn",  "start_iso": "1991-08-14", "end_iso": "2010-08-14"},
+      {"lord": "Mercury", "start_iso": "2010-08-14", "end_iso": "2027-08-14"},
+      {"lord": "Ketu",    "start_iso": "2027-08-14", "end_iso": "2034-08-14"},
+      {"lord": "Venus",   "start_iso": "2034-08-14", "end_iso": "2054-08-14"},
+      {"lord": "Sun",     "start_iso": "2054-08-14", "end_iso": "2060-08-14"},
+      {"lord": "Moon",    "start_iso": "2060-08-14", "end_iso": "2070-08-14"},
+      {"lord": "Mars",    "start_iso": "2070-08-14", "end_iso": "2077-08-14"},
+      {"lord": "Rahu",    "start_iso": "2077-08-14", "end_iso": "2095-08-15"}
+    ]
+  },
+
+  "panchanga": {
+    "tithi": "Shukla Tritiya",
+    "vara": "Sunday",
+    "nakshatra": "Purva Bhadrapada",
+    "yoga": "Shiva",
+    "karana": "Garija"
+  },
+
+  "sensitive_points": {
+    "maandi":  {"longitude_deg": 84.263422, "sign": "Gemini"},
+    "gulika":  {"longitude_deg": 74.894294, "sign": "Gemini"}
+  },
+
+  "tolerances": {
+    "longitude_arcseconds": 60,
+    "dasha_seconds": 86400
+  },
+
+  "_provenance": {
+    "transcribed_from": "01_FACTS_LAYER/SOURCES/JHORA_TRANSCRIPTION_v8_0_SOURCE.md (§0 metadata, §1 positions, §10 vimshottari) — JH authoritative",
+    "ayanamsha_finding": "JH 'Lahiri' = True Chitrapaksha; canonical engine ayanamsha id 'jh_true_chitra' pins to 23.619383° (23°37'09.78\"). Standard Lahiri (FORENSIC's value) is NOT used.",
+    "soft_fields": "retrograde was COMPUTED via pyswisseph (ayanamsha-independent; matches JH). dignity is RULE-DERIVED (the JH §1 transcription omitted a D1 dignity column) and scheme-sensitive — the 1.2 parity test should treat `dignity` and `sign` (name-normalized) as SOFT/advisory matches; LONGITUDE / nakshatra / pada / dasha-dates are the HARD parity fields. Native: confirm dignity strings against the held full JH report.",
+    "engine_isolation_note": "This oracle is single-ayanamsha (JH's True Chitra). The engine's THREE-ayanamsha registry (jh_true_chitra/kp/lahiri_standard) is SEPARATE engine config per brief 1.1's isolation contract — it does NOT live in this oracle file.",
+    "extracted_by": "Cowork, 2026-05-27"
+  }
+}
