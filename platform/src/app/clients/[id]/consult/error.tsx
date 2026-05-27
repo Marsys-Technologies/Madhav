@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { SharedConsumeError } from '@/components/consume/SharedConsumeError'
 
-export default function ConsumeError({
+export default function ConsultError({
   error,
   reset,
 }: {
@@ -11,7 +11,7 @@ export default function ConsumeError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[consume] route error:', error)
+    console.error('[consult] route error:', error)
   }, [error])
 
   return <SharedConsumeError title="The chat hit a snag" error={error} reset={reset} />

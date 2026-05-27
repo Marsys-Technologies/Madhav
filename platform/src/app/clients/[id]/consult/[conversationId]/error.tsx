@@ -11,7 +11,7 @@ export default function ConversationError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[consume/conversation] route error:', error)
+    console.error('[consult/conversation] route error:', error)
   }, [error])
 
   return <SharedConsumeError title="This conversation hit a snag" error={error} reset={reset} />

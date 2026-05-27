@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ConsumeOverlayPortal } from "@/components/consume/ConsumeOverlayPortal";
 
-export default function ConsumeLayout({ children }: { children: ReactNode }) {
+export default function ConsultLayout({ children }: { children: ReactNode }) {
   return (
     <>
       {/*
@@ -16,7 +16,7 @@ export default function ConsumeLayout({ children }: { children: ReactNode }) {
        * stacking context at z-50 — winning over the rail in DOM order.
        */}
       {/*
-       * Two scoped global rules for the consume route:
+       * Two scoped global rules for the consult route:
        * 1. Suppress page-ascend animation on <main> — prevents opacity:0 start
        *    from forming a stacking context below AppShellRail's z-50, which
        *    would trap the inline overlay below the rail.
