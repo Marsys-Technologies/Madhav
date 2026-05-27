@@ -1,7 +1,7 @@
 /**
  * 0b.1 — Adapter-path B.11 citation gate parity (Stream B unit 0b.1).
  *
- * Asserts that the adapter/agentic dispatch branch of `/api/chat/consume`
+ * Asserts that the adapter/agentic dispatch branch of `/api/chat/consult`
  * (route.ts, gated by MARSYS_FLAG_R11V2_USE_ADAPTERS=true) enforces the same
  * B.11 citation gate the legacy synthesis-orchestrator path emits in onFinish.
  *

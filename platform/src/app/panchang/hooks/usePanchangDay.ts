@@ -4,7 +4,8 @@
  * usePanchangDay — TanStack Query hook for client-side Panchang fetches.
  *
  * Cache key: ['panchang', date, lat, lon, chartId]
- * Fetches via /api/panchanga (Next.js proxy → Python sidecar).
+ * Fetches via /api/panchang (Next.js proxy → Python sidecar). Renamed from
+ * /api/panchanga in unit 0a.1.3 (panchang(a) tree merge).
  *
  * For SSR (initial page render), the server component calls queryPanchanga
  * directly and passes data as props; this hook handles subsequent client-side
@@ -122,7 +123,7 @@ async function fetchPanchangDay(
   const body: Record<string, unknown> = { date, lat, lon, tz_offset_minutes: tzOffsetMinutes }
   if (chartId) body['chart_id'] = chartId
 
-  const response = await fetch('/api/panchanga', {
+  const response = await fetch('/api/panchang', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
