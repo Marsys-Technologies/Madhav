@@ -118,3 +118,29 @@
 ### Sub-agent budget
 - Used: 4 (2a, 3.tier_excision, 3.consult_nav, 3.dejudge). Remaining: 16.
 
+
+### Unit closes (continued)
+- 01:30 IST · **3.dejudge (C) GREEN** — 2 commits (`56ac990d` `7aa62e6b` on stream-c; cherry-picked to main as `7f85b87c` `cc1423e8`). 27/27 portal msr_sql tests + 4/4 dasha tests pass. **Re-baseline marker (audit §6-A):** SQL `$5 = 0` default; LL.1 weight calibration deleted; Pancha-MP consolidation deleted; `calibrateResults()` helper removed entirely. Synthesis-stage input grows by the weak-tail signal count on every query touching finance/wealth/career domains. Salience now sourced from L2.5 `computed_salience` column (2a.1) + serve-time panel. **Out-of-scope observation:** `LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED` feature flag is now orphaned (no call-sites) — queue for hygiene removal.
+- 01:35 IST · **3.tier_excision (A) GREEN** — 3 commits (`394d4b76` `502f96a1` `be3642f8` on stream-a; cherry-picked to main with reorder fix as `e814be0b` `9049dfdf` `293f3e9c` then `293f3e9c` re-applied — main effective order: 1/3 → 3/3 → 2/3, all three present, equivalent semantics). 9/9 platform vitest + 925/942 platform-mcp tests pass (16 failures pre-existed, unrelated). **Migration 090 — only irreversible op in Batch 3** (drops `mcp_api_keys.audience_tier`); idempotent constraint + column guards. **Depth-selector decision:** TierPicker removed without native confirmation; default = planner-auto-by-query-class. **Native review pending** (flagged for re-kick).
+- 01:55 IST · **3.gateway_pipeline_isolation (A) GREEN** — 3 commits (`b578f5d4` `74650f75` `e68a60e4` on stream-a; cherry-picked to main as `510fed1a` `d8e241f7` `566f125b`). 45/45 tests pass. Gateway = the 8-step chokepoint (contract → Zod → chart → authz → B.11 → ayanamsha → executor → dispatch). Pipeline isolation = shared seam extracted, single_pass/agentic split, selector flag-gated default OFF (preserves byte-identical legacy path until G5b cutover). `consult/route.ts` thinning is structural+additive at the seam (+30 LoC); full runtime move is the G5b atomic cutover work.
+- 02:00 IST · **3.tool_asset_recon (C) GREEN** — 2 commits (`e957a01f` `c7ac1fb5` on stream-c; cherry-picked to main as `25deb169` `5b09c0f2`). 5/5 G6 tests pass. **Coverage:** 19 assets / 77 tools / 0 orphans / 0 redundancies / 0 ayanamsha mismatches. 151 manifest entries backfilled (`data_dependency` + `ayanamsha_role` + `primary_asset`); fingerprint `3c1c1821ea424625…`. **Sets G6_tool_coverage GREEN.**
+
+### Batch 3 close
+- 02:00 IST · 6 units green; 6 commits cherry-picked across 17 individual commits (excluding state-update commit `701ed1f9`). main HEAD: `5b09c0f2`.
+- Gate progression: 5/8 GREEN → 7/8 GREEN (G4 ✓ + G6 ✓ in Batch 3). G5b remains pending (cutover-stage; tracked as 3.cutover in Batch 4).
+- **Carry-forward residuals:**
+  - 20 pre-existing test failures in `lib/retrieve/__tests__/query_{signal_state,kp_ruling_planets,varshaphala}.test.ts` (2a.7 chart_id-required fallout) — tests need to thread `chart_id` or set `MARSYS_ACTIVE_CHART_ID`. Outside all Wave-3 check_command scopes. Hygiene unit queued for Batch 4.
+  - Orphaned `LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED` feature flag (3.dejudge dropped only call-site). Hygiene unit queued for Batch 4.
+  - Depth-selector default decision (3.tier_excision removed TierPicker; planner-auto-by-query-class is provisional). Native review.
+  - Migration 090 is the only irreversible op in Batch 3 — apply to staging only after green post-cutover window.
+  - 16 platform-mcp test failures pre-existing baseline (unrelated to Batch 3 work).
+
+### Sub-agent budget
+- Used: 6 (2a, 3.tier_excision, 3.consult_nav, 3.dejudge, 3.gateway_pipeline_isolation, 3.tool_asset_recon). Remaining: 14.
+
+### Re-kick inputs (operator action)
+- **Required:** Cowork-author Batch-4 briefs (`3.cutover`, `3.legacy_delete`). Hygiene unit briefs (chart_id test fixture threading; orphan-flag removal).
+- **Required:** Native review of depth-selector default (planner-auto-by-query-class).
+- **Optional, deferred from Batch 1+3:** apply migrations 081–090 to staging DB. Migration 090 (drop `mcp_api_keys.audience_tier`) is the only irreversible op — run after a green post-cutover window.
+- **Optional, deferred from Batch 1:** rotate `amjis-db-password` Secret Manager entry.
+
