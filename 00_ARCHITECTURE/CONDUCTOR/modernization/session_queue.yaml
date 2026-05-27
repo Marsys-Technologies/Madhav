@@ -153,25 +153,46 @@ units:
     on_red: rollback
   - id: 2a
     wave: 2
-    brief: TBD_briefs/BRIEF_2a_l25_build.md
+    brief: briefs/BRIEF_2a_l25_build.md
+    stream: C
     blockedBy: [G1_jh_parity]
     sets_gate: G4_no_native_lit
-    file_fence_note: "shares charts table with 2c — sequence, never concurrent"
-    status: not_yet_detailed
+    file_fence_note: "touches lib/retrieve (NATIVE removal) → tool-layer units (3.gateway/3.dejudge/3.tool_asset_recon) run AFTER 2a, never concurrent. Shares platform/migrations with 3.tier_excision → distinct number blocks (continue from 085)."
+    may_touch: ["platform/migrations/**", "platform/python-sidecar/**", "platform/src/lib/retrieve/**", "025_HOLISTIC_SYNTHESIS/**", "01_FACTS_LAYER/**"]
+    must_not_touch: ["platform/src/lib/pipelines/**", "platform/src/app/api/chat/consume/route.ts", "platform-mcp/src/**", "platform/src/app/**", "platform/src/lib/disclosure/**"]
+    check_commands: ["platform/scripts/governance/assert_no_native_literal.sh"]
+    on_red: halt_queue
   - id: 3.dejudge
     wave: 3
-    blockedBy: [G3_contract]
-    status: not_yet_detailed
+    brief: briefs/BRIEF_3_dejudge.md
+    stream: C
+    blockedBy: [G3_contract, 2a]
+    file_fence_note: "shares lib/retrieve with 2a/3.gateway/3.tool_asset_recon — serialize the tool layer"
+    may_touch: ["platform/src/lib/retrieve/msr_sql.ts", "platform-mcp/src/tools/query_signals.ts"]
+    must_not_touch: ["platform/src/lib/pipelines/**", "platform/src/app/**", "platform/python-sidecar/**"]
+    check_commands: ["npx vitest run platform/src/lib/retrieve"]
+    on_red: rollback
   - id: 3.gateway_pipeline_isolation
     wave: 3
-    blockedBy: [G3_contract]
-    status: not_yet_detailed
+    brief: briefs/BRIEF_3_gateway_pipeline_isolation.md
+    stream: A
+    blockedBy: [G3_contract, 2a]
+    file_fence_note: "touches lib/retrieve dispatch + consume/route.ts — serialize after 2a; not concurrent with 3.dejudge/3.tool_asset_recon"
+    may_touch: ["platform/src/lib/pipelines/**", "platform/src/lib/gateway/**", "platform/src/app/api/chat/consume/route.ts", "platform/src/lib/synthesis/**"]
+    must_not_touch: ["platform/python-sidecar/**", "platform/src/app/clients/**", "platform/src/lib/disclosure/**"]
+    check_commands: ["npx vitest run platform/src/lib/gateway platform/src/lib/pipelines"]
+    on_red: rollback
   - id: 3.tool_asset_recon
     wave: 3
-    brief: TBD_briefs/BRIEF_3_tool_asset_recon.md
+    brief: briefs/BRIEF_3_tool_asset_recon.md
+    stream: C
     blockedBy: [G3_contract, 2a]
     sets_gate: G6_tool_coverage
-    status: not_yet_detailed
+    file_fence_note: "touches lib/contract + lib/retrieve + manifest — serialize after 2a; not concurrent with 3.gateway/3.dejudge"
+    may_touch: ["platform/src/lib/contract/**", "platform/src/lib/retrieve/**", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "platform-mcp/src/**"]
+    must_not_touch: ["platform/src/app/**", "platform/python-sidecar/**", "platform/src/lib/pipelines/**", "025_HOLISTIC_SYNTHESIS/**"]
+    check_commands: ["npx vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts"]
+    on_red: rollback
     note: "re-map every tool→NEW asset; coverage + no-redundancy + no-orphan; LLM-client fit (§13). Native-raised."
   - id: 3.cutover
     wave: 3
@@ -179,12 +200,23 @@ units:
     status: not_yet_detailed
   - id: 3.consult_nav
     wave: 3
+    brief: briefs/BRIEF_3_consult_nav.md
+    stream: B
     blockedBy: [2c]
-    status: not_yet_detailed
+    may_touch: ["platform/src/app/clients/**", "platform/src/app/dashboard/**", "platform/src/app/(super-admin)/**", "platform/src/components/nav/**", "platform/src/components/sharing/**"]
+    must_not_touch: ["platform/src/lib/retrieve/**", "platform/python-sidecar/**", "platform/src/app/api/chat/consume/route.ts", "platform/src/lib/disclosure/**"]
+    check_commands: ["npx vitest run platform/src/app/clients platform/src/app/dashboard"]
+    on_red: rollback
   - id: 3.tier_excision
     wave: 3
+    brief: briefs/BRIEF_3_tier_excision.md
+    stream: A
     blockedBy: [G2_authz_live]
-    status: not_yet_detailed
+    file_fence_note: "shares platform/migrations with 2a → distinct number blocks; shares platform-mcp/src with 3.tool_asset_recon → not concurrent"
+    may_touch: ["platform/src/lib/disclosure/**", "platform-mcp/src/**", "platform/migrations/**", "platform/src/components/disclosure/**", "platform/src/components/consume/TierPicker.tsx", "platform/src/app/api/mcp/health/**", "platform/src/app/api/mcp/keys/**"]
+    must_not_touch: ["platform/src/lib/retrieve/**", "platform/src/lib/pipelines/**", "platform/src/app/clients/**", "025_HOLISTIC_SYNTHESIS/**"]
+    check_commands: ["npx vitest run platform-mcp platform/src/app/api/mcp"]
+    on_red: rollback
   - id: 3.legacy_delete
     wave: 3
     blockedBy: [0b.1, G5b_onfinish]
