@@ -10,9 +10,11 @@
  *     thrown exceptions propagate to the MCP tool layer.
  *
  * Exports:
- *   callPlatform()          → /api/mcp/execute   (ask_madhav, execute_plan)
- *   callPlatformPlan()      → /api/mcp/plan       (plan_query)
  *   callPlatformPrimitive() → /api/mcp/primitives/{toolName}
+ *
+ * (callPlatform / callPlatformPlan deleted by Stream A unit 3.legacy_delete
+ * 2026-05-28 — /api/mcp/execute endpoint retired alongside the legacy
+ * synthesis orchestrator trio.)
  *
  * Environment variables:
  *   PLATFORM_URL          — base URL of the amjis-web Cloud Run service
@@ -20,7 +22,7 @@
  *   SERVICE_TOKEN         — static identity token override (local dev only)
  */
 
-import type { McpToolCall, McpEnvelope, PlatformCallResult, Principal } from './types.js'
+import type { McpEnvelope, PlatformCallResult, Principal } from './types.js'
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -134,47 +136,6 @@ async function platformFetch(opts: PlatformFetchOptions): Promise<PlatformCallRe
 }
 
 // ── Exported call functions ───────────────────────────────────────────────────
-
-/**
- * Call /api/mcp/execute for ask_madhav or execute_plan.
- *
- * @param toolCall  The tool name and params to send to the platform.
- * @param principal The resolved principal (user_uid, audience_tier, key_id).
- * @returns         The HTTP status code and parsed McpEnvelope.
- */
-export async function callPlatform(
-  toolCall: McpToolCall,
-  principal: Principal
-): Promise<PlatformCallResult> {
-  const identityToken = await fetchIdentityToken()
-  return platformFetch({
-    url: `${PLATFORM_URL}/api/mcp/execute`,
-    body: { tool: toolCall.tool, params: toolCall.params },
-    principal,
-    identityToken,
-  })
-}
-
-/**
- * Call /api/mcp/plan for plan_query (planner only, no execution).
- *
- * @param query     The question to plan.
- * @param principal The resolved principal.
- * @returns         The HTTP status code and parsed McpEnvelope (result = PipelinePlan).
- */
-export async function callPlatformPlan(
-  query: string,
-  principal: Principal
-): Promise<PlatformCallResult> {
-  const identityToken = await fetchIdentityToken()
-  // The /api/mcp/execute endpoint handles plan_query as a tool dispatch.
-  return platformFetch({
-    url: `${PLATFORM_URL}/api/mcp/execute`,
-    body: { tool: 'plan_query', params: { query } },
-    principal,
-    identityToken,
-  })
-}
 
 /**
  * Call /api/mcp/primitives/{toolName} for surgical primitive tool invocations.
