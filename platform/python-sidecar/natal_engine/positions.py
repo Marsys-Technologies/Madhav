@@ -108,16 +108,28 @@ def _dignity_for(name: str, sign_id: int) -> str:
     return "unknown"
 
 
-def set_ayanamsha(ayanamsha_config_id: str) -> None:
+def set_ayanamsha(ayanamsha_config_id: str, jd_ut: float | None = None) -> None:
     """Configure swisseph's sidereal mode by config id.
 
-    Accepted ids (extensible — add more in unit 1.2 as needed):
-    - 'lahiri'                   → swe.SIDM_LAHIRI (default)
-    - 'lahiri-chitrapaksha-true' → swe.SIDM_LAHIRI (alias, same backend)
-    - 'raman'                    → swe.SIDM_RAMAN
-    - 'krishnamurti'             → swe.SIDM_KRISHNAMURTI
+    Accepted ids:
+    - Engine-registry ids (unit 1.2; preferred): 'jh_true_chitra', 'kp',
+      'lahiri_standard'. For `jh_true_chitra`, `jd_ut` is required so the
+      SIDM_USER calibration can pin to JH's exact value at that JD.
+    - Legacy unit-1.1 aliases (kept for back-compat with existing tests):
+      'lahiri' / 'lahiri-chitrapaksha-true' → SIDM_LAHIRI
+      'raman'                                → SIDM_RAMAN
+      'krishnamurti'                         → SIDM_KRISHNAMURTI
     """
     config = ayanamsha_config_id.lower()
+    # New engine-registry ids
+    from .ayanamsha_registry import AYANAMSHA_REGISTRY, apply_ayanamsha
+    if config in AYANAMSHA_REGISTRY:
+        if config == "jh_true_chitra" and jd_ut is None:
+            # Best-effort: pin at the canonical reference JD (native birth)
+            jd_ut = AYANAMSHA_REGISTRY[config]["pinned_at_jd_ut"]
+        apply_ayanamsha(jd_ut if jd_ut is not None else 0.0, config)
+        return
+    # Legacy aliases (unit 1.1 scaffold compatibility)
     if config in ("lahiri", "lahiri-chitrapaksha-true"):
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
     elif config == "raman":

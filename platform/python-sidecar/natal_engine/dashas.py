@@ -57,24 +57,31 @@ def compute_vimshottari_mahadasha(
     first_lord_elapsed_years = pos_in_nak * first_lord_total_years
     first_lord_remaining_years = first_lord_total_years - first_lord_elapsed_years
 
+    # Back-compute the first MD start so birth falls inside [start, end].
+    # JH classical convention: integer-year boundaries advance the CALENDAR
+    # year by N (so Jupiter 1975-08-14 → 1991-08-14 = exactly 16 cal years,
+    # NOT 16 * 365.25 days). The fractional first-MD ends/back-tracks via
+    # day-arithmetic at _YEAR_DAYS = 365.25.
     sequence: list[dict[str, str]] = []
-    start = birth_dt_utc
-    end = start + timedelta(days=first_lord_remaining_years * _YEAR_DAYS)
+    md_start = birth_dt_utc - timedelta(days=first_lord_elapsed_years * _YEAR_DAYS)
+    # md_end = md_start advanced by `first_lord_total_years` CALENDAR years
+    md_end = _add_calendar_years(md_start, first_lord_total_years)
     sequence.append(
         {
             "lord": nak_lord,
-            "start_iso": start.isoformat(),
-            "end_iso": end.isoformat(),
+            "start_iso": md_start.isoformat(),
+            "end_iso": md_end.isoformat(),
         }
     )
 
-    # Subsequent 8 lords in fixed order
+    # Subsequent 8 lords in fixed order — calendar-year arithmetic
     idx = VIMSHOTTARI_ORDER.index(nak_lord)
+    cursor = md_end
     for k in range(1, 9):
         lord = VIMSHOTTARI_ORDER[(idx + k) % 9]
         years = VIMSHOTTARI_YEARS[lord]
-        start = end
-        end = start + timedelta(days=years * _YEAR_DAYS)
+        start = cursor
+        end = _add_calendar_years(start, years)
         sequence.append(
             {
                 "lord": lord,
@@ -82,5 +89,20 @@ def compute_vimshottari_mahadasha(
                 "end_iso": end.isoformat(),
             }
         )
+        cursor = end
 
     return {"system": "vimshottari", "mahadasha_sequence": sequence}
+
+
+def _add_calendar_years(dt: datetime, years: int) -> datetime:
+    """Add integer calendar years to a datetime, preserving month/day/time.
+
+    Handles Feb-29 by falling back to Feb-28 in the target year (JH-equivalent
+    behavior for the rare leap-day case). All other dates are exact.
+    """
+    new_year = dt.year + int(years)
+    try:
+        return dt.replace(year=new_year)
+    except ValueError:
+        # Feb 29 → Feb 28 in non-leap target
+        return dt.replace(year=new_year, day=28)

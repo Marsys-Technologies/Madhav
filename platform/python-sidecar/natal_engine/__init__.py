@@ -2,13 +2,17 @@
 natal_engine — JH-equivalent deterministic natal chart engine.
 
 Pure-Python module. NO LLM imports anywhere (enforced by test_no_llm.py).
-Owns the compute path that unit 1.2 will lock against the pinned
-Jagannatha Hora oracle (G1).
+Owns the compute path that unit 1.2 locks against the pinned Jagannatha Hora
+oracle (G1).
 
-Public surface: `compute_chart(inputs, engine_version, ayanamsha_config) -> dict`.
+Public surface: `compute_chart(inputs, engine_version, ayanamsha_id) -> dict`.
 
 The returned dict satisfies `schema.CHART_OUTPUT_SCHEMA` and can be appended
 as one JSONL line.
+
+Determinism contract: same `inputs` + `engine_version` + `ayanamsha_id`
+⇒ byte-identical output across runs (modulo `computed_at_iso` if a fresh
+timestamp is used; pass an explicit `computed_at_iso` to fix that too).
 """
 
 from __future__ import annotations
@@ -20,6 +24,12 @@ from typing import Any
 import swisseph as swe
 
 from .ascendant import compute_ascendant
+from .ayanamsha_registry import (
+    AYANAMSHA_REGISTRY,
+    apply_ayanamsha,
+    ayanamsha_value_deg,
+    list_ayanamsha_ids,
+)
 from .dashas import compute_vimshottari_mahadasha
 from .dignities import refine_dignities
 from .houses import compute_houses_whole_sign
@@ -30,14 +40,21 @@ from .schema import CHART_OUTPUT_SCHEMA, Inputs, validate_chart_output
 from .sensitive_points import compute_sensitive_points
 from .vargas import compute_vargas
 
-ENGINE_VERSION_DEFAULT = "natal_engine/0.1.0-scaffold"
-AYANAMSHA_DEFAULT = "lahiri"
+# Unit 1.2 (G1 parity) — engine identity stamped on every output's provenance.
+ENGINE_VERSION_DEFAULT = "natal_engine/0.2.0-jh-parity"
+# Canonical sidereal-zero — see ayanamsha_registry.AYANAMSHA_REGISTRY["jh_true_chitra"].
+AYANAMSHA_DEFAULT = "jh_true_chitra"
+
+
+def _hours_to_timedelta(hours: float):
+    from datetime import timedelta
+    return timedelta(hours=hours)
 
 
 def _parse_inputs(inputs: dict[str, Any]) -> tuple[Inputs, datetime, float]:
     """Coerce caller's inputs dict to the canonical Inputs dataclass + jd_ut.
 
-    Required keys: datetime_iso (ISO-8601 local time, no offset),
+    Required keys: datetime_iso (ISO-8601 local time, with or without offset),
     tz_offset_hours, latitude_deg, longitude_deg, place_name.
     Optional: subject_label.
     """
@@ -69,16 +86,23 @@ def _parse_inputs(inputs: dict[str, Any]) -> tuple[Inputs, datetime, float]:
     return inp, utc_dt, jd_ut
 
 
-def _hours_to_timedelta(hours: float):
-    from datetime import timedelta
-    return timedelta(hours=hours)
+def _vara_local(local_wall_dt: datetime, tz_offset_hours: float) -> int:
+    """Vara is computed from the LOCAL civil weekday at birth (Sunday → Ravivara).
+
+    `datetime.weekday()` returns Mon=0..Sun=6. We pass that index through
+    `panchanga._vara_from_weekday(...)`.
+    """
+    return local_wall_dt.weekday()
 
 
 def compute_chart(
     inputs: dict[str, Any],
     engine_version: str = ENGINE_VERSION_DEFAULT,
-    ayanamsha_config: str = AYANAMSHA_DEFAULT,
+    ayanamsha_id: str | None = None,
+    *,
+    ayanamsha_config: str | None = None,  # deprecated alias kept for 1.1 callers
     validate: bool = True,
+    computed_at_iso: str | None = None,
 ) -> dict[str, Any]:
     """Compute a natal chart and return a schema-valid dict (JSONL-emittable).
 
@@ -89,15 +113,37 @@ def compute_chart(
         longitude_deg, place_name. Optional: subject_label.
     engine_version : str
         Identity string baked into provenance + chart_id.
-    ayanamsha_config : str
-        Passed to `positions.set_ayanamsha(...)`. Default 'lahiri'.
+    ayanamsha_id : str | None
+        Registry id from `ayanamsha_registry.AYANAMSHA_REGISTRY`. Defaults to
+        AYANAMSHA_DEFAULT (`jh_true_chitra`). Accepts legacy 1.1 strings
+        ('lahiri', 'krishnamurti', 'raman', 'lahiri-chitrapaksha-true') for
+        back-compat via positions.set_ayanamsha.
+    ayanamsha_config : str | None
+        Deprecated alias for `ayanamsha_id` (kept for unit 1.1 callers).
     validate : bool
         If True (default), the output is checked against CHART_OUTPUT_SCHEMA
         before returning. Set False for hot paths; tests always validate.
+    computed_at_iso : str | None
+        If provided, used verbatim in provenance.computed_at_iso (deterministic
+        byte-identical output across runs). If None, the current UTC ISO
+        timestamp is stamped.
     """
     inp, utc_dt, jd_ut = _parse_inputs(inputs)
 
-    set_ayanamsha(ayanamsha_config)
+    # Resolve ayanamsha (new id > deprecated alias > default)
+    effective_ayanamsha = (
+        ayanamsha_id if ayanamsha_id is not None
+        else ayanamsha_config if ayanamsha_config is not None
+        else AYANAMSHA_DEFAULT
+    )
+
+    # Apply sidereal mode — registry ids get the SIDM_USER pin path when needed.
+    if effective_ayanamsha in AYANAMSHA_REGISTRY:
+        ayan_value_deg = apply_ayanamsha(jd_ut, effective_ayanamsha)
+    else:
+        # Legacy unit-1.1 alias path
+        set_ayanamsha(effective_ayanamsha, jd_ut=jd_ut)
+        ayan_value_deg = swe.get_ayanamsa_ut(jd_ut)
 
     grahas = refine_dignities(compute_graha_states(jd_ut))
     ascendant = compute_ascendant(jd_ut, inp.latitude_deg, inp.longitude_deg)
@@ -106,13 +152,25 @@ def compute_chart(
     sun = next(g for g in grahas if g.name == "Sun")
     moon = next(g for g in grahas if g.name == "Moon")
     dashas = compute_vimshottari_mahadasha(moon, utc_dt)
-    panchanga = compute_panchanga(sun, moon, utc_dt.weekday())
-    sensitive = compute_sensitive_points(jd_ut, inp.latitude_deg, inp.longitude_deg, grahas, ascendant)
+
+    # Vara: use the LOCAL civil weekday (vara cycles by sunrise, but for the
+    # natal panchanga we pin to the local civil day per JH convention).
+    local_wall_dt = datetime.fromisoformat(inp.datetime_iso)
+    if local_wall_dt.tzinfo is not None:
+        local_wall_dt = local_wall_dt.replace(tzinfo=None)
+    panchanga = compute_panchanga(
+        sun, moon, _vara_local(local_wall_dt, inp.tz_offset_hours)
+    )
+
+    sensitive = compute_sensitive_points(
+        jd_ut, inp.latitude_deg, inp.longitude_deg, grahas, ascendant
+    )
 
     provenance = build_provenance(
         inputs=asdict(inp),
         engine_version=engine_version,
-        ayanamsha_config_id=ayanamsha_config,
+        ayanamsha_config_id=effective_ayanamsha,
+        computed_at_iso=computed_at_iso,
     )
 
     payload: dict[str, Any] = {
@@ -126,6 +184,14 @@ def compute_chart(
         "panchanga": panchanga,
         "sensitive_points": sensitive,
     }
+    # Optional non-schema annotation — handy for the parity test invariants.
+    # Stored under provenance (schema permits additionalProperties on objects
+    # not in the explicit `required`/`properties` enumeration — but the
+    # provenance schema is strict. Keep ayan info OUTSIDE provenance.)
+    payload["ayanamsha"] = {
+        "id": effective_ayanamsha,
+        "value_deg": ayan_value_deg,
+    }
 
     if validate:
         validate_chart_output(payload)
@@ -138,4 +204,8 @@ __all__ = [
     "ENGINE_VERSION_DEFAULT",
     "AYANAMSHA_DEFAULT",
     "CHART_OUTPUT_SCHEMA",
+    "AYANAMSHA_REGISTRY",
+    "apply_ayanamsha",
+    "ayanamsha_value_deg",
+    "list_ayanamsha_ids",
 ]
