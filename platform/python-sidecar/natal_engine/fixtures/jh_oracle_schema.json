@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MARSYS-JIS — Pinned Jagannatha Hora Oracle Fixture",
+  "description": "Schema for jh_oracle.json: the human-pinned ground-truth chart export from Jagannatha Hora that unit 1.2 will diff against natal_engine.compute_chart output. Native must populate jh_oracle.json once and check it in; it is the load-bearing reference for G1 (jh_oracle_pinned gate). The file is intentionally NOT created at unit 1.1 — its absence keeps the gate RED until the native discharges it.",
+  "type": "object",
+  "required": ["meta", "ayanamsha", "ascendant", "grahas", "vargas", "vimshottari"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["source", "exported_at_iso", "subject_label", "datetime_iso", "tz_offset_hours", "latitude_deg", "longitude_deg", "place_name"],
+      "properties": {
+        "source": {"const": "jagannatha_hora", "description": "Always 'jagannatha_hora' to make provenance machine-checkable."},
+        "jh_version": {"type": "string"},
+        "exported_at_iso": {"type": "string"},
+        "subject_label": {"type": "string"},
+        "datetime_iso": {"type": "string"},
+        "tz_offset_hours": {"type": "number"},
+        "latitude_deg": {"type": "number"},
+        "longitude_deg": {"type": "number"},
+        "place_name": {"type": "string"}
+      }
+    },
+    "ayanamsha": {
+      "type": "object",
+      "required": ["name", "value_deg_at_birth"],
+      "properties": {
+        "name": {"type": "string", "description": "e.g. 'Lahiri (Chitrapaksha True)'"},
+        "value_deg_at_birth": {"type": "number"}
+      }
+    },
+    "ascendant": {
+      "type": "object",
+      "required": ["longitude_deg", "sign", "nakshatra", "pada"],
+      "properties": {
+        "longitude_deg": {"type": "number"},
+        "sign": {"type": "string"},
+        "nakshatra": {"type": "string"},
+        "pada": {"type": "integer", "minimum": 1, "maximum": 4}
+      }
+    },
+    "grahas": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": ["name", "longitude_deg", "sign", "nakshatra", "pada", "retrograde", "dignity"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+          },
+          "longitude_deg": {"type": "number"},
+          "sign": {"type": "string"},
+          "nakshatra": {"type": "string"},
+          "pada": {"type": "integer", "minimum": 1, "maximum": 4},
+          "retrograde": {"type": "boolean"},
+          "dignity": {"type": "string"}
+        }
+      }
+    },
+    "vargas": {
+      "type": "object",
+      "description": "Per-varga (D1, D9, ...) map of graha → sign placement. At minimum D1 + D9 expected for the 1.2 parity pass.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["sign"],
+          "properties": {
+            "sign": {"type": "string"}
+          }
+        }
+      }
+    },
+    "vimshottari": {
+      "type": "object",
+      "required": ["birth_mahadasha_lord", "sequence"],
+      "properties": {
+        "birth_mahadasha_lord": {"type": "string"},
+        "sequence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["lord", "start_iso", "end_iso"],
+            "properties": {
+              "lord": {"type": "string"},
+              "start_iso": {"type": "string"},
+              "end_iso": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "panchanga": {
+      "type": "object",
+      "properties": {
+        "tithi": {"type": "string"},
+        "vara": {"type": "string"},
+        "nakshatra": {"type": "string"},
+        "yoga": {"type": "string"},
+        "karana": {"type": "string"}
+      }
+    },
+    "sensitive_points": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "tolerances": {
+      "type": "object",
+      "description": "Numerical tolerances the 1.2 parity test uses when comparing JH oracle values to engine output.",
+      "properties": {
+        "longitude_arcseconds": {"type": "number", "default": 60},
+        "dasha_seconds": {"type": "number", "default": 60}
+      }
+    }
+  }
+}
