@@ -1,0 +1,52 @@
+---
+# GISMCP Remediation — Stream 2 Session Queue
+# Covers: R3 (MSR signal grounding verification + completion)
+# Worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2
+# Branch: fix/gismcp-r3
+# Conductor: run STREAM2_CONDUCTOR_PROMPT.md
+---
+
+sessions:
+
+  - id: R3-S1
+    title: "MSR grounding audit — count ungrounded signals, sample, produce audit doc"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R3_S1_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2
+    status: PENDING
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
+      - "grep -q 'ungrounded_count' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
+      - "grep -q 'grounded_count' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
+
+  - id: R3-S2
+    title: "MSR grounding completion — remediate all ungrounded signals (if gap > 0)"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R3_S2_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2
+    status: PENDING
+    depends_on: [R3-S1]
+    conditional: "grep -q 'ungrounded_count: 0' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md && echo SKIP || echo RUN"
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
+      # Conductor checks: if R3-S1 showed ungrounded_count=0, this session may be a no-op
+      # Session still runs but may produce only a VERIFIED_NO_GAP note
+      - "grep -qE 'ungrounded_count: 0|status: VERIFIED_NO_GAP|status: REMEDIATION_COMPLETE' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/MSR_GROUNDING_AUDIT.md"
+
+  - id: R3-T1
+    title: "MSR grounding verification — 573/573 grounded, discovery layer quality check"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R3_T1_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2
+    status: PENDING
+    depends_on: [R3-S2]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/platform/src/__tests__/integration/msr_grounding.integration.test.ts"
+      - "DB_PROXY_PORT=5433 cd /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/platform && npx vitest run src/__tests__/integration/msr_grounding.integration.test.ts 2>&1 | grep -q '0 failed'"
+
+  - id: R3-SEAL
+    title: "Stream 2 seal — update CAPABILITY_MANIFEST grounding status, SESSION_LOG"
+    brief: 00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/briefs/R3_SEAL_BRIEF.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2
+    status: PENDING
+    depends_on: [R3-T1]
+    check_commands:
+      - "test -f /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/STREAM2_COMPLETE.md"
+      - "grep -q 'msr_grounding_verified: true' /Users/Dev/Vibe-Coding/Apps/MadhavGISMCP-S2/00_ARCHITECTURE/CONDUCTOR/gismcp-remediation/STREAM2_COMPLETE.md"

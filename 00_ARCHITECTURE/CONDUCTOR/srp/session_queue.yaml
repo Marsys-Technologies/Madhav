@@ -1,0 +1,166 @@
+# SRP — System Repair Plan Session Queue
+# Authored: 2026-05-25
+# Master plan: 00_ARCHITECTURE/SYSTEM_REPAIR_MASTER_PLAN_v1_0.md
+#
+# Usage: Load into Conductor (CONDUCTOR_PROMPT_v1_0.md).
+# Phase 1 and Phase 3 sessions are parallel-safe.
+# Phase 2 sessions are blocked on Phase 1 merge + deploy.
+#
+# Parallel-safe pairs:
+#   SRP-F-1 ∥ SRP-F-2  (different repos)
+#   SRP-F-1 ∥ SRP-A-1  (A-1 read-only)
+#   SRP-F-2 ∥ SRP-A-1  (A-1 read-only)
+#   SRP-T-1 ∥ SRP-T-2  (different test targets)
+#   SRP-A-1 ∥ SRP-T-1, SRP-T-2
+
+queue:
+  # ─── Phase 1: Fixes ───────────────────────────────────────────────────────
+
+  - id: SRP-F-1
+    name: Portal Fixes
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_F1_PORTAL_FIXES.md
+    worktree: MadhavSRP-F1
+    branch: fix/srp-f1-portal-fixes
+    deploy_target: amjis-web
+    status: PENDING
+    blocked_by: []
+    parallel_safe_with: [SRP-F-2, SRP-A-1]
+    check_commands:
+      - >-
+        grep -c "msr_sql\|temporal\|kp_query\|query_kp_ruling_planets\|pattern_register\|resonance_register\|cluster_atlas\|contradiction_register\|query_ucn_walk\|query_cdlm_lookup\|query_rm_walk\|query_jaimini_drishti\|timeline_query\|query_signal_state"
+        platform/src/lib/mcp/primitives_registry.ts | grep -q "^14$"
+    human_gate:
+      action: merge_and_deploy
+      message: >
+        SRP-F-1 complete. Please:
+        1. Review PR fix/srp-f1-portal-fixes → main
+        2. Merge PR
+        3. Deploy amjis-web: push to main triggers CI/CD
+        4. Confirm deployment at /api/health
+      confirm_field: srp_f1_deployed
+
+  - id: SRP-F-2
+    name: MCP Sidecar Fixes
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_F2_MCP_FIXES.md
+    worktree: MadhavSRP-F2
+    branch: fix/srp-f2-mcp-fixes
+    deploy_target: amjis-mcp
+    status: PENDING
+    blocked_by: []
+    parallel_safe_with: [SRP-F-1, SRP-A-1]
+    check_commands:
+      - >-
+        grep -q "benefic\|malefic\|context-dependent"
+        platform-mcp/src/tools/query_signals.ts
+      - >-
+        grep -q "SAMPLE_STEP_DAYS\|sample_step.*7\|7d.*7\|7.*days"
+        platform-mcp/src/tools/query_ephemeris.ts
+      - >-
+        grep -q "significance:" platform-mcp/src/tools/lel_query.ts &&
+        ! grep -q "min_significance" platform-mcp/src/tools/lel_query.ts
+    human_gate:
+      action: merge_and_deploy
+      message: >
+        SRP-F-2 complete. Please:
+        1. Review PR fix/srp-f2-mcp-fixes → main
+        2. Merge PR
+        3. Deploy amjis-mcp sidecar
+        4. Confirm sidecar is live
+      confirm_field: srp_f2_deployed
+
+  # ─── Phase 3: Architecture (Concurrent with Phase 1) ─────────────────────
+
+  - id: SRP-A-1
+    name: Technical Debt Audit
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_A1_TECH_DEBT_AUDIT.md
+    worktree: MadhavSRP-A1
+    branch: arch/srp-a1-tech-debt
+    deploy_target: none
+    status: PENDING
+    blocked_by: []
+    parallel_safe_with: [SRP-F-1, SRP-F-2]
+    check_commands:
+      - test -f 00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+      - grep -q "Executive Summary" 00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+    human_gate: null
+
+  - id: SRP-A-2
+    name: Architecture Report
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_A2_ARCHITECTURE_REPORT.md
+    worktree: MadhavSRP-A2
+    branch: arch/srp-a2-arch-report
+    deploy_target: none
+    status: PENDING
+    blocked_by: [SRP-A-1]
+    check_commands:
+      - test -f 00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+      - grep -q "Deletion List" 00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+      - grep -q "Target Architecture" 00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+    human_gate: null
+
+  # ─── Phase 2: Tests (Blocked on Phase 1 merge + deploy) ──────────────────
+
+  - id: SRP-T-1
+    name: Portal Retrieval Unit Tests
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T1_PORTAL_UNIT_TESTS.md
+    worktree: MadhavSRP-T1
+    branch: test/srp-t1-portal-unit
+    deploy_target: none
+    status: PENDING
+    blocked_by: [SRP-F-1]
+    blocked_by_human_gate: srp_f1_deployed
+    parallel_safe_with: [SRP-T-2, SRP-A-1]
+    check_commands:
+      - test -f platform/src/lib/mcp/__tests__/primitives_registry.test.ts
+      - test -f platform/src/lib/retrieve/__tests__/msr_sql.test.ts
+      - cd platform && npx vitest run src/lib/mcp/__tests__/ src/lib/retrieve/__tests__/ 2>&1 | grep -q "0 failed"
+    human_gate: null
+
+  - id: SRP-T-2
+    name: MCP Tool Unit Tests
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T2_MCP_UNIT_TESTS.md
+    worktree: MadhavSRP-T2
+    branch: test/srp-t2-mcp-unit
+    deploy_target: none
+    status: PENDING
+    blocked_by: [SRP-F-2]
+    blocked_by_human_gate: srp_f2_deployed
+    parallel_safe_with: [SRP-T-1, SRP-A-1]
+    check_commands:
+      - test -f platform-mcp/src/tools/__tests__/query_signals.test.ts
+      - test -f platform-mcp/src/tools/__tests__/query_ephemeris.test.ts
+      - cd platform-mcp && npx vitest run src/tools/__tests__/ 2>&1 | grep -q "0 failed"
+    human_gate: null
+
+  - id: SRP-T-3
+    name: Integration Tests (MCP Live DB)
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T3_INTEGRATION_TESTS.md
+    worktree: MadhavSRP-T3
+    branch: test/srp-t3-integration
+    deploy_target: none
+    status: PENDING
+    blocked_by: [SRP-F-1, SRP-F-2]
+    blocked_by_human_gate: [srp_f1_deployed, srp_f2_deployed]
+    check_commands:
+      - test -f platform/src/__tests__/integration/mcp_primitives.integration.test.ts
+    human_gate: null
+
+  - id: SRP-T-4
+    name: System Tests (Portal Pipeline E2E)
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T4_SYSTEM_TESTS.md
+    worktree: MadhavSRP-T4
+    branch: test/srp-t4-system
+    deploy_target: none
+    status: PENDING
+    blocked_by: [SRP-F-1, SRP-F-2]
+    blocked_by_human_gate: [srp_f1_deployed, srp_f2_deployed]
+    check_commands:
+      - test -f platform/src/__tests__/system/portal_pipeline.system.test.ts
+    human_gate: null
+
+# ─── Sealing ────────────────────────────────────────────────────────────────
+# After all 8 sessions are DONE:
+# 1. Author 00_ARCHITECTURE/SYSTEM_REPAIR_CLOSE_v1_0.md
+# 2. Update 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+# 3. Update CLAUDE.md §E
+# 4. Append to 00_ARCHITECTURE/SESSION_LOG.md

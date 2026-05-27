@@ -1,0 +1,97 @@
+# SRP Stream 2 — Phase 3 (Architecture)
+# Execution model: fully autonomous, no human gates, sub-agent per session
+# Conductor mode: --dangerously-skip-permissions
+# Root worktree: /Users/Dev/Vibe-Coding/Apps/Madhav
+# Parallel-safe with Stream 1 at all times (read-only analysis sessions)
+
+root: /Users/Dev/Vibe-Coding/Apps/Madhav
+
+batches:
+
+  # ─── Batch 1: Tech Debt Audit ──────────────────────────────────────────────
+
+  - batch_id: 1
+    label: "Phase 3A — Technical Debt Audit"
+    parallel: false
+    sessions:
+
+      - id: SRP-A-1
+        label: Technical Debt Audit
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_A1_TECH_DEBT_AUDIT.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A1
+        branch: arch/srp-a1-tech-debt
+        status: PENDING
+        check_commands:
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A1/00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+          - >-
+            grep -q "Executive Summary"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A1/00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+          - >-
+            grep -q "Dead Code\|dead.*code"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A1/00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-A-1.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A1
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_A1_TECH_DEBT_AUDIT.md
+
+          This is a READ-ONLY audit session. Do NOT modify any production code.
+          Your only output file is: 00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+
+          Use grep, find, and file reads to catalog:
+            A: Dead code (legacy orchestrator, deprecated symbols, dead flag branches)
+            B: Orphaned feature flags
+            C: Duplicate/inconsistent type definitions (valence, significance, domain)
+            D: Logging debt (params_json mismatches)
+            E: Test coverage gaps
+            F: Dispatcher QueryPlan hardcoding issues beyond FIX-2
+
+          Be thorough. Include file:line references for every finding.
+          When done, commit TECH_DEBT_AUDIT_v1_0.md, push branch. Exit.
+
+  # ─── Batch 2: Architecture Report (blocked on A-1) ─────────────────────────
+
+  - batch_id: 2
+    label: "Phase 3B — Architecture Report"
+    parallel: false
+    sessions:
+
+      - id: SRP-A-2
+        label: Architecture Report
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_A2_ARCHITECTURE_REPORT.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2
+        branch: arch/srp-a2-arch-report
+        status: PENDING
+        pre_commands:
+          # Bring A-2 worktree up to date with A-1's committed audit
+          - git -C /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2 fetch origin arch/srp-a1-tech-debt
+          - git -C /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2 merge origin/arch/srp-a1-tech-debt --no-ff -m "merge: bring A-1 audit into A-2 branch"
+        check_commands:
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2/00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+          - >-
+            grep -q "Deletion List"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2/00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+          - >-
+            grep -q "Target Architecture\|target architecture"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2/00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+          - >-
+            grep -q "sunset\|Sunset\|Implementation Roadmap\|implementation roadmap"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2/00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-A-2.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-A2
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_A2_ARCHITECTURE_REPORT.md
+
+          Primary input: 00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md (already in this worktree).
+          Read it in full before writing anything.
+
+          This is a READ-ONLY analysis session. Do NOT modify any production code.
+          Your only output file is: 00_ARCHITECTURE/TARGET_ARCHITECTURE_REPORT_v1_0.md
+
+          The report must contain:
+            §1 Executive Summary
+            §2 Deletion List (≥500 LoC, DEL-NNN entries with file:line, reason, risk)
+            §3 Target Architecture (two-pipeline, shared vocab, registry auto-sync,
+               logging discipline, test coverage targets)
+            §4 Implementation Roadmap (phased, dateable milestones)
+
+          When done, commit TARGET_ARCHITECTURE_REPORT_v1_0.md, push branch. Exit.

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Modernization tracker</title>
+<style>
+:root{
+  --bg:#fbf8f3; --surface:#ffffff; --surface2:#f3ece1; --line:#e2d9c9; --text:#1c150c; --muted:#6f6555;
+  --green:#2f8f5b; --greenbg:#e6f2ea; --amber:#b9831f; --amberbg:#f8efd9;
+  --red:#b1452c; --redbg:#f7e6df; --blue:#2867ad; --bluebg:#e6eef8; --gray:#8a8275; --graybg:#efeae1; --accent:#c8731f;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#15120d; --surface:#1f1b15; --surface2:#26211a; --line:#352f26; --text:#f1ece3; --muted:#a99f8e;
+    --greenbg:#16302a; --amberbg:#33280f; --redbg:#331d14; --bluebg:#16263d; --graybg:#262119;
+    --green:#5dca8e; --amber:#e0a94a; --red:#e0795c; --blue:#5e9bd6; --gray:#9c9382; --accent:#e0995a; }
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:18px}
+.wrap{max-width:1160px;margin:0 auto}
+.mut{color:var(--muted)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.lbl{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 10px;letter-spacing:.2px}
+.rowb{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:8px;display:inline-flex;align-items:center;gap:5px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.s-done{background:var(--greenbg);color:var(--green)} .s-run{background:var(--amberbg);color:var(--amber)}
+.s-block{background:var(--graybg);color:var(--gray)} .s-pend{background:var(--graybg);color:var(--gray)}
+.s-red{background:var(--redbg);color:var(--red)} .s-new{background:var(--bluebg);color:var(--blue)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
+.tile{background:var(--surface2);border-radius:10px;padding:11px 13px}
+.tile .v{font-size:24px;font-weight:600;margin-top:2px}
+.grid{display:grid;grid-template-columns:1.45fr 1fr;gap:14px;align-items:start}
+@media (max-width:840px){ .grid{grid-template-columns:1fr} }
+.led{max-height:none}
+.gh{font-size:12px;font-weight:600;color:var(--muted);margin:13px 0 4px}
+.u{display:flex;gap:11px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)}
+.u .st{flex-shrink:0;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.u .sq{flex-shrink:0;width:20px;text-align:right;color:var(--muted);font-size:11px;padding-top:4px}
+.u .ti{font-size:13.5px;font-weight:600} .u .de{font-size:12.5px;color:var(--muted);line-height:1.45}
+.tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px;background:var(--bluebg);color:var(--blue);margin-left:6px}
+.wbar{display:flex;gap:6px} .wbar .seg{flex:1;text-align:center}
+.gates{display:flex;flex-wrap:wrap;gap:7px}
+.attn{border-color:var(--red)}
+.feed div{padding:3px 0;font-size:12.5px}
+.col{display:flex;flex-direction:column;gap:14px}
+i.ic{font-style:normal}
+.live{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+.live.stale{background:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="rowb" style="margin-bottom:6px">
+    <div><div style="font-size:20px;font-weight:600">Modernization tracker</div><div class="mut" id="sub">loading…</div></div>
+    <span class="pill s-done"><span class="live" id="live"></span><span id="upd">connecting…</span></span>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div class="card" style="margin-bottom:14px"><p class="lbl">Wave progress</p><div class="wbar" id="waves"></div></div>
+  <div class="grid">
+    <div class="col">
+      <div class="card"><div class="rowb" style="margin-bottom:6px"><p class="lbl" style="margin:0">Completion ledger — what each unit delivers, in order</p><span class="mut" id="ledcount" style="font-size:11px"></span></div>
+        <div class="mut" style="font-size:11px;margin-bottom:6px">green done · orange in progress · gray not started · lock blocked by a gate · order is logical (streams run several at once)</div>
+        <div id="ledger" class="led"></div>
+      </div>
+      <div class="card"><p class="lbl">Unit board</p><div id="board" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div></div>
+    </div>
+    <div class="col">
+      <div class="card"><p class="lbl">Streams</p><div id="streams"></div></div>
+      <div class="card"><p class="lbl">Gates</p><div class="gates" id="gates"></div></div>
+      <div class="card attn"><p class="lbl" style="color:var(--red)">Attention &amp; blocking</p><div id="attn"></div></div>
+      <div class="card"><p class="lbl">Health</p><div id="health"></div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px"><p class="lbl">Activity</p><div class="feed" id="feed"></div></div>
+  <div class="mut" style="font-size:11px;margin-top:10px">Reads <span class="mono">./status.json</span> (poll 5s) and <span class="mono">/events</span> (SSE) when served by the tracker backend; falls back to embedded sample when opened standalone.</div>
+</div>
+
+<script>
+const MOCK={
+  program:"PLATFORM_MODERNIZATION", batch:1, batch_label:"wave 0 + engine scaffold · 3 streams",
+  gates:[{id:"naming_ci",s:"green"},{id:"jh_oracle",s:"red"},{id:"G1",s:"pend"},{id:"G2",s:"pend"},{id:"G3",s:"pend"},{id:"G4",s:"pend"},{id:"G5b",s:"pend"},{id:"G6",s:"pend"}],
+  streams:[{id:"A",state:"running",unit:"0a.1 routes",last:"0a.0"},{id:"B",state:"running",unit:"0b.2 secrets",last:"0b.1"},{id:"C",state:"running",unit:"1.1 engine",last:"0b.3"}],
+  attention:[{title:"JH-oracle input required",detail:"pin JH version + ayanamsha → fixtures/jh_oracle.json. Blocks 1.2 + gate G1."}],
+  halts:[],
+  health:{tests:"passing",coverage:"— baseline",smoke:"n/a",error_rate:"0.0%"},
+  activity:[
+    {i:"check",c:"var(--green)",t:"0a.0 naming-CI merged to main",sha:"a1b2c3d",ago:"2m"},
+    {i:"up",c:"var(--blue)",t:"cherry-pick 0b.1 → main",sha:"d4e5f6a",ago:"4m"},
+    {i:"check",c:"var(--green)",t:"gate naming_ci flipped green",ago:"5m"},
+    {i:"commit",c:"var(--muted)",t:"Stream C · engine schema scaffold",ago:"7m"},
+    {i:"rk",c:"var(--amber)",t:"Batch 1 started across A / B / C",ago:"12m"}
+  ],
+  units:[
+    {id:"0t",g:"Setup",t:"Program tracker",d:"The live dashboard — progress, what's done, what's stuck.",s:"done"},
+    {id:"0a.0",g:"Wave 0a · naming hygiene",t:"Naming guardrail",d:"CI check that enforces consistent names so the cleanup can't drift back.",s:"done"},
+    {id:"0a.1",g:"Wave 0a · naming hygiene",t:"Tidy the web addresses",d:"Rename consume→consult; merge the duplicate panchang URLs into one.",s:"running"},
+    {id:"0b.1",g:"Wave 0b · close known holes",t:"Citation check on the new chat",d:"New chat path enforces sources/citations like the old one did — quality hole closed.",s:"done"},
+    {id:"0b.2",g:"Wave 0b · close known holes",t:"Remove leaked passwords",d:"Strip hardcoded DB passwords from scripts; add a scanner — security hole closed.",s:"running"},
+    {id:"0b.3",g:"Wave 0b · close known holes",t:"Retire the Gemini rules",d:"Delete the now-dead Gemini co-working governance so it stops complicating changes.",s:"done"},
+    {id:"1.1",g:"Wave 1 · the calculation engine",t:"Engine skeleton",d:"Start the in-house Jagannatha-Hora-equivalent calculator (new L1) + test harness.",s:"running"},
+    {id:"1.2",g:"Wave 1 · the calculation engine",t:"Prove it matches JH (gate G1)",d:"Engine reproduces Jagannatha Hora exactly for your chart — the foundation. Blocked: needs the JH pin.",s:"blocked"},
+    {id:"2b",g:"Wave 2 · rebuild data + multi-user",t:"One tool definition",d:"A single shared definition for every tool (web + MCP) — no more maintaining everything twice.",s:"pending"},
+    {id:"2c",g:"Wave 2 · rebuild data + multi-user",t:"Multi-user + sharing",d:"Split owner-vs-subject, add chart sharing, one access-control brain.",s:"pending"},
+    {id:"2d",g:"Wave 2 · rebuild data + multi-user",t:"Command Center",d:"The super-admin control panel to flip gates and data sources at runtime.",s:"pending"},
+    {id:"2a",g:"Wave 2 · rebuild data + multi-user",t:"Rebuild your chart data",d:"Use the engine to regenerate all chart data (signals/links/graphs/remedies) as pure facts. Blocked: needs G1.",s:"blocked"},
+    {id:"3.dejudge",g:"Wave 3 · converge tools + cut over",t:"Remove hidden scoring",d:"Strip buried filters/weights from the tools — the model decides, not the tool.",s:"pending"},
+    {id:"3.gw",g:"Wave 3 · converge tools + cut over",t:"Tool gateway + split the pipelines",d:"Build the gateway; cleanly separate the two chat pipelines so each can evolve alone.",s:"pending"},
+    {id:"3.toolrecon",g:"Wave 3 · converge tools + cut over",t:"Tool ↔ asset reconciliation",d:"Re-map every tool to the NEW data assets — full coverage, no redundancy, no orphans (gate G6).",s:"pending",neu:true},
+    {id:"3.cutover",g:"Wave 3 · converge tools + cut over",t:"Switch over to the new data",d:"Build new alongside old, validate, swap, keep old as a backup. Blocked: needs engine + data.",s:"blocked"},
+    {id:"3.nav",g:"Wave 3 · converge tools + cut over",t:"New navigation + pages",d:"Role-gated nav and the per-chart Profile / Build / Consult / Panchang pages.",s:"pending"},
+    {id:"3.tier",g:"Wave 3 · converge tools + cut over",t:"Remove the old tier system",d:"Delete audience-tiers and the Deep/Study/Brief selector — access is now role + sharing.",s:"pending"},
+    {id:"3.legacy",g:"Wave 3 · converge tools + cut over",t:"Delete the old chat pipeline",d:"Remove the legacy single-pass pipeline once the new one is at full parity.",s:"pending"},
+    {id:"4.trigger",g:"Wave 4 · scale, observe, seal",t:"Wire the Build button",d:"Connect the dashboard Build action to the autonomous chart-build job.",s:"pending"},
+    {id:"4.sql",g:"Wave 4 · scale, observe, seal",t:"Scale the database + caching",d:"Upgrade Postgres + add caching so it handles many charts and users.",s:"pending"},
+    {id:"4.cdn",g:"Wave 4 · scale, observe, seal",t:"Edge speed + firewall",d:"Add a CDN for speed and Cloud Armor for protection.",s:"pending"},
+    {id:"4.obs",g:"Wave 4 · scale, observe, seal",t:"Observability",d:"Tracing, dashboards and alerts so problems are visible early.",s:"pending"},
+    {id:"4.eval",g:"Wave 4 · scale, observe, seal",t:"Re-baseline quality + learning loop",d:"Re-measure answer quality on the new data; wire the prediction/learning loop.",s:"pending"},
+    {id:"4.seal",g:"Wave 4 · scale, observe, seal",t:"Red-team + seal the program",d:"Final adversarial review, then close the program out.",s:"pending"}
+  ]
+};
+const ICON={check:"✓",up:"↑",commit:"•",rk:"↻",lock:"🔒",play:"▸",clock:"○",plus:"+"};
+const SI={done:["s-done","✓"],running:["s-run","▸"],blocked:["s-block","🔒"],pending:["s-pend","○"]};
+let STATE=MOCK, lastUpdate=Date.now();
+
+function esc(x){return (x==null?"":String(x))}
+function render(){
+  const u=STATE.units||[], done=u.filter(x=>x.s==="done").length, run=u.filter(x=>x.s==="running").length,
+        blk=u.filter(x=>x.s==="blocked").length, pen=u.filter(x=>x.s==="pending").length, tot=u.length;
+  const gg=(STATE.gates||[]).filter(g=>g.s==="green").length, gt=(STATE.gates||[]).length;
+  document.getElementById("sub").textContent="Batch "+esc(STATE.batch)+" · "+esc(STATE.batch_label);
+  document.getElementById("tiles").innerHTML=[
+    ["Complete",(tot?Math.round(done/tot*100):0)+"%"],["Units",done+'<span class="mut" style="font-size:13px">/'+tot+'</span>'],
+    ["Gates",gg+'<span class="mut" style="font-size:13px">/'+gt+'</span>'],["Active halts",(STATE.halts||[]).length],
+    ["Prod",'<span style="font-size:15px">'+ (STATE.health&&STATE.health.prod_revision?esc(STATE.health.prod_revision):"none") +'</span>']
+  ].map(t=>'<div class="tile"><div class="mut" style="font-size:12px">'+t[0]+'</div><div class="v">'+t[1]+'</div></div>').join("");
+  const wstate={};u.forEach(x=>{const w=(x.g.match(/Wave (\\w+)/)||[])[1]; if(w){ if(x.s==="done"){wstate[w]=wstate[w]||"done"} if(x.s==="running"){wstate[w]="run"} }});
+  document.getElementById("waves").innerHTML=["0a","0b","1","2","3","4"].map(w=>{
+    const c=wstate[w]==="run"?"var(--amber)":wstate[w]==="done"?"var(--green)":"var(--line)";
+    return '<div class="seg"><div style="height:8px;border-radius:4px;background:'+c+'"></div><div class="mut" style="font-size:11px;margin-top:4px">'+w+'</div></div>';}).join("");
+  document.getElementById("ledcount").textContent=tot+" units";
+  let last=null,html="";
+  u.forEach((x,i)=>{ if(x.g!==last){html+='<p class="gh">'+esc(x.g)+'</p>';last=x.g;}
+    const si=SI[x.s]||SI.pending;
+    html+='<div class="u"'+(x.neu?' style="background:var(--bluebg);border-radius:8px"':'')+'><span class="sq">'+(i+1)+'</span><span class="st '+si[0]+'"><i class="ic">'+si[1]+'</i></span><div><div class="ti">'+esc(x.t)+(x.neu?'<span class="tag">new</span>':'')+'</div><div class="de">'+esc(x.d)+'</div></div></div>';});
+  document.getElementById("ledger").innerHTML=html;
+  document.getElementById("board").innerHTML=[
+    ["✓ done · "+done, u.filter(x=>x.s==="done").map(x=>x.id).join(" · ")],
+    ["▸ running · "+run, u.filter(x=>x.s==="running").map(x=>x.id).join(" · ")],
+    ["🔒 blocked · "+blk, u.filter(x=>x.s==="blocked").map(x=>x.id).join(" · ")],
+    ["○ pending · "+pen, u.filter(x=>x.s==="pending").map(x=>x.id).slice(0,6).join(" · ")+(pen>6?" …":"")]
+  ].map(b=>'<div><div class="mut" style="font-size:11px;margin-bottom:3px">'+b[0]+'</div><div style="font-size:12px;line-height:1.6">'+b[1]+'</div></div>').join("");
+  document.getElementById("streams").innerHTML=(STATE.streams||[]).map(s=>
+    '<div class="rowb" style="margin-bottom:8px"><div><span class="pill s-run">'+esc(s.state)+'</span> <b>'+esc(s.id)+'</b> <span class="mut">'+esc(s.unit)+'</span></div><span class="mut" style="font-size:12px">✓ '+esc(s.last)+'</span></div>').join("");
+  document.getElementById("gates").innerHTML=(STATE.gates||[]).map(g=>{
+    const cls=g.s==="green"?"s-done":g.s==="red"?"s-red":"s-pend"; return '<span class="pill '+cls+'">'+esc(g.id)+'</span>';}).join("");
+  document.getElementById("attn").innerHTML=
+    (STATE.attention||[]).map(a=>'<div style="font-size:12.5px;margin-bottom:6px"><b>'+esc(a.title)+'</b><br><span class="mut">'+esc(a.detail)+'</span></div>').join("")
+    + ((STATE.halts&&STATE.halts.length)? STATE.halts.map(h=>'<div class="pill s-red" style="margin-top:4px">'+esc(h.type)+': '+esc(h.reason)+'</div>').join("") : '<div class="mut" style="font-size:12.5px">✓ no halt_queue / kill-switch</div>');
+  const h=STATE.health||{};
+  document.getElementById("health").innerHTML=[
+    ["Tests",h.tests,"var(--green)"],["Coverage",h.coverage,""],["Smoke",h.smoke,""],["Error rate",h.error_rate,"var(--green)"]
+  ].map(r=>'<div class="rowb" style="font-size:12.5px;margin-bottom:5px"><span class="mut">'+r[0]+'</span><span style="color:'+(r[2]||"inherit")+'">'+esc(r[1])+'</span></div>').join("");
+  document.getElementById("feed").innerHTML=(STATE.activity||[]).map(a=>
+    '<div><i class="ic" style="color:'+esc(a.c)+'">'+(ICON[a.i]||"•")+'</i> '+esc(a.t)+(a.sha?' <span class="mono mut" style="font-size:11px">'+esc(a.sha)+'</span>':'')+' <span class="mut">· '+esc(a.ago)+'</span></div>').join("");
+}
+function tick(){const s=Math.round((Date.now()-lastUpdate)/1000),stale=s>30;
+  document.getElementById("live").className="live"+(stale?" stale":"");
+  document.getElementById("upd").textContent=(stale?"stale · ":"live · ")+"updated "+s+"s ago";}
+async function poll(){ try{const r=await fetch("./status.json",{cache:"no-store"}); if(r.ok){const d=await r.json(); if(d&&d.units){STATE=d;} lastUpdate=Date.now();}}catch(e){} render(); }
+try{ const es=new EventSource("/events"); es.onmessage=e=>{try{const d=JSON.parse(e.data); if(d&&d.units){STATE=d; lastUpdate=Date.now(); render();}}catch(_){}}; }catch(e){}
+render(); poll(); setInterval(poll,5000); setInterval(tick,1000); tick();
+</script>
+</body>
+</html>

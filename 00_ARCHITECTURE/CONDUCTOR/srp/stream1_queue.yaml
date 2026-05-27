@@ -1,0 +1,230 @@
+# SRP Stream 1 — Phase 1 (Fixes) + Phase 2 (Tests)
+# Execution model: fully autonomous, no human gates, sub-agent per session
+# Conductor mode: --dangerously-skip-permissions
+# Root worktree: /Users/Dev/Vibe-Coding/Apps/Madhav
+#
+# Batch execution:
+#   Batch 1 (parallel): F-1 ∥ F-2
+#   Merge step:          git merge both fix branches into main
+#   Batch 2 (parallel): T-1 ∥ T-2 (cut from post-merge main)
+#   Batch 3 (parallel): T-3 ∥ T-4 (local dev server each)
+
+root: /Users/Dev/Vibe-Coding/Apps/Madhav
+
+batches:
+
+  # ─── Batch 1: Fix Sessions (parallel) ─────────────────────────────────────
+
+  - batch_id: 1
+    label: "Phase 1 — Fixes"
+    parallel: true
+    sessions:
+
+      - id: SRP-F-1
+        label: Portal Fixes
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_F1_PORTAL_FIXES.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F1
+        branch: fix/srp-f1-portal-fixes
+        status: PENDING
+        check_commands:
+          # All 14 UDA tools present in SURGICAL_TOOLS
+          - >-
+            grep -c "temporal\|kp_query\|query_kp_ruling_planets\|resonance_register\|cluster_atlas\|contradiction_register\|query_ucn_walk\|query_cdlm_lookup\|query_rm_walk\|query_jaimini_drishti\|timeline_query\|query_signal_state"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F1/platform/src/lib/mcp/primitives_registry.ts
+            | awk '$1 >= 10'
+          # forward_looking reads from params
+          - >-
+            grep -q "params.*forward_looking\|forward_looking.*params"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F1/platform/src/lib/retrieve/msr_sql.ts
+          # lel_query source_version is 1.7
+          - >-
+            grep -q "1\.7"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F1/platform-mcp/src/tools/lel_query.ts
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-F-1.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F1
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_F1_PORTAL_FIXES.md
+          Complete all 4 fixes, run `npx vitest run` to confirm 0 failures, commit, push branch.
+          Do not open a PR. Do not wait for human input. Exit when done.
+
+      - id: SRP-F-2
+        label: MCP Sidecar Fixes
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_F2_MCP_FIXES.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F2
+        branch: fix/srp-f2-mcp-fixes
+        status: PENDING
+        check_commands:
+          # valence vocabulary is now benefic/malefic/context-dependent
+          - >-
+            grep -q "benefic\|malefic\|context-dependent"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F2/platform-mcp/src/tools/query_signals.ts
+          # sample_step conversion map exists
+          - >-
+            grep -q "SAMPLE_STEP_DAYS\|sample_step.*7\b"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F2/platform-mcp/src/tools/query_ephemeris.ts
+          # lel_query sends significance (not min_significance)
+          - >-
+            grep -q "significance:" /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F2/platform-mcp/src/tools/lel_query.ts
+          - >-
+            ! grep -q "min_significance"
+            /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F2/platform-mcp/src/tools/lel_query.ts
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-F-2.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-F2
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_F2_MCP_FIXES.md
+          Complete all 3 fixes, run `npx vitest run` inside platform-mcp/ to confirm 0 failures,
+          commit, push branch. Do not open a PR. Do not wait for human input. Exit when done.
+
+  # ─── Merge Step (Conductor runs inline, no sub-agent) ─────────────────────
+
+  - batch_id: merge
+    label: "Merge Fixes → main (local)"
+    parallel: false
+    inline_commands:
+      # Merge both fix branches into the local main checkout
+      - git -C /Users/Dev/Vibe-Coding/Apps/Madhav fetch origin fix/srp-f1-portal-fixes fix/srp-f2-mcp-fixes
+      - git -C /Users/Dev/Vibe-Coding/Apps/Madhav merge --no-ff fix/srp-f1-portal-fixes -m "merge: SRP-F-1 portal fixes into main (local conductor merge)"
+      - git -C /Users/Dev/Vibe-Coding/Apps/Madhav merge --no-ff fix/srp-f2-mcp-fixes -m "merge: SRP-F-2 MCP sidecar fixes into main (local conductor merge)"
+      # Bring T worktrees up to date with merged main
+      - git -C /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1 merge main
+      - git -C /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2 merge main
+      - git -C /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T3 merge main
+      - git -C /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T4 merge main
+    check_commands:
+      # Confirm fix code is now in T worktrees
+      - >-
+        grep -q "benefic\|malefic"
+        /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1/platform-mcp/src/tools/query_signals.ts
+      - >-
+        grep -q "params.*forward_looking\|forward_looking.*params"
+        /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1/platform/src/lib/retrieve/msr_sql.ts
+
+  # ─── Batch 2: Unit Test Sessions (parallel) ───────────────────────────────
+
+  - batch_id: 2
+    label: "Phase 2 — Unit Tests"
+    parallel: true
+    sessions:
+
+      - id: SRP-T-1
+        label: Portal Retrieval Unit Tests
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T1_PORTAL_UNIT_TESTS.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1
+        branch: test/srp-t1-portal-unit
+        status: PENDING
+        check_commands:
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1/platform/src/lib/mcp/__tests__/primitives_registry.test.ts
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1/platform/src/lib/retrieve/__tests__/msr_sql.test.ts
+          - >-
+            cd /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1/platform &&
+            npx vitest run src/lib/mcp/__tests__/ src/lib/retrieve/__tests__/ 2>&1 | grep -q "0 failed\|no test files found"
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-T-1.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T1
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T1_PORTAL_UNIT_TESTS.md
+          Create all 4 test files. Run vitest to confirm 0 failures. Commit, push branch. Exit.
+
+      - id: SRP-T-2
+        label: MCP Tool Unit Tests
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T2_MCP_UNIT_TESTS.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2
+        branch: test/srp-t2-mcp-unit
+        status: PENDING
+        check_commands:
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2/platform-mcp/src/tools/__tests__/query_signals.test.ts
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2/platform-mcp/src/tools/__tests__/query_ephemeris.test.ts
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2/platform-mcp/src/tools/__tests__/lel_query.test.ts
+          - >-
+            cd /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2/platform-mcp &&
+            npx vitest run src/tools/__tests__/ 2>&1 | grep -q "0 failed\|no test files found"
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-T-2.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T2
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T2_MCP_UNIT_TESTS.md
+          Create all 3 test files. Run vitest inside platform-mcp/. Commit, push branch. Exit.
+
+  # ─── Batch 3: Integration + System Tests (parallel, local dev server) ─────
+
+  - batch_id: 3
+    label: "Phase 2 — Integration + System Tests"
+    parallel: true
+    sessions:
+
+      - id: SRP-T-3
+        label: Integration Tests (MCP Live DB)
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T3_INTEGRATION_TESTS.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T3
+        branch: test/srp-t3-integration
+        status: PENDING
+        pre_commands:
+          # Start local dev server in this worktree on port 3001 (avoids conflict with T-4 on 3000)
+          - >-
+            cd /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T3/platform &&
+            PORT=3001 nohup npm run dev > /tmp/srp-t3-devserver.log 2>&1 &
+            echo $! > /tmp/srp-t3-devserver.pid
+          # Wait for server ready (poll up to 60s)
+          - >-
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:3001/api/health 2>/dev/null && break;
+              sleep 2;
+            done
+        env:
+          INTEGRATION_TEST_BASE_URL: http://localhost:3001
+          DB_PROXY_PORT: "5433"
+          INTEGRATION_CHART_ID: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+        post_commands:
+          # Kill the dev server after tests
+          - kill $(cat /tmp/srp-t3-devserver.pid) 2>/dev/null || true
+        check_commands:
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T3/platform/src/__tests__/integration/mcp_primitives.integration.test.ts
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-T-3.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T3
+          Environment: INTEGRATION_TEST_BASE_URL=http://localhost:3001, DB_PROXY_PORT=5433
+          A local dev server is already running at http://localhost:3001 (started by Conductor).
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T3_INTEGRATION_TESTS.md
+          Create the integration test file. Run tests with:
+            DB_PROXY_PORT=5433 INTEGRATION_TEST_BASE_URL=http://localhost:3001 \
+            INTEGRATION_CHART_ID=362f9f17-95a5-490b-a5a7-027d3e0efda0 \
+            npx vitest run src/__tests__/integration/
+          Tests that skip are acceptable (skipIf guards). 0 failures is required.
+          Commit, push branch. Exit.
+
+      - id: SRP-T-4
+        label: System Tests (Portal Pipeline E2E)
+        brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T4_SYSTEM_TESTS.md
+        worktree: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T4
+        branch: test/srp-t4-system
+        status: PENDING
+        pre_commands:
+          # Start local dev server on port 3002
+          - >-
+            cd /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T4/platform &&
+            PORT=3002 nohup npm run dev > /tmp/srp-t4-devserver.log 2>&1 &
+            echo $! > /tmp/srp-t4-devserver.pid
+          - >-
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:3002/api/health 2>/dev/null && break;
+              sleep 2;
+            done
+        env:
+          SMOKE_BASE_URL: http://localhost:3002
+          SMOKE_CHART_ID: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+          # SMOKE_SESSION_COOKIE must be set in shell env before Conductor starts
+          # Run: export SMOKE_SESSION_COOKIE=$(cd platform && npx tsx scripts/mint_session_cookie.ts)
+        post_commands:
+          - kill $(cat /tmp/srp-t4-devserver.pid) 2>/dev/null || true
+        check_commands:
+          - test -f /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T4/platform/src/__tests__/system/portal_pipeline.system.test.ts
+        kickoff_prompt: |
+          You are a Claude Code sub-agent for session SRP-T-4.
+          Working directory: /Users/Dev/Vibe-Coding/Apps/MadhavSRP-T4
+          Environment: SMOKE_BASE_URL=http://localhost:3002, SMOKE_CHART_ID=362f9f17-95a5-490b-a5a7-027d3e0efda0
+          A local dev server is already running at http://localhost:3002 (started by Conductor).
+          Read and execute: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_SRP_T4_SYSTEM_TESTS.md
+          Create the system test file. Run tests with:
+            SMOKE_BASE_URL=http://localhost:3002 \
+            SMOKE_CHART_ID=362f9f17-95a5-490b-a5a7-027d3e0efda0 \
+            npx vitest run src/__tests__/system/
+          Tests skip gracefully if SMOKE_SESSION_COOKIE absent — that is acceptable.
+          Commit, push branch. Exit.

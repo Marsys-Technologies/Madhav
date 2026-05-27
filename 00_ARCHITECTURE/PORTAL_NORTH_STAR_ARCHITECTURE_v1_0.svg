@@ -1,0 +1,145 @@
+<svg viewBox="0 0 1200 1620" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui, -apple-system, sans-serif">
+<title>MARSYS-JIS target architecture and current-to-target migration</title>
+<desc>Eight layered modules from the portal UI down to storage, with a tenant-context spine and a five-phase migration roadmap. Each component is colored by migration status: keep, extend, new, or rebuild.</desc>
+<style>
+  svg{--ink:#1c150c;--muted:#6f6555;--band:#faf6ef;--band2:#f3ece1;--line:#d9cfbf;
+      --keep:#2f8f5b;--keepb:#e6f2ea;--ext:#2867ad;--extb:#e6eef8;
+      --new:#b9831f;--newb:#f8efd9;--reb:#b1452c;--rebb:#f7e6df;--spine:#c8731f;}
+  .band{fill:var(--band);stroke:var(--line);stroke-width:1}
+  .band.alt{fill:var(--band2)}
+  .blabel{font-weight:800;font-size:15px;fill:var(--ink)}
+  .bsub{font-weight:600;font-size:8.5px;fill:var(--muted);letter-spacing:.6px}
+  .ct{font-weight:700;font-size:12px;fill:var(--ink)}
+  .cs{font-weight:500;font-size:9px;fill:var(--muted)}
+  .chip{stroke-width:1.4}
+  .k{fill:var(--keepb);stroke:var(--keep)} .e{fill:var(--extb);stroke:var(--ext)}
+  .n{fill:var(--newb);stroke:var(--new)} .r{fill:var(--rebb);stroke:var(--reb)}
+  .title{font-weight:800;font-size:24px;fill:var(--ink)}
+  .sub{font-weight:500;font-size:12.5px;fill:var(--muted)}
+  .lg{font-weight:600;font-size:11px;fill:var(--ink)}
+</style>
+
+<rect x="0" y="0" width="1200" height="1620" fill="#fffdf9"/>
+<text x="30" y="40" class="title">MARSYS-JIS — Target Architecture</text>
+<text x="30" y="62" class="sub">Multi-guest · multi-chart · AI-native instrument · current → target migration</text>
+
+<g transform="translate(30,82)">
+  <rect x="0" y="0" width="14" height="14" rx="3" class="chip k"/><text x="20" y="11" class="lg">Keep — reuse as-is</text>
+  <rect x="180" y="0" width="14" height="14" rx="3" class="chip e"/><text x="200" y="11" class="lg">Extend — add tenancy</text>
+  <rect x="372" y="0" width="14" height="14" rx="3" class="chip n"/><text x="392" y="11" class="lg">New — build</text>
+  <rect x="500" y="0" width="14" height="14" rx="3" class="chip r"/><text x="520" y="11" class="lg">Rebuild — replace content</text>
+  <rect x="720" y="-1" width="16" height="16" rx="3" fill="var(--spine)"/><text x="742" y="11" class="lg">Tenant context spine →</text>
+</g>
+
+<rect x="1146" y="120" width="34" height="1232" rx="10" fill="var(--spine)" opacity="0.16"/>
+<rect x="1158" y="120" width="10" height="1232" rx="5" fill="var(--spine)"/>
+<text x="1163" y="740" class="bsub" fill="var(--spine)" transform="rotate(90 1163 740)" text-anchor="middle" font-size="11" font-weight="800">TENANT CONTEXT · principal + chart_id flows through every layer</text>
+
+<g transform="translate(0,120)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band"/>
+  <text x="32" y="58" class="blabel">Experience</text><text x="32" y="76" class="bsub">PORTAL · NEXT.JS</text>
+  <g transform="translate(196,30)">
+    <rect class="chip k" x="0" y="0" width="175" height="70" rx="8"/><circle cx="161" cy="14" r="4" fill="var(--keep)"/><text x="12" y="30" class="ct">Login / Account</text><text x="12" y="46" class="cs">Firebase · session cookie</text>
+    <rect class="chip e" x="185" y="0" width="175" height="70" rx="8"/><circle cx="346" cy="14" r="4" fill="var(--ext)"/><text x="197" y="30" class="ct">Dashboard / Roster</text><text x="197" y="46" class="cs">scope to owned charts</text>
+    <rect class="chip n" x="370" y="0" width="175" height="70" rx="8"/><circle cx="531" cy="14" r="4" fill="var(--new)"/><text x="382" y="30" class="ct">Intake + Switcher</text><text x="382" y="46" class="cs">birth form · pick chart</text>
+    <rect class="chip k" x="555" y="0" width="175" height="70" rx="8"/><circle cx="716" cy="14" r="4" fill="var(--keep)"/><text x="567" y="30" class="ct">Chat (Chat V2)</text><text x="567" y="46" class="cs">multi-provider UI</text>
+    <rect class="chip n" x="740" y="0" width="175" height="70" rx="8"/><circle cx="901" cy="14" r="4" fill="var(--new)"/><text x="752" y="30" class="ct">Sharing UI</text><text x="752" y="46" class="cs">grant chart access</text>
+  </g>
+</g>
+
+<g transform="translate(0,262)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band alt"/>
+  <text x="32" y="52" class="blabel">Identity &amp;</text><text x="32" y="70" class="blabel">Access</text><text x="32" y="88" class="bsub">CONTROL PLANE</text>
+  <g transform="translate(196,30)">
+    <rect class="chip k" x="0" y="0" width="175" height="70" rx="8"/><circle cx="161" cy="14" r="4" fill="var(--keep)"/><text x="12" y="30" class="ct">Firebase Auth</text><text x="12" y="46" class="cs">identity provider</text>
+    <rect class="chip e" x="185" y="0" width="175" height="70" rx="8"/><circle cx="346" cy="14" r="4" fill="var(--ext)"/><text x="197" y="30" class="ct">Principals + Roles</text><text x="197" y="46" class="cs">super_admin · guest</text>
+    <rect class="chip n" x="370" y="0" width="175" height="70" rx="8"/><circle cx="531" cy="14" r="4" fill="var(--new)"/><text x="382" y="30" class="ct">Authorization svc</text><text x="382" y="46" class="cs">ownership + grants</text>
+    <rect class="chip n" x="555" y="0" width="175" height="70" rx="8"/><circle cx="716" cy="14" r="4" fill="var(--new)"/><text x="567" y="30" class="ct">chart_grants ACL</text><text x="567" y="46" class="cs">cross-guest sharing</text>
+    <rect class="chip k" x="740" y="0" width="175" height="70" rx="8"/><circle cx="901" cy="14" r="4" fill="var(--keep)"/><text x="752" y="30" class="ct">Account lifecycle</text><text x="752" y="46" class="cs">access requests</text>
+  </g>
+</g>
+
+<g transform="translate(0,404)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band"/>
+  <text x="32" y="52" class="blabel">Application</text><text x="32" y="70" class="blabel">&amp; Pipeline</text><text x="32" y="88" class="bsub">AMJIS-WEB</text>
+  <g transform="translate(196,30)">
+    <rect class="chip k" x="0" y="0" width="222" height="70" rx="8"/><circle cx="208" cy="14" r="4" fill="var(--keep)"/><text x="12" y="30" class="ct">Query Pipeline</text><text x="12" y="46" class="cs">plan→retrieve→compose→synth</text>
+    <rect class="chip e" x="232" y="0" width="222" height="70" rx="8"/><circle cx="440" cy="14" r="4" fill="var(--ext)"/><text x="244" y="30" class="ct">Chart Registry API</text><text x="244" y="46" class="cs">CRUD · owner-scoped</text>
+    <rect class="chip n" x="464" y="0" width="222" height="70" rx="8"/><circle cx="672" cy="14" r="4" fill="var(--new)"/><text x="476" y="30" class="ct">Build API</text><text x="476" y="46" class="cs">trigger · status · SSE</text>
+    <rect class="chip n" x="696" y="0" width="222" height="70" rx="8"/><circle cx="904" cy="14" r="4" fill="var(--new)"/><text x="708" y="30" class="ct">Tenant Guard (mw)</text><text x="708" y="46" class="cs">principal + chart_id check</text>
+  </g>
+</g>
+
+<g transform="translate(0,546)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band alt"/>
+  <text x="32" y="52" class="blabel">Reasoning</text><text x="32" y="70" class="blabel">&amp; Synthesis</text><text x="32" y="88" class="bsub">AI LAYER</text>
+  <g transform="translate(196,30)">
+    <rect class="chip k" x="0" y="0" width="222" height="70" rx="8"/><circle cx="208" cy="14" r="4" fill="var(--keep)"/><text x="12" y="30" class="ct">Multi-provider dispatch</text><text x="12" y="46" class="cs">5 adapters · capability</text>
+    <rect class="chip k" x="232" y="0" width="222" height="70" rx="8"/><circle cx="440" cy="14" r="4" fill="var(--keep)"/><text x="244" y="30" class="ct">Agentic tool loop</text><text x="244" y="46" class="cs">bounded · citation gate</text>
+    <rect class="chip r" x="464" y="0" width="222" height="70" rx="8"/><circle cx="672" cy="14" r="4" fill="var(--reb)"/><text x="476" y="30" class="ct">Serve-time Panel</text><text x="476" y="46" class="cs">interpretation lives here</text>
+    <rect class="chip k" x="696" y="0" width="222" height="70" rx="8"/><circle cx="904" cy="14" r="4" fill="var(--keep)"/><text x="708" y="30" class="ct">B.11 Holistic-Read</text><text x="708" y="46" class="cs">from T1 facts</text>
+  </g>
+</g>
+
+<g transform="translate(0,688)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band"/>
+  <text x="32" y="52" class="blabel">Retrieval</text><text x="32" y="70" class="blabel">&amp; MCP</text><text x="32" y="88" class="bsub">TOOL SURFACE</text>
+  <g transform="translate(196,30)">
+    <rect class="chip e" x="0" y="0" width="222" height="70" rx="8"/><circle cx="208" cy="14" r="4" fill="var(--ext)"/><text x="12" y="30" class="ct">Retrieval tools</text><text x="12" y="46" class="cs">chart_id required param</text>
+    <rect class="chip k" x="232" y="0" width="222" height="70" rx="8"/><circle cx="440" cy="14" r="4" fill="var(--keep)"/><text x="244" y="30" class="ct">primitives_registry</text><text x="244" y="46" class="cs">single source of truth</text>
+    <rect class="chip e" x="464" y="0" width="222" height="70" rx="8"/><circle cx="672" cy="14" r="4" fill="var(--ext)"/><text x="476" y="30" class="ct">MCP server (amjis-mcp)</text><text x="476" y="46" class="cs">key → principal · no tiers</text>
+    <rect class="chip n" x="696" y="0" width="222" height="70" rx="8"/><circle cx="904" cy="14" r="4" fill="var(--new)"/><text x="708" y="30" class="ct">Gateway + contract</text><text x="708" y="46" class="cs">search_tools · invoke_tool</text>
+  </g>
+</g>
+
+<g transform="translate(0,830)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band alt"/>
+  <text x="32" y="52" class="blabel">Compute</text><text x="32" y="70" class="blabel">&amp; Build</text><text x="32" y="88" class="bsub">DETERMINISTIC</text>
+  <g transform="translate(196,30)">
+    <rect class="chip n" x="0" y="0" width="222" height="70" rx="8"/><circle cx="208" cy="14" r="4" fill="var(--new)"/><text x="12" y="30" class="ct">JH-equiv Fact Engine</text><text x="12" y="46" class="cs">PyJHora+swisseph · no LLM</text>
+    <rect class="chip n" x="232" y="0" width="222" height="70" rx="8"/><circle cx="440" cy="14" r="4" fill="var(--new)"/><text x="244" y="30" class="ct">Build Orchestrator</text><text x="244" y="46" class="cs">amjis-builder · DAG · verify</text>
+    <rect class="chip e" x="464" y="0" width="222" height="70" rx="8"/><circle cx="672" cy="14" r="4" fill="var(--ext)"/><text x="476" y="30" class="ct">python-sidecar</text><text x="476" y="46" class="cs">panchang · transit · muhurat</text>
+    <rect class="chip n" x="696" y="0" width="222" height="70" rx="8"/><circle cx="904" cy="14" r="4" fill="var(--new)"/><text x="708" y="30" class="ct">Geocode + TZ resolve</text><text x="708" y="46" class="cs">GeoNames · historical tz</text>
+  </g>
+</g>
+
+<g transform="translate(0,972)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band"/>
+  <text x="32" y="52" class="blabel">Knowledge</text><text x="32" y="70" class="blabel">Data Plane</text><text x="32" y="88" class="bsub">chart_id-KEYED</text>
+  <g transform="translate(196,30)">
+    <rect class="chip e" x="0" y="0" width="175" height="70" rx="8"/><circle cx="161" cy="14" r="4" fill="var(--ext)"/><text x="12" y="30" class="ct">charts + owner_id</text><text x="12" y="46" class="cs">registry + grants</text>
+    <rect class="chip r" x="185" y="0" width="175" height="70" rx="8"/><circle cx="346" cy="14" r="4" fill="var(--reb)"/><text x="197" y="30" class="ct">L1 FORENSIC</text><text x="197" y="46" class="cs">engine-rendered facts</text>
+    <rect class="chip n" x="370" y="0" width="175" height="70" rx="8"/><circle cx="531" cy="14" r="4" fill="var(--new)"/><text x="382" y="30" class="ct">T1 structural facts</text><text x="382" y="46" class="cs">shadbala · AV · aspects</text>
+    <rect class="chip r" x="555" y="0" width="175" height="70" rx="8"/><circle cx="716" cy="14" r="4" fill="var(--reb)"/><text x="567" y="30" class="ct">MSR·CDLM·CGM·RM</text><text x="567" y="46" class="cs">deterministic + salience</text>
+    <rect class="chip k" x="740" y="0" width="175" height="70" rx="8"/><circle cx="901" cy="14" r="4" fill="var(--keep)"/><text x="752" y="30" class="ct">Classical T0 · ephem</text><text x="752" y="46" class="cs">shared · build-once</text>
+  </g>
+</g>
+
+<g transform="translate(0,1114)">
+  <rect x="14" y="0" width="1120" height="130" rx="12" class="band alt"/>
+  <text x="32" y="52" class="blabel">Storage &amp;</text><text x="32" y="70" class="blabel">Provenance</text><text x="32" y="88" class="bsub">GCP · asia-south1</text>
+  <g transform="translate(196,30)">
+    <rect class="chip e" x="0" y="0" width="222" height="70" rx="8"/><circle cx="208" cy="14" r="4" fill="var(--ext)"/><text x="12" y="30" class="ct">Cloud SQL Postgres</text><text x="12" y="46" class="cs">+chart_id · partitioned</text>
+    <rect class="chip n" x="232" y="0" width="222" height="70" rx="8"/><circle cx="440" cy="14" r="4" fill="var(--new)"/><text x="244" y="30" class="ct">GCS JSONL spine</text><text x="244" y="46" class="cs">content-addressed source</text>
+    <rect class="chip k" x="464" y="0" width="222" height="70" rx="8"/><circle cx="672" cy="14" r="4" fill="var(--keep)"/><text x="476" y="30" class="ct">pgvector</text><text x="476" y="46" class="cs">embeddings · no new DB</text>
+    <rect class="chip n" x="696" y="0" width="222" height="70" rx="8"/><circle cx="904" cy="14" r="4" fill="var(--new)"/><text x="708" y="30" class="ct">BigQuery (optional)</text><text x="708" y="46" class="cs">ephemeris analytics</text>
+  </g>
+</g>
+
+<text x="32" y="1280" class="bsub" font-size="10">CROSS-CUTTING · Governance (CAPABILITY_MANIFEST · drift/schema/mirror enforcers) · Observatory (cost/usage) · Learning (prediction ledger · calibration · LEL ground-truth)</text>
+
+<text x="30" y="1340" class="title" font-size="18">Migration roadmap — sequenced, non-breaking</text>
+<g transform="translate(30,1360)">
+  <line x1="20" y1="95" x2="1110" y2="95" stroke="var(--line)" stroke-width="2"/>
+  <rect x="14" y="20" width="206" height="120" rx="10" class="chip n"/><text x="28" y="44" class="ct" font-size="13">Phase 1 · Tenancy</text><text x="28" y="64" class="cs" font-size="10">owner_id + chart_grants</text><text x="28" y="80" class="cs" font-size="10">role: client→guest</text><text x="28" y="96" class="cs" font-size="10">thread chart_id in tools</text><text x="28" y="120" class="cs" font-size="9.5" font-style="italic">ships first · low risk</text>
+  <circle cx="117" cy="95" r="6" fill="var(--new)"/>
+  <rect x="234" y="20" width="206" height="120" rx="10" class="chip n"/><text x="248" y="44" class="ct" font-size="13">Phase 2 · JH Engine</text><text x="248" y="64" class="cs" font-size="10">deterministic L1</text><text x="248" y="80" class="cs" font-size="10">validate vs JH oracle</text><text x="248" y="96" class="cs" font-size="10">golden fixture gate</text><text x="248" y="120" class="cs" font-size="9.5" font-style="italic">unblocks all upper layers</text>
+  <circle cx="337" cy="95" r="6" fill="var(--new)"/>
+  <rect x="454" y="20" width="206" height="120" rx="10" class="chip r"/><text x="468" y="44" class="ct" font-size="13">Phase 3 · Data Rebuild</text><text x="468" y="64" class="cs" font-size="10">T1 + MSR/CDLM/CGM/RM</text><text x="468" y="80" class="cs" font-size="10">computed salience</text><text x="468" y="96" class="cs" font-size="10">archive + replace</text><text x="468" y="120" class="cs" font-size="9.5" font-style="italic">per-asset cutover</text>
+  <circle cx="557" cy="95" r="6" fill="var(--reb)"/>
+  <rect x="674" y="20" width="206" height="120" rx="10" class="chip n"/><text x="688" y="44" class="ct" font-size="13">Phase 4 · Build Platform</text><text x="688" y="64" class="cs" font-size="10">amjis-builder DAG</text><text x="688" y="80" class="cs" font-size="10">intake · geocode · SSE</text><text x="688" y="96" class="cs" font-size="10">per-asset verify UX</text><text x="688" y="120" class="cs" font-size="9.5" font-style="italic">self-serve multi-chart</text>
+  <circle cx="777" cy="95" r="6" fill="var(--new)"/>
+  <rect x="894" y="20" width="206" height="120" rx="10" class="chip k"/><text x="908" y="44" class="ct" font-size="13">Phase 5 · Hygiene</text><text x="908" y="64" class="cs" font-size="10">two-pipeline cleanup</text><text x="908" y="80" class="cs" font-size="10">serve-time panel</text><text x="908" y="96" class="cs" font-size="10">coverage + rename</text><text x="908" y="120" class="cs" font-size="9.5" font-style="italic">continuous</text>
+  <circle cx="997" cy="95" r="6" fill="var(--keep)"/>
+</g>
+</svg>

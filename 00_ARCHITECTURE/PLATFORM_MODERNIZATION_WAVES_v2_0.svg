@@ -1,0 +1,72 @@
+<svg viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui, -apple-system, sans-serif">
+<title>MARSYS-JIS modernization program — five waves and five hard gates</title>
+<desc>Five sequential waves from foundations to scale-and-close, with five hard ordering gates listed below.</desc>
+<style>
+  svg{--ink:#1c150c;--muted:#6f6555;--card:#faf6ef;--line:#d9cfbf;--accent:#c8731f;--gate:#b1452c;--ok:#2f8f5b;}
+  .t{font-weight:800;font-size:22px;fill:var(--ink)} .s{font-weight:500;font-size:12px;fill:var(--muted)}
+  .wn{font-weight:800;font-size:14px;fill:var(--ink)} .wt{font-weight:600;font-size:9px;fill:var(--accent);letter-spacing:.5px}
+  .it{font-weight:500;font-size:10.5px;fill:var(--ink)}
+  .card{fill:var(--card);stroke:var(--line);stroke-width:1.2}
+  .gl{font-weight:700;font-size:11px;fill:var(--ink)} .gs{font-weight:500;font-size:10.5px;fill:var(--muted)}
+</style>
+<rect x="0" y="0" width="1200" height="600" fill="#fffdf9"/>
+<text x="30" y="40" class="t">Modernization Program — Five Waves</text>
+<text x="30" y="62" class="s">Parallel-safe within a wave unless a hard gate intervenes · strangler / additive · no big-bang</text>
+<line x1="40" y1="95" x2="1160" y2="95" stroke="var(--line)" stroke-width="2"/>
+<polygon points="1160,95 1150,90 1150,100" fill="var(--line)"/>
+<g>
+  <rect class="card" x="27" y="110" width="214" height="290" rx="11"/>
+  <circle cx="134" cy="95" r="6" fill="var(--accent)"/>
+  <text x="43" y="138" class="wn">Wave 0</text><text x="43" y="154" class="wt">FOUNDATIONS · NOW</text>
+  <text x="43" y="182" class="it">Tooling hygiene</text>
+  <text x="43" y="204" class="it">B.11 adapter hotfix</text>
+  <text x="43" y="226" class="it">Naming taxonomy pass</text>
+  <text x="43" y="248" class="it">Deploy-path consolidate</text>
+  <text x="43" y="270" class="it">Secret / DB-pw fix</text>
+  <text x="43" y="386" class="gs" font-style="italic">no engine dependency</text>
+  <rect class="card" x="265" y="110" width="214" height="290" rx="11"/>
+  <circle cx="372" cy="95" r="6" fill="var(--accent)"/>
+  <text x="281" y="138" class="wn">Wave 1</text><text x="281" y="154" class="wt">THE ENGINE GATE</text>
+  <text x="281" y="182" class="it">PyJHora engine</text>
+  <text x="281" y="204" class="it">pyswisseph x-check</text>
+  <text x="281" y="226" class="it">JH parity gate ▸</text>
+  <text x="281" y="386" class="gs" font-style="italic">blocks all of L2.5</text>
+  <rect class="card" x="503" y="110" width="214" height="290" rx="11"/>
+  <circle cx="610" cy="95" r="6" fill="var(--accent)"/>
+  <text x="519" y="138" class="wn">Wave 2</text><text x="519" y="154" class="wt">PARALLEL · share schema</text>
+  <text x="519" y="182" class="it">a · det. L1→L2.5 build</text>
+  <text x="519" y="204" class="it">b · contract + chart_id</text>
+  <text x="519" y="226" class="it">c · registry · owner ·</text>
+  <text x="519" y="240" class="it">   grants · authz · role</text>
+  <text x="519" y="262" class="it">d · Command Center +</text>
+  <text x="519" y="276" class="it">   data-source/LEL ctrl</text>
+  <rect class="card" x="741" y="110" width="214" height="290" rx="11"/>
+  <circle cx="848" cy="95" r="6" fill="var(--accent)"/>
+  <text x="757" y="138" class="wn">Wave 3</text><text x="757" y="154" class="wt">SEQUENCED CUTOVER</text>
+  <text x="757" y="182" class="it">De-judgment</text>
+  <text x="757" y="204" class="it">Gateway + ctrl-B +</text>
+  <text x="757" y="218" class="it">   pipeline isolation</text>
+  <text x="757" y="240" class="it">Per-chart cutover (gated)</text>
+  <text x="757" y="262" class="it">Consult/nav · tier excise</text>
+  <text x="757" y="284" class="it">Legacy-pipeline delete</text>
+  <rect class="card" x="979" y="110" width="181" height="290" rx="11"/>
+  <circle cx="1069" cy="95" r="6" fill="var(--ok)"/>
+  <text x="995" y="138" class="wn">Wave 4</text><text x="995" y="154" class="wt">SCALE + CLOSE</text>
+  <text x="995" y="182" class="it">Build-trigger wiring</text>
+  <text x="995" y="204" class="it">SQL · Memorystore</text>
+  <text x="995" y="226" class="it">CDN/Armor · observ.</text>
+  <text x="995" y="248" class="it">Eval re-baseline</text>
+  <text x="995" y="270" class="it">Learning loop</text>
+  <text x="995" y="292" class="it">Red-team + seal</text>
+</g>
+<text x="30" y="448" class="t" font-size="15" fill="var(--gate)">Hard gates (non-negotiable ordering)</text>
+<g>
+  <rect x="30" y="462" width="14" height="14" rx="3" fill="var(--gate)"/><text x="52" y="473" class="gl">G1</text><text x="78" y="473" class="gs">JH parity before any L2.5 build</text>
+  <rect x="320" y="462" width="14" height="14" rx="3" fill="var(--gate)"/><text x="342" y="473" class="gl">G2</text><text x="368" y="473" class="gs">multi-tenant authz before tier excision</text>
+  <rect x="700" y="462" width="14" height="14" rx="3" fill="var(--gate)"/><text x="722" y="473" class="gl">G3</text><text x="748" y="473" class="gs">contract unify before de-judgment</text>
+  <rect x="30" y="492" width="14" height="14" rx="3" fill="var(--gate)"/><text x="52" y="503" class="gl">G4</text><text x="78" y="503" class="gs">chart_id-keyed before NATIVE_CHART_ID fallback removed</text>
+  <rect x="510" y="492" width="14" height="14" rx="3" fill="var(--gate)"/><text x="532" y="503" class="gl">G5</text><text x="558" y="503" class="gs">B.11 gate ported to adapter path before legacy delete</text>
+</g>
+<text x="30" y="540" class="s">Five tracks run across these waves: Engine/Data · Tooling · Multi-tenancy/Build · Portal/Experience · Serve-time/Learning</text>
+<text x="30" y="562" class="s">Iteration loop: Claude Code validates paths → other LLM stress-tests → Cowork finalizes v2.1 → declare macro-phase → emit per-wave briefs</text>
+</svg>

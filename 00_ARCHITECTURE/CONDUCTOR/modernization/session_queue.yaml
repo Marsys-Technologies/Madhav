@@ -1,0 +1,182 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# session_queue.yaml — Platform Modernization Program (autonomous execution)
+# Conductor walks this queue, hands eligible units to streams, runs check_commands
+# (automated gates), cherry-picks green units to main, auto-rolls back on red.
+# ZERO human approval gates. Safety = automated rails (see execution plan §6).
+# ─────────────────────────────────────────────────────────────────────────────
+program: PLATFORM_MODERNIZATION
+plan:            00_ARCHITECTURE/PLATFORM_MODERNIZATION_MASTER_PLAN_v2_0.md   # v2.1
+execution_plan:  00_ARCHITECTURE/PLATFORM_MODERNIZATION_EXECUTION_PLAN_v1_0.md
+program_state:   00_ARCHITECTURE/CONDUCTOR/modernization/PROGRAM_STATE.md
+integration:     conductor_cherry_pick_to_main_on_green
+human_gates:     none
+prod_mode:       zero_touch          # prod DB/deploy/secret/flag ops run autonomously
+context_budget_subagents: 20         # re-kick after this many sub-agent spawns
+
+streams:
+  A: { worktree: ../MadhavStreamA, branch: prog/stream-a }
+  B: { worktree: ../MadhavStreamB, branch: prog/stream-b }
+  C: { worktree: ../MadhavStreamC, branch: prog/stream-c }
+
+# Hard gates — a check_command exiting 0 = GREEN (barrier opens). Until green, any
+# unit listing the gate in blockedBy is INELIGIBLE.
+gates:
+  naming_ci:        { status: PENDING, check: "python platform/scripts/governance/naming_lint.py" }
+  jh_oracle_pinned: { status: RED,     check: "test -f python-sidecar/natal_engine/fixtures/jh_oracle.json", note: "NATIVE INPUT REQUIRED: pin JH version + ayanamsha, capture reference outputs" }
+  G1_jh_parity:     { status: PENDING, check: "pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q" }
+  G2_authz_live:    { status: PENDING, check: "pnpm vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts" }
+  G3_contract:      { status: PENDING, check: "pnpm vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts" }
+  G4_no_native_lit: { status: PENDING, check: "platform/scripts/governance/assert_no_native_literal.sh" }
+  G5b_onfinish:     { status: PENDING, check: "pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts" }
+  G6_tool_coverage: { status: PENDING, check: "pnpm vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts", note: "100% asset coverage + 0 orphaned tools + 0 redundant duplicates (data_coverage tool)" }
+
+units:
+  # ── Program support — build FIRST so it can track everything (ephemeral) ──────
+  - id: 0t
+    wave: 0-support
+    brief: briefs/BRIEF_0t_program_tracker.md
+    stream: A
+    blockedBy: []
+    may_touch: ["tools/program-tracker/**"]
+    must_not_touch: ["platform/src/**", "platform-mcp/src/**", "platform/migrations/**"]
+    check_commands: ["node tools/program-tracker/test/smoke.mjs"]
+    on_red: rollback
+    lifecycle: ephemeral   # rm -rf tools/program-tracker/ + delete amjis-tracker at program close
+
+  # ── Wave 0a — pure, safe renames (behind naming_ci) ───────────────────────────
+  - id: 0a.0
+    wave: 0a
+    brief: briefs/BRIEF_0a0_naming_ci.md
+    stream: A
+    blockedBy: []
+    may_touch: ["platform/scripts/governance/**", ".github/workflows/ci.yml"]
+    must_not_touch: ["platform/src/app/**", "platform-mcp/src/**"]
+    check_commands: ["python platform/scripts/governance/naming_lint.py --self-test"]
+    on_red: rollback
+    sets_gate: naming_ci
+
+  - id: 0a.1
+    wave: 0a
+    brief: briefs/BRIEF_0a1_route_renames.md
+    stream: A
+    blockedBy: [naming_ci]
+    may_touch: ["platform/src/app/api/chat/consume/**", "platform/src/app/api/chat/consult/**", "platform/src/app/consume/**", "platform/src/app/consult/**", "platform/src/app/api/panchang/**", "platform/src/app/api/panchanga/**", "platform/src/app/clients/[id]/consume/**", "platform/src/app/clients/[id]/consult/**"]
+    must_not_touch: ["platform/src/lib/synthesis/**", "platform-mcp/**", "platform/migrations/**"]
+    check_commands: ["pnpm vitest run platform/src/app/api/chat", "python platform/scripts/governance/naming_lint.py"]
+    on_red: rollback
+
+  # ── Wave 0b — behaviour-altering (kept out of the rename batch) ────────────────
+  - id: 0b.1
+    wave: 0b
+    brief: briefs/BRIEF_0b1_b11_adapter_gate.md
+    stream: B
+    blockedBy: []
+    may_touch: ["platform/src/app/api/chat/consume/route.ts", "platform/src/lib/synthesis/streaming_citation_validator.ts", "platform/src/app/api/chat/__tests__/**"]
+    must_not_touch: ["platform/src/lib/synthesis/orchestrator.ts", "platform/src/lib/synthesis/single_model_strategy.ts"]
+    check_commands: ["pnpm vitest run platform/src/app/api/chat"]
+    on_red: rollback
+    contributes_gate: G5b_onfinish   # citation-gate-on-adapter is half of G5b
+
+  - id: 0b.2
+    wave: 0b
+    brief: briefs/BRIEF_0b2_secret_dbpw_remediation.md
+    stream: B
+    blockedBy: []
+    may_touch: ["platform/scripts/**", "scripts/**", ".github/workflows/deploy.yml", "platform/cloudbuild*.yaml", "platform-mcp/cloudbuild.yaml"]
+    must_not_touch: ["platform/src/**", "platform-mcp/src/**"]
+    check_commands: ["platform/scripts/governance/secret_scan.sh"]
+    on_red: halt_queue   # leaked-secret failure is systemic
+
+  - id: 0b.3
+    wave: 0b
+    brief: briefs/BRIEF_0b3_mirror_retirement.md
+    stream: C
+    blockedBy: []
+    may_touch: ["CLAUDE.md", "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md", "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md", "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md", ".geminirules", ".gemini/**", "platform/scripts/governance/mirror_enforcer.py"]
+    must_not_touch: ["platform/src/**", "platform-mcp/src/**", "platform/migrations/**"]
+    check_commands: ["python platform/scripts/governance/drift_detector.py"]
+    on_red: rollback
+
+  # ── Wave 1 — JH-equivalent engine (gates all of L2.5) ─────────────────────────
+  - id: 1.1
+    wave: 1
+    brief: briefs/BRIEF_1_1_engine_scaffold.md
+    stream: C
+    blockedBy: [naming_ci]
+    may_touch: ["platform/python-sidecar/natal_engine/**"]
+    must_not_touch: ["platform/python-sidecar/routers/**", "platform/src/**"]
+    check_commands: ["pytest platform/python-sidecar/natal_engine/tests/test_scaffold.py -q"]
+    on_red: rollback
+
+  - id: 1.2
+    wave: 1
+    brief: briefs/BRIEF_1_2_engine_to_parity.md
+    stream: C
+    blockedBy: [1.1, jh_oracle_pinned]
+    may_touch: ["platform/python-sidecar/natal_engine/**"]
+    must_not_touch: ["platform/python-sidecar/routers/**", "platform/src/**"]
+    check_commands: ["pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q"]
+    on_red: halt_queue   # engine parity failure blocks all of L2.5 — stop and surface
+    sets_gate: G1_jh_parity
+
+  # ── Waves 2/3/4 — placeholders; briefs authored when their gates approach ──────
+  - id: 2b
+    wave: 2
+    brief: TBD_briefs/BRIEF_2b_unified_contract.md
+    blockedBy: [naming_ci]
+    sets_gate: G3_contract
+    status: not_yet_detailed
+  - id: 2c
+    wave: 2
+    brief: TBD_briefs/BRIEF_2c_tenancy_authz.md
+    blockedBy: [naming_ci]
+    sets_gate: G2_authz_live
+    file_fence_note: "shares charts table with 2a — sequence, never concurrent"
+    status: not_yet_detailed
+  - id: 2d
+    wave: 2
+    brief: TBD_briefs/BRIEF_2d_command_center.md
+    blockedBy: [naming_ci]
+    status: not_yet_detailed
+  - id: 2a
+    wave: 2
+    brief: TBD_briefs/BRIEF_2a_l25_build.md
+    blockedBy: [G1_jh_parity]
+    sets_gate: G4_no_native_lit
+    file_fence_note: "shares charts table with 2c — sequence, never concurrent"
+    status: not_yet_detailed
+  - id: 3.dejudge
+    wave: 3
+    blockedBy: [G3_contract]
+    status: not_yet_detailed
+  - id: 3.gateway_pipeline_isolation
+    wave: 3
+    blockedBy: [G3_contract]
+    status: not_yet_detailed
+  - id: 3.tool_asset_recon
+    wave: 3
+    brief: TBD_briefs/BRIEF_3_tool_asset_recon.md
+    blockedBy: [G3_contract, 2a]
+    sets_gate: G6_tool_coverage
+    status: not_yet_detailed
+    note: "re-map every tool→NEW asset; coverage + no-redundancy + no-orphan; LLM-client fit (§13). Native-raised."
+  - id: 3.cutover
+    wave: 3
+    blockedBy: [G1_jh_parity, 2a, 2c]
+    status: not_yet_detailed
+  - id: 3.consult_nav
+    wave: 3
+    blockedBy: [2c]
+    status: not_yet_detailed
+  - id: 3.tier_excision
+    wave: 3
+    blockedBy: [G2_authz_live]
+    status: not_yet_detailed
+  - id: 3.legacy_delete
+    wave: 3
+    blockedBy: [0b.1, G5b_onfinish]
+    status: not_yet_detailed
+  - id: 4.scale_and_close
+    wave: 4
+    blockedBy: [3.legacy_delete]
+    status: not_yet_detailed
