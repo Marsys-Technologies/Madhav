@@ -7,6 +7,7 @@ import { ProfileSideRail } from '@/components/profile/ProfileSideRail'
 import { JourneyStrip } from '@/components/build/JourneyStrip'
 import { getForensicSnapshot } from '@/lib/forensic/snapshot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { SharingPanel } from '@/components/sharing/SharingPanel'
 import type { MacroPhaseEntry } from '@/lib/build/types'
 
 export default async function ClientPage({
@@ -183,14 +184,17 @@ export default async function ClientPage({
           </div>
         </div>
 
-        <ProfileSideRail
-          chart={forensicChart}
-          role={role}
-          freshnessAt={generatedAt}
-          audienceTier="Acharya"
-          chartId={id}
-          generatedAt={generatedAt ?? undefined}
-        />
+        <div className="flex flex-col gap-4 md:w-80 md:shrink-0">
+          <ProfileSideRail
+            chart={forensicChart}
+            role={role}
+            freshnessAt={generatedAt}
+            audienceTier="Acharya"
+            chartId={id}
+            generatedAt={generatedAt ?? undefined}
+          />
+          {role === 'super_admin' && <SharingPanel chartId={id} />}
+        </div>
       </div>
 
       {role === 'super_admin' && (
