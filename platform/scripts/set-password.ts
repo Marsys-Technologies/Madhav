@@ -10,11 +10,20 @@ import * as dotenv from 'dotenv'
 dotenv.config({ path: path.join(process.cwd(), '.env.local') })
 
 const EMAIL = process.env.SUPER_ADMIN_EMAIL!
-const PASSWORD = process.argv[2] ?? 'amjis2024'
+// Password sourced from CLI arg or NEW_USER_PASSWORD env var.
+// No literal fallback — refuses to run without an explicit credential.
+const PASSWORD = process.argv[2] ?? process.env.NEW_USER_PASSWORD ?? ''
 
 async function main() {
   if (!EMAIL) {
     console.error('SUPER_ADMIN_EMAIL not set in .env.local')
+    process.exit(1)
+  }
+  if (!PASSWORD) {
+    console.error(
+      'Password required: pass as argv[2] (npx tsx scripts/set-password.ts <pw>) ' +
+      'or set NEW_USER_PASSWORD in env. No literal fallback.'
+    )
     process.exit(1)
   }
 

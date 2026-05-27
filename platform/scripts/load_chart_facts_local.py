@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import yaml
 import psycopg
@@ -73,8 +74,19 @@ def main():
     parser = argparse.ArgumentParser(description="Load chart_facts from local YAML")
     parser.add_argument("--source", required=True, help="Path to CHART_FACTS_EXTRACTION_v1_0.yaml")
     parser.add_argument("--truncate", action="store_true", help="Truncate chart_facts before insert")
-    parser.add_argument("--db-url", default="postgresql://amjis_app:KO09dpIN3SvNZCij6t7YtHNji4uv10D@127.0.0.1:5433/amjis")
+    parser.add_argument(
+        "--db-url",
+        default=os.environ.get("DATABASE_URL", ""),
+        help="Postgres URL. Defaults to $DATABASE_URL. Required (empty default fails).",
+    )
     args = parser.parse_args()
+
+    if not args.db_url:
+        sys.stderr.write(
+            "ERROR: --db-url is empty and $DATABASE_URL is not set.\n"
+            "Provide --db-url postgresql://user:pass@host:port/db or export DATABASE_URL.\n"
+        )
+        sys.exit(1)
 
     facts = load_yaml(args.source)
     rows = rows_from_facts(facts)
