@@ -51,3 +51,42 @@
 - **Required:** drop `platform/python-sidecar/natal_engine/fixtures/jh_oracle.json` → unblocks 1.2 + cascades into 2a.
 - **Required:** Cowork-author Wave-2 briefs (2b, 2c, 2d) → drop in `briefs/` and remove `status: not_yet_detailed` in queue.
 - **Optional:** rotate `amjis-db-password` Secret Manager entry at next maintenance window.
+
+## Batch 2 — 2026-05-28 (re-kick)
+
+### Bootstrap (re-kick)
+- 00:00 IST · on `main` (HEAD `84147206`). Pending untracked: 3 new Wave-2 briefs (2b/2c/2d), amended 1.1+1.2 briefs (three-ayanamsha isolation contract), amended session_queue, `platform/python-sidecar/natal_engine/fixtures/jh_oracle.json` (full JH single-ayanamsha export, True Chitra 23°37'09.78"). Other untracked items (audit reports, accuracy/bench probes) NOT in scope per operator instruction.
+- 00:01 IST · Schema validation: `jh_oracle.json` validates clean against `jh_oracle_schema.json` (required: meta/ayanamsha/ascendant/grahas/vargas/vimshottari). Native confirmed: this is single-ayanamsha (oracle), engine's THREE-ayanamsha registry lives separate.
+- 00:02 IST · `git add 00_ARCHITECTURE platform/python-sidecar/natal_engine/fixtures/jh_oracle.json && git commit` → `39a2153e` ("batch2-prep …") landed on main. Worktrees A/B/C rebased clean onto `39a2153e` (cherry-pick skips of already-applied commits).
+- 00:02 IST · `tools/program-tracker/.state/gate_status.json`: `jh_oracle_pinned` RED → **GREEN** (schema-valid, unblocks 1.2). Streams A/B/C marked working.
+
+### Batch 2 wave 1 dispatch — 2b (A) + 2c (B) + 2d (C) in parallel
+- 00:02 IST · 3 sub-agents dispatched concurrently, file-fences enforced via brief `may_touch`/`must_not_touch`. Migration block split: 2c=081/082/083 (charts+chart_grants+RLS), 2d=084/085 (runtime_config+gate_change_log). No collision.
+- **2c** (Stream B) — DONE — commits `103bb208`/`4bcb9bcf`/`8e2bfebc`. Migrations 081 (`charts.owner_id + chart_grants`), 082 (`profiles.role client→guest` with CHECK), 083 (`charts` RLS via `app.principal_id` GUC, super-admin bypass). `authorizeChartAccess.ts` pure brain (super_admin→all / owner→all / grant→view / else→deny). Inline `chart.client_id !== user.uid` check replaced in `consult/route.ts` (consume was renamed to consult in 0a.1; semantic target unchanged). Dashboard role-read accepts `'guest'` with backwards-compat for `'client'` during cutover. `POST /api/clients` no longer mints a Firebase user per chart — `owner_id`/`subject_name` seeded from creator. 6/6 vitest pass. Cherry-picked to main as `e0f76ff1`+`098d8953`+`6cde2d69`. **G2_authz_live GREEN.**
+- **2d** (Stream C) — DONE — commits `0bf1a509`/`b58cd750`/`9736a4da`. Migrations 084 (`runtime_config`) + 085 (`gate_change_log`). `gate_registry.ts` with 10 representative gates across all 5 classes (feature_flag/pipeline_threshold/model_routing/access_capability/data_source). `configService.ts` extended with `getGate`/`setGate`/`resetGate` (DB → env → registry-default precedence, in-process LRU cache, canonical-ayanamsha hard guard rejecting any attempt to set `AYANAMSHA_CANONICAL_ENABLED=false`). Super-admin-only Cockpit > Command Center page + POST `/api/edit` route (danger-confirm + reset support). Chart dropdown stub for `per_chart` scope. 17/17 vitest pass. Cherry-picked to main as `ec5c3837`+`306ae829`+`5dd07ac5`.
+- **2b** (Stream A) — DONE — commits `2c54ab03`/`60c4c737`/`855502e4`. `platform/src/lib/contract/` — `defineTool` helper + `ToolContract<T>` Zod-typed registry. 8 representative contracts: `query_chart_facts`/`query_panchanga`/`query_dasha_periods`/`query_divisional_chart` (canonical), `query_kp_ruling_planets`/`kp_query` (kp), `query_ephemeris` (reference), `read_classical_text` (no ayanamsha role). `assertContractInvariants()` enforces ayanamsha-role declaration + `chart_id` requirement. Used **Zod v4's built-in `z.toJSONSchema()`** instead of `zod-to-json-schema` v3.25 (which returns `{}` for Zod v4 internals — no dep needed). Contract-generated `catalog.ts` + manifest `query_schema` backfill (15 entries). MCP-side `platform-mcp/src/contract_bridge.ts` uses a verified hard-coded mirror because `platform-mcp/tsconfig.json` has `rootDir: src` — drift breaks the G3 test. 6/6 vitest pass. Cherry-picked to main as `b5d6dd94`+`dc0cbc17`+`9e124a40`. **G3_contract GREEN.**
+- 00:10 IST · emit_gate flips: G2_authz_live, G3_contract → GREEN; units 2b/2c/2d → done.
+
+### Batch 2 wave 2 dispatch — 1.2 (C) solo (Stream C frees up post-2d)
+- 00:10 IST · Stream C rebased onto main HEAD `9e124a40`; 1.2 sub-agent dispatched. `on_red: halt_queue` honored — sub-agent instructed NOT to relax tolerances to make tests pass.
+- **1.2** (Stream C) — DONE — commits `4a2957da`/`6dce7d65`/`6123ddeb`. Three-ayanamsha registry shipped: `jh_true_chitra` (canonical, raw TRUE_CITRA residual **7.62"** vs JH pinned 23°37'09.78" — under both 10" SIDM_USER threshold and 60" oracle tolerance → raw mode kept), `kp` (KRISHNAMURTI), `lahiri_standard` (LAHIRI). `compute_chart()` flipped default to `jh_true_chitra`; emits top-level `"ayanamsha":{id,value_deg}` for constant-offset invariant. **Dasha calendar-year arithmetic fix** in `dashas.py` (JH convention; resolved MD[6]+MD[8] drift). **Polar-safe ascendant fallback** in `ascendant.py` (Equal-from-Asc when Placidus fails at |lat|>~66.6°). 15-test parity battery (hard/soft/invariant/determinism) + 8-test pyswisseph crosscheck (edge cases incl. polar lat + leap-second-adjacent dates) = **23+8 = 31/31 green**. All 9 graha longitude deltas <44" (Mercury worst 43.2"); ascendant 7.2". Dignity remains SOFT advisory per oracle `_provenance.soft_fields`. Cherry-picked to main as `38033dec`+`a66eb6cf`+`29d81317`. **G1_jh_parity GREEN.**
+- 00:24 IST · emit_gate flips: G1_jh_parity → GREEN; unit 1.2 → done; Stream C → idle.
+
+### Batch 2 close
+- 00:24 IST · main HEAD `29d81317`. **4 units green this batch** (2b/2c/2d/1.2); **3 hard gates flipped GREEN** (G1_jh_parity, G2_authz_live, G3_contract). Total program: **11/20 units done (55%)**; **5/8 gates GREEN** (naming_ci + jh_oracle_pinned + G1 + G2 + G3); G5b_onfinish PENDING (0b.1 contributes half); G4_no_native_lit + G6_tool_coverage PENDING (gate-blocked on Wave-3 units).
+- Sub-agents spawned this batch: 4 (well under 20 budget).
+- No halts opened.
+- All worktrees idle; tracker still live on `:8787`.
+
+### Now-eligible units (Batch 3)
+- **2a** L2.5 deterministic build (sets G4_no_native_lit) — UNBLOCKED (G1_jh_parity now GREEN). Status in queue: `not_yet_detailed` — needs brief authoring.
+- **3.dejudge**, **3.gateway_pipeline_isolation** — UNBLOCKED (G3_contract GREEN); `not_yet_detailed`.
+- **3.consult_nav**, **3.tier_excision** — UNBLOCKED (G2_authz_live GREEN / 2c done); `not_yet_detailed`.
+- **3.tool_asset_recon** — partially unblocked (G3_contract GREEN) but still gated on **2a**.
+- **3.cutover** — gated on **2a** + 2c (2c done; awaits 2a).
+- **3.legacy_delete** — gated on **G5b_onfinish** (0b.1 half done; needs full set).
+
+### Re-kick inputs (operator action)
+- **Required:** Cowork-author Wave-3 briefs (`2a`, `3.dejudge`, `3.gateway_pipeline_isolation`, `3.consult_nav`, `3.tier_excision`, `3.tool_asset_recon`). Once dropped under `briefs/` and `status: not_yet_detailed` lifted, Conductor picks them up.
+- **Optional, deferred from Batch 1:** apply migrations 081–085 to staging DB (operator step; SQL files staged at `platform/migrations/`).
+- **Optional, deferred from Batch 1:** rotate `amjis-db-password` Secret Manager entry.

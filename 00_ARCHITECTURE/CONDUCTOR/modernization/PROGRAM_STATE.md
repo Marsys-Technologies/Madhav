@@ -4,62 +4,58 @@
 > Conductor updates it at every batch stop. Authoritative for "where are we now."
 
 ## Snapshot
-- **Status:** RUNNING — Batch 1 CLOSED; 7/20 units green (35%); awaiting native input for 1.2 + brief authoring for 2b/2c/2d.
-- **Current batch:** Batch 1 closed at sub-agent count = 6. Batch 2 begins on re-kick.
+- **Status:** RUNNING — Batch 2 CLOSED; 11/20 units green (55%); 5/8 gates GREEN.
+- **Current batch:** Batch 2 closed at sub-agent count = 4. Batch 3 begins on re-kick.
 - **Tracker:** LIVE at `http://localhost:8787` (PID logged in `/tmp/madhav-tracker.log`). Always re-check tracker first.
-- **main HEAD:** `af0c29be` (1.1.3 scaffold + no-LLM tests for natal_engine).
-- **Last green per stream:** A=`0a.1` (`c9000d75`) · B=`0b.2` (`b720e577`) · C=`1.1` (`af0c29be`).
+- **main HEAD:** `29d81317` (1.2.3 pyswisseph crosscheck + edge-case validation).
+- **Last green per stream:** A=`2b` (`9e124a40`) · B=`2c` (`6cde2d69`) · C=`1.2` (`29d81317`).
 - **Open halts:** none.
-- **Attention (not a halt; native action requested):**
-  - **Live DB password rotation requested** — 0b.2 found the literal value of GCP Secret Manager `amjis-db-password` at `platform/scripts/load_chart_facts_local.py:76` (introduced commit `0bcc5415`, 2026-05-25). Literal removed from HEAD; the value was NOT echoed/committed elsewhere. Operator should rotate `amjis-db-password` at next maintenance window. Full incident in `platform/scripts/governance/secret_naming.md §5`.
-  - **JH oracle still required** — see "blocker" below.
+- **Attention (not a halt; deferred operator action):**
+  - **Apply migrations 081–085 to staging DB** (additive, idempotent) — 081 (`charts.owner_id` + `chart_grants` + `subject_name`), 082 (`profiles.role` `client`→`guest`), 083 (`charts` RLS), 084 (`runtime_config`), 085 (`gate_change_log`). SQL staged at `platform/migrations/`. No app-side code reads them yet beyond test seams.
+  - **Rotate `amjis-db-password`** (carried from Batch 1) — literal scrubbed from HEAD; full incident in `platform/scripts/governance/secret_naming.md §5`.
 
 ## Gate board
 | Gate | Status | Unblocks |
 |---|---|---|
-| naming_ci | **GREEN** (0a.0 closed; 77 baseline violations recorded) | 0a.1 ✓, 1.1 ✓, 2b, 2c, 2d |
-| jh_oracle_pinned | **RED — NATIVE INPUT NEEDED** | 1.2 |
-| G1_jh_parity | PENDING (set by 1.2 once jh_oracle drops) | 2a, 3.cutover |
-| G2_authz_live | PENDING (set by 2c) | 3.tier_excision |
-| G3_contract | PENDING (set by 2b) | 3.dejudge, 3.gateway |
+| naming_ci | **GREEN** (0a.0; 77 baseline) | 0a.1 ✓ · 1.1 ✓ · 2b ✓ · 2c ✓ · 2d ✓ |
+| jh_oracle_pinned | **GREEN** (oracle dropped 2026-05-28; schema-valid; JH True Chitra 23°37′09.78″) | 1.2 ✓ |
+| G1_jh_parity | **GREEN** (1.2; 31/31 tests; residual 7.62″ under 60″ tol) | 2a · 3.cutover |
+| G2_authz_live | **GREEN** (2c; 6/6 tests; authorizeChartAccess + RLS) | 3.tier_excision |
+| G3_contract | **GREEN** (2b; 6/6 tests; 8 representative contracts) | 3.dejudge · 3.gateway_pipeline_isolation |
 | G4_no_native_lit | PENDING (set by 2a) | — |
-| G5b_onfinish | PENDING — **0b.1 contributes (citation-gate half done)**; full set in cutover | 3.legacy_delete |
+| G5b_onfinish | PENDING — 0b.1 contributes (citation-gate-on-adapter half done); full set in cutover | 3.legacy_delete |
 | G6_tool_coverage | PENDING (set by 3.tool_asset_recon) | — |
 
 ## Toolchain adaptations (recorded for re-kicks)
-- `platform/` is **npm** (not pnpm). Gate `check_commands` rewritten from `pnpm vitest run …` to `npx vitest run …` (same vitest binary). vitest must be invoked from `platform/` for `@/` alias resolution.
-- pyyaml@6.0.3 + pytest@9.0.3 installed into project `.venv` (`/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3`).
-- Sidecar paths: queue gate `jh_oracle_pinned` and brief 1.2 reference unprefixed `python-sidecar/natal_engine/…` — canonicalized to `platform/python-sidecar/natal_engine/…` (where the existing sidecar lives, where 1.1 built the scaffold).
+- `platform/` is **npm** (not pnpm). Gate `check_commands` use `npx vitest run …`; vitest must be invoked from `platform/` for `@/` aliases.
+- `pyswisseph==2.10.03` + `jsonschema` available in `/Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3`. Engine tests run with that python directly.
+- Sidecar paths: queue gate `jh_oracle_pinned` and brief 1.2 reference unprefixed `python-sidecar/natal_engine/…` — canonicalized to `platform/python-sidecar/natal_engine/…`.
+- 2b finding: `zod-to-json-schema@3.25` returns `{}` for Zod v4 internals → use Zod v4's built-in `z.toJSONSchema()` (no extra dep needed). Captured in `platform/src/lib/contract/json_schema.ts`.
 
-## Batch 1 — closed units (commits on main)
+## Batch 2 — closed units (commits on main)
 | Unit | Wave | Stream | Commit(s) on main | Notes |
 |---|---|---|---|---|
-| **0t** | 0-support | (Conductor) | `a640af1c`, `940ee3b6` | Tracker live on `:8787` (ephemeral; `REMOVE.md` for tear-down). |
-| **0a.0** | 0a | A | `baf4e198` | `naming_lint.py` + `naming_rules.yaml` + 77-violation baseline + CI wire. **Sets gate `naming_ci` GREEN.** |
-| **0a.1** | 0a | A | `2d3dd91a` `a01af583` `c9000d75` | consume→consult (4 routes + 5×308 aliases); /api/panchanga→panchang merge (alias dropped per lint rule, only caller updated). 18/18 chat tests pass. |
-| **0b.1** | 0b | B | `3ec952e3` | B.11 citation gate ported to adapter path at `consume/route.ts:1092–1175`; 7 new tests + 200 regression tests pass. **Contributes to G5b_onfinish.** |
-| **0b.2** | 0b | B | `edc0bbd5` `b720e577` | `secret_scan.sh` + CI wire + literal-credential removal (2 files); see "Attention" — live DB password found + scrubbed. |
-| **0b.3** | 0b | C | `834164b7` | Atomic 5-surface mirror-discipline retirement; `.geminirules` + `.gemini/` + `mirror_enforcer.py` deleted; CLAUDE.md §K + GOVERNANCE §K.3 + CANONICAL §2 + ND.1 closed; ripple-out fixes to `drift_detector.py`/`schema_validator.py` to prevent crashes from deleted refs. |
-| **1.1** | 1 | C | `1d586f30` `32be40ee` `af0c29be` | `platform/python-sidecar/natal_engine/` scaffold + canonical output schema + `jh_oracle` fixture loader/schema + parity harness skeleton + no-LLM test. 8 passed / 1 skipped (jh_parity correctly skips on RED gate). Spot-check matches FORENSIC v8.0 panchanga 5/5. |
+| **2c** | 2 | B | `e0f76ff1` `098d8953` `6cde2d69` | Migrations 081/082/083 (charts.owner_id + chart_grants + role rename + RLS); `authorizeChartAccess.ts` (super_admin/owner/grant/deny); consult/route.ts wired; /api/clients no longer mints Firebase user. **Sets G2_authz_live GREEN.** |
+| **2d** | 2 | C | `ec5c3837` `306ae829` `5dd07ac5` | Migrations 084/085 (`runtime_config`+`gate_change_log`); `gate_registry.ts` (10 gates × 5 classes); `configService` w/ DB→env→default precedence + canonical-ayanamsha hard guard; Cockpit > Command Center page + edit API (super-admin only). |
+| **2b** | 2 | A | `b5d6dd94` `dc0cbc17` `9e124a40` | `platform/src/lib/contract/` w/ 8 representative Zod contracts (4 canonical, 2 kp, 1 reference, 1 text); `assertContractInvariants` runtime check; contract-generated catalog; manifest backfill (15 entries); MCP bridge mirror. **Sets G3_contract GREEN.** |
+| **1.2** | 1 | C | `38033dec` `a66eb6cf` `29d81317` | Three-ayanamsha registry (`jh_true_chitra` canonical / `kp` / `lahiri_standard`); `compute_chart` JH-parity layer (residual 7.62″); dasha calendar-year arithmetic fix; polar-safe ascendant fallback; 31/31 parity+crosscheck tests pass. **Sets G1_jh_parity GREEN.** |
 
-## Eligible-now units (Batch 2)
-- **1.2** engine→JH parity (Stream C) — **BLOCKED on `jh_oracle_pinned`**. Drop `platform/python-sidecar/natal_engine/fixtures/jh_oracle.json` to unblock; brief 1.2 will then run unmodified.
-- **2b** unified contract, **2c** tenancy/authz, **2d** Command Center — **eligible per gate** (naming_ci green) but `status: not_yet_detailed` in `session_queue.yaml`. Wave-2 briefs must be authored before sub-agent dispatch. (Per execution plan §5 + brief-amendment rule: Cowork authors the fresh briefs; Conductor never edits a brief mid-flight.)
-- **2a** L2.5 deterministic build — blocked on G1 (engine parity).
-- All Wave-3 + Wave-4 units — blocked on their own gates (G3, G2, G1, etc.).
+## Batch 1 — closed units (recap)
+0t · 0a.0 · 0a.1 · 0b.1 · 0b.2 · 0b.3 · 1.1 (see CONDUCTOR_LOG.md Batch 1 for commit details).
 
-## The one input that blocks the engine
-`jh_oracle_pinned` is RED. To flip it green, drop the JH reference into
-`platform/python-sidecar/natal_engine/fixtures/jh_oracle.json` (schema in `fixtures/jh_oracle_schema.json`):
-- the **JH version/build** to treat as authority,
-- the **ayanamsha** (e.g. Lahiri/Chitrapaksha 23°37′58″ per FORENSIC), and
-- the **reference outputs** for native (1984-02-05 10:43 IST, Bhubaneswar) captured once from that JH build.
-Once dropped, Conductor re-kick runs unit 1.2 automatically.
+## Eligible-now units (Batch 3)
+All gate-eligible but `status: not_yet_detailed` in `session_queue.yaml` — Cowork must author briefs first:
+- **2a** L2.5 deterministic build (sets G4_no_native_lit) — UNBLOCKED by G1_jh_parity.
+- **3.dejudge**, **3.gateway_pipeline_isolation** — UNBLOCKED by G3_contract.
+- **3.consult_nav**, **3.tier_excision** — UNBLOCKED by G2_authz_live (and 2c done).
+- **3.tool_asset_recon** (sets G6_tool_coverage) — partially unblocked (G3_contract GREEN); still waits on **2a**.
+- **3.cutover** — waits on **2a** (2c done).
+- **3.legacy_delete** — waits on **G5b_onfinish** (0b.1 contributes half; full set lands at cutover).
 
 ## What to ship to the native at re-kick
-1. **JH oracle fixture** (above) — unblocks 1.2 + cascades into 2a (L2.5 build).
-2. **Wave-2 briefs** (`2b unified contract`, `2c tenancy + authz`, `2d Command Center`) — Cowork authoring task. Once written, drop them at `00_ARCHITECTURE/CONDUCTOR/modernization/briefs/BRIEF_2b_…md` and flip their `status: not_yet_detailed` → omit (eligible). Conductor will pick them up.
-3. (Optional but tracked) **Rotate `amjis-db-password`** in Secret Manager — see Attention block.
+1. **Wave-3 briefs** (Cowork authoring): `2a`, `3.dejudge`, `3.gateway_pipeline_isolation`, `3.consult_nav`, `3.tier_excision`, `3.tool_asset_recon`. Drop at `00_ARCHITECTURE/CONDUCTOR/modernization/briefs/` + remove `status: not_yet_detailed` from queue entries.
+2. (Optional) **Apply migrations 081–085** to staging DB.
+3. (Carried) **Rotate `amjis-db-password`**.
 
 ## Re-kick protocol
 1. Open a fresh Conductor chat at repo root on `main`.
