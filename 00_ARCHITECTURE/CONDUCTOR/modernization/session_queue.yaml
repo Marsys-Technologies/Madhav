@@ -194,10 +194,35 @@ units:
     check_commands: ["npx vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts"]
     on_red: rollback
     note: "re-map every tool→NEW asset; coverage + no-redundancy + no-orphan; LLM-client fit (§13). Native-raised."
+  - id: hygiene.test_chart_id
+    wave: 3-hygiene
+    brief: briefs/BRIEF_hygiene_test_chart_id.md
+    stream: C
+    blockedBy: [2a]
+    priority: high
+    may_touch: ["platform/src/lib/retrieve/__tests__/**"]
+    must_not_touch: ["platform/python-sidecar/**"]
+    check_commands: ["npx vitest run platform/src/lib/retrieve"]
+    on_red: rollback
+  - id: hygiene.flag_cleanup
+    wave: 3-hygiene
+    brief: briefs/BRIEF_hygiene_flag_cleanup.md
+    stream: B
+    blockedBy: [3.dejudge]
+    may_touch: ["platform/src/lib/feature_flags.ts", ".github/workflows/deploy.yml"]
+    must_not_touch: ["platform/src/lib/retrieve/**", "platform/python-sidecar/**"]
+    check_commands: ["python platform/scripts/governance/naming_lint.py"]
+    on_red: rollback
   - id: 3.cutover
     wave: 3
-    blockedBy: [G1_jh_parity, 2a, 2c]
-    status: not_yet_detailed
+    brief: briefs/BRIEF_3_cutover.md
+    stream: A
+    blockedBy: [2a, 3.gateway_pipeline_isolation, 0b.1]
+    sets_gate: G5b_onfinish
+    may_touch: ["platform/src/app/api/chat/consume/route.ts", "platform/src/lib/synthesis/**", "platform/src/lib/pipelines/**", "platform/src/components/consume/**", ".github/workflows/deploy.yml"]
+    must_not_touch: ["platform/python-sidecar/**", "platform/src/app/clients/**", "platform/src/lib/synthesis/orchestrator.ts"]
+    check_commands: ["npx vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts"]
+    on_red: halt_queue
   - id: 3.consult_nav
     wave: 3
     brief: briefs/BRIEF_3_consult_nav.md
@@ -219,8 +244,13 @@ units:
     on_red: rollback
   - id: 3.legacy_delete
     wave: 3
-    blockedBy: [0b.1, G5b_onfinish]
-    status: not_yet_detailed
+    brief: briefs/BRIEF_3_legacy_delete.md
+    stream: A
+    blockedBy: [3.cutover, G5b_onfinish]
+    may_touch: ["platform/src/lib/synthesis/orchestrator.ts", "platform/src/lib/synthesis/single_model_strategy.ts", "platform/src/lib/synthesis/panel_strategy.ts", "platform/src/app/api/chat/consume/route.ts", "platform/src/app/api/mcp/execute/**", "platform-mcp/src/client.ts"]
+    must_not_touch: ["platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**", "platform/src/lib/retrieve/**"]
+    check_commands: ["npx vitest run platform/src/app/api/chat"]
+    on_red: rollback
   - id: 4.scale_and_close
     wave: 4
     blockedBy: [3.legacy_delete]
