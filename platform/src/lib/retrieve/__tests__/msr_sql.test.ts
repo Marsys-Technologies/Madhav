@@ -229,46 +229,49 @@ describe('msr_sql tool', () => {
     expect(sqlString).not.toContain('DROP TABLE')
   })
 
-  // D.2 — finance/wealth domain confidence_floor default
-  it('D.2: finance domain uses 0.35 confidence_floor by default (not 0.6)', async () => {
+  // Unit 3.dejudge (2026-05-28): query-time confidence floors removed.
+  // The 0.6 default + 0.35 finance/wealth override no longer apply — the tool
+  // returns the never-dropped signal set. Caller may still pass an explicit
+  // confidence_floor to opt back into a hard cut; that path is preserved below.
+  it('dejudge: finance domain uses NO floor by default (default 0, not 0.35)', async () => {
     mockQuery.mockResolvedValue({ rows: [baseSignal], rowCount: 1 })
 
     const plan: QueryPlan = { ...basePlan, domains: ['finance'] }
     await tool.retrieve(plan)
 
     const callArgs = mockQuery.mock.calls[0]
-    // $5 (index 4) = confidence_floor
-    expect(callArgs[1][4]).toBe(0.35)
+    // $5 (index 4) = confidence_floor — now 0 (no judgment)
+    expect(callArgs[1][4]).toBe(0)
   })
 
-  it('D.2: wealth domain uses 0.35 confidence_floor by default', async () => {
+  it('dejudge: wealth domain uses NO floor by default (default 0, not 0.35)', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
     const plan: QueryPlan = { ...basePlan, domains: ['wealth'] }
     await tool.retrieve(plan)
 
     const callArgs = mockQuery.mock.calls[0]
-    expect(callArgs[1][4]).toBe(0.35)
+    expect(callArgs[1][4]).toBe(0)
   })
 
-  it('D.2: non-finance domain still uses 0.6 confidence_floor', async () => {
+  it('dejudge: non-finance domain uses NO floor by default (default 0, not 0.6)', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
     const plan: QueryPlan = { ...basePlan, domains: ['career'] }
     await tool.retrieve(plan)
 
     const callArgs = mockQuery.mock.calls[0]
-    expect(callArgs[1][4]).toBe(0.6)
+    expect(callArgs[1][4]).toBe(0)
   })
 
-  it('D.2: explicit confidence_floor overrides domain-specific default for finance', async () => {
+  it('dejudge: explicit confidence_floor still honoured (caller intent wins)', async () => {
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
     const plan: QueryPlan = { ...basePlan, domains: ['finance'] }
     await tool.retrieve(plan, { confidence_floor: 0.5 })
 
     const callArgs = mockQuery.mock.calls[0]
-    // Explicit 0.5 should win over the 0.35 domain default
+    // Explicit 0.5 from caller is preserved; no domain default overlays it.
     expect(callArgs[1][4]).toBe(0.5)
   })
 
