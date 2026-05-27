@@ -66,11 +66,6 @@ export type FeatureFlag =
   // MARSYS_FLAG_OBSERVATORY_ENABLED=true. Mirrors the env-var gate already used
   // by the backend at platform/src/app/api/admin/observatory/_guard.ts.
   | 'OBSERVATORY_ENABLED'
-  // M5-B LL.3 R.LL3.2 — Pancha-Mahapurusha cluster-modifier. When ON, the 6-signal
-  // Pancha-MP clique (SIG.MSR.117/.118/.119/.143/.145/.402b) is consolidated to a
-  // single weight entry (MAX of member weights) to prevent 6× double-counting of the
-  // natal yoga structure in downstream synthesis. Default OFF until benchmarked.
-  | 'LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED'
   // M5-B LL.3 R.LL3.3 — Zero-LL.1-weight domain disclaimer. When ON, msr_sql
   // annotates results for domains with no LL.1 calibration weight (career, spiritual,
   // psychological, financial, family) with an explicit n=0 disclaimer in invocation_params,
@@ -253,9 +248,6 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   CITATION_GATE_OVERRIDE: false,
   // Phase O Observatory — default OFF; flip via MARSYS_FLAG_OBSERVATORY_ENABLED=true.
   OBSERVATORY_ENABLED: false,
-  // M5-B LL.3 R.LL3.2 — Pancha-MP cluster modifier. Default OFF until benchmarked.
-  // Override via MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED=true.
-  LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED: false,
   // M5-B LL.3 R.LL3.3 — Zero-LL.1-weight domain disclaimer. Default ON.
   // Override via MARSYS_FLAG_LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED=false.
   LL3_ZERO_WEIGHT_DOMAIN_DISCLAIMER_ENABLED: true,
