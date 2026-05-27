@@ -45,8 +45,13 @@ shrink that window; they do not eliminate it. The macro-phase red-team at progra
                     └──────── Conductor cherry-pick → main (on green) ──────┘
 ```
 
-- **2–3 streams**, each a dedicated **git worktree** + its own Claude Code session run with bypass
-  permissions. Streams never share a checkout (race/FS-contention lesson).
+- **CONFIRMED operating model (native, 2026-05-27): ONE Conductor session + parallel sub-agents.** A single
+  Claude Code window (the Conductor, run with bypass perms) is the only top-level session and the only brain;
+  it spawns **sub-agents that work concurrently in the three pre-created worktrees** (≤3 at once). The
+  worktrees still exist purely to keep concurrent sub-agents from sharing a checkout (race/FS-contention
+  lesson) — they are NOT separate windows. Chosen over 3 parallel windows because a single coordinating brain
+  over all gate-deps, file-fences, cherry-picks, and halts is the safest shape for a zero-human-gate run.
+  (Multi-window remains a future scale-up if wall-clock velocity becomes the bottleneck.)
 - **Conductor** is the brain: it owns `session_queue.yaml`, decides which briefs are *eligible* (their gate
   dependencies are green + file-fences are free), hands eligible briefs to streams, runs each brief's
   `check_commands`, and on green **cherry-picks the stream's commits to main** (commits kept cleanly
@@ -117,8 +122,9 @@ Extend the existing Conductor (`00_ARCHITECTURE/CONDUCTOR/`) with:
 git worktree add ../MadhavStreamA -b prog/stream-a main
 git worktree add ../MadhavStreamB -b prog/stream-b main
 git worktree add ../MadhavStreamC -b prog/stream-c main
-# launch each in its own Claude Code session with bypass perms:
-#   claude --dangerously-skip-permissions   (run inside each worktree dir)
+# NOTE (confirmed model): do NOT launch one session per worktree. Launch ONE Conductor session
+# (claude --dangerously-skip-permissions at repo root); it spawns sub-agents that work inside these
+# worktrees concurrently. The worktrees exist only for concurrent-sub-agent FS isolation.
 # Conductor runs in a SEPARATE chat at repo root on main.
 ```
 Worktrees are retired (`git worktree remove`) at program close. Branch base = `main`; Conductor cherry-picks
