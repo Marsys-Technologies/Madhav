@@ -4,14 +4,14 @@
 > Conductor updates it at every batch stop. Authoritative for "where are we now."
 
 ## Snapshot
-- **Status:** RUNNING — Batch 2 CLOSED; 11/20 units green (55%); 5/8 gates GREEN.
-- **Current batch:** Batch 2 closed at sub-agent count = 4. Batch 3 begins on re-kick.
-- **Tracker:** LIVE at `http://localhost:8787` (PID logged in `/tmp/madhav-tracker.log`). Always re-check tracker first.
-- **main HEAD:** `29d81317` (1.2.3 pyswisseph crosscheck + edge-case validation).
-- **Last green per stream:** A=`2b` (`9e124a40`) · B=`2c` (`6cde2d69`) · C=`1.2` (`29d81317`).
+- **Status:** RUNNING — Batch 3 in flight; 13/20 units green (65%); 6/8 gates GREEN.
+- **Current batch:** Batch 3 — 2a + 3.consult_nav landed on main; 3.tier_excision (A) + 3.dejudge (C) in flight; 3.gateway (A) + 3.tool_asset_recon (C) queued behind serialization fence.
+- **Tracker:** LIVE at `http://localhost:8787` (PID logged in `/tmp/madhav-tracker.log`).
+- **main HEAD:** `a0d97174` (3.consult_nav 3/3 sharing UI).
+- **Last green per stream:** A=`2b` (`9e124a40`) · B=`3.consult_nav` (`a0d97174`) · C=`2a` (`1eb2983b`).
 - **Open halts:** none.
 - **Attention (not a halt; deferred operator action):**
-  - **Apply migrations 081–085 to staging DB** (additive, idempotent) — 081 (`charts.owner_id` + `chart_grants` + `subject_name`), 082 (`profiles.role` `client`→`guest`), 083 (`charts` RLS), 084 (`runtime_config`), 085 (`gate_change_log`). SQL staged at `platform/migrations/`. No app-side code reads them yet beyond test seams.
+  - **Apply migrations 081–089 to staging DB** (additive, idempotent) — adds 086–089 (L2.5 (chart_id, ayanamsha_id) keying + 3-column MSR coefficient + legacy-corpus provenance freeze). No destructive ops; the legacy rows stay live under partial unique indexes.
   - **Rotate `amjis-db-password`** (carried from Batch 1) — literal scrubbed from HEAD; full incident in `platform/scripts/governance/secret_naming.md §5`.
 
 ## Gate board
@@ -22,7 +22,7 @@
 | G1_jh_parity | **GREEN** (1.2; 31/31 tests; residual 7.62″ under 60″ tol) | 2a · 3.cutover |
 | G2_authz_live | **GREEN** (2c; 6/6 tests; authorizeChartAccess + RLS) | 3.tier_excision |
 | G3_contract | **GREEN** (2b; 6/6 tests; 8 representative contracts) | 3.dejudge · 3.gateway_pipeline_isolation |
-| G4_no_native_lit | PENDING (set by 2a) | — |
+| G4_no_native_lit | **GREEN** (2a; `assert_no_native_literal.sh` exit 0; 4 retrieval tools threaded `chart_id`) | 3.gateway · 3.dejudge · 3.tool_asset_recon |
 | G5b_onfinish | PENDING — 0b.1 contributes (citation-gate-on-adapter half done); full set in cutover | 3.legacy_delete |
 | G6_tool_coverage | PENDING (set by 3.tool_asset_recon) | — |
 
@@ -43,13 +43,20 @@
 ## Batch 1 — closed units (recap)
 0t · 0a.0 · 0a.1 · 0b.1 · 0b.2 · 0b.3 · 1.1 (see CONDUCTOR_LOG.md Batch 1 for commit details).
 
-## Eligible-now units (Batch 3)
-All gate-eligible but `status: not_yet_detailed` in `session_queue.yaml` — Cowork must author briefs first:
-- **2a** L2.5 deterministic build (sets G4_no_native_lit) — UNBLOCKED by G1_jh_parity.
-- **3.dejudge**, **3.gateway_pipeline_isolation** — UNBLOCKED by G3_contract.
-- **3.consult_nav**, **3.tier_excision** — UNBLOCKED by G2_authz_live (and 2c done).
-- **3.tool_asset_recon** (sets G6_tool_coverage) — partially unblocked (G3_contract GREEN); still waits on **2a**.
-- **3.cutover** — waits on **2a** (2c done).
+## Batch 3 — closed units so far (commits on main)
+| Unit | Wave | Stream | Commit(s) on main | Notes |
+|---|---|---|---|---|
+| **2a** | 2 | C | `e044b361` `ca59e74d` `0fa6e367` `2870e02a` `9a25de0b` `66b31aca` `1eb2983b` | Migrations 086–089 ((chart_id, ayanamsha_id) keying across chart_facts + l25_msr/cdlm/cgm/rm/ucn; 3-column MSR coefficient; legacy provenance freeze). Python builder + bootstrap loader + structural tests (13/13). `chart_context.ts` resolver + `assert_no_native_literal.sh` retire NATIVE_CHART_ID/DEFAULT_CHART_ID from `lib/retrieve`. **Sets G4_no_native_lit GREEN.** |
+| **3.consult_nav** | 3 | B | `730ab040` `e8bbf29c` `a0d97174` | Role-gated dashboard + nav (guest vs super_admin); per-chart Profile/Build/Consult/Panchang pages + chart switcher (URL + localStorage; mid-conversation switch strips conversationId); SharingPanel grant/revoke writing `chart_grants`. `chart-page-guard.ts` wraps `authorizeChartAccess`. 58/58 tests pass. No tier/depth selector. |
+
+## In flight
+- **3.tier_excision** (A) — disclosure module + TierPicker removal + migration 090 (drop `audience_tier`). Concurrent with 3.consult_nav and 2a (no fence collisions).
+- **3.dejudge** (C) — `msr_sql.ts` + `query_signals.ts` floor/clique/weights strip. Serialized in tool-layer fence.
+
+## Eligible-now / queued
+- **3.gateway_pipeline_isolation** (A) — UNBLOCKED (G3 + 2a). Queued behind 3.tier_excision draining Stream A; serialized vs 3.dejudge/3.tool_asset_recon (shared `lib/retrieve`).
+- **3.tool_asset_recon** (C, sets G6_tool_coverage) — UNBLOCKED (G3 + 2a). Queued behind 3.dejudge draining Stream C; serialized vs 3.gateway (shared `lib/contract` + `lib/retrieve`).
+- **3.cutover** — waits on **2a** ✓ (G1 ✓ · 2c ✓ · 2a ✓ — ELIGIBLE; brief not yet detailed in queue).
 - **3.legacy_delete** — waits on **G5b_onfinish** (0b.1 contributes half; full set lands at cutover).
 
 ## What to ship to the native at re-kick

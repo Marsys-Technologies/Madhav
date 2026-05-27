@@ -90,3 +90,31 @@
 - **Required:** Cowork-author Wave-3 briefs (`2a`, `3.dejudge`, `3.gateway_pipeline_isolation`, `3.consult_nav`, `3.tier_excision`, `3.tool_asset_recon`). Once dropped under `briefs/` and `status: not_yet_detailed` lifted, Conductor picks them up.
 - **Optional, deferred from Batch 1:** apply migrations 081–085 to staging DB (operator step; SQL files staged at `platform/migrations/`).
 - **Optional, deferred from Batch 1:** rotate `amjis-db-password` Secret Manager entry.
+
+## Batch 3 — 2026-05-28 01:30 IST (re-kick)
+
+### Bootstrap
+- 01:01 IST · `git status` shows 7 untracked Wave-3 brief files + queue edit + audit artifacts. Conductor stages briefs + queue only.
+- 01:01 IST · `579facff` (batch3-prep) on main: 6 briefs + queue edit committed. Worktrees A/B/C hard-reset to `579facff` (cherry-picks from Batch 2 already on main; local prog/stream-* tips abandoned).
+- 01:01 IST · main HEAD pre-dispatch: `579facff`.
+
+### Wave-3 dispatch — parallel (3 sub-agents)
+- 01:02 IST · Stream C / **2a** (L2.5 build, sets G4_no_native_lit, on_red=halt_queue) — migrations 086–089 allocated.
+- 01:02 IST · Stream A / **3.tier_excision** — migration 090 allocated; disclosure module removal.
+- 01:02 IST · Stream B / **3.consult_nav** — frontend-only (no migration; role-gated nav + per-chart pages + sharing UI).
+
+### Unit closes
+- 01:18 IST · **2a (C) GREEN** — 7 commits (`e044b361 ca59e74d 0fa6e367 3c750624 4280a9c4 9a8b36e4 309ffed8`). `assert_no_native_literal.sh` exit 0; 13/13 builder tests pass; byte-identical determinism verified. Cherry-picked to main → main HEAD `1eb2983b`. G4_no_native_lit verified GREEN on main (`exit=0`). Builder + bootstrap loader + 3-column MSR + provenance.attribution freeze for legacy corpus all landed.
+- 01:18 IST · **3.consult_nav (B) GREEN** — 3 commits (`730ab040 2e8ffdbc c0bdcf69`). 58/58 vitest tests pass. Cherry-picked to main → main HEAD `a0d97174`. Role-gated dashboard, per-chart pages with chart switcher, SharingPanel grant/revoke writing `chart_grants`. No tier/depth selector anywhere.
+
+### Wave-3 dispatch — serialized tool-layer (continued)
+- 01:30 IST · Stream C sync to main `a0d97174` (re-set after 2a + consult_nav cherry-picks).
+- 01:30 IST · Stream C / **3.dejudge** dispatched — strip `CONFIDENCE_FLOOR` / `PANCHA_MP_CLIQUE` / `LL1_PRODUCTION_WEIGHTS` from `msr_sql.ts` + `query_signals.ts`. Re-baseline expected — previously-floored weak signals will surface. NOT a regression; native discipline = no per-PR `answer:eval`.
+
+### Pending — file-fence serialization (shared `lib/retrieve` + `lib/contract`)
+- 3.gateway_pipeline_isolation (A) → dispatched after 3.tier_excision drains Stream A.
+- 3.tool_asset_recon (C, sets G6) → dispatched after 3.dejudge drains Stream C.
+
+### Sub-agent budget
+- Used: 4 (2a, 3.tier_excision, 3.consult_nav, 3.dejudge). Remaining: 16.
+
