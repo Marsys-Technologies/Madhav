@@ -214,3 +214,18 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
 export function getTool(name: string): RetrievalTool | undefined {
   return RETRIEVAL_TOOLS.find(t => t.name === name)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unit 2b — Unified Tool Contract bridge (additive; canonical names live here).
+//
+// Portal channel A advertises tool names through CONTRACT_TOOL_NAMES so a
+// single contract registry drives both channels. The existing RETRIEVAL_TOOLS
+// stay in place for backward compat; the canonical resolution path is the
+// contract catalog. See platform/src/lib/contract/.
+// ─────────────────────────────────────────────────────────────────────────────
+export {
+  CONTRACT_CATALOG,
+  CONTRACT_CATALOG_BY_NAME,
+  CONTRACT_TOOL_NAMES,
+} from '../contract'
+
