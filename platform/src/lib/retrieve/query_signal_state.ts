@@ -16,11 +16,11 @@ import { getStorageClient } from '@/lib/storage'
 import { validate } from '@/lib/schemas'
 import { telemetry } from '@/lib/telemetry'
 import { writeToolExecutionLog } from '@/lib/db/monitoring-write'
+import { getActiveChartIdOrNull, requireChartId } from './chart_context'
 import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './types'
 
 const TOOL_NAME = 'query_signal_state'
 const TOOL_VERSION = '1.0.0'
-const NATIVE_CHART_ID = 'abhisek_mohanty_primary'
 
 export type SignalState = 'lit' | 'dormant' | 'ripening'
 
@@ -57,7 +57,7 @@ function buildWhere(p: QuerySignalStateInput): { where: string; args: unknown[] 
   let idx = 1
 
   conditions.push(`chart_id = $${idx}`)
-  args.push(p.chart_id ?? NATIVE_CHART_ID)
+  args.push(requireChartId(p.chart_id))
   idx++
 
   if (p.end_date) {
@@ -178,7 +178,7 @@ async function retrieveImpl(
         note: degraded_reason
           ? degraded_reason
           : 'signal_states empty for the requested chart/date — run signal_activator.py to populate',
-        chart_id: p.chart_id ?? NATIVE_CHART_ID,
+        chart_id: getActiveChartIdOrNull(p.chart_id),
         query_date: p.query_date ?? null,
         end_date: p.end_date ?? null,
       }),
@@ -203,7 +203,7 @@ async function retrieveImpl(
     tool_name: TOOL_NAME,
     tool_version: TOOL_VERSION,
     invocation_params: {
-      chart_id: p.chart_id ?? NATIVE_CHART_ID,
+      chart_id: getActiveChartIdOrNull(p.chart_id),
       query_date: p.query_date,
       end_date: p.end_date,
       signal_ids: p.signal_ids,

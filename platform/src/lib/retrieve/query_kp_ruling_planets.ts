@@ -22,11 +22,11 @@
 import crypto from 'crypto'
 import { getStorageClient } from '@/lib/storage'
 import { writeToolExecutionLog } from '@/lib/db/monitoring-write'
+import { requireChartId } from './chart_context'
 import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './types'
 
 const TOOL_NAME = 'query_kp_ruling_planets'
 const TOOL_VERSION = '1.0'
-const DEFAULT_CHART_ID = 'abhisek_mohanty_primary'
 
 export interface QueryKpRulingPlanetsInput {
   chart_id?: string
@@ -75,7 +75,7 @@ async function retrieveImpl(
   start: number,
 ): Promise<ToolBundle> {
   const input = (params ?? {}) as QueryKpRulingPlanetsInput
-  const chartId = input.chart_id ?? DEFAULT_CHART_ID
+  const chartId = requireChartId(input.chart_id)
   const ayanamsha = input.ayanamsha ?? 'lahiri'
 
   const conditions: string[] = ['chart_id = $1', 'ayanamsha = $2']

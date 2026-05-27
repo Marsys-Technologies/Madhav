@@ -14,19 +14,18 @@
  * Supported activity types: vivah, griha_pravesh, vyapara, yatra,
  *                           property_purchase, mantra_initiation.
  *
- * Native chart ID (Abhisek Mohanty): 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ * The active chart_id is resolved via `retrieve/chart_context.requireChartId`
+ * (Unit 2a G4 — no hard-coded native chart literals in production paths).
  */
 
 import crypto from 'crypto'
 import { writeToolExecutionLog } from '@/lib/db/monitoring-write'
+import { requireChartId } from './chart_context'
 import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './types'
 
 const TOOL_NAME = 'muhurta_finder'
 const TOOL_VERSION = '1.0.0'
 const SIDECAR_KEY = process.env.PYTHON_SIDECAR_API_KEY ?? ''
-
-/** Native chart UUID — Abhisek Mohanty's canonical chart. */
-const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 /** Supported MVP activity types (mirror of Python sidecar EVENTS_MVP). */
 const ACTIVITY_TYPES = [
@@ -106,7 +105,7 @@ async function retrieveImpl(
   const dateFrom = input.date_from
   const dateTo   = input.date_to
   const activityType = input.activity_type ?? 'vivah'
-  const chartId  = input.chart_id ?? NATIVE_CHART_ID
+  const chartId  = requireChartId(input.chart_id)
   const topN     = Math.min(Math.max(Number(input.top_n ?? 10), 1), 30)
 
   // Validate date ordering.
