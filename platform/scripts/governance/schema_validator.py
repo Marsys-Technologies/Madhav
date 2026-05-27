@@ -9,7 +9,7 @@ Validates:
   I.3.3 — SESSION_LOG entry schema (post-Step-10: structural presence of session_open +
           body + session_close per SESSION_LOG_SCHEMA_v1_0.md §2 + §4 menu-form check)
   I.3.4 — STEP_LEDGER row schema (rebuild era)
-  I.3.5 — Mirror-pair structural equivalence (coarse count check)
+  I.3.5 — RETIRED 2026-05-27 per ND.1 close-out (mirror-pair structural equivalence)
   I.3.6 — Registry-row-per-touched-file discipline
   I.3.7 — Version-monotonicity (per canonical artifact; FILE_REGISTRY + GOVERNANCE_STACK + CANONICAL_ARTIFACTS)
   (Step 10 addition) — CURRENT_STATE_v1_0.md required fields + cross-check against
@@ -228,34 +228,12 @@ def validate_session_log(repo_root: pathlib.Path) -> List[Violation]:
 
 
 def validate_mirror_pair_structure(repo_root: pathlib.Path, ca) -> List[Violation]:
-    """§I.3.5 — coarse structural parity: Gemini-side surfaces carry the
-    expected summary blocks (item #2 architecture pointer, item #3 MP pointer,
-    item #4 PBP pointer, Mirror Discipline section, Asymmetries section)."""
-    violations: List[Violation] = []
-    geminirules_text = (repo_root / ".geminirules").read_text(encoding="utf-8")
-    project_state_text = (repo_root / ".gemini" / "project_state.md").read_text(encoding="utf-8")
+    """§I.3.5 — RETIRED 2026-05-27 per ND.1 close-out.
 
-    expected_gemini_structural = [
-        ("Mandatory reading", geminirules_text),
-        ("MACRO_PLAN_v2_0.md", geminirules_text),
-        ("PHASE_B_PLAN_v1_0.md", geminirules_text),
-        ("PROJECT_ARCHITECTURE_v2_2.md", geminirules_text),
-        ("Mirror Discipline", geminirules_text),
-        ("Asymmetries", geminirules_text),
-        ("Mirror Discipline", project_state_text),
-        ("Asymmetries", project_state_text),
-    ]
-    for needle, corpus in expected_gemini_structural:
-        if needle not in corpus:
-            surface = ".geminirules" if corpus is geminirules_text else ".gemini/project_state.md"
-            violations.append(Violation(
-                rule="mirror_pair_structural_block_missing",
-                severity="HIGH",
-                path=surface,
-                evidence=f"Expected structural block `{needle}` not present",
-                suggested_remediation="Mirror-update the Gemini-side surface per CANONICAL_ARTIFACTS MP.1/MP.8 enforcement_rule",
-            ))
-    return violations
+    The mirror-pair structural-parity check is retired along with the broader
+    Gemini collaboration. Function preserved as a no-op for caller compatibility.
+    """
+    return []
 
 
 def validate_version_monotonicity(repo_root: pathlib.Path, ca) -> List[Violation]:
@@ -549,15 +527,7 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
                 evidence=f"canonical_artifact_fingerprint_check mismatch on {row.get('canonical_id')}",
                 suggested_remediation="Investigate silent file mutation or refresh CANONICAL_ARTIFACTS",
             ))
-    for row in (so.get("mirror_pair_freshness_check") or []):
-        if row.get("stale") is True:
-            violations.append(Violation(
-                rule="handshake_stale_mirror_pair",
-                severity="HIGH",
-                path="<handshake>",
-                evidence=f"Stale mirror pair {row.get('pair_id')}",
-                suggested_remediation="Run mirror_enforcer.py before first substantive action",
-            ))
+    # mirror_pair_freshness_check retired 2026-05-27 per ND.1 close-out.
     return violations
 
 
@@ -575,10 +545,11 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
     sc = data["session_close"]
     required = [
         "session_id", "closed_at", "files_touched", "registry_updates_made",
-        "mirror_updates_propagated", "red_team_pass", "drift_detector_run",
-        "schema_validator_run", "mirror_enforcer_run", "session_log_appended",
+        "red_team_pass", "drift_detector_run",
+        "schema_validator_run", "session_log_appended",
         "close_criteria_met", "unblocks", "handoff_notes",
     ]
+    # mirror_updates_propagated + mirror_enforcer_run retired 2026-05-27 per ND.1 close-out.
     for key in required:
         if key not in sc:
             violations.append(Violation(
@@ -599,27 +570,14 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                 evidence="Touched file outside declared_scope.may_touch",
                 suggested_remediation="Either expand declared_scope with rationale OR revert the touch",
             ))
-    # mirror_updates_propagated.both_updated_same_session
-    for pair in (sc.get("mirror_updates_propagated") or []):
-        if not pair.get("both_updated_same_session"):
-            # Exception: declared-claude-only pair
-            rationale = pair.get("rationale", "")
-            pid = pair.get("pair_id", "")
-            if "claude-only" not in rationale.lower() and pid not in ("MP.6", "MP.7"):
-                violations.append(Violation(
-                    rule="close_mirror_pair_not_propagated",
-                    severity="HIGH",
-                    path=pid or "<unknown>",
-                    evidence="Mirror pair has `both_updated_same_session: false` without claude_only rationale",
-                    suggested_remediation="Propagate the mirror update OR declare Claude-only with rationale",
-                ))
+    # mirror_updates_propagated check retired 2026-05-27 per ND.1 close-out.
     # Script exit codes (F.2 closure — ONGOING_HYGIENE_POLICIES §F exit-code-3 whitelist)
     # Policy: exit_code 0 passes. exit_code 3 (MEDIUM/LOW only) passes IFF the close
     # YAML carries a `known_residuals` block enumerating each MEDIUM/LOW finding with
     # a booking reference (step_id + rationale). exit_code 1/2/4+ always fail close.
     known_residuals = sc.get("known_residuals") or []
     has_residuals_block = isinstance(known_residuals, list) and len(known_residuals) > 0
-    for field in ("drift_detector_run", "schema_validator_run", "mirror_enforcer_run"):
+    for field in ("drift_detector_run", "schema_validator_run"):
         run = sc.get(field, {}) or {}
         ec = run.get("exit_code")
         if ec in (0, None):
@@ -880,80 +838,12 @@ def validate_learning_layer_stub(repo_root: pathlib.Path, schemas: dict | None =
 
 
 def validate_mirror_structural_block(repo_root: pathlib.Path, ca) -> List[Violation]:
-    """F.1 closure: structural-block check for MP.1 CLAUDE ↔ .geminirules.
+    """RETIRED 2026-05-27 per ND.1 close-out.
 
-    Compares (a) mandatory-reading item count, (b) governance-rebuild banner
-    presence, (c) 'Asymmetries' section header presence on the Gemini side.
-    A substring-only swap (the T.3A / T.3B regime) is caught here even when
-    the original substring-presence check passes.
+    Mirror structural-block check retired along with the broader Gemini
+    collaboration. No-op kept for caller compatibility.
     """
-    violations: List[Violation] = []
-    claude_path = repo_root / "CLAUDE.md"
-    gemini_path = repo_root / ".geminirules"
-    if not (claude_path.exists() and gemini_path.exists()):
-        return violations
-    claude = claude_path.read_text(encoding="utf-8")
-    gemini = gemini_path.read_text(encoding="utf-8")
-
-    # (a) Mandatory-reading item count — count numbered list items under a
-    # heading that matches /Mandatory reading/i within the first 6000 chars
-    def _count_mr_items(s: str) -> int:
-        head = s[:12000]
-        # Find the mandatory-reading section heading
-        m = re.search(r"(?im)^#{1,6}.*mandatory reading.*$", head)
-        if not m:
-            return 0
-        tail = head[m.end():]
-        # Stop at next top-level heading
-        nxt = re.search(r"(?m)^#{1,6}\s", tail)
-        if nxt:
-            tail = tail[: nxt.start()]
-        return len(re.findall(r"(?m)^\s*\d+\.\s+\S", tail))
-
-    c_items = _count_mr_items(claude)
-    g_items = _count_mr_items(gemini)
-    # Gemini-side may carry a subset (per MP.5 asymmetry), so we permit
-    # g_items <= c_items but flag g_items > c_items or g_items == 0 when c_items > 0.
-    if c_items > 0 and g_items == 0:
-        violations.append(Violation(
-            rule="mirror_structural_block_missing[MP.1.mandatory_reading]",
-            severity="HIGH",
-            path=".geminirules",
-            evidence=f"CLAUDE.md has {c_items} mandatory-reading items; .geminirules has 0",
-            suggested_remediation="Re-author .geminirules mandatory-reading list to MP.1 adapted parity",
-        ))
-    elif g_items > c_items:
-        violations.append(Violation(
-            rule="mirror_structural_block_count_exceeds[MP.1.mandatory_reading]",
-            severity="MEDIUM",
-            path=".geminirules",
-            evidence=f".geminirules has {g_items} items; CLAUDE.md has {c_items}",
-            suggested_remediation="Investigate divergence; subset relationship expected",
-        ))
-
-    # (b) Governance-rebuild banner presence on both sides
-    rebuild_re = re.compile(r"(?i)governance\s+rebuild\s+in\s+progress|step\s*0\s*(?:→|->|to)\s*step\s*15")
-    c_banner = bool(rebuild_re.search(claude))
-    g_banner = bool(rebuild_re.search(gemini))
-    if c_banner and not g_banner:
-        violations.append(Violation(
-            rule="mirror_structural_block_missing[MP.1.rebuild_banner]",
-            severity="HIGH",
-            path=".geminirules",
-            evidence="CLAUDE.md carries governance-rebuild banner; .geminirules does not",
-            suggested_remediation="Add adapted-parity rebuild banner to .geminirules",
-        ))
-
-    # (c) Asymmetries section on Gemini side
-    if not re.search(r"(?im)^#{1,6}\s+asymmetries", gemini):
-        violations.append(Violation(
-            rule="mirror_structural_block_missing[MP.1.asymmetries_section]",
-            severity="HIGH",
-            path=".geminirules",
-            evidence="No `Asymmetries` section heading in .geminirules",
-            suggested_remediation="Add an `### Asymmetries` section declaring MP.1 known asymmetries per ND.1",
-        ))
-    return violations
+    return []
 
 
 def validate_dr_entry_yaml(raw: str) -> List[Violation]:
@@ -981,9 +871,8 @@ def validate_dr_entry_yaml(raw: str) -> List[Violation]:
                 evidence=f"Required field `{key}` missing from DR entry",
                 suggested_remediation="Add per GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §K.4",
             ))
-    # Class whitelist
+    # Class whitelist (DIS.class.mirror_desync retired 2026-05-27 per ND.1 close-out)
     allowed_classes = {
-        "DIS.class.mirror_desync",
         "DIS.class.schema_interpretation",
         "DIS.class.derivation_conflict",
         "DIS.class.forensic_conflict",

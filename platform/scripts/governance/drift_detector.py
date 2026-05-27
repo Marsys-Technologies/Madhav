@@ -94,8 +94,7 @@ WHITELIST_TICKETS = {
 # artifacts per protocol §H.3.7. STEP_BRIEFS intentionally scanned.
 GOVERNANCE_SURFACES_GLOBS = [
     "CLAUDE.md",
-    ".geminirules",
-    ".gemini/project_state.md",
+    # .geminirules + .gemini/project_state.md retired 2026-05-27 (ND.1 close-out)
     "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
     "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
     "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
@@ -157,13 +156,15 @@ def _is_whitelisted(path_rel: str) -> Optional[str]:
 # --------------------------------------------------------------------------------------
 
 def check_canonical_path_parity(repo_root: pathlib.Path, ca) -> List[Finding]:
-    """§H.3.1 — CLAUDE.md / .geminirules / CANONICAL_ARTIFACTS canonical-path parity."""
+    """§H.3.1 — CLAUDE.md / CANONICAL_ARTIFACTS canonical-path parity.
+
+    Note: .geminirules mirror leg retired 2026-05-27 per ND.1 close-out.
+    """
     findings: List[Finding] = []
     claude_path = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
-    gemini_path = (repo_root / ".geminirules").read_text(encoding="utf-8")
 
     # Mapping from canonical_id → expected path token the script looks for.
-    # Only IDs that are meant to be surfaced in CLAUDE.md / .geminirules are checked.
+    # Only IDs that are meant to be surfaced in CLAUDE.md are checked.
     surfaced = {
         "MSR": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
         "UCN": "025_HOLISTIC_SYNTHESIS/UCN_v4_0.md",
@@ -188,16 +189,6 @@ def check_canonical_path_parity(repo_root: pathlib.Path, ca) -> List[Finding]:
                 evidence=f"CANONICAL_ARTIFACTS path='{ca_path_value}'; expected='{expected}'",
                 suggested_remediation="Update CANONICAL_ARTIFACTS §1 row OR this script's `surfaced` map",
             ))
-        if cid in {"MSR", "UCN", "CDLM", "CGM", "RM", "PROJECT_ARCHITECTURE", "MACRO_PLAN", "PHASE_B_PLAN"}:
-            if expected not in gemini_path:
-                findings.append(Finding(
-                    cls="canonical_path_disagreement",
-                    severity="HIGH",
-                    canonical_id=cid,
-                    surfaces_involved=[".geminirules", "CANONICAL_ARTIFACTS"],
-                    evidence=f".geminirules does not cite '{expected}'",
-                    suggested_remediation="Mirror-update .geminirules canonical-path block",
-                ))
         # CLAUDE.md's L2.5 / MP / PBP / architecture pointers
         if cid in {"MSR", "UCN", "CDLM", "CGM", "RM", "PROJECT_ARCHITECTURE", "MACRO_PLAN", "PHASE_B_PLAN"}:
             if expected not in claude_path:
@@ -523,9 +514,9 @@ def check_phantom_references(repo_root: pathlib.Path) -> List[Finding]:
 def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
     """§H.3.8 — Unreferenced canonical-artifact scan."""
     findings: List[Finding] = []
-    # Governance surfaces that must mention each canonical artifact by path somewhere
+    # Governance surfaces that must mention each canonical artifact by path somewhere.
+    # Note: .geminirules removed from corpus 2026-05-27 per ND.1 close-out.
     claude = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
-    gemini = (repo_root / ".geminirules").read_text(encoding="utf-8")
     try:
         fr_path = repo_root / "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"
         if not fr_path.exists():
@@ -537,7 +528,7 @@ def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
         fr = fr_path.read_text(encoding="utf-8")
     except (FileNotFoundError, AttributeError):
         fr = ""
-    corpus = claude + "\n" + gemini + "\n" + fr
+    corpus = claude + "\n" + fr
 
     # LEL was cited by Grounding Audit GA.9 as unreferenced in CLAUDE.md. That is
     # expected to be addressed at Step 9. We flag it here as a Step-9-deferred
@@ -555,8 +546,8 @@ def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
                     cls="canonical_unreferenced",
                     severity=severity,
                     canonical_id=cid,
-                    surfaces_involved=["CLAUDE.md", ".geminirules", "FILE_REGISTRY"],
-                    evidence=f"Canonical {cid} ({basename}) not named in CLAUDE.md / .geminirules / FILE_REGISTRY",
+                    surfaces_involved=["CLAUDE.md", "FILE_REGISTRY"],
+                    evidence=f"Canonical {cid} ({basename}) not named in CLAUDE.md / FILE_REGISTRY",
                     suggested_remediation="Step 9 CLAUDE.md rebuild surfaces LEL (GA.9 resolution)",
                     whitelist_ticket="GA.9-deferred-to-step-9",
                 ))
@@ -565,9 +556,9 @@ def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
                     cls="canonical_unreferenced",
                     severity=severity,
                     canonical_id=cid,
-                    surfaces_involved=["CLAUDE.md", ".geminirules", "FILE_REGISTRY"],
+                    surfaces_involved=["CLAUDE.md", "FILE_REGISTRY"],
                     evidence=f"Canonical {cid} ({basename}) not referenced in any surface",
-                    suggested_remediation=f"Register {basename} in CLAUDE.md / .geminirules / FILE_REGISTRY",
+                    suggested_remediation=f"Register {basename} in CLAUDE.md / FILE_REGISTRY",
                 ))
     return findings
 

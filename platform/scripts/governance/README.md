@@ -16,13 +16,13 @@ and unreferenced artifacts.
 ### `schema_validator.py`
 Validates SESSION_OPEN / SESSION_CLOSE artifacts against their JSON schemas.
 
-### `mirror_enforcer.py`
-Checks that Claude-side mirror pairs (CLAUDE.md ↔ .geminirules, etc.) are in sync.
-Exits non-zero on desync per `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §K.3`.
+### `mirror_enforcer.py` (RETIRED 2026-05-27)
+Mirror enforcer retired per native directive ND.1 close-out. Gemini collaboration declared inactive; the script + mirror-pair inventory were removed in the atomic 5-surface retirement PR.
 
 ### `manifest_reader.py`
-Shared library: loads `CAPABILITY_MANIFEST.json` and `manifest_overrides.yaml` mirror pairs,
-returning a `CanonicalArtifacts`-compatible object. Imported by other scripts; not run directly.
+Shared library: loads `CAPABILITY_MANIFEST.json` and `manifest_overrides.yaml`, returning a
+`CanonicalArtifacts`-compatible object. Imported by other scripts; not run directly. The
+`mirror_pairs:` section in overrides retired 2026-05-27 — loader returns an empty dict.
 
 ### `coverage_gate.py` ← **COV-S7**
 CI coverage gate that enforces two invariants:

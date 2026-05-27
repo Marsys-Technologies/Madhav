@@ -209,14 +209,13 @@ session_close:
   # entries and are cross-validated by `validate_close_checklist_yaml()`. The class is
   # declared here so §C/§D/§F extensions have a named handle.
   required_fields:
+    # mirror_updates_propagated + mirror_enforcer_run retired 2026-05-27 per ND.1 close-out.
     - session_id
     - closed_at
     - files_touched
     - registry_updates_made
-    - mirror_updates_propagated
     - drift_detector_run
     - schema_validator_run
-    - mirror_enforcer_run
     - session_log_appended
     - close_criteria_met
     - unblocks
@@ -268,14 +267,14 @@ disagreement_register_entry:
     - protocol_section
     - evidence_pointers
   allowed_classes:
-    - DIS.class.mirror_desync
+    # DIS.class.mirror_desync retired 2026-05-27 per ND.1 close-out.
     - DIS.class.schema_interpretation
     - DIS.class.derivation_conflict
     - DIS.class.forensic_conflict
     - DIS.class.ethics_disagreement
   notes: >
     Closes Step 8 red-team F.3 (no --dr-entry validator mode). The allowed_classes set
-    is the five classes declared in protocol §K.2.
+    is the four classes declared in protocol §K.2 (mirror_desync retired 2026-05-27).
 
 # ------------------------------------------------------------------------------------
 # CURRENT_STATE schema

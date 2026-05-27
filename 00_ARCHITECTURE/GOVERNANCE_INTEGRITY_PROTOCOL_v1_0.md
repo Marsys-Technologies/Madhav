@@ -744,46 +744,43 @@ Closes ND.1 (primary — this is the script-layer implementation that ND.1 deman
 
 ## §K — MULTI-AGENT DISAGREEMENT PROTOCOL
 
+> **Mirror discipline retired 2026-05-27 per native directive ND.1 close-out.** The mirror-desync class (DIS.class.mirror_desync) and §K.3 mirror arbitration sub-protocol below are RETIRED; the remaining four disagreement classes (output_conflict, version_disagreement, scope_disagreement, closure_disagreement) remain in force. References to `mirror_enforcer.py`, `.geminirules`, and Gemini-side surfaces are historical.
+
 ### K.1 — The artifact: `DISAGREEMENT_REGISTER.md` (or `DISAGREEMENT_REGISTER_v1_0.md`)
 
 File path: `00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md`. Produced by Step 7 as a LIVING artifact (per GA naming convention similar to NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md). Rows are appended; rows are never deleted; resolved rows carry a `resolved_on` + `resolution` field.
 
 ### K.2 — Disagreement classes
 
-Five classes, enumerated:
+Four classes, enumerated (mirror-desync RETIRED 2026-05-27):
 
 | Class | Trigger | Example |
 |---|---|---|
-| **DIS.class.output_conflict** | Claude and Gemini reach conflicting conclusions on the same input (a pattern proposal, a reconciliation, a validation verdict) | Gemini proposes pattern P with evidence E; Claude rejects on P1 layer-separation grounds. |
-| **DIS.class.mirror_desync** (per ND.1) | `mirror_enforcer.py` detects a mirror pair out of semantic parity. Treated as an implicit disagreement requiring resolution, not silent overwriting. | `CLAUDE.md` cites MSR_v3_0 at 499 signals; `.geminirules` still cites MSR_v3_0 with no count (or with 500). |
+| **DIS.class.output_conflict** | Two sessions reach conflicting conclusions on the same input (a pattern proposal, a reconciliation, a validation verdict) | Session A proposes pattern P with evidence E; Session B rejects on P1 layer-separation grounds. |
 | **DIS.class.version_disagreement** | Two governance surfaces claim different CURRENT versions for the same canonical artifact | FILE_REGISTRY says MSR_v2_0 CURRENT; CLAUDE.md says MSR_v3_0 CURRENT (GA.1 was exactly this). |
-| **DIS.class.scope_disagreement** | Claude-reconciler and Gemini-connector disagree on whether a proposal is in-scope for the current macro-phase | M2 session; Gemini proposes a pattern that requires M4-era calibration data; Claude rejects scope. |
+| **DIS.class.scope_disagreement** | Two sessions disagree on whether a proposal is in-scope for the current macro-phase | M2 session proposes a pattern that requires M4-era calibration data; another session rejects scope. |
 | **DIS.class.closure_disagreement** | Two sessions disagree on whether a close criterion is met | Session N claims Step X closed; Session N+1 re-opens on grounds of an unmet criterion. |
 
 ### K.3 — Arbitration protocol (per MP §3.4.C, expanded for this spec)
 
-1. **Isolation re-run.** Each agent produces its output in isolation (no sight of the other's output). If isolation re-run reverts the disagreement, the disagreement was an artifact of cross-contamination and is closed with that rationale.
-2. **Claude-reconciler resolution attempt.** Claude reviews both isolation-outputs and attempts resolution with explicit rationale. Resolution is logged alongside the DR entry.
-3. **Mirror-desync special handling (per ND.1)** — for DIS.class.mirror_desync:
-   1. Identify the authoritative side from CANONICAL_ARTIFACTS.
-   2. Update the non-authoritative side via adapted-parity — **not** by overwriting text, but by semantic-content propagation.
-   3. Log the resolution to the DR entry with both sides' sha256-before and sha256-after.
-   4. Re-run `mirror_enforcer.py` to confirm parity; entry closes on clean re-run.
-   5. Silent overwriting — updating the non-authoritative side without logging the divergence — is forbidden.
-4. **Native arbitration.** If Claude-reconciler cannot resolve (or native wishes to arbitrate), escalate. Native arbitration is logged with its own rationale.
-5. **Registration in FALSIFIER_REGISTRY / CONTRADICTION_REGISTRY**, when appropriate. An output-conflict disagreement that reveals a testable falsifier (e.g., P6 UCN-authority conflict on a specific signal) is cross-referenced to FALSIFIER_REGISTRY for future verification.
+1. **Isolation re-run.** Each session produces its output in isolation (no sight of the other's output). If isolation re-run reverts the disagreement, the disagreement was an artifact of cross-contamination and is closed with that rationale.
+2. **Reconciler resolution attempt.** A reconciling session reviews both isolation-outputs and attempts resolution with explicit rationale. Resolution is logged alongside the DR entry.
+3. **Native arbitration.** If the reconciler cannot resolve (or native wishes to arbitrate), escalate. Native arbitration is logged with its own rationale.
+4. **Registration in FALSIFIER_REGISTRY / CONTRADICTION_REGISTRY**, when appropriate. An output-conflict disagreement that reveals a testable falsifier (e.g., P6 UCN-authority conflict on a specific signal) is cross-referenced to FALSIFIER_REGISTRY for future verification.
+
+*Mirror-desync special handling RETIRED 2026-05-27 per native directive ND.1 close-out.*
 
 ### K.4 — DR entry schema
 
 ```yaml
 disagreement_register_entry:
   dr_id: DIS.001, DIS.002, ...              # sequential
-  class: output_conflict|mirror_desync|version_disagreement|scope_disagreement|closure_disagreement
+  class: output_conflict|version_disagreement|scope_disagreement|closure_disagreement
   opened_on: <ISO date>
   opened_by_session: <session_id>
-  parties: [<agent_name>, <agent_name>]     # or [claude-side, gemini-side] for mirror_desync
+  parties: [<session_id>, <session_id>]
   description: string                        # 2–5 sentences; what the disagreement is
-  authoritative_side: claude|gemini|none|n/a # "n/a" for pure output_conflict; "none" for legitimate open conflict
+  authoritative_side: none|n/a               # "n/a" for pure output_conflict; "none" for legitimate open conflict
   evidence_side_a: <excerpt + path or session reference>
   evidence_side_b: <excerpt + path or session reference>
   arbitration_steps_taken:
@@ -799,9 +796,9 @@ disagreement_register_entry:
       linkage: "cause"|"remediation"|"evidence"|"registry_updated"
 ```
 
-### K.5 — Mirror-desync as a listed disagreement class
+### K.5 — (RETIRED 2026-05-27)
 
-Mirror-desync is explicitly a disagreement class (DIS.class.mirror_desync), not a silent-correction event. Per ND.1 consumption-matrix Row 5 (Step 6 obligation): "§K multi-agent disagreement protocol must account for mirror-desync as a disagreement class." This section satisfies that obligation.
+Mirror-desync class and the bidirectional Claude↔Gemini parity discipline that motivated it are retired per native directive ND.1 close-out. Historical entries in `DISAGREEMENT_REGISTER_v1_0.md` carrying class `mirror_desync` remain as audit trail.
 
 ### K.6 — Integration with SESSION_LOG and STEP_LEDGER
 
