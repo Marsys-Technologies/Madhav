@@ -1,4 +1,3 @@
-import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { ConsumeChat } from '@/components/consume/ConsumeChat'
@@ -6,6 +5,7 @@ import { listConversations } from '@/lib/conversations'
 import { configService } from '@/lib/config/index'
 import type { AudienceTier } from '@/lib/prompts/types'
 import type { UIMessage } from 'ai'
+import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 
 /**
  * Build an initialMessages array from ?prompt + ?context URL params.
@@ -93,26 +93,20 @@ export default async function ConsultPage({
   const { id } = await params
   const sp = await searchParams
 
-  const user = await getServerUser()
-  if (!user) redirect('/login')
+  const access = await resolveChartPageAccess(id)
+  if (!access) redirect('/login')
+  if (access.permission === 'deny') redirect('/dashboard')
 
-  const [profileResult, chartResult] = await Promise.all([
-    query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid]),
-    query<{ name: string; birth_date: string; birth_place: string; client_id: string }>(
-      'SELECT name, birth_date, birth_place, client_id FROM charts WHERE id=$1',
-      [id]
-    ),
-  ])
-
-  const profile = profileResult.rows[0] ?? null
+  const chartResult = await query<{ name: string; birth_date: string; birth_place: string; client_id: string }>(
+    'SELECT name, birth_date, birth_place, client_id FROM charts WHERE id=$1',
+    [id]
+  )
   const chart = chartResult.rows[0] ?? null
-
   if (!chart) redirect('/dashboard')
-  if (profile?.role !== 'super_admin' && chart.client_id !== user.uid) redirect('/dashboard')
 
   const [reportsResult, conversations] = await Promise.all([
     query('SELECT * FROM reports WHERE chart_id=$1 ORDER BY domain ASC', [id]),
-    listConversations({ chartId: id, userId: user.uid, module: 'consume' }),
+    listConversations({ chartId: id, userId: access.user.uid, module: 'consume' }),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reports = reportsResult.rows as any[]
@@ -124,7 +118,7 @@ export default async function ConsultPage({
   const slashEnabled = configService.getFlag('R8_SLASH_ENABLED')
   const exportEnabled = configService.getFlag('R8_EXPORT_ENABLED')
   const tokensEnabled = configService.getFlag('R8_TOKENS_ENABLED')
-  const audienceTier: AudienceTier = profile?.role === 'super_admin' ? 'super_admin' : 'client'
+  const audienceTier: AudienceTier = access.role === 'super_admin' ? 'super_admin' : 'client'
 
   // 4C-8: Read ?prompt + ?context for AskMadhavLink deep links from /panchang
   const promptParam = typeof sp['prompt'] === 'string' ? sp['prompt'] : undefined
@@ -132,6 +126,7 @@ export default async function ConsultPage({
   const initialMessages = buildPanchangInitialMessages(promptParam, contextParam)
 
   return (
+    <div data-testid="consult-page-root" data-permission={access.permission}>
     <ConsumeChat
       chartId={id}
       chartName={chart.name}
@@ -153,5 +148,6 @@ export default async function ConsultPage({
       exportEnabled={exportEnabled}
       tokensEnabled={tokensEnabled}
     />
+    </div>
   )
 }

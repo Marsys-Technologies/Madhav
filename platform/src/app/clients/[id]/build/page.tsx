@@ -1,9 +1,9 @@
-import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { fetchBuildState } from '@/lib/build/dataSource'
 import { listConversations } from '@/lib/conversations'
 import { BuildChat } from '@/components/build/BuildChat'
+import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 
 export default async function BuildPage({
   params,
@@ -11,14 +11,12 @@ export default async function BuildPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const user = await getServerUser()
-  if (!user) redirect('/login')
+  const access = await resolveChartPageAccess(id)
+  if (!access) redirect('/login')
 
-  const profileResult = await query<{ role: string }>(
-    'SELECT role FROM profiles WHERE id=$1',
-    [user.uid]
-  )
-  if (profileResult.rows[0]?.role !== 'super_admin') redirect('/dashboard')
+  // Build is owner/super_admin only. View-only grantees are explicitly NOT
+  // allowed in (per Unit 3.consult_nav AC.1 — granted chart shows no Build).
+  if (!access.canBuild) redirect(`/clients/${id}`)
 
   const [layersResult, chartResult, conversations, state] = await Promise.all([
     query<{ layer: string; sublayer: string; status: 'not_started' | 'in_progress' | 'complete' }>(
@@ -29,7 +27,7 @@ export default async function BuildPage({
       'SELECT id, name FROM charts WHERE id=$1',
       [id]
     ),
-    listConversations({ chartId: id, userId: user.uid, module: 'build' }),
+    listConversations({ chartId: id, userId: access.user.uid, module: 'build' }),
     fetchBuildState(),
   ])
 
@@ -46,6 +44,7 @@ export default async function BuildPage({
     }))
 
   return (
+    <div data-testid="build-page-root" data-permission={access.permission}>
     <BuildChat
       chartId={id}
       chartName={chart.name}
@@ -57,5 +56,6 @@ export default async function BuildPage({
       mirrorPairs={state.mirror_pairs}
       layers={layersResult.rows}
     />
+    </div>
   )
 }

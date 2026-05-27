@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
-import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/shared/AppShell'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
+import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { ChartSwitcher } from '@/components/nav/ChartSwitcher'
 
 export async function generateMetadata({
   params,
@@ -24,31 +25,59 @@ export default async function ClientLayout({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const user = await getServerUser()
-  if (!user) redirect('/login')
+  const access = await resolveChartPageAccess(id)
+  if (!access) redirect('/login')
 
-  const [profileResult, chartResult] = await Promise.all([
-    query<{ role: string; status: string }>('SELECT role, status FROM profiles WHERE id=$1', [user.uid]),
-    query<{ client_id: string; name: string }>('SELECT client_id, name FROM charts WHERE id=$1', [id]),
-  ])
+  // 2c-driven authz: 'deny' on a non-granted chart → redirect (effective 403
+  // from the user's perspective; the chart simply does not exist for them).
+  if (access.permission === 'deny') redirect('/dashboard')
 
-  const profile = profileResult.rows[0] ?? null
+  const chartResult = await query<{ name: string | null }>(
+    'SELECT name FROM charts WHERE id=$1',
+    [id]
+  )
   const chart = chartResult.rows[0] ?? null
-
   if (!chart) redirect('/dashboard')
-  if (profile?.role !== 'super_admin' && chart.client_id !== user.uid) redirect('/dashboard')
+
+  // For the switcher dropdown: list every chart the principal can see.
+  const switcherCharts = access.role === 'super_admin'
+    ? (
+        await query<{ id: string; name: string | null }>(
+          'SELECT id, name FROM charts ORDER BY name NULLS LAST, created_at DESC LIMIT 100',
+          []
+        )
+      ).rows
+    : (
+        await query<{ id: string; name: string | null }>(
+          `SELECT c.id, c.name FROM charts c
+           WHERE c.owner_id = $1
+              OR c.client_id = $1
+              OR EXISTS (SELECT 1 FROM chart_grants g WHERE g.chart_id = c.id AND g.principal_id = $1)
+           ORDER BY c.name NULLS LAST, c.created_at DESC LIMIT 100`,
+          [access.user.uid]
+        )
+      ).rows
 
   return (
     <ZoneRoot zone="ink">
       <AppShell
-        user={user}
-        profile={{ role: (profile?.role as 'super_admin' | 'client') ?? 'client', status: 'active' }}
+        user={access.user}
+        profile={{ role: access.role === 'super_admin' ? 'super_admin' : 'client', status: 'active' }}
         breadcrumb={[
           { label: 'Roster', href: '/dashboard' },
           { label: chart.name ?? id, href: `/clients/${id}`, current: true },
         ]}
       >
-        {children}
+        <div data-testid="chart-page-frame" data-permission={access.permission} data-chart-id={id}>
+          <div className="border-b border-[rgba(212,175,55,0.14)] px-4 py-2 flex items-center justify-between">
+            <ChartSwitcher
+              currentChartId={id}
+              charts={switcherCharts}
+            />
+            {/* Tier/depth selectors intentionally absent — 3.tier_excision is a concurrent unit. */}
+          </div>
+          {children}
+        </div>
       </AppShell>
     </ZoneRoot>
   )
