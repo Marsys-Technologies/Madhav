@@ -24,6 +24,7 @@ import {
   Settings2,
   type LucideIcon,
 } from 'lucide-react'
+import { normalizeRole } from '@/components/nav/role-gates'
 
 // Lunar crescent SVG icon for Panchang nav entry — gold tint matching brand #fce29a
 function MoonCrescentIcon({ className }: { className?: string }) {
@@ -53,14 +54,18 @@ interface AppShellRailProps {
   profile: { role: 'super_admin' | 'admin' | 'client'; status?: string }
 }
 
+// Aligned with components/nav/role-gates.NAV_ITEMS (single source of truth for
+// visibility). Roles here are the legacy union including 'admin' + 'client'
+// for backwards-compat with profile.role values still in flight during 2c
+// cutover; runtime normalization collapses 'client' → 'guest'.
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Roster',      icon: Users,            roles: ['super_admin', 'admin', 'client'] },
-  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'admin', 'client'] },
+  { href: '/dashboard',   label: 'Roster',      icon: Users,            roles: ['super_admin', 'admin', 'client', 'guest'] },
+  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'admin', 'client', 'guest'] },
   { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,            roles: ['super_admin'] },
   { href: '/audit',       label: 'Audit',       icon: FileText,         roles: ['super_admin'] },
   { href: '/aiops',       label: 'AIOps',       icon: Bot,              roles: ['super_admin'] },
   { href: '/performance', label: 'Performance', icon: ChartColumn,      roles: ['super_admin'] },
-  { href: '/admin',       label: 'Admin',       icon: Settings2,        roles: ['super_admin', 'admin'] },
+  { href: '/admin',       label: 'Admin',       icon: Settings2,        roles: ['super_admin'] },
 ]
 
 export function AppShellRail({ user, profile }: AppShellRailProps) {
@@ -75,8 +80,10 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
     router.refresh()
   }
 
+  // Normalize legacy 'client' → 'guest' (per Unit 2c) before role-gating.
+  const effectiveRole = normalizeRole(profile.role)
   const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(profile.role)
+    (item.roles as readonly string[]).includes(effectiveRole)
   )
 
   const userInitial = (
