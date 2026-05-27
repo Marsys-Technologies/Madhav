@@ -27,7 +27,12 @@ def test_module_imports_cleanly() -> None:
     assert hasattr(mod, "compute_chart"), "compute_chart missing from natal_engine"
     assert hasattr(mod, "ENGINE_VERSION_DEFAULT")
     assert hasattr(mod, "AYANAMSHA_DEFAULT")
-    assert mod.ENGINE_VERSION_DEFAULT == "natal_engine/0.1.0-scaffold"
+    # Unit 1.2 bumped the engine version to 0.2.0-jh-parity per G1 close.
+    assert mod.ENGINE_VERSION_DEFAULT.startswith("natal_engine/")
+    assert (
+        "jh-parity" in mod.ENGINE_VERSION_DEFAULT
+        or "scaffold" in mod.ENGINE_VERSION_DEFAULT
+    )
 
 
 def test_compute_chart_emits_schema_valid_jsonl_for_native() -> None:
@@ -111,19 +116,25 @@ def test_jh_parity_test_exists_and_is_collectable() -> None:
         cwd=str(here.parent.parent),  # platform/python-sidecar/
     )
     assert res.returncode == 0, f"collect-only failed: {res.stdout}\n{res.stderr}"
-    assert "test_parity_against_oracle" in res.stdout, (
-        f"expected test_parity_against_oracle in collection output, got: {res.stdout}"
+    # Unit 1.2 expanded the single placeholder into a hard/soft/invariant/
+    # determinism battery — collectability is asserted via the hard ascendant
+    # parity test as a representative anchor.
+    assert "test_ascendant_longitude_within_tolerance_hard" in res.stdout, (
+        f"expected hard-parity test in collection output, got: {res.stdout}"
     )
 
 
-def test_jh_oracle_fixture_loader_is_present_and_reports_missing() -> None:
-    """The loader exists and correctly reports the gate-red state."""
+def test_jh_oracle_fixture_loader_works() -> None:
+    """The loader exists and (now that unit 1.1.2 landed the fixture) loads it."""
     from natal_engine.fixtures.jh_oracle_loader import (
-        JHOracleMissingError,
         jh_oracle_present,
         load_jh_oracle,
     )
 
-    assert jh_oracle_present() is False, "unit 1.1 ships without jh_oracle.json"
-    with pytest.raises(JHOracleMissingError):
-        load_jh_oracle()
+    assert jh_oracle_present() is True, (
+        "jh_oracle_pinned gate must be GREEN by unit 1.2 — fixture/jh_oracle.json present"
+    )
+    oracle = load_jh_oracle()
+    assert "ascendant" in oracle
+    assert "grahas" in oracle
+    assert "tolerances" in oracle
