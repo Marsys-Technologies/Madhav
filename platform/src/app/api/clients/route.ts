@@ -1,4 +1,4 @@
-import { getServerUser, adminAuth } from '@/lib/firebase/server'
+import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { NextResponse } from 'next/server'
 import { res } from '@/lib/errors'
@@ -36,33 +36,34 @@ export async function POST(request: Request) {
   } catch {
     return res.badRequest('invalid request body')
   }
-  const { name, birth_date, birth_time, birth_place, birth_lat, birth_lng, client_email } = body as {
+  const { name, birth_date, birth_time, birth_place, birth_lat, birth_lng, subject_name } = body as {
     name?: string; birth_date?: string; birth_time?: string; birth_place?: string;
-    birth_lat?: string; birth_lng?: string; client_email?: string
+    birth_lat?: string; birth_lng?: string; subject_name?: string
   }
 
-  if (!name || !birth_date || !birth_time || !birth_place || !client_email) {
+  if (!name || !birth_date || !birth_time || !birth_place) {
     return res.badRequest('Missing required fields')
   }
 
-  // Create Firebase user account for the client
-  let firebaseUser: Awaited<ReturnType<typeof adminAuth.createUser>>
-  try {
-    firebaseUser = await adminAuth.createUser({ email: client_email, emailVerified: false })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not create client user'
-    return res.internal(message)
-  }
-
-  const client_id = firebaseUser.uid
+  // Unit 2c (Stream B): owner/subject split.
+  //   - owner_id = the super_admin creating the chart (the guest who owns it).
+  //   - subject_name = the chart subject's name (the person whose birth data this is).
+  // No Firebase user minted per chart — clients are birth-data, not logins.
+  // client_id is retained during the cutover window and seeded from owner_id so
+  // any reads still using the legacy column resolve to the same Firebase UID.
+  const owner_id = user.uid
+  const client_id = user.uid // legacy column; identical to owner_id this cutover window.
+  const subjectName = subject_name ?? name
 
   let chart: Record<string, unknown>
   try {
     const { rows } = await query(
-      'INSERT INTO charts (client_id, name, birth_date, birth_time, birth_place, birth_lat, birth_lng) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+      'INSERT INTO charts (client_id, owner_id, name, subject_name, birth_date, birth_time, birth_place, birth_lat, birth_lng) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
       [
         client_id,
+        owner_id,
         name,
+        subjectName,
         birth_date,
         birth_time,
         birth_place,
@@ -72,7 +73,6 @@ export async function POST(request: Request) {
     )
     chart = rows[0]
   } catch (err) {
-    await adminAuth.deleteUser(client_id).catch(() => {})
     const message = err instanceof Error ? err.message : 'Chart insert failed.'
     return res.internal(message)
   }
@@ -95,12 +95,10 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     await query('DELETE FROM charts WHERE id=$1', [chart.id]).catch(() => {})
-    await adminAuth.deleteUser(client_id).catch(() => {})
     const message = err instanceof Error ? err.message : 'Layer insert failed.'
     return res.internal(message)
   }
 
-  // Generate a password-reset link the admin can share with the client to let them set their password.
-  const inviteLink = await adminAuth.generatePasswordResetLink(client_email).catch(() => null)
-  return NextResponse.json({ ...chart, inviteLink })
+  // No invite link — chart subjects are not logins.
+  return NextResponse.json(chart)
 }
