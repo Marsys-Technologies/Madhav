@@ -20,3 +20,20 @@ export type {
   ResolveContextInput,
   ResolveContextResult,
 } from './types'
+export {
+  runOnFinishWriteThrough,
+} from './onfinish_writethrough'
+export type {
+  OnFinishWriteThroughOpts,
+  OnFinishWriteThroughDeps,
+  CitationGateOutcome,
+  WriteThroughWriter,
+  PersistenceClient,
+  PricingClient,
+  ContextAssemblyLogWriter,
+  MsrSnippetResolver,
+  PendingStreamWriterLike,
+  TitleClient,
+  PredictionLedgerAppender,
+  SynthUsage,
+} from './onfinish_writethrough'

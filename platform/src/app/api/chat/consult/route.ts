@@ -116,6 +116,7 @@ import {
   selectPipelineForRequest,
   isPipelineSelectorEnabled,
 } from '@/lib/pipelines'
+import { runOnFinishWriteThrough } from '@/lib/pipelines/shared'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
 
@@ -1215,9 +1216,16 @@ export async function POST(request: Request) {
           } catch (err) {
             console.error('[consume:adapter] citation gate error', err)
           }
-          // Write-through persistence: upsert all messages into conversation_messages.
-          // This mirrors the orchestrator path's onFinish persistence block so that
-          // adapter-routed conversations are restorable from the sidebar.
+          // ── 3.cutover (G5b_onfinish) — shared onFinish write-through ─────
+          // Routes the adapter path's onFinish stage through the same helper
+          // the legacy synthesis-orchestrator path uses (parity is enforced by
+          // onfinish_parity.golden.test.ts). Closes the prior adapter gaps:
+          //   • data-cost emit (Observatory cost tile)
+          //   • lastAssistantMetadata in persistence (R10 PerMessageDetailsDrawer)
+          //   • per-citation data-citation parts (β4 SIG.MSR enrichment)
+          //   • data-correction / data-out-of-domain markers (D.3)
+          //   • pendingStreamWriter.clear() (γ7)
+          //   • blind-mode prediction-ledger append (PPL)
           if (adapterAccumulatedText) {
             // Assign fresh UUIDs for all messages — client-side message IDs
             // (e.g. "yhJSXqHyqhawY9an") are not valid UUIDs and would fail
@@ -1230,38 +1238,7 @@ export async function POST(request: Request) {
                 parts: [{ type: 'text', text: adapterAccumulatedText }],
               } as UIMessage,
             ]
-            const adapterWriteResult = await writeConversationMessages({
-              conversationId: finalConversationId,
-              messages: persistMsgs,
-            }).catch((err: unknown) => {
-              console.warn('[adapter-dispatch] persistence failed', finalConversationId, err)
-              return null
-            })
-            if (adapterWriteResult) {
-              writer.write({
-                type: 'data-persistence',
-                data: persistencePart({
-                  conversation_id: finalConversationId,
-                  message_id: adapterWriteResult.messageIds.at(-1) ?? '',
-                  status: adapterWriteResult.verified ? 'ok' : 'error',
-                }),
-              })
-            }
-            if (isFirstTurn) {
-              writer.write({ type: 'data-title', data: titlePart({ conversation_id: finalConversationId }) })
-              const titleUserMsgs = (messages as UIMessage[]).filter(m => m.role === 'user').slice(-1)
-              generateConversationTitle(titleUserMsgs, {
-                queryId,
-                conversationId: finalConversationId,
-                userId: user.uid,
-              }).then((title: string | null) => {
-                if (title) void updateConversationTitle(finalConversationId, title)
-              }).catch(() => { /* non-fatal */ })
-            }
-
-            // onFinish parity — MON-8: context_assembly_log write (mirrors legacy onFinish block).
-            // Counts L1/L2.5/L4/vector/CGM tokens from the floor tool results that were
-            // pre-executed above the adapter dispatch block (B.11 floor contract).
+            // Per-layer token aggregation (closure over validToolResults).
             const tokensForAdapter = (predicate: (toolName: string) => boolean): number => {
               let chars = 0
               for (const tb of validToolResults) {
@@ -1270,45 +1247,107 @@ export async function POST(request: Request) {
               }
               return Math.ceil(chars / 4)
             }
-            void writeContextAssemblyLog({
-              query_id: queryId,
-              l1_tokens: tokensForAdapter(n => [
-                'chart_facts_query', 'divisional_query', 'kp_query',
-                'manifest_query', 'query_kp_ruling_planets', 'query_varshaphala',
-                'saham_query', 'temporal', 'timeline_query',
-              ].includes(n)),
-              l2_5_signal_tokens: tokensForAdapter(n => [
-                'msr_sql', 'query_msr_aggregate', 'query_signal_state',
-              ].includes(n)),
-              l2_5_pattern_tokens: tokensForAdapter(n => [
-                'pattern_register', 'resonance_register',
-                'contradiction_register', 'cluster_atlas',
-              ].includes(n)),
-              l4_tokens: tokensForAdapter(n => ['remedial_codex_query', 'domain_report_query'].includes(n)),
-              vector_tokens: tokensForAdapter(n => n === 'vector_search'),
-              cgm_tokens: tokensForAdapter(n => n === 'cgm_graph_walk'),
-              synthesis_model_id: modelId,
-              model_max_context: modelMeta.maxInputTokens ?? null,
-              b3_compliant: adapterCitationGateResult === 'PASS',
-              citation_count: adapterCitationL1Count,
-              verified_citations: adapterCitationL2Verified,
-            })
-
-            // onFinish parity — γ3: PPL prediction candidate detection (mirrors legacy onFinish block).
-            // Scans adapter-accumulated text for time-indexed prediction markers.
-            const predCandidates = detectPredictionCandidates(adapterAccumulatedText)
-              .filter(c => c.score >= 0.5)
-            for (const candidate of predCandidates) {
-              writer.write({
-                type: 'data-prediction-candidate',
-                data: predictionCandidatePart({
-                  text: candidate.text,
-                  offset: candidate.offset,
-                  score: candidate.score,
-                  horizon: candidate.horizon,
-                }),
-              })
+            const lastUserAdapter = (messages as UIMessage[])
+              .filter(m => m.role === 'user').at(-1)
+            const lastUserAdapterText = ((lastUserAdapter?.parts ?? []) as Array<{ type: string; text?: string }>)
+              .filter(p => p.type === 'text')
+              .map(p => p.text ?? '')
+              .join(' ')
+              .trim()
+            const adapterLastAssistantMetadata: Record<string, unknown> = {
+              custom: {
+                model: modelId,
+                queryId,
+                planning_model_id: plannerModelId,
+                planning_latency_ms: plannerLatencyMs,
+                disclosure_tier: audienceTier,
+                query_class: plan.query_class,
+                stack: selectedStack,
+                style,
+                pipeline: 'v2-adapter',
+                conversationId: finalConversationId,
+              },
             }
+            await runOnFinishWriteThrough(
+              {
+                pipelineKind: 'agentic',
+                queryId,
+                conversationId: finalConversationId,
+                chartId,
+                userUid: user.uid,
+                isFirstTurn,
+                lelContextEnabled,
+                finalMessages: persistMsgs,
+                assistantText: adapterAccumulatedText,
+                lastUserQuery: lastUserAdapterText,
+                lastAssistantMetadata: adapterLastAssistantMetadata,
+                modelId,
+                modelMaxContext: modelMeta.maxInputTokens ?? null,
+                // Adapter path has no usageHolder — cost emit is suppressed.
+                synthUsage: null,
+                synthesisElapsedMs: Date.now() - adapterStartMs,
+                citationGate: {
+                  gateResult: adapterCitationGateResult,
+                  layer1Count: adapterCitationL1Count,
+                  layer2Verified: adapterCitationL2Verified,
+                },
+                contextAssembly: {
+                  l1_tokens: tokensForAdapter(n => [
+                    'chart_facts_query', 'divisional_query', 'kp_query',
+                    'manifest_query', 'query_kp_ruling_planets', 'query_varshaphala',
+                    'saham_query', 'temporal', 'timeline_query',
+                  ].includes(n)),
+                  l2_5_signal_tokens: tokensForAdapter(n => [
+                    'msr_sql', 'query_msr_aggregate', 'query_signal_state',
+                  ].includes(n)),
+                  l2_5_pattern_tokens: tokensForAdapter(n => [
+                    'pattern_register', 'resonance_register',
+                    'contradiction_register', 'cluster_atlas',
+                  ].includes(n)),
+                  l4_tokens: tokensForAdapter(n => ['remedial_codex_query', 'domain_report_query'].includes(n)),
+                  vector_tokens: tokensForAdapter(n => n === 'vector_search'),
+                  cgm_tokens: tokensForAdapter(n => n === 'cgm_graph_walk'),
+                },
+                writer,
+                emit,
+              },
+              {
+                persistence: {
+                  writeMessages: (args) => writeConversationMessages(args),
+                },
+                pricing: {
+                  getPricing: (mid) => getModelPricingSync(mid),
+                  computeUsd: (pricing, tokens) =>
+                    computeCostUsd(pricing as Parameters<typeof computeCostUsd>[0], tokens),
+                },
+                contextAssemblyLog: (entry) => { void writeContextAssemblyLog(entry) },
+                fetchMsrSnippets: (ids) => fetchMsrSnippets(ids),
+                pendingStreamWriter,
+                title: {
+                  generate: (msgs, ctx) => generateConversationTitle(msgs, ctx),
+                  update: (cid, t) => updateConversationTitle(cid, t).then(() => undefined),
+                },
+                predictionLedger: async (entry) => {
+                  try {
+                    const fs = await import('fs/promises')
+                    const path = await import('path')
+                    const ledgerPath = path.join(process.cwd(), '..', '06_LEARNING_LAYER',
+                      'PREDICTION_LEDGER', 'prediction_ledger.jsonl')
+                    const line = JSON.stringify({
+                      ...entry,
+                      outcome: null,
+                      confidence: null,
+                      horizon: null,
+                      falsifier: null,
+                      note: 'Auto-logged blind-mode query. Outcome/confidence/horizon/falsifier to be filled by native.',
+                    }) + '\n'
+                    await fs.appendFile(ledgerPath, line, 'utf8')
+                  } catch {
+                    // Non-fatal — prediction ledger write failure must not block the response.
+                  }
+                },
+              },
+            )
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           writer.write({ type: 'finish', finishReason: 'stop' } as any)
