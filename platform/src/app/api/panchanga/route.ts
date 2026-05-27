@@ -1,50 +1,26 @@
 /**
- * /api/panchanga — Next.js API route that proxies the Python sidecar's
- * /api/compute/panchanga endpoint for client-side fetches.
+ * Deprecation alias — unit 0a.1.2 (panchanga → panchang merge).
  *
- * Used by usePanchangDay (TanStack Query hook) in the /panchang UI.
- * Server-side SSR path calls queryPanchanga directly (no HTTP hop needed).
- *
- * Phase: 4C-4-S1
+ * The /api/panchanga tree was merged into the canonical /api/panchang tree.
+ * This stub returns 308 Permanent Redirect to /api/panchang for one release
+ * so any in-flight client still calling the old path doesn't break. Remove
+ * after one release cycle once telemetry confirms no traffic.
  */
-import { getServerUser } from '@/lib/firebase/server'
-import { res } from '@/lib/errors'
+const TARGET = '/api/panchang'
 
-const SIDECAR_KEY = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+function redirect(request: Request): Response {
+  const url = new URL(request.url)
+  url.pathname = TARGET
+  return new Response(null, {
+    status: 308,
+    headers: { Location: url.toString() },
+  })
+}
+
+export async function GET(request: Request) {
+  return redirect(request)
+}
 
 export async function POST(request: Request) {
-  const user = await getServerUser()
-  if (!user) return res.unauthenticated()
-
-  const sidecarUrl = process.env.PYTHON_SIDECAR_URL
-  if (!sidecarUrl) return res.sidecarDown()
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return res.badRequest('invalid request body')
-  }
-
-  let sidecarResponse: Response
-  try {
-    sidecarResponse = await fetch(`${sidecarUrl}/api/compute/panchanga`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': SIDECAR_KEY,
-      },
-      body: JSON.stringify(body),
-    })
-  } catch {
-    return res.sidecarDown()
-  }
-
-  if (!sidecarResponse.ok) {
-    if (sidecarResponse.status >= 500) return res.sidecarDown()
-    return res.internal('Panchang compute error')
-  }
-
-  const data = await sidecarResponse.json()
-  return Response.json(data)
+  return redirect(request)
 }
