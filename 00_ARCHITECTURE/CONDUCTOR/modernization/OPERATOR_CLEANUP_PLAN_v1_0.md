@@ -33,7 +33,7 @@ into them.
 - Cloud SQL Auth Proxy (port 5433) reachable for staging + prod, OR the `@google-cloud/cloud-sql-connector`
   flow works from the host.
 - Env vars present for the live-eval / smoke step: `SMOKE_SESSION_COOKIE`, `SMOKE_CHART_ID`.
-- Repo on `main` at HEAD `ab7e1a95` (the seal commit). `git status` clean.
+- Repo on `main`, HEAD at or descended from `ab7e1a95` (the seal commit; verify via `git merge-base --is-ancestor ab7e1a95 HEAD`). `git status` clean.
 - Sufficient Cloud SQL quota in `asia-south1` for the upgraded tier + HA standby.
 
 If any prereq is missing, the kickoff prompt writes `OPERATOR_CLEANUP_HALT_LOG.md` and stops.

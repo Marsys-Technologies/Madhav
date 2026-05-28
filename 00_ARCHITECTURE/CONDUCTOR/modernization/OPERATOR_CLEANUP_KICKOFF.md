@@ -13,10 +13,10 @@ next pending phase.
 You are executing the post-seal operator cleanup for the MARSYS-JIS Platform Modernization (sealed at main HEAD ab7e1a95). Run with bypass perms / --dangerously-skip-permissions. NO human approval gates between phases — automated smoke + auto-rollback + halt-on-red handle safety. The plan you implement is 00_ARCHITECTURE/CONDUCTOR/modernization/OPERATOR_CLEANUP_PLAN_v1_0.md (v1.1) — read it in full first.
 
 PHASE 0 — PREREQS:
-1. Read the plan in full. Confirm prereqs (§1): on main at ab7e1a95, gcloud authenticated to madhav-astrology asia-south1, terraform installed + initialized, Cloud SQL access (staging + prod), SMOKE_SESSION_COOKIE + SMOKE_CHART_ID present, git clean, sufficient Cloud SQL quota in asia-south1 for the upgraded tier + HA standby. If any fails → write OPERATOR_CLEANUP_HALT_LOG.md and STOP.
+1. Read the plan in full. Confirm prereqs (§1): on `main` AT OR DESCENDED FROM `ab7e1a95` (the seal commit; verify with `git merge-base --is-ancestor ab7e1a95 HEAD`), gcloud authenticated to madhav-astrology asia-south1, terraform installed + initialized in each `infra/<module>/`, Cloud SQL access (staging + prod), SMOKE_SESSION_COOKIE + SMOKE_CHART_ID present, git tree clean, sufficient Cloud SQL quota in asia-south1 for the upgraded tier + HA standby. If any fails → write OPERATOR_CLEANUP_HALT_LOG.md and STOP.
 
 PHASE A — SAFETY NET:
-2. git tag platform-modernization-sealed-v1.0 ab7e1a95 && git push origin platform-modernization-sealed-v1.0.
+2. Idempotent: `git rev-parse platform-modernization-sealed-v1.0 >/dev/null 2>&1 || (git tag platform-modernization-sealed-v1.0 ab7e1a95 && git push origin platform-modernization-sealed-v1.0)`. Tag must point at `ab7e1a95` regardless of current HEAD.
 
 PHASE B — env-var cleanup (seal #1):
 3. gcloud run services update amjis-web --region asia-south1 --remove-env-vars MARSYS_FLAG_PIPELINE_SELECTOR,MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED. Verify with describe; post-deploy smoke; auto-rollback if red.
