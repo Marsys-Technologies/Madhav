@@ -27,7 +27,7 @@ gates:
   G2_authz_live:    { status: PENDING, check: "pnpm vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts" }
   G3_contract:      { status: PENDING, check: "pnpm vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts" }
   G4_no_native_lit: { status: PENDING, check: "platform/scripts/governance/assert_no_native_literal.sh" }
-  G5b_onfinish:     { status: PENDING, check: "pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts" }
+  G5b_onfinish:     { status: GREEN,   check: "pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts", note: "Set by 3.cutover 2026-05-28; 18/18 golden tests; runOnFinishWriteThrough closes 6 parity gaps. NB: run from platform/ for @/ alias resolution." }
   G6_tool_coverage: { status: PENDING, check: "pnpm vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts", note: "100% asset coverage + 0 orphaned tools + 0 redundant duplicates (data_coverage tool)" }
 
 units:

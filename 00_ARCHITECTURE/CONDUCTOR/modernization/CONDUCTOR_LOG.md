@@ -144,3 +144,51 @@
 - **Optional, deferred from Batch 1+3:** apply migrations 081–090 to staging DB. Migration 090 (drop `mcp_api_keys.audience_tier`) is the only irreversible op — run after a green post-cutover window.
 - **Optional, deferred from Batch 1:** rotate `amjis-db-password` Secret Manager entry.
 
+
+## Batch 4 — 2026-05-28 (re-kick)
+
+### Bootstrap (re-kick)
+- 02:30 IST · on `main` (HEAD `6734696d` from Batch 3 close). Pending untracked: 4 new Batch-4 briefs (`BRIEF_3_cutover.md`, `BRIEF_3_legacy_delete.md`, `BRIEF_hygiene_test_chart_id.md`, `BRIEF_hygiene_flag_cleanup.md`) + amended `session_queue.yaml` adding 4 unit entries (cutover, legacy_delete, hygiene.test_chart_id, hygiene.flag_cleanup). Other untracked items (CROSS_CHANNEL_PARITY_AUDIT_..., MARS_DIGNITY_..., accuracy/bench probes, platform-mcp/scripts/probe_errors.ts) NOT in scope per operator instruction.
+- 02:30 IST · `git add 00_ARCHITECTURE && git commit` → `5986d019` ("batch4-prep: cutover + legacy_delete + 2 hygiene briefs + queue") landed on main.
+- 02:31 IST · Worktrees A/B/C synced to main `5986d019` via `git merge main --no-edit` from each (no conflicts; merge commits land in each stream branch).
+
+### Batch 4 wave dispatch — hygiene.test_chart_id (C) + hygiene.flag_cleanup (B) + 3.cutover (A) in parallel
+- 02:32 IST · 3 sub-agents dispatched concurrently (single Agent tool-call block). hygiene.test_chart_id marked HIGH priority (fixes 20 failing main tests carried from 2a.7). 3.cutover is the prod cutover (on_red=halt_queue).
+- **hygiene.test_chart_id** (Stream C) — GREEN — commit `d4312ae4` on `prog/stream-c`. 3 test files edited (`query_kp_ruling_planets.test.ts` + `query_signal_state.test.ts` + `query_varshaphala.test.ts`) — explicit `chart_id: 'abhisek_mohanty_primary'` threaded per call site (+ `ayanamsha: 'lahiri'` where ayanamsha-dependent). No `NATIVE_CHART_ID` / `DEFAULT_CHART_ID` constant reintroduced. Full retrieve suite 99 tests pass, 0 failures (baseline was 79 pass / 20 fail). G4 sanity grep clean (only docstring describing the ban). Cherry-picked to main as `195f4cac`.
+- **hygiene.flag_cleanup** (Stream B) — GREEN — commit `f072adbb` on `prog/stream-b`. Pure deletion: `LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED` removed from `platform/src/lib/config/feature_flags.ts` (type union + DEFAULT_FLAGS entry + comment, 8 LoC); deploy.yml + .github had zero hits (flag was never baked). Post-cleanup grep empty. `naming_lint.py` exit 0; `drift_detector.py` exit 0 (residuals-only). Cherry-picked to main as `7648d3ba`.
+- **3.cutover** (Stream A) — GREEN — commits `a08befa5` + `c7e1841f` on `prog/stream-a`. **Identified 6 onFinish parity gaps** between adapter dispatch (`route.ts` ~L1218–1312 gated by `MARSYS_FLAG_R11V2_USE_ADAPTERS`) and legacy synthesis-orchestrator onFinish (~L1483–1810): (1) observatory `data-cost` emit; (2) `lastAssistantMetadata` persistence carry; (3) per-citation `data-citation` β4-style SIG.MSR enrichment parts; (4) `data-correction`/`data-out-of-domain` D.3 marker parts; (5) `pendingStreamWriter.clear()` γ7; (6) blind-mode PPL ledger append (`!lelContextEnabled`). **Mechanism:** extracted both paths' write-through into a single pure helper `runOnFinishWriteThrough` at `platform/src/lib/pipelines/shared/onfinish_writethrough.ts` (+335 LoC) with all I/O injected via `deps` argument; adapter path now calls the helper. Golden test at `platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts` (8 GOLDEN deep-equal + 7 SHAPE per-gap + 3 GUARD = 18 tests) — **18/18 GREEN, sets G5b_onfinish.** Selector default flip: `platform/src/lib/pipelines/selector.ts:81–95` env-var fallback inverted from `=== 'true'` (default OFF) to `!== 'false'` (default ON); operator opts out with `MARSYS_FLAG_PIPELINE_SELECTOR=false`. Also baked `MARSYS_FLAG_PIPELINE_SELECTOR=true` in `.github/workflows/deploy.yml:99` per established convention. Legacy reachability preserved at code level (legacy `else` branch not deleted — that lands in 3.legacy_delete). Broader chat suite: 36/36 GREEN (B.11 from 0b.1 + consult rename aliases + new golden parity tests). Edits landed in `consult/route.ts` (cutover work is in the active chat route post-0a.1 consume→consult rename, not the brief-stale `consume/route.ts` reference). Cherry-picked to main as `957dbbf9` + `075e9dc3`.
+- 02:50 IST · emit_gate flips: `G5b_onfinish=GREEN`. units hygiene.test_chart_id / hygiene.flag_cleanup / 3.cutover → done.
+
+### Gate verification on main post-cutover
+- 02:51 IST · `cd platform && npx vitest run src/app/api/chat/__tests__/onfinish_parity.golden.test.ts` → 18/18 GREEN. (Run from `platform/` because `@/` aliases resolve from `platform/tsconfig.json`; check_command in queue runs from repo root and the alias resolution differs — captured for queue revision.)
+
+### Wave dispatch — 3.legacy_delete (A, sequential after G5b GREEN)
+- 02:55 IST · Stream A re-synced to main `075e9dc3` via `git merge main --no-edit` (merge commit `27ca6a26`). 3.legacy_delete dispatched on prog/stream-a.
+- 03:30 IST · **First dispatch hit Stream-idle timeout** at sub-agent's tool-use 13 (during long route.ts investigation phase). 0 commits landed. State clean.
+- 03:32 IST · **Re-dispatched** 3.legacy_delete with tighter playbook + explicit trusted-context block (G5b GREEN, cutover commits, consult/route.ts is active surface). 96 tool calls; commits 1/3 + 2/3 landed cleanly; agent hit second stream-idle timeout mid-commit-3.
+- 03:33 IST · Conductor finalized commit 3/3 directly: inspected pending changes (4 files: deploy.yml, consult/route.ts, SettingsDropdown.tsx, selector.ts) — coherent flag-collapse work; ran `cd platform && npx vitest run src/app/api/chat` → 36/36 GREEN; committed as `55e92019` (`3.legacy_delete (3/3): collapse pipeline-selector flag`).
+- **3.legacy_delete commit chain on prog/stream-a:** `315da2c9` (1/3 trio + legacy else branch — 12 files changed, 3,893 deletions incl. 6 legacy test files) + `31d50ee3` (2/3 /api/mcp/execute + client.ts dead callers — 3 files, 897 deletions) + `55e92019` (3/3 collapse pipeline-selector flag — 4 files, 36/65 ins/del).
+- Sanity grep on main post cherry-pick: `grep -rn "createOrchestrator\|single_model_strategy\|synthesisRequest\|callPlatformPlan" platform/src platform-mcp/src | grep -v "synthesis/panel/"` → only docstring/comment references remain (in checkpoint_dasha.ts, bundle_hydrator.ts, models/resolver.ts, synthesis/types.ts, adapters/types.ts, router/types.ts, README — all comments referencing the now-gone modules). No live code dependencies. `ls platform/src/lib/synthesis/panel/` → ACTIVE panel directory intact (adjudicator.ts, concurrent_retry.ts, default_slate.ts, divergence_detector.ts, member_runner.ts, …).
+- Cherry-picked to main as `934085a2` + `9f677e15` + `aa7aaca2`. Re-verified `cd platform && npx vitest run src/app/api/chat` on main → 36/36 GREEN. unit 3.legacy_delete → done.
+
+### Batch 4 close
+- 03:45 IST · 4 units green (hygiene.test_chart_id, hygiene.flag_cleanup, 3.cutover, 3.legacy_delete). 4 sub-agents spawned (+1 re-dispatch on stream-idle). 6 commits cherry-picked across 7 individual commits (excluding state-update commits). main HEAD: `aa7aaca2`.
+- Gate progression: 7/8 GREEN → **8/8 GREEN** (G5b set in 3.cutover; all hard gates closed).
+- Net deletions across Batch 4: ~4,800 LoC (legacy trio + 6 legacy test files + /api/mcp/execute + client.ts dead callers + flag collapse) vs ~700 LoC additions (onfinish_writethrough helper + golden test + 3 hygiene test fixture threadings). Strong net simplification.
+- **Carry-forward residuals:**
+  - Docstring/comment references to deleted modules (single_model_strategy, panel_strategy, createOrchestrator) remain in adapters/types.ts, router/types.ts, models/resolver.ts, checkpoint_dasha.ts, bundle_hydrator.ts, synthesis/types.ts, src/__tests__/system/README.md — pure documentation drift, not live code dependencies. Cleanup queued for next-refactor wave.
+  - `selectPipelineForRequest` + per-kind `pipelines/{single_pass,agentic}/` modules + deprecated `isPipelineSelectorEnabled()` constant-true shim — staged scaffolding for the next refactor wave that will move pipeline.run() bodies out of route.ts. Intentional residual.
+  - Brief glob staleness: 3.cutover + 3.legacy_delete brief may_touch listed `consume/route.ts` but the active route is `consult/route.ts` post-0a.1 rename. Brief-stale, not scope-violating.
+  - Queue check_command for G5b runs `npx vitest …` from repo root but `@/` aliases require running from `platform/` — captured for queue revision (existing runtime is correct; only the queue's check_command path needs adjustment).
+  - 16 platform-mcp test failures pre-existing baseline (unrelated to Batch 3/4).
+  - Migration 090 + Cloud Run env-var cleanup (PIPELINE_SELECTOR + LL3_PANCHA_MP_CLUSTER_MODIFIER) now operator-eligible.
+
+### Sub-agent budget
+- Used in Batch 4: 4 dispatches + 1 re-dispatch = 5. Cross-batch total since re-kick: 5. Remaining in 20-budget: 15. Stopping cleanly with all eligible Batch-4 units green and gate board fully closed.
+
+### Re-kick inputs (operator action)
+- **Required:** Cowork-author next-refactor-wave brief (move pipeline.run() bodies out of route.ts; delete `isPipelineSelectorEnabled()` shim; clean up docstring carry-overs).
+- **Required:** Native review of depth-selector default (still carried from Batch 3 — 3.tier_excision shipped planner-auto-by-query-class).
+- **Now eligible:** apply migrations 081–090 to staging DB. Migration 090 (drop `mcp_api_keys.audience_tier`) is the only irreversible op — run after a green post-cutover smoke window.
+- **Now eligible:** Cloud Run env-var cleanup `gcloud run services update amjis-web --remove-env-vars MARSYS_FLAG_PIPELINE_SELECTOR,MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED`.
+- **Carried:** rotate `amjis-db-password` Secret Manager entry.
