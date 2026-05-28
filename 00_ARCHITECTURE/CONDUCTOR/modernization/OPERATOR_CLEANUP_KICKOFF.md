@@ -1,6 +1,12 @@
 # Operator Cleanup — Kickoff (paste into ONE fresh Claude Code session, bypass perms)
 
-The plan is at `00_ARCHITECTURE/CONDUCTOR/modernization/OPERATOR_CLEANUP_PLAN_v1_0.md` (v1.1, 2026-05-27).
+> **v1.2 (2026-05-28):** Phase C deferred at cursor 086 — see
+> `OPERATOR_CLEANUP_HALT_LOG.md §2 + §8` and `OPERATOR_CLEANUP_V1_2_PATCH_BRIEF.md`. Steps 4–6
+> below are no-ops in v1.2 (081–085 already applied 2026-05-28; 086–090 + 118 + 119 deferred). Step
+> 18 (J5 partition) strikes `l25_msr_signals` from its target list — that one HASH partition is
+> deferred to the same patch session. D–M proceed as written.
+
+The plan is at `00_ARCHITECTURE/CONDUCTOR/modernization/OPERATOR_CLEANUP_PLAN_v1_0.md` (v1.2, 2026-05-28).
 The prompt below walks that plan sequentially with smoke + auto-rollback between phases. This is a single
 session — not a multi-batch Conductor program. **No deliberate human pauses** — the v1.0 post-cutover wait
 before mig 090 has been replaced by an automated pre-flight grep (C1). If context fills, the session writes
@@ -22,9 +28,9 @@ PHASE B — env-var cleanup (seal #1):
 3. gcloud run services update amjis-web --region asia-south1 --remove-env-vars MARSYS_FLAG_PIPELINE_SELECTOR,MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED. Verify with describe; post-deploy smoke; auto-rollback if red.
 
 PHASE C — DB migrations (seal #2; consolidated — no calendar wait):
-4. C1 PRE-FLIGHT DEFENSE for mig 090: grep -rn "audience_tier" platform platform-mcp must return 0 live references (exclude 99_ARCHIVE/, the seal doc, and other historical text). If any live reference remains → halt; do not proceed past C1.
-5. Apply migrations 081–089 + 118 + 119 to STAGING → smoke (full test suite + a representative chat query). Then to PROD → smoke.
-6. Apply migration 090 (IRREVERSIBLE — audience_tier column drop) to STAGING → smoke → PROD → smoke. No wait — defense already discharged in C1.
+4. [v1.2: 081–085 already applied 2026-05-28; remainder DEFERRED — see plan §2 Phase C cursor note + OPERATOR_CLEANUP_V1_2_PATCH_BRIEF.md.] C1 PRE-FLIGHT DEFENSE for mig 090: grep -rn "audience_tier" platform platform-mcp must return 0 live references (exclude 99_ARCHIVE/, the seal doc, and other historical text). If any live reference remains → halt; do not proceed past C1.
+5. [v1.2: 081–085 already applied 2026-05-28; remainder DEFERRED — see plan.] Apply migrations 081–089 + 118 + 119 to STAGING → smoke (full test suite + a representative chat query). Then to PROD → smoke.
+6. [v1.2: 081–085 already applied 2026-05-28; remainder DEFERRED — see plan.] Apply migration 090 (IRREVERSIBLE — audience_tier column drop) to STAGING → smoke → PROD → smoke. No wait — defense already discharged in C1.
 
 PHASE D — Infra (seal #3), STRICT ORDER:
 7. For each TERRAFORM module use the wrapper: `cd infra/<module> && ./apply.sh plan` (review) → `./apply.sh apply` → smoke → next. State bucket: `madhav-astrology-tf-state` (each apply.sh supplies -backend-config). Order: D1 cloud_tasks (tf), D2 memorystore (tf), D3 monitoring (**NOT tf — gcloud-applied JSON from monitoring/dashboards|alerts|slos per README**), D4 scheduler (tf), D5 edge (tf), D6 iam (tf, LAST — changes auth). Halt queue on any module red.
@@ -50,7 +56,7 @@ PHASE J — Cloud SQL scale-up + HA + partition (NEW in v1.1, second tenant is l
 15. J2 — tier upgrade. gcloud sql instances patch amjis-postgres --tier=db-custom-2-4096 --region asia-south1. Brief restart; smoke after.
 16. J3 — HA enable. gcloud sql instances patch amjis-postgres --availability-type=REGIONAL. Wait for standby; verify by describe; synthetic failover test via gcloud sql instances failover during a maintenance window. Brief blip expected; auto-rollback on prolonged downtime.
 17. J4 — PITR + backups. gcloud sql instances patch amjis-postgres --enable-point-in-time-recovery --backup-start-time=02:00. Verify a PITR restore-to-staging works end-to-end.
-18. J5 — partition migrations 121–12N (in order: STAGING first, then PROD). Targets: chart_facts HASH(chart_id, 8 buckets), l25_msr_signals HASH(chart_id, 8 buckets), query_trace_steps RANGE(created_at) monthly, mcp_predictions RANGE(predicted_at_iso) monthly. For each table: create <table>_new PARTITIONED BY (key); create partitions; INSERT … SELECT idempotent + batched; partition-aware indexes; verify row counts match; atomic rename old → <table>_pre_partition_archive, new → live. Halt on row-count mismatch (rollback swap). Confirm partition key sits in every PRIMARY KEY / UNIQUE constraint before swap (Postgres requirement).
+18. J5 — partition migrations 121–12N (in order: STAGING first, then PROD). Targets: chart_facts HASH(chart_id, 8 buckets), ~~l25_msr_signals HASH(chart_id, 8 buckets)~~ **[v1.2: l25_msr_signals DEFERRED — depends on 086 keying l25 to chart_id; see OPERATOR_CLEANUP_V1_2_PATCH_BRIEF.md]**, query_trace_steps RANGE(created_at) monthly, mcp_predictions RANGE(predicted_at_iso) monthly. For each table: create <table>_new PARTITIONED BY (key); create partitions; INSERT … SELECT idempotent + batched; partition-aware indexes; verify row counts match; atomic rename old → <table>_pre_partition_archive, new → live. Halt on row-count mismatch (rollback swap). Confirm partition key sits in every PRIMARY KEY / UNIQUE constraint before swap (Postgres requirement).
 19. J6 — validate. Both tenants (legacy chart + new-architecture chart) queryable with no regression; smoke chat path end-to-end on new partitioned tables; perf sanity (p50/p95 read latency).
 20. J7 — archive cleanup window. Keep <table>_pre_partition_archive for ONE green production day, then drop the archives in a follow-up commit.
 

@@ -1,12 +1,14 @@
 ---
 artifact: OPERATOR_CLEANUP_PLAN_v1_0.md
 status: PLAN — Claude Code executable (single session, bypass perms)
-version: 1.1
-date: 2026-05-27
+version: 1.2
+date: 2026-05-28
 relates_to:
   - 00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md       # the seal
   - 00_ARCHITECTURE/CONDUCTOR/modernization/RED_TEAM_PLATFORM_MOD_v1_0.md
+  - 00_ARCHITECTURE/CONDUCTOR/modernization/OPERATOR_CLEANUP_V1_2_PATCH_BRIEF.md
 changelog:
+  - v1.2 (2026-05-28, native): Phase C deferred at cursor 086 — authored against greenfield charts shape vs legacy in prod; remainder of C (086–090 + 118 + 119) + the Phase J l25_msr_signals HASH partition deferred to a v1.2 follow-on patch session that pre-stages a charts-alignment migration. D-M proceed now as structurally independent of C.
   - v1.1 (2026-05-27, native): SQL scale-up + HA + partition moved IN (Phase J — a second tenant now exists, the user's data under the new architecture); the post-cutover wait before mig 090 is REMOVED (defense replaced by a pre-flight grep that no live code references `audience_tier`); naming-lint baseline drawdown stays deferred per native call.
 purpose: Close the seal's §Deferred queue (8 items) + SQL scale-up + accumulated hygiene, in one ordered Claude Code session.
 expose_to_chat: false
@@ -57,6 +59,11 @@ If any prereq is missing, the kickoff prompt writes `OPERATOR_CLEANUP_HALT_LOG.m
 - **C3.** Apply the same migrations to **prod**; smoke prod.
 - **C4.** Apply migration **090 (IRREVERSIBLE — `audience_tier` column drop)** to **staging**, smoke; then
   to **prod**, smoke. No wait — defense already discharged in C1.
+
+> **Cursor at 2026-05-28:** 081–085 landed; 086 deferred — see `OPERATOR_CLEANUP_HALT_LOG.md §2 + §8` for
+> the charts-alignment design constraints and the patch-session scope. Remainder of Phase C
+> (086–090 + 118 + 119) is OUT OF SCOPE for the current execution and DEFERRED to the v1.2 follow-on
+> patch session per `OPERATOR_CLEANUP_V1_2_PATCH_BRIEF.md`.
 
 ### Phase D — Infra applies *(seal #3)* — ORDER MATTERS
 For each **terraform** module, use the wrapper: `cd infra/<module> && ./apply.sh plan` → review → `./apply.sh apply` → smoke → next. Halt on any red. For **non-terraform** items (monitoring, AR, secrets), apply via `gcloud` per the module README. The state bucket is `madhav-astrology-tf-state` (each `apply.sh` supplies `-backend-config` automatically).
@@ -115,7 +122,7 @@ the dev tier, enable HA + PITR, and partition the highest-volume per-chart and t
   Phase C set) that, in this order on STAGING first then PROD:
   - **Targets** (minimal, defensible — partition where it pays):
     - `chart_facts` → HASH by `chart_id`, 8 buckets.
-    - `l25_msr_signals` → HASH by `chart_id`, 8 buckets.
+    - `l25_msr_signals` → HASH by `chart_id`, 8 buckets. **— DEFERRED to v1.2 follow-on (depends on 086 keying l25 to chart_id).**
     - `query_trace_steps` → RANGE by `created_at`, monthly partitions, 12 forward + rolling.
     - `mcp_predictions` → RANGE by `predicted_at_iso`, monthly.
   - **Strategy:** Postgres declarative partitioning. For each table: create `<table>_new` PARTITIONED BY (key);
