@@ -105,6 +105,11 @@ jobs:
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             BUILD_STATE_GCS_BASE=https://storage.googleapis.com/madhav-marsys-build-artifacts
+            # ── 4.observability (Wave 4) ──────────────────────────────────────────
+            # Vertex AI region pin for batched embeddings (lib/embeddings/embedText.ts).
+            # Region must match the prod Cloud Run region (asia-south1) to keep
+            # Vertex calls in-region for both latency + egress cost.
+            VERTEX_AI_LOCATION=asia-south1
             NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
             NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
