@@ -18,8 +18,14 @@ BEGIN;
 -- ─── 1. charts dimension table ────────────────────────────────────────────────
 -- Lightweight registry so chart_id is a foreign key and `assert_no_native_literal`
 -- has somewhere to point.
+-- Greenfield shape (patched 2026-05-28 for v1.2 follow-on: chart_id TEXT → UUID
+-- to align with the legacy prod schema where charts.id is UUID; chart_id
+-- becomes a UUID secondary key per 086_0_charts_align.sql). When prod is
+-- aligned (charts table already exists), this CREATE TABLE IF NOT EXISTS is a
+-- no-op; the column type here only matters for greenfield environments (dev /
+-- ephemeral CI).
 CREATE TABLE IF NOT EXISTS charts (
-  chart_id        TEXT PRIMARY KEY,
+  chart_id        UUID PRIMARY KEY,
   subject_label   TEXT NOT NULL,
   datetime_iso    TEXT NOT NULL,
   tz_offset_hours NUMERIC NOT NULL,
@@ -37,7 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_charts_role ON charts(role);
 -- ─── 2. chart_facts: add (chart_id, ayanamsha_id) keying ─────────────────────
 -- chart_id NULL on legacy rows; new engine rows are NOT NULL.
 ALTER TABLE chart_facts
-  ADD COLUMN IF NOT EXISTS chart_id      TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id      UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id  TEXT,
   ADD COLUMN IF NOT EXISTS engine_version TEXT,
   ADD COLUMN IF NOT EXISTS computed_at_iso TEXT;
@@ -69,14 +75,14 @@ CREATE INDEX IF NOT EXISTS idx_chart_facts_chart_ayan
 
 -- Mirror to staging.
 ALTER TABLE chart_facts_staging
-  ADD COLUMN IF NOT EXISTS chart_id      TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id      UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id  TEXT,
   ADD COLUMN IF NOT EXISTS engine_version TEXT,
   ADD COLUMN IF NOT EXISTS computed_at_iso TEXT;
 
 -- ─── 3. l25_msr_signals: add chart_id + ayanamsha_id + 3-column coefficient ──
 ALTER TABLE l25_msr_signals
-  ADD COLUMN IF NOT EXISTS chart_id                 TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id                 UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id             TEXT,
   ADD COLUMN IF NOT EXISTS engine_version           TEXT,
   -- Three SEPARATE columns; NO fused score column. (Gemini keeper.)
@@ -130,7 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_l25_msr_chart_ayan
 
 -- Mirror to staging.
 ALTER TABLE l25_msr_signals_staging
-  ADD COLUMN IF NOT EXISTS chart_id                 TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id                 UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id             TEXT,
   ADD COLUMN IF NOT EXISTS engine_version           TEXT,
   ADD COLUMN IF NOT EXISTS deterministic_strength   NUMERIC,

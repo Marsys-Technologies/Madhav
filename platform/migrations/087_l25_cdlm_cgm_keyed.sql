@@ -14,7 +14,7 @@ BEGIN;
 
 -- ─── 1. l25_cdlm_links: chart_id + ayanamsha_id + shared_factors ──────────────
 ALTER TABLE l25_cdlm_links
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id        UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT,
   -- Deterministic shared-factor decomposition (Gemini keeper — structural).
@@ -50,7 +50,7 @@ CREATE INDEX IF NOT EXISTS idx_l25_cdlm_chart_ayan
   ON l25_cdlm_links(chart_id, ayanamsha_id);
 
 ALTER TABLE l25_cdlm_links_staging
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id        UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT,
   ADD COLUMN IF NOT EXISTS shared_planets       TEXT[],
@@ -60,7 +60,7 @@ ALTER TABLE l25_cdlm_links_staging
 
 -- ─── 2. l25_cgm_nodes: chart_id + ayanamsha_id ────────────────────────────────
 ALTER TABLE l25_cgm_nodes
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id        UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT;
 
@@ -85,13 +85,13 @@ CREATE INDEX IF NOT EXISTS idx_l25_cgm_nodes_chart_ayan
   ON l25_cgm_nodes(chart_id, ayanamsha_id);
 
 ALTER TABLE l25_cgm_nodes_staging
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id        UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT;
 
 -- ─── 3. l25_cgm_edges: chart_id + ayanamsha_id ────────────────────────────────
 ALTER TABLE l25_cgm_edges
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id        UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT;
 
@@ -116,7 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_l25_cgm_edges_chart_ayan
   ON l25_cgm_edges(chart_id, ayanamsha_id);
 
 ALTER TABLE l25_cgm_edges_staging
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id        UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT;
 

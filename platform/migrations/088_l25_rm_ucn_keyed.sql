@@ -21,7 +21,7 @@ BEGIN;
 
 -- ─── 1. l25_rm_resonances: chart_id + ayanamsha_id (lookup keys) ─────────────
 ALTER TABLE l25_rm_resonances
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id        UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT,
   -- Structural condition that triggered this lookup hit. Examples:
@@ -38,14 +38,14 @@ CREATE INDEX IF NOT EXISTS idx_l25_rm_structural_condition
   WHERE structural_condition IS NOT NULL;
 
 ALTER TABLE l25_rm_resonances_staging
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id        UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT,
   ADD COLUMN IF NOT EXISTS structural_condition TEXT;
 
 -- ─── 2. l25_ucn_sections: chart_id + ayanamsha_id + computed-signature ──────
 ALTER TABLE l25_ucn_sections
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT REFERENCES charts(chart_id),
+  ADD COLUMN IF NOT EXISTS chart_id        UUID REFERENCES charts(chart_id),
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT,
   -- sha256(canonicalized structural payload). Same chart-state ⇒ same digest.
@@ -80,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_l25_ucn_computed_signature
   WHERE computed_signature IS NOT NULL;
 
 ALTER TABLE l25_ucn_sections_staging
-  ADD COLUMN IF NOT EXISTS chart_id        TEXT,
+  ADD COLUMN IF NOT EXISTS chart_id        UUID,
   ADD COLUMN IF NOT EXISTS ayanamsha_id    TEXT,
   ADD COLUMN IF NOT EXISTS engine_version  TEXT,
   ADD COLUMN IF NOT EXISTS computed_signature TEXT,
