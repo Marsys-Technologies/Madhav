@@ -1,6 +1,6 @@
 ---
 artifact: OPERATOR_CLEANUP_PLAN_v1_0.md
-status: PLAN — Claude Code executable (single session, bypass perms)
+status: SUPERSEDED-AS-COMPLETE  # v1.2 fully discharged by OPERATOR_CLEANUP_V1_2_REPORT_v1_0.md (2026-05-28)
 version: 1.2
 date: 2026-05-28
 relates_to:

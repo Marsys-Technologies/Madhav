@@ -1,6 +1,6 @@
 ---
 artifact: OPERATOR_CLEANUP_V1_2_PATCH_BRIEF
-status: DEFERRED
+status: DISCHARGED-2026-05-28  # see OPERATOR_CLEANUP_V1_2_REPORT_v1_0.md
 plan: OPERATOR_CLEANUP_PLAN_v1_0.md
 plan_version: 1.2
 parent_halt_log: OPERATOR_CLEANUP_HALT_LOG.md
