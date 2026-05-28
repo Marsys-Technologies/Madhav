@@ -202,6 +202,12 @@ export type FeatureFlag =
   //   Default false; verify which hosted model is active before flipping.
   //   Env: MARSYS_FLAG_R11E_NVIDIA_LOOP
   | 'R11E_NVIDIA_LOOP'
+  // Platform Modernization 4.build_trigger — kill-switch for the autonomous
+  // chart-build trigger (POST /api/build/start + /api/build/task). Default
+  // FALSE until the operator-side end-to-end smoke is green (Cloud Task
+  // enqueue → Cloud Run Job execute → build_events rows → cockpit SSE).
+  // Env: MARSYS_FLAG_BUILD_TRIGGER_ENABLED
+  | 'BUILD_TRIGGER_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -315,6 +321,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   R11E_OPENAI_LOOP: false,
   R11E_DEEPSEEK_LOOP: false,
   R11E_NVIDIA_LOOP: false,
+  // Platform Modernization 4.build_trigger — kill-switch default OFF until
+  // end-to-end smoke is green. Flip via MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true.
+  BUILD_TRIGGER_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

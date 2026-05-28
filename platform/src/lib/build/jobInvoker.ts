@@ -1,0 +1,114 @@
+/**
+ * Cloud Run Jobs invoker for `marsys-build-pipeline-job`.
+ *
+ * Server-side library used by /api/build/task. The Cloud Run Jobs API
+ * accepts an `RunJobRequest` with `Overrides.ContainerOverrides[].args` so we
+ * can pass `--chart-id` and `--ayanamsha-role` per invocation.
+ *
+ * Lazy-loads @google-cloud/run so vitest doesn't need GCP creds. Tests pass
+ * an injected transport.
+ */
+
+import 'server-only'
+
+// String-variable indirection — keeps the GCP SDK optional at build/test time.
+async function loadGcpModule(name: string): Promise<unknown> {
+  return import(/* @vite-ignore */ name)
+}
+
+export interface JobInvocationArgs {
+  buildId: string
+  chartId: string
+  ayanamshaRole: 'jh_true_chitra' | 'kp'
+  triggeredBy: string
+}
+
+export interface JobInvocationResult {
+  /** Cloud Run Job execution full name (projects/.../executions/...) */
+  executionName: string
+}
+
+export interface JobTransport {
+  runJob(args: {
+    jobName: string
+    containerArgs: string[]
+    envOverrides: Record<string, string>
+  }): Promise<JobInvocationResult>
+}
+
+export interface JobInvokerEnv {
+  gcpProject: string
+  jobLocation: string
+  jobId: string
+}
+
+export function readJobInvokerEnv(env: NodeJS.ProcessEnv = process.env): JobInvokerEnv {
+  const missing: string[] = []
+  const get = (k: string, fallback?: string): string => {
+    const v = env[k]
+    if (!v && !fallback) missing.push(k)
+    return v ?? fallback ?? ''
+  }
+  const out: JobInvokerEnv = {
+    gcpProject: get('GCP_PROJECT'),
+    jobLocation: get('BUILD_JOB_LOCATION', env.GCP_REGION ?? 'asia-south1'),
+    jobId: get('BUILD_JOB_NAME', 'marsys-build-pipeline-job'),
+  }
+  if (missing.length > 0) {
+    throw new Error(`[build/jobInvoker] missing env vars: ${missing.join(', ')}`)
+  }
+  return out
+}
+
+async function defaultTransport(): Promise<JobTransport> {
+  const mod = await loadGcpModule('@google-cloud/run')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = new (mod as any).JobsClient()
+  return {
+    async runJob({ jobName, containerArgs, envOverrides }) {
+      const [op] = await client.runJob({
+        name: jobName,
+        overrides: {
+          containerOverrides: [
+            {
+              args: containerArgs,
+              env: Object.entries(envOverrides).map(([name, value]) => ({ name, value })),
+            },
+          ],
+        },
+      })
+      const execName: string =
+        // op is a LRO; `.name` is the execution resource id once the LRO is created.
+        (op?.name as string | undefined) ?? (op?.latestResponse?.name as string | undefined) ?? ''
+      return { executionName: execName }
+    },
+  }
+}
+
+export function jobPath(env: JobInvokerEnv): string {
+  return `projects/${env.gcpProject}/locations/${env.jobLocation}/jobs/${env.jobId}`
+}
+
+export async function invokeBuildJob(
+  args: JobInvocationArgs,
+  opts: { env?: JobInvokerEnv; transport?: JobTransport } = {},
+): Promise<JobInvocationResult> {
+  const env = opts.env ?? readJobInvokerEnv()
+  const transport = opts.transport ?? (await defaultTransport())
+  return transport.runJob({
+    jobName: jobPath(env),
+    containerArgs: [
+      '--build-id', args.buildId,
+      '--chart-id', args.chartId,
+      '--ayanamsha-role', args.ayanamshaRole,
+      '--triggered-by', args.triggeredBy,
+    ],
+    envOverrides: {
+      // The pipeline writes build_events rows; this is the SQL connection it uses.
+      // The base Job already has DB env baked; we re-stamp build_id for tracer logs.
+      MARSYS_BUILD_ID: args.buildId,
+      MARSYS_BUILD_CHART_ID: args.chartId,
+      MARSYS_BUILD_AYANAMSHA_ROLE: args.ayanamshaRole,
+    },
+  })
+}
