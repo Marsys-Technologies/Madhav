@@ -40,6 +40,7 @@ import { costPart, citationPart, correctionPart, outOfDomainPart, persistencePar
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
+import { recordCalibrationStamp } from '@/lib/predictions/calibration_producer'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -405,5 +406,20 @@ export async function runOnFinishWriteThrough(
     } catch (err) {
       console.error('[onfinish_writethrough] prediction ledger error', err)
     }
+  }
+
+  // 10. Wave-4 learning-loop calibration stamp — independent of LEL toggle.
+  // Every chat completion logs the deterministic stamp so the Learning Layer
+  // can later calibrate computed_salience by comparing formula-version replays.
+  // Idempotent on (chart_id, ayanamsha_id, query_hash, salience_formula_version).
+  try {
+    void recordCalibrationStamp({
+      chart_id: opts.chartId,
+      ayanamsha_id: 'jh_true_chitra',
+      query_text: opts.lastUserQuery,
+      model_id: opts.modelId,
+    })
+  } catch (err) {
+    console.error('[onfinish_writethrough] calibration stamp error', err)
   }
 }
