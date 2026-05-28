@@ -251,7 +251,68 @@ units:
     must_not_touch: ["platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**", "platform/src/lib/retrieve/**"]
     check_commands: ["npx vitest run platform/src/app/api/chat"]
     on_red: rollback
-  - id: 4.scale_and_close
+  # ── Wave 4 — the final seal (SQL upgrade + HA + partition deliberately deferred per §9 incremental call) ──
+  - id: 4.refactor_pipeline_shim
     wave: 4
+    brief: briefs/BRIEF_4_refactor_pipeline_shim.md
+    stream: A
     blockedBy: [3.legacy_delete]
-    status: not_yet_detailed
+    may_touch: ["platform/src/app/api/chat/consult/route.ts", "platform/src/app/api/chat/consume/route.ts", "platform/src/lib/pipelines/**", "platform/src/lib/feature_flags.ts", ".github/workflows/deploy.yml"]
+    must_not_touch: ["platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**", "chart_facts"]
+    check_commands: ["npx vitest run platform/src/app/api/chat"]
+    on_red: rollback
+  - id: 4.build_trigger
+    wave: 4
+    brief: briefs/BRIEF_4_build_trigger.md
+    stream: B
+    blockedBy: [3.consult_nav, 3.legacy_delete]
+    may_touch: ["platform/src/app/clients/[id]/build/**", "platform/src/app/api/build/**", "platform/src/lib/build/**", "platform/src/app/cockpit/**", ".github/workflows/deploy.yml", "platform/python-sidecar/**"]
+    must_not_touch: ["platform/src/lib/retrieve/**", "platform/src/lib/pipelines/**", "platform/src/lib/synthesis/panel/**"]
+    check_commands: ["npx vitest run platform/src/app/api/build platform/src/lib/build"]
+    on_red: halt_queue
+  - id: 4.memorystore_caching
+    wave: 4
+    brief: briefs/BRIEF_4_memorystore_caching.md
+    stream: C
+    blockedBy: [3.cutover]
+    may_touch: ["platform/src/lib/cache/**", "platform/src/lib/retrieve/**", "platform/src/lib/embeddings/**", ".github/workflows/deploy.yml", "platform-mcp/src/**"]
+    must_not_touch: ["platform/python-sidecar/**", "platform/src/lib/synthesis/panel/**", "chart_facts"]
+    check_commands: ["npx vitest run platform/src/lib/cache"]
+    on_red: rollback
+  - id: 4.edge_and_infra_hygiene
+    wave: 4
+    brief: briefs/BRIEF_4_edge_and_infra_hygiene.md
+    stream: A
+    blockedBy: [3.cutover, 4.refactor_pipeline_shim]
+    file_fence_note: "touches deploy.yml — coordinate with 4.refactor_pipeline_shim/4.build_trigger/4.memorystore (each may also edit deploy.yml; serialize OR distinct sections)"
+    may_touch: ["deploy.yml", ".github/workflows/**", "platform-mcp/cloudbuild.yaml", "platform/cloudbuild*.yaml", "infra/**", "iam/**"]
+    must_not_touch: ["chart_facts", "platform/python-sidecar/natal_engine/**", "platform/src/lib/synthesis/panel/**"]
+    check_commands: ["bash platform/scripts/governance/edge_security_smoke.sh"]
+    on_red: halt_queue
+  - id: 4.observability
+    wave: 4
+    brief: briefs/BRIEF_4_observability.md
+    stream: B
+    blockedBy: [3.cutover]
+    may_touch: ["platform/src/lib/observability/**", "platform/src/lib/embeddings/**", "platform/src/**/trace.ts", ".github/workflows/deploy.yml", "infra/monitoring/**"]
+    must_not_touch: ["chart_facts", "platform/python-sidecar/natal_engine/**", "platform/src/lib/synthesis/panel/**"]
+    check_commands: ["npx vitest run platform/src/lib/observability platform/src/lib/embeddings"]
+    on_red: rollback
+  - id: 4.learning_loop
+    wave: 4
+    brief: briefs/BRIEF_4_learning_loop.md
+    stream: C
+    blockedBy: [3.cutover, 4.observability]
+    may_touch: ["platform/src/lib/predictions/**", "platform/src/app/api/chat/consult/route.ts", "platform/src/lib/synthesis/**", "scripts/answer_eval*"]
+    must_not_touch: ["chart_facts", "platform/src/lib/synthesis/panel/**", "platform/python-sidecar/**"]
+    check_commands: ["npx vitest run platform/src/lib/predictions"]
+    on_red: rollback
+  - id: 4.red_team_seal
+    wave: 4
+    brief: briefs/BRIEF_4_red_team_seal.md
+    stream: A
+    blockedBy: [4.refactor_pipeline_shim, 4.build_trigger, 4.memorystore_caching, 4.edge_and_infra_hygiene, 4.observability, 4.learning_loop]
+    may_touch: ["00_ARCHITECTURE/**", "CLAUDE.md", "tools/program-tracker/**"]
+    must_not_touch: ["platform/python-sidecar/natal_engine/**", "chart_facts"]
+    check_commands: ["python platform/scripts/governance/drift_detector.py"]
+    on_red: halt_queue
