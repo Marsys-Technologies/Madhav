@@ -192,3 +192,42 @@
 - **Now eligible:** apply migrations 081–090 to staging DB. Migration 090 (drop `mcp_api_keys.audience_tier`) is the only irreversible op — run after a green post-cutover smoke window.
 - **Now eligible:** Cloud Run env-var cleanup `gcloud run services update amjis-web --remove-env-vars MARSYS_FLAG_PIPELINE_SELECTOR,MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED`.
 - **Carried:** rotate `amjis-db-password` Secret Manager entry.
+
+---
+
+## Batch 5 — Wave 4 final seal (2026-05-28, ~12:55–15:00 IST)
+
+**Status: SEALED.** Platform Modernization arc COMPLETE.
+
+### Dispatch sequence
+- **Prep**: commit `888af675` — 7 Wave-4 briefs + queue (batch5-prep). Worktrees A/B/C reset to main HEAD.
+- **Wave-1 parallel (3 agents)**:
+  - 4.refactor_pipeline_shim (A) → GREEN; commits `452e008b` `31f2509e` → cherry-picked `bc9379ce` `5b9164bd`
+  - 4.observability (B) → GREEN; commits `40f44ccd` `0f7656d8` `829899a0` `a7739fce` → cherry-picked `5180733f` `50b74814` `33bacc0a` `42a39960`
+  - 4.memorystore_caching (C) → STALLED at 2/3 (watchdog) but commits 1/3 + 2/3 green. Tests 44/44 pass.
+- **Cherry-pick wave-1** with conflict resolution on `embedText.ts` (combined B's batched compute with C's cache wrapper). Verified 113/113 tests.
+- **Wave-2 parallel (3 agents)**:
+  - 4.memorystore_caching 3/3 + chaos test (C) → GREEN; commit `3d18f3d6` → cherry-picked `a56434b1`
+  - 4.edge_and_infra_hygiene (A) → GREEN; commits `6ad47425` `21bb5ff8` `1f9ca41c` → cherry-picked `309376cd` `d47ad81a` `c8592215`. 32/32 smoke checks + 3 IAM-bearer tests GREEN. Deleted 4 cloudbuild*.yaml files.
+  - 4.build_trigger (B) → STALLED at 1/3 (watchdog); commit 1/3 green with 23/23 tests → cherry-picked `4b5d60b7`.
+- **Cherry-pick wave-2**. Verified 147/147 tests.
+- **Wave-3** (after agent stalls): 4.learning_loop done **inline** on main: migration 119 + calibration_producer + onfinish step 10 + STUBBED answer:eval baseline. Commits `1a0b0fe8` + `307c39ed`. Tests 22/22.
+- **Build_trigger 2/3+3/3 retry** (tight prompt) → GREEN; commits `e72cae45` `51cfd494` → cherry-picked `6d34e6cb` `524792ab`. 77/77 tests across api/build + clients + lib/build.
+- **Verification on main**: 223/223 tests GREEN across all Wave-4 surfaces.
+- **4.red_team_seal inline (A)**:
+  - 1/3 `fcdc9199` — adversarial red-team report (0 class-1, 3 class-2, 4 class-3 — all dispositioned).
+  - 2/3 — `tools/program-tracker/` removed (ephemeral lifecycle); grep clean of app imports.
+  - 3/3 — seal artifact `PLATFORM_MODERNIZATION_CLOSE_v1_0.md` + PROGRAM_STATE/session_queue/CONDUCTOR_LOG updates.
+
+### Sub-agent count
+8 dispatched (3 stalled — runtime watchdog flakiness today; 2 agents partial commits salvaged on inspection, 3rd retried with tight prompt) + 3 inline (learning_loop 1/2, learning_loop 2/2, red_team_seal full).
+Total = 11 effective units of work; well under the 20-budget.
+
+### Gates
+**All 8 hard gates GREEN.** Final test posture: 223/223 across the Wave-4 functional surface; no pre-existing failures regressed.
+
+### Operator queue (forwarded to PLATFORM_MODERNIZATION_CLOSE §Deferred operator items)
+Migrations 081–090 (carried) + 118 + 119; terraform apply on 6 IaC packages; Cloud Run env-var cleanup; rotate amjis-db-password; live answer:eval baseline; flip BUILD_TRIGGER flag; delete amjis-tracker; native review of depth-selector default.
+
+### Reflection
+3 agent stalls during the run (runtime watchdog issue, not prompt/state issue — partial commits were preserved and the work was salvaged on inspection or by retry/inline). The Conductor's "inspect-stash-then-decide" pattern handled all three salvages cleanly without rollback. The `tools/program-tracker/` removal closes the 0t ephemeral lifecycle as designed.

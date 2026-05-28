@@ -8,6 +8,8 @@ program: PLATFORM_MODERNIZATION
 plan:            00_ARCHITECTURE/PLATFORM_MODERNIZATION_MASTER_PLAN_v2_0.md   # v2.1
 execution_plan:  00_ARCHITECTURE/PLATFORM_MODERNIZATION_EXECUTION_PLAN_v1_0.md
 program_state:   00_ARCHITECTURE/CONDUCTOR/modernization/PROGRAM_STATE.md
+seal_artifact:   00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md          # batch 5 close
+status:          SEALED                # arc closed 2026-05-28 via 4.red_team_seal
 integration:     conductor_cherry_pick_to_main_on_green
 human_gates:     none
 prod_mode:       zero_touch          # prod DB/deploy/secret/flag ops run autonomously
@@ -21,14 +23,14 @@ streams:
 # Hard gates — a check_command exiting 0 = GREEN (barrier opens). Until green, any
 # unit listing the gate in blockedBy is INELIGIBLE.
 gates:
-  naming_ci:        { status: PENDING, check: "python platform/scripts/governance/naming_lint.py" }
-  jh_oracle_pinned: { status: RED,     check: "test -f python-sidecar/natal_engine/fixtures/jh_oracle.json", note: "NATIVE INPUT REQUIRED: pin JH version + ayanamsha, capture reference outputs" }
-  G1_jh_parity:     { status: PENDING, check: "pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q" }
-  G2_authz_live:    { status: PENDING, check: "pnpm vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts" }
-  G3_contract:      { status: PENDING, check: "pnpm vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts" }
-  G4_no_native_lit: { status: PENDING, check: "platform/scripts/governance/assert_no_native_literal.sh" }
-  G5b_onfinish:     { status: GREEN,   check: "pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts", note: "Set by 3.cutover 2026-05-28; 18/18 golden tests; runOnFinishWriteThrough closes 6 parity gaps. NB: run from platform/ for @/ alias resolution." }
-  G6_tool_coverage: { status: PENDING, check: "pnpm vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts", note: "100% asset coverage + 0 orphaned tools + 0 redundant duplicates (data_coverage tool)" }
+  naming_ci:        { status: GREEN,   check: "python platform/scripts/governance/naming_lint.py", note: "Set by 0a.0 Batch 1; 77 baseline." }
+  jh_oracle_pinned: { status: GREEN,   check: "test -f python-sidecar/natal_engine/fixtures/jh_oracle.json", note: "Pinned 2026-05-28 JH True Chitra 23°37'09.78\"." }
+  G1_jh_parity:     { status: GREEN,   check: "pytest python-sidecar/natal_engine/tests/test_jh_parity.py -q", note: "Set by 1.2 Batch 2; 31/31 tests; residual 7.62\" under 60\" tol." }
+  G2_authz_live:    { status: GREEN,   check: "pnpm vitest run platform/src/lib/auth/__tests__/authorize_chart_access.test.ts", note: "Set by 2c Batch 2; 6/6 tests; authorizeChartAccess + RLS." }
+  G3_contract:      { status: GREEN,   check: "pnpm vitest run platform/src/lib/contract/__tests__/unified_contract.test.ts", note: "Set by 2b Batch 2; 6/6 tests." }
+  G4_no_native_lit: { status: GREEN,   check: "platform/scripts/governance/assert_no_native_literal.sh", note: "Set by 2a Batch 3; exit 0." }
+  G5b_onfinish:     { status: GREEN,   check: "pnpm vitest run platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts", note: "Set by 3.cutover Batch 4; 18/18 golden tests; runOnFinishWriteThrough closes 6 parity gaps." }
+  G6_tool_coverage: { status: GREEN,   check: "pnpm vitest run platform/src/lib/contract/__tests__/tool_asset_coverage.test.ts", note: "Set by 3.tool_asset_recon Batch 3; 19 assets / 77 tools / 0 orphans / 0 redundancies / 0 ayanamsha mismatches." }
 
 units:
   # ── Program support — build FIRST so it can track everything (ephemeral) ──────

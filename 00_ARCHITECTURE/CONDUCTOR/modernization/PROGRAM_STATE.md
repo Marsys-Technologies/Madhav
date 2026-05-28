@@ -4,11 +4,13 @@
 > Conductor updates it at every batch stop. Authoritative for "where are we now."
 
 ## Snapshot
-- **Status:** RUNNING — Batch 4 CLOSED; 21/20 program units (the original 20 + 2 hygiene units; 105% counting hygiene); 8/8 hard gates GREEN (G5b set this batch).
-- **Current batch:** Batch 4 closed at sub-agent count = 4 (hygiene.test_chart_id, hygiene.flag_cleanup, 3.cutover, 3.legacy_delete). G5b_onfinish GREEN. Legacy synthesis trio deleted. Pipeline-selector flag retired.
-- **Tracker:** LIVE at `http://localhost:8787` (PID logged in `/tmp/madhav-tracker.log`).
-- **main HEAD:** `aa7aaca2` (3.legacy_delete 3/3 collapse pipeline-selector flag).
-- **Last green per stream:** A=`3.legacy_delete` (`aa7aaca2` chain 934085a2→9f677e15→aa7aaca2) · B=`hygiene.flag_cleanup` (`7648d3ba`) · C=`hygiene.test_chart_id` (`195f4cac`).
+- **Status:** **SEALED** — Batch 5 (Wave 4) CLOSED 2026-05-28; PLATFORM MODERNIZATION ARC COMPLETE. 28/20 program units (the original 20 + 2 hygiene units + 7 Wave-4 units − 1 ephemeral support; counting Wave-4 = 140% of plan); 8/8 hard gates GREEN; 0 class-1 red-team findings.
+- **Seal artifact:** `00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md` — canonical close-out.
+- **Red-team report:** `00_ARCHITECTURE/CONDUCTOR/modernization/RED_TEAM_PLATFORM_MOD_v1_0.md` — 0 class-1, 3 class-2 dispositioned, 4 class-3 dispositioned.
+- **Current batch:** Batch 5 closed at sub-agent count = 8 dispatched + 3 inline (4.refactor_pipeline_shim A, 4.observability B, 4.memorystore_caching C, 4.edge_and_infra_hygiene A, 4.build_trigger B, 4.learning_loop C inline, 4.red_team_seal A inline). Wave-4 final seal complete.
+- **Tracker:** RETIRED (ephemeral lifecycle per 0t brief). `tools/program-tracker/` removed in 4.red_team_seal 2/3. Operator: `gcloud run services delete amjis-tracker --region asia-south1`.
+- **main HEAD:** post-batch-5 seal (after PROGRAM_STATE + seal-artifact + version-bump commit). Wave-4 commit chain: refactor (bc9379ce, 5b9164bd) → observability (5180733f, 50b74814, 33bacc0a, 42a39960) → memorystore (45ed0ef9, 177420c9, a56434b1) → edge (309376cd, d47ad81a, c8592215) → build_trigger (4b5d60b7, 6d34e6cb, 524792ab) → learning_loop (1a0b0fe8, 307c39ed) → red_team_seal (fcdc9199, + 2 follow-ups).
+- **Last green per stream:** A=`4.red_team_seal` (inline) · B=`4.build_trigger` (524792ab) · C=`4.learning_loop` (inline 307c39ed).
 - **Open halts:** none.
 - **Attention (not a halt; deferred operator action):**
   - **Apply migrations 081–090 to staging DB** (additive, idempotent). 086–089 add L2.5 `(chart_id, ayanamsha_id)` keying + 3-column MSR coefficient + legacy provenance freeze; **090 drops `mcp_api_keys.audience_tier`** (the only irreversible op — run after a green post-cutover window — now eligible since 3.cutover + 3.legacy_delete shipped green).
@@ -66,16 +68,32 @@
 | **3.cutover** | 3 | A | `957dbbf9` `075e9dc3` | New `platform/src/lib/pipelines/shared/onfinish_writethrough.ts` helper (+335 LoC) closes 6 parity gaps between adapter and legacy `onFinish` (observatory cost emit, lastAssistantMetadata persistence carry, per-citation `data-citation` parts, `data-correction`/`data-out-of-domain` markers, `pendingStreamWriter.clear()`, blind-mode PPL ledger append). Golden test at `platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts` (8 GOLDEN + 7 SHAPE + 3 GUARD = 18 tests) asserts deep-equal call lists. Selector default flipped in `selector.ts` (env-var fallback `=== 'true'` → `!== 'false'`) + `MARSYS_FLAG_PIPELINE_SELECTOR=true` baked in deploy.yml. **Sets G5b_onfinish GREEN.** Edits landed in `consult/route.ts` (not the brief-stale `consume/route.ts` reference — see scope note). |
 | **3.legacy_delete** | 3 | A | `934085a2` `9f677e15` `aa7aaca2` | (1/3) Deleted legacy trio `orchestrator.ts` + `single_model_strategy.ts` + `panel_strategy.ts` (3,893 LoC net deletion incl. 6 legacy test files) + legacy `else` branch from `consult/route.ts`. (2/3) Deleted orphaned `/api/mcp/execute/route.ts` + dead `callPlatform()` / `callPlatformPlan()` from `platform-mcp/src/client.ts` after caller verification. (3/3) Collapsed `MARSYS_FLAG_PIPELINE_SELECTOR` — `isPipelineSelectorEnabled()` now `@deprecated` constant-true shim; selector + per-kind `pipelines/{single_pass,agentic}/` modules remain as staged scaffolding for the next refactor wave. `platform/src/lib/synthesis/panel/` ACTIVE directory INTACT (verified). 36/36 chat tests GREEN on main; sanity grep clean of legacy refs (only docstring/comment carry-overs remain). |
 
-## Eligible-now / queued (Batch 5 — staged scaffolding completion + operator window)
-- **Next refactor wave** — move `QueryPipeline.run()` bodies out of `route.ts` into `pipelines/{single_pass,agentic}/` and delete the deprecated `isPipelineSelectorEnabled()` shim. Brief not yet authored.
-- **4.scale_and_close** — wave 4 close-out (queue marks `status: not_yet_detailed`).
+## Batch 5 — closed units (Wave 4 final seal; commits on main)
+| Unit | Wave | Stream | Commit(s) on main | Notes |
+|---|---|---|---|---|
+| **4.refactor_pipeline_shim** | 4 | A | `bc9379ce` `5b9164bd` | Extract ~420 LoC adapter dispatch body from `consult/route.ts` into `pipelines/shared/run_adapter_dispatch.ts`; route shrank 1331→934 lines. Delete `isPipelineSelectorEnabled()` shim + flag refs. 36/36 chat tests + 62/62 pipelines tests GREEN. |
+| **4.observability** | 4 | B | `5180733f` `50b74814` `33bacc0a` `42a39960` | (1) Trace primitives + W3C traceparent; (2) 2 dashboards + 3 SLOs + 3 alert policies as `infra/monitoring/` JSON; (3) Batch Vertex embeddings (50-text → 1 request); (4) Budget kill-switch guard. 33/33 tests. |
+| **4.memorystore_caching** | 4 | C | `45ed0ef9` `177420c9` `a56434b1` | (1) Memorystore IaC + Redis singleton; (2) Cache adapter + per-surface integration (retrieval bundles, planner, embeddings); (3) Retire process-local 60s caches in `dataSource.ts` + `runtime_config.ts` + chaos test (5 scenarios). 74/74 tests. Embedding cache integrated via shared_cache.ts conflict-resolved on cherry-pick. |
+| **4.edge_and_infra_hygiene** | 4 | A | `309376cd` `d47ad81a` `c8592215` | (1) LB + CDN + Cloud Armor IaC; (2) IAM bearer on amjis-mcp + per-service runtime SAs (4 distinct) + `--no-allow-unauthenticated`; (3) Cloud Scheduler IaC + deploy consolidation (deleted 4× `platform/cloudbuild*.yaml`) + secret rotation policy + Artifact Registry cleanup. 32/32 smoke checks + 3 IAM-bearer tests GREEN. |
+| **4.build_trigger** | 4 | B | `4b5d60b7` `6d34e6cb` `524792ab` | (1) Cloud Task queue IaC + `/api/build/{start,task,events/[buildId]}/route.ts` + lib/build/{trigger,jobInvoker,events}.ts + migration 118 + flag `MARSYS_FLAG_BUILD_TRIGGER_ENABLED=false`; (2) `BuildActionPanel.tsx` ('use client', idle→starting→running→done/error SSE state machine) + 6-case mount test; (3) E2E smoke (happy + failure-rollback + authz-deny paths). 77/77 tests across api/build + clients + lib/build. |
+| **4.learning_loop** | 4 | C (inline) | `1a0b0fe8` `307c39ed` | (1) Migration 119 (calibration-stamp columns on `mcp_predictions`) + `lib/predictions/calibration_producer.ts` + onfinish_writethrough step 10 (LEL-independent); 22/22 tests. (2) `answer:eval` post-cutover baseline STUBBED at `00_ARCHITECTURE/answer_eval_baseline_post_cutover_v1_0.json` + operator runbook notes — operator runs the actual eval with live creds. |
+| **4.red_team_seal** | 4 | A (inline) | `fcdc9199` + 2 follow-ups | (1) Red-team report 0 class-1 / 3 class-2 / 4 class-3, all dispositioned; (2) `tools/program-tracker/` removed; (3) seal artifact `PLATFORM_MODERNIZATION_CLOSE_v1_0.md` + PROGRAM_STATE update + version bumps. |
 
-## What to ship to the native at re-kick
-1. **Native review of depth-selector default** (3.tier_excision shipped TierPicker removal with planner-auto-by-query-class). Still pending from Batch 3.
-2. **Apply migrations 081–090 to staging DB** — now eligible (3.cutover + 3.legacy_delete shipped + held green). Migration 090 (drop `mcp_api_keys.audience_tier`) is the only irreversible op — run after a green post-cutover smoke window.
-3. **Cloud Run env-var cleanup** — `gcloud run services update amjis-web --remove-env-vars MARSYS_FLAG_PIPELINE_SELECTOR,MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED` (both env-vars already removed from `deploy.yml` bakes; this is the merge-side cleanup).
-4. **Next refactor wave brief** (Cowork authoring): move pipeline.run() bodies out of route.ts; delete the deprecated `isPipelineSelectorEnabled()` shim and any remaining single_model_strategy docstring/comment references that are stale post-deletion.
-5. (Carried) **Rotate `amjis-db-password`**.
+## ARC SEALED — next operator window
+The Platform Modernization arc is **SEALED** 2026-05-28. Open items move to the operator queue.
+The session_queue.yaml entry for the next refactor wave is INTENTIONALLY EMPTY — the next Cowork
+brief will declare a new arc.
+
+## What to ship to the native at seal (operator queue)
+Authoritative list lives in `00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md §Deferred operator items`. Summary:
+1. Apply migrations 081–090 (carried) + **118** (build_events) + **119** (calibration-stamp columns). Additive + idempotent. 090 is the only irreversible op.
+2. Run `terraform apply` for the 6 new IaC packages: `infra/memorystore`, `infra/edge`, `infra/iam`, `infra/scheduler`, `infra/cloud_tasks`, plus the `infra/monitoring/` dashboards + SLOs + alerts + `infra/artifact_registry/cleanup_policy.json`.
+3. Cloud Run env-var cleanup: remove `MARSYS_FLAG_PIPELINE_SELECTOR` + `MARSYS_FLAG_LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED` (already absent from deploy.yml bakes).
+4. Rotate `amjis-db-password` (carried).
+5. Run live `answer:eval` baseline per the STUBBED v1.0 runbook → commit as v1.1.
+6. Flip `MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true` post-smoke.
+7. `gcloud run services delete amjis-tracker --region asia-south1` (program-tracker retired).
+8. Native review of depth-selector default (3.tier_excision carry-over).
 
 ## Re-kick protocol
 1. Open a fresh Conductor chat at repo root on `main`.

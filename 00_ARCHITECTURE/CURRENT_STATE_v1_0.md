@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.63
+version: 5.64
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -6638,3 +6638,5 @@ aiops_phase_1:
 ---
 
 *End of CURRENT_STATE_v1_0.md — amended in-place 2026-04-24 at Step 15 (GOVERNANCE_BASELINE_CLOSE) to transition from rebuild-era secondary surface to steady-state authoritative state pointer. §2 YAML, §3 narrative, §5.1 authority rule all updated. Governance rebuild CLOSED.*
+
+*v5.64 2026-05-28: Platform Modernization arc **SEALED** via Batch 5 Wave-4 final seal. 7 Wave-4 units (4.refactor_pipeline_shim / 4.observability / 4.memorystore_caching / 4.edge_and_infra_hygiene / 4.build_trigger / 4.learning_loop / 4.red_team_seal) shipped + sealed in one autonomous Conductor session. 8/8 hard gates GREEN; 0 class-1 red-team findings; 223/223 tests green; tools/program-tracker/ retired. Seal artifact: `00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md`. Concurrent workstream — does NOT advance M5-A; M5-A backlog remains intact. CLAUDE.md bumped v4.7 → v4.8.*
