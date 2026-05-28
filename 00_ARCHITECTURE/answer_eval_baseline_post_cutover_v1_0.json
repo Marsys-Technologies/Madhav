@@ -1,45 +1,106 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "kind": "answer_eval_baseline",
-  "status": "STUBBED",
-  "generated_at_iso": "2026-05-28T14:55:00.000Z",
-  "generated_by": "wave4-learning-loop-inline",
+  "status": "LIVE",
+  "generated_at_iso": "2026-05-28T18:13:08.877Z",
+  "generated_by": "operator-cleanup-v1.2-patch-session",
   "salience_formula_version": "v3.0",
   "ayanamsha_id": "jh_true_chitra",
   "context": {
     "post_cutover_marker": "G5b_onfinish GREEN; 3.cutover + 3.legacy_delete on main; legacy synthesis trio deleted",
     "pipeline_selector_default": "adapter (R11V2_USE_ADAPTERS=true)",
     "msr_grounding": "573/573 signals grounded (VERIFIED_NO_GAP)",
-    "dejudge_state": "CONFIDENCE_FLOOR + LL.1 weights + Pancha-MP consolidation stripped (3.dejudge); weak-tail signals now surface to synthesis"
+    "dejudge_state": "CONFIDENCE_FLOOR + LL.1 weights + Pancha-MP consolidation stripped (3.dejudge); weak-tail signals now surface to synthesis",
+    "v1_2_patch_state": "Phase A migrations 086_0+086-090+118+119 all applied; 123 query_trace_steps partitioned; legacy charts table aligned to modernization shape; chart_facts/l25_msr_signals chart_id keying ready but rows still 100% legacy (chart_id NULL) so the modernization-arc engine path is still cold"
+  },
+  "run": {
+    "eval_run_id": "ac44c3cd-a0c5-4a03-995e-6f8a5ad770a0",
+    "started_at_iso": "2026-05-28T18:03:32.441Z",
+    "finished_at_iso": "2026-05-28T18:13:08.877Z",
+    "wall_clock_seconds": 576,
+    "stack": "anthropic",
+    "chart_id": "362f9f17-95a5-490b-a5a7-027d3e0efda0",
+    "golden_set_version": "1.0",
+    "queries_run": 11,
+    "queries_skipped": 4,
+    "skipped_reasons": [
+      "GQ-011 (discovery): HTTP 422 unknown",
+      "GQ-013 (predictive): empty response",
+      "GQ-014 (predictive): HTTP 422 unknown",
+      "GQ-015 (predictive): HTTP 422 unknown"
+    ]
   },
   "baseline_metrics": {
-    "tool_calls_per_query_mean": null,
-    "signals_surfaced_per_query_mean": null,
-    "calibrated_confidence_avg": null,
-    "citation_gate_pass_rate": null,
-    "synthesis_latency_p50_ms": null,
-    "synthesis_latency_p95_ms": null,
-    "synthesis_latency_p99_ms": null,
-    "cache_hit_rate": null,
-    "_note": "All metrics null because this baseline is STUBBED. Operator runs `npx tsx scripts/answer_eval.ts --baseline=post-cutover` with live DB + LLM creds to populate."
+    "queries_run": 11,
+    "queries_skipped": 4,
+    "pass_rate": 0,
+    "avg_layer_coverage_pct": 31,
+    "avg_b10_compliance_pct": 95,
+    "avg_b11_compliance_pct": 29,
+    "avg_citation_compliance_pct": 8,
+    "avg_calibration_pct": 24,
+    "retrieval_hit_rate": 0.309,
+    "citation_rate": 0.082,
+    "synthesis_pass_rate": 0,
+    "plan_accuracy_recall": 0,
+    "plan_accuracy_precision": 0
   },
-  "re_baseline_notes": [
-    "De-judgment intentionally surfaces previously-floored signals.",
-    "Weak-tail surface area grows on finance/wealth/career domains in particular (where the prior CONFIDENCE_FLOOR=0.6/0.35 had been suppressing the most signals).",
-    "Salience is now sourced from 2a.1 L2.5 `computed_salience` column + serve-time panel (not from runtime calibration).",
-    "Per project discipline: answer:eval re-baseline runs ONCE per consolidated batch, never per-PR. This is the Wave-4 post-cutover reference."
+  "per_query": [
+    { "id": "GQ-001", "category": "factual",      "layer_cov": 0.50, "b10": 1.00, "b11": 0.00, "cites": 0.00, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-002", "category": "factual",      "layer_cov": 0.50, "b10": 1.00, "b11": 0.25, "cites": 0.00, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-003", "category": "factual",      "layer_cov": 0.50, "b10": 1.00, "b11": 0.00, "cites": 0.50, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-004", "category": "interpretive", "layer_cov": 0.33, "b10": 0.50, "b11": 0.50, "cites": 0.00, "calib": 0.75, "result": "FAIL" },
+    { "id": "GQ-005", "category": "interpretive", "layer_cov": 0.00, "b10": 1.00, "b11": 1.00, "cites": 0.00, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-006", "category": "interpretive", "layer_cov": 0.33, "b10": 1.00, "b11": 0.25, "cites": 0.00, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-007", "category": "holistic",     "layer_cov": 0.40, "b10": 1.00, "b11": 0.33, "cites": 0.00, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-008", "category": "holistic",     "layer_cov": 0.25, "b10": 1.00, "b11": 0.33, "cites": 0.00, "calib": 0.50, "result": "FAIL" },
+    { "id": "GQ-009", "category": "holistic",     "layer_cov": 0.25, "b10": 1.00, "b11": 0.33, "cites": 0.40, "calib": 0.50, "result": "FAIL" },
+    { "id": "GQ-010", "category": "discovery",    "layer_cov": 0.33, "b10": 1.00, "b11": 0.17, "cites": 0.00, "calib": 0.89, "result": "FAIL" },
+    { "id": "GQ-011", "category": "discovery",    "result": "SKIPPED",         "reason": "HTTP 422 unknown" },
+    { "id": "GQ-012", "category": "discovery",    "layer_cov": 0.00, "b10": 1.00, "b11": 0.00, "cites": 0.00, "calib": 0.00, "result": "FAIL" },
+    { "id": "GQ-013", "category": "predictive",   "result": "SKIPPED",         "reason": "empty response" },
+    { "id": "GQ-014", "category": "predictive",   "result": "SKIPPED",         "reason": "HTTP 422 unknown" },
+    { "id": "GQ-015", "category": "predictive",   "result": "SKIPPED",         "reason": "HTTP 422 unknown" }
+  ],
+  "regression_check_vs_pre_cutover": {
+    "status": "TIE_BY_STUB",
+    "explanation": "The v1.0 pre-cutover baseline (`schema_version: 1.0`) was STUBBED with all baseline_metrics fields = null. F.3's >10%-regression halt condition is undefined when the prior baseline is null. This v1.1 baseline now becomes the live reference; the next consolidated batch compares back to it.",
+    "halt_decision": "PASS — no defined regression to halt on."
+  },
+  "follow_ons": [
+    {
+      "id": "F.FU.1",
+      "what": "Four golden queries return HTTP 422 or empty: GQ-011, GQ-013, GQ-014, GQ-015 (mostly predictive + one discovery). Route /api/chat/consume rejects these inputs — likely a payload-shape change that the golden set is on the wrong side of. Triage in a follow-up hygiene PR (cheap to investigate; the golden queries are static and the 422 is reproducible)."
+    },
+    {
+      "id": "F.FU.2",
+      "what": "Citation rate 8% + layer coverage 31% reflect the de-judge surface: weak-tail signals now appear in synthesis but the planner's citation-discipline rules haven't been re-baselined for them. CITATION_GATE follow-on tightens the per-signal citation requirement; that work is queued in V1_3_AUDIT_QUEUE.md."
+    },
+    {
+      "id": "F.FU.3",
+      "what": "B.11 compliance 29% is the largest gap from the v1.1 honest baseline. Whole-Chart-Read protocol (MSR + UCN + CDLM + CGM + RM in every read) isn't reliably emitted by synthesis. Holistic queries (GQ-007/008/009) get 33% B.11; factual queries get 0–25%. LL.2 per-edge campaign is the natural next session."
+    },
+    {
+      "id": "F.FU.4",
+      "what": "answer_eval.ts requires temporarily stubbing platform/node_modules/server-only/index.js to import platform/src/lib/performance/ingestion.ts — `ingestion.ts` starts with `import 'server-only'` which throws under tsx CLI. Author a non-server-only writer module (e.g. platform/src/lib/performance/ingestion_cli.ts) so future eval runs don't need the module-replacement hack."
+    }
   ],
   "operator_runbook": {
-    "command": "cd platform && pnpm tsx scripts/answer_eval.ts --baseline --salience-formula-version=v3.0",
-    "prerequisites": [
-      "Vertex AI auth (GoogleAuth ADC)",
-      "Anthropic API key (ANTHROPIC_API_KEY env)",
-      "Production DB read access (DATABASE_URL env)",
-      "Migration 119 applied"
+    "command": "cd /Users/Dev/Vibe-Coding/Apps/Madhav/platform && npx tsx scripts/answer_eval.ts",
+    "env": {
+      "BASE_URL": "production Cloud Run URL",
+      "CHART_ID": "FORENSIC native UUID",
+      "AUTH_TOKEN": "__session cookie (Firebase Admin createSessionCookie)",
+      "DATABASE_URL": "postgresql://amjis_app:<pw>@127.0.0.1:5433/amjis (via cloud-sql-proxy)",
+      "EVAL_STACK": "anthropic | gemini | nim"
+    },
+    "prerequisites_satisfied": [
+      "Vertex AI auth (GoogleAuth ADC) — gcloud ADC present",
+      "Anthropic API key — baked into Cloud Run via secret ref",
+      "Production DB read access — cloud-sql-proxy on :5433",
+      "Migration 119 applied — predicted_at_iso column present"
     ],
-    "expected_runtime_minutes": 15,
-    "expected_output": "Replaces this file with live metrics; commits as v1_1.json (additive)."
+    "expected_runtime_minutes": "9-10 (measured: 9.6 min for 15-query attempt with 11 runs + 4 skips)"
   },
-  "sample_size": null,
-  "queries_evaluated": []
+  "supersedes": "the v1.0 STUBBED baseline shape"
 }
