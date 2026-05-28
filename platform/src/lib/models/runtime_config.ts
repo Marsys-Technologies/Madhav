@@ -2,6 +2,7 @@ import 'server-only'
 import { STACK_ROUTING, DEFAULT_STACK_ID, type CallType, type ModelStack } from './registry'
 import { getFlag } from '@/lib/config'
 import { query } from '@/lib/db/client'
+import { buildKey, cacheGetOrCompute, invalidateNamespace } from '@/lib/cache/shared_cache'
 import type {
   LlmStackConfigRow,
   LlmStackRoutingOverrideRow,
@@ -9,7 +10,16 @@ import type {
 } from '@/lib/db/schema/aiops'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// In-memory cache (60s TTL)
+// Runtime-config cache (60s TTL) — backed by shared Memorystore.
+//
+// Process-local 60s _cache RETIRED 2026-05-28 (Wave 4 unit
+// 4.memorystore_caching, commit 3/3). Cross-process invalidation now works
+// correctly: `invalidateRuntimeConfigCache()` clears the shared cache so all
+// Cloud Run instances see the new config on the next read.
+//
+// `invalidateRuntimeConfigCache()` keeps its synchronous void signature so
+// existing fire-and-forget call sites in `app/api/admin/aiops/**` keep
+// compiling; the underlying Redis SCAN+UNLINK runs as a microtask.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ParamName = 'max_output_tokens' | 'temperature' | 'thinkingBudget' | 'timeout_ms'
@@ -21,16 +31,13 @@ interface RuntimeCache {
   fetched_at:     number
 }
 
-let _cache: RuntimeCache | null = null
-const CACHE_TTL_MS = 60_000
+const RUNTIME_CONFIG_TTL_SECONDS = 60
+const RUNTIME_CONFIG_KEY = buildKey('runtime-config', { scope: 'global' })
 
-function isCacheValid(): boolean {
-  return _cache !== null && Date.now() - _cache.fetched_at < CACHE_TTL_MS
-}
-
-/** Call after every write in the Control Panel to bust the 60s cache immediately. */
+/** Call after every write in the Control Panel to bust the cache immediately. */
 export function invalidateRuntimeConfigCache(): void {
-  _cache = null
+  // Fire-and-forget — shared_cache.invalidateNamespace never throws.
+  void invalidateNamespace('runtime-config')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,9 +73,12 @@ async function fetchFromDb(): Promise<RuntimeCache> {
 }
 
 async function getCache(): Promise<RuntimeCache> {
-  if (isCacheValid()) return _cache!
-  _cache = await fetchFromDb()
-  return _cache
+  return cacheGetOrCompute<RuntimeCache>(
+    'runtime-config',
+    RUNTIME_CONFIG_KEY,
+    RUNTIME_CONFIG_TTL_SECONDS,
+    fetchFromDb,
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

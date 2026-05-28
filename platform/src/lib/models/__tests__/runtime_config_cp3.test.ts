@@ -16,6 +16,31 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/lib/config', () => ({ getFlag: mockGetFlag }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 
+// In-process fake of shared_cache — Wave 4 unit 4.memorystore_caching commit 3/3.
+const { __fakeCache } = vi.hoisted(() => ({
+  __fakeCache: new Map<string, { v: unknown; exp: number }>(),
+}))
+vi.mock('@/lib/cache/shared_cache', () => ({
+  buildKey: (surface: string, parts: Record<string, unknown>) =>
+    `marsys:${surface}:${JSON.stringify(parts)}`,
+  cacheGetOrCompute: async <T,>(
+    _surface: string,
+    key: string,
+    ttlSeconds: number,
+    compute: () => Promise<T>,
+  ): Promise<T> => {
+    const hit = __fakeCache.get(key)
+    if (hit && hit.exp > Date.now()) return hit.v as T
+    const v = await compute()
+    __fakeCache.set(key, { v, exp: Date.now() + ttlSeconds * 1000 })
+    return v
+  },
+  invalidateNamespace: async (_surface: string) => {
+    __fakeCache.clear()
+    return 0
+  },
+}))
+
 // Full 6-stack × 11-calltype STACK_ROUTING mock matching production registry shape
 vi.mock('@/lib/models/registry', async () => {
   const actual = await vi.importActual<typeof import('@/lib/models/registry')>('@/lib/models/registry')

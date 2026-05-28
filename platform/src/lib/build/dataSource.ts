@@ -1,6 +1,7 @@
 import 'server-only'
 import { Storage } from '@google-cloud/storage'
 import { query } from '@/lib/db/client'
+import { buildKey, cacheGetOrCompute } from '@/lib/cache/shared_cache'
 import type { BuildState, SessionDetail, PhaseDetail } from './types'
 
 export interface ActiveChartEntry {
@@ -12,8 +13,11 @@ export interface ActiveChartEntry {
   health: 'green' | 'amber' | 'red'
 }
 
-// 60-second in-memory cache so the cockpit page doesn't hammer the DB on every render.
-let _activeChartsCache: { data: ActiveChartEntry[]; ts: number } | null = null
+// Process-local 60-second cache RETIRED 2026-05-28 (Wave 4 unit
+// 4.memorystore_caching, commit 3/3). Cockpit "active charts" data now
+// read-through the shared Memorystore cache; falls back to direct DB
+// compute when REDIS_HOST is unset (chaos-test recovery path).
+const ACTIVE_CHARTS_TTL_SECONDS = 60
 
 function healthDot(lastActivity: string | null): 'green' | 'amber' | 'red' {
   if (!lastActivity) return 'red'
@@ -24,12 +28,7 @@ function healthDot(lastActivity: string | null): 'green' | 'amber' | 'red' {
   return 'red'
 }
 
-export async function getActiveCharts({ limit = 5 }: { limit?: number } = {}): Promise<ActiveChartEntry[]> {
-  const now = Date.now()
-  if (_activeChartsCache && now - _activeChartsCache.ts < 60_000) {
-    return _activeChartsCache.data.slice(0, limit)
-  }
-
+async function fetchActiveCharts(): Promise<ActiveChartEntry[]> {
   type ActiveChartRow = {
     id: string
     client_id: string
@@ -58,14 +57,22 @@ export async function getActiveCharts({ limit = 5 }: { limit?: number } = {}): P
     [50]
   )
 
-  const data: ActiveChartEntry[] = result.rows.map((row: ActiveChartRow) => ({
+  return result.rows.map((row: ActiveChartRow) => ({
     ...row,
     build_pct: Number(row.build_pct),
     health: healthDot(row.last_activity),
   }))
+}
 
-  _activeChartsCache = { data, ts: now }
-  return data.slice(0, limit)
+export async function getActiveCharts({ limit = 5 }: { limit?: number } = {}): Promise<ActiveChartEntry[]> {
+  const key = buildKey('active-charts', { variant: 'cockpit-top50' })
+  const all = await cacheGetOrCompute<ActiveChartEntry[]>(
+    'active-charts',
+    key,
+    ACTIVE_CHARTS_TTL_SECONDS,
+    fetchActiveCharts,
+  )
+  return all.slice(0, limit)
 }
 
 let _storage: Storage | null = null
