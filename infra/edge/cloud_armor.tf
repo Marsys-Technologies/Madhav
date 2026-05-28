@@ -50,8 +50,10 @@ resource "google_compute_security_policy" "amjis_armor" {
       enforce_on_key = "IP"
 
       rate_limit_threshold {
-        count        = 60
-        interval_sec = 1
+        // Cloud Armor allowed intervals: 10, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 2700, 3600s.
+        // 60 req/s logical target encoded as 600 req per 10s window (same rate, valid interval).
+        count        = 600
+        interval_sec = 10
       }
     }
   }
