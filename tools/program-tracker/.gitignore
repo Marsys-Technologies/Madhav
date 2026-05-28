@@ -1,4 +1,0 @@
-.state/
-*.pid
-*.log
-node_modules/
