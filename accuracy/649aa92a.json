@@ -1,0 +1,149 @@
+{
+  "fixture_path": "/Users/Dev/Vibe-Coding/Apps/Madhav/platform-mcp/test/accuracy/fixtures/abhisek-mohanty-golden.json",
+  "chart_id": "abhisek-mohanty",
+  "mcpt_version": "v3.3",
+  "run_at": "2026-05-25T19:51:53.854Z",
+  "git_sha": "649aa92a",
+  "categories_checked": 27,
+  "categories_passed": 27,
+  "categories_failed": 0,
+  "checks": {
+    "birth_metadata": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "planet": {
+      "expected_min_rows": 9,
+      "actual_rows": 9,
+      "passed": true
+    },
+    "house": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "passed": true
+    },
+    "yoga": {
+      "expected_min_rows": 50,
+      "actual_rows": 50,
+      "passed": true
+    },
+    "arudha": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "passed": true
+    },
+    "dasha_vimshottari": {
+      "expected_min_rows": 3,
+      "actual_rows": 3,
+      "passed": true
+    },
+    "sensitive_point": {
+      "expected_min_rows": 5,
+      "actual_rows": 5,
+      "passed": true
+    },
+    "shadbala": {
+      "expected_min_rows": 7,
+      "actual_rows": 7,
+      "passed": true
+    },
+    "ashtakavarga_sav": {
+      "expected_min_rows": 7,
+      "actual_rows": 7,
+      "passed": true
+    },
+    "ashtakavarga_bav": {
+      "expected_min_rows": 56,
+      "actual_rows": 56,
+      "passed": true
+    },
+    "aspect": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "kp_planet": {
+      "expected_min_rows": 9,
+      "actual_rows": 9,
+      "passed": true
+    },
+    "kp_cusp": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "passed": true
+    },
+    "varshphal": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "special_lagna": {
+      "expected_min_rows": 3,
+      "actual_rows": 3,
+      "passed": true
+    },
+    "upagraha": {
+      "expected_min_rows": 5,
+      "actual_rows": 5,
+      "passed": true
+    },
+    "bhava_bala": {
+      "expected_min_rows": 12,
+      "actual_rows": 12,
+      "passed": true
+    },
+    "navatara": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "arudha_occupancy": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "strength": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "chalit_shift": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "mrityu_bhaga": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "longevity_indicator": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "chandra_placement": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "avastha": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "saham": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    },
+    "dasha_chara": {
+      "expected_min_rows": 1,
+      "actual_rows": 1,
+      "passed": true
+    }
+  },
+  "verdict": "pass",
+  "regressions": []
+}

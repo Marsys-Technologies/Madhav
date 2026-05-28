@@ -1,0 +1,40 @@
+{
+  "git_sha": "b80e3318",
+  "captured_at": "2026-05-26T10:58:23.198Z",
+  "platform_mcp_dir": "/Users/Dev/Vibe-Coding/Apps/Madhav/platform-mcp",
+  "scenarios": {
+    "canonical_d9_workflow": {
+      "scenario": "canonical_d9_workflow",
+      "description": "Agentic D9 interpretation. Single chart_summary + 1 follow-up.",
+      "metrics": {
+        "round_trips": 2,
+        "response_bytes": 7933,
+        "wall_time_ms": 1
+      },
+      "steps_executed": 2,
+      "ok": true
+    },
+    "holistic_d9": {
+      "scenario": "holistic_d9",
+      "description": "Holistic bundle D9 interpretation via holistic_bundle tool.",
+      "metrics": {
+        "round_trips": 1,
+        "response_bytes": 64121,
+        "wall_time_ms": 1
+      },
+      "steps_executed": 1,
+      "ok": true
+    },
+    "portal_synthesis_floor": {
+      "scenario": "portal_synthesis_floor",
+      "description": "Pre-refactor pattern — 5 separate query_chart_facts calls. Floor baseline.",
+      "metrics": {
+        "round_trips": 5,
+        "response_bytes": 38215,
+        "wall_time_ms": 0
+      },
+      "steps_executed": 5,
+      "ok": true
+    }
+  }
+}
