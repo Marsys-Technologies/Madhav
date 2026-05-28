@@ -67,3 +67,7 @@ scripts/setup_mcp_env.sh
 # MCPT v3.2: track eval-results/ JSON, suppress legacy log noise
 eval-results/*.log
 tools/program-tracker/
+
+# Terraform local state/cache (per-module — not committed; recreated by `terraform init`)
+**/.terraform/
+**/.terraform.lock.hcl
