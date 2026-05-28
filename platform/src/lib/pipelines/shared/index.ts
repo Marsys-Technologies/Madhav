@@ -37,3 +37,7 @@ export type {
   PredictionLedgerAppender,
   SynthUsage,
 } from './onfinish_writethrough'
+export {
+  runAdapterDispatch,
+  type RunAdapterDispatchCtx,
+} from './run_adapter_dispatch'
