@@ -23,49 +23,66 @@
  */
 
 import type { McpEnvelope, PlatformCallResult, Principal } from './types.js'
+import { GoogleAuth, type IdTokenClient } from 'google-auth-library'
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-// ── Identity token acquisition ────────────────────────────────────────────────
+// ── Identity token acquisition (Wave 4 4.edge_and_infra_hygiene) ─────────────
+//
+// Service-to-service auth uses google-auth-library to mint OIDC ID tokens
+// scoped to the target audience (PLATFORM_URL). google-auth-library handles:
+//   - GCP metadata server in production (under amjis-mcp-runtime SA).
+//   - Application Default Credentials (ADC) for local dev / `gcloud auth`.
+//   - Token caching + refresh.
+//
+// Falls back to:
+//   - SERVICE_TOKEN env var (explicit override for tests).
+//   - MCP_INTERNAL_TOKEN as a Bearer token (legacy / non-GCP environments).
+
+let cachedIdTokenClient: IdTokenClient | null = null
+
+async function getIdTokenClient(): Promise<IdTokenClient> {
+  if (cachedIdTokenClient) return cachedIdTokenClient
+  const auth = new GoogleAuth()
+  cachedIdTokenClient = await auth.getIdTokenClient(PLATFORM_URL)
+  return cachedIdTokenClient
+}
 
 /**
- * Fetch a Cloud Run service-to-service identity token.
- *
- * In production: queries the GCP metadata server for an OIDC token with
- * audience set to the platform URL.
- *
- * In local dev: falls back to the SERVICE_TOKEN env var, then to the
- * MCP_INTERNAL_TOKEN (which is used as the X-MCP-Internal-Token header
- * on the platform side, not as a Bearer token, but works for local routing).
+ * Fetch a Cloud Run service-to-service identity token via google-auth-library.
+ * The returned token is an OIDC ID token bound to the PLATFORM_URL audience;
+ * Cloud Run's IAM gate (`run.invoker` role on amjis-web for amjis-mcp-runtime)
+ * accepts it.
  */
 async function fetchIdentityToken(): Promise<string> {
-  // Local dev override
+  // Explicit override (tests + local dev).
   const staticToken = process.env['SERVICE_TOKEN']
   if (staticToken) return staticToken
 
-  // GCP metadata server
-  const metadataUrl =
-    `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity` +
-    `?audience=${encodeURIComponent(PLATFORM_URL)}`
-
   try {
-    const response = await fetch(metadataUrl, {
-      headers: { 'Metadata-Flavor': 'Google' },
-      signal: AbortSignal.timeout(3000),
-    })
-    if (!response.ok) {
-      throw new Error(`Metadata server returned ${response.status}`)
-    }
-    return await response.text()
+    const client = await getIdTokenClient()
+    const headers = await client.getRequestHeaders(PLATFORM_URL)
+    const authHeader = (headers as Record<string, string>)['Authorization'] ?? ''
+    // Strip the leading "Bearer " prefix to return only the raw token.
+    if (authHeader.startsWith('Bearer ')) return authHeader.slice(7)
+    return authHeader
   } catch (err) {
-    // Not running on GCP — use internal token as the bearer
+    // Not running on GCP and no ADC — fall back to internal token.
     if (MCP_INTERNAL_TOKEN) return MCP_INTERNAL_TOKEN
-    console.warn('[mcp:client] No identity token available; calls will likely fail auth.')
+    console.warn(
+      '[mcp:client] No identity token available; calls will likely fail auth.',
+      err instanceof Error ? err.message : String(err)
+    )
     return ''
   }
+}
+
+// Exposed for tests — lets the test suite reset the cached client between cases.
+export function __resetIdentityTokenCacheForTests(): void {
+  cachedIdTokenClient = null
 }
 
 // ── Error envelope helper ─────────────────────────────────────────────────────

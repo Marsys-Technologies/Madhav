@@ -53,7 +53,11 @@ steps:
       - '--memory=512Mi'
       - '--min-instances=1'
       - '--concurrency=80'
-      - '--allow-unauthenticated'
+      # Wave 4 4.edge_and_infra_hygiene: IAM-gated. Only principals with
+      # roles/run.invoker on amjis-mcp may reach the service (amjis-web-runtime
+      # holds that grant via infra/iam/main.tf).
+      - '--no-allow-unauthenticated'
+      - '--service-account=amjis-mcp-runtime@$PROJECT_ID.iam.gserviceaccount.com'
       - '--set-env-vars=PLATFORM_URL=$_PLATFORM_URL'
       - '--update-secrets=MCP_INTERNAL_TOKEN=mcp-internal-token:latest'
 

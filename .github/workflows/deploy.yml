@@ -86,6 +86,10 @@ jobs:
           service: amjis-web
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ github.sha }}
+          # ── 4.edge_and_infra_hygiene ──
+          # Per-service least-priv runtime SA (see infra/iam/main.tf).
+          flags: --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
+          # ── /4.edge_and_infra_hygiene ──
           env_vars: |
             NODE_ENV=production
             MARSYS_FLAG_R11V2_USE_ADAPTERS=true
@@ -170,8 +174,67 @@ jobs:
           service: amjis-sidecar
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
-          flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=1
+          # ── 4.edge_and_infra_hygiene ──
+          # Per-service least-priv runtime SA (see infra/iam/main.tf).
+          flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=1 --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
+          # ── /4.edge_and_infra_hygiene ──
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:latest
             ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:latest
+
+  # ── 4.edge_and_infra_hygiene ──
+  # MCP deploy moved off the legacy Cloud Build trigger into GH Actions WIF
+  # (acceptance §6: deploy.yml is sole orchestrator). Image still builds via
+  # platform-mcp/cloudbuild.yaml or Docker here; trigger is GH Actions only.
+  # Image is pinned to Artifact Registry (asia-south1-docker.pkg.dev/...),
+  # not legacy gcr.io.
+  deploy-mcp:
+    name: Build & Deploy MCP
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Copy governance files into MCP build context
+        run: |
+          mkdir -p platform-mcp/00_ARCHITECTURE
+          cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform-mcp/00_ARCHITECTURE/CAPABILITY_MANIFEST.json || true
+          cp -r 01_FACTS_LAYER platform-mcp/01_FACTS_LAYER || true
+          cp -r 025_HOLISTIC_SYNTHESIS platform-mcp/025_HOLISTIC_SYNTHESIS || true
+
+      - name: Build and push MCP image (Artifact Registry, not gcr.io)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./platform-mcp/Dockerfile
+          push: true
+          tags: |
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:latest
+
+      - name: Deploy MCP to Cloud Run (IAM-gated, least-priv SA)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: amjis-mcp
+          region: ${{ env.GCP_REGION }}
+          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
+          # IAM-gated (no --allow-unauthenticated); per-service runtime SA.
+          flags: --no-allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi
+          env_vars: |
+            PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
+          secrets: |
+            MCP_INTERNAL_TOKEN=mcp-internal-token:latest
+  # ── /4.edge_and_infra_hygiene ──
