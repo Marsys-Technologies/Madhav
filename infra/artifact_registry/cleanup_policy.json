@@ -1,0 +1,44 @@
+{
+  "policy_name": "amjis-image-retention",
+  "description": "Artifact Registry cleanup policy for the amjis repository. Wave 4 4.edge_and_infra_hygiene.",
+  "repository": "projects/madhav-astrology/locations/asia-south1/repositories/amjis",
+  "rules": [
+    {
+      "id": "keep-latest-10-tagged",
+      "action": "KEEP",
+      "condition": {
+        "tagState": "TAGGED",
+        "newerThan": null,
+        "olderThan": null
+      },
+      "mostRecentVersions": {
+        "keepCount": 10,
+        "packageNamePrefixes": ["amjis-web", "amjis-sidecar", "amjis-mcp"]
+      },
+      "description": "Keep the 10 most-recent tagged revisions per service image."
+    },
+    {
+      "id": "delete-untagged-after-7d",
+      "action": "DELETE",
+      "condition": {
+        "tagState": "UNTAGGED",
+        "olderThan": "604800s"
+      },
+      "description": "Delete untagged images older than 7 days."
+    },
+    {
+      "id": "delete-tagged-after-90d",
+      "action": "DELETE",
+      "condition": {
+        "tagState": "TAGGED",
+        "olderThan": "7776000s",
+        "tagPrefixes": ["sha-", "pr-"]
+      },
+      "description": "Delete sha-/pr- tagged images older than 90 days."
+    }
+  ],
+  "notes": [
+    "Apply with: gcloud artifacts repositories set-cleanup-policies amjis --location=asia-south1 --policy=cleanup_policy.json --no-dry-run",
+    "Migration off legacy gcr.io: image refs in .github/workflows/deploy.yml + platform-mcp/cloudbuild.yaml all point at asia-south1-docker.pkg.dev/madhav-astrology/amjis/* (verified by edge_security_smoke.sh)."
+  ]
+}
