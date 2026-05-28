@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "kind": "answer_eval_baseline",
+  "status": "STUBBED",
+  "generated_at_iso": "2026-05-28T14:55:00.000Z",
+  "generated_by": "wave4-learning-loop-inline",
+  "salience_formula_version": "v3.0",
+  "ayanamsha_id": "jh_true_chitra",
+  "context": {
+    "post_cutover_marker": "G5b_onfinish GREEN; 3.cutover + 3.legacy_delete on main; legacy synthesis trio deleted",
+    "pipeline_selector_default": "adapter (R11V2_USE_ADAPTERS=true)",
+    "msr_grounding": "573/573 signals grounded (VERIFIED_NO_GAP)",
+    "dejudge_state": "CONFIDENCE_FLOOR + LL.1 weights + Pancha-MP consolidation stripped (3.dejudge); weak-tail signals now surface to synthesis"
+  },
+  "baseline_metrics": {
+    "tool_calls_per_query_mean": null,
+    "signals_surfaced_per_query_mean": null,
+    "calibrated_confidence_avg": null,
+    "citation_gate_pass_rate": null,
+    "synthesis_latency_p50_ms": null,
+    "synthesis_latency_p95_ms": null,
+    "synthesis_latency_p99_ms": null,
+    "cache_hit_rate": null,
+    "_note": "All metrics null because this baseline is STUBBED. Operator runs `npx tsx scripts/answer_eval.ts --baseline=post-cutover` with live DB + LLM creds to populate."
+  },
+  "re_baseline_notes": [
+    "De-judgment intentionally surfaces previously-floored signals.",
+    "Weak-tail surface area grows on finance/wealth/career domains in particular (where the prior CONFIDENCE_FLOOR=0.6/0.35 had been suppressing the most signals).",
+    "Salience is now sourced from 2a.1 L2.5 `computed_salience` column + serve-time panel (not from runtime calibration).",
+    "Per project discipline: answer:eval re-baseline runs ONCE per consolidated batch, never per-PR. This is the Wave-4 post-cutover reference."
+  ],
+  "operator_runbook": {
+    "command": "cd platform && pnpm tsx scripts/answer_eval.ts --baseline --salience-formula-version=v3.0",
+    "prerequisites": [
+      "Vertex AI auth (GoogleAuth ADC)",
+      "Anthropic API key (ANTHROPIC_API_KEY env)",
+      "Production DB read access (DATABASE_URL env)",
+      "Migration 119 applied"
+    ],
+    "expected_runtime_minutes": 15,
+    "expected_output": "Replaces this file with live metrics; commits as v1_1.json (additive)."
+  },
+  "sample_size": null,
+  "queries_evaluated": []
+}
