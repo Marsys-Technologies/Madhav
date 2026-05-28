@@ -1,5 +1,6 @@
 import 'server-only'
 import { GoogleAuth } from 'google-auth-library'
+import { buildKey, cacheGetOrCompute } from '@/lib/cache/shared_cache'
 
 // Vertex AI text-multilingual-embedding-002 — 768 dims, ADC auth.
 // Matches embed.py and vector_search.ts VERTEX_EMBED_DIM.
@@ -10,6 +11,10 @@ export const EMBED_DIM = 768
 // models. We keep a safety margin and chunk above this.
 //   docs: https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings
 const VERTEX_BATCH_LIMIT = 250
+
+// Embeddings are pure deterministic functions of (model, text) — safe to
+// cache aggressively. 24-hour TTL is conservative.
+const EMBED_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 // ── Shared infra: cached auth client (re-used across calls) ───────────────────
 
@@ -73,14 +78,19 @@ async function callPredict(instances: Array<{ task_type: string; content: string
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Embed a single text string.
+ * Embed a single text string. Cached via Memorystore-backed shared cache
+ * (24h TTL); on miss, delegates to the batched compute path.
  *
- * Backwards-compatible single-text API; for N > 1 callers should prefer
- * `embedTexts(texts)` to avoid N round-trips.
+ * For N > 1 callers should prefer `embedTexts(texts)` directly to avoid
+ * N round-trips (the batch path is uncached — callers that want caching
+ * for individual texts call this in a loop).
  */
 export async function embedText(text: string): Promise<number[]> {
-  const [v] = await embedTexts([text])
-  return v
+  const key = buildKey('vertex-embed', { model: VERTEX_MODEL, text })
+  return cacheGetOrCompute('vertex-embed', key, EMBED_CACHE_TTL_SECONDS, async () => {
+    const [v] = await embedTexts([text])
+    return v
+  })
 }
 
 /**
@@ -105,3 +115,4 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   }
   return out
 }
+
