@@ -16,7 +16,8 @@
  *   Independent of this UI control. Adapter dispatch is now the only backend
  *   pipeline — the legacy synthesis trio
  *   (single_model_strategy / panel_strategy / orchestrator) was deleted in
- *   3.legacy_delete, along with the MARSYS_FLAG_PIPELINE_SELECTOR flag.
+ *   3.legacy_delete, along with the pipeline-selector flag, which was then
+ *   fully removed by 4.refactor_pipeline_shim (along with the shim helper).
  *   Adapter onFinish write-through is proved by `onfinish_parity.golden.test.ts`.
  *   Rollback path is `git revert`, not flag flip.
  *
