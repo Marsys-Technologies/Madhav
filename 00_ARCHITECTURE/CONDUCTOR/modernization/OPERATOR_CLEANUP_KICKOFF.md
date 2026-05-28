@@ -26,9 +26,9 @@ PHASE C — DB migrations (seal #2; consolidated — no calendar wait):
 5. Apply migrations 081–089 + 118 + 119 to STAGING → smoke (full test suite + a representative chat query). Then to PROD → smoke.
 6. Apply migration 090 (IRREVERSIBLE — audience_tier column drop) to STAGING → smoke → PROD → smoke. No wait — defense already discharged in C1.
 
-PHASE D — Terraform (seal #3), STRICT ORDER:
-7. For each module in order — cloud_tasks, memorystore, monitoring, scheduler, edge, IAM — run plan + apply + smoke + auto-rollback on red. Halt the queue on any module red (do NOT proceed to the next module). IAM is last because it changes auth.
-8. Artifact Registry cleanup: delete untagged + :latest; migrate MCP image off gcr.io to AR; add cleanup policies.
+PHASE D — Infra (seal #3), STRICT ORDER:
+7. For each TERRAFORM module use the wrapper: `cd infra/<module> && ./apply.sh plan` (review) → `./apply.sh apply` → smoke → next. State bucket: `madhav-astrology-tf-state` (each apply.sh supplies -backend-config). Order: D1 cloud_tasks (tf), D2 memorystore (tf), D3 monitoring (**NOT tf — gcloud-applied JSON from monitoring/dashboards|alerts|slos per README**), D4 scheduler (tf), D5 edge (tf), D6 iam (tf, LAST — changes auth). Halt queue on any module red.
+8. D7 Artifact Registry cleanup (**NOT tf — gcloud-applied**): apply artifact_registry/cleanup_policy.json via `gcloud artifacts repositories update`; delete untagged + :latest; migrate MCP image off gcr.io to AR. D8 secrets/: verify inventory in secrets/secret_inventory.yaml matches live Secret Manager (doc-only; Phase G performs the password rotation).
 
 PHASE E — Build-trigger flag flip (seal #5):
 9. Verify D1 (cloud_tasks) + D2 (memorystore) are live. Then gcloud run services update amjis-web --region asia-south1 --update-env-vars MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true. Trigger a Rebuild for the native chart → confirm progress + completion + cleanup. Auto-rollback on red.

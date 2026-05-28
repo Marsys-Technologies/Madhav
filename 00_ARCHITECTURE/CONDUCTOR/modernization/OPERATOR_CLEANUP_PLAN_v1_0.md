@@ -58,16 +58,16 @@ If any prereq is missing, the kickoff prompt writes `OPERATOR_CLEANUP_HALT_LOG.m
 - **C4.** Apply migration **090 (IRREVERSIBLE — `audience_tier` column drop)** to **staging**, smoke; then
   to **prod**, smoke. No wait — defense already discharged in C1.
 
-### Phase D — Terraform applies *(seal #3)* — ORDER MATTERS
-Run each module's `terraform plan` → review → `terraform apply` → smoke → next. Halt on any red.
-- **D1. `cloud_tasks`** — build queue (Phase E depends on this).
-- **D2. `memorystore`** — Redis (Phase E + future caching depend on this).
-- **D3. `monitoring`** — Trace / dashboards / SLOs / alerts *first*, so subsequent changes are observable.
-- **D4. `scheduler`** — MV refresh + reaper as IaC.
-- **D5. `edge`** — HTTPS LB + Cloud CDN + Cloud Armor.
-- **D6. `IAM`** — least-priv per-service SAs + IAM lock on `amjis-mcp` (last; changes auth).
-- **D7. Artifact Registry cleanup** — delete untagged + `:latest`; migrate MCP image off legacy
-  `gcr.io` → AR; add cleanup policies.
+### Phase D — Infra applies *(seal #3)* — ORDER MATTERS
+For each **terraform** module, use the wrapper: `cd infra/<module> && ./apply.sh plan` → review → `./apply.sh apply` → smoke → next. Halt on any red. For **non-terraform** items (monitoring, AR, secrets), apply via `gcloud` per the module README. The state bucket is `madhav-astrology-tf-state` (each `apply.sh` supplies `-backend-config` automatically).
+- **D1. `cloud_tasks/`** (terraform) — build queue (Phase E depends on this). `./apply.sh apply`.
+- **D2. `memorystore/`** (terraform) — Redis (Phase E + future caching depend on this). `./apply.sh apply`.
+- **D3. `monitoring/`** (**NOT terraform** — `gcloud`-applied JSON) — Trace / dashboards / SLOs / alerts *first*, so subsequent changes are observable. Apply per `monitoring/README.md` (`gcloud monitoring dashboards create --config-from-file=dashboards/*.json`; `gcloud alpha monitoring policies create --policy-from-file=alerts/*.json`; SLO yaml via `gcloud monitoring slos create`).
+- **D4. `scheduler/`** (terraform) — MV refresh + reaper as IaC. `./apply.sh apply`.
+- **D5. `edge/`** (terraform) — HTTPS LB + Cloud CDN + Cloud Armor. `./apply.sh apply`.
+- **D6. `iam/`** (terraform) — least-priv per-service SAs + IAM lock on `amjis-mcp` (last; changes auth). `./apply.sh apply`.
+- **D7. `artifact_registry/` cleanup** (**NOT terraform** — `gcloud`-applied policy) — apply `artifact_registry/cleanup_policy.json` via `gcloud artifacts repositories update`; delete untagged + `:latest`; migrate MCP image off legacy `gcr.io` → AR.
+- **D8. `secrets/`** (**NOT terraform** — doc-only) — verify inventory in `secrets/secret_inventory.yaml` matches live Secret Manager; respect `secrets/rotation_policy.md`. Phase G performs the actual `amjis-db-password` rotation per that policy.
 
 ### Phase E — Build-trigger flag flip *(seal #5)*
 - **E1.** Confirm D1 + D2 live.
