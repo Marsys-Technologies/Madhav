@@ -103,18 +103,13 @@ import { extractPdf } from '@/lib/multimodal/pdf_extractor'
 import { getProjectForConversation } from '@/lib/projects'
 import { getPersonaForSynthesis } from '@/lib/personas'
 
-// Unit 3.gateway_pipeline_isolation — the thin selector. Flag-gated by
-// MARSYS_FLAG_PIPELINE_SELECTOR — default ON post-3.cutover (G5b set 2026-05-28).
-// When ON (the default), the route delegates pipeline strategy selection to
-// platform/src/lib/pipelines/. Operator opts out by setting the env-var to
-// 'false', in which case the inline legacy decision body is used.
-// Shared stages (auth + chart resolution, B.11 floor injection, onFinish
-// write-through) are importable from `@/lib/pipelines/shared` and exercised
-// by both pipelines.
-import {
-  selectPipelineForRequest,
-  isPipelineSelectorEnabled,
-} from '@/lib/pipelines'
+// Unit 3.gateway_pipeline_isolation built the QueryPipeline selector + shared
+// stages substrate (selectPipelineForRequest / isPipelineSelectorEnabled);
+// 3.legacy_delete retired the MARSYS_FLAG_PIPELINE_SELECTOR flag — the
+// selector + per-kind QueryPipeline modules remain at `@/lib/pipelines` as
+// infrastructure for the next refactor wave that will move dispatch out of
+// this file. Only the onFinish write-through helper is consumed by the
+// inline dispatch body today.
 import { runOnFinishWriteThrough } from '@/lib/pipelines/shared'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
@@ -947,23 +942,14 @@ export async function POST(request: Request) {
       const loopFlagKey = ADAPTER_TO_LOOP_FLAG[adapterId]
       const useAgenticLoop = loopFlagKey ? configService.getFlag(loopFlagKey as Parameters<typeof configService.getFlag>[0]) : false
 
-      // Unit 3.gateway_pipeline_isolation + 3.cutover — thin selector hook.
-      // MARSYS_FLAG_PIPELINE_SELECTOR defaults ON post-G5b (2026-05-28). The
-      // route delegates pipeline strategy resolution to platform/src/lib/pipelines/.
-      // The actual run() body remains in this file pending 3.legacy_delete;
-      // the selector ensures the structural cutover landed atomically with G5b.
-      if (isPipelineSelectorEnabled()) {
-        const sel = selectPipelineForRequest(adapterId)
-        // The selector must agree with the legacy decision. Diverging here
-        // would silently change behaviour mid-stream; we assert structurally.
-        const legacyKind = useAgenticLoop ? 'agentic' : 'single_pass'
-        if (sel.kind !== legacyKind) {
-          console.warn(
-            '[pipelines.selector] kind mismatch — adapter=%s legacy=%s selector=%s',
-            adapterId, legacyKind, sel.kind,
-          )
-        }
-      }
+      // Unit 3.gateway_pipeline_isolation built the selector + per-kind
+      // QueryPipeline modules; 3.cutover flipped the structural shadow on;
+      // 3.legacy_delete removed the legacy decision path that the shadow
+      // was comparing against. The selector + pipeline modules remain in
+      // place (platform/src/lib/pipelines/) as infrastructure for the next
+      // wave that will move the dispatch body out of route.ts. Until then,
+      // the inline useAgenticLoop decision (above) is the single source of
+      // truth and the MARSYS_FLAG_PIPELINE_SELECTOR flag is retired.
 
       if (useAgenticLoop) {
         const manifest = adapter.getManifest()

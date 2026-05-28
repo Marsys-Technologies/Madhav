@@ -1,15 +1,15 @@
 /**
  * selector — picks the QueryPipeline implementation for a consult request.
  *
- * Unit 3.gateway_pipeline_isolation. Mirrors the legacy decision inside
- * consult/route.ts (line 967): per-provider `R11E_<PROVIDER>_LOOP` flag
- * decides agentic-vs-single_pass at request time.
+ * Unit 3.gateway_pipeline_isolation. Mirrors the inline decision inside
+ * consult/route.ts: per-provider `R11E_<PROVIDER>_LOOP` flag decides
+ * agentic-vs-single_pass at request time.
  *
- * The selector itself is gated by `MARSYS_FLAG_PIPELINE_SELECTOR` so the
- * legacy inline body in route.ts stays the default until G5b lands. When
- * the gate is OFF, route.ts continues to run its existing code; when ON,
- * route.ts delegates to the appropriate `QueryPipeline.run()` (the run
- * surface lands in a later commit).
+ * MARSYS_FLAG_PIPELINE_SELECTOR was retired by 3.legacy_delete 2026-05-28 —
+ * the cutover landed via the structural-shadow path and the legacy decision
+ * body that the shadow compared against was deleted in the same unit. The
+ * selector + per-kind QueryPipeline modules remain as infrastructure for the
+ * next refactor wave that will move pipeline.run() bodies out of route.ts.
  */
 
 import { configService } from '@/lib/config/index'
@@ -70,26 +70,13 @@ export function selectPipelineForRequest(adapterId: string): {
 }
 
 /**
- * True when the new pipeline selector should be used. Default ON post-3.cutover
- * (G5b set 2026-05-28 — adapter onFinish write-through reached parity with
- * legacy via `runOnFinishWriteThrough`, proved by onfinish_parity.golden.test.ts).
+ * Retired 2026-05-28 by Stream A 3.legacy_delete. Kept as a `true`-constant
+ * shim so any straggling consumer still compiles; remove once the next
+ * refactor wave moves pipeline.run() dispatch into route.ts and there are
+ * no callers left.
  *
- * Legacy reachability: set `MARSYS_FLAG_PIPELINE_SELECTOR=false` (env-var or
- * config) to revert to the inline legacy decision at the dispatch site. The
- * legacy code path is NOT deleted in this unit — that lands in 3.legacy_delete.
+ * @deprecated MARSYS_FLAG_PIPELINE_SELECTOR is gone. Always returns true.
  */
 export function isPipelineSelectorEnabled(): boolean {
-  // Read via configService when available; default true. The config service
-  // is the canonical entry; env-var fallback keeps tests + non-Next contexts
-  // working without bootstrapping the full config.
-  try {
-    const fromConfig = (configService as unknown as {
-      getFlag?: (k: string) => unknown
-    }).getFlag?.('PIPELINE_SELECTOR_ENABLED' as never)
-    if (typeof fromConfig === 'boolean') return fromConfig
-  } catch {
-    // fall through to env
-  }
-  // Default ON. Operator opts out by explicitly setting the env-var to 'false'.
-  return process.env.MARSYS_FLAG_PIPELINE_SELECTOR !== 'false'
+  return true
 }
