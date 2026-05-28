@@ -1,0 +1,29 @@
+{
+  "displayName": "Cloud Billing budget — kill-switch wiring",
+  "documentation": {
+    "content": "Cloud Billing posts budget threshold breaches to Pub/Sub topic ${BUDGET_PUBSUB_TOPIC}. A Cloud Function subscriber invokes handleBudgetAlert() from platform/src/lib/observability/budget_guard.ts which (a) inserts a gate_status row and (b) at >=100% flips BUDGET_KILL_SWITCH_ENABLED. The alert policy below also pages the on-call channel directly so the operator is awake when the kill-switch engages.\n\nApply via:\n  gcloud alpha billing budgets create --billing-account=${BILLING_ACCOUNT} \\\n    --display-name=marsys-monthly-cap --budget-amount=500USD \\\n    --threshold-rule=percent=0.5,basis=current-spend \\\n    --threshold-rule=percent=0.8,basis=current-spend \\\n    --threshold-rule=percent=1.0,basis=current-spend \\\n    --threshold-rule=percent=1.2,basis=current-spend \\\n    --notifications-rule-pubsub-topic=projects/${PROJECT_ID}/topics/${BUDGET_PUBSUB_TOPIC}",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "BUDGET_KILL_SWITCH_ENABLED engaged",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/marsys_gate_status_event\" metric.label.\"event_type\"=\"budget_alert\" metric.label.\"gate_key\"=\"BUDGET_KILL_SWITCH_ENABLED\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "trigger": { "count": 1 },
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_SUM"
+          }
+        ]
+      }
+    }
+  ],
+  "notificationChannels": ["${ALERT_NOTIFICATION_CHANNEL_ID}"],
+  "alertStrategy": { "autoClose": "604800s" },
+  "severity": "CRITICAL"
+}
