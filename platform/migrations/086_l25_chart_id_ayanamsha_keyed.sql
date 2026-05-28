@@ -155,14 +155,35 @@ CREATE TABLE IF NOT EXISTS data_source_expected (
 
 -- Seed the never-drop floor for the categories the engine emits. These are
 -- structural floors (lambda <= expected); the engine is free to emit more.
-INSERT INTO data_source_expected (category, divisional_chart, min_row_count, notes) VALUES
-  ('planet',          'D1', 9,  '9 grahas — Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu'),
-  ('house',           'D1', 12, '12 whole-sign houses'),
-  ('panchanga',       'D1', 5,  'tithi, vara, nakshatra, yoga, karana'),
-  ('ascendant',       'D1', 1,  'lagna'),
-  ('sensitive_point', 'D1', 3,  'gulika, mandi at minimum; bhava madhya optional'),
-  ('dasha_balance',   'D1', 1,  'vimshottari balance at birth')
-ON CONFLICT (category, divisional_chart) DO NOTHING;
+--
+-- SHAPE GUARD (added 2026-05-28, v1.2 patch): the original CREATE TABLE above
+-- targets the Wave-2 shape (category, divisional_chart, min_row_count, notes).
+-- The live prod `data_source_expected` is the Wave-3+ tool-coverage shape
+-- (id UUID PK, tool_name, category, expected_rows, actual_rows, backfill_phase,
+-- notes, updated_at), seeded richer than the Wave-2 floor (planet=9, house=12,
+-- panchanga_daily=73414, dasha_vimshottari=9, …). The Wave-2 floor is
+-- structurally redundant when the modern shape is live. The DO block guards
+-- the INSERT so it runs only against a true Wave-2 shape (e.g. greenfield
+-- dev / ephemeral CI) and silently skips on the modern shape.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'data_source_expected'
+       AND column_name = 'divisional_chart'
+  ) THEN
+    INSERT INTO data_source_expected (category, divisional_chart, min_row_count, notes) VALUES
+      ('planet',          'D1', 9,  '9 grahas — Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu'),
+      ('house',           'D1', 12, '12 whole-sign houses'),
+      ('panchanga',       'D1', 5,  'tithi, vara, nakshatra, yoga, karana'),
+      ('ascendant',       'D1', 1,  'lagna'),
+      ('sensitive_point', 'D1', 3,  'gulika, mandi at minimum; bhava madhya optional'),
+      ('dasha_balance',   'D1', 1,  'vimshottari balance at birth')
+    ON CONFLICT (category, divisional_chart) DO NOTHING;
+  ELSE
+    RAISE NOTICE 'data_source_expected is modern Wave-3+ shape; skipping Wave-2 floor seed (live table already covers these categories).';
+  END IF;
+END $$;
 
 COMMIT;
 

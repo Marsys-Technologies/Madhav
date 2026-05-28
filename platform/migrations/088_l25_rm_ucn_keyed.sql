@@ -89,13 +89,29 @@ ALTER TABLE l25_ucn_sections_staging
 -- Extend the never-drop floor for L2.5 structural assets — the engine, for
 -- the canonical native chart at jh_true_chitra, MUST emit at least these
 -- per-category row counts. (Lower bound; engine free to emit more.)
-INSERT INTO data_source_expected (category, divisional_chart, min_row_count, notes) VALUES
-  ('l25_msr_signal',  'D1', 9,  'one structural MSR row per graha minimum'),
-  ('l25_cdlm_link',   'D1', 8,  'minimum 8 shared-factor links across the 9 domains'),
-  ('l25_cgm_node',    'D1', 21, '9 grahas + 12 houses minimum'),
-  ('l25_cgm_edge',    'D1', 9,  'minimum 9 lordship edges (one per graha)'),
-  ('l25_ucn_section', 'D1', 1,  'at least one signature digest per chart')
-ON CONFLICT (category, divisional_chart) DO NOTHING;
+--
+-- SHAPE GUARD (added 2026-05-28, v1.2 patch): see 086_l25_chart_id_ayanamsha_keyed.sql
+-- §4 for the rationale. Live prod has the Wave-3+ tool-coverage shape; the
+-- Wave-2 (category, divisional_chart, min_row_count, notes) floor is only
+-- writable when the Wave-2 columns are present.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'data_source_expected'
+       AND column_name = 'divisional_chart'
+  ) THEN
+    INSERT INTO data_source_expected (category, divisional_chart, min_row_count, notes) VALUES
+      ('l25_msr_signal',  'D1', 9,  'one structural MSR row per graha minimum'),
+      ('l25_cdlm_link',   'D1', 8,  'minimum 8 shared-factor links across the 9 domains'),
+      ('l25_cgm_node',    'D1', 21, '9 grahas + 12 houses minimum'),
+      ('l25_cgm_edge',    'D1', 9,  'minimum 9 lordship edges (one per graha)'),
+      ('l25_ucn_section', 'D1', 1,  'at least one signature digest per chart')
+    ON CONFLICT (category, divisional_chart) DO NOTHING;
+  ELSE
+    RAISE NOTICE 'data_source_expected is modern Wave-3+ shape; skipping Wave-2 L2.5 floor seed.';
+  END IF;
+END $$;
 
 COMMIT;
 
