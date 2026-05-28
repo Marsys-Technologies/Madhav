@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.red_team_seal
 wave: 4
 title: Final red-team + macro-phase seal + retire program-tracker + close-out

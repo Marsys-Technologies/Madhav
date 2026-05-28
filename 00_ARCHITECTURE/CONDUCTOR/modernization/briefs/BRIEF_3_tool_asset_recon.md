@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.tool_asset_recon
 wave: 3
 title: Tool ↔ asset reconciliation — coverage, no redundancy, no orphans (sets G6)

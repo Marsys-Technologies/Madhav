@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.build_trigger
 wave: 4
 title: Wire the dashboard Build button to the autonomous chart-build Job

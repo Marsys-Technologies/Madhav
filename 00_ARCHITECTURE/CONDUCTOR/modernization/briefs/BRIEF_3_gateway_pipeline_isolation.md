@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.gateway_pipeline_isolation
 wave: 3
 title: Tool gateway (B.11 + per-chart authz chokepoint) + isolate the two pipelines

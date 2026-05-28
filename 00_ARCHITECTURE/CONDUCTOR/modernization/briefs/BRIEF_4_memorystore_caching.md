@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.memorystore_caching
 wave: 4
 title: Memorystore (Redis) caching layer — retrieval bundles, planner, embeddings

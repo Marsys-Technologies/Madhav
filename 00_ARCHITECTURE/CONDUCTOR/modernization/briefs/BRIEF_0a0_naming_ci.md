@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 0a.0
 wave: 0a
 title: Naming-governance CI gate (establish FIRST — it enforces all later renames)

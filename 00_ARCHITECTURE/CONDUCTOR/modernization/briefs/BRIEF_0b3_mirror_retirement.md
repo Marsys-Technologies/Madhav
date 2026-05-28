@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 0b.3
 wave: 0b
 title: Retire the Gemini mirror-discipline governance (one atomic PR, 5 surfaces)

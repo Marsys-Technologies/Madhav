@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 0b.1
 wave: 0b
 title: B.11 citation gate on the adapter/agentic path (live governance hole)

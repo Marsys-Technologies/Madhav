@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 0a.1
 wave: 0a
 title: Route renames — consume→consult + merge /api/panchang(+a)

@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 0t
 wave: 0 (program-support — build FIRST so it can track everything)
 title: Program Tracker — live, real-time progress dashboard (ephemeral, removable)

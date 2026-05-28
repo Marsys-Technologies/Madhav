@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.edge_and_infra_hygiene
 wave: 4
 title: Edge (CDN + Armor) + IAM on MCP + per-service SAs + Scheduler IaC + deploy consolidation + secret/registry hygiene

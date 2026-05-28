@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.legacy_delete
 wave: 3
 title: Delete the flag-gated legacy single-pass pipeline (after cutover holds green)

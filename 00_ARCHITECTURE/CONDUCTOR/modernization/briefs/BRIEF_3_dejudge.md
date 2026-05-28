@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.dejudge
 wave: 3
 title: De-judgment — remove query-time scoring from the retrieval tools

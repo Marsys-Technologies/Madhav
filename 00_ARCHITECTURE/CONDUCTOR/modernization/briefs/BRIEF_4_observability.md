@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.observability
 wave: 4
 title: Cloud Trace + Monitoring + SLOs + alerts + batch Vertex embeddings + budget guard

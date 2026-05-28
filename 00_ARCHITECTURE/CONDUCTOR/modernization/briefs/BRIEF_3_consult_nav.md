@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.consult_nav
 wave: 3
 title: Role-gated navigation + per-chart pages + sharing UI

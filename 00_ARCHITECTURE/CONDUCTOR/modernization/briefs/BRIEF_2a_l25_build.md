@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 2a
 wave: 2
 title: Deterministic L1→L2.5 build into chart_id + ayanamsha-keyed stores (sets G4_no_native_lit)

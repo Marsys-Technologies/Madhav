@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.tier_excision
 wave: 3
 title: Excise the tier / disclosure subsystem (depth selector included)

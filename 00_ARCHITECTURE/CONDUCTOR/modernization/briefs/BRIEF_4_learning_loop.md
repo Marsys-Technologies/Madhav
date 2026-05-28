@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.learning_loop
 wave: 4
 title: Wire prediction logging + answer:eval re-baseline (once, post-cutover)

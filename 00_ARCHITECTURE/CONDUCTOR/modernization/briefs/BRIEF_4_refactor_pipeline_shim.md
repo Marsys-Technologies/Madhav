@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 4.refactor_pipeline_shim
 wave: 4
 title: Move pipeline.run() bodies out of route.ts + retire the selector shim

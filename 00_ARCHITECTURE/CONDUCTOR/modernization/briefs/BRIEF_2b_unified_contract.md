@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 2b
 wave: 2
 title: Unified tool contract — one definition, both channels (sets G3_contract)

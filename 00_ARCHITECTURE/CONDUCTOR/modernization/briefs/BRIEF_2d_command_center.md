@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 2d
 wave: 2
 title: Command Center scaffold — runtime gate + data-source control plane

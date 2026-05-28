@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 2c
 wave: 2
 title: Multi-guest tenancy + one authorization brain (sets G2_authz_live)

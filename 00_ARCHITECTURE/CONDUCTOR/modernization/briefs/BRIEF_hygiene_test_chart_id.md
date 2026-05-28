@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: hygiene.test_chart_id
 wave: 3-hygiene
 title: Fix the 3 retrieve test files broken by 2a's NATIVE_CHART_ID removal

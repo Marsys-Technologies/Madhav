@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 3.cutover
 wave: 3
 title: Pipeline cutover — adapter onFinish parity + flip selector default (sets G5b)

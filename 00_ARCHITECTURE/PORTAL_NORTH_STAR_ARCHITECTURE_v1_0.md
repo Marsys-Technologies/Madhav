@@ -1,7 +1,7 @@
 ---
 artifact: PORTAL_NORTH_STAR_ARCHITECTURE_v1_0.md
 document: Portal North-Star Architecture — Multi-Guest / Multi-Chart / AI-Native (current → target)
-status: DRAFT (plan — pending Claude Code code-level validation, then native finalization; modifies nothing canonical)
+status: SUPERSEDED-AS-COMPLETE
 version: 1.0
 date: 2026-05-27
 authored_by: Claude (Cowork session) — grounded in direct code recon (paths cited inline)

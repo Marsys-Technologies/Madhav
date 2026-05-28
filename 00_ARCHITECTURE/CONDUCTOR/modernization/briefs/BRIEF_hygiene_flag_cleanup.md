@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: hygiene.flag_cleanup
 wave: 3-hygiene
 title: Remove the orphaned LL3_PANCHA_MP_CLUSTER_MODIFIER_ENABLED flag

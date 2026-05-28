@@ -1,4 +1,5 @@
 ---
+status: COMPLETE
 unit: 0b.2
 wave: 0b
 title: Secret + DB-password remediation (security debt)

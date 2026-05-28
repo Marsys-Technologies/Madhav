@@ -132,19 +132,28 @@ in place):
 Take a fresh Cloud SQL backup before the run; smoke after each migration (full vitest +
 representative chat query).
 
-(d) **Run the Phase J5 `l25_msr_signals` HASH partition** (deferred from the parent session). The
-parent session's J5 lands `chart_facts` HASH, `query_trace_steps` RANGE, `mcp_predictions` RANGE.
-This patch session adds the fourth target:
+(d) **Run the full Phase J5 partition set** (deferred wholesale from the parent session — schema
+probes during the 2026-05-28 run revealed blockers beyond `l25_msr_signals`):
 
-- `l25_msr_signals` → HASH by `chart_id`, 8 buckets.
+| target              | partition strategy             | blocker uncovered in parent session                                                       |
+|---------------------|--------------------------------|-------------------------------------------------------------------------------------------|
+| `chart_facts`       | HASH by `chart_id`, 8 buckets  | No `chart_id` column on the table — needs an alignment migration (same class as 086).      |
+| `l25_msr_signals`   | HASH by `chart_id`, 8 buckets  | Depends on 086 keying L25 to `chart_id`.                                                  |
+| `query_trace_steps` | RANGE by `created_at`, monthly | PK is `(id)`; partition key must be in PK, so PK extension to `(id, created_at)` required. |
+| `mcp_predictions`   | RANGE by `logged_at`, monthly  | PK is `(prediction_id)`; column in plan was `predicted_at_iso` but live column is `logged_at`; PK extension to `(prediction_id, logged_at)` required. |
 
-Procedure mirrors the parent Phase J5: create `l25_msr_signals_new` PARTITIONED BY HASH(chart_id);
-create 8 partitions; INSERT … SELECT idempotent + batched; partition-aware indexes; verify row
-counts match; atomic rename old → `l25_msr_signals_pre_partition_archive`, new → live. The
-partition key (chart_id) must be in every PRIMARY KEY / UNIQUE constraint on the table — the 086
-family keys `l25_msr_signals` by `(chart_id, ayanamsha_id, signal_id)` so this holds by
-construction. Keep the archive table for one green production day, then drop in a follow-up
-commit.
+Procedure for each target: (1) author the keying / PK-extension migration as a prerequisite; (2)
+create `<table>_new` PARTITIONED BY (key); (3) create partitions (HASH: 8 buckets; RANGE: 12
+forward + rolling monthly); (4) `INSERT ... SELECT` idempotent + batched; (5) partition-aware
+indexes; (6) verify row counts match; (7) atomic rename old → `<table>_pre_partition_archive`,
+new → live. Confirm partition key sits in every PRIMARY KEY / UNIQUE constraint pre-swap. Keep
+the archive tables for ONE green production day, then drop in a follow-up commit.
+
+> **Note on value at n=2 charts + ~12k trace rows.** The partition speedup is marginal today;
+> the parent session deferred wholesale because the schema-alignment work outweighed the
+> immediate-perf benefit and because doing the J5 set inside an already-long cleanup session was
+> the wrong shape of risk. Land it in a focused window with the alignment migrations as the
+> first commits.
 
 ## §3 — Out of scope
 
