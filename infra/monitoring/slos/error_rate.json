@@ -1,0 +1,13 @@
+{
+  "displayName": "amjis-web error rate — 99.5% non-5xx over 28d",
+  "goal": 0.995,
+  "rollingPeriod": "2419200s",
+  "serviceLevelIndicator": {
+    "requestBased": {
+      "goodTotalRatio": {
+        "totalServiceFilter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"amjis-web\"",
+        "badServiceFilter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"amjis-web\" metric.label.\"response_code_class\"=\"5xx\""
+      }
+    }
+  }
+}

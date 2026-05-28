@@ -1,0 +1,28 @@
+{
+  "displayName": "deploy.yml — two consecutive build failures",
+  "documentation": {
+    "content": "Pages when the deploy.yml workflow records two consecutive `conclusion=failure` runs. Wired from the GitHub Actions log sink configured in deploy.yml step `Publish build outcome`.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "AND",
+  "conditions": [
+    {
+      "displayName": "Two consecutive failed deploy runs",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/marsys_build_runs\" metric.label.\"conclusion\"=\"failure\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 1,
+        "duration": "0s",
+        "trigger": { "count": 2 },
+        "aggregations": [
+          {
+            "alignmentPeriod": "3600s",
+            "perSeriesAligner": "ALIGN_SUM"
+          }
+        ]
+      }
+    }
+  ],
+  "notificationChannels": ["${ALERT_NOTIFICATION_CHANNEL_ID}"],
+  "alertStrategy": { "autoClose": "86400s" }
+}

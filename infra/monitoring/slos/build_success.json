@@ -1,0 +1,13 @@
+{
+  "displayName": "deploy.yml build-success — 95% green over 28d",
+  "goal": 0.95,
+  "rollingPeriod": "2419200s",
+  "serviceLevelIndicator": {
+    "requestBased": {
+      "goodTotalRatio": {
+        "totalServiceFilter": "metric.type=\"logging.googleapis.com/user/marsys_build_runs\"",
+        "goodServiceFilter": "metric.type=\"logging.googleapis.com/user/marsys_build_runs\" metric.label.\"conclusion\"=\"success\""
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "displayName": "MARSYS-JIS — Pipeline Health (per-stage latency + cache hit/miss)",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Pipeline stage latency p95 (planner / retrieve / compose / synthesize)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/marsys_pipeline_stage_latency_ms\" metric.label.\"stage\"=monitoring.regex.full_match(\"plan|retrieve|compose_bundle|synthesize\")",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_PERCENTILE_95",
+                      "crossSeriesReducer": "REDUCE_MEAN",
+                      "groupByFields": ["metric.label.\"stage\""]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "p95 ${metric.label.stage}"
+              }
+            ],
+            "yAxis": { "label": "ms", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Memorystore cache hit ratio (from 4.memorystore_caching)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/marsys_cache_hit_ratio\" metric.label.\"layer\"=monitoring.regex.full_match(\"chart_facts|panchanga_daily|ephemeris\")",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_MEAN",
+                      "groupByFields": ["metric.label.\"layer\""]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "legendTemplate": "hit-ratio ${metric.label.layer}"
+              }
+            ],
+            "yAxis": { "label": "ratio (0..1)", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "yPos": 4,
+        "width": 12,
+        "height": 4,
+        "widget": {
+          "title": "Tool invocations per minute by tool",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "metric.type=\"logging.googleapis.com/user/marsys_tool_invocations\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.label.\"tool_name\""]
+                    }
+                  }
+                },
+                "plotType": "STACKED_BAR",
+                "legendTemplate": "${metric.label.tool_name}"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

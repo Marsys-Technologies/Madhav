@@ -1,0 +1,13 @@
+{
+  "displayName": "amjis-web request latency — 99% < 5s over 28d",
+  "goal": 0.99,
+  "rollingPeriod": "2419200s",
+  "serviceLevelIndicator": {
+    "requestBased": {
+      "distributionCut": {
+        "distributionFilter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"amjis-web\"",
+        "range": { "max": 5000 }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "displayName": "SLO burn-rate — request latency (multi-window)",
+  "documentation": {
+    "content": "Alerts on fast-burn (1h, 14.4x budget) and slow-burn (6h, 6x budget) error-budget consumption on the amjis-web request-latency SLO. See infra/monitoring/slos/request_latency.json.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Fast burn (1h window, 14.4x)",
+      "conditionThreshold": {
+        "filter": "select_slo_burn_rate(\"projects/${PROJECT_ID}/services/amjis-web/serviceLevelObjectives/request-latency\", \"3600s\")",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 14.4,
+        "duration": "0s",
+        "trigger": { "count": 1 }
+      }
+    },
+    {
+      "displayName": "Slow burn (6h window, 6x)",
+      "conditionThreshold": {
+        "filter": "select_slo_burn_rate(\"projects/${PROJECT_ID}/services/amjis-web/serviceLevelObjectives/request-latency\", \"21600s\")",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 6,
+        "duration": "0s",
+        "trigger": { "count": 1 }
+      }
+    }
+  ],
+  "notificationChannels": ["${ALERT_NOTIFICATION_CHANNEL_ID}"],
+  "alertStrategy": { "autoClose": "604800s" }
+}
