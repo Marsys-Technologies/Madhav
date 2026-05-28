@@ -1,0 +1,40 @@
+{
+  "policy_name": "amjis-armor",
+  "description": "Declarative catalogue of Cloud Armor rules. Source of truth is cloud_armor.tf; this JSON exists so the smoke script + audit tooling can grep for rule shape without parsing HCL.",
+  "rules": [
+    {
+      "id": "waf-xss",
+      "priority": 1000,
+      "action": "deny(403)",
+      "kind": "waf",
+      "expression": "evaluatePreconfiguredExpr('xss-v33-stable')",
+      "description": "OWASP XSS preset block"
+    },
+    {
+      "id": "waf-sqli",
+      "priority": 1001,
+      "action": "deny(403)",
+      "kind": "waf",
+      "expression": "evaluatePreconfiguredExpr('sqli-v33-stable')",
+      "description": "OWASP SQLi preset block"
+    },
+    {
+      "id": "rate-limit-api",
+      "priority": 2000,
+      "action": "throttle",
+      "kind": "rate_limit",
+      "threshold_rps": 60,
+      "interval_sec": 1,
+      "exceed_action": "deny(429)",
+      "enforce_on_key": "IP",
+      "description": "Per-IP throttle for /api/* surfaces"
+    },
+    {
+      "id": "default-allow",
+      "priority": 2147483647,
+      "action": "allow",
+      "kind": "default",
+      "description": "Allow everything that didn't hit a deny/throttle rule"
+    }
+  ]
+}
