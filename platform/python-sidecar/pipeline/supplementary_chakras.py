@@ -61,7 +61,7 @@ SAPTA_SHALAKA_DATA: list[dict] = [
 KALANALA_DATA: list[dict] = [
     {"nakshatra_id": 1,  "nakshatra_name": "ashwini",           "kalanala_group": 1, "group_effect": "auspicious",   "fire_intensity": "mild",     "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},
     {"nakshatra_id": 2,  "nakshatra_name": "bharani",           "kalanala_group": 2, "group_effect": "inauspicious", "fire_intensity": "intense",  "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},
-    {"nakshatra_id": 3,  "nakshatra_name": "krittika",          "kalanala_group": 2, "group_effect": "mixed",        "fire_intensity": "intense",  "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},
+    {"nakshatra_id": 3,  "nakshatra_name": "krittika",          "kalanala_group": 2, "group_effect": "inauspicious", "fire_intensity": "intense",  "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},
     {"nakshatra_id": 4,  "nakshatra_name": "rohini",            "kalanala_group": 1, "group_effect": "auspicious",   "fire_intensity": "mild",     "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},
     {"nakshatra_id": 5,  "nakshatra_name": "mrigashira",        "kalanala_group": 1, "group_effect": "auspicious",   "fire_intensity": "mild",     "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},
     {"nakshatra_id": 6,  "nakshatra_name": "ardra",             "kalanala_group": 2, "group_effect": "inauspicious", "fire_intensity": "intense",  "classical_citation": "Jyotish Sara Sangraha, Muhurta Kalanala chapter"},

@@ -188,24 +188,34 @@ def test_seed_inserts_correct_counts():
 
 @pytest.mark.skipif(not DB_AVAILABLE, reason="DB not reachable at 127.0.0.1:5433")
 def test_seed_idempotent():
-    """Second call to seed_supplementary_chakras() must insert 0 rows in all tables."""
+    """Seed from empty → 109 rows; second seed → 0 rows (true idempotency check)."""
     conn = _get_conn()
     try:
-        # Ensure data is present (first seed)
-        seed_supplementary_chakras(conn)
+        # Clear tables so the first seed is a genuine fresh insert
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM l1_ckn_chakra")
+            cur.execute("DELETE FROM l1_kota_chakra")
+            cur.execute("DELETE FROM l1_kalanala_chakra")
+            cur.execute("DELETE FROM l1_sapta_shalaka")
+            conn.commit()
+        # First seed — must insert 109 rows total
+        result1 = seed_supplementary_chakras(conn)
+        assert sum(result1.values()) == 109, (
+            f"Expected 109 rows on first seed, got {sum(result1.values())}"
+        )
         # Second seed — must return all zeros
-        result = seed_supplementary_chakras(conn)
-        assert result["sapta_shalaka"] == 0, (
-            f"Expected 0 sapta_shalaka on second seed, got {result['sapta_shalaka']}"
+        result2 = seed_supplementary_chakras(conn)
+        assert result2["sapta_shalaka"] == 0, (
+            f"Expected 0 sapta_shalaka on second seed, got {result2['sapta_shalaka']}"
         )
-        assert result["kalanala"] == 0, (
-            f"Expected 0 kalanala on second seed, got {result['kalanala']}"
+        assert result2["kalanala"] == 0, (
+            f"Expected 0 kalanala on second seed, got {result2['kalanala']}"
         )
-        assert result["kota"] == 0, (
-            f"Expected 0 kota on second seed, got {result['kota']}"
+        assert result2["kota"] == 0, (
+            f"Expected 0 kota on second seed, got {result2['kota']}"
         )
-        assert result["ckn"] == 0, (
-            f"Expected 0 ckn on second seed, got {result['ckn']}"
+        assert result2["ckn"] == 0, (
+            f"Expected 0 ckn on second seed, got {result2['ckn']}"
         )
     finally:
         conn.close()
