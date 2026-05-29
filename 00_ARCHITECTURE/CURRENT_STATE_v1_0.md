@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.64
+version: 5.65
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,14 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.65 (2026-05-30, ACC-S5-S6):
+    **A3+A4+A5 workstream COMPLETE 2026-05-30: schema substrate + panchanga writer + sensitive points writer. 37 sessions merged to main. Sealing artifact: 00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md.**
+    files_touched: ["00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/build_orchestrator/ACC_S5_EVAL_RESULTS.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"]
+    active_phase_plan_sub_phase: M5-A (A3+A4+A5 workstream closed).
+    last_session_id: ACC-S5-S6. predecessor_session: ACC-S2-S4.
+    carry_forwards: ["Trigger production native chart build via build_chart.py (chart_id 362f9f17-95a5-490b-a5a7-027d3e0efda0) to populate chart_facts", "Run full answer:eval after chart build completes", "ACC-S7 production deploy deferred to operator"]
+    next_session_objective: "A3+A4+A5 SEALED. Operator: trigger Cloud Run Job build_chart.py for native chart. Then open M6-A-S1."
+    file_updated_at: 2026-05-30. file_updated_by_session: ACC-S5-S6.
   - v5.62 (2026-05-26, MCP-TOOL-AUDIT-REM):
     **MCP Tool Audit Remediation v1.0 COMPLETE (P0+P1 fixes merged to main, d3246045). S1 (platform-mcp): Docker corpus copy (build context → repo root, 025_HOLISTIC_SYNTHESIS/ + 01_FACTS_LAYER/ in image); read_asset resolveRepoRoot() depth 3→2; SAFE_ASSET_MAP.MSR v3→v5; query_varshphal NATIVE_CHART_ID UUID→'abhisek_mohanty_primary'; muhurta_finder event z.string()→z.enum() with SIDECAR_EVENTS+EVENT_ALIAS alias map. S2 (platform): query_cdlm_lookup/rm_walk/ucn_walk switched __dirname→process.cwd() for markdown path resolution; primitives route.ts wires node_id→graph_seed_hints for cgm_graph_walk (typed QueryPlan, strict typeof guard). Projected full-manifest avg: 71%→~95% after OPS deploy. OPS steps required: deploy amjis-mcp (gcloud builds submit --config platform-mcp/cloudbuild.yaml), deploy amjis-web (gcloud builds submit --config cloudbuild.yaml), set amjis-sidecar min-instances=1, verify vector_search env vars.**
     files_touched: ["platform-mcp/Dockerfile", "platform-mcp/cloudbuild.yaml", "platform-mcp/src/tools/read_asset.ts", "platform-mcp/src/tools/query_varshphal.ts", "platform-mcp/src/tools/muhurta_finder.ts", "platform/src/lib/retrieve/query_cdlm_lookup.ts", "platform/src/lib/retrieve/query_rm_walk.ts", "platform/src/lib/retrieve/query_ucn_walk.ts", "platform/src/app/api/mcp/primitives/[tool]/route.ts"]
