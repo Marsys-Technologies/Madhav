@@ -69,6 +69,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);fon
 .s-pill-drafted{background:rgba(122,107,156,.14);color:var(--s-drafted)}
 .s-pill-locked{background:rgba(77,138,94,.15);color:var(--s-locked)}
 .s-pill-superseded{background:rgba(184,84,84,.14);color:var(--s-superseded)}
+.s-pill-retired-with-rationale{background:rgba(95,163,125,.12);color:#4d8a5e;font-style:italic}
+.s-pill-folded-into-A8{background:rgba(95,163,125,.12);color:#4d8a5e;font-style:italic}
 .s-pill-in-progress{background:rgba(192,128,71,.16);color:var(--s-in-progress);animation:pulse 2.5s ease-in-out infinite}
 .s-pill-merged-branch{background:rgba(156,139,107,.16);color:var(--s-merged-branch)}
 .s-pill-in-review{background:rgba(122,107,156,.14);color:var(--s-in-review)}
@@ -216,11 +218,14 @@ graph LR
 </div>
 
 <script>
-const BRIEF_STATUSES = ["not_started","discussing","drafted","locked","superseded"];
+const BRIEF_STATUSES = ["not_started","discussing","drafted","locked","superseded","retired_with_rationale","folded_into_A8"];
 const IMPL_STATUSES = ["not_started","in_progress","merged_branch","in_review","merged_main","deployed","verified"];
-const BRIEF_LABELS = {not_started:"Not Started",discussing:"Discussing",drafted:"Drafted",locked:"Locked",superseded:"Superseded"};
+const BRIEF_LABELS = {not_started:"Not Started",discussing:"Discussing",drafted:"Drafted",locked:"Locked",superseded:"Superseded",retired_with_rationale:"Retired",folded_into_A8:"Folded"};
 const IMPL_LABELS = {not_started:"Not Started",in_progress:"In Progress",merged_branch:"On Branch",in_review:"In Review",merged_main:"Merged Main",deployed:"Deployed",verified:"Verified"};
-const COMPLETE_BRIEF = new Set(["locked"]);
+// Brief is "complete" (resolved, not pending) when locked OR retired (decision recorded, no further work needed) OR folded (subsumed into another asset).
+const COMPLETE_BRIEF = new Set(["locked","retired_with_rationale","folded_into_A8"]);
+// Implementation is "complete" when retired or folded items reach terminal disposition (no actual code to ship).
+const TERMINAL_IMPL = new Set(["retired_with_rationale","folded_into_A8"]);
 const COMPLETE_IMPL = new Set(["merged_main","deployed","verified"]);
 
 let STATE = null;
@@ -272,15 +277,23 @@ function flattenItems(){
   return out;
 }
 
+// For impl-track completion math, an item with brief=retired or brief=folded is "terminal" (no code to ship).
+// It counts toward the implDone numerator just like a brief=locked item with impl=deployed does, so retirement decisions don't artificially depress completion.
+function isImplTerminal(it){
+  const bs = it.brief?.status || "not_started";
+  const is = it.impl?.status || "not_started";
+  return COMPLETE_IMPL.has(is) || TERMINAL_IMPL.has(bs);
+}
+
 function calcStats(){
   const items = flattenItems();
   const total = items.length;
   const briefDone = items.filter(it => COMPLETE_BRIEF.has(it.brief?.status||"not_started")).length;
-  const implDone = items.filter(it => COMPLETE_IMPL.has(it.impl?.status||"not_started")).length;
+  const implDone = items.filter(it => isImplTerminal(it)).length;
   const briefDiscussing = items.filter(it => (it.brief?.status||"not_started")==="discussing").length;
   const implInProgress = items.filter(it => (it.impl?.status||"not_started")==="in_progress").length;
   const totalHrs = items.reduce((a,it)=>a+(it.est_hrs||0),0);
-  const remainingHrs = items.filter(it => !COMPLETE_IMPL.has(it.impl?.status||"not_started")).reduce((a,it)=>a+(it.est_hrs||0),0);
+  const remainingHrs = items.filter(it => !isImplTerminal(it)).reduce((a,it)=>a+(it.est_hrs||0),0);
   const miscCount = (STATE.tracks.find(t=>t.id==="MISC")?.items?.length)||0;
   return { total, briefDone, implDone, briefDiscussing, implInProgress, totalHrs, remainingHrs, miscCount };
 }
@@ -289,7 +302,7 @@ function calcTrackStats(track){
   const items = track.items||[];
   const total = items.length;
   const briefDone = items.filter(it => COMPLETE_BRIEF.has(it.brief?.status||"not_started")).length;
-  const implDone = items.filter(it => COMPLETE_IMPL.has(it.impl?.status||"not_started")).length;
+  const implDone = items.filter(it => isImplTerminal(it)).length;
   return { total, briefDone, implDone };
 }
 
