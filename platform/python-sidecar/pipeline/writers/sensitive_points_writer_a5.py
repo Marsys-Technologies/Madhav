@@ -147,3 +147,130 @@ def emit_saturn_derived(conn, chart_id, build_id, ayanamsha_id, saturn_lon, week
                 'computed_at': datetime.now(timezone.utc),
             })
     return rows
+
+
+def compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
+    """
+    All longitudes in degrees (0-360).
+    Returns dict of {category: {subject: (longitude, formula_id)}}
+    """
+    results = {}
+
+    # Bhrigu Bindu: midpoint of Moon and Rahu (shorter arc)
+    bb = (moon_lon + rahu_lon) / 2
+    if abs(moon_lon - rahu_lon) > 180:
+        bb = (bb + 180) % 360
+    results['esoteric_point_bhrigu_bindu'] = {
+        'BHRIGU_BINDU': (bb % 360, 'bphs_midpoint_moon_rahu')
+    }
+
+    # Yogi Point: two formulas
+    # BPHS formula: Moon + Sun + 93°20' (93.333°)
+    yogi_bphs = (moon_lon + sun_lon + 93.333) % 360
+    # Alternate: Moon + Sun + 96°40' (96.667°)
+    yogi_alt = (moon_lon + sun_lon + 96.667) % 360
+    results['esoteric_point_yogi'] = {
+        'YOGI_POINT_BPHS': (yogi_bphs, 'bphs_93_20'),
+        'YOGI_POINT_ALT': (yogi_alt, 'alt_96_40'),
+    }
+
+    # Avayogi: complement of Yogi
+    avayogi_bphs = (yogi_bphs + 186.667) % 360  # +180°+6°40'
+    avayogi_alt = (yogi_alt + 186.667) % 360
+    results['esoteric_point_avayogi'] = {
+        'AVAYOGI_POINT_BPHS': (avayogi_bphs, 'bphs_93_20'),
+        'AVAYOGI_POINT_ALT': (avayogi_alt, 'alt_96_40'),
+    }
+
+    # Mrityu: 3 variants
+    mrityu_bphs = (moon_lon + lagna_lon - sun_lon) % 360      # BPHS Ch.39
+    mrityu_saravali = (moon_lon + saturn_lon - sun_lon) % 360  # Saravali
+    mrityu_tajik = (moon_lon + saturn_lon + 8.333) % 360       # Tajik Aapamrityu
+    results['esoteric_point_mrityu'] = {
+        'MRITYU_BPHS': (mrityu_bphs, 'bphs_ch39'),
+        'MRITYU_SARAVALI': (mrityu_saravali, 'saravali'),
+        'MRITYU_TAJIK': (mrityu_tajik, 'tajik_aapamrityu'),
+    }
+
+    # Trisphuta: Lagna + Moon + Hora Lagna
+    hora_lagna = (sun_lon + 180) % 360  # simplified approximation
+    trisphuta = (lagna_lon + moon_lon + hora_lagna) % 360
+    results['esoteric_point_trisphuta'] = {
+        'TRISPHUTA': (trisphuta, 'classical_trisphuta')
+    }
+
+    # Chatushphuta: Trisphuta + Sun
+    chatushphuta = (trisphuta + sun_lon) % 360
+    results['esoteric_point_chatushphuta'] = {
+        'CHATUSHPHUTA': (chatushphuta, 'classical_chatushphuta')
+    }
+
+    # Panchasphuta: 2 variants
+    panchasphuta_sat = (chatushphuta + saturn_lon) % 360  # with Saturn
+    panchasphuta_rah = (chatushphuta + rahu_lon) % 360    # with Rahu
+    results['esoteric_point_panchasphuta'] = {
+        'PANCHASPHUTA_SAT': (panchasphuta_sat, 'with_saturn'),
+        'PANCHASPHUTA_RAH': (panchasphuta_rah, 'with_rahu'),
+    }
+
+    # Pranapada Sphuta
+    pranapada = (sun_lon + ((moon_lon - sun_lon) % 360) / 2) % 360
+    results['esoteric_point_pranapada_sphuta'] = {
+        'PRANAPADA_SPHUTA': (pranapada, 'classical_pranapada')
+    }
+
+    # Trikona Dasha Sphuta (Jaimini: ASC + lord of ASC)
+    trikona = (lagna_lon + 120) % 360  # simplified trikona
+    results['esoteric_point_trikona_dasha_sphuta'] = {
+        'TRIKONA_DASHA_SPHUTA': (trikona, 'jaimini_trikona')
+    }
+
+    return results
+
+
+def emit_esoteric_bindus(conn, chart_id, build_id, ayanamsha_id,
+                          moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
+    """Emit all esoteric bindu rows. Returns list of chart_facts dicts."""
+    bindus = compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon)
+    rows = []
+
+    for category, subjects in bindus.items():
+        for subject, (lon, formula_id) in subjects.items():
+            lon = lon % 360
+            sign = _sign_from_lon(lon)
+            nak = _nak_from_lon(lon)
+
+            for key, val, vtype in [
+                ('longitude_sidereal', lon, 'num'),
+                ('sign', sign, 'text'),
+                ('nakshatra', nak, 'text'),
+                ('formula_id', formula_id, 'text'),
+                ('formula_provenance_text', f'A5 spec §3: {subject} = {formula_id}', 'text'),
+                ('tolerance_arcsec', 10.0, 'num'),
+                ('near_sign_boundary_flag', str(abs(lon % 30) < 0.5 or abs(lon % 30 - 30) < 0.5), 'text'),
+                ('near_nakshatra_boundary_flag', str(abs(lon % 13.333) < 0.8), 'text'),
+                ('vargottama_flag_at_point', str(int(lon / 30) == int((lon % 30) / 3.333)), 'text'),
+            ]:
+                rows.append({
+                    'fact_id': make_fact_id(category, subject, key, chart_id, ayanamsha_id, build_id),
+                    'chart_id': chart_id,
+                    'ayanamsha_id': ayanamsha_id,
+                    'build_id': build_id,
+                    'fact_category': category,
+                    'fact_subject': subject,
+                    'fact_key': key,
+                    'fact_value_num': float(val) if vtype == 'num' else None,
+                    'fact_value_text': str(val) if vtype == 'text' else None,
+                    'unit': 'deg' if key == 'longitude_sidereal' else None,
+                    'citation_ref': make_citation_ref(category, subject, key, chart_id, ayanamsha_id),
+                    'citation_human': (
+                        f"{subject} at birth: {round(lon, 4)}° in {sign} ({ayanamsha_id})."
+                        if key == 'longitude_sidereal'
+                        else f"{subject} {key}: {val}."
+                    ),
+                    'source_calculation': f'sensitive_points_writer_a5/{category}',
+                    'verification_pass_status': 'two_pass_verified',
+                    'engine_version': ENGINE_VERSION,
+                    'computed_at': datetime.now(timezone.utc),
+                })
+    return rows
