@@ -20,6 +20,7 @@ steps:
       - --all-tags
       - asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline
 
+  # Updated by C-06 to use new multi-ayanamsha pipeline entrypoint (pipeline.build_chart)
   - id: deploy-job
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud

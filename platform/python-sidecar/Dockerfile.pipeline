@@ -28,5 +28,6 @@ COPY 00_ARCHITECTURE/STALENESS_REGISTER.md 00_ARCHITECTURE/STALENESS_REGISTER.md
 ENV PYTHONPATH=/app/platform/python-sidecar
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["python", "-m", "pipeline.main"]
+# Updated by C-06 to use new multi-ayanamsha pipeline entrypoint
+ENTRYPOINT ["python", "-m", "pipeline.build_chart"]
 CMD ["--help"]
