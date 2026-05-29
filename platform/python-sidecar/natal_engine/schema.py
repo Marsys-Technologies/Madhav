@@ -41,6 +41,7 @@ _GRAHA_SCHEMA = {
         "name", "longitude_deg", "sign", "sign_id",
         "nakshatra", "nakshatra_id", "pada",
         "retrograde", "speed_deg_per_day", "dignity_status",
+        "heliocentric_longitude", "heliocentric_latitude",
     ],
     "properties": {
         "name": {"type": "string"},
@@ -58,6 +59,18 @@ _GRAHA_SCHEMA = {
                 "exalted", "moolatrikona", "own", "friend",
                 "neutral", "enemy", "debilitated", "unknown",
             ],
+        },
+        "heliocentric_longitude": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 360.0,
+            "description": "Heliocentric ecliptic longitude (0–360°). For Moon: mirrors geocentric longitude (Moon has no meaningful heliocentric coord). For Sun: Earth's heliocentric longitude (Sun is at heliocentric origin).",
+        },
+        "heliocentric_latitude": {
+            "type": "number",
+            "minimum": -90.0,
+            "maximum": 90.0,
+            "description": "Heliocentric ecliptic latitude (−90° to +90°). For Moon: mirrors geocentric latitude.",
         },
     },
 }
@@ -227,6 +240,8 @@ class GrahaState:
     retrograde: bool
     speed_deg_per_day: float
     dignity_status: str  # one of enum in schema
+    heliocentric_longitude: float = 0.0  # 0–360°; see schema for Moon/Sun conventions
+    heliocentric_latitude: float = 0.0   # −90 to +90°
 
 
 @dataclass

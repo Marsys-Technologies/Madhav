@@ -84,6 +84,45 @@ _SIGN_SPAN = 30.0
 
 _SWE_FLAGS = swe.FLG_SIDEREAL | swe.FLG_SWIEPH | swe.FLG_SPEED
 
+# Heliocentric flag — tropical (not sidereal) per swisseph convention.
+# Heliocentric positions are computed in the ecliptic reference frame centred
+# on the Sun; applying SEFLG_SIDEREAL to a heliocentric calc would apply the
+# ayanamsha twice (once for the frame shift, once for the sidereal correction)
+# and produce incorrect results.  We therefore use FLG_SWIEPH | FLG_HELCTR only,
+# returning a tropical heliocentric longitude.  Callers that need the sidereal
+# equivalent can subtract the chart's ayanamsha value themselves.
+_HELIO_FLAGS = swe.FLG_SWIEPH | swe.FLG_HELCTR
+
+
+def get_heliocentric(body_id: int, jd_ut: float) -> tuple[float, float]:
+    """Return (heliocentric_longitude, heliocentric_latitude) for a body.
+
+    Uses tropical ecliptic coordinates (heliocentric frame).
+
+    Special cases:
+    - Sun (swe.SUN): the Sun sits at the heliocentric origin — querying it
+      directly with FLG_HELCTR yields (0.0, 0.0).  The astronomically
+      meaningful "Sun heliocentric" slot is Earth's position as seen from the
+      Sun, so we query swe.EARTH with FLG_HELCTR instead.
+    - Moon (swe.MOON): swisseph does not support a heliocentric Moon because
+      the Moon orbits Earth, not the Sun.  We return (0.0, 0.0) as a sentinel
+      that callers replace with the geocentric values (see compute_graha_states).
+    - Rahu/Ketu (swe.MEAN_NODE / derived): nodes are a geometric construct with
+      no heliocentric meaning; we return (0.0, 0.0) and callers substitute the
+      geocentric longitude.
+    """
+    if body_id in (swe.MOON, swe.MEAN_NODE):
+        return 0.0, 0.0  # sentinel; caller replaces
+    # For the Sun, query Earth's heliocentric position instead
+    effective_id = swe.EARTH if body_id == swe.SUN else body_id
+    try:
+        result, _ = swe.calc_ut(jd_ut, effective_id, _HELIO_FLAGS)
+        lon = result[0] % 360.0
+        lat = result[1]
+        return lon, lat
+    except Exception:
+        return 0.0, 0.0
+
 
 def _lon_to_sign(lon: float) -> tuple[int, str]:
     sign_idx = int(lon // _SIGN_SPAN) % 12
@@ -144,15 +183,37 @@ def compute_graha_states(jd_ut: float) -> list[GrahaState]:
     """Compute the 9 graha states at the given Julian Day (UT).
 
     Caller must have already invoked `set_ayanamsha(...)`.
+
+    Each GrahaState now carries heliocentric_longitude and
+    heliocentric_latitude (tropical ecliptic, heliocentric frame).
+
+    Conventions for non-standard bodies:
+    - Moon: heliocentric coords are meaningless (Moon orbits Earth).
+      We mirror the geocentric longitude/latitude so consumers always
+      have a valid float rather than a sentinel.
+    - Rahu/Ketu: pure geometric constructs; we mirror the geocentric
+      longitude and set latitude to 0.0 (nodes lie on the ecliptic by
+      definition).
     """
     states: list[GrahaState] = []
     for name, swe_code in NINE_GRAHAS_SWE:
         result, _ = swe.calc_ut(jd_ut, swe_code, _SWE_FLAGS)
         lon = result[0] % 360.0
+        lat = result[1]  # geocentric latitude (unused for sidereal lon but kept)
         speed = result[3]
         retrograde = speed < 0.0
         sign_id, sign_name = _lon_to_sign(lon)
         nak_id, nak_name, pada = _lon_to_nakshatra(lon)
+
+        # Heliocentric coordinates
+        helio_lon, helio_lat = get_heliocentric(swe_code, jd_ut)
+        if name == "Moon":
+            # Mirror geocentric — Moon has no Sun-centred orbit
+            helio_lon, helio_lat = lon, lat
+        elif name == "Rahu":
+            # Nodes lie on the ecliptic plane
+            helio_lon, helio_lat = lon, 0.0
+
         states.append(
             GrahaState(
                 name=name,
@@ -165,6 +226,8 @@ def compute_graha_states(jd_ut: float) -> list[GrahaState]:
                 retrograde=retrograde,
                 speed_deg_per_day=speed,
                 dignity_status=_dignity_for(name, sign_id),
+                heliocentric_longitude=helio_lon,
+                heliocentric_latitude=helio_lat,
             )
         )
 
@@ -185,6 +248,9 @@ def compute_graha_states(jd_ut: float) -> list[GrahaState]:
             retrograde=True,  # nodes are always retrograde in mean-node convention
             speed_deg_per_day=-rahu.speed_deg_per_day,
             dignity_status=_dignity_for("Ketu", ketu_sign_id),
+            # Ketu mirrors the antipodal Rahu helio_lon; latitude = 0 (ecliptic plane)
+            heliocentric_longitude=(rahu.heliocentric_longitude + 180.0) % 360.0,
+            heliocentric_latitude=0.0,
         )
     )
 
