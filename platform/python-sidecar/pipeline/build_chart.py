@@ -276,7 +276,7 @@ def load_birth_data(conn, chart_id: str) -> dict:
         return _chart_birth_data_cache[chart_id]
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT birth_date, birth_time, birth_lat, birth_lon, birth_tz_offset "
+            "SELECT birth_date, birth_time, birth_lat, birth_lng "
             "FROM charts WHERE chart_id=%s",
             (chart_id,),
         )
@@ -288,7 +288,7 @@ def load_birth_data(conn, chart_id: str) -> dict:
         "birth_time": str(row[1]) if row[1] else "00:00",
         "lat": float(row[2]) if row[2] is not None else 20.27,
         "lon": float(row[3]) if row[3] is not None else 85.84,
-        "tz_offset": float(row[4]) if row[4] is not None else 5.5,
+        "tz_offset": 5.5,  # charts table has no tz column; IST default (UTC+5:30)
     }
     _chart_birth_data_cache[chart_id] = data
     return data
