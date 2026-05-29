@@ -33,53 +33,746 @@
       "subtitle": "Built once, reused for every chart. Classical texts, ephemeris, lookup tables, definitions libraries. Read-only from per-chart build perspective. Separate orchestrator (not in the per-chart DAG).",
       "type": "global",
       "items": [
-        { "id": "G1", "title": "Classical RAG corpus (BPHS/Jaimini/KP/Tajaka/Phaladeepika/Saravali/Brihat Jataka)", "desc": "Already ~4,589 chunks. Add Phaladeepika, Saravali, Brihat Jataka if not present. Vertex AI 768-dim embedded.", "brief": { "status": "locked" }, "impl": { "status": "deployed" }, "est_hrs": 0, "deps": [] },
-        { "id": "G2", "title": "Ephemeris daily 1950-2100", "desc": "All 9 grahas + asteroids + outer planets + Lilith. Per-day positions, speeds, declinations.", "brief": { "status": "locked" }, "impl": { "status": "deployed", "notes": "Existing 1930-2100; trim/extend to 1950 baseline" }, "est_hrs": 4, "deps": [] },
-        { "id": "G3", "title": "Ephemeris monthly + yearly aggregates", "desc": "Pre-computed sign-changes, retrograde windows, station longitudes.", "brief": { "status": "locked" }, "impl": { "status": "deployed" }, "est_hrs": 0, "deps": ["G2"] },
-        { "id": "G4", "title": "Eclipse table 1950-2100", "desc": "Solar + lunar eclipses with type, magnitude, path, saros cycle.", "brief": { "status": "locked" }, "impl": { "status": "deployed" }, "est_hrs": 0, "deps": [] },
-        { "id": "G5", "title": "Retrograde table 1950-2100", "desc": "All retrograde windows for each non-luminary graha + outer planets.", "brief": { "status": "locked" }, "impl": { "status": "deployed" }, "est_hrs": 0, "deps": [] },
-        { "id": "G6", "title": "Sankranti table 1950-2100 (per ayanamsha)", "desc": "Sun's sign-entry timestamps per ayanamsha. 5× for canonical ayanamshas.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": ["G2", "G20"] },
-        { "id": "G7", "title": "Daily panchanga 1950-2100 (per ayanamsha)", "desc": "Tithi/vara/nakshatra/yoga/karana + full enrichment. Existing build covers 1900-2100; extend per-ayanamsha.", "brief": { "status": "locked" }, "impl": { "status": "deployed", "notes": "Lahiri only currently; extend to 5 ayanamshas" }, "est_hrs": 12, "deps": ["G2", "G20"] },
-        { "id": "G8", "title": "Choghadiya/Hora/Kalam windows", "desc": "Per-(date, latitude) inauspicious + auspicious time windows. Already in panchanga_daily enrichment.", "brief": { "status": "locked" }, "impl": { "status": "deployed" }, "est_hrs": 0, "deps": ["G7"] },
-        { "id": "G9", "title": "Nakshatra attribute reference", "desc": "27 rows × deity, gana, nadi, yoni, pakshi, varna, tatva, ruling-graha, symbol, paramayus, pada-deities.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": [] },
-        { "id": "G10", "title": "Sign attribute reference", "desc": "12 rows × lord, element, modality, gender, direction, body-part, gemstone, mantra-syllable, drekkana lords.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 2, "deps": [] },
-        { "id": "G11", "title": "Graha attribute reference", "desc": "9 rows × significations, friendships, exaltation, debilitation, mooltrikona, own signs, mantra, gemstone, color, day, direction, deity, body-part-rulership, varna, tatva, gunas.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G12", "title": "Yoga definitions library (200+)", "desc": "Every classical yoga (Pancha Mahapurusha, Raj yogas, Dhan yogas, Vipareeta, Neechabhanga, Sunafa/Anapha/Durdhura, Vesi/Vasi/Ubhayachari, Adhi, Gajakesari, Saraswati, Akhanda Samrajya, Khsetra, Parijata, etc.) with constituent-rule, classical citation, activation predicate.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 24, "deps": [] },
-        { "id": "G13", "title": "Dosha definitions library", "desc": "Mangal, Kaal Sarpa (12-type), Pitru, Matri, Naga, Sarpa, Guru Chandal, Grahan, Daridra, Shakata, Vish, Punarphoo, Angarak, Visha — full classical set with predicate + citation.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": [] },
-        { "id": "G14", "title": "Saham formula library (50+ Tajik sahams)", "desc": "Each Saham = formula (e.g., Punya = Moon − Sun + Lagna for day birth; reverse for night). Punya/Vidya/Yasas/Vivah/Karma/Bhagya/Putra/Aaayur/Mrityu/Roga/etc.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": [] },
-        { "id": "G15", "title": "Dasha-system rule library (32 systems)", "desc": "Starting-lord rule, sequence, year-table, applicability per system: Vimshottari/Ashtottari/Yogini/Shodashottari/Dvadashottari/Panchottari/Shatabdika/Chatturashitika/Dvisaptati/Shashtihayani/Shatatrimshat/Tara + Jaimini Chara/Sthira/NiryanaShoola/Trikona/Brahma/Vimsa/Sudasa/Drig/Naisargika/Mandukya/Padakrama + Mudda/Patyayini/Sahama + Kalachakra/Sphuta/Vidhanottari/Hadda.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 20, "deps": [] },
-        { "id": "G16", "title": "Varga formula library (30+ vargas)", "desc": "Sign-assignment formulas for D1-D60 Parashari + Jaimini variants + Nadi D108/D150/D2700 + supplementary D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": [] },
-        { "id": "G17", "title": "Aspect rule library", "desc": "Parashari graha-drishti (7H + special 4/7/8 Mars, 5/7/9 Jup, 3/7/10 Sat, 5/7/9 Rahu/Ketu) + Jaimini rasi-drishti (fixed-sign rules) + Tajik 5-type with orb tables.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G18", "title": "Friendship reference (natural 9×9)", "desc": "Per-graha-pair natural friendship table (classical canon). Temporal + composite are per-chart.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 1, "deps": [] },
-        { "id": "G19", "title": "Karaka assignment reference", "desc": "Natural karakas per house (1st=Sun, 2nd=Jupiter, 3rd=Mars...) per significance (career=Sun, marriage=Venus/Jupiter...) classical.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 2, "deps": [] },
-        { "id": "G20", "title": "Ayanamsha registry + values over time", "desc": "5 canonical + capability-only ayanamshas with formula, epoch pin, current value, derivative-per-year, classical citation. Function ayanamsha_value(jd, id) → degrees.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": [] },
-        { "id": "G21", "title": "Sade Sati Saturn-sign-changes (per ayanamsha)", "desc": "Every Saturn sign-ingress 1950-2100 per ayanamsha. Per-chart sade sati derived by joining with native's natal Moon sign.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": ["G2", "G20"] },
-        { "id": "G22", "title": "Tara bala matrix (27×27)", "desc": "(natal_nakshatra, transit_nakshatra) → tara_class (Janma/Sampat/Vipat/Kshema/Pratyak/Sadhaka/Vadha/Mitra/Atimitra). Global lookup; per-chart Tara bala is a join.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 1, "deps": [] },
-        { "id": "G23", "title": "Chandra bala matrix (12×12)", "desc": "(natal_moon_sign, transit_moon_sign) → favorable/neutral/unfavorable. Global lookup.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 1, "deps": [] },
-        { "id": "G24", "title": "Vimshottari starting-lord table", "desc": "27 nakshatras → starting Vimshottari dasha lord + sub-fraction. Static.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0.5, "deps": [] },
-        { "id": "G25", "title": "Mrityubhaga / Gandanta / Pushkara reference", "desc": "Each = sign-degree predicate; predicate is global, per-chart firing derived.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 2, "deps": [] },
-        { "id": "G26", "title": "Muhurta auspiciousness reference", "desc": "Classical tithi/vara/nakshatra/yoga/karana scoring tables. Choghadiya/Hora/Abhijit/Brahma muhurta computations.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G27", "title": "Remedial library", "desc": "Per-graha mantras + bija mantras + Vedic suktas + stotrams + gemstone + metal + color + charity object + ritual + fasting day. Classical citations.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": [] },
-        { "id": "G28", "title": "Classical worked-examples library", "desc": "Famous charts from BPHS, Phaladeepika, Raman's 300 Combinations, KS Charak + classical horoscopes with attributed predictions/outcomes. Used for M6 anchors + divergence-dividend research.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": [] },
-        { "id": "G31", "title": "Calendrical era conversion table", "desc": "Gregorian ↔ Vikram ↔ Shaka ↔ Kali ↔ Saptarshi era for every JD 1950-2100. Partial in panchanga_daily.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": ["G7"] },
-        { "id": "G32", "title": "Fixed star catalog (~50 stars)", "desc": "Spica, Regulus, Antares, Aldebaran, Sirius, Canopus/Agastya, Vega — bright stars with longitudes per ayanamsha + precessed coordinates.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": ["G20"] },
-        { "id": "G33", "title": "Mantra/Stotra library (~200 entries)", "desc": "9 Navagraha mantras + 9 bija mantras + Gayatri family + Maha Mrityunjaya + Hanuman Chalisa + Lakshmi/Saraswati/Durga stotras + Aditya Hridaya + Vishnu Sahasranama. Sanskrit + transliteration + meaning + frequency + classical citation.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": [] },
-        { "id": "G34", "title": "Gemstone reference", "desc": "9 primary + 9 substitute gemstones per graha + weight + metal + finger + day + activation procedure + classical citation (Garuda Purana, Mani-mala).", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": [] },
-        { "id": "G35", "title": "Yantra reference", "desc": "Navagraha Yantras + Sri Yantra + Vastu yantras with structural data + activation procedure.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": [] },
-        { "id": "G36", "title": "Compatibility (Ashta Koota / Dasa Koota / Manglik) rules", "desc": "Full classical compatibility tables: 8 kootas (Varna/Vashya/Tara/Yoni/Graha Maitri/Gana/Bhakoot/Nadi) + extended 10-koota. Manglik-cancellation rules.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G37", "title": "Muhurta rule library (30+ activity types)", "desc": "Per activity (marriage, griha-pravesh, journey, education, surgery, business launch, vehicle, etc.): rule set + lagna requirements + dosha avoidances. Used by muhurta_finder.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": ["G26"] },
-        { "id": "G39", "title": "Vedic ritual library", "desc": "Per occasion: sankalpa + ritual sequence + classical citation. Used to generate per-chart ritual recommendations.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": [] },
-        { "id": "G40", "title": "Career/profession mapping by graha", "desc": "Classical professions per graha (medicine/law/engineering/arts/government/education...). BPHS Ch. 81-83 + Phaladeepika + modern interpretations.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G41", "title": "Lal Kitab corpus", "desc": "Pt. Roop Chand's early-20th-c. Punjab tradition. ~17 classical Lal Kitab books with remedy + interpretation rules. Distinct corpus alongside BPHS/Jaimini/KP.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": [] },
-        { "id": "G43", "title": "Bhrigu Samhita extracts", "desc": "Public-domain palm-leaf extracts with per-graha-position predictive rules. Distinct from BPHS rule patterns.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 10, "deps": [] },
-        { "id": "G44", "title": "Nadi astrology lookup tables", "desc": "(a) D150 lord per nakshatra-pada-sub + rishi-name (Vasishtha/Atri/Bhrigu/Agastya/Bharadwaja, 27 rishis). (b) D2700 sub-rishi extension. (c) Bhrigu-Nadi yoga rule extensions. (d) Krishnamurti Nadi extensions.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 14, "deps": [] },
-        { "id": "G45", "title": "Ayurveda mapping", "desc": "Per nakshatra + sign + graha → Vata/Pitta/Kapha primary + secondary. Body-part mapping (Kalapurusha — 12 signs to 12 body regions). Disease prediction per-graha-affliction.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": [] },
-        { "id": "G46", "title": "Tantric correspondences", "desc": "Sri Vidya → graha → bija → chakra (Muladhara through Sahasrara) → mantra-syllable. Esoteric Tantric Vedic.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": [] },
-        { "id": "G47", "title": "Numerology overlays", "desc": "Pythagorean + Chaldean + Vedic Ank-jyotish per nakshatra/graha/name. Syncretic cross-system convergence detection.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G48", "title": "Mundane astrology calendar", "desc": "Jupiter-Saturn conjunctions (every ~20y, 1950-2100). Other slow-planet alignments. Historical correlation table.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": ["G2"] },
-        { "id": "G49", "title": "Bhrigu Bindu transit lookup", "desc": "Bhrigu Bindu moves at Moon-Rahu midpoint pace; precompute position 1950-2100 for per-chart transit calculations.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": ["G2"] },
-        { "id": "G50", "title": "Tajik tables", "desc": "Hadda lords per sign (5-fold), Tajik aspect orb tables, Year-lord computation rules (Vargottama / Triraashipathi / Hadda), Mudda/Patyayini computation rules. Used by varshphal.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "G51", "title": "Mundane sankashti calendar", "desc": "Vedic months + sankashti chaturthi (Ganesha) + ekadashi (Vishnu) + amavasya/purnima dates 1950-2100 with auspicious-class. Partly in panchanga_daily.", "brief": { "status": "locked" }, "impl": { "status": "deployed" }, "est_hrs": 0, "deps": ["G7"] }
+        {
+          "id": "G1",
+          "title": "Classical RAG corpus (BPHS/Jaimini/KP/Tajaka/Phaladeepika/Saravali/Brihat Jataka)",
+          "desc": "Already ~4,589 chunks. Add Phaladeepika, Saravali, Brihat Jataka if not present. Vertex AI 768-dim embedded.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "G2",
+          "title": "Ephemeris daily 1950-2100",
+          "desc": "All 9 grahas + asteroids + outer planets + Lilith. Per-day positions, speeds, declinations.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed",
+            "notes": "Existing 1930-2100; trim/extend to 1950 baseline"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G3",
+          "title": "Ephemeris monthly + yearly aggregates",
+          "desc": "Pre-computed sign-changes, retrograde windows, station longitudes.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed"
+          },
+          "est_hrs": 0,
+          "deps": [
+            "G2"
+          ]
+        },
+        {
+          "id": "G4",
+          "title": "Eclipse table 1950-2100",
+          "desc": "Solar + lunar eclipses with type, magnitude, path, saros cycle.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "G5",
+          "title": "Retrograde table 1950-2100",
+          "desc": "All retrograde windows for each non-luminary graha + outer planets.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "G6",
+          "title": "Sankranti table 1950-2100 (per ayanamsha)",
+          "desc": "Sun's sign-entry timestamps per ayanamsha. 5× for canonical ayanamshas.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": [
+            "G2",
+            "G20"
+          ]
+        },
+        {
+          "id": "G7",
+          "title": "Daily panchanga 1950-2100 (per ayanamsha)",
+          "desc": "Tithi/vara/nakshatra/yoga/karana + full enrichment. Existing build covers 1900-2100; extend per-ayanamsha.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed",
+            "notes": "Lahiri only currently; extend to 5 ayanamshas"
+          },
+          "est_hrs": 12,
+          "deps": [
+            "G2",
+            "G20"
+          ]
+        },
+        {
+          "id": "G8",
+          "title": "Choghadiya/Hora/Kalam windows",
+          "desc": "Per-(date, latitude) inauspicious + auspicious time windows. Already in panchanga_daily enrichment.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed"
+          },
+          "est_hrs": 0,
+          "deps": [
+            "G7"
+          ]
+        },
+        {
+          "id": "G9",
+          "title": "Nakshatra attribute reference",
+          "desc": "27 rows × deity, gana, nadi, yoni, pakshi, varna, tatva, ruling-graha, symbol, paramayus, pada-deities.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T02:55:26.944970+00:00",
+            "session_id": "A-02",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "c075c212"
+          },
+          "est_hrs": 3,
+          "deps": []
+        },
+        {
+          "id": "G10",
+          "title": "Sign attribute reference",
+          "desc": "12 rows × lord, element, modality, gender, direction, body-part, gemstone, mantra-syllable, drekkana lords.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T02:57:49.107084+00:00",
+            "session_id": "A-03",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "807df72b"
+          },
+          "est_hrs": 2,
+          "deps": []
+        },
+        {
+          "id": "G11",
+          "title": "Graha attribute reference",
+          "desc": "9 rows × significations, friendships, exaltation, debilitation, mooltrikona, own signs, mantra, gemstone, color, day, direction, deity, body-part-rulership, varna, tatva, gunas.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T03:00:07.431284+00:00",
+            "session_id": "A-04",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "dd8806bb"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G12",
+          "title": "Yoga definitions library (200+)",
+          "desc": "Every classical yoga (Pancha Mahapurusha, Raj yogas, Dhan yogas, Vipareeta, Neechabhanga, Sunafa/Anapha/Durdhura, Vesi/Vasi/Ubhayachari, Adhi, Gajakesari, Saraswati, Akhanda Samrajya, Khsetra, Parijata, etc.) with constituent-rule, classical citation, activation predicate.",
+          "brief": {
+            "status": "discussing"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 24,
+          "deps": []
+        },
+        {
+          "id": "G13",
+          "title": "Dosha definitions library",
+          "desc": "Mangal, Kaal Sarpa (12-type), Pitru, Matri, Naga, Sarpa, Guru Chandal, Grahan, Daridra, Shakata, Vish, Punarphoo, Angarak, Visha — full classical set with predicate + citation.",
+          "brief": {
+            "status": "discussing"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 8,
+          "deps": []
+        },
+        {
+          "id": "G14",
+          "title": "Saham formula library (50+ Tajik sahams)",
+          "desc": "Each Saham = formula (e.g., Punya = Moon − Sun + Lagna for day birth; reverse for night). Punya/Vidya/Yasas/Vivah/Karma/Bhagya/Putra/Aaayur/Mrityu/Roga/etc.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "A-08",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00"
+          },
+          "est_hrs": 6,
+          "deps": []
+        },
+        {
+          "id": "G15",
+          "title": "Dasha-system rule library (32 systems)",
+          "desc": "Starting-lord rule, sequence, year-table, applicability per system: Vimshottari/Ashtottari/Yogini/Shodashottari/Dvadashottari/Panchottari/Shatabdika/Chatturashitika/Dvisaptati/Shashtihayani/Shatatrimshat/Tara + Jaimini Chara/Sthira/NiryanaShoola/Trikona/Brahma/Vimsa/Sudasa/Drig/Naisargika/Mandukya/Padakrama + Mudda/Patyayini/Sahama + Kalachakra/Sphuta/Vidhanottari/Hadda.",
+          "brief": {
+            "status": "discussing"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 20,
+          "deps": []
+        },
+        {
+          "id": "G16",
+          "title": "Varga formula library (30+ vargas)",
+          "desc": "Sign-assignment formulas for D1-D60 Parashari + Jaimini variants + Nadi D108/D150/D2700 + supplementary D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "A-07",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00"
+          },
+          "est_hrs": 8,
+          "deps": []
+        },
+        {
+          "id": "G17",
+          "title": "Aspect rule library",
+          "desc": "Parashari graha-drishti (7H + special 4/7/8 Mars, 5/7/9 Jup, 3/7/10 Sat, 5/7/9 Rahu/Ketu) + Jaimini rasi-drishti (fixed-sign rules) + Tajik 5-type with orb tables.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T03:23:00.000000+00:00",
+            "session_id": "A-06",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "0eb5360d"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G18",
+          "title": "Friendship reference (natural 9×9)",
+          "desc": "Per-graha-pair natural friendship table (classical canon). Temporal + composite are per-chart.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T03:15:00.000000+00:00",
+            "session_id": "A-05",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "8c68e121"
+          },
+          "est_hrs": 1,
+          "deps": []
+        },
+        {
+          "id": "G19",
+          "title": "Karaka assignment reference",
+          "desc": "Natural karakas per house (1st=Sun, 2nd=Jupiter, 3rd=Mars...) per significance (career=Sun, marriage=Venus/Jupiter...) classical.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T03:15:00.000000+00:00",
+            "session_id": "A-05",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "8c68e121"
+          },
+          "est_hrs": 2,
+          "deps": []
+        },
+        {
+          "id": "G20",
+          "title": "Ayanamsha registry + values over time",
+          "desc": "5 canonical + capability-only ayanamshas with formula, epoch pin, current value, derivative-per-year, classical citation. Function ayanamsha_value(jd, id) → degrees.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T02:52:27.147308+00:00",
+            "session_id": "A-01",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "94856445"
+          },
+          "est_hrs": 6,
+          "deps": []
+        },
+        {
+          "id": "G21",
+          "title": "Sade Sati Saturn-sign-changes (per ayanamsha)",
+          "desc": "Every Saturn sign-ingress 1950-2100 per ayanamsha. Per-chart sade sati derived by joining with native's natal Moon sign.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": [
+            "G2",
+            "G20"
+          ]
+        },
+        {
+          "id": "G22",
+          "title": "Tara bala matrix (27×27)",
+          "desc": "(natal_nakshatra, transit_nakshatra) → tara_class (Janma/Sampat/Vipat/Kshema/Pratyak/Sadhaka/Vadha/Mitra/Atimitra). Global lookup; per-chart Tara bala is a join.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "A-09",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00"
+          },
+          "est_hrs": 1,
+          "deps": []
+        },
+        {
+          "id": "G23",
+          "title": "Chandra bala matrix (12×12)",
+          "desc": "(natal_moon_sign, transit_moon_sign) → favorable/neutral/unfavorable. Global lookup.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 1,
+          "deps": []
+        },
+        {
+          "id": "G24",
+          "title": "Vimshottari starting-lord table",
+          "desc": "27 nakshatras → starting Vimshottari dasha lord + sub-fraction. Static.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0.5,
+          "deps": []
+        },
+        {
+          "id": "G25",
+          "title": "Mrityubhaga / Gandanta / Pushkara reference",
+          "desc": "Each = sign-degree predicate; predicate is global, per-chart firing derived.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "A-10",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00"
+          },
+          "est_hrs": 2,
+          "deps": []
+        },
+        {
+          "id": "G26",
+          "title": "Muhurta auspiciousness reference",
+          "desc": "Classical tithi/vara/nakshatra/yoga/karana scoring tables. Choghadiya/Hora/Abhijit/Brahma muhurta computations.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G27",
+          "title": "Remedial library",
+          "desc": "Per-graha mantras + bija mantras + Vedic suktas + stotrams + gemstone + metal + color + charity object + ritual + fasting day. Classical citations.",
+          "brief": {
+            "status": "discussing"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "A-20",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T10:31:54.134828+00:00"
+          },
+          "est_hrs": 12,
+          "deps": []
+        },
+        {
+          "id": "G28",
+          "title": "Classical worked-examples library",
+          "desc": "Famous charts from BPHS, Phaladeepika, Raman's 300 Combinations, KS Charak + classical horoscopes with attributed predictions/outcomes. Used for M6 anchors + divergence-dividend research.",
+          "brief": {
+            "status": "discussing"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "A-21",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T10:31:54.134828+00:00"
+          },
+          "est_hrs": 16,
+          "deps": []
+        },
+        {
+          "id": "G31",
+          "title": "Calendrical era conversion table",
+          "desc": "Gregorian ↔ Vikram ↔ Shaka ↔ Kali ↔ Saptarshi era for every JD 1950-2100. Partial in panchanga_daily.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:43.287183+00:00",
+            "session_id": "A-12",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "b2624307"
+          },
+          "est_hrs": 3,
+          "deps": [
+            "G7"
+          ]
+        },
+        {
+          "id": "G32",
+          "title": "Fixed star catalog (~50 stars)",
+          "desc": "Spica, Regulus, Antares, Aldebaran, Sirius, Canopus/Agastya, Vega — bright stars with longitudes per ayanamsha + precessed coordinates.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:43.312688+00:00",
+            "session_id": "A-12",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "b2624307"
+          },
+          "est_hrs": 4,
+          "deps": [
+            "G20"
+          ]
+        },
+        {
+          "id": "G33",
+          "title": "Mantra/Stotra library (~200 entries)",
+          "desc": "9 Navagraha mantras + 9 bija mantras + Gayatri family + Maha Mrityunjaya + Hanuman Chalisa + Lakshmi/Saraswati/Durga stotras + Aditya Hridaya + Vishnu Sahasranama. Sanskrit + transliteration + meaning + frequency + classical citation.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T10:07:45.435423+00:00",
+            "session_id": "A-19",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "532b59c3"
+          },
+          "est_hrs": 12,
+          "deps": []
+        },
+        {
+          "id": "G34",
+          "title": "Gemstone reference",
+          "desc": "9 primary + 9 substitute gemstones per graha + weight + metal + finger + day + activation procedure + classical citation (Garuda Purana, Mani-mala).",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:31.783247+00:00",
+            "session_id": "A-11",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "b3617eaf"
+          },
+          "est_hrs": 3,
+          "deps": []
+        },
+        {
+          "id": "G35",
+          "title": "Yantra reference",
+          "desc": "Navagraha Yantras + Sri Yantra + Vastu yantras with structural data + activation procedure.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:31.807692+00:00",
+            "session_id": "A-11",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "b3617eaf"
+          },
+          "est_hrs": 3,
+          "deps": []
+        },
+        {
+          "id": "G36",
+          "title": "Compatibility (Ashta Koota / Dasa Koota / Manglik) rules",
+          "desc": "Full classical compatibility tables: 8 kootas (Varna/Vashya/Tara/Yoni/Graha Maitri/Gana/Bhakoot/Nadi) + extended 10-koota. Manglik-cancellation rules.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:31.831791+00:00",
+            "session_id": "A-11",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "b3617eaf"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G37",
+          "title": "Muhurta rule library (30+ activity types)",
+          "desc": "Per activity (marriage, griha-pravesh, journey, education, surgery, business launch, vehicle, etc.): rule set + lagna requirements + dosha avoidances. Used by muhurta_finder.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 12,
+          "deps": [
+            "G26"
+          ]
+        },
+        {
+          "id": "G39",
+          "title": "Vedic ritual library",
+          "desc": "Per occasion: sankalpa + ritual sequence + classical citation. Used to generate per-chart ritual recommendations.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T10:07:40.060394+00:00",
+            "session_id": "A-16",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "5d76035e"
+          },
+          "est_hrs": 8,
+          "deps": []
+        },
+        {
+          "id": "G40",
+          "title": "Career/profession mapping by graha",
+          "desc": "Classical professions per graha (medicine/law/engineering/arts/government/education...). BPHS Ch. 81-83 + Phaladeepika + modern interpretations.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:51.823436+00:00",
+            "session_id": "A-13",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "6865eff0"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G41",
+          "title": "Lal Kitab corpus",
+          "desc": "Pt. Roop Chand's early-20th-c. Punjab tradition. ~17 classical Lal Kitab books with remedy + interpretation rules. Distinct corpus alongside BPHS/Jaimini/KP.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T10:07:45.388568+00:00",
+            "session_id": "A-17",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "e9665046"
+          },
+          "est_hrs": 16,
+          "deps": []
+        },
+        {
+          "id": "G43",
+          "title": "Bhrigu Samhita extracts",
+          "desc": "Public-domain palm-leaf extracts with per-graha-position predictive rules. Distinct from BPHS rule patterns.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T10:07:45.413350+00:00",
+            "session_id": "A-18",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "19c9b7b7"
+          },
+          "est_hrs": 10,
+          "deps": []
+        },
+        {
+          "id": "G44",
+          "title": "Nadi astrology lookup tables",
+          "desc": "(a) D150 lord per nakshatra-pada-sub + rishi-name (Vasishtha/Atri/Bhrigu/Agastya/Bharadwaja, 27 rishis). (b) D2700 sub-rishi extension. (c) Bhrigu-Nadi yoga rule extensions. (d) Krishnamurti Nadi extensions.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T10:07:40.085736+00:00",
+            "session_id": "A-16",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "5d76035e"
+          },
+          "est_hrs": 14,
+          "deps": []
+        },
+        {
+          "id": "G45",
+          "title": "Ayurveda mapping",
+          "desc": "Per nakshatra + sign + graha → Vata/Pitta/Kapha primary + secondary. Body-part mapping (Kalapurusha — 12 signs to 12 body regions). Disease prediction per-graha-affliction.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:51.850098+00:00",
+            "session_id": "A-13",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "6865eff0"
+          },
+          "est_hrs": 6,
+          "deps": []
+        },
+        {
+          "id": "G46",
+          "title": "Tantric correspondences",
+          "desc": "Sri Vidya → graha → bija → chakra (Muladhara through Sahasrara) → mantra-syllable. Esoteric Tantric Vedic.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:59.133766+00:00",
+            "session_id": "A-14",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "1dd2c42f"
+          },
+          "est_hrs": 6,
+          "deps": []
+        },
+        {
+          "id": "G47",
+          "title": "Numerology overlays",
+          "desc": "Pythagorean + Chaldean + Vedic Ank-jyotish per nakshatra/graha/name. Syncretic cross-system convergence detection.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:33:59.158343+00:00",
+            "session_id": "A-14",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "1dd2c42f"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G48",
+          "title": "Mundane astrology calendar",
+          "desc": "Jupiter-Saturn conjunctions (every ~20y, 1950-2100). Other slow-planet alignments. Historical correlation table.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 3,
+          "deps": [
+            "G2"
+          ]
+        },
+        {
+          "id": "G49",
+          "title": "Bhrigu Bindu transit lookup",
+          "desc": "Bhrigu Bindu moves at Moon-Rahu midpoint pace; precompute position 1950-2100 for per-chart transit calculations.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 3,
+          "deps": [
+            "G2"
+          ]
+        },
+        {
+          "id": "G50",
+          "title": "Tajik tables",
+          "desc": "Hadda lords per sign (5-fold), Tajik aspect orb tables, Year-lord computation rules (Vargottama / Triraashipathi / Hadda), Mudda/Patyayini computation rules. Used by varshphal.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "G51",
+          "title": "Mundane sankashti calendar",
+          "desc": "Vedic months + sankashti chaturthi (Ganesha) + ekadashi (Vishnu) + amavasya/purnima dates 1950-2100 with auspicious-class. Partly in panchanga_daily.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed"
+          },
+          "est_hrs": 0,
+          "deps": [
+            "G7"
+          ]
+        }
       ]
     },
     {
@@ -88,34 +781,438 @@
       "subtitle": "Engine + L1 + L1.5 + L2.5 synthesis per chart, per ayanamsha (5×). Sequential DAG executed by build orchestrator. Order flexible during refinement.",
       "type": "per_chart",
       "items": [
-        { "id": "A1", "title": "Engine invocation (5 ayanamshas)", "desc": "natal_engine.compute_chart() runs 5× in parallel. 23 bodies (9 grahas + 2 nodes ×2 + 2 Liliths + 10 asteroids/outer). Heliocentric + decl + RA emitted. G1_internal_invariants verification (no jh_parity gate).", "brief": { "status": "locked", "path": "00_ARCHITECTURE/CONDUCTOR/build_orchestrator/BUILD_ORCHESTRATOR_PLAN_v1_0.md#A1" }, "impl": { "status": "not_started" }, "est_hrs": 18, "deps": ["G20"] },
-        { "id": "A2", "title": "FORENSIC.md render", "desc": "44 H2 sections. Per-chart per-ayanamsha. No narration; deterministic values only (linter-enforced). RAG chunking + Vertex embedding. Cross-ayanamsha report.", "brief": { "status": "discussing", "notes": "Native confirmed chunking IN with no-narration constraint. F.13-F.14 decisions pending." }, "impl": { "status": "not_started" }, "est_hrs": 24, "deps": ["A1"] },
-        { "id": "A3", "title": "chart_facts table population", "desc": "Every atom from A1+A2 as rows. ~50 fact_category enum. Stable fact_ids (sha256-derived). Citation strings per row. Materialized views.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": ["A1"] },
-        { "id": "A4", "title": "Panchanga (birth-day)", "desc": "5 limbs + Tara bala + Chandra bala + Choghadiya/Hora/Kalams + auspicious windows + solar context + calendrical + Eclipse proximity + special vara+nakshatra combinations.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 10, "deps": ["A1", "G7", "G22", "G23"] },
-        { "id": "A5", "title": "Sensitive points", "desc": "6 upagrahas + Saturn-derived + esoteric bindus (Bhrigu/Yogi/Avayogi/Mrityu/Trisphuta) + 11 Special Lagnas + 50+ Sahams + 12 Arudhas + 8 Jaimini chara karakas + Karakamsa/Swamsa + midpoints.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": ["A1", "G14"] },
-        { "id": "A6", "title": "Vargas (30+ divisional charts)", "desc": "16 Parashari (D1-D60) + supplementary (D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54) + Nadi (D108/D150/D2700). Per-varga lagna + 9 grahas + dignity + vargottama. Two-pass verification.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 20, "deps": ["A1", "G16"] },
-        { "id": "A7", "title": "Dashas (32 systems)", "desc": "Nakshatra-based (Vimshottari + 11 others) + Jaimini (12 systems) + Tajik (4 systems) + Special (4). Depth Sookshma minimum. Two-pass verification mandatory.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 24, "deps": ["A1", "G15", "G24"] },
-        { "id": "A8", "title": "T1 structural facts", "desc": "Aspect matrix (Parashari + Jaimini + Tajik) + dispositors + shadbala (6 sub-balas/graha) + ashtakavarga (BAV + SAV + reductions + kakshyas) + yogas register (200+) + vimshopaka + bhava bala + ishta-kashta + 5 avastha schemes.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 32, "deps": ["A1", "A3", "G12", "G17"] },
-        { "id": "A9", "title": "Sade Sati cycles", "desc": "Saturn-Moon natal relationship → all sade sati 7.5y windows past+future + intensity per quarter. Depends on natal Moon sign per ayanamsha.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": ["A3", "G21"] },
-        { "id": "A10", "title": "MSR (Multi-System Register)", "desc": "Every observable signal as row — no threshold drop. {configuration, constituent_facts[], classical_sources[], deterministic_strength, verification_certainty, computed_salience, salience_formula_version, domains_affected}. Projected 800-1,500 signals.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 28, "deps": ["A3", "A8", "G12", "G13"] },
-        { "id": "A11", "title": "CDLM (Cross-Domain Linkage Matrix)", "desc": "9 domains × 9 (career/relationships/health/wealth/family/learning/spirituality/longevity/character). Each cell = computable shared-factor count between MSR signals tagged for those domains + linkage strength.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": ["A10"] },
-        { "id": "A12", "title": "CGM (Chart Graph Model)", "desc": "Nodes = grahas + houses + signs + configurations + arudhas. Edges = structural relations (aspect/dispositor/lordship/karaka/conjunction/parivartana/mutual reception). Weighted by computed strength.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 14, "deps": ["A3", "A8"] },
-        { "id": "A13", "title": "RM (Resonance Map)", "desc": "Weakest grahas (low shadbala + bad dignity + low ashtakavarga) → classical remedy candidates. Strongest grahas → amplification candidates. Spoke structure from center.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": ["A8", "G27"] },
-        { "id": "A14", "title": "UCN digest (computed signature)", "desc": "Top-K configurations by computed_salience + dominant + weakest grahas + strongest yogas + current dasha context + system-convergence counts. No prose. Replaces 102-section narrative UCN.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": ["A10", "A12", "A7"] }
+        {
+          "id": "A1",
+          "title": "Engine invocation (5 ayanamshas)",
+          "desc": "natal_engine.compute_chart() runs 5× in parallel. 23 bodies (9 grahas + 2 nodes ×2 + 2 Liliths + 10 asteroids/outer). Heliocentric + decl + RA emitted. G1_internal_invariants verification (no jh_parity gate).",
+          "brief": {
+            "status": "locked",
+            "path": "00_ARCHITECTURE/CONDUCTOR/build_orchestrator/BUILD_ORCHESTRATOR_PLAN_v1_0.md#A1"
+          },
+          "impl": {
+            "status": "merged_main",
+            "started_at": "2026-05-29T10:07:51.625196+00:00",
+            "session_id": "E-08",
+            "branch": "feature/build-orch/stream-e",
+            "merge_sha": "70b9631c",
+            "completed_at": "2026-05-29T10:31:54.134828+00:00"
+          },
+          "est_hrs": 18,
+          "deps": [
+            "G20"
+          ]
+        },
+        {
+          "id": "A2",
+          "title": "FORENSIC.md render",
+          "desc": "44 H2 sections. Per-chart per-ayanamsha. No narration; deterministic values only (linter-enforced). RAG chunking + Vertex embedding. Cross-ayanamsha report.",
+          "brief": {
+            "status": "discussing",
+            "notes": "Native confirmed chunking IN with no-narration constraint. F.13-F.14 decisions pending."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 24,
+          "deps": [
+            "A1"
+          ]
+        },
+        {
+          "id": "A3",
+          "title": "chart_facts table population",
+          "desc": "Every atom from A1+A2 as rows. ~50 fact_category enum. Stable fact_ids (sha256-derived). Citation strings per row. Materialized views.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A3_CHART_FACTS_SPEC_v1_0.md",
+            "notes": "Locked across 4 clarification rounds with native sign-off. 131 categories, dual citation, MV-natal-only, chart_dashas separate to Prana depth (two-pass mandatory)."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 16,
+          "deps": [
+            "A1"
+          ]
+        },
+        {
+          "id": "A4",
+          "title": "Panchanga (birth-day)",
+          "desc": "5 limbs + Tara bala + Chandra bala + Choghadiya/Hora/Kalams + auspicious windows + solar context + calendrical + Eclipse proximity + special vara+nakshatra combinations.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A4_PANCHANGA_SPEC_v1_0.md",
+            "notes": "Full classical scope: all inauspicious (9 windows) + auspicious (9 windows) + Agni Vasa + 5-Panchaka classification + Disha Shul + Shoonya Rashis + Tara/Chandra bala natal baselines. ~600-800 rows per chart."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 10,
+          "deps": [
+            "A1",
+            "G7",
+            "G22",
+            "G23"
+          ]
+        },
+        {
+          "id": "A5",
+          "title": "Sensitive points",
+          "desc": "6 upagrahas + Saturn-derived + esoteric bindus (Bhrigu/Yogi/Avayogi/Mrityu/Trisphuta) + 11 Special Lagnas + 50+ Sahams + 12 Arudhas + 8 Jaimini chara karakas + Karakamsa/Swamsa + midpoints.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A5_SENSITIVE_POINTS_SPEC_v1_0.md",
+            "notes": "30 categories (14 baseline + 10 surgical + 6 esoteric/Tajik/KP/Lal Kitab/Maharsi/Nadi). 6 universal enrichment fields. Per-category two-pass methodology. ~13K rows per chart total."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 16,
+          "deps": [
+            "A1",
+            "G14"
+          ]
+        },
+        {
+          "id": "A6",
+          "title": "Vargas (30+ divisional charts)",
+          "desc": "16 Parashari (D1-D60) + supplementary (D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54) + Nadi (D108/D150/D2700). Per-varga lagna + 9 grahas + dignity + vargottama. Two-pass verification.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A6_VARGAS_SPEC_v1_0.md",
+            "notes": "30 vargas (16 Parashari + 11 supplementary + 3 Nadi). ~25 categories. All 8 Q&A + 11 surgical additions A-K locked. Per-category two-pass. ~78,750 rows per chart. Largest writer in A1-A14."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 20,
+          "deps": [
+            "A1",
+            "G16"
+          ]
+        },
+        {
+          "id": "A7",
+          "title": "Dashas (32 systems)",
+          "desc": "Nakshatra-based (Vimshottari + 11 others) + Jaimini (12 systems) + Tajik (4 systems) + Special (4). Depth Sookshma minimum. Two-pass verification mandatory.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A7_DASHAS_SPEC_v1_0.md",
+            "notes": "7 acharya-selected systems (Vimshottari + Yogini + Ashtottari + Chara Karaka + Naisargika + Mudda + Kalachakra). Prana depth + KP sub-divisions. 1950-2100 window. No partitioning at ≤20-user scale. ~5.4M rows per chart."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 24,
+          "deps": [
+            "A1",
+            "G15",
+            "G24"
+          ]
+        },
+        {
+          "id": "A8",
+          "title": "T1 structural facts",
+          "desc": "Aspect matrix (Parashari + Jaimini + Tajik) + dispositors + shadbala (6 sub-balas/graha) + ashtakavarga (BAV + SAV + reductions + kakshyas) + yogas register (200+) + vimshopaka + bhava bala + ishta-kashta + 5 avastha schemes.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A8_T1_STRUCTURAL_SPEC_v1_0.md",
+            "notes": "~35 categories: aspects (full quarter-strength) + shadbala + bhava bala + ashtakavarga (with Anubindu) + 200+ yogas with cancellation + doshas + 5 avastha schemes + composite strengths (BOTH formulas) + dispositor chains + parivartana + argala + esoteric (Pranic + tri-deva). All 10 Q&A + all additions A-AI locked. ~11K rows per chart."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 32,
+          "deps": [
+            "A1",
+            "A3",
+            "G12",
+            "G17"
+          ]
+        },
+        {
+          "id": "A9",
+          "title": "Sade Sati cycles",
+          "desc": "Saturn-Moon natal relationship → all sade sati 7.5y windows past+future + intensity per quarter. Depends on natal Moon sign per ayanamsha.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A9_SADE_SATI_SPEC_v1_0.md",
+            "notes": "~15 categories: Sade Sati cycles + 7 distinct Saturn-Moon configurations (Dhaiya/Kantaka/Ashtama/Ardha Ashtama/Janma/Vishakha/Anumukha). All 8 cancellation rules. Per-quarter intensity. Concurrent modifiers (Mars/Jupiter/Rahu/eclipses/Saturn retrograde). All 7 dasha systems cross-referenced. ~875 rows per chart."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 6,
+          "deps": [
+            "A3",
+            "G21"
+          ]
+        },
+        {
+          "id": "A10",
+          "title": "MSR (Multi-System Register)",
+          "desc": "Every observable signal as row — no threshold drop. {configuration, constituent_facts[], classical_sources[], deterministic_strength, verification_certainty, computed_salience, salience_formula_version, domains_affected}. Projected 800-1,500 signals.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A10_MSR_SPEC_v1_0.md",
+            "notes": "Exhaustive MSR — ~880-1,250 signals per (chart, ayanamsha); ~4,400-6,250 per chart. Salience formula v1.0 versioned. G52 signal_type_registry new global. All 6 traditions + synthetic signals + downstream-driven enrichments for CDLM/CGM/RM/UCN/M6. ~50-column schema. Two-pass mandatory."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 28,
+          "deps": [
+            "A3",
+            "A8",
+            "G12",
+            "G13"
+          ]
+        },
+        {
+          "id": "A11",
+          "title": "CDLM (Cross-Domain Linkage Matrix)",
+          "desc": "9 domains × 9 (career/relationships/health/wealth/family/learning/spirituality/longevity/character). Each cell = computable shared-factor count between MSR signals tagged for those domains + linkage strength.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A11_CDLM_SPEC_v1_0.md",
+            "notes": "5-table storage (cells/rollups/summary/patterns/gradients) + 5 MVs. 3 dasha systems × Maha-Antar dynamic (Vim+Chara+Yogini). 9×9+27×27 static sub-domain. 4 tradition views. All downstream enrichments for CGM/RM/UCN/M6/multi-channel. ~213K rows per chart. Wipe existing."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 12,
+          "deps": [
+            "A10"
+          ]
+        },
+        {
+          "id": "A12",
+          "title": "CGM (Chart Graph Model)",
+          "desc": "Nodes = grahas + houses + signs + configurations + arudhas. Edges = structural relations (aspect/dispositor/lordship/karaka/conjunction/parivartana/mutual reception). Weighted by computed strength.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A12_CGM_SPEC_v1_0.md",
+            "notes": "Option E technology stack: Cloud SQL + pgvector + native PG partitioning + igraph in-memory compute + libephemeris JPL DE440 dual-source audit + BigQuery cold export. NO Apache AGE. NO TimescaleDB. NO Spanner. 5-table storage (nodes/edges/sub_graphs/motifs/topology_summary). Static + Maha-lord dynamic × 3 systems (Vim+Chara+Yogini). 4 tradition views. 24 edge types. Classical motif library ~30-50. Per-graha story arcs. GraphML/GEXF exports. Conflict resolution edges. pgvector embeddings. Ephemeris audit JSONB. ~280K rows per chart."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 14,
+          "deps": [
+            "A3",
+            "A8"
+          ]
+        },
+        {
+          "id": "A13",
+          "title": "RM (Resonance Map)",
+          "desc": "Weakest grahas (low shadbala + bad dignity + low ashtakavarga) → classical remedy candidates. Strongest grahas → amplification candidates. Spoke structure from center.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A13_RM_SPEC_v1_0.md",
+            "notes": "All 15 clarifications YES + all critical (A-Y) + non-critical (AA-CC). 6-table storage (resonances/prescriptions/dasha_windowed/dosha_bundles/pattern_remedies/chart_summary). 6 traditions (Parashari+Tantric+KP+Tajik+Lal_Kitab+Ayurveda_Jyotish) × 18 remedy categories × per-graha fingerprint. Resonance + match score formulas v1 unit-tested. 3 dasha systems × Maha-Antar temporal calibration. 4 Sade Sati phase bundles + ~15 dosha bundles. Counter-indications + compatibility + feasibility scoring + acharya-review flags + cross-tradition convergence. Phase sequencing (foundation/intensification/maintenance). Chronobiology timing. pgvector embeddings. M6 outcome placeholder. G27 corpus exhaustiveness audit declared parallel prerequisite (G27-AUDIT-S1 before A13-S1). ~4,775 rows per chart."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 8,
+          "deps": [
+            "A8",
+            "G27"
+          ]
+        },
+        {
+          "id": "A14",
+          "title": "UCN digest (computed signature)",
+          "desc": "Top-K configurations by computed_salience + dominant + weakest grahas + strongest yogas + current dasha context + system-convergence counts. No prose. Replaces 102-section narrative UCN.",
+          "brief": {
+            "status": "retired_with_rationale",
+            "retired_at": "2026-05-29",
+            "rationale_path": "00_ARCHITECTURE/A14_UCN_RETIRED_TO_UCD_v1_0.md",
+            "rename_to": "UCD — Unified Chart Digest (conceptual surface)",
+            "notes": "A14 UCN retired as separate writer. 70% redundant with A8-A13. 5 truly-new items folded into A8/A11/A12 chart_summaries per Option α. Conceptual surface renamed UCD (Unified Chart Digest). Documented at 00_ARCHITECTURE/A14_UCN_RETIRED_TO_UCD_v1_0.md."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 8,
+          "deps": [
+            "A10",
+            "A12",
+            "A7"
+          ]
+        },
+        {
+          "id": "A15",
+          "name": "A15 — Time-Synchronicity Stack",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A15_TIME_SYNCHRONICITY_SPEC_v1_0.md",
+            "notes": "NEW ASSET. Magical nugget #1. Multi-cycle convergence map across 1950-2100. ~1,580 rows per chart. Native PG range partitioning by date_iso. Decomposed convergence_intensity. 5-tier cosmic_resonance_class + 7-tier predictive_resonance_class. Convergence clusters (3+ within 90 days). Per-window pgvector embedding. Multi-chart cross-resonance hook. Two-pass + dual-source ephemeris audit."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "A16",
+          "name": "A16 — Phase-Locked Event Anchor Map",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A16_PHASE_LOCKED_EVENT_ANCHORS_SPEC_v1_0.md",
+            "notes": "NEW ASSET. Magical nugget #5. M6 calibration ground truth. ~8,000 anchors per chart. ~200-classical-timing-rule catalog (G29 parallel prerequisite). Mandatory falsifiability + structured outcome ontology. Cross-rule + cross-tradition corroboration. Alternative outcome scenarios. Anchor-to-anchor causal chain DAG. A15 synchronicity cross-reference. Per-anchor pgvector embedding. Outcome_tracking_placeholder for M6."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "A22",
+          "name": "A22 — Per-Varsha Yearly Digest",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/TEMPORAL_SPINE_ENHANCEMENTS_v1_0.md",
+            "notes": "NEW ASSET. Yearly-resolution summary joining A15 windows + A16 anchors + A18 vedhas + A19 Bhrigu hits + A20 year-lord + A21 exact aspects + active dashas (Vim/Chara/Yogini) + Sade Sati per varsha year. ~750 rows/chart. UTEE-shaped envelope. M6 outcome placeholder. Per-varsha embedding for cross-chart cohort. Powers \"tell me about year N\" instantly."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        }
       ]
     },
     {
       "id": "A_supplementary",
-      "title": "A15–A20 — Supplementary Per-Chart (proposed)",
-      "subtitle": "Items I flagged as 'possibly missing'. Native to confirm inclusion. Could fold into A1-A14 or run as separate batch.",
+      "title": "A17–A21 — Supplementary Per-Chart (renumbered from original A15–A20)",
+      "subtitle": "Original A15+A16 reused for magical nuggets (Time-Synchronicity + Phase-Locked Anchors); supplementary items shifted to A17-A21. A20 folded into A8 amendment per consolidated spec.",
       "type": "per_chart_extended",
       "items": [
-        { "id": "A15", "title": "Chakras (Sarvatobhadra / Sapta-shalaka / Kalanala / Kota)", "desc": "Geometric chakra positions per graha. Used for vedha (obstruction) timing.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": ["A3"] },
-        { "id": "A16", "title": "Vedha calculations", "desc": "Graha-aspect-obstruction tables. Per-chart vedha-timing lookups.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": ["A15"] },
-        { "id": "A17", "title": "Argala / Virodha argala matrices (Jaimini)", "desc": "12×12 intervention matrix per chart per ayanamsha. From signs onto signs.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": ["A3"] },
-        { "id": "A18", "title": "Bhrigu Bindu per-chart transit table", "desc": "Bhrigu Bindu lifetime transit positions for this chart. Cached for timing queries.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": ["A3", "G49"] },
-        { "id": "A19", "title": "Specific Tajik tables (per chart)", "desc": "Hadda lord per sign + Tajik aspect-counts + Year-lord per varsha. Per-chart varshphal-prep.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 6, "deps": ["A1", "G50"] },
-        { "id": "A20", "title": "Per-graha next-exact-aspect lifetime table", "desc": "When each natal graha receives exact transit aspect from each other graha 1950-2100. Hot-moment timing.", "brief": { "status": "not_started" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": ["A1", "G2"] }
+        {
+          "id": "A17",
+          "title": "A17 — Chakras (Sarvatobhadra / Sapta-shalaka / Kalanala / Kota / Chandra Kala Nadi)",
+          "desc": "Geometric chakra positions per graha. Used for vedha (obstruction) timing.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md",
+            "notes": "5 geometric chakras for vedha + transit timing. ~2,500 rows/chart. NEW asset. Renumbered from original A15 supplementary."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 8,
+          "deps": [
+            "A3"
+          ]
+        },
+        {
+          "id": "A18",
+          "title": "A18 — Vedha calculations",
+          "desc": "Graha-aspect-obstruction tables. Per-chart vedha-timing lookups.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md",
+            "notes": "6 vedha types (nakshatra / tajik year-lord / dasha sub-lord / transit chakra / sapta-shalaka / argala extension). ~5,000 rows/chart. Feeds A15. NEW asset. Renumbered from original A16 supplementary."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 6,
+          "deps": [
+            "A17",
+            "A8"
+          ]
+        },
+        {
+          "id": "A17_FOLDED",
+          "title": "A17-orig — Argala / Virodha argala (FOLDED INTO A8 §N — see A8 spec)",
+          "desc": "12×12 intervention matrix per chart per ayanamsha. From signs onto signs.",
+          "brief": {
+            "status": "folded_into_A8",
+            "folded_at": "A8 lock date",
+            "notes": "Argala matrices folded into A8 §N (Group N — Argala) per A8 spec. No separate writer."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 6,
+          "deps": [
+            "A8"
+          ]
+        },
+        {
+          "id": "A19",
+          "title": "A19 — Bhrigu Bindu lifetime transit table",
+          "desc": "Bhrigu Bindu lifetime transit positions for this chart. Cached for timing queries.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md",
+            "notes": "Bhrigu Bindu midpoint of Moon+Rahu; lifetime transit hits 1950-2100. ~1,000 rows/chart. Feeds A15 as first-class synchronicity events. NEW asset."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 3,
+          "deps": [
+            "A3",
+            "A5",
+            "G49"
+          ]
+        },
+        {
+          "id": "A20",
+          "title": "A20 — Tajik per-chart extensions (Hadda + varsha year-lord) — FOLDED INTO A8",
+          "desc": "Hadda lord per sign + Tajik aspect-counts + Year-lord per varsha. Per-chart varshphal-prep.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md",
+            "notes": "Hadda lord table folds into A8 chart_summary columns; varsha year-lord lifetime table = new l1_tajik_varsha_year_lords. ~750 rows/chart. A8 spec amendment."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 6,
+          "deps": [
+            "A1",
+            "A8",
+            "G50"
+          ]
+        },
+        {
+          "id": "A21",
+          "title": "A21 — Per-graha next-exact-aspect lifetime table",
+          "desc": "When each natal graha receives exact transit aspect from each other graha 1950-2100. Hot-moment timing.",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md",
+            "notes": "For each (natal × transit × aspect_type), pre-compute every exact-aspect moment 1950-2100. ~10,000 rows/chart. Feeds A15 as precise transit_hit enumeration. NEW asset."
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 8,
+          "deps": [
+            "A1",
+            "G2"
+          ]
+        }
       ]
     },
     {
@@ -124,18 +1221,209 @@
       "subtitle": "Form, schema, API, pipeline, UI shell, consume hybrid. Independent of asset DAG but required to run it.",
       "type": "infra",
       "items": [
-        { "id": "INF1", "title": "New Client Form (/clients/new)", "desc": "Full Name + Gender + Birth Date + Birth Time + Birth Place (Google Places) + Ayanamsha multi-select (default 5). POST /api/clients/create.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": ["INF2"] },
-        { "id": "INF2", "title": "Schema migrations (builds/build_steps/engine_versions/chart_facts ext/audit)", "desc": "Migrations 124-132. builds + build_steps + engine_versions + chart_facts ayanamsha_id PK + chart_facts_history + chart_facts_supersedence + chart_ayanamsha_reports + chart_documents + ayanamsha_registry.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 22, "deps": [] },
-        { "id": "INF3", "title": "Python pipeline (build_chart.py + Cloud Run Job repoint)", "desc": "New entrypoint replaces pipeline.main. Walks 14-node DAG. Per-asset build_events. Cancellation polling. Retry-then-halt. Cloud Run Job command updated.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": ["INF2"] },
-        { "id": "INF4", "title": "API surface (build/cancel/active/recent/engine/conversations)", "desc": "Extend /api/build/start. New /api/build/cancel + /active + /recent + /api/engine/current + /api/conversations/[id]/active-ayanamshas + /api/charts/[id]/ayanamsha-status.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 16, "deps": ["INF2"] },
-        { "id": "INF5", "title": "Constellation UI (canvas + nodes + wave + detail + commandbar)", "desc": "Replace BuildChat shell. SVG natal wheel + animated asset nodes + Framer-Motion build wave + slide-in detail + Build/Rebuild/Cancel commandbar + 5-ayanamsha multi-pulse + SSE consumer.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 40, "deps": ["INF4"] },
-        { "id": "INF6", "title": "Notifications + Dashboard integration", "desc": "BuildsInProgress card on /dashboard + post-visit toast + notification_views table + concurrent-build UI.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": ["INF4"] },
-        { "id": "INF7", "title": "Consume Hybrid (Ayanamsha + Bundle + Agentic + Consensus + Intent)", "desc": "Ayanamsha multi-select in Settings + chart bundle composer (Layer-1 context) + prompt-cache (Anthropic/Gemini/DeepSeek) + cross-ayanamsha consensus tool + intent classifier preamble + stop-confidence + B.11 inline floor check + tool description rewrites + streaming tool-call progress + iteration telemetry + R-AYN.1/2/3 planner rules.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 60, "deps": ["A3", "A10"] },
-        { "id": "INF8", "title": "No-narration enforcement linter", "desc": "Render output passes through forbidden-verb scanner (indicates/suggests/implies/means-that/denotes). Halts render on violation.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "INF9", "title": "Materialized views + index strategy", "desc": "mv_chart_planet_summary, mv_chart_house_summary, mv_chart_yogas, mv_chart_vargas, mv_chart_dasha_at_date + per-(chart_id, ayanamsha_id, category) indexes + GIN on jsonb + CHART_FACTS_INDEX_INVENTORY.md.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": ["INF2"] },
-        { "id": "INF10", "title": "RAG chunking + Vertex AI embedding + similarity signatures", "desc": "FORENSIC.md H2/H3 chunks per ayanamsha + Vertex AI 768-dim. Plus per-(chart, ayanamsha) similarity signature embedding (1 per chart per ayanamsha) for cross-chart research.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": ["A2"] },
-        { "id": "INF11", "title": "MCP Resources (sidecar bundles)", "desc": "15-25 MCP Resources per chart per ayanamsha (planetary_snapshot, current_dasha, yogas_active, cross_ayanamsha, vargas_summary, sahams, etc.). Auto-loaded by external MCP clients.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 12, "deps": ["INF7"] },
-        { "id": "INF12", "title": "Production tracker page (this dashboard, on amjis-web)", "desc": "Productionize the localhost tracker as a Next.js page at /cockpit/workstreams/[id]. New marsys_tracker schema. SSE for live updates. Webhook integrations (Git, Cloud Run). When done, this localhost tracker is retired in favor of the production URL.", "brief": { "status": "discussing" }, "impl": { "status": "not_started" }, "est_hrs": 32, "deps": [] }
+        {
+          "id": "INF1",
+          "title": "New Client Form (/clients/new)",
+          "desc": "Full Name + Gender + Birth Date + Birth Time + Birth Place (Google Places) + Ayanamsha multi-select (default 5). POST /api/clients/create.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T09:34:06.468799+00:00",
+            "session_id": "B-12",
+            "branch": "feature/build-orch/stream-b",
+            "merge_sha": "9a9c4fc5"
+          },
+          "est_hrs": 16,
+          "deps": [
+            "INF2"
+          ]
+        },
+        {
+          "id": "INF2",
+          "title": "Schema migrations (builds/build_steps/engine_versions/chart_facts ext/audit)",
+          "desc": "Migrations 124-132. builds + build_steps + engine_versions + chart_facts ayanamsha_id PK + chart_facts_history + chart_facts_supersedence + chart_ayanamsha_reports + chart_documents + ayanamsha_registry.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T02:52:31.179351+00:00",
+            "session_id": "B-01",
+            "branch": "feature/build-orch/stream-b",
+            "merge_sha": "ad9be06b"
+          },
+          "est_hrs": 22,
+          "deps": []
+        },
+        {
+          "id": "INF3",
+          "title": "Python pipeline (build_chart.py + Cloud Run Job repoint)",
+          "desc": "New entrypoint replaces pipeline.main. Walks 14-node DAG. Per-asset build_events. Cancellation polling. Retry-then-halt. Cloud Run Job command updated.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "deployed",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00",
+            "session_id": "C-06",
+            "branch": "feature/build-orch/stream-c",
+            "merge_sha": "b7c16d05"
+          },
+          "est_hrs": 16,
+          "deps": [
+            "INF2"
+          ]
+        },
+        {
+          "id": "INF4",
+          "title": "API surface (build/cancel/active/recent/engine/conversations)",
+          "desc": "Extend /api/build/start. New /api/build/cancel + /active + /recent + /api/engine/current + /api/conversations/[id]/active-ayanamshas + /api/charts/[id]/ayanamsha-status.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "completed_at": "2026-05-29T10:07:51.601081+00:00",
+            "session_id": "D-09",
+            "branch": "feature/build-orch/stream-d",
+            "merge_sha": "07ad2935"
+          },
+          "est_hrs": 16,
+          "deps": [
+            "INF2"
+          ]
+        },
+        {
+          "id": "INF5",
+          "title": "Constellation UI (canvas + nodes + wave + detail + commandbar)",
+          "desc": "Replace BuildChat shell. SVG natal wheel + animated asset nodes + Framer-Motion build wave + slide-in detail + Build/Rebuild/Cancel commandbar + 5-ayanamsha multi-pulse + SSE consumer.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "in_progress",
+            "completed_at": "2026-05-29T03:01:23.120410+00:00",
+            "session_id": "H-03",
+            "branch": "feature/build-orch/stream-h",
+            "merge_sha": "5593cc27",
+            "started_at": "2026-05-29T10:07:58.546521+00:00"
+          },
+          "est_hrs": 40,
+          "deps": [
+            "INF4"
+          ]
+        },
+        {
+          "id": "INF6",
+          "title": "Notifications + Dashboard integration",
+          "desc": "BuildsInProgress card on /dashboard + post-visit toast + notification_views table + concurrent-build UI.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "in_progress",
+            "started_at": "2026-05-29T10:07:58.570880+00:00",
+            "session_id": "I-03",
+            "branch": "feature/build-orch/stream-i",
+            "merge_sha": "858f57df"
+          },
+          "est_hrs": 12,
+          "deps": [
+            "INF4"
+          ]
+        },
+        {
+          "id": "INF7",
+          "title": "Consume Hybrid (Ayanamsha + Bundle + Agentic + Consensus + Intent)",
+          "desc": "Ayanamsha multi-select in Settings + chart bundle composer (Layer-1 context) + prompt-cache (Anthropic/Gemini/DeepSeek) + cross-ayanamsha consensus tool + intent classifier preamble + stop-confidence + B.11 inline floor check + tool description rewrites + streaming tool-call progress + iteration telemetry + R-AYN.1/2/3 planner rules.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 60,
+          "deps": [
+            "A3",
+            "A10"
+          ]
+        },
+        {
+          "id": "INF8",
+          "title": "No-narration enforcement linter",
+          "desc": "Render output passes through forbidden-verb scanner (indicates/suggests/implies/means-that/denotes). Halts render on violation.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "INF9",
+          "title": "Materialized views + index strategy",
+          "desc": "mv_chart_planet_summary, mv_chart_house_summary, mv_chart_yogas, mv_chart_vargas, mv_chart_dasha_at_date + per-(chart_id, ayanamsha_id, category) indexes + GIN on jsonb + CHART_FACTS_INDEX_INVENTORY.md.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "merged_main",
+            "session_id": "B-10",
+            "branch": "feature/build-orch/stream-b",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00"
+          },
+          "est_hrs": 8,
+          "deps": [
+            "INF2"
+          ]
+        },
+        {
+          "id": "INF10",
+          "title": "RAG chunking + Vertex AI embedding + similarity signatures",
+          "desc": "FORENSIC.md H2/H3 chunks per ayanamsha + Vertex AI 768-dim. Plus per-(chart, ayanamsha) similarity signature embedding (1 per chart per ayanamsha) for cross-chart research.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 12,
+          "deps": [
+            "A2"
+          ]
+        },
+        {
+          "id": "INF11",
+          "title": "MCP Resources (sidecar bundles)",
+          "desc": "15-25 MCP Resources per chart per ayanamsha (planetary_snapshot, current_dasha, yogas_active, cross_ayanamsha, vargas_summary, sahams, etc.). Auto-loaded by external MCP clients.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 12,
+          "deps": [
+            "INF7"
+          ]
+        },
+        {
+          "id": "INF12",
+          "title": "Production tracker page (this dashboard, on amjis-web)",
+          "desc": "Productionize the localhost tracker as a Next.js page at /cockpit/workstreams/[id]. New marsys_tracker schema. SSE for live updates. Webhook integrations (Git, Cloud Run). When done, this localhost tracker is retired in favor of the production URL.",
+          "brief": {
+            "status": "discussing"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 32,
+          "deps": []
+        }
       ]
     },
     {
@@ -144,16 +1432,136 @@
       "subtitle": "Re-baseline, hard gates, red-team, version bumps, deploy. Runs after A1-A14 + INF are merged.",
       "type": "verify",
       "items": [
-        { "id": "ACC1", "title": "answer:eval re-baseline", "desc": "Expect b11 + layer_cov material improvement vs v1.1 baseline (b11=29%, layer_cov=31%). Targets: b11 ≥ 60%, layer_cov ≥ 65%.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "ACC2", "title": "8 hard gates check (with G1_internal_invariants)", "desc": "naming_ci, jh_oracle_pinned (static ref retained), G1_internal_invariants (replaces G1_jh_parity), G2_authz_live, G3_contract, G4_no_native_lit, G5b_onfinish, G6_tool_coverage. All green.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 2, "deps": [] },
-        { "id": "ACC3", "title": "Red-team per IS.8(b)", "desc": "Adversarial probe pass. 0 class-1 findings target. Class-2/3 documented as residuals.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 8, "deps": [] },
-        { "id": "ACC4", "title": "Multi-tenant smoke (legacy + new arch)", "desc": "Both tenants queryable end-to-end. Both /consume chats work.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": [] },
-        { "id": "ACC5", "title": "Concurrent-build smoke (3 charts parallel)", "desc": "3 builds on 3 charts simultaneously. All succeed independently. Cloud Tasks queue handles.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 2, "deps": [] },
-        { "id": "ACC6", "title": "Version bumps (CLAUDE.md / PROJECT_ARCHITECTURE / CANONICAL_ARTIFACTS / CAPABILITY_MANIFEST)", "desc": "All canonical surfaces updated to reflect new workstream artifacts + asset DAG.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": [] },
-        { "id": "ACC7", "title": "Documentation (BUILD_ORCHESTRATOR_README.md + ARCHITECTURE)", "desc": "Operator + developer README. Points to plan + tracker + run instructions.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 4, "deps": [] },
-        { "id": "ACC8", "title": "Sealing artifact (MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md)", "desc": "Final close report. Deliverables, residuals, follow-ups, metrics, hard-gate snapshot.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 3, "deps": [] },
-        { "id": "ACC9", "title": "Production deploy", "desc": "Final deploy revision recorded. 10-min log watch post-deploy. Flag rollouts.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 2, "deps": [] },
-        { "id": "ACC10", "title": "Native sign-off", "desc": "Native confirms workstream complete. Capability manifest reflects all new tools + resources.", "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 1, "deps": [] }
+        {
+          "id": "ACC1",
+          "title": "answer:eval re-baseline",
+          "desc": "Expect b11 + layer_cov material improvement vs v1.1 baseline (b11=29%, layer_cov=31%). Targets: b11 ≥ 60%, layer_cov ≥ 65%.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "ACC2",
+          "title": "8 hard gates check (with G1_internal_invariants)",
+          "desc": "naming_ci, jh_oracle_pinned (static ref retained), G1_internal_invariants (replaces G1_jh_parity), G2_authz_live, G3_contract, G4_no_native_lit, G5b_onfinish, G6_tool_coverage. All green.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 2,
+          "deps": []
+        },
+        {
+          "id": "ACC3",
+          "title": "Red-team per IS.8(b)",
+          "desc": "Adversarial probe pass. 0 class-1 findings target. Class-2/3 documented as residuals.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 8,
+          "deps": []
+        },
+        {
+          "id": "ACC4",
+          "title": "Multi-tenant smoke (legacy + new arch)",
+          "desc": "Both tenants queryable end-to-end. Both /consume chats work.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 3,
+          "deps": []
+        },
+        {
+          "id": "ACC5",
+          "title": "Concurrent-build smoke (3 charts parallel)",
+          "desc": "3 builds on 3 charts simultaneously. All succeed independently. Cloud Tasks queue handles.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 2,
+          "deps": []
+        },
+        {
+          "id": "ACC6",
+          "title": "Version bumps (CLAUDE.md / PROJECT_ARCHITECTURE / CANONICAL_ARTIFACTS / CAPABILITY_MANIFEST)",
+          "desc": "All canonical surfaces updated to reflect new workstream artifacts + asset DAG.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 3,
+          "deps": []
+        },
+        {
+          "id": "ACC7",
+          "title": "Documentation (BUILD_ORCHESTRATOR_README.md + ARCHITECTURE)",
+          "desc": "Operator + developer README. Points to plan + tracker + run instructions.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 4,
+          "deps": []
+        },
+        {
+          "id": "ACC8",
+          "title": "Sealing artifact (MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md)",
+          "desc": "Final close report. Deliverables, residuals, follow-ups, metrics, hard-gate snapshot.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 3,
+          "deps": []
+        },
+        {
+          "id": "ACC9",
+          "title": "Production deploy",
+          "desc": "Final deploy revision recorded. 10-min log watch post-deploy. Flag rollouts.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 2,
+          "deps": []
+        },
+        {
+          "id": "ACC10",
+          "title": "Native sign-off",
+          "desc": "Native confirms workstream complete. Capability manifest reflects all new tools + resources.",
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 1,
+          "deps": []
+        }
       ]
     },
     {
@@ -162,20 +1570,512 @@
       "subtitle": "Items recorded outside the core stream that affect briefs and implementation. Each item shows what got decided, when, and which main-track items it touches.",
       "type": "misc",
       "items": [
-        { "id": "M1", "title": "Drop JH-parity gate; replace with G1_internal_invariants", "desc": "Native decision 2026-05-29. Replaces hard gate G1_jh_parity with internal algebraic invariants + cross-ayanamsha sanity + two-pass spot checks. jh_oracle.json retained as static reference, not per-build gate.", "decided_at": "2026-05-29", "affects": ["A1", "ACC2"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] },
-        { "id": "M2", "title": "Multi-ayanamsha full-build (not 1-primary + 4-reference)", "desc": "Native decision 2026-05-29. All 5 ayanamshas built fully and equally; retrieval returns multi-ayanamsha by default; UI multi-select filters response scope. Storage 5×.", "decided_at": "2026-05-29", "affects": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "INF7"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] },
-        { "id": "M3", "title": "Agentic-loop hybrid for /consume (not plan-then-execute)", "desc": "Native decision 2026-05-29. Keep bounded agentic loop (R11.F substrate) + add pre-cached chart bundle as Layer-1 context. Iteration cap stays at 8.", "decided_at": "2026-05-29", "affects": ["INF7"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] },
-        { "id": "M4", "title": "Chunking of FORENSIC.md + L2.5 outputs IN (with no-narration constraint)", "desc": "Native decision 2026-05-29. Chunk pure deterministic markdown into RAG. Linter enforces no-narration (no indicates/suggests/implies/means-that/denotes).", "decided_at": "2026-05-29", "affects": ["A2", "INF8", "INF10"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] },
-        { "id": "M5", "title": "MCP sidecar = Resources + Tools (Pattern 3); /consume routes native (no MCP)", "desc": "Native confirmed 2026-05-29. MCP sidecar gets ~15-25 Resources per chart + Tools for pinpoints. Internal /consume chat doesn't route through MCP — native SQL retrieval.", "decided_at": "2026-05-29", "affects": ["INF7", "INF11"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] },
-        { "id": "M6", "title": "Per-chart similarity signature embedding (1 per chart per ayanamsha)", "desc": "Native confirmed 2026-05-29. One 768-dim embedding per (chart, ayanamsha) for cross-chart research similarity search. Negligible cost.", "decided_at": "2026-05-29", "affects": ["INF10"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] },
-        { "id": "M7", "title": "Global asset start date 1950 (was 1900)", "desc": "Native decision 2026-05-29. New time-series globals start 1950. Existing 1900-1949 panchanga rows retained in place (don't disturb).", "decided_at": "2026-05-29", "affects": ["G2", "G4", "G5", "G6", "G7", "G21", "G49"], "brief": { "status": "locked" }, "impl": { "status": "not_started" }, "est_hrs": 0, "deps": [] }
+        {
+          "id": "M1",
+          "title": "Drop JH-parity gate; replace with G1_internal_invariants",
+          "desc": "Native decision 2026-05-29. Replaces hard gate G1_jh_parity with internal algebraic invariants + cross-ayanamsha sanity + two-pass spot checks. jh_oracle.json retained as static reference, not per-build gate.",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "A1",
+            "ACC2"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "M2",
+          "title": "Multi-ayanamsha full-build (not 1-primary + 4-reference)",
+          "desc": "Native decision 2026-05-29. All 5 ayanamshas built fully and equally; retrieval returns multi-ayanamsha by default; UI multi-select filters response scope. Storage 5×.",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "A1",
+            "A2",
+            "A3",
+            "A4",
+            "A5",
+            "A6",
+            "A7",
+            "INF7"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "M3",
+          "title": "Agentic-loop hybrid for /consume (not plan-then-execute)",
+          "desc": "Native decision 2026-05-29. Keep bounded agentic loop (R11.F substrate) + add pre-cached chart bundle as Layer-1 context. Iteration cap stays at 8.",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "INF7"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "M4",
+          "title": "Chunking of FORENSIC.md + L2.5 outputs IN (with no-narration constraint)",
+          "desc": "Native decision 2026-05-29. Chunk pure deterministic markdown into RAG. Linter enforces no-narration (no indicates/suggests/implies/means-that/denotes).",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "A2",
+            "INF8",
+            "INF10"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "M5",
+          "title": "MCP sidecar = Resources + Tools (Pattern 3); /consume routes native (no MCP)",
+          "desc": "Native confirmed 2026-05-29. MCP sidecar gets ~15-25 Resources per chart + Tools for pinpoints. Internal /consume chat doesn't route through MCP — native SQL retrieval.",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "INF7",
+            "INF11"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "M6",
+          "title": "Per-chart similarity signature embedding (1 per chart per ayanamsha)",
+          "desc": "Native confirmed 2026-05-29. One 768-dim embedding per (chart, ayanamsha) for cross-chart research similarity search. Negligible cost.",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "INF10"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        },
+        {
+          "id": "M7",
+          "title": "Global asset start date 1950 (was 1900)",
+          "desc": "Native decision 2026-05-29. New time-series globals start 1950. Existing 1900-1949 panchanga rows retained in place (don't disturb).",
+          "decided_at": "2026-05-29",
+          "affects": [
+            "G2",
+            "G4",
+            "G5",
+            "G6",
+            "G7",
+            "G21",
+            "G49"
+          ],
+          "brief": {
+            "status": "locked"
+          },
+          "impl": {
+            "status": "not_started"
+          },
+          "est_hrs": 0,
+          "deps": []
+        }
+      ]
+    },
+    {
+      "id": "amendments",
+      "name": "Cross-Cutting Amendments",
+      "items": [
+        {
+          "id": "A8_A11_A12_AMENDMENTS",
+          "name": "A8+A11+A12 cross-cutting amendments (UCD fold + nuggets B/C/D)",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/A8_A11_A12_CROSS_CUTTING_AMENDMENTS_v1_0.md",
+            "notes": "Folds 5 UCD truly-new items (archetype, karmic signature, purushartha quadrants, Arudha divergence, master convergence) + 3 magical nuggets (B near-miss yogas, C recursive influence reach, D channel-magnification) into A8/A11/A12 chart_summaries. ~12 column additions, ~50 rows per chart. Zero new writer pipelines."
+          }
+        }
+      ]
+    },
+    {
+      "id": "META",
+      "name": "META Synthesis Layer + Retrieval Interface",
+      "items": [
+        {
+          "id": "META_ALPHA",
+          "name": "META-α Λ-LATTICE — Structural Timeline Lattice",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/META_ENHANCEMENTS_SPEC_v1_0.md",
+            "notes": "NEW SYNTHESIS LAYER. Single moment-in-time omniscient join across A7+A11+A12+A13+A15+A16+A8+A9+A4. Materialized view for next-3-year window + on-demand for arbitrary dates. ~1,100 lattice rows + on-demand. Per-window pgvector embedding for cohort lookup."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "META_BETA",
+          "name": "META-β Π-CATALOG — Pattern Catalog Unified",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/META_ENHANCEMENTS_SPEC_v1_0.md",
+            "notes": "NEW SYNTHESIS LAYER. Every named pattern across stack in one queryable catalog. ~750 patterns per chart. 16 pattern_kinds. Cross-pattern links + reinforcement/contradiction/precondition arrays. Per-pattern pgvector embedding."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "META_GAMMA",
+          "name": "META-γ Δ-LEDGER — Divergence Detector",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/META_ENHANCEMENTS_SPEC_v1_0.md",
+            "notes": "NEW SYNTHESIS LAYER. Explicit ledger of cross-system disagreements (tradition/ayanamsha/temporal/channel/rule). ~100 divergences per chart. Surface_uncertainty_flag drives LLM honest reflection."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "META_DELTA",
+          "name": "META-δ Ω-SPACE — Negative Space Map",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/META_ENHANCEMENTS_SPEC_v1_0.md",
+            "notes": "NEW SYNTHESIS LAYER. Absence-as-feature. ~75 absence-flags per chart. Rarity scoring against classical baseline + compensating-pattern linkage."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "META_EPSILON",
+          "name": "META-ε Φ-TRAIL — Derivation Trail Index",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/META_ENHANCEMENTS_SPEC_v1_0.md",
+            "notes": "NEW SYNTHESIS LAYER. Every L2.5+ claim → DAG to L1 facts via derivation rules + corpus citations. ~7,500 nodes + ~20,000 edges per chart. Acharya-grade explainability."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "RETRIEVAL_INTERFACE_REGISTER",
+          "name": "Retrieval Interface Register — Canonical MCP schemas",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/RETRIEVAL_INTERFACE_REGISTER_v1_0.md",
+            "notes": "BINDING ARTIFACT. Every asset A1-A16 + META + G + UCD has retrieval-tool registration. Standard input/output envelope. 5 channel adapters (chat/report/visual/audio/dashboard). 3-tier filtering. Citation envelope mandatory. Cross-asset FK exposure. ~115-tool target retrieval surface. CAPABILITY_MANIFEST.json sync mandatory."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "META_ZETA",
+          "name": "META-ζ TEMPORAL_UNIFIED_LATTICE — Range-query view across all temporal events",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/TEMPORAL_SPINE_ENHANCEMENTS_v1_0.md",
+            "notes": "NEW SYNTHESIS LAYER. Sibling to META-α (moment-in-time). Range-query view UNIONing A15+A16+A18+A19+A20+A21+A22 with UTEE-shaped envelope projected uniformly. Single retrieval surface for \"what events happen between dates X and Y\". 0 net storage (view). ~6 new MCP tools."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "UTEE_STANDARD",
+          "name": "UTEE — Unified Temporal Event Envelope (schema standard)",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/TEMPORAL_SPINE_ENHANCEMENTS_v1_0.md",
+            "notes": "BINDING ARTIFACT. Standardizes envelope columns across A15+A16+A18+A19+A20+A21+A22: event_iso, severity_normalized_0_1, confidence_normalized_0_1, falsifiability_statement, falsifier_date_iso, outcome_ontology_class, per_tradition_variant_jsonb, inside_a15_cluster_ids_array, mitigates/seeds/amplifies arrays, channel_render_priority, temporal_event_embedding_vec, m6_outcome_tracking_placeholder. Existing columns preserved where they already match UTEE; new columns added only where missing."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        },
+        {
+          "id": "CROSS_ASSET_BRIDGES",
+          "name": "Cross-Asset Bridge Matrix + Vedha-Anchor Interactions table",
+          "brief": {
+            "status": "locked",
+            "locked_at": "2026-05-29",
+            "path": "00_ARCHITECTURE/TEMPORAL_SPINE_ENHANCEMENTS_v1_0.md",
+            "notes": "FK column families: A18.mitigates_anchor_ids ↔ A16.mitigated_by_vedha_ids + A19.seeds_anchor_ids ↔ A16.seeded_by_bhrigu_hit_ids + A20.seeds_anchor_ids ↔ A16.varsha_year_lord_context_id + universal inside_a15_cluster_ids_array. Plus l25_vedha_anchor_interactions table (~100 rows/chart) capturing resolved post-mitigation severity + confidence."
+          },
+          "impl": {
+            "status": "not_started"
+          }
+        }
       ]
     }
   ],
   "activity": [
-    { "time": "2026-05-29T22:00:00", "text": "A0 global asset set finalized — 47 items. Native confirmed including Nadi + Lal Kitab + Bhrigu Samhita + esoteric." },
-    { "time": "2026-05-29T21:30:00", "text": "A1 spec LOCKED. 5 ayanamshas, 23 bodies, full asteroids + outers, G1_internal_invariants replaces JH-parity." },
-    { "time": "2026-05-29T21:00:00", "text": "A2 spec in discussion. Chunking confirmed IN with no-narration constraint. F.13-F.14 decisions pending." },
-    { "time": "2026-05-29T20:30:00", "text": "Architecture decisions captured: agentic-loop hybrid + MCP Pattern 3 + multi-ayanamsha full-build + 5 canonical ayanamshas." }
+    {
+      "time": "2026-05-29T19:11:41.489055+00:00",
+      "text": "TEMPORAL SPINE ENHANCEMENTS LOCKED. UTEE (Unified Temporal Event Envelope) standardizes envelope columns across A15+A16+A18+A19+A20+A21+A22 — existing columns preserved where they match UTEE semantics, new columns added only where missing (redundancy-audited). Cross-Asset Bridge Matrix: FK column families + l25_vedha_anchor_interactions table (~100 rows/chart). META-ζ TEMPORAL_UNIFIED_LATTICE: range-query view UNIONing all 7 temporal sources with UTEE shape (sibling to META-α moment-in-time). A22 Per-Varsha Yearly Digest: yearly-resolution summary joining A15+A16+A18+A19+A20+A21 + active dashas (Vim/Chara/Yogini) + Sade Sati per varsha (~750 rows/chart). Per-tradition variants on A15 (jsonb) + A18 (array). Falsifiability + outcome ontology + M6 outcome placeholder extended to ALL temporal events (previously only A16). Build dependency order codified: A17→A18→A19→A20→A21→A15→A16→A22→META-ζ→Vedha-Anchor interactions. ~14 new MCP tools added. Updated target retrieval surface ~141 tools. ~850 additional rows/chart net. Spec at 00_ARCHITECTURE/TEMPORAL_SPINE_ENHANCEMENTS_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T18:55:50.384321+00:00",
+      "text": "A17-A21 SUPPLEMENTARY LOCKED (renumbered from original A15-A20 due to magical-nugget reuse of A15/A16). A17 Chakras (5 geometric chakras for vedha timing, ~2,500 rows/chart). A18 Vedha (6 vedha types, ~5,000 rows/chart, feeds A15). A19 Bhrigu Bindu lifetime transits (~1,000 rows/chart, feeds A15 as first-class synchronicity events). A20 Tajik extensions (Hadda + varsha year-lord, ~750 rows/chart, A8 amendment). A21 Per-graha next-exact-aspect lifetime (~10,000 rows/chart, precise feeder for A15 transit_hit enumeration). Original A17 Argala already folded into A8 §N. ~19K additional rows/chart total. ~12 new retrieval tools added to interface register. Spec at 00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T18:50:24.051748+00:00",
+      "text": "META synthesis layer LOCKED + Retrieval Interface Register LOCKED. 5 META-enhancements: α LATTICE (moment-in-time omniscient join), β PATTERN_CATALOG (16 pattern-kinds unified, ~750 patterns/chart), γ DIVERGENCE_LEDGER (cross-system disagreement audit), δ NEGATIVE_SPACE_MAP (absence-as-feature), ε DERIVATION_TRAIL (claim→L1 DAG, ~27K nodes+edges/chart). Retrieval Interface Register binds all A1-A16+META+G+UCD to MCP-consumable schemas: standard input/output envelope + 5 channel adapters (chat/report/visual/audio/dashboard) + 3-tier filtering (super_admin/acharya/client) + mandatory citation envelope + cross-asset FK exposure + LLM-facing tool description standard + per-asset implementation checklist + CAPABILITY_MANIFEST.json sync. ~115-tool target retrieval surface. Specs at 00_ARCHITECTURE/META_ENHANCEMENTS_SPEC_v1_0.md + RETRIEVAL_INTERFACE_REGISTER_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T18:44:07.869367+00:00",
+      "text": "A14 UCN RETIRED + renamed to UCD (Unified Chart Digest) — folded into A8/A11/A12. A15 Time-Synchronicity Stack LOCKED (magical nugget #1 — multi-cycle convergence map across 1950-2100, ~1,580 rows/chart). A16 Phase-Locked Event Anchor Map LOCKED (magical nugget #5 — M6 calibration ground truth, ~8,000 anchors/chart, G29 classical timing rule catalog parallel prerequisite). Cross-cutting amendments LOCKED — folds 5 UCD truly-new items + 3 nuggets (B near-miss yogas, C recursive influence reach, D channel-magnification) into A8/A11/A12 chart_summaries. Per-chart asset count: 15 writers (A1-A13 + A15 + A16; A14 retired). Total new storage per chart: ~80K rows additional. Specs at 00_ARCHITECTURE/A14_UCN_RETIRED_TO_UCD_v1_0.md + A15_TIME_SYNCHRONICITY_SPEC_v1_0.md + A16_PHASE_LOCKED_EVENT_ANCHORS_SPEC_v1_0.md + A8_A11_A12_CROSS_CUTTING_AMENDMENTS_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T18:14:58.166104+00:00",
+      "text": "A13 RM LOCKED with maximum coverage. 6-table storage. 6 traditions × 18 remedy categories × per-graha fingerprint. Resonance + match score formulas v1.0 versioned. 3 dasha systems × Maha-Antar temporal calibration. Sade Sati 4-phase bundles + ~15 dosha bundles. Counter-indications + compatibility + feasibility + acharya-review + cross-tradition convergence boost. Phase sequencing (40d/108d/lifetime). pgvector prescription + chart remedy embeddings. M6 outcome placeholder. Chronobiology integration (hora/choghadiya/lunar phase/direction). Per-acharya sub-tradition variants. G27 corpus exhaustiveness audit DECLARED PARALLEL PREREQUISITE — G27-AUDIT-S1 must run before A13-S1. ~4,775 rows per chart × 20 charts = ~95K total. Spec at 00_ARCHITECTURE/A13_RM_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T17:50:19.794264+00:00",
+      "text": "A12 CGM LOCKED under Option E technology realignment. Cloud SQL + pgvector + igraph in-memory compute + libephemeris dual-source ephemeris audit + native PG range partitioning on chart_dashas + BigQuery research analytics layer. NO Apache AGE / NO TimescaleDB / NO Spanner Graph (managed-cloud constraint). 5 tables (nodes/edges/sub_graphs/motifs/chart_topology_summary). 10 node classes + 24 edge types. 3 dasha systems × Maha-lord dynamic snapshots. 4 tradition views. ~30-50 classical motif library with fingerprint hashes for cross-chart cohort search. Per-graha story arcs materialized. GraphML/GEXF exports. Conflict resolution edges. Three native-mandated execution adjustments: (A) igraph as in-memory graph compiler with flat-column metrics, (B) native PG declarative range partitioning on chart_dashas (cross-asset prerequisite), (C) ephemeris_audit_jsonb with pyswisseph vs libephemeris JPL DE440 delta. ~280K rows per chart × 20 charts = ~5.6M comfortable. Spec at 00_ARCHITECTURE/A12_CGM_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T17:14:35.809481+00:00",
+      "text": "A11 CDLM LOCKED — 5-table retrieval-optimal architecture (cells/rollups/summary/patterns/gradients) + 5 MVs. 3 dasha systems × Maha-Antar (Vim+Chara+Yogini). Sub-domain 27×27 static + 4 tradition views. Chart typology + pattern clusters + evolution gradients first-class. All CGM/RM/UCN/M6 downstream enrichments. ~213K rows per chart. Wipe existing. Spec at 00_ARCHITECTURE/A11_CDLM_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T16:37:57.757683+00:00",
+      "text": "A10 MSR LOCKED — exhaustive scope (~4,400-6,250 signals per chart × 5 ayanamshas), salience formula v1.0, G52 signal_type_registry (new global), synthetic signals INCLUDED, downstream-driven enrichments (CDLM/CGM/RM/UCN/M6/multi-channel). Spec at 00_ARCHITECTURE/A10_MSR_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T15:48:19.584852+00:00",
+      "text": "A9 Sade Sati LOCKED — full classical scope with all 7 Saturn-Moon configurations, 8 cancellation rules, quarter-intensity per BPHS Ch.71, concurrent modifier overlays (Mars/Jupiter/Rahu/eclipses), all 7 dasha system cross-references, D10 Karya + Argala + Tara bala downstream bindings. Spec at 00_ARCHITECTURE/A9_SADE_SATI_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T15:40:19.930391+00:00",
+      "text": "A8 T1 Structural LOCKED — 35 categories, full classical scope including 200+ yogas with cancellation rules + Mahapurusha bonus + composite strengths (BOTH BPHS + simple formulas) + functional benefic/malefic (BOTH BPHS + Raman) + 30 karakatva significances + Argala matrices + Pranic + Brahma/Vishnu/Shiva tri-deva strengths. Spec at 00_ARCHITECTURE/A8_T1_STRUCTURAL_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T15:28:39.112797+00:00",
+      "text": "A7 Dashas LOCKED — 7 acharya systems (trimmed from 32), Prana depth + KP sub-divisions, 1950-2100 window, no partitioning at ≤20-user scale, 13/17 row additions included. Spec at 00_ARCHITECTURE/A7_DASHAS_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T15:00:46.572684+00:00",
+      "text": "A6 Vargas LOCKED — 30 vargas, ~25 categories, all additions A-K included (super-vargottama, trikona-vargottama, formula variants, deity attribution D2-D108, D30 5-lord, D27 directional, Lal Kitab D9 Pakka Ghar, karaka per varga × 8 × 30). Spec at 00_ARCHITECTURE/A6_VARGAS_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T14:30:01.502195+00:00",
+      "text": "A5 Sensitive Points LOCKED — 30 categories with KP Ruling Planets, KP Cuspal Significators, Aprakasha, Lal Kitab, Maharsi, Bhrigu Nadi, Brahma/Vishnu/Shiva, Sri Yantra. Tolerance + boundary flags + cross-ayanamsha divergence. Spec at 00_ARCHITECTURE/A5_SENSITIVE_POINTS_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T14:15:27.191342+00:00",
+      "text": "A4 Panchanga (birth-day) LOCKED — full classical scope including Agni Vasa, 5-Panchaka classification, Disha Shul, Tara/Chandra bala natal baselines. Spec at 00_ARCHITECTURE/A4_PANCHANGA_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T14:03:50.517940+00:00",
+      "text": "A3 chart_facts schema LOCKED — 131 categories, dual citation, MV natal-only, chart_dashas separate (Prana depth, two-pass mandatory), wipe & rebuild backfill. Spec at 00_ARCHITECTURE/A3_CHART_FACTS_SPEC_v1_0.md."
+    },
+    {
+      "time": "2026-05-29T10:31:54.134828+00:00",
+      "text": "AUTO-SYNC: 3 items advanced (G27, G28, A1)"
+    },
+    {
+      "time": "2026-05-29T10:07:58.570880+00:00",
+      "text": "I-01..I-03 closed: BuildsInProgressCard + BuildCompleteToast + notification_views mig+mark-viewed API merged to main (stream ongoing)"
+    },
+    {
+      "time": "2026-05-29T10:07:58.546521+00:00",
+      "text": "H-01..H-03 closed: ConstellationCanvas SVG natal wheel + AssetNode state machine merged to main (stream ongoing)"
+    },
+    {
+      "time": "2026-05-29T10:07:51.625196+00:00",
+      "text": "E-02..E-05 closed: declination+RA+altaz, True/Mean Node, Lilith, 10 asteroids+outer planets all merged to main"
+    },
+    {
+      "time": "2026-05-29T10:07:51.601081+00:00",
+      "text": "D-09 closed: all build API routes integration test suite merged to main"
+    },
+    {
+      "time": "2026-05-29T10:07:45.435423+00:00",
+      "text": "A-19 closed: G33 mantra+stotra library 200 entries IAST+transliteration merged to main"
+    },
+    {
+      "time": "2026-05-29T10:07:45.413350+00:00",
+      "text": "A-18 closed: G43 bhrigu samhita extracts + rule table merged to main"
+    },
+    {
+      "time": "2026-05-29T10:07:45.388568+00:00",
+      "text": "A-17 closed: G41 lal kitab corpus rules + remedy table merged to main"
+    },
+    {
+      "time": "2026-05-29T10:07:40.085736+00:00",
+      "text": "A-16 closed: G44 nadi astrology lookup tables merged to main"
+    },
+    {
+      "time": "2026-05-29T10:07:40.060394+00:00",
+      "text": "A-16 closed: G39+G44 vedic ritual library + nadi astrology tables merged to main"
+    },
+    {
+      "time": "2026-05-29T09:34:12.462064+00:00",
+      "text": "E-01 closed: heliocentric coords all 23 bodies merged to main (A1 engine in_progress)"
+    },
+    {
+      "time": "2026-05-29T09:34:06.468799+00:00",
+      "text": "B-12 closed: INF1 NewClientForm + /api/clients/create integration tests merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:59.158343+00:00",
+      "text": "A-14 closed: G47 numerology overlays merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:59.133766+00:00",
+      "text": "A-14 closed: G46+G47 tantric correspondences + numerology overlays merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:51.850098+00:00",
+      "text": "A-13 closed: G45 Ayurveda dosha/health mappings merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:51.823436+00:00",
+      "text": "A-13 closed: G40+G45 career+ayurveda classical mapping merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:43.312688+00:00",
+      "text": "A-12 closed: G32 fixed star catalog 50 stars merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:43.287183+00:00",
+      "text": "A-12 closed: G31-G32 era conversion + fixed star catalog merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:31.831791+00:00",
+      "text": "A-11 closed: G36 compatibility rules merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:31.807692+00:00",
+      "text": "A-11 closed: G35 yantra reference merged to main"
+    },
+    {
+      "time": "2026-05-29T09:33:31.783247+00:00",
+      "text": "A-11 closed: G34-G36 gemstone+yantra+compatibility merged to main"
+    },
+    {
+      "time": "2026-05-29T08:41:02.864857+00:00",
+      "text": "RECONCILE: synced state.json from session_queue.yaml — flipped 6 items (G14, G16, G22, G25, INF3, INF9)"
+    },
+    {
+      "time": "2026-05-29T03:18:00.000000+00:00",
+      "text": "D-01 closed: /api/build/start extend ayanamshas[] — 18/18 tests, merge 93de74ef"
+    },
+    {
+      "time": "2026-05-29T03:17:00.000000+00:00",
+      "text": "C-01 closed: build_chart.py scaffold + DAG_ORDER 14 nodes — 32/32 tests, merge 4ed71a4f"
+    },
+    {
+      "time": "2026-05-29T03:16:00.000000+00:00",
+      "text": "B-05 closed: mig-128 chart_facts_history audit trigger applied to production — merge 7d1acfe4"
+    },
+    {
+      "time": "2026-05-29T03:23:00.000000+00:00",
+      "text": "D-02 closed: /api/build/cancel/[buildId] — 15/15 tests, merge 2172d6bb"
+    },
+    {
+      "time": "2026-05-29T03:22:00.000000+00:00",
+      "text": "C-02 closed: 5-ayanamsha parallel asyncio runner — 34/34 tests, merge 3d68dc93"
+    },
+    {
+      "time": "2026-05-29T03:22:00.000000+00:00",
+      "text": "B-06 closed: mig-129 chart_facts_supersedence + fn_supersede_build — merge 5c4fc4fe"
+    },
+    {
+      "time": "2026-05-29T03:21:00.000000+00:00",
+      "text": "A-06 closed: G17 aspect rules Parashari+Jaimini+Tajik — 69/69 tests, merge 0eb5360d"
+    },
+    {
+      "time": "2026-05-29T03:15:00.000000+00:00",
+      "text": "A-05 closed: G18 friendship 9x9 + G19 karaka assignments — 92/92 tests, merge 8c68e121"
+    },
+    {
+      "time": "2026-05-29T03:01:23.120410+00:00",
+      "text": "B-04 closed: mig-127 build_notifications — 20/20 tests"
+    },
+    {
+      "time": "2026-05-29T03:00:07.431284+00:00",
+      "text": "A-04 closed: G11 graha constants — 105/105 tests"
+    },
+    {
+      "time": "2026-05-29T02:57:49.107084+00:00",
+      "text": "A-03 closed: G10 rashi lookup — 25/25 tests"
+    },
+    {
+      "time": "2026-05-29T02:57:48.937027+00:00",
+      "text": "B-03 closed: mig-126 engine_versions — 13/13 tests"
+    },
+    {
+      "time": "2026-05-29T02:55:26.944970+00:00",
+      "text": "A-02 closed: G9 nakshatra lookup — 27/27 tests"
+    },
+    {
+      "time": "2026-05-29T02:54:58.903749+00:00",
+      "text": "B-02 closed: mig-125 build_steps — 12/12 tests"
+    },
+    {
+      "time": "2026-05-29T02:52:31.179351+00:00",
+      "text": "B-01 closed: mig-124 builds table + staging mirror — 10/10 tests"
+    },
+    {
+      "time": "2026-05-29T02:52:27.147308+00:00",
+      "text": "A-01 closed: G20 ayanamsha registry — 5 canonical seeds, 18/18 tests"
+    },
+    {
+      "time": "2026-05-29T22:00:00",
+      "text": "A0 global asset set finalized — 47 items. Native confirmed including Nadi + Lal Kitab + Bhrigu Samhita + esoteric."
+    },
+    {
+      "time": "2026-05-29T21:30:00",
+      "text": "A1 spec LOCKED. 5 ayanamshas, 23 bodies, full asteroids + outers, G1_internal_invariants replaces JH-parity."
+    },
+    {
+      "time": "2026-05-29T21:00:00",
+      "text": "A2 spec in discussion. Chunking confirmed IN with no-narration constraint. F.13-F.14 decisions pending."
+    },
+    {
+      "time": "2026-05-29T20:30:00",
+      "text": "Architecture decisions captured: agentic-loop hybrid + MCP Pattern 3 + multi-ayanamsha full-build + 5 canonical ayanamshas."
+    }
   ]
 }

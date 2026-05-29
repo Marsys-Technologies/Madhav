@@ -221,7 +221,7 @@ const IMPL_STATUSES = ["not_started","in_progress","merged_branch","in_review","
 const BRIEF_LABELS = {not_started:"Not Started",discussing:"Discussing",drafted:"Drafted",locked:"Locked",superseded:"Superseded"};
 const IMPL_LABELS = {not_started:"Not Started",in_progress:"In Progress",merged_branch:"On Branch",in_review:"In Review",merged_main:"Merged Main",deployed:"Deployed",verified:"Verified"};
 const COMPLETE_BRIEF = new Set(["locked"]);
-const COMPLETE_IMPL = new Set(["deployed","verified"]);
+const COMPLETE_IMPL = new Set(["merged_main","deployed","verified"]);
 
 let STATE = null;
 let uiPrefs = { briefFilter: 'all', implFilter: 'all', expandedTracks: new Set(['A0','A_per_chart']), expandedItems: new Set() };
@@ -466,21 +466,52 @@ function renderActivity(){
 }
 
 function showError(msg){
-  document.getElementById('error-zone').innerHTML = '<div class="error-banner">'+escapeHtml(msg)+'</div>';
+  document.getElementById('error-zone').innerHTML = '<div class="error-banner">'+escapeHtml(msg)+' <button class="btn" style="margin-left:8px" onclick="loadState()">Retry now</button></div>';
 }
 function clearError(){ document.getElementById('error-zone').innerHTML = ''; }
 
+let CONSECUTIVE_FAILS = 0;
+let LAST_LOAD_AT = null;
+let LAST_STATE_UPDATED = null;
+const POLL_MS = 5000;
+
+// State.json source: by default same-origin (localhost:8765). To point at production GCS, set window.TRACKER_STATE_URL before init.
+function stateUrl(){
+  return (window.TRACKER_STATE_URL || 'state.json') + '?t=' + Date.now();
+}
+
 async function loadState(){
   try{
-    const resp = await fetch('state.json?t=' + Date.now());
+    const resp = await fetch(stateUrl(), { cache: 'no-store' });
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     STATE = await resp.json();
+    CONSECUTIVE_FAILS = 0;
+    LAST_LOAD_AT = Date.now();
+    LAST_STATE_UPDATED = STATE.meta?.last_updated || null;
     clearError();
-    document.getElementById('last-load').textContent = "Loaded " + new Date().toLocaleTimeString();
+    updateFreshness();
     renderAll();
+    document.title = 'MARSYS Tracker — ' + (STATE.tracks?.flatMap(t=>t.items||[]).filter(it=>['deployed','verified','merged_main'].includes(it.impl?.status)).length || 0) + ' done';
   }catch(e){
-    showError("Failed to load state.json — " + e.message + ". If you opened this via file://, you need to serve it: cd to this folder and run `python3 -m http.server 8765`, then open http://localhost:8765");
+    CONSECUTIVE_FAILS++;
+    if(CONSECUTIVE_FAILS >= 3){
+      showError('state.json unreachable ('+CONSECUTIVE_FAILS+' consecutive fails) — '+e.message+'. If localhost: restart `python3 -m http.server 8765` in the tracker folder. If production: check GCS upload.');
+      document.title = '⚠ MARSYS Tracker stale';
+    }
   }
+}
+
+function updateFreshness(){
+  const el = document.getElementById('last-load');
+  if(!el) return;
+  if(!LAST_LOAD_AT){ el.textContent = '—'; return; }
+  const sec = Math.floor((Date.now() - LAST_LOAD_AT) / 1000);
+  let txt = sec < 5 ? 'live' : sec < 60 ? sec+'s ago' : Math.floor(sec/60)+'m ago';
+  if(LAST_STATE_UPDATED){
+    txt += ' · src: ' + LAST_STATE_UPDATED;
+  }
+  el.textContent = txt;
+  el.style.color = sec < 30 ? 'var(--s-locked)' : sec < 120 ? 'var(--text-3)' : 'var(--s-blocked)';
 }
 
 function renderAll(){
@@ -498,7 +529,10 @@ function init(){
     mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral', themeVariables: { primaryColor: '#fbf0e2', primaryTextColor: '#1f1d1a', primaryBorderColor: '#c08047', lineColor: '#918a7e' } });
   }
   loadState();
-  setInterval(loadState, 30000);
+  setInterval(loadState, POLL_MS);
+  setInterval(updateFreshness, 1000);
+  // Force reload when tab becomes active again (browsers throttle background polling)
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) loadState(); });
 }
 
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
