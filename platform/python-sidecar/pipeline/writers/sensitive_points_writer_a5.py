@@ -3,6 +3,14 @@ from datetime import datetime, timezone
 
 ENGINE_VERSION = 'natal_engine/0.2.0'
 
+
+def _finalize_rows(rows):
+    """Ensure all rows carry the cross_ayanamsha_divergence_arcsec enrichment field."""
+    for r in rows:
+        r.setdefault('cross_ayanamsha_divergence_arcsec', 0.0)
+    return rows
+
+
 SIGN_LORDS = {
     'ARI': 'MAR', 'TAU': 'VEN', 'GEM': 'MER', 'CAN': 'MOO', 'LEO': 'SUN', 'VIR': 'MER',
     'LIB': 'VEN', 'SCO': 'MAR', 'SAG': 'JUP', 'CAP': 'SAT', 'AQU': 'SAT', 'PIS': 'JUP',
@@ -92,7 +100,7 @@ def emit_upagrahas(conn, chart_id, build_id, ayanamsha_id, sun_lon, saturn_lon=N
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_saturn_derived(conn, chart_id, build_id, ayanamsha_id, saturn_lon, weekday=0):
@@ -152,7 +160,7 @@ def emit_saturn_derived(conn, chart_id, build_id, ayanamsha_id, saturn_lon, week
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_sahams(chart_id, build_id, ayanamsha_id,
@@ -220,7 +228,7 @@ def emit_sahams(chart_id, build_id, ayanamsha_id,
                 'computed_at': datetime.now(timezone.utc),
             })
 
-    return rows
+    return _finalize_rows(rows)
 
 
 def _lon_to_within_sign(lon):
@@ -299,7 +307,7 @@ def emit_karakas(chart_id, build_id, ayanamsha_id, graha_lons):
                     'engine_version': ENGINE_VERSION,
                     'computed_at': datetime.now(timezone.utc),
                 })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_karakamsa(chart_id, build_id, ayanamsha_id, graha_lons, navamsa_sign_of_ak=None):
@@ -330,7 +338,7 @@ def emit_karakamsa(chart_id, build_id, ayanamsha_id, graha_lons, navamsa_sign_of
             'engine_version': ENGINE_VERSION,
             'computed_at': datetime.now(timezone.utc),
         })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_swamsa(chart_id, build_id, ayanamsha_id, lagna_lon):
@@ -358,7 +366,7 @@ def emit_swamsa(chart_id, build_id, ayanamsha_id, lagna_lon):
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def _arudha_lon(house_cusp_lon, house_lord_lon):
@@ -477,7 +485,7 @@ def emit_arudhas(chart_id, build_id, ayanamsha_id, house_cusps, graha_lons):
                 'computed_at': datetime.now(timezone.utc),
             })
 
-    return rows
+    return _finalize_rows(rows)
 
 
 def _midpoint(lon_a, lon_b):
@@ -562,7 +570,7 @@ def emit_midpoints(chart_id, build_id, ayanamsha_id, graha_lons, lagna_lon, mc_l
             subject = f"MC-{g}"
             add_midpoint(subject, mc_lon, graha_lons[g], 'MC', g)
 
-    return rows
+    return _finalize_rows(rows)
 
 
 VIMSH_ORDER = ['KET', 'VEN', 'SUN', 'MOO', 'MAR', 'RAH', 'JUP', 'SAT', 'MER']
@@ -630,7 +638,7 @@ def emit_kp_ruling_planets(chart_id, build_id, ayanamsha_id, lagna_lon, moon_lon
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_kp_cuspal_significators(chart_id, build_id, ayanamsha_id, house_cusps):
@@ -663,7 +671,7 @@ def emit_kp_cuspal_significators(chart_id, build_id, ayanamsha_id, house_cusps):
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
@@ -790,7 +798,7 @@ def emit_esoteric_bindus(conn, chart_id, build_id, ayanamsha_id,
                     'engine_version': ENGINE_VERSION,
                     'computed_at': datetime.now(timezone.utc),
                 })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_aprakasha(chart_id, build_id, ayanamsha_id, sun_lon, saturn_lon, moon_lon, lagna_lon):
@@ -837,7 +845,7 @@ def emit_aprakasha(chart_id, build_id, ayanamsha_id, sun_lon, saturn_lon, moon_l
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_brahma_vishnu_shiva(chart_id, build_id, ayanamsha_id,
@@ -889,7 +897,7 @@ def emit_brahma_vishnu_shiva(chart_id, build_id, ayanamsha_id,
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_sri_yantra(chart_id, build_id, ayanamsha_id, sun_lon, moon_lon, lagna_lon):
@@ -930,7 +938,7 @@ def emit_sri_yantra(chart_id, build_id, ayanamsha_id, sun_lon, moon_lon, lagna_l
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -996,7 +1004,7 @@ def emit_tajik_hadda(chart_id, build_id, ayanamsha_id, graha_lons, lagna_lon):
                     'engine_version': ENGINE_VERSION,
                     'computed_at': datetime.now(timezone.utc),
                 })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_tajik_triraashipathi(chart_id, build_id, ayanamsha_id, lagna_lon, sun_lon):
@@ -1020,7 +1028,7 @@ def emit_tajik_triraashipathi(chart_id, build_id, ayanamsha_id, lagna_lon, sun_l
             'engine_version': ENGINE_VERSION,
             'computed_at': datetime.now(timezone.utc),
         })
-    return rows
+    return _finalize_rows(rows)
 
 
 def emit_tajik_vargottama(chart_id, build_id, ayanamsha_id, lagna_lon):
@@ -1048,7 +1056,7 @@ def emit_tajik_vargottama(chart_id, build_id, ayanamsha_id, lagna_lon):
             'engine_version': ENGINE_VERSION,
             'computed_at': datetime.now(timezone.utc),
         })
-    return rows
+    return _finalize_rows(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -1086,7 +1094,7 @@ def emit_lal_kitab_points(chart_id, build_id, ayanamsha_id, graha_lons, house_cu
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -1134,7 +1142,7 @@ def emit_maharsi_sphutas(chart_id, build_id, ayanamsha_id, graha_lons):
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -1176,4 +1184,4 @@ def emit_bhrigu_nadi_points(chart_id, build_id, ayanamsha_id, moon_lon, rahu_lon
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
-    return rows
+    return _finalize_rows(rows)
