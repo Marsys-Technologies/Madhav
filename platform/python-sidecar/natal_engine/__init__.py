@@ -34,7 +34,15 @@ from .dashas import compute_vimshottari_mahadasha
 from .dignities import refine_dignities
 from .houses import compute_houses_whole_sign
 from .panchanga import compute_panchanga
-from .positions import compute_graha_states, compute_lilith_states, compute_node_states, compute_outer_bodies, set_ayanamsha
+from .positions import (
+    compute_graha_states,
+    compute_lilith_states,
+    compute_node_states,
+    compute_outer_bodies,
+    compute_varga_for_lon,
+    generate_cross_ayanamsha_report,
+    set_ayanamsha,
+)
 from .provenance import build_provenance
 from .schema import CHART_OUTPUT_SCHEMA, Inputs, validate_chart_output
 from .sensitive_points import compute_sensitive_points
@@ -205,12 +213,21 @@ def compute_chart(
         computed_at_iso=computed_at_iso,
     )
 
+    # E-06: Enrich each graha dict with varga_position (D1/D9/D10).
+    # GrahaState is a frozen dataclass — varga_position is injected into the
+    # serialised dict representation (asdict output) after conversion so the
+    # dataclass schema invariant is preserved.
+    def _graha_dict_with_varga(g: Any) -> dict[str, Any]:
+        d = asdict(g)
+        d["varga_position"] = compute_varga_for_lon(g.longitude_deg)
+        return d
+
     payload: dict[str, Any] = {
         "provenance": asdict(provenance),
         "inputs": asdict(inp),
         "ascendant": asdict(ascendant),
         "houses": [asdict(h) for h in houses],
-        "grahas": [asdict(g) for g in grahas],
+        "grahas": [_graha_dict_with_varga(g) for g in grahas],
         "vargas": vargas,
         "dashas": dashas,
         "panchanga": panchanga,
@@ -244,6 +261,8 @@ __all__ = [
     "compute_lilith_states",
     "compute_node_states",
     "compute_outer_bodies",
+    "compute_varga_for_lon",
+    "generate_cross_ayanamsha_report",
     "ENGINE_VERSION_DEFAULT",
     "AYANAMSHA_DEFAULT",
     "CHART_OUTPUT_SCHEMA",

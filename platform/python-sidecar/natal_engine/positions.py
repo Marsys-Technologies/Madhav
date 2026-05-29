@@ -200,6 +200,72 @@ def _lon_to_sign(lon: float) -> tuple[int, str]:
     return sign_idx + 1, SIGN_NAMES[sign_idx]
 
 
+# ---------------------------------------------------------------------------
+# E-06: Varga (D1/D9/D10) computation for any longitude
+# ---------------------------------------------------------------------------
+
+def _navamsa_sign_idx_for(sign_id: int, deg_in_sign: float) -> int:
+    """Return 0-based sign index for D9 (Navamsa) given natal sign_id (1..12)
+    and degree within sign (0..30).
+
+    Standard Parashari Navamsa rule:
+      - Movable signs (1,4,7,10): navamsa cycle starts from itself
+      - Fixed signs (2,5,8,11):   cycle starts from 9th sign
+      - Dual signs (3,6,9,12):    cycle starts from 5th sign
+    """
+    nav_idx = int(deg_in_sign // (30.0 / 9.0))  # 0..8
+    quality = (sign_id - 1) % 3  # 0=movable, 1=fixed, 2=dual
+    if quality == 0:
+        start = sign_id
+    elif quality == 1:
+        start = ((sign_id - 1 + 8) % 12) + 1  # 9th from itself
+    else:
+        start = ((sign_id - 1 + 4) % 12) + 1  # 5th from itself
+    return ((start - 1 + nav_idx) % 12)
+
+
+def _dasamsa_sign_idx_for(sign_id: int, deg_in_sign: float) -> int:
+    """Return 0-based sign index for D10 (Dasamsa / Dashamsha).
+
+    Standard Parashari Dasamsa rule:
+      - Odd signs (1,3,5,7,9,11):  10 arcs of 3° each, cycle starts from itself
+      - Even signs (2,4,6,8,10,12): 10 arcs of 3° each, cycle starts from 9th sign
+    """
+    das_idx = int(deg_in_sign // 3.0)  # 0..9 (each arc = 3°)
+    das_idx = min(das_idx, 9)          # guard fp edge at exactly 30°
+    if sign_id % 2 == 1:
+        # Odd sign: start from itself
+        start = sign_id
+    else:
+        # Even sign: start from 9th sign (counting from itself)
+        start = ((sign_id - 1 + 8) % 12) + 1
+    return ((start - 1 + das_idx) % 12)
+
+
+def compute_varga_for_lon(longitude: float) -> dict:
+    """Compute D1, D9, D10 varga positions for a given sidereal longitude (0–360°).
+
+    Returns a dict with keys 'D1', 'D9', 'D10', each containing:
+      {'sign': str, 'sign_index': int (1-based), 'degree': float (for D1 only)}
+
+    Self-contained: does not depend on GrahaState or pipeline.varga_formulas.
+    Uses the same Parashari formulae as vargas.py (_d9_sign) and the standard
+    Dasamsa (10-arc / 3°-each) rule for D10.
+    """
+    sign_idx = int(longitude // _SIGN_SPAN) % 12  # 0-based
+    sign_id = sign_idx + 1                          # 1-based
+    deg_in_sign = longitude % _SIGN_SPAN
+
+    d9_idx = _navamsa_sign_idx_for(sign_id, deg_in_sign)
+    d10_idx = _dasamsa_sign_idx_for(sign_id, deg_in_sign)
+
+    return {
+        "D1":  {"sign": SIGN_NAMES[sign_idx], "sign_index": sign_id,     "degree": round(deg_in_sign, 6)},
+        "D9":  {"sign": SIGN_NAMES[d9_idx],   "sign_index": d9_idx + 1},
+        "D10": {"sign": SIGN_NAMES[d10_idx],  "sign_index": d10_idx + 1},
+    }
+
+
 def _lon_to_nakshatra(lon: float) -> tuple[int, str, int]:
     nak_idx = int(lon // _NAKSHATRA_SPAN) % 27
     pada = int((lon - nak_idx * _NAKSHATRA_SPAN) // _PADA_SPAN) + 1
@@ -479,6 +545,7 @@ def compute_node_states(
             "altitude_deg": rahu_alt,
             "azimuth_deg": rahu_az,
             "out_of_bounds": abs(rahu_dec) > _OOB_THRESHOLD,
+            "varga_position": compute_varga_for_lon(rahu_lon),
         }
 
         result[label_ketu] = {
@@ -499,6 +566,7 @@ def compute_node_states(
             "altitude_deg": ketu_alt,
             "azimuth_deg": ketu_az,
             "out_of_bounds": abs(ketu_dec) > _OOB_THRESHOLD,
+            "varga_position": compute_varga_for_lon(ketu_lon),
         }
 
     return result
@@ -553,6 +621,7 @@ def _outer_null() -> dict:
         "altitude_deg": 0.0,
         "azimuth_deg": 0.0,
         "out_of_bounds": False,
+        "varga_position": compute_varga_for_lon(0.0),
     }
 
 
@@ -589,6 +658,7 @@ def _body_dict_from_result(
         "altitude_deg": 0.0,
         "azimuth_deg": 0.0,
         "out_of_bounds": False,
+        "varga_position": compute_varga_for_lon(sidereal_lon),
     }
 
 
@@ -711,6 +781,7 @@ def compute_lilith_states(
                 "altitude_deg": alt,
                 "azimuth_deg": az,
                 "out_of_bounds": abs(dec) > _OOB_THRESHOLD,
+                "varga_position": compute_varga_for_lon(sidereal_lon),
             }
         except Exception as exc:  # noqa: BLE001
             import logging
@@ -736,6 +807,204 @@ def compute_lilith_states(
                 "altitude_deg": 0.0,
                 "azimuth_deg": 0.0,
                 "out_of_bounds": False,
+                "varga_position": compute_varga_for_lon(0.0),
             }
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# E-07: Cross-ayanamsha divergence report generator
+# ---------------------------------------------------------------------------
+
+# Canonical graha names used for comparison across chart outputs.
+_COMPARISON_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+# Lowercase aliases (for robustness when consumer uses lowercase keys)
+_COMPARISON_GRAHAS_LOWER = [g.lower() for g in _COMPARISON_GRAHAS]
+
+
+def _extract_graha_entry(chart_output: dict, graha_name: str) -> dict | None:
+    """Extract a graha dict from a chart_output by name (case-insensitive).
+
+    Supports two common structures:
+    - chart_output['grahas'] as a list[dict] with a 'name' key
+    - chart_output['grahas'] as a dict keyed by graha name
+    """
+    grahas_raw = chart_output.get("grahas")
+    if grahas_raw is None:
+        return None
+    name_lower = graha_name.lower()
+    if isinstance(grahas_raw, list):
+        for entry in grahas_raw:
+            if isinstance(entry, dict) and entry.get("name", "").lower() == name_lower:
+                return entry
+        return None
+    if isinstance(grahas_raw, dict):
+        # Try exact case first, then case-insensitive scan
+        if graha_name in grahas_raw:
+            return grahas_raw[graha_name]
+        for k, v in grahas_raw.items():
+            if k.lower() == name_lower:
+                return v
+        return None
+    return None
+
+
+def generate_cross_ayanamsha_report(chart_outputs_by_ayanamsha: dict[str, dict]) -> dict:
+    """Compare chart_output dicts for different ayanamshas.
+
+    Returns divergence metrics and high-divergence flags per pair and overall.
+
+    Parameters
+    ----------
+    chart_outputs_by_ayanamsha : dict
+        Maps ayanamsha id → chart_output dict (as returned by compute_chart).
+        At least 2 entries required; fewer returns an empty report.
+
+    Returns
+    -------
+    dict with keys:
+      ayanamsha_pairs : list of per-pair dicts
+        ayanamsha_1, ayanamsha_2,
+        max_position_delta_deg, divergent_grahas, convergent_grahas,
+        sign_change_count, navamsa_change_count, divergence_score (0.0–1.0)
+      overall_divergence : 'low' | 'medium' | 'high'
+      most_divergent_pair : (a1, a2) tuple or None
+      pair_count : int
+      graha_variance : dict mapping each graha → max delta across all ayanamshas
+      most_stable_graha : str  (smallest max delta)
+      most_variable_graha : str  (largest max delta)
+    """
+    ayanamshas = list(chart_outputs_by_ayanamsha.keys())
+
+    if len(ayanamshas) < 2:
+        return {
+            "ayanamsha_pairs": [],
+            "overall_divergence": "low",
+            "most_divergent_pair": None,
+            "pair_count": 0,
+            "graha_variance": {},
+            "most_stable_graha": None,
+            "most_variable_graha": None,
+        }
+
+    pairs: list[dict] = []
+
+    for i in range(len(ayanamshas)):
+        for j in range(i + 1, len(ayanamshas)):
+            a1, a2 = ayanamshas[i], ayanamshas[j]
+            co1 = chart_outputs_by_ayanamsha[a1]
+            co2 = chart_outputs_by_ayanamsha[a2]
+
+            deltas: list[float] = []
+            sign_changes = 0
+            nav_changes = 0
+            divergent: list[str] = []
+            convergent: list[str] = []
+
+            for graha_name in _COMPARISON_GRAHAS:
+                g1 = _extract_graha_entry(co1, graha_name)
+                g2 = _extract_graha_entry(co2, graha_name)
+                if not g1 or not g2:
+                    continue
+
+                # Longitude key: try 'longitude_deg' (GrahaState asdict) then 'longitude'
+                lon1 = g1.get("longitude_deg") if g1.get("longitude_deg") is not None else g1.get("longitude", 0.0)
+                lon2 = g2.get("longitude_deg") if g2.get("longitude_deg") is not None else g2.get("longitude", 0.0)
+                if lon1 is None or lon2 is None:
+                    continue
+
+                delta = abs(float(lon1) - float(lon2))
+                if delta > 180.0:
+                    delta = 360.0 - delta
+                deltas.append(delta)
+
+                if delta > 1.0:
+                    divergent.append(graha_name)
+                else:
+                    convergent.append(graha_name)
+
+                # Sign-change check: use 'sign' key or derive from longitude
+                sign1 = g1.get("sign") or SIGN_NAMES[int(float(lon1) // 30) % 12]
+                sign2 = g2.get("sign") or SIGN_NAMES[int(float(lon2) // 30) % 12]
+                if sign1 != sign2:
+                    sign_changes += 1
+
+                # Navamsa change: prefer varga_position.D9 if present
+                vp1 = g1.get("varga_position", {}) or {}
+                vp2 = g2.get("varga_position", {}) or {}
+                d9_1 = vp1.get("D9", {}).get("sign") if vp1 else None
+                d9_2 = vp2.get("D9", {}).get("sign") if vp2 else None
+                if d9_1 is None:
+                    # Fall back to computing from longitude
+                    vp_fb1 = compute_varga_for_lon(float(lon1))
+                    d9_1 = vp_fb1["D9"]["sign"]
+                if d9_2 is None:
+                    vp_fb2 = compute_varga_for_lon(float(lon2))
+                    d9_2 = vp_fb2["D9"]["sign"]
+                if d9_1 != d9_2:
+                    nav_changes += 1
+
+            max_delta = max(deltas) if deltas else 0.0
+            # Normalize: 30° = 1.0 (maximum meaningful divergence within one sign)
+            score = round(min(1.0, max_delta / 30.0), 4)
+
+            pairs.append({
+                "ayanamsha_1": a1,
+                "ayanamsha_2": a2,
+                "max_position_delta_deg": round(max_delta, 4),
+                "divergent_grahas": divergent,
+                "convergent_grahas": convergent,
+                "sign_change_count": sign_changes,
+                "navamsa_change_count": nav_changes,
+                "divergence_score": score,
+            })
+
+    # Most divergent pair
+    most_divergent: dict | None = max(pairs, key=lambda p: p["divergence_score"]) if pairs else None
+
+    # Overall assessment
+    avg_score = sum(p["divergence_score"] for p in pairs) / len(pairs) if pairs else 0.0
+    if avg_score < 0.1:
+        overall = "low"
+    elif avg_score < 0.3:
+        overall = "medium"
+    else:
+        overall = "high"
+
+    # Per-graha variance: max delta across all ayanamsha pairs for each graha
+    graha_variance: dict[str, float] = {}
+    for graha_name in _COMPARISON_GRAHAS:
+        max_g_delta = 0.0
+        for i in range(len(ayanamshas)):
+            for j in range(i + 1, len(ayanamshas)):
+                g1 = _extract_graha_entry(chart_outputs_by_ayanamsha[ayanamshas[i]], graha_name)
+                g2 = _extract_graha_entry(chart_outputs_by_ayanamsha[ayanamshas[j]], graha_name)
+                if not g1 or not g2:
+                    continue
+                lon1 = g1.get("longitude_deg") if g1.get("longitude_deg") is not None else g1.get("longitude", 0.0)
+                lon2 = g2.get("longitude_deg") if g2.get("longitude_deg") is not None else g2.get("longitude", 0.0)
+                if lon1 is None or lon2 is None:
+                    continue
+                d = abs(float(lon1) - float(lon2))
+                if d > 180.0:
+                    d = 360.0 - d
+                if d > max_g_delta:
+                    max_g_delta = d
+        graha_variance[graha_name] = round(max_g_delta, 4)
+
+    most_stable = min(graha_variance, key=lambda g: graha_variance[g]) if graha_variance else None
+    most_variable = max(graha_variance, key=lambda g: graha_variance[g]) if graha_variance else None
+
+    return {
+        "ayanamsha_pairs": pairs,
+        "overall_divergence": overall,
+        "most_divergent_pair": (
+            (most_divergent["ayanamsha_1"], most_divergent["ayanamsha_2"])
+            if most_divergent else None
+        ),
+        "pair_count": len(pairs),
+        "graha_variance": graha_variance,
+        "most_stable_graha": most_stable,
+        "most_variable_graha": most_variable,
+    }
