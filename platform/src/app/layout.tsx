@@ -3,6 +3,7 @@ import { Inter, Source_Serif_4 } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from './providers'
+import BuildCompleteToast from '@/components/dashboard/BuildCompleteToast'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${serif.variable}`}>
       <body className="bg-background font-sans text-foreground antialiased">
         <Providers>{children}</Providers>
+        <BuildCompleteToast />
         <Toaster />
       </body>
     </html>
