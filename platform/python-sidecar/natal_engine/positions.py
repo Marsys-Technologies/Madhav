@@ -84,6 +84,17 @@ _SIGN_SPAN = 30.0
 
 _SWE_FLAGS = swe.FLG_SIDEREAL | swe.FLG_SWIEPH | swe.FLG_SPEED
 
+# Equatorial flag — returns RA + declination instead of ecliptic longitude/latitude.
+# Note: FLG_EQUATORIAL is NOT combined with FLG_SIDEREAL; right ascension and
+# declination are always tropical/equatorial quantities — applying an ayanamsha
+# correction to them is astronomically meaningless.
+_EQ_FLAGS = swe.FLG_SWIEPH | swe.FLG_EQUATORIAL
+
+# Out-of-bounds declination threshold: Sun's max declination ≈ 23.44° (obliquity).
+# A body beyond this is "out of bounds" — beyond the Sun's path, indicating
+# enhanced or erratic expression in Vedic interpretation.
+_OOB_THRESHOLD = 23.5
+
 # Heliocentric flag — tropical (not sidereal) per swisseph convention.
 # Heliocentric positions are computed in the ecliptic reference frame centred
 # on the Sun; applying SEFLG_SIDEREAL to a heliocentric calc would apply the
@@ -120,6 +131,66 @@ def get_heliocentric(body_id: int, jd_ut: float) -> tuple[float, float]:
         lon = result[0] % 360.0
         lat = result[1]
         return lon, lat
+    except Exception:
+        return 0.0, 0.0
+
+
+def get_equatorial(body_id: int, jd_ut: float) -> tuple[float, float]:
+    """Return (right_ascension_deg, declination_deg) for a body.
+
+    Uses tropical geocentric equatorial coordinates (swisseph FLG_EQUATORIAL).
+    RA is in degrees (0–360); declination in degrees (−90 to +90).
+
+    Special cases:
+    - Moon (swe.MOON): standard equatorial computation — Moon has a well-defined
+      geocentric equatorial position.
+    - Rahu/Ketu (swe.MEAN_NODE): nodes are a geometric construct; equatorial
+      coordinates are computed normally (the node point on the ecliptic does
+      project to an equatorial position).
+
+    For the Sun: uses swe.SUN directly (not Earth) because we want the
+    geocentric direction toward the Sun, which is meaningful for equatorial coords.
+    """
+    try:
+        result, _ = swe.calc_ut(jd_ut, body_id, _EQ_FLAGS)
+        ra_deg = result[0] % 360.0
+        dec_deg = result[1]
+        return ra_deg, dec_deg
+    except Exception:
+        return 0.0, 0.0
+
+
+def get_horizontal(
+    jd_ut: float,
+    geo_lon: float,
+    geo_lat: float,
+    body_ecl_lon: float,
+    body_ecl_lat: float,
+) -> tuple[float, float]:
+    """Return (azimuth_deg, altitude_deg) for a body at the birth location.
+
+    Uses swe.azalt with ECL2HOR: input is tropical geocentric ecliptic
+    longitude + latitude; output is horizontal coordinates.
+
+    Azimuth convention: swisseph returns azimuth measured from the south
+    point rotating westward (S=0°, W=90°, N=180°, E=270°).  We convert
+    to the standard compass convention N=0°, E=90°, S=180°, W=270° by
+    adding 180° mod 360°.
+
+    Returns true altitude (not apparent/refracted altitude).
+    """
+    try:
+        az_raw, alt_true, _ = swe.azalt(
+            jd_ut,
+            swe.ECL2HOR,
+            (geo_lon, geo_lat, 0.0),  # geopos: (lon, lat, altitude_m)
+            1013.25,                   # standard atmospheric pressure (mbar)
+            15.0,                      # standard temperature (°C)
+            (body_ecl_lon, body_ecl_lat, 1.0),  # (ecl_lon, ecl_lat, distance)
+        )
+        # Convert S=0 → N=0 compass convention
+        az_north = (az_raw + 180.0) % 360.0
+        return az_north, alt_true
     except Exception:
         return 0.0, 0.0
 
@@ -179,13 +250,30 @@ def set_ayanamsha(ayanamsha_config_id: str, jd_ut: float | None = None) -> None:
         raise ValueError(f"Unknown ayanamsha_config_id: {ayanamsha_config_id!r}")
 
 
-def compute_graha_states(jd_ut: float) -> list[GrahaState]:
+_TROPICAL_FLAGS = swe.FLG_SWIEPH  # tropical geocentric: lon+lat needed for swe.azalt
+
+
+def compute_graha_states(
+    jd_ut: float,
+    geo_lat: float = 20.27,
+    geo_lon: float = 85.84,
+) -> list[GrahaState]:
     """Compute the 9 graha states at the given Julian Day (UT).
 
     Caller must have already invoked `set_ayanamsha(...)`.
 
-    Each GrahaState now carries heliocentric_longitude and
-    heliocentric_latitude (tropical ecliptic, heliocentric frame).
+    Args:
+        jd_ut:   Julian Day number (Universal Time).
+        geo_lat: Geographic latitude of the observer in degrees (N positive).
+                 Defaults to Bhubaneswar (native birth location).
+        geo_lon: Geographic longitude of the observer in degrees (E positive).
+                 Defaults to Bhubaneswar (native birth location).
+
+    Each GrahaState now carries:
+    - heliocentric_longitude / heliocentric_latitude  (tropical ecliptic, helio)
+    - declination_deg / right_ascension_deg           (geocentric equatorial)
+    - altitude_deg / azimuth_deg                      (horizon coords at birth loc)
+    - out_of_bounds                                   (|dec| > 23.5°)
 
     Conventions for non-standard bodies:
     - Moon: heliocentric coords are meaningless (Moon orbits Earth).
@@ -214,6 +302,21 @@ def compute_graha_states(jd_ut: float) -> list[GrahaState]:
             # Nodes lie on the ecliptic plane
             helio_lon, helio_lat = lon, 0.0
 
+        # Equatorial coordinates (geocentric, tropical)
+        ra_deg, dec_deg = get_equatorial(swe_code, jd_ut)
+
+        # Horizon coordinates — need tropical ecliptic lon/lat for swe.azalt
+        # Rahu uses MEAN_NODE; tropical ecliptic lon is the same value as
+        # the sidereal one with ayanamsha added back — but for azalt we use
+        # the raw tropical geocentric result.
+        trop_result, _ = swe.calc_ut(jd_ut, swe_code, _TROPICAL_FLAGS)
+        trop_lon = trop_result[0] % 360.0
+        trop_lat = trop_result[1]
+        az_deg, alt_deg = get_horizontal(jd_ut, geo_lon, geo_lat, trop_lon, trop_lat)
+
+        # Out-of-bounds: declination exceeds the Sun's maximum (~23.5°)
+        oob = abs(dec_deg) > _OOB_THRESHOLD
+
         states.append(
             GrahaState(
                 name=name,
@@ -228,14 +331,36 @@ def compute_graha_states(jd_ut: float) -> list[GrahaState]:
                 dignity_status=_dignity_for(name, sign_id),
                 heliocentric_longitude=helio_lon,
                 heliocentric_latitude=helio_lat,
+                declination_deg=dec_deg,
+                right_ascension_deg=ra_deg,
+                altitude_deg=alt_deg,
+                azimuth_deg=az_deg,
+                out_of_bounds=oob,
             )
         )
 
     # Ketu = Rahu + 180° mod 360. Speed = -Rahu.speed (counter-node).
     rahu = next(s for s in states if s.name == "Rahu")
+
+    # Ketu equatorial: directly compute via MEAN_NODE + 180° projection trick.
+    # swisseph has no direct "south node" body; compute Rahu's equatorial and
+    # derive Ketu as the antipodal point (RA+180°, -dec).
+    rahu_ra = rahu.right_ascension_deg
+    rahu_dec = rahu.declination_deg
+    ketu_ra = (rahu_ra + 180.0) % 360.0
+    ketu_dec = -rahu_dec  # antipodal declination
+
     ketu_lon = (rahu.longitude_deg + 180.0) % 360.0
     ketu_sign_id, ketu_sign_name = _lon_to_sign(ketu_lon)
     ketu_nak_id, ketu_nak_name, ketu_pada = _lon_to_nakshatra(ketu_lon)
+
+    # Ketu horizon: use antipodal ecliptic longitude (tropical) for azalt
+    ketu_trop_lon = (rahu.longitude_deg + 180.0) % 360.0  # approx tropical antip.
+    ketu_az_deg, ketu_alt_deg = get_horizontal(
+        jd_ut, geo_lon, geo_lat, ketu_trop_lon, 0.0
+    )
+    ketu_oob = abs(ketu_dec) > _OOB_THRESHOLD
+
     states.append(
         GrahaState(
             name="Ketu",
@@ -251,6 +376,11 @@ def compute_graha_states(jd_ut: float) -> list[GrahaState]:
             # Ketu mirrors the antipodal Rahu helio_lon; latitude = 0 (ecliptic plane)
             heliocentric_longitude=(rahu.heliocentric_longitude + 180.0) % 360.0,
             heliocentric_latitude=0.0,
+            declination_deg=ketu_dec,
+            right_ascension_deg=ketu_ra,
+            altitude_deg=ketu_alt_deg,
+            azimuth_deg=ketu_az_deg,
+            out_of_bounds=ketu_oob,
         )
     )
 

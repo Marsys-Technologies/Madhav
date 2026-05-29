@@ -42,6 +42,8 @@ _GRAHA_SCHEMA = {
         "nakshatra", "nakshatra_id", "pada",
         "retrograde", "speed_deg_per_day", "dignity_status",
         "heliocentric_longitude", "heliocentric_latitude",
+        "declination_deg", "right_ascension_deg",
+        "altitude_deg", "azimuth_deg", "out_of_bounds",
     ],
     "properties": {
         "name": {"type": "string"},
@@ -71,6 +73,34 @@ _GRAHA_SCHEMA = {
             "minimum": -90.0,
             "maximum": 90.0,
             "description": "Heliocentric ecliptic latitude (−90° to +90°). For Moon: mirrors geocentric latitude.",
+        },
+        "declination_deg": {
+            "type": "number",
+            "minimum": -90.0,
+            "maximum": 90.0,
+            "description": "Geocentric equatorial declination (−90° south to +90° north). Positive = north of celestial equator.",
+        },
+        "right_ascension_deg": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 360.0,
+            "description": "Geocentric right ascension in degrees (0–360°).",
+        },
+        "altitude_deg": {
+            "type": "number",
+            "minimum": -90.0,
+            "maximum": 90.0,
+            "description": "True altitude above the horizon at birth location (−90° to +90°). Negative = below horizon.",
+        },
+        "azimuth_deg": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 360.0,
+            "description": "Compass bearing at birth location: 0°=N, 90°=E, 180°=S, 270°=W.",
+        },
+        "out_of_bounds": {
+            "type": "boolean",
+            "description": "True if |declination_deg| > 23.5° (beyond the Sun's maximum declination). Indicates enhanced strength or erratic behaviour per Vedic tradition.",
         },
     },
 }
@@ -242,6 +272,11 @@ class GrahaState:
     dignity_status: str  # one of enum in schema
     heliocentric_longitude: float = 0.0  # 0–360°; see schema for Moon/Sun conventions
     heliocentric_latitude: float = 0.0   # −90 to +90°
+    declination_deg: float = 0.0         # geocentric equatorial declination (−90 to +90°)
+    right_ascension_deg: float = 0.0     # geocentric right ascension (0–360°)
+    altitude_deg: float = 0.0            # true altitude above horizon at birth location
+    azimuth_deg: float = 0.0             # compass bearing N=0, E=90, S=180, W=270
+    out_of_bounds: bool = False          # |declination_deg| > 23.5°
 
 
 @dataclass
