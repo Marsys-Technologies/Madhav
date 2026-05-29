@@ -22,12 +22,13 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
       - name: tsc — src only (exclude tests)
-        # pipefail propagates tsc exit code through the pipe.
-        # The subshell { grep ... || true; } always exits 0 so grep
-        # finding no lines (all errors in tests/) doesn't cause false failures.
+        # Capture tsc output; only fail on errors outside test directories.
+        # Uses || true so set -e doesn't abort before we can inspect output.
+        # Filters both tests/ and __tests__/ paths (grep -v "tests/" misses __tests__/).
         run: |
-          set -o pipefail
-          npx tsc --noEmit --skipLibCheck 2>&1 | { grep -v "tests/" || true; }
+          tsc_out=$(npx tsc --noEmit --skipLibCheck 2>&1 || true)
+          non_test=$(printf '%s\n' "$tsc_out" | grep "error TS" | grep -Ev "(tests/|__tests__/)" || true)
+          if [ -n "$non_test" ]; then printf '%s\n' "$non_test"; exit 1; fi
 
   unit-tests:
     name: Unit Tests
@@ -214,24 +215,17 @@ jobs:
         run: pip install pyyaml pytest
 
       - name: drift_detector — repo scan
-        # Exit code policy (platform/scripts/governance/drift_detector.py:654):
-        #   0 = clean; 1 = critical (NEW regression); 3 = medium/low (baseline)
-        # We accept exit 0 or 3; surface 1 as failure.
+        # Exit code policy: 0=clean, 3=baseline residuals (both pass), 1/2=regression (fail).
+        # Use || to capture exit code without set -e aborting on non-zero exit.
         run: |
-          python platform/scripts/governance/drift_detector.py
-          ec=$?
-          if [ "$ec" != "0" ] && [ "$ec" != "3" ]; then
-            echo "drift_detector exit=$ec (expected 0 or 3 with known_residuals)"; exit $ec
-          fi
+          ec=0; python platform/scripts/governance/drift_detector.py || ec=$?
+          [ "$ec" = 0 ] || [ "$ec" = 3 ] || { echo "drift_detector exit=$ec (expected 0 or 3)"; exit "$ec"; }
 
       - name: schema_validator — repo scan
         # Same exit policy as drift_detector.
         run: |
-          python platform/scripts/governance/schema_validator.py
-          ec=$?
-          if [ "$ec" != "0" ] && [ "$ec" != "3" ]; then
-            echo "schema_validator exit=$ec (expected 0 or 3 with known_residuals)"; exit $ec
-          fi
+          ec=0; python platform/scripts/governance/schema_validator.py || ec=$?
+          [ "$ec" = 0 ] || [ "$ec" = 3 ] || { echo "schema_validator exit=$ec (expected 0 or 3)"; exit "$ec"; }
 
       - name: assert_no_native_literal — repo scan
         # Hard gate: no literal native birth-chart values in code outside L1.

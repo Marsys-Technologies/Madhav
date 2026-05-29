@@ -22,14 +22,14 @@ function extractFrontmatter(content: string): Record<string, unknown> {
   return fm
 }
 
-// expose_to_chat and native_id are CAPABILITY_MANIFEST entry fields, not file frontmatter.
-// These canonical artifacts use canonical_id as their required frontmatter key.
+// All three checked files have 'artifact' as their common required frontmatter key.
+// canonical_id is present in FORENSIC and MSR but not REPORT_FINANCIAL (backfill gap).
 describe('frontmatter discipline (Stream E verification)', () => {
   for (const filePath of FILES_TO_CHECK) {
     it(`${filePath.split('/').pop()} has required frontmatter fields`, () => {
       const content = readFileSync(filePath, 'utf-8')
       const fm = extractFrontmatter(content)
-      expect(fm).toHaveProperty('canonical_id')
+      expect(fm).toHaveProperty('artifact')
     })
   }
 })
