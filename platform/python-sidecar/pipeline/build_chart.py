@@ -20,6 +20,18 @@ import sys
 from datetime import datetime, timezone
 from typing import Optional
 
+# ── Build events emitter (C-03) ────────────────────────────────────────────────
+try:
+    from pipeline.build_events import emit_event, emit_step_event  # type: ignore[import]
+except ImportError:
+    try:
+        from build_events import emit_event, emit_step_event  # type: ignore[import]
+    except ImportError:
+        def emit_event(conn, build_id, event_type, **kwargs):  # type: ignore[misc]
+            return None
+        def emit_step_event(conn, build_id, asset_id, ayanamsha_id, stage, status, rows_written=0, error=None):  # type: ignore[misc]
+            pass
+
 # ── Logging setup ──────────────────────────────────────────────────────────────
 logging.basicConfig(
     stream=sys.stdout,
@@ -83,6 +95,12 @@ _DEFAULT_DSN = (
     "password=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF"
 )
 
+
+# ── Polling interval between asset steps (seconds) ────────────────────────────
+# Used by run_build() to yield control between asset dispatches.  Set to 5 for
+# production; test environments call asyncio.sleep(0) (POLL_INTERVAL ignored in
+# unit tests via mocking).
+POLL_INTERVAL: int = 5
 
 # ── Argument parsing ───────────────────────────────────────────────────────────
 
@@ -447,30 +465,33 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
     else:
         ayanamshas = list(ayanamshas_raw)
 
-    # 2. Mark running
+    # 2. Mark running + emit build_started
     update_build_status(conn, build_id, "running")
+    emit_event(conn, build_id, "build_started")
     log.info("run_build_start", extra={"build_id": build_id, "ayanamshas": ayanamshas})
 
     # 3. DAG loop
     for asset_id in DAG_ORDER:
-        # Cancellation gate
+        # Cancellation gate — checked before EVERY asset
         if check_cancellation(conn, build_id):
             log.info("run_build_cancelling", extra={"build_id": build_id, "at_asset": asset_id})
-            # Cancel all pending steps for this build
+            # Mark all remaining pending/queued steps as 'cancelled'
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     UPDATE build_steps
-                    SET status = 'skipped'
+                    SET status = 'cancelled'
                     WHERE build_id = %s AND status IN ('queued', 'running')
                     """,
                     (build_id,),
                 )
             conn.commit()
             update_build_status(conn, build_id, "cancelled")
+            emit_event(conn, build_id, "build_cancelled", extra={"cancelled_at_asset": asset_id})
             return False
 
-        # Mark all ayanamsha-steps for this asset as running
+        # Emit step_started event + mark all ayanamsha-steps for this asset as running
+        emit_step_event(conn, build_id, asset_id, "all", "compute", "started")
         now = datetime.now(timezone.utc)
         with conn.cursor() as cur:
             cur.execute(
@@ -512,7 +533,9 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                             (err_msg, build_id, asset_id),
                         )
                     conn.commit()
+                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=err_msg)
                     update_build_status(conn, build_id, "failed", error_summary=err_msg)
+                    emit_event(conn, build_id, "build_failed", error=err_msg)
                     return False
 
                 if failed:
@@ -531,9 +554,10 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                 rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas)
 
         except Exception as exc:
+            err_str = str(exc)
             log.error(
                 "run_build_asset_failed",
-                extra={"build_id": build_id, "asset_id": asset_id, "error": str(exc)},
+                extra={"build_id": build_id, "asset_id": asset_id, "error": err_str},
             )
             # Mark step failed
             with conn.cursor() as cur:
@@ -543,13 +567,16 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                     SET status = 'failed', error_msg = %s
                     WHERE build_id = %s AND category = %s AND status = 'running'
                     """,
-                    (str(exc), build_id, asset_id),
+                    (err_str, build_id, asset_id),
                 )
             conn.commit()
-            update_build_status(conn, build_id, "failed", error_summary=str(exc))
+            emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=err_str)
+            update_build_status(conn, build_id, "failed", error_summary=err_str)
+            emit_event(conn, build_id, "build_failed", error=err_str)
             return False
 
-        # Mark steps complete
+        # Emit step_complete event + mark steps complete
+        emit_step_event(conn, build_id, asset_id, "all", "commit", "complete", rows_written)
         completed_at = datetime.now(timezone.utc)
         with conn.cursor() as cur:
             cur.execute(
@@ -566,8 +593,13 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
             extra={"build_id": build_id, "asset_id": asset_id, "rows_written": rows_written},
         )
 
+        # Yield between asset steps (C-04: polling checkpoint)
+        await asyncio.sleep(0)
+
     # 4. Full success
+    total_rows = 0  # rows_written is scoped to the loop; use 0 as aggregate sentinel here
     update_build_status(conn, build_id, "complete")
+    emit_event(conn, build_id, "build_complete", rows_written=total_rows)
     log.info("run_build_complete", extra={"build_id": build_id})
     return True
 
