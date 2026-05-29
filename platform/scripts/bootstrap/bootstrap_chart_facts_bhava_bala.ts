@@ -91,4 +91,6 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(e => { console.error(e); process.exit(1) }).finally(() => pool.end())
+if (process.env.NODE_ENV !== 'test') {
+  main().catch(e => { console.error(e); process.exit(1) }).finally(() => pool.end())
+}
