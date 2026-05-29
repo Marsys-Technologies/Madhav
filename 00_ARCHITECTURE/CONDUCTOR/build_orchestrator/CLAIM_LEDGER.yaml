@@ -3,11 +3,18 @@
 # Race-resolved via git push (push fails → someone else claimed → retry)
 # Read/write protocol: see STREAM_COORDINATION_v1_0.md §6
 schema: v1
-last_updated: "2026-05-29T00:00:00Z"
-last_updated_by: "Cowork (initial empty ledger)"
+last_updated: "2026-05-30T00:00:00Z"
+last_updated_by: "Stream-A Conductor"
 
 # Sessions currently being executed (in-flight; file-locks honored by other streams)
-active_claims: []
+active_claims:
+  - session_id: G12-S1
+    stream_owner: A
+    claimed_by_stream: A
+    claimed_at: "2026-05-30T00:00:00Z"
+    files_locked_globs:
+      - "platform/python-sidecar/pipeline/yoga_definitions.py"
+      - "platform/python-sidecar/pipeline/__tests__/test_yoga_defs.py"
 
 # Sessions completed (audit trail; capped to last 500 entries)
 released_claims: []

@@ -387,7 +387,11 @@
             "status": "locked"
           },
           "impl": {
-            "status": "not_started"
+            "status": "merged_main",
+            "session_id": "A-09",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00",
+            "notes": "Implemented in tara_chandra_vimsh.py as CHANDRA_BALA_MATRIX (12x12 in-memory lookup). Tracker not updated at session close — corrected 2026-05-30."
           },
           "est_hrs": 1,
           "deps": []
@@ -400,7 +404,11 @@
             "status": "locked"
           },
           "impl": {
-            "status": "not_started"
+            "status": "merged_main",
+            "session_id": "A-09",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00",
+            "notes": "Implemented in tara_chandra_vimsh.py as VIMSHOTTARI_START (27-entry dict). Tracker not updated at session close — corrected 2026-05-30."
           },
           "est_hrs": 0.5,
           "deps": []
@@ -429,7 +437,11 @@
             "status": "locked"
           },
           "impl": {
-            "status": "not_started"
+            "status": "merged_main",
+            "session_id": "A-10",
+            "branch": "feature/build-orch/stream-a",
+            "completed_at": "2026-05-29T08:41:02.864857+00:00",
+            "notes": "Implemented in mbhaga_muhurta_ref.py as TITHI_TABLE, VARA_TABLE, NAKSHATRA_TABLE, MUHURTA_WINDOWS. Tracker not updated at session close — corrected 2026-05-30."
           },
           "est_hrs": 4,
           "deps": []
