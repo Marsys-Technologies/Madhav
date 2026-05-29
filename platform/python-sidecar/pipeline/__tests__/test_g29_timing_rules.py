@@ -33,6 +33,7 @@ REQUIRED_KEYS = {
     "activation_window",
     "strength_qualifier",
     "classical_citation",
+    "notes",
 }
 
 ALLOWED_SOURCE_TEXTS = {
@@ -210,6 +211,7 @@ def test_per_source_distribution():
 
     minimums = {
         "bphs": 65,
+        "phaladeepika": 30,
         "jaimini_sutram": 30,
         "tajik": 30,
         "kp": 20,
