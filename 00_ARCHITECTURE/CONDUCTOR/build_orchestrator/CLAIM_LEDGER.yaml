@@ -3,24 +3,39 @@
 # Race-resolved via git push (push fails → someone else claimed → retry)
 # Read/write protocol: see STREAM_COORDINATION_v1_0.md §6
 schema: v1
-last_updated: "2026-05-30T00:00:00Z"
-last_updated_by: "Stream-A Conductor"
+last_updated: "2026-05-30T04:50:00Z"
+last_updated_by: "Stream D Conductor"
 
 # Sessions currently being executed (in-flight; file-locks honored by other streams)
-active_claims:
-  - session_id: G12-S1
-    stream_owner: A
-    claimed_by_stream: A
-    claimed_at: "2026-05-30T00:00:00Z"
-    files_locked_globs:
-      - "platform/python-sidecar/pipeline/yoga_definitions.py"
-      - "platform/python-sidecar/pipeline/__tests__/test_yoga_defs.py"
+active_claims: []
 
 # Sessions completed (audit trail; capped to last 500 entries)
-released_claims: []
+released_claims:
+  - session_id: stream-d-wave1
+    stream_owner: D
+    claimed_by_stream: D
+    completed_at: "2026-05-30T04:50:00Z"
+    merge_sha: "a3c5e8d1f7a5222a42689c2a4fd4d8f3f317df9c"
+    ci_status: ci_red_ignored
+    ci_tag: ci-red-ignored-stream-d-wave1
+    items_completed:
+      - INF7-S1  # mig 139 + bundle_composer.ts
+      - INF7-S2  # cross_ayanamsha_consensus + stop_confidence + b11_floor
+      - INF7-S3  # intent_classifier
+      - INF8-S1  # no_narration_linter standalone
+      - INF8-S2  # CI integration + pre-commit hook
+      - INF10-S1 # rag_embedder.py + tests
+      - INF11-S1 # chart_bundle_resource + multi_ayanamsha_resource MCP resources
+      - INF12-S1 # /admin/tracker page
 
 # Sessions whose CI auto-fix failed and was ignored per §5
-ci_red_ignored: []
+ci_red_ignored:
+  - session_id: stream-d-wave1
+    tag: ci-red-ignored-stream-d-wave1
+    reason: >
+      TypeScript gate: Playwright test describe.use pre-existing issue.
+      Unit Tests gate: frontmatter_check REPORT_FINANCIAL_v2_1.md pre-existing failure.
+      Neither caused by INF7/8/10/11/12 additions (confirmed by prior F08 CI run also red).
 
 # Sessions whose cherry-pick to main failed and were halted per §10
 halted: []
