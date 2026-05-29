@@ -6,9 +6,8 @@ name: Chat V2 — Workstream CI
 # No-op stages succeed until their work item activates them.
 
 on:
-  push:
-    branches:
-      - 'feature/chat-v2-bigbang'
+  schedule:
+    - cron: '0 3 * * 0'   # Sunday 03:00 UTC — activates Stage 9 provider-drift check
   pull_request:
     branches:
       - main

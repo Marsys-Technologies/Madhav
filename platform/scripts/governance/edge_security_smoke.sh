@@ -17,6 +17,16 @@
 
 set -euo pipefail
 
+# --ci-only is accepted for forward-compatibility (reserved for live-endpoint
+# checks that would be added later). All current checks are static IaC/worktree
+# assertions and run identically in CI and operator contexts.
+for arg in "$@"; do
+  case "$arg" in
+    --ci-only) ;;  # no-op: all checks are already static-safe
+    *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+  esac
+done
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 FAIL=0
 WARN=0

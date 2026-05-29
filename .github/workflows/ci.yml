@@ -2,7 +2,7 @@ name: CI — Ganga Quality Gate
 
 on:
   push:
-    branches: [main, 'feature/**', 'feature/ganga-*']
+    branches: [main, 'feature/**']
   pull_request:
     branches: [main]
 
@@ -22,7 +22,12 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
       - name: tsc — src only (exclude tests)
-        run: npx tsc --noEmit --skipLibCheck 2>&1 | grep -v "tests/" || true
+        # pipefail propagates tsc exit code through the pipe.
+        # The subshell { grep ... || true; } always exits 0 so grep
+        # finding no lines (all errors in tests/) doesn't cause false failures.
+        run: |
+          set -o pipefail
+          npx tsc --noEmit --skipLibCheck 2>&1 | { grep -v "tests/" || true; }
 
   unit-tests:
     name: Unit Tests
@@ -40,7 +45,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - run: npm test -- --reporter=verbose 2>&1 | tail -40
+      - run: npm test -- --reporter=verbose
 
   planner-regression:
     name: Planner Regression Gate

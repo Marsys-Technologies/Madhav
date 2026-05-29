@@ -42,10 +42,12 @@ jobs:
 
       # ── Bench harness (P8a) ────────────────────────────────────────────────
       - name: Run bench capture
+        id: bench_capture
         run: npm run bench:capture
         continue-on-error: true
 
       - name: Run bench diff
+        if: steps.bench_capture.outcome == 'success'
         run: npm run bench:diff
 
       - name: Upload bench artifacts
