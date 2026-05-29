@@ -34,7 +34,7 @@ from .dashas import compute_vimshottari_mahadasha
 from .dignities import refine_dignities
 from .houses import compute_houses_whole_sign
 from .panchanga import compute_panchanga
-from .positions import compute_graha_states, compute_node_states, set_ayanamsha
+from .positions import compute_graha_states, compute_lilith_states, compute_node_states, set_ayanamsha
 from .provenance import build_provenance
 from .schema import CHART_OUTPUT_SCHEMA, Inputs, validate_chart_output
 from .sensitive_points import compute_sensitive_points
@@ -178,6 +178,16 @@ def compute_chart(
         geo_lon=inp.longitude_deg,
     )
 
+    # E-04: emit Mean Lilith (MEAN_APOG = 12) and True Lilith (OSCU_APOG = 13).
+    # These are virtual points on the Moon's orbit (apogee), not real bodies.
+    # Stored outside `grahas` to preserve the 9-graha schema invariant.
+    lilith_variants = compute_lilith_states(
+        jd_ut,
+        ayanamsha_deg=ayan_value_deg,
+        geo_lat=inp.latitude_deg,
+        geo_lon=inp.longitude_deg,
+    )
+
     provenance = build_provenance(
         inputs=asdict(inp),
         engine_version=engine_version,
@@ -207,6 +217,8 @@ def compute_chart(
     # E-03: True Node + Mean Node variants — outside the JSON-Schema envelope
     # so the `grahas` array remains exactly 9 entries.
     payload["node_variants"] = node_variants
+    # E-04: Mean Lilith + True Lilith variants — outside the JSON-Schema envelope.
+    payload["lilith_variants"] = lilith_variants
 
     if validate:
         validate_chart_output(payload)
@@ -216,6 +228,7 @@ def compute_chart(
 
 __all__ = [
     "compute_chart",
+    "compute_lilith_states",
     "compute_node_states",
     "ENGINE_VERSION_DEFAULT",
     "AYANAMSHA_DEFAULT",

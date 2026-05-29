@@ -502,3 +502,100 @@ def compute_node_states(
         }
 
     return result
+
+
+def compute_lilith_states(
+    jd_ut: float,
+    ayanamsha_deg: float,
+    geo_lat: float = 20.27,
+    geo_lon: float = 85.84,
+) -> dict[str, dict]:
+    """Compute Mean Lilith (MEAN_APOG) and True Lilith (OSCU_APOG) positions.
+
+    Returns a dict with 2 entries:
+      lilith_mean  — mean apogee of the Moon's orbit (swe.MEAN_APOG = 12)
+      lilith_true  — osculating (true) apogee of the Moon's orbit (swe.OSCU_APOG = 13)
+
+    Both are virtual points on the Moon's orbit, not real bodies.  They represent
+    the Moon's apogee (farthest point from Earth).  In Vedic astrology these are
+    sometimes called Black Moon Lilith (mean) and its osculating counterpart (true).
+
+    Implementation note — same tropical-flags + manual ayanamsha subtraction
+    workaround used by compute_node_states() to avoid swisseph FLG_SIDEREAL
+    interaction issues with non-planetary body codes.
+
+    The `retro` field reflects the actual computed speed sign.  Unlike the lunar
+    nodes (which are always retrograde), the apogee direction varies: the mean
+    apogee is always prograde (speed > 0), while the true/osculating apogee
+    oscillates and can be retrograde at certain phases.
+    """
+    result: dict[str, dict] = {}
+
+    for _lilith_type, body_id, label in [
+        ("mean", swe.MEAN_APOG, "lilith_mean"),   # swe.MEAN_APOG = 12
+        ("true", swe.OSCU_APOG, "lilith_true"),   # swe.OSCU_APOG = 13
+    ]:
+        try:
+            calc_result, _ = swe.calc_ut(jd_ut, body_id, _TROPICAL_FLAGS | swe.FLG_SPEED)
+            tropical_lon = calc_result[0] % 360.0
+            lat = calc_result[1]
+            speed = calc_result[3]
+
+            # Sidereal longitude = tropical − ayanamsha (mod 360)
+            sidereal_lon = (tropical_lon - ayanamsha_deg) % 360.0
+
+            sign_id, sign_name = _lon_to_sign(sidereal_lon)
+            nak_id, nak_name, pada = _lon_to_nakshatra(sidereal_lon)
+
+            # Equatorial coordinates
+            ra, dec = get_equatorial(body_id, jd_ut)
+
+            # Horizontal coordinates (uses tropical longitude per get_horizontal convention)
+            az, alt = get_horizontal(jd_ut, geo_lon, geo_lat, tropical_lon, lat)
+
+            result[label] = {
+                "longitude": sidereal_lon,
+                "latitude": lat,
+                "speed": speed,
+                "retro": speed < 0,
+                "sign": sign_name,
+                "sign_index": sign_id,
+                "degree": sidereal_lon % _SIGN_SPAN,
+                "nakshatra": nak_name,
+                "nakshatra_id": nak_id,
+                "pada": pada,
+                "heliocentric_longitude": 0.0,  # apogee: no heliocentric meaning
+                "heliocentric_latitude": 0.0,
+                "declination_deg": dec,
+                "right_ascension_deg": ra,
+                "altitude_deg": alt,
+                "azimuth_deg": az,
+                "out_of_bounds": abs(dec) > _OOB_THRESHOLD,
+            }
+        except Exception as exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning(
+                "Lilith %s computation failed: %s", _lilith_type, exc
+            )
+            # Emit a zero-sentinel so callers always have both keys
+            result[label] = {
+                "longitude": 0.0,
+                "latitude": 0.0,
+                "speed": 0.0,
+                "retro": False,
+                "sign": SIGN_NAMES[0],
+                "sign_index": 1,
+                "degree": 0.0,
+                "nakshatra": NAKSHATRA_NAMES[0],
+                "nakshatra_id": 1,
+                "pada": 1,
+                "heliocentric_longitude": 0.0,
+                "heliocentric_latitude": 0.0,
+                "declination_deg": 0.0,
+                "right_ascension_deg": 0.0,
+                "altitude_deg": 0.0,
+                "azimuth_deg": 0.0,
+                "out_of_bounds": False,
+            }
+
+    return result
