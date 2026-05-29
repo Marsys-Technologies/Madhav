@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi, describe, test, expect } from 'vitest'
 import AssetNode, { AssetNodeData } from '../AssetNode'
 import AssetNodeGrid from '../AssetNodeGrid'
 

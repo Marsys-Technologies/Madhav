@@ -1438,7 +1438,7 @@
     },
     {
       "canonical_id": "08_CLASSICAL_CROSS_REFERENCE",
-      "path": "",
+      "path": "08_CLASSICAL_CROSS_REFERENCE/",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L8",
@@ -2108,7 +2108,7 @@
     },
     {
       "canonical_id": "09_MULTI_SCHOOL_TRIANGULATION",
-      "path": "",
+      "path": "09_MULTI_SCHOOL_TRIANGULATION/",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L9",
@@ -2261,7 +2261,7 @@
     },
     {
       "canonical_id": "M9B_UNIT_TESTS",
-      "path": "",
+      "path": "platform/tests/schools/",
       "type": "test_suite",
       "description": "78 unit tests across 7 school engines + convergence_calculator + school_runner; all passing",
       "version": "1.0",
