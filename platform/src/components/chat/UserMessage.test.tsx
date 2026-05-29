@@ -25,7 +25,6 @@ vi.mock('framer-motion', () => ({
 const makeMessage = (text: string): UIMessage => ({
   id: 'test-msg-1',
   role: 'user',
-  content: text,
   parts: [{ type: 'text', text }],
 });
 

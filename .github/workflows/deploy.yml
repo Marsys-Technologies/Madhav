@@ -1,9 +1,22 @@
 name: Deploy to Cloud Run
 
 on:
-  push:
-    branches:
-      - main
+  # Deploy only after CI passes — prevents deploying broken builds.
+  # Fires when "CI — Ganga Quality Gate" completes on main; the job-level
+  # `if:` below gates on conclusion == 'success'.
+  workflow_run:
+    workflows: ["CI — Ganga Quality Gate"]
+    types: [completed]
+    branches: [main]
+  # PR trigger: build-only job (no push, no Cloud Run deploy) catches
+  # Dockerfile / Next.js build failures before merge.
+  pull_request:
+    branches: [main]
+    paths:
+      - 'platform/**'
+      - 'platform-mcp/**'
+      - '.github/workflows/deploy.yml'
+  # Keep workflow_dispatch for emergency manual deploys (bypasses CI gate).
   workflow_dispatch:
 
 env:
@@ -12,8 +25,63 @@ env:
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
 
 jobs:
+  # ── PR build-check: build without push to catch Dockerfile/Next.js failures pre-merge ──
+  build-check:
+    name: Build Check (PR only)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy governance files into platform build context
+        run: |
+          mkdir -p platform/00_ARCHITECTURE
+          cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+          cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
+          cp 00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md
+          cp 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
+          cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
+          cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
+          cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
+
+      - name: Build web image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./platform
+          file: ./platform/Dockerfile
+          push: false
+          build-args: |
+            NEXT_PUBLIC_FIREBASE_API_KEY=ci-placeholder
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ci-placeholder
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=ci-placeholder
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=ci-placeholder
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=ci-placeholder
+            NEXT_PUBLIC_FIREBASE_APP_ID=ci-placeholder
+            NEXT_PUBLIC_APP_URL=https://amjis-web.run.app
+            NEXT_PUBLIC_NIM_STACK_DEGRADED=false
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+
   deploy-web:
     name: Build & Deploy Web
+    # Only deploy on workflow_run (CI passed on main) or manual dispatch.
+    # pull_request events are handled by the build-check job above.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     permissions:
@@ -114,14 +182,18 @@ jobs:
             # Region must match the prod Cloud Run region (asia-south1) to keep
             # Vertex calls in-region for both latency + egress cost.
             VERTEX_AI_LOCATION=asia-south1
-            NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
-            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-            NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
+            # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
+            # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
+            # build-args above). Cloud Run env_vars are never read by Next.js at
+            # runtime — setting them here has zero effect and misleadingly implies
+            # that rotating them without a full rebuild would take effect.
           secrets: |
+            # Issue 11: pin to explicit versions — :latest auto-follows any new
+            # version, including a bad rotation. Update these pins deliberately
+            # after each secret rotation by running:
+            #   gcloud secrets versions list <name> --project=madhav-astrology
+            # then updating the version number here and redeploying.
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:latest
             DB_PASSWORD=amjis-db-password:latest
             OPENAI_API_KEY=openai-api-key:latest
@@ -139,6 +211,7 @@ jobs:
 
   deploy-sidecar:
     name: Build & Deploy Sidecar
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     permissions:
@@ -190,6 +263,7 @@ jobs:
   # Image is pinned to Artifact Registry (asia-south1-docker.pkg.dev/...),
   # not legacy gcr.io.
   deploy-mcp:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
     permissions:

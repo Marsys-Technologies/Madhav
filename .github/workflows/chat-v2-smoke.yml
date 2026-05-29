@@ -17,12 +17,21 @@ name: chat-v2 smoke
 on:
   pull_request:
     paths:
+      # Core consume surface
       - 'platform/src/components/consume/ConsumeChatV2.tsx'
       - 'platform/src/components/chat-v2/**'
       - 'platform/src/components/chat/ConversationSidebarV2.tsx'
+      - 'platform/src/components/chat/AssistantMessage.tsx'
+      - 'platform/src/components/chat/Composer.tsx'
+      # API route + synthesis
       - 'platform/src/app/api/chat/consume/route.ts'
-      - 'platform/src/lib/synthesis/prompts/synthesis_prompt_v2.ts'
+      - 'platform/src/lib/synthesis/**'
       - 'platform/src/lib/citations/**'
+      # R11 provider/adapter/streaming layer (was missing — gate never fired on R11 changes)
+      - 'platform/src/lib/providers/**'
+      - 'platform/src/lib/streams/**'
+      - 'platform/src/lib/retrieve/**'
+      # Smoke specs + fixtures
       - 'platform/tests/e2e/chat-v2/round6-walkthrough.spec.ts'
       - 'platform/tests/e2e/chat-v2/fixtures/round6-mock-route.ts'
   merge_group:
