@@ -2860,7 +2860,7 @@ sessions:
     deploy:
       service: all
       post_deploy_smoke: "python -m pytest platform/tests/e2e/smoke_prod.py"
-    status: pending
+    status: complete
 
   - id: ACC-10
     stream: MAIN
