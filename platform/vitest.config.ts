@@ -21,6 +21,8 @@ export default defineConfig({
       'tests/e2e/portal/**',
       // Playwright visual spec — no env vars in unit mode, file-level FAIL without this guard.
       'tests/visual/R11B_brand_preservation.spec.ts',
+      // Integration tests requiring uvicorn (Python sidecar) — not available in CI.
+      'tests/integration/test_muhurat_finder_e2e.test.ts',
     ],
   },
   resolve: {
