@@ -1438,7 +1438,7 @@
     },
     {
       "canonical_id": "08_CLASSICAL_CROSS_REFERENCE",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/",
+      "path": "",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L8",
@@ -2073,7 +2073,7 @@
     },
     {
       "canonical_id": "CLAUDECODE_BRIEF_M8",
-      "path": "00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_M8_v1_0.md",
+      "path": "",
       "version": "1.0",
       "status": "ARCHIVED",
       "layer": "L0",
@@ -2108,7 +2108,7 @@
     },
     {
       "canonical_id": "09_MULTI_SCHOOL_TRIANGULATION",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/",
+      "path": "",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L9",
@@ -2261,7 +2261,7 @@
     },
     {
       "canonical_id": "M9B_UNIT_TESTS",
-      "path": "platform/tests/schools/",
+      "path": "",
       "type": "test_suite",
       "description": "78 unit tests across 7 school engines + convergence_calculator + school_runner; all passing",
       "version": "1.0",

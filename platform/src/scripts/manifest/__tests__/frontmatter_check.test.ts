@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+const REPO_ROOT = resolve(__dirname, '../../../../../..')
 
 const FILES_TO_CHECK = [
-  '/Users/Dev/Vibe-Coding/Apps/Madhav/01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
-  '/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v5_0.md',
-  '/Users/Dev/Vibe-Coding/Apps/Madhav/03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md',
+  resolve(REPO_ROOT, '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md'),
+  resolve(REPO_ROOT, '025_HOLISTIC_SYNTHESIS/MSR_v5_0.md'),
+  resolve(REPO_ROOT, '03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md'),
 ]
 
 function extractFrontmatter(content: string): Record<string, unknown> {

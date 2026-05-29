@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const MIGRATIONS_DIR = resolve('/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations')
+const MIGRATIONS_DIR = resolve(__dirname, '../../../../migrations')
 
 describe('migration 008 - per-native namespacing', () => {
   const sql = readFileSync(resolve(MIGRATIONS_DIR, '008_per_native_namespacing.sql'), 'utf-8')
