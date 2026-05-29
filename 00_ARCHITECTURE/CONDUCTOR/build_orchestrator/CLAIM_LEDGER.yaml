@@ -1,0 +1,19 @@
+# CLAIM_LEDGER.yaml — Atomic claim file for 4-stream parallel Conductor execution
+# Schema: v1
+# Race-resolved via git push (push fails → someone else claimed → retry)
+# Read/write protocol: see STREAM_COORDINATION_v1_0.md §6
+schema: v1
+last_updated: "2026-05-29T00:00:00Z"
+last_updated_by: "Cowork (initial empty ledger)"
+
+# Sessions currently being executed (in-flight; file-locks honored by other streams)
+active_claims: []
+
+# Sessions completed (audit trail; capped to last 500 entries)
+released_claims: []
+
+# Sessions whose CI auto-fix failed and was ignored per §5
+ci_red_ignored: []
+
+# Sessions whose cherry-pick to main failed and were halted per §10
+halted: []
