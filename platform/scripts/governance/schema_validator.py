@@ -890,6 +890,152 @@ def validate_dr_entry_yaml(raw: str) -> List[Violation]:
     return violations
 
 
+def validate_a3_schema(repo_root: pathlib.Path) -> List[Violation]:
+    """A3-S7 — Validate A3 schema enforcement (static + file-based checks).
+
+    Checks (no DB required):
+    1. CHART_FACTS_SCHEMA.json exists and has >= 140 categories.
+    2. CHART_FACTS_SCHEMA.json has exactly 4 data channels.
+
+    DB-dependent checks (skipped gracefully if psql absent):
+    3. chart_facts.verification_pass_status column exists.
+    4. chart_facts.fact_subject column exists.
+    5. chart_dashas table exists with two-pass-mandatory CHECK constraint.
+    """
+    import subprocess
+    import shutil
+
+    violations: List[Violation] = []
+    schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+
+    # Static check 1: CHART_FACTS_SCHEMA.json category count
+    if not schema_path.exists():
+        violations.append(Violation(
+            rule="a3_schema_json_missing",
+            severity="HIGH",
+            path="platform/scripts/governance/CHART_FACTS_SCHEMA.json",
+            evidence="CHART_FACTS_SCHEMA.json not found",
+            suggested_remediation="Run A3-S5 to produce CHART_FACTS_SCHEMA.json",
+        ))
+        return violations
+
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        violations.append(Violation(
+            rule="a3_schema_json_invalid",
+            severity="HIGH",
+            path="platform/scripts/governance/CHART_FACTS_SCHEMA.json",
+            evidence=f"Could not parse CHART_FACTS_SCHEMA.json: {exc}",
+            suggested_remediation="Repair the JSON file",
+        ))
+        return violations
+
+    categories = schema.get("categories", {})
+    if len(categories) < 140:
+        violations.append(Violation(
+            rule="a3_schema_category_count_low",
+            severity="HIGH",
+            path="platform/scripts/governance/CHART_FACTS_SCHEMA.json",
+            evidence=f"CHART_FACTS_SCHEMA.json has {len(categories)} categories (expected >= 140)",
+            suggested_remediation="Re-run A3-S5 schema generation — fewer categories than declared",
+        ))
+
+    channels = schema.get("channels", {})
+    if len(channels) != 4:
+        violations.append(Violation(
+            rule="a3_schema_channel_count_wrong",
+            severity="MEDIUM",
+            path="platform/scripts/governance/CHART_FACTS_SCHEMA.json",
+            evidence=f"CHART_FACTS_SCHEMA.json has {len(channels)} channels (expected 4)",
+            suggested_remediation="Verify A3-S5 produced all 4 channel adapters",
+        ))
+
+    # DB-dependent checks
+    if not shutil.which("psql"):
+        return violations
+
+    pg_host = os.environ.get("PGHOST", "127.0.0.1")
+    pg_port = os.environ.get("PGPORT", "5433")
+    pg_user = os.environ.get("PGUSER", "amjis_app")
+    pg_db = os.environ.get("PGDATABASE", "amjis")
+    pg_password = os.environ.get("PGPASSWORD", "")
+    env = {**os.environ, "PGPASSWORD": pg_password}
+
+    def _run(query: str):
+        try:
+            r = subprocess.run(
+                ["psql", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
+                 "-t", "-c", query],
+                capture_output=True, text=True, timeout=10, env=env,
+            )
+            return r.stdout if r.returncode == 0 else None
+        except Exception:
+            return None
+
+    # Check verification_pass_status column
+    out = _run(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema='public' AND table_name='chart_facts' "
+        "AND column_name='verification_pass_status';"
+    )
+    if out is not None and "verification_pass_status" not in out:
+        violations.append(Violation(
+            rule="a3_chart_facts_column_missing[verification_pass_status]",
+            severity="HIGH",
+            path="chart_facts",
+            evidence="Column verification_pass_status missing from chart_facts",
+            suggested_remediation="Apply migration 134_chart_facts_extend.sql",
+        ))
+
+    # Check fact_subject column
+    out = _run(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema='public' AND table_name='chart_facts' "
+        "AND column_name='fact_subject';"
+    )
+    if out is not None and "fact_subject" not in out:
+        violations.append(Violation(
+            rule="a3_chart_facts_column_missing[fact_subject]",
+            severity="HIGH",
+            path="chart_facts",
+            evidence="Column fact_subject missing from chart_facts",
+            suggested_remediation="Apply migration 134_chart_facts_extend.sql",
+        ))
+
+    # Check chart_dashas table + two-pass-mandatory constraint
+    out = _run(
+        "SELECT table_name FROM information_schema.tables "
+        "WHERE table_schema='public' AND table_name='chart_dashas';"
+    )
+    if out is not None:
+        if "chart_dashas" not in out:
+            violations.append(Violation(
+                rule="a3_chart_dashas_table_missing",
+                severity="HIGH",
+                path="chart_dashas",
+                evidence="chart_dashas table does not exist",
+                suggested_remediation="Apply migration 135_chart_dashas.sql",
+            ))
+        else:
+            # Check two-pass-mandatory CHECK constraint
+            out2 = _run(
+                "SELECT conname FROM pg_constraint "
+                "WHERE conrelid = 'chart_dashas'::regclass "
+                "AND contype = 'c' AND conname LIKE '%two_pass%';"
+            )
+            if out2 is not None and "two_pass" not in out2:
+                violations.append(Violation(
+                    rule="a3_chart_dashas_constraint_missing",
+                    severity="MEDIUM",
+                    path="chart_dashas",
+                    evidence="chart_dashas missing two-pass-mandatory CHECK constraint",
+                    suggested_remediation="Apply migration 135_chart_dashas.sql which adds the two-pass constraint",
+                ))
+
+    return violations
+
+
 # --------------------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------------------
@@ -979,6 +1125,7 @@ def run_corpus(repo_root: pathlib.Path) -> List[Violation]:
     violations.extend(validate_current_state(repo_root, schemas))  # Step 10 addition
     violations.extend(validate_mirror_pair_structure(repo_root, ca))
     violations.extend(validate_version_monotonicity(repo_root, ca))
+    violations.extend(validate_a3_schema(repo_root))
     return violations
 
 

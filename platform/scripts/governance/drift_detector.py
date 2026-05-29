@@ -638,6 +638,213 @@ def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
     return findings
 
 
+def check_a3_schema_compliance(conn) -> dict:
+    """A3 schema compliance check.
+
+    Checks chart_facts rows for:
+    - verification_pass_status values outside the declared enum
+    - missing citation_ref (empty string or NULL)
+    - presence of 12 A3 materialized views in pg_matviews
+
+    Hard violation (exits 3): any row with an invalid verification_pass_status.
+    Soft findings: missing citation_ref, missing MVs (logged only).
+
+    Returns a summary dict with counts.
+    """
+    VALID_STATUS = {'single', 'two_pass_verified', 'classical_match', 'divergent_flagged'}
+    MV_NAMES = [
+        "mv_lagna_facts",
+        "mv_planet_dignity_facts",
+        "mv_dasha_active_facts",
+        "mv_yoga_facts",
+        "mv_ashtakavarga_facts",
+        "mv_shadbala_facts",
+        "mv_divisional_facts",
+        "mv_transit_facts",
+        "mv_kp_facts",
+        "mv_upagraha_facts",
+        "mv_tajaka_facts",
+        "mv_synthesis_facts",
+    ]
+
+    summary: dict = {
+        "bad_verification_status_count": 0,
+        "missing_citation_ref_count": 0,
+        "missing_mvs": [],
+        "hard_violation": False,
+    }
+
+    try:
+        cur = conn.cursor()
+
+        # Check invalid verification_pass_status values
+        placeholders = ",".join(["'%s'" % s for s in VALID_STATUS])
+        cur.execute(
+            "SELECT COUNT(*) FROM chart_facts "
+            "WHERE verification_pass_status IS NOT NULL "
+            "AND verification_pass_status NOT IN ('single','two_pass_verified','classical_match','divergent_flagged')"
+        )
+        row = cur.fetchone()
+        bad_count = row[0] if row else 0
+        summary["bad_verification_status_count"] = bad_count
+        if bad_count > 0:
+            summary["hard_violation"] = True
+
+        # Check missing citation_ref
+        cur.execute(
+            "SELECT COUNT(*) FROM chart_facts "
+            "WHERE citation_ref IS NULL OR citation_ref = ''"
+        )
+        row = cur.fetchone()
+        summary["missing_citation_ref_count"] = row[0] if row else 0
+
+        # Check MV presence
+        cur.execute(
+            "SELECT matviewname FROM pg_matviews WHERE schemaname = 'public'"
+        )
+        existing_mvs = {r[0] for r in cur.fetchall()}
+        summary["missing_mvs"] = [mv for mv in MV_NAMES if mv not in existing_mvs]
+
+        cur.close()
+    except Exception as exc:
+        summary["error"] = str(exc)
+
+    return summary
+
+
+def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
+    """A3-S7 — Verify A3 schema enforcement via psql.
+
+    1. Verifies verification_pass_status values match the declared enum.
+    2. Verifies 12 A3 MVs exist in pg_matviews.
+    3. Verifies declared CHART_FACTS_SCHEMA.json categories are present (soft).
+
+    Skips gracefully (LOW) if DB is unreachable or psql is absent.
+    """
+    import subprocess
+    import shutil
+
+    findings: List[Finding] = []
+    schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+
+    MV_NAMES = [
+        "mv_lagna_facts",
+        "mv_planet_dignity_facts",
+        "mv_dasha_active_facts",
+        "mv_yoga_facts",
+        "mv_ashtakavarga_facts",
+        "mv_shadbala_facts",
+        "mv_divisional_facts",
+        "mv_transit_facts",
+        "mv_kp_facts",
+        "mv_upagraha_facts",
+        "mv_tajaka_facts",
+        "mv_synthesis_facts",
+    ]
+
+    if not shutil.which("psql"):
+        findings.append(Finding(
+            cls="a3_schema_db_unreachable",
+            severity="LOW",
+            canonical_id=None,
+            surfaces_involved=["chart_facts"],
+            evidence="psql not found on PATH — skipping A3 schema compliance checks",
+            suggested_remediation="Install postgresql-client for live A3 schema checks",
+        ))
+        return findings
+
+    pg_host = os.environ.get("PGHOST", "127.0.0.1")
+    pg_port = os.environ.get("PGPORT", "5433")
+    pg_user = os.environ.get("PGUSER", "amjis_app")
+    pg_db = os.environ.get("PGDATABASE", "amjis")
+    pg_password = os.environ.get("PGPASSWORD", "")
+    env = {**os.environ, "PGPASSWORD": pg_password}
+
+    def _run_query(query: str):
+        try:
+            result = subprocess.run(
+                ["psql", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
+                 "-t", "-c", query],
+                capture_output=True, text=True, timeout=10, env=env,
+            )
+            if result.returncode != 0:
+                return None, result.stderr.strip()[:200]
+            return result.stdout, None
+        except Exception as exc:
+            return None, str(exc)
+
+    # 1. Check invalid verification_pass_status
+    out, err = _run_query(
+        "SELECT COUNT(*) FROM chart_facts "
+        "WHERE verification_pass_status IS NOT NULL "
+        "AND verification_pass_status NOT IN "
+        "('single','two_pass_verified','classical_match','divergent_flagged');"
+    )
+    if err:
+        findings.append(Finding(
+            cls="a3_schema_db_unreachable",
+            severity="LOW",
+            canonical_id=None,
+            surfaces_involved=["chart_facts"],
+            evidence=f"DB query failed: {err}",
+            suggested_remediation="Ensure DB is running on PGHOST:PGPORT",
+        ))
+        return findings
+    bad_count = int(out.strip()) if out and out.strip().isdigit() else 0
+    if bad_count > 0:
+        findings.append(Finding(
+            cls="a3_invalid_verification_status",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["chart_facts"],
+            evidence=f"{bad_count} chart_facts row(s) have verification_pass_status outside the declared enum",
+            suggested_remediation="Fix or migrate rows to use: single, two_pass_verified, classical_match, divergent_flagged",
+        ))
+
+    # 2. Check 12 MVs exist
+    out, err = _run_query(
+        "SELECT matviewname FROM pg_matviews WHERE schemaname = 'public';"
+    )
+    if out is not None:
+        existing_mvs = {line.strip() for line in out.splitlines() if line.strip()}
+        missing_mvs = [mv for mv in MV_NAMES if mv not in existing_mvs]
+        if missing_mvs:
+            findings.append(Finding(
+                cls="a3_materialized_views_missing",
+                severity="HIGH",
+                canonical_id=None,
+                surfaces_involved=["pg_matviews"],
+                evidence=f"Missing A3 MVs: {', '.join(missing_mvs)}",
+                suggested_remediation="Apply migration 138_mvs.sql to create the 12 A3 materialized views",
+            ))
+
+    # 3. Soft check: declared categories presence (LOW)
+    if schema_path.exists():
+        try:
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            declared_categories = list(schema.get("categories", {}).keys())
+            if declared_categories:
+                out, err = _run_query(
+                    "SELECT DISTINCT fact_category FROM chart_facts WHERE fact_category IS NOT NULL;"
+                )
+                if out is not None:
+                    present_cats = {line.strip() for line in out.splitlines() if line.strip()}
+                    missing_cats = [c for c in declared_categories if c not in present_cats]
+                    if missing_cats:
+                        findings.append(Finding(
+                            cls="a3_category_not_yet_populated",
+                            severity="LOW",
+                            canonical_id=None,
+                            surfaces_involved=["chart_facts", "CHART_FACTS_SCHEMA.json"],
+                            evidence=f"{len(missing_cats)} CHART_FACTS_SCHEMA.json categories not yet in DB (pending writers): {', '.join(missing_cats[:5])}{'...' if len(missing_cats) > 5 else ''}",
+                            suggested_remediation="Run the writer for each pending category; this is a soft check — writers are expected to be added incrementally",
+                        ))
+        except Exception:
+            pass
+
+    return findings
+
+
 def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
     """§H.3.8 — Unreferenced canonical-artifact scan."""
     findings: List[Finding] = []
@@ -732,6 +939,7 @@ def run_all_checks(repo_root: pathlib.Path) -> List[Finding]:
     findings.extend(check_phantom_references(repo_root))
     findings.extend(check_unreferenced_canonical(repo_root, ca))
     findings.extend(check_chart_facts_schema(repo_root))
+    findings.extend(check_a3_categories_and_mvs(repo_root))
     return findings
 
 
