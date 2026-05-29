@@ -92,6 +92,22 @@ ASSET_LABELS: dict[str, str] = {
     "A14_ucn_digest":     "UCN Digest",
 }
 
+# ── Materialized views refreshed after all asset writers complete (A3-S6) ──────
+MV_NAMES: list[str] = [
+    "mv_chart_planet_summary",
+    "mv_chart_house_summary",
+    "mv_chart_yogas_active_at_birth",
+    "mv_chart_vargas_summary",
+    "mv_chart_sahams",
+    "mv_chart_arudhas",
+    "mv_chart_shadbala_summary",
+    "mv_chart_bhava_bala_summary",
+    "mv_chart_ashtakavarga_summary",
+    "mv_cross_ayanamsha_consensus",
+    "mv_chart_panchanga_birth_summary",
+    "mv_chart_sensitive_points_summary",
+]
+
 # ── Production default DSN (Cloud SQL via Cloud Run sidecar proxy) ─────────────
 _DEFAULT_DSN = (
     "host=127.0.0.1 port=5433 dbname=amjis user=amjis_app "
@@ -702,7 +718,14 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
         # Yield between asset steps (C-04: polling checkpoint)
         await asyncio.sleep(0)
 
-    # 4. Full success
+    # 4. Full success — refresh all materialized views before marking complete (A3-S6)
+    log.info("mv_refresh_start", extra={"build_id": build_id, "mv_count": len(MV_NAMES)})
+    with conn.cursor() as cur:
+        for mv in MV_NAMES:
+            cur.execute(f"REFRESH MATERIALIZED VIEW {mv}")
+    conn.commit()
+    log.info("mv_refresh_complete", extra={"build_id": build_id})
+
     total_rows = 0  # rows_written is scoped to the loop; use 0 as aggregate sentinel here
     update_build_status(conn, build_id, "complete")
     emit_event(conn, build_id, "build_complete", rows_written=total_rows)
