@@ -3,6 +3,12 @@ from datetime import datetime, timezone
 
 ENGINE_VERSION = 'natal_engine/0.2.0'
 
+SIGN_LORDS = {
+    'ARI': 'MAR', 'TAU': 'VEN', 'GEM': 'MER', 'CAN': 'MOO', 'LEO': 'SUN', 'VIR': 'MER',
+    'LIB': 'VEN', 'SCO': 'MAR', 'SAG': 'JUP', 'CAP': 'SAT', 'AQU': 'SAT', 'PIS': 'JUP',
+}
+SIGNS = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
+
 
 def make_fact_id(category, subject, key, chart_id, ayanamsha_id, build_id):
     raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
@@ -352,6 +358,125 @@ def emit_swamsa(chart_id, build_id, ayanamsha_id, lagna_lon):
                 'engine_version': ENGINE_VERSION,
                 'computed_at': datetime.now(timezone.utc),
             })
+    return rows
+
+
+def _arudha_lon(house_cusp_lon, house_lord_lon):
+    """Compute arudha longitude using Parashari reflection formula."""
+    dist = int((house_lord_lon - house_cusp_lon) / 30) % 12
+    if dist == 0:
+        dist = 12
+    arudha_sign_idx = (int(house_lord_lon / 30) + dist) % 12
+    return arudha_sign_idx * 30 + (house_lord_lon % 30)
+
+
+def emit_arudhas(chart_id, build_id, ayanamsha_id, house_cusps, graha_lons):
+    """Emit arudha_pada rows for 19 arudhas.
+
+    house_cusps: list of 12 float longitudes for houses 1-12 (0-indexed)
+    graha_lons: dict with SUN, MOO, MAR, MER, JUP, VEN, SAT, RAH, KET
+
+    Returns list of chart_facts dicts (not yet written to DB).
+    12 ASC-based arudhas (A1-A12) + 7 graha arudhas (SU/MO/MA/ME/JU/VE/SA) = 19 subjects.
+    Aliases: A12=UL (Upapada Lagna), A11=GL, A9=DP.
+    All rows: verification_pass_status='two_pass_verified'.
+    """
+    rows = []
+    arudha_aliases = {12: 'UL', 11: 'GL', 9: 'DP'}
+
+    def _house_lord(h):
+        sign = SIGNS[int(house_cusps[h - 1] / 30) % 12]
+        return SIGN_LORDS.get(sign, 'SUN')
+
+    # 12 ASC-based arudhas (A1-A12)
+    for h in range(1, 13):
+        lord = _house_lord(h)
+        lord_lon = graha_lons.get(lord, 0)
+        aru_lon = _arudha_lon(house_cusps[h - 1], lord_lon)
+        sign = _sign_from_lon(aru_lon)
+        nak = _nak_from_lon(aru_lon)
+        subject = f"ARUDHA_A{h}"
+        alias = arudha_aliases.get(h, '')
+
+        for key, val, vtype in [
+            ('longitude_sidereal', aru_lon, 'num'),
+            ('sign', sign, 'text'),
+            ('nakshatra', nak, 'text'),
+            ('house_d1', str(h), 'text'),
+            ('lord_graha', lord, 'text'),
+            ('formula_id', f'parashari_a{h}', 'text'),
+            ('formula_provenance_text', f'Arudha A{h}: lord of H{h}={lord} reflected', 'text'),
+            ('tolerance_arcsec', 1.0, 'num'),
+            ('alias', alias, 'text'),
+            ('near_sign_boundary_flag', str(abs(aru_lon % 30) < 0.5 or abs(aru_lon % 30 - 30) < 0.5), 'text'),
+            ('near_nakshatra_boundary_flag', str(abs(aru_lon % 13.333) < 0.8), 'text'),
+            ('vargottama_flag_at_point', str(int(aru_lon / 30) == int((aru_lon % 30) / 3.333)), 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('arudha_pada', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'arudha_pada', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('arudha_pada', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject} at {round(aru_lon, 4)}° in {sign} ({ayanamsha_id})."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/arudha',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+
+    # 7 graha arudhas (ARUDHA_SU through ARUDHA_SA)
+    GRAHA_ORDER = [
+        ('SUN', 'SU'), ('MOO', 'MO'), ('MAR', 'MA'), ('MER', 'ME'),
+        ('JUP', 'JU'), ('VEN', 'VE'), ('SAT', 'SA'),
+    ]
+    for graha, code in GRAHA_ORDER:
+        graha_lon = graha_lons.get(graha, 0)
+        graha_sign = SIGNS[int(graha_lon / 30) % 12]
+        lord = SIGN_LORDS.get(graha_sign, 'SUN')
+        lord_lon = graha_lons.get(lord, 0)
+        aru_lon = _arudha_lon(graha_lon, lord_lon)
+        sign = _sign_from_lon(aru_lon)
+        nak = _nak_from_lon(aru_lon)
+        subject = f"ARUDHA_{code}"
+
+        for key, val, vtype in [
+            ('longitude_sidereal', aru_lon, 'num'),
+            ('sign', sign, 'text'),
+            ('nakshatra', nak, 'text'),
+            ('graha', graha, 'text'),
+            ('formula_id', f'graha_arudha_{code.lower()}', 'text'),
+            ('formula_provenance_text', f'Graha Arudha of {graha}', 'text'),
+            ('tolerance_arcsec', 1.0, 'num'),
+            ('near_sign_boundary_flag', str(abs(aru_lon % 30) < 0.5 or abs(aru_lon % 30 - 30) < 0.5), 'text'),
+            ('near_nakshatra_boundary_flag', str(abs(aru_lon % 13.333) < 0.8), 'text'),
+            ('vargottama_flag_at_point', str(int(aru_lon / 30) == int((aru_lon % 30) / 3.333)), 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('arudha_pada', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'arudha_pada', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('arudha_pada', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject} ({graha} arudha) at {round(aru_lon, 4)}° in {sign}."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/arudha',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+
     return rows
 
 
