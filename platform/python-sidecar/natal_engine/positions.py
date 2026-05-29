@@ -385,3 +385,120 @@ def compute_graha_states(
     )
 
     return states
+
+
+def compute_node_states(
+    jd_ut: float,
+    ayanamsha_deg: float,
+    geo_lat: float = 20.27,
+    geo_lon: float = 85.84,
+) -> dict[str, dict]:
+    """Compute True Node and Mean Node Rahu/Ketu positions separately.
+
+    Returns a dict with 4 entries:
+      rahu_true  — osculating (true) node Rahu (swe.TRUE_NODE = 11)
+      ketu_true  — antipodal to rahu_true
+      rahu_mean  — mean node Rahu (swe.MEAN_NODE = 10)
+      ketu_mean  — antipodal to rahu_mean
+
+    Both node types are always retrograde by astronomical convention.
+
+    Implementation note — why we use tropical flags + manual ayanamsha subtraction:
+    swisseph 2.10 with SIDM_TRUE_CITRA active raises a Moshier-range error when
+    FLG_SIDEREAL is combined with TRUE_NODE (body 11).  This is a swisseph internal
+    behaviour where TRUE_NODE's ephemeris code path triggers a range check against
+    the Moshier table limits when the sidereal mode's internal epoch (t0) is set.
+    MEAN_NODE (body 10) does not trigger this bug under the same sidereal mode.
+
+    The safe workaround — used here and matching how `get_heliocentric()` handles
+    nodes — is to compute tropical longitude via `_TROPICAL_FLAGS` (no FLG_SIDEREAL)
+    and subtract the ayanamsha value explicitly:
+        sidereal_lon = (tropical_lon - ayanamsha_deg) % 360.0
+
+    The ayanamsha value passed in is the one already computed by `apply_ayanamsha()`
+    for the chart's JD, ensuring consistency with the rest of the engine output.
+
+    Equatorial coordinates (RA / declination) for the nodes are computed via
+    the existing `get_equatorial()` helper which uses FLG_EQUATORIAL.
+    Horizontal coordinates (azimuth / altitude) are computed via `get_horizontal()`.
+    """
+    node_pairs = [
+        ("true", swe.TRUE_NODE, "rahu_true", "ketu_true"),
+        ("mean", swe.MEAN_NODE, "rahu_mean", "ketu_mean"),
+    ]
+    result: dict[str, dict] = {}
+
+    for _node_type, body_id, label_rahu, label_ketu in node_pairs:
+        # Use tropical flags (no FLG_SIDEREAL) to avoid a swisseph 2.10 bug where
+        # TRUE_NODE + FLG_SIDEREAL + SIDM_TRUE_CITRA triggers a Moshier range error.
+        # We apply the ayanamsha correction manually instead.
+        calc_result, _ = swe.calc_ut(jd_ut, body_id, _TROPICAL_FLAGS | swe.FLG_SPEED)
+        tropical_lon = calc_result[0] % 360.0
+        speed = calc_result[3]  # typically negative (retrograde)
+
+        # Sidereal longitude = tropical − ayanamsha (mod 360)
+        rahu_lon = (tropical_lon - ayanamsha_deg) % 360.0
+
+        ketu_lon = (rahu_lon + 180.0) % 360.0
+
+        # Equatorial coordinates via FLG_EQUATORIAL (tropical, not sidereal)
+        rahu_ra, rahu_dec = get_equatorial(body_id, jd_ut)
+        ketu_ra = (rahu_ra + 180.0) % 360.0
+        ketu_dec = -rahu_dec  # antipodal declination
+
+        # Horizontal coordinates: reuse the tropical longitude already computed above.
+        trop_rahu_lon = tropical_lon
+        trop_ketu_lon = (trop_rahu_lon + 180.0) % 360.0
+
+        rahu_az, rahu_alt = get_horizontal(jd_ut, geo_lon, geo_lat, trop_rahu_lon, 0.0)
+        ketu_az, ketu_alt = get_horizontal(jd_ut, geo_lon, geo_lat, trop_ketu_lon, 0.0)
+
+        # Sign + nakshatra for Rahu
+        rahu_sign_id, rahu_sign_name = _lon_to_sign(rahu_lon)
+        rahu_nak_id, rahu_nak_name, rahu_pada = _lon_to_nakshatra(rahu_lon)
+
+        # Sign + nakshatra for Ketu
+        ketu_sign_id, ketu_sign_name = _lon_to_sign(ketu_lon)
+        ketu_nak_id, ketu_nak_name, ketu_pada = _lon_to_nakshatra(ketu_lon)
+
+        result[label_rahu] = {
+            "longitude": rahu_lon,
+            "latitude": 0.0,             # nodes lie on the ecliptic by definition
+            "speed": speed,
+            "retro": True,               # nodes are always retrograde
+            "sign": rahu_sign_name,
+            "sign_index": rahu_sign_id,
+            "degree": rahu_lon % 30.0,
+            "nakshatra": rahu_nak_name,
+            "nakshatra_id": rahu_nak_id,
+            "pada": rahu_pada,
+            "heliocentric_longitude": rahu_lon,  # nodes: mirror geocentric (no helio meaning)
+            "heliocentric_latitude": 0.0,
+            "declination_deg": rahu_dec,
+            "right_ascension_deg": rahu_ra,
+            "altitude_deg": rahu_alt,
+            "azimuth_deg": rahu_az,
+            "out_of_bounds": abs(rahu_dec) > _OOB_THRESHOLD,
+        }
+
+        result[label_ketu] = {
+            "longitude": ketu_lon,
+            "latitude": 0.0,
+            "speed": -speed,             # counter-node: negated speed
+            "retro": True,               # nodes are always retrograde
+            "sign": ketu_sign_name,
+            "sign_index": ketu_sign_id,
+            "degree": ketu_lon % 30.0,
+            "nakshatra": ketu_nak_name,
+            "nakshatra_id": ketu_nak_id,
+            "pada": ketu_pada,
+            "heliocentric_longitude": ketu_lon,
+            "heliocentric_latitude": 0.0,
+            "declination_deg": ketu_dec,
+            "right_ascension_deg": ketu_ra,
+            "altitude_deg": ketu_alt,
+            "azimuth_deg": ketu_az,
+            "out_of_bounds": abs(ketu_dec) > _OOB_THRESHOLD,
+        }
+
+    return result

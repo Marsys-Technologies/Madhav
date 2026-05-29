@@ -34,7 +34,7 @@ from .dashas import compute_vimshottari_mahadasha
 from .dignities import refine_dignities
 from .houses import compute_houses_whole_sign
 from .panchanga import compute_panchanga
-from .positions import compute_graha_states, set_ayanamsha
+from .positions import compute_graha_states, compute_node_states, set_ayanamsha
 from .provenance import build_provenance
 from .schema import CHART_OUTPUT_SCHEMA, Inputs, validate_chart_output
 from .sensitive_points import compute_sensitive_points
@@ -166,6 +166,18 @@ def compute_chart(
         jd_ut, inp.latitude_deg, inp.longitude_deg, grahas, ascendant
     )
 
+    # E-03: emit both True Node (osculating) and Mean Node Rahu/Ketu as
+    # separate entries under `node_variants`.  This lives outside `grahas`
+    # (which must remain exactly 9 entries per schema) and outside the
+    # JSON-Schema validation envelope so the strict `grahas` minItems/maxItems
+    # contract is preserved.
+    node_variants = compute_node_states(
+        jd_ut,
+        ayanamsha_deg=ayan_value_deg,
+        geo_lat=inp.latitude_deg,
+        geo_lon=inp.longitude_deg,
+    )
+
     provenance = build_provenance(
         inputs=asdict(inp),
         engine_version=engine_version,
@@ -192,6 +204,9 @@ def compute_chart(
         "id": effective_ayanamsha,
         "value_deg": ayan_value_deg,
     }
+    # E-03: True Node + Mean Node variants — outside the JSON-Schema envelope
+    # so the `grahas` array remains exactly 9 entries.
+    payload["node_variants"] = node_variants
 
     if validate:
         validate_chart_output(payload)
@@ -201,6 +216,7 @@ def compute_chart(
 
 __all__ = [
     "compute_chart",
+    "compute_node_states",
     "ENGINE_VERSION_DEFAULT",
     "AYANAMSHA_DEFAULT",
     "CHART_OUTPUT_SCHEMA",
