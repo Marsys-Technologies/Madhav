@@ -565,6 +565,107 @@ def emit_midpoints(chart_id, build_id, ayanamsha_id, graha_lons, lagna_lon, mc_l
     return rows
 
 
+VIMSH_ORDER = ['KET', 'VEN', 'SUN', 'MOO', 'MAR', 'RAH', 'JUP', 'SAT', 'MER']
+VIMSH_YEARS = {'KET': 7, 'VEN': 20, 'SUN': 6, 'MOO': 10, 'MAR': 7, 'RAH': 18, 'JUP': 16, 'SAT': 19, 'MER': 17}
+_TOTAL_VIMSH_YEARS = 120
+
+NAK_LORDS = [
+    'KET', 'VEN', 'SUN', 'MOO', 'MAR', 'RAH', 'JUP', 'SAT', 'MER',
+    'KET', 'VEN', 'SUN', 'MOO', 'MAR', 'RAH', 'JUP', 'SAT', 'MER',
+    'KET', 'VEN', 'SUN', 'MOO', 'MAR', 'RAH', 'JUP', 'SAT', 'MER',
+]
+
+
+def _sign_lord_from_lon(lon):
+    return SIGN_LORDS[SIGNS[int(lon / 30) % 12]]
+
+
+def _kp_star_lord(lon):
+    """Nakshatra lord (star lord) for a longitude."""
+    return NAK_LORDS[int(lon / 13.333) % 27]
+
+
+def _kp_sub_lord(lon):
+    """KP sub-lord for a longitude."""
+    nak_idx = int(lon / 13.333) % 27
+    nak_start = nak_idx * 13.333
+    pos_in_nak = lon - nak_start
+    nak_lord = NAK_LORDS[nak_idx]
+    vimsh_idx = VIMSH_ORDER.index(nak_lord)
+    frac = pos_in_nak / 13.333
+    cumulative = 0.0
+    for i in range(9):
+        sub_idx = (vimsh_idx + i) % 9
+        sub_lord = VIMSH_ORDER[sub_idx]
+        sub_frac = VIMSH_YEARS[sub_lord] / _TOTAL_VIMSH_YEARS
+        if frac <= cumulative + sub_frac:
+            return sub_lord
+        cumulative += sub_frac
+    return VIMSH_ORDER[vimsh_idx]
+
+
+def emit_kp_ruling_planets(chart_id, build_id, ayanamsha_id, lagna_lon, moon_lon, weekday):
+    """Emit kp_ruling_planets_natal rows — 5 (or 6) KP Ruling Planets."""
+    WEEKDAY_LORDS = {0: 'SUN', 1: 'MOO', 2: 'MAR', 3: 'MER', 4: 'JUP', 5: 'VEN', 6: 'SAT'}
+    rps = {
+        'RP_ASC_LORD':       _sign_lord_from_lon(lagna_lon),
+        'RP_ASC_STAR_LORD':  _kp_star_lord(lagna_lon),
+        'RP_ASC_SUB_LORD':   _kp_sub_lord(lagna_lon),
+        'RP_MOON_SIGN_LORD': _sign_lord_from_lon(moon_lon),
+        'RP_MOON_STAR_LORD': _kp_star_lord(moon_lon),
+        'RP_DAY_LORD':       WEEKDAY_LORDS[weekday % 7],
+    }
+    rows = []
+    for subject, graha in rps.items():
+        for key, val in [('graha', graha), ('formula_id', 'kp_ruling_planets')]:
+            rows.append({
+                'fact_id': make_fact_id('kp_ruling_planets_natal', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'kp_ruling_planets_natal', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_text': str(val), 'fact_value_num': None,
+                'citation_ref': make_citation_ref('kp_ruling_planets_natal', subject, key, chart_id, ayanamsha_id),
+                'citation_human': f"KP Ruling Planet {subject}: {graha}.",
+                'source_calculation': 'sensitive_points_writer_a5/kp_rp',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
+def emit_kp_cuspal_significators(chart_id, build_id, ayanamsha_id, house_cusps):
+    """Emit kp_cuspal_significators rows — 12 cusps × lord/star_lord/sub_lord."""
+    rows = []
+    for i, cusp_lon in enumerate(house_cusps[:12]):
+        cusp_num = i + 1
+        subject = f"CUSP_{cusp_num}"
+        sign_lord = _sign_lord_from_lon(cusp_lon)
+        star_lord = _kp_star_lord(cusp_lon)
+        sub_lord = _kp_sub_lord(cusp_lon)
+        for key, val, vtype in [
+            ('lord', sign_lord, 'text'),
+            ('star_lord', star_lord, 'text'),
+            ('sub_lord', sub_lord, 'text'),
+            ('cusp_longitude', cusp_lon, 'num'),
+            ('formula_id', 'kp_cuspal', 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('kp_cuspal_significators', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'kp_cuspal_significators', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'unit': 'deg' if key == 'cusp_longitude' else None,
+                'citation_ref': make_citation_ref('kp_cuspal_significators', subject, key, chart_id, ayanamsha_id),
+                'citation_human': f"Cusp {cusp_num} {key}: {val}.",
+                'source_calculation': 'sensitive_points_writer_a5/kp_cuspal',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
 def compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
     """
     All longitudes in degrees (0-360).
