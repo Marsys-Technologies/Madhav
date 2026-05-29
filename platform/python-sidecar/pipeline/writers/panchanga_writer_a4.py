@@ -1,10 +1,11 @@
 """
 pipeline.writers.panchanga_writer_a4 — Write birth-day panchanga limbs to chart_facts.
 A4-S1: 5 limbs — tithi, vara, nakshatra (ayanamsha-dependent), yoga, karana.
+A4-S2: hora + choghadiya birth windows.
 """
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 ENGINE_VERSION = "natal_engine/0.2.0"
 
@@ -213,3 +214,177 @@ def write_panchanga_limbs(conn, chart_id, build_id, birth_date, chart_outputs_by
         execute_values(conn, _INSERT_SQL, tuples)
 
     return len(tuples)
+
+
+# ── A4-S2: Hora + Choghadiya ─────────────────────────────────────────────────
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+HORA_LORDS_FROM_WEEKDAY = {
+    0: ['SUN', 'VEN', 'MER', 'MOO', 'SAT', 'JUP', 'MAR'],  # Sunday
+    1: ['MOO', 'SAT', 'JUP', 'MAR', 'SUN', 'VEN', 'MER'],  # Monday
+    2: ['MAR', 'SUN', 'VEN', 'MER', 'MOO', 'SAT', 'JUP'],  # Tuesday
+    3: ['MER', 'MOO', 'SAT', 'JUP', 'MAR', 'SUN', 'VEN'],  # Wednesday
+    4: ['JUP', 'MAR', 'SUN', 'VEN', 'MER', 'MOO', 'SAT'],  # Thursday
+    5: ['VEN', 'MER', 'MOO', 'SAT', 'JUP', 'MAR', 'SUN'],  # Friday
+    6: ['SAT', 'JUP', 'MAR', 'SUN', 'VEN', 'MER', 'MOO'],  # Saturday
+}
+
+_HORA_SHUBH = {'JUP', 'VEN', 'MER', 'MOO'}
+
+CHOGHADIYA_SEQUENCE_DAY = {
+    0: ['Udveg', 'Char', 'Labh', 'Amrit', 'Kaal', 'Shubh', 'Rog', 'Udveg'],  # Sunday
+    1: ['Amrit', 'Kaal', 'Shubh', 'Rog', 'Udveg', 'Char', 'Labh', 'Amrit'],  # Monday
+    2: ['Rog', 'Udveg', 'Char', 'Labh', 'Amrit', 'Kaal', 'Shubh', 'Rog'],    # Tuesday
+    3: ['Labh', 'Amrit', 'Kaal', 'Shubh', 'Rog', 'Udveg', 'Char', 'Labh'],   # Wednesday
+    4: ['Shubh', 'Rog', 'Udveg', 'Char', 'Labh', 'Amrit', 'Kaal', 'Shubh'],  # Thursday
+    5: ['Char', 'Labh', 'Amrit', 'Kaal', 'Shubh', 'Rog', 'Udveg', 'Char'],   # Friday
+    6: ['Kaal', 'Shubh', 'Rog', 'Udveg', 'Char', 'Labh', 'Amrit', 'Kaal'],   # Saturday
+}
+
+CHOGHADIYA_CLASSIFICATION = {
+    'Amrit': 'shubh', 'Shubh': 'shubh', 'Labh': 'shubh', 'Char': 'shubh',
+    'Kaal': 'ashubh', 'Rog': 'ashubh', 'Udveg': 'ashubh',
+}
+
+_CHOGHADIYA_LORD = {
+    'Amrit': 'MOO', 'Shubh': 'VEN', 'Labh': 'MER', 'Char': 'MER',
+    'Kaal': 'SAT', 'Rog': 'MAR', 'Udveg': 'SUN',
+}
+
+
+def _parse_hm(birth_date, time_str):
+    """Parse 'HH:MM' or 'HH:MM:SS' + birth_date into an IST-aware datetime."""
+    parts = time_str.strip().split(':')
+    h, m = int(parts[0]), int(parts[1])
+    s = int(parts[2]) if len(parts) > 2 else 0
+    y, mo, d = (int(x) for x in birth_date.split('-'))
+    return datetime(y, mo, d, h, m, s, tzinfo=_IST)
+
+
+def emit_hora_birth(chart_id, build_id, birth_time, sunrise_time, weekday, birth_date):
+    """
+    Compute chart_facts rows for panchanga_hora_birth (6 keys).
+
+    Args:
+        chart_id: str UUID
+        build_id: str
+        birth_time: 'HH:MM' or 'HH:MM:SS' in IST
+        sunrise_time: 'HH:MM' or 'HH:MM:SS' in IST
+        weekday: int 0=Sunday … 6=Saturday
+        birth_date: 'YYYY-MM-DD'
+
+    Returns:
+        list of 6 row tuples (hora_number, lord, day_or_night, classification,
+        start_iso, end_iso)
+    """
+    birth_dt = _parse_hm(birth_date, birth_time)
+    sunrise_dt = _parse_hm(birth_date, sunrise_time)
+
+    elapsed_minutes = (birth_dt - sunrise_dt).total_seconds() / 60
+    if elapsed_minutes < 0:
+        elapsed_minutes += 1440  # handle past-midnight case
+
+    hora_num = int(elapsed_minutes / 60) + 1  # 1-indexed
+    hora_num = min(max(hora_num, 1), 24)
+
+    sequence = HORA_LORDS_FROM_WEEKDAY[weekday]
+    lord = sequence[(hora_num - 1) % 7]
+    day_night = 'day' if hora_num <= 12 else 'night'
+    classification = 'shubh' if lord in _HORA_SHUBH else 'ashubh'
+
+    start_dt = sunrise_dt + timedelta(minutes=(hora_num - 1) * 60)
+    end_dt = sunrise_dt + timedelta(minutes=hora_num * 60)
+
+    fields = [
+        ('hora_number',    hora_num,             'num'),
+        ('lord',           lord,                 'text'),
+        ('day_or_night',   day_night,            'text'),
+        ('classification', classification,        'text'),
+        ('start_iso',      start_dt.isoformat(), 'text'),
+        ('end_iso',        end_dt.isoformat(),   'text'),
+    ]
+
+    rows = []
+    for key, val, vtype in fields:
+        cref = make_citation_ref('panchanga_hora_birth', 'HORA_BIRTH', key, chart_id, 'INVARIANT')
+        chum = f"Hora at birth: lord={val}." if key == 'lord' else f"Hora {key}: {val}."
+        rows.append(_row(
+            chart_id, 'INVARIANT', build_id,
+            'panchanga_hora_birth', 'HORA_BIRTH', key,
+            str(val) if vtype == 'text' else None,
+            float(val) if vtype == 'num' else None,
+            cref, chum, 'panchanga_writer_a4/hora',
+        ))
+    return rows
+
+
+def emit_choghadiya_birth(chart_id, build_id, birth_time, sunrise_time, sunset_time, weekday, birth_date):
+    """
+    Compute chart_facts rows for panchanga_choghadiya_birth (6 keys).
+
+    Args:
+        chart_id: str UUID
+        build_id: str
+        birth_time: 'HH:MM' or 'HH:MM:SS' in IST
+        sunrise_time: 'HH:MM' or 'HH:MM:SS' in IST
+        sunset_time: 'HH:MM' or 'HH:MM:SS' in IST
+        weekday: int 0=Sunday … 6=Saturday
+        birth_date: 'YYYY-MM-DD'
+
+    Returns:
+        list of 6 row tuples (choghadiya_number, name, lord, classification,
+        start_iso, end_iso)
+    """
+    birth_dt = _parse_hm(birth_date, birth_time)
+    sunrise_dt = _parse_hm(birth_date, sunrise_time)
+    sunset_dt = _parse_hm(birth_date, sunset_time)
+
+    day_secs = (sunset_dt - sunrise_dt).total_seconds()
+    segment_secs = day_secs / 8
+    elapsed_secs = (birth_dt - sunrise_dt).total_seconds()
+    if elapsed_secs < 0:
+        elapsed_secs += 86400
+
+    if elapsed_secs < day_secs:
+        seg_idx = min(int(elapsed_secs / segment_secs), 7)
+        chog_name = CHOGHADIYA_SEQUENCE_DAY[weekday][seg_idx]
+        chog_num = seg_idx + 1  # 1–8 day
+        start_dt = sunrise_dt + timedelta(seconds=seg_idx * segment_secs)
+        end_dt = sunrise_dt + timedelta(seconds=(seg_idx + 1) * segment_secs)
+    else:
+        # Night choghadiya (9–16)
+        night_secs = 86400 - day_secs
+        night_segment_secs = night_secs / 8
+        night_elapsed = elapsed_secs - day_secs
+        seg_idx = min(int(night_elapsed / night_segment_secs), 7)
+        next_weekday = (weekday + 1) % 7
+        chog_name = CHOGHADIYA_SEQUENCE_DAY[next_weekday][seg_idx]
+        chog_num = seg_idx + 9  # 9–16 night
+        start_dt = sunset_dt + timedelta(seconds=seg_idx * night_segment_secs)
+        end_dt = sunset_dt + timedelta(seconds=(seg_idx + 1) * night_segment_secs)
+
+    lord = _CHOGHADIYA_LORD.get(chog_name, 'SUN')
+    classification = CHOGHADIYA_CLASSIFICATION.get(chog_name, 'mishrit')
+
+    fields = [
+        ('choghadiya_number', chog_num,              'num'),
+        ('name',              chog_name,              'text'),
+        ('lord',              lord,                   'text'),
+        ('classification',    classification,          'text'),
+        ('start_iso',         start_dt.isoformat(),   'text'),
+        ('end_iso',           end_dt.isoformat(),     'text'),
+    ]
+
+    rows = []
+    for key, val, vtype in fields:
+        cref = make_citation_ref('panchanga_choghadiya_birth', 'CHOGHADIYA_BIRTH', key, chart_id, 'INVARIANT')
+        chum = f"Choghadiya at birth: {val}."
+        rows.append(_row(
+            chart_id, 'INVARIANT', build_id,
+            'panchanga_choghadiya_birth', 'CHOGHADIYA_BIRTH', key,
+            str(val) if vtype == 'text' else None,
+            float(val) if vtype == 'num' else None,
+            cref, chum, 'panchanga_writer_a4/choghadiya',
+        ))
+    return rows
