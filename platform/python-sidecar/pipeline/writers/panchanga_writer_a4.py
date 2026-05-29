@@ -615,3 +615,378 @@ def emit_auspicious_windows(chart_id, build_id, weekday,
                nish_s, nish_e, 48.0)
 
     return rows
+
+
+# ── A4-S5: Solar Context + Calendrical ───────────────────────────────────────
+
+AYANA_MONTHS = {
+    1: 'Uttarayana', 2: 'Uttarayana', 3: 'Uttarayana',
+    4: 'Uttarayana', 5: 'Uttarayana', 6: 'Uttarayana',
+    7: 'Dakshinayana', 8: 'Dakshinayana', 9: 'Dakshinayana',
+    10: 'Dakshinayana', 11: 'Dakshinayana', 12: 'Dakshinayana',
+}
+
+RITU_TABLE = {
+    1: 'Shishir', 2: 'Shishir', 3: 'Vasant', 4: 'Vasant',
+    5: 'Grishma', 6: 'Grishma', 7: 'Varsha', 8: 'Varsha',
+    9: 'Sharad', 10: 'Sharad', 11: 'Hemant', 12: 'Hemant',
+}
+
+# Approximate sankranti dates: (month, day, rashi_name)
+_SANKRANTI_TABLE = [
+    (1, 14, 'Makara'),
+    (2, 13, 'Kumbha'),
+    (3, 14, 'Meena'),
+    (4, 14, 'Mesha'),
+    (5, 15, 'Vrishabha'),
+    (6, 15, 'Mithuna'),
+    (7, 16, 'Karka'),
+    (8, 16, 'Simha'),
+    (9, 16, 'Kanya'),
+    (10, 17, 'Tula'),
+    (11, 16, 'Vrischika'),
+    (12, 15, 'Dhanu'),
+]
+
+JOVIAN_CYCLE = [
+    'Prabhava', 'Vibhava', 'Shukla', 'Pramoda', 'Prajapati', 'Angirasa', 'Shrimukha',
+    'Bhava', 'Yuva', 'Dhata', 'Ishvara', 'Bahudhanya', 'Pramathi', 'Vikrama', 'Vrisha',
+    'Chitrabhanu', 'Subhanu', 'Tarana', 'Parthiva', 'Vyaya', 'Sarvajit', 'Sarvadharin',
+    'Virodhi', 'Vikrita', 'Khara', 'Nandana', 'Vijaya', 'Jaya', 'Manmatha', 'Durmukhi',
+    'Hevilambi', 'Vilambi', 'Vikari', 'Sharvari', 'Plava', 'Shubhakrit', 'Shobhakrit',
+    'Krodhi', 'Vishvavasu', 'Parabhava', 'Plavanga', 'Kilaka', 'Saumya', 'Sadharana',
+    'Virodhikrit', 'Paridhaavi', 'Pramaadicha', 'Ananda', 'Rakshasa', 'Nala', 'Pingala',
+    'Kalayukti', 'Siddharthi', 'Raudra', 'Durmati', 'Dundubhi', 'Rudhirodgari',
+    'Raktakshi', 'Krodhana', 'Akshaya',
+]
+
+MASA_NAMES = [
+    'Chaitra', 'Vaishakha', 'Jyeshtha', 'Ashadha', 'Shravana', 'Bhadrapada',
+    'Ashwina', 'Kartika', 'Margashirsha', 'Pausha', 'Magha', 'Phalguna',
+]
+
+
+def _find_sankranti(year, month, day):
+    """
+    Find last and next sankranti relative to a given date.
+
+    Args:
+        year, month, day: integers for the target date
+
+    Returns:
+        tuple: (last_name, last_iso, next_name, next_iso)
+    """
+    bd = datetime(year, month, day)
+    events = []
+    for y in (year - 1, year, year + 1):
+        for m, d, name in _SANKRANTI_TABLE:
+            events.append((datetime(y, m, d), name))
+    events.sort()
+
+    last_s = next_s = None
+    for dt, name in events:
+        if dt <= bd:
+            last_s = (dt, name)
+        elif next_s is None:
+            next_s = (dt, name)
+
+    if last_s is None:
+        last_s = (datetime(year - 1, 12, 15), 'Dhanu')
+    if next_s is None:
+        next_s = (datetime(year + 1, 1, 14), 'Makara')
+
+    return (
+        last_s[1], last_s[0].strftime('%Y-%m-%d'),
+        next_s[1], next_s[0].strftime('%Y-%m-%d'),
+    )
+
+
+def emit_solar_context(chart_id, build_id, birth_date):
+    """
+    Compute chart_facts rows for solar context at birth (7 keys).
+
+    Args:
+        chart_id: str UUID
+        build_id: str
+        birth_date: 'YYYY-MM-DD'
+
+    Returns:
+        list of 7 row dicts: last/next sankranti name+iso, ayana, ritu, solar_arc
+    """
+    rows = []
+    AYANAMSHA = 'INVARIANT'
+    bd = datetime.strptime(birth_date, '%Y-%m-%d')
+
+    last_name, last_iso, next_name, next_iso = _find_sankranti(bd.year, bd.month, bd.day)
+    days_since = (bd - datetime.strptime(last_iso, '%Y-%m-%d')).days
+    solar_arc = round(days_since * (30 / 30.44), 2)
+
+    keys = [
+        ('last_sankranti_name',             last_name,              'text'),
+        ('last_sankranti_iso',              last_iso,               'text'),
+        ('next_sankranti_name',             next_name,              'text'),
+        ('next_sankranti_iso',              next_iso,               'text'),
+        ('ayana',                           AYANA_MONTHS[bd.month], 'text'),
+        ('ritu',                            RITU_TABLE[bd.month],   'text'),
+        ('solar_arc_into_current_sign_deg', solar_arc,              'num'),
+    ]
+
+    for key, val, vtype in keys:
+        rows.append({
+            'fact_id':       make_fact_id('panchanga_solar_context', 'SOLAR_CONTEXT_BIRTH', key, chart_id, AYANAMSHA, build_id),
+            'chart_id':      chart_id,
+            'ayanamsha_id':  AYANAMSHA,
+            'build_id':      build_id,
+            'fact_category': 'panchanga_solar_context',
+            'fact_subject':  'SOLAR_CONTEXT_BIRTH',
+            'fact_key':      key,
+            'fact_value_num':  float(val) if vtype == 'num' else None,
+            'fact_value_text': str(val)   if vtype == 'text' else None,
+            'citation_ref':  make_citation_ref('panchanga_solar_context', 'SOLAR_CONTEXT_BIRTH', key, chart_id, AYANAMSHA),
+            'citation_human': f"Solar context at birth: {key}={val}.",
+            'source_calculation': 'panchanga_writer_a4/solar_context',
+            'verification_pass_status': 'single',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
+
+
+def emit_calendrical(chart_id, build_id, birth_date):
+    """
+    Compute chart_facts rows for calendrical era conversions at birth (7 keys).
+
+    Args:
+        chart_id: str UUID
+        build_id: str
+        birth_date: 'YYYY-MM-DD'
+
+    Returns:
+        list of 7 row dicts: masa_purnimanta, masa_amanta, vikram_samvat,
+        shaka_samvat, kali_samvat, jovian_60yr_cycle_name, jovian_60yr_position
+    """
+    rows = []
+    AYANAMSHA = 'INVARIANT'
+    bd = datetime.strptime(birth_date, '%Y-%m-%d')
+    greg_year = bd.year
+
+    # Month-aware adjustment: Vedic new year starts ~Chaitra (mid-March to mid-April).
+    # Births in Jan–Mar are still in the previous Vedic year.
+    _adj = -1 if bd.month < 4 else 0
+    vikram_samvat = greg_year + 57 + _adj
+    shaka_samvat  = greg_year - 78 + _adj
+    kali_samvat   = greg_year + 3101 + _adj
+
+    # Jovian 60-year cycle (anchor: 1987 is a known reference year)
+    jovian_pos = (greg_year - 1987) % 60
+    jovian_name = JOVIAN_CYCLE[jovian_pos]
+
+    # Approximate masa: Chaitra ≈ April, Magha ≈ February
+    masa_idx = (bd.month - 1 + 9) % 12
+    masa_name = MASA_NAMES[masa_idx]
+
+    keys = [
+        ('masa_purnimanta',        masa_name,       'text'),
+        ('masa_amanta',            masa_name,       'text'),
+        ('vikram_samvat',          vikram_samvat,   'num'),
+        ('shaka_samvat',           shaka_samvat,    'num'),
+        ('kali_samvat',            kali_samvat,     'num'),
+        ('jovian_60yr_cycle_name', jovian_name,     'text'),
+        ('jovian_60yr_position',   jovian_pos + 1, 'num'),
+    ]
+
+    for key, val, vtype in keys:
+        rows.append({
+            'fact_id':       make_fact_id('panchanga_calendrical', 'CALENDRICAL_BIRTH', key, chart_id, AYANAMSHA, build_id),
+            'chart_id':      chart_id,
+            'ayanamsha_id':  AYANAMSHA,
+            'build_id':      build_id,
+            'fact_category': 'panchanga_calendrical',
+            'fact_subject':  'CALENDRICAL_BIRTH',
+            'fact_key':      key,
+            'fact_value_num':  float(val) if vtype == 'num' else None,
+            'fact_value_text': str(val)   if vtype == 'text' else None,
+            'citation_ref':  make_citation_ref('panchanga_calendrical', 'CALENDRICAL_BIRTH', key, chart_id, AYANAMSHA),
+            'citation_human': f"Calendrical at birth: {key}={val}.",
+            'source_calculation': 'panchanga_writer_a4/calendrical',
+            'verification_pass_status': 'single',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
+
+# ── A4-S5: Solar Context + Calendrical ───────────────────────────────────────
+
+RITU_TABLE = {
+    1: 'Shishir', 2: 'Shishir', 3: 'Vasant', 4: 'Vasant',
+    5: 'Grishma', 6: 'Grishma', 7: 'Varsha', 8: 'Varsha',
+    9: 'Sharad', 10: 'Sharad', 11: 'Hemant', 12: 'Hemant',
+}
+
+# (name, month, approx_day) for each solar entry into a rashi
+_SANKRANTI_TABLE = [
+    ('Makara',    1, 14),
+    ('Kumbha',    2, 13),
+    ('Meena',     3, 14),
+    ('Mesha',     4, 14),
+    ('Vrishabha', 5, 15),
+    ('Mithuna',   6, 15),
+    ('Karka',     7, 16),
+    ('Simha',     8, 17),
+    ('Kanya',     9, 17),
+    ('Tula',     10, 17),
+    ('Vrischika', 11, 16),
+    ('Dhanu',    12, 16),
+]
+
+JOVIAN_CYCLE = [
+    'Prabhava', 'Vibhava', 'Shukla', 'Pramoda', 'Prajapati',
+    'Angirasa', 'Shrimukha', 'Bhava', 'Yuva', 'Dhata',
+    'Ishvara', 'Bahudhanya', 'Pramathi', 'Vikrama', 'Vrisha',
+    'Chitrabhanu', 'Subhanu', 'Tarana', 'Parthiva', 'Vyaya',
+    'Sarvajit', 'Sarvadharin', 'Virodhi', 'Vikrita', 'Khara',
+    'Nandana', 'Vijaya', 'Jaya', 'Manmatha', 'Durmukhi',
+    'Hevilambi', 'Vilambi', 'Vikari', 'Sharvari', 'Plava',
+    'Shubhakrit', 'Shobhakrit', 'Krodhi', 'Vishvavasu', 'Parabhava',
+    'Plavanga', 'Kilaka', 'Saumya', 'Sadharana', 'Virodhikrit',
+    'Paridhaavi', 'Pramaadicha', 'Ananda', 'Rakshasa', 'Nala',
+    'Pingala', 'Kalayukti', 'Siddharthi', 'Raudra', 'Durmati',
+    'Dundubhi', 'Rudhirodgari', 'Raktakshi', 'Krodhana', 'Akshaya',
+]
+
+MASA_NAMES = [
+    'Chaitra', 'Vaishakha', 'Jyeshtha', 'Ashadha',
+    'Shravana', 'Bhadrapada', 'Ashwina', 'Kartika',
+    'Margashirsha', 'Pausha', 'Magha', 'Phalguna',
+]
+
+
+def _find_sankranti(year, month, day):
+    """Return (last_name, last_iso, next_name, next_iso) for a given Gregorian date."""
+    from datetime import date as _date
+
+    bd = _date(year, month, day)
+
+    # Build flat list spanning year-1, year, year+1 to handle boundary dates
+    candidates = []
+    for yr in (year - 1, year, year + 1):
+        for name, m, d in _SANKRANTI_TABLE:
+            try:
+                candidates.append((name, _date(yr, m, d)))
+            except ValueError:
+                pass
+    candidates.sort(key=lambda x: x[1])
+
+    last_name = last_date = None
+    next_name = next_date = None
+    for name, dt in candidates:
+        if dt <= bd:
+            last_name, last_date = name, dt
+        elif next_name is None:
+            next_name, next_date = name, dt
+            break
+
+    return (
+        last_name, last_date.isoformat(),
+        next_name, next_date.isoformat(),
+    )
+
+
+def emit_solar_context(chart_id, build_id, birth_date):
+    """Solar context writer (A4-S5). ayanamsha_id=INVARIANT."""
+    rows = []
+    AYANAMSHA = 'INVARIANT'
+
+    bd = datetime.strptime(birth_date, '%Y-%m-%d')
+    month = bd.month
+
+    ayana = 'Uttarayana' if month <= 6 else 'Dakshinayana'
+    ritu = RITU_TABLE[month]
+
+    last_sk_name, last_sk_iso, next_sk_name, next_sk_iso = _find_sankranti(
+        bd.year, bd.month, bd.day
+    )
+
+    last_dt = datetime.strptime(last_sk_iso, '%Y-%m-%d')
+    solar_arc = round((bd - last_dt).days * (30 / 30.44), 2)
+
+    keys = [
+        ('last_sankranti_name',             last_sk_name,  'text'),
+        ('last_sankranti_iso',              last_sk_iso,   'text'),
+        ('next_sankranti_name',             next_sk_name,  'text'),
+        ('next_sankranti_iso',              next_sk_iso,   'text'),
+        ('ayana',                           ayana,         'text'),
+        ('ritu',                            ritu,          'text'),
+        ('solar_arc_into_current_sign_deg', solar_arc,     'num'),
+    ]
+
+    for key, val, vtype in keys:
+        rows.append({
+            'fact_id':       make_fact_id('panchanga_solar_context', 'SOLAR_CONTEXT_BIRTH', key, chart_id, AYANAMSHA, build_id),
+            'chart_id':      chart_id,
+            'ayanamsha_id':  AYANAMSHA,
+            'build_id':      build_id,
+            'fact_category': 'panchanga_solar_context',
+            'fact_subject':  'SOLAR_CONTEXT_BIRTH',
+            'fact_key':      key,
+            'fact_value_num':  float(val) if vtype == 'num' else None,
+            'fact_value_text': str(val)   if vtype == 'text' else None,
+            'citation_ref':  make_citation_ref('panchanga_solar_context', 'SOLAR_CONTEXT_BIRTH', key, chart_id, AYANAMSHA),
+            'citation_human': f"Solar context at birth: {key}={val}.",
+            'source_calculation': 'panchanga_writer_a4/solar_context',
+            'verification_pass_status': 'single',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
+
+
+def emit_calendrical(chart_id, build_id, birth_date):
+    """Calendrical era conversions writer (A4-S5). ayanamsha_id=INVARIANT."""
+    rows = []
+    AYANAMSHA = 'INVARIANT'
+
+    bd = datetime.strptime(birth_date, '%Y-%m-%d')
+    greg_year = bd.year
+
+    vikram_samvat = greg_year + 57
+    shaka_samvat  = greg_year - 78
+    kali_samvat   = greg_year + 3101
+
+    jovian_pos = (greg_year - 1987) % 60
+    if jovian_pos < 0:
+        jovian_pos += 60
+    jovian_name = JOVIAN_CYCLE[jovian_pos]
+
+    masa_idx = (bd.month - 1 + 10) % 12
+    masa_name = MASA_NAMES[masa_idx]
+
+    keys = [
+        ('masa_purnimanta',        masa_name,      'text'),
+        ('masa_amanta',            masa_name,      'text'),
+        ('vikram_samvat',          vikram_samvat,  'num'),
+        ('shaka_samvat',           shaka_samvat,   'num'),
+        ('kali_samvat',            kali_samvat,    'num'),
+        ('jovian_60yr_cycle_name', jovian_name,    'text'),
+        ('jovian_60yr_position',   jovian_pos + 1, 'num'),
+    ]
+
+    for key, val, vtype in keys:
+        rows.append({
+            'fact_id':       make_fact_id('panchanga_calendrical', 'CALENDRICAL_BIRTH', key, chart_id, AYANAMSHA, build_id),
+            'chart_id':      chart_id,
+            'ayanamsha_id':  AYANAMSHA,
+            'build_id':      build_id,
+            'fact_category': 'panchanga_calendrical',
+            'fact_subject':  'CALENDRICAL_BIRTH',
+            'fact_key':      key,
+            'fact_value_num':  float(val) if vtype == 'num' else None,
+            'fact_value_text': str(val)   if vtype == 'text' else None,
+            'citation_ref':  make_citation_ref('panchanga_calendrical', 'CALENDRICAL_BIRTH', key, chart_id, AYANAMSHA),
+            'citation_human': f"Calendrical at birth: {key}={val}.",
+            'source_calculation': 'panchanga_writer_a4/calendrical',
+            'verification_pass_status': 'single',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
