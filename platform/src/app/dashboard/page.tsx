@@ -1,6 +1,7 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { ClientRoster } from '@/components/dashboard/ClientRoster'
+import BuildsInProgressCard from '@/components/dashboard/BuildsInProgressCard'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
@@ -132,6 +133,11 @@ export default async function DashboardPage() {
         <Suspense>
           <ClientRoster charts={chartsWithMeta} stats={stats} />
         </Suspense>
+        {role === 'super_admin' && (
+          <div className="mt-6">
+            <BuildsInProgressCard />
+          </div>
+        )}
       </div>
     </div>
   )
