@@ -1358,3 +1358,14 @@ def emit_eclipse_proximity(chart_id, build_id, birth_date):
         pass  # If eclipse table absent or no eclipses found, return empty (valid)
 
     return rows
+
+
+def emit_panchanga_mv_refresh(conn, chart_id):
+    """Trigger MV refresh after all panchanga rows are written."""
+    try:
+        conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_chart_panchanga_birth_summary")
+    except Exception:
+        try:
+            conn.execute("REFRESH MATERIALIZED VIEW mv_chart_panchanga_birth_summary")
+        except Exception:
+            pass  # MV may not be populated yet; non-blocking
