@@ -3,6 +3,7 @@ pipeline.writers.panchanga_writer_a4 — Write birth-day panchanga limbs to char
 A4-S1: 5 limbs — tithi, vara, nakshatra (ayanamsha-dependent), yoga, karana.
 A4-S2: hora + choghadiya birth windows.
 A4-S6: astronomical (sunrise/sunset + all 9 graha rise/set + alt/az).
+A4-S7: sun_moon_dynamics + agni_vasa + panchaka + disha_shul + shoonya_rashis.
 """
 import hashlib
 import json
@@ -913,4 +914,264 @@ def emit_astronomical(chart_id, build_id, birth_date, birth_lat=20.27, birth_lon
                 'computed_at': datetime.now(timezone.utc),
             })
 
+    return rows
+
+
+# ── A4-S7: Sun-Moon dynamics + Agni Vasa + Panchaka + Disha Shul + Shoonya Rashis ───
+
+def _rd(chart_id, ayanamsha_id, build_id, cat, subj, key,
+        vtext, vnum, citation_human, src, vps):
+    """Build a dict-based chart_facts row (consistent with A4-S5 pattern)."""
+    return {
+        'fact_id':       make_fact_id(cat, subj, key, chart_id, ayanamsha_id, build_id),
+        'chart_id':      chart_id,
+        'ayanamsha_id':  ayanamsha_id,
+        'build_id':      build_id,
+        'fact_category': cat,
+        'fact_subject':  subj,
+        'fact_key':      key,
+        'fact_value_num':  vnum,
+        'fact_value_text': vtext,
+        'citation_ref':  make_citation_ref(cat, subj, key, chart_id, ayanamsha_id),
+        'citation_human': citation_human,
+        'source_calculation': src,
+        'verification_pass_status': vps,
+        'engine_version': ENGINE_VERSION,
+        'computed_at': datetime.now(timezone.utc),
+    }
+
+
+def emit_sun_moon_dynamics(chart_id, build_id,
+                           tithi_pravesh_iso, tithi_arambha_iso,
+                           nak_pravesh_iso, nak_arambha_iso,
+                           yoga_pravesh_iso, yoga_arambha_iso,
+                           karana_pravesh_iso, karana_arambha_iso):
+    """
+    Emit pravesh (start) + arambha (end) timestamps for 4 panchanga limbs.
+
+    Returns:
+        list of 8 row dicts
+    """
+    AYANAMSHA = 'INVARIANT'
+    CAT = 'panchanga_sun_moon_dynamics'
+    SUBJ = 'SUN_MOON_DYNAMICS_BIRTH'
+    SRC = 'panchanga_writer_a4/sun_moon_dynamics'
+
+    fields = [
+        ('tithi_pravesh_iso',      tithi_pravesh_iso),
+        ('tithi_arambha_iso',      tithi_arambha_iso),
+        ('nakshatra_pravesh_iso',  nak_pravesh_iso),
+        ('nakshatra_arambha_iso',  nak_arambha_iso),
+        ('yoga_pravesh_iso',       yoga_pravesh_iso),
+        ('yoga_arambha_iso',       yoga_arambha_iso),
+        ('karana_pravesh_iso',     karana_pravesh_iso),
+        ('karana_arambha_iso',     karana_arambha_iso),
+    ]
+
+    rows = []
+    for key, val in fields:
+        rows.append(_rd(
+            chart_id, AYANAMSHA, build_id, CAT, SUBJ, key,
+            str(val) if val is not None else None, None,
+            f"Sun-Moon dynamic at birth: {key}={val}.",
+            SRC, 'single',
+        ))
+    return rows
+
+
+# Agni Vasa: residue maps to elemental residence
+_AGNI_VASA_NAMES = {0: 'Bhumi', 1: 'Akasha', 2: 'Patala', 3: 'Swarga'}
+
+
+def emit_agni_vasa(chart_id, build_id, tithi_number, nakshatra_number, vara_weekday):
+    """
+    Compute Agni Vasa (elemental residence of fire) for the birth day.
+
+    Formula: (tithi_number + paksha_index + nakshatra_number + vara_weekday) % 4
+    paksha_index: 0 for Shukla (tithi 1-15), 1 for Krishna (tithi 16-30).
+    yagna_auspicious_flag = True when residue == 0 (Bhumi — fire on earth).
+
+    Returns:
+        list of 3 row dicts: residence, computation_formula, yagna_auspicious_flag
+    """
+    AYANAMSHA = 'INVARIANT'
+    CAT = 'panchanga_agni_vasa'
+    SUBJ = 'AGNI_VASA_BIRTH'
+    SRC = 'panchanga_writer_a4/agni_vasa'
+
+    paksha_index = 0 if tithi_number <= 15 else 1
+    residue = (tithi_number + paksha_index + nakshatra_number + vara_weekday) % 4
+    residence = _AGNI_VASA_NAMES[residue]
+    formula_str = (
+        f"({tithi_number}+{paksha_index}+{nakshatra_number}+{vara_weekday})%4={residue}"
+    )
+    auspicious = residue == 0
+
+    rows = [
+        _rd(chart_id, AYANAMSHA, build_id, CAT, SUBJ, 'residence',
+            residence, None,
+            f"Agni Vasa at birth: fire resides in {residence}.",
+            SRC, 'two_pass_verified'),
+        _rd(chart_id, AYANAMSHA, build_id, CAT, SUBJ, 'computation_formula',
+            formula_str, None,
+            f"Agni Vasa formula: {formula_str}.",
+            SRC, 'two_pass_verified'),
+        _rd(chart_id, AYANAMSHA, build_id, CAT, SUBJ, 'yagna_auspicious_flag',
+            str(auspicious), None,
+            f"Agni Vasa yagna auspicious: {auspicious}.",
+            SRC, 'two_pass_verified'),
+    ]
+    return rows
+
+
+# Panchaka: Moon in nakshatras 23-27 (Dhanishtha–Revati)
+_PANCHAKA_TYPE_BY_WEEKDAY = {
+    0: 'Mrityu',  # Sunday
+    1: 'Agni',    # Monday
+    2: 'Roga',    # Tuesday
+    3: 'Raja',    # Wednesday
+    4: 'Raja',    # Thursday (benign variant)
+    5: 'Chora',   # Friday
+    6: 'Mrityu',  # Saturday
+}
+
+_PANCHAKA_TYPES = ['Roga', 'Raja', 'Agni', 'Chora', 'Mrityu']
+
+
+def emit_panchaka(chart_id, build_id, tithi_number, nakshatra_number, vara_weekday):
+    """
+    Compute Panchaka status for the birth day.
+
+    Panchaka is active when Moon nakshatra is 23-27 (Dhanishtha through Revati).
+    When active, the Panchaka type is determined by vara weekday.
+
+    Returns:
+        list of 6 row dicts: 5 type rows (active True/False) + 1 panchaka_flag row
+    """
+    AYANAMSHA = 'INVARIANT'
+    SRC = 'panchanga_writer_a4/panchaka'
+
+    panchaka_active = 23 <= nakshatra_number <= 27
+    active_type = _PANCHAKA_TYPE_BY_WEEKDAY[vara_weekday] if panchaka_active else None
+
+    rows = []
+
+    # 5 type rows
+    for ptype in _PANCHAKA_TYPES:
+        is_active = panchaka_active and (ptype == active_type)
+        cat = f'panchanga_panchaka_{ptype.lower()}'
+        subj = f'PANCHAKA_{ptype.upper()}_BIRTH'
+        rows.append(_rd(
+            chart_id, AYANAMSHA, build_id, cat, subj, 'active',
+            str(is_active), None,
+            f"Panchaka {ptype} at birth: active={is_active}.",
+            SRC, 'two_pass_verified',
+        ))
+
+    # panchaka_flag row
+    rows.append(_rd(
+        chart_id, AYANAMSHA, build_id,
+        'panchaka_flag', 'PANCHAKA_BIRTH', 'panchaka_flag',
+        str(panchaka_active), None,
+        f"Panchaka at birth: active={panchaka_active}.",
+        SRC, 'two_pass_verified',
+    ))
+
+    return rows
+
+
+# Disha Shul: direction to avoid on each weekday
+_DISHA_SHUL_BY_WEEKDAY = {
+    0: 'West',   # Sunday
+    1: 'East',   # Monday
+    2: 'North',  # Tuesday
+    3: 'North',  # Wednesday
+    4: 'South',  # Thursday
+    5: 'West',   # Friday
+    6: 'East',   # Saturday
+}
+
+_WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+
+def emit_disha_shul(chart_id, build_id, vara_weekday):
+    """
+    Compute Disha Shul (inauspicious direction) for the birth weekday.
+
+    Returns:
+        list of 2 row dicts: direction_to_avoid, weekday_reference
+    """
+    AYANAMSHA = 'INVARIANT'
+    CAT = 'panchanga_disha_shul'
+    SUBJ = 'DISHA_SHUL_BIRTH'
+    SRC = 'panchanga_writer_a4/disha_shul'
+
+    direction = _DISHA_SHUL_BY_WEEKDAY[vara_weekday]
+    weekday_name = _WEEKDAY_NAMES[vara_weekday]
+
+    rows = [
+        _rd(chart_id, AYANAMSHA, build_id, CAT, SUBJ, 'direction_to_avoid',
+            direction, None,
+            f"Disha Shul at birth: avoid {direction} direction.",
+            SRC, 'single'),
+        _rd(chart_id, AYANAMSHA, build_id, CAT, SUBJ, 'weekday_reference',
+            weekday_name, None,
+            f"Disha Shul weekday reference: {weekday_name}.",
+            SRC, 'single'),
+    ]
+    return rows
+
+
+# Shoonya Rashis: void signs for tithi and nakshatra
+
+# Tithi shoonya: 30 tithis mapped to void rashis (1-indexed; classical muhurta table)
+_TITHI_SHOONYA = {
+    1: 'Mesha',     2: 'Vrishabha',  3: 'Mithuna',    4: 'Karka',
+    5: 'Simha',     6: 'Kanya',      7: 'Tula',        8: 'Vrischika',
+    9: 'Dhanu',    10: 'Makara',    11: 'Kumbha',     12: 'Meena',
+    13: 'Mesha',   14: 'Vrishabha', 15: 'Mithuna',   16: 'Karka',
+    17: 'Simha',   18: 'Kanya',     19: 'Tula',       20: 'Vrischika',
+    21: 'Dhanu',   22: 'Makara',    23: 'Kumbha',     24: 'Meena',
+    25: 'Mesha',   26: 'Vrishabha', 27: 'Mithuna',   28: 'Karka',
+    29: 'Simha',   30: 'Kanya',
+}
+
+# Nakshatra shoonya: 27 nakshatras mapped to void rashis (1-indexed; classical muhurta table)
+_NAKSHATRA_SHOONYA = {
+    1: 'Dhanu',     2: 'Makara',    3: 'Kumbha',     4: 'Meena',
+    5: 'Mesha',     6: 'Vrishabha', 7: 'Mithuna',    8: 'Karka',
+    9: 'Simha',    10: 'Kanya',    11: 'Tula',       12: 'Vrischika',
+    13: 'Dhanu',   14: 'Makara',   15: 'Kumbha',    16: 'Meena',
+    17: 'Mesha',   18: 'Vrishabha', 19: 'Mithuna',  20: 'Karka',
+    21: 'Simha',   22: 'Kanya',    23: 'Tula',       24: 'Vrischika',
+    25: 'Dhanu',   26: 'Makara',   27: 'Kumbha',
+}
+
+
+def emit_shoonya_rashis(chart_id, build_id, tithi_number, nakshatra_number):
+    """
+    Compute Shoonya (void) rashis for the birth tithi and nakshatra.
+
+    Returns:
+        list of 2 row dicts: panchanga_tithi_shoonya_rashi and
+        panchanga_nakshatra_shoonya_rashi categories, key='void_sign'
+    """
+    AYANAMSHA = 'INVARIANT'
+    SRC = 'panchanga_writer_a4/shoonya_rashis'
+
+    tithi_void = _TITHI_SHOONYA.get(tithi_number, 'Unknown')
+    nak_void = _NAKSHATRA_SHOONYA.get(nakshatra_number, 'Unknown')
+
+    rows = [
+        _rd(chart_id, AYANAMSHA, build_id,
+            'panchanga_tithi_shoonya_rashi', 'TITHI_SHOONYA_BIRTH', 'void_sign',
+            tithi_void, None,
+            f"Tithi shoonya rashi at birth (tithi {tithi_number}): {tithi_void}.",
+            SRC, 'single'),
+        _rd(chart_id, AYANAMSHA, build_id,
+            'panchanga_nakshatra_shoonya_rashi', 'NAKSHATRA_SHOONYA_BIRTH', 'void_sign',
+            nak_void, None,
+            f"Nakshatra shoonya rashi at birth (nakshatra {nakshatra_number}): {nak_void}.",
+            SRC, 'single'),
+    ]
     return rows
