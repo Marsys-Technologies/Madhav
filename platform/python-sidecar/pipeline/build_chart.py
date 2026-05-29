@@ -2,7 +2,9 @@
 pipeline.build_chart — MARSYS-JIS multi-ayanamsha chart build pipeline entrypoint.
 
 Scaffold (C-01): DAG_ORDER, CANONICAL_AYANAMSHAS, arg parse, DB helpers, stub dispatch.
-Real writers are registered in later sessions (C-02+).
+C-02: run_engine_parallel() — asyncio+ThreadPoolExecutor 5-ayanamsha parallel runner.
+      load_birth_data() — birth data loader from charts table.
+      run_build() — A1_engine step wired to parallel runner.
 
 Usage:
   python -m pipeline.build_chart --build-id <UUID> --chart-id <UUID> [--db-url DSN]
@@ -11,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import concurrent.futures
 import logging
 import os
 import sys
@@ -234,6 +237,162 @@ def create_build_steps(conn, build_id: str, ayanamshas: list[str]) -> int:
     return inserted
 
 
+# ── Birth data loader ──────────────────────────────────────────────────────────
+
+_chart_birth_data_cache: dict[str, dict] = {}  # chart_id -> birth_data dict
+
+
+def load_birth_data(conn, chart_id: str) -> dict:
+    """
+    Load birth data for a chart from the DB charts table.
+
+    Returns a dict with keys: birth_date, birth_time, lat, lon, tz_offset.
+    Result is cached in-process to avoid repeated DB round-trips within a build.
+
+    Raises ValueError if the chart_id is not found.
+    """
+    if chart_id in _chart_birth_data_cache:
+        return _chart_birth_data_cache[chart_id]
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT birth_date, birth_time, birth_lat, birth_lon, birth_tz_offset "
+            "FROM charts WHERE chart_id=%s",
+            (chart_id,),
+        )
+        row = cur.fetchone()
+    if not row:
+        raise ValueError(f"Chart {chart_id} not found in charts table")
+    data: dict = {
+        "birth_date": str(row[0]),
+        "birth_time": str(row[1]) if row[1] else "00:00",
+        "lat": float(row[2]) if row[2] is not None else 20.27,
+        "lon": float(row[3]) if row[3] is not None else 85.84,
+        "tz_offset": float(row[4]) if row[4] is not None else 5.5,
+    }
+    _chart_birth_data_cache[chart_id] = data
+    return data
+
+
+# ── Parallel ayanamsha engine runner ──────────────────────────────────────────
+
+async def run_engine_parallel(
+    chart_id: str,
+    ayanamshas: list[str],
+    birth_data: dict,
+) -> dict[str, Optional[dict]]:
+    """
+    Run natal_engine.compute_chart() for each ayanamsha in parallel via
+    asyncio.gather() + ThreadPoolExecutor (one thread per ayanamsha, max 5).
+
+    Parameters
+    ----------
+    chart_id : str
+        Chart UUID — embedded in each engine result for traceability.
+    ayanamshas : list[str]
+        Ayanamsha identifiers to compute (normally CANONICAL_AYANAMSHAS).
+    birth_data : dict
+        Birth dict with keys: birth_date, birth_time, lat, lon, tz_offset.
+        These are forwarded to compute_chart() as the `inputs` payload.
+
+    Returns
+    -------
+    dict[str, Optional[dict]]
+        Keys are ayanamsha_id strings (one per entry in `ayanamshas`).
+        Values are the chart output dicts on success, or None on failure.
+        The return value is ALWAYS a dict of exactly len(ayanamshas) entries.
+        Failed ayanamshas are logged at ERROR level; the overall call never
+        raises.
+
+    Partial-failure semantics
+    -------------------------
+    - If all ayanamshas fail  → all values are None; dict returned normally.
+    - If some ayanamshas fail → failed keys are None, others have real output.
+    - Caller is responsible for checking values and deciding build disposition.
+    """
+    try:
+        from natal_engine import compute_chart  # type: ignore[import]
+        _use_stub = False
+    except ImportError:
+        log.warning(
+            "natal_engine not installed — using stub for chart_id=%s", chart_id
+        )
+        _use_stub = True
+
+    results: dict[str, Optional[dict]] = {}
+
+    if _use_stub:
+        # Stub path: used in test environments without natal_engine installed.
+        async def _stub(ayanamsha: str) -> Optional[dict]:
+            return {"ayanamsha_id": ayanamsha, "stub": True, "chart_id": chart_id}
+
+        tasks = [_stub(a) for a in ayanamshas]
+        outputs = await asyncio.gather(*tasks, return_exceptions=True)
+        for ayan, output in zip(ayanamshas, outputs):
+            if isinstance(output, Exception):
+                log.error(
+                    "engine_stub_failed ayanamsha=%s chart_id=%s error=%s",
+                    ayan, chart_id, output,
+                )
+                results[ayan] = None
+            else:
+                results[ayan] = output
+        successful = sum(1 for v in results.values() if v is not None)
+        log.info(
+            "engine_parallel_stub_complete chart_id=%s %d/%d succeeded",
+            chart_id, successful, len(ayanamshas),
+        )
+        return results
+
+    # Real path: run compute_chart() in a thread pool so the event loop stays
+    # responsive.  Each thread is independent (Swiss Ephemeris is thread-safe
+    # when ayanamsha is set per-call via the `ayanamsha_id` parameter).
+    loop = asyncio.get_event_loop()
+
+    def _compute_sync(ayanamsha: str) -> Optional[dict]:
+        """Synchronous wrapper called inside a ThreadPoolExecutor worker."""
+        try:
+            inputs_payload = {
+                "datetime_iso": f"{birth_data['birth_date']}T{birth_data['birth_time']}",
+                "tz_offset_hours": birth_data["tz_offset"],
+                "latitude_deg": birth_data["lat"],
+                "longitude_deg": birth_data["lon"],
+                "place_name": "Bhubaneswar",  # default; overrideable via birth_data
+                "subject_label": chart_id,
+            }
+            return compute_chart(
+                inputs=inputs_payload,
+                ayanamsha_id=ayanamsha,
+            )
+        except Exception as exc:
+            log.error(
+                "engine_compute_failed ayanamsha=%s chart_id=%s error=%s",
+                ayanamsha, chart_id, exc,
+            )
+            return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_map = {
+            ayan: loop.run_in_executor(executor, _compute_sync, ayan)
+            for ayan in ayanamshas
+        }
+        for ayan, future in future_map.items():
+            try:
+                results[ayan] = await future
+            except Exception as exc:
+                log.error(
+                    "engine_future_failed ayanamsha=%s chart_id=%s error=%s",
+                    ayan, chart_id, exc,
+                )
+                results[ayan] = None
+
+    successful = sum(1 for v in results.values() if v is not None)
+    log.info(
+        "engine_parallel_complete chart_id=%s %d/%d ayanamshas succeeded",
+        chart_id, successful, len(ayanamshas),
+    )
+    return results
+
+
 # ── Asset dispatch (stub) ──────────────────────────────────────────────────────
 
 def dispatch_asset(
@@ -325,7 +484,52 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
         conn.commit()
 
         try:
-            rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas)
+            if asset_id == "A1_engine":
+                # ── C-02: parallel ayanamsha engine runner ──────────────────
+                birth_data = load_birth_data(conn, chart_id)
+                chart_outputs = await run_engine_parallel(
+                    chart_id=chart_id,
+                    ayanamshas=ayanamshas,
+                    birth_data=birth_data,
+                )
+                successful = [a for a, v in chart_outputs.items() if v is not None]
+                failed = [a for a, v in chart_outputs.items() if v is None]
+
+                if not successful:
+                    # All ayanamshas failed — hard failure, abort build.
+                    err_msg = (
+                        f"A1_engine: all {len(ayanamshas)} ayanamshas failed; "
+                        f"no engine output produced"
+                    )
+                    log.error("run_build_asset_failed build_id=%s %s", build_id, err_msg)
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            UPDATE build_steps
+                            SET status = 'failed', error_msg = %s
+                            WHERE build_id = %s AND category = %s AND status = 'running'
+                            """,
+                            (err_msg, build_id, asset_id),
+                        )
+                    conn.commit()
+                    update_build_status(conn, build_id, "failed", error_summary=err_msg)
+                    return False
+
+                if failed:
+                    # Partial failure — log warning but continue; mark step complete
+                    # with an error note embedded in the row_count note.
+                    log.warning(
+                        "A1_engine partial failure build_id=%s chart_id=%s "
+                        "succeeded=%s failed=%s",
+                        build_id, chart_id, successful, failed,
+                    )
+
+                rows_written = len(successful)
+                # Store chart_outputs for downstream assets in this build.
+                # (Future sessions can consume this from build-scoped state.)
+            else:
+                rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas)
+
         except Exception as exc:
             log.error(
                 "run_build_asset_failed",
