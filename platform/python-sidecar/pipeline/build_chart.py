@@ -426,8 +426,16 @@ def dispatch_asset(
     Dispatch writer for asset_id.
 
     C-01: Stub — logs that no writer is registered and returns 0 rows_written.
-    C-02+: Real writers are registered here per asset_id via a dispatch table.
+    C-07: Routes A2–A14 through WRITER_REGISTRY (stub write() callables).
+          Real writers replace stubs in streams F, G1, G2, G3, G4.
     """
+    try:
+        from pipeline.writers import WRITER_REGISTRY
+        if asset_id in WRITER_REGISTRY:
+            # Call writer stub (conn not passed to stubs — they are no-op)
+            return WRITER_REGISTRY[asset_id](build_id, chart_id, 'all', {}, None)
+    except ImportError:
+        pass
     label = ASSET_LABELS.get(asset_id, asset_id)
     log.info("[STUB] %s — no writer registered (asset_id=%s)", label, asset_id)
     return 0

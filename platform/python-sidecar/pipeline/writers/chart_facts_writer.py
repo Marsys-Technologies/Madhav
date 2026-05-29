@@ -25,6 +25,31 @@ from pipeline.writers.base import IBuildWriter, SwapResult, ValidationResult, Wr
 
 log = logging.getLogger(__name__)
 
+# ── C-07 stub dispatch constants ───────────────────────────────────────────────
+ASSET_ID = "A3_chart_facts"
+ASSET_LABEL = "Chart Facts (L1 Structured)"
+
+
+def write(
+    build_id: str,
+    chart_id: str,
+    ayanamsha_id: str,
+    chart_output: dict,
+    conn,
+    extra: "Optional[dict]" = None,
+) -> int:
+    """
+    Stub writer for A3 Chart Facts (build_chart dispatch registry).
+    Returns rows_written = 0 (stub — no data written).
+    Real implementation wires ChartFactsWriter below; stub until Stream F.
+    """
+    log.info(
+        "[STUB] %s: chart=%s ayanamsha=%s build=%s",
+        ASSET_LABEL, chart_id, ayanamsha_id, build_id,
+    )
+    return 0
+
+
 TABLE_STAGING = "chart_facts_staging"
 TABLE_LIVE = "chart_facts"
 YAML_URI = "gs://madhav-marsys-sources/L1/facts/STRUCTURED/CHART_FACTS_EXTRACTION_v1_0.yaml"

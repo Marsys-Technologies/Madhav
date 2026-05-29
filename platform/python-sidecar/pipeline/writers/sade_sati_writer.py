@@ -14,6 +14,31 @@ from pipeline.writers.base import IBuildWriter, SwapResult, ValidationResult, Wr
 
 log = logging.getLogger(__name__)
 
+# ── C-07 stub dispatch constants ───────────────────────────────────────────────
+ASSET_ID = "A9_sade_sati"
+ASSET_LABEL = "Sade-Sati Phases"
+
+
+def write(
+    build_id: str,
+    chart_id: str,
+    ayanamsha_id: str,
+    chart_output: dict,
+    conn,
+    extra: "Optional[dict]" = None,
+) -> int:
+    """
+    Stub writer for A9 Sade-Sati Phases (build_chart dispatch registry).
+    Returns rows_written = 0 (stub — no data written).
+    Real implementation wires SadeSatiWriter below; stub until Stream F.
+    """
+    log.info(
+        "[STUB] %s: chart=%s ayanamsha=%s build=%s",
+        ASSET_LABEL, chart_id, ayanamsha_id, build_id,
+    )
+    return 0
+
+
 TABLE_STAGING = "sade_sati_phases_staging"
 TABLE_LIVE = "sade_sati_phases"
 
