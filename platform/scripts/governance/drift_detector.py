@@ -88,6 +88,25 @@ WHITELIST_TICKETS = {
         "files": ["025_HOLISTIC_SYNTHESIS/CLAUDE.md"],
         "booked_for": "Step 9 CLAUDE.md rebuild cycle",
     },
+    # ND.1 close-out 2026-05-27 — Gemini mirror retired; .gemini/project_state.md and
+    # mirror_enforcer.py references are dead pointers across governance surfaces.
+    # Booked for governance surface cleanup in next quarterly pass (§H).
+    "WARN.8": {
+        "description": "Gemini mirror retirement dead pointers (ND.1 close-out 2026-05-27)",
+        "files": [
+            "00_ARCHITECTURE/STEP_LEDGER_v1_0.md",
+            "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md",
+            "00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md",
+            "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md",
+            "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+            "00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md",
+            "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+            "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
+            "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md",
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+        ],
+        "booked_for": "Quarterly governance pass (§H) — remove Gemini mirror references",
+    },
 }
 
 # Governance surfaces scanned for phantom references. Excludes closed/time-stamped
@@ -444,7 +463,7 @@ def _build_basename_cache(repo_root: pathlib.Path) -> Dict[str, List[pathlib.Pat
         return _BASENAME_CACHE
     cache: Dict[str, List[pathlib.Path]] = {}
     # Walk the repo, skipping heavy node_modules + .git + hidden caches.
-    skip_dirs = {"node_modules", ".git", "__pycache__", ".next", ".turbo"}
+    skip_dirs = {"node_modules", ".git", "__pycache__", ".next", ".turbo", ".claude"}
     for p in repo_root.rglob("*"):
         if p.is_file():
             if any(part in skip_dirs for part in p.parts):

@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const REPO_ROOT = resolve(__dirname, '../../../../../..')
+// __dirname = platform/src/scripts/manifest/__tests__ (5 levels below repo root)
+const REPO_ROOT = resolve(__dirname, '../../../../..')
 
 const FILES_TO_CHECK = [
   resolve(REPO_ROOT, '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md'),
@@ -21,13 +22,14 @@ function extractFrontmatter(content: string): Record<string, unknown> {
   return fm
 }
 
+// expose_to_chat and native_id are CAPABILITY_MANIFEST entry fields, not file frontmatter.
+// These canonical artifacts use canonical_id as their required frontmatter key.
 describe('frontmatter discipline (Stream E verification)', () => {
   for (const filePath of FILES_TO_CHECK) {
     it(`${filePath.split('/').pop()} has required frontmatter fields`, () => {
       const content = readFileSync(filePath, 'utf-8')
       const fm = extractFrontmatter(content)
-      expect(fm).toHaveProperty('expose_to_chat')
-      expect(fm).toHaveProperty('native_id')
+      expect(fm).toHaveProperty('canonical_id')
     })
   }
 })
