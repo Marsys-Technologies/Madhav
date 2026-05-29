@@ -34,7 +34,7 @@ from .dashas import compute_vimshottari_mahadasha
 from .dignities import refine_dignities
 from .houses import compute_houses_whole_sign
 from .panchanga import compute_panchanga
-from .positions import compute_graha_states, compute_lilith_states, compute_node_states, set_ayanamsha
+from .positions import compute_graha_states, compute_lilith_states, compute_node_states, compute_outer_bodies, set_ayanamsha
 from .provenance import build_provenance
 from .schema import CHART_OUTPUT_SCHEMA, Inputs, validate_chart_output
 from .sensitive_points import compute_sensitive_points
@@ -188,6 +188,16 @@ def compute_chart(
         geo_lon=inp.longitude_deg,
     )
 
+    # E-05: 8 outer planets/asteroids (Chiron, Ceres, Pallas, Juno, Vesta,
+    # Uranus, Neptune, Pluto) + 2 numbered asteroids (Sedna, Eris — None when
+    # optional ephemeris files are absent).  Stored outside `grahas`.
+    outer_bodies = compute_outer_bodies(
+        jd_ut,
+        ayanamsha_deg=ayan_value_deg,
+        geo_lat=inp.latitude_deg,
+        geo_lon=inp.longitude_deg,
+    )
+
     provenance = build_provenance(
         inputs=asdict(inp),
         engine_version=engine_version,
@@ -219,6 +229,9 @@ def compute_chart(
     payload["node_variants"] = node_variants
     # E-04: Mean Lilith + True Lilith variants — outside the JSON-Schema envelope.
     payload["lilith_variants"] = lilith_variants
+    # E-05: Outer planets + asteroids — outside the JSON-Schema envelope.
+    # Sedna/Eris may be None when optional ephemeris files are absent.
+    payload["outer_bodies"] = outer_bodies
 
     if validate:
         validate_chart_output(payload)
@@ -230,6 +243,7 @@ __all__ = [
     "compute_chart",
     "compute_lilith_states",
     "compute_node_states",
+    "compute_outer_bodies",
     "ENGINE_VERSION_DEFAULT",
     "AYANAMSHA_DEFAULT",
     "CHART_OUTPUT_SCHEMA",

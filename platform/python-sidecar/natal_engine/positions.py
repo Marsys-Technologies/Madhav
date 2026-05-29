@@ -504,6 +504,146 @@ def compute_node_states(
     return result
 
 
+# ---------------------------------------------------------------------------
+# E-05: Outer planets + asteroids
+# ---------------------------------------------------------------------------
+
+# swisseph body IDs for outer planets (built-in constants)
+# swe.CHIRON = 15, swe.CERES = 17, swe.PALLAS = 18, swe.JUNO = 19, swe.VESTA = 20
+# swe.URANUS = 7, swe.NEPTUNE = 8, swe.PLUTO = 9
+OUTER_BODIES: list[tuple[str, int, str]] = [
+    ("chiron",  swe.CHIRON,   "wounded healer, maverick"),
+    ("ceres",   swe.CERES,    "nurturing, agriculture, grief"),
+    ("pallas",  swe.PALLAS,   "wisdom, strategy, crafts"),
+    ("juno",    swe.JUNO,     "marriage, partnership equality"),
+    ("vesta",   swe.VESTA,    "focus, dedication, sacred fire"),
+    ("uranus",  swe.URANUS,   "disruption, innovation, revolution"),
+    ("neptune", swe.NEPTUNE,  "illusion, spirituality, dissolution"),
+    ("pluto",   swe.PLUTO,    "transformation, power, death-rebirth"),
+]
+
+# Numbered asteroids require optional SE asteroid ephemeris files
+_SEDNA_ID = 90377
+_ERIS_ID  = 136199
+
+NUMBERED_ASTEROIDS: list[tuple[str, int, str]] = [
+    ("sedna", _SEDNA_ID, "isolation, extreme cold, transition"),
+    ("eris",  _ERIS_ID,  "discord, feminism, rivalry"),
+]
+
+
+def _outer_null() -> dict:
+    """Sentinel dict used when a body cannot be computed."""
+    return {
+        "longitude": 0.0,
+        "latitude": 0.0,
+        "speed": 0.0,
+        "retro": False,
+        "sign": SIGN_NAMES[0],
+        "sign_index": 1,
+        "degree": 0.0,
+        "nakshatra": NAKSHATRA_NAMES[0],
+        "nakshatra_id": 1,
+        "pada": 1,
+        "significance": "",
+        "heliocentric_longitude": 0.0,
+        "heliocentric_latitude": 0.0,
+        "declination_deg": 0.0,
+        "right_ascension_deg": 0.0,
+        "altitude_deg": 0.0,
+        "azimuth_deg": 0.0,
+        "out_of_bounds": False,
+    }
+
+
+def _body_dict_from_result(
+    result: tuple,
+    ayanamsha_deg: float,
+    significance: str,
+) -> dict:
+    """Build a standard outer-body dict from a swe.calc_ut result tuple."""
+    tropical_lon = result[0] % 360.0
+    lat = result[1]
+    speed = result[3]
+    sidereal_lon = (tropical_lon - ayanamsha_deg) % 360.0
+    sign_idx = int(sidereal_lon / _SIGN_SPAN) % 12
+    nak_idx = int(sidereal_lon / _NAKSHATRA_SPAN) % 27
+    pada = int((sidereal_lon - nak_idx * _NAKSHATRA_SPAN) / _PADA_SPAN) + 1
+    pada = max(1, min(4, pada))
+    return {
+        "longitude": sidereal_lon,
+        "latitude": lat,
+        "speed": speed,
+        "retro": speed < 0,
+        "sign": SIGN_NAMES[sign_idx],
+        "sign_index": sign_idx + 1,
+        "degree": sidereal_lon % _SIGN_SPAN,
+        "nakshatra": NAKSHATRA_NAMES[nak_idx],
+        "nakshatra_id": nak_idx + 1,
+        "pada": pada,
+        "significance": significance,
+        "heliocentric_longitude": 0.0,
+        "heliocentric_latitude": 0.0,
+        "declination_deg": 0.0,
+        "right_ascension_deg": 0.0,
+        "altitude_deg": 0.0,
+        "azimuth_deg": 0.0,
+        "out_of_bounds": False,
+    }
+
+
+def compute_outer_bodies(
+    jd_ut: float,
+    ayanamsha_deg: float,
+    geo_lat: float = 20.27,
+    geo_lon: float = 85.84,
+) -> dict[str, dict | None]:
+    """Compute positions for 8 outer planets/asteroids + 2 numbered asteroids.
+
+    The 8 built-in bodies (Chiron, Ceres, Pallas, Juno, Vesta, Uranus, Neptune,
+    Pluto) use standard swisseph body ids and are expected to always succeed.
+
+    The 2 numbered asteroids (Sedna=90377, Eris=136199) require optional SE
+    asteroid ephemeris files and may be absent.  Their dict slot is set to None
+    when unavailable — callers must guard for None.
+
+    Implementation note — same tropical-flags + manual ayanamsha subtraction
+    pattern used by compute_node_states() and compute_lilith_states().
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    results: dict[str, dict | None] = {}
+
+    # --- 8 main outer bodies (always available) ---
+    for name, body_id, significance in OUTER_BODIES:
+        try:
+            raw, _ = swe.calc_ut(jd_ut, body_id, _TROPICAL_FLAGS | swe.FLG_SPEED)
+            results[name] = _body_dict_from_result(raw, ayanamsha_deg, significance)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Outer body %s (id=%d) failed: %s", name, body_id, exc)
+            sentinel = _outer_null()
+            sentinel["significance"] = significance
+            results[name] = sentinel
+
+    # --- 2 numbered asteroids (optional — None when ephemeris files absent) ---
+    for name, asteroid_id, significance in NUMBERED_ASTEROIDS:
+        try:
+            raw, _ = swe.calc_ut(
+                jd_ut,
+                swe.AST_OFFSET + asteroid_id,
+                swe.FLG_SWIEPH | swe.FLG_SPEED,
+            )
+            results[name] = _body_dict_from_result(raw, ayanamsha_deg, significance)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Numbered asteroid %s (id=%d) unavailable: %s", name, asteroid_id, exc
+            )
+            results[name] = None  # signal: ephemeris file absent
+
+    return results
+
+
 def compute_lilith_states(
     jd_ut: float,
     ayanamsha_deg: float,
