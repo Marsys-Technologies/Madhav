@@ -30,6 +30,8 @@ changelog:
   - v1.0.3 (2026-05-24, R11.F_ROLLOUT_COMPLETE): Added Items 6+7 (CF.V13.6, CF.V13.7) —
     GitHub Actions no PR-level CI trigger; session discipline grep-all-SDK-sharing-adapters.
     Queue now carries 7 items across 9–13 estimated sessions.
+  - v1.0.4 (2026-05-30, CI_AUDIT): Added Item 8 (CF.V13.8) —
+    Python sidecar tests unconditionally soft-pass in ci.yml. Queue now carries 8 items.
 ---
 
 # V1.3 Audit Queue v1.0
@@ -232,6 +234,33 @@ In R11.F, a stream-type narrowing error was patched in the Anthropic, Google, Op
 
 ---
 
+## Item 8 — Python Sidecar Tests Unconditionally Soft-Pass in CI
+
+**ID:** CF.V13.8
+**Surfaced at:** CI/CD audit 2026-05-30
+**Severity:** MEDIUM
+
+**Description:**
+`ci.yml` contains the following guard on the Python sidecar test step (line ~249):
+
+```yaml
+run: pytest ... || (echo "py-sidecar tests reported failures; treating as soft for now..." && true)
+```
+
+All failures from `natal_engine/tests/`, `pipeline/__tests__/`, and `tests/` are unconditionally swallowed. The comment "soft for now" has persisted across multiple workstreams with no target session to harden. The gate currently provides no signal — a complete sidecar breakdown would pass CI silently.
+
+**Scope of work:**
+1. Determine which sidecar tests require a live DB or external service and mark them with a skip guard (e.g., `pytest.mark.integration`) rather than swallowing all failures
+2. Split the step into two: `pytest -m "not integration"` as a hard gate; `pytest -m integration` with `continue-on-error: true` and a clear label
+3. Remove the `|| (... && true)` entirely from the hard-gate step
+4. Confirm the hard gate exits non-zero on a real test failure before merging
+
+**Target session:** Next ci-hygiene session or standalone `fix/sidecar-ci-gate` branch. Do not defer past the next sidecar-touching workstream.
+
+**Why deferred (from today):** Requires understanding which sidecar tests need live infrastructure. Safe to do in isolation but not worth blocking the current CI audit PR.
+
+---
+
 ## Summary Table
 
 | ID | Item | Source Session | Severity | Est. Sessions |
@@ -243,10 +272,11 @@ In R11.F, a stream-type narrowing error was patched in the Anthropic, Google, Op
 | CF.V13.5 | Lifecycle tab synthesis-stage tool call counter missing | R11.F audit 2026-05-24 | LOW | 1 |
 | CF.V13.6 | GitHub Actions: no `pull_request:` CI trigger | R11.F rollout 2026-05-24 | LOW | 0.5 |
 | CF.V13.7 | Session discipline: grep all SDK-sharing adapters before patching | R11.F rollout 2026-05-24 | LOW | 0.5 |
+| CF.V13.8 | Python sidecar tests unconditionally soft-pass in CI | CI audit 2026-05-30 | MEDIUM | 1 |
 
-**Total carry-forward:** 7 items across 9–13 estimated sessions.
+**Total carry-forward:** 8 items across 10–14 estimated sessions.
 **V1.2 audit shipped:** 55 defects across 21 sessions (COV×10, PERF×5, ICR×6).
 
 ---
 
-*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.3 — CF.V13.6 + CF.V13.7 added at R11.F rollout close 2026-05-24.*
+*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.4 — CF.V13.8 added at CI audit 2026-05-30.*
