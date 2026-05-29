@@ -1,0 +1,2881 @@
+# MARSYS-JIS Multi-Ayanamsha Build — Session Queue
+# Conductor reads this file to dispatch sub-agents.
+# Status values: pending | in_progress | complete | failed | blocked
+# Last updated: 2026-05-29 (Phase A authoring)
+
+meta:
+  total_sessions: 95
+  max_parallel: 6
+  conductor_version: "1.0"
+
+# ============================================================
+# WAVE 0 — Stream A (globals) + Stream B (schema+form)
+# ============================================================
+
+sessions:
+
+  # --- Stream A: A0 Global Asset Substrate (30 sessions) ---
+
+  - id: A-01
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G20 ayanamsha registry + values over time"
+    desc: "Build ayanamsha_registry table (migration 132). Seed 5 canonical ayanamshas: Lahiri, True Chitra, KP, Raman, Surya Siddhanta. Each row: id, name, formula, epoch_pin_jd, current_value_deg, derivative_per_year, classical_citation, capability_only flag. Python function ayanamsha_value(jd, id) -> degrees."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_ayanamsha_registry.py -v"
+      - "python platform/scripts/governance/drift_detector.py"
+    commit_pattern: "feat(global/G20): ayanamsha registry 5-canonical seeded [BUILD-ORCH-A-01]"
+    tracker_update:
+      item: G20
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-02
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G9 nakshatra attribute reference"
+    desc: "Populate nakshatra_attributes table (or seed marsys_global.nakshatra_ref). 27 rows: deity, gana, nadi, yoni, pakshi, varna, tatva, ruling_graha, symbol, paramayus, pada_deities. Classical citations from BPHS + Muhurta texts."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_nakshatra_ref.py -v"
+    commit_pattern: "feat(global/G9): nakshatra attribute reference 27 rows [BUILD-ORCH-A-02]"
+    tracker_update:
+      item: G9
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-03
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G10 sign attribute reference"
+    desc: "Populate sign_attributes table. 12 rows: lord, element, modality, gender, direction, body_part, gemstone, mantra_syllable, drekkana_lords. Classical citations."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_sign_ref.py -v"
+    commit_pattern: "feat(global/G10): sign attribute reference 12 rows [BUILD-ORCH-A-03]"
+    tracker_update:
+      item: G10
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-04
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G11 graha attribute reference"
+    desc: "Populate graha_attributes table. 9 rows (Sun-Saturn+Rahu+Ketu): significations, friendships, exaltation, debilitation, mooltrikona, own_signs, mantra, gemstone, color, day, direction, deity, body_part_rulership, varna, tatva, gunas. Classical citations from BPHS."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_graha_ref.py -v"
+    commit_pattern: "feat(global/G11): graha attribute reference 9 rows [BUILD-ORCH-A-04]"
+    tracker_update:
+      item: G11
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-05
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G18+G19 friendship reference + karaka assignments"
+    desc: "G18: natural friendship 9x9 table (classical canon per-graha-pair). G19: karaka reference (natural karakas per house 1-12, per significance domain career/marriage/etc). Both static reference tables."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_friendship_karaka_ref.py -v"
+    commit_pattern: "feat(global/G18-G19): friendship 9x9 + karaka assignment tables [BUILD-ORCH-A-05]"
+    tracker_update:
+      item: G18
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-06
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G17 aspect rule library"
+    desc: "Populate aspect_rules table. Parashari graha-drishti (7H + special 4/7/8 Mars, 5/7/9 Jup, 3/7/10 Sat, 5/7/9 Rahu/Ketu). Jaimini rasi-drishti (fixed/dual/movable). Tajik 5-type aspects with orb tables. Classical citations."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_aspect_rules.py -v"
+    commit_pattern: "feat(global/G17): aspect rule library Parashari+Jaimini+Tajik [BUILD-ORCH-A-06]"
+    tracker_update:
+      item: G17
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-07
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G16 varga formula library (30+)"
+    desc: "Populate varga_formulas table. Sign-assignment formulas for D1-D60 Parashari + Jaimini variants + Nadi D108/D150/D2700 + supplementary D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54. Per-varga: divisor, formula_type, assignment_rule, special_notes."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_varga_formulas.py -v"
+    commit_pattern: "feat(global/G16): varga formula library 30+ divisional charts [BUILD-ORCH-A-07]"
+    tracker_update:
+      item: G16
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-08
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G14 saham formula library (50+)"
+    desc: "Populate saham_formulas table. 50+ Tajik Sahams: Punya/Vidya/Yasas/Vivah/Karma/Bhagya/Putra/Aayur/Mrityu/Roga + 40 more. Each: formula (day/night variants), classical citation, domain."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_saham_formulas.py -v"
+    commit_pattern: "feat(global/G14): saham formula library 50+ Tajik sahams [BUILD-ORCH-A-08]"
+    tracker_update:
+      item: G14
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-09
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G22+G23+G24 tara bala + chandra bala + vimshottari table"
+    desc: "G22: 27x27 tara_bala matrix (natal_nakshatra, transit_nakshatra) -> tara_class. G23: 12x12 chandra_bala matrix (natal_moon_sign, transit_moon_sign) -> favorable/neutral/unfavorable. G24: 27 nakshatras -> starting Vimshottari dasha lord + sub-fraction."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 2.5
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_tara_chandra_vimsh.py -v"
+    commit_pattern: "feat(global/G22-G24): tara bala 27x27 + chandra bala 12x12 + vimshottari start table [BUILD-ORCH-A-09]"
+    tracker_update:
+      item: G22
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-10
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G25+G26 mrityubhaga/gandanta/pushkara + muhurta reference"
+    desc: "G25: Mrityubhaga (8 grahas x 12 signs critical degrees), Gandanta (junction-zone predicates for Scorpio-Sag, Pisces-Aries, Cancer-Leo), Pushkara navamsas (12 per sign). G26: Classical tithi/vara/nakshatra/yoga/karana scoring tables for muhurta auspiciousness. Choghadiya/Hora/Abhijit/Brahma-muhurta computation rules."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_mbhaga_muhurta.py -v"
+    commit_pattern: "feat(global/G25-G26): mrityubhaga+gandanta+pushkara+muhurta tables [BUILD-ORCH-A-10]"
+    tracker_update:
+      item: G25
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-11
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G34+G35+G36 gemstone + yantra + compatibility tables"
+    desc: "G34: 9 primary + 9 substitute gemstones per graha (weight, metal, finger, day, activation procedure, classical citation from Garuda Purana + Mani-mala). G35: Navagraha Yantras + Sri Yantra structural data + activation. G36: Ashta Koota 8 kootas (Varna/Vashya/Tara/Yoni/Graha Maitri/Gana/Bhakoot/Nadi) + Dasa Koota extension + Manglik-cancellation rules."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_gemstone_yantra_compat.py -v"
+    commit_pattern: "feat(global/G34-G36): gemstone+yantra+compatibility classical tables [BUILD-ORCH-A-11]"
+    tracker_update:
+      item: G34
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-12
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G31+G32 era conversion + fixed star catalog"
+    desc: "G31: Gregorian <-> Vikram <-> Shaka <-> Kali <-> Saptarshi era for every JD 1950-2100 (bridge from existing panchanga_daily). G32: Fixed star catalog ~50 stars (Spica/Regulus/Antares/Aldebaran/Sirius/Canopus/Vega etc): longitudes per 5 ayanamshas + precessed J2000 coords + magnitude + Indian name + classical significance."
+    depends_on: [A-01]
+    parallel_eligible: false
+    estimated_hours: 7
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_era_fixed_stars.py -v"
+    commit_pattern: "feat(global/G31-G32): era conversion table + fixed star catalog 50 stars [BUILD-ORCH-A-12]"
+    tracker_update:
+      item: G31
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-13
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G40+G45 career mapping + ayurveda mapping"
+    desc: "G40: Classical profession mappings per graha (medicine/law/engineering/arts/government/education etc) from BPHS Ch 81-83 + Phaladeepika + modern overlays. G45: Per nakshatra + sign + graha -> Vata/Pitta/Kapha primary+secondary + body-part mapping (Kalapurusha 12 signs) + disease prediction per-graha-affliction."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_career_ayurveda.py -v"
+    commit_pattern: "feat(global/G40-G45): career+ayurveda classical mapping tables [BUILD-ORCH-A-13]"
+    tracker_update:
+      item: G40
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-14
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G46+G47 tantric correspondences + numerology overlays"
+    desc: "G46: Sri Vidya -> graha -> bija -> chakra (Muladhara through Sahasrara) -> mantra-syllable. Esoteric Tantric correspondences. G47: Pythagorean + Chaldean + Vedic Ank-jyotish per nakshatra/graha/name. Syncretic cross-system convergence detection rules."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_tantric_numerology.py -v"
+    commit_pattern: "feat(global/G46-G47): tantric correspondences + numerology overlays [BUILD-ORCH-A-14]"
+    tracker_update:
+      item: G46
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-15
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G48+G49+G50 mundane calendar + bhrigu bindu + tajik tables"
+    desc: "G48: Jupiter-Saturn conjunctions 1950-2100 + slow-planet alignments + historical correlation. G49: Bhrigu Bindu daily positions 1950-2100 (Moon-Rahu midpoint). G50: Hadda lords per sign (5-fold), Tajik aspect orbs, Year-lord rules (Vargottama/Triraashipathi/Hadda), Mudda/Patyayini computation rules."
+    depends_on: [A-01]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_mundane_bb_tajik.py -v"
+    commit_pattern: "feat(global/G48-G50): mundane calendar+bhrigu bindu+tajik tables [BUILD-ORCH-A-15]"
+    tracker_update:
+      item: G48
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-16
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G39+G44 vedic ritual library + nadi lookup tables"
+    desc: "G39: Per occasion: sankalpa + ritual sequence + classical citation (Janma/Vivah/Griha/Upanayana/Antyeshti etc). G44: (a) D150 lord per nakshatra-pada-sub + rishi-name (b) D2700 sub-rishi extension (c) Bhrigu-Nadi yoga rule extensions (d) Krishnamurti Nadi extensions. Nadi-amsa sub-lord tables."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 22
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_ritual_nadi.py -v"
+    commit_pattern: "feat(global/G39-G44): vedic ritual library + nadi astrology tables [BUILD-ORCH-A-16]"
+    tracker_update:
+      item: G39
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-17
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G41 lal kitab corpus"
+    desc: "Pt. Roop Chand Lal Kitab rules. Planetary placement rules per house (12 grahas x 12 houses = 144 rule-sets). Remedy rules per placement. Debt karmas. Distinguishing from Parashari rules. Classical citation per rule. Stored as structured JSON in rag_chunks + dedicated lal_kitab_rules table."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 16
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_lal_kitab.py -v"
+    commit_pattern: "feat(global/G41): lal kitab corpus rules + remedy table [BUILD-ORCH-A-17]"
+    tracker_update:
+      item: G41
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-18
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G43 bhrigu samhita extracts"
+    desc: "Public-domain palm-leaf extracts. Per-graha-position predictive rules (Sun in each house x 12 signs of Moon = 144 base combinations expanded with yogas). Stored as rag_chunks with source_type=bhrigu_samhita + structured bhrigu_rules table. Distinct rule patterns from BPHS."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_bhrigu_samhita.py -v"
+    commit_pattern: "feat(global/G43): bhrigu samhita extracts + rule table [BUILD-ORCH-A-18]"
+    tracker_update:
+      item: G43
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-19
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G33 mantra/stotra library (~200 entries)"
+    desc: "9 Navagraha mantras + 9 bija mantras + Gayatri family + Maha Mrityunjaya + Hanuman Chalisa + Lakshmi/Saraswati/Durga stotras + Aditya Hridayam + Vishnu Sahasranama. Each: Sanskrit (IAST) + transliteration + English meaning + recommended frequency + classical citation. Stored in mantras table + rag_chunks."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_mantras.py -v"
+    commit_pattern: "feat(global/G33): mantra+stotra library 200 entries IAST+transliteration [BUILD-ORCH-A-19]"
+    tracker_update:
+      item: G33
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-20
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G27 remedial library"
+    desc: "Per-graha remedies. 9 grahas: mantra (ref G33) + gemstone (ref G34) + yantra (ref G35) + metal + color + charity_object + ritual (ref G39) + fasting_day + upagraha_remedy + classical citation (Garuda Purana + Parasara Hora). Structured remedial_library table + links to existing mantras/gemstones/yantras."
+    depends_on: [A-19]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_remedial_library.py -v"
+    commit_pattern: "feat(global/G27): remedial library per-graha classical citations [BUILD-ORCH-A-20]"
+    tracker_update:
+      item: G27
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-21
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G28 classical worked-examples library"
+    desc: "Famous charts: BPHS examples + Phaladeepika 250 combinations + Raman's 300 Combinations + KS Charak classical horoscopes. Per chart: name, birth data, known outcomes, attributed predictions from classical text, classical citation. Used for M6 anchors + divergence-dividend research. Stored in worked_examples table + rag_chunks."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 16
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_worked_examples.py -v"
+    commit_pattern: "feat(global/G28): classical worked-examples library BPHS+Phaladeepika+Raman [BUILD-ORCH-A-21]"
+    tracker_update:
+      item: G28
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-22
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G37 muhurta rule library (30+ activity types)"
+    desc: "Per activity type: marriage/griha_pravesh/journey/education/surgery/business_launch/vehicle/agriculture/thread_ceremony/naming_ceremony etc. Per activity: required_tithi_list + required_vara_list + required_nakshatra_list + lagna_requirements + dosha_avoidances + classical citation. Used by muhurta_finder engine."
+    depends_on: [A-10]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_muhurta_rules.py -v"
+    commit_pattern: "feat(global/G37): muhurta rule library 30+ activity types [BUILD-ORCH-A-22]"
+    tracker_update:
+      item: G37
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-23
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G12 yoga definitions library (200+)"
+    desc: "Every classical yoga: Pancha Mahapurusha (5) + Raj yogas (50+) + Dhan yogas (30+) + Vipareeta Raja (3) + Neechabhanga (8 cancellation rules) + Sunafa/Anapha/Durdhura + Vesi/Vasi/Ubhayachari + Adhi + Gajakesari + Saraswati + Akhanda Samrajya + Parijata + Kala Sarpa (12) + all Parashari yogas. Per yoga: constituent_rule (predicate), classical_citation, activation_predicate, strength_modifier, rarity_class."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 24
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_yoga_defs.py -v"
+    commit_pattern: "feat(global/G12): yoga definitions library 200+ with predicates [BUILD-ORCH-A-23]"
+    tracker_update:
+      item: G12
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-24
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G13 dosha definitions library"
+    desc: "Full classical dosha set with predicate + citation: Mangal (7 types), Kaal Sarpa (12 variants), Pitru, Matri, Naga, Sarpa, Guru Chandal, Grahan, Daridra, Shakata, Vish, Punarphoo, Angarak, Visha, Kemadrum. Per dosha: constituent_predicate, cancellation_rules, severity_modifier, classical_citation."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_dosha_defs.py -v"
+    commit_pattern: "feat(global/G13): dosha definitions library 15 types with predicates [BUILD-ORCH-A-24]"
+    tracker_update:
+      item: G13
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-25
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G15 dasha-system rule library (32 systems)"
+    desc: "Starting-lord rule + sequence + year-table + applicability per system: Vimshottari/Ashtottari/Yogini/Shodashottari/Dvadashottari/Panchottari/Shatabdika/Chatturashitika/Dvisaptati/Shashtihayani/Shatatrimshat/Tara + Jaimini Chara/Sthira/NiryanaShoola/Trikona/Brahma/Vimsa/Sudasa/Drig/Naisargika/Mandukya/Padakrama + Mudda/Patyayini/Sahama + Kalachakra/Sphuta/Vidhanottari/Hadda. Each: total_years, sub_period_divisor, activation_condition, classical_source."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 20
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_dasha_rules.py -v"
+    commit_pattern: "feat(global/G15): dasha-system rule library 32 systems [BUILD-ORCH-A-25]"
+    tracker_update:
+      item: G15
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: A-26
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G2 ephemeris 1950-2100 extend + trim"
+    desc: "Existing ephemeris_daily covers 1930-2100. Ensure all 23 bodies present: 9 grahas + True Node + Mean Node + True Lilith + Mean Lilith + Ceres + Pallas + Juno + Vesta + Chiron + Uranus + Neptune + Pluto + Sedna + Eris. Add any missing bodies. Trim pre-1950 rows per M7 decision. Add heliocentric coords + declination + RA columns if missing."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_ephemeris_coverage.py -v"
+    commit_pattern: "feat(global/G2): ephemeris extend 23 bodies + helio+decl+RA cols [BUILD-ORCH-A-26]"
+    tracker_update:
+      item: G2
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -c \"import psycopg2; print('ephemeris check OK')\""
+    status: pending
+
+  - id: A-27
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G6 sankranti table per ayanamsha 1950-2100"
+    desc: "Compute Sun sign-entry timestamps for all 12 signs x 5 ayanamshas x 150 years = ~9000 rows. Store in sankranti_table (date, sign, ayanamsha_id, exact_jd, exact_utc). Bootstrap script using swisseph. Verify Mesha Sankranti 1984-04-13 Lahiri falls near native birth."
+    depends_on: [A-01, A-26]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_sankranti_5ayanamsha.py -v"
+    commit_pattern: "feat(global/G6): sankranti table 5-ayanamsha 1950-2100 [BUILD-ORCH-A-27]"
+    tracker_update:
+      item: G6
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -c \"print('sankranti smoke OK')\""
+    status: pending
+
+  - id: A-28
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G7 panchanga 5-ayanamsha extend 1950-2100"
+    desc: "Existing panchanga_daily has Lahiri only (73,414 rows for 1900-2100). Add ayanamsha_id column, extend to 5 ayanamshas. Total: 73414 x 5 = ~367K rows. Bootstrap script must preserve existing Lahiri rows (add ayanamsha_id='lahiri') then compute True Chitra/KP/Raman/Surya Siddhanta rows. Full enrichment (special_yogas, choghadiya, hora, inauspicious, auspicious)."
+    depends_on: [A-01, A-26, A-27]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_panchanga_5ayanamsha.py -v"
+    commit_pattern: "feat(global/G7): panchanga 5-ayanamsha extend Lahiri->5 ayanamshas [BUILD-ORCH-A-28]"
+    tracker_update:
+      item: G7
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -m pytest platform/python-sidecar/pipeline/__tests__/test_panchanga_5ayanamsha_prod.py"
+    status: pending
+
+  - id: A-29
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G21 sade sati saturn-sign-changes per ayanamsha"
+    desc: "Every Saturn sign-ingress 1950-2100 per ayanamsha (5 x ~29 ingresses = ~145 rows). Store in saturn_sign_changes table (date, from_sign, to_sign, ayanamsha_id, exact_jd). Per-chart Sade Sati derived by joining native Moon sign with this table. Forward + retrograde ingresses both captured."
+    depends_on: [A-01, A-26]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_saturn_ingresses.py -v"
+    commit_pattern: "feat(global/G21): saturn sign changes 5-ayanamsha 1950-2100 [BUILD-ORCH-A-29]"
+    tracker_update:
+      item: G21
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -c \"print('saturn ingress smoke OK')\""
+    status: pending
+
+  - id: A-30
+    stream: A
+    worktree: ../MadhavBO-A
+    branch: feature/build-orch/stream-a
+    title: "G1 classical RAG corpus extend + re-embed (Phaladeepika/Saravali/Brihat Jataka)"
+    desc: "Existing 4,589 rag_chunks cover BPHS+Jaimini+KP+Tajaka. Add Phaladeepika (~300 slokas), Saravali (~500 slokas), Brihat Jataka (~400 slokas) if not present. Vertex AI 768-dim re-embed any new chunks. No-narration linter pass on all new chunks. Check for duplicates before insert."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-A && python -m pytest platform/python-sidecar/pipeline/__tests__/test_rag_corpus_coverage.py -v"
+    commit_pattern: "feat(global/G1): classical RAG corpus extend Phaladeepika+Saravali+BrihatJataka [BUILD-ORCH-A-30]"
+    tracker_update:
+      item: G1
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -c \"print('rag corpus smoke OK')\""
+    status: pending
+
+  # --- Stream B: INF1 form + INF2 schema (12 sessions) ---
+
+  - id: B-01
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 124 builds table"
+    desc: "Create platform/migrations/124_builds.sql. builds table: build_id UUID PK, chart_id FK, triggered_by_uid, triggered_by_role, engine_version, ayanamsha_id ARRAY, salience_formula_ver, status CHECK, queued_at/started_at/finished_at/cancelled_at/failed_at, error_summary, log_gcs_uri, asset_artifacts_uri, cloud_run_job_exec. Indexes: builds_chart_idx + builds_status_idx. Staging mirror 124_builds_staging.sql."
+    depends_on: []
+    parallel_eligible: true
+    estimated_hours: 2
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/124_builds.sql && echo 'mig 124 staging OK'"
+    commit_pattern: "feat(schema/mig-124): builds table [BUILD-ORCH-B-01]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-02
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 125 build_steps table"
+    desc: "platform/migrations/125_build_steps.sql. build_steps: build_step_id UUID PK, build_id FK, asset_id TEXT, asset_label TEXT, dependency_satisfied_at, started_at, finished_at, status CHECK(pending/running/complete/failed/cancelled/skipped), retry_count INT DEFAULT 0, output_gcs_uri, error_summary, rows_written INT. Index: build_steps_build_idx."
+    depends_on: [B-01]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/125_build_steps.sql && echo 'mig 125 OK'"
+    commit_pattern: "feat(schema/mig-125): build_steps table [BUILD-ORCH-B-02]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-03
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 126 engine_versions table"
+    desc: "platform/migrations/126_engine_versions.sql. engine_versions: engine_version TEXT PK, status CHECK(current/superseded/deprecated), promoted_at TIMESTAMPTZ, jh_parity_sha TEXT, release_notes_uri TEXT. Seed row: ('natal_engine/0.2.0-jh-parity', 'current', now(), <sha-from-jh-oracle.json>, NULL)."
+    depends_on: [B-02]
+    parallel_eligible: false
+    estimated_hours: 1
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/126_engine_versions.sql && echo 'mig 126 OK'"
+    commit_pattern: "feat(schema/mig-126): engine_versions table + seed row [BUILD-ORCH-B-03]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-04
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 127 chart_facts ayanamsha_id + fact_id extension"
+    desc: "platform/migrations/127_chart_facts_ayanamsha.sql. Add ayanamsha_id TEXT NOT NULL DEFAULT 'lahiri' to chart_facts. Add fact_id TEXT GENERATED ALWAYS AS (encode(sha256((chart_id||ayanamsha_id||fact_category||fact_key)::bytea),'hex')) STORED. Update PK to (chart_id, ayanamsha_id, fact_category, fact_key). Add chart_facts_ayanamsha_idx."
+    depends_on: [B-03]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/127_chart_facts_ayanamsha.sql && echo 'mig 127 OK'"
+    commit_pattern: "feat(schema/mig-127): chart_facts ayanamsha_id + fact_id sha256 [BUILD-ORCH-B-04]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-05
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 128 chart_facts_history audit trigger"
+    desc: "platform/migrations/128_chart_facts_history.sql. chart_facts_history: history_id UUID PK, fact_id TEXT, change_type CHECK(insert/update/delete), changed_at TIMESTAMPTZ, old_value JSONB, new_value JSONB, build_id UUID, engine_version TEXT. Trigger: trg_chart_facts_audit on chart_facts AFTER INSERT OR UPDATE OR DELETE."
+    depends_on: [B-04]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/128_chart_facts_history.sql && echo 'mig 128 OK'"
+    commit_pattern: "feat(schema/mig-128): chart_facts_history audit trigger [BUILD-ORCH-B-05]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-06
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 129 chart_facts_supersedence"
+    desc: "platform/migrations/129_chart_facts_supersedence.sql. chart_facts_supersedence: supersedence_id UUID PK, chart_id UUID, ayanamsha_id TEXT, superseded_build_id UUID, current_build_id UUID, superseded_at TIMESTAMPTZ, reason TEXT. Function fn_supersede_build(chart_id, old_build_id, new_build_id) marks old build's chart_facts as superseded."
+    depends_on: [B-05]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/129_chart_facts_supersedence.sql && echo 'mig 129 OK'"
+    commit_pattern: "feat(schema/mig-129): chart_facts_supersedence table + fn_supersede_build [BUILD-ORCH-B-06]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-07
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 130 chart_ayanamsha_reports"
+    desc: "platform/migrations/130_chart_ayanamsha_reports.sql. chart_ayanamsha_reports: report_id UUID PK, chart_id UUID FK, build_id UUID FK, ayanamsha_id_1 TEXT, ayanamsha_id_2 TEXT, divergence_score FLOAT, max_position_delta_deg FLOAT, report_json JSONB, generated_at TIMESTAMPTZ. Used by cross-ayanamsha consensus tool."
+    depends_on: [B-06]
+    parallel_eligible: false
+    estimated_hours: 1
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/130_chart_ayanamsha_reports.sql && echo 'mig 130 OK'"
+    commit_pattern: "feat(schema/mig-130): chart_ayanamsha_reports cross-ayanamsha divergence [BUILD-ORCH-B-07]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-08
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 131 chart_documents table"
+    desc: "platform/migrations/131_chart_documents.sql. chart_documents: document_id UUID PK, chart_id UUID FK, ayanamsha_id TEXT, document_type TEXT CHECK(forensic_render/ucn_digest/msr_export/cdlm_export/cgm_export/rm_export), content_md TEXT, content_json JSONB, build_id UUID FK, rendered_at TIMESTAMPTZ, gcs_uri TEXT. Unique index (chart_id, ayanamsha_id, document_type, build_id)."
+    depends_on: [B-07]
+    parallel_eligible: false
+    estimated_hours: 1
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/131_chart_documents.sql && echo 'mig 131 OK'"
+    commit_pattern: "feat(schema/mig-131): chart_documents rendered artifacts table [BUILD-ORCH-B-08]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: B-09
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "mig 132 ayanamsha_registry table"
+    desc: "platform/migrations/132_ayanamsha_registry.sql. ayanamsha_registry: ayanamsha_id TEXT PK, name TEXT, formula_type TEXT, epoch_pin_jd FLOAT, value_at_epoch_deg FLOAT, derivative_per_tropical_year FLOAT, current_value_deg FLOAT, is_canonical BOOLEAN DEFAULT true, capability_only BOOLEAN DEFAULT false, classical_citation TEXT, notes TEXT. Note: Stream A-01 seeds data; this migration creates the schema only."
+    depends_on: [B-08]
+    parallel_eligible: false
+    estimated_hours: 1
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/132_ayanamsha_registry.sql && echo 'mig 132 OK'"
+    commit_pattern: "feat(schema/mig-132): ayanamsha_registry table schema [BUILD-ORCH-B-09]"
+    tracker_update:
+      item: INF2
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: B-10
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "CHART_FACTS_SCHEMA.json extend + drift detector update"
+    desc: "Extend platform/scripts/governance/CHART_FACTS_SCHEMA.json (or create if not exists) to include all new columns: ayanamsha_id, fact_id. Update drift_detector.py to check chart_facts schema against CHART_FACTS_SCHEMA.json. Create CHART_FACTS_INDEX_INVENTORY.md documenting all chart_facts indexes."
+    depends_on: [B-09]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-B && python platform/scripts/governance/drift_detector.py && echo 'drift OK'"
+    commit_pattern: "feat(infra/INF9): CHART_FACTS_SCHEMA extend + drift detector + index inventory [BUILD-ORCH-B-10]"
+    tracker_update:
+      item: INF9
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: B-11
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "NewClientForm UI + form validation"
+    desc: "platform/src/app/clients/new/page.tsx + platform/src/components/clients/NewClientForm.tsx. Fields: Full Name (required), Gender (select M/F/Other), Birth Date (date picker), Birth Time (time picker HH:MM), Birth Place (Google Places autocomplete -> lat/lon/tz_offset), Ayanamsha multi-select (default all 5 checked: Lahiri/TrueChitra/KP/Raman/SuryaSiddhanta). Validation: required fields + date-time validity + place must resolve. Submit -> POST /api/clients/create."
+    depends_on: [B-09]
+    parallel_eligible: false
+    estimated_hours: 16
+    check_commands:
+      - "cd ../MadhavBO-B && pnpm test -- --testPathPattern='NewClientForm' && echo 'form tests OK'"
+    commit_pattern: "feat(infra/INF1): NewClientForm with 5-ayanamsha multi-select [BUILD-ORCH-B-11]"
+    tracker_update:
+      item: INF1
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: B-12
+    stream: B
+    worktree: ../MadhavBO-B
+    branch: feature/build-orch/stream-b
+    title: "/api/clients/create + tests"
+    desc: "platform/src/app/api/clients/create/route.ts. POST body: { name, gender, birth_date, birth_time, birth_place, lat, lon, tz_offset, ayanamshas: string[] }. Validates all fields. Creates charts row. Creates client profile. Returns { chart_id, client_id, redirect_url: /clients/{chart_id}/build }. Integration tests: valid create, missing required field 422, invalid ayanamsha 422."
+    depends_on: [B-11]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-B && pnpm test -- --testPathPattern='api/clients/create' && echo 'api tests OK'"
+    commit_pattern: "feat(infra/INF1): /api/clients/create endpoint + tests [BUILD-ORCH-B-12]"
+    tracker_update:
+      item: INF1
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  # ============================================================
+  # WAVE 1 — Stream C (pipeline) + Stream D (API) + Stream E (engine)
+  # ============================================================
+
+  # --- Stream C: Python pipeline (8 sessions) ---
+
+  - id: C-01
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "build_chart.py scaffold + arg parse"
+    desc: "platform/python-sidecar/pipeline/build_chart.py. New entrypoint: argparse(--build-id, --chart-id). Loads chart from charts table. Updates builds.status='running'. Defines DAG_ORDER constant (14 nodes). Calls asset dispatchers in topological order. Emits build_events per asset per stage. On success: marks builds.status='complete'. On failure: marks 'failed' + error_summary. No asset-writer code yet (stubs)."
+    depends_on: [B-01, B-02]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_build_chart_scaffold.py -v"
+    commit_pattern: "feat(pipeline/C01): build_chart.py scaffold + DAG_ORDER + arg parse [BUILD-ORCH-C-01]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: C-02
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "5-ayanamsha parallel runner (asyncio + thread pool)"
+    desc: "In build_chart.py: replace single engine invocation with asyncio.gather() running compute_chart() 5x in parallel (one per ayanamsha). Thread pool executor for the CPU-bound swisseph calls. Each invocation produces chart_output keyed by ayanamsha_id. Error handling: if any ayanamsha fails, mark that ayanamsha's build_steps as failed, continue others (partial build allowed)."
+    depends_on: [C-01]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_5ayanamsha_parallel.py -v"
+    commit_pattern: "feat(pipeline/C02): 5-ayanamsha parallel asyncio runner [BUILD-ORCH-C-02]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: C-03
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "build_events emitter + SSE row format"
+    desc: "pipeline/build_events.py. emit_event(build_id, asset_id, ayanamsha_id, stage, status, rows_written, error) -> inserts build_events row. Stage enum: compute|persist|verify|commit. Status enum: started|complete|failed. Update build_steps row atomically. SSE row format matches existing /api/build/events/[buildId]/route.ts consumer."
+    depends_on: [C-02]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_build_events.py -v"
+    commit_pattern: "feat(pipeline/C03): build_events emitter + SSE row format [BUILD-ORCH-C-03]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: C-04
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "cancellation polling"
+    desc: "In build_chart.py: between each asset, poll builds.status. If status='cancelling': finish current asset, mark remaining build_steps as 'cancelled', set builds.status='cancelled', emit cancelled build_event, exit gracefully. Poll interval: 5s. Test: trigger cancellation mid-build, verify partial state preserved."
+    depends_on: [C-03]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_cancellation.py -v"
+    commit_pattern: "feat(pipeline/C04): cancellation polling between assets [BUILD-ORCH-C-04]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: C-05
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "retry-then-halt logic"
+    desc: "Per-asset retry wrapper: 3 attempts x exponential backoff (2s/4s/8s). On 3rd failure: mark build_steps.status='failed', write error_summary, emit failed build_event. Propagate to parent: mark builds.status='failed'. Downstream assets skip (status='skipped'). Write structured error to build_steps.error_summary (exception type + traceback + retry_count)."
+    depends_on: [C-04]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_retry_halt.py -v"
+    commit_pattern: "feat(pipeline/C05): retry-then-halt 3x backoff + structured error [BUILD-ORCH-C-05]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: C-06
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "Cloud Run Job command repoint (cloudbuild.yaml)"
+    desc: "Update platform/python-sidecar/cloudbuild.yaml: change Cloud Run Job command from 'python -m pipeline.main' to 'python -m pipeline.build_chart'. Update any Dockerfile or Job spec JSON that references pipeline.main. Verify Cloud Run Job spec in GCP console points to new entrypoint."
+    depends_on: [C-05]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-C && grep -rn 'pipeline.build_chart' platform/python-sidecar/cloudbuild.yaml && echo 'cloudbuild repointed OK'"
+    commit_pattern: "feat(pipeline/C06): cloudbuild.yaml Job command -> pipeline.build_chart [BUILD-ORCH-C-06]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -c \"print('pipeline entrypoint smoke OK')\""
+    status: pending
+
+  - id: C-07
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "stub asset writers (no-op emit)"
+    desc: "For each of A2-A14: create platform/python-sidecar/pipeline/writers/{forensic_writer,chart_facts_writer,panchanga_writer,dashas_writer,vargas_writer,sensitive_points_writer,t1_structural_writer,sade_sati_writer,msr_writer,cdlm_writer,cgm_writer,rm_writer,ucn_digest_writer}.py with stub implementations that emit build_events but write no data. Stubs return rows_written=0. This enables end-to-end pipeline smoke without real writers."
+    depends_on: [C-06]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_stub_writers.py -v"
+    commit_pattern: "feat(pipeline/C07): stub asset writers 13 files no-op emit [BUILD-ORCH-C-07]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: C-08
+    stream: C
+    worktree: ../MadhavBO-C
+    branch: feature/build-orch/stream-c
+    title: "SMOKE: run native chart 5-ayanamsha empty pipeline"
+    desc: "Integration smoke test: invoke build_chart.py --build-id <test-id> --chart-id <native-chart-id> against staging DB. Verify: (1) builds row created and updated to 'complete'; (2) 14 build_steps rows emitted per ayanamsha; (3) all build_events rows present; (4) cancellation poll works; (5) retry triggers on injected failure."
+    depends_on: [C-07]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-C && python -m pytest platform/python-sidecar/pipeline/__tests__/test_pipeline_e2e_smoke.py -v"
+    commit_pattern: "test(pipeline/C08): E2E smoke 5-ayanamsha empty pipeline PASS [BUILD-ORCH-C-08]"
+    tracker_update:
+      item: INF3
+      brief: locked
+      impl: deployed
+    deploy:
+      service: amjis-sidecar
+      post_deploy_smoke: "python -m pytest platform/python-sidecar/pipeline/__tests__/test_pipeline_e2e_smoke.py"
+    status: pending
+
+  # --- Stream D: API surface (9 sessions) ---
+
+  - id: D-01
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "extend /api/build/start (builds row + ayanamshas[])"
+    desc: "platform/src/app/api/build/start/route.ts. Extend POST body to include ayanamshas: string[] (default ['lahiri','true_chitra','kp','raman','surya_siddhanta']). Creates builds row with ayanamsha_id=JSON_STRINGIFY(ayanamshas). Creates 14 build_steps rows in 'pending' status. Enqueues Cloud Tasks job. Returns { build_id, step_ids[] }."
+    depends_on: [B-01, B-02]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/build/start' && echo 'D-01 tests OK'"
+    commit_pattern: "feat(api/D01): /api/build/start extend builds row + ayanamshas[] [BUILD-ORCH-D-01]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-02
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "/api/build/cancel/[buildId]"
+    desc: "platform/src/app/api/build/cancel/[buildId]/route.ts. POST. Auth-gated (must be owner or super_admin). Updates builds.status='cancelling' if current status in ('queued','running'). Returns 200 { message: 'cancellation requested' }. Returns 409 if status not cancellable."
+    depends_on: [D-01]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/build/cancel' && echo 'D-02 OK'"
+    commit_pattern: "feat(api/D02): /api/build/cancel/[buildId] endpoint [BUILD-ORCH-D-02]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-03
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "/api/build/active"
+    desc: "platform/src/app/api/build/active/route.ts. GET. Returns all builds for current user where status IN ('queued','running','cancelling'). Per row: build_id, chart_id, chart_name, ayanamshas[], status, queued_at, started_at, steps_complete/steps_total. Cached 5s."
+    depends_on: [D-02]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/build/active' && echo 'D-03 OK'"
+    commit_pattern: "feat(api/D03): /api/build/active in-progress builds list [BUILD-ORCH-D-03]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-04
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "/api/build/recent"
+    desc: "platform/src/app/api/build/recent/route.ts. GET. Returns builds completed in last 24h that the user hasn't seen (no notification_views row for this build_id + user). Per row: build_id, chart_id, chart_name, status, finished_at, ayanamshas[]. Used for post-visit toast."
+    depends_on: [D-03]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/build/recent' && echo 'D-04 OK'"
+    commit_pattern: "feat(api/D04): /api/build/recent unseen completed builds [BUILD-ORCH-D-04]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-05
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "hardening /api/clients/create"
+    desc: "Harden existing or new /api/clients/create: rate limiting (5 creates/hour per user), input sanitization, place autocomplete validation (lat/lon must be non-null), ayanamsha whitelist validation, idempotency key support (X-Idempotency-Key header). Return 400 with structured errors on validation fail."
+    depends_on: [D-04]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/clients/create' && echo 'D-05 OK'"
+    commit_pattern: "feat(api/D05): /api/clients/create hardening rate-limit+idempotency [BUILD-ORCH-D-05]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-06
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "/api/engine/current"
+    desc: "platform/src/app/api/engine/current/route.ts. GET. Returns current engine version from engine_versions table (status='current'). Response: { version, promoted_at, release_notes_uri }. No auth required (public metadata)."
+    depends_on: [D-05]
+    parallel_eligible: false
+    estimated_hours: 1
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/engine/current' && echo 'D-06 OK'"
+    commit_pattern: "feat(api/D06): /api/engine/current engine version endpoint [BUILD-ORCH-D-06]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-07
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "/api/conversations/[id]/active-ayanamshas"
+    desc: "platform/src/app/api/conversations/[id]/active-ayanamshas/route.ts. GET. Returns ayanamshas[] active for this conversation (from conversations.active_ayanamshas JSONB column added in J-01). Used by Consume Hybrid to filter chart bundle scope. Returns 404 if conversation not found or not owned."
+    depends_on: [D-06]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/conversations.*active-ayanamshas' && echo 'D-07 OK'"
+    commit_pattern: "feat(api/D07): /api/conversations/[id]/active-ayanamshas [BUILD-ORCH-D-07]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-08
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "/api/charts/[id]/ayanamsha-status"
+    desc: "platform/src/app/api/charts/[id]/ayanamsha-status/route.ts. GET. Returns per-ayanamsha build status for this chart. Array of: { ayanamsha_id, latest_build_id, status, finished_at, engine_version, is_latest_engine, steps_complete, steps_total }. Sorted by ayanamsha canonical order."
+    depends_on: [D-07]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='api/charts.*ayanamsha-status' && echo 'D-08 OK'"
+    commit_pattern: "feat(api/D08): /api/charts/[id]/ayanamsha-status per-ayanamsha build state [BUILD-ORCH-D-08]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: D-09
+    stream: D
+    worktree: ../MadhavBO-D
+    branch: feature/build-orch/stream-d
+    title: "all D-stream routes integration tests"
+    desc: "platform/src/app/api/**/__tests__/build.integration.test.ts. Full integration test suite for D-01 through D-08. Tests: auth gating (unauth 401), resource ownership (wrong user 403), status transitions (queued->running->complete), pagination for recent/active, SSE event format compatibility."
+    depends_on: [D-08]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-D && pnpm test -- --testPathPattern='build.integration' && echo 'D-09 integration OK'"
+    commit_pattern: "test(api/D09): all build API routes integration test suite [BUILD-ORCH-D-09]"
+    tracker_update:
+      item: INF4
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  # --- Stream E: Engine expansion (8 sessions) ---
+
+  - id: E-01
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "heliocentric coords emission for all 23 bodies"
+    desc: "platform/python-sidecar/natal_engine: add heliocentric_longitude, heliocentric_latitude fields to chart_output schema for each of 23 bodies. Use swe_calc_ut with SEFLG_HELCTR flag. Luminaries (Sun/Moon) helio lon = ecliptic lon (Earth-center). Store in chart_output JSONL under each body's record."
+    depends_on: [B-09]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_heliocentric.py -v"
+    commit_pattern: "feat(engine/E01): heliocentric coords all 23 bodies [BUILD-ORCH-E-01]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-02
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "declination + RA + altaz for all bodies"
+    desc: "Add to chart_output per-body: declination_deg, right_ascension_deg, altitude_deg, azimuth_deg (for birth place + birth time). Use swe_calc_ut with SEFLG_EQUATORIAL for RA/dec. Use swe_azalt for altitude/azimuth. Relevant for out-of-bounds declination detection + horizon-position reading."
+    depends_on: [E-01]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_declination_ra_altaz.py -v"
+    commit_pattern: "feat(engine/E02): declination+RA+altaz per body [BUILD-ORCH-E-02]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-03
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "True Node + Mean Node both emitted"
+    desc: "Currently engine emits one Rahu node type. Emit BOTH: True Node (SEFLG_TRUE_NODE) and Mean Node (SEFLG_MEAN_NODE) as separate body entries in chart_output: rahu_true, ketu_true, rahu_mean, ketu_mean. Per-body: all existing fields (lon, lat, speed, sign, nakshatra, pada, degree, retro). Both retrograde always - verify."
+    depends_on: [E-02]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_true_mean_nodes.py -v"
+    commit_pattern: "feat(engine/E03): True Node + Mean Node both emitted separately [BUILD-ORCH-E-03]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-04
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "Mean Lilith + True Lilith"
+    desc: "Add Mean Lilith (Black Moon Lilith, SE body SE_MEAN_APOG) and True Lilith (SE_OSCU_APOG) to chart_output. Per body: longitude, latitude, speed, sign, nakshatra, pada, degree, retrograde. Classical: Dark Moon, Dark Goddess, shadow of Venus/Moon. Both positions logged."
+    depends_on: [E-03]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_lilith.py -v"
+    commit_pattern: "feat(engine/E04): Mean Lilith + True Lilith both emitted [BUILD-ORCH-E-04]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-05
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "10 asteroids + outer planets"
+    desc: "Add to chart_output: Ceres (SE_CERES=17), Pallas (SE_PALLAS=18), Juno (SE_JUNO=19), Vesta (SE_VESTA=20), Chiron (SE_CHIRON=15), Uranus (SE_URANUS=7), Neptune (SE_NEPTUNE=8), Pluto (SE_PLUTO=9), Sedna (SE_AST_SEDNA via asteroid number), Eris (SE_AST_ERIS). Per body: all standard fields. Use swisseph asteroid file for Sedna/Eris if not in base SE."
+    depends_on: [E-04]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_asteroids_outer.py -v"
+    commit_pattern: "feat(engine/E05): 10 asteroids+outer planets Ceres/Pallas/Juno/Vesta/Chiron+Uranus/Neptune/Pluto/Sedna/Eris [BUILD-ORCH-E-05]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-06
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "D1+D9+D10 vargas for non-graha bodies"
+    desc: "Extend varga computation to all 23 bodies (not just 9 grahas). D1 (rasi), D9 (navamsa), D10 (dasamsa) computed for: both nodes, both Liliths, all 10 asteroids/outers. Extend chart_output varga section. Add per-body varga_position: { sign, lord, degree }."
+    depends_on: [E-05]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_vargas_all_bodies.py -v"
+    commit_pattern: "feat(engine/E06): D1+D9+D10 vargas all 23 bodies not just 9 grahas [BUILD-ORCH-E-06]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-07
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "cross-ayanamsha report generator"
+    desc: "platform/python-sidecar/natal_engine/cross_ayanamsha_report.py. Given chart_outputs dict (5 ayanamshas), compute: per-body position delta across ayanamshas, max_delta_deg, divergence_score (0-100), concordance_points (positions that agree within 1 deg across all 5). Store in chart_ayanamsha_reports table (mig 130)."
+    depends_on: [E-06, B-07]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_cross_ayanamsha_report.py -v"
+    commit_pattern: "feat(engine/E07): cross-ayanamsha report generator divergence+concordance [BUILD-ORCH-E-07]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: E-08
+    stream: E
+    worktree: ../MadhavBO-E
+    branch: feature/build-orch/stream-e
+    title: "G1_internal_invariants test suite"
+    desc: "platform/python-sidecar/natal_engine/__tests__/test_g1_internal_invariants.py. Replaces JH-parity gate (M1 decision). Tests: (1) algebraic invariants (sum of house cusps = 360, node separation ~180, ASC+DSC=180, MC+IC=180); (2) cross-ayanamsha sanity (all bodies within 2.5 deg of Lahiri); (3) classical spot-check (native 1984-02-05 10:43 IST Bhubaneswar: Sun in Capricorn, Moon in Aquarius/Pisces boundary per ayanamsha); (4) two-pass sensitive points (upagrahas recomputed and matched)."
+    depends_on: [E-07]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-E && python -m pytest platform/python-sidecar/natal_engine/__tests__/test_g1_internal_invariants.py -v && echo 'G1_INVARIANTS PASS'"
+    commit_pattern: "test(engine/E08): G1_internal_invariants suite replaces JH-parity gate [BUILD-ORCH-E-08]"
+    tracker_update:
+      item: A1
+      brief: locked
+      impl: merged_main
+    status: pending
+
+
+  # ============================================================
+  # WAVE 2 — Stream F (render) + Stream G1 (chart_facts) + Stream H (UI) + Stream I (notif)
+  # ============================================================
+
+  # --- Stream F: FORENSIC render (14 sessions) ---
+
+  - id: F-01
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Jinja2 base template + frontmatter + anchor convention"
+    desc: "platform/python-sidecar/pipeline/render/forensic_base.py + forensic_base.j2. Base Jinja2 template: YAML frontmatter (chart_id, ayanamsha_id, engine_version, rendered_at, build_id, schema_version). H2 anchor convention: ## {SECTION_ID} {Title}. No-narration linter integrated as render pre-flight. Output to chart_documents table (mig 131) + local file."
+    depends_on: [E-08, B-08]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_base.py -v"
+    commit_pattern: "feat(render/F01): Jinja2 base template + frontmatter + no-narration linter [BUILD-ORCH-F-01]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-02
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "per-graha H2 sections (23 bodies)"
+    desc: "forensic_planets.j2. For each of 23 bodies: H2 section with longitude (sign+degree+nakshatra+pada), latitude, speed, retrograde flag, dignity (exaltation/debilitation/mooltrikona/own/friendly/neutral/enemy/great-enemy for 9 grahas), house placement, varga positions (D1/D9/D10), heliocentric lon, declination, RA. No prose. Deterministic values only."
+    depends_on: [F-01]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_planets.py -v"
+    commit_pattern: "feat(render/F02): per-graha H2 sections 23 bodies [BUILD-ORCH-F-02]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-03
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "houses + cusps + house system comparison"
+    desc: "forensic_houses.j2. 12 house cusps (Placidus default) + Whole Sign + Equal + Koch + Campanus + Porphyry. Per house: sign, lord, co-lord (if applicable), nakshatra of cusp, occupying planets. House-system comparison table (6 systems x 12 houses). Arudha padas for all 12 houses."
+    depends_on: [F-02]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_houses.py -v"
+    commit_pattern: "feat(render/F03): houses+cusps 6-system comparison+arudhas [BUILD-ORCH-F-03]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-04
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "upagrahas + Saturn-derived points"
+    desc: "forensic_upagrahas.j2. 6 upagrahas (Gulika/Mandi, Maandi, Dhuma, Vyatipata, Parivesha, Indrachapa, Upaketu). Saturn-derived: Kulik (Gulika lord), Mrityu-sahama. Each: longitude, sign, nakshatra, pada, house. Day/night birth variant for each. Classical computation formulae per BPHS Ch 4."
+    depends_on: [F-03]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_upagrahas.py -v"
+    commit_pattern: "feat(render/F04): upagrahas + Saturn-derived points [BUILD-ORCH-F-04]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-05
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "esoteric + Sahams (50+)"
+    desc: "forensic_sahams.j2. 50+ Tajik Sahams computed from chart (using G14 formulas). Per saham: name, formula used, computed longitude, sign, nakshatra, lord. Day/night birth variants. Bhrigu Bindu (Moon-Rahu midpoint). Yogi point, Avayogi point, Mrityu point, Trisphuta, Chatursphuta, Panchasphuta, Pranasphuta, Dehasphuta."
+    depends_on: [F-04]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_sahams.py -v"
+    commit_pattern: "feat(render/F05): 50+ Tajik Sahams + esoteric bindus [BUILD-ORCH-F-05]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-06
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Karakas / Karakamsa / Arudhas / Special Lagnas"
+    desc: "forensic_karakas.j2. Chara karakas (AK/AmK/BK/MK/PK/GK/DK/SK by longitude, 8-karaka Jaimini scheme). Natural karakas from G19. Karakamsa (sign of AK in D9). Swamsa (D9 lagna). Special Lagnas: Hora, Ghati, Varnada, Sree, Pranapada, Indu, Bhava, Arudha, Shri, Bhrigu Bindu. All 12 Arudha padas. Each: longitude, sign, house, lord."
+    depends_on: [F-05]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_karakas.py -v"
+    commit_pattern: "feat(render/F06): karakas+karakamsa+arudhas+special lagnas [BUILD-ORCH-F-06]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-07
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Yogas + Doshas registers"
+    desc: "forensic_yogas.j2 + forensic_doshas.j2. Evaluate all 200+ yoga predicates (G12) against chart. Per yoga: name, active (T/F), constituent planets, tightness_score, classical_citation. Active yogas sorted by strength descending. Evaluate all 15+ dosha predicates (G13). Per dosha: name, active (T/F), constituent, severity, cancellation_rules_applicable."
+    depends_on: [F-06]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_yogas_doshas.py -v"
+    commit_pattern: "feat(render/F07): yogas 200+ + doshas register [BUILD-ORCH-F-07]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-08
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Panchanga full birth-day"
+    desc: "forensic_panchanga.j2. Birth-day full panchanga: tithi (name+pada+lord), vara (name+lord), nakshatra (name+pada+lord+sandhi), yoga (name+nature), karana (name+lord+nature). Sunrise/Sunset times. Brahma muhurta window. Abhijit window. Choghadiya 8 segments. Hora sequence. Rahu kalam + Gulika kalam + Yamaganda. Tara bala + Chandra bala at birth. Special yogas (Siddha/Amrit/Marana/Kshana). Era: Vikram + Shaka + Kali year."
+    depends_on: [F-07]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_panchanga.py -v"
+    commit_pattern: "feat(render/F08): panchanga full birth-day all 5 limbs+windows+eras [BUILD-ORCH-F-08]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-09
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Aspects matrices (Parashari + Jaimini + Tajik)"
+    desc: "forensic_aspects.j2. Parashari aspect matrix (9 grahas x 12 houses): per cell = aspect_type + strength + orb. Jaimini rasi-drishti matrix (12 signs x 12 signs): per cell = rasi_drishti (T/F) + nature. Tajik aspects (5 types: trine/square/sextile/semi-sextile/opposition) with orb. Mutual aspects table. Graha-to-lagna aspects."
+    depends_on: [F-08]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_aspects.py -v"
+    commit_pattern: "feat(render/F09): aspect matrices Parashari+Jaimini+Tajik [BUILD-ORCH-F-09]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-10
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Ashtakavarga + Shadbala + Bhava Bala"
+    desc: "forensic_strengths.j2. Ashtakavarga: BAV (8 contributors x 12 signs = 96 cells) + SAV (total per sign 12 values) + Trikona reduction + Ekadhipathya reduction + Sodhita SAV + Kakshya contributions. Shadbala: all 6 sub-balas per graha (Sthana/Dig/Kala/Chesta/Naisargika/Drik) + total + required + ratio. Bhava Bala: all 3 sub-balas per house + total. Ishta/Kashta phala."
+    depends_on: [F-09]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_strengths.py -v"
+    commit_pattern: "feat(render/F10): ashtakavarga+shadbala 6-sub-balas+bhava bala [BUILD-ORCH-F-10]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-11
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Vimsopaka + Ishta-Kashta + Avasthas (5 schemes)"
+    desc: "forensic_vimsopaka.j2. Vimsopaka (dignities across varga subdivisions: Saptavarga/Dashavarga/Shadvarga/Shodasavarga). Per graha: vimsopaka_score (0-20). 5 avastha schemes: Baladi (5 states by age), Jagradadi (3 states), Deeptadi (9 states by dignity), Lajjitadi (6 states per house+combination), Shayanaadi. Per graha per scheme: avastha name + effect."
+    depends_on: [F-10]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_vimsopaka.py -v"
+    commit_pattern: "feat(render/F11): vimsopaka+ishta-kashta+5 avastha schemes [BUILD-ORCH-F-11]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-12
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Vargas (30+ divisional charts)"
+    desc: "forensic_vargas.j2. All 30+ vargas: D1-D60 Parashari + supplementary + Nadi D108/D150/D2700. Per varga: lagna sign+lord, 9 grahas sign+lord+dignity, vargottama flags, D9 AK position. D9/D10 always expanded (9 grahas full). Two-pass verification: recompute D9 independently and match. Special Nadi (D108) rishi column."
+    depends_on: [F-11]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_vargas.py -v"
+    commit_pattern: "feat(render/F12): vargas 30+ D1-D60+supplementary+Nadi D108/D150/D2700 [BUILD-ORCH-F-12]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-13
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "Dashas (32 systems)"
+    desc: "forensic_dashas.j2. All 32 dasha systems at Sookshma depth minimum. Per system: current period chain (Maha/Antar/Pratyantar/Sookshma), next 10 Mahadashas with start/end dates, current transit context (which graha transits during current period). Two-pass verification on Vimshottari + Jaimini Chara. Birth nakshatra balance computed for Vimshottari starting fraction."
+    depends_on: [F-12]
+    parallel_eligible: false
+    estimated_hours: 16
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_dashas.py -v"
+    commit_pattern: "feat(render/F13): dashas 32 systems Sookshma depth two-pass verified [BUILD-ORCH-F-13]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: in_progress
+    status: pending
+
+  - id: F-14
+    stream: F
+    worktree: ../MadhavBO-F
+    branch: feature/build-orch/stream-f
+    title: "KP cuspal + Tajik + Midpoints + Chakras + Eclipses + Nadi-amsa + Argala + Astronomical + no-narration linter"
+    desc: "forensic_supplementary.j2. KP cuspal sub-lords (12 cusps x sub-lord). Tajik varshphal data. Midpoints (Sun/Moon, ASC/MC, + outer). Sarvatobhadra chakra. Eclipse proximity (nearest solar+lunar eclipse to birth date from G4). Nadi-amsa (D150 rishi per body from G44). Argala/Virodha argala matrix (A17). Astronomical: Julian Day + Sidereal Time + GAST at birth. Final: run no-narration linter on complete document; halt render if forbidden verbs found."
+    depends_on: [F-13]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_forensic_supplementary.py -v"
+      - "cd ../MadhavBO-F && python -m pytest platform/python-sidecar/pipeline/render/__tests__/test_no_narration_linter.py -v"
+    commit_pattern: "feat(render/F14): KP+Tajik+Midpoints+Chakras+Eclipses+Nadi+Argala+Astronomical+linter [BUILD-ORCH-F-14]"
+    tracker_update:
+      item: A2
+      brief: discussing
+      impl: merged_main
+    status: pending
+
+  # --- Stream G1: chart_facts / panchanga / sensitive_points (8 sessions) ---
+
+  - id: G1-01
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "chart_facts writer (per-ayanamsha + fact_id sha256)"
+    desc: "platform/python-sidecar/pipeline/writers/chart_facts_writer.py. Write chart_facts rows from chart_output. ~50 fact_category enum. Per row: chart_id, ayanamsha_id, fact_category, fact_key, fact_value_json, citation_string, build_id. fact_id = sha256(chart_id+ayanamsha_id+fact_category+fact_key). Batch upsert with ON CONFLICT DO UPDATE. Emit build_events per 1000-row batch."
+    depends_on: [E-08, B-04]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_chart_facts_writer.py -v"
+    commit_pattern: "feat(writers/G1-01): chart_facts writer per-ayanamsha fact_id sha256 [BUILD-ORCH-G1-01]"
+    tracker_update:
+      item: A3
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G1-02
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "chart_facts_history triggers (mig 128 wiring)"
+    desc: "Verify mig 128 triggers fire correctly. Integration test: insert a chart_facts row, update it, delete it. Assert chart_facts_history has 3 rows with correct change_type, old_value, new_value. Test supersedence: call fn_supersede_build, verify chart_facts_supersedence row created."
+    depends_on: [G1-01, B-05, B-06]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_chart_facts_audit.py -v"
+    commit_pattern: "test(writers/G1-02): chart_facts_history triggers + supersedence integration [BUILD-ORCH-G1-02]"
+    tracker_update:
+      item: A3
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G1-03
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "panchanga writer"
+    desc: "platform/python-sidecar/pipeline/writers/panchanga_writer.py. Write per-chart birth-day panchanga facts to chart_facts (fact_category='panchanga'). Reads from panchanga_daily for birth date + ayanamsha. Writes: tithi, vara, nakshatra, yoga, karana, tara_bala, chandra_bala, auspicious_windows, special_yogas, era_data as chart_facts rows."
+    depends_on: [G1-01, A-28]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_panchanga_writer.py -v"
+    commit_pattern: "feat(writers/G1-03): panchanga writer per-chart birth-day facts [BUILD-ORCH-G1-03]"
+    tracker_update:
+      item: A4
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G1-04
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "sensitive points writer"
+    desc: "platform/python-sidecar/pipeline/writers/sensitive_points_writer.py. Write sensitive points to chart_facts (fact_category='sensitive_points'). Includes: 6 upagrahas, esoteric bindus (Bhrigu/Yogi/Avayogi/Mrityu/Trisphuta), 11 Special Lagnas, 50+ Sahams, 12 Arudhas, 8 Jaimini chara karakas, Karakamsa/Swamsa, midpoints. One fact_key per point."
+    depends_on: [G1-03]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_sensitive_points_writer.py -v"
+    commit_pattern: "feat(writers/G1-04): sensitive points writer upagrahas+bindus+lagnas+sahams [BUILD-ORCH-G1-04]"
+    tracker_update:
+      item: A5
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G1-05
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "materialized views (mv_chart_planet_summary, mv_chart_house_summary)"
+    desc: "platform/migrations/133_mvs.sql (new migration). CREATE MATERIALIZED VIEW mv_chart_planet_summary AS SELECT chart_id, ayanamsha_id, fact_key, fact_value_json FROM chart_facts WHERE fact_category='planet_position'. CREATE MATERIALIZED VIEW mv_chart_house_summary AS ... WHERE fact_category='house'. Unique indexes on both MVs. REFRESH MATERIALIZED VIEW CONCURRENTLY after each build."
+    depends_on: [G1-04]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_materialized_views.py -v"
+    commit_pattern: "feat(infra/INF9): MVs mv_chart_planet_summary+mv_chart_house_summary [BUILD-ORCH-G1-05]"
+    tracker_update:
+      item: INF9
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: G1-06
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "per-(chart_id, ayanamsha_id, category) indexes + GIN"
+    desc: "platform/migrations/134_chart_facts_indexes.sql. CREATE INDEX CONCURRENTLY ON chart_facts(chart_id, ayanamsha_id, fact_category). CREATE INDEX CONCURRENTLY ON chart_facts(fact_category). GIN index on chart_facts(fact_value_json jsonb_path_ops). CREATE INDEX CONCURRENTLY ON chart_documents(chart_id, ayanamsha_id, document_type). CHART_FACTS_INDEX_INVENTORY.md documenting all indexes."
+    depends_on: [G1-05]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_index_coverage.py -v"
+    commit_pattern: "feat(infra/INF9): chart_facts indexes + GIN + CHART_FACTS_INDEX_INVENTORY.md [BUILD-ORCH-G1-06]"
+    tracker_update:
+      item: INF9
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: G1-07
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "INF8 no-narration enforcement linter (standalone)"
+    desc: "platform/python-sidecar/pipeline/linters/no_narration_linter.py. Forbidden verb scanner: indicates/suggests/implies/means-that/denotes/reveals/shows/demonstrates/points-to/signifies. Scan rendered markdown. Halt render on violation (raise NoNarrationViolationError with line number + offending phrase). Unit tests with positive (violation) + negative (clean) cases."
+    depends_on: [G1-06]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/linters/__tests__/test_no_narration_linter.py -v"
+    commit_pattern: "feat(infra/INF8): no-narration enforcement linter standalone [BUILD-ORCH-G1-07]"
+    tracker_update:
+      item: INF8
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  - id: G1-08
+    stream: G1
+    worktree: ../MadhavBO-G1
+    branch: feature/build-orch/stream-g1
+    title: "chart_facts SMOKE (native chart full build)"
+    desc: "Integration smoke: build native chart (1984-02-05, Bhubaneswar) for Lahiri ayanamsha. Verify: chart_facts rows > 200, fact_ids unique, fact_value_json non-null, panchanga facts correct (birth tithi Shukla Tritiya, vara Ravivara), sensitive_points present, materialized views populated, no orphan rows. Assert chart_facts.chart_id non-null."
+    depends_on: [G1-07]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-G1 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_chart_facts_smoke.py -v"
+    commit_pattern: "test(writers/G1-08): chart_facts smoke native chart full build PASS [BUILD-ORCH-G1-08]"
+    tracker_update:
+      item: A3
+      brief: not_started
+      impl: merged_main
+    status: pending
+
+  # --- Stream H: Constellation UI (13 sessions) ---
+
+  - id: H-01
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "delete BuildChat.tsx + BuildActionPanel.tsx + orphan audit"
+    desc: "DELETE platform/src/components/build/BuildChat.tsx. DELETE platform/src/app/clients/[id]/build/BuildActionPanel.tsx. Grep all imports of these files and remove. Audit platform/src/app/clients/[id]/build/page.tsx - strip BuildChat import, add placeholder ConstellationCanvas import. Run pnpm build to verify no broken imports."
+    depends_on: [D-09]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm build 2>&1 | grep -v 'warn' && echo 'build clean'"
+    commit_pattern: "chore(ui/H01): delete BuildChat.tsx+BuildActionPanel.tsx orphan cleanup [BUILD-ORCH-H-01]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-02
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "ConstellationCanvas.tsx (SVG natal wheel)"
+    desc: "platform/src/components/build_orchestrator/ConstellationCanvas.tsx. SVG 800x800, responsive. Inner circle (center). Inner ring (houses 1-12, Sripati/equal). Middle ring (12 zodiac signs, drawn from ASC longitude). Outer ring (27 nakshatras). All rings drawn as SVG paths at full opacity (idle: 30% opacity). Framer Motion initial + animate props for each ring. Props: chartOutput?, buildStatus."
+    depends_on: [H-01]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='ConstellationCanvas' && echo 'H-02 OK'"
+    commit_pattern: "feat(ui/H02): ConstellationCanvas SVG natal wheel 3 rings [BUILD-ORCH-H-02]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-03
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "AssetNode.tsx (state machine: pending/running/complete/failed)"
+    desc: "platform/src/components/build_orchestrator/AssetNode.tsx. State machine: pending (skeletal 30% opacity) | running (pulse animation) | complete (full opacity + soft glow) | failed (red ring + error icon). Props: assetId, status, position {x,y}, label, onClick. Uses Framer Motion variants for state transitions. Positions map to zodiac/house positions as per §5.2 layout spec."
+    depends_on: [H-02]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='AssetNode' && echo 'H-03 OK'"
+    commit_pattern: "feat(ui/H03): AssetNode state machine pending/running/complete/failed [BUILD-ORCH-H-03]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-04
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "BuildWaveAnimation.tsx (Framer Motion sweep)"
+    desc: "platform/src/components/build_orchestrator/BuildWaveAnimation.tsx. Animates build propagation: starts at center (A1 engine), propagates outward in dependency order. Each asset completion triggers starburst at its SVG position + luminous pulse ring expanding then fading. Sequence driven by build_events SSE stream. Uses Framer Motion staggerChildren + layoutId."
+    depends_on: [H-03]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='BuildWaveAnimation' && echo 'H-04 OK'"
+    commit_pattern: "feat(ui/H04): BuildWaveAnimation Framer Motion sweep+starburst [BUILD-ORCH-H-04]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-05
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "AssetDetailPanel.tsx (slide-in right)"
+    desc: "platform/src/components/build_orchestrator/AssetDetailPanel.tsx. Slide-in from right edge on asset node click. Fields: asset name + asset_id, status badge, engine_version + drift indicator, last-computed timestamp + duration, rows_written, output GCS URI, log GCS URI, output preview (first 5 rows for chart_facts, top 5 MSR signals), error_summary + retry count for failed. Framer Motion slide-in from right (x: '100%' -> x: 0)."
+    depends_on: [H-04]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='AssetDetailPanel' && echo 'H-05 OK'"
+    commit_pattern: "feat(ui/H05): AssetDetailPanel slide-in with engine drift + output preview [BUILD-ORCH-H-05]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-06
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "BuildCommandBar.tsx"
+    desc: "platform/src/components/build_orchestrator/BuildCommandBar.tsx. States per §5.4: no-build (large hero Build button), in-progress (Cancel top-right), complete+current-engine (Rebuild subtle), complete+drift (Rebuild highlighted with version), failed (Retry build hero). Cancel opens ConfirmModal. Calls /api/build/start or /api/build/cancel based on state."
+    depends_on: [H-05]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='BuildCommandBar' && echo 'H-06 OK'"
+    commit_pattern: "feat(ui/H06): BuildCommandBar 5-state hero/cancel/rebuild/retry [BUILD-ORCH-H-06]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-07
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "EngineDriftBadge.tsx"
+    desc: "platform/src/components/build_orchestrator/EngineDriftBadge.tsx. Polls /api/engine/current. Compares with build's engine_version. If match: green checkmark + 'v{ver} (latest)'. If drift: amber badge + 'v{build_ver} (latest: v{current_ver} — Rebuild to upgrade)'. Tooltip with promoted_at date. Displayed in AssetDetailPanel header + page meta."
+    depends_on: [H-06]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='EngineDriftBadge' && echo 'H-07 OK'"
+    commit_pattern: "feat(ui/H07): EngineDriftBadge version-pinned-vs-latest [BUILD-ORCH-H-07]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-08
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "5-ayanamsha multi-pulse visualization"
+    desc: "Extend ConstellationCanvas to show 5 concentric pulse rings during build (one per ayanamsha). Each ring pulses at different frequency (Lahiri=1Hz, TrueChitra=1.1Hz, KP=1.2Hz, Raman=0.9Hz, SuryaSiddhanta=0.8Hz). Ring color: subtle hue per ayanamsha. As ayanamshas complete, rings settle to static glow. Ayanamsha legend in corner."
+    depends_on: [H-07]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='Constellation.*ayanamsha|5.*pulse' && echo 'H-08 OK'"
+    commit_pattern: "feat(ui/H08): 5-ayanamsha multi-pulse concentric rings [BUILD-ORCH-H-08]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-09
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "SSE consumer wiring"
+    desc: "platform/src/components/build_orchestrator/useBuildSSE.ts. React hook: connects to /api/build/events/[buildId], parses SSE messages, updates assetStatuses state map (assetId -> { status, stage, rows_written, error }). Reconnect on disconnect. Cleanup on unmount. Wire hook into ConstellationCanvas - updates AssetNode states as events arrive."
+    depends_on: [H-08]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='useBuildSSE' && echo 'H-09 OK'"
+    commit_pattern: "feat(ui/H09): useBuildSSE hook SSE consumer + reconnect [BUILD-ORCH-H-09]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-10
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "empty-state visual"
+    desc: "Empty state when no prior build: constellation skeleton at 15% opacity, asset positions as small dots, hero Build button centered with '~10-60 min' explanation. Per §5.5 spec. The explanation text is deterministic (no personalization). Wire into page.tsx: check latest_build for this chart, if null, render empty state."
+    depends_on: [H-09]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='empty.*state|EmptyState' && echo 'H-10 OK'"
+    commit_pattern: "feat(ui/H10): empty-state skeleton 15% opacity + hero Build [BUILD-ORCH-H-10]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-11
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "cancel-confirmation modal"
+    desc: "Cancel confirmation modal: 'Cancel build? In-progress asset will finish. Remaining assets will be cancelled.' Confirm calls /api/build/cancel/[buildId]. Dismiss restores prior state. Framer Motion enter/exit animation. Accessible: focus trap, Escape key closes, aria-modal. Wire into BuildCommandBar Cancel button."
+    depends_on: [H-10]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='cancel.*confirm|CancelConfirm' && echo 'H-11 OK'"
+    commit_pattern: "feat(ui/H11): cancel-confirmation modal accessible [BUILD-ORCH-H-11]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-12
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "mount + parent-context integration tests"
+    desc: "platform/src/components/build_orchestrator/__tests__/build_orchestrator.integration.test.tsx. Mount ConstellationCanvas in full page context. Tests: renders without chart data (empty state), SSE mock drives state transitions (pending->running->complete), AssetDetailPanel opens on node click, BuildCommandBar renders correct state per buildStatus, EngineDriftBadge shows drift on version mismatch."
+    depends_on: [H-11]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-H && pnpm test -- --testPathPattern='build_orchestrator.integration' && echo 'H-12 OK'"
+    commit_pattern: "test(ui/H12): constellation mount+parent-context integration tests [BUILD-ORCH-H-12]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: H-13
+    stream: H
+    worktree: ../MadhavBO-H
+    branch: feature/build-orch/stream-h
+    title: "Playwright visual smoke + GIF"
+    desc: "platform/tests/e2e/build_orchestrator/constellation.spec.ts. Playwright test: navigate to /clients/{native_id}/build, trigger Build, watch SSE events drive node state changes, click node to see detail panel, verify cancel modal opens. Capture screenshot at each key state. Record GIF of build wave animation. Auth via SMOKE_SESSION_COOKIE env var."
+    depends_on: [H-12]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-H && SMOKE_SESSION_COOKIE=$SMOKE_SESSION_COOKIE npx playwright test tests/e2e/build_orchestrator/constellation.spec.ts && echo 'H-13 smoke OK'"
+    commit_pattern: "test(ui/H13): Playwright visual smoke + GIF build wave [BUILD-ORCH-H-13]"
+    tracker_update:
+      item: INF5
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  # --- Stream I: Notifications (5 sessions) ---
+
+  - id: I-01
+    stream: I
+    worktree: ../MadhavBO-I
+    branch: feature/build-orch/stream-i
+    title: "BuildsInProgress card on /dashboard"
+    desc: "platform/src/components/dashboard/BuildsInProgressCard.tsx. Polls /api/build/active every 5s. Per row: chart name + asset progress (M of N complete) + ETA (estimated from queued_at + avg_build_time) + cancel link. Shows 'No builds in progress' when empty. Wire into dashboard page.tsx."
+    depends_on: [D-03]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-I && pnpm test -- --testPathPattern='BuildsInProgressCard' && echo 'I-01 OK'"
+    commit_pattern: "feat(notif/I01): BuildsInProgressCard dashboard polling [BUILD-ORCH-I-01]"
+    tracker_update:
+      item: INF6
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: I-02
+    stream: I
+    worktree: ../MadhavBO-I
+    branch: feature/build-orch/stream-i
+    title: "post-visit toast"
+    desc: "platform/src/components/toast/BuildCompletionToast.tsx. On page mount, calls /api/build/recent. For each unseen completed build: show toast '{chart_name} build completed at {hh:mm} — view chart'. Stack up to 3 toasts. Each toast has a view link. On view/dismiss: POST to /api/build/seen/[buildId] to mark seen."
+    depends_on: [I-01, D-04]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-I && pnpm test -- --testPathPattern='BuildCompletionToast' && echo 'I-02 OK'"
+    commit_pattern: "feat(notif/I02): BuildCompletionToast post-visit stacking toast [BUILD-ORCH-I-02]"
+    tracker_update:
+      item: INF6
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: I-03
+    stream: I
+    worktree: ../MadhavBO-I
+    branch: feature/build-orch/stream-i
+    title: "notification_views migration + /api/build/seen endpoint"
+    desc: "platform/migrations/135_notification_views.sql. notification_views: view_id UUID PK, user_uid TEXT, build_id UUID FK, viewed_at TIMESTAMPTZ. Unique (user_uid, build_id). platform/src/app/api/build/seen/[buildId]/route.ts. POST. Creates notification_views row. Used by BuildCompletionToast to mark seen."
+    depends_on: [I-02]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/135_notification_views.sql && echo 'I-03 mig OK'"
+      - "cd ../MadhavBO-I && pnpm test -- --testPathPattern='api/build/seen' && echo 'I-03 api OK'"
+    commit_pattern: "feat(notif/I03): notification_views mig 135 + /api/build/seen [BUILD-ORCH-I-03]"
+    tracker_update:
+      item: INF6
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: I-04
+    stream: I
+    worktree: ../MadhavBO-I
+    branch: feature/build-orch/stream-i
+    title: "cross-chart concurrent build UI"
+    desc: "Extend BuildsInProgressCard to handle 3+ concurrent builds. Per-chart progress bars. Concurrent builds on different charts do not interfere in UI. Stress test: mock 5 concurrent active builds, verify card renders all without overflow. Add loading skeleton for initial poll."
+    depends_on: [I-03]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-I && pnpm test -- --testPathPattern='concurrent.*build|cross.*chart' && echo 'I-04 OK'"
+    commit_pattern: "feat(notif/I04): cross-chart concurrent build UI multi-progress [BUILD-ORCH-I-04]"
+    tracker_update:
+      item: INF6
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: I-05
+    stream: I
+    worktree: ../MadhavBO-I
+    branch: feature/build-orch/stream-i
+    title: "notification tests suite"
+    desc: "Full test suite: BuildsInProgressCard (empty/active/concurrent), BuildCompletionToast (single/stacked/dismiss/mark-seen), notification_views DB integration, /api/build/active auth gating, /api/build/recent unseen filter."
+    depends_on: [I-04]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-I && pnpm test -- --testPathPattern='notif|builds.*progress|completion.*toast' && echo 'I-05 all OK'"
+    commit_pattern: "test(notif/I05): full notification test suite [BUILD-ORCH-I-05]"
+    tracker_update:
+      item: INF6
+      brief: locked
+      impl: merged_main
+    status: pending
+
+
+  # ============================================================
+  # WAVE 3 — Stream G2 (vargas+dashas) + Stream G3 (T1+sade_sati) + Stream J (consume hybrid)
+  # ============================================================
+
+  # --- Stream G2: Vargas + Dashas writers (7 sessions) ---
+
+  - id: G2-01
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "vargas writer 16 Parashari (D1-D60)"
+    desc: "platform/python-sidecar/pipeline/writers/vargas_writer.py. Write D1-D60 Parashari varga data to chart_facts (fact_category='varga'). Per varga per graha: sign, lord, degree, dignity, vargottama flag. Uses G16 formula library. fact_key pattern: varga_{divisor}_{body_id}. Batch upsert."
+    depends_on: [G1-08, A-07]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_vargas_parashari.py -v"
+    commit_pattern: "feat(writers/G2-01): vargas writer D1-D60 Parashari 16 chart types [BUILD-ORCH-G2-01]"
+    tracker_update:
+      item: A6
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G2-02
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "vargas writer supplementary (D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54)"
+    desc: "Extend vargas_writer.py. 11 supplementary vargas. Same schema as D1-D60 but with special computation rules (D5 Panchamsa: 5 lords per sign; D6 Shashthamsa: 6 lords per sign etc). Per varga per graha: sign, lord, degree. Include Jaimini variants where applicable."
+    depends_on: [G2-01]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_vargas_supplementary.py -v"
+    commit_pattern: "feat(writers/G2-02): vargas supplementary D5/D6/D8/D11/D14/D15/D21/D32/D33/D50/D54 [BUILD-ORCH-G2-02]"
+    tracker_update:
+      item: A6
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G2-03
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "vargas writer Nadi (D108/D150/D2700)"
+    desc: "Extend vargas_writer.py. D108 (Ashtottaramsa), D150 (Nadiamsa with rishi from G44), D2700 (sub-rishi from G44). D150 includes nadi_rishi column from G44 lookup. D2700 includes sub_rishi. Two-pass: recompute D9 from raw engine data and verify match with stored D9 values."
+    depends_on: [G2-02, A-16]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_vargas_nadi.py -v"
+    commit_pattern: "feat(writers/G2-03): Nadi vargas D108/D150/D2700 with rishi lookup [BUILD-ORCH-G2-03]"
+    tracker_update:
+      item: A6
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G2-04
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "dashas writer (Vimshottari + Ashtottari + Yogini)"
+    desc: "platform/python-sidecar/pipeline/writers/dashas_writer.py. Write Vimshottari, Ashtottari, Yogini dashas at Sookshma depth to chart_facts (fact_category='dasha'). fact_key: dasha_{system}_{level}_{period_start_jd}. Value: { lord, start_date, end_date, duration_days }. Birth nakshatra balance for Vimshottari computed from engine's moon nakshatra. Current period chain precomputed."
+    depends_on: [G2-03, A-25]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_dashas_nakshatra.py -v"
+    commit_pattern: "feat(writers/G2-04): dashas Vimshottari+Ashtottari+Yogini Sookshma depth [BUILD-ORCH-G2-04]"
+    tracker_update:
+      item: A7
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G2-05
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "dashas writer Jaimini 12 systems"
+    desc: "Extend dashas_writer.py. 12 Jaimini dasha systems: Chara/Sthira/NiryanaShoola/Trikona/Brahma/Vimsa/Sudasa/Drig/Naisargika/Mandukya/Padakrama + one more. Per system: sequence computation from chart (AK position for Chara etc). Sookshma depth. Two-pass: recompute Jaimini Chara independently and verify sequence."
+    depends_on: [G2-04]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_dashas_jaimini.py -v"
+    commit_pattern: "feat(writers/G2-05): Jaimini 12 dasha systems two-pass verified [BUILD-ORCH-G2-05]"
+    tracker_update:
+      item: A7
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G2-06
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "dashas writer Tajik 4 + Special 4"
+    desc: "Extend dashas_writer.py. Tajik systems: Mudda (1-year), Patyayini (120-year), Sahama (per-saham lord), Varsha Vimshottari. Special systems: Kalachakra, Sphuta, Vidhanottari, Hadda. Each system: computation rule per G15, sequence stored, Sookshma depth."
+    depends_on: [G2-05]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_dashas_tajik_special.py -v"
+    commit_pattern: "feat(writers/G2-06): Tajik 4 + Special 4 dasha systems [BUILD-ORCH-G2-06]"
+    tracker_update:
+      item: A7
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G2-07
+    stream: G2
+    worktree: ../MadhavBO-G2
+    branch: feature/build-orch/stream-g2
+    title: "two-pass verification + storage SMOKE"
+    desc: "Two-pass verification harness for vargas + dashas. Recompute D9, D10, Vimshottari, Jaimini Chara from raw engine data independently. Assert match with stored values. Storage SMOKE: native chart full build, verify D9 navamsa values, current Vimshottari period dates, Jaimini Chara sequence order."
+    depends_on: [G2-06]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-G2 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_two_pass_verification.py -v"
+    commit_pattern: "test(writers/G2-07): two-pass verification + storage smoke vargas+dashas [BUILD-ORCH-G2-07]"
+    tracker_update:
+      item: A6
+      brief: not_started
+      impl: merged_main
+    status: pending
+
+  # --- Stream G3: T1 structural + Sade Sati (6 sessions) ---
+
+  - id: G3-01
+    stream: G3
+    worktree: ../MadhavBO-G3
+    branch: feature/build-orch/stream-g3
+    title: "aspect matrix writer (Parashari + Jaimini + Tajik)"
+    desc: "platform/python-sidecar/pipeline/writers/t1_structural_writer.py. Aspect matrix using G17 rules. Parashari: 9x12 (graha x house) with aspect_type + strength + orb. Jaimini: 12x12 (sign x sign) rasi-drishti boolean. Tajik: 9x9 (graha x graha) 5-type with orb. Dispositor chain: each graha's sign lord, 2nd lord, and so on until cycle. Store in chart_facts (fact_category='aspect_matrix')."
+    depends_on: [G1-08, A-06]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G3 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_aspect_matrix.py -v"
+    commit_pattern: "feat(writers/G3-01): aspect matrix Parashari+Jaimini+Tajik + dispositors [BUILD-ORCH-G3-01]"
+    tracker_update:
+      item: A8
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G3-02
+    stream: G3
+    worktree: ../MadhavBO-G3
+    branch: feature/build-orch/stream-g3
+    title: "dispositors + shadbala (6 sub-balas)"
+    desc: "Extend t1_structural_writer.py. Dispositor graph: each graha -> sign lord -> further lords until cycle. Shadbala: 6 sub-balas per graha: Sthana bala (5 sub-sub-balas), Dig bala, Kala bala (7 sub-sub-balas), Chesta bala, Naisargika bala, Drik bala. Total + required + ratio. Classical formulae from BPHS Ch 27-28."
+    depends_on: [G3-01]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-G3 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_shadbala.py -v"
+    commit_pattern: "feat(writers/G3-02): shadbala 6 sub-balas + dispositor graph [BUILD-ORCH-G3-02]"
+    tracker_update:
+      item: A8
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G3-03
+    stream: G3
+    worktree: ../MadhavBO-G3
+    branch: feature/build-orch/stream-g3
+    title: "ashtakavarga (BAV + SAV + Trikona + Ekadhipathya + Sodhita + Kakshyas)"
+    desc: "Extend t1_structural_writer.py. Full ashtakavarga: BAV (8 contributors x 12 signs = 96 cells per graha). SAV (sum across all 8 = 12 values). Trikona reduction (3 sets of 4 signs). Ekadhipathya reduction (lords owning 2 signs combined). Sodhita SAV (further reduced). Kakshya contributions (8 kakshyas x 12 signs per graha). Store all in chart_facts."
+    depends_on: [G3-02]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-G3 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_ashtakavarga.py -v"
+    commit_pattern: "feat(writers/G3-03): ashtakavarga BAV+SAV+Trikona+Ekadhipathya+Sodhita+Kakshyas [BUILD-ORCH-G3-03]"
+    tracker_update:
+      item: A8
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G3-04
+    stream: G3
+    worktree: ../MadhavBO-G3
+    branch: feature/build-orch/stream-g3
+    title: "yogas register (200+) + doshas register"
+    desc: "Extend t1_structural_writer.py. Evaluate all 200+ yoga predicates (G12) against chart. Per yoga: active (T/F), strength_score (0-10), constituent_planets, tightness. Sort active yogas by strength. Evaluate all 15+ dosha predicates (G13). Per dosha: active (T/F), severity, cancellation_rules_met. Store in chart_facts (fact_category='yoga_register' / 'dosha_register')."
+    depends_on: [G3-03, A-23, A-24]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-G3 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_yoga_dosha_register.py -v"
+    commit_pattern: "feat(writers/G3-04): yoga register 200+ + dosha register 15+ [BUILD-ORCH-G3-04]"
+    tracker_update:
+      item: A8
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G3-05
+    stream: G3
+    worktree: ../MadhavBO-G3
+    branch: feature/build-orch/stream-g3
+    title: "vimsopaka + bhava bala + ishta-kashta + 5 avastha schemes"
+    desc: "Extend t1_structural_writer.py. Vimsopaka (4 varga-set subdivisions: Saptavarga/Dashavarga/Shadvarga/Shodasavarga). Bhava bala (3 sub-balas per house). Ishta phala + Kashta phala per graha. 5 avastha schemes per graha: Baladi, Jagradadi, Deeptadi, Lajjitadi, Shayanaadi. Each: state name + effect magnitude."
+    depends_on: [G3-04]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-G3 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_vimsopaka_avasthas.py -v"
+    commit_pattern: "feat(writers/G3-05): vimsopaka+bhava bala+ishta-kashta+5 avastha schemes [BUILD-ORCH-G3-05]"
+    tracker_update:
+      item: A8
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G3-06
+    stream: G3
+    worktree: ../MadhavBO-G3
+    branch: feature/build-orch/stream-g3
+    title: "sade sati cycles writer"
+    desc: "platform/python-sidecar/pipeline/writers/sade_sati_writer.py. From natal Moon sign (per ayanamsha from chart_facts). Join with G21 saturn_sign_changes. Compute all Sade Sati windows: 7.5y cycles where Saturn transits 12th/1st/2nd from natal Moon. Past + future through 2100. Per window: start_date, end_date, intensity (peak when in 1st from natal Moon), quarter phases (2.5y each)."
+    depends_on: [G3-05, A-29]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-G3 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_sade_sati.py -v"
+    commit_pattern: "feat(writers/G3-06): sade sati cycles writer past+future quarter phases [BUILD-ORCH-G3-06]"
+    tracker_update:
+      item: A9
+      brief: not_started
+      impl: merged_main
+    status: pending
+
+  # --- Stream J: Consume Hybrid (15 sessions) ---
+
+  - id: J-01
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "conversations.active_ayanamshas migration"
+    desc: "platform/migrations/136_conversations_active_ayanamshas.sql. ALTER TABLE conversations ADD COLUMN active_ayanamshas JSONB DEFAULT '[\"lahiri\",\"true_chitra\",\"kp\",\"raman\",\"surya_siddhanta\"]'. Add GIN index. Backfill existing rows with default. Update conversation create/update API to accept ayanamshas param."
+    depends_on: [G1-08]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging -f platform/migrations/136_conversations_active_ayanamshas.sql && echo 'J-01 OK'"
+    commit_pattern: "feat(consume/J01): conversations.active_ayanamshas mig 136 [BUILD-ORCH-J-01]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-02
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "chart bundle composer (Layer 1)"
+    desc: "platform/src/lib/retrieve/bundle_composer.ts. compose_chart_bundle(chart_id, ayanamshas[]) -> ChartBundle. Fetches from chart_facts: planet positions (per ayanamsha), house cusps, current dasha chain, active yogas (top 20 by strength), active doshas, birth panchanga, UCN digest (when available), cross-ayanamsha divergence summary. Returns structured bundle optimized for prompt context (no prose). Token budget: ~8000 tokens max."
+    depends_on: [J-01]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='bundle_composer' && echo 'J-02 OK'"
+    commit_pattern: "feat(consume/J02): chart bundle composer Layer-1 context ~8k tokens [BUILD-ORCH-J-02]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-03
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "bundle MCP Resources (15-25 per chart)"
+    desc: "platform-mcp/src/resources/chart_bundle_resources.ts. Extend MCP sidecar to expose 15-25 Resources per chart per ayanamsha: planetary_snapshot, current_dasha, active_yogas, cross_ayanamsha_summary, vargas_summary, sahams, panchanga_birth_day, sade_sati_current, aspect_matrix_summary, shadbala_ranking, ashtakavarga_binding, karaka_chain, ucn_digest (when available). Auto-loaded by external MCP clients per M5 decision."
+    depends_on: [J-02]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='chart_bundle_resources' && echo 'J-03 OK'"
+    commit_pattern: "feat(consume/J03): 15-25 MCP Resources per chart per ayanamsha [BUILD-ORCH-J-03]"
+    tracker_update:
+      item: INF11
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-04
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "prompt cache Anthropic 4-breakpoint extension"
+    desc: "Extend platform/src/lib/providers/anthropic/adapter.ts. Prompt cache layout for Anthropic: breakpoint 1 = system prompt (B.11 floor), breakpoint 2 = chart bundle (Layer 1 context), breakpoint 3 = conversation history, breakpoint 4 = current query. Uses existing prompt_assembler.ts + 4-breakpoint cache_control from R11.D. Verify cache hit rate improves via Observatory tile."
+    depends_on: [J-03]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='anthropic.*cache|prompt.*cache' && echo 'J-04 OK'"
+    commit_pattern: "feat(consume/J04): Anthropic prompt cache 4-breakpoint chart bundle [BUILD-ORCH-J-04]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-05
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "prompt cache Gemini cachedContent"
+    desc: "Extend platform/src/lib/providers/google/adapter.ts. Gemini cachedContent API: upload chart bundle as CachedContent object with TTL=3600s. Reuse cache token on subsequent calls in same session. Chart bundle = system instructions + Layer-1 context. Adapter.cache() method wired into route.ts dispatch block (D.3 deferred item now implemented)."
+    depends_on: [J-04]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='gemini.*cache|cachedContent' && echo 'J-05 OK'"
+    commit_pattern: "feat(consume/J05): Gemini cachedContent prompt caching [BUILD-ORCH-J-05]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-06
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "prompt cache DeepSeek telemetry"
+    desc: "Extend platform/src/lib/providers/deepseek/adapter.ts. DeepSeek does not support cached content API, but log cache telemetry (prompt_tokens_cached field if present in response). Update Observatory telemetry to show DeepSeek cache hit rate. Log cache_hit_rate per provider to query_trace_steps."
+    depends_on: [J-05]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='deepseek.*cache|cache.*telemetry' && echo 'J-06 OK'"
+    commit_pattern: "feat(consume/J06): DeepSeek cache telemetry Observatory tile [BUILD-ORCH-J-06]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-07
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "cross-ayanamsha consensus retrieval tool"
+    desc: "platform/src/lib/retrieve/cross_ayanamsha_consensus.ts. Tool: cross_ayanamsha_consensus(chart_id, topic) -> { consensus_points, divergence_points, ayanamsha_breakdown }. Queries chart_ayanamsha_reports + chart_facts across active ayanamshas. Returns: facts that agree across all ayanamshas (consensus) and facts that differ significantly (divergence > threshold). Used by agentic loop as retrieval tool."
+    depends_on: [J-06]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='cross_ayanamsha_consensus' && echo 'J-07 OK'"
+    commit_pattern: "feat(consume/J07): cross-ayanamsha consensus retrieval tool [BUILD-ORCH-J-07]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-08
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "intent classifier preamble"
+    desc: "platform/src/lib/retrieve/intent_classifier.ts. Classify incoming query into intent: chart_reading / timing_query / remedial_query / comparison_query / general_jyotish / panchanga_query. Per intent: select optimal ayanamshas to query, pre-fetch relevant chart_facts categories, set tool_priority order. Run as first step in agentic loop before tool calls."
+    depends_on: [J-07]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='intent_classifier' && echo 'J-08 OK'"
+    commit_pattern: "feat(consume/J08): intent classifier preamble query routing [BUILD-ORCH-J-08]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-09
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "stop-confidence wiring"
+    desc: "Extend agentic_loop.ts. After each iteration's synthesis response, compute confidence score (0-1) based on: tools_called_count, chart_facts_coverage, source_citation_density. If confidence >= STOP_CONFIDENCE_THRESHOLD (0.85 default), stop loop early (don't exhaust 8 iterations). Add confidence_score to query_trace_steps. Configurable via MARSYS_STOP_CONFIDENCE env var."
+    depends_on: [J-08]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='stop.*confidence|confidence.*wiring' && echo 'J-09 OK'"
+    commit_pattern: "feat(consume/J09): stop-confidence wiring early loop exit [BUILD-ORCH-J-09]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-10
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "B.11 inline floor check"
+    desc: "Enforce B.11 Whole-Chart-Read discipline inline in agentic loop. Before any synthesis response, verify minimum chart_facts categories were consulted: planet_positions + houses + current_dasha + yogas. If not, inject mandatory tool calls to fetch missing categories. Configurable minimum categories list. This replaces the B.11 pre-execution floor from the original R11.F implementation."
+    depends_on: [J-09]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='b11.*floor|inline.*floor' && echo 'J-10 OK'"
+    commit_pattern: "feat(consume/J10): B.11 inline floor check mandatory categories [BUILD-ORCH-J-10]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-11
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "tool description rewrites (top 20) + few-shot inline"
+    desc: "Rewrite descriptions for top 20 retrieval tools in platform-mcp/src/server.ts to be more specific about ayanamsha parameter usage. Add 1-2 few-shot examples per tool showing correct ayanamsha filter. Tools: query_chart_facts, query_msr_signals, query_dasha_periods, query_vargas, query_panchanga, query_sensitive_points, query_yogas, query_shadbala, query_ashtakavarga, cross_ayanamsha_consensus + 10 more."
+    depends_on: [J-10]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='tool.*description|few.*shot' && echo 'J-11 OK'"
+    commit_pattern: "feat(consume/J11): top 20 tool description rewrites + few-shot inline [BUILD-ORCH-J-11]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-12
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "streaming tool-call progress UI"
+    desc: "platform/src/components/consume/ToolCallProgress.tsx. During agentic loop iterations, stream tool-call progress to UI: per-tool spinner (tool_name + arg summary). Iteration count badge (N/8). Ayanamsha chips showing which ayanamshas are being queried. Wire into ConsumeChatV2.tsx SSE stream handling. Suppress after final synthesis."
+    depends_on: [J-11]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='ToolCallProgress|streaming.*tool' && echo 'J-12 OK'"
+    commit_pattern: "feat(consume/J12): streaming tool-call progress UI ayanamsha chips [BUILD-ORCH-J-12]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-13
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "iteration telemetry dashboard tile"
+    desc: "platform/src/components/observatory/IterationTelemetryTile.tsx. Observatory dashboard tile. Shows per-query: iterations_used / 8 cap, tool_calls_per_iteration, stop_confidence_score, ayanamshas_queried, cache_hit_rate per provider. Data from query_trace_steps extended in J-09. Wire into Observatory /cockpit page."
+    depends_on: [J-12]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='IterationTelemetry|iteration.*dashboard' && echo 'J-13 OK'"
+    commit_pattern: "feat(consume/J13): iteration telemetry dashboard tile Observatory [BUILD-ORCH-J-13]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-14
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "R-AYN.1/2/3 planner rules"
+    desc: "platform/prompts/PLANNER_PROMPT_v2_0.md (or current version). Add R-AYN subclauses: R-AYN.1 (always specify ayanamsha_id parameter when calling chart_facts retrieval tools), R-AYN.2 (query cross_ayanamsha_consensus for timing questions), R-AYN.3 (report divergence_score when ayanamshas disagree by >1 degree). Add these as §R-AYN to the planner rules section."
+    depends_on: [J-13]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-J && grep -n 'R-AYN' platform/prompts/PLANNER_PROMPT_v2_0.md && echo 'J-14 rules present'"
+    commit_pattern: "feat(consume/J14): R-AYN.1/2/3 planner rules ayanamsha discipline [BUILD-ORCH-J-14]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: J-15
+    stream: J
+    worktree: ../MadhavBO-J
+    branch: feature/build-orch/stream-j
+    title: "consume hybrid tests + answer:eval delta measurement"
+    desc: "Full J-stream test suite. Plus: run answer:eval on native chart questions to measure delta vs v1.1 baseline. Require: b11 >= 55% (partial credit before all L2.5 data available), layer_cov >= 50%. Measure tool_call_efficiency (fraction of calls that returned relevant data). Commit eval results as platform/evals/consume_hybrid_baseline_v1.json."
+    depends_on: [J-14]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-J && pnpm test -- --testPathPattern='consume.*hybrid|J.*stream' && echo 'J-15 tests OK'"
+      - "cd ../MadhavBO-J && python platform/scripts/answer_eval/run_eval.py --output platform/evals/consume_hybrid_baseline_v1.json"
+    commit_pattern: "test(consume/J15): consume hybrid full tests + answer:eval baseline [BUILD-ORCH-J-15]"
+    tracker_update:
+      item: INF7
+      brief: locked
+      impl: merged_main
+    status: pending
+
+  # ============================================================
+  # WAVE 4 — Stream G4 (L2.5 synthesis writers)
+  # ============================================================
+
+  - id: G4-01
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "salience formula v1 + unit tests"
+    desc: "platform/python-sidecar/pipeline/writers/salience.py. salience_formula_v1: deterministic_strength = f(orb_tightness, shadbala_rank, dignity_score), verification_certainty = f(source_corroboration_count), computed_salience = g(deterministic_strength, verification_certainty, dasha_proximity, house_weight, ashtakavarga_support). Unit tests: known inputs -> expected salience range. Version: salience_formula_version='v1'."
+    depends_on: [G3-06]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_salience_formula.py -v"
+    commit_pattern: "feat(writers/G4-01): salience formula v1 deterministic_strength+verification_certainty [BUILD-ORCH-G4-01]"
+    tracker_update:
+      item: A10
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-02
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "MSR writer (every signal, no threshold drop)"
+    desc: "platform/python-sidecar/pipeline/writers/msr_writer.py. Write per-chart MSR to l25_msr_signals table. Every observable signal - no threshold drop. Per signal: configuration, constituent_facts[] (from chart_facts), classical_sources[], deterministic_strength, verification_certainty, computed_salience, salience_formula_version='v1', domains_affected[]. Expected: 800-1500 signals per chart per ayanamsha."
+    depends_on: [G4-01]
+    parallel_eligible: false
+    estimated_hours: 12
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_msr_writer.py -v"
+    commit_pattern: "feat(writers/G4-02): MSR writer all signals no threshold drop 800-1500 per chart [BUILD-ORCH-G4-02]"
+    tracker_update:
+      item: A10
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-03
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "MSR enrichment (constituent_facts + classical_sources)"
+    desc: "Extend msr_writer.py. Per signal: populate constituent_facts[] with actual chart_facts fact_ids (not just categories). Classical sources: lookup from G1 RAG corpus chunks matching signal type. Source corroboration count = number of distinct classical texts that contain the signal pattern. Update verification_certainty formula based on actual source count."
+    depends_on: [G4-02, A-30]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_msr_enrichment.py -v"
+    commit_pattern: "feat(writers/G4-03): MSR enrichment constituent_facts + classical_sources [BUILD-ORCH-G4-03]"
+    tracker_update:
+      item: A10
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-04
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "CDLM writer (9x9 with shared-factor counts)"
+    desc: "platform/python-sidecar/pipeline/writers/cdlm_writer.py. Write CDLM to chart_facts (fact_category='cdlm'). 9 domains: career/relationships/health/wealth/family/learning/spirituality/longevity/character. Each cell (domain_i, domain_j): shared_factor_count = count of MSR signals tagged for BOTH domains. Linkage_strength = shared_factor_count / sqrt(signals_in_i * signals_in_j)."
+    depends_on: [G4-03]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_cdlm_writer.py -v"
+    commit_pattern: "feat(writers/G4-04): CDLM writer 9x9 domain linkage matrix [BUILD-ORCH-G4-04]"
+    tracker_update:
+      item: A11
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-05
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "CGM writer (nodes + structural edges)"
+    desc: "platform/python-sidecar/pipeline/writers/cgm_writer.py. Write CGM to chart_graph table (or chart_facts fact_category='cgm'). Nodes: 9 grahas + 12 houses + 12 signs + active configurations + arudhas. Edges: aspect/dispositor/lordship/karaka/conjunction/parivartana/mutual-reception. Per edge: weight (from shadbala + aspect strength), edge_type. Subgraph queries via existing get_cgm_subgraph tool."
+    depends_on: [G4-04]
+    parallel_eligible: false
+    estimated_hours: 10
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_cgm_writer.py -v"
+    commit_pattern: "feat(writers/G4-05): CGM writer nodes+structural edges weighted [BUILD-ORCH-G4-05]"
+    tracker_update:
+      item: A12
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-06
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "RM writer (weakest -> remedy candidates)"
+    desc: "platform/python-sidecar/pipeline/writers/rm_writer.py. Write RM to chart_facts (fact_category='rm'). Weakest grahas: ranked by low shadbala + bad dignity + low ashtakavarga. Strongest grahas: ranked by high shadbala + good dignity. For each weak graha: remedy candidates from G27 remedial_library. For each strong graha: amplification candidates. Spoke structure from chart center."
+    depends_on: [G4-05, A-20]
+    parallel_eligible: false
+    estimated_hours: 6
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_rm_writer.py -v"
+    commit_pattern: "feat(writers/G4-06): RM writer weakest grahas -> remedy candidates [BUILD-ORCH-G4-06]"
+    tracker_update:
+      item: A13
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-07
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "UCN digest writer (computed signature)"
+    desc: "platform/python-sidecar/pipeline/writers/ucn_digest_writer.py. Write UCN digest to chart_facts (fact_category='ucn_digest'). Top-K configurations by computed_salience (K=20). Dominant grahas (top 3 by shadbala). Weakest grahas (bottom 3). Strongest yogas (top 5 active by strength). Current dasha context (current Maha+Antar). System-convergence counts (how many of the 5 ayanamshas agree). No prose. Structured JSON only."
+    depends_on: [G4-06]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_ucn_digest.py -v"
+    commit_pattern: "feat(writers/G4-07): UCN digest writer top-K salience no prose [BUILD-ORCH-G4-07]"
+    tracker_update:
+      item: A14
+      brief: not_started
+      impl: in_progress
+    status: pending
+
+  - id: G4-08
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "RAG chunking + Vertex AI embedding + no-narration linter"
+    desc: "platform/python-sidecar/pipeline/writers/rag_embedder.py. Chunk chart_documents (forensic_render markdown) at H2/H3 boundaries. Filter through no-narration linter (halt on violation). Vertex AI 768-dim embedding per chunk. Store in rag_chunks (per existing schema) with source_type='forensic_render' + chart_id + ayanamsha_id. No-narration linter pass required before embedding."
+    depends_on: [G4-07, F-14]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_rag_embedder.py -v"
+    commit_pattern: "feat(writers/G4-08): RAG chunking+Vertex embedding+no-narration linter [BUILD-ORCH-G4-08]"
+    tracker_update:
+      item: INF10
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: G4-09
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "per-chart similarity signature embedding"
+    desc: "platform/python-sidecar/pipeline/writers/similarity_signature.py. One 768-dim embedding per (chart_id, ayanamsha_id). Input: concatenated UCN digest (top-K signals + dominant/weak grahas + yogas + dasha context). Embed via Vertex AI. Store in chart_similarity_signatures table (chart_id, ayanamsha_id, embedding vector768, computed_at). Used for cross-chart research similarity search."
+    depends_on: [G4-08]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_similarity_signature.py -v"
+    commit_pattern: "feat(writers/G4-09): per-chart similarity signature 768-dim per ayanamsha [BUILD-ORCH-G4-09]"
+    tracker_update:
+      item: INF10
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: G4-10
+    stream: G4
+    worktree: ../MadhavBO-G4
+    branch: feature/build-orch/stream-g4
+    title: "SMOKE: native chart end-to-end (all 5 ayanamshas, all 14 assets)"
+    desc: "End-to-end smoke: build native chart (1984-02-05 10:43 IST Bhubaneswar) for all 5 ayanamshas, all 14 assets. Verify: MSR signals > 500 per ayanamsha, CDLM 9x9 fully populated, CGM nodes > 30, RM has remedies for at least 3 grahas, UCN digest has top-20 signals, RAG chunks > 44 per forensic document, similarity signatures 5 rows present."
+    depends_on: [G4-09]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "cd ../MadhavBO-G4 && python -m pytest platform/python-sidecar/pipeline/writers/__tests__/test_e2e_native_chart.py -v"
+    commit_pattern: "test(writers/G4-10): native chart E2E smoke all 5 ayanamshas all 14 assets PASS [BUILD-ORCH-G4-10]"
+    tracker_update:
+      item: A14
+      brief: not_started
+      impl: merged_main
+    status: pending
+
+  # ============================================================
+  # WAVE 5 — ACC (Acceptance + Close, sequential in main repo)
+  # ============================================================
+
+  - id: ACC-01
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "answer:eval re-baseline"
+    desc: "Run platform/scripts/answer_eval/run_eval.py against production. Target: b11 >= 60%, layer_cov >= 65% (vs v1.1 baseline b11=29%, layer_cov=31%). If targets not met, identify which layers are weak and create remediation tasks. Commit results to platform/evals/post_build_orchestrator_eval.json."
+    depends_on: [G4-10, J-15]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "python platform/scripts/answer_eval/run_eval.py --output platform/evals/post_build_orchestrator_eval.json"
+    commit_pattern: "test(acc/ACC01): answer:eval re-baseline b11+layer_cov targets [BUILD-ORCH-ACC-01]"
+    tracker_update:
+      item: ACC1
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-02
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "8 hard gates check"
+    desc: "Verify all 8 hard gates GREEN: (1) naming_ci (conventional commits on all BUILD-ORCH-* commits), (2) jh_oracle_pinned (static jh_oracle.json still in repo), (3) G1_internal_invariants PASS (E-08 test suite), (4) G2_authz_live (all routes auth-gated), (5) G3_contract (chart_output schema matches expected), (6) G4_no_native_lit (no narrative text in chart_facts), (7) G5b_onfinish (all routes write to DB in onFinish), (8) G6_tool_coverage (40 MCP tools still functional)."
+    depends_on: [ACC-01]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "bash 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/scripts/hard_gates_check.sh"
+    commit_pattern: "test(acc/ACC02): 8 hard gates check all GREEN [BUILD-ORCH-ACC-02]"
+    tracker_update:
+      item: ACC2
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-03
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "red-team per IS.8(b)"
+    desc: "Adversarial probe pass per MACRO_PLAN §IS.8(b). Probe categories: (1) chart_facts NULL gap (AC.6 closure), (2) narrative contamination in forensic render, (3) ayanamsha filter bypass (can attacker get wrong ayanamsha data?), (4) B.11 floor bypass (can query skip L2.5 consultation?), (5) concurrent build race condition. 0 class-1 findings required. Document class-2/3 as residuals."
+    depends_on: [ACC-02]
+    parallel_eligible: false
+    estimated_hours: 8
+    check_commands:
+      - "python platform/scripts/governance/red_team_probe.py --scope build_orchestrator"
+    commit_pattern: "test(acc/ACC03): red-team IS.8(b) 0 class-1 findings [BUILD-ORCH-ACC-03]"
+    tracker_update:
+      item: ACC3
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-04
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "multi-tenant smoke"
+    desc: "Both tenants queryable end-to-end. Legacy chart (Abhisek, chart_id from forensic_data): /consume chat works, chart_facts populated, MCP tools return data. New-architecture chart (create test chart via /clients/new form): build completes, constellation animates, /consume works. Both tenants: no cross-contamination of chart_facts."
+    depends_on: [ACC-03]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "python -m pytest platform/tests/integration/test_multi_tenant_smoke.py -v"
+    commit_pattern: "test(acc/ACC04): multi-tenant smoke legacy+new-arch PASS [BUILD-ORCH-ACC-04]"
+    tracker_update:
+      item: ACC4
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-05
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "concurrent-build smoke (3 charts parallel)"
+    desc: "3 builds on 3 different charts simultaneously. All 3 succeed independently. Cloud Tasks queue handles arrival ordering. chart_facts rows are partitioned correctly (no cross-contamination). Verify: all 3 builds.status='complete', all 3 sets of chart_facts have correct chart_id, no shared rows."
+    depends_on: [ACC-04]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "python -m pytest platform/tests/integration/test_concurrent_build_smoke.py -v"
+    commit_pattern: "test(acc/ACC05): concurrent 3-chart build smoke PASS [BUILD-ORCH-ACC-05]"
+    tracker_update:
+      item: ACC5
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-06
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "version bumps (CLAUDE.md + PROJECT_ARCHITECTURE + CANONICAL_ARTIFACTS + CAPABILITY_MANIFEST)"
+    desc: "Bump CLAUDE.md §E to add Multi-Ayanamsha Build workstream entry (STATUS: COMPLETE). Bump PROJECT_ARCHITECTURE_v2_2.md to v2.3 (minor) documenting new build orchestrator surface + chart_facts per-ayanamsha extension + constellation UI. Bump CANONICAL_ARTIFACTS_v1_0.md to reflect new artifact paths. Bump CAPABILITY_MANIFEST.json to add new tools + resources."
+    depends_on: [ACC-05]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "python platform/scripts/governance/schema_validator.py"
+      - "python platform/scripts/governance/drift_detector.py"
+    commit_pattern: "docs(acc/ACC06): version bumps CLAUDE.md+PROJECT_ARCH+CANONICAL+MANIFEST [BUILD-ORCH-ACC-06]"
+    tracker_update:
+      item: ACC6
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-07
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "BUILD_ORCHESTRATOR_README.md"
+    desc: "00_ARCHITECTURE/CONDUCTOR/build_orchestrator/BUILD_ORCHESTRATOR_README.md. Operator docs: (1) How to run a chart build, (2) Monitor builds, (3) Tracker dashboard, (4) Halt/resume Conductor, (5) Interpret constellation visualization, (6) Engine version management, (7) Ayanamsha selection guide, (8) Troubleshooting common errors."
+    depends_on: [ACC-06]
+    parallel_eligible: false
+    estimated_hours: 4
+    check_commands:
+      - "[ -f 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/BUILD_ORCHESTRATOR_README.md ] && echo 'README exists'"
+    commit_pattern: "docs(acc/ACC07): BUILD_ORCHESTRATOR_README.md operator + developer guide [BUILD-ORCH-ACC-07]"
+    tracker_update:
+      item: ACC7
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-08
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "sealing artifact MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md"
+    desc: "00_ARCHITECTURE/MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md. Sealing artifact per PLATFORM_MODERNIZATION_CLOSE template. Sections: (1) Deliverables summary, (2) Per-stream outcome, (3) Hard gates final state, (4) answer:eval metrics, (5) Class-2/3 residuals, (6) Follow-ups (M6 prospective testing, LEL regeneration, monitoring alerts), (7) Operator queue (migrations to apply, flags to flip)."
+    depends_on: [ACC-07]
+    parallel_eligible: false
+    estimated_hours: 3
+    check_commands:
+      - "[ -f 00_ARCHITECTURE/MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md ] && echo 'sealing artifact exists'"
+    commit_pattern: "docs(acc/ACC08): MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md sealing artifact [BUILD-ORCH-ACC-08]"
+    tracker_update:
+      item: ACC8
+      brief: locked
+      impl: in_progress
+    status: pending
+
+  - id: ACC-09
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "final production deploy + 10-min log watch"
+    desc: "Final Cloud Run deploy: canary 10% -> 5min log watch -> promote 100%. Services: amjis-web + amjis-sidecar + amjis-mcp. Post-deploy: 10-min log watch for 5xx errors. Apply any pending DB migrations (124-136) to production (staging already applied). Record final revision SHAs."
+    depends_on: [ACC-08]
+    parallel_eligible: false
+    estimated_hours: 2
+    check_commands:
+      - "gcloud run services describe amjis-web --region asia-south1 --format 'value(status.url)'"
+      - "gcloud logging read 'resource.type=cloud_run_revision AND severity>=ERROR' --freshness=10m --limit=50"
+    commit_pattern: "chore(acc/ACC09): final production deploy + 10min log watch clean [BUILD-ORCH-ACC-09]"
+    tracker_update:
+      item: ACC9
+      brief: locked
+      impl: deployed
+    deploy:
+      service: all
+      post_deploy_smoke: "python -m pytest platform/tests/e2e/smoke_prod.py"
+    status: pending
+
+  - id: ACC-10
+    stream: MAIN
+    worktree: ./
+    branch: main
+    title: "native sign-off + workstream complete"
+    desc: "Final: update CURRENT_STATE_v1_0.md to reflect workstream complete. Update tracker state.json workstream status to 'complete'. Update CLAUDE.md §E with Multi-Ayanamsha Build workstream entry. Confirm capability manifest reflects all new tools + resources. Conductor process exits gracefully."
+    depends_on: [ACC-09]
+    parallel_eligible: false
+    estimated_hours: 1
+    check_commands:
+      - "python 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/scripts/update_tracker.py --workstream complete"
+    commit_pattern: "docs(acc/ACC10): workstream complete native sign-off tracker update [BUILD-ORCH-ACC-10]"
+    tracker_update:
+      item: ACC10
+      brief: locked
+      impl: verified
+    status: pending
