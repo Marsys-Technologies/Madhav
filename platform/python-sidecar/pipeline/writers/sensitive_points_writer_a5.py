@@ -480,6 +480,91 @@ def emit_arudhas(chart_id, build_id, ayanamsha_id, house_cusps, graha_lons):
     return rows
 
 
+def _midpoint(lon_a, lon_b):
+    """Shorter-arc midpoint."""
+    diff = abs(lon_a - lon_b)
+    if diff > 180:
+        mid = (lon_a + lon_b + 360) / 2
+    else:
+        mid = (lon_a + lon_b) / 2
+    return mid % 360
+
+
+def emit_midpoints(chart_id, build_id, ayanamsha_id, graha_lons, lagna_lon, mc_lon=None):
+    """
+    Emit midpoint rows.
+    graha_lons: dict {SUN, MOO, MAR, MER, JUP, VEN, SAT, RAH, KET}
+    lagna_lon: Ascendant longitude
+    mc_lon: MC longitude (if None, estimate as lagna + 270)
+    """
+    rows = []
+    if mc_lon is None:
+        mc_lon = (lagna_lon + 270) % 360
+
+    GRAHAS = ['SUN', 'MOO', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH', 'KET']
+
+    def add_midpoint(subject, lon_a, lon_b, a_name, b_name):
+        mid = _midpoint(lon_a, lon_b)
+        sign = _sign_from_lon(mid)
+        nak = _nak_from_lon(mid)
+        near_sign = abs(mid % 30) < 0.5 or abs(mid % 30 - 30) < 0.5
+        near_nak = abs(mid % 13.333) < 0.8
+
+        for key, val, vtype in [
+            ('longitude_sidereal', mid, 'num'),
+            ('sign', sign, 'text'),
+            ('nakshatra', nak, 'text'),
+            ('point_a', a_name, 'text'),
+            ('point_b', b_name, 'text'),
+            ('formula_id', 'shorter_arc_midpoint', 'text'),
+            ('formula_provenance_text', f'Midpoint({a_name},{b_name}) shorter arc', 'text'),
+            ('tolerance_arcsec', 0.1, 'num'),
+            ('near_sign_boundary_flag', str(near_sign), 'text'),
+            ('near_nakshatra_boundary_flag', str(near_nak), 'text'),
+            ('vargottama_flag_at_point', str(int(mid / 30) == int((mid % 30) / 3.333)), 'text'),
+            ('cross_ayanamsha_divergence_arcsec', 0.0, 'num'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('midpoint', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'midpoint', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('midpoint', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"Midpoint {a_name}/{b_name}: {round(mid, 4)}° in {sign}."
+                    if key == 'longitude_sidereal'
+                    else f"Midpoint {subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/midpoint',
+                'verification_pass_status': 'single',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+
+    # 36 graha-graha pairs
+    for i, g1 in enumerate(GRAHAS):
+        for g2 in GRAHAS[i + 1:]:
+            if g1 in graha_lons and g2 in graha_lons:
+                subject = f"{g1}-{g2}"
+                add_midpoint(subject, graha_lons[g1], graha_lons[g2], g1, g2)
+
+    # 9 ASC-graha pairs
+    for g in GRAHAS:
+        if g in graha_lons:
+            subject = f"ASC-{g}"
+            add_midpoint(subject, lagna_lon, graha_lons[g], 'ASC', g)
+
+    # 9 MC-graha pairs
+    for g in GRAHAS:
+        if g in graha_lons:
+            subject = f"MC-{g}"
+            add_midpoint(subject, mc_lon, graha_lons[g], 'MC', g)
+
+    return rows
+
+
 def compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
     """
     All longitudes in degrees (0-360).
