@@ -511,6 +511,133 @@ def check_phantom_references(repo_root: pathlib.Path) -> List[Finding]:
     return findings
 
 
+def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
+    """B-10 — CHART_FACTS_SCHEMA.json column presence verification.
+
+    Loads platform/scripts/governance/CHART_FACTS_SCHEMA.json and verifies
+    every declared column is present in the actual chart_facts table via psql.
+    Skips gracefully if DB is not reachable or psql is unavailable (LOW finding).
+    """
+    import subprocess
+    import shutil
+
+    findings: List[Finding] = []
+    schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+
+    if not schema_path.exists():
+        findings.append(Finding(
+            cls="schema_file_missing",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence="CHART_FACTS_SCHEMA.json not found — B-10 schema governance artifact missing",
+            suggested_remediation="Run B-10 session to create CHART_FACTS_SCHEMA.json",
+        ))
+        return findings
+
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        findings.append(Finding(
+            cls="schema_file_invalid",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence=f"Could not parse CHART_FACTS_SCHEMA.json: {exc}",
+            suggested_remediation="Repair the JSON file",
+        ))
+        return findings
+
+    declared_columns = {col["name"] for col in schema.get("columns", [])}
+    if not declared_columns:
+        findings.append(Finding(
+            cls="schema_file_empty",
+            severity="MEDIUM",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence="CHART_FACTS_SCHEMA.json has no columns declared",
+            suggested_remediation="Populate the columns array",
+        ))
+        return findings
+
+    # Try to reach the DB via psql. Honour standard PG env vars.
+    if not shutil.which("psql"):
+        findings.append(Finding(
+            cls="schema_db_unreachable",
+            severity="LOW",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence="psql not found on PATH — skipping live column verification",
+            suggested_remediation="Install postgresql-client to enable live schema checks",
+        ))
+        return findings
+
+    pg_host = os.environ.get("PGHOST", "127.0.0.1")
+    pg_port = os.environ.get("PGPORT", "5433")
+    pg_user = os.environ.get("PGUSER", "amjis_app")
+    pg_db = os.environ.get("PGDATABASE", "amjis")
+    pg_password = os.environ.get("PGPASSWORD", "")
+
+    query = (
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema='public' AND table_name='chart_facts';"
+    )
+    env = {**os.environ, "PGPASSWORD": pg_password}
+    try:
+        result = subprocess.run(
+            ["psql", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
+             "-t", "-c", query],
+            capture_output=True, text=True, timeout=10, env=env,
+        )
+        if result.returncode != 0:
+            findings.append(Finding(
+                cls="schema_db_unreachable",
+                severity="LOW",
+                canonical_id=None,
+                surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+                evidence=f"psql exit {result.returncode}: {result.stderr.strip()[:200]}",
+                suggested_remediation="Ensure DB is running on PGHOST:PGPORT for live schema checks",
+            ))
+            return findings
+        live_columns = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    except Exception as exc:
+        findings.append(Finding(
+            cls="schema_db_unreachable",
+            severity="LOW",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence=f"psql invocation failed: {exc}",
+            suggested_remediation="Check DB connectivity and PGPASSWORD env var",
+        ))
+        return findings
+
+    missing = declared_columns - live_columns
+    if missing:
+        for col in sorted(missing):
+            findings.append(Finding(
+                cls="chart_facts_column_missing",
+                severity="HIGH",
+                canonical_id=None,
+                surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json", "chart_facts"],
+                evidence=f"Column '{col}' declared in CHART_FACTS_SCHEMA.json but absent from live chart_facts table",
+                suggested_remediation=f"Run the migration that adds '{col}' to chart_facts, or remove it from CHART_FACTS_SCHEMA.json if intentionally dropped",
+            ))
+    else:
+        # All declared columns present — also check the two key B-series columns explicitly
+        for required in ("ayanamsha_id", "engine_version", "computed_at_iso", "chart_id", "fact_id"):
+            if required not in live_columns:
+                findings.append(Finding(
+                    cls="chart_facts_column_missing",
+                    severity="HIGH",
+                    canonical_id=None,
+                    surfaces_involved=["chart_facts"],
+                    evidence=f"Required B-series column '{required}' missing from live chart_facts table",
+                    suggested_remediation=f"Apply the B-series migration that adds '{required}'",
+                ))
+
+    return findings
+
+
 def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
     """§H.3.8 — Unreferenced canonical-artifact scan."""
     findings: List[Finding] = []
@@ -604,6 +731,7 @@ def run_all_checks(repo_root: pathlib.Path) -> List[Finding]:
     findings.extend(check_governance_stack_agreement(repo_root, ca))
     findings.extend(check_phantom_references(repo_root))
     findings.extend(check_unreferenced_canonical(repo_root, ca))
+    findings.extend(check_chart_facts_schema(repo_root))
     return findings
 
 

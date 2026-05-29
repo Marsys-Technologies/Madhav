@@ -1,0 +1,115 @@
+{
+  "table": "chart_facts",
+  "version": "1.1",
+  "description": "Multi-ayanamsha chart facts schema with per-ayanamsha fact_id tracking",
+  "generated_from": "B-10 session 2026-05-29 — reflects migrations 124-132",
+  "columns": [
+    {"name": "id", "type": "uuid", "nullable": false, "pk": true, "default": "gen_random_uuid()"},
+    {"name": "fact_id", "type": "text", "nullable": false},
+    {"name": "category", "type": "text", "nullable": false},
+    {"name": "divisional_chart", "type": "text", "nullable": false, "default": "D1"},
+    {"name": "value_text", "type": "text", "nullable": true},
+    {"name": "value_number", "type": "numeric", "nullable": true},
+    {"name": "value_json", "type": "jsonb", "nullable": true},
+    {"name": "source_section", "type": "text", "nullable": false},
+    {"name": "build_id", "type": "text", "nullable": false},
+    {"name": "provenance", "type": "jsonb", "nullable": false},
+    {"name": "is_stale", "type": "boolean", "nullable": true, "default": false},
+    {"name": "created_at", "type": "timestamptz", "nullable": true, "default": "now()"},
+    {"name": "chart_id", "type": "uuid", "nullable": true},
+    {"name": "ayanamsha_id", "type": "text", "nullable": true},
+    {"name": "engine_version", "type": "text", "nullable": true},
+    {"name": "computed_at_iso", "type": "text", "nullable": true}
+  ],
+  "indexes": [
+    {
+      "name": "chart_facts_pkey",
+      "columns": ["id"],
+      "type": "btree",
+      "unique": true,
+      "primary": true
+    },
+    {
+      "name": "chart_facts_category_divchart_idx",
+      "columns": ["category", "divisional_chart"],
+      "type": "btree",
+      "unique": false,
+      "partial": "WHERE is_stale = false",
+      "notes": "hot-path read index for non-stale facts"
+    },
+    {
+      "name": "chart_facts_source_section_idx",
+      "columns": ["source_section"],
+      "type": "btree",
+      "unique": false,
+      "partial": "WHERE is_stale = false"
+    },
+    {
+      "name": "chart_facts_value_json_gin",
+      "columns": ["value_json"],
+      "type": "gin",
+      "unique": false
+    },
+    {
+      "name": "idx_chart_facts_category",
+      "columns": ["category", "divisional_chart"],
+      "type": "btree",
+      "unique": false,
+      "notes": "general-purpose category+divisional lookup (no is_stale filter)"
+    },
+    {
+      "name": "idx_chart_facts_chart_ayan",
+      "columns": ["chart_id", "ayanamsha_id"],
+      "type": "btree",
+      "unique": false,
+      "notes": "multi-ayanamsha per-chart lookup — added B-series migrations"
+    },
+    {
+      "name": "idx_chart_facts_fact_id",
+      "columns": ["fact_id"],
+      "type": "btree",
+      "unique": false,
+      "notes": "sha256 fact_id point lookup — added B-series migrations"
+    },
+    {
+      "name": "uq_chart_facts_engine",
+      "columns": ["fact_id", "chart_id", "ayanamsha_id"],
+      "type": "btree",
+      "unique": true,
+      "partial": "WHERE chart_id IS NOT NULL",
+      "notes": "deduplication constraint for engine-generated multi-ayanamsha rows"
+    },
+    {
+      "name": "uq_chart_facts_legacy",
+      "columns": ["fact_id"],
+      "type": "btree",
+      "unique": true,
+      "partial": "WHERE chart_id IS NULL",
+      "notes": "backwards-compatibility unique on fact_id for pre-chart_id rows"
+    }
+  ],
+  "foreign_keys": [
+    {"column": "build_id", "references": "build_manifests(build_id)"},
+    {"column": "chart_id", "references": "charts(chart_id)"}
+  ],
+  "triggers": [
+    {
+      "name": "trg_chart_facts_audit",
+      "timing": "AFTER INSERT OR DELETE OR UPDATE",
+      "function": "fn_chart_facts_audit()",
+      "notes": "populates chart_facts_history on every DML"
+    }
+  ],
+  "new_tables_in_build_orch": [
+    "builds",
+    "build_steps",
+    "build_notifications",
+    "build_engine_versions",
+    "engine_versions",
+    "chart_facts_history",
+    "chart_facts_supersedence",
+    "chart_ayanamsha_reports",
+    "chart_documents",
+    "ayanamsha_registry"
+  ]
+}
