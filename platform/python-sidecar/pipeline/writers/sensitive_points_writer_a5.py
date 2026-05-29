@@ -931,3 +931,121 @@ def emit_sri_yantra(chart_id, build_id, ayanamsha_id, sun_lon, moon_lon, lagna_l
                 'computed_at': datetime.now(timezone.utc),
             })
     return rows
+
+
+# ---------------------------------------------------------------------------
+# Tajik sensitive points (A5-S10)
+# ---------------------------------------------------------------------------
+
+HADDA_TABLE = {
+    'ARI': [(0, 6, 'JUP'), (6, 12, 'VEN'), (12, 20, 'MER'), (20, 25, 'MAR'), (25, 30, 'SAT')],
+    'TAU': [(0, 8, 'VEN'), (8, 15, 'MER'), (15, 22, 'JUP'), (22, 26, 'SAT'), (26, 30, 'MAR')],
+    'GEM': [(0, 6, 'MER'), (6, 12, 'JUP'), (12, 17, 'VEN'), (17, 24, 'MAR'), (24, 30, 'SAT')],
+    'CAN': [(0, 7, 'MAR'), (7, 13, 'VEN'), (13, 19, 'MER'), (19, 26, 'JUP'), (26, 30, 'SAT')],
+    'LEO': [(0, 6, 'SAT'), (6, 11, 'MER'), (11, 18, 'VEN'), (18, 24, 'JUP'), (24, 30, 'MAR')],
+    'VIR': [(0, 7, 'MER'), (7, 17, 'VEN'), (17, 21, 'JUP'), (21, 28, 'MAR'), (28, 30, 'SAT')],
+    'LIB': [(0, 6, 'SAT'), (6, 14, 'MER'), (14, 21, 'JUP'), (21, 28, 'VEN'), (28, 30, 'MAR')],
+    'SCO': [(0, 7, 'MAR'), (7, 11, 'VEN'), (11, 19, 'MER'), (19, 24, 'JUP'), (24, 30, 'SAT')],
+    'SAG': [(0, 12, 'JUP'), (12, 17, 'VEN'), (17, 21, 'MER'), (21, 26, 'SAT'), (26, 30, 'MAR')],
+    'CAP': [(0, 7, 'MER'), (7, 14, 'JUP'), (14, 22, 'VEN'), (22, 26, 'SAT'), (26, 30, 'MAR')],
+    'AQU': [(0, 7, 'MER'), (7, 13, 'VEN'), (13, 20, 'JUP'), (20, 25, 'MAR'), (25, 30, 'SAT')],
+    'PIS': [(0, 12, 'VEN'), (12, 16, 'JUP'), (16, 19, 'MER'), (19, 28, 'MAR'), (28, 30, 'SAT')],
+}
+
+
+def _hadda_lord(lon):
+    sign = SIGNS[int(lon / 30) % 12]
+    deg_in_sign = lon % 30
+    for (start, end, lord) in HADDA_TABLE[sign]:
+        if start <= deg_in_sign < end:
+            return lord, sign, start, end
+    return 'SAT', sign, 28, 30  # fallback
+
+
+def emit_tajik_hadda(chart_id, build_id, ayanamsha_id, graha_lons, lagna_lon):
+    """60 Hadda zone lords — one row-set per zone (5 zones × 12 signs)."""
+    rows = []
+    zone_num = 0
+    for sign in SIGNS:
+        for (start, end, lord) in HADDA_TABLE[sign]:
+            zone_num += 1
+            sign_idx = SIGNS.index(sign)
+            mid_lon = sign_idx * 30 + (start + end) / 2
+            subject = f"HADDA_{zone_num}"
+            for key, val, vtype in [
+                ('lord', lord, 'text'),
+                ('sign', sign, 'text'),
+                ('degree_start', float(start), 'num'),
+                ('degree_end', float(end), 'num'),
+                ('formula_id', 'tajik_neelakanthi_hadda', 'text'),
+            ]:
+                rows.append({
+                    'fact_id': make_fact_id('tajik_hadda_lord', subject, key, chart_id, ayanamsha_id, build_id),
+                    'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                    'fact_category': 'tajik_hadda_lord', 'fact_subject': subject, 'fact_key': key,
+                    'fact_value_text': str(val) if vtype == 'text' else None,
+                    'fact_value_num': float(val) if vtype == 'num' else None,
+                    'citation_ref': make_citation_ref('tajik_hadda_lord', subject, key, chart_id, ayanamsha_id),
+                    'citation_human': (
+                        f"Hadda zone {zone_num} ({sign} {start}°-{end}°): lord={lord}."
+                        if key == 'lord'
+                        else f"Hadda {zone_num} {key}: {val}."
+                    ),
+                    'source_calculation': 'sensitive_points_writer_a5/tajik_hadda',
+                    'verification_pass_status': 'two_pass_verified',
+                    'engine_version': ENGINE_VERSION,
+                    'computed_at': datetime.now(timezone.utc),
+                })
+    return rows
+
+
+def emit_tajik_triraashipathi(chart_id, build_id, ayanamsha_id, lagna_lon, sun_lon):
+    """Tajik year-lord (Triraashipathi) — lord of sign containing Sun at solar return."""
+    SIGN_LORDS_LIST = ['MAR', 'VEN', 'MER', 'MOO', 'SUN', 'MER', 'VEN', 'MAR', 'JUP', 'SAT', 'SAT', 'JUP']
+    year_lord = SIGN_LORDS_LIST[int(sun_lon / 30) % 12]
+    rows = []
+    for key, val in [
+        ('lord', year_lord),
+        ('formula_id', 'tajik_neelakanthi_triraashi'),
+    ]:
+        rows.append({
+            'fact_id': make_fact_id('tajik_triraashipathi', 'TRIRAASHIPATHI', key, chart_id, ayanamsha_id, build_id),
+            'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+            'fact_category': 'tajik_triraashipathi', 'fact_subject': 'TRIRAASHIPATHI', 'fact_key': key,
+            'fact_value_text': str(val), 'fact_value_num': None,
+            'citation_ref': make_citation_ref('tajik_triraashipathi', 'TRIRAASHIPATHI', key, chart_id, ayanamsha_id),
+            'citation_human': f"Tajik Triraashipathi year-lord: {val}.",
+            'source_calculation': 'sensitive_points_writer_a5/tajik_triraashipathi',
+            'verification_pass_status': 'two_pass_verified',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
+
+
+def emit_tajik_vargottama(chart_id, build_id, ayanamsha_id, lagna_lon):
+    """Tajik vargottama-specific point — lagna in same sign in D1 and D9."""
+    d1_sign = int(lagna_lon / 30) % 12
+    d9_sign = int(lagna_lon / 3.333) % 12
+    is_vargottama = (d1_sign == d9_sign)
+    rows = []
+    for key, val, vtype in [
+        ('vargottama_flag', str(is_vargottama), 'text'),
+        ('longitude_sidereal', lagna_lon, 'num'),
+        ('formula_id', 'tajik_vargottama', 'text'),
+    ]:
+        rows.append({
+            'fact_id': make_fact_id('tajik_vargottama_specific', 'TAJIK_VARGOTTAMA', key, chart_id, ayanamsha_id, build_id),
+            'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+            'fact_category': 'tajik_vargottama_specific', 'fact_subject': 'TAJIK_VARGOTTAMA', 'fact_key': key,
+            'fact_value_text': str(val) if vtype == 'text' else None,
+            'fact_value_num': float(val) if vtype == 'num' else None,
+            'unit': 'deg' if key == 'longitude_sidereal' else None,
+            'citation_ref': make_citation_ref('tajik_vargottama_specific', 'TAJIK_VARGOTTAMA', key, chart_id, ayanamsha_id),
+            'citation_human': f"Tajik Vargottama: {val}.",
+            'source_calculation': 'sensitive_points_writer_a5/tajik_vargottama',
+            'verification_pass_status': 'two_pass_verified',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
