@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-28T01:55:00Z",
   "generator_version": "1.1-tool-asset-recon",
-  "entry_count": 268,
+  "entry_count": 272,
   "fingerprint": "3c1c1821ea424625adf5594e2e6388ee9f5e753e41193f947d5efe6ee7ac95cd",
   "entries": [
     {
@@ -5104,9 +5104,97 @@
       "data_dependency": "observatory",
       "ayanamsha_role": null,
       "primary_asset": "mcp_audit"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_tara_balam",
+      "path": "platform/src/lib/retrieve/query_tara_balam.ts",
+      "channel": "both",
+      "type": "retrieval_tool",
+      "tool_name": "query_tara_balam",
+      "status": "CURRENT",
+      "version": "1.0",
+      "layer": "L2",
+      "expose_to_chat": true,
+      "representations": [
+        "typescript"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "description": "Canonical-name alias for tara_balam_for_native. Tara Bala (Star Strength) for native.",
+      "data_dependency": "sidecar",
+      "ayanamsha_role": "canonical",
+      "primary_asset": "sidecar",
+      "produced_during": "GISMCP-R2",
+      "notes": "Thin wrapper alias created in GISMCP Remediation R2; manifest entry added at CI-AUDIT-2026-05-30."
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_chandra_balam",
+      "path": "platform/src/lib/retrieve/query_chandra_balam.ts",
+      "channel": "both",
+      "type": "retrieval_tool",
+      "tool_name": "query_chandra_balam",
+      "status": "CURRENT",
+      "version": "1.0",
+      "layer": "L2",
+      "expose_to_chat": true,
+      "representations": [
+        "typescript"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "description": "Canonical-name alias for chandra_balam_for_native. Chandra Bala (Moon Strength) for native.",
+      "data_dependency": "sidecar",
+      "ayanamsha_role": "canonical",
+      "primary_asset": "sidecar",
+      "produced_during": "GISMCP-R2",
+      "notes": "Thin wrapper alias created in GISMCP Remediation R2; manifest entry added at CI-AUDIT-2026-05-30."
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_jaimini_chara_dasha",
+      "path": "platform/src/lib/retrieve/jaimini_chara_dasha.ts",
+      "channel": "both",
+      "type": "retrieval_tool",
+      "tool_name": "jaimini_chara_dasha",
+      "status": "CURRENT",
+      "version": "1.0",
+      "layer": "L2",
+      "expose_to_chat": true,
+      "representations": [
+        "typescript"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "description": "Canonical-name alias for query_jaimini_chara_dasha. Jaimini Chara Dasha active period.",
+      "data_dependency": "sidecar",
+      "ayanamsha_role": "canonical",
+      "primary_asset": "sidecar",
+      "produced_during": "GISMCP-R2",
+      "notes": "Thin wrapper alias created in GISMCP Remediation R2; manifest entry added at CI-AUDIT-2026-05-30."
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_jaimini_chara_dasha_full",
+      "path": "platform/src/lib/retrieve/jaimini_chara_dasha_full.ts",
+      "channel": "both",
+      "type": "retrieval_tool",
+      "tool_name": "jaimini_chara_dasha_full",
+      "status": "CURRENT",
+      "version": "1.0",
+      "layer": "L2",
+      "expose_to_chat": true,
+      "representations": [
+        "typescript"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "PENDING_CI_REGENERATION",
+      "description": "Canonical-name alias for full Jaimini Chara Dasha timeline.",
+      "data_dependency": "sidecar",
+      "ayanamsha_role": "canonical",
+      "primary_asset": "sidecar",
+      "produced_during": "GISMCP-R2",
+      "notes": "Thin wrapper alias created in GISMCP Remediation R2; manifest entry added at CI-AUDIT-2026-05-30."
     }
   ],
-  "last_updated_by": "COV-S6",
-  "last_session": "COV-S6-feature/m5-coverage-remediation",
-  "last_updated": "2026-05-21"
+  "last_updated_by": "CI-AUDIT-2026-05-30",
+  "last_session": "CI-AUDIT-2026-05-30",
+  "last_updated": "2026-05-29T20:37:08Z"
 }
