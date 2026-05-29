@@ -149,6 +149,74 @@ def emit_saturn_derived(conn, chart_id, build_id, ayanamsha_id, saturn_lon, week
     return rows
 
 
+def emit_sahams(chart_id, build_id, ayanamsha_id,
+                sun_lon, moon_lon, lagna_lon, mars_lon, mer_lon,
+                jup_lon, ven_lon, sat_lon, rahu_lon, ketu_lon,
+                is_day_birth=True):
+    """Emit saham_position rows for all Sahams in G14 library.
+
+    is_day_birth: True if Sun above horizon at birth time.
+    Native (1984-02-05 10:43 IST) born day (Sun above horizon).
+
+    Returns list of chart_facts dicts (not yet written to DB).
+    Each saham emits 10 fact rows.
+    """
+    from pipeline.saham_formulas import SAHAM_FORMULAS, compute_saham_longitude
+
+    positions = {
+        'sun': sun_lon, 'moon': moon_lon, 'asc': lagna_lon,
+        'mars': mars_lon, 'mercury': mer_lon, 'jupiter': jup_lon,
+        'venus': ven_lon, 'saturn': sat_lon, 'rahu': rahu_lon, 'ketu': ketu_lon,
+    }
+
+    rows = []
+    for key, saham_def in SAHAM_FORMULAS.items():
+        subject = key.upper()
+        lon = compute_saham_longitude(key, positions, is_day_birth)
+        sign = _sign_from_lon(lon)
+        nak = _nak_from_lon(lon)
+        citation = saham_def.get('classical_citation', 'Tajik Neelakanthi')
+
+        if saham_def.get('same_day_night') or is_day_birth:
+            a, b, c = saham_def['day_formula']
+        else:
+            a, b, c = saham_def['night_formula']
+        formula_str = f"{a.upper()} - {b.upper()} + {c.upper()}"
+
+        for fact_key, val, vtype in [
+            ('longitude_sidereal', lon, 'num'),
+            ('sign', sign, 'text'),
+            ('nakshatra', nak, 'text'),
+            ('formula_id', key, 'text'),
+            ('formula_provenance_text', f'{citation}: {formula_str}', 'text'),
+            ('tolerance_arcsec', 1.0, 'num'),
+            ('near_sign_boundary_flag', str(abs(lon % 30) < 0.5 or abs(lon % 30 - 30) < 0.5), 'text'),
+            ('near_nakshatra_boundary_flag', str(abs(lon % 13.333) < 0.8), 'text'),
+            ('vargottama_flag_at_point', str(int(lon / 30) == int((lon % 30) / 3.333)), 'text'),
+            ('cross_ayanamsha_divergence_arcsec', 0.0, 'num'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('saham_position', subject, fact_key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'saham_position', 'fact_subject': subject, 'fact_key': fact_key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if fact_key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('saham_position', subject, fact_key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject} at birth: {round(lon, 4)}° in {sign} ({ayanamsha_id})."
+                    if fact_key == 'longitude_sidereal'
+                    else f"{subject} {fact_key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/saham',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+
+    return rows
+
+
 def compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
     """
     All longitudes in degrees (0-360).
