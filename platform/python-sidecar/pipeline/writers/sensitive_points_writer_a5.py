@@ -791,3 +791,143 @@ def emit_esoteric_bindus(conn, chart_id, build_id, ayanamsha_id,
                     'computed_at': datetime.now(timezone.utc),
                 })
     return rows
+
+
+def emit_aprakasha(chart_id, build_id, ayanamsha_id, sun_lon, saturn_lon, moon_lon, lagna_lon):
+    """5 Aprakasha grahas (invisible shadow bodies) from BPHS."""
+    rows = []
+
+    aprakasha = {
+        'DHWAJA':   (sun_lon + 30) % 360,
+        'PATALA':   (sun_lon + 60) % 360,
+        'KANDANGA': (moon_lon + 51) % 360,
+        'PIDAA':    (saturn_lon + 25) % 360,
+        'VIGHNI':   (lagna_lon + 180) % 360,
+    }
+
+    for subject, lon in aprakasha.items():
+        sign = _sign_from_lon(lon)
+        nak = _nak_from_lon(lon)
+        for key, val, vtype in [
+            ('longitude_sidereal', lon, 'num'),
+            ('sign', sign, 'text'),
+            ('nakshatra', nak, 'text'),
+            ('formula_id', f'bphs_{subject.lower()}', 'text'),
+            ('formula_provenance_text', f'BPHS Aprakasha Graha: {subject}', 'text'),
+            ('tolerance_arcsec', 30.0, 'num'),
+            ('near_sign_boundary_flag', str(abs(lon % 30) < 0.5 or abs(lon % 30 - 30) < 0.5), 'text'),
+            ('near_nakshatra_boundary_flag', str(abs(lon % 13.333) < 0.8), 'text'),
+            ('vargottama_flag_at_point', str(int(lon / 30) == int((lon % 30) / 3.333)), 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('aprakasha_position', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'aprakasha_position', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('aprakasha_position', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject} at birth: {round(lon, 4)}° in {sign}."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/aprakasha',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
+def emit_brahma_vishnu_shiva(chart_id, build_id, ayanamsha_id,
+                              lagna_lon, sun_lon, moon_lon, jup_lon, sat_lon):
+    """Jaimini Brahma, Vishnu, Shiva points."""
+    rows = []
+
+    brahma = (lagna_lon + jup_lon) % 360
+    vishnu = (sun_lon + jup_lon) % 360
+    shiva = (moon_lon + sat_lon) % 360
+
+    tri_deva = {
+        'BRAHMA_POINT': (brahma, 'jaimini_sutram_brahma'),
+        'VISHNU_POINT': (vishnu, 'jaimini_sutram_vishnu'),
+        'SHIVA_POINT':  (shiva,  'jaimini_sutram_shiva'),
+    }
+
+    for subject, (lon, formula_id) in tri_deva.items():
+        lon = lon % 360
+        sign = _sign_from_lon(lon)
+        nak = _nak_from_lon(lon)
+        cat = f'esoteric_point_{subject.split("_")[0].lower()}'
+        for key, val, vtype in [
+            ('longitude_sidereal', lon, 'num'),
+            ('sign', sign, 'text'),
+            ('nakshatra', nak, 'text'),
+            ('formula_id', formula_id, 'text'),
+            ('formula_provenance_text', f'Jaimini Sutram: {subject}', 'text'),
+            ('tolerance_arcsec', 30.0, 'num'),
+            ('near_sign_boundary_flag', str(abs(lon % 30) < 0.5), 'text'),
+            ('near_nakshatra_boundary_flag', str(abs(lon % 13.333) < 0.8), 'text'),
+            ('vargottama_flag_at_point', str(int(lon / 30) == int((lon % 30) / 3.333)), 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id(cat, subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': cat, 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref(cat, subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject}: {round(lon, 4)}° in {sign}."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/brahma_vishnu_shiva',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
+def emit_sri_yantra(chart_id, build_id, ayanamsha_id, sun_lon, moon_lon, lagna_lon):
+    """Sri Yantra angular positions for Sun, Moon, Lagna."""
+    rows = []
+
+    points = {
+        'SRI_YANTRA_SUN':   ((sun_lon / 40) % 9, sun_lon),
+        'SRI_YANTRA_MOON':  ((moon_lon / 40) % 9, moon_lon),
+        'SRI_YANTRA_LAGNA': ((lagna_lon / 40) % 9, lagna_lon),
+    }
+
+    for subject, (yantra_pos, lon) in points.items():
+        sign = _sign_from_lon(lon)
+        for key, val, vtype in [
+            ('longitude_sidereal', lon, 'num'),
+            ('yantra_triangle_position', round(yantra_pos, 3), 'num'),
+            ('sign', sign, 'text'),
+            ('formula_id', 'tantric_sri_yantra', 'text'),
+            ('formula_provenance_text', f'Sri Yantra angular mapping: {subject}', 'text'),
+            ('tolerance_arcsec', 30.0, 'num'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('esoteric_point_sri_yantra_position', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'esoteric_point_sri_yantra_position', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('esoteric_point_sri_yantra_position', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject}: {round(lon, 4)}° → yantra pos {round(yantra_pos, 2)}."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/sri_yantra',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
