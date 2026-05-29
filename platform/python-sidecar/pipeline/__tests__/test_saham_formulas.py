@@ -60,9 +60,9 @@ MOCK_POSITIONS: dict[str, float] = {
 # ============================================================
 
 class TestCompleteness:
-    def test_at_least_55_entries(self):
-        """SAHAM_FORMULAS must contain at least 55 sahams."""
-        assert len(SAHAM_FORMULAS) >= 55  # assertion 1
+    def test_at_least_70_entries(self):
+        """SAHAM_FORMULAS must contain at least 70 sahams."""
+        assert len(SAHAM_FORMULAS) >= 70  # assertion 1
 
     def test_all_entries_have_required_keys(self):
         """Every entry must carry all required schema keys."""
