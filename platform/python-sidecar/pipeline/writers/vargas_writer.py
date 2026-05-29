@@ -199,8 +199,12 @@ def compute_varga_sign_id(natal_lon: float, divisor: int) -> int:
     # ------------------------------------------------------------------ D10 Dasamsa
     if divisor == 10:
         part = min(int(degree_in_sign / 3.0), 9)
-        # 0-indexed even = classical odd → Aries start; 0-indexed odd → Capricorn(9)
-        start = 0 if rasi_idx % 2 == 0 else 9
+        # Odd classical signs (rasi_idx 0,2,4,6,8,10): start from sign itself
+        # Even classical signs (rasi_idx 1,3,5,7,9,11): start from 9th sign
+        if rasi_idx % 2 == 0:
+            start = rasi_idx  # odd classical sign: start from natal sign
+        else:
+            start = (rasi_idx + 8) % 12  # even classical sign: 9th from natal
         return (start + part) % 12 + 1
 
     # ------------------------------------------------------------------ D11 Rudramsa
