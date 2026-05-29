@@ -1981,6 +1981,10 @@
   ],
   "activity": [
     {
+      "time": "2026-05-29T22:48:41.331989+00:00",
+      "text": "4-STREAM WORKTREE PRE-LAUNCH CLEANUP COMPLETE. Phase 1: 20 stream-a commits found already on main via prior cherry-pick session (no-op). Phase 2: audited B/C/D/E/F/G1-G4/H/I/J — found 6 genuinely-new commits across stream-f (1) + stream-g1 (1). Phase 3: stream-f F-01 (5 files in render/ package) cherry-picked cleanly. stream-g1 G1-01 abandoned (test imports stale chart_facts_writer.py API; documented as residual BUILD_ORCH_G1_01_RESIDUAL). Phase 4: 13 stale MadhavBO-* worktrees removed + 13 local branches deleted + 1 remote branch deleted. Phase 5: 4 fresh MadhavStream-A/B/C/D worktrees created from main HEAD e5e5796d. Phase 6: all 4 PASS on branch + HEAD + status checks. Final main HEAD: e5e5796dc0e1908b4279d23a6d78ec4fb79c040f. Ready to paste 4 kickoff prompts into 4 Antigravity windows."
+    },
+    {
       "time": "2026-05-29T19:51:35.542792+00:00",
       "text": "CORRECTION: A3/A4/A5 operator action updated. Conductor close report named \"amjis-build-job\" which does not exist as a deployed Cloud Run Job. Correct name is \"marsys-build-pipeline-job\" per infra/cloud_tasks/main.tf + README. Two execution paths documented: (A) /api/build/start endpoint (auth+audit+SSE-cockpit; requires MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true), (B) direct gcloud run jobs execute marsys-build-pipeline-job for smoke. Last run 2026-04-29; dormant for ~1 month since writers were just shipped."
     },
@@ -2227,6 +2231,18 @@
     {
       "time": "2026-05-29T20:30:00",
       "text": "Architecture decisions captured: agentic-loop hybrid + MCP Pattern 3 + multi-ayanamsha full-build + 5 canonical ayanamshas."
+    }
+  ],
+  "known_residuals": [
+    {
+      "id": "BUILD_ORCH_G1_01_RESIDUAL",
+      "discovered": "2026-05-29",
+      "severity": "low",
+      "description": "stream-g1 G1-01 test_chart_facts_writer.py was abandoned during stale-worktree cleanup. Test imports make_fact_id/upsert_facts from an older chart_facts_writer.py API; main has evolved to IBuildWriter/SwapResult. Test would need rewrite against current API for coverage.",
+      "context": "Discovered during pre-launch worktree audit for 4-stream parallel Conductor run (2026-05-30). The original stream-g1 worktree at MadhavBO-G1 had this single uncommitted test from session G1-01; main had already moved past the API it tested.",
+      "recommended_resolution": "Rewrite test_chart_facts_writer.py against current IBuildWriter/SwapResult API as a Stream B sub-session if writer-coverage gap is flagged by ACC1 answer:eval baseline.",
+      "cherry_picked_to_main": false,
+      "abandoned_branch_sha": "9289044d"
     }
   ]
 }
