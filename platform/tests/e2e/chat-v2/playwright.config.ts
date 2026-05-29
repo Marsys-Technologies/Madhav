@@ -29,7 +29,6 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       MARSYS_FIXTURE_MODE: 'true',
-      MARSYS_FLAG_CHAT_V2_ENABLED: 'true',
       // Forward Firebase vars from CI env so Next.js can start without auth/invalid-api-key
       NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
