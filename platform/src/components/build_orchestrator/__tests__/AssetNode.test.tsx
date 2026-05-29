@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import AssetNode, { AssetNodeData } from '../AssetNode'
 import AssetNodeGrid from '../AssetNodeGrid'
 
@@ -135,7 +136,7 @@ describe('AssetNode', () => {
   })
 
   test('TC-14: onClick callback fires with asset data when clicked', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     const asset = makeAsset({ state: 'complete' })
     render(<AssetNode data={asset} onClick={handler} />)
     fireEvent.click(screen.getByTestId('asset-node-A3_chart_facts'))
@@ -190,7 +191,7 @@ describe('AssetNodeGrid', () => {
   })
 
   test('TC-21: grid passes onAssetClick to child nodes', () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     render(<AssetNodeGrid assets={ALL_14_ASSETS} onAssetClick={handler} />)
     fireEvent.click(screen.getByTestId('asset-node-A1_engine'))
     expect(handler).toHaveBeenCalledTimes(1)

@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent, waitFor } from '@testing-library/react'
+import type { DbLike } from '@/lib/auth/authorizeChartAccess'
 
 vi.mock('server-only', () => ({}))
 
@@ -304,12 +305,12 @@ describe('AC.3 integration — revoke blocks access on next request', () => {
     const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
 
     // Simulate the DB after revoke: no owner_id match, no chart_grants row.
-    const db = {
-      query: vi.fn(async (sql: string) => {
+    const db: DbLike = {
+      query: (async (sql: string): Promise<{ rows: Record<string, unknown>[] }> => {
         if (sql.includes('FROM charts')) return { rows: [{ owner_id: 'other-owner' }] }
         if (sql.includes('FROM chart_grants')) return { rows: [] }
         return { rows: [] }
-      }),
+      }) as DbLike['query'],
     }
 
     const perm = await authorizeChartAccess({
@@ -322,12 +323,12 @@ describe('AC.3 integration — revoke blocks access on next request', () => {
 
   it('authorizeChartAccess returns "view" while the chart_grants row exists', async () => {
     const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
-    const db = {
-      query: vi.fn(async (sql: string) => {
+    const db: DbLike = {
+      query: (async (sql: string): Promise<{ rows: Record<string, unknown>[] }> => {
         if (sql.includes('FROM charts')) return { rows: [{ owner_id: 'other-owner' }] }
         if (sql.includes('FROM chart_grants')) return { rows: [{ permission: 'view' }] }
         return { rows: [] }
-      }),
+      }) as DbLike['query'],
     }
     const perm = await authorizeChartAccess({
       principal: { uid: 'granted-guest', role: 'guest' },

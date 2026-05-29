@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import AssetDetailPanel from '../AssetDetailPanel'
 import { AssetNodeData } from '../AssetNode'
 
@@ -19,7 +20,7 @@ function makeAsset(overrides: Partial<AssetNodeData> = {}): AssetNodeData {
 function renderPanel(
   assetOverrides: Partial<AssetNodeData> = {},
   isOpen = true,
-  onClose = jest.fn()
+  onClose = vi.fn()
 ) {
   const asset = makeAsset(assetOverrides)
   render(<AssetDetailPanel asset={asset} isOpen={isOpen} onClose={onClose} />)
@@ -36,7 +37,7 @@ describe('AssetDetailPanel — visibility gate', () => {
       <AssetDetailPanel
         asset={makeAsset()}
         isOpen={false}
-        onClose={jest.fn()}
+        onClose={vi.fn()}
       />
     )
     expect(screen.queryByTestId('asset-detail-panel')).not.toBeInTheDocument()
@@ -47,7 +48,7 @@ describe('AssetDetailPanel — visibility gate', () => {
       <AssetDetailPanel
         asset={null}
         isOpen={true}
-        onClose={jest.fn()}
+        onClose={vi.fn()}
       />
     )
     expect(screen.queryByTestId('asset-detail-panel')).not.toBeInTheDocument()
@@ -92,7 +93,7 @@ describe('AssetDetailPanel — close button', () => {
   })
 
   test('TC-08: clicking close button calls onClose callback', () => {
-    const onClose = jest.fn()
+    const onClose = vi.fn()
     render(
       <AssetDetailPanel
         asset={makeAsset()}

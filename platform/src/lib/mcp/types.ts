@@ -16,6 +16,7 @@ export interface McpPrincipal {
   /** Firebase UID bound to the API key. */
   user_uid: string
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28). Access is governed by authorizeChartAccess (G2).
+  audience_tier?: string
   /** Short key prefix (key_id column) — included in audit headers. */
   key_id: string
 }
@@ -97,6 +98,7 @@ export interface McpSuccessEnvelope {
   /** Trace ID — same as query_id; pass to get_trace() to inspect. */
   trace_id: string
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
+  audience_tier?: string
   /** Mandatory epistemics block (D7). */
   epistemics: EpistemicsBlock
   /** Tool-specific payload. */
@@ -140,6 +142,7 @@ export interface McpApiKeyRow {
   key_id: string
   label: string | null
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
+  audience_tier?: string
   user_uid: string
   scopes: string[]
   created_at: string
@@ -154,6 +157,7 @@ export interface McpKeyCreatedResponse {
   full_key: string
   label: string | null
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
+  audience_tier?: string
   user_uid: string
   created_at: string
 }

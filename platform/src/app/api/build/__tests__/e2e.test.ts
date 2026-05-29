@@ -90,6 +90,12 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
       if (/FROM charts WHERE id/.test(sql)) {
         return Promise.resolve({ rows: [{ owner_id: 'owner-7' }] })
       }
+      if (/FROM charts WHERE chart_id/.test(sql)) {
+        return Promise.resolve({ rows: [{ chart_id: 'chart-77' }] })
+      }
+      if (/INSERT INTO builds/.test(sql)) {
+        return Promise.resolve({ rows: [{ build_id: 'build-e2e-1' }] })
+      }
       return Promise.resolve({ rows: [] })
     })
     mockEnqueueBuild.mockResolvedValue({
@@ -100,7 +106,7 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
     const startRes = await POST_START(
       makeReq('http://localhost/api/build/start', {
         chart_id: 'chart-77',
-        ayanamsha_role: 'jh_true_chitra',
+        ayanamshas: ['lahiri', 'kp'],
       }),
     )
     expect(startRes.status).toBe(200)
@@ -111,11 +117,9 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
     expect(mockEnqueueBuild).toHaveBeenCalledTimes(1)
     const enqueueArg = mockEnqueueBuild.mock.calls[0][0] as {
       chartId: string
-      ayanamshaRole: string
       triggeredBy: string
     }
     expect(enqueueArg.chartId).toBe('chart-77')
-    expect(enqueueArg.ayanamshaRole).toBe('jh_true_chitra')
     expect(enqueueArg.triggeredBy).toBe('manual:owner-7')
 
     // ── Stage 2: /api/build/task — Cloud Tasks calls us back ──────────

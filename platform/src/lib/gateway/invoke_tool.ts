@@ -39,7 +39,7 @@ import { getExecutor } from './executor_registry'
 /** Lazy import of the production pg client — avoids pulling `server-only` into tests. */
 async function defaultDb(): Promise<DbLike> {
   const mod = await import('@/lib/db/client')
-  return { query: mod.query }
+  return { query: (sql: string, params?: unknown[]) => mod.query(sql, params).then(r => ({ rows: r.rows })) } as DbLike
 }
 
 export async function invokeTool<TInput = unknown, TOutput = unknown>(

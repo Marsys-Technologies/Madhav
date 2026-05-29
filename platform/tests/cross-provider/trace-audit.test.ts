@@ -88,7 +88,7 @@ function makeToolUseStep(overrides: Partial<TraceStep> = {}): TraceStep {
 describe('trace-audit: writeTraceStep() persists required tool_use fields', () => {
   beforeEach(() => {
     vi.mocked(query).mockReset()
-    vi.mocked(query).mockResolvedValue({ rows: [] })
+    vi.mocked(query).mockResolvedValue({ rows: [] } as any)
   })
 
   it('TA-1.1: writeTraceStep() calls db query with correct positional args', async () => {
@@ -102,14 +102,14 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
     expect(sql).toContain('INSERT INTO public.query_trace_steps')
   })
 
-  it('TA-1.2: step_type field is persisted (positional param $6)', async () => {
+  it('TA-1.2: step_type field is persisted (positional param $7)', async () => {
     const step = makeToolUseStep({ step_type: 'sql' })
     await writeTraceStep(step)
 
     const [, params] = vi.mocked(query).mock.calls[0]
     const paramsArr = params as unknown[]
-    // param $6 = step_type
-    expect(paramsArr[5]).toBe('sql')
+    // param $7 = step_type (mcp_tool was inserted at $6 by migration 116)
+    expect(paramsArr[6]).toBe('sql')
   })
 
   it('TA-1.3: step_name (tool_name equivalent) is persisted (positional param $5)', async () => {
@@ -122,27 +122,27 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
     expect(paramsArr[4]).toBe('msr_sql')
   })
 
-  it('TA-1.4: latency_ms (duration_ms) is persisted (positional param $10)', async () => {
+  it('TA-1.4: latency_ms (duration_ms) is persisted (positional param $11)', async () => {
     const step = makeToolUseStep({ latency_ms: 342 })
     await writeTraceStep(step)
 
     const [, params] = vi.mocked(query).mock.calls[0]
     const paramsArr = params as unknown[]
-    // param $10 = latency_ms
-    expect(paramsArr[9]).toBe(342)
+    // param $11 = latency_ms (mcp_tool at $6 shifted subsequent params by 1)
+    expect(paramsArr[10]).toBe(342)
   })
 
-  it('TA-1.5: parallel_group (tool_fetch marker) is persisted (positional param $11)', async () => {
+  it('TA-1.5: parallel_group (tool_fetch marker) is persisted (positional param $12)', async () => {
     const step = makeToolUseStep({ parallel_group: 'tool_fetch' })
     await writeTraceStep(step)
 
     const [, params] = vi.mocked(query).mock.calls[0]
     const paramsArr = params as unknown[]
-    // param $11 = parallel_group
-    expect(paramsArr[10]).toBe('tool_fetch')
+    // param $12 = parallel_group (mcp_tool at $6 shifted subsequent params by 1)
+    expect(paramsArr[11]).toBe('tool_fetch')
   })
 
-  it('TA-1.6: data_summary.tool_name is persisted in JSON payload (param $12)', async () => {
+  it('TA-1.6: data_summary.tool_name is persisted in JSON payload (param $13)', async () => {
     const step = makeToolUseStep({
       data_summary: { tool_name: 'query_dasha_periods', rows_returned: 5 },
     })
@@ -150,8 +150,8 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
 
     const [, params] = vi.mocked(query).mock.calls[0]
     const paramsArr = params as unknown[]
-    // param $12 = data_summary JSON
-    const dataSummaryJson = paramsArr[11] as string
+    // param $13 = data_summary JSON (mcp_tool at $6 shifted subsequent params by 1)
+    const dataSummaryJson = paramsArr[12] as string
     const dataSummary = JSON.parse(dataSummaryJson)
     expect(dataSummary.tool_name).toBe('query_dasha_periods')
   })
@@ -163,8 +163,8 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
     const [sql, params] = vi.mocked(query).mock.calls[0]
     const paramsArr = params as unknown[]
 
-    // Field 1: step_type (positional $6 = index 5)
-    expect(paramsArr[5]).toBe('sql')
+    // Field 1: step_type (positional $7 = index 6; mcp_tool is $6)
+    expect(paramsArr[6]).toBe('sql')
 
     // Field 2: tool_name via step_name (positional $5 = index 4)
     expect(paramsArr[4]).toBe('query_dasha_periods')
@@ -172,11 +172,11 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
     // Field 3: iteration/step_seq (positional $4 = index 3) — step_seq is the iteration counter
     expect(typeof paramsArr[3]).toBe('number')
 
-    // Field 4: duration_ms via latency_ms (positional $10 = index 9)
-    expect(paramsArr[9]).toBe(150)
+    // Field 4: duration_ms via latency_ms (positional $11 = index 10)
+    expect(paramsArr[10]).toBe(150)
 
-    // Field 5: parallel_group = 'tool_fetch' → retrieval stage (positional $11 = index 10)
-    expect(paramsArr[10]).toBe('tool_fetch')
+    // Field 5: parallel_group = 'tool_fetch' → retrieval stage (positional $12 = index 11)
+    expect(paramsArr[11]).toBe('tool_fetch')
   })
 })
 
@@ -187,7 +187,7 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
 describe('trace-audit: Iteration counter increments across multiple tool calls', () => {
   beforeEach(() => {
     vi.mocked(query).mockReset()
-    vi.mocked(query).mockResolvedValue({ rows: [] })
+    vi.mocked(query).mockResolvedValue({ rows: [] } as any)
   })
 
   it('TA-2.1: step_seq increments across three sequential tool-use steps', async () => {
@@ -354,7 +354,7 @@ describe('trace-audit: LoopIterationTelemetry carries iteration + cache_hit fiel
     expect(consoleSpy).toHaveBeenCalledTimes(3)
 
     const iterations = consoleSpy.mock.calls.map(
-      ([raw]) => JSON.parse(raw as string).iteration,
+      ([raw]: unknown[]) => JSON.parse(raw as string).iteration,
     )
     expect(iterations).toEqual([1, 2, 3])
   })

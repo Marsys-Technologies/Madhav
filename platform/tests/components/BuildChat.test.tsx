@@ -127,7 +127,8 @@ vi.mock('@/components/chat/ShareButton', () => ({
 }))
 
 // ── Import the component under test ──────────────────────────────────────────
-import { BuildChat } from '@/components/build/BuildChat'
+// BuildChat component deleted — test suite skipped (CI-AUDIT-2026-05-30)
+// import { BuildChat } from '@/components/build/BuildChat'
 
 const defaultProps = {
   chartId: 'chart-123',
@@ -141,7 +142,7 @@ const defaultProps = {
   layers: [],
 }
 
-describe('BuildChat', () => {
+describe.skip('BuildChat — component deleted, suite retired (CI-AUDIT-2026-05-30)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

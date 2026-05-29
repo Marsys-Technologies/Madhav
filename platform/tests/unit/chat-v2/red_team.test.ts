@@ -256,7 +256,7 @@ describe('P.5 — Stream resume token forgery (post-fix ownership check)', () =>
     const fs = await import('fs')
     const path = await import('path')
     const routeSource = fs.readFileSync(
-      path.resolve(process.cwd(), 'src/app/api/chat/consume/resume/route.ts'),
+      path.resolve(process.cwd(), 'src/app/api/chat/consult/resume/route.ts'),
       'utf8',
     )
     // Must contain user_id in the WHERE clause

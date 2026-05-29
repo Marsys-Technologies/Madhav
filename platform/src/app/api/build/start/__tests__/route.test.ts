@@ -200,14 +200,14 @@ describe('POST /api/build/start — happy path (owner, all 5 ayanamshas)', () =>
     expect(body.status).toBe('queued')
 
     // Confirm builds INSERT was called
-    const insertBuildsCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const insertBuildsCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /INSERT INTO builds/.test(sql),
     )
     expect(insertBuildsCall).toBeDefined()
     expect(insertBuildsCall![1]).toContain('natal_engine/0.2.0-jh-parity')
 
     // Confirm build_steps INSERT was called
-    const insertStepsCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const insertStepsCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /INSERT INTO build_steps/.test(sql),
     )
     expect(insertStepsCall).toBeDefined()

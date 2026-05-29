@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 
 // ── Mock sonner toast ──────────────────────────────────────────────────────
-const mockToastSuccess = vi.fn()
-const mockToastError = vi.fn()
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
 
 vi.mock('sonner', () => ({
   toast: {

@@ -62,7 +62,7 @@ interface CreateResult {
   key_id: string
   full_key: string
   label: string | null
-  audience_tier: string
+  audience_tier: string | undefined
   user_uid: string
 }
 

@@ -46,7 +46,7 @@ function makeTransport(): { transport: TaskTransport; calls: unknown[] } {
 
 beforeEach(() => {
   vi.mocked(query).mockClear()
-  vi.mocked(query).mockResolvedValue({ rows: [] })
+  vi.mocked(query).mockResolvedValue({ rows: [] } as any)
 })
 
 describe('readBuildTriggerEnv', () => {
@@ -57,13 +57,13 @@ describe('readBuildTriggerEnv', () => {
       BUILD_TASK_QUEUE: 'q',
       BUILD_TASK_INVOKER_SA: 'sa@x',
       BUILD_TASK_AUDIENCE: 'https://x',
-    } as NodeJS.ProcessEnv)
+    } as unknown as NodeJS.ProcessEnv)
     expect(out.gcpProject).toBe('p')
     expect(out.queueId).toBe('q')
   })
 
   it('throws when any required var is missing', () => {
-    expect(() => readBuildTriggerEnv({} as NodeJS.ProcessEnv)).toThrow(
+    expect(() => readBuildTriggerEnv({} as unknown as NodeJS.ProcessEnv)).toThrow(
       /missing env vars/,
     )
   })

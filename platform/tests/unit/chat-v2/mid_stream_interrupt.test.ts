@@ -11,7 +11,7 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 const routeSrc = readFileSync(
-  resolve(__dirname, '../../../src/app/api/chat/consume/route.ts'),
+  resolve(__dirname, '../../../src/app/api/chat/consult/route.ts'),
   'utf8',
 )
 

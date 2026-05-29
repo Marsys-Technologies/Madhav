@@ -21,7 +21,7 @@ describe('readJobInvokerEnv', () => {
   it('returns env block with sane defaults', () => {
     const out = readJobInvokerEnv({
       GCP_PROJECT: 'p',
-    } as NodeJS.ProcessEnv)
+    } as unknown as NodeJS.ProcessEnv)
     expect(out.gcpProject).toBe('p')
     expect(out.jobLocation).toBe('asia-south1')
     expect(out.jobId).toBe('marsys-build-pipeline-job')
@@ -31,12 +31,12 @@ describe('readJobInvokerEnv', () => {
     const out = readJobInvokerEnv({
       GCP_PROJECT: 'p',
       BUILD_JOB_NAME: 'staging-build-job',
-    } as NodeJS.ProcessEnv)
+    } as unknown as NodeJS.ProcessEnv)
     expect(out.jobId).toBe('staging-build-job')
   })
 
   it('throws when GCP_PROJECT is missing', () => {
-    expect(() => readJobInvokerEnv({} as NodeJS.ProcessEnv)).toThrow()
+    expect(() => readJobInvokerEnv({} as unknown as NodeJS.ProcessEnv)).toThrow()
   })
 })
 

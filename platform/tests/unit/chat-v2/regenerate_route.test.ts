@@ -44,7 +44,7 @@ vi.mock('@/lib/errors', () => ({
   },
 }))
 
-import { POST } from '../../../src/app/api/chat/consume/regenerate/route'
+import { POST } from '../../../src/app/api/chat/consult/regenerate/route'
 import { getServerUser } from '@/lib/firebase/server'
 import { getConversation } from '@/lib/conversations'
 

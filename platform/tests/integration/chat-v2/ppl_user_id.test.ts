@@ -54,7 +54,7 @@ describe('PPL user_id wiring — O4 fix', () => {
     const { readFileSync } = await import('fs')
     const { join } = await import('path')
     const routeSrc = readFileSync(
-      join(__dirname, '../../../src/app/api/chat/consume/route.ts'),
+      join(__dirname, '../../../src/app/api/chat/consult/route.ts'),
       'utf-8',
     )
     expect(routeSrc).toContain('event.step.user_id = user.uid')

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 
 const FILES_TO_CHECK = [
   '/Users/Dev/Vibe-Coding/Apps/Madhav/01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
-  '/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md',
+  '/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v5_0.md',
   '/Users/Dev/Vibe-Coding/Apps/Madhav/03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md',
 ]
 

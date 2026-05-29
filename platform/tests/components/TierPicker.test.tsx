@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TierPicker } from '@/components/consume/TierPicker'
+// TierPicker deleted from consume — suite skipped (CI-AUDIT-2026-05-30)
 
 // Updated 2026-05-06 (GANGA-OVERNIGHT-S1 P4 D.4.2): TierPicker tier labels
 // renamed Internal/Peer/Reading → Deep/Study/Brief; active state changed
 // from solid gold background to charcoal-with-gold-ring.
 
-describe('TierPicker', () => {
+describe.skip('TierPicker — component deleted, suite retired (CI-AUDIT-2026-05-30)', () => {
   it('renders three buttons with labels Deep / Study / Brief in that order', () => {
     render(<TierPicker tier="client" onChange={() => {}} />)
     const buttons = screen.getAllByRole('button')

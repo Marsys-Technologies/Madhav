@@ -323,33 +323,33 @@ describe('msr_sql tool', () => {
 
   // FIX-7 regression: invocation_params.forward_looking logs actual SQL filter value, not plan.forward_looking
   describe('FIX-7 regression: invocation_params.forward_looking = actual SQL filter value', () => {
-    it('when params.forward_looking=true, bundle.invocation_params.forward_looking is true', async () => {
+    it('when params.forward_looking=true, (bundle.invocation_params as Record<string, unknown>).forward_looking is true', async () => {
       mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
       const plan: QueryPlan = { ...basePlan, forward_looking: false }
       const bundle = await tool.retrieve(plan, { forward_looking: true })
 
       // FIX-7: the bundle must log what was actually sent to SQL, not plan.forward_looking
-      expect(bundle.invocation_params.forward_looking).toBe(true)
+      expect((bundle.invocation_params as Record<string, unknown>).forward_looking).toBe(true)
     })
 
-    it('when params.forward_looking=false, bundle.invocation_params.forward_looking is null', async () => {
+    it('when params.forward_looking=false, (bundle.invocation_params as Record<string, unknown>).forward_looking is null', async () => {
       mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
       const plan: QueryPlan = { ...basePlan, forward_looking: true }
       const bundle = await tool.retrieve(plan, { forward_looking: false })
 
       // params.forward_looking=false → null SQL filter; log should reflect null
-      expect(bundle.invocation_params.forward_looking).toBeNull()
+      expect((bundle.invocation_params as Record<string, unknown>).forward_looking).toBeNull()
     })
 
-    it('when plan.forward_looking=true and no params, bundle.invocation_params.forward_looking is true', async () => {
+    it('when plan.forward_looking=true and no params, (bundle.invocation_params as Record<string, unknown>).forward_looking is true', async () => {
       mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
 
       const plan: QueryPlan = { ...basePlan, forward_looking: true }
       const bundle = await tool.retrieve(plan)
 
-      expect(bundle.invocation_params.forward_looking).toBe(true)
+      expect((bundle.invocation_params as Record<string, unknown>).forward_looking).toBe(true)
     })
   })
 })

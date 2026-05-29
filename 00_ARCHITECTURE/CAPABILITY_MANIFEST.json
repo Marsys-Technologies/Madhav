@@ -158,7 +158,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "065c19a8e425884a128e2a654e5dcc69d0cabb6ea13d19484163b1f1a8390b09",
+      "fingerprint": "1122d9d2f1beb7a71ccc36cbfce1565f3c7c6f519ca4e6ae504be2cb9dc3b45a",
       "native_id": "abhisek",
       "preferred_for": [
         "interpretive",
@@ -191,7 +191,7 @@
       "predecessor": "99_ARCHIVE/025_HOLISTIC_SYNTHESIS/MSR_v4_0.md",
       "updated_at": "2026-05-14",
       "updated_by": "M9-A-S1, fingerprint-refresh MSR-HYGIENE-S1 2026-05-21",
-      "fingerprint_sha256": "0dc272e03ecb109d34afa7bbf513687819eed8bf24ff525c85cb547ca83ec697",
+      "fingerprint_sha256": "6984c65c70decdf4ea70aa1485c3fa76fb50496ea2c01cfa944b5390ff55b71c",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
       "tool_name": "msr_sql",
@@ -201,9 +201,9 @@
     },
     {
       "canonical_id": "RED_TEAM_L2_5_v1_0",
-      "path": "025_HOLISTIC_SYNTHESIS/RED_TEAM_L2_5_v1_0.md",
+      "path": "",
       "version": "1",
-      "status": "CURRENT",
+      "status": "SUPERSEDED",
       "layer": "L2.5",
       "expose_to_chat": false,
       "representations": [
@@ -1198,7 +1198,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state | dasha_state). 81 entries (9 MD \u00d7 9 AD). All fitted_value=null; M5-D fitting required.",
+      "notes": "P(domain_state | dasha_state). 81 entries (9 MD × 9 AD). All fitted_value=null; M5-D fitting required.",
       "fingerprint_sha256": "cf3e776d9edcd7de01305d0c7257df4551aed7bca0a4a3a54e0049a2375dca69",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -1217,7 +1217,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-B-S1",
-      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains \u00d7 9 transitions). Symmetric priors; per-domain differentiation in M5-D.",
+      "notes": "P(domain_state(t+1) | domain_state(t)). 36 entries (4 domains × 9 transitions). Symmetric priors; per-domain differentiation in M5-D.",
       "fingerprint_sha256": "562a8d7d1d00f7f54221d46f009540f14467ea9a902434ffe85e4e5761463e21",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -1263,8 +1263,8 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_lel_query",
       "tool_name": "lel_query",
-      "tool_description": "Retrieves ground-truth life events from LEL \u2014 recorded dates categories chart states",
-      "description": "Queries life_events table \u2014 57 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
+      "tool_description": "Retrieves ground-truth life events from LEL — recorded dates categories chart states",
+      "description": "Queries life_events table — 57 events from LIFE_EVENT_LOG_v1_2.md with Swiss Ephemeris chart_state. Returns event_id, event_date, category, description, significance, chart_state. L1 ground truth for marriage, career, health, and other recorded events.",
       "query_schema": {
         "type": "object",
         "properties": {
@@ -1337,7 +1337,7 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "native_id": "abhisek",
       "produced_during": "M5-E-S1",
-      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD\u2192ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in \u00a73.2b.",
+      "notes": "LL.8 Bayesian Model Updating specification. SCAFFOLD→ACTIVE at M5-E-S1 (2026-05-14). All 3 activation conditions met. Conjugate Beta update protocol in §3.2b.",
       "fingerprint_sha256": "f3877f50c2fb7517a3908989b14376e407a7a219483b77a89d7b79a6509a8c0d",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -1431,7 +1431,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "M8 phase plan \u2014 governs all M8 sessions",
+      "note": "M8 phase plan — governs all M8 sessions",
       "fingerprint_sha256": "74d89d028cc23d11817fcaf29a444635b7155f2c85738d5e7c0377ca594e9069",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -1486,11 +1486,11 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-A-S1",
-      "note": "v1.1 \u2014 L8 prefix block added for M8 classical corpus",
+      "note": "v1.1 — L8 prefix block added for M8 classical corpus",
       "updated_at": "2026-05-14",
       "updated_by": "M9-A-S1",
       "notes": "L9/ prefix added at M9-A-S1",
-      "fingerprint_sha256": "e036c95878a61f20bd691cb818ca4e2f18908c391b4ad08ccef5c849aebec0e0",
+      "fingerprint_sha256": "f473e2eea521bd4654c36e5ddd37352c2395f1df19223f53a2bb890ad3826047",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
     },
@@ -1534,10 +1534,10 @@
       "fingerprint": "PENDING_CI_REGENERATION",
       "tool_name": "classical_attribution_lookup",
       "tool_number": 26,
-      "tool_description": "Structured lookup: MSR signal_ids \u2192 classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
+      "tool_description": "Structured lookup: MSR signal_ids → classical_attributions JOIN classical_chunks JOIN classical_texts. Groups results by text.",
       "produced_during": "M8-A-S1",
       "updated_during": "M8-E-S1",
-      "note": "Full impl M8-E-S1: JOIN classical_attributions\u2192classical_chunks\u2192classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS",
+      "note": "Full impl M8-E-S1: JOIN classical_attributions→classical_chunks→classical_texts; signal partition (with/silent); attribution_type + confidence_tier filters; 7 unit tests PASS",
       "expose_to_planner": true,
       "fingerprint_sha256": "9713bc92831f35697df7100a04af7512602e6b4b655e6dd3beeab294f287dea3",
       "last_verified_session": "GH-FP-BACKFILL",
@@ -1703,7 +1703,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Full attribution pass: Vertex AI text-embedding-004 \u00d7 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge \u2192 classical_attributions table",
+      "note": "Full attribution pass: Vertex AI text-embedding-004 × 510 MSR signals, TOP_K=5 pgvector search, Gemini 2.5-flash judge → classical_attributions table",
       "fingerprint_sha256": "b15e3ee46b98e18ac4e69f1965f9a1f123ca1f3f2131eed912f0711638f7aff3",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
@@ -1723,7 +1723,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Reads classical_attributions table \u2192 produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM",
+      "note": "Reads classical_attributions table → produces REGISTRY_v1_0.json + .md + FINDINGS_M5_CROSS_REF + FINDINGS_CLASSICAL_CLAIM",
       "fingerprint_sha256": "1b455c2eebae9f3571e46dc33b9c73887af757cf67174f2036159359c69b4269",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
@@ -1778,7 +1778,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-E-S1",
-      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal \u00d7 text \u00d7 verse breakdown",
+      "note": "Top-10 MSR signals by classical confirmation (confirms+partial+extends); per-signal × text × verse breakdown",
       "fingerprint_sha256": "2e1dea225f9f5c8a42d0a684f2e33e147dea3b087edb00412d96199ac356c9ad",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -1886,7 +1886,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence \u22650.60",
+      "note": "107 BNN signals extracted from Bhrigu Nandi Nadi corpus; all high-confidence ≥0.60",
       "fingerprint_sha256": "33301a723994c899116afc98aef64a8408ccc486bca5094255a050e3b4ee5f8e",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -1922,7 +1922,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-F-S1",
-      "note": "29 net-new signal proposal SIG.MSR.515\u2013543; dedup argument vs existing 514; AC.M8F.5 PASS",
+      "note": "29 net-new signal proposal SIG.MSR.515–543; dedup argument vs existing 514; AC.M8F.5 PASS",
       "fingerprint_sha256": "df929534ed05b2b1a8052994f935e2b0e4e0a7516c955ba6996f38fe74a04b70",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -2012,7 +2012,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-G-S1",
-      "note": "GT.047\u2013GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS",
+      "note": "GT.047–GT.049 classical_grounding golden entries added; 49 total; AC.M8G.3 PASS",
       "fingerprint_sha256": "3c6c76f3198b84fb5952cc6c1c5fb3b053bc8f1eefb63fcb7a355bf10af6c090",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -2048,7 +2048,7 @@
       "interface_version": "1.0",
       "fingerprint": "PENDING_CI_REGENERATION",
       "produced_during": "M8-H-S1",
-      "note": "20 findings (4\u00d75 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS",
+      "note": "20 findings (4×5 domains); 0 disagreements; 1 ABOVE_ACHARYA_LEVEL (S1 Indu Lagna); AC.M8H.2 PASS",
       "fingerprint_sha256": "d3eedf22a6aba9bd30fd557b396b77395a05a222fc0371dfffbdd5066919f95b",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21"
@@ -2117,7 +2117,7 @@
         "folder"
       ],
       "interface_version": "1.0",
-      "notes": "M9 multi-school triangulation layer; 7 schools \u00d7 5 domains \u00d7 543+ signals",
+      "notes": "M9 multi-school triangulation layer; 7 schools × 5 domains × 543+ signals",
       "produced_during": "M9-A-S1 2026-05-14",
       "tool_name": "multi_school_signal_lookup",
       "data_dependency": "rag_chunks",
@@ -2134,7 +2134,7 @@
       "representations": [
         "file"
       ],
-      "notes": "Per-school signal coverage classification: 573 signals \u00d7 7 schools = 4011 rows",
+      "notes": "Per-school signal coverage classification: 573 signals × 7 schools = 4011 rows",
       "produced_during": "M9-A-S1 2026-05-14",
       "fingerprint_sha256": "6cafe2556eaeb678652ba6ca0bba4747ebe80a7d293cf3a745cd0d22d1590975",
       "last_verified_session": "GH-FP-BACKFILL",
@@ -2150,7 +2150,7 @@
       "representations": [
         "file"
       ],
-      "notes": "15 Yogini signals SIG.MSR.544\u2013558; current Yogini: Bhramari (Mars; active)",
+      "notes": "15 Yogini signals SIG.MSR.544–558; current Yogini: Bhramari (Mars; active)",
       "produced_during": "M9-A-S1 2026-05-14",
       "fingerprint_sha256": "0b1b5e9e0bdce6f4f9fccb1839abf83637ec52203919f2b9b9328be3d1eaa098",
       "last_verified_session": "GH-FP-BACKFILL",
@@ -2166,7 +2166,7 @@
       "representations": [
         "file"
       ],
-      "notes": "15 Tajika signals SIG.MSR.559\u2013573; solar_return_scope: true; CF.M9.1 pending",
+      "notes": "15 Tajika signals SIG.MSR.559–573; solar_return_scope: true; CF.M9.1 pending",
       "produced_during": "M9-A-S1 2026-05-14",
       "fingerprint_sha256": "c2864e2c87fcab9b132d3fd3c6bb793170539324b505254419bef24d73a5fe55",
       "last_verified_session": "GH-FP-BACKFILL",
@@ -2182,7 +2182,7 @@
       "representations": [
         "markdown"
       ],
-      "notes": "M9 brief archived; all 5 sessions (M9-A through M9-E) complete; NAP gates pre-authorized. Path corrected 2026-05-21 \u2014 root CLAUDECODE_BRIEF.md is ephemeral (not committed).",
+      "notes": "M9 brief archived; all 5 sessions (M9-A through M9-E) complete; NAP gates pre-authorized. Path corrected 2026-05-21 — root CLAUDECODE_BRIEF.md is ephemeral (not committed).",
       "produced_during": "Cowork-M9-PLAN-AUTHORING 2026-05-14",
       "fingerprint_sha256": "9cc11a3543d84870c5126132fe8fb066980ae43b668f472c65adc75637e74804",
       "last_verified_session": "GH-FP-BACKFILL",
@@ -2237,7 +2237,7 @@
       "canonical_id": "SCHOOLS_CONVERGENCE_CALCULATOR",
       "path": "platform/src/lib/schools/convergence_calculator.ts",
       "type": "typescript_module",
-      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() \u2014 NAP.M9.2+NAP.M9.3",
+      "description": "computeConvergence() + detectDivergence() + buildConvergenceNarrative() — NAP.M9.2+NAP.M9.3",
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
@@ -2250,7 +2250,7 @@
       "canonical_id": "SCHOOLS_RUNNER",
       "path": "platform/src/lib/schools/school_runner.ts",
       "type": "typescript_module",
-      "description": "runSchoolsForDomain() + runFullTriangulation() \u2014 orchestrates all 7 engines in parallel",
+      "description": "runSchoolsForDomain() + runFullTriangulation() — orchestrates all 7 engines in parallel",
       "version": "1.0",
       "status": "CURRENT",
       "produced_during": "M9-B-S1",
@@ -2363,7 +2363,7 @@
       "type": "script",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "M9-C: Executes all 7 school engines \u00d7 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
+      "description": "M9-C: Executes all 7 school engines × 5 domains (35 runs); produces MULTI_SCHOOL_ANALYSIS_v1_0.md + 7 school JSON files",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
       "fingerprint_sha256": "d36a05a0f1f07a50e4a184fd6544b32b5827ef26ca1385660d1a4c366a9ffc22",
@@ -2378,7 +2378,7 @@
       "type": "analysis_document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; \u00a71-\u00a711 authored; acharya-grade verdicts per school per domain",
+      "description": "M9-C: 35-run multi-school analysis; all 5 domains HIGH convergence; §1-§11 authored; acharya-grade verdicts per school per domain",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
       "key_finding": "5/5 domains HIGH convergence (6/6 effective schools); CAREER+SPIRITUAL+PSYCHOLOGICAL positive; HEALTH+RELATIONSHIP neutral",
@@ -2424,7 +2424,7 @@
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] \u2014 reduced confidence 0.35-0.50",
+      "cf": "CF.M9.1 [VARSHA_KUNDALI_PENDING] — reduced confidence 0.35-0.50",
       "fingerprint_sha256": "ebbc5636899b59574c85f906445ca7bce76be88f4ec8017cf5ac58ca4937f534",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
@@ -2467,7 +2467,7 @@
       "status": "CURRENT",
       "produced_during": "M9-C-S1",
       "produced_on": "2026-05-14",
-      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] \u2014 reduced confidence 0.45",
+      "cf": "CF.M9.2 [TRANSIT_DATA_PENDING] — reduced confidence 0.45",
       "fingerprint_sha256": "1243d77f4b3f51d3a73788e335ef1b49edc6c17d8622115bd5a930df66135fc5",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
@@ -2524,7 +2524,7 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Tabular convergence metrics: per-domain convergence table + 7\u00d75 per-school score matrix with pending flags.",
+      "description": "Tabular convergence metrics: per-domain convergence table + 7×5 per-school score matrix with pending flags.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
       "version": "1.0",
@@ -2539,7 +2539,7 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Acharya-grade narrative \u00a71\u2013\u00a79: executive finding, per-domain convergence analysis, divergence analysis, precision signals for query routing, pending resolutions.",
+      "description": "Acharya-grade narrative §1–§9: executive finding, per-domain convergence analysis, divergence analysis, precision signals for query routing, pending resolutions.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
       "version": "1.0",
@@ -2599,7 +2599,7 @@
       "type": "eval",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "Planner golden set extended: GT.050\u2013052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
+      "description": "Planner golden set extended: GT.050–052 multi_school_triangulation entries; available_tools += multi_school_signal_lookup + convergence_score_lookup. Total: 52 entries.",
       "session_id": "M9-D-S1",
       "produced_on": "2026-05-14",
       "version": "1.0",
@@ -2644,7 +2644,7 @@
       "type": "document",
       "layer": "L9",
       "status": "CURRENT",
-      "description": "10 worked examples \u00a72; resolution protocol \u00a73; school-level summary \u00a74. 0 genuine chart contradictions across all 10 disagreements.",
+      "description": "10 worked examples §2; resolution protocol §3; school-level summary §4. 0 genuine chart contradictions across all 10 disagreements.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14",
       "version": "1.0",
@@ -2659,7 +2659,7 @@
       "type": "document",
       "layer": "governance",
       "status": "CLOSED",
-      "description": "M9 macro-phase sealing artifact: \u00a70 session arc, \u00a71 AC ledger (all sub-phases), \u00a72 IS.8(b) red-team PASS 5/5, \u00a73 MSR evolution, \u00a74 convergence summary, \u00a75 disagreement summary, \u00a76 carry-forwards, \u00a77 exit criteria a\u2013d, \u00a78 seal block.",
+      "description": "M9 macro-phase sealing artifact: §0 session arc, §1 AC ledger (all sub-phases), §2 IS.8(b) red-team PASS 5/5, §3 MSR evolution, §4 convergence summary, §5 disagreement summary, §6 carry-forwards, §7 exit criteria a–d, §8 seal block.",
       "session_id": "M9-E-S1",
       "produced_on": "2026-05-14",
       "version": "1.0",
@@ -2670,7 +2670,7 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_multi_school_signal_lookup",
       "tool_name": "multi_school_signal_lookup",
-      "tool_description": "Cross-school signal coverage \u2014 what each Jyotish school says about a topic",
+      "tool_description": "Cross-school signal coverage — what each Jyotish school says about a topic",
       "description": "Queries school_signal_coverage + l25_msr_signals to report per-school signal coverage (primary/secondary/silent) for a given topic or domain. Returns results_by_school with matching_signals per school. 7 schools: parashari, jaimini, tajika, kp, nadi, bnn, yogini.",
       "query_schema": {
         "type": "object",
@@ -2710,7 +2710,7 @@
     {
       "canonical_id": "RETRIEVAL_TOOL_convergence_score_lookup",
       "tool_name": "convergence_score_lookup",
-      "tool_description": "Inter-school convergence scores \u2014 HIGH/MEDIUM/LOW agreement across all schools",
+      "tool_description": "Inter-school convergence scores — HIGH/MEDIUM/LOW agreement across all schools",
       "description": "Returns convergence scores per domain from convergence_scores table. Fields: domain, convergence_level (HIGH|MEDIUM|LOW), schools_agreeing, mean_domain_score, std_domain_score, direction, convergence_narrative. Populated from 09_MULTI_SCHOOL_TRIANGULATION/convergence.",
       "query_schema": {
         "type": "object",
@@ -2769,7 +2769,7 @@
       "description": "Daily Panchang state (5 angas, timings, special yogas, planetary positions) computed deterministically from Swiss Ephemeris + Muhurta Shastra lookup tables for any (date, lat, lon) tuple. Schema doc at 03_DERIVATIONS/PANCHANG_DAILY_v1_0.md; data in Cloud SQL panchang_daily table. Computed by platform/sidecar/panchang_engine. Callable via query_panchanga RetrievalTool (Phase 4C-3). Engine v1.0.0-S3; 30/30 Drik parity; 230 sidecar tests PASS.",
       "produced_during": "Phase-4C-0 2026-05-19",
       "produced_on": "2026-05-19",
-      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED\u2192IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT\u2192CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); \u2192CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED \u2192 IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT \u2192 CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B).",
+      "notes": "Phase 4C canonical asset. sql_table: panchang_daily. computed_by: platform/sidecar/panchang_engine. retrieval_tool: query_panchanga (registered 4C-3). Status PLANNED→IN_DEVELOPMENT at 4C.1 open; IN_DEVELOPMENT→CURRENT_ENGINE_DIRECT at 4C.9 Wave 1 close (2026-05-20); →CURRENT (plain) at 4C.2 backfill complete (pending Phase 4B). 2026-05-19 PANCHANG_DAILY_v1_0: PLANNED → IN_DEVELOPMENT (4C-1-S2). 2026-05-19 4C-3: runtime_path=engine_direct; query_panchanga registered. 2026-05-20 4C-9: IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT (Wave 1 close; engine live; cache pending 4B).",
       "fingerprint_sha256": "af68f246c795adc15639879efbd150b835c3eadb6411e1c3d22c89f9bcfdc69c",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
@@ -2816,7 +2816,7 @@
     {
       "canonical_id": "UCN_WALK_TOOL",
       "tool_name": "query_ucn_walk",
-      "tool_description": "UCN walk \u2014 scan UCN_v4_0.md for MSR signal references near a seed or full-dump all section/signal associations",
+      "tool_description": "UCN walk — scan UCN_v4_0.md for MSR signal references near a seed or full-dump all section/signal associations",
       "description": "File-based walk over UCN_v4_0.md. Parses MSR.NNN anchors and section headings; returns Array<{ signal_id, confluence_type, domain }>. Full-dump mode (no params) returns all signal-section associations. Seeded mode filters by seed_signal_id. Use when a query asks for UCN narrative context around a specific MSR signal or to enumerate which UCN sections reference a particular signal.",
       "query_schema": {
         "type": "object",
@@ -2853,7 +2853,7 @@
     {
       "canonical_id": "CDLM_LOOKUP_TOOL",
       "tool_name": "query_cdlm_lookup",
-      "tool_description": "CDLM lookup \u2014 parse 81-cell CDLM_v1_1.md cross-domain linkage matrix filtered by domain pair or signal ID",
+      "tool_description": "CDLM lookup — parse 81-cell CDLM_v1_1.md cross-domain linkage matrix filtered by domain pair or signal ID",
       "description": "File-based lookup over CDLM_v1_1.md (81 cells). Parses YAML-in-markdown cells; returns Array<{ domain_pair, row_domain, col_domain, linkage_type, strength, direction, valence, signal_ids, key_finding }>. Filter by domain_a, domain_b, signal_id, or full-dump (no params). Use when a query asks about cross-domain interactions, linkage types, or which domains a specific MSR signal bridges.",
       "query_schema": {
         "type": "object",
@@ -2894,8 +2894,8 @@
     {
       "canonical_id": "RM_WALK_TOOL",
       "tool_name": "query_rm_walk",
-      "tool_description": "RM walk \u2014 scan RM_v2_0.md (35 element blocks) filtered by MSR anchor or RM ID",
-      "description": "File-based walk over RM_v2_0.md (35 Resonance Map element blocks RM.01\u2013RM.35). Returns Array<{ rm_id, signal_id, resonance_type, strength, domains, msr_anchors, net_resonance }>. Seeded mode filters by seed_signal_id (MSR.NNN anchor match or direct RM.NN ID). Full-dump (no params) returns all 35 elements. Use when a query asks about resonance patterns, net resonance classifications, or which RM elements are associated with a specific MSR signal.",
+      "tool_description": "RM walk — scan RM_v2_0.md (35 element blocks) filtered by MSR anchor or RM ID",
+      "description": "File-based walk over RM_v2_0.md (35 Resonance Map element blocks RM.01–RM.35). Returns Array<{ rm_id, signal_id, resonance_type, strength, domains, msr_anchors, net_resonance }>. Seeded mode filters by seed_signal_id (MSR.NNN anchor match or direct RM.NN ID). Full-dump (no params) returns all 35 elements. Use when a query asks about resonance patterns, net resonance classifications, or which RM elements are associated with a specific MSR signal.",
       "query_schema": {
         "type": "object",
         "properties": {
@@ -2988,7 +2988,7 @@
           "INTERPRETIVE query anchors on a specific date and needs date-indexed signal activation context"
         ],
         "avoid_when": [
-          "Query is about historical events that already occurred \u2014 use lel_query instead",
+          "Query is about historical events that already occurred — use lel_query instead",
           "Query is purely natal/positional with no date anchor"
         ]
       },
@@ -3006,7 +3006,7 @@
         "properties": {
           "planet": {
             "type": "string",
-            "description": "Planet name filter (optional \u2014 returns all 9 if omitted)"
+            "description": "Planet name filter (optional — returns all 9 if omitted)"
           },
           "include_sub_sub": {
             "type": "boolean",
@@ -3042,7 +3042,7 @@
         ],
         "avoid_when": [
           "Query names only a non-KP school exclusively (Parashari-only, Jaimini-only)",
-          "Query is FORENSIC-anchored KP lookup \u2014 use kp_query instead"
+          "Query is FORENSIC-anchored KP lookup — use kp_query instead"
         ]
       },
       "version": "1.0",
@@ -3103,7 +3103,7 @@
         ],
         "avoid_when": [
           "Pure dasha projection query with no annual frame",
-          "Eclipse query \u2014 use temporal + msr_sql instead",
+          "Eclipse query — use temporal + msr_sql instead",
           "Sade-sati or transit-window scan without annual framing"
         ]
       },
@@ -3124,7 +3124,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "56e2312c0e18c56b5cd56731aa44bf823efaebe6c6222d8b0c9b8c66f8717a0d",
       "native_id": "abhisek",
       "notes": "Binding declaration: remedial_codex_query retrieves L4 remedial prescriptions from this layer.",
       "data_dependency": "rag_chunks",
@@ -3143,7 +3143,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "176a2dc6706866239b731e611c2c58cd1bb472427b043daf7703e96c115b91eb",
       "native_id": "abhisek",
       "notes": "Binding declaration: timeline_query retrieves L5 temporal engine content from this layer.",
       "data_dependency": "lel",
@@ -3163,7 +3163,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "aff41eaf2ac3ea01ed9f8fb9830528a392462280822426787d8f0eb79d2ac657",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3184,7 +3184,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "ce7e2656a526d4558bbc9251e4e7ed46e2491992b14edf022e65a7f5b224ff30",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3205,7 +3205,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "d0f439c7f5ba5b10a1a052393fdf725b34463e87b9bb2065390db8f791f76d73",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3226,7 +3226,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "b97b8d387fc732c47f8f7c2b2bd20c171a28df6aaca6129e4a2dc74159296757",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3238,7 +3238,7 @@
       "canonical_id": "RETRIEVAL_TOOL_divisional_query",
       "path": "platform/src/lib/retrieve/divisional_query.ts",
       "tool_name": "divisional_query",
-      "tool_description": "Queries chart_facts for divisional chart (varga) placements D1\u2013D60.",
+      "tool_description": "Queries chart_facts for divisional chart (varga) placements D1–D60.",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L1",
@@ -3247,7 +3247,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "7c789633ece08a79decde8a9b34d1626a05eb28a23899124baa3399e53f6e237",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3268,7 +3268,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "51be7425e50d8a4e4f34952f892333b6f6a31f69bc786c275e158d2c4056db35",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3322,7 +3322,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "0fdbea7033880483311311c7bb62e16e423562b4f34855083287e1af880a2e71",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3343,7 +3343,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "7ad716672c3200d744c0af21f1a8c3125583edff2933f0674f61ee5b042e6eb0",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3410,7 +3410,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "f057ece28bb7d1814e672565e308b6b0672426bf30c36858b5687c7c34502a8d",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3476,7 +3476,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "783c3a146298226c2811f9d4cb67364efd541fd47d831341fbb9025de4825887",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3497,7 +3497,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "ef123315929c76a0082404e1bae0a7700b9f0d9bf5a5a92ae5a03ff997961548",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3518,7 +3518,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "4f6c42916e8cb5d46bc49ae0d0b6d3481073497781148e340fd9b82b29566f23",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3539,7 +3539,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "d822b4ab91ce922f4656f41239e6a88e77fe3ba174a826d3c2028a87e18bf42f",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3560,7 +3560,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "e3cac6b1ae663d111d6d1d7da66809d46c1ac6a5f4d1cbdc377607cd984fe583",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3581,7 +3581,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "a5f285a944269fd8992ab303cc4f1d6e393540915f9fff42c22406d849ce5dfd",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3593,7 +3593,7 @@
       "canonical_id": "RETRIEVAL_TOOL_saham_query",
       "path": "platform/src/lib/retrieve/saham_query.ts",
       "tool_name": "saham_query",
-      "tool_description": "Queries chart_facts for Tajika Saham (Arabic Part/Lot) data \u2014 36 sahams from FORENSIC \u00a712.2.",
+      "tool_description": "Queries chart_facts for Tajika Saham (Arabic Part/Lot) data — 36 sahams from FORENSIC §12.2.",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L1",
@@ -3602,7 +3602,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "9d48af0ac7abf13021440e2c52627cb383c598efd2817a93f05cdcebf0f72227",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3623,7 +3623,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "bb291d84dcd6738f4f66aca944beffeb996e4fa6ca65fbf7ca0b462e5b581497",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3644,7 +3644,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "4695429ebd567d1221fd76b09e1a0436d9f5ac5a2e798234574a82201bb18a09",
       "native_id": "abhisek",
       "produced_during": "COV-S7-CI-FIX",
       "notes": "Manifest binding entry added to satisfy COVERAGE_GATE_MANIFEST invariant.",
@@ -3663,7 +3663,8 @@
       "description": "MSR signals with LL.1 calibration, domain floors, Pancha-MP dedup",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "08376d82d0b1e325e97951c894ffd4d8329f7d0887c75154bfb0390e2f11719f"
     },
     {
       "canonical_id": "PORTAL_TOOL_PATTERN_REGISTER",
@@ -3676,7 +3677,8 @@
       "description": "Cross-domain pattern registry lookup",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "53eef8b4429884a7dd9f4c65cad114a6fdfcc092232b9652a84ff98902cb9f0f"
     },
     {
       "canonical_id": "PORTAL_TOOL_RESONANCE_REGISTER",
@@ -3689,7 +3691,8 @@
       "description": "Signal resonance patterns",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "a5f285a944269fd8992ab303cc4f1d6e393540915f9fff42c22406d849ce5dfd"
     },
     {
       "canonical_id": "PORTAL_TOOL_CLUSTER_ATLAS",
@@ -3702,7 +3705,8 @@
       "description": "Signal cluster atlas",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "ce7e2656a526d4558bbc9251e4e7ed46e2491992b14edf022e65a7f5b224ff30"
     },
     {
       "canonical_id": "PORTAL_TOOL_CONTRADICTION_REGISTER",
@@ -3715,7 +3719,8 @@
       "description": "Contradictions and tensions between signals",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "d0f439c7f5ba5b10a1a052393fdf725b34463e87b9bb2065390db8f791f76d73"
     },
     {
       "canonical_id": "PORTAL_TOOL_TEMPORAL",
@@ -3728,7 +3733,8 @@
       "description": "Vedic temporal data: sade sati, eclipses, retrogrades, dasha chain",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "bb291d84dcd6738f4f66aca944beffeb996e4fa6ca65fbf7ca0b462e5b581497"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_MSR_AGGREGATE",
@@ -3741,7 +3747,8 @@
       "description": "MSR signal aggregates by domain/planet",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "ef123315929c76a0082404e1bae0a7700b9f0d9bf5a5a92ae5a03ff997961548"
     },
     {
       "canonical_id": "PORTAL_TOOL_CGM_GRAPH_WALK",
@@ -3754,7 +3761,8 @@
       "description": "CGM causal graph walk",
       "data_dependency": "cgm",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_cgm_nodes"
+      "primary_asset": "l25_cgm_nodes",
+      "fingerprint": "aff41eaf2ac3ea01ed9f8fb9830528a392462280822426787d8f0eb79d2ac657"
     },
     {
       "canonical_id": "PORTAL_TOOL_MANIFEST_QUERY",
@@ -3767,7 +3775,8 @@
       "description": "Manifest capability query",
       "data_dependency": "none",
       "ayanamsha_role": null,
-      "primary_asset": "capability_manifest"
+      "primary_asset": "capability_manifest",
+      "fingerprint": "0fdbea7033880483311311c7bb62e16e423562b4f34855083287e1af880a2e71"
     },
     {
       "canonical_id": "PORTAL_TOOL_VECTOR_SEARCH",
@@ -3780,7 +3789,8 @@
       "description": "Semantic similarity search over rag_chunks",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "rag_chunks"
+      "primary_asset": "rag_chunks",
+      "fingerprint": "4695429ebd567d1221fd76b09e1a0436d9f5ac5a2e798234574a82201bb18a09"
     },
     {
       "canonical_id": "PORTAL_TOOL_KP_QUERY",
@@ -3826,7 +3836,8 @@
       },
       "data_dependency": "chart_facts",
       "ayanamsha_role": "kp",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "51be7425e50d8a4e4f34952f892333b6f6a31f69bc786c275e158d2c4056db35"
     },
     {
       "canonical_id": "PORTAL_TOOL_SAHAM_QUERY",
@@ -3839,7 +3850,8 @@
       "description": "Arabic parts (Saham) data",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "9d48af0ac7abf13021440e2c52627cb383c598efd2817a93f05cdcebf0f72227"
     },
     {
       "canonical_id": "PORTAL_TOOL_DIVISIONAL_QUERY",
@@ -3852,7 +3864,8 @@
       "description": "Divisional chart positions (D1-D60)",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "7c789633ece08a79decde8a9b34d1626a05eb28a23899124baa3399e53f6e237"
     },
     {
       "canonical_id": "PORTAL_TOOL_CHART_FACTS_QUERY",
@@ -3865,7 +3878,8 @@
       "description": "Chart facts: strengths, BAV, placements, yogas",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "ca6b6bad832489b3f5d3e95ea876a284c851978118f07dcb4934130d891e977b"
     },
     {
       "canonical_id": "PORTAL_TOOL_CROSS_VARGA_DIGNITY_QUERY",
@@ -3878,7 +3892,8 @@
       "description": "Cross-divisional dignity surface D1/D9/D10",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "b97b8d387fc732c47f8f7c2b2bd20c171a28df6aaca6129e4a2dc74159296757"
     },
     {
       "canonical_id": "PORTAL_TOOL_DOMAIN_REPORT_QUERY",
@@ -3891,7 +3906,8 @@
       "description": "Domain-specific astrological reports",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "f8b18b5e9a02778b029498c545c7d3d8c036419dac0b85aad606c9d58262f58e"
     },
     {
       "canonical_id": "PORTAL_TOOL_REMEDIAL_CODEX_QUERY",
@@ -3904,7 +3920,8 @@
       "description": "Remedial measures codex lookup",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "remedial_codex"
+      "primary_asset": "remedial_codex",
+      "fingerprint": "f31af4876dcb33d055ed1fde851977466547cb2e36bcd07ffce7254382f55c56"
     },
     {
       "canonical_id": "PORTAL_TOOL_TIMELINE_QUERY",
@@ -3917,7 +3934,8 @@
       "description": "Dasha arc timeline from rag_chunks (structural L5)",
       "data_dependency": "lel",
       "ayanamsha_role": "canonical",
-      "primary_asset": "life_events"
+      "primary_asset": "life_events",
+      "fingerprint": "428a32f23f35d873065f950054595ca569450ffa6447270c5351bfdd55a7216a"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_SIGNAL_STATE",
@@ -3930,7 +3948,8 @@
       "description": "Signal state surface M3-B",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "bd6f177aaad4173f09ee3af3930d6620e99ab18b9dc1e1d98e3cc8ffc5771710"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_KP_RULING_PLANETS",
@@ -3977,7 +3996,8 @@
       },
       "data_dependency": "chart_facts",
       "ayanamsha_role": "kp",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "ea6a296c4f30553af7a5a5ae5d84f106c47551ad0e7f95331b260327eb987cdb"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_VARSHAPHALA",
@@ -3990,7 +4010,8 @@
       "description": "Varshaphala annual chart with year_start/year_end range",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "861a92c3e28db37d9fd99156a5e74c21a53dd464f247b10ac3b706ee501a05d1"
     },
     {
       "canonical_id": "PORTAL_TOOL_LEL_QUERY",
@@ -4003,7 +4024,8 @@
       "description": "Life Event Log ground-truth events from life_events table",
       "data_dependency": "lel",
       "ayanamsha_role": null,
-      "primary_asset": "life_events"
+      "primary_asset": "life_events",
+      "fingerprint": "3c3d2dd57206672f4084c43f9b06897469ffaa053d84d6f3702c3647dd411a5b"
     },
     {
       "canonical_id": "PORTAL_TOOL_CLASSICAL_TEXT_SEARCH_TOOL",
@@ -4016,7 +4038,8 @@
       "description": "Classical corpus search",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "rag_chunks"
+      "primary_asset": "rag_chunks",
+      "fingerprint": "91805af0ac04a36da46141e7f099225208a348d0d00b1c5d559aa8dffde8ab47"
     },
     {
       "canonical_id": "PORTAL_TOOL_CLASSICAL_ATTRIBUTION_LOOKUP_TOOL",
@@ -4029,7 +4052,8 @@
       "description": "Classical attribution lookup",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "multi_school_signals"
+      "primary_asset": "multi_school_signals",
+      "fingerprint": "51376e55a854a4e069b0e6b7deea49706d0e364fd64e3ca2812933d0124c6992"
     },
     {
       "canonical_id": "PORTAL_TOOL_MULTI_SCHOOL_SIGNAL_LOOKUP_TOOL",
@@ -4042,7 +4066,8 @@
       "description": "Multi-school signal triangulation",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "multi_school_signals"
+      "primary_asset": "multi_school_signals",
+      "fingerprint": "bbcbb8aeb03f24e105a6468eb630773cbe8d35a5790109153ae7998dd054ff05"
     },
     {
       "canonical_id": "PORTAL_TOOL_CONVERGENCE_SCORE_LOOKUP_TOOL",
@@ -4055,7 +4080,8 @@
       "description": "School convergence score lookup",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "school_convergence_index"
+      "primary_asset": "school_convergence_index",
+      "fingerprint": "97f654a4ec5746707de7bcae9b1d3415112ad50b2295625c9320593763134fb7"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_EPHEMERIS",
@@ -4113,7 +4139,8 @@
       },
       "data_dependency": "ephemeris",
       "ayanamsha_role": "reference",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "f057ece28bb7d1814e672565e308b6b0672426bf30c36858b5687c7c34502a8d"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_PANCHANGA",
@@ -4161,7 +4188,8 @@
       },
       "data_dependency": "panchang_daily",
       "ayanamsha_role": "canonical",
-      "primary_asset": "panchang_daily"
+      "primary_asset": "panchang_daily",
+      "fingerprint": "e407e6e4f6074ecf57bf53622535b49a6eedc03d041effa52e20167176018ad5"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_TRANSIT_EVENT",
@@ -4174,7 +4202,8 @@
       "description": "Transit event search: when does X happen?",
       "data_dependency": "ephemeris",
       "ayanamsha_role": "reference",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "d822b4ab91ce922f4656f41239e6a88e77fe3ba174a826d3c2028a87e18bf42f"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_DASHA_PERIODS",
@@ -4233,7 +4262,8 @@
       },
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "7ad716672c3200d744c0af21f1a8c3125583edff2933f0674f61ee5b042e6eb0"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_MUHURAT",
@@ -4246,7 +4276,8 @@
       "description": "Muhurta sidecar wrapper",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "4f6c42916e8cb5d46bc49ae0d0b6d3481073497781148e340fd9b82b29566f23"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_JAIMINI_DRISHTI",
@@ -4259,7 +4290,8 @@
       "description": "Jaimini Drishti sidecar wrapper",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "783c3a146298226c2811f9d4cb67364efd541fd47d831341fbb9025de4825887"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_V7_ADDITIONS",
@@ -4272,7 +4304,8 @@
       "description": "V7 additions sidecar wrapper",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "e3cac6b1ae663d111d6d1d7da66809d46c1ac6a5f4d1cbdc377607cd984fe583"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_UCN_WALK",
@@ -4285,7 +4318,8 @@
       "description": "UCN structural graph walk",
       "data_dependency": "ucn",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_ucn_sections"
+      "primary_asset": "l25_ucn_sections",
+      "fingerprint": "ed2878744b5274aad2345542162560814fcd0492c85bb71fc822583741384a52"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_CDLM_LOOKUP",
@@ -4298,7 +4332,8 @@
       "description": "CDLM cross-domain linkage matrix lookup",
       "data_dependency": "cdlm",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_cdlm_links"
+      "primary_asset": "l25_cdlm_links",
+      "fingerprint": "46add7f009b06d55e44f90aaefa974c1b2bc54ecd3d21114a25723898bcd3e91"
     },
     {
       "canonical_id": "PORTAL_TOOL_QUERY_RM_WALK",
@@ -4311,7 +4346,8 @@
       "description": "RM remedial map walk",
       "data_dependency": "rm",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_rm_resonances"
+      "primary_asset": "l25_rm_resonances",
+      "fingerprint": "5599fb6cf1d83ec0ca87e5ddcd21efaaf5152e69a68c030ac19b435e53c26dee"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_CHART_FACTS",
@@ -4328,7 +4364,7 @@
         "properties": {
           "chart_id": {
             "type": "string",
-            "description": "Required chart identifier. The default `NATIVE_CHART_ID` is removed in Gate G4 \u2014 every per-chart call must pass an explicit chart_id."
+            "description": "Required chart identifier. The default `NATIVE_CHART_ID` is removed in Gate G4 — every per-chart call must pass an explicit chart_id."
           },
           "ayanamsha_id": {
             "description": "Optional override for the canonical ayanamsha id (default: lahiri).",
@@ -4370,7 +4406,8 @@
       },
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "6cd20e12b97a0037cb0941b5570f76de514ff63c1fd8e48755790e9758d834ae"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_SIGNALS",
@@ -4383,7 +4420,8 @@
       "description": "MSR signal corpus lookup with LL.1 calibration",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "7af7c39631022cd679b61ca2eb92e76bed115455e2db844dc2cee3e5a4ff4bb9"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_DASHA_PERIODS",
@@ -4442,7 +4480,8 @@
       },
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "cd37a426749d825d4608039d24a5f40ecbf62ec7f259d41250d963af5d3726ad"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_PANCHANGA",
@@ -4490,7 +4529,8 @@
       },
       "data_dependency": "panchang_daily",
       "ayanamsha_role": "canonical",
-      "primary_asset": "panchang_daily"
+      "primary_asset": "panchang_daily",
+      "fingerprint": "b9e49abc6146bbefe0324608a1cba827a48d609aa1fc5328a859cad179ec65d8"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_EPHEMERIS",
@@ -4548,7 +4588,8 @@
       },
       "data_dependency": "ephemeris",
       "ayanamsha_role": "reference",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "035323b67775a7eefdeba1b9aff346057e2bf28d3d9b7b591fb0ff7f6b6f11b4"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_TRANSIT_EVENT",
@@ -4561,7 +4602,8 @@
       "description": "Transit event search",
       "data_dependency": "ephemeris",
       "ayanamsha_role": "reference",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "ce866da98e1d8d8135d5bf411af6e03d3f02e224c392c934c70c76af2f15f854"
     },
     {
       "canonical_id": "MCP_TOOL_LEL_QUERY",
@@ -4574,7 +4616,8 @@
       "description": "Life Event Log ground-truth retrieval",
       "data_dependency": "lel",
       "ayanamsha_role": null,
-      "primary_asset": "life_events"
+      "primary_asset": "life_events",
+      "fingerprint": "c524b7953658570a7d02801c85e9258e19662e58c7647fbf91cb15623a9d59fb"
     },
     {
       "canonical_id": "MCP_TOOL_VECTOR_SEARCH",
@@ -4587,7 +4630,8 @@
       "description": "Semantic search over rag_chunks",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "rag_chunks"
+      "primary_asset": "rag_chunks",
+      "fingerprint": "09f60fa5fb48497738a414d3bda03c002ef2974e88bd93dba9924487164a5188"
     },
     {
       "canonical_id": "MCP_TOOL_GET_CGM_SUBGRAPH",
@@ -4600,7 +4644,8 @@
       "description": "CGM causal graph subgraph",
       "data_dependency": "cgm",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_cgm_nodes"
+      "primary_asset": "l25_cgm_nodes",
+      "fingerprint": "e52c5144ab46936a8952d4e983aad766f78b546ea0de83dc2f7d58b2157d1616"
     },
     {
       "canonical_id": "MCP_TOOL_CROSS_SCHOOL_LOOKUP",
@@ -4613,7 +4658,8 @@
       "description": "Cross-school signal triangulation",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "multi_school_signals"
+      "primary_asset": "multi_school_signals",
+      "fingerprint": "7df85f99bace3c35366503441a4b67d7d86d87debf327b5ab79b56cbf57a5aa4"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_VARSHPHAL",
@@ -4626,7 +4672,8 @@
       "description": "Varshaphala annual chart lookup",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "2fa29e354c57fb2adcb8199352b95b3673f6d2a3cd1a8b895ec9844d5d5bebaf"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_DIVISIONAL_CHART",
@@ -4669,7 +4716,8 @@
       },
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "6b2761c7f9b37cc5e3eb23603478ef36df475d6140abb52ffc868162c670afb5"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_REMEDIAL_MANTRAS",
@@ -4682,7 +4730,8 @@
       "description": "Remedial mantra corpus search",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "remedial_codex"
+      "primary_asset": "remedial_codex",
+      "fingerprint": "dd5da413d17955a8a47023fa751f7b0161e3319d002b6ae3eadf010271636888"
     },
     {
       "canonical_id": "MCP_TOOL_MUHURTA_FINDER",
@@ -4695,7 +4744,8 @@
       "description": "Auspicious muhurta window finder",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "3db21ab3522b90546547bb4b92118742de6176a2c427f31056d2ff316a0c966a"
     },
     {
       "canonical_id": "MCP_TOOL_TARA_BALAM_FOR_NATIVE",
@@ -4708,7 +4758,8 @@
       "description": "Tara Bala (Star Strength) for native",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "ca1e9ed71db4923153de4f79b5eca3af0b533921191b3f2b506b1da4cccd584e"
     },
     {
       "canonical_id": "MCP_TOOL_CHANDRA_BALAM_FOR_NATIVE",
@@ -4721,7 +4772,8 @@
       "description": "Chandra Bala (Moon Strength) for native",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "8bc6a839e2e0a03e75c7bd4e488b8cb84035bb7483d55eeeb162d66c3a6c7b21"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_TRANSITS_OVER_NATAL",
@@ -4734,7 +4786,8 @@
       "description": "Transit-to-natal aspect windows",
       "data_dependency": "ephemeris",
       "ayanamsha_role": "canonical",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "6b9f72b732b05b044c2bdd8bef7b94cac73af89d1eb1f4bae71e75975b7be226"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_YOGAS_ACTIVE_NOW",
@@ -4747,7 +4800,8 @@
       "description": "Yoga activation status vs current dasha",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "836f236b59c3bc62d13839996824533241ac24ec81b8eae16369a7aa19c72a67"
     },
     {
       "canonical_id": "MCP_TOOL_GET_PLANET_AVASTHA",
@@ -4760,7 +4814,8 @@
       "description": "Planetary avastha (state) lookup",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "796ba51e4668800a3d892059fe0a847d911e559dab79da18ed4cbe240eed345a"
     },
     {
       "canonical_id": "MCP_TOOL_GET_SHADBALA_FULL",
@@ -4773,7 +4828,8 @@
       "description": "Full Shadbala roll-up with classical minimums",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "5b0a068fc50800e58397077fbe40257ee9ef4cb9b78a88ca4144eb312d8d1896"
     },
     {
       "canonical_id": "MCP_TOOL_INTERPRET_CURRENT_DASHA",
@@ -4786,7 +4842,8 @@
       "description": "Current dasha interpretation",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "aeaefad733e0757d2cac5a7b6e621ea6ae21491da4526f8fdd233ec4a2ec60b8"
     },
     {
       "canonical_id": "MCP_TOOL_LIST_CANONICAL_ARTIFACT_VERSIONS",
@@ -4799,7 +4856,8 @@
       "description": "List canonical artifact versions",
       "data_dependency": "none",
       "ayanamsha_role": null,
-      "primary_asset": "capability_manifest"
+      "primary_asset": "capability_manifest",
+      "fingerprint": "d490e6440680c061dbd0f086963331f56c330830cf5db209cca5448371ab5b70"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_DREKKANA_DRISHTI",
@@ -4812,7 +4870,8 @@
       "description": "Jaimini Drekkana Drishti aspects",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "1aa34dbba032a16e105fd9288826cd15429d60042a49b7a5a8660034ac977952"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_JAIMINI_CHARA_DASHA",
@@ -4825,7 +4884,8 @@
       "description": "Jaimini Chara Dasha schedule",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
-      "primary_asset": "sidecar"
+      "primary_asset": "sidecar",
+      "fingerprint": "093ba477059d496d032eacf41d013b40a49adee6bce4cf07ae7e50ac8fb53d70"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_PLANETARY_PERIOD_PREDICTIONS",
@@ -4838,7 +4898,8 @@
       "description": "Classical predictions for MD/AD combinations",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "rag_chunks"
+      "primary_asset": "rag_chunks",
+      "fingerprint": "323a3c1cea2d2022c02bc375a4bbe3a13516b29b5db52301a81c9d2299732ff8"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_DASAMSHA_CAREER",
@@ -4851,7 +4912,8 @@
       "description": "D10 Dasamsha career analysis",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "80951a5e5980bd497045598eb5d3c2d70d3218c6da07b9b873919817d29ad1cb"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_SHASHTIAMSHA",
@@ -4864,7 +4926,8 @@
       "description": "D60 Shashtiamsha karma analysis",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "166d7875c51a921bf1624af0da3c317dffbefd037877aab71b5d24c6bb6620fa"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_ECLIPSE_TRANSITS",
@@ -4877,7 +4940,8 @@
       "description": "Eclipse detection in date range",
       "data_dependency": "ephemeris",
       "ayanamsha_role": "reference",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "f156a18a1c9ce9fd947ef05ef99741dbd31113d8f22c8dd88c4451d8ffd3570c"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_PLANET_WAR",
@@ -4890,7 +4954,8 @@
       "description": "Graha Yuddha planetary war detection",
       "data_dependency": "ephemeris",
       "ayanamsha_role": "reference",
-      "primary_asset": "ephemeris"
+      "primary_asset": "ephemeris",
+      "fingerprint": "33347d4032ed2337e7830496a0572b8de892e01473f66f6781e5513d57ac3310"
     },
     {
       "canonical_id": "MCP_TOOL_QUERY_REMEDIES_PRESCRIBED",
@@ -4903,7 +4968,8 @@
       "description": "Remedial prescription cross-reference",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "remedial_codex"
+      "primary_asset": "remedial_codex",
+      "fingerprint": "93cd1b0b9bc9c4c02a1564ea36519a804ea5d00cfb079d5ec16b22a1f880d602"
     },
     {
       "canonical_id": "MCP_TOOL_READ_ASSET",
@@ -4916,7 +4982,8 @@
       "description": "Read a canonical L1/L2 asset file",
       "data_dependency": "classical_text",
       "ayanamsha_role": null,
-      "primary_asset": "capability_manifest"
+      "primary_asset": "capability_manifest",
+      "fingerprint": "f72a8bb6ab0ef309364287da661a941ad24eff71001f3dcf7d0b38b794cc37b0"
     },
     {
       "canonical_id": "MCP_TOOL_READ_CLASSICAL_TEXT",
@@ -4960,7 +5027,8 @@
       },
       "data_dependency": "classical_text",
       "ayanamsha_role": null,
-      "primary_asset": "classical_text"
+      "primary_asset": "classical_text",
+      "fingerprint": "c2995d2e16297657b14d46d3db13e6927bfb35dbbead7aceef1940f564b95945"
     },
     {
       "canonical_id": "MCP_TOOL_LIST_ASSETS",
@@ -4973,7 +5041,8 @@
       "description": "List available canonical assets",
       "data_dependency": "none",
       "ayanamsha_role": null,
-      "primary_asset": "capability_manifest"
+      "primary_asset": "capability_manifest",
+      "fingerprint": "213ce92f15ff3d48584e76cd393aaba62ba2de99c0887be1fc2ed29fae0cfa94"
     },
     {
       "canonical_id": "MCP_TOOL_GET_TRACE",
@@ -4986,7 +5055,8 @@
       "description": "Retrieve query trace by trace_id",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "observatory"
+      "primary_asset": "observatory",
+      "fingerprint": "4766a6e53636279cd2fb524ce72e40faa307ef905afa86fad03abdc7620f8839"
     },
     {
       "canonical_id": "MCP_TOOL_LIST_RECENT_QUERIES",
@@ -4999,7 +5069,8 @@
       "description": "List recent MCP queries",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "observatory"
+      "primary_asset": "observatory",
+      "fingerprint": "e3c908f5cf9761689a735f93fccefea5242dbb0fdaa6dbbe2f1431d425fbfa47"
     },
     {
       "canonical_id": "MCP_TOOL_LOG_PREDICTION",
@@ -5012,7 +5083,8 @@
       "description": "Log a time-indexed prediction",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "observatory"
+      "primary_asset": "observatory",
+      "fingerprint": "e06a8815215b3987b78575dc59298d1add21aab055ab52923e846d3c43f80a66"
     },
     {
       "canonical_id": "MCP_TOOL_RECORD_OUTCOME",
@@ -5025,7 +5097,8 @@
       "description": "Record an outcome against a prediction",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "observatory"
+      "primary_asset": "observatory",
+      "fingerprint": "261d04d7aa37de557fd789be958acf8b422477d30ab0754383e5a3c948845b5d"
     },
     {
       "canonical_id": "MCP_TOOL_FLAG_DISAGREEMENT",
@@ -5038,7 +5111,8 @@
       "description": "Flag a disagreement for governance review",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "observatory"
+      "primary_asset": "observatory",
+      "fingerprint": "7d3b238040f466e10ef32351ea97f60b81f612d1571839518832591ae8b6c217"
     },
     {
       "canonical_id": "MCP_TOOL_CHART_SUMMARY",
@@ -5051,11 +5125,12 @@
       "description": "Chart summary holistic snapshot",
       "data_dependency": "chart_facts",
       "ayanamsha_role": "canonical",
-      "primary_asset": "chart_facts"
+      "primary_asset": "chart_facts",
+      "fingerprint": "fb86f95cef57153d12e015fdd7807de7270aa82a5aa598ce0ed6da5c1e3e9f27"
     },
     {
       "canonical_id": "MCP_TOOL_HOLISTIC_BUNDLE",
-      "path": "platform-mcp/src/tools/holistic_bundle.ts",
+      "path": "platform-mcp/src/tools/holistic_bundle_tool.ts",
       "channel": "mcp",
       "type": "retrieval_tool",
       "tool_name": "holistic_bundle",
@@ -5064,11 +5139,12 @@
       "description": "Holistic multi-layer synthesis bundle",
       "data_dependency": "msr",
       "ayanamsha_role": "canonical",
-      "primary_asset": "l25_msr_signals"
+      "primary_asset": "l25_msr_signals",
+      "fingerprint": "79908ed5dde8392e082c686a70d841407f1ac3948a754d4a828bc5143fd327e9"
     },
     {
       "canonical_id": "MCP_TOOL_MULTI_SCHOOL_BUNDLE",
-      "path": "platform-mcp/src/tools/multi_school_bundle.ts",
+      "path": "platform-mcp/src/tools/multi_school_bundle_tool.ts",
       "channel": "mcp",
       "type": "retrieval_tool",
       "tool_name": "multi_school_bundle",
@@ -5077,7 +5153,8 @@
       "description": "Multi-school synthesis bundle",
       "data_dependency": "rag_chunks",
       "ayanamsha_role": null,
-      "primary_asset": "multi_school_signals"
+      "primary_asset": "multi_school_signals",
+      "fingerprint": "ea002430349b332902622f5e4070526ac3530706d3ed44989d034a6f8639338c"
     },
     {
       "canonical_id": "MCP_TOOL_TOOL_HEALTH",
@@ -5090,7 +5167,8 @@
       "description": "Tool health check",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "mcp_audit"
+      "primary_asset": "mcp_audit",
+      "fingerprint": "95f6b1e3fd8d5b48a7bdcf8b0aabb553f7dc5cf24f8d388a4e52e26808b4ff12"
     },
     {
       "canonical_id": "MCP_TOOL_DATA_COVERAGE",
@@ -5103,7 +5181,8 @@
       "description": "Data coverage audit",
       "data_dependency": "observatory",
       "ayanamsha_role": null,
-      "primary_asset": "mcp_audit"
+      "primary_asset": "mcp_audit",
+      "fingerprint": "dc7407065029d53ffdbc7c387358094633e8473378fd5fd5f1cb999c559a578a"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_query_tara_balam",
@@ -5119,7 +5198,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "b625f40e9124d44ab088b0f2ee352d7602a4b49633a399c7a34e87262a3b422c",
       "description": "Canonical-name alias for tara_balam_for_native. Tara Bala (Star Strength) for native.",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
@@ -5141,7 +5220,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "30d5857c06f68a38f02b237575e19d9c066551451e2c2f3c369893918e262959",
       "description": "Canonical-name alias for chandra_balam_for_native. Chandra Bala (Moon Strength) for native.",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
@@ -5163,7 +5242,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "7455d4704d2f338f2e64a9d2dd3659de2ca944dce0a71861e63705c1c19a3cf0",
       "description": "Canonical-name alias for query_jaimini_chara_dasha. Jaimini Chara Dasha active period.",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",
@@ -5185,7 +5264,7 @@
         "typescript"
       ],
       "interface_version": "1.0",
-      "fingerprint": "PENDING_CI_REGENERATION",
+      "fingerprint": "b37b5cd22a9c13bd1a1c13d308cabfd24ad5a77e18d6e8482b94de5320a73de9",
       "description": "Canonical-name alias for full Jaimini Chara Dasha timeline.",
       "data_dependency": "sidecar",
       "ayanamsha_role": "canonical",

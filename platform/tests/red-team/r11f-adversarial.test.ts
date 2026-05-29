@@ -133,14 +133,14 @@ Causal Graph Model relationships: Mars-Saturn mutual aspect, 7H stellium.
   })
 
   it('route.ts B.11 FLOOR CONTRACT comment is present (structural integrity)', () => {
-    const routePath = join(__dirname, '../../src/app/api/chat/consume/route.ts')
+    const routePath = join(__dirname, '../../src/app/api/chat/consult/route.ts')
     const src = readFileSync(routePath, 'utf-8')
     const contractCount = (src.match(/B\.11 FLOOR CONTRACT/g) ?? []).length
     expect(contractCount).toBeGreaterThanOrEqual(1)
   })
 
   it('route.ts floor comment documents pre-execution before model call', () => {
-    const routePath = join(__dirname, '../../src/app/api/chat/consume/route.ts')
+    const routePath = join(__dirname, '../../src/app/api/chat/consult/route.ts')
     const src = readFileSync(routePath, 'utf-8')
     expect(src).toContain('pre-executed')
     expect(src).toContain('before any model call')

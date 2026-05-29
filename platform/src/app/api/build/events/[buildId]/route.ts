@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { authorizeChartAccess, type DbLike } from '@/lib/auth/authorizeChartAccess'
 import { listBuildEvents, type BuildEventRow } from '@/lib/build/events'
 
 export const dynamic = 'force-dynamic'
@@ -45,7 +45,7 @@ export async function GET(request: Request, ctx: { params: Params }): Promise<Re
   const permission = await authorizeChartAccess({
     principal: { uid: user.uid, role },
     chartId,
-    db: { query },
+    db: { query: (sql: string, params?: unknown[]) => query(sql, params).then(r => ({ rows: r.rows })) } as DbLike,
   })
   if (permission === 'deny') return new Response('Forbidden', { status: 404 })
 

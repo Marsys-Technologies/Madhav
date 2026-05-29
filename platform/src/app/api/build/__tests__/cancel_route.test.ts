@@ -127,7 +127,7 @@ describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () =
     setupBuildRow('owner-uid', 'guest', 'queued', 'owner-uid')
     await POST(makeReq(), makeParams('build-123'))
 
-    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelling/.test(sql),
     )
     expect(updateCall).toBeDefined()
@@ -138,7 +138,7 @@ describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () =
     setupBuildRow('owner-uid', 'guest', 'running', 'owner-uid')
     await POST(makeReq(), makeParams('build-123'))
 
-    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelling/.test(sql),
     )
     expect(updateCall).toBeDefined()
@@ -159,7 +159,7 @@ describe('POST /api/build/cancel/[buildId] — idempotent cancelling status', ()
     setupBuildRow('owner-uid', 'guest', 'cancelling', 'owner-uid')
     await POST(makeReq(), makeParams('build-123'))
 
-    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql),
     )
     expect(updateCall).toBeUndefined()
@@ -199,7 +199,7 @@ describe('POST /api/build/cancel/[buildId] — terminal status rejections (409)'
     setupBuildRow('owner-uid', 'guest', 'complete', 'owner-uid')
     await POST(makeReq(), makeParams('build-123'))
 
-    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql),
     )
     expect(updateCall).toBeUndefined()
@@ -220,7 +220,7 @@ describe('POST /api/build/cancel/[buildId] — super_admin override', () => {
     setupBuildRow('admin-uid', 'super_admin', 'running', 'other-owner-uid')
     await POST(makeReq(), makeParams('build-123'))
 
-    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+    const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelling/.test(sql),
     )
     expect(updateCall).toBeDefined()

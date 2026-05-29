@@ -164,8 +164,7 @@ describe('NewClientForm', () => {
     }
     const submitBtn = screen.getByRole('button', { name: /create chart & start build/i })
     await user.click(submitBtn)
-    expect(await screen.findByRole('alert', { name: '' })).toBeInTheDocument()
-    expect(screen.getByText(/at least one ayanamsha must be selected/i)).toBeInTheDocument()
+    expect(await screen.findByText(/at least one ayanamsha must be selected/i)).toBeInTheDocument()
   })
 
   // ── 5. Name field shows validation error when empty ───────────────────────

@@ -12,8 +12,8 @@ import BuildWaveAnimation, {
 } from '../BuildWaveAnimation'
 
 // ── Mock framer-motion so tests run without a DOM animation engine ─────────────
-jest.mock('framer-motion', () => {
-  const actual = jest.requireActual('framer-motion')
+vi.mock('framer-motion', () => {
+  const actual = vi.importActual('framer-motion')
   // Provide pass-through components that render their children with the
   // relevant props forwarded to the underlying SVG element.
   const motionProxy = new Proxy(

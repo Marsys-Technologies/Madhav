@@ -142,7 +142,7 @@ describe('RT-08 — execute_plan tier escalation: plan.audience_tier stamped fro
     // That gate logic keys off plan.audience_tier — which is now 'client'.
     //
     // Document this as class-3: the stamp is the guard. No gap identified.
-    const resolvedTier = 'client'  // what the MCP server resolved from DB
+    const resolvedTier: string = 'client'  // what the MCP server resolved from DB
     const stampedTier = resolvedTier === 'super_admin' ? 'super_admin' : 'client'
     expect(stampedTier).toBe('client')
   })

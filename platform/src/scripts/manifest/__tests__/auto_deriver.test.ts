@@ -30,7 +30,7 @@ describe('deriveManifest', () => {
 
   it('MSR entry has expose_to_chat true', async () => {
     const entries = await deriveManifest()
-    const msr = entries.find(e => e.path.includes('MSR_v3_0'))
+    const msr = entries.find(e => e.path.includes('MSR_v5_0'))
     expect(msr).toBeDefined()
     expect(msr!.expose_to_chat).toBe(true)
   })

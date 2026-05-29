@@ -11,7 +11,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 
 const routeSrc = fs.readFileSync(
-  path.resolve(import.meta.dirname, '../../../src/app/api/chat/consume/route.ts'),
+  path.resolve(import.meta.dirname, '../../../src/app/api/chat/consult/route.ts'),
   'utf8',
 )
 

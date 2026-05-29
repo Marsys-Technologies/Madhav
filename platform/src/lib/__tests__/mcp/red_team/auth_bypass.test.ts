@@ -76,14 +76,14 @@ describe('RT-01 — Auth bypass: invalid key', () => {
     const { key_id, full_key, key_hash } = await generateMcpKey('test')
     mockQuery
       .mockResolvedValueOnce({
-        rows: [{ key_id, key_hash, user_uid: 'uid_native', audience_tier: 'super_admin' }],
+        // audience_tier column dropped (Stream A 3.tier_excision migration 090 2026-05-28)
+        rows: [{ key_id, key_hash, user_uid: 'uid_native' }],
         rowCount: 1, command: '', oid: 0, fields: [],
       })
       .mockResolvedValueOnce({ rows: [], rowCount: 1, command: '', oid: 0, fields: [] }) // last_used_at
     const result = await validateMcpKey(`Bearer ${full_key}`)
     expect(result).not.toBeNull()
     expect(result?.user_uid).toBe('uid_native')
-    expect(result?.audience_tier).toBe('super_admin')
     expect(result?.key_id).toBe(key_id)
   })
 })

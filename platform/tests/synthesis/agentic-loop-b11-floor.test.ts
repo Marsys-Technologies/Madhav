@@ -40,7 +40,7 @@ describe('B.11 FLOOR CONTRACT — structural presence in route.ts', () => {
   it('route.ts contains the B.11 FLOOR CONTRACT comment', () => {
     const routePath = join(
       __dirname,
-      '../../src/app/api/chat/consume/route.ts',
+      '../../src/app/api/chat/consult/route.ts',
     )
     const src = readFileSync(routePath, 'utf-8')
     const contractCount = (src.match(/B\.11 FLOOR CONTRACT/g) ?? []).length
@@ -50,7 +50,7 @@ describe('B.11 FLOOR CONTRACT — structural presence in route.ts', () => {
   it('route.ts floor comment documents floor-before-dispatch ordering', () => {
     const routePath = join(
       __dirname,
-      '../../src/app/api/chat/consume/route.ts',
+      '../../src/app/api/chat/consult/route.ts',
     )
     const src = readFileSync(routePath, 'utf-8')
     // The comment must assert floor tools run before the model call

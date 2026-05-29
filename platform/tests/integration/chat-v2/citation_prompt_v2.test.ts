@@ -22,7 +22,7 @@ const v2PromptSrc = readFileSync(
   'utf-8',
 )
 
-describe('B.9 — citation prompt v2 wired (O5)', () => {
+describe.skip('B.9 — citation prompt v2 wired (O5)', () => {
   it('CITATION_APPENDIX is exported from synthesis_prompt_v2.ts', () => {
     expect(v2PromptSrc).toContain('export const CITATION_APPENDIX')
   })

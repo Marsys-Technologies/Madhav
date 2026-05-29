@@ -65,7 +65,7 @@ describe.skipIf(SKIP)('MSR signal grounding — 573/573 contract', () => {
         )
     `)
     // Every non-null citation must reference a FORENSIC or LEL source
-    expect(Number(attributed.rows?.[0]?.cnt ?? attributed[0]?.cnt)).toBe(
+    expect(Number(attributed[0]?.cnt)).toBe(
       Number(total[0].cnt)
     )
   })

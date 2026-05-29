@@ -64,7 +64,10 @@ const CANCELLING_BUILD: ActiveBuild = {
 // ── Tests ──────────────────────────────────────────────────────────────────
 describe('BuildsInProgressCard', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
+    // Use fake timers but keep async (Promise/microtask) resolution real.
+    // Without this, vi.useFakeTimers() swallows the setInterval in the component
+    // and also freezes waitFor's internal polling timeout.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
   afterEach(() => {

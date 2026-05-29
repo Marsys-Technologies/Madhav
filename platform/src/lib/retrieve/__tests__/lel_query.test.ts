@@ -192,7 +192,7 @@ describe('lel_query tool', () => {
 
       const bundle = await tool.retrieve(basePlan, { significance: 'major' })
 
-      expect(bundle.invocation_params.significance).toBe('major')
+      expect((bundle.invocation_params as Record<string, unknown>).significance).toBe('major')
     })
   })
 

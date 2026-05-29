@@ -18,7 +18,7 @@ const v2Src = readFileSync(
 )
 
 const regenRouteSrc = readFileSync(
-  join(__dirname, '../../../src/app/api/chat/consume/regenerate/route.ts'),
+  join(__dirname, '../../../src/app/api/chat/consult/regenerate/route.ts'),
   'utf-8',
 )
 

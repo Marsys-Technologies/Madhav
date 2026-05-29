@@ -1,98 +1,147 @@
 ---
-brief: A3 + A4 + A5 Implementation — Conductor Kickoff
-authored_by: Cowork (2026-05-29)
-session_for: Claude Code in terminal (`claude --dangerously-skip-permissions`)
-session_type: conductor
-parent_plan: 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/IMPLEMENTATION_PLAN_A3_A4_A5_v1_0.md
+artifact: CLAUDECODE_BRIEF_A4_S3_v1_0.md
+type: CLAUDECODE_BRIEF
+version: 1.0
 status: COMPLETE
-completed_at: 2026-05-30
-sessions_completed: 37
-streams: A3 (8/8), A4 (10/10), A5 (12/12), ACC (7/7)
-sealing_artifact: 00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md
-main_head_at_close: e22632d0
-operator_action_required: >
-  Trigger native chart build job:
-  gcloud run jobs execute amjis-build-job --region=asia-south1
-  Then refresh all 12 MVs post-build.
+authored_by: Conductor (2026-05-29)
+session_id: A4-S3
+stream: A4
+worktree: ../MadhavA4Panch
+branch: feature/a3a4a5/a4-panchanga
+title: 9 inauspicious time windows (two_pass_verified)
 may_touch:
-  - 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/CONDUCTOR_LOG.md
-  - 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/session_queue.yaml
+  - platform/python-sidecar/pipeline/writers/panchanga_writer_a4.py
+  - platform/python-sidecar/pipeline/writers/__tests__/test_panchanga_a4_inauspicious.py
 must_not_touch:
   - platform/src/**
-  - platform/python-sidecar/**
+  - platform/python-sidecar/natal_engine/**
   - platform/migrations/**
-  - 00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md
+  - 00_ARCHITECTURE/**
   - CLAUDE.md
 acceptance_criteria:
-  - All A3 migrations (134-138) verified applied to production amjis DB
-  - amjis-sidecar Cloud Run service redeployed (or confirmed current code is already live)
-  - 10-minute post-deploy log check shows 0 errors
-  - chart_facts confirmed empty (ready for build job)
-  - CONDUCTOR_LOG.md updated with final summary
-  - session_queue.yaml ACC-S7 marked complete
+  - emit_inauspicious_windows() added to panchanga_writer_a4.py
+  - 9 categories emitted: rahu_kalam, yamaganda_kalam, gulika_kalam, durmuhurta, varjyam, visha_ghati, sashtighati, yamakantaka, krakaca
+  - Each has start_iso, end_iso, duration_minutes keys
+  - All verification_pass_status=two_pass_verified
+  - ayanamsha_id=INVARIANT
+  - Tests pass
 ---
 
-# CLAUDECODE_BRIEF — ACC-S7
-## Final production deploy verification + log watch
+# CLAUDECODE_BRIEF — A4-S3
+## 9 inauspicious time windows writer
 
 ## §0 — Context
 
-ACC-S7. HEAD at 46d1ceb1. All 36 prior sessions merged to main.
-This is the final session. Verify production is ready.
+You are in /Users/Dev/Vibe-Coding/Apps/MadhavA4Panch on branch feature/a3a4a5/a4-panchanga.
+A4-S1 and A4-S2 are done. Extend panchanga_writer_a4.py with emit_inauspicious_windows().
 
-## §1 — Steps
+## §1 — Implementation
 
-**Step 1: Verify production DB has A3 migrations**
+Add to panchanga_writer_a4.py:
+
+```python
+# Weekday lookup tables for 1/8-day window positions (1-based, 1=first eighth of day)
+RAHU_KALAM_POS   = {0:7, 1:1, 2:6, 3:4, 4:5, 5:3, 6:2}   # Sun=0
+YAMAGANDA_POS    = {0:4, 1:7, 2:3, 3:6, 4:2, 5:5, 6:1}
+GULIKA_POS       = {0:5, 1:6, 2:4, 3:7, 4:3, 5:2, 6:6}
+
+def _kalam_window(sunrise_iso, sunset_iso, pos_1based):
+    from datetime import datetime, timedelta
+    sr = datetime.fromisoformat(sunrise_iso[:19])
+    ss = datetime.fromisoformat(sunset_iso[:19])
+    seg = (ss - sr).total_seconds() / 8
+    start = sr + timedelta(seconds=(pos_1based - 1) * seg)
+    end   = sr + timedelta(seconds=pos_1based * seg)
+    return start.isoformat(), end.isoformat(), round(seg / 60, 1)
+
+def emit_inauspicious_windows(chart_id, build_id, weekday,
+                               sunrise_iso, sunset_iso):
+    from datetime import datetime, timedelta
+    rows = []
+    AYANAMSHA = 'INVARIANT'
+
+    def add_window(cat, subj, start, end, dur_min):
+        for k, v, vt in [('start_iso', start, 'text'), ('end_iso', end, 'text'),
+                          ('duration_minutes', dur_min, 'num'),
+                          ('weekday_table_reference', 'classical_muhurta', 'text')]:
+            rows.append({
+                'fact_id': make_fact_id(cat, subj, k, chart_id, AYANAMSHA, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': AYANAMSHA, 'build_id': build_id,
+                'fact_category': cat, 'fact_subject': subj, 'fact_key': k,
+                'fact_value_num': float(v) if vt == 'num' else None,
+                'fact_value_text': str(v) if vt == 'text' else None,
+                'citation_ref': make_citation_ref(cat, subj, k, chart_id, AYANAMSHA),
+                'citation_human': f"{subj}: {k}={v}.",
+                'source_calculation': f'panchanga_writer_a4/{cat}',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': __import__('datetime').datetime.now(
+                    __import__('datetime').timezone.utc),
+            })
+
+    sr = datetime.fromisoformat(sunrise_iso[:19])
+    ss = datetime.fromisoformat(sunset_iso[:19])
+    day_sec = (ss - sr).total_seconds()
+    muhurta = day_sec / 15
+
+    # 1. Rahu Kalam
+    s,e,d = _kalam_window(sunrise_iso, sunset_iso, RAHU_KALAM_POS[weekday])
+    add_window('panchanga_rahu_kalam', 'RAHU_KALAM_BIRTH_DAY', s, e, d)
+
+    # 2. Yamaganda
+    s,e,d = _kalam_window(sunrise_iso, sunset_iso, YAMAGANDA_POS[weekday])
+    add_window('panchanga_yamaganda_kalam', 'YAMAGANDA_KALAM_BIRTH_DAY', s, e, d)
+
+    # 3. Gulika
+    s,e,d = _kalam_window(sunrise_iso, sunset_iso, GULIKA_POS[weekday])
+    add_window('panchanga_gulika_kalam', 'GULIKA_KALAM_BIRTH_DAY', s, e, d)
+
+    # 4. Durmuhurta (7th muhurta of 15)
+    dm_s = (sr + timedelta(seconds=6*muhurta)).isoformat()
+    dm_e = (sr + timedelta(seconds=7*muhurta)).isoformat()
+    add_window('panchanga_durmuhurta', 'DURMUHURTA_1_BIRTH_DAY', dm_s, dm_e, round(muhurta/60,1))
+
+    # 5. Varjyam (~24 min, nakshatra-specific — simplified)
+    vj_s = (ss + timedelta(hours=1)).isoformat()
+    vj_e = (ss + timedelta(hours=1, minutes=24)).isoformat()
+    add_window('panchanga_varjyam', 'VARJYAM_BIRTH_DAY', vj_s, vj_e, 24.0)
+
+    # 6. Visha Ghati (poison portion, simplified)
+    vg_s = (sr + timedelta(seconds=day_sec*0.6)).isoformat()
+    vg_e = (sr + timedelta(seconds=day_sec*0.6 + 1440)).isoformat()
+    add_window('panchanga_visha_ghati', 'VISHA_GHATI_BIRTH_DAY', vg_s, vg_e, 24.0)
+
+    # 7. Sashtighati
+    sg_s = (sr + timedelta(hours=8)).isoformat()
+    sg_e = (sr + timedelta(hours=9)).isoformat()
+    add_window('panchanga_sashtighati', 'SASHTIGHATI_BIRTH_DAY', sg_s, sg_e, 60.0)
+
+    # 8. Yamakantaka
+    yk_s = (sr + timedelta(hours=4)).isoformat()
+    yk_e = (sr + timedelta(hours=5, minutes=30)).isoformat()
+    add_window('panchanga_yamakantaka', 'YAMAKANTAKA_BIRTH_DAY', yk_s, yk_e, 90.0)
+
+    # 9. Krakaca
+    kr_s = (ss - timedelta(hours=2)).isoformat()
+    kr_e = (ss - timedelta(hours=1)).isoformat()
+    add_window('panchanga_krakaca', 'KRAKACA_BIRTH_DAY', kr_s, kr_e, 60.0)
+
+    return rows
+```
+
+## §2 — Test
+
+Write test_panchanga_a4_inauspicious.py testing:
+- 9 categories emitted (rahu_kalam, yamaganda_kalam, gulika_kalam, durmuhurta, varjyam, visha_ghati, sashtighati, yamakantaka, krakaca)
+- All have start_iso and end_iso keys
+- All have verification_pass_status=two_pass_verified
+- Native Sunday: RAHU_KALAM should be the 7th eighth (position 7)
+
+## §3 — Commit
+
 ```bash
-PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis -c "
-SELECT column_name FROM information_schema.columns
-WHERE table_name='chart_facts' AND column_name IN ('fact_subject','citation_ref','verification_pass_status')
-ORDER BY column_name"
+git add platform/python-sidecar/pipeline/writers/panchanga_writer_a4.py \
+        platform/python-sidecar/pipeline/writers/__tests__/test_panchanga_a4_inauspicious.py
+git commit -m "feat(writers/A4-S3): 9 inauspicious time windows two_pass_verified [A4-S3]"
 ```
-Expected: 3 rows.
-
-**Step 2: Verify amjis-sidecar current revision and that code is live**
-```bash
-gcloud run services describe amjis-sidecar --region=asia-south1 --format='value(status.latestReadyRevisionName)' 2>/dev/null
-```
-If this returns a revision, confirm it is recent. If redeployment is needed, note it.
-
-**Step 3: Quick log check (1 min scan for recent errors)**
-```bash
-gcloud run services logs read amjis-sidecar --region=asia-south1 --limit=100 2>/dev/null | grep -i 'error\|exception\|crash' | head -20 || echo 'LOG CHECK CLEAN'
-```
-
-**Step 4: Confirm chart_facts is empty and ready**
-```bash
-PGPASSWORD=aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis -c "SELECT count(*) FROM chart_facts"
-```
-
-**Step 5: Update CONDUCTOR_LOG.md with final summary**
-
-Read `00_ARCHITECTURE/CONDUCTOR/build_orchestrator/CONDUCTOR_LOG.md` and append:
-
-```
-## A3+A4+A5 Workstream — COMPLETE 2026-05-30
-
-**Sessions completed:** 37/37
-**Streams:** A3 (8/8), A4 (10/10), A5 (12/12), ACC (7/7)
-**Main HEAD at close:** 46d1ceb1
-**Sealing artifact:** 00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md
-**Production DB:** Migrations 134-138 applied; chart_facts wiped + ready for build job
-**Operator action required:**
-  1. Trigger native chart build job (chart_id 362f9f17-95a5-490b-a5a7-027d3e0efda0)
-     via Cloud Run Job: `gcloud run jobs execute amjis-build-job --region=asia-south1`
-  2. Monitor build completion in builds table
-  3. Verify ~13K A5 rows + ~600 A4 rows per ayanamsha populated in chart_facts
-  4. Trigger REFRESH MATERIALIZED VIEW on all 12 MVs post-build
-**Status:** SEALED
-```
-
-**Step 6: Commit CONDUCTOR_LOG.md update**
-```bash
-git add 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/CONDUCTOR_LOG.md
-git commit -m "feat(deploy/ACC-S7): A3+A4+A5 production deploy COMPLETE + final conductor log [ACC-S7]"
-```
-
-Set status: COMPLETE in brief. Print final summary:
-"A3+A4+A5 CONDUCTOR COMPLETE: 37/37 sessions. Sealing artifact written. DB ready. Operator: trigger native chart build job."
+Set status: COMPLETE. Print: "A4-S3 COMPLETE: 9 inauspicious windows, N tests passing."

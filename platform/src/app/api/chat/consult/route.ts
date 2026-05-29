@@ -311,12 +311,13 @@ export async function POST(request: Request) {
   // and rejects Build/edit/delete operations (this route is a read/consult
   // surface — no mutation — so 'view' is sufficient here).
   const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
+  type DbLike = import('@/lib/auth/authorizeChartAccess').DbLike
   const principalRole: 'guest' | 'super_admin' =
     isSuperAdmin ? 'super_admin' : 'guest'
   const permission = await authorizeChartAccess({
     principal: { uid: user.uid, role: principalRole },
     chartId,
-    db: { query },
+    db: { query: (sql: string, params?: unknown[]) => query(sql, params).then(r => ({ rows: r.rows })) } as DbLike,
   })
   if (permission === 'deny') {
     return res.forbidden()

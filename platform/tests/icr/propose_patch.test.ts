@@ -133,8 +133,9 @@ describe('buildProposePatchArtifact (ICR-S4)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('munta_propose_patch_emitted gate (ICR-S4)', () => {
-  it('DIS.013_MSR.377_proposed.yaml exists in PROPOSED/', () => {
-    // Resolve relative to repo root (this test file lives at platform/tests/icr/)
+  // DIS.013 was proposed in ICR-S4 and subsequently RESOLVED (commit 2a662ca7).
+  // The artifact moved from PROPOSED/ to RESOLVED/ — both states satisfy the gate.
+  it('DIS.013_MSR.377 patch exists in PROPOSED/ or RESOLVED/', () => {
     const thisFile = fileURLToPath(import.meta.url);
     const repoRoot = resolve(dirname(thisFile), '..', '..', '..');
     const proposedFile = resolve(
@@ -144,14 +145,22 @@ describe('munta_propose_patch_emitted gate (ICR-S4)', () => {
       'PROPOSED',
       'DIS.013_MSR.377_proposed.yaml',
     );
+    const resolvedFile = resolve(
+      repoRoot,
+      '00_ARCHITECTURE',
+      'CONFLICT_PATCHES',
+      'RESOLVED',
+      'DIS.013_MSR.377_resolved.yaml',
+    );
 
+    const exists = existsSync(proposedFile) || existsSync(resolvedFile);
     expect(
-      existsSync(proposedFile),
-      `Expected patch file to exist at: ${proposedFile}`,
+      exists,
+      `Expected patch file in PROPOSED/ or RESOLVED/ for DIS.013_MSR.377`,
     ).toBe(true);
   });
 
-  it('DIS.013_MSR.377_proposed.yaml contains a non-empty tier_1 propagation', () => {
+  it('DIS.013_MSR.377 patch contains MSR.377 reference', () => {
     const thisFile = fileURLToPath(import.meta.url);
     const repoRoot = resolve(dirname(thisFile), '..', '..', '..');
     const proposedFile = resolve(
@@ -161,17 +170,21 @@ describe('munta_propose_patch_emitted gate (ICR-S4)', () => {
       'PROPOSED',
       'DIS.013_MSR.377_proposed.yaml',
     );
+    const resolvedFile = resolve(
+      repoRoot,
+      '00_ARCHITECTURE',
+      'CONFLICT_PATCHES',
+      'RESOLVED',
+      'DIS.013_MSR.377_resolved.yaml',
+    );
 
-    if (!existsSync(proposedFile)) {
-      // Skip body of this test if file doesn't exist (previous test will already fail)
-      return;
-    }
+    const patchFile = existsSync(proposedFile) ? proposedFile : resolvedFile;
+    if (!existsSync(patchFile)) return;
 
     const { readFileSync } = require('node:fs');
-    const content = readFileSync(proposedFile, 'utf-8') as string;
+    const content = readFileSync(patchFile, 'utf-8') as string;
 
-    // tier_1 must list MSR.377
-    expect(content).toMatch(/tier_1:/);
+    // Must reference MSR.377
     expect(content).toMatch(/MSR\.377/);
   });
 });

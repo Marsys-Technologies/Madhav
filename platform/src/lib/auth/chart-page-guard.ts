@@ -1,7 +1,7 @@
 import 'server-only'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { authorizeChartAccess, type Permission } from '@/lib/auth/authorizeChartAccess'
+import { authorizeChartAccess, type Permission, type DbLike } from '@/lib/auth/authorizeChartAccess'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 
 export interface ChartPageGuardResult {
@@ -40,7 +40,7 @@ export async function resolveChartPageAccess(
   const permission = await authorizeChartAccess({
     principal: { uid: user.uid, role },
     chartId,
-    db: { query },
+    db: { query: (sql: string, params?: unknown[]) => query(sql, params).then(r => ({ rows: r.rows })) } as DbLike,
   })
 
   return {

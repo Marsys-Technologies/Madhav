@@ -20,7 +20,7 @@
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { authorizeChartAccess, type DbLike } from '@/lib/auth/authorizeChartAccess'
 import { getFlag } from '@/lib/config'
 import { enqueueBuild } from '@/lib/build/trigger'
 
@@ -139,7 +139,7 @@ export async function POST(request: Request): Promise<Response> {
   const permission = await authorizeChartAccess({
     principal: { uid: user.uid, role },
     chartId,
-    db: { query },
+    db: { query: (sql: string, params?: unknown[]) => query(sql, params).then(r => ({ rows: r.rows })) } as DbLike,
   })
 
   if (permission !== 'all') {
