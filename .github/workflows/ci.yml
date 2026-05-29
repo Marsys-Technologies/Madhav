@@ -251,4 +251,4 @@ jobs:
         run: |
           pip install -r platform/python-sidecar/requirements.txt || true
           cd platform/python-sidecar
-          pytest natal_engine/tests/ pipeline/__tests__/ tests/ -q --tb=line --no-header || (echo "py-sidecar tests reported failures; treating as soft for now per session_queue.yaml baseline" && true)
+          pytest natal_engine/tests/ pipeline/__tests__/ pipeline/linters/__tests__/ tests/ -q --tb=line --no-header || (echo "py-sidecar tests reported failures; treating as soft for now per session_queue.yaml baseline" && true)

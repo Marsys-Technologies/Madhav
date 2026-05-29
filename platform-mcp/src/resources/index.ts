@@ -20,6 +20,8 @@ import { registerChartOverview } from './chart_overview.js'
 import { registerHouseRules } from './house_rules.js'
 import { registerCapabilities } from './capabilities.js'
 import { registerSchoolConventions } from './school_conventions.js'
+import { registerChartBundleResource } from './chart_bundle_resource.js'
+import { registerMultiAyanamshaResource } from './multi_ayanamsha_resource.js'
 
 /**
  * Register all 5 MARSYS-JIS MCP resources on the given server.
@@ -54,4 +56,14 @@ export function registerResources(server: McpServer): void {
   //    Uniform across all tiers. Covers Parashara/Jaimini/KP/Tajaka authoritative scope,
   //    output forms, known disagreements, and tool routing by school.
   registerSchoolConventions(server)
+
+  // 6. chart-bundle: Layer-1 bundle per chart (planet positions, house cusps, dasha, yogas)
+  //    Dynamic resource template marsys://chart-bundle/{chart_id}.
+  //    INF11-S1 [BUILD-ORCH-J-03]
+  registerChartBundleResource(server)
+
+  // 7. multi-ayanamsha: cross-ayanamsha build status + guidance per chart.
+  //    Dynamic resource template marsys://multi-ayanamsha/{chart_id}.
+  //    INF11-S1 [BUILD-ORCH-J-03]
+  registerMultiAyanamshaResource(server)
 }
