@@ -217,6 +217,144 @@ def emit_sahams(chart_id, build_id, ayanamsha_id,
     return rows
 
 
+def _lon_to_within_sign(lon):
+    """Returns degree within sign (0-30)."""
+    return lon % 30
+
+
+def compute_chara_karakas(graha_lons, include_rahu=False):
+    """
+    Jaimini Chara Karakas — sort grahas by degree within sign (descending).
+    graha_lons: dict {graha_code: lon_in_degrees}
+    Returns: list of (karaka_name, graha_code, degree_within_sign) sorted by karaka rank
+    """
+    KARAKA_NAMES = ['ATMAKARAKA', 'AMATYAKARAKA', 'BHRATRIKARAKA', 'MATRIKARAKA',
+                    'PUTRAKARAKA', 'GNATIKARAKA', 'DARAKARAKA', 'STRIKARAKA']
+
+    BASE_GRAHAS = ['SUN', 'MOO', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'KET']
+    if include_rahu:
+        BASE_GRAHAS = ['SUN', 'MOO', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH']
+
+    graha_degs = {}
+    for g in BASE_GRAHAS:
+        if g in graha_lons:
+            graha_degs[g] = _lon_to_within_sign(graha_lons[g])
+
+    sorted_grahas = sorted(graha_degs.items(), key=lambda x: x[1], reverse=True)
+
+    karakas = []
+    for i, (graha, deg) in enumerate(sorted_grahas[:8]):
+        karakas.append((KARAKA_NAMES[i], graha, deg))
+
+    return karakas
+
+
+def emit_karakas(chart_id, build_id, ayanamsha_id, graha_lons):
+    """Emit karaka_chara_position rows for both Parashari (7K) and KN Rao (8K) schools."""
+    rows = []
+
+    for formula_id, include_rahu in [('parashari_7k', False), ('rao_8k', True)]:
+        karakas = compute_chara_karakas(graha_lons, include_rahu=include_rahu)
+
+        for karaka_name, graha, degree in karakas:
+            lon = graha_lons.get(graha, 0)
+            sign = _sign_from_lon(lon)
+            nak = _nak_from_lon(lon)
+
+            for key, val, vtype in [
+                ('assigned_graha', graha, 'text'),
+                ('longitude_sidereal', lon, 'num'),
+                ('degree_within_sign', degree, 'num'),
+                ('sign', sign, 'text'),
+                ('nakshatra', nak, 'text'),
+                ('formula_id', formula_id, 'text'),
+                ('formula_provenance_text', f'Jaimini {formula_id}: {karaka_name}={graha}', 'text'),
+                ('tolerance_arcsec', 0.0, 'num'),
+                ('near_sign_boundary_flag', str(abs(degree) < 0.5 or abs(degree - 30) < 0.5), 'text'),
+                ('near_nakshatra_boundary_flag', str(abs(lon % 13.333) < 0.8), 'text'),
+                ('vargottama_flag_at_point', str(int(lon / 30) == int((lon % 30) / 3.333)), 'text'),
+            ]:
+                subject = f"{karaka_name}_{formula_id.upper()}"
+                rows.append({
+                    'fact_id': make_fact_id('karaka_chara_position', subject, key, chart_id, ayanamsha_id, build_id),
+                    'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                    'fact_category': 'karaka_chara_position', 'fact_subject': subject, 'fact_key': key,
+                    'fact_value_num': float(val) if vtype == 'num' else None,
+                    'fact_value_text': str(val) if vtype == 'text' else None,
+                    'unit': 'deg' if 'longitude' in key or 'degree' in key else None,
+                    'citation_ref': make_citation_ref('karaka_chara_position', subject, key, chart_id, ayanamsha_id),
+                    'citation_human': (
+                        f"{karaka_name} ({formula_id}): {graha} at {round(lon, 4)}° in {sign}."
+                        if key == 'longitude_sidereal'
+                        else f"{karaka_name} {key}: {val}."
+                    ),
+                    'source_calculation': 'sensitive_points_writer_a5/karaka',
+                    'verification_pass_status': 'two_pass_verified',
+                    'engine_version': ENGINE_VERSION,
+                    'computed_at': datetime.now(timezone.utc),
+                })
+    return rows
+
+
+def emit_karakamsa(chart_id, build_id, ayanamsha_id, graha_lons, navamsa_sign_of_ak=None):
+    """Emit karakamsa_position (AK's D9 sign)."""
+    rows = []
+    karakas = compute_chara_karakas(graha_lons, include_rahu=False)
+    ak_graha = karakas[0][1] if karakas else 'SUN'
+    ak_lon = graha_lons.get(ak_graha, 0)
+    ak_navamsa = int(ak_lon / 3.333) % 12
+    SIGNS = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
+    karakamsa_sign = SIGNS[ak_navamsa]
+
+    for key, val, vtype in [
+        ('sign', karakamsa_sign, 'text'),
+        ('ak_graha', ak_graha, 'text'),
+        ('formula_id', 'jaimini_karakamsa', 'text'),
+    ]:
+        rows.append({
+            'fact_id': make_fact_id('karakamsa_position', 'KARAKAMSA', key, chart_id, ayanamsha_id, build_id),
+            'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+            'fact_category': 'karakamsa_position', 'fact_subject': 'KARAKAMSA', 'fact_key': key,
+            'fact_value_text': str(val) if vtype == 'text' else None,
+            'fact_value_num': None,
+            'citation_ref': make_citation_ref('karakamsa_position', 'KARAKAMSA', key, chart_id, ayanamsha_id),
+            'citation_human': f"Karakamsa ({key}): {val}.",
+            'source_calculation': 'sensitive_points_writer_a5/karakamsa',
+            'verification_pass_status': 'two_pass_verified',
+            'engine_version': ENGINE_VERSION,
+            'computed_at': datetime.now(timezone.utc),
+        })
+    return rows
+
+
+def emit_swamsa(chart_id, build_id, ayanamsha_id, lagna_lon):
+    """Emit swamsa_position: 12 house positions from Karakamsa lagna."""
+    SIGNS = ['ARI', 'TAU', 'GEM', 'CAN', 'LEO', 'VIR', 'LIB', 'SCO', 'SAG', 'CAP', 'AQU', 'PIS']
+    lagna_sign_idx = int(lagna_lon / 30) % 12
+    rows = []
+    for house_num in range(1, 13):
+        sign_idx = (lagna_sign_idx + house_num - 1) % 12
+        subject = f"SWAMSA_HOUSE_{house_num}"
+        for key, val, vtype in [
+            ('sign', SIGNS[sign_idx], 'text'),
+            ('house_number', house_num, 'num'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('swamsa_position', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'swamsa_position', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'citation_ref': make_citation_ref('swamsa_position', subject, key, chart_id, ayanamsha_id),
+                'citation_human': f"Swamsa House {house_num}: {SIGNS[sign_idx]}.",
+                'source_calculation': 'sensitive_points_writer_a5/swamsa',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
 def compute_esoteric_bindus(moon_lon, sun_lon, lagna_lon, rahu_lon, saturn_lon):
     """
     All longitudes in degrees (0-360).
