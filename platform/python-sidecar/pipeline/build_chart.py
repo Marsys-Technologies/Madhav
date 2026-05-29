@@ -5,6 +5,8 @@ Scaffold (C-01): DAG_ORDER, CANONICAL_AYANAMSHAS, arg parse, DB helpers, stub di
 C-02: run_engine_parallel() — asyncio+ThreadPoolExecutor 5-ayanamsha parallel runner.
       load_birth_data() — birth data loader from charts table.
       run_build() — A1_engine step wired to parallel runner.
+C-05: dispatch_asset_with_retry() — per-asset retry wrapper (3× exponential backoff).
+      MAX_RETRIES / RETRY_DELAYS constants.  run_build() non-A1 assets use retry wrapper.
 
 Usage:
   python -m pipeline.build_chart --build-id <UUID> --chart-id <UUID> [--db-url DSN]
@@ -17,6 +19,7 @@ import concurrent.futures
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -430,6 +433,77 @@ def dispatch_asset(
     return 0
 
 
+# ── Retry constants (C-05) ─────────────────────────────────────────────────────
+
+MAX_RETRIES: int = 3
+RETRY_DELAYS: list[int] = [2, 4, 8]  # seconds — exponential backoff per attempt
+
+
+# ── Per-asset retry wrapper (C-05) ────────────────────────────────────────────
+
+async def dispatch_asset_with_retry(
+    asset_id: str,
+    build_id: str,
+    chart_id: str,
+    ayanamshas: list,
+    conn,
+    chart_outputs: dict,
+) -> "tuple[int, str | None]":
+    """
+    Dispatch an asset with up to MAX_RETRIES attempts (exponential backoff).
+
+    Returns
+    -------
+    (rows_written, error_msg)
+        rows_written  — number of rows written on success; 0 on exhaustion.
+        error_msg     — None on success; non-empty string on exhaustion.
+
+    On each retry (before the final attempt), build_steps.retry_count is
+    incremented and the interim error is stored in build_steps.error_summary.
+    The retry_count update is non-fatal: a failure there is swallowed so the
+    retry loop continues.
+    """
+    last_error: Optional[str] = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas)
+            return rows_written, None  # success — no error
+        except Exception as exc:
+            last_error = f"{type(exc).__name__}: {str(exc)}"
+
+            if attempt < MAX_RETRIES - 1:
+                delay = RETRY_DELAYS[attempt]
+                log.warning(
+                    "dispatch_asset_with_retry attempt %d/%d failed for %s: %s. "
+                    "Retrying in %ds...",
+                    attempt + 1, MAX_RETRIES, asset_id, last_error, delay,
+                )
+                # Persist retry_count + interim error to build_steps (non-fatal)
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "UPDATE build_steps "
+                            "SET retry_count = retry_count + 1, error_summary = %s "
+                            "WHERE build_id = %s AND asset_id = %s",
+                            (last_error, build_id, asset_id),
+                        )
+                    conn.commit()
+                except Exception:
+                    pass  # retry_count update is non-fatal; swallow and continue
+
+                await asyncio.sleep(delay)
+            else:
+                # Final attempt exhausted
+                log.error(
+                    "dispatch_asset_with_retry EXHAUSTED after %d attempts for %s. "
+                    "Last error: %s",
+                    MAX_RETRIES, asset_id, last_error,
+                )
+
+    return 0, last_error
+
+
 # ── Run loop ───────────────────────────────────────────────────────────────────
 
 async def run_build(build_id: str, chart_id: str, conn) -> bool:
@@ -471,6 +545,7 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
     log.info("run_build_start", extra={"build_id": build_id, "ayanamshas": ayanamshas})
 
     # 3. DAG loop
+    chart_outputs: dict = {}  # populated by A1_engine; passed to retry wrapper for context
     for asset_id in DAG_ORDER:
         # Cancellation gate — checked before EVERY asset
         if check_cancellation(conn, build_id):
@@ -551,7 +626,30 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                 # Store chart_outputs for downstream assets in this build.
                 # (Future sessions can consume this from build-scoped state.)
             else:
-                rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas)
+                # C-05: non-A1 assets use retry wrapper (3× exponential backoff)
+                rows_written, retry_err = await dispatch_asset_with_retry(
+                    asset_id, build_id, chart_id, ayanamshas, conn, chart_outputs
+                )
+                if retry_err is not None:
+                    # All retries exhausted — mark step + build failed
+                    log.error(
+                        "run_build_asset_failed",
+                        extra={"build_id": build_id, "asset_id": asset_id, "error": retry_err},
+                    )
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            UPDATE build_steps
+                            SET status = 'failed', error_msg = %s
+                            WHERE build_id = %s AND category = %s AND status = 'running'
+                            """,
+                            (retry_err, build_id, asset_id),
+                        )
+                    conn.commit()
+                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=retry_err)
+                    update_build_status(conn, build_id, "failed", error_summary=retry_err)
+                    emit_event(conn, build_id, "build_failed", error=retry_err)
+                    return False
 
         except Exception as exc:
             err_str = str(exc)
