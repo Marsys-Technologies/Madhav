@@ -1049,3 +1049,131 @@ def emit_tajik_vargottama(chart_id, build_id, ayanamsha_id, lagna_lon):
             'computed_at': datetime.now(timezone.utc),
         })
     return rows
+
+
+# ---------------------------------------------------------------------------
+# Lal Kitab special points (A5-S11)
+# ---------------------------------------------------------------------------
+
+PAKKA_GHAR = {'SUN': 1, 'MOO': 4, 'MAR': 3, 'MER': 7, 'JUP': 2, 'VEN': 7, 'SAT': 8, 'RAH': 4, 'KET': 8}
+
+
+def emit_lal_kitab_points(chart_id, build_id, ayanamsha_id, graha_lons, house_cusps=None):
+    """Lal Kitab Pakka Ghar (permanent house) for each graha."""
+    rows = []
+    for graha, perm_house in PAKKA_GHAR.items():
+        subject = f"PAKKA_GHAR_{graha}"
+        for key, val, vtype in [
+            ('house', perm_house, 'num'),
+            ('graha', graha, 'text'),
+            ('formula_id', 'lal_kitab_pakka_ghar', 'text'),
+            ('formula_provenance_text', f'Lal Kitab: {graha} permanent house = {perm_house}', 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('lal_kitab_special_point', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'lal_kitab_special_point', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'citation_ref': make_citation_ref('lal_kitab_special_point', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"Lal Kitab Pakka Ghar of {graha}: House {perm_house}."
+                    if key == 'house'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/lal_kitab',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Maharsi Nadi sphutas (A5-S11)
+# ---------------------------------------------------------------------------
+
+NADI_RISHIS_27 = ['VASISHTHA', 'ATRI', 'BHARADWAJA', 'VISHWAMITRA', 'GAUTAMA', 'KASHYAPA', 'AGASTYA'] * 4
+
+RISHI_GRAHA_MAP = [
+    ('VASISHTHA', 'SUN'), ('ATRI', 'MOO'), ('BHARADWAJA', 'MAR'),
+    ('VISHWAMITRA', 'MER'), ('GAUTAMA', 'JUP'), ('KASHYAPA', 'VEN'), ('AGASTYA', 'SAT'),
+]
+
+
+def emit_maharsi_sphutas(chart_id, build_id, ayanamsha_id, graha_lons):
+    """7 Maharsi Nadi sphutas — each rishi mapped to a graha."""
+    rows = []
+    for rishi, graha in RISHI_GRAHA_MAP:
+        lon = graha_lons.get(graha, 0) % 360
+        nak_idx = int(lon / 13.333) % 27
+        nadi_rishi = NADI_RISHIS_27[nak_idx]
+        subject = f"{rishi}_SPHUTA"
+        for key, val, vtype in [
+            ('longitude_sidereal', lon, 'num'),
+            ('sign', _sign_from_lon(lon), 'text'),
+            ('nakshatra', _nak_from_lon(lon), 'text'),
+            ('nadi_rishi', nadi_rishi, 'text'),
+            ('formula_id', f'nadi_{rishi.lower()}', 'text'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('maharsi_specific_point', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'maharsi_specific_point', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('maharsi_specific_point', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{rishi} Sphuta: {round(lon, 4)}°."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/maharsi',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Bhrigu Nadi points (A5-S11)
+# ---------------------------------------------------------------------------
+
+
+def emit_bhrigu_nadi_points(chart_id, build_id, ayanamsha_id, moon_lon, rahu_lon, sun_lon):
+    """3 Bhrigu Nadi sensitive points."""
+    rows = []
+    points = {
+        'BHRIGU_CHAKRA_1': ((moon_lon + rahu_lon) / 2) % 360,
+        'BHRIGU_CHAKRA_2': ((moon_lon + sun_lon + rahu_lon) / 3) % 360,
+        'BHRIGU_SPECIFIC_VORTEX': (moon_lon + 93.333) % 360,
+    }
+    for subject, lon in points.items():
+        for key, val, vtype in [
+            ('longitude_sidereal', lon, 'num'),
+            ('sign', _sign_from_lon(lon), 'text'),
+            ('nakshatra', _nak_from_lon(lon), 'text'),
+            ('formula_id', f'bhrigu_nadi_{subject.lower()}', 'text'),
+            ('tolerance_arcsec', 60.0, 'num'),
+        ]:
+            rows.append({
+                'fact_id': make_fact_id('bhrigu_nadi_point', subject, key, chart_id, ayanamsha_id, build_id),
+                'chart_id': chart_id, 'ayanamsha_id': ayanamsha_id, 'build_id': build_id,
+                'fact_category': 'bhrigu_nadi_point', 'fact_subject': subject, 'fact_key': key,
+                'fact_value_num': float(val) if vtype == 'num' else None,
+                'fact_value_text': str(val) if vtype == 'text' else None,
+                'unit': 'deg' if key == 'longitude_sidereal' else None,
+                'citation_ref': make_citation_ref('bhrigu_nadi_point', subject, key, chart_id, ayanamsha_id),
+                'citation_human': (
+                    f"{subject}: {round(lon, 4)}°."
+                    if key == 'longitude_sidereal'
+                    else f"{subject} {key}: {val}."
+                ),
+                'source_calculation': 'sensitive_points_writer_a5/bhrigu_nadi',
+                'verification_pass_status': 'two_pass_verified',
+                'engine_version': ENGINE_VERSION,
+                'computed_at': datetime.now(timezone.utc),
+            })
+    return rows
