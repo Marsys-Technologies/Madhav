@@ -1,3 +1,14 @@
+---
+artifact: OPERATOR_ACTIONS_PENDING.md
+version: "1.1"
+status: LIVING
+produced_during: DOC_CLEANUP_2026-05-31
+role: Single source of truth for all operator actions requiring human execution (GCP console, production DB, GitHub settings).
+changelog:
+  - v1.0 (2026-05-31, CI-cleanup): Initial file — smoke gate secrets provisioning only.
+  - v1.1 (2026-05-31, DOC_CLEANUP): Consolidated all pending operator actions from MULTI_AYANAMSHA_BUILD_CLOSE §6, MCPT_CLOSE, PLATFORM_MODERNIZATION_CLOSE, and CI-cleanup session.
+---
+
 # Operator Actions Pending
 
 Last updated: 2026-05-31
