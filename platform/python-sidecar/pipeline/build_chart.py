@@ -438,6 +438,7 @@ def dispatch_asset(
     chart_id: str,
     ayanamshas: list[str],
     conn=None,
+    chart_output: Optional[dict] = None,
 ) -> int:
     """
     Dispatch writer for asset_id.
@@ -446,11 +447,12 @@ def dispatch_asset(
     C-07: Routes A2–A14 through WRITER_REGISTRY (stub write() callables).
           Real writers replace stubs in streams F, G1, G2, G3, G4.
     conn=None triggers dry-run mode in all writers (row counting, no DB write).
+    chart_output: merged engine output dict for this asset; empty dict if not available.
     """
     try:
         from pipeline.writers import WRITER_REGISTRY
         if asset_id in WRITER_REGISTRY:
-            return WRITER_REGISTRY[asset_id](build_id, chart_id, 'all', {}, conn)
+            return WRITER_REGISTRY[asset_id](build_id, chart_id, 'all', chart_output or {}, conn)
     except ImportError:
         pass
     label = ASSET_LABELS.get(asset_id, asset_id)
@@ -491,11 +493,35 @@ async def dispatch_asset_with_retry(
     last_error: Optional[str] = None
 
     for attempt in range(MAX_RETRIES):
+        # Guarantee a clean transaction before every attempt.
+        # emit_step_event and other pre-dispatch helpers commit on their own
+        # transaction boundary; if any of them left the connection in a failed
+        # state (e.g. constraint violation swallowed in their except handler),
+        # a rollback here restores a usable state so the writer sees a fresh txn.
         try:
-            rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas, conn)
+            conn.rollback()
+        except Exception:
+            pass
+
+        try:
+            # Merge chart_outputs into a single dict for the writer.
+            # chart_outputs is keyed by ayanamsha_id; writers receive the merged view.
+            merged_output: dict = {}
+            if chart_outputs:
+                for v in chart_outputs.values():
+                    if isinstance(v, dict):
+                        merged_output.update(v)
+            rows_written = dispatch_asset(
+                asset_id, build_id, chart_id, ayanamshas, conn, chart_output=merged_output
+            )
+            conn.commit()
             return rows_written, None  # success — no error
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {str(exc)}"
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
             if attempt < MAX_RETRIES - 1:
                 delay = RETRY_DELAYS[attempt]
@@ -504,12 +530,7 @@ async def dispatch_asset_with_retry(
                     "Retrying in %ds...",
                     attempt + 1, MAX_RETRIES, asset_id, last_error, delay,
                 )
-                # Rollback the failed transaction so the connection is clean for retry
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
-                # Persist retry_count + interim error to build_steps (non-fatal)
+                # Persist retry info to build_steps (non-fatal; uses a separate txn)
                 try:
                     with conn.cursor() as cur:
                         cur.execute(
