@@ -3639,6 +3639,8 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> ⚠️ **AUTHORITATIVE STATE: M6 INCOMING. CLAUDE.md §F is STALE (frozen at M5-A).** Always read THIS FILE for "you are here." Next session cannot open until `OPERATOR_ACTIONS_PENDING.md` CRITICAL section is complete (migrations 140-153 + chart build + ACC gates). Added 2026-05-31.
+
 ```yaml
 current_state:
   # ------------------------------------------------------------------
@@ -3682,11 +3684,13 @@ current_state:
   # Phase-plan expansion (M3 phase plan TBD; first M3 session decides whether to expand
   #   MACRO_PLAN §M3 into a PHASE_C_PLAN_v1_0.md or drive M3 directly from MACRO_PLAN.)
   # ------------------------------------------------------------------
-  active_phase_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+  last_completed_phase_plan: 00_ARCHITECTURE/PHASE_M5_PLAN_v1_0.md
+  last_completed_phase_plan_version: "1.1 SUPERSEDED-AS-COMPLETE"
+  active_phase_plan: TBD  # M6-A plan to be authored at M6-A-S1 open
     # PHASE_M5_PLAN_v1_0.md v1.1 SUPERSEDED-AS-COMPLETE (M5 CLOSED 2026-05-14 at M5-E-S2).
     # M6 phase plan: TBD — first M6 session (M6-A-S1) authors PHASE_M6_PLAN_v1_0.md.
     # PHASE_M4_PLAN_v1_0.md v1.0 SUPERSEDED-AS-COMPLETE (M4 CLOSED 2026-05-02).
-  active_phase_plan_version: "1.1 SUPERSEDED-AS-COMPLETE"
+  active_phase_plan_version: "TBD — set at M6-A-S1"
   active_phase_plan_sub_phase: >
     M5 MACRO-PHASE CLOSED (2026-05-14 at M5-E-S2; sealing artifact 06_LEARNING_LAYER/M5_CLOSE_v1_0.md;
     IS.8(b) PASS 5/5; NAP.M5.4 APPROVED). M6 INCOMING — phase plan TBD at M6-A-S1.
