@@ -16,7 +16,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
-.container{max-width:1340px;margin:0 auto;padding:24px 22px 80px}
+.container{max-width:1440px;margin:0 auto;padding:24px 22px 80px}
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:18px}
 .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:0 0 6px;font-weight:600}
 .title{font-family:var(--serif);font-size:28px;font-weight:500;letter-spacing:-.02em;margin:0 0 4px}
@@ -36,46 +36,50 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);fon
 .state-banner.build-idle{background:rgba(145,138,126,.1);border-color:rgba(145,138,126,.3);color:var(--text-2)}
 
 /* ── Stats grid ───────────────────────────────────────────────────────── */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0 22px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0 22px}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
 .stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin:0 0 4px;font-weight:600}
 .stat-value{font-family:var(--serif);font-size:22px;font-weight:500;margin:0;line-height:1.2;font-variant-numeric:tabular-nums}
 .stat-sub{font-size:11px;color:var(--text-3);margin:2px 0 0;font-variant-numeric:tabular-nums}
+.stat-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
 .panel-head{padding:14px 20px;border-bottom:1px solid var(--border);font-family:var(--serif);font-size:15px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:14px}
 .panel-head .right{font-size:11px;color:var(--text-3);font-family:var(--sans);font-weight:400;font-variant-numeric:tabular-nums}
 .panel-body{padding:14px 20px}
+.panel-subtitle{font-size:11px;color:var(--text-3);margin:0 0 12px;font-style:italic}
 
 table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--border)}
-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
 table td.num{text-align:right;font-variant-numeric:tabular-nums}
 table tr:last-child td{border-bottom:none}
 table tr:hover{background:var(--surface-elev)}
 
-.bar{display:inline-block;vertical-align:middle;height:6px;background:var(--surface-elev);border-radius:99px;overflow:hidden;width:120px;margin-right:8px}
-.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#d6a071);transition:width 400ms ease}
+.asset-id{font-family:var(--serif);font-weight:600;font-size:13px;color:var(--text)}
+.asset-name{font-size:11px;color:var(--text-2);margin-top:1px}
+.asset-desc{font-size:10.5px;color:var(--text-3);margin-top:2px;line-height:1.4}
+
+.bar{display:block;height:5px;background:var(--surface-elev);border-radius:99px;overflow:hidden;width:100%;margin-bottom:4px}
+.bar-fill{height:100%;border-radius:99px;transition:width 400ms ease}
 .bar-fill.ok{background:linear-gradient(90deg,var(--ok),#74b389)}
 .bar-fill.warn{background:linear-gradient(90deg,var(--warn),#d6a071)}
 .bar-fill.err{background:linear-gradient(90deg,var(--err),#d67878)}
+.bar-fill.idle{background:var(--border-strong)}
 
-.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid rgba(0,0,0,.08)}
+.pill{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid rgba(0,0,0,.08);white-space:nowrap}
 .pill.ok{background:rgba(77,138,94,.12);color:var(--ok)}
 .pill.warn{background:rgba(192,128,71,.13);color:var(--warn)}
 .pill.err{background:rgba(184,84,84,.13);color:var(--err)}
 .pill.idle{background:rgba(145,138,126,.13);color:var(--text-3)}
 
-.matrix{display:grid;grid-template-columns:120px repeat(auto-fit,minmax(72px,1fr));gap:1px;background:var(--border);border-radius:8px;overflow:hidden;font-size:11px}
-.matrix > div{background:var(--surface);padding:6px 8px;text-align:center;font-variant-numeric:tabular-nums}
-.matrix .h{background:var(--surface-elev);font-weight:600;text-transform:uppercase;font-size:9.5px;letter-spacing:.04em;color:var(--text-3)}
-.matrix .ay{text-align:left;font-weight:600;color:var(--text-2);font-family:var(--serif);font-size:11.5px}
-.cell{position:relative;cursor:default}
-.cell .v{font-weight:600;color:var(--text)}
-.cell .e{color:var(--text-3);font-size:9.5px}
-.cell.done{background:rgba(77,138,94,.06)}
-.cell.partial{background:rgba(192,128,71,.06)}
-.cell.empty{color:var(--text-3)}
+.deps-list{font-size:10px;color:var(--text-3);line-height:1.6}
+.blocker-tag{display:inline-block;background:rgba(184,84,84,.1);color:var(--err);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;margin:1px}
+.ready-tag{display:inline-block;background:rgba(192,128,71,.13);color:var(--warn);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600}
+
+.rows-cell{min-width:140px}
+.rows-num{font-size:11px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.rows-pct{font-size:10px;color:var(--text-3)}
 
 .timeline{font-size:12px}
 .timeline-row{display:grid;grid-template-columns:90px 110px 110px 80px 60px 1fr;gap:10px;padding:5px 0;border-bottom:1px dashed var(--border);font-variant-numeric:tabular-nums}
@@ -83,7 +87,6 @@ table tr:hover{background:var(--surface-elev)}
 .timeline-time{color:var(--text-3);font-size:11px}
 .timeline-asset{font-family:var(--serif);font-weight:500}
 .timeline-stage{color:var(--text-2)}
-.timeline-pct{text-align:right;color:var(--text-3)}
 
 .migrations-grid{display:flex;flex-wrap:wrap;gap:5px}
 .mig{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;font-size:11px;font-variant-numeric:tabular-nums;border:1px solid var(--border)}
@@ -91,6 +94,11 @@ table tr:hover{background:var(--surface-elev)}
 .mig.pending{background:var(--surface-elev);color:var(--text-3)}
 
 .empty-state{color:var(--text-3);font-size:13px;padding:14px 0;text-align:center;font-style:italic}
+
+.l4-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.l4-card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface-elev)}
+.l4-card-name{font-weight:600;font-size:12.5px;margin:0 0 3px}
+.l4-card-desc{font-size:11px;color:var(--text-3);margin:0 0 8px;line-height:1.4}
 
 footer{margin-top:30px;font-size:11px;color:var(--text-3);text-align:center}
 </style>
@@ -101,12 +109,12 @@ footer{margin-top:30px;font-size:11px;color:var(--text-3);text-align:center}
     <div>
       <p class="eyebrow">MARSYS-JIS · Data Build · Live Monitor</p>
       <h1 class="title" id="title">Chart Build Progress</h1>
-      <p class="subtitle">Real-time view of native chart computation. Auto-refresh every 5s.</p>
+      <p class="subtitle">L1/L2.5/L3/L4 layered asset status — brief · code · data · deps · blockers. Auto-refresh every 5s.</p>
     </div>
     <div class="freshness" id="freshness">connecting…</div>
   </div>
 
-  <!-- State banner — shown above stats grid -->
+  <!-- State banner -->
   <div class="state-banner" id="state-banner">
     <div class="banner-icon" id="banner-icon">⬤</div>
     <div>
@@ -115,30 +123,63 @@ footer{margin-top:30px;font-size:11px;color:var(--text-3);text-align:center}
     </div>
   </div>
 
+  <!-- Summary stats -->
   <div class="stats-grid">
-    <div class="stat"><p class="stat-label">Build ID</p><p class="stat-value" id="s-build-id">—</p><p class="stat-sub" id="s-build-status">—</p></div>
-    <div class="stat"><p class="stat-label">Elapsed</p><p class="stat-value" id="s-elapsed">—</p><p class="stat-sub" id="s-eta">—</p></div>
-    <div class="stat"><p class="stat-label">chart_facts rows</p><p class="stat-value" id="s-rows">—</p><p class="stat-sub" id="s-rows-pct">—</p></div>
-    <div class="stat"><p class="stat-label">Current stage</p><p class="stat-value" id="s-stage">—</p><p class="stat-sub" id="s-stage-status">—</p></div>
-    <div class="stat"><p class="stat-label">Migrations 140-153</p><p class="stat-value" id="s-migrations">—</p><p class="stat-sub">applied</p></div>
-    <div class="stat"><p class="stat-label">Two-pass verified</p><p class="stat-value" id="s-two-pass">—</p><p class="stat-sub" id="s-two-pass-sub">—</p></div>
+    <div class="stat">
+      <p class="stat-label">Build</p>
+      <p class="stat-value" id="s-build-id">—</p>
+      <p class="stat-sub" id="s-build-status">—</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Asset Completion</p>
+      <p class="stat-value" id="s-assets-complete">—</p>
+      <p class="stat-sub" id="s-assets-sub">—</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Ready to Run</p>
+      <p class="stat-value" id="s-ready-count">—</p>
+      <div class="stat-tags" id="s-ready-tags"></div>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Blocked</p>
+      <p class="stat-value" id="s-blocked">—</p>
+      <p class="stat-sub">assets with unmet deps</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Migrations 140-153</p>
+      <p class="stat-value" id="s-migrations">—</p>
+      <p class="stat-sub">applied</p>
+    </div>
   </div>
 
+  <!-- L1 Layer Panel -->
+  <div id="l1-panel"></div>
+
+  <!-- L2.5 Layer Panel -->
+  <div id="l25-panel"></div>
+
+  <!-- L3 Layer Panel -->
+  <div id="l3-panel"></div>
+
+  <!-- L4 Retrieval Surface Panel -->
   <div class="panel">
-    <div class="panel-head">chart_facts — population by ayanamsha × asset <span class="right" id="cf-summary">—</span></div>
-    <div class="panel-body" id="cf-matrix">loading…</div>
+    <div class="panel-head">
+      L4 — Retrieval Surface
+      <span class="right">MCP tools · channel adapters · materialized views</span>
+    </div>
+    <div class="panel-body">
+      <p class="panel-subtitle">Deployed tooling and retrieval infrastructure on top of the data layers.</p>
+      <div class="l4-grid" id="l4-panel"><p class="empty-state">loading…</p></div>
+    </div>
   </div>
 
-  <div class="panel">
-    <div class="panel-head">L2.5 + supplementary tables <span class="right" id="l25-summary">—</span></div>
-    <div class="panel-body" id="l25-list">loading…</div>
-  </div>
-
+  <!-- Build event timeline -->
   <div class="panel">
     <div class="panel-head">Build event timeline (latest 40) <span class="right" id="timeline-summary">—</span></div>
     <div class="panel-body timeline" id="timeline">loading…</div>
   </div>
 
+  <!-- Migrations panel -->
   <div class="panel">
     <div class="panel-head">Migrations 140–153 <span class="right" id="mig-summary">—</span></div>
     <div class="panel-body migrations-grid" id="migrations">loading…</div>
@@ -154,41 +195,26 @@ footer{margin-top:30px;font-size:11px;color:var(--text-3);text-align:center}
 <script>
 const SNAPSHOT_URL = "https://storage.googleapis.com/marsys-tracker-public/data_build_status.json";
 const HEARTBEAT_URL = "https://storage.googleapis.com/marsys-tracker-public/daemon_heartbeat.json";
-const HEARTBEAT_STALE_MS = 120_000;  // 120s → DAEMON DOWN
+const HEARTBEAT_STALE_MS = 120_000;
 const REFRESH_MS = 5000;
 let lastSnapAt = null;
 let consecutiveFailures = 0;
 let notifiedComplete = false;
 
-const ASSETS_ORDER = ["a3","a4","a5","a6","a7","a8","a9","a10","a11","a12","a13","a15","a16","a17","a18","a19","a20","a21","a22"];
-
-function fmtNum(n){ if(n==null) return "—"; return n.toLocaleString(); }
+function fmtNum(n){ if(n == null || n === undefined) return "—"; return Number(n).toLocaleString(); }
 function fmtElapsed(s){
-  if(s==null) return "—";
+  if(s == null) return "—";
   const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=Math.floor(s%60);
   if(h>0) return `${h}h${m}m`;
   if(m>0) return `${m}m${sec}s`;
   return `${sec}s`;
 }
-function fmtETA(min){
-  if(min==null) return "—";
-  if(min<1) return "<1m remaining";
-  if(min<60) return `~${Math.round(min)}m remaining`;
-  return `~${(min/60).toFixed(1)}h remaining`;
-}
 function timeSince(iso){
   if(!iso) return "—";
-  const d=new Date(iso); const diff=(Date.now()-d.getTime())/1000;
+  const d = new Date(iso); const diff = (Date.now()-d.getTime())/1000;
   if(diff<60) return `${Math.floor(diff)}s ago`;
   if(diff<3600) return `${Math.floor(diff/60)}m ago`;
   return `${Math.floor(diff/3600)}h ago`;
-}
-function classifyCell(rows, expected){
-  if(!expected) return "empty";
-  const pct = rows/expected;
-  if(pct >= 0.95) return "done";
-  if(pct >= 0.05) return "partial";
-  return "empty";
 }
 
 // Browser notification on build completion
@@ -201,7 +227,6 @@ function notifyComplete(buildId){
   }
 }
 
-// State banner
 function showBanner(cls, icon, title, sub){
   const el = document.getElementById("state-banner");
   el.className = "state-banner visible " + cls;
@@ -209,6 +234,142 @@ function showBanner(cls, icon, title, sub){
   document.getElementById("banner-title").textContent = title;
   document.getElementById("banner-sub").textContent = sub || "";
 }
+
+// ── Layer rendering ────────────────────────────────────────────────────────
+
+const LAYER_META = {
+  "L1":   { title: "L1 — Raw Facts",            subtitle: "Base computed facts from ephemeris + classical reference tables (13 assets)" },
+  "L2.5": { title: "L2.5 — Holistic Synthesis",  subtitle: "Derived synthesis: signals, graph, cells, anchors, vedha, temporal spine (9 assets)" },
+  "L3":   { title: "L3 — META Synthesis",         subtitle: "Cross-layer unifications: lattice, pattern catalog, divergence ledger, derivation trail (6 assets)" },
+};
+
+function dataStatusCls(s){
+  if(!s) return "idle";
+  if(s === "complete") return "ok";
+  if(s === "near_complete" || s === "partial") return "warn";
+  if(s === "empty" || s === "error" || s === "view_missing") return "err";
+  return "idle"; // retired, n/a, view_present, unknown
+}
+
+function implStatusCls(s){
+  if(!s) return "idle";
+  if(["deployed","merged_main","complete","shipped"].includes(s)) return "ok";
+  if(["in_progress","in_review"].includes(s)) return "warn";
+  return "idle";
+}
+
+function briefStatusCls(s){
+  if(!s) return "idle";
+  if(["locked","approved","retired_with_rationale","folded_into_A8","folded","retired"].includes(s)) return "ok";
+  if(["in_progress","draft"].includes(s)) return "warn";
+  return "idle";
+}
+
+function renderLayerPanel(layerKey, assets){
+  if(!assets || assets.length === 0) return "";
+  const meta = LAYER_META[layerKey] || { title: layerKey, subtitle: "" };
+  const complete = assets.filter(a => a.data_status === "complete").length;
+  const nearComplete = assets.filter(a => a.data_status === "near_complete").length;
+  const blocked = assets.filter(a => (a.blocked_by||[]).length > 0).length;
+  const readyToRun = assets.filter(a => a.ready_to_run && a.data_status === "empty").length;
+
+  let html = `<div class="panel"><div class="panel-head">
+    ${meta.title}
+    <span class="right">${assets.length} assets &nbsp;·&nbsp; ${complete} complete &nbsp;·&nbsp; ${nearComplete} near &nbsp;·&nbsp; ${blocked} blocked &nbsp;·&nbsp; ${readyToRun} ready</span>
+  </div><div class="panel-body">
+  <p class="panel-subtitle">${meta.subtitle}</p>
+  <table><thead><tr>
+    <th style="min-width:130px">Asset</th>
+    <th>Brief</th>
+    <th>Code</th>
+    <th>Data</th>
+    <th style="min-width:170px">Rows / Expected</th>
+    <th>Deps</th>
+    <th>Blockers</th>
+    <th>Action</th>
+  </tr></thead><tbody>`;
+
+  assets.forEach(a => {
+    const bCls = briefStatusCls(a.brief_status);
+    const iCls = implStatusCls(a.impl_status);
+    const dCls = dataStatusCls(a.data_status);
+
+    const blockers = (a.blocked_by || []);
+    const blockersHtml = blockers.length > 0
+      ? blockers.map(b => `<span class="blocker-tag" title="${b.status}: ${fmtNum(b.rows)} rows">${b.id}</span>`).join(" ")
+      : '<span style="color:var(--text-3);font-size:10px">—</span>';
+
+    const deps = (a.deps || []);
+    const depsHtml = deps.length > 0
+      ? `<span class="deps-list">${deps.join(", ")}</span>`
+      : '<span style="color:var(--text-3);font-size:10px">—</span>';
+
+    let rowsHtml = '—';
+    const exp = a.expected_per_chart || 0;
+    if(a.data_status === "retired"){
+      rowsHtml = '<span class="pill idle">retired</span>';
+    } else if(a.data_status === "view_present"){
+      rowsHtml = '<span class="pill ok">view present</span>';
+    } else if(a.data_status === "view_missing"){
+      rowsHtml = '<span class="pill err">view missing</span>';
+    } else if(a.data_status === "n/a" || exp === 0){
+      rowsHtml = '<span style="color:var(--text-3);font-size:10px">n/a</span>';
+    } else {
+      const pct = Math.min(100, a.completion_pct || 0);
+      rowsHtml = `<div class="rows-cell">
+        <div class="bar"><div class="bar-fill ${dCls}" style="width:${pct}%"></div></div>
+        <span class="rows-num">${fmtNum(a.rows)}</span>
+        <span class="rows-pct"> / ${fmtNum(exp)} (${pct.toFixed(0)}%)</span>
+      </div>`;
+    }
+
+    const action = (a.ready_to_run && a.data_status === "empty")
+      ? '<span class="ready-tag">ready to run</span>'
+      : (a.data_status === "error" ? '<span class="pill err">error</span>' : '—');
+
+    html += `<tr>
+      <td>
+        <div class="asset-id">${a.id||"?"}</div>
+        <div class="asset-name">${a.name||"?"}</div>
+        <div class="asset-desc">${a.description||""}</div>
+      </td>
+      <td><span class="pill ${bCls}">${a.brief_status||"?"}</span></td>
+      <td><span class="pill ${iCls}">${a.impl_status||"?"}</span></td>
+      <td><span class="pill ${dCls}">${a.data_status||"?"}</span></td>
+      <td>${rowsHtml}</td>
+      <td>${depsHtml}</td>
+      <td>${blockersHtml}</td>
+      <td>${action}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+// ── L4 rendering ───────────────────────────────────────────────────────────
+
+function renderL4Panel(surfaces){
+  if(!surfaces || surfaces.length === 0){
+    return '<p class="empty-state">No L4 data yet.</p>';
+  }
+  let html = '';
+  surfaces.forEach(s => {
+    const statusCls = s.status === "deployed" || s.status === "applied" || s.status === "shipped"
+      ? "ok" : (s.status === "pending" ? "warn" : "err");
+    const statusLabel = s.status || "unknown";
+    const extra = s.count != null ? ` · ${s.count} views` : "";
+    html += `<div class="l4-card">
+      <div class="l4-card-name">${s.name||"?"}</div>
+      <div class="l4-card-desc">${s.description||""}</div>
+      <span class="pill ${statusCls}">${statusLabel}${extra}</span>
+      ${s.error ? `<div style="font-size:10px;color:var(--err);margin-top:4px">${s.error}</div>` : ""}
+    </div>`;
+  });
+  return html;
+}
+
+// ── Main render ────────────────────────────────────────────────────────────
 
 async function fetchSnap(){
   try{
@@ -230,7 +391,6 @@ async function fetchSnap(){
     if(hbR.status === "fulfilled" && hbR.value.ok){
       hb = await hbR.value.json();
     }
-    // heartbeat failure is non-fatal — handled in render()
 
     consecutiveFailures = 0;
     lastSnapAt = Date.now();
@@ -281,85 +441,42 @@ function render(s, hb){
   document.getElementById("s-build-status").innerHTML =
     `<span class="pill ${b?.is_complete?'ok':b?.is_failed?'err':b?.build_id?'warn':'idle'}">${bs}</span>`;
 
-  document.getElementById("s-elapsed").textContent = fmtElapsed(b?.elapsed_seconds ?? null);
-  document.getElementById("s-eta").textContent = s?.eta ? fmtETA(s.eta?.eta_minutes_remaining ?? null) : "—";
+  const summ = s?.summary || {};
+  const total = summ.total_assets || 0;
+  const complete = summ.complete || 0;
+  const partial = summ.partial || 0;
+  const nearComplete = summ.near_complete || 0;
+  const empty = summ.empty || 0;
+  document.getElementById("s-assets-complete").textContent = `${complete} / ${total}`;
+  document.getElementById("s-assets-sub").textContent = `${nearComplete} near · ${partial} partial · ${empty} empty`;
 
-  const cf = s?.chart_facts ?? {};
-  document.getElementById("s-rows").textContent = fmtNum(cf?.total_rows ?? null);
-  document.getElementById("s-rows-pct").textContent = s?.eta ? `${s.eta?.completion_pct ?? 0}% of expected` : "—";
+  const readyList = summ.ready_to_run || [];
+  document.getElementById("s-ready-count").textContent = readyList.length;
+  const tagsEl = document.getElementById("s-ready-tags");
+  tagsEl.innerHTML = readyList.slice(0,6).map(id =>
+    `<span class="pill warn" style="font-size:9.5px">${id}</span>`
+  ).join("") + (readyList.length > 6 ? `<span style="font-size:10px;color:var(--text-3)"> +${readyList.length-6}</span>` : "");
 
-  const cur = b?.current ?? {};
-  document.getElementById("s-stage").textContent = cur?.asset ?? "—";
-  document.getElementById("s-stage-status").textContent = cur?.stage ? `${cur.stage} · ${cur?.status ?? ""}` : "—";
-
+  document.getElementById("s-blocked").textContent = summ.blocked || 0;
   document.getElementById("s-migrations").textContent = `${s?.migrations_applied_count ?? 0} / 14`;
 
-  const verif = cf?.verification ?? {};
-  const twoPass = verif?.two_pass_verified ?? 0;
-  const totalVerified = Object.values(verif).filter(v => typeof v === 'number').reduce((a,b)=>a+b, 0);
-  const pct = totalVerified > 0 ? (100*twoPass/totalVerified).toFixed(1) : 0;
-  document.getElementById("s-two-pass").textContent = `${pct}%`;
-  document.getElementById("s-two-pass-sub").textContent = `${fmtNum(twoPass)} of ${fmtNum(totalVerified)} rows`;
+  // ── Layer panels ─────────────────────────────────────────────────────
+  const layers = s?.layers || {};
+  document.getElementById("l1-panel").innerHTML = renderLayerPanel("L1", layers.L1 || []);
+  document.getElementById("l25-panel").innerHTML = renderLayerPanel("L2.5", layers["L2.5"] || []);
+  document.getElementById("l3-panel").innerHTML = renderLayerPanel("L3", layers.L3 || []);
 
-  // ── chart_facts matrix ────────────────────────────────────────────────
-  const ayList = (cf?.by_ayanamsha_rollup ?? []).map(r=>r.ayanamsha);
-  if(ayList.length === 0){
-    document.getElementById("cf-matrix").innerHTML = '<p class="empty-state">No chart_facts yet — waiting for build to start writing.</p>';
-  } else {
-    const cellMap = {};
-    (cf?.by_ayanamsha_asset ?? []).forEach(r => {
-      cellMap[`${r.ayanamsha}::${r.asset}`] = r;
-    });
-    let html = '<div class="matrix">';
-    html += '<div class="h">ayanamsha ↓ · asset →</div>';
-    ASSETS_ORDER.forEach(a => html += `<div class="h">${a}</div>`);
-    ayList.forEach(ay => {
-      html += `<div class="ay">${ay}</div>`;
-      ASSETS_ORDER.forEach(a => {
-        const cell = cellMap[`${ay}::${a}`];
-        if(!cell){
-          html += '<div class="cell empty">—</div>';
-        } else {
-          const cls = classifyCell(cell?.rows ?? 0, cell?.expected ?? 0);
-          html += `<div class="cell ${cls}"><span class="v">${fmtNum(cell?.rows ?? null)}</span></div>`;
-        }
-      });
-    });
-    html += '</div>';
-    document.getElementById("cf-matrix").innerHTML = html;
-    document.getElementById("cf-summary").textContent = `${ayList.length} ayanamshas active · ${fmtNum(cf?.total_rows ?? null)} rows`;
-  }
+  // ── L4 ───────────────────────────────────────────────────────────────
+  document.getElementById("l4-panel").innerHTML = renderL4Panel(s?.l4_surfaces || []);
 
-  // ── L2.5 tables ───────────────────────────────────────────────────────
-  const l25 = s?.l25_tables ?? [];
-  if(l25.length === 0){
-    document.getElementById("l25-list").innerHTML = '<p class="empty-state">No L2.5 data yet.</p>';
-  } else {
-    let html = '<table><thead><tr><th>Table</th><th class="num">Rows</th></tr></thead><tbody>';
-    [...l25].sort((a,b) => (b?.rows ?? 0) - (a?.rows ?? 0));
-    l25.forEach(t => {
-      const rows = t?.rows ?? -1;
-      const cls = rows < 0 ? "err" : (rows > 0 ? "ok" : "idle");
-      const display = rows < 0
-        ? `<span class="pill err">${t?.error ?? 'error'}</span>`
-        : `<span class="pill ${cls}">${fmtNum(rows)}</span>`;
-      html += `<tr><td>${t?.table ?? '—'}</td><td class="num">${display}</td></tr>`;
-    });
-    html += '</tbody></table>';
-    document.getElementById("l25-list").innerHTML = html;
-    const populated = l25.filter(t => (t?.rows ?? -1) > 0).length;
-    document.getElementById("l25-summary").textContent = `${populated} / ${l25.length} populated`;
-  }
-
-  // ── Timeline ──────────────────────────────────────────────────────────
+  // ── Timeline ─────────────────────────────────────────────────────────
   const timeline = (b?.timeline ?? []).slice(0, 40);
   if(timeline.length === 0){
     document.getElementById("timeline").innerHTML = '<p class="empty-state">No events yet.</p>';
   } else {
     let html = '';
     timeline.forEach(e => {
-      const t = new Date(e?.at ?? 0);
-      const tStr = t.toLocaleTimeString(undefined, {hour12:false});
+      const tStr = new Date(e?.at ?? 0).toLocaleTimeString(undefined, {hour12:false});
       const st = e?.status ?? "?";
       const statusCls = (st==="success"||st==="completed") ? "ok" : (st==="failed"||st==="errored") ? "err" : "warn";
       html += `<div class="timeline-row">
@@ -367,7 +484,7 @@ function render(s, hb){
         <div class="timeline-asset">${e?.asset ?? '—'}</div>
         <div class="timeline-stage">${e?.stage ?? '—'}</div>
         <div><span class="pill ${statusCls}">${st}</span></div>
-        <div class="timeline-pct">${e?.pct != null ? e.pct.toFixed(0)+'%' : ''}</div>
+        <div style="text-align:right;color:var(--text-3)">${e?.pct != null ? e.pct.toFixed(0)+'%' : ''}</div>
         <div class="timeline-time" style="text-align:right">${timeSince(e?.at ?? null)}</div>
       </div>`;
     });
