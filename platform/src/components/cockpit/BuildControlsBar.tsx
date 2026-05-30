@@ -38,15 +38,8 @@ async function postBuildAction(
   return res.json()
 }
 
-// [BUILD-ORCH-D-S4] Cancel hits /api/build/cancel/[buildId] (not the stop endpoint)
-async function requestCancel(buildId: string): Promise<{ ok: boolean }> {
-  const res = await fetch(`/api/build/cancel/${buildId}`, { method: 'POST' })
-  return { ok: res.ok }
-}
-
 export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }: Props) {
   const [busy, setBusy] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
 
   const execute = useCallback(async (action: Action) => {
     setBusy(true)
@@ -58,16 +51,6 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
     }
   }, [chartId, buildId, onBuildStart])
 
-  const handleCancel = useCallback(async () => {
-    if (!buildId) return
-    setCancelling(true)
-    try {
-      await requestCancel(buildId)
-    } finally {
-      setCancelling(false)
-    }
-  }, [buildId])
-
   const isRunning = buildStatus === 'queued' || buildStatus === 'running' || buildStatus === 'cancelling'
   const isFailed  = buildStatus === 'failed' || buildStatus === 'partial'
   const isDone    = buildStatus === 'success'
@@ -77,7 +60,7 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
     <div className="flex items-center gap-2">
       {isRunning ? (
         <>
-          {/* Running state: stop + cancel buttons */}
+          {/* Running state: stop button + breathing pill already shown in top bar */}
           <button
             onClick={() => execute('stop')}
             disabled={busy}
@@ -85,16 +68,6 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
           >
             Stop
           </button>
-          {buildId && buildStatus !== 'cancelling' && (
-            <button
-              data-testid="cancel-build-btn"
-              onClick={handleCancel}
-              disabled={cancelling || busy}
-              className="px-4 py-1.5 rounded-lg text-sm text-[#8a8070] border border-[#2a2620] hover:text-[#c8bfb0] hover:bg-[#1a1820] transition-colors disabled:opacity-50"
-            >
-              {cancelling ? 'Cancelling…' : 'Cancel'}
-            </button>
-          )}
         </>
       ) : (
         <>

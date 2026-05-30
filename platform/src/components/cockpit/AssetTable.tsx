@@ -1,378 +1,154 @@
 'use client'
 
 /**
- * AssetTable v2 — per-layer asset table per VISUAL_CONTRACT v2
- * §"Page 2 §4 Per-layer asset tables".
- *
- * Layout:
- *   - Section heading per layer: Sanskrit · English · L-tag · N of M complete
- *   - 5-column rows: row_num | name + subtitle | progress bar | row count | status
- *   - Per-row Rebuild icon button (calls onRebuild(asset_id) prop)
- *   - Cascade hint footer
- *
- * Names sourced from lib/jyotish/asset_names.ts — never inlined.
- * All colours from theme tokens — no raw hex in this file.
- *
- * [C-S7]
+ * AssetTable — tabular view of build assets with per-row actions
+ * [PHASE-C-04]
  */
 
 import { useState } from 'react'
-import {
-  ASSET_NAMES,
-  LAYER_NAMES,
-  assetsByLayer,
-  type AssetKey,
-  type LayerKey,
-} from '@/lib/jyotish/asset_names'
+import { getAssetDisplayName, ASSET_MAP } from '@/lib/build/asset_names'
 import { CascadePreviewModal } from './CascadePreviewModal'
-import { ServiceHealthBadge, ServiceLastInvokedLabel } from './ServiceHealthBadge'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AssetRow {
   assetId: string
   status: string
   rowCount: number
-  progress?: number // 0-1
-  lastUpdated?: string
-  // Service-kind fields (populated for service assets; undefined for data assets)
-  assetKind?: 'data' | 'service' | 'artifact' | null
-  serviceHealth?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
-  lastInvokedAt?: string | null
+  lastUpdated: string
 }
 
 interface Props {
   buildId: string
   chartId: string
   assets: AssetRow[]
-  onRebuild?: (assetId: string) => void
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_LABEL: Record<string, string> = {
-  pending:  'Pending',
-  queued:   'Queued',
-  running:  'Running',
-  complete: 'Complete',
-  success:  'Complete',
-  failed:   'Failed',
-  skipped:  'Skipped',
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  pending:  'var(--text-tertiary, #5d5b54)',
-  queued:   'var(--text-tertiary, #5d5b54)',
-  running:  'var(--gold-primary, #d4a648)',
-  complete: 'var(--success, #9bd49a)',
-  success:  'var(--success, #9bd49a)',
-  failed:   'var(--danger, #e89a9a)',
-  skipped:  'var(--text-tertiary, #5d5b54)',
+function layerDot(assetId: string) {
+  const layer = ASSET_MAP[assetId]?.layer
+  const color = layer === 'L1' ? '#d4a648' : layer === 'L25' ? '#e8c878' : '#f8e6a8'
+  return (
+    <span
+      className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+      style={{ background: color }}
+      title={layer ?? '?'}
+    />
+  )
 }
 
 function StatusPill({ status }: { status: string }) {
-  const label = STATUS_LABEL[status] ?? status
-  const color = STATUS_COLOR[status] ?? 'var(--text-secondary, #888373)'
+  const map: Record<string, string> = {
+    pending:  'bg-[#1a1820] text-[#5a5550]',
+    queued:   'bg-[#1a1820] text-[#5a5550]',
+    running:  'bg-[#d4a648]/10 text-[#d4a648]',
+    success:  'bg-[#4a8c5c]/10 text-[#4a8c5c]',
+    failed:   'bg-[#9c3a2a]/10 text-[#9c3a2a]',
+    skipped:  'bg-[#5a5550]/10 text-[#5a5550]',
+  }
   return (
-    <span
-      data-testid={`status-pill-${status}`}
-      style={{
-        fontFamily: 'var(--font-sans, Inter, sans-serif)',
-        fontSize: 11,
-        color,
-        background: `${color}18`,
-        padding: '2px 8px',
-        borderRadius: 999,
-        border: `1px solid ${color}40`,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {label}
+    <span className={`rounded px-2 py-0.5 text-xs font-medium ${map[status] ?? 'bg-[#1a1820] text-[#8a8070]'}`}>
+      {status}
     </span>
   )
 }
 
-function MiniProgressBar({ progress = 0 }: { progress?: number }) {
-  const pct = `${Math.min(100, Math.max(0, progress * 100)).toFixed(0)}%`
-  return (
-    <div
-      style={{
-        width: 60,
-        height: 4,
-        background: 'var(--obsidian-border, #1f1c17)',
-        borderRadius: 999,
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        data-testid="mini-progress-fill"
-        style={{
-          width: pct,
-          height: '100%',
-          background: 'var(--gold-primary, #d4a648)',
-          borderRadius: 999,
-          transition: 'width var(--transition-bar, 300ms ease-in-out)',
-        }}
-      />
-    </div>
-  )
+async function postAction(url: string, body: Record<string, string>) {
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
 }
 
-// ── Layer section ─────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
-interface LayerSectionProps {
-  layer: LayerKey
-  assets: AssetRow[]
-  buildId: string
-  chartId: string
-  rowOffset: number
-  onRebuild?: (assetId: string) => void
-  onCascade: (assetId: string) => void
-}
-
-function LayerSection({
-  layer,
-  assets,
-  buildId,
-  chartId,
-  rowOffset,
-  onRebuild,
-  onCascade,
-}: LayerSectionProps) {
-  const layerMeta = LAYER_NAMES[layer]
-  const keys = assetsByLayer(layer)
-  const completeCount = assets.filter(
-    (a) => a.status === 'complete' || a.status === 'success',
-  ).length
-  const tag = layer.replace('_', '.')
-
-  const statusByKey = new Map<string, AssetRow>(assets.map((a) => [a.assetId, a]))
-
-  return (
-    <div data-testid={`layer-section-${layer}`}>
-      {/* Section heading */}
-      <div
-        className="flex items-baseline gap-2 px-4 py-2"
-        style={{ borderBottom: '1px solid var(--obsidian-border, #1f1c17)' }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-            fontStyle: 'italic',
-            fontSize: 15,
-            color: 'var(--gold-primary, #d4a648)',
-          }}
-        >
-          {layerMeta.sanskrit}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-sans, Inter, sans-serif)',
-            fontSize: 12,
-            color: 'var(--text-secondary, #888373)',
-          }}
-        >
-          · {layerMeta.english}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            fontSize: 10,
-            color: 'var(--text-tertiary, #5d5b54)',
-            letterSpacing: '0.08em',
-          }}
-        >
-          {tag}
-        </span>
-        <span
-          data-testid={`layer-count-${layer}`}
-          style={{
-            fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            fontSize: 10,
-            color: completeCount === keys.length
-              ? 'var(--success, #9bd49a)'
-              : 'var(--text-tertiary, #5d5b54)',
-            marginLeft: 'auto',
-          }}
-        >
-          {completeCount} of {keys.length} complete
-        </span>
-      </div>
-
-      {/* Rows */}
-      {keys.map((key, i) => {
-        const entry = ASSET_NAMES[key]
-        const row = statusByKey.get(key)
-        const rowNum = String(rowOffset + i + 1).padStart(2, '0')
-        const status = row?.status ?? 'pending'
-        const progress = row?.progress
-        const rowCount = row?.rowCount ?? 0
-
-        const isService = row?.assetKind === 'service' || row?.status === 'service_ok'
-
-        return (
-          <div
-            key={key}
-            data-testid={`asset-row-${key}`}
-            className="grid items-center px-4 py-2"
-            style={{
-              gridTemplateColumns: '32px 1fr 72px 80px 88px 80px',
-              gap: 8,
-              borderBottom: '1px solid var(--obsidian-border, #1f1c17)40',
-            }}
-          >
-            {/* Row number */}
-            <span
-              style={{
-                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                fontSize: 10,
-                color: 'var(--text-tertiary, #5d5b54)',
-              }}
-            >
-              {rowNum}
-            </span>
-
-            {/* Name + subtitle */}
-            <div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-                  fontSize: 15,
-                  color: 'var(--text-primary, #e8e6df)',
-                }}
-              >
-                {entry.sanskrit}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-sans, Inter, sans-serif)',
-                  fontSize: 10,
-                  color: 'var(--text-tertiary, #5d5b54)',
-                }}
-              >
-                {entry.subtitle}
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <MiniProgressBar progress={progress} />
-
-            {/* Row count — or service health badge for service-kind assets */}
-            {isService ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                <ServiceHealthBadge health={row?.serviceHealth ?? null} compact lastInvokedAt={row?.lastInvokedAt} />
-                <ServiceLastInvokedLabel lastInvokedAt={row?.lastInvokedAt} />
-              </div>
-            ) : (
-              <span
-                style={{
-                  fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                  fontSize: 11,
-                  color: 'var(--text-secondary, #888373)',
-                  textAlign: 'right',
-                }}
-              >
-                {rowCount > 0 ? rowCount.toLocaleString() : '—'}
-              </span>
-            )}
-
-            {/* Status pill */}
-            <StatusPill status={status} />
-
-            {/* Rebuild action */}
-            <button
-              data-testid={`rebuild-btn-${key}`}
-              onClick={() => {
-                onCascade(key)
-                onRebuild?.(key)
-              }}
-              style={{
-                fontFamily: 'var(--font-sans, Inter, sans-serif)',
-                fontSize: 11,
-                color: 'var(--gold-primary, #d4a648)',
-                background: 'none',
-                border: '1px solid var(--gold-deep, #5a3a1f)',
-                borderRadius: 4,
-                padding: '2px 8px',
-                cursor: 'pointer',
-              }}
-            >
-              Rebuild
-            </button>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
-
-const LAYERS: LayerKey[] = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5']
-
-export function AssetTable({ buildId, chartId, assets, onRebuild }: Props) {
+export function AssetTable({ buildId, chartId, assets }: Props) {
   const [cascadeAsset, setCascadeAsset] = useState<string | null>(null)
 
-  function handleCascade(assetId: string) {
-    setCascadeAsset(assetId)
+  if (assets.length === 0) {
+    return (
+      <div className="text-[#5a5550] text-sm py-8 text-center">
+        No asset data yet — start a build to populate this table.
+      </div>
+    )
   }
-
-  // Total rows per layer for row numbering offset
-  let rowOffset = 0
 
   return (
     <>
-      <div
-        data-testid="asset-table"
-        style={{
-          background: 'var(--obsidian-panel, #0a0908)',
-          border: '1px solid var(--obsidian-border, #1f1c17)',
-          borderRadius: 12,
-          overflow: 'hidden',
-        }}
-      >
-        {LAYERS.map((layer) => {
-          const layerKeys = assetsByLayer(layer)
-          const section = (
-            <LayerSection
-              key={layer}
-              layer={layer}
-              assets={assets.filter((a) =>
-                layerKeys.includes(a.assetId as AssetKey),
-              )}
-              buildId={buildId}
-              chartId={chartId}
-              rowOffset={rowOffset}
-              onRebuild={onRebuild}
-              onCascade={handleCascade}
-            />
-          )
-          rowOffset += layerKeys.length
-          return section
-        })}
-
-        {/* Footer cascade hint */}
-        <div
-          data-testid="cascade-hint"
-          style={{
-            padding: '10px 16px',
-            fontFamily: 'var(--font-sans, Inter, sans-serif)',
-            fontSize: 11,
-            color: 'var(--text-tertiary, #5d5b54)',
-            borderTop: '1px solid var(--obsidian-border, #1f1c17)',
-          }}
-        >
-          Click any row to Rebuild just that asset · the cascade preview will show
-          downstream nodes that get invalidated and recomputed
-        </div>
+      <div className="overflow-x-auto rounded-xl border border-[#1a1820]">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#1a1820] text-[#5a5550] text-xs uppercase tracking-wider">
+              <th className="px-4 py-3 text-left w-6" />
+              <th className="px-4 py-3 text-left">Asset</th>
+              <th className="px-4 py-3 text-left">Status</th>
+              <th className="px-4 py-3 text-right">Rows</th>
+              <th className="px-4 py-3 text-right">Updated</th>
+              <th className="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {assets.map((row, idx) => (
+              <tr
+                key={row.assetId}
+                className={`border-b border-[#1a1820]/50 hover:bg-[#0d0c10] transition-colors ${idx % 2 === 0 ? 'bg-transparent' : 'bg-[#0d0c10]/30'}`}
+              >
+                <td className="px-4 py-3">{layerDot(row.assetId)}</td>
+                <td className="px-4 py-3 text-[#c8bfb0]">
+                  {getAssetDisplayName(row.assetId)}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusPill status={row.status} />
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-[#8a8070]">
+                  {row.rowCount.toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-right text-[#5a5550] text-xs">
+                  {row.lastUpdated ? new Date(row.lastUpdated).toLocaleTimeString() : '—'}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    {row.status !== 'running' && (
+                      <button
+                        onClick={() => setCascadeAsset(row.assetId)}
+                        className="text-xs text-[#d4a648] hover:text-[#e8c878] transition-colors"
+                      >
+                        Rebuild
+                      </button>
+                    )}
+                    {row.status === 'running' && (
+                      <button
+                        onClick={() => postAction('/api/build/asset/stop', { build_id: buildId, asset_id: row.assetId })}
+                        className="text-xs text-[#9c3a2a] hover:text-[#c8502a] transition-colors"
+                      >
+                        Stop
+                      </button>
+                    )}
+                    {(row.status === 'pending' || row.status === 'queued') && (
+                      <button
+                        onClick={() => postAction('/api/build/asset/skip', { build_id: buildId, asset_id: row.assetId })}
+                        className="text-xs text-[#5a5550] hover:text-[#8a8070] transition-colors"
+                      >
+                        Skip
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {cascadeAsset && (
         <CascadePreviewModal
-          isOpen={true}
+          open={true}
           onClose={() => setCascadeAsset(null)}
-          rootAssetId={cascadeAsset}
-          plan={[]}
+          assetId={cascadeAsset}
+          buildId={buildId}
+          chartId={chartId}
           onConfirm={() => setCascadeAsset(null)}
         />
       )}
