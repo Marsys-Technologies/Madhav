@@ -193,15 +193,15 @@ jobs:
           #   gcloud secrets versions list <name> --project=madhav-astrology
           # and pin to the explicit version number here.
           secrets: |
-            FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:latest
-            DB_PASSWORD=amjis-db-password:latest
-            OPENAI_API_KEY=openai-api-key:latest
-            ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
-            GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:latest
-            DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:latest
-            NVIDIA_NIM_API_KEY=NVIDIA_NIM_API_KEY:latest
-            PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:latest
-            SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:latest
+            FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
+            DB_PASSWORD=amjis-db-password:2
+            OPENAI_API_KEY=openai-api-key:2
+            ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:2
+            GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
+            DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:1
+            NVIDIA_NIM_API_KEY=NVIDIA_NIM_API_KEY:1
+            PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
+            SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
 
       - name: Show deployment URL
         env:
@@ -251,9 +251,9 @@ jobs:
           flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=1 --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
           # ── /4.edge_and_infra_hygiene ──
           secrets: |
-            PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:latest
-            ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
-            GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:latest
+            PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
+            ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:2
+            GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
 
   # ── 4.edge_and_infra_hygiene ──
   # MCP deploy moved off the legacy Cloud Build trigger into GH Actions WIF
