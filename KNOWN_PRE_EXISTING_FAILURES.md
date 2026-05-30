@@ -43,6 +43,8 @@ Test suite: platform vitest + platform-mcp vitest
 
 ## v1.5 Detail (archived — all resolved)
 
+**ARCHIVED — all 35 failures resolved. "Fix path:" labels below have been converted to "Resolved by:" for audit trail. No action is pending in this section.**
+
 ### Platform package — 13 failures across 8 files
 
 ### Group 1 — UDA-1 RETRIEVAL_CAPABILITY_SPEC gap — 2 failures, 1 file
@@ -57,7 +59,7 @@ Specific failing test names:
 - `RETRIEVAL_CAPABILITY_SPEC × RETRIEVAL_TOOLS coverage > every runtime tool has a planner spec entry`
 - `RETRIEVAL_CAPABILITY_SPEC × RETRIEVAL_TOOLS coverage > spec entry count matches runtime tool count exactly`
 
-Fix path: Add 15 UDA-1 tools to `RETRIEVAL_CAPABILITY_SPEC` in `src/lib/router/retrieval_capability_spec.ts`.
+Resolved by: commit 49a83571 (2026-05-30) — 15 UDA-1 tools added to RETRIEVAL_CAPABILITY_SPEC.
 
 ---
 
@@ -73,6 +75,8 @@ Tooling-remediation (PR #159, `bace7b45`) changed how tools return ToolBundle sh
 Specific failing test names:
 - `chart_facts_query tool > returns empty results for impossible filter without error`
 - `query_dasha_periods bundle shape > returns a correctly shaped ToolBundle`
+
+Resolved by: commit 6fffa50a (2026-05-26) — ToolBundle shape assertions updated for both test files.
 
 ---
 
@@ -91,6 +95,8 @@ Specific failing test names:
 - `deriveManifest > MSR entry has expose_to_chat true`
 - `frontmatter discipline (Stream E verification) > MSR_v3_0.md has required frontmatter fields`
 
+Resolved by: commits 49a83571 + f7d0eeda (Group 3a — msr_parser count 514→573 + relative path), 49a83571 (Group 3b — MSR_v3_0→MSR_v5_0 path), f7d0eeda + ef2e4c05 (Group 3c — frontmatter fields + REPO_ROOT depth). All 2026-05-30.
+
 ---
 
 ### Group 4 — RCS trace-audit positional param schema — 5 failures, 1 file
@@ -108,6 +114,8 @@ Specific failing test names:
 - `trace-audit: writeTraceStep() persists required tool_use fields > TA-1.6: data_summary.tool_name is persisted in JSON payload (param $12)`
 - `trace-audit: writeTraceStep() persists required tool_use fields > TA-1.7: all five required tool_use fields present in a single call`
 
+Resolved by: commit 49a83571 (2026-05-30) — positional param indices corrected in trace-audit test.
+
 ---
 
 ### Group 5 — ICR DIS.013 resolution (PROPOSED→RESOLVED move) — 1 failure, 1 file
@@ -121,7 +129,7 @@ DIS.013 (Muntha Libra 7H conflict) was resolved at ICR-S3/S4 and the proposed-pa
 Specific failing test name:
 - `munta_propose_patch_emitted gate (ICR-S4) > DIS.013_MSR.377_proposed.yaml exists in PROPOSED/`
 
-Fix path: Update test to check `RESOLVED/DIS.013_MSR.377_resolved.yaml` or delete stale gate.
+Resolved by: commit 49a83571 (2026-05-30) — ICR gate updated to check RESOLVED/ path.
 
 ---
 
@@ -169,7 +177,7 @@ Specific failing test names:
 - `MCPT v3.2 Phase 3 — Tool description lint gate > CATALOG covers all 22 tools`
 - `MCPT v3.2 Phase 3 — Tool description lint gate > every description starts with a disambiguator sentence`
 
-Fix path: Update test to expect 40 tools and regenerate description lint assertions.
+Resolved by: Multi-Ayanamsha arc (2026-05-30) — tool catalog count updated to 40, description lint assertions regenerated.
 
 ---
 
@@ -188,7 +196,7 @@ Specific failing test names:
 - `MCPT v3.2 P9a — Cross-Scenario Equivalence: MCP path vs direct path > chart_summary(D1 only) and query_chart_facts per-category return same claims`
 - `MCPT v3.2 P9a — Cross-Scenario Equivalence: MCP path vs direct path > chart_summary with D1+D9 collects all divisional rows without duplication`
 
-Fix path: Add `skipIf(!process.env.SUPABASE_URL)` guard to both test files.
+Resolved by: tests confirmed fixture-backed (offline simulation mode); no guard needed. Multi-Ayanamsha arc (2026-05-30).
 
 ---
 
@@ -218,7 +226,7 @@ All 6 SRP fixes are present in the codebase and verified correct. The 35 failure
 | FIX-5: significance field name + type corrected | `platform-mcp/src/tools/lel_query.ts` | ✓ GREEN |
 | FIX-6: lel_query source_version annotation → v1.7 | `platform-mcp/src/tools/lel_query.ts` | ✓ GREEN |
 
-SRP test PRs open (test-suite branches, non-blocking for production):
+SRP test PRs pending merge review as of v1.5 (2026-05-26); resolution status not confirmed in governance docs — check git log or GitHub for current state (test-suite branches, non-blocking for production):
 - PR #166 — T-1 portal unit tests (24 tests)
 - PR #167 — T-2 MCP unit tests (27 tests)
 - PR #168 — T-3 integration tests
@@ -232,7 +240,7 @@ SRP test PRs open (test-suite branches, non-blocking for production):
 - **v1.1** (2026-05-20, post-R10 merge): 16 failures / 9 files
 - **v1.2** (2026-05-20, closeout-residuals): 0 failures — all resolved
 - **v1.3** (2026-05-23, R11.G-S4 refresh): 18 failures / 10 files — all pre-existing, 0 R11.G regressions
-- **v1.4** (2026-05-24): 0 failures — all 18 resolved (correct at authoring time; 35 failures subsequently introduced by UDA-1 + tooling-remediation upstream PRs)
+- **v1.4** (2026-05-24): 0 failures at authoring time — 35 new failures subsequently introduced by UDA-1 PR #161 + tooling-remediation PR #159; corrected by v1.5
 - **v1.5** (2026-05-26, SRP-DEPLOY): 35 failures — 13 platform + 22 platform-mcp; all pre-existing; 0 SRP regressions
 - **v1.6** (2026-05-31): 0 failures — all 35 resolved by commits on 2026-05-26 and 2026-05-30; see Resolution Summary table above.
 
