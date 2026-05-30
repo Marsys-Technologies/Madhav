@@ -11,9 +11,12 @@
 
 import 'server-only'
 
-// String-variable indirection — keeps the GCP SDK optional at build/test time.
-async function loadGcpModule(name: string): Promise<unknown> {
-  return import(/* @vite-ignore */ name)
+// Literal-string import so webpack can resolve @google-cloud/run as an
+// external package (listed in serverExternalPackages in next.config.ts).
+// The _name parameter is kept for call-site compatibility.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function loadGcpModule(_name: string): Promise<unknown> {
+  return import('@google-cloud/run')
 }
 
 export interface JobInvocationArgs {
