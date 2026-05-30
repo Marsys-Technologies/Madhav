@@ -3,9 +3,9 @@ artifact: PROJECT_ARCHITECTURE_v2_2
 document: PROJECT MASTER ARCHITECTURE BLUEPRINT
 project_name: Abhisek Mohanty — Jyotish Intelligence System (MARSYS-JIS)
 subject: Abhisek Mohanty (b. 1984-02-05, 10:43 IST, Bhubaneswar)
-version: 2.2
-supersedes: 2.1 (2026-04-17) and 2.0 (2026-04-17 mid) and 1.0 (archived)
-status: APPROVED BLUEPRINT — governance-rebuild amendment absorbed
+version: 2.3
+supersedes: 2.2 (2026-04-24) and 2.1 (2026-04-17) and 2.0 (2026-04-17 mid) and 1.0 (archived)
+status: APPROVED BLUEPRINT — Multi-Ayanamsha Build arc amendment absorbed
 author_of_blueprint: Claude (Anthropic)
 blueprint_date: 2026-04-24
 produced_during: STEP_5A_PROJECT_ARCHITECTURE_REFRESH (Step 0 → Step 15 governance rebuild)
@@ -991,12 +991,12 @@ Readers of v2.1 looking for "the execution sequence" must re-orient: the sequenc
 
 ---
 
-## §K — BLUEPRINT META (v2.2)
+## §K — BLUEPRINT META (v2.3)
 
 ```yaml
-blueprint_id: PROJECT_ARCHITECTURE_v2_2
-status: APPROVED BLUEPRINT — governance-rebuild amendment absorbed
-supersedes: PROJECT_ARCHITECTURE_v2_1 (2026-04-17) and v2_0 (2026-04-17 mid) and v1_0 (archived)
+blueprint_id: PROJECT_ARCHITECTURE_v2_3
+status: APPROVED BLUEPRINT — Multi-Ayanamsha Build arc amendment absorbed
+supersedes: PROJECT_ARCHITECTURE_v2_2 (2026-04-24) and v2_1 (2026-04-17) and v2_0 (2026-04-17 mid) and v1_0 (archived)
 total_sections: 12 major (§A–§L); §L is new in v2.2
 total_layers: 5 (L1, L2, L2.5, L3, L4) — pyramid preserved from v2.0
 cross_cutting_substrates: 2 (Learning Layer per §D.10 and MP v2.0 §Learning Layer; System Integrity Substrate per §L and MP v2.0 §System Integrity Substrate)
@@ -1184,9 +1184,19 @@ v2.2 §L is rewritten to a short steady-state pointer after Step 15 closes and `
 - Authority: Phase 14F brief at `EXEC_BRIEF_PHASE_14F_L2_ARCHIVE_AND_GOVERNANCE_REFRESH_v1_0.md`.
 - Commit: `0812ecd` (14F atomic commit) + this changelog amendment commit.
 
+### 2026-05-30 — v2.3 amendment (Multi-Ayanamsha Build arc)
+
+- Added Build Orchestrator surface: per-chart deterministic 22-asset pipeline (A1-A22) × 5 ayanamshas
+- Added META synthesis layer: 6 synthesis tables (α-ζ) above L2.5 (lattice, pattern catalog, divergence ledger, negative space, derivation trail, temporal unified view)
+- Added UTEE: Unified Temporal Event Envelope across all 7 temporal tables (l1_time_synchronicity, l1_phase_locked_anchors, l1_sarvatobhadra_*, l1_vedha_extended, l1_bhrigu_bindu_transits, l1_graha_aspects_lifetime, l1_varsha_digest)
+- Added Cross-Asset Bridge Matrix: l25_vedha_anchor_interactions (BRIDGE-S3)
+- Stream D deliverables: INF7-12 (consume hybrid wiring, linter, RAG embedder, MCP resources, tracker page), RIR (retrieval envelope + tool registration), UTEE-S4 (6 temporal query tools), BRIDGE-S3 (1 cross-asset query tool), META-α–ε (13 query tools), ACC gates (15/15 GREEN), sealing artifact, operator sign-off packet
+- CAPABILITY_MANIFEST bumped to v1.5 (25 new entries: 17 retrieval tools + 8 asset migrations)
+- Migrations shipped: 139-153 (15 migrations across all 4 streams)
+
 ---
 
-**END OF MASTER ARCHITECTURE BLUEPRINT v2.2**
+**END OF MASTER ARCHITECTURE BLUEPRINT v2.3**
 
 *This document governs all subsequent work on the Abhisek Mohanty Jyotish Intelligence System.*
 *Load this file FIRST in any future Claude or Gemini session (alongside `MACRO_PLAN_v2_0.md` for strategic-arc orientation and the STEP_LEDGER while the rebuild remains open).*
