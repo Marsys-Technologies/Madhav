@@ -504,6 +504,11 @@ async def dispatch_asset_with_retry(
                     "Retrying in %ds...",
                     attempt + 1, MAX_RETRIES, asset_id, last_error, delay,
                 )
+                # Rollback the failed transaction so the connection is clean for retry
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 # Persist retry_count + interim error to build_steps (non-fatal)
                 try:
                     with conn.cursor() as cur:
@@ -592,6 +597,11 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
 
         # Emit step_started event + mark all ayanamsha-steps for this asset as running
         emit_step_event(conn, build_id, asset_id, "all", "compute", "started")
+        # emit_step_event is non-fatal; ensure clean transaction state before critical writes
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         now = datetime.now(timezone.utc)
         with conn.cursor() as cur:
             cur.execute(
@@ -661,6 +671,11 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                         "run_build_asset_failed",
                         extra={"build_id": build_id, "asset_id": asset_id, "error": retry_err},
                     )
+                    # Rollback any aborted transaction before status writes
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
                     with conn.cursor() as cur:
                         cur.execute(
                             """
@@ -682,6 +697,11 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                 "run_build_asset_failed",
                 extra={"build_id": build_id, "asset_id": asset_id, "error": err_str},
             )
+            # Rollback any aborted transaction before status writes
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             # Mark step failed
             with conn.cursor() as cur:
                 cur.execute(
