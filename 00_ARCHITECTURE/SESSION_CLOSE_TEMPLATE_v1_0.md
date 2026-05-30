@@ -196,15 +196,19 @@ session_close:
   native_directive_per_step_verification:
     # For every ND.N whose matrix names this step, confirm the obligation
     # was addressed with evidence.
+    # ND.1 RETIRED — this example block is historical only; no ND.1 obligation exists
+    # ND.1 Mirror Discipline: RETIRED 2026-05-27 per native directive (Gemini collaboration inactive)
+    # For post-2026-05-27 sessions, native_directive_per_step_verification should be []
     - directive_id: ND.1
       step: STEP_7
       obligation_addressed: true
       evidence: >
-        CANONICAL_ARTIFACTS §2 carries MP.1–MP.8 with per-pair mirror_obligations +
-        enforcement rules. mirror_enforcer.py implemented and exits 0 against the full
-        inventory. `.geminirules` and `.gemini/project_state.md` re-authored to adapted
-        parity; each carries an Asymmetries section. ND.1 global status flipped from
-        `open` to `addressed`.
+        HISTORICAL EXAMPLE ONLY — ND.1 RETIRED 2026-05-27. No current sessions carry
+        ND.1 obligations. CANONICAL_ARTIFACTS §2 carries MP.1–MP.8 with per-pair
+        mirror_obligations + enforcement rules. mirror_enforcer.py implemented and
+        exits 0 against the full inventory. `.geminirules` and `.gemini/project_state.md`
+        re-authored to adapted parity; each carries an Asymmetries section. ND.1 global
+        status flipped from `open` to `addressed`.
 
   # ------------------------------------------------------------------
   # Build-state serialization (ONGOING_HYGIENE_POLICIES §O)
@@ -452,8 +456,9 @@ session_close:
   session_log_appended: true
   disagreement_register_entries_opened: []
   disagreement_register_entries_resolved: []
+  # ND.1 RETIRED 2026-05-27 — example below is historical only; post-retirement sessions use []
   native_directive_per_step_verification:
-    - directive_id: ND.1
+    - directive_id: ND.1  # HISTORICAL EXAMPLE — ND.1 RETIRED 2026-05-27; new sessions: []
       step: STEP_7
       obligation_addressed: true
       evidence: "CANONICAL_ARTIFACTS §2 MP.1–MP.8 inventory; mirror_enforcer.py exit 0; Asymmetries sections in .geminirules and project_state.md; ND.1 status flipped open → addressed"

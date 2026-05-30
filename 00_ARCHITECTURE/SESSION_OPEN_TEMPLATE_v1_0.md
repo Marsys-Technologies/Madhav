@@ -1,10 +1,10 @@
 ---
 artifact: SESSION_OPEN_TEMPLATE_v1_0.md
-version: 1.0
+version: 1.1
 status: CURRENT
 produced_during: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24)
 implements: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §F
-authoritative_side: Claude (Claude-only template artifact; no Gemini-side counterpart required — the instantiated handshake produced by each session IS the mirror surface, via SESSION_LOG + STEP_LEDGER + project_state.md pairings per MP.2)
+authoritative_side: Claude (Claude-only template artifact; no Gemini-side counterpart required — the instantiated handshake produced by each session IS the mirror surface, via SESSION_LOG + CURRENT_STATE_v1_0.md pairings per MP.2. STEP_LEDGER retired 2026-04-24; FILE_REGISTRY superseded by CAPABILITY_MANIFEST.json 2026-04-27; ND.1/MP.1 Mirror Discipline retired 2026-05-27)
 mirror_obligations: >
   None for this template file itself. Per-session instantiations are appended to SESSION_LOG
   (Claude-side) as the opening block of the session's entry; the Gemini-side mirror is the
@@ -23,6 +23,9 @@ changelog:
   - v1.0 (2026-04-24, Step 7): Initial template. Produced per GOVERNANCE_INTEGRITY_PROTOCOL §F.
     Carries the mandatory-field schema, enforcement rules, two worked examples (rebuild-era
     and post-rebuild-era), and the CLI invocation for validation.
+  - v1.1 (2026-05-31, DOC_CLEANUP): Retire STEP_LEDGER from mandatory reads (GOVERNANCE_CLOSED
+    2026-04-24); replace FILE_REGISTRY with CAPABILITY_MANIFEST.json (superseded 2026-04-27);
+    mark ND.1 Mirror Discipline RETIRED in obligation sections (2026-05-27).
 ---
 
 # SESSION_OPEN_TEMPLATE v1.0
@@ -90,7 +93,8 @@ session_open:
     - file: 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md
       fingerprint_sha256: <hex>
       read_at: 2026-04-24T00:00:00+05:30
-    - file: 00_ARCHITECTURE/STEP_LEDGER_v1_0.md
+    # STEP_LEDGER retired (GOVERNANCE_CLOSED 2026-04-24) — replaced by CURRENT_STATE_v1_0.md
+    - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md  # replaces STEP_LEDGER post-rebuild
       fingerprint_sha256: <hex>
       read_at: 2026-04-24T00:00:00+05:30
     - file: 00_ARCHITECTURE/STEP_BRIEFS/STEP_07_GOVERNANCE_INTEGRITY_IMPLEMENTATION_v1_0.md
@@ -132,9 +136,9 @@ session_open:
       - platform/scripts/governance/*.py
       - .geminirules
       - .gemini/project_state.md
-      - 00_ARCHITECTURE/FILE_REGISTRY_v1_3.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json  # Supersedes FILE_REGISTRY (2026-04-27)
       - 00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md
-      - 00_ARCHITECTURE/STEP_LEDGER_v1_0.md
+      # STEP_LEDGER retired (GOVERNANCE_CLOSED 2026-04-24) — do not list in may_touch
       - 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
       - 00_ARCHITECTURE/SESSION_LOG.md
       - CLAUDE.md    # single-line addition only per protocol §M.1 P5
@@ -178,9 +182,12 @@ session_open:
   native_directive_obligations:
     # For every `open` or `partially_addressed` ND.N whose consumption matrix
     # names the current step, enumerate the obligation.
-    - directive_id: ND.1
-      obligation_summary: "Implement end-to-end mirror discipline per §J + §K + §E of the protocol; flip global ND.1 status at Step 7 close."
-      acknowledged: true
+    # ND.1 Mirror Discipline: RETIRED 2026-05-27 per native directive (Gemini collaboration inactive)
+    # No open directives as of 2026-05-27. native_directive_obligations is empty.
+    # Example entry (historical — DO NOT USE for new sessions):
+    # - directive_id: ND.1
+    #   obligation_summary: "..."
+    #   acknowledged: true
 
   # ------------------------------------------------------------------
   # Red-team cadence
@@ -232,8 +239,9 @@ session_open:
     - file: CLAUDE.md
       fingerprint_sha256: bdfe753ebabc2e0748c717482feed5dcd17029fff0918e53a319fce2902fdeb6
       read_at: 2026-04-24T00:30:00+05:30
-    - file: 00_ARCHITECTURE/STEP_LEDGER_v1_0.md
-      fingerprint_sha256: 68958f182071a0d78908fbb9487fc52a516763e5f76b19d5aced73b542159ef5
+    # STEP_LEDGER retired (GOVERNANCE_CLOSED 2026-04-24) — replaced by CURRENT_STATE_v1_0.md
+    - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      fingerprint_sha256: "<read-at-session-open>"
       read_at: 2026-04-24T00:30:00+05:30
     - file: 00_ARCHITECTURE/STEP_BRIEFS/STEP_07_GOVERNANCE_INTEGRITY_IMPLEMENTATION_v1_0.md
       fingerprint_sha256: "<read-at-session-open>"
@@ -273,10 +281,9 @@ session_open:
       - platform/scripts/governance/schemas/*.yaml
       - .geminirules
       - .gemini/project_state.md
-      - 00_ARCHITECTURE/FILE_REGISTRY_v1_3.md
-      - 00_ARCHITECTURE/FILE_REGISTRY_v1_2.md    # SUPERSEDED banner
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json  # Supersedes FILE_REGISTRY (2026-04-27)
       - 00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md
-      - 00_ARCHITECTURE/STEP_LEDGER_v1_0.md
+      # STEP_LEDGER retired (GOVERNANCE_CLOSED 2026-04-24)
       - 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md
       - 00_ARCHITECTURE/SESSION_LOG.md
       - CLAUDE.md                                # single-line addition only
@@ -346,9 +353,11 @@ session_open:
       days_since_verification: 0
       stale: false
   native_directive_obligations:
-    - directive_id: ND.1
-      obligation_summary: "Implement mirror_enforcer.py over full MP.1–MP.8 inventory; populate mirror_obligations column in CANONICAL_ARTIFACTS; re-author .geminirules and project_state.md to adapted parity with Asymmetries sections; at session close, flip ND.1 global status from `open` to `addressed`."
-      acknowledged: true
+    # ND.1 RETIRED — this example block is historical only; no ND.1 obligation exists
+    # ND.1 Mirror Discipline: RETIRED 2026-05-27 per native directive (Gemini collaboration inactive)
+    # - directive_id: ND.1  # HISTORICAL EXAMPLE ONLY — DO NOT USE
+    #   obligation_summary: "Implement mirror_enforcer.py..."
+    #   acknowledged: true
   red_team_due: false
   notes: "Step 7 is the first session that produces the Integrity bundle; CANONICAL_ARTIFACTS self-bootstrap noted above."
 ```
