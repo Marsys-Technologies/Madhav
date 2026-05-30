@@ -378,9 +378,17 @@ export function extractClaims(toolOutput: unknown): ClaimSet {
 
   // Shape 1: rows_by_category (batched response from chart_summary or batched query_chart_facts)
   if (output['rows_by_category'] && typeof output['rows_by_category'] === 'object') {
-    const byCategory = output['rows_by_category'] as Record<string, unknown[]>
-    for (const [category, rows] of Object.entries(byCategory)) {
-      if (!Array.isArray(rows)) continue
+    const byCategory = output['rows_by_category'] as Record<string, unknown>
+    for (const [category, rawRows] of Object.entries(byCategory)) {
+      // Handle both plain array and annotated { rows: [...], populated_count: N } format
+      let rows: unknown[]
+      if (Array.isArray(rawRows)) {
+        rows = rawRows
+      } else if (rawRows && typeof rawRows === 'object' && Array.isArray((rawRows as Record<string, unknown>)['rows'])) {
+        rows = (rawRows as Record<string, unknown>)['rows'] as unknown[]
+      } else {
+        continue
+      }
       for (const row of rows) {
         if (!row || typeof row !== 'object') continue
         const extracted = extractRowClaims(row as ChartFactRow, category)

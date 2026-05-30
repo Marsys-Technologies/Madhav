@@ -69,8 +69,8 @@ const QuerySignalStateInputSchema = z.object({
     'Restrict results to a specific dasha computation system (e.g. "vimshottari"). ' +
     'When omitted, all dasha systems are returned.'
   ),
-  limit: z.number().int().min(1).max(500).optional().default(50).describe(
-    'Max signal-state rows to return (default 50, max 500).'
+  limit: z.number().int().min(1).max(200).optional().default(50).describe(
+    'Max signal-state rows to return (default 50, max 200).'
   ),
 })
 

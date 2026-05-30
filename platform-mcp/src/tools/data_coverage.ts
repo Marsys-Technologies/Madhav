@@ -14,7 +14,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
-import { okResult } from './_envelope.js'
+import { okResult, errorResult } from './_envelope.js'
 import { buildToolDescription } from './description_builder.js'
 
 export const DATA_COVERAGE_DESCRIPTION = buildToolDescription({
@@ -146,11 +146,14 @@ export function registerDataCoverage(
 
         return okResult({ ...data, reconciliation })
       } catch (err) {
-        // Network failure → degrade to reconciliation-only.
-        return okResult({
-          ok: true,
-          rows_error: err instanceof Error ? err.message : String(err),
-          reconciliation,
+        return errorResult({
+          ok: false,
+          trace_id: '',
+          error: {
+            class: 'internal',
+            message: err instanceof Error ? err.message : String(err),
+            remediation: 'Check platform connectivity',
+          },
         })
       }
     }

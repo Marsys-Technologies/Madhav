@@ -192,7 +192,9 @@ export function registerChartSummaryTool(
               ? (JSON.parse(rawContent) as Record<string, unknown>)
               : (rawContent as Record<string, unknown> ?? {})
 
-          const rowsByCat = parsed['rows_by_category'] as Record<string, unknown[]> | undefined
+          // rows_by_category from ToolBundle content OR direct in result (test/simplified responses)
+          const rowsByCat = (parsed['rows_by_category'] as Record<string, unknown[]> | undefined)
+            ?? (toolBundle['rows_by_category'] as Record<string, unknown[]> | undefined)
           if (rowsByCat) {
             for (const [cat, rows] of Object.entries(rowsByCat)) {
               if (!rowsByCategory[cat]) rowsByCategory[cat] = []
@@ -200,7 +202,8 @@ export function registerChartSummaryTool(
             }
           }
           // Also handle flat rows array (single-category fallback when batched=false)
-          const flatRows = parsed['rows'] as unknown[] | undefined
+          const flatRows = (parsed['rows'] as unknown[] | undefined)
+            ?? (toolBundle['rows'] as unknown[] | undefined)
           if (flatRows && flatRows.length > 0) {
             for (const row of flatRows) {
               const r = row as Record<string, unknown>
@@ -245,16 +248,19 @@ export function registerChartSummaryTool(
                 ? (JSON.parse(divRawContent) as Record<string, unknown>)
                 : (divRawContent as Record<string, unknown> ?? {})
 
-            const rowsByCat = divParsed['rows_by_category'] as Record<string, unknown[]> | undefined
-            if (rowsByCat) {
-              for (const [cat, rows] of Object.entries(rowsByCat)) {
+            // rows_by_category from ToolBundle content OR direct in result
+            const divRowsByCat = (divParsed['rows_by_category'] as Record<string, unknown[]> | undefined)
+              ?? (divBundle['rows_by_category'] as Record<string, unknown[]> | undefined)
+            if (divRowsByCat) {
+              for (const [cat, rows] of Object.entries(divRowsByCat)) {
                 if (!rowsByCategory[cat]) rowsByCategory[cat] = []
                 rowsByCategory[cat].push(...rows)
               }
             }
-            const flatRows = divParsed['rows'] as unknown[] | undefined
-            if (flatRows && flatRows.length > 0) {
-              for (const row of flatRows) {
+            const divFlatRows = (divParsed['rows'] as unknown[] | undefined)
+              ?? (divBundle['rows'] as unknown[] | undefined)
+            if (divFlatRows && divFlatRows.length > 0) {
+              for (const row of divFlatRows) {
                 const r = row as Record<string, unknown>
                 const cat = (r['category'] as string) ?? 'unknown'
                 if (!rowsByCategory[cat]) rowsByCategory[cat] = []

@@ -10,7 +10,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
-import { okResult } from './_envelope.js'
+import { okResult, errorResult } from './_envelope.js'
 import { buildToolDescription } from './description_builder.js'
 
 export const TOOL_HEALTH_DESCRIPTION = buildToolDescription({
@@ -91,13 +91,15 @@ export function registerToolHealth(
           reconciliation_gate: RECONCILIATION_GATE,
         } as unknown as { ok: boolean; [key: string]: unknown })
       } catch (err) {
-        // Network failure → still surface the local reconciliation gate.
-        return okResult({
-          ok: true,
-          tools_error: err instanceof Error ? err.message : String(err),
-          lookback_hours: input.lookback_hours,
-          reconciliation_gate: RECONCILIATION_GATE,
-        } as unknown as { ok: boolean; [key: string]: unknown })
+        return errorResult({
+          ok: false,
+          trace_id: '',
+          error: {
+            class: 'internal',
+            message: err instanceof Error ? err.message : String(err),
+            remediation: 'Check platform connectivity',
+          },
+        })
       }
     }
   )

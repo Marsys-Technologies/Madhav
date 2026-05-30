@@ -68,11 +68,15 @@ const QueryRemedialMantrasInputSchema = z.object({
     'Filter by practice type. One of: gemstone (ratna), mantra (japa), yantra, devata (worship), ' +
     'dinacharya (daily routine), propit (propitiation/daan/havan).'
   ),
-  keyword: z.string().optional().describe(
-    'Free-text keyword search within the codex (e.g., "Saturday fast", "blue sapphire", "Hanuman").'
+  house: z.number().int().min(1).max(12).optional().describe(
+    'Filter remedies related to a specific house (1–12). Composes into keyword search.'
+  ),
+  condition: z.string().optional().describe(
+    'Astrological condition to search for (e.g., "debilitated Mars", "Rahu affliction"). ' +
+    'Composes with house into keyword search.'
   ),
   limit: z.number().int().min(1).max(50).optional().describe(
-    'Maximum number of remedial entries to return. Default: 10. Max: 50.'
+    'Maximum number of remedial entries to return. Default: 8. Max: 50.'
   ),
 })
 
@@ -88,14 +92,23 @@ export function registerQueryRemedialMantras(
     QueryRemedialMantrasInputSchema.shape,
     async (args: QueryRemedialMantrasInput) => {
       const principal = getPrincipal()
+
+      // Compose keyword from house and/or condition
+      const keywordParts: string[] = []
+      if (args.house !== undefined) keywordParts.push(`house ${args.house}`)
+      if (args.condition) keywordParts.push(args.condition)
+      const keyword = keywordParts.length > 0 ? keywordParts.join(' ') : undefined
+
+      const params: Record<string, unknown> = {
+        limit: args.limit ?? 8,
+      }
+      if (args.planet !== undefined) params['planet'] = args.planet
+      if (args.practice_type !== undefined) params['practice_type'] = args.practice_type
+      if (keyword !== undefined) params['keyword'] = keyword
+
       const { status, envelope } = await callPlatformPrimitive(
-        'query_remedial_mantras',
-        {
-          planet: args.planet,
-          practice_type: args.practice_type,
-          keyword: args.keyword,
-          limit: args.limit,
-        },
+        'remedial_codex_query',
+        params,
         principal
       )
       if (!envelope.ok || status >= 400) {

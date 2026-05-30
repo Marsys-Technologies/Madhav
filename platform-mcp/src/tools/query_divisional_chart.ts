@@ -36,6 +36,8 @@ import { okResult, errorResult } from './_envelope.js'
 import type { Principal } from '../types.js'
 import { buildToolDescription } from './description_builder.js'
 
+const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+
 const VARGA_CODES = [
   'D1', 'D2', 'D3', 'D4', 'D7', 'D9', 'D10', 'D12',
   'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60', 'BIRTH',
@@ -56,20 +58,20 @@ export const QUERY_DIVISIONAL_CHART_DESCRIPTION = buildToolDescription({
 })
 
 const QueryDivisionalChartInputSchema = z.object({
-  varga: z.enum(VARGA_CODES).describe(
+  division: z.enum(VARGA_CODES).describe(
     'The divisional chart to retrieve. One of: D1 (Rashi), D2 (Hora), D3 (Drekkana), ' +
     'D4 (Chaturthamsha), D7 (Saptamsha), D9 (Navamsha), D10 (Dasamsha), D12 (Dwadashamsha), ' +
     'D16 (Shodashamsha), D20 (Vimsamsha), D24 (Chaturvimsamsha), D27 (Nakshatramsha), ' +
     'D30 (Trimsamsha), D40 (Khavedamsha), D45 (Akshavedamsha), D60 (Shashtiamsha), BIRTH.'
+  ),
+  chart_id: z.string().uuid().optional().describe(
+    'Chart UUID. Defaults to the native\'s chart (362f9f17-95a5-490b-a5a7-027d3e0efda0).'
   ),
   planet: z.string().optional().describe(
     'Filter to a specific planet. One of: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu, Ascendant.'
   ),
   house: z.number().int().min(1).max(12).optional().describe(
     'Filter to planets in a specific house (1–12) in the requested Varga.'
-  ),
-  category: z.string().optional().describe(
-    'Filter by category of data to return (e.g., "dignity", "aspects", "full"). Default returns all.'
   ),
 })
 
@@ -85,14 +87,16 @@ export function registerQueryDivisionalChart(
     QueryDivisionalChartInputSchema.shape,
     async (args: QueryDivisionalChartInput) => {
       const principal = getPrincipal()
+      const params: Record<string, unknown> = {
+        varga: args.division,
+        chart_id: args.chart_id ?? NATIVE_CHART_ID,
+      }
+      if (args.planet !== undefined) params['planet'] = args.planet
+      if (args.house !== undefined) params['house'] = args.house
+
       const { status, envelope } = await callPlatformPrimitive(
-        'query_divisional_chart',
-        {
-          varga: args.varga,
-          planet: args.planet,
-          house: args.house,
-          category: args.category,
-        },
+        'divisional_query',
+        params,
         principal
       )
       if (!envelope.ok || status >= 400) {
