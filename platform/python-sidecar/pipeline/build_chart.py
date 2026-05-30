@@ -595,6 +595,44 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
     emit_event(conn, build_id, "build_started")
     log.info("run_build_start", extra={"build_id": build_id, "ayanamshas": ayanamshas})
 
+    # 2b. Seed build_manifests row (required FK for chart_facts and other writer tables).
+    # /api/build/start does NOT create this row; the pipeline must own it.
+    # Non-fatal: log and continue if it fails (row may already exist from a prior partial run).
+    _pipeline_image = os.environ.get("PIPELINE_IMAGE_URI", "unknown")
+    _gcs_bucket = os.environ.get("GCS_ARTIFACTS_BUCKET", "madhav-marsys-build-artifacts")
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO build_manifests
+                    (build_id, triggered_by, registry_fingerprint, pipeline_image_uri,
+                     embedding_model, embedding_dim, chunk_count, embedding_count,
+                     status, manifest_uri)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (build_id) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    pipeline_image_uri = EXCLUDED.pipeline_image_uri
+                """,
+                (
+                    build_id,
+                    "pipeline/build_chart",
+                    _pipeline_image,
+                    _pipeline_image,
+                    "n/a",
+                    0, 0, 0,
+                    "staging",
+                    f"gs://{_gcs_bucket}/builds/{build_id}/manifest.json",
+                ),
+            )
+        conn.commit()
+        log.info("build_manifests_seeded", extra={"build_id": build_id})
+    except Exception as _bm_exc:
+        log.warning("build_manifests seed failed (non-fatal): %s", _bm_exc)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
     # 3. DAG loop
     chart_outputs: dict = {}  # populated by A1_engine; passed to retry wrapper for context
     for asset_id in DAG_ORDER:
@@ -771,6 +809,23 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
     total_rows = 0  # rows_written is scoped to the loop; use 0 as aggregate sentinel here
     update_build_status(conn, build_id, "complete")
     emit_event(conn, build_id, "build_complete", rows_written=total_rows)
+
+    # Promote build_manifests to 'live' now that all writers succeeded.
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE build_manifests SET status='live', promoted_at=NOW() WHERE build_id=%s",
+                (build_id,),
+            )
+        conn.commit()
+        log.info("build_manifests_promoted", extra={"build_id": build_id})
+    except Exception as _bm_exc:
+        log.warning("build_manifests promote failed (non-fatal): %s", _bm_exc)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
     log.info("run_build_complete", extra={"build_id": build_id})
     return True
 
