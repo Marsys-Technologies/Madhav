@@ -220,21 +220,22 @@ def test_convergence_score_in_range():
 
 @pytest.mark.skipif(not DB_AVAILABLE, reason="DB not available")
 def test_seed_time_synchronicity_inserts_and_is_idempotent():
-    """seed_time_synchronicity should insert > 5 rows and be re-runnable."""
+    """Fresh seed → > 5 rows; second call → 0 (true idempotency check)."""
     conn = _get_conn()
-    count1 = seed_time_synchronicity(conn, CHART_ID)
-    conn.close()
+    try:
+        # Clear rows for this chart_id so first seed is a genuine fresh insert
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM l1_time_synchronicity WHERE chart_id = %s", (CHART_ID,))
+            conn.commit()
 
-    assert count1 > 5, f"Expected > 5 windows inserted, got {count1}"
+        count1 = seed_time_synchronicity(conn, CHART_ID)
+        assert count1 > 5, f"Expected > 5 windows inserted, got {count1}"
 
-    # Idempotency: second run should insert 0 (ON CONFLICT DO NOTHING)
-    conn2 = _get_conn()
-    count2 = seed_time_synchronicity(conn2, CHART_ID)
-    conn2.close()
-
-    assert count2 == 0, (
-        f"Expected 0 rows on second run (idempotency), got {count2}"
-    )
+        # Idempotency: second run should insert 0 (ON CONFLICT DO NOTHING)
+        count2 = seed_time_synchronicity(conn, CHART_ID)
+        assert count2 == 0, f"Expected 0 rows on second run (idempotency), got {count2}"
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
