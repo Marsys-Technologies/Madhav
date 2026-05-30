@@ -102,8 +102,6 @@ export async function invokeBuildJob(
     jobName: jobPath(env),
     containerArgs: [
       '--build-id', args.buildId,
-      '--chart-id', args.chartId,
-      '--ayanamsha-role', args.ayanamshaRole,
       '--triggered-by', args.triggeredBy,
     ],
     envOverrides: {
