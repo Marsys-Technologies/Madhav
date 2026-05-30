@@ -48,7 +48,7 @@ describe('ModelDropdown', () => {
     // Open dropdown
     fireEvent.click(screen.getAllByRole('button')[0])
     await waitFor(() => expect(screen.queryByText('Loading…')).toBeFalsy(), { timeout: 2000 })
-    expect(screen.getByText('gemini-2.5-pro')).toBeTruthy()
+    await screen.findByText('gemini-2.5-pro', undefined, { timeout: 2000 })
   })
 
   it('filters out models below 1M context for synthesis call type', async () => {
@@ -61,8 +61,7 @@ describe('ModelDropdown', () => {
     })
     render(<ModelDropdown stack="gemini" callType="synthesis" role="primary" value="" onChange={vi.fn()} />)
     fireEvent.click(screen.getAllByRole('button')[0])
-    await waitFor(() => screen.queryByText('Loading…') === null, { timeout: 2000 })
-    expect(screen.queryByText('big-model')).toBeTruthy()
+    await screen.findByText('big-model', undefined, { timeout: 2000 })
     expect(screen.queryByText('small-model')).toBeFalsy()
   })
 
@@ -90,7 +89,7 @@ describe('ModelDropdown', () => {
     })
     render(<ModelDropdown stack="gemini" callType="synthesis" role="primary" value="" onChange={vi.fn()} />)
     fireEvent.click(screen.getAllByRole('button')[0])
-    await waitFor(() => screen.queryByText('No models available') !== null, { timeout: 2000 })
+    await waitFor(() => expect(screen.queryByText('No models available')).toBeTruthy(), { timeout: 2000 })
   })
 
   it('shows all 5 providers for cross-stack call type (eval_judge)', async () => {
@@ -100,7 +99,7 @@ describe('ModelDropdown', () => {
     render(<ModelDropdown stack="gemini" callType="eval_judge" role="primary" value="" onChange={vi.fn()} />)
     // Trigger load
     fireEvent.click(screen.getAllByRole('button')[0])
-    await waitFor(() => screen.queryByText('Loading…') === null, { timeout: 2000 })
+    await waitFor(() => expect(screen.queryByText('Loading…')).toBeFalsy(), { timeout: 2000 })
     // 5 fetches for 5 providers
     const fetchCalls = mockFetch.mock.calls.filter(c => (c[0] as string).includes('/catalog/'))
     expect(fetchCalls.length).toBe(5)
@@ -113,8 +112,7 @@ describe('ModelDropdown', () => {
     mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve(pending) })
     render(<ModelDropdown stack="gemini" callType="synthesis" role="primary" value="" onChange={vi.fn()} />)
     fireEvent.click(screen.getAllByRole('button')[0])
-    await waitFor(() => screen.queryByText('[pending]') !== null, { timeout: 2000 })
-    expect(screen.getByText('[pending]')).toBeTruthy()
+    await screen.findByText('[pending]', undefined, { timeout: 2000 })
   })
 
   it('triggers catalog refresh when refresh button clicked', async () => {
@@ -128,7 +126,7 @@ describe('ModelDropdown', () => {
     // Should trigger a POST to refresh endpoint
     await waitFor(() => {
       const postCalls = mockFetch.mock.calls.filter(c => (c[1] as RequestInit)?.method === 'POST')
-      return postCalls.length > 0
+      expect(postCalls.length).toBeGreaterThan(0)
     }, { timeout: 2000 })
   })
 
@@ -137,7 +135,7 @@ describe('ModelDropdown', () => {
     mockFetch.mockResolvedValue({ json: () => Promise.resolve(makeCatalogResponse([])) })
     render(<ModelDropdown stack="marsys" callType="synthesis" role="primary" value="" onChange={vi.fn()} />)
     fireEvent.click(screen.getAllByRole('button')[0])
-    await waitFor(() => screen.queryByText('Loading…') === null, { timeout: 2000 })
+    await waitFor(() => expect(screen.queryByText('Loading…')).toBeFalsy(), { timeout: 2000 })
     const fetchCalls = mockFetch.mock.calls.filter(c => (c[0] as string).includes('/catalog/'))
     expect(fetchCalls.length).toBe(5)
   })
