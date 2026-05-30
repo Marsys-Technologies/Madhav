@@ -494,14 +494,17 @@ async def dispatch_asset_with_retry(
 
     for attempt in range(MAX_RETRIES):
         # Guarantee a clean transaction before every attempt.
-        # emit_step_event and other pre-dispatch helpers commit on their own
-        # transaction boundary; if any of them left the connection in a failed
-        # state (e.g. constraint violation swallowed in their except handler),
-        # a rollback here restores a usable state so the writer sees a fresh txn.
+        # Use reset() rather than rollback(): reset() unconditionally sends
+        # ROLLBACK and then resets psycopg2's internal connection state to IDLE,
+        # which is more reliable when a prior swallowed exception may have left
+        # psycopg2's status tracking out of sync with PostgreSQL's actual state.
         try:
-            conn.rollback()
+            conn.reset()
         except Exception:
-            pass
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
         try:
             # Merge chart_outputs into a single dict for the writer.
@@ -519,9 +522,12 @@ async def dispatch_asset_with_retry(
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {str(exc)}"
             try:
-                conn.rollback()
+                conn.reset()
             except Exception:
-                pass
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
 
             if attempt < MAX_RETRIES - 1:
                 delay = RETRY_DELAYS[attempt]
@@ -530,18 +536,22 @@ async def dispatch_asset_with_retry(
                     "Retrying in %ds...",
                     attempt + 1, MAX_RETRIES, asset_id, last_error, delay,
                 )
-                # Persist retry info to build_steps (non-fatal; uses a separate txn)
+                # Persist interim error to build_steps (non-fatal).
+                # Columns: error_msg (not error_summary), category (not asset_id).
+                # retry_count column does not exist in build_steps — omitted.
                 try:
                     with conn.cursor() as cur:
                         cur.execute(
-                            "UPDATE build_steps "
-                            "SET retry_count = retry_count + 1, error_summary = %s "
-                            "WHERE build_id = %s AND asset_id = %s",
-                            (last_error, build_id, asset_id),
+                            "UPDATE build_steps SET error_msg = %s "
+                            "WHERE build_id = %s AND category = %s",
+                            (last_error[:500] if last_error else None, build_id, asset_id),
                         )
                     conn.commit()
                 except Exception:
-                    pass  # retry_count update is non-fatal; swallow and continue
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
 
                 await asyncio.sleep(delay)
             else:
