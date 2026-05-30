@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-30T00:00:00Z",
-  "generator_version": "1.5-stream-d-acc6",
+  "generated_at": "2026-05-31T00:00:00Z",
+  "generator_version": "1.5.2-phase-b",
   "entry_count": 296,
   "fingerprint": "3c1c1821ea424625adf5594e2e6388ee9f5e753e41193f947d5efe6ee7ac95cd",
   "entries": [
@@ -5714,7 +5714,9 @@
       "produced_during": "BUILD-ORCH-STREAM-D-WAVE4",
       "fingerprint_sha256": "62c0f6e826287cb6c41ef1684c9678768e006680633702056304845705e0498a",
       "last_verified_session": "CI-AUDIT-FIX",
-      "last_verified_on": "2026-05-30"
+      "last_verified_on": "2026-05-30",
+      "display_name": "Varshesha",
+      "display_subtitle": "Annual Lords"
     },
     {
       "canonical_id": "ASSET_META_ALPHA_LATTICE_SNAPSHOTS",
@@ -5735,7 +5737,9 @@
       "produced_during": "BUILD-ORCH-STREAM-D-WAVE4",
       "fingerprint_sha256": "1c7020c08676024e627eaddb1251fffc5a7d2c89263f3f58b1d514b62c1793d5",
       "last_verified_session": "CI-AUDIT-FIX",
-      "last_verified_on": "2026-05-30"
+      "last_verified_on": "2026-05-30",
+      "display_name": "Trikala-Darshan",
+      "display_subtitle": "Vision of Three Times"
     },
     {
       "canonical_id": "ASSET_META_BETA_GAMMA_DELTA_EPSILON",
@@ -5756,7 +5760,9 @@
       "produced_during": "BUILD-ORCH-STREAM-D-WAVE4",
       "fingerprint_sha256": "64e52ef41948a7c213e3e53191bc5d87112acd876fb44edd14d1166b3fdf3eb2",
       "last_verified_session": "CI-AUDIT-FIX",
-      "last_verified_on": "2026-05-30"
+      "last_verified_on": "2026-05-30",
+      "display_name": "Yantra-Sangraha",
+      "display_subtitle": "Pattern Atlas"
     },
     {
       "canonical_id": "ASSET_UTEE_ENVELOPE_COLUMNS",
@@ -5777,7 +5783,9 @@
       "produced_during": "BUILD-ORCH-STREAM-D-WAVE3",
       "fingerprint_sha256": "e3fc695d19818f055f7b8d1d94bdc13d0691f2b25505c9a87c21844d834b9a17",
       "last_verified_session": "CI-AUDIT-FIX",
-      "last_verified_on": "2026-05-30"
+      "last_verified_on": "2026-05-30",
+      "display_name": "Kala-Darpana",
+      "display_subtitle": "Time Mirror"
     },
     {
       "canonical_id": "ASSET_BRIDGE_VEDHA_ANCHOR_INTERACTIONS",
@@ -5798,7 +5806,9 @@
       "produced_during": "BUILD-ORCH-STREAM-D-WAVE3",
       "fingerprint_sha256": "4ab9eb4d01a6171bed853e128fe8842514ef395f518a7a51f411317be1b1e6ce",
       "last_verified_session": "CI-AUDIT-FIX",
-      "last_verified_on": "2026-05-30"
+      "last_verified_on": "2026-05-30",
+      "display_name": "Vedha",
+      "display_subtitle": "Obstructions"
     },
     {
       "canonical_id": "ASSET_META_ZETA_TEMPORAL_UNIFIED_VIEW",
@@ -5819,12 +5829,15 @@
       "produced_during": "BUILD-ORCH-STREAM-D-WAVE3",
       "fingerprint_sha256": "bde6f58d7c52609cea2cea21c6d2d4d6494f3cacb616d7a82b407954f92f13e2",
       "last_verified_session": "CI-AUDIT-FIX",
-      "last_verified_on": "2026-05-30"
+      "last_verified_on": "2026-05-30",
+      "display_name": "Kala-Darpana",
+      "display_subtitle": "Time Mirror"
     }
   ],
   "last_updated_by": "BUILD-ORCH-STREAM-D-ACC6",
   "last_session": "BUILD-ORCH-STREAM-D-ACC6",
   "last_updated": "2026-05-31T00:00:00Z",
   "manifest_version": "1.5",
-  "counting_note": "Channel field covers actively-registered retrieval tools only. 'both'=51 portal+MCP dual-channel; 'portal'=22 portal-only; 'mcp'=28 MCP-only. Total MCP-accessible=40 (28 mcp-only + 12 of the 51 both-channel tools registered in platform-mcp/src/tools/). Total portal-accessible=57 (22 portal-only + 35 of the 51 both-channel tools in RETRIEVAL_TOOLS[]). 195 entries have channel:none — these are canonical artifacts (facts/synthesis layers/governance docs), not retrieval tools."
+  "counting_note": "Channel field covers actively-registered retrieval tools only. 'both'=51 portal+MCP dual-channel; 'portal'=22 portal-only; 'mcp'=28 MCP-only. Total MCP-accessible=40 (28 mcp-only + 12 of the 51 both-channel tools registered in platform-mcp/src/tools/). Total portal-accessible=57 (22 portal-only + 35 of the 51 both-channel tools in RETRIEVAL_TOOLS[]). 195 entries have channel:none — these are canonical artifacts (facts/synthesis layers/governance docs), not retrieval tools.",
+  "updated_at": "2026-05-31T00:00:00Z"
 }
