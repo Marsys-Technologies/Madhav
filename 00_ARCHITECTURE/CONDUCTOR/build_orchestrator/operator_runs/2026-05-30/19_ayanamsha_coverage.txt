@@ -1,0 +1,6 @@
+ ayanamsha_id | row_count 
+--------------+-----------
+ all          |     18768
+ lahiri       |         2
+(2 rows)
+

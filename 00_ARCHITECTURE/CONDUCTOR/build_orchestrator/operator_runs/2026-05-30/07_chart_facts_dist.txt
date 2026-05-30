@@ -1,0 +1,5 @@
+ ayanamsha_id | asset_num | count 
+--------------+-----------+-------
+ all          |           |  9312
+(1 row)
+

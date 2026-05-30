@@ -1,0 +1,6 @@
+/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/graha_aspects_writer.py
+/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/__tests__/test_utee_backfill_writer.py
+/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/__tests__/test_meta_alpha.py
+/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/writers/utee_backfill_writer.py
+/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/writers/chart_lattice_writer.py
+/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/query/query_lattice.py

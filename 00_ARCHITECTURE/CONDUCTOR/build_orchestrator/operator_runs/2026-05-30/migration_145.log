@@ -1,0 +1,12 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql:6: NOTICE:  extension "vector" already exists, skipping
+CREATE EXTENSION
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql:23: NOTICE:  relation "l1_time_synchronicity" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql:25: NOTICE:  relation "ts_chart_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql:26: NOTICE:  relation "ts_window_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql:27: NOTICE:  relation "ts_intensity_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql:29: NOTICE:  relation "ts_unique_idx" already exists, skipping
+CREATE INDEX

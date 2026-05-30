@@ -1,0 +1,12 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/141_supplementary_chakras.sql:20: NOTICE:  relation "l1_sapta_shalaka" already exists, skipping
+CREATE TABLE
+COMMENT
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/141_supplementary_chakras.sql:42: NOTICE:  relation "l1_kalanala_chakra" already exists, skipping
+CREATE TABLE
+COMMENT
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/141_supplementary_chakras.sql:65: NOTICE:  relation "l1_kota_chakra" already exists, skipping
+CREATE TABLE
+COMMENT
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/141_supplementary_chakras.sql:87: NOTICE:  relation "l1_ckn_chakra" already exists, skipping
+CREATE TABLE
+COMMENT

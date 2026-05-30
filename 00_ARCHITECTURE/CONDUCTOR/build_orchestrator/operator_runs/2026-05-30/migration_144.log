@@ -1,0 +1,8 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/144_vedha_extended.sql:29: NOTICE:  relation "l1_vedha_extended" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/144_vedha_extended.sql:31: NOTICE:  relation "vedha_ext_system_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/144_vedha_extended.sql:32: NOTICE:  relation "vedha_ext_source_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/144_vedha_extended.sql:34: NOTICE:  relation "vedha_ext_unique_idx" already exists, skipping
+CREATE INDEX

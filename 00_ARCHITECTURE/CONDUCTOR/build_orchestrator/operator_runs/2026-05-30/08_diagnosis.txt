@@ -1,0 +1,23 @@
+PHASE 2 DIAGNOSIS — 2026-05-30T19:58:27Z
+build_id=be6421ad-70b2-4de3-b81c-cb5c9baf684d
+cloud_run_execution=marsys-build-pipeline-job-p977n (succeeded, exit 0)
+builds.status=complete (pipeline self-reported)
+chart_facts(this build)=9312, all under ayanamsha_id='all'
+
+ROOT CAUSE (NOT a transient failure):
+Image pipeline:2c3d5439 self-reports SUCCESS but produces only 9,312 facts,
+far below the 50,000 threshold, because key writers are STUBs / yield 0 rows:
+  - [STUB] Chart Facts (L1 Structured)     <-- the primary chart_facts writer is a stub
+  - [STUB] FORENSIC.md Render
+  - [STUB] Panchanga Daily Entries
+  - [STUB] Sensitive Points & Upagrahas
+  - [STUB] Sade-Sati Phases
+  - [T1] Structural Combinations: "no planets in chart_output" -> 0 rows
+The 9,312 facts come almost entirely from A7 Dashas (9,175 post-dedup) + Vargas (819).
+Per-ayanamsha split did NOT occur: env MARSYS_BUILD_AYANAMSHA_ROLE=all forced a
+single 'all' bucket; engine logged "5/5 ayanamshas succeeded" but wrote to ayanamsha_id='all'.
+0 build_events emitted (pipeline writes status directly to builds row, not build_events).
+
+CONCLUSION: Build did not FAIL (no HALT condition met — succeeded_count=1, no
+errored/failed/cancelled status). But chart_facts=9312 << 50000 threshold ->
+WARN. The deployed image cannot reach threshold; chart_facts writer is stubbed.

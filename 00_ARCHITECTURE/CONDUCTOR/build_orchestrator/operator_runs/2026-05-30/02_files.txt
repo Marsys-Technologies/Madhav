@@ -1,0 +1,14 @@
+140 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/140_sarvatobhadra_chakra.sql
+141 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/141_supplementary_chakras.sql
+142 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/142_bhrigu_bindu_transits.sql
+143 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql
+144 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/144_vedha_extended.sql
+145 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/145_time_synchronicity.sql
+146 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/146_phase_locked_anchors.sql
+147 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/147_varsha_digest.sql
+148 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/148_tajik_varsha_year_lords.sql
+149 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/149_utee_envelope_columns.sql
+150 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/150_vedha_anchor_interactions.sql
+151 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/151_temporal_unified_lattice_view.sql
+152 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/152_chart_lattice_mv.sql
+153 -> /Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/153_meta_beta_gamma_delta_epsilon.sql

@@ -1,0 +1,4 @@
+ emitted_at | stage | status | percent | message 
+------------+-------+--------+---------+---------
+(0 rows)
+

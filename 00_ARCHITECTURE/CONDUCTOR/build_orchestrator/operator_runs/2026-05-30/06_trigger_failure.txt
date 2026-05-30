@@ -1,0 +1,30 @@
+PHASE 2 TRIGGER OUTCOME — HALT
+==============================
+Triggered execution: marsys-build-pipeline-job-z84mr
+Passed --build-id=90dcb141-9b38-4ec2-bfa9-72bf350adc29 (fresh UUID, per operator STEP 3)
+
+RESULT: FAILED. Container exit(1), Cloud Run log:
+  ERROR __main__ build_id not found in builds table: 90dcb141-9b38-4ec2-bfa9-72bf350adc29
+
+ROOT CAUSE: pipeline image 1f771703 does NOT create the builds row. It expects the
+builds row to be pre-seeded (via web API POST /api/build/start) before the job runs.
+The operator-queue STEP 3 (fresh UUID -> gcloud run jobs execute) is INCOMPATIBLE with
+this image. No builds row -> immediate exit(1).
+
+Additional schema mismatches in operator queue vs live DB:
+ - builds has queued_at (not created_at); terminal statuses are complete/failed/cancelled.
+ - build_events columns are emitted_at/stage/status/percent/message/stage_seq
+   (NOT created_at/pct_complete/error_text). STEP 4 poll query would error.
+
+STATE OF EXISTING BUILDS for chart 362f9f17-95a5-490b-a5a7-027d3e0efda0:
+ - Latest complete build: f359b8b5 (queued 2026-05-30 19:41, all 84 steps "complete")
+   BUT structurally deficient:
+     * total chart_facts = 9458 (< 50000 threshold)
+     * A3_chart_facts step row_count = 0 (core planetary facts NOT written)
+     * also 0 rows: A2_forensic_render, A4_panchanga, A5_sensitive_points,
+       A8_t1_structural, A9_sade_sati
+     * chart_facts almost entirely ayanamsha_id='all' (generic dasha/varga categories);
+       NO 5-ayanamsha x 22-asset distribution that STEP 5 expects.
+ - Stale 'running' build 74838a62 (started 2026-05-30 18:13, ZERO build_events) = dead/orphaned.
+ - 4 builds failed earlier with CardinalityViolation in A7_dashas (ON CONFLICT DO UPDATE
+   cannot affect row a second time) — duplicate-row bug in the dasha writer.

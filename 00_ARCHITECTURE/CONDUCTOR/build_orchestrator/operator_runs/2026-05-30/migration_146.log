@@ -1,0 +1,10 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/146_phase_locked_anchors.sql:27: NOTICE:  relation "l1_phase_locked_anchors" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/146_phase_locked_anchors.sql:29: NOTICE:  relation "pla_chart_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/146_phase_locked_anchors.sql:30: NOTICE:  relation "pla_window_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/146_phase_locked_anchors.sql:31: NOTICE:  relation "pla_type_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/146_phase_locked_anchors.sql:33: NOTICE:  relation "pla_unique_idx" already exists, skipping
+CREATE INDEX

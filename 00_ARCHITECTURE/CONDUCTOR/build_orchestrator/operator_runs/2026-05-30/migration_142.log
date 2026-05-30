@@ -1,0 +1,10 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/142_bhrigu_bindu_transits.sql:23: NOTICE:  relation "l1_bhrigu_bindu_transits" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/142_bhrigu_bindu_transits.sql:25: NOTICE:  relation "bb_transits_chart_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/142_bhrigu_bindu_transits.sql:26: NOTICE:  relation "bb_transits_graha_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/142_bhrigu_bindu_transits.sql:27: NOTICE:  relation "bb_transits_hit_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/142_bhrigu_bindu_transits.sql:30: NOTICE:  relation "bb_transits_unique_idx" already exists, skipping
+CREATE INDEX

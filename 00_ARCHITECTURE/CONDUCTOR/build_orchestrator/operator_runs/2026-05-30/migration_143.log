@@ -1,0 +1,12 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql:24: NOTICE:  relation "l1_graha_aspects_lifetime" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql:26: NOTICE:  relation "gal_chart_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql:27: NOTICE:  relation "gal_natal_graha_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql:28: NOTICE:  relation "gal_transit_graha_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql:29: NOTICE:  relation "gal_exact_date_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/143_graha_aspects_lifetime.sql:31: NOTICE:  relation "gal_unique_idx" already exists, skipping
+CREATE INDEX

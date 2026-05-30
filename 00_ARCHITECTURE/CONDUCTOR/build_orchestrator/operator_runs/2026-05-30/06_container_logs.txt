@@ -1,0 +1,5 @@
+2026-05-30T18:37:19.739557Z		ERROR __main__ build_id not found in builds table: dad57e39-8cc4-48aa-a334-fff1d725f813
+2026-05-30T18:37:19.767522Z	WARNING	Container called exit(1).
+2026-05-30T18:37:32.936424Z		ERROR __main__ build_id not found in builds table: dad57e39-8cc4-48aa-a334-fff1d725f813
+2026-05-30T18:37:32.970312Z	WARNING	Container called exit(1).
+2026-05-30T18:37:39.194720Z	ERROR	

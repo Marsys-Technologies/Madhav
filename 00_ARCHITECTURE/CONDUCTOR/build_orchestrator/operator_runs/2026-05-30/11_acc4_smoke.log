@@ -1,0 +1,49 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.0.3, pluggy-1.6.0 -- /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/Dev/Vibe-Coding/Apps/Madhav
+plugins: asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+platform/tests/integration/test_multi_tenant_smoke.py::test_chart_facts_isolated_by_chart_id PASSED [ 20%]
+platform/tests/integration/test_multi_tenant_smoke.py::test_ayanamsha_isolation PASSED [ 40%]
+platform/tests/integration/test_multi_tenant_smoke.py::test_build_supersedence_no_duplicates FAILED [ 60%]
+platform/tests/integration/test_multi_tenant_smoke.py::test_temporal_tables_isolated_by_chart_id PASSED [ 80%]
+platform/tests/integration/test_multi_tenant_smoke.py::test_meta_tables_no_cross_contamination PASSED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_build_supersedence_no_duplicates _____________________
+
+conn = <connection object at 0x106ed6e30; dsn: 'user=amjis_app password=xxx dbname=amjis host=localhost port=5433', closed: 0>
+
+    def test_build_supersedence_no_duplicates(conn):
+        """chart_facts has no duplicate (chart_id, ayanamsha_id, fact_key) rows."""
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT count(*) FROM chart_facts
+                WHERE chart_id = %s::UUID
+            """, [NATIVE_CHART_ID])
+            total = cur.fetchone()[0]
+            if total == 0:
+                pytest.skip("chart_facts empty")
+    
+            # Check for duplicates (same chart_id + ayanamsha_id + fact_key with different values)
+            cur.execute("""
+                SELECT fact_key, ayanamsha_id, count(*)
+                FROM chart_facts
+                WHERE chart_id = %s::UUID
+                GROUP BY fact_key, ayanamsha_id
+                HAVING count(*) > 1
+                LIMIT 5
+            """, [NATIVE_CHART_ID])
+            dups = cur.fetchall()
+>           assert len(dups) == 0, f"Duplicate chart_facts rows: {dups}"
+E           AssertionError: Duplicate chart_facts rows: [('link_spirituality', 'all', 18), ('ayanamsha_convergence_count', 'all', 2), ('period_sookshma', 'all', 13122), ('mars', 'all', 2), ('link_learning', 'all', 18)]
+E           assert 5 == 0
+E            +  where 5 = len([('link_spirituality', 'all', 18), ('ayanamsha_convergence_count', 'all', 2), ('period_sookshma', 'all', 13122), ('mars', 'all', 2), ('link_learning', 'all', 18)])
+
+platform/tests/integration/test_multi_tenant_smoke.py:92: AssertionError
+=========================== short test summary info ============================
+FAILED platform/tests/integration/test_multi_tenant_smoke.py::test_build_supersedence_no_duplicates
+========================= 1 failed, 4 passed in 4.88s ==========================

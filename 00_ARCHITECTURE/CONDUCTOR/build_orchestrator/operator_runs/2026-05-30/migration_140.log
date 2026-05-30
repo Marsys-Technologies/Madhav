@@ -1,0 +1,10 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/140_sarvatobhadra_chakra.sql:15: NOTICE:  relation "l1_sarvatobhadra_positions" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/140_sarvatobhadra_chakra.sql:18: NOTICE:  relation "sbc_grid_cell_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/140_sarvatobhadra_chakra.sql:30: NOTICE:  relation "l1_sarvatobhadra_vedha" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/140_sarvatobhadra_chakra.sql:36: NOTICE:  relation "sbc_vedha_pair_idx" already exists, skipping
+CREATE INDEX
+COMMENT
+COMMENT

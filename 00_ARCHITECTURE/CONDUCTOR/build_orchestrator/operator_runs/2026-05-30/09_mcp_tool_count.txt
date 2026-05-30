@@ -1,0 +1,1 @@
+WARN: mcp-internal-token is the service-to-service secret (MCP→platform auth); client API key (mcp_api_keys DB row) required for /tools list. Tool count check skipped — service healthy (amjis-mcp-00136-kk8, /health returns ok).

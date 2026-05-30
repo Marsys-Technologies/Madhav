@@ -1,0 +1,32 @@
+WARN: A21 writer not found via any search pattern (all 4 patterns exhausted)
+
+Search patterns tried:
+  1. find platform -name 'exact_aspect*writer*.py'        → no match
+  2. find platform -name 'next_exact_aspect*.py'          → no match
+  3. find platform -path '*a21*' -name '*.py'             → no match
+  4. find platform -path '*writers*' -name '*aspect*' -name '*.py' → no match
+
+Closest file found:
+  /Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/graha_aspects_writer.py
+  - Tagged as Stream-C A21 in its docstring
+  - Writes to l1_graha_aspects_lifetime (NOT l1_exact_aspect_lifetime)
+  - Has seed_graha_aspects(conn, chart_id) function (hardcoded 2026-2060 window)
+  - No argparse / __main__ CLI entry point
+  - Does NOT support: --chart-id, --ayanamsha-role, --full-scan, --window-start, --window-end
+
+Target table from orchestrator:
+  l1_exact_aspect_lifetime (partitioned by exact_aspect_iso)
+  Spec: 00_ARCHITECTURE/A17_A21_SUPPLEMENTARY_SPEC_v1_0.md §6
+
+The orchestrator refers to l1_exact_aspect_lifetime (A17_A21_SUPPLEMENTARY_SPEC §6),
+but the implemented table is l1_graha_aspects_lifetime (migration 143).
+
+These are two different assets — one may be the spec-time name, the other the build name.
+
+Manual action required:
+  1. Confirm whether l1_graha_aspects_lifetime IS A21's table (migration 143 labels it A21)
+  2. If yes: add CLI wrapper to graha_aspects_writer.py with required flags
+  3. If no: author a new a21_exact_aspect_writer.py per A17_A21_SUPPLEMENTARY_SPEC_v1_0.md §6
+
+Search results (files referencing exact_aspect / l1_exact_aspect_lifetime):
+  See 13_a21_search.txt

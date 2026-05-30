@@ -1,0 +1,22 @@
+         tablename          | size_bytes | est_rows 
+----------------------------+------------+----------
+ g29_timing_rules           |     172032 |      220
+ l1_bhrigu_bindu_transits   |     614400 |      652
+ l1_ckn_chakra              |      65536 |       27
+ l1_graha_aspects_lifetime  |    1015808 |        2
+ l1_kalanala_chakra         |      65536 |       27
+ l1_kota_chakra             |      65536 |       28
+ l1_phase_locked_anchors    |     139264 |       -1
+ l1_sarvatobhadra_positions |      81920 |       28
+ l1_sarvatobhadra_vedha     |      49152 |       14
+ l1_time_synchronicity      |     196608 |       49
+ l1_varsha_digest           |     147456 |       35
+ l1_vedha_extended          |     131072 |       66
+ varshaphala                |     180224 |       78
+(13 rows)
+
+ total_public_tables 
+---------------------
+                 170
+(1 row)
+

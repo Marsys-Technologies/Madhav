@@ -1,0 +1,21 @@
+-- A21 table state check (2026-05-31)
+-- Orchestrator target table: l1_exact_aspect_lifetime  → DOES NOT EXIST in production DB
+-- Actual A21 table in production: l1_graha_aspects_lifetime (migration 143, labelled A21)
+--
+-- Row count for chart_id=362f9f17-95a5-490b-a5a7-027d3e0efda0:
+--   l1_graha_aspects_lifetime: 0 rows (table exists, empty for this chart)
+--
+-- l1_exact_aspect_lifetime: TABLE DOES NOT EXIST
+--
+-- Root cause: orchestrator session_queue references the spec-time table name
+-- (A17_A21_SUPPLEMENTARY_SPEC §6 schema), but the build shipped under the name
+-- l1_graha_aspects_lifetime (migration 143). The CLI writer (--full-scan, --ayanamsha-role)
+-- was never implemented. graha_aspects_writer.py has only seed_graha_aspects() with
+-- a hardcoded 2026-2060 window and no argparse entry point.
+--
+-- ACTION REQUIRED (operator):
+--   Option A (recommended): Add --chart-id / --ayanamsha-role / --full-scan / --window-start
+--                           / --window-end argparse CLI to graha_aspects_writer.py, targeting
+--                           l1_graha_aspects_lifetime, then re-run this orchestrator phase.
+--   Option B:               Run seed_graha_aspects() directly via python -c or a small wrapper
+--                           for the immediate chart seeding need.

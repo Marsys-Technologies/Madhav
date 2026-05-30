@@ -1,0 +1,8 @@
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/147_varsha_digest.sql:25: NOTICE:  relation "l1_varsha_digest" already exists, skipping
+CREATE TABLE
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/147_varsha_digest.sql:28: NOTICE:  relation "vd_unique_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/147_varsha_digest.sql:29: NOTICE:  relation "vd_chart_idx" already exists, skipping
+CREATE INDEX
+psql:/Users/Dev/Vibe-Coding/Apps/Madhav/platform/migrations/147_varsha_digest.sql:30: NOTICE:  relation "vd_year_idx" already exists, skipping
+CREATE INDEX

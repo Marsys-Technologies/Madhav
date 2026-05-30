@@ -1,0 +1,5 @@
+ verification_pass_status | count 
+--------------------------+-------
+ single                   | 18770
+(1 row)
+

@@ -1,0 +1,122 @@
+==== BUILD FAILURE REPORT — build_id=2034c9cf-cd84-4495-bd32-9c7ea5552390 ====
+execution=marsys-build-pipeline-job-nkfzg  image=pipeline:282074e2
+
+---- builds row ----
+-[ RECORD 1 ]-+--------------------------------------------------------------------------------------------------------
+status        | failed
+started_at    | 2026-05-30 19:21:49.284598+00
+failed_at     | 2026-05-30 19:22:02.997779+00
+error_summary | InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block+
+              | 
+
+---- build_steps ----
+ERROR:  column "step_name" does not exist
+LINE 1: SELECT step_name, status FROM build_steps WHERE build_id='20...
+               ^
+---- build_events ----
+ stage | status | percent | message 
+-------+--------+---------+---------
+(0 rows)
+
+---- chart_facts for build ----
+    36
+
+
+---- build_steps (cols) ----
+ column_name  
+--------------
+ step_id
+ build_id
+ ayanamsha_id
+ category
+ status
+ started_at
+ completed_at
+ error_msg
+ row_count
+ duration_ms
+ created_at
+(11 rows)
+
+               step_id                |               build_id               |  ayanamsha_id   |      category       |  status  |          started_at           |         completed_at          |                                                error_msg                                                | row_count | duration_ms |          created_at           
+--------------------------------------+--------------------------------------+-----------------+---------------------+----------+-------------------------------+-------------------------------+---------------------------------------------------------------------------------------------------------+-----------+-------------+-------------------------------
+ 00840bb4-6aff-4460-af34-a2af7170671a | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A5_sensitive_points | complete | 2026-05-30 19:21:49.917964+00 | 2026-05-30 19:21:49.942853+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:49.020829+00
+ 025cfa9b-4691-4a82-bb20-15e0f663b198 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A7_dashas           | failed   | 2026-05-30 19:21:25.040442+00 |                               | InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block+|           |             | 2026-05-30 19:21:23.799057+00
+                                      |                                      |                 |                     |          |                               |                               |                                                                                                         |           |             | 
+ 053290ee-e592-403b-bf8d-6125305cbd02 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A4_panchanga        | complete | 2026-05-30 19:21:49.864028+00 | 2026-05-30 19:21:49.889292+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:49.020829+00
+ 0579ff8b-2895-4317-9e67-8f6f6d78ebd5 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A14_ucn_digest      | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 05c7182b-bbba-4a84-86b1-0e7ca65e2ce1 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A1_engine           | complete | 2026-05-30 19:21:24.135807+00 | 2026-05-30 19:21:24.484413+00 |                                                                                                         |         5 |             | 2026-05-30 19:21:23.799057+00
+ 067a2bb0-dbe5-4701-a6f5-d4ea5e514ac8 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A1_engine           | complete | 2026-05-30 19:21:24.135807+00 | 2026-05-30 19:21:24.484413+00 |                                                                                                         |         5 |             | 2026-05-30 19:21:23.799057+00
+ 07d14c09-3074-4c8d-989e-845ba57dea30 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A2_forensic_render  | complete | 2026-05-30 19:21:24.514414+00 | 2026-05-30 19:21:24.595641+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:23.799057+00
+ 08140578-fd27-4d51-a501-1c752e3bd82e | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A2_forensic_render  | complete | 2026-05-30 19:21:49.703825+00 | 2026-05-30 19:21:49.779725+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:49.020829+00
+ 0965529b-4f1c-478f-a444-99d6e20c2a83 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A3_chart_facts      | complete | 2026-05-30 19:21:24.625512+00 | 2026-05-30 19:21:24.651935+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:23.799057+00
+ 0974a8ee-513b-419c-8dc5-22d75949603e | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A8_t1_structural    | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 0d833da6-a359-415e-8564-f17a8f090f8e | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A8_t1_structural    | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 0ec9e8df-6c2c-45bd-908a-01238e4e1f69 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A6_vargas           | complete | 2026-05-30 19:21:49.970844+00 | 2026-05-30 19:21:50.09659+00  |                                                                                                         |       819 |             | 2026-05-30 19:21:49.020829+00
+ 0ed0634a-8fe7-4fa4-9737-91b3ecb9d994 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A13_rm              | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:49.020829+00
+ 0f836d1b-56ac-4a1c-ae09-059777c8c531 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A1_engine           | complete | 2026-05-30 19:21:49.3327+00   | 2026-05-30 19:21:49.675491+00 |                                                                                                         |         5 |             | 2026-05-30 19:21:49.020829+00
+ 15e522b0-4e1d-4f36-8f89-9ee7ed4445b7 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A9_sade_sati        | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 165db380-9d15-47ec-a741-2d3da2382abb | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A3_chart_facts      | complete | 2026-05-30 19:21:49.809822+00 | 2026-05-30 19:21:49.834395+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:49.020829+00
+ 17722c95-ffae-4106-8b5d-e340128a0049 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A4_panchanga        | complete | 2026-05-30 19:21:24.682409+00 | 2026-05-30 19:21:24.711179+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:23.799057+00
+ 1a9abbea-108e-40c4-9a02-05949d2722db | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A6_vargas           | complete | 2026-05-30 19:21:49.970844+00 | 2026-05-30 19:21:50.09659+00  |                                                                                                         |       819 |             | 2026-05-30 19:21:49.020829+00
+ 1b35b5d2-6713-4f5a-81c0-f1affa0628f5 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A9_sade_sati        | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 1bbf6b21-aaea-4f82-8ce1-1c9f3f2dd35b | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A1_engine           | complete | 2026-05-30 19:21:49.3327+00   | 2026-05-30 19:21:49.675491+00 |                                                                                                         |         5 |             | 2026-05-30 19:21:49.020829+00
+ 1bef1ef9-46d3-4654-a7f5-8e55a3642fbd | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A2_forensic_render  | complete | 2026-05-30 19:21:24.514414+00 | 2026-05-30 19:21:24.595641+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:23.799057+00
+ 1c98926a-635d-4472-92c7-4cb5f0cf1afc | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A1_engine           | complete | 2026-05-30 19:21:24.135807+00 | 2026-05-30 19:21:24.484413+00 |                                                                                                         |         5 |             | 2026-05-30 19:21:23.799057+00
+ 1d6207c8-8b21-4b8d-8216-e856f061bdd0 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A7_dashas           | failed   | 2026-05-30 19:21:25.040442+00 |                               | InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block+|           |             | 2026-05-30 19:21:23.799057+00
+                                      |                                      |                 |                     |          |                               |                               |                                                                                                         |           |             | 
+ 1eb212c1-7948-4044-adbe-cca0ab4ca44d | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A12_cgm             | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 1ffc0280-1b59-4767-bf20-e4a0887a41d4 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A13_rm              | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 2013eb35-bfe5-4c92-837a-29811e14fe56 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A12_cgm             | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:49.020829+00
+ 2344ba56-ab1a-4503-b38c-d58eaee514a0 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | surya_siddhanta | A6_vargas           | complete | 2026-05-30 19:21:24.798832+00 | 2026-05-30 19:21:25.003605+00 |                                                                                                         |       819 |             | 2026-05-30 19:21:23.799057+00
+ 2a104812-ca05-4bb2-851e-d0dad1f741ab | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A13_rm              | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:49.020829+00
+ 2b907c96-6904-4c54-9c2b-27867a8878df | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A8_t1_structural    | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:49.020829+00
+ 2bc1583c-f480-4364-b42c-6511d41a6275 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | kp              | A2_forensic_render  | complete | 2026-05-30 19:21:49.703825+00 | 2026-05-30 19:21:49.779725+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:49.020829+00
+ 2d62f24d-6b86-421b-85ca-04f0160118e1 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | raman           | A10_msr             | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:23.799057+00
+ 2e85b693-5e81-43b3-aa88-fcba9fea6c45 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A9_sade_sati        | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:49.020829+00
+ 2f310607-2140-4003-9b6e-3863d8d0515a | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A3_chart_facts      | complete | 2026-05-30 19:21:49.809822+00 | 2026-05-30 19:21:49.834395+00 |                                                                                                         |         0 |             | 2026-05-30 19:21:49.020829+00
+ 2f7c982a-30bd-456e-827e-f44ccb82f21e | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | true_chitra     | A6_vargas           | complete | 2026-05-30 19:21:49.970844+00 | 2026-05-30 19:21:50.09659+00  |                                                                                                         |       819 |             | 2026-05-30 19:21:49.020829+00
+ 331ef040-cf3a-4fa4-b9f3-b0199b9899a0 | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A13_rm              | queued   |                               |                               |                                                                                                         |           |             | 2026-05-30 19:21:49.020829+00
+ 35c6087c-c35a-4a5d-b5e1-50cb59217f5d | 2034c9cf-cd84-4495-bd32-9c7ea5552390 | lahiri          | A1_engine           | complete | 2026-05-30 19:21:24.135807+00 | 2026-05-30 19:21:24.484413+00 |                                                                                                         |         5 |             | 2026-05-30 19:21:23.799057+00
+
+---- ROOT CAUSE: A7_dashas writer fails with InFailedSqlTransaction on every attempt (ayanamsha_role=all, 9410 rows). Transaction poisoned; no ROLLBACK between retries. Engine 5/5 ayanamshas OK; vargas 819 rows OK; STUB writers OK; build_manifests seeded OK. ----
+2026-05-30T19:22:07.457267Z	
+2026-05-30T19:22:03.092935Z	Container called exit(1).
+2026-05-30T19:22:03.009897Z	INFO __main__ build_status_updated
+2026-05-30T19:22:02.967202Z	ERROR __main__ run_build_asset_failed
+2026-05-30T19:22:02.965013Z	ERROR __main__ dispatch_asset_with_retry EXHAUSTED after 3 attempts for A7_dashas. Last error: InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:22:02.962104Z	ERROR pipeline.writers.dashas_writer [A7] DB write failed: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:22:00.816627Z	INFO pipeline.writers.dashas_writer [A7] Total rows to write: 9410
+2026-05-30T19:22:00.683495Z	INFO pipeline.writers.dashas_writer [A7] Dasha / Sub-Dasha Chains: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:56.666205Z	. Retrying in 4s...
+2026-05-30T19:21:56.666199Z	WARNING __main__ dispatch_asset_with_retry attempt 2/3 failed for A7_dashas: InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:21:56.663049Z	ERROR pipeline.writers.dashas_writer [A7] DB write failed: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:21:54.432269Z	INFO pipeline.writers.dashas_writer [A7] Total rows to write: 9410
+2026-05-30T19:21:54.298674Z	INFO pipeline.writers.dashas_writer [A7] Dasha / Sub-Dasha Chains: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:52.281382Z	. Retrying in 2s...
+2026-05-30T19:21:52.281374Z	WARNING __main__ dispatch_asset_with_retry attempt 1/3 failed for A7_dashas: InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:21:52.277984Z	ERROR pipeline.writers.dashas_writer [A7] DB write failed: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:21:50.274255Z	INFO pipeline.writers.dashas_writer [A7] Total rows to write: 9410
+2026-05-30T19:21:50.136856Z	INFO pipeline.writers.dashas_writer [A7] Dasha / Sub-Dasha Chains: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:50.108070Z	INFO __main__ asset_complete
+2026-05-30T19:21:50.080074Z	INFO pipeline.writers.vargas_writer Varga Divisional Charts: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390 rows_written=819
+2026-05-30T19:21:49.954413Z	INFO __main__ asset_complete
+2026-05-30T19:21:49.929386Z	INFO pipeline.writers.sensitive_points_writer [STUB] Sensitive Points & Upagrahas: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:49.900552Z	INFO __main__ asset_complete
+2026-05-30T19:21:49.875374Z	INFO pipeline.writers.panchanga_writer [STUB] Panchanga Daily Entries: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:49.846267Z	INFO __main__ asset_complete
+2026-05-30T19:21:49.820829Z	INFO pipeline.writers [STUB] Chart Facts (L1 Structured): chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:49.791415Z	INFO __main__ asset_complete
+2026-05-30T19:21:49.765768Z	INFO pipeline.writers.forensic_writer [STUB] FORENSIC.md Render: chart=362f9f17-95a5-490b-a5a7-027d3e0efda0 ayanamsha=all build=2034c9cf-cd84-4495-bd32-9c7ea5552390
+2026-05-30T19:21:49.686779Z	INFO __main__ asset_complete
+2026-05-30T19:21:49.664282Z	INFO __main__ engine_parallel_complete chart_id=362f9f17-95a5-490b-a5a7-027d3e0efda0 5/5 ayanamshas succeeded
+2026-05-30T19:21:49.315277Z	INFO __main__ build_manifests_seeded
+2026-05-30T19:21:49.304046Z	INFO __main__ run_build_start
+2026-05-30T19:21:49.292753Z	INFO __main__ build_status_updated
+2026-05-30T19:21:49.278025Z	INFO __main__ build_steps_created
+2026-05-30T19:21:38.960243Z	Container called exit(1).
+2026-05-30T19:21:38.889772Z	INFO __main__ build_status_updated
+2026-05-30T19:21:38.850426Z	ERROR __main__ run_build_asset_failed
+2026-05-30T19:21:38.847251Z	ERROR __main__ dispatch_asset_with_retry EXHAUSTED after 3 attempts for A7_dashas. Last error: InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:21:38.843866Z	ERROR pipeline.writers.dashas_writer [A7] DB write failed: current transaction is aborted, commands ignored until end of transaction block
+2026-05-30T19:21:36.780155Z	INFO pipeline.writers.dashas_writer [A7] Total rows to write: 9410
