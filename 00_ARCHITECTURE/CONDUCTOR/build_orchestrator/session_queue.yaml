@@ -2513,8 +2513,8 @@ sessions:
 
   - id: G4-01
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "salience formula v1 + unit tests"
     desc: "platform/python-sidecar/pipeline/writers/salience.py. salience_formula_v1: deterministic_strength = f(orb_tightness, shadbala_rank, dignity_score), verification_certainty = f(source_corroboration_count), computed_salience = g(deterministic_strength, verification_certainty, dasha_proximity, house_weight, ashtakavarga_support). Unit tests: known inputs -> expected salience range. Version: salience_formula_version='v1'."
     depends_on: [G3-06]
@@ -2527,12 +2527,15 @@ sessions:
       item: A10
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "33c90687"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-02
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "MSR writer (every signal, no threshold drop)"
     desc: "platform/python-sidecar/pipeline/writers/msr_writer.py. Write per-chart MSR to l25_msr_signals table. Every observable signal - no threshold drop. Per signal: configuration, constituent_facts[] (from chart_facts), classical_sources[], deterministic_strength, verification_certainty, computed_salience, salience_formula_version='v1', domains_affected[]. Expected: 800-1500 signals per chart per ayanamsha."
     depends_on: [G4-01]
@@ -2545,12 +2548,15 @@ sessions:
       item: A10
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "00bf8a32"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-03
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "MSR enrichment (constituent_facts + classical_sources)"
     desc: "Extend msr_writer.py. Per signal: populate constituent_facts[] with actual chart_facts fact_ids (not just categories). Classical sources: lookup from G1 RAG corpus chunks matching signal type. Source corroboration count = number of distinct classical texts that contain the signal pattern. Update verification_certainty formula based on actual source count."
     depends_on: [G4-02, A-30]
@@ -2563,12 +2569,15 @@ sessions:
       item: A10
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "f2bcec4a"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-04
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "CDLM writer (9x9 with shared-factor counts)"
     desc: "platform/python-sidecar/pipeline/writers/cdlm_writer.py. Write CDLM to chart_facts (fact_category='cdlm'). 9 domains: career/relationships/health/wealth/family/learning/spirituality/longevity/character. Each cell (domain_i, domain_j): shared_factor_count = count of MSR signals tagged for BOTH domains. Linkage_strength = shared_factor_count / sqrt(signals_in_i * signals_in_j)."
     depends_on: [G4-03]
@@ -2581,12 +2590,15 @@ sessions:
       item: A11
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "f99eb47e"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-05
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "CGM writer (nodes + structural edges)"
     desc: "platform/python-sidecar/pipeline/writers/cgm_writer.py. Write CGM to chart_graph table (or chart_facts fact_category='cgm'). Nodes: 9 grahas + 12 houses + 12 signs + active configurations + arudhas. Edges: aspect/dispositor/lordship/karaka/conjunction/parivartana/mutual-reception. Per edge: weight (from shadbala + aspect strength), edge_type. Subgraph queries via existing get_cgm_subgraph tool."
     depends_on: [G4-04]
@@ -2599,12 +2611,15 @@ sessions:
       item: A12
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "1428ffd5"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-06
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "RM writer (weakest -> remedy candidates)"
     desc: "platform/python-sidecar/pipeline/writers/rm_writer.py. Write RM to chart_facts (fact_category='rm'). Weakest grahas: ranked by low shadbala + bad dignity + low ashtakavarga. Strongest grahas: ranked by high shadbala + good dignity. For each weak graha: remedy candidates from G27 remedial_library. For each strong graha: amplification candidates. Spoke structure from chart center."
     depends_on: [G4-05, A-20]
@@ -2617,12 +2632,15 @@ sessions:
       item: A13
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "2712f928"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-07
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "UCN digest writer (computed signature)"
     desc: "platform/python-sidecar/pipeline/writers/ucn_digest_writer.py. Write UCN digest to chart_facts (fact_category='ucn_digest'). Top-K configurations by computed_salience (K=20). Dominant grahas (top 3 by shadbala). Weakest grahas (bottom 3). Strongest yogas (top 5 active by strength). Current dasha context (current Maha+Antar). System-convergence counts (how many of the 5 ayanamshas agree). No prose. Structured JSON only."
     depends_on: [G4-06]
@@ -2635,12 +2653,15 @@ sessions:
       item: A14
       brief: not_started
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "67021341"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-08
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "RAG chunking + Vertex AI embedding + no-narration linter"
     desc: "platform/python-sidecar/pipeline/writers/rag_embedder.py. Chunk chart_documents (forensic_render markdown) at H2/H3 boundaries. Filter through no-narration linter (halt on violation). Vertex AI 768-dim embedding per chunk. Store in rag_chunks (per existing schema) with source_type='forensic_render' + chart_id + ayanamsha_id. No-narration linter pass required before embedding."
     depends_on: [G4-07, F-14]
@@ -2653,12 +2674,15 @@ sessions:
       item: INF10
       brief: locked
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "already_on_main"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-09
     stream: G4
-    worktree: ../MadhavBO-G4
-    branch: feature/build-orch/stream-g4
+    worktree: ../MadhavStream-B
+    branch: feature/build-orch/stream-b
     title: "per-chart similarity signature embedding"
     desc: "platform/python-sidecar/pipeline/writers/similarity_signature.py. One 768-dim embedding per (chart_id, ayanamsha_id). Input: concatenated UCN digest (top-K signals + dominant/weak grahas + yogas + dasha context). Embed via Vertex AI. Store in chart_similarity_signatures table (chart_id, ayanamsha_id, embedding vector768, computed_at). Used for cross-chart research similarity search."
     depends_on: [G4-08]
@@ -2671,7 +2695,10 @@ sessions:
       item: INF10
       brief: locked
       impl: in_progress
-    status: pending
+    status: completed
+    merge_sha: "a18a9c3f"
+    completed_at: "2026-05-30"
+    executed_by: stream-b
 
   - id: G4-10
     stream: G4

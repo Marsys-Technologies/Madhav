@@ -3,38 +3,101 @@
 # Race-resolved via git push (push fails → someone else claimed → retry)
 # Read/write protocol: see STREAM_COORDINATION_v1_0.md §6
 schema: v1
-last_updated: "2026-05-30T00:00:00Z"
-last_updated_by: "Stream-A Conductor"
+last_updated: "2026-05-30T04:25:00+05:30"
+last_updated_by: "stream-b conductor"
 
 # Sessions currently being executed (in-flight; file-locks honored by other streams)
-active_claims: []  # Stream A queue EMPTY — all sessions complete
+active_claims: []
 
 # Sessions completed (audit trail; capped to last 500 entries)
 released_claims:
-  - session_id: G12-S1
-    completed_at: "2026-05-30T00:01:00Z"
-    merge_sha: "b1cc357c"
-  - session_id: G13-S1
-    completed_at: "2026-05-30T00:02:00Z"
-    merge_sha: "5cb15cae"
-  - session_id: G15-S1
-    completed_at: "2026-05-30T00:03:00Z"
-    merge_sha: "eb8146ae"
-  - session_id: G37-S1
-    completed_at: "2026-05-30T00:04:00Z"
-    merge_sha: "7f27a2ba"
-  - session_id: G48-G49-G50-S1
-    completed_at: "2026-05-30T00:05:00Z"
-    merge_sha: "60288bf7"
-  - session_id: G6-G21-S1
-    completed_at: "2026-05-30T00:05:30Z"
-    merge_sha: "6d578c3c"
-  - session_id: A6-S1-S4
-    completed_at: "2026-05-30T00:06:00Z"
-    merge_sha: "c6e70a97"
-  - session_id: A7-S1-S4
-    completed_at: "2026-05-30T00:07:00Z"
-    merge_sha: "aae2cf23"
+  - session_id: F-01
+    completed_at: "2026-05-30T04:25:00+05:30"
+    merge_sha: "422e2b68"
+  - session_id: F-02
+    completed_at: "2026-05-30T04:30:00+05:30"
+    merge_sha: "e7ee3bb7"
+  - session_id: F-03
+    completed_at: "2026-05-30T04:35:00+05:30"
+    merge_sha: "5dd950a6"
+  - session_id: F-04
+    completed_at: "2026-05-30T04:40:00+05:30"
+    merge_sha: "04f04e2e"
+  - session_id: F-05
+    completed_at: "2026-05-30T04:43:00+05:30"
+    merge_sha: "c7e73e19"
+  - session_id: F-06
+    completed_at: "2026-05-30T04:46:00+05:30"
+    merge_sha: "bb92e5d7"
+  - session_id: F-07
+    completed_at: "2026-05-30T04:48:00+05:30"
+    merge_sha: "e28f26d7"
+  - session_id: F-08
+    completed_at: "2026-05-30T04:50:00+05:30"
+    merge_sha: "f59aa26a"
+  - session_id: F-09
+    completed_at: "2026-05-30T05:00:00+05:30"
+    merge_sha: "6e95d5d3"
+  - session_id: F-10
+    completed_at: "2026-05-30T05:03:00+05:30"
+    merge_sha: "437801cb"
+  - session_id: F-11
+    completed_at: "2026-05-30T05:05:00+05:30"
+    merge_sha: "ec5aa892"
+  - session_id: F-12
+    completed_at: "2026-05-30T05:06:00+05:30"
+    merge_sha: "28b3c5cc"
+  - session_id: F-13
+    completed_at: "2026-05-30T05:07:00+05:30"
+    merge_sha: "241d6fa0"
+  - session_id: F-14
+    completed_at: "2026-05-30T05:08:00+05:30"
+    merge_sha: "0d4e06f8"
+  - session_id: G3-01
+    completed_at: "2026-05-30T05:15:00+05:30"
+    merge_sha: "a9609e09"
+  - session_id: G3-02
+    completed_at: "2026-05-30T05:20:00+05:30"
+    merge_sha: "8a2e6252"
+  - session_id: G3-03
+    completed_at: "2026-05-30T05:22:00+05:30"
+    merge_sha: "781fa9ea"
+  - session_id: G3-04
+    completed_at: "2026-05-30T05:24:00+05:30"
+    merge_sha: "d94bdbc7"
+  - session_id: G3-05
+    completed_at: "2026-05-30T05:26:00+05:30"
+    merge_sha: "110dc327"
+  - session_id: G3-06
+    completed_at: "2026-05-30T05:28:00+05:30"
+    merge_sha: "331f41b9"
+  - session_id: G4-01
+    completed_at: "2026-05-30T05:32:00+05:30"
+    merge_sha: "33c90687"
+  - session_id: G4-02
+    completed_at: "2026-05-30T05:35:00+05:30"
+    merge_sha: "00bf8a32"
+  - session_id: G4-03
+    completed_at: "2026-05-30T05:37:00+05:30"
+    merge_sha: "f2bcec4a"
+  - session_id: G4-04
+    completed_at: "2026-05-30T05:39:00+05:30"
+    merge_sha: "f99eb47e"
+  - session_id: G4-05
+    completed_at: "2026-05-30T05:41:00+05:30"
+    merge_sha: "1428ffd5"
+  - session_id: G4-06
+    completed_at: "2026-05-30T05:43:00+05:30"
+    merge_sha: "2712f928"
+  - session_id: G4-07
+    completed_at: "2026-05-30T05:45:00+05:30"
+    merge_sha: "67021341"
+  - session_id: G4-08
+    completed_at: "2026-05-30T05:47:00+05:30"
+    merge_sha: "already_on_main_from_stream_a"
+  - session_id: G4-09
+    completed_at: "2026-05-30T05:48:00+05:30"
+    merge_sha: "a18a9c3f"
 
 # Sessions whose CI auto-fix failed and was ignored per §5
 ci_red_ignored: []
