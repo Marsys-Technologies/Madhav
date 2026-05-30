@@ -312,6 +312,14 @@ def set_ayanamsha(ayanamsha_config_id: str, jd_ut: float | None = None) -> None:
         swe.set_sid_mode(swe.SIDM_RAMAN, 0, 0)
     elif config == "krishnamurti":
         swe.set_sid_mode(swe.SIDM_KRISHNAMURTI, 0, 0)
+    # Pipeline aliases — map build-pipeline IDs to engine registry IDs
+    elif config == "true_chitra":
+        apply_ayanamsha(
+            AYANAMSHA_REGISTRY["jh_true_chitra"]["pinned_at_jd_ut"],
+            "jh_true_chitra",
+        )
+    elif config == "surya_siddhanta":
+        swe.set_sid_mode(swe.SIDM_SURYASIDDHANTA, 0, 0)
     else:
         raise ValueError(f"Unknown ayanamsha_config_id: {ayanamsha_config_id!r}")
 

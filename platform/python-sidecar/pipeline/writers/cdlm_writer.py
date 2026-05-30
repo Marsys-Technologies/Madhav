@@ -91,9 +91,8 @@ DO UPDATE SET
 
 def _upsert_chart_facts(conn, rows):
     from psycopg2.extras import execute_values
-    execute_values(conn, _INSERT_SQL, rows)
-
-
+    with conn.cursor() as _cur:
+        execute_values(_cur, _INSERT_SQL, rows)
 def _count_signals_per_domain(msr_signals: list) -> dict:
     """Count how many signals map to each domain."""
     counts = {d: 0 for d in DOMAINS}

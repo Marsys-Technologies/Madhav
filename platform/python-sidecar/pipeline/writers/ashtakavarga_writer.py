@@ -91,9 +91,8 @@ DO UPDATE SET
 
 def _upsert_chart_facts(conn, rows):
     from psycopg2.extras import execute_values
-    execute_values(conn, _INSERT_SQL, rows)
-
-
+    with conn.cursor() as _cur:
+        execute_values(_cur, _INSERT_SQL, rows)
 def _make_row(chart_id, ayanamsha_id, build_id, subject, fact_key, value_number, value_text=None):
     cref = make_citation_ref("ashtakavarga", subject, fact_key, chart_id, ayanamsha_id)
     return _row(

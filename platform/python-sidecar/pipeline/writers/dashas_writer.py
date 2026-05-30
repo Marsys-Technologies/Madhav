@@ -1117,13 +1117,15 @@ def write(
     if total > 0:
         try:
             from psycopg2.extras import execute_values
-            execute_values(conn, _INSERT_SQL, all_rows, page_size=500)
+            with conn.cursor() as _cur:
+                execute_values(_cur, _INSERT_SQL, all_rows, page_size=500)
             conn.commit()
         except Exception:
             # Try without commit (e.g. psycopg3 or auto-commit connection)
             try:
                 from psycopg2.extras import execute_values
-                execute_values(conn, _INSERT_SQL, all_rows, page_size=500)
+                with conn.cursor() as _cur:
+                    execute_values(_cur, _INSERT_SQL, all_rows, page_size=500)
             except Exception as exc:
                 logger.error("[A7] DB write failed: %s", exc)
                 raise

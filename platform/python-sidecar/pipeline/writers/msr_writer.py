@@ -78,9 +78,8 @@ DO UPDATE SET
 
 def _upsert_chart_facts(conn, rows):
     from psycopg2.extras import execute_values
-    execute_values(conn, _INSERT_SQL, rows)
-
-
+    with conn.cursor() as _cur:
+        execute_values(_cur, _INSERT_SQL, rows)
 def _build_signal_row(chart_id, ayanamsha_id, build_id, signal, index):
     """Build a single chart_facts row from an MSR signal dict."""
     fact_subject = signal.get("signal_type", "unknown")

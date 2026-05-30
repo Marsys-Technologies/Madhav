@@ -83,9 +83,8 @@ DO UPDATE SET
 
 def _upsert_chart_facts(conn, rows):
     from psycopg2.extras import execute_values
-    execute_values(conn, _INSERT_SQL, rows)
-
-
+    with conn.cursor() as _cur:
+        execute_values(_cur, _INSERT_SQL, rows)
 def _dosha_subject(dosha_name: str) -> str:
     return dosha_name.lower().replace(" ", "_").replace("-", "_")
 

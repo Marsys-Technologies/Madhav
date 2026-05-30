@@ -214,8 +214,8 @@ def write_panchanga_limbs(conn, chart_id, build_id, birth_date, chart_outputs_by
 
     if tuples:
         from psycopg2.extras import execute_values
-        execute_values(conn, _INSERT_SQL, tuples)
-
+        with conn.cursor() as _cur:
+            execute_values(_cur, _INSERT_SQL, tuples)
     return len(tuples)
 
 
