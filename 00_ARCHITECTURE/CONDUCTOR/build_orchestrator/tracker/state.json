@@ -949,7 +949,13 @@
             "notes": "7 acharya-selected systems (Vimshottari + Yogini + Ashtottari + Chara Karaka + Naisargika + Mudda + Kalachakra). Prana depth + KP sub-divisions. 1950-2100 window. No partitioning at ≤20-user scale. ~5.4M rows per chart."
           },
           "impl": {
-            "status": "not_started"
+            "status": "merged_main",
+            "session_id": "A7-S1-S4",
+            "branch": "feature/build-orch/stream-a",
+            "merge_sha": "aae2cf23",
+            "completed_at": "2026-05-30T00:00:00Z",
+            "ci_status": "green",
+            "notes": "7 acharya-selected systems. Vimshottari to Sookshma depth (7,152 rows). Yogini/Ashtottari/Naisargika/Mudda/Jaimini_Chara/Kalachakra also implemented. ~9,200 rows per ayanamsha. 60/60 tests. dashas_writer.py."
           },
           "est_hrs": 24,
           "deps": [
