@@ -876,6 +876,50 @@ export async function POST(request: Request) {
     }
   }
 
+  // [PHASE-D-06] Data-readiness context injection.
+  // Queries build_checkpoints to determine which chart data assets are ready.
+  // Injects a NOTE into the system prompt so the model avoids hallucinating
+  // data for unbuilt domains. Non-fatal — synthesis proceeds on any error.
+  let dataReadinessNote: string | undefined
+  try {
+    const latestBuildRes = await query<{ build_id: string }>(
+      `SELECT build_id FROM build_events WHERE chart_id = $1 ORDER BY emitted_at DESC LIMIT 1`,
+      [chartId],
+    )
+    const latestBuildId = latestBuildRes.rows[0]?.build_id
+    if (latestBuildId) {
+      const checkpointsRes = await query<{ asset_id: string; status: string }>(
+        `SELECT DISTINCT ON (asset_id) asset_id, status
+           FROM build_checkpoints
+          WHERE build_id = $1
+          ORDER BY asset_id, completed_at DESC NULLS LAST`,
+        [latestBuildId],
+      )
+      if (checkpointsRes.rows.length > 0) {
+        const readyAssets = checkpointsRes.rows
+          .filter(r => r.status === 'success')
+          .map(r => r.asset_id)
+        const missingAssets = checkpointsRes.rows
+          .filter(r => r.status !== 'success')
+          .map(r => r.asset_id)
+        const total = checkpointsRes.rows.length
+        if (missingAssets.length > 0) {
+          dataReadinessNote = [
+            `NOTE: Chart data partially built.`,
+            `Assets ready: [${readyAssets.join(', ')}].`,
+            `Assets not yet built: [${missingAssets.join(', ')}].`,
+            `Do NOT hallucinate data for unbuilt assets — say "data not yet available" for those domains.`,
+            `(${readyAssets.length} of ${total} assets complete)`,
+          ].join(' ')
+        } else {
+          dataReadinessNote = `NOTE: All ${total} chart assets fully built. All data domains available.`
+        }
+      }
+    }
+  } catch {
+    // Non-fatal: readiness check failure does not block synthesis
+  }
+
   /**
    * B.11 FLOOR CONTRACT (binding for all adapter dispatch paths):
    *
@@ -919,6 +963,7 @@ export async function POST(request: Request) {
     nextSeq,
     pendingStreamWriter,
     fetchMsrSnippets,
+    dataReadinessNote,
   })
   // (formerly route.ts L899–1319: STACK_TO_ADAPTER mapping → adapter chat
   // request assembly → Gemini cache → createUIMessageStream → B.11 citation
