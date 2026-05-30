@@ -98,9 +98,14 @@ def test_cancellation_rule_present_when_severity_cancellation():
 
 @pytest.mark.skipif(not DB_AVAILABLE, reason="DB_NAME env var not set")
 def test_seed_vedha_extended_inserts_rows_and_is_idempotent():
-    """Test 6 (DB): seed_vedha_extended() inserts >= 60 rows; second call inserts 0."""
+    """Test 6 (DB): fresh seed → >= 60 rows; second call → 0 (true idempotency)."""
     conn = _get_conn()
     try:
+        # Clear table first so the first seed is a genuine fresh insert
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM l1_vedha_extended")
+            conn.commit()
+
         # First call — should insert all rows
         count1 = seed_vedha_extended(conn)
         assert count1 >= 60, f"Expected >= 60 inserted on first call, got {count1}"
