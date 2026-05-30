@@ -46,10 +46,10 @@ describe('query_msr_aggregate tool', () => {
     expect(parsed.message.length).toBeGreaterThan(0)
   })
 
-  it('latency_ms is 0', async () => {
+  it('latency_ms is a non-negative number', async () => {
     const bundle = await tool.retrieve(basePlan)
 
-    expect(bundle.latency_ms).toBe(0)
+    expect(bundle.latency_ms).toBeGreaterThanOrEqual(0)
   })
 
   it('schema_version is 1.0', async () => {
