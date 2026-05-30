@@ -1114,14 +1114,27 @@ def write(
         logger.info("[A7] conn=None — dry-run, returning count %d", total)
         return total
 
-    if total > 0:
+    # Guard: drop rows where NOT NULL columns (fact_category/fact_subject/fact_key)
+    # would be NULL — those cause a NotNullViolation that silently aborts the txn.
+    # Indices 8/9/10 map to fact_category/fact_subject/fact_key in _INSERT_SQL.
+    pre_filter = len(all_rows)
+    all_rows = [r for r in all_rows if r[8] is not None and r[9] is not None and r[10] is not None]
+    if len(all_rows) < pre_filter:
+        logger.warning("[A7] Dropped %d rows with NULL NOT-NULL columns (of %d total)",
+                       pre_filter - len(all_rows), pre_filter)
+
+    if total > 0 and all_rows:
         try:
             from psycopg2.extras import execute_values
             with conn.cursor() as _cur:
                 execute_values(_cur, _INSERT_SQL, all_rows, page_size=500)
             conn.commit()
-        except Exception:
-            # Try without commit (e.g. psycopg3 or auto-commit connection)
+        except Exception as first_exc:
+            logger.error("[A7] First execute_values failed: %s", first_exc)
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             try:
                 from psycopg2.extras import execute_values
                 with conn.cursor() as _cur:
@@ -1130,4 +1143,4 @@ def write(
                 logger.error("[A7] DB write failed: %s", exc)
                 raise
 
-    return total
+    return len(all_rows)
