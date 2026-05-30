@@ -1,17 +1,17 @@
 # Known Pre-Existing Test Failures
 
-**v1.5 — 35 pre-existing failures documented (2026-05-26)**
-Branch: main (HEAD: 649aa92a — SRP-F-2 merge)
-Total pre-existing failures: **35 test cases** (13 platform + 22 platform-mcp)
+**v1.6 — 0 pre-existing failures (2026-05-31)**
+Branch: main (HEAD: 206d6370)
+Total pre-existing failures: **0** (platform: 0, platform-mcp: 0)
 Test suite: platform vitest + platform-mcp vitest
 
-> **SRP-specific tests:** All SRP fix code is on main (FIX-1 through FIX-6 verified present).
-> SRP test PRs #166 (T-1 portal unit), #167 (T-2 MCP unit), #168 (T-3 integration), #169 (T-4 system) are open on test branches and pending merge. None of the 35 failures below are SRP regressions.
+> **All 35 v1.5 failures are resolved.** Platform-mcp 22 failures resolved by `837fbf07` (2026-05-30). Platform 13 failures resolved by `6fffa50a` (2026-05-26), `49a83571`, `f7d0eeda`, `ef2e4c05` (all 2026-05-30). See changelog for per-group fix mapping.
 
 ---
 
 ## Changelog
 
+- **v1.6 (2026-05-31):** All 35 v1.5 failures resolved. Platform package: 0 failures (was 13). Platform-mcp package: 0 failures (was 22). Resolving commits: `6fffa50a` (2026-05-26, Groups 2a+2b — ToolBundle shape assertions); `49a83571` (2026-05-30, Groups 1, 3b, 4, 5 — spec gap, MSR path, trace-audit param indices, ICR gate); `f7d0eeda` (2026-05-30, Group 3a — msr_parser count 514→573 + relative path); `ef2e4c05` (2026-05-30, Group 3c — frontmatter_check field assertion); `837fbf07` (2026-05-30, Groups 6+9 — MCP wrapper shapes, query_signal_state Zod limit). Groups 7+8 (tool catalog count drift + live-DB CI guard) resolved by Multi-Ayanamsha arc commits between `649aa92a` and `837fbf07`.
 - **v1.5 (2026-05-26, SRP-DEPLOY):** Corrects v1.4 false-zero claim. Documents 35 pre-existing failures: 13 in platform (UDA-1 spec gap, tooling-remediation, MSR count drift, RCS trace-audit, ICR resolution) and 22 in platform-mcp (tooling-remediation wrappers, tool catalog count, live-DB integration, signal-state schema). All 35 failures introduced by upstream commits after v1.4 was authored (UDA-1 PR #161 + tooling-remediation PR #159 + MARSYS-JIS tooling work, all on main before SRP merges). SRP introduced 0 new failures.
 - **v1.4 (2026-05-24):** All 18 pre-existing failures from v1.3 resolved. Final suite: **0 failures**. (This claim was correct at v1.4 authoring time; 35 new failures were subsequently introduced by upstream PRs before the SRP-DEPLOY session.)
 - **v1.3 (2026-05-23):** 18 pre-existing failures across 10 files (R11.B chrome, M5 Coverage, MCPT v3.1, Phase 4C, R11.F). All non-regression.
@@ -21,7 +21,29 @@ Test suite: platform vitest + platform-mcp vitest
 
 ---
 
-## Platform package — 13 failures across 8 files
+## v1.6 Resolution Summary
+
+| v1.5 Group | Tests | Fix commit | Date |
+|---|---|---|---|
+| G1 — RETRIEVAL_CAPABILITY_SPEC gap | 2 | `49a83571` | 2026-05-30 |
+| G2a — chart_facts_query TC.10 ToolBundle shape | 1 | `6fffa50a` | 2026-05-26 |
+| G2b — query_dasha_periods tool_version | 1 | `6fffa50a` | 2026-05-26 |
+| G3a — msr_parser signal count (514→573) + path | 1 | `49a83571` + `f7d0eeda` | 2026-05-30 |
+| G3b — auto_deriver MSR_v3_0→MSR_v5_0 path | 1 | `49a83571` | 2026-05-30 |
+| G3c — frontmatter_check field assertion + REPO_ROOT depth | 1 | `f7d0eeda` + `ef2e4c05` | 2026-05-30 |
+| G4 — trace-audit positional param indices (×5) | 5 | `49a83571` | 2026-05-30 |
+| G5 — ICR DIS.013 PROPOSED→RESOLVED gate | 1 | `49a83571` | 2026-05-30 |
+| G6 — MCP tool wrapper callPlatformPrimitive shape (×15) | 15 | `837fbf07` | 2026-05-30 |
+| G7 — tool_descriptions catalog count (22→40) | 2 | Multi-Ayanamsha arc | 2026-05-30 |
+| G8 — live-DB CI guard (chart_summary, cross_scenario) | 4 | Multi-Ayanamsha arc | 2026-05-30 |
+| G9 — query_signal_state Zod limit max 500→200 | 1 | `837fbf07` | 2026-05-30 |
+| **TOTAL** | **35** | | |
+
+---
+
+## v1.5 Detail (archived — all resolved)
+
+### Platform package — 13 failures across 8 files
 
 ### Group 1 — UDA-1 RETRIEVAL_CAPABILITY_SPEC gap — 2 failures, 1 file
 
@@ -212,5 +234,6 @@ SRP test PRs open (test-suite branches, non-blocking for production):
 - **v1.3** (2026-05-23, R11.G-S4 refresh): 18 failures / 10 files — all pre-existing, 0 R11.G regressions
 - **v1.4** (2026-05-24): 0 failures — all 18 resolved (correct at authoring time; 35 failures subsequently introduced by UDA-1 + tooling-remediation upstream PRs)
 - **v1.5** (2026-05-26, SRP-DEPLOY): 35 failures — 13 platform + 22 platform-mcp; all pre-existing; 0 SRP regressions
+- **v1.6** (2026-05-31): 0 failures — all 35 resolved by commits on 2026-05-26 and 2026-05-30; see Resolution Summary table above.
 
-*v1.5 authored 2026-05-26 by SRP-DEPLOY session. Vitest run on main HEAD 649aa92a. 13 failures confirmed in platform; 22 failures confirmed in platform-mcp.*
+*v1.6 authored 2026-05-31. main HEAD: 206d6370. Both packages at 0 failures.*
