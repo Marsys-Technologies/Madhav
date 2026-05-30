@@ -71,3 +71,11 @@ tools/program-tracker/
 # Terraform local state/cache (per-module — not committed; recreated by `terraform init`)
 **/.terraform/
 **/.terraform.lock.hcl
+
+# Conductor daemon runtime files (not to be tracked)
+00_ARCHITECTURE/CONDUCTOR/**/*.pid
+00_ARCHITECTURE/CONDUCTOR/**/*.log
+00_ARCHITECTURE/CONDUCTOR/**/daemon_heartbeat.json
+00_ARCHITECTURE/CONDUCTOR/**/data_build_status.json
+00_ARCHITECTURE/CONDUCTOR/build_orchestrator/tracker/state.json
+00_ARCHITECTURE/CONDUCTOR/build_orchestrator/tracker/serve.log
