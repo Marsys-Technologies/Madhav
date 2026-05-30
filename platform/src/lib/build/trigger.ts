@@ -13,11 +13,9 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { query } from '@/lib/db/client'
 
-// String-variable indirection — keeps the dependency optional at build/test
-// time. The package only needs to exist in the production container.
-async function loadGcpModule(name: string): Promise<unknown> {
-  return import(/* @vite-ignore */ name)
-}
+// Static import so webpack can resolve the module at build time.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const loadGcpModule = (_name: string) => Promise.resolve(require('@google-cloud/tasks'))
 
 export type AyanamshaRole = 'jh_true_chitra' | 'kp'
 
