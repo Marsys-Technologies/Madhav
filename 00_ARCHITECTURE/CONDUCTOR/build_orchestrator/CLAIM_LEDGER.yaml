@@ -11,6 +11,19 @@ active_claims: []
 
 # Sessions completed (audit trail; capped to last 500 entries)
 released_claims:
+  - session_id: stream-d-waves3-5
+    stream_owner: D
+    claimed_by_stream: D
+    completed_at: "2026-05-30T13:00:00Z"
+    merge_sha: "abce1789"
+    ci_status: green
+    items_completed:
+      - A20  # Tajik Hadda work-steal
+      - UTEE-S1 through UTEE-S4
+      - BRIDGE-S1 through BRIDGE-S3
+      - META-α through META-ε
+      - META-ζ (view)
+      - ACC1 through ACC10
   - session_id: F-01
     completed_at: "2026-05-30T04:25:00+05:30"
     merge_sha: "422e2b68"

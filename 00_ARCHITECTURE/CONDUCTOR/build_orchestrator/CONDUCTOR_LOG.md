@@ -2,6 +2,51 @@
 
 > Appended by Conductor on each session close. Reverse chronological.
 
+## Stream D — Waves 3-5 + Work-steals A20/A21 — 2026-05-30
+
+**Sessions executed:** 11 batches covering 28 session-equivalents
+**Worktree:** MadhavStream-D / feature/build-orch/stream-d
+**Halt reason:** own_queue_done + global_queue_done
+
+### Work-steals
+- **A20** (Tajik Hadda fold): migration 148 + tajik_varsha_year_lords_writer.py + 19 tests → SHA 7fc844ce
+- **A21 @slow**: graha aspects lifetime @slow populate (background job; operator verifies row count)
+
+### Wave 3 — UTEE + BRIDGE
+- **UTEE-S1** (migration 149): UTEE envelope columns on 7 temporal tables (136 ALTER TABLE) + 31 tests → SHA 41f3716d
+- **UTEE-S2** (backfill writer): utee_backfill_writer.py + 27 tests → SHA 6c4ca7ae
+- **BRIDGE-S1** (migration 150): l25_vedha_anchor_interactions table → SHA 6c4ca7ae
+- **BRIDGE-S2**: vedha_anchor_bridge_writer.py + 27 tests → SHA 6c4ca7ae
+- **BRIDGE-S3**: query_vedha_anchor_interactions.py → SHA 6c4ca7ae
+- **UTEE-S3** (migration 151): vw_temporal_unified_lattice view (7-source UNION ALL) + 41 tests → SHA 1b471196
+- **UTEE-S4**: 6 query_temporal_events_* tools + manifest → SHA 1b471196
+
+### Wave 4 — META synthesis
+- **META-α** (migration 152): l25_chart_lattice_snapshots + writer + 4 query tools + 20 tests → SHA 6a97ddaa
+- **META-β** (migration 153): l25_pattern_catalog + writer + query_patterns tools
+- **META-γ** (migration 153): l25_divergence_ledger + writer + query_divergences
+- **META-δ** (migration 153): l25_negative_space_map + writer + query_negative_space
+- **META-ε** (migration 153): l25_derivation_graph_nodes/edges + writer + query_derivation_trail
+  Total META-β/γ/δ/ε: 59 tests → SHA a66fc7b7
+
+### Wave 5 — ACC gates
+- **ACC1**: SKIPPED (chart_facts=0; DB proxy not running) → operator_action_pending → SHA 9682b95c
+- **ACC2**: 15/15 hard gates GREEN (8 original + 7 infra) → SHA 9682b95c
+- **ACC3**: red-team artifact prepared (8 attack surfaces) → operator_action_pending → SHA 9682b95c
+- **ACC4**: multi-tenant smoke (5 tests authored) → operator_action_pending → SHA e2aede66
+- **ACC5**: concurrent-build smoke (3 tests authored) → operator_action_pending → SHA e2aede66
+- **ACC6**: CAPABILITY_MANIFEST v1.4→v1.5 (25 new entries), CLAUDE.md §E updated, PROJECT_ARCHITECTURE 2.2→2.3 → SHA abce1789
+- **ACC7**: BUILD_ORCHESTRATOR_README.md authored → SHA abce1789
+- **ACC8**: MULTI_AYANAMSHA_BUILD_CLOSE_v1_0.md sealing artifact → SHA abce1789
+- **ACC10**: NATIVE_SIGNOFF_PREP_v1_0.md prepared → SHA abce1789
+
+**Total tests added (Waves 3-5):** 247+
+**Migrations added:** 148-153 (6 migrations)
+**MCP tools registered:** 17 new tools (CAPABILITY_MANIFEST 272→297 entries)
+**Status:** CLEAN HALT — own queue complete + work-steals complete
+
+---
+
 ## Phase A Complete (2026-05-29)
 - 13 worktrees created: MadhavBO-A through MadhavBO-J
 - session_queue.yaml authored: 95 sessions across 13 streams
