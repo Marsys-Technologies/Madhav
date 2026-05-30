@@ -1123,6 +1123,19 @@ def write(
         logger.warning("[A7] Dropped %d rows with NULL NOT-NULL columns (of %d total)",
                        pre_filter - len(all_rows), pre_filter)
 
+    # Deduplicate by ON CONFLICT key (chart_id, ayanamsha_id, fact_category, fact_subject,
+    # fact_key, build_id) at indices (1, 2, 8, 9, 10, 3). Duplicate keys in a single
+    # execute_values batch cause CardinalityViolation. Keep last occurrence per key.
+    seen: dict = {}
+    for row in all_rows:
+        key = (row[1], row[2], row[8], row[9], row[10], row[3])
+        seen[key] = row
+    pre_dedup = len(all_rows)
+    all_rows = list(seen.values())
+    if len(all_rows) < pre_dedup:
+        logger.warning("[A7] Deduplicated %d duplicate-key rows (of %d total)",
+                       pre_dedup - len(all_rows), pre_dedup)
+
     if total > 0 and all_rows:
         try:
             from psycopg2.extras import execute_values
