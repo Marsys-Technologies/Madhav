@@ -36,7 +36,7 @@ halt_reason: own_queue_done
 
 | # | File | Description |
 |---|---|---|
-| 139 | 139_g29_timing_rules.sql | G29 Classical Timing Rule Catalog table |
+| 139 | 154_g29_timing_rules.sql | G29 Classical Timing Rule Catalog table |
 | 140 | 140_sarvatobhadra_chakra.sql | Sarvatobhadra positions + vedha tables |
 | 141 | 141_supplementary_chakras.sql | Sapta-Shalaka + Kalanala + Kota + CKN |
 | 142 | 142_bhrigu_bindu_transits.sql | Bhrigu Bindu lifetime transit table |

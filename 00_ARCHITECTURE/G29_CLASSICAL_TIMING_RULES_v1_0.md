@@ -28,7 +28,7 @@ The table feeds:
 
 ## §1 — DB Schema (migration 139)
 
-File: `platform/migrations/139_g29_timing_rules.sql`
+File: `platform/migrations/154_g29_timing_rules.sql`
 
 ```sql
 -- Migration 139: G29 Classical Timing Rule Catalog
@@ -386,7 +386,7 @@ Timing system: `nadi`. Activation window: `maha_dasha` or `transit`.
 G29-S1 PASS conditions:
   [ ] Migration 139 applies cleanly to staging DB:
       PGPASSWORD=... psql -h 127.0.0.1 -p 5433 -U amjis_app -d amjis_staging \
-        -f platform/migrations/139_g29_timing_rules.sql && echo 'mig 139 OK'
+        -f platform/migrations/154_g29_timing_rules.sql && echo 'mig 154 OK'
   [ ] g29_timing_rules table exists with 11 columns + constraints
   [ ] Python seeder module: classical_timing_rules.py in pipeline/
   [ ] seed_g29_rules() executes idempotently:
@@ -422,7 +422,7 @@ G29-S1 PASS conditions:
 ## §6 — File manifest
 
 ```
-platform/migrations/139_g29_timing_rules.sql       CREATE TABLE + constraints + indexes
+platform/migrations/154_g29_timing_rules.sql       CREATE TABLE + constraints + indexes
 platform/python-sidecar/pipeline/classical_timing_rules.py    G29_RULES dict + seed_g29_rules()
 platform/python-sidecar/pipeline/__tests__/test_g29_timing_rules.py   pytest suite
 ```
