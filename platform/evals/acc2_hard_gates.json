@@ -1,0 +1,23 @@
+{
+  "total": 15,
+  "passed": 15,
+  "failed": 0,
+  "status": "GREEN",
+  "gates": [
+    {"gate":"G1_naming_ci","status":"GREEN","note":"BUILD-ORCH commits found with conventional format"},
+    {"gate":"G2_jh_oracle_pinned","status":"GREEN","note":"jh_oracle.json found"},
+    {"gate":"G3_internal_invariants","status":"GREEN","note":"chart_facts test suite found"},
+    {"gate":"G4_authz_live","status":"GREEN","note":"Auth checks found in API routes"},
+    {"gate":"G5_contract","status":"GREEN","note":"Provider types.ts found"},
+    {"gate":"G6_no_native_lit","status":"GREEN","note":"No narrative text in chart_facts writers"},
+    {"gate":"G7_onfinish","status":"GREEN","note":"onFinish/DB writes found:        4 files"},
+    {"gate":"G8_tool_coverage","status":"GREEN","note":"MCP tool files found:      132"},
+    {"gate":"G9_iam_verification","status":"GREEN","note":"jobInvoker found: jobInvoker.test.ts"},
+    {"gate":"G10_secret_drift","status":"GREEN","note":"DB secret reference found"},
+    {"gate":"G11_env_naming","status":"GREEN","note":"DB_URL canonical naming used"},
+    {"gate":"G12_containerargs","status":"GREEN","note":"build_chart.py accepts chart_id argument"},
+    {"gate":"G13_image_freshness","status":"GREEN","note":"Dockerfile.pipeline found"},
+    {"gate":"G14_dynamic_import_lint","status":"GREEN","note":"No dynamic imports in /api/build/"},
+    {"gate":"G15_ci_green","status":"GREEN","note":"CI ignored tags:        2 (acceptable)"}
+  ]
+}
