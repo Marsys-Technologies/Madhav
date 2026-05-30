@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MARSYS Data Build — Live</title>
+<style>
+:root{
+  --bg:#fbfaf7;--surface:#fff;--surface-elev:#f5f3ee;
+  --border:#e8e4dc;--border-strong:#d4cec0;
+  --text:#1f1d1a;--text-2:#5e574e;--text-3:#918a7e;
+  --accent:#c08047;--accent-soft:#f4e9da;
+  --ok:#4d8a5e;--warn:#c08047;--err:#b85454;
+  --serif:Georgia,"Times New Roman",ui-serif,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.container{max-width:1340px;margin:0 auto;padding:24px 22px 80px}
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:18px}
+.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:0 0 6px;font-weight:600}
+.title{font-family:var(--serif);font-size:28px;font-weight:500;letter-spacing:-.02em;margin:0 0 4px}
+.subtitle{font-size:12.5px;color:var(--text-2);max-width:680px;margin:0}
+.freshness{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;font-family:var(--sans)}
+.freshness.fresh{color:var(--ok)} .freshness.stale{color:var(--err)}
+
+/* ── State Banner ─────────────────────────────────────────────────────── */
+.state-banner{display:none;border-radius:10px;padding:14px 20px;margin-bottom:16px;font-size:14px;font-weight:600;letter-spacing:.02em;border:1.5px solid transparent}
+.state-banner.visible{display:flex;align-items:center;gap:12px}
+.state-banner .banner-icon{font-size:20px;flex-shrink:0}
+.state-banner .banner-text{flex:1}
+.state-banner .banner-sub{font-size:11.5px;font-weight:400;color:inherit;opacity:.8;margin-top:2px}
+.state-banner.daemon-down{background:rgba(184,84,84,.1);border-color:rgba(184,84,84,.4);color:#8a2020}
+.state-banner.build-complete{background:rgba(77,138,94,.1);border-color:rgba(77,138,94,.4);color:#1f5e2f}
+.state-banner.build-running{background:rgba(192,128,71,.1);border-color:rgba(192,128,71,.4);color:#6b4010}
+.state-banner.build-idle{background:rgba(145,138,126,.1);border-color:rgba(145,138,126,.3);color:var(--text-2)}
+
+/* ── Stats grid ───────────────────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:14px 0 22px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin:0 0 4px;font-weight:600}
+.stat-value{font-family:var(--serif);font-size:22px;font-weight:500;margin:0;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat-sub{font-size:11px;color:var(--text-3);margin:2px 0 0;font-variant-numeric:tabular-nums}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.panel-head{padding:14px 20px;border-bottom:1px solid var(--border);font-family:var(--serif);font-size:15px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.panel-head .right{font-size:11px;color:var(--text-3);font-family:var(--sans);font-weight:400;font-variant-numeric:tabular-nums}
+.panel-body{padding:14px 20px}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--border)}
+table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+table td.num{text-align:right;font-variant-numeric:tabular-nums}
+table tr:last-child td{border-bottom:none}
+table tr:hover{background:var(--surface-elev)}
+
+.bar{display:inline-block;vertical-align:middle;height:6px;background:var(--surface-elev);border-radius:99px;overflow:hidden;width:120px;margin-right:8px}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#d6a071);transition:width 400ms ease}
+.bar-fill.ok{background:linear-gradient(90deg,var(--ok),#74b389)}
+.bar-fill.warn{background:linear-gradient(90deg,var(--warn),#d6a071)}
+.bar-fill.err{background:linear-gradient(90deg,var(--err),#d67878)}
+
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;border:1px solid rgba(0,0,0,.08)}
+.pill.ok{background:rgba(77,138,94,.12);color:var(--ok)}
+.pill.warn{background:rgba(192,128,71,.13);color:var(--warn)}
+.pill.err{background:rgba(184,84,84,.13);color:var(--err)}
+.pill.idle{background:rgba(145,138,126,.13);color:var(--text-3)}
+
+.matrix{display:grid;grid-template-columns:120px repeat(auto-fit,minmax(72px,1fr));gap:1px;background:var(--border);border-radius:8px;overflow:hidden;font-size:11px}
+.matrix > div{background:var(--surface);padding:6px 8px;text-align:center;font-variant-numeric:tabular-nums}
+.matrix .h{background:var(--surface-elev);font-weight:600;text-transform:uppercase;font-size:9.5px;letter-spacing:.04em;color:var(--text-3)}
+.matrix .ay{text-align:left;font-weight:600;color:var(--text-2);font-family:var(--serif);font-size:11.5px}
+.cell{position:relative;cursor:default}
+.cell .v{font-weight:600;color:var(--text)}
+.cell .e{color:var(--text-3);font-size:9.5px}
+.cell.done{background:rgba(77,138,94,.06)}
+.cell.partial{background:rgba(192,128,71,.06)}
+.cell.empty{color:var(--text-3)}
+
+.timeline{font-size:12px}
+.timeline-row{display:grid;grid-template-columns:90px 110px 110px 80px 60px 1fr;gap:10px;padding:5px 0;border-bottom:1px dashed var(--border);font-variant-numeric:tabular-nums}
+.timeline-row:last-child{border-bottom:none}
+.timeline-time{color:var(--text-3);font-size:11px}
+.timeline-asset{font-family:var(--serif);font-weight:500}
+.timeline-stage{color:var(--text-2)}
+.timeline-pct{text-align:right;color:var(--text-3)}
+
+.migrations-grid{display:flex;flex-wrap:wrap;gap:5px}
+.mig{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;font-size:11px;font-variant-numeric:tabular-nums;border:1px solid var(--border)}
+.mig.applied{background:rgba(77,138,94,.1);color:var(--ok);border-color:rgba(77,138,94,.3)}
+.mig.pending{background:var(--surface-elev);color:var(--text-3)}
+
+.empty-state{color:var(--text-3);font-size:13px;padding:14px 0;text-align:center;font-style:italic}
+
+footer{margin-top:30px;font-size:11px;color:var(--text-3);text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <p class="eyebrow">MARSYS-JIS · Data Build · Live Monitor</p>
+      <h1 class="title" id="title">Chart Build Progress</h1>
+      <p class="subtitle">Real-time view of native chart computation. Auto-refresh every 5s.</p>
+    </div>
+    <div class="freshness" id="freshness">connecting…</div>
+  </div>
+
+  <!-- State banner — shown above stats grid -->
+  <div class="state-banner" id="state-banner">
+    <div class="banner-icon" id="banner-icon">⬤</div>
+    <div>
+      <div id="banner-title">—</div>
+      <div class="banner-sub" id="banner-sub">—</div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat"><p class="stat-label">Build ID</p><p class="stat-value" id="s-build-id">—</p><p class="stat-sub" id="s-build-status">—</p></div>
+    <div class="stat"><p class="stat-label">Elapsed</p><p class="stat-value" id="s-elapsed">—</p><p class="stat-sub" id="s-eta">—</p></div>
+    <div class="stat"><p class="stat-label">chart_facts rows</p><p class="stat-value" id="s-rows">—</p><p class="stat-sub" id="s-rows-pct">—</p></div>
+    <div class="stat"><p class="stat-label">Current stage</p><p class="stat-value" id="s-stage">—</p><p class="stat-sub" id="s-stage-status">—</p></div>
+    <div class="stat"><p class="stat-label">Migrations 140-153</p><p class="stat-value" id="s-migrations">—</p><p class="stat-sub">applied</p></div>
+    <div class="stat"><p class="stat-label">Two-pass verified</p><p class="stat-value" id="s-two-pass">—</p><p class="stat-sub" id="s-two-pass-sub">—</p></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">chart_facts — population by ayanamsha × asset <span class="right" id="cf-summary">—</span></div>
+    <div class="panel-body" id="cf-matrix">loading…</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">L2.5 + supplementary tables <span class="right" id="l25-summary">—</span></div>
+    <div class="panel-body" id="l25-list">loading…</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">Build event timeline (latest 40) <span class="right" id="timeline-summary">—</span></div>
+    <div class="panel-body timeline" id="timeline">loading…</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">Migrations 140–153 <span class="right" id="mig-summary">—</span></div>
+    <div class="panel-body migrations-grid" id="migrations">loading…</div>
+  </div>
+</div>
+
+<footer>
+  Daemon pid <span id="daemon-pid">—</span> · v<span id="daemon-version">—</span> ·
+  started <span id="daemon-started">—</span> ·
+  last heartbeat <span id="daemon-heartbeat">—</span>
+</footer>
+
+<script>
+const SNAPSHOT_URL = "https://storage.googleapis.com/marsys-tracker-public/data_build_status.json";
+const HEARTBEAT_URL = "https://storage.googleapis.com/marsys-tracker-public/daemon_heartbeat.json";
+const HEARTBEAT_STALE_MS = 120_000;  // 120s → DAEMON DOWN
+const REFRESH_MS = 5000;
+let lastSnapAt = null;
+let consecutiveFailures = 0;
+let notifiedComplete = false;
+
+const ASSETS_ORDER = ["a3","a4","a5","a6","a7","a8","a9","a10","a11","a12","a13","a15","a16","a17","a18","a19","a20","a21","a22"];
+
+function fmtNum(n){ if(n==null) return "—"; return n.toLocaleString(); }
+function fmtElapsed(s){
+  if(s==null) return "—";
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=Math.floor(s%60);
+  if(h>0) return `${h}h${m}m`;
+  if(m>0) return `${m}m${sec}s`;
+  return `${sec}s`;
+}
+function fmtETA(min){
+  if(min==null) return "—";
+  if(min<1) return "<1m remaining";
+  if(min<60) return `~${Math.round(min)}m remaining`;
+  return `~${(min/60).toFixed(1)}h remaining`;
+}
+function timeSince(iso){
+  if(!iso) return "—";
+  const d=new Date(iso); const diff=(Date.now()-d.getTime())/1000;
+  if(diff<60) return `${Math.floor(diff)}s ago`;
+  if(diff<3600) return `${Math.floor(diff/60)}m ago`;
+  return `${Math.floor(diff/3600)}h ago`;
+}
+function classifyCell(rows, expected){
+  if(!expected) return "empty";
+  const pct = rows/expected;
+  if(pct >= 0.95) return "done";
+  if(pct >= 0.05) return "partial";
+  return "empty";
+}
+
+// Browser notification on build completion
+if(Notification.permission === "default") Notification.requestPermission();
+function notifyComplete(buildId){
+  if(notifiedComplete) return;
+  if(Notification.permission === "granted"){
+    new Notification("MARSYS build complete", { body: `Build ${(buildId||"").slice(0,8)} finished.` });
+    notifiedComplete = true;
+  }
+}
+
+// State banner
+function showBanner(cls, icon, title, sub){
+  const el = document.getElementById("state-banner");
+  el.className = "state-banner visible " + cls;
+  document.getElementById("banner-icon").textContent = icon;
+  document.getElementById("banner-title").textContent = title;
+  document.getElementById("banner-sub").textContent = sub || "";
+}
+
+async function fetchSnap(){
+  try{
+    const ts = Date.now();
+    const [snapR, hbR] = await Promise.allSettled([
+      fetch(SNAPSHOT_URL + "?_=" + ts, {cache:"no-store"}),
+      fetch(HEARTBEAT_URL + "?_=" + ts, {cache:"no-store"})
+    ]);
+
+    let snap = null, hb = null;
+
+    if(snapR.status === "fulfilled" && snapR.value.ok){
+      snap = await snapR.value.json();
+    } else {
+      const err = snapR.status === "rejected" ? snapR.reason?.message : ("HTTP " + snapR.value?.status);
+      throw new Error("snapshot: " + err);
+    }
+
+    if(hbR.status === "fulfilled" && hbR.value.ok){
+      hb = await hbR.value.json();
+    }
+    // heartbeat failure is non-fatal — handled in render()
+
+    consecutiveFailures = 0;
+    lastSnapAt = Date.now();
+    render(snap, hb);
+  } catch(e){
+    consecutiveFailures++;
+    const el = document.getElementById("freshness");
+    el.textContent = `fetch failure ×${consecutiveFailures}: ${e.message}`;
+    el.className = "freshness stale";
+  }
+}
+
+function render(s, hb){
+  // ── Daemon footer ─────────────────────────────────────────────────────
+  const daemon = s?._daemon || {};
+  document.getElementById("daemon-pid").textContent = hb?.daemon_pid ?? daemon?.pid ?? "—";
+  document.getElementById("daemon-version").textContent = hb?.daemon_version ?? daemon?.version ?? "—";
+  document.getElementById("daemon-started").textContent =
+    hb?.daemon_started_at ? timeSince(hb.daemon_started_at) : (daemon?.started_at ? timeSince(daemon.started_at) : "—");
+  const hbAt = hb?.last_heartbeat_at;
+  document.getElementById("daemon-heartbeat").textContent = hbAt ? timeSince(hbAt) : "unknown";
+
+  // ── State banner ──────────────────────────────────────────────────────
+  const hbAge = hbAt ? (Date.now() - new Date(hbAt).getTime()) : Infinity;
+  const b = s?.build || {};
+  if(hbAge > HEARTBEAT_STALE_MS){
+    const ageStr = hbAt ? `last seen ${timeSince(hbAt)}` : "heartbeat file not found";
+    showBanner("daemon-down", "🔴", "DAEMON DOWN — tracker is not polling", ageStr);
+  } else if(b?.is_complete){
+    showBanner("build-complete", "✅", "BUILD COMPLETE", `Build ${(b.build_id||"").slice(0,12)} finished successfully`);
+    notifyComplete(b.build_id);
+  } else if(b?.build_id){
+    const lastEvt = b?.last_event_at ? timeSince(b.last_event_at) : "—";
+    showBanner("build-running", "🟡", "BUILD RUNNING", `Build ${b.build_id.slice(0,12)} · last event ${lastEvt}`);
+  } else {
+    showBanner("build-idle", "⚪", "BUILD IDLE", "No build in last 24h");
+  }
+
+  // ── Title ─────────────────────────────────────────────────────────────
+  document.getElementById("title").textContent = `Chart ${(s?.chart_id||"").slice(0,8)} — Build Progress`;
+
+  // ── Stats ─────────────────────────────────────────────────────────────
+  document.getElementById("s-build-id").textContent = b?.build_id ? b.build_id.slice(0,12) : "(none)";
+  let bs = "no active build";
+  if(b?.is_complete) bs = "complete";
+  else if(b?.is_failed) bs = "failed";
+  else if(b?.build_id) bs = "running";
+  document.getElementById("s-build-status").innerHTML =
+    `<span class="pill ${b?.is_complete?'ok':b?.is_failed?'err':b?.build_id?'warn':'idle'}">${bs}</span>`;
+
+  document.getElementById("s-elapsed").textContent = fmtElapsed(b?.elapsed_seconds ?? null);
+  document.getElementById("s-eta").textContent = s?.eta ? fmtETA(s.eta?.eta_minutes_remaining ?? null) : "—";
+
+  const cf = s?.chart_facts ?? {};
+  document.getElementById("s-rows").textContent = fmtNum(cf?.total_rows ?? null);
+  document.getElementById("s-rows-pct").textContent = s?.eta ? `${s.eta?.completion_pct ?? 0}% of expected` : "—";
+
+  const cur = b?.current ?? {};
+  document.getElementById("s-stage").textContent = cur?.asset ?? "—";
+  document.getElementById("s-stage-status").textContent = cur?.stage ? `${cur.stage} · ${cur?.status ?? ""}` : "—";
+
+  document.getElementById("s-migrations").textContent = `${s?.migrations_applied_count ?? 0} / 14`;
+
+  const verif = cf?.verification ?? {};
+  const twoPass = verif?.two_pass_verified ?? 0;
+  const totalVerified = Object.values(verif).filter(v => typeof v === 'number').reduce((a,b)=>a+b, 0);
+  const pct = totalVerified > 0 ? (100*twoPass/totalVerified).toFixed(1) : 0;
+  document.getElementById("s-two-pass").textContent = `${pct}%`;
+  document.getElementById("s-two-pass-sub").textContent = `${fmtNum(twoPass)} of ${fmtNum(totalVerified)} rows`;
+
+  // ── chart_facts matrix ────────────────────────────────────────────────
+  const ayList = (cf?.by_ayanamsha_rollup ?? []).map(r=>r.ayanamsha);
+  if(ayList.length === 0){
+    document.getElementById("cf-matrix").innerHTML = '<p class="empty-state">No chart_facts yet — waiting for build to start writing.</p>';
+  } else {
+    const cellMap = {};
+    (cf?.by_ayanamsha_asset ?? []).forEach(r => {
+      cellMap[`${r.ayanamsha}::${r.asset}`] = r;
+    });
+    let html = '<div class="matrix">';
+    html += '<div class="h">ayanamsha ↓ · asset →</div>';
+    ASSETS_ORDER.forEach(a => html += `<div class="h">${a}</div>`);
+    ayList.forEach(ay => {
+      html += `<div class="ay">${ay}</div>`;
+      ASSETS_ORDER.forEach(a => {
+        const cell = cellMap[`${ay}::${a}`];
+        if(!cell){
+          html += '<div class="cell empty">—</div>';
+        } else {
+          const cls = classifyCell(cell?.rows ?? 0, cell?.expected ?? 0);
+          html += `<div class="cell ${cls}"><span class="v">${fmtNum(cell?.rows ?? null)}</span></div>`;
+        }
+      });
+    });
+    html += '</div>';
+    document.getElementById("cf-matrix").innerHTML = html;
+    document.getElementById("cf-summary").textContent = `${ayList.length} ayanamshas active · ${fmtNum(cf?.total_rows ?? null)} rows`;
+  }
+
+  // ── L2.5 tables ───────────────────────────────────────────────────────
+  const l25 = s?.l25_tables ?? [];
+  if(l25.length === 0){
+    document.getElementById("l25-list").innerHTML = '<p class="empty-state">No L2.5 data yet.</p>';
+  } else {
+    let html = '<table><thead><tr><th>Table</th><th class="num">Rows</th></tr></thead><tbody>';
+    [...l25].sort((a,b) => (b?.rows ?? 0) - (a?.rows ?? 0));
+    l25.forEach(t => {
+      const rows = t?.rows ?? -1;
+      const cls = rows < 0 ? "err" : (rows > 0 ? "ok" : "idle");
+      const display = rows < 0
+        ? `<span class="pill err">${t?.error ?? 'error'}</span>`
+        : `<span class="pill ${cls}">${fmtNum(rows)}</span>`;
+      html += `<tr><td>${t?.table ?? '—'}</td><td class="num">${display}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById("l25-list").innerHTML = html;
+    const populated = l25.filter(t => (t?.rows ?? -1) > 0).length;
+    document.getElementById("l25-summary").textContent = `${populated} / ${l25.length} populated`;
+  }
+
+  // ── Timeline ──────────────────────────────────────────────────────────
+  const timeline = (b?.timeline ?? []).slice(0, 40);
+  if(timeline.length === 0){
+    document.getElementById("timeline").innerHTML = '<p class="empty-state">No events yet.</p>';
+  } else {
+    let html = '';
+    timeline.forEach(e => {
+      const t = new Date(e?.at ?? 0);
+      const tStr = t.toLocaleTimeString(undefined, {hour12:false});
+      const st = e?.status ?? "?";
+      const statusCls = (st==="success"||st==="completed") ? "ok" : (st==="failed"||st==="errored") ? "err" : "warn";
+      html += `<div class="timeline-row">
+        <div class="timeline-time">${tStr}</div>
+        <div class="timeline-asset">${e?.asset ?? '—'}</div>
+        <div class="timeline-stage">${e?.stage ?? '—'}</div>
+        <div><span class="pill ${statusCls}">${st}</span></div>
+        <div class="timeline-pct">${e?.pct != null ? e.pct.toFixed(0)+'%' : ''}</div>
+        <div class="timeline-time" style="text-align:right">${timeSince(e?.at ?? null)}</div>
+      </div>`;
+    });
+    document.getElementById("timeline").innerHTML = html;
+    document.getElementById("timeline-summary").textContent = `${timeline.length} events shown`;
+  }
+
+  // ── Migrations ────────────────────────────────────────────────────────
+  const migs = s?.migrations ?? [];
+  let mhtml = '';
+  migs.forEach(m => {
+    mhtml += `<span class="mig ${m?.applied ? 'applied':'pending'}">${m?.version ?? '?'}${m?.applied?' ✓':''}</span>`;
+  });
+  document.getElementById("migrations").innerHTML = mhtml || '<p class="empty-state">No data</p>';
+  document.getElementById("mig-summary").textContent = `${s?.migrations_applied_count ?? 0} / 14 applied`;
+
+  // ── Freshness ─────────────────────────────────────────────────────────
+  const ageSec = lastSnapAt ? (Date.now() - lastSnapAt)/1000 : 0;
+  const snapAge = s?.snapshot_at ? (Date.now() - new Date(s.snapshot_at).getTime())/1000 : 0;
+  document.getElementById("freshness").textContent = `snapshot ${Math.floor(snapAge)}s old · fetched ${Math.floor(ageSec)}s ago`;
+  document.getElementById("freshness").className = snapAge < 60 ? "freshness fresh" : "freshness stale";
+}
+
+// Visibility API: refresh immediately on tab focus
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible") fetchSnap();
+});
+
+// Interval: if last fetch was >30s ago, re-fetch
+setInterval(() => {
+  const ageSec = lastSnapAt ? (Date.now() - lastSnapAt)/1000 : 0;
+  if(ageSec > 30) fetchSnap();
+}, 1000);
+
+fetchSnap();
+setInterval(fetchSnap, REFRESH_MS);
+</script>
+</body>
+</html>
