@@ -122,6 +122,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { SettingsDropdown } from './SettingsDropdown'
 import { useMultiProviderParity } from '@/lib/chat-v2/useMultiProviderParity'
+import { PartialDataBanner } from './PartialDataBanner'
+import { QuestionSuggester } from './QuestionSuggester'
 
 // R11.B — Look-and-Feel umbrella flag (NEXT_PUBLIC, build-time)
 const R11B_LOOK_AND_FEEL_ENV =
@@ -1549,6 +1551,20 @@ function V2ScrollDiscipline() {
 
 function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = false }: { chartId: string; chartName: string; slashEnabled?: boolean; tokensEnabled?: boolean }) {
   const [truncatedMsgId, setTruncatedMsgId] = useState<string | null>(null)
+  // [PHASE-D-07] Shared readiness state — fetched once, used by banner + suggester.
+  const [readyAssets, setReadyAssets] = useState<string[]>([])
+
+  function handleComposerFill(q: string) {
+    const textarea = document.querySelector('textarea[data-testid="v2-composer-input"]') as HTMLTextAreaElement | null
+    if (!textarea) return
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype, 'value'
+    )?.set
+    nativeSetter?.call(textarea, q)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    textarea.focus()
+  }
+
   return (
     <TruncatedMsgCtx.Provider value={truncatedMsgId}>
     <SetTruncatedMsgCtx.Provider value={setTruncatedMsgId}>
@@ -1596,7 +1612,14 @@ function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = fa
         )}
       </ThreadPrimitive.Viewport>
 
+      {/* [PHASE-D-04] Partial data banner — shown when chart build is incomplete */}
+      <PartialDataBanner chartId={chartId} onReadyAssets={setReadyAssets} />
+
       <V2BottomBar />
+
+      {/* [PHASE-D-05] Question suggester — shown above composer when assets are ready */}
+      <QuestionSuggester readyAssets={readyAssets} onSelect={handleComposerFill} />
+
       <V2Composer slashEnabled={slashEnabled} tokensEnabled={tokensEnabled} />
     </ThreadPrimitive.Root>
     </SetTruncatedMsgCtx.Provider>
