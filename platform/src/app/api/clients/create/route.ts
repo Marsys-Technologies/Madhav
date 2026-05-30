@@ -275,6 +275,32 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 
+  // ── Natural-key dedupe (always-on; X-Idempotency-Key remains optional override) ──
+  const naturalKeyResult = await query<{ chart_id: string; client_id: string }>(
+    `SELECT chart_id, client_id
+       FROM charts
+      WHERE owner_id = $1
+        AND lower(trim(name)) = lower(trim($2))
+        AND birth_date = $3
+        AND birth_time = $4
+        AND ROUND(birth_lat::numeric, 4) = ROUND($5::numeric, 4)
+        AND ROUND(birth_lng::numeric, 4) = ROUND($6::numeric, 4)
+      ORDER BY created_at ASC
+      LIMIT 1`,
+    [user.uid, name, birth_date, birth_time, lat, lon],
+  )
+  if (naturalKeyResult.rows[0]) {
+    const row = naturalKeyResult.rows[0]
+    return NextResponse.json({
+      chart_id: row.chart_id,
+      client_id: row.client_id ?? null,
+      redirect_url: `/clients/${row.chart_id}/build`,
+      ayanamshas,
+      idempotent: true,
+      dedupe_reason: 'natural_key_match',
+    })
+  }
+
   // ── Idempotency key check ──────────────────────────────────────────────────
   const idempotencyKey = request.headers.get('X-Idempotency-Key')
   const hasIdempotencyColumn = await idempotencyColumnExists()
