@@ -309,5 +309,5 @@ jobs:
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
           secrets: |
-            MCP_INTERNAL_TOKEN=mcp-internal-token:latest
+            MCP_INTERNAL_TOKEN=mcp-internal-token:1
   # ── /4.edge_and_infra_hygiene ──
