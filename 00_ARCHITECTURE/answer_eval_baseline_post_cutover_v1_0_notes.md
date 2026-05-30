@@ -4,6 +4,7 @@ version: 1.0
 status: STUBBED-PENDING-OPERATOR
 generated_at: 2026-05-28T14:55:00Z
 related_baseline: 00_ARCHITECTURE/answer_eval_baseline_post_cutover_v1_0.json
+artifact: answer_eval_baseline_post_cutover_v1_0_notes
 ---
 
 # answer:eval post-cutover re-baseline — notes

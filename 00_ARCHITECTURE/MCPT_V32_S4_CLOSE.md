@@ -6,6 +6,7 @@ worktree: MadhavMCPT-JK
 branch: feature/mcpt-jaim-kp
 date: 2026-05-22
 gate_exit_code: 0
+version: "1.0"
 ---
 
 # v3.2-S4 Close — Multi-School Tables (Jaimini + KP)

@@ -15,6 +15,7 @@ parent_brief: 00_ARCHITECTURE/BRIEFS/MCP_BRIEF_v1_0.md
 sibling_artifact: 00_ARCHITECTURE/MCP_DIAGNOSIS_2026-05-22.md
 audience: native
 disposition: SUPERSEDED — see v3
+version: "2.0"
 ---
 
 # MCP v2 — Context-Provider Architecture (Proposal)

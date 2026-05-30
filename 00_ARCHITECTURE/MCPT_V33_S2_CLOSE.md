@@ -4,6 +4,8 @@ worktree: WT-E (MadhavMCPT-DPT)
 branch: feature/mcpt-depth
 status: COMPLETE
 sealed_at: 2026-05-22
+artifact: MCPT_V33_S2_CLOSE
+version: "1.0"
 ---
 
 # MCPT v3.3-S2 Session Close — KP System + Upagraha Backfill

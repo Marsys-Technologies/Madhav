@@ -18,8 +18,27 @@ import os
 from datetime import date as DateType
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+try:
+    from fastapi import APIRouter, HTTPException
+    from pydantic import BaseModel, Field
+except ImportError:  # test environments without fastapi/pydantic installed
+    HTTPException = Exception
+
+    class _PassthroughDecorator:
+        def __getattr__(self, name):
+            def _deco(*a, **kw):
+                def _inner(fn): return fn
+                return _inner
+            return _deco
+
+    class APIRouter(_PassthroughDecorator):  # type: ignore[no-redef]
+        def include_router(self, *a, **kw): pass
+
+    class BaseModel:  # type: ignore[no-redef]
+        def __init_subclass__(cls, **kw): pass
+        def __init__(self, **kw): self.__dict__.update(kw)
+
+    def Field(*a, **kw): return None  # type: ignore[no-redef]
 
 from panchang_engine.muhurat import (
     find_muhurat,

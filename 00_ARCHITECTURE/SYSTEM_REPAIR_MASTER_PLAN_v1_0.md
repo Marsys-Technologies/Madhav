@@ -25,6 +25,7 @@ changelog:
   - version: 1.0
     date: 2026-05-25
     note: Initial authoring. Three-phase, 8-session plan.
+artifact: SYSTEM_REPAIR_MASTER_PLAN_v1_0
 ---
 
 # SYSTEM REPAIR MASTER PLAN v1.0

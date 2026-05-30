@@ -6,6 +6,7 @@ session: MCPT-v3.2-S2
 worktree: WT-C (MadhavMCPT-JK)
 branch: feature/mcpt-jaim-kp
 authored: "2026-05-22"
+artifact: MCPT_V32_S2_CLOSE
 ---
 
 # MCPT v3.2-S2 Session Close — Jaimini Sutram + KP Reader Indexing

@@ -5,6 +5,7 @@ version: 1.0
 status: COMPLETE
 authored: 2026-05-27
 scope: PLN.MARS.DIGNITY.D1 = 'debilitated' factual error — root cause + all downstream impacts
+artifact: MARS_DIGNITY_ERROR_IMPACT_REPORT_v1_0
 ---
 
 # Mars Dignity Error: Full Impact Analysis & Fix Record

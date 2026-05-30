@@ -4,6 +4,7 @@ purpose: Pasteable prompt for the planning session that revises TOOL_PORTFOLIO_P
 status: prompt (planning-only; no implementation)
 date: 2026-05-27
 expose_to_chat: false
+version: "1.0"
 ---
 
 # Prompt — Re-plan the Tool Portfolio to factor in multi-tenancy + the North-Star architecture

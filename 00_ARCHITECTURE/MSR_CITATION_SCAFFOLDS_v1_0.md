@@ -13,6 +13,7 @@ purpose: >
   entries are confidence=confirmed, derived from existing derivation_ledger
   l1_sources. No pending entries. A total of 419/573 signals lack forensic_ref;
   this scaffold adds 50, leaving 369 for future passes.
+artifact: MSR_CITATION_SCAFFOLDS_v1_0
 ---
 
 # MSR Citation Scaffolds v1.0

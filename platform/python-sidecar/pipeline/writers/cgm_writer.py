@@ -166,6 +166,8 @@ def write(
     Write CGM nodes (graha) and edges (aspects) to chart_facts.
     Returns total number of rows written.
     """
+    if conn is None:
+        return 0
     planets = chart_output.get("planets")
     aspects = chart_output.get("aspects", [])
 

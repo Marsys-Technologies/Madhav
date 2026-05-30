@@ -10,6 +10,7 @@ role: >
   Distinguishes blocking-for-launch cleanup from optional-deferred cleanup
   so the native can sanitize confidently without accidentally removing
   Claude Takeover dependencies or any other active workstream.
+version: "1.0"
 ---
 
 # Claude Takeover — Pre-Launch Sanitization

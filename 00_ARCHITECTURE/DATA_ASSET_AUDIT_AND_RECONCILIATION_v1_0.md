@@ -12,6 +12,7 @@ purpose: >
   MSR grounding disambiguation, MEAN_NODE rebuild status, and a prioritised
   reconciliation plan. Authoritative record for the data-hygiene workstream
   opened 2026-05-25.
+artifact: DATA_ASSET_AUDIT_AND_RECONCILIATION_v1_0
 ---
 
 # MARSYS-JIS Data Asset Audit & Reconciliation Plan v1.1

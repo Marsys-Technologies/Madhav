@@ -172,6 +172,8 @@ def write(
     Write CDLM 9×9 domain linkage matrix to chart_facts.
     Returns number of rows written (81 for a full matrix).
     """
+    if conn is None:
+        return 0
     msr_signals = chart_output.get("msr_signals")
     use_placeholder = not msr_signals
 

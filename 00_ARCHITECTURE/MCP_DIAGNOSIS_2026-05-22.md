@@ -7,6 +7,7 @@ parent_brief: 00_ARCHITECTURE/BRIEFS/MCP_BRIEF_v1_0.md
 sealing_artifact: 00_ARCHITECTURE/MCP_WORKSTREAM_COMPLETE.md
 audience: native
 disposition: investigation + fix proposal; no code changes applied
+version: "1.0"
 ---
 
 # MCP Server — Diagnosis Report & Fix Proposal

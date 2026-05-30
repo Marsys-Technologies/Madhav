@@ -1,3 +1,8 @@
+---
+artifact: CROSS_CHANNEL_PARITY_AUDIT_2026-05-25_v2_0
+version: "2.0"
+status: CURRENT
+---
 # Cross-Channel Parity Audit — v2.0 (Corrected)
 **Date:** 2026-05-25  
 **Scope:** MCP sidecar (amjis-mcp), Portal Classic Marsys, Portal Claude Style  

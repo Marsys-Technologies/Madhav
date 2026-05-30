@@ -5,6 +5,7 @@ status: CURRENT
 authored: 2026-05-25
 session: SRP-A-1
 branch: arch/srp-a1-tech-debt
+artifact: TECH_DEBT_AUDIT_v1_0
 ---
 
 # Technical Debt Audit v1.0

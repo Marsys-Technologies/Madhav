@@ -262,6 +262,8 @@ def write(
     dasha context, and system convergence.
     Returns number of rows written.
     """
+    if conn is None:
+        return 0
     msr_signals = chart_output.get("msr_signals") or []
     shadbala_data = chart_output.get("shadbala") or {}
     yogas = chart_output.get("yogas") or []

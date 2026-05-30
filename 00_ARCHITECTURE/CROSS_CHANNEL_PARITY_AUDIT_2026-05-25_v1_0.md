@@ -8,6 +8,7 @@ scope: MCP ↔ Portal (Classic Marsys / Claude Style) — retrieval tool and dat
 auditor: Claude (Cowork mode) — filesystem reads + live MCP calls + manifest inspection
 native: Abhisek Mohanty | chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
 related: MCP_TOOL_AUDIT_2026-05-25_v1_0.md (MCP-only live audit, v1.1)
+artifact: CROSS_CHANNEL_PARITY_AUDIT_2026-05-25_v1_0
 ---
 
 # MARSYS-JIS Cross-Channel Parity Audit — 2026-05-25

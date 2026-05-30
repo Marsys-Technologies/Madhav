@@ -6,6 +6,7 @@ closed: 2026-05-25T00:00:00Z
 workstream: data-asset-reconciliation
 branch_merged: feature/data-asset-reconciliation
 sessions_completed: 26
+artifact: DAR_CLOSE_v1_0
 ---
 
 # Data Asset Reconciliation — Workstream Close

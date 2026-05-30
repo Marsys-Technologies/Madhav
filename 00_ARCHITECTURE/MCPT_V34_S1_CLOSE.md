@@ -9,6 +9,7 @@ authored_on: 2026-05-22
 verified_on: 2026-05-22 (live DB verification pass)
 commit: 9099c539
 merged_to_final: ae677921 (feature/mcpt-final)
+version: "1.0"
 ---
 
 # v3.4-S1 Session Close — MSR Signal-Grounding + Calibration MV

@@ -242,9 +242,13 @@ class TestRouterFallback:
             )
 
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
-                compute_muhurat_endpoint(req)
-            )
+            _loop = asyncio.new_event_loop()
+            try:
+                result = _loop.run_until_complete(
+                    compute_muhurat_endpoint(req)
+                )
+            finally:
+                _loop.close()
 
         mock_cache.assert_called_once()
         mock_engine.assert_called_once()
@@ -282,9 +286,13 @@ class TestRouterFallback:
             )
 
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
-                compute_muhurat_endpoint(req)
-            )
+            _loop = asyncio.new_event_loop()
+            try:
+                result = _loop.run_until_complete(
+                    compute_muhurat_endpoint(req)
+                )
+            finally:
+                _loop.close()
 
         mock_cache.assert_called_once()
         mock_engine.assert_not_called()
@@ -322,9 +330,13 @@ class TestRouterFallback:
             )
 
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
-                compute_muhurat_endpoint(req)
-            )
+            _loop = asyncio.new_event_loop()
+            try:
+                result = _loop.run_until_complete(
+                    compute_muhurat_endpoint(req)
+                )
+            finally:
+                _loop.close()
 
         mock_cache.assert_not_called()
         mock_engine.assert_called_once()

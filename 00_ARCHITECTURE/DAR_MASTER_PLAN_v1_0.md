@@ -17,6 +17,7 @@ total_sessions: 26
 total_phases: 7
 execution_model: Conductor-driven autonomous sub-agents with --dangerously-skip-permissions
 human_gates: 4 (DB migrations apply, ephemeris rebuild run, final merge to main, prod deploy)
+artifact: DAR_MASTER_PLAN_v1_0
 ---
 
 # Data Asset Reconciliation — Master Plan v1.0

@@ -8,6 +8,7 @@ authored_by: UDA-3-S1
 amended: 2026-05-25
 amended_by: UDA-3-S2
 phase: Universal Parity Campaign — UDA-3
+artifact: INTERFACE_NORMALIZATION_REGISTER_v1_0
 ---
 
 # Interface Normalization Register v1.1

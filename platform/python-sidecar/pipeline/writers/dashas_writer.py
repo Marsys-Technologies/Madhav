@@ -1027,6 +1027,8 @@ def write(
     Returns:
         int: rows_written count (or rows_would_write when conn=None).
     """
+    if conn is None:
+        return 0
     logger.info(
         "[A7] %s: chart=%s ayanamsha=%s build=%s",
         ASSET_LABEL, chart_id, ayanamsha_id, build_id,

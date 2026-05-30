@@ -5,6 +5,8 @@ authored: 2026-05-22
 authored_by: Cowork audit session
 scope: main-checkout working tree + git branches + sibling worktrees under /Users/Dev/Vibe-Coding/Apps/
 authority: native review required before any destructive action
+artifact: CLEANUP_PLAN_2026-05-22
+version: "1.0"
 ---
 
 # Cleanup Plan — main + worktrees (2026-05-22)

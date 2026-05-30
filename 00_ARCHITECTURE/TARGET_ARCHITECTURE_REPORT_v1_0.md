@@ -6,6 +6,7 @@ authored: 2026-05-25
 session: SRP-A-2
 branch: arch/srp-a2-arch-report
 primary_input: 00_ARCHITECTURE/TECH_DEBT_AUDIT_v1_0.md
+artifact: TARGET_ARCHITECTURE_REPORT_v1_0
 ---
 
 # Target Architecture Report v1.0

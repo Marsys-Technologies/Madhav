@@ -2369,7 +2369,8 @@
       "fingerprint_sha256": "d36a05a0f1f07a50e4a184fd6544b32b5827ef26ca1385660d1a4c366a9ffc22",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_RUNNER_SCRIPT"
+      "canonical_id": "M9C_RUNNER_SCRIPT",
+      "version": "1.0"
     },
     {
       "id": "M9C_MULTI_SCHOOL_ANALYSIS",
@@ -2385,7 +2386,8 @@
       "fingerprint_sha256": "0dcd6bcb4f0550f8da862d5ad987ea797821d856c752ac62b464bf6331fec770",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_MULTI_SCHOOL_ANALYSIS"
+      "canonical_id": "M9C_MULTI_SCHOOL_ANALYSIS",
+      "version": "1.0"
     },
     {
       "id": "M9C_PARASHARI_JSON",
@@ -2399,7 +2401,8 @@
       "fingerprint_sha256": "2d880a1a922588e92982bd9e569acbe82e81f6309158afc8561faef623c2a831",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_PARASHARI_JSON"
+      "canonical_id": "M9C_PARASHARI_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9C_JAIMINI_JSON",
@@ -2413,7 +2416,8 @@
       "fingerprint_sha256": "30724889a199e7032e44cd6324aa582fcab58fe92e7e1f2a3d91cff08a0d0d23",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_JAIMINI_JSON"
+      "canonical_id": "M9C_JAIMINI_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9C_TAJIKA_JSON",
@@ -2428,7 +2432,8 @@
       "fingerprint_sha256": "ebbc5636899b59574c85f906445ca7bce76be88f4ec8017cf5ac58ca4937f534",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_TAJIKA_JSON"
+      "canonical_id": "M9C_TAJIKA_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9C_KP_JSON",
@@ -2442,7 +2447,8 @@
       "fingerprint_sha256": "2694d2b006f26f4d080834aa172400d5bcd24987aad34055b3f7abe6cc731fe6",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_KP_JSON"
+      "canonical_id": "M9C_KP_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9C_NADI_JSON",
@@ -2456,7 +2462,8 @@
       "fingerprint_sha256": "bbc191cb339891e375235eacb2befa6adae2eeee4894910607eb283abacd1bd9",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_NADI_JSON"
+      "canonical_id": "M9C_NADI_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9C_BNN_JSON",
@@ -2471,7 +2478,8 @@
       "fingerprint_sha256": "1243d77f4b3f51d3a73788e335ef1b49edc6c17d8622115bd5a930df66135fc5",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_BNN_JSON"
+      "canonical_id": "M9C_BNN_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9C_YOGINI_JSON",
@@ -2485,7 +2493,8 @@
       "fingerprint_sha256": "a7dcb368ac5cbae7eb130d2e1433b7430bd633a8f63133cb182a3fc367d3fff9",
       "last_verified_session": "GH-FP-BACKFILL",
       "last_verified_on": "2026-05-21",
-      "canonical_id": "M9C_YOGINI_JSON"
+      "canonical_id": "M9C_YOGINI_JSON",
+      "version": "1.0"
     },
     {
       "id": "M9D_COMPUTE_CONVERGENCE_SCRIPT",
@@ -5282,7 +5291,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "UTEE-S4: Query unified temporal events (UTEE envelope) within a date range across all 7 temporal tables.",
       "data_dependency": "l1_temporal_unified",
@@ -5300,7 +5311,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "UTEE-S4: Query next N upcoming temporal events from the unified lattice.",
       "data_dependency": "l1_temporal_unified",
@@ -5318,7 +5331,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "UTEE-S4: Query temporal events clustering around an A15 time-synchronicity convergence window.",
       "data_dependency": "l1_time_synchronicity",
@@ -5336,7 +5351,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "UTEE-S4: Query temporal events seeded (caused/triggered) by a specific anchor event.",
       "data_dependency": "l1_temporal_unified",
@@ -5354,7 +5371,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "UTEE-S4: Query temporal events that are mitigated by vedha or remedial anchors.",
       "data_dependency": "l1_vedha_extended",
@@ -5372,7 +5391,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "UTEE-S4: Query peer temporal events (same graha/dasha context) across the unified lattice.",
       "data_dependency": "l1_temporal_unified",
@@ -5390,7 +5411,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "BRIDGE-S3: Query cross-asset vedha-anchor interaction table (l25_vedha_anchor_interactions).",
       "data_dependency": "l25_vedha_anchor_interactions",
@@ -5408,7 +5431,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-alpha: Query chart lattice snapshot at a specific date (structural state vector).",
       "data_dependency": "l25_chart_lattice_snapshots",
@@ -5426,7 +5451,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-alpha: Query chart lattice snapshots within a date range.",
       "data_dependency": "l25_chart_lattice_snapshots",
@@ -5444,7 +5471,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-alpha: Query high-resonance windows from the chart lattice (periods of multi-system alignment).",
       "data_dependency": "l25_chart_lattice_snapshots",
@@ -5462,7 +5491,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-alpha: Query peer lattice snapshots with similar structural signatures.",
       "data_dependency": "l25_chart_lattice_snapshots",
@@ -5480,7 +5511,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-beta: Query unified pattern catalog (cross-system recurring patterns).",
       "data_dependency": "l25_pattern_catalog",
@@ -5498,7 +5531,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-beta: Query links between patterns in the unified pattern catalog.",
       "data_dependency": "l25_pattern_catalog",
@@ -5516,7 +5551,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-beta: Query peer patterns sharing structural or temporal signatures.",
       "data_dependency": "l25_pattern_catalog",
@@ -5534,7 +5571,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-gamma: Query cross-system divergence ledger (ayanamsha contradictions, school disagreements).",
       "data_dependency": "l25_divergence_ledger",
@@ -5552,7 +5591,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-delta: Query negative space map (absences, nulls, and gaps that are informative).",
       "data_dependency": "l25_negative_space_map",
@@ -5570,7 +5611,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-epsilon: Query derivation trail for a claim — L1 facts -> L2.5 synthesis DAG path.",
       "data_dependency": "l25_derivation_graph_nodes",
@@ -5588,7 +5631,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": true,
-      "representations": ["typescript"],
+      "representations": [
+        "typescript"
+      ],
       "interface_version": "1.0",
       "description": "META-epsilon: Query upstream derivation nodes (all L1 facts contributing to a given L2.5 claim).",
       "data_dependency": "l25_derivation_graph_edges",
@@ -5604,7 +5649,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": false,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "description": "A20: Tajik Hadda year-lord + Muntha lifecycle table (l1_tajik_varsha_year_lords). 150 rows per chart.",
       "data_dependency": "l1_tajik_varsha_year_lords",
@@ -5620,7 +5667,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": false,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "description": "META-alpha: l25_chart_lattice_snapshots — structural timeline lattice (date x resonance vector).",
       "data_dependency": "l25_chart_lattice_snapshots",
@@ -5636,7 +5685,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": false,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "description": "META-beta/gamma/delta/epsilon: l25_pattern_catalog + l25_divergence_ledger + l25_negative_space_map + l25_derivation_graph_nodes/edges.",
       "data_dependency": "l25_meta_synthesis",
@@ -5652,7 +5703,9 @@
       "version": "1.0",
       "layer": "L1",
       "expose_to_chat": false,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "description": "UTEE: Adds standard UTEE envelope columns to 7 temporal tables for cross-table unified querying.",
       "data_dependency": "l1_temporal_unified",
@@ -5668,7 +5721,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": false,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "description": "BRIDGE-S3: l25_vedha_anchor_interactions — cross-asset vedha-anchor interaction table.",
       "data_dependency": "l25_vedha_anchor_interactions",
@@ -5684,7 +5739,9 @@
       "version": "1.0",
       "layer": "L2.5",
       "expose_to_chat": false,
-      "representations": ["sql"],
+      "representations": [
+        "sql"
+      ],
       "interface_version": "1.0",
       "description": "META-zeta: vw_temporal_unified_lattice — unified view across all 7 temporal tables with UTEE envelope.",
       "data_dependency": "vw_temporal_unified_lattice",

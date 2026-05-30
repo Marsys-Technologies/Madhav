@@ -132,6 +132,8 @@ def write(
     Reads chart_output.get('msr_signals', []) — if absent, writes placeholder.
     Returns number of rows written.
     """
+    if conn is None:
+        return 0
     signals = chart_output.get("msr_signals")
 
     if not signals:

@@ -4261,7 +4261,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: UDA1-GOVERNANCE-CLOSE         # UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
+  last_session_id: SRP-DEPLOY         # UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
     # === Predecessor R11V2-PHASE-DE-ROLLOUT (2026-05-23) preserved for audit ===
     # R11V2-PHASE-DE-ROLLOUT: D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). deploy.yml flags fixed. STREAM_R11V2_COMPLETE.md §7 added. D/E result docs written. Predecessor R11V2-DISPATCH-WIRING-COMPLETE.
     # === Predecessor R11V2-DISPATCH-WIRING-COMPLETE (2026-05-22) ===

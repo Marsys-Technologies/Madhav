@@ -181,6 +181,8 @@ def write(
     Uses shadbala from chart_output or extra to rank grahas.
     Returns number of rows written.
     """
+    if conn is None:
+        return 0
     shadbala_data = chart_output.get("shadbala")
     if not shadbala_data and extra:
         shadbala_data = extra.get("shadbala")

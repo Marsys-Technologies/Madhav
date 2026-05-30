@@ -11,6 +11,7 @@ total_units: 23 (20 planned + 2 hygiene + 1 inline)
 total_batches: 5
 total_gates: 8/8 GREEN
 class_1_red_team_findings: 0
+artifact: PLATFORM_MODERNIZATION_CLOSE_v1_0
 ---
 
 # Platform Modernization — Macro-arc Close

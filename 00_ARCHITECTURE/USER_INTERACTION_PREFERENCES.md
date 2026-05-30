@@ -7,6 +7,7 @@ purpose: >
   Persistent record of native preferences for how Cowork sessions should
   communicate with the native during execution. Every Cowork session reads
   this file once at session-open in addition to CLAUDE.md.
+version: "1.0"
 ---
 
 # Native Interaction Preferences

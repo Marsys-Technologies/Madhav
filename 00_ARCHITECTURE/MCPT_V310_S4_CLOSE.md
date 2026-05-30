@@ -7,6 +7,7 @@ worktree: MadhavMCPT-FDN
 branch: feature/mcpt-foundation
 commit: 7f5dd13f
 closed_at: 2026-05-22
+artifact: MCPT_V310_S4_CLOSE
 ---
 
 # MCPT v3.1.0-S4 — Session Close Artifact

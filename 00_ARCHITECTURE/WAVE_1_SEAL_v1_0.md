@@ -4,6 +4,7 @@ version: 1.0
 status: SEALED
 authored: 2026-05-20
 authored_by: Wave 1 wrap-up session (post-4C-9)
+artifact: WAVE_1_SEAL_v1_0
 ---
 
 # Wave 1 Seal — Phase 4C Panchang Campaign
