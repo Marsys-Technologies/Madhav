@@ -1,6 +1,14 @@
 import pytest
 import os
 
+# All tests in this file require a live PostgreSQL connection.
+# Skip automatically in CI where DATABASE_URL / DB_HOST are not set.
+_DB_AVAILABLE = bool(os.environ.get("DATABASE_URL") or os.environ.get("DB_HOST") == "127.0.0.1" and False)
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("DATABASE_URL"),
+    reason="DATABASE_URL not set — live-DB integration test, skipped in CI",
+)
+
 DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
 DB_PORT = os.environ.get('DB_PORT', '5433')
 DB_USER = os.environ.get('DB_USER', 'amjis_app')
