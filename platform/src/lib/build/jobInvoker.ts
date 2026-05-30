@@ -102,7 +102,7 @@ export async function invokeBuildJob(
     jobName: jobPath(env),
     containerArgs: [
       '--build-id', args.buildId,
-      '--triggered-by', args.triggeredBy,
+      '--chart-id', args.chartId,
     ],
     envOverrides: {
       // The pipeline writes build_events rows; this is the SQL connection it uses.
