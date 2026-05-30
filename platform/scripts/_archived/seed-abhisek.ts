@@ -1,3 +1,6 @@
+// ARCHIVED 2026-05-31 — duplicate-chart hazard. Use POST /api/clients/create
+// (form-driven) for chart creation. See 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_CHART_DEDUPE_v1_0.md.
+
 /**
  * Seed script: create Abhisek Mohanty's chart and upload existing pyramid documents.
  * Migrated from Supabase to GCP stack (Firebase Auth + Cloud SQL + GCS) on 2026-04-28.

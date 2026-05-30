@@ -62,6 +62,10 @@ function setupHappyPath(uid = 'user-uid-001') {
     if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql)) {
       return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
     }
+    // Natural-key dedupe SELECT (no match → fresh insert)
+    if (/lower\(trim/.test(sql)) {
+      return Promise.resolve({ rows: [] })
+    }
     // idempotency_key column existence check
     if (/information_schema\.columns/.test(sql)) {
       return Promise.resolve({ rows: [{ exists: false }] })
@@ -321,6 +325,142 @@ describe('POST /api/clients/create — idempotency', () => {
     expect(body.chart_id).toBe('chart-idem-001')
     expect(body.redirect_url).toBe('/clients/chart-idem-001/build')
     expect(body.idempotent).toBe(true)
+  })
+})
+
+describe('POST /api/clients/create — natural-key dedupe', () => {
+  it('returns existing chart with idempotent:true when natural key matches — no INSERT', async () => {
+    const uid = 'user-uid-dedupe'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const existingChartId = 'chart-existing-abc'
+    const insertSpy = vi.fn()
+
+    mockQuery.mockImplementation((sql: string) => {
+      // Rate-limit
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql)) {
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      }
+      // Natural-key SELECT — returns an existing row
+      if (/lower\(trim/.test(sql)) {
+        return Promise.resolve({ rows: [{ chart_id: existingChartId, client_id: uid }] })
+      }
+      // Any INSERT — should NOT be reached
+      if (/INSERT/.test(sql)) {
+        insertSpy()
+        return Promise.resolve({ rows: [] })
+      }
+      return Promise.resolve({ rows: [] })
+    })
+
+    const res = await POST(makeReq(VALID_BODY))
+    expect(res.status).toBe(200)
+
+    const body = (await res.json()) as {
+      chart_id: string
+      idempotent: boolean
+      dedupe_reason: string
+      redirect_url: string
+    }
+    expect(body.chart_id).toBe(existingChartId)
+    expect(body.idempotent).toBe(true)
+    expect(body.dedupe_reason).toBe('natural_key_match')
+    expect(body.redirect_url).toBe(`/clients/${existingChartId}/build`)
+    // Critical: no INSERT must have been executed
+    expect(insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('dedupes when name has trailing whitespace and different casing', async () => {
+    const uid = 'user-uid-case'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const existingChartId = 'chart-canonical-001'
+
+    mockQuery.mockImplementation((sql: string) => {
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql)) {
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      }
+      // Natural-key SELECT — DB returns match (lower/trim normalises both sides)
+      if (/lower\(trim/.test(sql)) {
+        return Promise.resolve({ rows: [{ chart_id: existingChartId, client_id: uid }] })
+      }
+      return Promise.resolve({ rows: [] })
+    })
+
+    // Submit with leading/trailing whitespace and different case
+    const res = await POST(makeReq({ ...VALID_BODY, name: '  abhisek mohanty  ' }))
+    expect(res.status).toBe(200)
+
+    const body = (await res.json()) as { chart_id: string; idempotent: boolean; dedupe_reason: string }
+    expect(body.chart_id).toBe(existingChartId)
+    expect(body.idempotent).toBe(true)
+    expect(body.dedupe_reason).toBe('natural_key_match')
+  })
+
+  it('proceeds to INSERT when birth_time differs (no natural-key match)', async () => {
+    const uid = 'user-uid-newtime'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const insertedChartId = 'chart-new-time'
+    const insertSpy = vi.fn().mockResolvedValue({
+      rows: [{ id: 'row-new', chart_id: insertedChartId, client_id: uid, owner_id: uid }],
+    })
+
+    mockQuery.mockImplementation((sql: string) => {
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql)) {
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      }
+      // Natural-key SELECT — no match for different birth_time
+      if (/lower\(trim/.test(sql)) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (/information_schema\.columns/.test(sql)) {
+        return Promise.resolve({ rows: [{ exists: false }] })
+      }
+      if (/INSERT INTO charts/.test(sql)) {
+        return insertSpy(sql)
+      }
+      if (/INSERT INTO pyramid_layers/.test(sql)) {
+        return Promise.resolve({ rows: [] })
+      }
+      return Promise.resolve({ rows: [] })
+    })
+
+    const res = await POST(makeReq({ ...VALID_BODY, birth_time: '22:00' }))
+    expect(res.status).toBe(200)
+
+    const body = (await res.json()) as { chart_id: string; idempotent?: boolean }
+    expect(body.chart_id).toBe(insertedChartId)
+    expect(body.idempotent).toBeUndefined()
+    // INSERT must have been called
+    expect(insertSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('dedupes when lat/lng differs only in float noise beyond 4 decimal places', async () => {
+    const uid = 'user-uid-latlng'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const existingChartId = 'chart-latlng-canonical'
+
+    mockQuery.mockImplementation((sql: string) => {
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql)) {
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      }
+      // DB rounds both sides to 4dp; 20.29614 and 20.2961 both become 20.2961
+      if (/lower\(trim/.test(sql)) {
+        return Promise.resolve({ rows: [{ chart_id: existingChartId, client_id: uid }] })
+      }
+      return Promise.resolve({ rows: [] })
+    })
+
+    // Submit with lat that differs from stored 20.2961 only in 5th decimal place
+    const res = await POST(makeReq({ ...VALID_BODY, lat: 20.29614 }))
+    expect(res.status).toBe(200)
+
+    const body = (await res.json()) as { chart_id: string; idempotent: boolean; dedupe_reason: string }
+    expect(body.chart_id).toBe(existingChartId)
+    expect(body.idempotent).toBe(true)
+    expect(body.dedupe_reason).toBe('natural_key_match')
   })
 })
 
