@@ -13,9 +13,11 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { query } from '@/lib/db/client'
 
-// Static import so webpack can resolve the module at build time.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const loadGcpModule = (_name: string) => Promise.resolve(require('@google-cloud/tasks'))
+// GCP packages are in serverExternalPackages (next.config.ts) so webpack
+// leaves this dynamic import alone and Node resolves it at runtime.
+async function loadGcpModule(name: string): Promise<unknown> {
+  return import(name)
+}
 
 export type AyanamshaRole = 'jh_true_chitra' | 'kp'
 
