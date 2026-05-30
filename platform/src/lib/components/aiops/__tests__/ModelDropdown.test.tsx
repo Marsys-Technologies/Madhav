@@ -76,8 +76,8 @@ describe('ModelDropdown', () => {
     })
     render(<ModelDropdown stack="gemini" callType="synthesis" role="primary" value="" onChange={onChange} />)
     fireEvent.click(screen.getAllByRole('button')[0])
-    await waitFor(() => screen.queryByText('gemini-2.5-pro') !== null, { timeout: 2000 })
-    fireEvent.click(screen.getByText('gemini-2.5-pro'))
+    const item = await screen.findByText('gemini-2.5-pro', undefined, { timeout: 2000 })
+    fireEvent.click(item)
     expect(onChange).toHaveBeenCalledWith('gemini-2.5-pro')
   })
 
