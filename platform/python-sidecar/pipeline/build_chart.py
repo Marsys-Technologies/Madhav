@@ -439,6 +439,7 @@ def dispatch_asset(
     ayanamshas: list[str],
     conn=None,
     chart_output: Optional[dict] = None,
+    ayanamsha_id: str = "all",
 ) -> int:
     """
     Dispatch writer for asset_id.
@@ -447,12 +448,13 @@ def dispatch_asset(
     C-07: Routes A2–A14 through WRITER_REGISTRY (stub write() callables).
           Real writers replace stubs in streams F, G1, G2, G3, G4.
     conn=None triggers dry-run mode in all writers (row counting, no DB write).
-    chart_output: merged engine output dict for this asset; empty dict if not available.
+    chart_output: engine output dict for this ayanamsha; empty dict if not available.
+    ayanamsha_id: specific ayanamsha for this writer call; 'all' for stub/no-data.
     """
     try:
         from pipeline.writers import WRITER_REGISTRY
         if asset_id in WRITER_REGISTRY:
-            return WRITER_REGISTRY[asset_id](build_id, chart_id, 'all', chart_output or {}, conn)
+            return WRITER_REGISTRY[asset_id](build_id, chart_id, ayanamsha_id, chart_output or {}, conn)
     except ImportError:
         pass
     label = ASSET_LABELS.get(asset_id, asset_id)
@@ -507,18 +509,27 @@ async def dispatch_asset_with_retry(
                 pass
 
         try:
-            # Merge chart_outputs into a single dict for the writer.
-            # chart_outputs is keyed by ayanamsha_id; writers receive the merged view.
-            merged_output: dict = {}
+            # Per-ayanamsha dispatch: call the writer once for each successful engine output.
+            # This produces correctly-labelled rows (ayanamsha_id = 'lahiri', 'kp', ...)
+            # and avoids CardinalityViolation from merged outputs producing duplicate
+            # (fact_category, fact_subject, fact_key) combos in the same INSERT batch.
+            # Fall back to a single 'all' call when no engine outputs are available (STUB).
+            total_rows = 0
             if chart_outputs:
-                for v in chart_outputs.values():
-                    if isinstance(v, dict):
-                        merged_output.update(v)
-            rows_written = dispatch_asset(
-                asset_id, build_id, chart_id, ayanamshas, conn, chart_output=merged_output
-            )
+                for ay_id, output in chart_outputs.items():
+                    if not isinstance(output, dict):
+                        continue
+                    total_rows += dispatch_asset(
+                        asset_id, build_id, chart_id, [ay_id], conn,
+                        chart_output=output, ayanamsha_id=ay_id,
+                    )
+            else:
+                total_rows = dispatch_asset(
+                    asset_id, build_id, chart_id, ayanamshas, conn,
+                    chart_output={}, ayanamsha_id="all",
+                )
             conn.commit()
-            return rows_written, None  # success — no error
+            return total_rows, None  # success — no error
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {str(exc)}"
             try:
