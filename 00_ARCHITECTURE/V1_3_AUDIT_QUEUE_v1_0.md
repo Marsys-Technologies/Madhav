@@ -32,6 +32,9 @@ changelog:
     Queue now carries 7 items across 9–13 estimated sessions.
   - v1.0.4 (2026-05-30, CI_AUDIT): Added Item 8 (CF.V13.8) —
     Python sidecar tests unconditionally soft-pass in ci.yml. Queue now carries 8 items.
+  - v1.0.5 (2026-05-31, DOC_CLEANUP): CF.V13.1 partial resolution noted (DB layer RESOLVED,
+    B.3 markdown layer OPEN). CF.V13.2 status check added (OPEN — CLAUDE.md §E claim
+    unverified by commit ref). CF.V13.8 marked CLOSED (sidecar soft-pass removed 2026-05-30/31).
 ---
 
 # V1.3 Audit Queue v1.0
@@ -64,6 +67,15 @@ PROJECT_ARCHITECTURE_v2_2.md §B.3.
 signal backfill is a separate multi-session effort (estimated 5–8 sessions). DIS.013
 was the highest-priority single signal, resolved in MSR-377-LIBRA-7H-CORRECTION.
 
+**2026-05-26 partial resolution:** GISMCP Remediation (commit c6ff8ca5) verified
+573/573 signals have non-null `source_citation` in the `msr_signals` DB table
+(test: `msr_grounding.integration.test.ts`). This closes the DB-layer grounding gap.
+The B.3 derivation-ledger gap (explicit FORENSIC/LEL citation IDs in the MSR
+markdown file's `derivation_ledger` fields) remains open. These are distinct:
+DB grounding = non-null source_citation; B.3 = traceable derivation path in the
+markdown. Update the 419 figure by running a fresh B.3 audit against MSR_v5_0.md.
+**Status: PARTIALLY RESOLVED (DB layer); OPEN (B.3 markdown layer)**
+
 **Prerequisite for:** M6 Prospective Testing (predictions must trace to L1-grounded signals).
 
 ---
@@ -93,6 +105,15 @@ a prior partial run.
 **Why deferred:** Non-blocking for the live enrichment dataset (73,414 rows currently
 live and healthy). Manual rollback procedure is documented and operable. Fix is a
 maintenance item, not a blocker.
+
+**2026-05-31 status check:** CLAUDE.md §E Universal Parity Campaign claims this was
+fixed in UDA-4. However, Phase 4C §E open follow-up (2026-05-21) documented this
+as an audit item, and no subsequent session has explicitly marked CF.V13.2 resolved
+with a commit reference. Until a session verifies the bootstrap script has auto-
+registration and provides a commit SHA, this item remains OPEN.
+**Action for next CI-hygiene session:** grep bootstrap_panchanga.py and
+bootstrap_ephemeris.py for `INSERT INTO build_manifests`; if present, close with commit ref.
+**Status: OPEN (conservative — defer to this queue over CLAUDE.md §E claim)**
 
 ---
 
@@ -259,6 +280,11 @@ All failures from `natal_engine/tests/`, `pipeline/__tests__/`, and `tests/` are
 
 **Why deferred (from today):** Requires understanding which sidecar tests need live infrastructure. Safe to do in isolation but not worth blocking the current CI audit PR.
 
+**RESOLVED 2026-05-31:** `|| true` soft-pass removed from ci.yml governance-gates
+pytest step (CI/CD cleanup session 2026-05-30). schema_validator gate also hardened
+(continue-on-error removed) in Action A7 of CI cleanup session 2026-05-31. See
+ci.yml governance-gates job. **Status: CLOSED**
+
 ---
 
 ## Summary Table
@@ -272,11 +298,11 @@ All failures from `natal_engine/tests/`, `pipeline/__tests__/`, and `tests/` are
 | CF.V13.5 | Lifecycle tab synthesis-stage tool call counter missing | R11.F audit 2026-05-24 | LOW | 1 |
 | CF.V13.6 | GitHub Actions: no `pull_request:` CI trigger | R11.F rollout 2026-05-24 | LOW | 0.5 |
 | CF.V13.7 | Session discipline: grep all SDK-sharing adapters before patching | R11.F rollout 2026-05-24 | LOW | 0.5 |
-| CF.V13.8 | Python sidecar tests unconditionally soft-pass in CI | CI audit 2026-05-30 | MEDIUM | 1 |
+| CF.V13.8 | Python sidecar tests unconditionally soft-pass in CI | CI audit 2026-05-30 | MEDIUM | **CLOSED 2026-05-31** |
 
-**Total carry-forward:** 8 items across 10–14 estimated sessions.
+**Total carry-forward:** 7 open items (CF.V13.1–CF.V13.7) across 9–13 estimated sessions. CF.V13.8 CLOSED.
 **V1.2 audit shipped:** 55 defects across 21 sessions (COV×10, PERF×5, ICR×6).
 
 ---
 
-*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.4 — CF.V13.8 added at CI audit 2026-05-30.*
+*End of V1_3_AUDIT_QUEUE_v1_0.md v1.0.5 — CF.V13.1 partial resolution noted; CF.V13.2 status check added; CF.V13.8 CLOSED at doc cleanup 2026-05-31.*
