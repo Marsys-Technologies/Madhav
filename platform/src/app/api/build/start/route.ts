@@ -193,7 +193,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const stepValues = DAG_ASSETS.map((_, i) => {
       const base = i * 3
-      return `($${base + 1}, $${base + 2}, $${base + 3}, 'pending')`
+      return `($${base + 1}, $${base + 2}, $${base + 3}, 'queued')`
     }).join(', ')
 
     const stepParams: string[] = []
