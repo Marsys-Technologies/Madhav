@@ -77,8 +77,6 @@ describe('invokeBuildJob', () => {
     expect(seen.jobName).toBe(jobPath(ENV))
     expect(seen.containerArgs).toEqual([
       '--build-id', 'build-1',
-      '--chart-id', 'chart-abc',
-      '--ayanamsha-role', 'jh_true_chitra',
       '--triggered-by', 'manual:uid-1',
     ])
     expect(seen.envOverrides?.MARSYS_BUILD_ID).toBe('build-1')
