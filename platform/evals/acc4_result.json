@@ -1,0 +1,8 @@
+{
+  "acc4_status": "tests_authored",
+  "test_file": "platform/tests/integration/test_multi_tenant_smoke.py",
+  "tests_count": 5,
+  "execution_environment": "Cloud Run — requires DB_URL",
+  "operator_action_pending": "Run pytest platform/tests/integration/test_multi_tenant_smoke.py after build job completes",
+  "note": "DB not reachable locally — tests authored and ready for Cloud execution"
+}

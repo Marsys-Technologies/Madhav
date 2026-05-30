@@ -1,0 +1,8 @@
+{
+  "acc5_status": "tests_authored",
+  "test_file": "platform/tests/integration/test_concurrent_build_smoke.py",
+  "tests_count": 3,
+  "execution_environment": "Cloud Run — requires DB_URL",
+  "operator_action_pending": "Run concurrent smoke test after 3 test chart builds complete",
+  "note": "Concurrent test marked skip by default; run manually in Cloud environment"
+}
