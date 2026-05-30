@@ -27,7 +27,7 @@ import type { RoutingPrompt } from '../../evals/mcp-routing/runner.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROMPTS_PATH = join(__dirname, '../../evals/mcp-routing/prompts.json')
 
-// ── Known tool names (all 22 registered MCP tools) ────────────────────────────
+// ── Known tool names (registered MCP tools) ────────────────────────────
 
 const KNOWN_TOOLS = new Set([
   // Tier 1
