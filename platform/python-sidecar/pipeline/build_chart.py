@@ -437,6 +437,7 @@ def dispatch_asset(
     build_id: str,
     chart_id: str,
     ayanamshas: list[str],
+    conn=None,
 ) -> int:
     """
     Dispatch writer for asset_id.
@@ -444,12 +445,12 @@ def dispatch_asset(
     C-01: Stub — logs that no writer is registered and returns 0 rows_written.
     C-07: Routes A2–A14 through WRITER_REGISTRY (stub write() callables).
           Real writers replace stubs in streams F, G1, G2, G3, G4.
+    conn=None triggers dry-run mode in all writers (row counting, no DB write).
     """
     try:
         from pipeline.writers import WRITER_REGISTRY
         if asset_id in WRITER_REGISTRY:
-            # Call writer stub (conn not passed to stubs — they are no-op)
-            return WRITER_REGISTRY[asset_id](build_id, chart_id, 'all', {}, None)
+            return WRITER_REGISTRY[asset_id](build_id, chart_id, 'all', {}, conn)
     except ImportError:
         pass
     label = ASSET_LABELS.get(asset_id, asset_id)
@@ -491,7 +492,7 @@ async def dispatch_asset_with_retry(
 
     for attempt in range(MAX_RETRIES):
         try:
-            rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas)
+            rows_written = dispatch_asset(asset_id, build_id, chart_id, ayanamshas, conn)
             return rows_written, None  # success — no error
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {str(exc)}"

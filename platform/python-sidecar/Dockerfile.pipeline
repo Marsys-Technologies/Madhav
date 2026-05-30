@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # validators using Path(__file__).parent^5 resolve to WORKDIR (/app = repo_root).
 # This allows the p5/p2 validators to find their source files at runtime.
 COPY platform/python-sidecar/rag/ ./platform/python-sidecar/rag/
+COPY platform/python-sidecar/natal_engine/ ./platform/python-sidecar/natal_engine/
 COPY platform/python-sidecar/pipeline/ ./platform/python-sidecar/pipeline/
 # CGM edge manifests (static; read by pipeline.extractors.cgm_extractor at /app/035_DISCOVERY_LAYER/)
 COPY 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
