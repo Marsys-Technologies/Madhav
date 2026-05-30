@@ -90,6 +90,11 @@ jobs:
   icr-pr-gate:
     name: ICR PR Gate (synthetic smoke)
     runs-on: ubuntu-latest
+    # continue-on-error: true — PERMANENT DESIGN DECISION (not a temp soft-pass)
+    # The --dry-run --synthetic invocation tests script importability only.
+    # Real ICR gate behavior runs in icr_weekly_scan.yml (Sunday cadence).
+    # Hardening this to a hard gate would require a live DB + real PR diff context
+    # which is not available in the PR CI environment. Do not remove this flag.
     continue-on-error: true
     defaults:
       run:
@@ -216,6 +221,11 @@ jobs:
 
       - name: drift_detector — repo scan
         # Exit code policy: 0=clean, 3=baseline residuals (both pass), 1/2=regression (fail).
+        # exit 0 = clean; exit 3 = known_residuals (whitelisted, passes CI)
+        # Whitelist location: platform/scripts/governance/drift_detector.py known_residuals[]
+        # Current whitelisted tickets: WARN.2–WARN.8 (dead Gemini mirror pointers,
+        # historical PHASE_B_PLAN refs — booked for quarterly governance pass 2026-07-24)
+        # exit 1 or 2 = real failure; investigate immediately
         # Use || to capture exit code without set -e aborting on non-zero exit.
         run: |
           ec=0; python platform/scripts/governance/drift_detector.py || ec=$?
