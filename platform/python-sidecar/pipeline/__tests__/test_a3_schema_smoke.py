@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skipif(
 DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
 DB_PORT = os.environ.get('DB_PORT', '5433')
 DB_USER = os.environ.get('DB_USER', 'amjis_app')
-DB_PASS = os.environ.get('DB_PASS', 'aYtv6SN5TwRBShzHfxN4Qz_ccW3a49qnCAA2L-VF')
+DB_PASS = os.environ.get('DB_PASS', '')  # no default — must be set via env or DATABASE_URL
 DB_NAME = os.environ.get('DB_NAME', 'amjis')
 
 def get_conn():
