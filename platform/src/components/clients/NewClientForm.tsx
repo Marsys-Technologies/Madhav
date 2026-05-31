@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Autocomplete, useJsApiLoader } from '@react-google-maps/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { derivePreferredName } from './form_schema'
+import { isGoogleMapsKeyConfigured, type PlacesResult } from './usePlacesAutocomplete'
 import { cn } from '@/lib/utils'
 
 // ─── Ayanamsha options ────────────────────────────────────────────────────────
@@ -136,6 +138,79 @@ function validate(form: FormState): FormErrors {
   }
 
   return errors
+}
+
+// ─── Places API ───────────────────────────────────────────────────────────────
+
+const GMAPS_LIBS: ('places')[] = ['places']
+
+function timezoneFromOffset(offsetMinutes: number | null): { timezone_id: string; tz_offset: string } {
+  if (offsetMinutes == null) return { timezone_id: 'Asia/Kolkata', tz_offset: '5.5' }
+  const offsetHours = offsetMinutes / 60
+  const exact = TIMEZONES.find((tz) => tz.offset === offsetHours)
+  if (exact) return { timezone_id: exact.value, tz_offset: String(exact.offset) }
+  const nearest = TIMEZONES.reduce((a, b) =>
+    Math.abs(a.offset - offsetHours) < Math.abs(b.offset - offsetHours) ? a : b,
+  )
+  return { timezone_id: nearest.value, tz_offset: String(offsetHours) }
+}
+
+function PlacesAutocompleteInput({
+  value,
+  hasError,
+  onTextChange,
+  onBlur,
+  onPlaceResolved,
+}: {
+  value: string
+  hasError: boolean
+  onTextChange: (v: string) => void
+  onBlur: () => void
+  onPlaceResolved: (result: PlacesResult) => void
+}) {
+  const { isLoaded } = useJsApiLoader({
+    id: 'gmaps-places',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
+    libraries: GMAPS_LIBS,
+  })
+  const acRef = useRef<google.maps.places.Autocomplete | null>(null)
+
+  function onPlaceChanged() {
+    const place = acRef.current?.getPlace()
+    if (!place?.geometry?.location) return
+    onPlaceResolved({
+      description: place.formatted_address ?? place.name ?? '',
+      lat: place.geometry.location.lat(),
+      lng: place.geometry.location.lng(),
+      utcOffsetMinutes: place.utc_offset_minutes ?? null,
+    })
+  }
+
+  const inputEl = (
+    <Input
+      id="birth_place"
+      type="text"
+      placeholder="e.g. Bhubaneswar, Odisha, India"
+      value={value}
+      aria-required="true"
+      aria-invalid={hasError}
+      className={inputCls(hasError)}
+      onChange={(e) => onTextChange(e.target.value)}
+      onBlur={onBlur}
+    />
+  )
+
+  if (!isLoaded) return inputEl
+
+  return (
+    <Autocomplete
+      onLoad={(ac) => { acRef.current = ac }}
+      onPlaceChanged={onPlaceChanged}
+      options={{ fields: ['geometry', 'formatted_address', 'name', 'utc_offset_minutes'] }}
+    >
+      {inputEl}
+    </Autocomplete>
+  )
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
@@ -544,22 +619,53 @@ export function NewClientForm() {
               <Label htmlFor="birth_place" className="text-[#c8bfb0] text-sm">
                 Birth place *
               </Label>
-              <Input
-                id="birth_place"
-                type="text"
-                placeholder="e.g. Bhubaneswar, Odisha, India"
-                value={form.birth_place}
-                aria-required="true"
-                aria-invalid={!!errors.birth_place}
-                className={inputCls(!!errors.birth_place)}
-                onChange={(e) => {
-                  setField('birth_place', e.target.value)
-                  if (!e.target.value.trim()) {
-                    setForm((prev) => ({ ...prev, places_resolved: false }))
-                  }
-                }}
-                onBlur={handleBirthPlaceBlur}
-              />
+              {isGoogleMapsKeyConfigured() ? (
+                <PlacesAutocompleteInput
+                  value={form.birth_place}
+                  hasError={!!errors.birth_place}
+                  onTextChange={(v) => {
+                    setField('birth_place', v)
+                    if (!v.trim()) setForm((prev) => ({ ...prev, places_resolved: false }))
+                  }}
+                  onBlur={handleBirthPlaceBlur}
+                  onPlaceResolved={(result) => {
+                    const tz = timezoneFromOffset(result.utcOffsetMinutes)
+                    setForm((prev) => ({
+                      ...prev,
+                      birth_place: result.description,
+                      latitude: String(result.lat),
+                      longitude: String(result.lng),
+                      timezone_id: tz.timezone_id,
+                      tz_offset: tz.tz_offset,
+                      places_resolved: true,
+                    }))
+                    setManualOpen(false)
+                    setErrors((prev) => ({
+                      ...prev,
+                      birth_place: undefined,
+                      latitude: undefined,
+                      longitude: undefined,
+                    }))
+                  }}
+                />
+              ) : (
+                <Input
+                  id="birth_place"
+                  type="text"
+                  placeholder="e.g. Bhubaneswar, Odisha, India"
+                  value={form.birth_place}
+                  aria-required="true"
+                  aria-invalid={!!errors.birth_place}
+                  className={inputCls(!!errors.birth_place)}
+                  onChange={(e) => {
+                    setField('birth_place', e.target.value)
+                    if (!e.target.value.trim()) {
+                      setForm((prev) => ({ ...prev, places_resolved: false }))
+                    }
+                  }}
+                  onBlur={handleBirthPlaceBlur}
+                />
+              )}
               <FieldError msg={errors.birth_place} />
             </div>
 
