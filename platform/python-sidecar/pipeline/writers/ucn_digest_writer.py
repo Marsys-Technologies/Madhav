@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A14_ucn_digest"
 ASSET_LABEL = "UCN Digest"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 TOP_K = 20
 
 _ALL_GRAHAS = [

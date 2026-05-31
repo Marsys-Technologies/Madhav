@@ -87,7 +87,7 @@ class ForensicRenderer:
         chart_output: dict,
         chart_id: str,
         ayanamsha_id: str,
-        engine_version: str = 'natal_engine/0.2.0',
+        engine_version: str = 'pyjhora/1.0.0',
         build_id: str = 'unknown',
     ) -> str:
         """Render full FORENSIC.md. Returns complete markdown string."""

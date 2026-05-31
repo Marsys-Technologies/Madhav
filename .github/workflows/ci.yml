@@ -251,13 +251,15 @@ jobs:
         # live HTTPS LB and is a deploy-time check, not a CI check.
         run: bash platform/scripts/governance/edge_security_smoke.sh --ci-only
 
-      - name: pytest — natal_engine + pipeline
+      - name: pytest — pyjhora_adapter + pipeline
         # Hard gate. All tests here are self-contained (conn=None dry-run or
         # @pytest.mark.skipif(not DATABASE_URL) for integration tests).
         # test_a3_schema_smoke.py uses pytestmark to skip when DATABASE_URL
         # is absent — CI has no DB, so those 6 tests skip cleanly.
         # The || true soft-pass was removed 2026-05-30 (CF.V13.8 resolved).
+        # natal_engine/ deleted by pyjhora engine replacement (2026-06-01);
+        # pyjhora_adapter tests live under tests/test_pyjhora_adapter/ (covered by tests/).
         run: |
           pip install -r platform/python-sidecar/requirements.txt --quiet
           cd platform/python-sidecar
-          pytest natal_engine/tests/ pipeline/__tests__/ pipeline/linters/__tests__/ tests/ -q --tb=short --no-header
+          pytest pipeline/__tests__/ pipeline/linters/__tests__/ tests/ -q --tb=short --no-header

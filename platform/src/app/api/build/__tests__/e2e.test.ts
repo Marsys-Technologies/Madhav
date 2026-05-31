@@ -56,11 +56,28 @@ vi.mock('@/lib/auth/authorizeChartAccess', async () => {
 import { POST as POST_START } from '../start/route'
 import { POST as POST_TASK } from '../task/route'
 
+const TEST_AUDIENCE = 'https://amjis-web-test.run.app/api/build/task'
+
+function makeFakeJwt(aud: string): string {
+  const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ aud, iss: 'test', sub: 'cloud-tasks' })).toString('base64url')
+  return `${header}.${payload}.fakesig`
+}
+
 function makeReq(url: string, body: unknown, headers: Record<string, string> = {}): Request {
   return new Request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
+  })
+}
+
+/** makeReq variant that includes Cloud Tasks OIDC headers for /api/build/task calls. */
+function makeTaskReq(body: unknown, headers: Record<string, string> = {}): Request {
+  return makeReq('http://localhost/api/build/task', body, {
+    'x-cloudtasks-queuename': 'mars-build-queue',
+    authorization: `Bearer ${makeFakeJwt(TEST_AUDIENCE)}`,
+    ...headers,
   })
 }
 
@@ -72,11 +89,11 @@ beforeEach(() => {
   mockRecordBuildEvent.mockReset()
   mockGetFlag.mockReset()
   mockGetFlag.mockImplementation((name: string) => name === 'BUILD_TRIGGER_ENABLED')
-  process.env.BUILD_TASK_AUTH_BYPASS = 'test'
+  process.env.BUILD_TASK_AUDIENCE = TEST_AUDIENCE
 })
 
 afterEach(() => {
-  delete process.env.BUILD_TASK_AUTH_BYPASS
+  delete process.env.BUILD_TASK_AUDIENCE
 })
 
 describe('build-trigger E2E: happy path (start → task → event)', () => {
@@ -128,7 +145,7 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
         'projects/p/locations/asia-south1/jobs/marsys-build-pipeline-job/executions/exec-e2e-1',
     })
     const taskRes = await POST_TASK(
-      makeReq('http://localhost/api/build/task', {
+      makeTaskReq({
         build_id: startBody.build_id,
         chart_id: 'chart-77',
         ayanamsha_role: 'jh_true_chitra',
@@ -169,7 +186,7 @@ describe('build-trigger E2E: failure path (rollback signal)', () => {
     mockInvokeBuildJob.mockRejectedValue(new Error('PermissionDenied: jobs.run'))
 
     const res = await POST_TASK(
-      makeReq('http://localhost/api/build/task', {
+      makeTaskReq({
         build_id: 'build-e2e-fail',
         chart_id: 'chart-77',
         ayanamsha_role: 'jh_true_chitra',

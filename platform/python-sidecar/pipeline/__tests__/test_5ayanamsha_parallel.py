@@ -5,7 +5,7 @@ Verifies:
   - run_engine_parallel() returns a dict keyed by all requested ayanamshas
   - partial-failure semantics (some fail, others succeed)
   - total-failure semantics (all fail, returns None values, no exception)
-  - stub path (natal_engine not available)
+  - stub path (pyjhora_adapter not available)
   - concurrent execution (all ayanamshas attempted even if some raise)
   - load_birth_data() returns dict with required keys
   - return value is always a dict of exactly len(ayanamshas) entries
@@ -53,49 +53,42 @@ def make_fake_compute_chart(fail_on: set | None = None, raise_on: set | None = N
     return _compute
 
 
-def inject_natal_engine(compute_fn):
-    """Inject a fake natal_engine module into sys.modules."""
-    fake_module = types.ModuleType("natal_engine")
+def inject_engine(compute_fn):
+    """Inject a fake pyjhora_adapter module into sys.modules."""
+    fake_module = types.ModuleType("pyjhora_adapter")
     fake_module.compute_chart = compute_fn
-    sys.modules["natal_engine"] = fake_module
+    sys.modules["pyjhora_adapter"] = fake_module
     return fake_module
 
 
-def remove_natal_engine():
-    """Remove natal_engine from sys.modules."""
-    sys.modules.pop("natal_engine", None)
+def remove_engine():
+    """Remove pyjhora_adapter from sys.modules (restores real adapter on next import)."""
+    sys.modules.pop("pyjhora_adapter", None)
 
 
 def stub_sentinel():
     """
     Return a context manager that forces the stub path in run_engine_parallel.
 
-    run_engine_parallel does `from natal_engine import compute_chart` inside a
+    run_engine_parallel does `from pyjhora_adapter import compute_chart` inside a
     try/except ImportError.  We force that import to fail by temporarily placing
-    a broken sentinel in sys.modules["natal_engine"] that has no compute_chart
-    attribute, causing an ImportError on `from natal_engine import compute_chart`.
+    a broken sentinel in sys.modules["pyjhora_adapter"] that has no compute_chart
+    attribute, causing an ImportError on `from pyjhora_adapter import compute_chart`.
     """
     import contextlib
 
     @contextlib.contextmanager
     def _ctx():
-        # A module with no compute_chart attribute → AttributeError on `from X import Y`,
-        # but that is not ImportError.  Instead we use a sentinel object that
-        # raises ImportError when loaded.
-        broken = types.ModuleType("natal_engine")
-        # Don't set compute_chart — the `from natal_engine import compute_chart`
-        # will raise ImportError because the attribute doesn't exist.
-        # Actually Python raises ImportError for missing names in `from X import Y`
-        # when the module is a real module (it raises ImportError with "cannot import name").
-        old = sys.modules.get("natal_engine")
-        sys.modules["natal_engine"] = broken
+        broken = types.ModuleType("pyjhora_adapter")
+        old = sys.modules.get("pyjhora_adapter")
+        sys.modules["pyjhora_adapter"] = broken
         try:
             yield
         finally:
             if old is None:
-                sys.modules.pop("natal_engine", None)
+                sys.modules.pop("pyjhora_adapter", None)
             else:
-                sys.modules["natal_engine"] = old
+                sys.modules["pyjhora_adapter"] = old
 
     return _ctx()
 
@@ -119,13 +112,13 @@ class TestCanonicalAyanamshas:
         assert "raman" in CANONICAL_AYANAMSHAS  # assertion 9
 
 
-# ── run_engine_parallel — stub path (natal_engine unavailable) ─────────────────
+# ── run_engine_parallel — stub path (pyjhora_adapter unavailable) ─────────────────
 
 _BD = {"birth_date": "1984-02-05", "birth_time": "10:43", "lat": 20.27, "lon": 85.84, "tz_offset": 5.5}
 
 
 class TestRunEngineParallelStubPath:
-    """Tests for the stub code-path (no natal_engine available)."""
+    """Tests for the stub code-path (no pyjhora_adapter available)."""
 
     def test_stub_returns_dict(self):
         """Stub path returns a dict."""
@@ -164,10 +157,10 @@ class TestRunEngineParallelStubPath:
 
 class TestRunEngineParallelRealPath:
     def setup_method(self):
-        inject_natal_engine(make_fake_compute_chart())
+        inject_engine(make_fake_compute_chart())
 
     def teardown_method(self):
-        remove_natal_engine()
+        remove_engine()
 
     def test_success_returns_dict(self):
         """All-success path returns a dict."""
@@ -193,29 +186,29 @@ class TestRunEngineParallelRealPath:
 
 class TestRunEngineParallelPartialFailure:
     def teardown_method(self):
-        remove_natal_engine()
+        remove_engine()
 
     def test_partial_failure_returns_dict(self):
         """Partial failure still returns a dict."""
-        inject_natal_engine(make_fake_compute_chart(fail_on={"lahiri"}))
+        inject_engine(make_fake_compute_chart(fail_on={"lahiri"}))
         result = asyncio.run(run_engine_parallel("chart-3", CANONICAL_AYANAMSHAS, _BD))
         assert isinstance(result, dict)  # assertion 27
 
     def test_partial_failure_all_keys_present(self):
         """Partial failure: all ayanamsha keys still present in result."""
-        inject_natal_engine(make_fake_compute_chart(fail_on={"lahiri"}))
+        inject_engine(make_fake_compute_chart(fail_on={"lahiri"}))
         result = asyncio.run(run_engine_parallel("chart-3", CANONICAL_AYANAMSHAS, _BD))
         assert set(result.keys()) == set(CANONICAL_AYANAMSHAS)  # assertion 28
 
     def test_partial_failure_failed_ayanamsha_is_none(self):
         """The ayanamsha that failed must have None value."""
-        inject_natal_engine(make_fake_compute_chart(fail_on={"lahiri"}))
+        inject_engine(make_fake_compute_chart(fail_on={"lahiri"}))
         result = asyncio.run(run_engine_parallel("chart-3", CANONICAL_AYANAMSHAS, _BD))
         assert result["lahiri"] is None  # assertion 29
 
     def test_partial_failure_successful_ayanamshas_have_values(self):
         """The ayanamshas that succeeded must have non-None values."""
-        inject_natal_engine(make_fake_compute_chart(fail_on={"lahiri"}))
+        inject_engine(make_fake_compute_chart(fail_on={"lahiri"}))
         result = asyncio.run(run_engine_parallel("chart-3", CANONICAL_AYANAMSHAS, _BD))
         for ayan in CANONICAL_AYANAMSHAS:
             if ayan != "lahiri":
@@ -223,18 +216,18 @@ class TestRunEngineParallelPartialFailure:
 
     def test_partial_failure_exact_count(self):
         """Partial failure: result has exactly len(ayanamshas) entries."""
-        inject_natal_engine(make_fake_compute_chart(fail_on={"kp", "raman"}))
+        inject_engine(make_fake_compute_chart(fail_on={"kp", "raman"}))
         result = asyncio.run(run_engine_parallel("chart-3", CANONICAL_AYANAMSHAS, _BD))
         assert len(result) == len(CANONICAL_AYANAMSHAS)  # assertion 34
 
 
 class TestRunEngineParallelTotalFailure:
     def teardown_method(self):
-        remove_natal_engine()
+        remove_engine()
 
     def test_total_failure_does_not_raise(self):
         """Total failure: no exception propagated."""
-        inject_natal_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
+        inject_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
         try:
             asyncio.run(run_engine_parallel("chart-4", CANONICAL_AYANAMSHAS, _BD))
             raised = False
@@ -244,19 +237,19 @@ class TestRunEngineParallelTotalFailure:
 
     def test_total_failure_returns_dict(self):
         """Total failure: return value is a dict."""
-        inject_natal_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
+        inject_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
         result = asyncio.run(run_engine_parallel("chart-4", CANONICAL_AYANAMSHAS, _BD))
         assert isinstance(result, dict)  # assertion 36
 
     def test_total_failure_all_values_none(self):
         """Total failure: all values are None."""
-        inject_natal_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
+        inject_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
         result = asyncio.run(run_engine_parallel("chart-4", CANONICAL_AYANAMSHAS, _BD))
         assert all(v is None for v in result.values())  # assertion 37
 
     def test_total_failure_all_keys_present(self):
         """Total failure: all ayanamsha keys still present."""
-        inject_natal_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
+        inject_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
         result = asyncio.run(run_engine_parallel("chart-4", CANONICAL_AYANAMSHAS, _BD))
         assert set(result.keys()) == set(CANONICAL_AYANAMSHAS)  # assertion 38
 
@@ -265,7 +258,7 @@ class TestRunEngineParallelTotalFailure:
 
 class TestConcurrentExecution:
     def teardown_method(self):
-        remove_natal_engine()
+        remove_engine()
 
     def test_all_ayanamshas_attempted_despite_first_failure(self):
         """
@@ -280,7 +273,7 @@ class TestConcurrentExecution:
                 raise RuntimeError("first fails")
             return {"ayanamsha_id": ayanamsha_id, "computed": True}
 
-        inject_natal_engine(tracking_compute)
+        inject_engine(tracking_compute)
         result = asyncio.run(run_engine_parallel("chart-5", CANONICAL_AYANAMSHAS, _BD))
         # All 5 must have been called
         assert len(called) == len(CANONICAL_AYANAMSHAS)  # assertion 39
@@ -373,26 +366,26 @@ class TestLoadBirthData:
 
 class TestReturnValueInvariants:
     def teardown_method(self):
-        remove_natal_engine()
+        remove_engine()
 
     def test_custom_ayanamsha_list(self):
         """Works with a custom (non-canonical) list of ayanamshas."""
         custom = ["lahiri", "raman"]
-        inject_natal_engine(make_fake_compute_chart())
+        inject_engine(make_fake_compute_chart())
         result = asyncio.run(run_engine_parallel("chart-6", custom, _BD))
         assert len(result) == len(custom)  # assertion 57
         assert set(result.keys()) == set(custom)  # assertion 58
 
     def test_result_values_are_dicts_on_success(self):
         """On full success each value is a dict."""
-        inject_natal_engine(make_fake_compute_chart())
+        inject_engine(make_fake_compute_chart())
         result = asyncio.run(run_engine_parallel("chart-7", CANONICAL_AYANAMSHAS, _BD))
         for val in result.values():
             assert isinstance(val, dict)  # assertions 59-63
 
     def test_result_never_raises(self):
         """run_engine_parallel never propagates engine exceptions."""
-        inject_natal_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
+        inject_engine(make_fake_compute_chart(fail_on=set(CANONICAL_AYANAMSHAS)))
         try:
             asyncio.run(run_engine_parallel("chart-8", CANONICAL_AYANAMSHAS, _BD))
             no_exception = True

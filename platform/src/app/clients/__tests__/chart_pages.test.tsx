@@ -48,10 +48,10 @@ vi.mock('@/lib/build/dataSource', () => ({ fetchBuildState: mockFetchBuildState 
 vi.mock('@/lib/forensic/snapshot', () => ({ getForensicSnapshot: mockGetForensicSnapshot }))
 vi.mock('@/lib/config/index', () => ({ configService: mockConfigService }))
 
-// Stub the Constellation canvas — not under test here (H-01: BuildChat deleted).
-vi.mock('@/components/build_orchestrator/ConstellationCanvas', () => ({
-  default: ({ chartId }: { chartId: string }) => (
-    <div data-testid="constellation-canvas" data-chart-id={chartId} />
+// Stub the v2 cockpit shell — not under test here.
+vi.mock('@/components/cockpit/CockpitShell', () => ({
+  CockpitShell: ({ chartId }: { chartId: string }) => (
+    <div data-testid="cockpit-shell" data-chart-id={chartId} />
   ),
 }))
 vi.mock('@/components/consume/ConsumeChat', () => ({
@@ -181,7 +181,7 @@ describe('clients/[id]/build — access control', () => {
     const { default: BuildPage } = await import('../[id]/build/page')
     const jsx = await BuildPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })
     const { getByTestId } = render(jsx)
-    expect(getByTestId('constellation-canvas').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
+    expect(getByTestId('cockpit-shell').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
     expect(getByTestId('build-page-root').getAttribute('data-permission')).toBe('all')
   })
 })

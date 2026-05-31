@@ -120,7 +120,7 @@ def test_citation_format():
     ref = make_citation_ref("panchanga_tithi", "TITHI_BIRTH", "name", "362f9f17-95a5-490b", "INVARIANT")
     assert "@chart=" in ref
     assert ":ay=INVARIANT" in ref
-    assert ":eng=natal_engine" in ref
+    assert ":eng=pyjhora" in ref
 
 
 def test_missing_panchanga_row_raises():

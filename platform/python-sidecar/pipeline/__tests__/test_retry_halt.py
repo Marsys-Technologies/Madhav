@@ -23,7 +23,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 # ---------------------------------------------------------------------------
-# Minimal stubs so the module can be imported without real DB / natal_engine
+# Minimal stubs so the module can be imported without real DB / pyjhora_adapter
 # ---------------------------------------------------------------------------
 
 # Stub psycopg2 before importing the module under test

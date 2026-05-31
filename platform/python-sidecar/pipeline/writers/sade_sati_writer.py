@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 # ── C-07 dispatch constants ────────────────────────────────────────────────────
 ASSET_ID = "A9_sade_sati"
 ASSET_LABEL = "Sade-Sati Phases"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 # 0-indexed sign order: Aries=0 ... Pisces=11
 _SIGN_NAMES = [

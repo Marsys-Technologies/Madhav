@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A12_cgm"
 ASSET_LABEL = "CGM Graph Nodes + Edges"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 _ALL_GRAHAS = [
     "sun", "moon", "mars", "mercury", "jupiter",

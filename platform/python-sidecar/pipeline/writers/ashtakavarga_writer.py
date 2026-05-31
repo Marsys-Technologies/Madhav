@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A8_ashtakavarga"
 ASSET_LABEL = "Ashtakavarga BAV+SAV"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 _CONTRIBUTORS = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "lagna"]
 

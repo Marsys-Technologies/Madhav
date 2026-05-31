@@ -19,9 +19,19 @@ import concurrent.futures
 import logging
 import os
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Optional
+
+# PyJHora drives the sidereal (ayanamsha) mode via PROCESS-GLOBAL Swiss-Ephemeris
+# state. The per-ayanamsha engine calls below run in a ThreadPool, so without
+# serialisation thread A's set_ayanamsa_mode could be clobbered by thread B
+# before A reads — yielding wrong-ayanamsha output. This lock makes each
+# compute_chart() call (set sidereal mode + read full chart) atomic. The five
+# ayanamshas therefore compute sequentially within the pool; this is correct and
+# fast enough (a full chart is sub-100ms).
+_ENGINE_SIDEREAL_LOCK = threading.Lock()
 
 # ── Build events emitter (C-03) ────────────────────────────────────────────────
 try:
@@ -318,7 +328,7 @@ async def run_engine_parallel(
     birth_data: dict,
 ) -> dict[str, Optional[dict]]:
     """
-    Run natal_engine.compute_chart() for each ayanamsha in parallel via
+    Run pyjhora_adapter.compute_chart() for each ayanamsha in parallel via
     asyncio.gather() + ThreadPoolExecutor (one thread per ayanamsha, max 5).
 
     Parameters
@@ -347,18 +357,18 @@ async def run_engine_parallel(
     - Caller is responsible for checking values and deciding build disposition.
     """
     try:
-        from natal_engine import compute_chart  # type: ignore[import]
+        from pyjhora_adapter import compute_chart  # type: ignore[import]
         _use_stub = False
     except ImportError:
         log.warning(
-            "natal_engine not installed — using stub for chart_id=%s", chart_id
+            "pyjhora_adapter not installed — using stub for chart_id=%s", chart_id
         )
         _use_stub = True
 
     results: dict[str, Optional[dict]] = {}
 
     if _use_stub:
-        # Stub path: used in test environments without natal_engine installed.
+        # Stub path: used in test environments without pyjhora_adapter installed.
         async def _stub(ayanamsha: str) -> Optional[dict]:
             return {"ayanamsha_id": ayanamsha, "stub": True, "chart_id": chart_id}
 
@@ -381,8 +391,9 @@ async def run_engine_parallel(
         return results
 
     # Real path: run compute_chart() in a thread pool so the event loop stays
-    # responsive.  Each thread is independent (Swiss Ephemeris is thread-safe
-    # when ayanamsha is set per-call via the `ayanamsha_id` parameter).
+    # responsive. PyJHora's sidereal mode is process-global, so each worker
+    # serialises its set-ayanamsha + read under _ENGINE_SIDEREAL_LOCK (see
+    # _compute_sync) to prevent cross-ayanamsha state bleed.
     loop = asyncio.get_event_loop()
 
     def _compute_sync(ayanamsha: str) -> Optional[dict]:
@@ -396,10 +407,12 @@ async def run_engine_parallel(
                 "place_name": "Bhubaneswar",  # default; overrideable via birth_data
                 "subject_label": chart_id,
             }
-            return compute_chart(
-                inputs=inputs_payload,
-                ayanamsha_id=ayanamsha,
-            )
+            # PyJHora sidereal mode is process-global — serialise set+read.
+            with _ENGINE_SIDEREAL_LOCK:
+                return compute_chart(
+                    inputs=inputs_payload,
+                    ayanamsha_id=ayanamsha,
+                )
         except Exception as exc:
             log.error(
                 "engine_compute_failed ayanamsha=%s chart_id=%s error=%s",

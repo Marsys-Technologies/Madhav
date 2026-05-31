@@ -154,19 +154,19 @@ class TestFrontmatter:
         return result
 
     def test_contains_chart_id(self):
-        fm = frontmatter("FORENSIC_1984", "lahiri", "natal_engine/0.2.0", "build-001")
+        fm = frontmatter("FORENSIC_1984", "lahiri", "pyjhora/1.0.0", "build-001")
         assert "FORENSIC_1984" in fm
 
     def test_contains_ayanamsha_id(self):
-        fm = frontmatter("FORENSIC_1984", "lahiri", "natal_engine/0.2.0", "build-001")
+        fm = frontmatter("FORENSIC_1984", "lahiri", "pyjhora/1.0.0", "build-001")
         assert "lahiri" in fm
 
     def test_contains_engine_version(self):
-        fm = frontmatter("FORENSIC_1984", "lahiri", "natal_engine/0.2.0", "build-001")
-        assert "natal_engine/0.2.0" in fm
+        fm = frontmatter("FORENSIC_1984", "lahiri", "pyjhora/1.0.0", "build-001")
+        assert "pyjhora/1.0.0" in fm
 
     def test_contains_build_id(self):
-        fm = frontmatter("FORENSIC_1984", "lahiri", "natal_engine/0.2.0", "build-001")
+        fm = frontmatter("FORENSIC_1984", "lahiri", "pyjhora/1.0.0", "build-001")
         assert "build-001" in fm
 
     def test_no_narration_true(self):

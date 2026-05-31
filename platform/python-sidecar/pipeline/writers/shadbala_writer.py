@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A8_shadbala"
 ASSET_LABEL = "Shadbala 6 Sub-Balas"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 # ── Naisargika (natural) Bala constants — BPHS Ch 27 ─────────────────────────
 NAISARGIKA_BALA = {

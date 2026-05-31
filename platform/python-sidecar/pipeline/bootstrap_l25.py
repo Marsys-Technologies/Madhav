@@ -2,7 +2,7 @@
 """
 bootstrap_l25.py — Unit 2a loader.
 
-One-shot job that builds the L2.5 corpus from the natal_engine output for
+One-shot job that builds the L2.5 corpus from the pyjhora_adapter output for
 a given (chart_id, ayanamsha_id) pair and:
 
   1. Emits a deterministic canonical-JSONL artifact per table to
@@ -37,8 +37,8 @@ from typing import Any
 # Allow running as `python pipeline/bootstrap_l25.py` from the sidecar dir.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from natal_engine import compute_chart
-from natal_engine.l25_builder import build_all, canonical_jsonl
+from pyjhora_adapter import compute_chart
+from pyjhora_adapter.l25_builder import build_all, canonical_jsonl
 
 logger = logging.getLogger("bootstrap_l25")
 
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--chart-id", required=True,
                    help="stable chart_id (e.g., abhisek_mohanty_native_v1)")
     p.add_argument("--ayanamsha", required=True,
-                   help="ayanamsha_id from natal_engine.ayanamsha_registry")
+                   help="ayanamsha_id (lahiri|true_chitra|kp|raman|surya_siddhanta)")
     p.add_argument("--build-id",
                    default=f"l25-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}")
     p.add_argument("--artifacts-dir", default="artifacts/l25_build",
