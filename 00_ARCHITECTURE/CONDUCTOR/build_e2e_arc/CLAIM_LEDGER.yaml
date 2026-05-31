@@ -4,7 +4,7 @@
 schema: v1
 arc_id: build_e2e_arc
 created_at: "2026-05-31T00:00:00Z"
-last_updated: "2026-05-31T04:20:00Z"
+last_updated: "2026-05-31T04:25:00Z"
 last_updated_by: "stream-b agent"
 
 # Sessions currently in flight (file-locked by their stream agent).
@@ -13,9 +13,9 @@ active_claims:
     stream: A
     claimed_at: "2026-05-31T04:15:00Z"
     claimed_by: "stream-a agent"
-  - session_id: B-S1
+  - session_id: B-S2
     stream: B
-    claimed_at: "2026-05-31T04:20:00Z"
+    claimed_at: "2026-05-31T04:25:00Z"
     claimed_by: "stream-b agent"
 
 # Sessions completed (audit trail; rolling cap 500).
@@ -30,6 +30,12 @@ released_claims:
     claimed_at: "2026-05-31T04:05:00Z"
     completed_at: "2026-05-31T04:15:00Z"
     merge_sha: "cc641e13"
+  - session_id: B-S1
+    stream: B
+    claimed_at: "2026-05-31T04:20:00Z"
+    completed_at: "2026-05-31T04:25:00Z"
+    merge_sha: "ff7b4227"
+    note: "chart-dedupe already on main via PR #173; cherry-pick was empty-skip"
 
 # Sessions whose CI auto-fix exhausted 5 attempts and proceeded with `ci_red_ignored` tag.
 ci_red_ignored: []
