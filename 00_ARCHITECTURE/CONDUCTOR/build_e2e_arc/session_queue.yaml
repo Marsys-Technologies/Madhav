@@ -1,0 +1,71 @@
+# session_queue.yaml — canonical session list for the build E2E arc
+# Each session is owned by exactly one stream. Stream agents walk their slice
+# in declared order, claiming each via CLAIM_LEDGER before starting work.
+schema: v1
+arc_id: build_e2e_arc
+total_sessions: 28
+
+# ─── Stream A — Build orchestrator hardening + CI/CD automation ─────────────
+A:
+  worktree: /Users/Dev/Vibe-Coding/Apps/MadhavHardeningCI
+  branch: feat/hardening-ci
+  base: main
+  brief: 00_ARCHITECTURE/CONDUCTOR/build_e2e_arc/briefs/STREAM_A_HARDENING_CI_v1_0.md
+  note: |
+    L1/L3/L4-component/Cloud-Scheduler-IaC shipped via PR #174
+    (feat/build-timeout-hardening @ 5ef88415) and merged to main before
+    Conductor kickoff. Stream A starts directly on main and ships only the
+    CI/CD automation + Cloud Run Job timeout. L4 BuildButton wiring picked
+    up by Stream C-S8.5.
+  sessions:
+    - { id: A-S5, title: Cloud Run Job timeout via gcloud (no terraform for this resource — folds into deploy.yml step), gate: "grep -q 'task-timeout=30m' .github/workflows/deploy.yml" }
+    - { id: A-S7, title: Migration runner (migrate.ts + _migrations_applied tracking + idempotency), gate: "cd platform && npm test -- migrate.test.ts" }
+    - { id: A-S8, title: Extend deploy.yml — post-deploy migrations + terraform apply + smoke + traffic flip + Cloud Run Job timeout, gate: "yamllint .github/workflows/deploy.yml" }
+    - { id: A-S9, title: Final commit + cherry-pick to main + watch first auto-deploy, gate: "git log origin/main..HEAD --oneline | head -1" }
+
+# ─── Stream B — Data plumbing (sidecar SSE + chart_id + dedupe merge) ───────
+B:
+  worktree: /Users/Dev/Vibe-Coding/Apps/MadhavDataPlumbing
+  branch: feat/data-plumbing
+  base: feature/ux-workflow-overhaul
+  brief: 00_ARCHITECTURE/CONDUCTOR/build_e2e_arc/briefs/STREAM_B_DATA_PLUMBING_v1_0.md
+  sessions:
+    - { id: B-S1, title: Merge fix/chart-dedupe into base + resolve any conflicts, gate: "git log --oneline | grep -q 'chart-dedupe'" }
+    - { id: B-S2, title: emit_node_added + emit_edge_added helpers in build_events.py, gate: "cd platform/python-sidecar && python -m pytest pipeline/__tests__/test_build_events.py -v" }
+    - { id: B-S3, title: Dispatcher wires typed events on per-asset row writes + edge emission, gate: "cd platform/python-sidecar && python -m pytest pipeline/__tests__/ -v" }
+    - { id: B-S4, title: emit_step_event mirrors completions to build_events.chart_id, gate: "cd platform/python-sidecar && python -m pytest -k chart_id -v" }
+    - { id: B-S5, title: sse_events.ts type union extended (node_added + edge_added), gate: "cd platform && npm run build" }
+    - { id: B-S6, title: Local smoke — apply migrations, trigger build, verify SSE + chart_id, gate: "test -f /tmp/build_e2e_smoke/sse_events.log" }
+    - { id: B-S7, title: Final commit + cherry-pick to main, gate: "git log origin/main..HEAD --oneline | head -1" }
+
+# ─── Stream C — Visual v2 implementation (≥ approved mockup) ────────────────
+C:
+  worktree: /Users/Dev/Vibe-Coding/Apps/MadhavVisualV2
+  branch: feat/visual-v2
+  base: feature/ux-workflow-overhaul
+  brief: 00_ARCHITECTURE/CONDUCTOR/build_e2e_arc/briefs/STREAM_C_VISUAL_V2_v1_0.md
+  visual_contract: 00_ARCHITECTURE/CONDUCTOR/build_e2e_arc/VISUAL_CONTRACT_v2.md
+  sessions:
+    - { id: C-S1, title: Sanskrit name map (lib/jyotish/asset_names.ts) — all 28 assets, gate: "cd platform && npm test -- asset_names.test.ts" }
+    - { id: C-S2, title: Theme tokens — obsidian + gold + Cormorant Garamond + Inter, gate: "cd platform && npm run build" }
+    - { id: C-S3, title: Force-graph DAG SVG component (4-column layout, directional arrows, lit edges), gate: "cd platform && npm test -- LiveBuildGraph.test.tsx" }
+    - { id: C-S4, title: Progress ring SVG component (per-running-node), gate: "cd platform && npm test -- ProgressRing.test.tsx" }
+    - { id: C-S5, title: Sampurna gati overall progress bar + per-ayanamsha sub-counts, gate: "cd platform && npm test -- OverallProgress.test.tsx" }
+    - { id: C-S6, title: Telemetry strip (QPS, writers, queue, sidecar, build_id), gate: "cd platform && npm test -- TelemetryStrip.test.tsx" }
+    - { id: C-S7, title: Asset table v2 (numbered rows, per-row progress, Rebuild action + cascade hint), gate: "cd platform && npm test -- AssetTable.test.tsx" }
+    - { id: C-S8, title: Form visual polish (entry form to match v2 mockup), gate: "cd platform && npm test -- NewClientForm.test.tsx" }
+    - { id: C-S9, title: Final commit + cherry-pick to main, gate: "git log origin/main..HEAD --oneline | head -1" }
+
+# ─── Stream D — Front-of-funnel + functional polish ─────────────────────────
+D:
+  worktree: /Users/Dev/Vibe-Coding/Apps/MadhavFunnelPolish
+  branch: feat/funnel-polish
+  base: feature/ux-workflow-overhaul
+  brief: 00_ARCHITECTURE/CONDUCTOR/build_e2e_arc/briefs/STREAM_D_FUNNEL_POLISH_v1_0.md
+  sessions:
+    - { id: D-S1, title: Form schema — add preferred_name + tz_offset_explicit fields, gate: "cd platform && npm test -- form_schema.test.ts" }
+    - { id: D-S2, title: /api/clients/create — accept new fields + DD-MM-YYYY date format, gate: "cd platform && npm test -- route.test.ts" }
+    - { id: D-S3, title: Places API verification — confirm wiring + auto-expand override on miss, gate: "cd platform && npm test -- places_autocomplete.test.tsx" }
+    - { id: D-S4, title: Cancel button on cockpit — verify exists; if absent, ship /api/build/<id>/cancel + UI button, gate: "cd platform && npm test -- cancel.test.ts" }
+    - { id: D-S5, title: Form-to-cockpit redirect smoke (Playwright headless), gate: "cd platform && npm run test:e2e -- new-client-flow.spec.ts" }
+    - { id: D-S6, title: Final commit + cherry-pick to main, gate: "git log origin/main..HEAD --oneline | head -1" }
