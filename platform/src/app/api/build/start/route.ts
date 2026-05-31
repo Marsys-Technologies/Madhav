@@ -161,6 +161,33 @@ export async function POST(request: Request): Promise<Response> {
   }
   const resolvedChartId = chartRow.rows[0].chart_id
 
+  // ── Concurrency guard ──────────────────────────────────────────────────────
+  // Refuse if a non-terminal build already exists for this chart. Returns 409
+  // with the existing build_id — caller can poll or cancel it. Prevents the
+  // "stuck builds pile up" failure mode (CLAUDECODE_BRIEF_BUILD_TIMEOUT_HARDENING_v1_0).
+  const existing = await query<{ build_id: string; status: string; started_at: string | null }>(
+    `SELECT build_id, status, started_at
+       FROM builds
+      WHERE chart_id = $1
+        AND status IN ('running', 'queued', 'cancelling')
+      ORDER BY created_at DESC
+      LIMIT 1`,
+    [resolvedChartId],
+  )
+  if (existing.rows[0]) {
+    const row = existing.rows[0]
+    return NextResponse.json(
+      {
+        error: 'build_already_active',
+        build_id: row.build_id,
+        status: row.status,
+        started_at: row.started_at,
+        message: 'A build for this chart is already in flight. Cancel it before starting a new one.',
+      },
+      { status: 409 },
+    )
+  }
+
   // ── Insert builds row ──────────────────────────────────────────────────────
   let buildId: string
   try {
