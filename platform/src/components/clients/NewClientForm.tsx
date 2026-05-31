@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { derivePreferredName } from './form_schema'
 
 // ─── Ayanamsha options ────────────────────────────────────────────────────────
 
@@ -23,25 +24,31 @@ export type AyanamshaId = (typeof AYANAMSHA_OPTIONS)[number]['id']
 
 interface FormState {
   full_name: string
+  preferred_name: string        // D-S1: defaults to first word of full_name
   gender: string
   birth_date: string
+  birth_date_ui: string         // D-S1: DD MM YYYY alternative UI entry
   birth_time: string
   birth_place: string
   latitude: string
   longitude: string
   timezone_offset: string
+  timezone_id: string           // D-S1: IANA TZ e.g. "Asia/Kolkata"
   ayanamshas: AyanamshaId[]
 }
 
 interface FormErrors {
   full_name?: string
+  preferred_name?: string
   gender?: string
   birth_date?: string
+  birth_date_ui?: string
   birth_time?: string
   birth_place?: string
   latitude?: string
   longitude?: string
   timezone_offset?: string
+  timezone_id?: string
   ayanamshas?: string
   api?: string
 }
@@ -102,6 +109,10 @@ function validate(form: FormState): FormErrors {
     errors.timezone_offset = 'Timezone offset must be between -14 and 14.'
   }
 
+  if (!form.timezone_id || !form.timezone_id.trim()) {
+    errors.timezone_id = 'Timezone is required.'
+  }
+
   if (form.ayanamshas.length === 0) {
     errors.ayanamshas = 'At least one ayanamsha must be selected.'
   }
@@ -116,13 +127,16 @@ export function NewClientForm() {
 
   const [form, setForm] = useState<FormState>({
     full_name: '',
+    preferred_name: '',
     gender: '',
     birth_date: '',
+    birth_date_ui: '',
     birth_time: '',
     birth_place: '',
     latitude: '',
     longitude: '',
     timezone_offset: '',
+    timezone_id: 'Asia/Kolkata',
     ayanamshas: AYANAMSHA_OPTIONS.map((o) => o.id),
   })
 
@@ -161,11 +175,13 @@ export function NewClientForm() {
     setErrors({})
 
     try {
+      const preferred_name = derivePreferredName(form.full_name, form.preferred_name)
       const res = await fetch('/api/clients/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: form.full_name.trim(),
+          preferred_name,
           gender: form.gender,
           birth_date: form.birth_date,
           birth_time: form.birth_time,
@@ -173,6 +189,7 @@ export function NewClientForm() {
           latitude: parseFloat(form.latitude),
           longitude: parseFloat(form.longitude),
           timezone_offset: parseFloat(form.timezone_offset),
+          timezone_id: form.timezone_id,
           ayanamshas: form.ayanamshas,
         }),
       })
