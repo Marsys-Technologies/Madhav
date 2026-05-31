@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       [buildId],
     )
 
-    const row = rows[0]
+    const row = rows.rows[0]
     const eventCount = parseInt(row?.event_count ?? '0', 10)
     const uniqueAssets = parseInt(row?.unique_assets ?? '0', 10)
 
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
        WHERE build_id = $1 AND status = 'pending'`,
       [buildId],
     )
-    const queueDepth = parseInt(pendingRows[0]?.pending_count ?? '0', 10)
+    const queueDepth = parseInt(pendingRows.rows[0]?.pending_count ?? '0', 10)
 
     return NextResponse.json(
       {

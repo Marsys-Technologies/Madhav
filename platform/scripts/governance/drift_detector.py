@@ -107,7 +107,31 @@ WHITELIST_TICKETS = {
         ],
         "booked_for": "Quarterly governance pass (§H) — remove Gemini mirror references",
     },
+    # GISMCP remediation arc (2026-05-26) modified 5 platform-mcp tool files
+    # (tier-gate removal + alias creation + mantras filter fix). The declared
+    # fingerprints in CAPABILITY_MANIFEST were not rotated in that arc session.
+    # Rotation requires a dedicated governance session to recompute and update
+    # all 5 fingerprint_sha256 + last_verified_session fields. Booked for
+    # next governance pass (§H, due 2026-07-24).
+    "WARN.9": {
+        "description": "GISMCP arc fingerprint rotation pending (5 platform-mcp tools modified 2026-05-26)",
+        "canonical_ids": [
+            "MCP_TOOL_QUERY_DIVISIONAL_CHART",
+            "MCP_TOOL_QUERY_REMEDIAL_MANTRAS",
+            "MCP_TOOL_CHART_SUMMARY",
+            "MCP_TOOL_TOOL_HEALTH",
+            "MCP_TOOL_DATA_COVERAGE",
+        ],
+        "booked_for": "Quarterly governance pass (§H) — rotate fingerprints after GISMCP arc",
+    },
 }
+
+# Canonical IDs whose fingerprint_mismatch findings carry a whitelist ticket.
+# Populated from WHITELIST_TICKETS entries that have a "canonical_ids" key.
+_FINGERPRINT_MISMATCH_WHITELIST: dict = {}
+for _ticket_id, _ticket in WHITELIST_TICKETS.items():
+    for _cid in _ticket.get("canonical_ids", []):
+        _FINGERPRINT_MISMATCH_WHITELIST[_cid] = _ticket_id
 
 # Governance surfaces scanned for phantom references. Excludes closed/time-stamped
 # artifacts per protocol §H.3.7. STEP_BRIEFS intentionally scanned.
@@ -271,6 +295,7 @@ def check_ca_filesystem_fingerprints(repo_root: pathlib.Path, ca) -> List[Findin
                 surfaces_involved=[path_rel, "CANONICAL_ARTIFACTS"],
                 evidence=f"declared={declared} observed={observed}",
                 suggested_remediation="Rotate the row's fingerprint_sha256 AND update last_verified_session/last_verified_on",
+                whitelist_ticket=_FINGERPRINT_MISMATCH_WHITELIST.get(cid),
             ))
     return findings
 
