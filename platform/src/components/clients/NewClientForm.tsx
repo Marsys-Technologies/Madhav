@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,45 +11,60 @@ import { cn } from '@/lib/utils'
 // ─── Ayanamsha options ────────────────────────────────────────────────────────
 
 export const AYANAMSHA_OPTIONS = [
-  { id: 'lahiri', label: 'Lahiri (Chitrapaksha)' },
-  { id: 'true_chitra', label: 'True Chitra (Revati)' },
-  { id: 'kp', label: 'KP (Krishnamurti Paddhati)' },
-  { id: 'raman', label: 'B.V. Raman' },
-  { id: 'surya_siddhanta', label: 'Surya Siddhanta' },
+  { id: 'lahiri',           label: 'Lahiri',            sub: 'Chitrapaksha' },
+  { id: 'true_chitra',      label: 'True Chitra',       sub: 'Revati paksha' },
+  { id: 'kp',               label: 'KP',                sub: 'Krishnamurti' },
+  { id: 'raman',            label: 'Raman',             sub: 'B.V. Raman' },
+  { id: 'surya_siddhanta',  label: 'Surya Siddhanta',   sub: 'Classical drik' },
 ] as const
 
 export type AyanamshaId = (typeof AYANAMSHA_OPTIONS)[number]['id']
 
-// ─── Form state ───────────────────────────────────────────────────────────────
+// ─── Timezones ────────────────────────────────────────────────────────────────
+
+export const TIMEZONES = [
+  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata (UTC+5:30)',   offset: 5.5 },
+  { value: 'UTC',                 label: 'UTC (UTC+0)',               offset: 0 },
+  { value: 'Asia/Colombo',        label: 'Asia/Colombo (UTC+5:30)',   offset: 5.5 },
+  { value: 'Asia/Kathmandu',      label: 'Asia/Kathmandu (UTC+5:45)', offset: 5.75 },
+  { value: 'Asia/Dhaka',          label: 'Asia/Dhaka (UTC+6)',        offset: 6 },
+  { value: 'Asia/Dubai',          label: 'Asia/Dubai (UTC+4)',        offset: 4 },
+  { value: 'Asia/Singapore',      label: 'Asia/Singapore (UTC+8)',    offset: 8 },
+  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo (UTC+9)',        offset: 9 },
+  { value: 'America/New_York',    label: 'America/New_York (UTC-5)',  offset: -5 },
+  { value: 'America/Chicago',     label: 'America/Chicago (UTC-6)',   offset: -6 },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-8)', offset: -8 },
+  { value: 'Europe/London',       label: 'Europe/London (UTC+0)',     offset: 0 },
+  { value: 'Europe/Berlin',       label: 'Europe/Berlin (UTC+1)',     offset: 1 },
+  { value: 'Australia/Sydney',    label: 'Australia/Sydney (UTC+10)', offset: 10 },
+] as const
+
+// ─── Single form state ────────────────────────────────────────────────────────
 
 interface FormState {
   full_name: string
-  preferred_name: string        // D-S1: defaults to first word of full_name
-  gender: string
-  birth_date: string
-  birth_date_ui: string         // D-S1: DD MM YYYY alternative UI entry
-  birth_time: string
+  preferred_name: string
+  gender: 'M' | 'F' | 'O' | 'unknown' | ''
+  birth_date: string          // YYYY-MM-DD from <input type="date">
+  birth_time: string          // HH:MM from <input type="time">
   birth_place: string
-  latitude: string
+  latitude: string            // string for controlled input; parseFloat on submit
   longitude: string
-  timezone_offset: string
-  timezone_id: string           // D-S1: IANA TZ e.g. "Asia/Kolkata"
+  timezone_id: string         // IANA, e.g. Asia/Kolkata
+  tz_offset: string           // derived from timezone_id; user-editable override
   ayanamshas: AyanamshaId[]
+  places_resolved: boolean    // true when Places autocomplete succeeded
 }
 
 interface FormErrors {
   full_name?: string
-  preferred_name?: string
   gender?: string
   birth_date?: string
-  birth_date_ui?: string
   birth_time?: string
   birth_place?: string
-  birthplace?: string
   latitude?: string
   longitude?: string
-  timezone_offset?: string
-  timezone_id?: string
+  tz_offset?: string
   ayanamshas?: string
   api?: string
 }
@@ -61,88 +75,11 @@ function todayIso(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      style={{
-        fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-        fontStyle: 'italic',
-        fontSize: 18,
-        color: 'var(--gold-primary, #d4a648)',
-        fontWeight: 500,
-      }}
-    >
-      {children}
-    </h3>
-  )
+function offsetFromTimezoneId(tzId: string): string {
+  const found = TIMEZONES.find((t) => t.value === tzId)
+  if (!found) return ''
+  return String(found.offset)
 }
-
-function MicroLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontFamily: 'var(--font-sans, Inter, sans-serif)',
-        fontSize: 10,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase' as const,
-        color: 'var(--text-tertiary, #5d5b54)',
-      }}
-    >
-      {children}
-    </span>
-  )
-}
-
-// ─── Timezones ───────────────────────────────────────────────────────────────
-
-const TIMEZONES = [
-  { value: 'Asia/Kolkata', label: 'IST — Asia/Kolkata (UTC+5:30)' },
-  { value: 'UTC', label: 'UTC' },
-  { value: 'Asia/Colombo', label: 'SLT — Asia/Colombo (UTC+5:30)' },
-  { value: 'Asia/Kathmandu', label: 'NPT — Asia/Kathmandu (UTC+5:45)' },
-  { value: 'Asia/Dhaka', label: 'BST — Asia/Dhaka (UTC+6)' },
-  { value: 'America/New_York', label: 'ET — America/New_York' },
-  { value: 'America/Los_Angeles', label: 'PT — America/Los_Angeles' },
-  { value: 'Europe/London', label: 'GMT/BST — Europe/London' },
-]
-
-// ─── Extended form values (C-S8 visual sections) ─────────────────────────────
-
-interface FormValues {
-  gender: string
-  tier: string
-  notes: string
-  birth_date: string
-  birth_time: string
-  timezone: string
-  birthplace: string
-  latitude: string
-  longitude: string
-  ayanamshas: AyanamshaId[]
-  year_from: number
-  year_to: number
-  verification: string
-  calendar: 'gregorian' | 'julian'
-  visibility: 'private' | 'shared'
-  relationship_type: 'self' | 'client' | 'research' | 'other'
-  reference_chart_id: string
-}
-
-// ─── UI helpers ──────────────────────────────────────────────────────────────
-
-function FieldError({ msg }: { msg?: string }) {
-  if (!msg) return null
-  return <p role="alert" className="text-sm text-destructive">{msg}</p>
-}
-
-function selectCls(hasError?: boolean): string {
-  return cn(
-    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
-    hasError ? 'border-red-500' : 'border-[#1a1820]',
-  )
-}
-
-// ─── Validation ──────────────────────────────────────────────────────────────
 
 function validate(form: FormState): FormErrors {
   const errors: FormErrors = {}
@@ -187,15 +124,11 @@ function validate(form: FormState): FormErrors {
     errors.longitude = 'Longitude must be between -180 and 180.'
   }
 
-  const tz = parseFloat(form.timezone_offset)
-  if (form.timezone_offset === '') {
-    errors.timezone_offset = 'Timezone offset is required.'
+  const tz = parseFloat(form.tz_offset)
+  if (form.tz_offset === '') {
+    errors.tz_offset = 'Timezone offset is required.'
   } else if (isNaN(tz) || tz < -14 || tz > 14) {
-    errors.timezone_offset = 'Timezone offset must be between -14 and 14.'
-  }
-
-  if (!form.timezone_id || !form.timezone_id.trim()) {
-    errors.timezone_id = 'Timezone is required.'
+    errors.tz_offset = 'Timezone offset must be between -14 and 14.'
   }
 
   if (form.ayanamshas.length === 0) {
@@ -203,6 +136,90 @@ function validate(form: FormState): FormErrors {
   }
 
   return errors
+}
+
+// ─── Subcomponents ────────────────────────────────────────────────────────────
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3
+      style={{
+        fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
+        fontStyle: 'italic',
+        fontSize: 18,
+        color: 'var(--gold-primary, #d4a648)',
+        fontWeight: 500,
+      }}
+    >
+      {children}
+    </h3>
+  )
+}
+
+function MicroLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontFamily: 'var(--font-sans, Inter, sans-serif)',
+        fontSize: 10,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase' as const,
+        color: 'var(--text-tertiary, #5d5b54)',
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return (
+    <p role="alert" style={{ fontSize: 12, color: '#c0392b', marginTop: 2 }}>
+      {msg}
+    </p>
+  )
+}
+
+function inputCls(hasError?: boolean): string {
+  return cn(
+    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
+    hasError ? 'border-red-500' : 'border-[#1f1c17]',
+  )
+}
+
+function selectCls(hasError?: boolean): string {
+  return cn(
+    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
+    hasError ? 'border-red-500' : 'border-[#1f1c17]',
+  )
+}
+
+// ─── Section container ────────────────────────────────────────────────────────
+
+function Section({
+  testId,
+  title,
+  children,
+}: {
+  testId: string
+  title: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      data-testid={testId}
+      style={{
+        background: 'var(--obsidian-panel, #0a0908)',
+        border: '1px solid var(--obsidian-border, #1f1c17)',
+        borderRadius: 12,
+        padding: 20,
+      }}
+    >
+      <div style={{ marginBottom: 16 }}>{title}</div>
+      <div style={{ display: 'grid', gap: 16 }}>{children}</div>
+    </div>
+  )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -215,57 +232,29 @@ export function NewClientForm() {
     preferred_name: '',
     gender: '',
     birth_date: '',
-    birth_date_ui: '',
     birth_time: '',
     birth_place: '',
     latitude: '',
     longitude: '',
-    timezone_offset: '',
     timezone_id: 'Asia/Kolkata',
+    tz_offset: '5.5',
     ayanamshas: AYANAMSHA_OPTIONS.map((o) => o.id),
+    places_resolved: false,
   })
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
-  const submitting = loading
-
-  const [values, setValues] = useState<FormValues>({
-    gender: '',
-    tier: '',
-    notes: '',
-    birth_date: '',
-    birth_time: '',
-    timezone: 'Asia/Kolkata',
-    birthplace: '',
-    latitude: '',
-    longitude: '',
-    ayanamshas: AYANAMSHA_OPTIONS.map((o) => o.id),
-    year_from: 1950,
-    year_to: 2100,
-    verification: 'one-pass',
-    calendar: 'gregorian',
-    visibility: 'private',
-    relationship_type: 'self',
-    reference_chart_id: '',
-  })
-
-  function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
-    setValues((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const [manualCoords, setManualCoords] = useState(false)
-
-  function handleBirthplaceChange(place: string) {
-    set('birthplace', place)
-    setField('birth_place', place)
-  }
-
-  // ── Field helpers ────────────────────────────────────────────────────────
+  const [manualOpen, setManualOpen] = useState(true)
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-    // Clear the individual field error on change
     setErrors((prev) => ({ ...prev, [key]: undefined }))
+  }
+
+  function handleTimezoneChange(tzId: string) {
+    const offset = offsetFromTimezoneId(tzId)
+    setForm((prev) => ({ ...prev, timezone_id: tzId, tz_offset: offset }))
+    setErrors((prev) => ({ ...prev, tz_offset: undefined }))
   }
 
   function toggleAyanamsha(id: AyanamshaId) {
@@ -276,6 +265,12 @@ export function NewClientForm() {
       return { ...prev, ayanamshas: next }
     })
     setErrors((prev) => ({ ...prev, ayanamshas: undefined }))
+  }
+
+  function handleBirthPlaceBlur() {
+    if (form.birth_place.trim() && !form.places_resolved) {
+      setManualOpen(true)
+    }
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -292,33 +287,64 @@ export function NewClientForm() {
     setErrors({})
 
     try {
-      const preferred_name = derivePreferredName(form.full_name, form.preferred_name)
       const res = await fetch('/api/clients/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: form.full_name.trim(),
-          preferred_name,
+          name: form.full_name.trim(),
+          preferred_name: derivePreferredName(form.full_name, form.preferred_name),
           gender: form.gender,
           birth_date: form.birth_date,
           birth_time: form.birth_time,
           birth_place: form.birth_place.trim(),
-          latitude: parseFloat(form.latitude),
-          longitude: parseFloat(form.longitude),
-          timezone_offset: parseFloat(form.timezone_offset),
-          timezone_id: form.timezone_id,
+          lat: parseFloat(form.latitude),
+          lon: parseFloat(form.longitude),
+          tz_offset: parseFloat(form.tz_offset),
+          timezone_id: form.timezone_id || undefined,
           ayanamshas: form.ayanamshas,
         }),
       })
 
       const data = await res.json()
 
-      if (!res.ok) {
-        setErrors({ api: data?.error ?? 'Failed to create client. Please try again.' })
+      if (res.status === 409 || (res.ok && data.idempotent)) {
+        router.push(data.redirect_url ?? `/clients/${data.chart_id}/build`)
         return
       }
 
-      router.push(data.redirect_url ?? `/clients/${data.id}/build`)
+      if (res.status === 422) {
+        const fieldMap: Record<string, keyof FormErrors> = {
+          lat: 'latitude',
+          lon: 'longitude',
+          tz_offset: 'tz_offset',
+          name: 'full_name',
+          birth_date: 'birth_date',
+          birth_time: 'birth_time',
+          birth_place: 'birth_place',
+          gender: 'gender',
+          ayanamshas: 'ayanamshas',
+        }
+        const newErrors: FormErrors = {}
+        for (const err of data.errors ?? []) {
+          const uiKey = fieldMap[err.field] ?? ('api' as keyof FormErrors)
+          newErrors[uiKey] = err.message
+        }
+        setErrors(newErrors)
+        return
+      }
+
+      if (res.status === 429) {
+        const mins = data.retry_after ? Math.ceil(data.retry_after / 60) : '?'
+        setErrors({ api: `Rate limit hit — try again in ${mins} minute(s).` })
+        return
+      }
+
+      if (!res.ok) {
+        setErrors({ api: data?.error ?? 'Failed to create chart.' })
+        return
+      }
+
+      router.push(data.redirect_url ?? `/clients/${data.chart_id}/build`)
     } catch {
       setErrors({ api: 'Network error — please check your connection and try again.' })
     } finally {
@@ -328,17 +354,17 @@ export function NewClientForm() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
+  const nodeCount = form.ayanamshas.length * 28
+
   return (
     <div
       className="min-h-screen px-4 py-10"
       style={{ background: 'var(--obsidian-bg, #08070a)', color: 'var(--text-primary, #e8e6df)' }}
     >
       <div className="mx-auto max-w-2xl">
-        {/* ── Header bar ─────────────────────────────────────────── */}
-        <div
-          data-testid="form-header"
-          className="flex items-center justify-between mb-6"
-        >
+
+        {/* ── Header bar ──────────────────────────────────────────── */}
+        <div data-testid="form-header" className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <span
               aria-hidden="true"
@@ -375,24 +401,10 @@ export function NewClientForm() {
             >
               Charts · New
             </span>
-            <span
-              data-testid="step-pill"
-              style={{
-                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                fontSize: 10,
-                color: 'var(--gold-primary, #d4a648)',
-                background: 'rgba(212,166,72,0.12)',
-                border: '1px solid rgba(212,166,72,0.3)',
-                borderRadius: 999,
-                padding: '2px 10px',
-              }}
-            >
-              Step 1 of 2
-            </span>
           </div>
         </div>
 
-        {/* ── Hero ────────────────────────────────────────────────── */}
+        {/* ── Hero ──────────────────────────────────────────────────── */}
         <div className="mb-8">
           <h1
             data-testid="form-title"
@@ -418,13 +430,19 @@ export function NewClientForm() {
           </p>
         </div>
 
-      <Card>
-        <CardContent>
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        {/* ── Form ─────────────────────────────────────────────────── */}
+        <form onSubmit={handleSubmit} noValidate style={{ display: 'grid', gap: 16 }}>
 
-            {/* Full Name */}
-            <div className="space-y-1">
-              <Label htmlFor="full_name">Full Name <span aria-hidden="true" className="text-destructive">*</span></Label>
+          {/* ══ Section 1: Vyakti · Identity ════════════════════════ */}
+          <Section
+            testId="section-identity"
+            title={<SectionTitle>Vyakti · Identity</SectionTitle>}
+          >
+            {/* Row 1: Full name */}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="full_name" className="text-[#c8bfb0] text-sm">
+                Full name *
+              </Label>
               <Input
                 id="full_name"
                 type="text"
@@ -432,347 +450,322 @@ export function NewClientForm() {
                 value={form.full_name}
                 maxLength={200}
                 aria-required="true"
+                aria-label="Full name"
                 aria-invalid={!!errors.full_name}
+                className={inputCls(!!errors.full_name)}
                 onChange={(e) => setField('full_name', e.target.value)}
               />
-              {errors.full_name && (
-                <p role="alert" className="text-sm text-destructive">{errors.full_name}</p>
-              )}
+              <FieldError msg={errors.full_name} />
             </div>
 
-          {/* ── Section 1: Vyakti · Identity ─────────────────────── */}
-          <Card
-            data-testid="section-identity"
-            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
-            className="shadow-none ring-0"
-          >
-            <CardHeader className="p-0 pb-4">
-              <CardTitle><SectionTitle>Vyakti · Identity</SectionTitle></CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 grid gap-4">
+            {/* Row 2: Preferred name + Gender */}
+            <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 200px' }}>
               <div className="flex flex-col gap-1">
-                <Label className="text-[#c8bfb0] text-sm">Full name *</Label>
+                <Label htmlFor="preferred_name" className="text-[#c8bfb0] text-sm">
+                  Preferred name
+                </Label>
                 <Input
-                  id="latitude"
-                  type="number"
-                  placeholder="e.g. 20.2960"
-                  step="any"
-                  min={-90}
-                  max={90}
-                  value={form.latitude}
-                  aria-required="true"
-                  aria-invalid={!!errors.latitude}
-                  onChange={(e) => setField('latitude', e.target.value)}
+                  id="preferred_name"
+                  type="text"
+                  placeholder="Defaults to first word of full name"
+                  value={form.preferred_name}
+                  maxLength={100}
+                  className={inputCls()}
+                  onChange={(e) => setField('preferred_name', e.target.value)}
                 />
-                <FieldError msg={errors.full_name} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Gender *</Label>
-                  <select
-                    value={values.gender}
-                    onChange={(e) => set('gender', e.target.value as FormValues['gender'])}
-                    className={selectCls(!!errors.gender)}
-                  >
-                    <option value="not-specified">Not specified</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                  <FieldError msg={errors.gender} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Tier</Label>
-                  <select
-                    value={values.tier}
-                    onChange={(e) => set('tier', e.target.value as FormValues['tier'])}
-                    className={selectCls()}
-                  >
-                    <option value="auto">Auto-assigned</option>
-                    <option value="client">Client</option>
-                    <option value="acharya">Acharya</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <Label className="text-[#c8bfb0] text-sm">Notes</Label>
-                <textarea
-                  value={values.notes}
-                  onChange={(e) => set('notes', e.target.value)}
-                  rows={3}
-                  placeholder="Optional notes about this native…"
-                  className="w-full resize-none rounded-lg border border-[#1a1820] bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] placeholder:text-[#5a5550] outline-none focus:ring-1 focus:ring-[#d4a648]"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── Section 2: Janma Sthana · Birth coordinates ────── */}
-          <Card
-            data-testid="section-birth"
-            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
-            className="shadow-none ring-0"
-          >
-            <CardHeader className="p-0 pb-4">
-              <CardTitle><SectionTitle>Janma Sthana · Birth coordinates</SectionTitle></CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Date *</Label>
-                  <Input
-                    type="date"
-                    value={values.birth_date}
-                    onChange={(e) => set('birth_date', e.target.value)}
-                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
-                  />
-                  <FieldError msg={errors.birth_date} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Time (24 h) *</Label>
-                  <Input
-                    type="time"
-                    value={values.birth_time}
-                    onChange={(e) => set('birth_time', e.target.value)}
-                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
-                  />
-                  <FieldError msg={errors.birth_time} />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <Label className="text-[#c8bfb0] text-sm">Timezone</Label>
+                <Label htmlFor="gender" className="text-[#c8bfb0] text-sm">
+                  Gender *
+                </Label>
                 <select
-                  value={values.timezone}
-                  onChange={(e) => set('timezone', e.target.value)}
-                  className={selectCls()}
+                  id="gender"
+                  value={form.gender}
+                  aria-invalid={!!errors.gender}
+                  className={selectCls(!!errors.gender)}
+                  onChange={(e) => setField('gender', e.target.value as FormState['gender'])}
                 >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>{tz.label}</option>
-                  ))}
+                  <option value="">— select —</option>
+                  <option value="unknown">Prefer not to say</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="O">Other</option>
                 </select>
+                <FieldError msg={errors.gender} />
+              </div>
+            </div>
+          </Section>
+
+          {/* ══ Section 2: Janma Sthana · Birth coordinates ══════════ */}
+          <Section
+            testId="section-birth"
+            title={<SectionTitle>Janma Sthana · Birth coordinates</SectionTitle>}
+          >
+            {/* Row 1: Date + Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="birth_date" className="text-[#c8bfb0] text-sm">
+                  Date *
+                </Label>
+                <input
+                  id="birth_date"
+                  type="date"
+                  value={form.birth_date}
+                  min="1900-01-01"
+                  max={todayIso()}
+                  aria-required="true"
+                  aria-invalid={!!errors.birth_date}
+                  className={inputCls(!!errors.birth_date)}
+                  onChange={(e) => setField('birth_date', e.target.value)}
+                />
+                <FieldError msg={errors.birth_date} />
               </div>
 
               <div className="flex flex-col gap-1">
-                <Label className="text-[#c8bfb0] text-sm">Birthplace *</Label>
-                <Input
-                  value={values.birthplace}
-                  onChange={(e) => handleBirthplaceChange(e.target.value)}
-                  placeholder="e.g. Bhubaneswar, Odisha, India"
-                  className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
+                <Label htmlFor="birth_time" className="text-[#c8bfb0] text-sm">
+                  Time (24 h) *
+                </Label>
+                <input
+                  id="birth_time"
+                  type="time"
+                  value={form.birth_time}
+                  aria-required="true"
+                  aria-invalid={!!errors.birth_time}
+                  className={inputCls(!!errors.birth_time)}
+                  onChange={(e) => setField('birth_time', e.target.value)}
                 />
-                <FieldError msg={errors.birthplace} />
+                <FieldError msg={errors.birth_time} />
               </div>
+            </div>
 
-              {/* Manual coords accordion */}
-              <div className="rounded-lg border border-[#1a1820] overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setManualCoords((v) => !v)}
-                  className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-[#8a8070] hover:text-[#c8bfb0] transition-colors"
-                >
-                  <span>Manual lat/lng override</span>
-                  <span className="text-xs">{manualCoords ? '▲' : '▼'}</span>
-                </button>
-                {manualCoords && (
-                  <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-1">
+            {/* Row 2: Birth place */}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="birth_place" className="text-[#c8bfb0] text-sm">
+                Birth place *
+              </Label>
+              <Input
+                id="birth_place"
+                type="text"
+                placeholder="e.g. Bhubaneswar, Odisha, India"
+                value={form.birth_place}
+                aria-required="true"
+                aria-invalid={!!errors.birth_place}
+                className={inputCls(!!errors.birth_place)}
+                onChange={(e) => {
+                  setField('birth_place', e.target.value)
+                  if (!e.target.value.trim()) {
+                    setForm((prev) => ({ ...prev, places_resolved: false }))
+                  }
+                }}
+                onBlur={handleBirthPlaceBlur}
+              />
+              <FieldError msg={errors.birth_place} />
+            </div>
+
+            {/* Row 3: Resolved indicator */}
+            {form.places_resolved && (
+              <div
+                data-testid="places-resolved-indicator"
+                style={{ fontSize: 12, color: '#27ae60', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span>✓</span>
+                <span>
+                  {form.latitude}, {form.longitude} · {form.timezone_id} · UTC
+                  {parseFloat(form.tz_offset) >= 0 ? '+' : ''}{form.tz_offset}
+                </span>
+              </div>
+            )}
+
+            {/* Row 4: Manual override accordion */}
+            <div
+              data-testid="manual-override-accordion"
+              style={{ borderRadius: 8, border: '1px solid #1f1c17', overflow: 'hidden' }}
+            >
+              <button
+                type="button"
+                onClick={() => setManualOpen((v) => !v)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 16px',
+                  fontSize: 12,
+                  color: '#8a8070',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Manual override · latitude / longitude / timezone</span>
+                <span style={{ fontSize: 10 }}>{manualOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {manualOpen && (
+                <div style={{ padding: '0 16px 16px', display: 'grid', gap: 12 }}>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1">
-                      <Label className="text-[#c8bfb0] text-sm">Latitude</Label>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={values.latitude}
-                        onChange={(e) => set('latitude', e.target.value)}
-                        placeholder="20.2961"
-                        className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-[#c8bfb0] text-sm">Longitude</Label>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={values.longitude}
-                        onChange={(e) => set('longitude', e.target.value)}
-                        placeholder="85.8245"
-                        className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── Section 3: Ganana · Compute ─────────────────────── */}
-          <Card
-            data-testid="section-compute"
-            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
-            className="shadow-none ring-0"
-          >
-            <CardHeader className="p-0 pb-4">
-              <CardTitle><SectionTitle>Ganana · Compute</SectionTitle></CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 grid gap-4">
-              <div className="flex flex-col gap-2">
-                <Label className="text-[#c8bfb0] text-sm">Ayanamshas *</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {AYANAMSHA_OPTIONS.map((opt) => {
-                    const checked = values.ayanamshas.includes(opt.id)
-                    return (
-                      <label
-                        key={opt.id}
-                        className={cn(
-                          'flex items-center gap-2 cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors',
-                          checked
-                            ? 'border-[#d4a648] text-[#d4a648] bg-[#d4a648]/5'
-                            : 'border-[#1a1820] text-[#8a8070] hover:border-[#5a5550]',
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={checked}
-                          onChange={() => toggleAyanamsha(opt.id as AyanamshaId)}
-                        />
-                        {opt.label}
-                      </label>
-                    )
-                  })}
-                </div>
-                <FieldError msg={errors.ayanamshas} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Year from</Label>
-                  <Input
-                    type="number"
-                    value={values.year_from}
-                    onChange={(e) => set('year_from', parseInt(e.target.value) || 1950)}
-                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Year to</Label>
-                  <Input
-                    type="number"
-                    value={values.year_to}
-                    onChange={(e) => set('year_to', parseInt(e.target.value) || 2100)}
-                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label className="text-[#c8bfb0] text-sm">Verification passes</Label>
-                  <div className="flex gap-4 mt-1">
-                    {(['one-pass', 'two-pass'] as const).map((v) => (
-                      <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-[#c8bfb0]">
-                        <input
-                          type="radio"
-                          name="verification"
-                          value={v}
-                          checked={values.verification === v}
-                          onChange={() => set('verification', v)}
-                          className="accent-[#d4a648]"
-                        />
-                        {v === 'one-pass' ? 'One-pass' : 'Two-pass (default)'}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Label className="text-[#c8bfb0] text-sm">Calendar system</Label>
-                  <div className="flex gap-4 mt-1">
-                    {(['gregorian', 'julian'] as const).map((v) => (
-                      <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-[#c8bfb0]">
-                        <input
-                          type="radio"
-                          name="calendar"
-                          value={v}
-                          checked={values.calendar === v}
-                          onChange={() => set('calendar', v)}
-                          className="accent-[#d4a648]"
-                        />
-                        {v.charAt(0).toUpperCase() + v.slice(1)}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-[#c8bfb0] text-sm">Visibility</Label>
-                <div className="flex gap-4 mt-1">
-                  {(['private', 'shared'] as const).map((v) => (
-                    <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-[#c8bfb0]">
+                      <Label htmlFor="latitude" className="text-[#c8bfb0] text-sm">
+                        Latitude *
+                      </Label>
                       <input
-                        type="radio"
-                        name="visibility"
-                        value={v}
-                        checked={values.visibility === v}
-                        onChange={() => set('visibility', v)}
-                        className="accent-[#d4a648]"
+                        id="latitude"
+                        type="number"
+                        step="0.0001"
+                        min={-90}
+                        max={90}
+                        placeholder="20.2961"
+                        value={form.latitude}
+                        aria-required="true"
+                        aria-invalid={!!errors.latitude}
+                        className={inputCls(!!errors.latitude)}
+                        onChange={(e) => setField('latitude', e.target.value)}
                       />
-                      {v.charAt(0).toUpperCase() + v.slice(1)}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                      <FieldError msg={errors.latitude} />
+                    </div>
 
-          {/* ── Section 4: Sambandha · Relationships ─────────────── */}
-          <Card
-            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
-            className="shadow-none ring-0"
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="longitude" className="text-[#c8bfb0] text-sm">
+                        Longitude *
+                      </Label>
+                      <input
+                        id="longitude"
+                        type="number"
+                        step="0.0001"
+                        min={-180}
+                        max={180}
+                        placeholder="85.8245"
+                        value={form.longitude}
+                        aria-required="true"
+                        aria-invalid={!!errors.longitude}
+                        className={inputCls(!!errors.longitude)}
+                        onChange={(e) => setField('longitude', e.target.value)}
+                      />
+                      <FieldError msg={errors.longitude} />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="timezone_id" className="text-[#c8bfb0] text-sm">
+                      Timezone
+                    </Label>
+                    <select
+                      id="timezone_id"
+                      value={form.timezone_id}
+                      className={selectCls()}
+                      onChange={(e) => handleTimezoneChange(e.target.value)}
+                    >
+                      {TIMEZONES.map((tz) => (
+                        <option key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="tz_offset" className="text-[#c8bfb0] text-sm">
+                      UTC offset *
+                    </Label>
+                    <input
+                      id="tz_offset"
+                      type="number"
+                      step="0.25"
+                      min={-14}
+                      max={14}
+                      placeholder="5.5"
+                      value={form.tz_offset}
+                      aria-required="true"
+                      aria-invalid={!!errors.tz_offset}
+                      className={inputCls(!!errors.tz_offset)}
+                      onChange={(e) => setField('tz_offset', e.target.value)}
+                    />
+                    <FieldError msg={errors.tz_offset} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </Section>
+
+          {/* ══ Section 3: Ganana · Compute ══════════════════════════ */}
+          <Section
+            testId="section-compute"
+            title={<SectionTitle>Ganana · Compute</SectionTitle>}
           >
-            <CardHeader className="p-0 pb-4">
-              <CardTitle><SectionTitle>Sambandha · Relationships</SectionTitle></CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Relationship type</Label>
-                  <select
-                    value={values.relationship_type}
-                    onChange={(e) => set('relationship_type', e.target.value as FormValues['relationship_type'])}
-                    className={selectCls()}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {AYANAMSHA_OPTIONS.map((opt) => {
+                const checked = form.ayanamshas.includes(opt.id)
+                return (
+                  <label
+                    key={opt.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: `1px solid ${checked ? '#d4a648' : '#1f1c17'}`,
+                      padding: '10px 14px',
+                      background: checked ? 'rgba(212,166,72,0.06)' : 'transparent',
+                      minWidth: 120,
+                      transition: 'border-color 0.15s',
+                    }}
                   >
-                    <option value="self">Self</option>
-                    <option value="client">Client</option>
-                    <option value="research">Research</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[#c8bfb0] text-sm">Reference chart ID</Label>
-                  <Input
-                    value={values.reference_chart_id}
-                    onChange={(e) => set('reference_chart_id', e.target.value)}
-                    placeholder="Optional"
-                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                    <input
+                      type="checkbox"
+                      style={{ display: 'none' }}
+                      checked={checked}
+                      aria-label={opt.label}
+                      onChange={() => toggleAyanamsha(opt.id)}
+                    />
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: checked ? '#d4a648' : '#c8bfb0',
+                      }}
+                    >
+                      {opt.label}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: checked ? 'rgba(212,166,72,0.6)' : '#5d5b54',
+                        fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      {opt.sub}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+            <FieldError msg={errors.ayanamshas} />
+          </Section>
 
+          {/* ── API error ─────────────────────────────────────────── */}
           {errors.api && (
-            <div role="alert" className="rounded-lg border border-[#9c3a2a]/40 bg-[#9c3a2a]/10 px-4 py-3 text-sm text-[#9c3a2a]">
+            <div
+              role="alert"
+              style={{
+                borderRadius: 8,
+                border: '1px solid rgba(156,58,42,0.4)',
+                background: 'rgba(156,58,42,0.1)',
+                padding: '12px 16px',
+                fontSize: 13,
+                color: '#c0392b',
+              }}
+            >
               {errors.api}
             </div>
           )}
 
+          {/* ── Footer ───────────────────────────────────────────── */}
           <div
             data-testid="form-footer"
-            className="flex items-center justify-between pb-4"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16 }}
           >
             <span
               data-testid="footer-microcopy"
@@ -782,9 +775,9 @@ export function NewClientForm() {
                 color: 'var(--text-tertiary, #5d5b54)',
               }}
             >
-              5 ayanamshas × 28 assets = 140 nodes
+              {form.ayanamshas.length} ayanamshas × 28 assets = {nodeCount} nodes will be built
             </span>
-            <div className="flex gap-3">
+            <div style={{ display: 'flex', gap: 12 }}>
               <Button
                 type="button"
                 variant="ghost"
@@ -799,7 +792,7 @@ export function NewClientForm() {
               </Button>
               <Button
                 type="submit"
-                disabled={submitting}
+                disabled={loading}
                 style={{
                   background: 'var(--gold-primary, #d4a648)',
                   color: 'var(--obsidian-bg, #08070a)',
@@ -807,18 +800,16 @@ export function NewClientForm() {
                   fontSize: 13,
                   fontWeight: 500,
                   padding: '0 24px',
-                  opacity: submitting ? 0.5 : 1,
+                  opacity: loading ? 0.5 : 1,
                 }}
               >
-                {submitting ? 'Computing…' : 'Compute chart'}
+                {loading ? 'Computing…' : 'Compute chart'}
               </Button>
             </div>
           </div>
 
-          </form>
-        </CardContent>
-      </Card>
+        </form>
+      </div>
     </div>
-  </div>
   )
 }
