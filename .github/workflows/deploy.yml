@@ -101,6 +101,42 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
+      # ── A-S8: Run idempotent migrations before deploying ─────────────────────
+      - name: Set up Node.js for migration runner
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install migration runner deps
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg 2>/dev/null || true
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/migrate.ts
+      # ── /A-S8: migrations ─────────────────────────────────────────────────────
+
+      # ── A-S8: Terraform apply (cloud_scheduler + build-reaper SA + IAM) ──────
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init (cloud_scheduler)
+        run: cd infra/cloud_scheduler && terraform init -backend-config="bucket=madhav-astrology-tf-state"
+
+      - name: Terraform apply (cloud_scheduler)
+        run: cd infra/cloud_scheduler && terraform apply -auto-approve
+      # ── /A-S8: terraform ──────────────────────────────────────────────────────
+
+      # ── A-S8: Reassert Cloud Run Job timeout every deploy ─────────────────────
+      - name: Set Cloud Run Job timeout + max-retries
+        run: |
+          gcloud run jobs update marsys-build-pipeline-job \
+            --region=${{ env.GCP_REGION }} \
+            --task-timeout=30m \
+            --max-retries=1 \
+            --quiet || true
+      # ── /A-S8: job timeout ────────────────────────────────────────────────────
+
       # Mirrors platform/cloudbuild.yaml copy-governance-files step.
       # Without this, the Dockerfile's COPY for 00_ARCHITECTURE and
       # 035_DISCOVERY_LAYER fails — those dirs live at the repo root, not in platform/.
@@ -147,17 +183,18 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL || 'true' }}
 
-      - name: Deploy web to Cloud Run
+      # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
+      - name: Deploy web to Cloud Run (no traffic)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-web
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ github.sha }}
-          # ── 4.edge_and_infra_hygiene ──
-          # Per-service least-priv runtime SA (see infra/iam/main.tf).
-          flags: --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
-          # ── /4.edge_and_infra_hygiene ──
+          # Per-service least-priv runtime SA; no-traffic for pre-smoke safety.
+          flags: >-
+            --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
+            --no-traffic
           env_vars: |
             NODE_ENV=production
             MARSYS_FLAG_R11V2_USE_ADAPTERS=true
@@ -177,10 +214,8 @@ jobs:
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             BUILD_STATE_GCS_BASE=https://storage.googleapis.com/madhav-marsys-build-artifacts
-            # ── 4.observability (Wave 4) ──────────────────────────────────────────
-            # Vertex AI region pin for batched embeddings (lib/embeddings/embedText.ts).
-            # Region must match the prod Cloud Run region (asia-south1) to keep
-            # Vertex calls in-region for both latency + egress cost.
+            APP_URL=https://amjis-web-938361928218.asia-south1.run.app
+            BUILD_REAPER_SA_EMAIL=build-reaper@madhav-astrology.iam.gserviceaccount.com
             VERTEX_AI_LOCATION=asia-south1
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
@@ -203,18 +238,22 @@ jobs:
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
 
+      - name: Post-deploy smoke
+        run: bash scripts/operator/end_to_end_smoke.sh
+
+      - name: Promote traffic to latest revision
+        if: success()
+        run: |
+          gcloud run services update-traffic amjis-web \
+            --to-latest \
+            --region=${{ env.GCP_REGION }} \
+            --quiet
+      # ── /A-S8: deploy + smoke + promote ──────────────────────────────────────
+
       - name: Show deployment URL
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: echo "Deployed to $DEPLOY_URL"
-
-      - name: Set Cloud Run Job timeout + max-retries
-        run: |
-          gcloud run jobs update marsys-build-pipeline-job \
-            --region=${{ env.GCP_REGION }} \
-            --task-timeout=30m \
-            --max-retries=1 \
-            --quiet || true
 
   deploy-sidecar:
     name: Build & Deploy Sidecar
