@@ -35,6 +35,7 @@ export async function proxy(request: NextRequest) {
   // excluded via the matcher below.
   const isPublic =
     pathname === '/' ||
+    pathname === '/api/health' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/reset-password') ||
     pathname.startsWith('/api/access-requests') ||
