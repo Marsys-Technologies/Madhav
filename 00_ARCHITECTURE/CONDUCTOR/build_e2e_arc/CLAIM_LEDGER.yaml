@@ -4,15 +4,11 @@
 schema: v1
 arc_id: build_e2e_arc
 created_at: "2026-05-31T00:00:00Z"
-last_updated: "2026-05-31T06:50:00Z"
-last_updated_by: "stream-d agent (QUEUE COMPLETE)"
+last_updated: "2026-05-31T07:05:00Z"
+last_updated_by: "stream-c agent (QUEUE COMPLETE)"
 
 # Sessions currently in flight (file-locked by their stream agent).
-active_claims:
-  - session_id: C-S5
-    stream: C
-    claimed_at: "2026-05-31T05:22:00Z"
-    claimed_by: "stream-c agent"
+active_claims: []
 
 # Sessions completed (audit trail; rolling cap 500).
 released_claims:
@@ -90,6 +86,16 @@ released_claims:
     claimed_at: "2026-05-31T05:10:00Z"
     completed_at: "2026-05-31T05:20:00Z"
     merge_sha: "5986411c"
+  - session_id: C-S5
+    stream: C
+    claimed_at: "2026-05-31T05:22:00Z"
+    completed_at: "2026-05-31T05:55:00Z"
+    merge_sha: "db86498f"
+  - session_id: C-S6
+    stream: C
+    claimed_at: "2026-05-31T05:55:00Z"
+    completed_at: "2026-05-31T06:10:00Z"
+    merge_sha: "6e60bfac"
   - session_id: D-S3
     stream: D
     claimed_at: "2026-05-31T05:50:00Z"
@@ -101,6 +107,11 @@ released_claims:
     claimed_at: "2026-05-31T05:20:00Z"
     completed_at: "2026-05-31T05:30:00Z"
     merge_sha: "acc8bcf4"
+  - session_id: C-S7
+    stream: C
+    claimed_at: "2026-05-31T06:10:00Z"
+    completed_at: "2026-05-31T06:30:00Z"
+    merge_sha: "c4db0fb1"
   - session_id: D-S4
     stream: D
     claimed_at: "2026-05-31T06:05:00Z"
@@ -130,10 +141,18 @@ released_claims:
     completed_at: "2026-05-31T06:50:00Z"
     merge_sha: "08e3d558"
     note: "Stream D queue complete — all 6 sessions shipped; 265 tests passing"
-
-
-
-
+  - session_id: C-S8
+    stream: C
+    claimed_at: "2026-05-31T06:30:00Z"
+    completed_at: "2026-05-31T07:05:00Z"
+    merge_sha: "993a79e5"
+    note: "C-S8+S8.5 shipped together (BuildButton wiring paired with form visual polish)"
+  - session_id: C-S9
+    stream: C
+    claimed_at: "2026-05-31T07:05:00Z"
+    completed_at: "2026-05-31T07:05:00Z"
+    merge_sha: "993a79e5"
+    note: "Stream C queue complete — all 9 sessions shipped; visual v2 fully on main"
 
 # Sessions whose CI auto-fix exhausted 5 attempts and proceeded with `ci_red_ignored` tag.
 ci_red_ignored: []
