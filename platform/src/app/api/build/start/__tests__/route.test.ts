@@ -274,6 +274,75 @@ describe('POST /api/build/start — super_admin access', () => {
   })
 })
 
+describe('POST /api/build/start — concurrency guard (L1)', () => {
+  it('returns 409 when a running build exists for chart_id', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: 'owner-uid' })
+    mockQuery.mockImplementation((sql: string) => {
+      if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role: 'super_admin' }] })
+      if (/FROM charts WHERE chart_id/.test(sql))
+        return Promise.resolve({ rows: [{ chart_id: 'chart-uuid-guard' }] })
+      if (/status IN.*running.*queued.*cancelling/.test(sql))
+        return Promise.resolve({ rows: [{ build_id: 'existing-build-1', status: 'running', started_at: '2026-05-31T00:00:00Z' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard' }))
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe('build_already_active')
+  })
+
+  it('returns 409 when a queued build exists for chart_id', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: 'owner-uid' })
+    mockQuery.mockImplementation((sql: string) => {
+      if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role: 'super_admin' }] })
+      if (/FROM charts WHERE chart_id/.test(sql))
+        return Promise.resolve({ rows: [{ chart_id: 'chart-uuid-guard2' }] })
+      if (/status IN.*running.*queued.*cancelling/.test(sql))
+        return Promise.resolve({ rows: [{ build_id: 'existing-build-2', status: 'queued', started_at: null }] })
+      return Promise.resolve({ rows: [] })
+    })
+    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard2' }))
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { error: string; status: string }
+    expect(body.error).toBe('build_already_active')
+    expect(body.status).toBe('queued')
+  })
+
+  it('409 response includes existing build_id', async () => {
+    mockGetServerUser.mockResolvedValue({ uid: 'owner-uid' })
+    mockQuery.mockImplementation((sql: string) => {
+      if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role: 'super_admin' }] })
+      if (/FROM charts WHERE chart_id/.test(sql))
+        return Promise.resolve({ rows: [{ chart_id: 'chart-uuid-guard3' }] })
+      if (/status IN.*running.*queued.*cancelling/.test(sql))
+        return Promise.resolve({ rows: [{ build_id: 'the-existing-build-id', status: 'running', started_at: null }] })
+      return Promise.resolve({ rows: [] })
+    })
+    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard3' }))
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { build_id: string; error: string }
+    expect(body.error).toBe('build_already_active')
+    expect(body.build_id).toBe('the-existing-build-id')
+  })
+
+  it('proceeds to insert when only complete/failed/cancelled builds exist for chart_id', async () => {
+    setupOwnerMocks('owner-uid', 'chart-uuid-guard4')
+    // Override so the concurrency guard query returns empty
+    const origImpl = mockQuery.getMockImplementation()!
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/status IN.*running.*queued.*cancelling/.test(sql))
+        return Promise.resolve({ rows: [] })
+      return origImpl(sql, params)
+    })
+    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard4' }))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { error?: string; build_id?: string }
+    expect(body.error).not.toBe('build_already_active')
+    const insertCall = mockQuery.mock.calls.find(([sql]: string[]) => /INSERT INTO builds/.test(sql))
+    expect(insertCall).toBeDefined()
+  })
+})
+
 describe('POST /api/build/start — constants validation', () => {
   it('VALID_AYANAMSHAS has exactly 5 entries', () => {
     expect(VALID_AYANAMSHAS).toHaveLength(5)
