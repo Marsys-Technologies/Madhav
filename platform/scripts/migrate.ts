@@ -129,4 +129,9 @@ async function main(): Promise<void> {
   }
 }
 
-main()
+// Guard: only execute when run directly, not when imported by tests.
+// Unguarded main() caused an unhandled rejection (ECONNREFUSED) in vitest
+// because there is no database in the CI test environment.
+if (process.env.NODE_ENV !== 'test') {
+  main()
+}
