@@ -4,8 +4,8 @@
 schema: v1
 arc_id: build_e2e_arc
 created_at: "2026-05-31T00:00:00Z"
-last_updated: "2026-05-31T05:30:00Z"
-last_updated_by: "stream-b agent"
+last_updated: "2026-05-31T06:20:00Z"
+last_updated_by: "stream-d agent"
 
 # Sessions currently in flight (file-locked by their stream agent).
 active_claims:
@@ -13,9 +13,9 @@ active_claims:
     stream: C
     claimed_at: "2026-05-31T05:22:00Z"
     claimed_by: "stream-c agent"
-  - session_id: D-S4
+  - session_id: D-S5
     stream: D
-    claimed_at: "2026-05-31T06:05:00Z"
+    claimed_at: "2026-05-31T06:20:00Z"
     claimed_by: "stream-d agent"
 
 # Sessions completed (audit trail; rolling cap 500).
@@ -105,6 +105,11 @@ released_claims:
     claimed_at: "2026-05-31T05:20:00Z"
     completed_at: "2026-05-31T05:30:00Z"
     merge_sha: "acc8bcf4"
+  - session_id: D-S4
+    stream: D
+    claimed_at: "2026-05-31T06:05:00Z"
+    completed_at: "2026-05-31T06:20:00Z"
+    merge_sha: "9cc4b4f7"
 
 
 
