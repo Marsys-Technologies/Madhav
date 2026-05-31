@@ -4,8 +4,8 @@
 schema: v1
 arc_id: build_e2e_arc
 created_at: "2026-05-31T00:00:00Z"
-last_updated: "2026-05-31T05:10:00Z"
-last_updated_by: "stream-b agent"
+last_updated: "2026-05-31T05:50:00Z"
+last_updated_by: "stream-d agent"
 
 # Sessions currently in flight (file-locked by their stream agent).
 active_claims:
@@ -13,9 +13,9 @@ active_claims:
     stream: C
     claimed_at: "2026-05-31T05:22:00Z"
     claimed_by: "stream-c agent"
-  - session_id: D-S2
+  - session_id: D-S3
     stream: D
-    claimed_at: "2026-05-31T05:15:00Z"
+    claimed_at: "2026-05-31T05:50:00Z"
     claimed_by: "stream-d agent"
 
 # Sessions completed (audit trail; rolling cap 500).
@@ -84,12 +84,11 @@ released_claims:
     completed_at: "2026-05-31T05:20:00Z"
     merge_sha: "0b5ab3c8"
     note: "shipped with C-S3"
-  - session_id: B-S3
-    stream: B
-    claimed_at: "2026-05-31T04:50:00Z"
-    completed_at: "2026-05-31T05:10:00Z"
-    merge_sha: "4d2bfb17"
-
+  - session_id: D-S2
+    stream: D
+    claimed_at: "2026-05-31T05:15:00Z"
+    completed_at: "2026-05-31T05:50:00Z"
+    merge_sha: "9c40fa63"
 
 # Sessions whose CI auto-fix exhausted 5 attempts and proceeded with `ci_red_ignored` tag.
 ci_red_ignored: []
