@@ -170,7 +170,7 @@ export async function POST(request: Request): Promise<Response> {
        FROM builds
       WHERE chart_id = $1
         AND status IN ('running', 'queued', 'cancelling')
-      ORDER BY created_at DESC
+      ORDER BY queued_at DESC
       LIMIT 1`,
     [resolvedChartId],
   )

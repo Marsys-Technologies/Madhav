@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
          COUNT(DISTINCT COALESCE(asset_id, event_type))  AS unique_assets
        FROM build_events
        WHERE build_id = $1
-         AND created_at > NOW() - INTERVAL '60 seconds'`,
+         AND emitted_at > NOW() - INTERVAL '60 seconds'`,
       [buildId],
     )
 
