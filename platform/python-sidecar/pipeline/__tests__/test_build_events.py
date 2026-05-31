@@ -326,6 +326,101 @@ class TestFormatSseRow(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# emit_step_event + chart_id tests (B-S4)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestEmitStepEventChartId(unittest.TestCase):
+
+    def _call_step_with_chart(self, status, chart_id, rows_written=0):
+        conn, cursor = _make_conn()
+        emit_step_event(
+            conn,
+            build_id="build-chart-1",
+            asset_id="A3_chart_facts",
+            ayanamsha_id="lahiri",
+            stage="persist",
+            status=status,
+            rows_written=rows_written,
+            chart_id=chart_id,
+        )
+        return conn, cursor
+
+    def test_complete_with_chart_id_inserts_build_events(self):
+        """emit_step_event status='complete' + chart_id inserts into build_events."""
+        conn, cursor = self._call_step_with_chart("complete", "chart-abc", 100)
+        # Should have 3 execute calls: UPDATE build_steps, INSERT build_notifications, INSERT build_events
+        self.assertEqual(cursor.execute.call_count, 3)  # assertion 70
+        # Third call inserts into build_events
+        third_sql = cursor.execute.call_args_list[2][0][0]
+        self.assertIn("build_events", third_sql)  # assertion 71
+
+    def test_complete_without_chart_id_skips_build_events(self):
+        """emit_step_event status='complete' without chart_id skips build_events INSERT."""
+        conn, cursor = self._call_step_with_chart("complete", None)
+        # Only 2 execute calls: UPDATE build_steps + INSERT build_notifications
+        self.assertEqual(cursor.execute.call_count, 2)  # assertion 72
+
+    def test_started_with_chart_id_skips_build_events(self):
+        """emit_step_event status='started' with chart_id skips build_events INSERT."""
+        conn, cursor = self._call_step_with_chart("started", "chart-abc")
+        # Only 2: UPDATE build_steps (set running) + INSERT build_notifications
+        self.assertEqual(cursor.execute.call_count, 2)  # assertion 73
+
+    def test_build_events_insert_has_chart_id(self):
+        """build_events INSERT params include chart_id."""
+        conn, cursor = self._call_step_with_chart("complete", "chart-xyz", 50)
+        third_params = cursor.execute.call_args_list[2][0][1]
+        self.assertIn("chart-xyz", third_params)  # assertion 74
+
+    def test_build_events_failure_is_non_fatal(self):
+        """build_events INSERT failure does NOT propagate (non-fatal)."""
+        conn = MagicMock()
+        cursor = MagicMock()
+        cursor.__enter__ = MagicMock(return_value=cursor)
+        cursor.__exit__ = MagicMock(return_value=False)
+        # First two calls succeed; third (build_events) raises
+        conn.cursor.return_value = cursor
+        call_count = [0]
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 3:
+                raise Exception("build_events table missing")
+        cursor.execute.side_effect = side_effect
+
+        # Must not raise
+        emit_step_event(
+            conn, "b1", "A3", "lahiri", "persist", "complete",
+            rows_written=10, chart_id="chart-fail-test"
+        )  # assertion 75 — implicit (no exception)
+
+    def test_build_events_failure_does_not_rollback_main_transaction(self):
+        """build_events INSERT failure only rolls back its own isolated tx."""
+        conn = MagicMock()
+        cursor = MagicMock()
+        cursor.__enter__ = MagicMock(return_value=cursor)
+        cursor.__exit__ = MagicMock(return_value=False)
+        conn.cursor.return_value = cursor
+        call_count = [0]
+        commit_count = [0]
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 3:
+                raise Exception("build_events failed")
+        cursor.execute.side_effect = side_effect
+        original_commit = conn.commit
+        def track_commit():
+            commit_count[0] += 1
+        conn.commit.side_effect = track_commit
+
+        emit_step_event(
+            conn, "b1", "A3", "lahiri", "persist", "complete",
+            rows_written=5, chart_id="chart-test"
+        )
+        # Main transaction still committed once
+        self.assertGreaterEqual(commit_count[0], 1)  # assertion 76
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # emit_node_added tests
 # ─────────────────────────────────────────────────────────────────────────────
 

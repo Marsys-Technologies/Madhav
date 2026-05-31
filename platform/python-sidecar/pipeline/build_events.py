@@ -109,7 +109,8 @@ def emit_step_event(
     stage: StageType,
     status: StatusType,
     rows_written: int = 0,
-    error: Optional[str] = None
+    error: Optional[str] = None,
+    chart_id: Optional[str] = None,
 ) -> None:
     """
     Emit a step-level event AND update the corresponding build_steps row atomically.
@@ -124,6 +125,11 @@ def emit_step_event(
       completed_at=NOW()  on complete/failed
       row_count           (maps to rows_written argument)
       error_msg           (maps to error argument)
+
+    If chart_id is supplied and status=='complete', ALSO inserts a row into
+    build_events (the graph-event table). This insert is wrapped in its own
+    try/except so a failure here does NOT roll back the build_steps update
+    or build_notifications insert.
 
     Non-fatal: logs on failure, does not raise.
     """
@@ -205,6 +211,39 @@ def emit_step_event(
             conn.rollback()
         except Exception:
             pass
+        return
+
+    # Mirror completion to build_events (non-fatal; isolated try/except)
+    if chart_id and status == 'complete':
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO build_events
+                        (build_id, stage_seq, chart_id, ayanamsha_role, asset,
+                         stage, status, emitted_at)
+                    VALUES (
+                        %s,
+                        COALESCE((SELECT MAX(stage_seq)+1 FROM build_events WHERE build_id=%s), 1),
+                        %s, %s, %s, %s, 'complete', NOW()
+                    )
+                    """,
+                    (build_id, build_id, chart_id, ayanamsha_id, asset_id, stage)
+                )
+            conn.commit()
+            logger.debug(
+                "emit_step_event: build_events row inserted for build=%s asset=%s chart=%s",
+                build_id, asset_id, chart_id
+            )
+        except Exception as be_err:
+            logger.warning(
+                "emit_step_event: build_events insert failed (non-fatal) for build=%s asset=%s: %s",
+                build_id, asset_id, be_err
+            )
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
 
 def emit_node_added(
