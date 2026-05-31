@@ -4,8 +4,8 @@
 schema: v1
 arc_id: build_e2e_arc
 created_at: "2026-05-31T00:00:00Z"
-last_updated: "2026-05-31T06:05:00Z"
-last_updated_by: "stream-d agent"
+last_updated: "2026-05-31T05:30:00Z"
+last_updated_by: "stream-b agent"
 
 # Sessions currently in flight (file-locked by their stream agent).
 active_claims:
@@ -100,6 +100,12 @@ released_claims:
     completed_at: "2026-05-31T06:05:00Z"
     merge_sha: "6ce50ec7"
     note: "Branch 3 (NOT_WIRED): installed @react-google-maps/api; usePlacesAutocomplete.ts hook; manual fallback documented"
+  - session_id: B-S5
+    stream: B
+    claimed_at: "2026-05-31T05:20:00Z"
+    completed_at: "2026-05-31T05:30:00Z"
+    merge_sha: "acc8bcf4"
+
 
 
 # Sessions whose CI auto-fix exhausted 5 attempts and proceeded with `ci_red_ignored` tag.
