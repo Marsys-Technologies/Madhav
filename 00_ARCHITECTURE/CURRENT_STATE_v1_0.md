@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.65
+version: 5.66
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.66 (2026-06-01, PYJHORA-ENGINE-REPLACE):
+    **PyJHora direct engine replacement COMPLETE: natal_engine/ deleted; pyjhora_adapter/ package created (PyJHora==4.8.6); build_chart.py + bootstrap_l25.py rewired; ENGINE_VERSION "pyjhora/1.0.0" across all writers; 22 adapter tests pass; panchanga FORENSIC spot-check PASS 5/5; branch feature/pyjhora-direct-engine opened for review.**
+    files_touched: ["platform/python-sidecar/pyjhora_adapter/", "platform/python-sidecar/requirements.txt", "platform/python-sidecar/Dockerfile", "platform/python-sidecar/pipeline/build_chart.py", "platform/python-sidecar/pipeline/bootstrap_l25.py"]
+    active_phase_plan_sub_phase: M5-A.
+    last_session_id: PYJHORA-ENGINE-REPLACE. predecessor_session: ACC-S5-S6.
+    next_session_objective: "Review + merge PR feature/pyjhora-direct-engine; trigger production native chart build."
+    file_updated_at: 2026-06-01. file_updated_by_session: PYJHORA-ENGINE-REPLACE.
   - v5.65 (2026-05-30, ACC-S5-S6):
     **A3+A4+A5 workstream COMPLETE 2026-05-30: schema substrate + panchanga writer + sensitive points writer. 37 sessions merged to main. Sealing artifact: 00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md.**
     files_touched: ["00_ARCHITECTURE/A3_A4_A5_CLOSE_v1_0.md", "00_ARCHITECTURE/CONDUCTOR/build_orchestrator/ACC_S5_EVAL_RESULTS.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"]
