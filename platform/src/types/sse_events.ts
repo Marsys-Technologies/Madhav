@@ -30,6 +30,9 @@ export type SSEEventType =
   | 'conversation_title'
   | 'done'
   | 'error'
+  // Build-cockpit graph events (delivered via /api/build/events/[buildId] EventSource)
+  | 'node_added'
+  | 'edge_added'
 
 // ─── Reasoning narration ─────────────────────────────────────────────────────
 
@@ -122,6 +125,65 @@ export interface ProvenanceEvent {
     technical: ProvenanceTechnicalTag[]
   }
 }
+
+// ─── Build cockpit graph events ──────────────────────────────────────────────
+// Delivered via native EventSource at /api/build/events/[buildId].
+// These are NOT part of SSEEvent (different transport/channel).
+// Payload shapes match GraphNode / GraphEdge in LiveBuildGraph.tsx exactly.
+//
+// The EventSource event name ('node_added' / 'edge_added') is the discriminant —
+// the payload `type` field carries GraphEdge.type (edge kind) for edge_added,
+// NOT the string 'edge_added'. Consumers: LiveBuildGraph.tsx addEventListener.
+
+export type NodeStatus = 'pending' | 'running' | 'success' | 'failed' | 'stopped'
+
+/**
+ * node_added payload — emitted when a writer successfully writes first row
+ * for a given (asset_id, ayanamsha_id) pair.
+ * Payload shape must satisfy GraphNode interface in LiveBuildGraph.tsx.
+ */
+export interface NodeAddedPayload {
+  /** Unique node key: "<asset_id>:<ayanamsha_id>" — GraphNode.id */
+  id: string
+  /** Display label — GraphNode.label */
+  label: string
+  /** Asset identifier — GraphNode.assetId */
+  assetId: string
+  /** Node status — GraphNode.status */
+  status: NodeStatus
+  /** Pipeline layer — GraphNode.layer */
+  layer: string
+  // Backend traceability (ignored by FE graph renderer)
+  build_id: string
+  chart_id: string
+  ayanamsha_id: string
+  row_count: number
+  timestamp: string
+}
+
+/**
+ * edge_added payload — emitted once per upstream→downstream edge when the
+ * downstream asset begins. Payload shape must satisfy GraphEdge in LiveBuildGraph.tsx.
+ * NOTE: `type` here is the edge kind (e.g. "data_flow"), NOT the string 'edge_added'.
+ */
+export interface EdgeAddedPayload {
+  /** Source node id (from_asset) — GraphEdge.source */
+  source: string
+  /** Target node id (to_asset) — GraphEdge.target */
+  target: string
+  /** Edge kind (e.g. "data_flow") — GraphEdge.type */
+  type: string
+  // Backend traceability (ignored by FE graph renderer)
+  build_id: string
+  chart_id: string
+  from_asset: string
+  to_asset: string
+  edge_kind: string
+  timestamp: string
+}
+
+// Convenience union for callers that handle both build cockpit event payloads
+export type BuildGraphEventPayload = NodeAddedPayload | EdgeAddedPayload
 
 // ─── Conversation lifecycle ─────────────────────────────────────────────────
 
