@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A10_msr"
 ASSET_LABEL = "MSR Signal Store"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 
 def make_fact_id(category, subject, key, chart_id, ayanamsha_id, build_id):

@@ -16,7 +16,7 @@ from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
 
-# Use mean nodes (swe.MEAN_NODE) for Rahu/Ketu — matches natal_engine.
+# Use mean nodes (swe.MEAN_NODE) for Rahu/Ketu — classical convention.
 _USE_TRUE_NODES = False
 
 

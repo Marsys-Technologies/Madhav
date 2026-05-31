@@ -1,8 +1,8 @@
 """
 houses.py — Lagna (ascendant) + 12 whole-sign houses.
 
-Whole-sign is the default house system for this instrument (matches the prior
-natal_engine.compute_houses_whole_sign): house 1 = the sign the Lagna falls in,
+Whole-sign is the default house system for this instrument: house 1 = the sign
+the Lagna falls in,
 houses 2..12 follow in zodiacal order.
 """
 from __future__ import annotations

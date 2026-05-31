@@ -133,7 +133,7 @@ def test_engine_versions_git_sha_nullable(conn):
         cur.execute(
             """
             INSERT INTO engine_versions (engine_name, version_str, git_sha)
-            VALUES ('natal_engine', '1.0.0-test-nullable', NULL)
+            VALUES ('pyjhora', '1.0.0-test-nullable', NULL)
             RETURNING git_sha
             """
         )
@@ -147,7 +147,7 @@ def test_engine_versions_swisseph_ver_nullable(conn):
         cur.execute(
             """
             INSERT INTO engine_versions (engine_name, version_str, swisseph_ver)
-            VALUES ('natal_engine', '1.0.1-test-swver-null', NULL)
+            VALUES ('pyjhora', '1.0.1-test-swver-null', NULL)
             RETURNING swisseph_ver
             """
         )
@@ -278,7 +278,7 @@ def test_engine_versions_created_at_default(conn):
         cur.execute(
             """
             INSERT INTO engine_versions (engine_name, version_str)
-            VALUES ('natal_engine', '1.2.3-ts-default')
+            VALUES ('pyjhora', '1.2.3-ts-default')
             RETURNING created_at
             """
         )

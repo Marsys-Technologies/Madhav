@@ -1,6 +1,6 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
-# PyJHora — sole chart computation engine (native decision; replaces pyswisseph-direct natal_engine).
+# PyJHora — sole chart computation engine (native decision; pyswisseph retained for ephemeris ops).
 # The PyJHora wheel declares no dependencies, so the calculation-path transitive deps are pinned
 # explicitly below. PyQt6 / pyqtgraph / img2pdf are GUI-only and deliberately omitted — the adapter
 # imports only jhora.panchanga.* + jhora.horoscope.chart.* + jhora.horoscope.dhasa.* (headless).

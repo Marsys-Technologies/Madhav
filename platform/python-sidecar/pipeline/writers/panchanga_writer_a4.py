@@ -10,7 +10,7 @@ import hashlib
 import json
 from datetime import datetime, timezone, timedelta
 
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 # panchanga_daily actual column names (confirmed against live schema)
 _COL_TITHI_NAME = "tithi_name"

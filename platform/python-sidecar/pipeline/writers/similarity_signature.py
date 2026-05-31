@@ -61,7 +61,7 @@ def write(
     row = (
         fact_id, chart_id, ayanamsha_id, build_id,
         'similarity_signature', 'D1', 'similarity_signature',
-        json.dumps({'writer': 'similarity_signature', 'engine_version': 'natal_engine/0.2.0', 'ayanamsha_id': ayanamsha_id}),
+        json.dumps({'writer': 'similarity_signature', 'engine_version': 'pyjhora/1.0.0', 'ayanamsha_id': ayanamsha_id}),
         'similarity_signature', 'signature', 'embedding_768d',
         sig_text[:500],  # value_text = truncated signature text
         float(len(sig_text)),  # value_number = text length
@@ -69,7 +69,7 @@ def write(
         'UCN digest embedding for cross-chart similarity',  # citation_human
         'vertex_ai_768d',  # source_calculation
         'single',
-        'natal_engine/0.2.0',
+        'pyjhora/1.0.0',
         datetime.now(timezone.utc).isoformat(),
     )
 

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A8_t1_structural"
 ASSET_LABEL = "T1 Structural Combinations"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 # ── Parashari aspect rules ────────────────────────────────────────────────────
 # Maps graha_id -> list of house offsets (from graha's own house) it aspects.

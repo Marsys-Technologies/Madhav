@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A7_dashas"
 ASSET_LABEL = "Dasha / Sub-Dasha Chains"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 WRITER_NAME = "dashas_writer"
 
 # ---------------------------------------------------------------------------
@@ -1019,7 +1019,7 @@ def write(
         build_id:      Build identifier string.
         chart_id:      Chart UUID string.
         ayanamsha_id:  Ayanamsha identifier (e.g. "lahiri", "kp").
-        chart_output:  Dict from natal_engine containing 'dashas', 'grahas',
+        chart_output:  Dict from pyjhora_adapter containing 'dashas', 'grahas',
                        'lagna', 'birth_datetime'.
         conn:          psycopg2 connection, or None for dry-run row counting.
         extra:         Optional extra config dict (unused).

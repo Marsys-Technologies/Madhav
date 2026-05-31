@@ -1,9 +1,8 @@
 """
 pyjhora_adapter — PyJHora-backed natal chart engine.
 
-Sole chart computation engine for the MARSYS-JIS sidecar (native decision;
-replaces the pyswisseph-direct natal_engine). Public surface mirrors
-natal_engine: `compute_chart(inputs, engine_version, ayanamsha_id) -> dict`.
+Sole chart computation engine for the MARSYS-JIS sidecar (native decision).
+Public surface: `compute_chart(inputs, engine_version, ayanamsha_id) -> dict`.
 
 Headless import discipline: this package NEVER does `import jhora` at module
 load — it imports only PyJHora's calculation submodules (panchanga.drik,

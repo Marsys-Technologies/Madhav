@@ -36,13 +36,13 @@ SIGN_LORDS = [
     "Jupiter",  # Pisces
 ]
 
-# Planet id -> canonical name. Matches natal_engine graha order.
+# Planet id -> canonical name (canonical 9-graha order: Sun..Ketu).
 PLANET_NAMES = {
     0: "Sun", 1: "Moon", 2: "Mars", 3: "Mercury", 4: "Jupiter",
     5: "Venus", 6: "Saturn", 7: "Rahu", 8: "Ketu",
 }
 
-# The 9-graha emission order (matches natal_engine: Sun..Ketu).
+# The 9-graha emission order: Sun..Ketu.
 GRAHA_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
 # 27 nakshatras, 1-based index (index 0 unused placeholder).

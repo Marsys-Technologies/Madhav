@@ -1,7 +1,7 @@
 """
 compute.py — PyJHora-backed natal chart computation.
 
-Drop-in replacement for natal_engine.compute_chart(). Returns a dict matching
+Implements compute_chart(). Returns a dict matching
 the existing chart_output structure so every downstream writer + the L2.5
 builder work unchanged.
 
@@ -70,6 +70,12 @@ def compute_chart(
     grahas = dignities.refine(positions.compute_positions(jd_ut, eff_ayan, **kw))
     ascendant = houses.compute_ascendant(jd_ut, eff_ayan, **kw)
     house_list = houses.compute_houses(ascendant)
+
+    # Assign whole-sign house to each graha.
+    asc_sign0 = int(ascendant["sign_id"]) - 1
+    for g in grahas:
+        planet_sign0 = int(g["sign_id"]) - 1
+        g["house"] = ((planet_sign0 - asc_sign0) % 12) + 1
     varga_map = vargas.compute_vargas(jd_ut, eff_ayan, **kw)
     dasha_map = _dashas.compute_dashas(jd_ut, eff_ayan, **kw)
     panch = panchanga.compute_panchanga(jd_ut, eff_ayan, **kw)
@@ -103,6 +109,12 @@ def compute_chart(
         "lagna": ascendant,        # alias for dashas_writer
         "houses": house_list,
         "grahas": grahas,
+        # 'planets' alias: id=lowercase name, sign_num=0-based sign index.
+        # Required by t1_structural_writer, sade_sati_writer.
+        "planets": [
+            {**g, "id": g["name"].lower(), "sign_num": int(g["sign_id"]) - 1}
+            for g in grahas
+        ],
         "vargas": varga_map,
         "dashas": dasha_map,
         "panchanga": panch,

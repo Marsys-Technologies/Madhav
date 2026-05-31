@@ -22,7 +22,7 @@ from jhora.horoscope.chart import charts  # noqa: E402
 
 # Pin Rahu/Ketu to the MEAN node (swe.MEAN_NODE) for ALL ayanamshas.
 # Two reasons:
-#   1. Matches the prior natal_engine convention (MEAN_NODE Rahu/Ketu) and the
+#   1. Matches the project's MEAN_NODE rebuild convention and the
 #      project's documented MEAN_NODE rebuild.
 #   2. PyJHora defaults to the osculating TRUE node (swe.TRUE_NODE), which fails
 #      under some ayanamshas (e.g. TRUE_CITRA) with a swisseph Moshier

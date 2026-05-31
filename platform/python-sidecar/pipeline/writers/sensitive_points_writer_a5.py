@@ -1,7 +1,7 @@
 import hashlib
 from datetime import datetime, timezone
 
-ENGINE_VERSION = 'natal_engine/0.2.0'
+ENGINE_VERSION = 'pyjhora/1.0.0'
 
 
 def _finalize_rows(rows):

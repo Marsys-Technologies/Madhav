@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A6_vargas"
 ASSET_LABEL = "Varga Divisional Charts"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 # ---------------------------------------------------------------------------
 # Sign tables (1-indexed, Aries=1)

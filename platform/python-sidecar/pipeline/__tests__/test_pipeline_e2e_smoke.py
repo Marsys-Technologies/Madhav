@@ -108,7 +108,7 @@ def test_build_id(conn):
             )
             VALUES (
                 %s, %s, 'smoke_test_uid', 'super_admin',
-                'natal_engine/0.2.0-jh-parity',
+                'pyjhora/1.0.0',
                 '["lahiri","true_chitra","kp","raman","surya_siddhanta"]'::jsonb,
                 'queued', NOW()
             )
@@ -253,7 +253,7 @@ class TestPipelineE2ESmoke:
         """
         TC-5: run_build() must return True and set builds.status = 'complete'.
 
-        Uses stub writers (natal_engine not installed in test env) — all asset
+        Uses stub writers (pyjhora_adapter stub path in test env) — all asset
         steps return 0 rows_written, which is correct for the stub path.
         """
         from pipeline.build_chart import (

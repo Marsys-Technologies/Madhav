@@ -39,7 +39,7 @@ def test_asset_label():
 
 
 def test_engine_version():
-    assert ENGINE_VERSION.startswith("natal_engine/")
+    assert ENGINE_VERSION.startswith("pyjhora/")
 
 
 # ── make_fact_id ──────────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A8_yoga_register"
 ASSET_LABEL = "Yoga Register"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 
 # ── Row helpers ───────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 ASSET_ID = "A11_cdlm"
 ASSET_LABEL = "CDLM Cross-Domain Links"
-ENGINE_VERSION = "natal_engine/0.2.0"
+ENGINE_VERSION = "pyjhora/1.0.0"
 
 DOMAINS = [
     "career",
