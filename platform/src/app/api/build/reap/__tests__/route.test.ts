@@ -8,13 +8,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ─── Hoist mocks ──────────────────────────────────────────────────────────────
 
-const { mockQuery, mockVerifyOidcToken, mockListLiveBuildExecutions } = vi.hoisted(() => ({
-  mockQuery: vi.fn(),
+const mockPoolQuery = vi.fn()
+const mockClientQuery = vi.fn()
+const mockClientRelease = vi.fn()
+
+const { mockVerifyOidcToken, mockListLiveBuildExecutions, mockGetPool } = vi.hoisted(() => ({
   mockVerifyOidcToken: vi.fn(),
   mockListLiveBuildExecutions: vi.fn(),
+  mockGetPool: vi.fn(),
 }))
 
-vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
+vi.mock('@/lib/db/client', () => ({ getPool: mockGetPool }))
 vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: mockVerifyOidcToken }))
 vi.mock('@/lib/cloud_run/jobs', () => ({ listLiveBuildExecutions: mockListLiveBuildExecutions }))
 
@@ -31,13 +35,30 @@ function makeReq(opts: { auth?: string } = {}): Request {
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  mockQuery.mockReset()
   mockVerifyOidcToken.mockReset()
   mockListLiveBuildExecutions.mockReset()
+  mockGetPool.mockReset()
+  mockPoolQuery.mockReset()
+  mockClientQuery.mockReset()
+  mockClientRelease.mockReset()
+
   // Happy-path defaults
-  mockVerifyOidcToken.mockResolvedValue({ email: 'build-reaper@madhav-astrology.iam.gserviceaccount.com', sub: 'sub123' })
+  mockVerifyOidcToken.mockResolvedValue({
+    email: 'build-reaper@madhav-astrology.iam.gserviceaccount.com',
+    sub: 'sub123',
+  })
   mockListLiveBuildExecutions.mockResolvedValue(new Set<string>())
-  mockQuery.mockResolvedValue({ rows: [] })
+
+  // Pool: direct .query() for SELECT; .connect() for the transaction client
+  mockPoolQuery.mockResolvedValue({ rows: [] })
+  mockClientQuery.mockResolvedValue({ rows: [] })
+  mockGetPool.mockResolvedValue({
+    query: mockPoolQuery,
+    connect: vi.fn().mockResolvedValue({
+      query: mockClientQuery,
+      release: mockClientRelease,
+    }),
+  })
 })
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -58,25 +79,36 @@ describe('POST /api/build/reap — auth', () => {
     expect(body.error).toBe('forbidden')
   })
 
-  it('returns 403 when verifyOidcToken throws (e.g. signature mismatch)', async () => {
+  it('returns 403 when verifyOidcToken throws', async () => {
     mockVerifyOidcToken.mockRejectedValue(new Error('TokenExpiredError'))
     const res = await POST(makeReq({ auth: 'Bearer expired-token' }))
     expect(res.status).toBe(403)
+  })
+
+  it('returns 403 when email is not a service account and BUILD_REAPER_SA_EMAIL is unset', async () => {
+    const original = process.env.BUILD_REAPER_SA_EMAIL
+    delete process.env.BUILD_REAPER_SA_EMAIL
+    mockVerifyOidcToken.mockResolvedValue({ email: 'user@gmail.com', sub: 'sub' })
+    const res = await POST(makeReq({ auth: 'Bearer user-token' }))
+    expect(res.status).toBe(403)
+    if (original !== undefined) process.env.BUILD_REAPER_SA_EMAIL = original
   })
 })
 
 describe('POST /api/build/reap — reap logic', () => {
   it('returns {reaped:0} when no stale candidates', async () => {
-    mockQuery.mockResolvedValue({ rows: [] })
+    mockPoolQuery.mockResolvedValue({ rows: [] })
     const res = await POST(makeReq({ auth: 'Bearer valid-token' }))
     expect(res.status).toBe(200)
     const body = (await res.json()) as { reaped: number }
     expect(body.reaped).toBe(0)
+    // listLiveBuildExecutions should NOT be called when no candidates
+    expect(mockListLiveBuildExecutions).not.toHaveBeenCalled()
   })
 
   it('skips builds present in the live-execution set', async () => {
     mockListLiveBuildExecutions.mockResolvedValue(new Set(['live-build-id']))
-    mockQuery.mockResolvedValue({
+    mockPoolQuery.mockResolvedValue({
       rows: [{ build_id: 'live-build-id', status: 'running', age_minutes: 90 }],
     })
     const res = await POST(makeReq({ auth: 'Bearer valid-token' }))
@@ -84,21 +116,17 @@ describe('POST /api/build/reap — reap logic', () => {
     const body = (await res.json()) as { reaped: number; live_skipped: number }
     expect(body.reaped).toBe(0)
     expect(body.live_skipped).toBe(1)
-    // UPDATE should NOT have been called
-    const updateCall = mockQuery.mock.calls.find(([sql]: string[]) => /UPDATE builds/.test(sql))
-    expect(updateCall).toBeUndefined()
+    // Transaction should NOT have been opened for a no-reap result
+    expect(mockClientQuery).not.toHaveBeenCalled()
   })
 
-  it('marks N builds cancelled, build_steps skipped, emits N notifications', async () => {
+  it('marks N builds cancelled, build_steps skipped, emits N notifications (single transaction)', async () => {
     const staleBuilds = [
       { build_id: 'stale-1', status: 'running', age_minutes: 75 },
       { build_id: 'stale-2', status: 'queued', age_minutes: 20 },
     ]
+    mockPoolQuery.mockResolvedValue({ rows: staleBuilds })
     mockListLiveBuildExecutions.mockResolvedValue(new Set<string>())
-    mockQuery.mockImplementation((sql: string) => {
-      if (/FROM builds/.test(sql)) return Promise.resolve({ rows: staleBuilds })
-      return Promise.resolve({ rows: [] })
-    })
 
     const res = await POST(makeReq({ auth: 'Bearer valid-token' }))
     expect(res.status).toBe(200)
@@ -106,21 +134,23 @@ describe('POST /api/build/reap — reap logic', () => {
     expect(body.reaped).toBe(2)
     expect(body.build_ids).toEqual(['stale-1', 'stale-2'])
 
-    // Should have called: SELECT, UPDATE builds, UPDATE build_steps, INSERT notifications
-    const updateBuilds = mockQuery.mock.calls.find(([sql]: string[]) =>
+    // Transaction: BEGIN + UPDATE builds + UPDATE build_steps + INSERT notifications + COMMIT = 5 calls
+    const txCalls = mockClientQuery.mock.calls.map(([sql]: string[]) => sql.trim().split(/\s+/)[0])
+    expect(txCalls).toContain('BEGIN')
+    expect(txCalls).toContain('COMMIT')
+    const updateBuilds = mockClientQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelled/.test(sql),
     )
     expect(updateBuilds).toBeDefined()
-    expect(updateBuilds![1]).toEqual([['stale-1', 'stale-2']])
-
-    const updateSteps = mockQuery.mock.calls.find(([sql]: string[]) =>
+    const updateSteps = mockClientQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE build_steps/.test(sql) && /skipped/.test(sql),
     )
     expect(updateSteps).toBeDefined()
-
-    const insertNotif = mockQuery.mock.calls.find(([sql]: string[]) =>
+    const insertNotif = mockClientQuery.mock.calls.find(([sql]: string[]) =>
       /INSERT INTO build_notifications/.test(sql) && /reaped_stale/.test(sql),
     )
     expect(insertNotif).toBeDefined()
+    // Client must be released even on success
+    expect(mockClientRelease).toHaveBeenCalled()
   })
 })
