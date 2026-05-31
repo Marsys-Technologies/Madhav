@@ -109,18 +109,10 @@ def test_bhrigu_bindu_returns_sufficient_dates():
 # Test 3: find_synchronicity_windows returns non-empty list
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(not DB_AVAILABLE, reason="DB not available")
 def test_find_synchronicity_windows_non_empty():
     """find_synchronicity_windows must return at least one convergence window."""
     conn = _get_conn()
-    if conn is None:
-        import unittest.mock as mock
-        mock_cur = mock.MagicMock()
-        mock_cur.fetchall.return_value = []
-        mock_conn = mock.MagicMock()
-        mock_conn.cursor.return_value.__enter__ = mock.MagicMock(return_value=mock_cur)
-        mock_conn.cursor.return_value.__exit__ = mock.MagicMock(return_value=False)
-        conn = mock_conn
-
     key_dates = enumerate_key_dates(conn, CHART_ID)
     windows = find_synchronicity_windows(key_dates, chart_id=CHART_ID)
 
