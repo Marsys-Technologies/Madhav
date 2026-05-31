@@ -76,6 +76,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 
   deploy-web:
     name: Build & Deploy Web
@@ -193,6 +194,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY || 'true' }}
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL || 'true' }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
