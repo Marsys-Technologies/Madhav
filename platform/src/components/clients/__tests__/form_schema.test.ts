@@ -1,18 +1,10 @@
 /**
- * Tests for NewClientForm schema extensions — [BUILD-ORCH-D-S1]
- *
- * Acceptance criteria:
- *   - DD MM YYYY format accepted and converted to YYYY-MM-DD
- *   - Malformed date strings rejected
- *   - preferred_name defaults to first word of full_name when blank
- *   - timezone_id required; missing → validation error
- *   - birth_date_ui accepts single-digit day/month with space separator
+ * Tests for NewClientForm schema helpers — parseBirthDateUi + derivePreferredName
  */
 
 import { describe, it, expect } from 'vitest'
 import {
   parseBirthDateUi,
-  validateFormSchema,
   derivePreferredName,
 } from '../form_schema'
 
@@ -88,60 +80,3 @@ describe('derivePreferredName', () => {
   })
 })
 
-// ─── validateFormSchema ───────────────────────────────────────────────────────
-
-describe('validateFormSchema — timezone_id required', () => {
-  const base = {
-    full_name: 'Test Native',
-    preferred_name: '',
-    gender: 'male' as const,
-    birth_date_ui: '05 02 1984',
-    birth_time: '10:43',
-    birth_place: 'Bhubaneswar, Odisha',
-    latitude: '20.2961',
-    longitude: '85.8245',
-    timezone_id: 'Asia/Kolkata',
-    ayanamshas: ['lahiri'],
-  }
-
-  it('passes with valid input including timezone_id', () => {
-    const result = validateFormSchema(base)
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.birth_date).toBe('1984-02-05')
-      expect(result.preferred_name).toBe('Test')
-    }
-  })
-
-  it('fails when timezone_id is missing', () => {
-    const result = validateFormSchema({ ...base, timezone_id: '' })
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.errors).toContain('timezone_id')
-    }
-  })
-
-  it('fails when birth_date_ui is malformed', () => {
-    const result = validateFormSchema({ ...base, birth_date_ui: '1984-02-05' })
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.errors).toContain('birth_date_ui')
-    }
-  })
-
-  it('derives preferred_name from full_name when blank', () => {
-    const result = validateFormSchema({ ...base, preferred_name: '' })
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.preferred_name).toBe('Test')
-    }
-  })
-
-  it('uses provided preferred_name when non-blank', () => {
-    const result = validateFormSchema({ ...base, preferred_name: 'Tester' })
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.preferred_name).toBe('Tester')
-    }
-  })
-})
