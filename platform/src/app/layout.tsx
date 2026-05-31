@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Source_Serif_4 } from 'next/font/google'
+import { Inter, Cormorant_Garamond, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import '@/styles/theme_tokens.css'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from './providers'
 import BuildCompleteToast from '@/components/dashboard/BuildCompleteToast'
@@ -11,11 +12,21 @@ const inter = Inter({
   display: 'swap',
 })
 
-const serif = Source_Serif_4({
+// Cormorant Garamond — Sanskrit names + page headings (visual v2 contract §Typography)
+const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  variable: '--font-serif',
+  variable: '--font-cormorant',
   display: 'swap',
   weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+})
+
+// JetBrains Mono — telemetry readouts + monospace numerics
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
+  display: 'swap',
+  weight: ['400', '500'],
 })
 
 export const metadata: Metadata = {
@@ -36,7 +47,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${serif.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${cormorant.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-background font-sans text-foreground antialiased">
         <Providers>{children}</Providers>
         <BuildCompleteToast />

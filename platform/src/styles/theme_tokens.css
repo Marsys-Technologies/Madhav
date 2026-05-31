@@ -1,0 +1,148 @@
+/*
+ * theme_tokens.css — MARSYS-JIS obsidian + gold design system tokens.
+ *
+ * SINGLE SOURCE OF TRUTH for all colour, typography, and spacing values
+ * used across the three Jyotish pages (entry form / cockpit / consume).
+ *
+ * RULES:
+ *   1. Never inline hex values in component files — always reference a
+ *      token from this file.
+ *   2. Add new tokens here before using them; do not create ad-hoc
+ *      CSS custom properties in component-level stylesheets.
+ *   3. The `--obsidian-*` group is the page/panel background family.
+ *   4. The `--gold-*` group is the accent / highlight family.
+ *   5. `--text-*` tokens cover the three-tier text hierarchy.
+ *   6. `--font-*` tokens wire the three type families.
+ *
+ * Created by Stream C, C-S2.  Do not rename tokens without updating all
+ * consumers — grep for the token name before removing.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ── Background family ─────────────────────────────────────────────────── */
+  --obsidian-bg:         #08070a;   /* page background, frame interior        */
+  --obsidian-panel:      #0a0908;   /* inset panels, cards (dark end)         */
+  --obsidian-panel-mid:  #0b0a0c;   /* mid-range panel bg                     */
+  --obsidian-panel-lite: #0c0b0e;   /* lightest panel bg (light end)          */
+  --obsidian-border:     #1f1c17;   /* hairline dividers, card borders (dark) */
+  --obsidian-border-mid: #252119;   /* mid-range border                       */
+  --obsidian-border-lite:#2a2620;   /* lightest border                        */
+
+  /* ── Gold accent family ───────────────────────────────────────────────── */
+  --gold-primary:        #d4a648;   /* headings, primary CTA, lit nodes       */
+  --gold-light:          #e8c878;   /* subtle accents, running-node fills     */
+  --gold-lighter:        #f8e6a8;   /* hover, very subtle backgrounds         */
+  --gold-deep:           #5a3a1f;   /* warning-tinted borders (Rebuild all)   */
+  --gold-glow:           rgba(212, 166, 72, 0.15); /* glow halos              */
+
+  /* ── Text hierarchy ───────────────────────────────────────────────────── */
+  --text-primary:        #e8e6df;   /* body text                              */
+  --text-secondary:      #888373;   /* captions, secondary labels             */
+  --text-tertiary:       #5d5b54;   /* micro-labels, hints                    */
+
+  /* ── Status colours ───────────────────────────────────────────────────── */
+  --success:             #9bd49a;   /* complete status                        */
+  --danger:              #e89a9a;   /* failed status                          */
+  --warning:             #e8c47a;   /* partial / warning state                */
+  --info:                #7aace8;   /* neutral info state                     */
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --font-serif:          'Cormorant Garamond', Georgia, serif;
+  --font-sans:           'Inter', system-ui, sans-serif;
+  --font-mono:           'JetBrains Mono', 'Courier New', monospace;
+
+  /* Font size scale */
+  --text-page-title:     34px;      /* 32-36px Cormorant italic page titles   */
+  --text-section-title:  22px;      /* Sanskrit section headings              */
+  --text-asset-name:     15px;      /* asset name rows + graph nodes          */
+  --text-body:           14px;      /* standard body copy                     */
+  --text-body-sm:        13px;      /* compact body copy                      */
+  --text-micro:          11px;      /* micro-labels (uppercase + tracking)    */
+  --text-micro-sm:       10px;      /* smallest micro-labels                  */
+  --text-mono-sm:        9px;       /* per-ayanamsha sub-counts               */
+
+  /* Letter-spacing for micro-labels */
+  --tracking-micro:      0.08em;
+  --tracking-wider:      0.1em;
+
+  /* ── Spacing ──────────────────────────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ── Border radius ────────────────────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-pill: 999px;
+
+  /* ── Graph / progress specific ────────────────────────────────────────── */
+  --progress-track-height:  6px;
+  --progress-track-bg:      #1a1816;
+  --progress-ring-stroke:   var(--gold-primary);
+  --progress-ring-track:    #1f1c17;
+
+  /* ── Transition timing ────────────────────────────────────────────────── */
+  --transition-fast:    150ms ease-out;
+  --transition-base:    250ms ease-out;
+  --transition-ring:    500ms ease-out;   /* progress ring stroke-dashoffset  */
+  --transition-bar:     300ms ease-in-out; /* progress bar width              */
+  --transition-node-in: 200ms ease-out;   /* node accretion fade-in           */
+  --transition-edge:    800ms ease-in-out; /* edge lighting pulse             */
+
+  /* ── Z-index ladder ───────────────────────────────────────────────────── */
+  --z-base:    0;
+  --z-card:    1;
+  --z-overlay: 10;
+  --z-modal:   100;
+  --z-toast:   200;
+}
+
+/* ── Utility classes ─────────────────────────────────────────────────────── */
+
+/* Sanskrit / Cormorant typography helpers */
+.font-serif        { font-family: var(--font-serif); }
+.font-mono-jb      { font-family: var(--font-mono); }
+.sanskrit-heading  { font-family: var(--font-serif); font-style: italic; color: var(--gold-primary); }
+.micro-label       {
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Node status fill tokens (referenced by LiveDependencyGraph) */
+.node-complete  { fill: var(--gold-primary);  stroke: var(--gold-primary); }
+.node-running   { fill: none;                 stroke: var(--gold-light); }
+.node-pending   { fill: none;                 stroke: var(--obsidian-border-lite); }
+.node-failed    { fill: none;                 stroke: var(--danger); }
+.node-skipped   { fill: none;                 stroke: var(--text-tertiary); opacity: 0.5; }
+
+/* Edge status tokens */
+.edge-normal    { stroke: #3a3328; }
+.edge-live      { stroke: var(--gold-primary); animation: edge-pulse var(--transition-edge) ease-in-out; }
+
+@keyframes edge-pulse {
+  0%   { stroke-opacity: 0.4; }
+  50%  { stroke-opacity: 1.0; }
+  100% { stroke-opacity: 0.7; }
+}
+
+/* Node accretion animation */
+.node-enter {
+  animation: node-appear var(--transition-node-in) ease-out forwards;
+}
+@keyframes node-appear {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1.0); }
+}
