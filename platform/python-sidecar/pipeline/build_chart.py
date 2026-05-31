@@ -32,8 +32,17 @@ except ImportError:
     except ImportError:
         def emit_event(conn, build_id, event_type, **kwargs):  # type: ignore[misc]
             return None
-        def emit_step_event(conn, build_id, asset_id, ayanamsha_id, stage, status, rows_written=0, error=None):  # type: ignore[misc]
+        def emit_step_event(conn, build_id, asset_id, ayanamsha_id, stage, status, rows_written=0, error=None, chart_id=None):  # type: ignore[misc]
             pass
+
+# ── Dispatcher SSE notify helpers (C-03 graph emitters) ───────────────────────
+try:
+    from pipeline import dispatcher as _dispatcher  # type: ignore[import]
+except ImportError:
+    try:
+        import dispatcher as _dispatcher  # type: ignore[import]
+    except ImportError:
+        _dispatcher = None  # type: ignore[assignment]
 
 # ── Logging setup ──────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -90,6 +99,24 @@ ASSET_LABELS: dict[str, str] = {
     "A12_cgm":            "CGM Graph Nodes + Edges",
     "A13_rm":             "RM Resonance Map",
     "A14_ucn_digest":     "UCN Digest",
+}
+
+# ── Asset → layer mapping for SSE node_added events ───────────────────────────
+ASSET_LAYER_MAP: dict[str, str] = {
+    "A1_engine":           "adhara",
+    "A2_forensic_render":  "adhara",
+    "A3_chart_facts":      "adhara",
+    "A4_panchanga":        "adhara",
+    "A5_sensitive_points": "adhara",
+    "A6_vargas":           "adhara",
+    "A7_dashas":           "adhara",
+    "A8_t1_structural":    "sambandha",
+    "A9_sade_sati":        "sambandha",
+    "A10_msr":             "sambandha",
+    "A11_cdlm":            "sutra",
+    "A12_cgm":             "sutra",
+    "A13_rm":              "sutra",
+    "A14_ucn_digest":      "vyavahara",
 }
 
 # ── Materialized views refreshed after all asset writers complete (A3-S6) ──────
@@ -614,6 +641,8 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
     # 2. Mark running + emit build_started
     update_build_status(conn, build_id, "running")
     emit_event(conn, build_id, "build_started")
+    if _dispatcher:
+        _dispatcher.reset_sse_emit_state()
     log.info("run_build_start", extra={"build_id": build_id, "ayanamshas": ayanamshas})
 
     # 2b. Seed build_manifests row (required FK for chart_facts and other writer tables).
@@ -675,6 +704,10 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
             emit_event(conn, build_id, "build_cancelled", extra={"cancelled_at_asset": asset_id})
             return False
 
+        # Emit edge_added events for this asset's upstream dependencies
+        if _dispatcher:
+            _dispatcher.notify_downstream_edges(conn, build_id, chart_id, asset_id)
+
         # Emit step_started event + mark all ayanamsha-steps for this asset as running
         emit_step_event(conn, build_id, asset_id, "all", "compute", "started")
         # emit_step_event is non-fatal; ensure clean transaction state before critical writes
@@ -723,7 +756,7 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                             (err_msg, build_id, asset_id),
                         )
                     conn.commit()
-                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=err_msg)
+                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=err_msg, chart_id=chart_id)
                     update_build_status(conn, build_id, "failed", error_summary=err_msg)
                     emit_event(conn, build_id, "build_failed", error=err_msg)
                     return False
@@ -766,7 +799,7 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                             (retry_err, build_id, asset_id),
                         )
                     conn.commit()
-                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=retry_err)
+                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=retry_err, chart_id=chart_id)
                     update_build_status(conn, build_id, "failed", error_summary=retry_err)
                     emit_event(conn, build_id, "build_failed", error=retry_err)
                     return False
@@ -793,13 +826,13 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                     (err_str, build_id, asset_id),
                 )
             conn.commit()
-            emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=err_str)
+            emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=err_str, chart_id=chart_id)
             update_build_status(conn, build_id, "failed", error_summary=err_str)
             emit_event(conn, build_id, "build_failed", error=err_str)
             return False
 
         # Emit step_complete event + mark steps complete
-        emit_step_event(conn, build_id, asset_id, "all", "commit", "complete", rows_written)
+        emit_step_event(conn, build_id, asset_id, "all", "commit", "complete", rows_written, chart_id=chart_id)
         completed_at = datetime.now(timezone.utc)
         with conn.cursor() as cur:
             cur.execute(
@@ -815,6 +848,16 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
             "asset_complete",
             extra={"build_id": build_id, "asset_id": asset_id, "rows_written": rows_written},
         )
+
+        # Emit node_added SSE events — one per ayanamsha that participated in this asset
+        if _dispatcher:
+            layer = ASSET_LAYER_MAP.get(asset_id, "adhara")
+            ayan_list = successful if asset_id == "A1_engine" else ayanamshas
+            per_ayan_rows = max(1, rows_written // max(1, len(ayan_list)))
+            for ayan in ayan_list:
+                _dispatcher.notify_first_row_write(
+                    conn, build_id, chart_id, asset_id, ayan, per_ayan_rows, layer
+                )
 
         # Yield between asset steps (C-04: polling checkpoint)
         await asyncio.sleep(0)

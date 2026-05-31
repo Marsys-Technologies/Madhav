@@ -1,35 +1,75 @@
 /**
- * build/page.test.tsx — C-S8.5 gate: BuildButton wired into build page.
+ * Cockpit page v2 mount gate.
  *
- * Verifies that BuildButton renders when a chart_id is present.
- * Uses mocks for auth guard and child components to keep the test fast.
+ * Verifies that CockpitShell renders all v2 components per VISUAL_CONTRACT_v2.md
+ * and does NOT render legacy BuildConstellation / zodiac-wheel components.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { BuildButton } from '@/components/cockpit/BuildButton'
+import { CockpitShell } from '../CockpitShell'
 
-// Stub fetch so BuildButton's useEffect poll doesn't fail
-vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+// Stub fetch for active-build polling and progress hook
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) => {
+      if (String(url).includes('/api/build/active')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([{ build_id: 'test-build-abc', status: 'running' }]),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }),
+  )
+})
 
-describe('BuildButton (C-S8.5 gate)', () => {
-  it('renders the build button with a chart_id', () => {
-    render(<BuildButton chartId="test-chart-123" />)
-    expect(screen.getByTestId('build-button')).toBeTruthy()
+// Stub client-only hooks / EventSource
+vi.stubGlobal('EventSource', vi.fn(() => ({ onopen: null, onerror: null, onmessage: null, close: vi.fn() })))
+
+describe('CockpitShell v2 mount (VISUAL_CONTRACT_v2 Page 2)', () => {
+  it('renders the cockpit shell wrapper', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    expect(screen.getByTestId('cockpit-shell')).toBeTruthy()
   })
 
-  it('shows "Build" label initially', () => {
-    render(<BuildButton chartId="test-chart-123" />)
-    expect(screen.getByTestId('build-button').textContent).toBe('Build')
+  it('renders LiveDependencyGraph', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    // LiveDependencyGraph root element is data-testid="dependency-graph-svg"
+    expect(screen.getByTestId('dependency-graph-svg')).toBeTruthy()
   })
 
-  it('is not disabled initially', () => {
-    render(<BuildButton chartId="test-chart-123" />)
-    const btn = screen.getByTestId('build-button') as HTMLButtonElement
-    expect(btn.disabled).toBe(false)
+  it('renders OverallProgress (Sampurna gati)', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    expect(screen.getByTestId('overall-progress')).toBeTruthy()
   })
 
-  it('renders without crashing for different chart ids', () => {
-    expect(() => render(<BuildButton chartId="abc-def-ghi" />)).not.toThrow()
+  it('renders TelemetryStrip', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    expect(screen.getByTestId('telemetry-strip')).toBeTruthy()
+  })
+
+  it('renders AssetTable', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    expect(screen.getByTestId('asset-table')).toBeTruthy()
+  })
+
+  it('renders BuildControlsBar', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    expect(screen.getByTestId('build-controls-bar')).toBeTruthy()
+  })
+
+  it('does not render legacy BuildConstellation', () => {
+    render(<CockpitShell chartId="test-chart-123" />)
+    expect(screen.queryByTestId('build-constellation')).toBeNull()
+    expect(screen.queryByTestId('constellation-canvas')).toBeNull()
   })
 })

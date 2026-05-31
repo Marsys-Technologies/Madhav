@@ -118,6 +118,18 @@ resource "google_project_iam_member" "invoker_jobs_run" {
   member  = "serviceAccount:${google_service_account.build_task_invoker.email}"
 }
 
+// Allow the amjis-web Cloud Run service identity to execute the build Job.
+//
+// /api/build/task calls invokeBuildJob() which uses @google-cloud/run under
+// Application Default Credentials — i.e. the Cloud Run service SA
+// (amjis-web-runtime), NOT amjis-build-invoker. Without this binding every
+// RunJob call from the task handler returns PERMISSION_DENIED.
+resource "google_project_iam_member" "web_runtime_jobs_run" {
+  project = var.gcp_project
+  role    = "roles/run.developer"
+  member  = "serviceAccount:amjis-web-runtime@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
 output "queue_name" {
   value       = google_cloud_tasks_queue.amjis_build_queue.name
   description = "Fully-qualified queue name — set as BUILD_TASK_QUEUE env var on amjis-web."

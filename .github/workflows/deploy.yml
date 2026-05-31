@@ -229,6 +229,10 @@ jobs:
             BUILD_REAPER_SA_EMAIL=build-reaper@madhav-astrology.iam.gserviceaccount.com
             VERTEX_AI_LOCATION=asia-south1
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
+            BUILD_TASK_QUEUE_LOCATION=asia-south1
+            BUILD_TASK_QUEUE=amjis-build-queue
+            BUILD_TASK_INVOKER_SA=amjis-build-invoker@madhav-astrology.iam.gserviceaccount.com
+            BUILD_TASK_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
             # build-args above). Cloud Run env_vars are never read by Next.js at

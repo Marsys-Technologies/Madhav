@@ -74,7 +74,7 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
   const hasNoBuild = !buildStatus
 
   return (
-    <div className="flex items-center gap-2">
+    <div data-testid="build-controls-bar" className="flex items-center gap-2">
       {isRunning ? (
         <>
           {/* Running state: stop + cancel buttons */}

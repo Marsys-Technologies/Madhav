@@ -175,13 +175,11 @@ describe('clients/[id]/build — access control', () => {
 
   it('AC.1 — super_admin can enter /build', async () => {
     setAccess('all', 'super_admin')
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ layer: 'L1', sublayer: 'A', status: 'complete' }] })
-      .mockResolvedValueOnce({ rows: [{ id: TEST_CHART_ID, name: 'Chart' }] })
     const { default: BuildPage } = await import('../[id]/build/page')
     const jsx = await BuildPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })
     const { getByTestId } = render(jsx)
-    expect(getByTestId('constellation-canvas').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
+    // v2: CockpitShell replaces legacy ConstellationCanvas
+    expect(getByTestId('cockpit-shell')).toBeTruthy()
     expect(getByTestId('build-page-root').getAttribute('data-permission')).toBe('all')
   })
 })
