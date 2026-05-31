@@ -208,6 +208,14 @@ jobs:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: echo "Deployed to $DEPLOY_URL"
 
+      - name: Set Cloud Run Job timeout + max-retries
+        run: |
+          gcloud run jobs update marsys-build-pipeline-job \
+            --region=${{ env.GCP_REGION }} \
+            --task-timeout=30m \
+            --max-retries=1 \
+            --quiet || true
+
   deploy-sidecar:
     name: Build & Deploy Sidecar
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
