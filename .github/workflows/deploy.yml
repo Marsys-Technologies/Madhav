@@ -113,7 +113,12 @@ jobs:
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: cd platform && npx tsx scripts/migrate.ts
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "SKIP: PROD_DATABASE_URL secret not set — migrations must be run manually via start_db_proxy.sh"
+          else
+            cd platform && npx tsx scripts/migrate.ts
+          fi
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
 
       # ── A-S8: Terraform apply (cloud_scheduler + build-reaper SA + IAM) ──────
