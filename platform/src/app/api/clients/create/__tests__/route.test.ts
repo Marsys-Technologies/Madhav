@@ -464,6 +464,82 @@ describe('POST /api/clients/create — natural-key dedupe', () => {
   })
 })
 
+// ─── D-S2: preferred_name + timezone_id ──────────────────────────────────────
+
+describe('POST /api/clients/create — preferred_name + timezone_id (D-S2)', () => {
+  it('accepts preferred_name and includes it in the INSERT', async () => {
+    const uid = 'user-ds2-a'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const insertArgs: unknown[][] = []
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql))
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      if (/information_schema\.columns/.test(sql))
+        return Promise.resolve({ rows: [{ exists: false }] })
+      if (/lower\(trim/.test(sql)) return Promise.resolve({ rows: [] })
+      if (/INSERT INTO charts/.test(sql)) {
+        if (params) insertArgs.push(params)
+        return Promise.resolve({ rows: [{ id: 'r1', chart_id: 'c1', client_id: uid, owner_id: uid }] })
+      }
+      if (/INSERT INTO pyramid_layers/.test(sql)) return Promise.resolve({ rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    const res = await POST(makeReq({ ...VALID_BODY, preferred_name: 'Abhi' }))
+    expect(res.status).toBe(200)
+    expect(insertArgs.flat()).toContain('Abhi')
+  })
+
+  it('accepts timezone_id and includes it in the INSERT', async () => {
+    const uid = 'user-ds2-b'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const insertArgs: unknown[][] = []
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql))
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      if (/information_schema\.columns/.test(sql))
+        return Promise.resolve({ rows: [{ exists: false }] })
+      if (/lower\(trim/.test(sql)) return Promise.resolve({ rows: [] })
+      if (/INSERT INTO charts/.test(sql)) {
+        if (params) insertArgs.push(params)
+        return Promise.resolve({ rows: [{ id: 'r2', chart_id: 'c2', client_id: uid, owner_id: uid }] })
+      }
+      if (/INSERT INTO pyramid_layers/.test(sql)) return Promise.resolve({ rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    const res = await POST(makeReq({ ...VALID_BODY, timezone_id: 'Asia/Kolkata' }))
+    expect(res.status).toBe(200)
+    expect(insertArgs.flat()).toContain('Asia/Kolkata')
+  })
+
+  it('falls back to first word of name when preferred_name is absent', async () => {
+    const uid = 'user-ds2-c'
+    mockGetServerUser.mockResolvedValue({ uid })
+
+    const insertArgs: unknown[][] = []
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/COUNT\(\*\)/.test(sql) && /created_at >= NOW/.test(sql))
+        return Promise.resolve({ rows: [{ count: '0', oldest_created_at: null }] })
+      if (/information_schema\.columns/.test(sql))
+        return Promise.resolve({ rows: [{ exists: false }] })
+      if (/lower\(trim/.test(sql)) return Promise.resolve({ rows: [] })
+      if (/INSERT INTO charts/.test(sql)) {
+        if (params) insertArgs.push(params)
+        return Promise.resolve({ rows: [{ id: 'r3', chart_id: 'c3', client_id: uid, owner_id: uid }] })
+      }
+      if (/INSERT INTO pyramid_layers/.test(sql)) return Promise.resolve({ rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    const res = await POST(makeReq(VALID_BODY))
+    expect(res.status).toBe(200)
+    expect(insertArgs.flat()).toContain('Test')  // first word of 'Test Subject'
+  })
+})
+
 describe('POST /api/clients/create — constants', () => {
   it('VALID_AYANAMSHAS has exactly 5 entries', () => {
     expect(VALID_AYANAMSHAS).toHaveLength(5)

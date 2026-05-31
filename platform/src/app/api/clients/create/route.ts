@@ -48,12 +48,14 @@ interface ValidationError {
 
 interface CreateRequestBody {
   name?: unknown
+  preferred_name?: unknown
   birth_date?: unknown
   birth_time?: unknown
   birth_place?: unknown
   lat?: unknown
   lon?: unknown
   tz_offset?: unknown
+  timezone_id?: unknown
   ayanamshas?: unknown
   gender?: unknown
   subject_name?: unknown
@@ -235,11 +237,17 @@ export async function POST(request: Request): Promise<Response> {
 
   // Coerce validated fields
   const name = (body.name as string).trim()
+  const preferred_name = typeof body.preferred_name === 'string' && body.preferred_name.trim()
+    ? body.preferred_name.trim()
+    : name.split(' ')[0] ?? name
   const birth_date = body.birth_date as string
   const birth_time = body.birth_time as string
   const birth_place = (body.birth_place as string).trim()
   const lat = Number(body.lat)
   const lon = Number(body.lon)
+  const timezone_id = typeof body.timezone_id === 'string' && body.timezone_id.trim()
+    ? body.timezone_id.trim()
+    : null
   const subject_name = typeof body.subject_name === 'string' ? body.subject_name.trim() : name
 
   const ayanamshas: Ayanamsha[] =
@@ -331,20 +339,22 @@ export async function POST(request: Request): Promise<Response> {
     if (hasIdempotencyColumn && idempotencyKey) {
       const { rows } = await query(
         `INSERT INTO charts
-           (client_id, owner_id, name, subject_name, birth_date, birth_time,
-            birth_place, birth_lat, birth_lng, idempotency_key)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           (client_id, owner_id, name, subject_name, preferred_name, birth_date, birth_time,
+            birth_place, birth_lat, birth_lng, timezone_id, idempotency_key)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
          RETURNING *`,
         [
           client_id,
           owner_id,
           name,
           subject_name,
+          preferred_name,
           birth_date,
           birth_time,
           birth_place,
           lat,
           lon,
+          timezone_id,
           idempotencyKey,
         ],
       )
@@ -352,11 +362,11 @@ export async function POST(request: Request): Promise<Response> {
     } else {
       const { rows } = await query(
         `INSERT INTO charts
-           (client_id, owner_id, name, subject_name, birth_date, birth_time,
-            birth_place, birth_lat, birth_lng)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           (client_id, owner_id, name, subject_name, preferred_name, birth_date, birth_time,
+            birth_place, birth_lat, birth_lng, timezone_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          RETURNING *`,
-        [client_id, owner_id, name, subject_name, birth_date, birth_time, birth_place, lat, lon],
+        [client_id, owner_id, name, subject_name, preferred_name, birth_date, birth_time, birth_place, lat, lon, timezone_id],
       )
       chart = rows[0]
     }
