@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 EventType = Literal[
     'build_queued', 'build_started', 'step_started', 'step_complete',
-    'step_failed', 'build_complete', 'build_failed', 'build_cancelled'
+    'step_failed', 'build_complete', 'build_failed', 'build_cancelled',
+    'node_added', 'edge_added'
 ]
 
 StageType = Literal['compute', 'persist', 'verify', 'commit']
@@ -204,6 +205,86 @@ def emit_step_event(
             conn.rollback()
         except Exception:
             pass
+
+
+def emit_node_added(
+    conn,
+    build_id: str,
+    chart_id: str,
+    asset_id: str,
+    ayanamsha_id: str,
+    row_count: int,
+    layer: str,
+) -> Optional[str]:
+    """
+    Emit a node_added SSE event.
+
+    Payload shape matches GraphNode in LiveBuildGraph.tsx:
+      id       = "<asset_id>:<ayanamsha_id>"  (unique node key)
+      label    = asset_id
+      assetId  = asset_id
+      status   = "running"
+      layer    = layer
+    Additional fields for backend traceability: build_id, chart_id,
+    ayanamsha_id, row_count.
+
+    Non-fatal — build continues even if emit fails.
+    """
+    node_id = f"{asset_id}:{ayanamsha_id}"
+    extra = {
+        "id": node_id,
+        "label": asset_id,
+        "assetId": asset_id,
+        "status": "running",
+        "layer": layer,
+        "chart_id": chart_id,
+        "row_count": row_count,
+    }
+    return emit_event(
+        conn,
+        build_id=build_id,
+        event_type="node_added",
+        asset_id=asset_id,
+        ayanamsha_id=ayanamsha_id,
+        extra=extra,
+    )
+
+
+def emit_edge_added(
+    conn,
+    build_id: str,
+    chart_id: str,
+    from_asset: str,
+    to_asset: str,
+    edge_kind: str,
+) -> Optional[str]:
+    """
+    Emit an edge_added SSE event.
+
+    Payload shape matches GraphEdge in LiveBuildGraph.tsx:
+      source = from_asset
+      target = to_asset
+      type   = edge_kind
+    Additional fields for backend traceability: build_id, chart_id,
+    from_asset, to_asset, edge_kind.
+
+    Non-fatal — build continues even if emit fails.
+    """
+    extra = {
+        "source": from_asset,
+        "target": to_asset,
+        "type": edge_kind,
+        "chart_id": chart_id,
+        "from_asset": from_asset,
+        "to_asset": to_asset,
+        "edge_kind": edge_kind,
+    }
+    return emit_event(
+        conn,
+        build_id=build_id,
+        event_type="edge_added",
+        extra=extra,
+    )
 
 
 def format_sse_row(notif_id: str, event_type: str, payload: dict) -> str:

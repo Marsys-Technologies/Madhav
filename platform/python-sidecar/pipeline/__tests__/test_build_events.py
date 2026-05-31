@@ -7,7 +7,7 @@ import json
 import unittest
 from unittest.mock import MagicMock, call, patch
 
-from pipeline.build_events import emit_event, emit_step_event, format_sse_row
+from pipeline.build_events import emit_event, emit_step_event, format_sse_row, emit_node_added, emit_edge_added
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -323,6 +323,133 @@ class TestFormatSseRow(unittest.TestCase):
         parsed = json.loads(data_line[len("data: "):])
         self.assertEqual(parsed["error"], "oom_killed")    # assertion 47
         self.assertEqual(parsed["build_id"], "b-999")      # assertion 48
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# emit_node_added tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestEmitNodeAdded(unittest.TestCase):
+
+    def _call_node(self, **kwargs):
+        conn, cursor = _make_conn(fetchone_return=("notif-node-1",))
+        defaults = dict(
+            conn=conn,
+            build_id="build-node-1",
+            chart_id="chart-abc",
+            asset_id="A3_chart_facts",
+            ayanamsha_id="lahiri",
+            row_count=100,
+            layer="synthesis",
+        )
+        defaults.update(kwargs)
+        result = emit_node_added(**defaults)
+        return result, conn, cursor
+
+    def test_node_added_returns_notif_id(self):
+        """emit_node_added returns notif_id on success."""
+        result, _, _ = self._call_node()
+        self.assertEqual(result, "notif-node-1")  # assertion 49
+
+    def test_node_added_inserts_build_notifications(self):
+        """emit_node_added inserts into build_notifications with event_type='node_added'."""
+        _, conn, cursor = self._call_node()
+        call_args = cursor.execute.call_args
+        params = call_args[0][1]
+        self.assertEqual(params[1], "node_added")  # assertion 50
+
+    def test_node_added_payload_has_graphnode_fields(self):
+        """emit_node_added payload includes FE-required GraphNode fields."""
+        _, conn, cursor = self._call_node()
+        payload = json.loads(cursor.execute.call_args[0][1][2])
+        self.assertIn("id", payload)       # assertion 51
+        self.assertIn("label", payload)    # assertion 52
+        self.assertIn("assetId", payload)  # assertion 53
+        self.assertIn("status", payload)   # assertion 54
+        self.assertIn("layer", payload)    # assertion 55
+
+    def test_node_added_payload_id_format(self):
+        """emit_node_added payload id is '<asset_id>:<ayanamsha_id>'."""
+        _, conn, cursor = self._call_node()
+        payload = json.loads(cursor.execute.call_args[0][1][2])
+        self.assertEqual(payload["id"], "A3_chart_facts:lahiri")  # assertion 56
+
+    def test_node_added_payload_status_running(self):
+        """emit_node_added payload status is 'running'."""
+        _, conn, cursor = self._call_node()
+        payload = json.loads(cursor.execute.call_args[0][1][2])
+        self.assertEqual(payload["status"], "running")  # assertion 57
+
+    def test_node_added_non_fatal_on_db_failure(self):
+        """emit_node_added swallows DB exceptions (non-fatal)."""
+        conn = MagicMock()
+        conn.cursor.side_effect = Exception("DB error")
+        result = emit_node_added(
+            conn, "build-x", "chart-x", "A1", "kp", 0, "layer1"
+        )
+        self.assertIsNone(result)  # assertion 58
+        conn.rollback.assert_called_once()  # assertion 59
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# emit_edge_added tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestEmitEdgeAdded(unittest.TestCase):
+
+    def _call_edge(self, **kwargs):
+        conn, cursor = _make_conn(fetchone_return=("notif-edge-1",))
+        defaults = dict(
+            conn=conn,
+            build_id="build-edge-1",
+            chart_id="chart-abc",
+            from_asset="A1_engine",
+            to_asset="A3_chart_facts",
+            edge_kind="data_flow",
+        )
+        defaults.update(kwargs)
+        result = emit_edge_added(**defaults)
+        return result, conn, cursor
+
+    def test_edge_added_returns_notif_id(self):
+        """emit_edge_added returns notif_id on success."""
+        result, _, _ = self._call_edge()
+        self.assertEqual(result, "notif-edge-1")  # assertion 60
+
+    def test_edge_added_inserts_build_notifications(self):
+        """emit_edge_added inserts into build_notifications with event_type='edge_added'."""
+        _, conn, cursor = self._call_edge()
+        params = cursor.execute.call_args[0][1]
+        self.assertEqual(params[1], "edge_added")  # assertion 61
+
+    def test_edge_added_payload_has_graphedge_fields(self):
+        """emit_edge_added payload includes FE-required GraphEdge fields."""
+        _, conn, cursor = self._call_edge()
+        payload = json.loads(cursor.execute.call_args[0][1][2])
+        self.assertIn("source", payload)  # assertion 62
+        self.assertIn("target", payload)  # assertion 63
+        self.assertIn("type", payload)    # assertion 64
+
+    def test_edge_added_payload_source_target(self):
+        """emit_edge_added payload source/target match from_asset/to_asset."""
+        _, conn, cursor = self._call_edge()
+        payload = json.loads(cursor.execute.call_args[0][1][2])
+        self.assertEqual(payload["source"], "A1_engine")       # assertion 65
+        self.assertEqual(payload["target"], "A3_chart_facts")  # assertion 66
+
+    def test_edge_added_payload_type(self):
+        """emit_edge_added payload type matches edge_kind."""
+        _, conn, cursor = self._call_edge()
+        payload = json.loads(cursor.execute.call_args[0][1][2])
+        self.assertEqual(payload["type"], "data_flow")  # assertion 67
+
+    def test_edge_added_non_fatal_on_db_failure(self):
+        """emit_edge_added swallows DB exceptions (non-fatal)."""
+        conn = MagicMock()
+        conn.cursor.side_effect = Exception("DB error")
+        result = emit_edge_added(conn, "build-y", "chart-y", "A1", "A3", "dep")
+        self.assertIsNone(result)  # assertion 68
+        conn.rollback.assert_called_once()  # assertion 69
 
 
 if __name__ == "__main__":
