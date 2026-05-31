@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
-import ConstellationCanvas from '@/components/build_orchestrator/ConstellationCanvas'
-import { BuildButton } from '@/components/cockpit/BuildButton'
+import { CockpitShell } from '@/components/cockpit/CockpitShell'
 
-// This page replaces the old BuildChat shell with the Constellation visualization.
-// BuildButton is wired in as the primary build trigger (C-S8.5).
+// v2 cockpit — replaces legacy ConstellationCanvas per VISUAL_CONTRACT v2 §C-S8.5.
+// CockpitShell assembles LiveDependencyGraph, OverallProgress, TelemetryStrip,
+// AssetTable, and BuildControlsBar with built-in polling + SSE subscriptions.
 export default async function BuildPage({
   params,
 }: {
@@ -20,10 +20,7 @@ export default async function BuildPage({
 
   return (
     <div data-testid="build-page-root" data-permission={access.permission}>
-      <div data-testid="build-button-container">
-        <BuildButton chartId={id} />
-      </div>
-      <ConstellationCanvas chartId={id} />
+      <CockpitShell chartId={id} />
     </div>
   )
 }

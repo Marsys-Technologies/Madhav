@@ -441,21 +441,17 @@ def write(
         for divisor in ALL_VARGAS:
             div_key = f"D{divisor}"
 
-            # Use engine-pre-computed value if available; otherwise compute
+            # Use engine-pre-computed value if available; otherwise compute.
+            # sign_index is 0-indexed (0=Aries → sid 1); sign_id is 1-indexed
+            # (1=Aries). Treat these separately to avoid a double +1 increment.
             if div_key in pre_computed:
                 pc = pre_computed[div_key]
-                # Engine may give sign_index (0-indexed) or sign_id (1-indexed)
-                raw_idx = pc.get("sign_index")
-                if raw_idx is None:
-                    raw_idx = pc.get("sign_id")
-                if raw_idx is not None:
-                    # Normalise: if 0, interpret as Pisces (12) — 0-indexed Aries would be 0
-                    # We accept both 0-indexed and 1-indexed from engine:
-                    # sign_index is typically 0-indexed; if it's 0 it might mean Aries(1)
-                    # The safe approach: use our compute for verification parity unless
-                    # explicitly 1-indexed.
-                    # Convention: engine sign_index is 0-indexed (0=Aries); +1 → 1-indexed
-                    sid = (int(raw_idx) % 12) + 1
+                raw_sign_index = pc.get("sign_index")
+                raw_sign_id    = pc.get("sign_id")
+                if raw_sign_index is not None:
+                    sid = (int(raw_sign_index) % 12) + 1   # 0-indexed → 1-indexed
+                elif raw_sign_id is not None:
+                    sid = int(raw_sign_id)                  # already 1-indexed
                 else:
                     sid = compute_varga_sign_id(natal_lon, divisor)
             else:

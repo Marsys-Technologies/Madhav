@@ -18,6 +18,18 @@ import { invokeBuildJob } from '@/lib/build/jobInvoker'
 import { recordBuildEvent } from '@/lib/build/events'
 import type { AyanamshaRole } from '@/lib/build/trigger'
 
+// Defense-in-depth: if BUILD_TASK_AUTH_BYPASS is present in env, log a security
+// alert. The var was used during Cloud Tasks IAM debugging (2026-05-28) and was
+// removed from the codebase. Its presence now means someone set it directly in
+// Cloud Run env vars — investigate and remove immediately.
+if (process.env.BUILD_TASK_AUTH_BYPASS !== undefined) {
+  console.error(
+    '[SECURITY][api/build/task] BUILD_TASK_AUTH_BYPASS is set in env — ' +
+      'this var no longer grants any access but signals a potential security ' +
+      'misconfiguration. Remove it from Cloud Run env vars immediately.',
+  )
+}
+
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
@@ -30,14 +42,10 @@ interface TaskBody {
 
 /**
  * Cloud Tasks sets `X-CloudTasks-QueueName` + `X-CloudTasks-TaskName`.
- * In production we additionally validate the OIDC bearer (audience match)
- * via the Auth header. Tests bypass this guard by setting
- * BUILD_TASK_AUTH_BYPASS=test, which is enforced false in production via
- * the deploy.yml env_vars list.
+ * We additionally validate the OIDC bearer (audience match) via the Auth
+ * header. Cloud Run verifies the JWT signature; we check the audience claim.
  */
 function isAuthorized(request: Request): boolean {
-  if (process.env.BUILD_TASK_AUTH_BYPASS === 'test') return true
-
   const queueName = request.headers.get('x-cloudtasks-queuename')
   if (!queueName) return false
 
