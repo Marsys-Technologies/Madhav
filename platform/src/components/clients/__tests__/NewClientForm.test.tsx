@@ -1,298 +1,151 @@
 /**
- * NewClientForm.test.tsx — B-11 gate tests
+ * NewClientForm.test.tsx — C-S8 visual rendering tests
  *
- * Covers:
- *  - All required fields rendered
- *  - Ayanamsha checkboxes all checked by default
- *  - Individual ayanamsha unchecking
- *  - At-least-one ayanamsha validation
- *  - Name required validation
- *  - Birth date future-date validation
- *  - Submit calls /api/clients/create with correct payload
- *  - Loading state during submission
- *  - Success redirect to redirect_url
- *  - API error message display
+ * Tests: section headings present, Sanskrit names rendered, header bar,
+ * hero title, footer microcopy, form structure.
+ *
+ * DOES NOT test state, validation, or submit handler — those are Stream D's
+ * concern (see form_schema.test.ts and route.test.ts for functional coverage).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { NewClientForm, AYANAMSHA_OPTIONS } from '../NewClientForm'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { NewClientForm } from '../NewClientForm'
 
-// ─── Mock next/navigation ────────────────────────────────────────────────────
-
-const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }))
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+describe('NewClientForm — visual rendering', () => {
+  // ── Header bar ───────────────────────────────────────────────────────────
 
-function renderForm() {
-  return render(<NewClientForm />)
-}
-
-/** Fill in the minimum valid form values */
-async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/full name/i), 'Test Native')
-  await user.selectOptions(screen.getByLabelText(/gender/i), 'male')
-  await user.type(screen.getByLabelText(/birth date/i), '1990-01-01')
-  await user.type(screen.getByLabelText(/birth time/i), '10:30')
-  await user.type(screen.getByLabelText(/birth place/i), 'Bhubaneswar, India')
-  await user.type(screen.getByLabelText(/latitude/i), '20.2960')
-  await user.type(screen.getByLabelText(/longitude/i), '85.8246')
-  await user.type(screen.getByLabelText(/timezone offset/i), '5.5')
-}
-
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
-describe('NewClientForm', () => {
-
-  beforeEach(() => {
-    mockPush.mockReset()
-    vi.restoreAllMocks()
+  it('renders the form header bar', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('form-header')).toBeTruthy()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
+  it('renders the MARSYS wordmark in the header', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('form-header').textContent).toContain('MARSYS')
   })
 
-  // ── 1. Renders all required fields ────────────────────────────────────────
-
-  it('renders the Full Name field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/full name/i)).toBeInTheDocument()
+  it('renders the "Jyotish Instrument" micro-label', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('form-header').textContent).toContain('Jyotish Instrument')
   })
 
-  it('renders the Gender select', () => {
-    renderForm()
-    expect(screen.getByLabelText(/gender/i)).toBeInTheDocument()
+  it('renders the "Step 1 of 2" pill', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('step-pill').textContent).toBe('Step 1 of 2')
   })
 
-  it('renders the Birth Date field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/birth date/i)).toBeInTheDocument()
+  it('renders the gold glyph (॥)', () => {
+    const { container } = render(<NewClientForm />)
+    expect(container.textContent).toContain('॥')
   })
 
-  it('renders the Birth Time field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/birth time/i)).toBeInTheDocument()
+  // ── Hero title ───────────────────────────────────────────────────────────
+
+  it('renders the Naya Yantra hero title', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('form-title').textContent).toBe('Naya Yantra')
   })
 
-  it('renders the Birth Place field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/birth place/i)).toBeInTheDocument()
+  it('hero title is in italic Cormorant (checked via font-family style)', () => {
+    render(<NewClientForm />)
+    const title = screen.getByTestId('form-title')
+    const style = title.getAttribute('style') ?? ''
+    expect(style.toLowerCase()).toContain('cormorant')
   })
 
-  it('renders the Latitude field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/latitude/i)).toBeInTheDocument()
+  // ── Sanskrit section headings ─────────────────────────────────────────────
+
+  it('renders the Vyakti section heading for Identity', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('section-identity').textContent).toContain('Vyakti')
   })
 
-  it('renders the Longitude field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/longitude/i)).toBeInTheDocument()
+  it('renders "Identity" label in the Vyakti section', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('section-identity').textContent).toContain('Identity')
   })
 
-  it('renders the Timezone Offset field', () => {
-    renderForm()
-    expect(screen.getByLabelText(/timezone offset/i)).toBeInTheDocument()
+  it('renders the Janma Sthana section heading for Birth coordinates', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('section-birth').textContent).toContain('Janma Sthana')
   })
 
-  it('renders the submit button with correct label', () => {
-    renderForm()
-    expect(screen.getByRole('button', { name: /create chart & start build/i })).toBeInTheDocument()
+  it('renders "Birth coordinates" in the Janma Sthana section', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('section-birth').textContent).toContain('Birth coordinates')
   })
 
-  // ── 2. Ayanamsha checkboxes all checked by default ───────────────────────
+  it('renders the Ganana section heading for Compute', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('section-compute').textContent).toContain('Ganana')
+  })
 
-  it('renders all 5 ayanamsha checkboxes', () => {
-    renderForm()
-    const checkboxes = screen.getAllByRole('checkbox')
-    expect(checkboxes).toHaveLength(AYANAMSHA_OPTIONS.length)
+  it('renders "Compute" in the Ganana section', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('section-compute').textContent).toContain('Compute')
+  })
+
+  // ── Footer microcopy ──────────────────────────────────────────────────────
+
+  it('renders the footer', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('form-footer')).toBeTruthy()
+  })
+
+  it('renders the "5 ayanamshas × 28 assets = 140 nodes" microcopy', () => {
+    render(<NewClientForm />)
+    const footer = screen.getByTestId('footer-microcopy')
+    expect(footer.textContent).toContain('140 nodes')
+    expect(footer.textContent).toContain('28 assets')
+  })
+
+  it('renders the "Compute chart" submit button', () => {
+    render(<NewClientForm />)
+    const footer = screen.getByTestId('form-footer')
+    expect(footer.textContent).toContain('Compute chart')
+  })
+
+  it('renders the Cancel button', () => {
+    render(<NewClientForm />)
+    expect(screen.getByTestId('form-footer').textContent).toContain('Cancel')
+  })
+
+  // ── Form structure ────────────────────────────────────────────────────────
+
+  it('renders a form element', () => {
+    const { container } = render(<NewClientForm />)
+    expect(container.querySelector('form')).toBeTruthy()
+  })
+
+  it('renders input fields for name and birthplace', () => {
+    const { container } = render(<NewClientForm />)
+    const inputs = container.querySelectorAll('input[type="text"], input:not([type])')
+    expect(inputs.length).toBeGreaterThan(0)
+  })
+
+  it('renders ayanamsha checkboxes', () => {
+    const { container } = render(<NewClientForm />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    expect(checkboxes.length).toBeGreaterThanOrEqual(5)
   })
 
   it('all ayanamsha checkboxes are checked by default', () => {
-    renderForm()
-    const checkboxes = screen.getAllByRole('checkbox')
-    for (const cb of checkboxes) {
-      expect(cb).toBeChecked()
+    const { container } = render(<NewClientForm />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    for (const cb of Array.from(checkboxes)) {
+      expect((cb as HTMLInputElement).checked).toBe(true)
     }
   })
 
-  it('renders Lahiri checkbox label', () => {
-    renderForm()
-    expect(screen.getByRole('checkbox', { name: /lahiri/i })).toBeInTheDocument()
-  })
-
-  it('renders KP checkbox label', () => {
-    renderForm()
-    expect(screen.getByRole('checkbox', { name: /kp/i })).toBeInTheDocument()
-  })
-
-  // ── 3. Can uncheck individual ayanamsha ───────────────────────────────────
-
-  it('can uncheck an individual ayanamsha checkbox', async () => {
-    const user = userEvent.setup()
-    renderForm()
-    const lahiriCb = screen.getByRole('checkbox', { name: /lahiri/i })
-    expect(lahiriCb).toBeChecked()
-    await user.click(lahiriCb)
-    expect(lahiriCb).not.toBeChecked()
-  })
-
-  it('unchecking one leaves others still checked', async () => {
-    const user = userEvent.setup()
-    renderForm()
-    const lahiriCb = screen.getByRole('checkbox', { name: /lahiri/i })
-    await user.click(lahiriCb)
-    const remaining = screen.getAllByRole('checkbox').filter((cb) => cb !== lahiriCb)
-    for (const cb of remaining) {
-      expect(cb).toBeChecked()
-    }
-  })
-
-  // ── 4. Cannot uncheck all ayanamshas (at-least-one validation) ───────────
-
-  it('shows ayanamsha validation error when all unchecked and form submitted', async () => {
-    const user = userEvent.setup()
-    renderForm()
-    // Uncheck all
-    const checkboxes = screen.getAllByRole('checkbox')
-    for (const cb of checkboxes) {
-      await user.click(cb)
-    }
-    const submitBtn = screen.getByRole('button', { name: /create chart & start build/i })
-    await user.click(submitBtn)
-    expect(await screen.findByText(/at least one ayanamsha must be selected/i)).toBeInTheDocument()
-  })
-
-  // ── 5. Name field shows validation error when empty ───────────────────────
-
-  it('shows required error for Full Name when empty on submit', async () => {
-    const user = userEvent.setup()
-    renderForm()
-    await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-    expect(await screen.findByText(/full name is required/i)).toBeInTheDocument()
-  })
-
-  // ── 6. Birth date validates — rejects future dates ────────────────────────
-
-  it('shows error when birth date is in the future', async () => {
-    const user = userEvent.setup()
-    renderForm()
-    const futureDateInput = screen.getByLabelText(/birth date/i)
-    // Set to a far-future date via fireEvent (userEvent type on date input is tricky)
-    fireEvent.change(futureDateInput, { target: { value: '2099-12-31' } })
-    await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-    expect(await screen.findByText(/birth date cannot be in the future/i)).toBeInTheDocument()
-  })
-
-  // ── 7. Submit calls /api/clients/create with correct payload ──────────────
-
-  it('calls /api/clients/create with the correct payload on valid submit', async () => {
-    const user = userEvent.setup()
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ id: 'abc123', redirect_url: '/clients/abc123/build' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    )
-    renderForm()
-    await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledOnce()
-    })
-
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('/api/clients/create')
-    expect(init.method).toBe('POST')
-
-    const body = JSON.parse(init.body as string)
-    expect(body.full_name).toBe('Test Native')
-    expect(body.gender).toBe('male')
-    expect(body.birth_date).toBe('1990-01-01')
-    expect(body.birth_time).toBe('10:30')
-    expect(body.ayanamshas).toEqual(AYANAMSHA_OPTIONS.map((o) => o.id))
-  })
-
-  // ── 8. Loading state shown during submission ──────────────────────────────
-
-  it('shows loading label on button while request is in flight', async () => {
-    const user = userEvent.setup()
-    let resolveRequest!: (v: Response) => void
-    vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(
-      new Promise<Response>((res) => { resolveRequest = res })
-    )
-    renderForm()
-    await fillValidForm(user)
-
-    await act(async () => {
-      await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-    })
-
-    expect(screen.getByRole('button', { name: /creating chart/i })).toBeInTheDocument()
-    expect(screen.getByRole('button')).toBeDisabled()
-
-    // Resolve so the test cleans up
-    resolveRequest(
-      new Response(JSON.stringify({ id: 'x', redirect_url: '/clients/x/build' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    )
-  })
-
-  // ── 9. Success redirects to redirect_url ──────────────────────────────────
-
-  it('redirects to redirect_url from API response on success', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ id: 'client-42', redirect_url: '/clients/client-42/build' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
-    )
-    renderForm()
-    await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/clients/client-42/build')
-    })
-  })
-
-  // ── 10. API error message is displayed ────────────────────────────────────
-
-  it('displays API error message when server returns an error', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ error: 'Duplicate client record' }),
-        { status: 422, headers: { 'Content-Type': 'application/json' } }
-      )
-    )
-    renderForm()
-    await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-
-    expect(await screen.findByText(/duplicate client record/i)).toBeInTheDocument()
-  })
-
-  it('displays fallback error message when API returns no error field', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({}), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    )
-    renderForm()
-    await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create chart & start build/i }))
-
-    expect(await screen.findByText(/failed to create client/i)).toBeInTheDocument()
+  it('renders the page with obsidian background style', () => {
+    const { container } = render(<NewClientForm />)
+    const pageDiv = container.firstElementChild as HTMLElement
+    const style = pageDiv?.getAttribute('style') ?? ''
+    expect(style).toContain('obsidian')
   })
 })

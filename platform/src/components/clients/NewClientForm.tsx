@@ -59,8 +59,37 @@ function todayIso(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-function validate(form: FormState): FormErrors {
-  const errors: FormErrors = {}
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3
+      style={{
+        fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
+        fontStyle: 'italic',
+        fontSize: 18,
+        color: 'var(--gold-primary, #d4a648)',
+        fontWeight: 500,
+      }}
+    >
+      {children}
+    </h3>
+  )
+}
+
+function MicroLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontFamily: 'var(--font-sans, Inter, sans-serif)',
+        fontSize: 10,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase' as const,
+        color: 'var(--text-tertiary, #5d5b54)',
+      }}
+    >
+      {children}
+    </span>
+  )
+}
 
   if (!form.full_name.trim()) {
     errors.full_name = 'Full name is required.'
@@ -212,13 +241,94 @@ export function NewClientForm() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>New Client Chart</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <div
+      className="min-h-screen px-4 py-10"
+      style={{ background: 'var(--obsidian-bg, #08070a)', color: 'var(--text-primary, #e8e6df)' }}
+    >
+      <div className="mx-auto max-w-2xl">
+        {/* ── Header bar ─────────────────────────────────────────── */}
+        <div
+          data-testid="form-header"
+          className="flex items-center justify-between mb-6"
+        >
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              style={{
+                fontFamily: 'var(--font-serif, serif)',
+                fontSize: 22,
+                color: 'var(--gold-primary, #d4a648)',
+                lineHeight: 1,
+              }}
+            >
+              ॥
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
+                fontSize: 18,
+                color: 'var(--gold-primary, #d4a648)',
+                fontWeight: 500,
+                letterSpacing: '0.04em',
+              }}
+            >
+              MARSYS
+            </span>
+            <MicroLabel>Jyotish Instrument</MicroLabel>
+          </div>
+          <div className="flex items-center gap-3">
+            <span
+              style={{
+                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                fontSize: 10,
+                color: 'var(--text-tertiary, #5d5b54)',
+                letterSpacing: '0.08em',
+              }}
+            >
+              Charts · New
+            </span>
+            <span
+              data-testid="step-pill"
+              style={{
+                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                fontSize: 10,
+                color: 'var(--gold-primary, #d4a648)',
+                background: 'rgba(212,166,72,0.12)',
+                border: '1px solid rgba(212,166,72,0.3)',
+                borderRadius: 999,
+                padding: '2px 10px',
+              }}
+            >
+              Step 1 of 2
+            </span>
+          </div>
+        </div>
+
+        {/* ── Hero ────────────────────────────────────────────────── */}
+        <div className="mb-8">
+          <h1
+            data-testid="form-title"
+            style={{
+              fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
+              fontStyle: 'italic',
+              fontSize: 36,
+              color: 'var(--gold-primary, #d4a648)',
+              lineHeight: 1.15,
+              marginBottom: 8,
+            }}
+          >
+            Naya Yantra
+          </h1>
+          <p
+            style={{
+              fontFamily: 'var(--font-sans, Inter, sans-serif)',
+              fontSize: 13,
+              color: 'var(--text-secondary, #888373)',
+            }}
+          >
+            Enter the birth details below to instantiate a new Jyotish instrument. Fields marked * are required.
+          </p>
+        </div>
 
             {/* Full Name */}
             <div className="space-y-1">
@@ -238,86 +348,18 @@ export function NewClientForm() {
               )}
             </div>
 
-            {/* Gender */}
-            <div className="space-y-1">
-              <Label htmlFor="gender">Gender <span aria-hidden="true" className="text-destructive">*</span></Label>
-              <select
-                id="gender"
-                value={form.gender}
-                aria-required="true"
-                aria-invalid={!!errors.gender}
-                onChange={(e) => setField('gender', e.target.value)}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="">Select gender…</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
-              </select>
-              {errors.gender && (
-                <p role="alert" className="text-sm text-destructive">{errors.gender}</p>
-              )}
-            </div>
-
-            {/* Birth Date */}
-            <div className="space-y-1">
-              <Label htmlFor="birth_date">Birth Date <span aria-hidden="true" className="text-destructive">*</span></Label>
-              <Input
-                id="birth_date"
-                type="date"
-                min="1900-01-01"
-                max={todayIso()}
-                value={form.birth_date}
-                aria-required="true"
-                aria-invalid={!!errors.birth_date}
-                onChange={(e) => setField('birth_date', e.target.value)}
-              />
-              {errors.birth_date && (
-                <p role="alert" className="text-sm text-destructive">{errors.birth_date}</p>
-              )}
-            </div>
-
-            {/* Birth Time */}
-            <div className="space-y-1">
-              <Label htmlFor="birth_time">Birth Time (local, HH:MM) <span aria-hidden="true" className="text-destructive">*</span></Label>
-              <Input
-                id="birth_time"
-                type="time"
-                value={form.birth_time}
-                aria-required="true"
-                aria-invalid={!!errors.birth_time}
-                onChange={(e) => setField('birth_time', e.target.value)}
-              />
-              {errors.birth_time && (
-                <p role="alert" className="text-sm text-destructive">{errors.birth_time}</p>
-              )}
-            </div>
-
-            {/* Birth Place */}
-            <div className="space-y-1">
-              <Label htmlFor="birth_place">Birth Place <span aria-hidden="true" className="text-destructive">*</span></Label>
-              <Input
-                id="birth_place"
-                type="text"
-                placeholder="e.g. Bhubaneswar, Odisha, India"
-                value={form.birth_place}
-                aria-required="true"
-                aria-invalid={!!errors.birth_place}
-                onChange={(e) => setField('birth_place', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter city/region. Latitude and longitude below will be used for precise computation.
-              </p>
-              {errors.birth_place && (
-                <p role="alert" className="text-sm text-destructive">{errors.birth_place}</p>
-              )}
-            </div>
-
-            {/* Lat / Lng row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="latitude">Latitude <span aria-hidden="true" className="text-destructive">*</span></Label>
+          {/* ── Section 1: Vyakti · Identity ─────────────────────── */}
+          <Card
+            data-testid="section-identity"
+            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
+            className="shadow-none ring-0"
+          >
+            <CardHeader className="p-0 pb-4">
+              <CardTitle><SectionTitle>Vyakti · Identity</SectionTitle></CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 grid gap-4">
+              <div className="flex flex-col gap-1">
+                <Label className="text-[#c8bfb0] text-sm">Full name *</Label>
                 <Input
                   id="latitude"
                   type="number"
@@ -330,101 +372,353 @@ export function NewClientForm() {
                   aria-invalid={!!errors.latitude}
                   onChange={(e) => setField('latitude', e.target.value)}
                 />
-                {errors.latitude && (
-                  <p role="alert" className="text-sm text-destructive">{errors.latitude}</p>
-                )}
+                <FieldError msg={errors.full_name} />
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="longitude">Longitude <span aria-hidden="true" className="text-destructive">*</span></Label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  placeholder="e.g. 85.8246"
-                  step="any"
-                  min={-180}
-                  max={180}
-                  value={form.longitude}
-                  aria-required="true"
-                  aria-invalid={!!errors.longitude}
-                  onChange={(e) => setField('longitude', e.target.value)}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Gender *</Label>
+                  <select
+                    value={values.gender}
+                    onChange={(e) => set('gender', e.target.value as FormValues['gender'])}
+                    className={selectCls(!!errors.gender)}
+                  >
+                    <option value="not-specified">Not specified</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <FieldError msg={errors.gender} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Tier</Label>
+                  <select
+                    value={values.tier}
+                    onChange={(e) => set('tier', e.target.value as FormValues['tier'])}
+                    className={selectCls()}
+                  >
+                    <option value="auto">Auto-assigned</option>
+                    <option value="client">Client</option>
+                    <option value="acharya">Acharya</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Label className="text-[#c8bfb0] text-sm">Notes</Label>
+                <textarea
+                  value={values.notes}
+                  onChange={(e) => set('notes', e.target.value)}
+                  rows={3}
+                  placeholder="Optional notes about this native…"
+                  className="w-full resize-none rounded-lg border border-[#1a1820] bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] placeholder:text-[#5a5550] outline-none focus:ring-1 focus:ring-[#d4a648]"
                 />
-                {errors.longitude && (
-                  <p role="alert" className="text-sm text-destructive">{errors.longitude}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Section 2: Janma Sthana · Birth coordinates ────── */}
+          <Card
+            data-testid="section-birth"
+            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
+            className="shadow-none ring-0"
+          >
+            <CardHeader className="p-0 pb-4">
+              <CardTitle><SectionTitle>Janma Sthana · Birth coordinates</SectionTitle></CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Date *</Label>
+                  <Input
+                    type="date"
+                    value={values.birth_date}
+                    onChange={(e) => set('birth_date', e.target.value)}
+                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
+                  />
+                  <FieldError msg={errors.birth_date} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Time (24 h) *</Label>
+                  <Input
+                    type="time"
+                    value={values.birth_time}
+                    onChange={(e) => set('birth_time', e.target.value)}
+                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
+                  />
+                  <FieldError msg={errors.birth_time} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Label className="text-[#c8bfb0] text-sm">Timezone</Label>
+                <select
+                  value={values.timezone}
+                  onChange={(e) => set('timezone', e.target.value)}
+                  className={selectCls()}
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Label className="text-[#c8bfb0] text-sm">Birthplace *</Label>
+                <Input
+                  value={values.birthplace}
+                  onChange={(e) => handleBirthplaceChange(e.target.value)}
+                  placeholder="e.g. Bhubaneswar, Odisha, India"
+                  className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
+                />
+                <FieldError msg={errors.birthplace} />
+              </div>
+
+              {/* Manual coords accordion */}
+              <div className="rounded-lg border border-[#1a1820] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setManualCoords((v) => !v)}
+                  className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-[#8a8070] hover:text-[#c8bfb0] transition-colors"
+                >
+                  <span>Manual lat/lng override</span>
+                  <span className="text-xs">{manualCoords ? '▲' : '▼'}</span>
+                </button>
+                {manualCoords && (
+                  <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-1">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-[#c8bfb0] text-sm">Latitude</Label>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        value={values.latitude}
+                        onChange={(e) => set('latitude', e.target.value)}
+                        placeholder="20.2961"
+                        className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-[#c8bfb0] text-sm">Longitude</Label>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        value={values.longitude}
+                        onChange={(e) => set('longitude', e.target.value)}
+                        placeholder="85.8245"
+                        className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Timezone Offset */}
-            <div className="space-y-1">
-              <Label htmlFor="timezone_offset">Timezone Offset (UTC±, e.g. 5.5 for IST) <span aria-hidden="true" className="text-destructive">*</span></Label>
-              <Input
-                id="timezone_offset"
-                type="number"
-                placeholder="e.g. 5.5"
-                step={0.5}
-                min={-14}
-                max={14}
-                value={form.timezone_offset}
-                aria-required="true"
-                aria-invalid={!!errors.timezone_offset}
-                onChange={(e) => setField('timezone_offset', e.target.value)}
-              />
-              {errors.timezone_offset && (
-                <p role="alert" className="text-sm text-destructive">{errors.timezone_offset}</p>
-              )}
-            </div>
+          {/* ── Section 3: Ganana · Compute ─────────────────────── */}
+          <Card
+            data-testid="section-compute"
+            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
+            className="shadow-none ring-0"
+          >
+            <CardHeader className="p-0 pb-4">
+              <CardTitle><SectionTitle>Ganana · Compute</SectionTitle></CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 grid gap-4">
+              <div className="flex flex-col gap-2">
+                <Label className="text-[#c8bfb0] text-sm">Ayanamshas *</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {AYANAMSHA_OPTIONS.map((opt) => {
+                    const checked = values.ayanamshas.includes(opt.id)
+                    return (
+                      <label
+                        key={opt.id}
+                        className={cn(
+                          'flex items-center gap-2 cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors',
+                          checked
+                            ? 'border-[#d4a648] text-[#d4a648] bg-[#d4a648]/5'
+                            : 'border-[#1a1820] text-[#8a8070] hover:border-[#5a5550]',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={checked}
+                          onChange={() => toggleAyanamsha(opt.id as AyanamshaId)}
+                        />
+                        {opt.label}
+                      </label>
+                    )
+                  })}
+                </div>
+                <FieldError msg={errors.ayanamshas} />
+              </div>
 
-            {/* Ayanamsha multi-select */}
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Ayanamsha Systems{' '}
-                <span aria-hidden="true" className="text-destructive">*</span>
-                <span className="font-normal text-muted-foreground ml-1">(select at least one)</span>
-              </legend>
-              <div className="space-y-2 pt-1">
-                {AYANAMSHA_OPTIONS.map((option) => {
-                  const checked = form.ayanamshas.includes(option.id)
-                  return (
-                    <label
-                      key={option.id}
-                      className="flex items-center gap-2 cursor-pointer text-sm"
-                    >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Year from</Label>
+                  <Input
+                    type="number"
+                    value={values.year_from}
+                    onChange={(e) => set('year_from', parseInt(e.target.value) || 1950)}
+                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Year to</Label>
+                  <Input
+                    type="number"
+                    value={values.year_to}
+                    onChange={(e) => set('year_to', parseInt(e.target.value) || 2100)}
+                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label className="text-[#c8bfb0] text-sm">Verification passes</Label>
+                  <div className="flex gap-4 mt-1">
+                    {(['one-pass', 'two-pass'] as const).map((v) => (
+                      <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-[#c8bfb0]">
+                        <input
+                          type="radio"
+                          name="verification"
+                          value={v}
+                          checked={values.verification === v}
+                          onChange={() => set('verification', v)}
+                          className="accent-[#d4a648]"
+                        />
+                        {v === 'one-pass' ? 'One-pass' : 'Two-pass (default)'}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label className="text-[#c8bfb0] text-sm">Calendar system</Label>
+                  <div className="flex gap-4 mt-1">
+                    {(['gregorian', 'julian'] as const).map((v) => (
+                      <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-[#c8bfb0]">
+                        <input
+                          type="radio"
+                          name="calendar"
+                          value={v}
+                          checked={values.calendar === v}
+                          onChange={() => set('calendar', v)}
+                          className="accent-[#d4a648]"
+                        />
+                        {v.charAt(0).toUpperCase() + v.slice(1)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label className="text-[#c8bfb0] text-sm">Visibility</Label>
+                <div className="flex gap-4 mt-1">
+                  {(['private', 'shared'] as const).map((v) => (
+                    <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-[#c8bfb0]">
                       <input
-                        type="checkbox"
-                        name="ayanamsha"
-                        value={option.id}
-                        checked={checked}
-                        aria-label={option.label}
-                        onChange={() => toggleAyanamsha(option.id)}
-                        className="h-4 w-4 rounded border-input accent-primary"
+                        type="radio"
+                        name="visibility"
+                        value={v}
+                        checked={values.visibility === v}
+                        onChange={() => set('visibility', v)}
+                        className="accent-[#d4a648]"
                       />
-                      {option.label}
+                      {v.charAt(0).toUpperCase() + v.slice(1)}
                     </label>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
-              {errors.ayanamshas && (
-                <p role="alert" className="text-sm text-destructive">{errors.ayanamshas}</p>
-              )}
-            </fieldset>
+            </CardContent>
+          </Card>
 
-            {/* API error */}
-            {errors.api && (
-              <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {errors.api}
+          {/* ── Section 4: Sambandha · Relationships ─────────────── */}
+          <Card
+            style={{ background: 'var(--obsidian-panel, #0a0908)', border: '1px solid var(--obsidian-border, #1f1c17)', borderRadius: 12, padding: 20 }}
+            className="shadow-none ring-0"
+          >
+            <CardHeader className="p-0 pb-4">
+              <CardTitle><SectionTitle>Sambandha · Relationships</SectionTitle></CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Relationship type</Label>
+                  <select
+                    value={values.relationship_type}
+                    onChange={(e) => set('relationship_type', e.target.value as FormValues['relationship_type'])}
+                    className={selectCls()}
+                  >
+                    <option value="self">Self</option>
+                    <option value="client">Client</option>
+                    <option value="research">Research</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[#c8bfb0] text-sm">Reference chart ID</Label>
+                  <Input
+                    value={values.reference_chart_id}
+                    onChange={(e) => set('reference_chart_id', e.target.value)}
+                    placeholder="Optional"
+                    className="bg-[#08070a] border-[#1a1820] text-[#f5f0e8] placeholder:text-[#5a5550]"
+                  />
+                </div>
               </div>
-            )}
+            </CardContent>
+          </Card>
 
-            {/* Submit */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-              aria-busy={loading}
+          {errors.api && (
+            <div role="alert" className="rounded-lg border border-[#9c3a2a]/40 bg-[#9c3a2a]/10 px-4 py-3 text-sm text-[#9c3a2a]">
+              {errors.api}
+            </div>
+
+          <div
+            data-testid="form-footer"
+            className="flex items-center justify-between pb-4"
+          >
+            <span
+              data-testid="footer-microcopy"
+              style={{
+                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                fontSize: 11,
+                color: 'var(--text-tertiary, #5d5b54)',
+              }}
             >
-              {loading ? 'Creating chart…' : 'Create Chart & Start Build'}
-            </Button>
+              5 ayanamshas × 28 assets = 140 nodes
+            </span>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.back()}
+                style={{
+                  color: 'var(--text-secondary, #888373)',
+                  fontFamily: 'var(--font-sans, Inter, sans-serif)',
+                  fontSize: 13,
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  background: 'var(--gold-primary, #d4a648)',
+                  color: 'var(--obsidian-bg, #08070a)',
+                  fontFamily: 'var(--font-sans, Inter, sans-serif)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: '0 24px',
+                  opacity: submitting ? 0.5 : 1,
+                }}
+              >
+                {submitting ? 'Computing…' : 'Compute chart'}
+              </Button>
+            </div>
+          </div>
 
           </form>
         </CardContent>
