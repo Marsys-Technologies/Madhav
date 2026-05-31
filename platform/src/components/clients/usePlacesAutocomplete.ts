@@ -15,22 +15,6 @@
  * handleBirthplaceChange. This hook formalises that contract.
  */
 
-// Minimal google.maps shim — @types/google.maps not installed; Places API is
-// NOT_WIRED (D-S3 Branch:NOT_WIRED). Full types come with @types/google.maps
-// when the feature is activated.
-declare namespace google {
-  namespace maps {
-    namespace places {
-      interface PlaceResult {
-        geometry?: { location?: { lat(): number; lng(): number } }
-        formatted_address?: string
-        name?: string
-        utc_offset_minutes?: number
-      }
-    }
-  }
-}
-
 export interface PlacesResult {
   description: string
   lat: number
