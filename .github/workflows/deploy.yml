@@ -250,6 +250,8 @@ jobs:
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
 
       - name: Post-deploy smoke
+        env:
+          SMOKE_WEB_URL: ${{ steps.deploy.outputs.url }}
         run: bash scripts/operator/end_to_end_smoke.sh
 
       - name: Promote traffic to latest revision
