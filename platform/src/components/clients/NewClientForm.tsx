@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { derivePreferredName } from './form_schema'
+import { cn } from '@/lib/utils'
 
 // ─── Ayanamsha options ────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ interface FormErrors {
   birth_date_ui?: string
   birth_time?: string
   birth_place?: string
+  birthplace?: string
   latitude?: string
   longitude?: string
   timezone_offset?: string
@@ -90,6 +92,60 @@ function MicroLabel({ children }: { children: React.ReactNode }) {
     </span>
   )
 }
+
+// ─── Timezones ───────────────────────────────────────────────────────────────
+
+const TIMEZONES = [
+  { value: 'Asia/Kolkata', label: 'IST — Asia/Kolkata (UTC+5:30)' },
+  { value: 'UTC', label: 'UTC' },
+  { value: 'Asia/Colombo', label: 'SLT — Asia/Colombo (UTC+5:30)' },
+  { value: 'Asia/Kathmandu', label: 'NPT — Asia/Kathmandu (UTC+5:45)' },
+  { value: 'Asia/Dhaka', label: 'BST — Asia/Dhaka (UTC+6)' },
+  { value: 'America/New_York', label: 'ET — America/New_York' },
+  { value: 'America/Los_Angeles', label: 'PT — America/Los_Angeles' },
+  { value: 'Europe/London', label: 'GMT/BST — Europe/London' },
+]
+
+// ─── Extended form values (C-S8 visual sections) ─────────────────────────────
+
+interface FormValues {
+  gender: string
+  tier: string
+  notes: string
+  birth_date: string
+  birth_time: string
+  timezone: string
+  birthplace: string
+  latitude: string
+  longitude: string
+  ayanamshas: AyanamshaId[]
+  year_from: number
+  year_to: number
+  verification: string
+  calendar: 'gregorian' | 'julian'
+  visibility: 'private' | 'shared'
+  relationship_type: 'self' | 'client' | 'research' | 'other'
+  reference_chart_id: string
+}
+
+// ─── UI helpers ──────────────────────────────────────────────────────────────
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return <p role="alert" className="text-sm text-destructive">{msg}</p>
+}
+
+function selectCls(hasError?: boolean): string {
+  return cn(
+    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
+    hasError ? 'border-red-500' : 'border-[#1a1820]',
+  )
+}
+
+// ─── Validation ──────────────────────────────────────────────────────────────
+
+function validate(form: FormState): FormErrors {
+  const errors: FormErrors = {}
 
   if (!form.full_name.trim()) {
     errors.full_name = 'Full name is required.'
@@ -171,6 +227,38 @@ export function NewClientForm() {
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
+  const submitting = loading
+
+  const [values, setValues] = useState<FormValues>({
+    gender: '',
+    tier: '',
+    notes: '',
+    birth_date: '',
+    birth_time: '',
+    timezone: 'Asia/Kolkata',
+    birthplace: '',
+    latitude: '',
+    longitude: '',
+    ayanamshas: AYANAMSHA_OPTIONS.map((o) => o.id),
+    year_from: 1950,
+    year_to: 2100,
+    verification: 'one-pass',
+    calendar: 'gregorian',
+    visibility: 'private',
+    relationship_type: 'self',
+    reference_chart_id: '',
+  })
+
+  function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
+    setValues((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const [manualCoords, setManualCoords] = useState(false)
+
+  function handleBirthplaceChange(place: string) {
+    set('birthplace', place)
+    setField('birth_place', place)
+  }
 
   // ── Field helpers ────────────────────────────────────────────────────────
 
@@ -329,6 +417,10 @@ export function NewClientForm() {
             Enter the birth details below to instantiate a new Jyotish instrument. Fields marked * are required.
           </p>
         </div>
+
+      <Card>
+        <CardContent>
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
             {/* Full Name */}
             <div className="space-y-1">
@@ -512,6 +604,8 @@ export function NewClientForm() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
 
           {/* ── Section 3: Ganana · Compute ─────────────────────── */}
           <Card
@@ -674,6 +768,7 @@ export function NewClientForm() {
             <div role="alert" className="rounded-lg border border-[#9c3a2a]/40 bg-[#9c3a2a]/10 px-4 py-3 text-sm text-[#9c3a2a]">
               {errors.api}
             </div>
+          )}
 
           <div
             data-testid="form-footer"
@@ -724,5 +819,6 @@ export function NewClientForm() {
         </CardContent>
       </Card>
     </div>
+  </div>
   )
 }

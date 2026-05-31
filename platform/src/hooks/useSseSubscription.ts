@@ -67,7 +67,7 @@ export function useSseSubscription(buildId: string | null): SseState {
       }
 
       if (payload.type === 'node_added') {
-        const d = payload.data as GraphNode
+        const d = payload.data as unknown as GraphNode
         setState((prev) => {
           // deduplicate by asset_id
           const exists = prev.nodes.some((n) => n.asset_id === d.asset_id)
@@ -83,7 +83,7 @@ export function useSseSubscription(buildId: string | null): SseState {
           return { ...prev, nodes: [...prev.nodes, d] }
         })
       } else if (payload.type === 'edge_added') {
-        const d = payload.data as GraphEdge
+        const d = payload.data as unknown as GraphEdge
         setState((prev) => {
           const exists = prev.edges.some(
             (e) => e.from === d.from && e.to === d.to,

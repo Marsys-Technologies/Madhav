@@ -19,6 +19,8 @@ export default defineConfig({
       'tests/e2e/gate_ii_trace_smoke.spec.ts',
       'tests/e2e/gate_iii_intelligent_chat_smoke.spec.ts',
       'tests/e2e/portal/**',
+      // D-S5 Playwright e2e spec — runs via playwright test, not vitest.
+      'tests/e2e/new-client-flow.spec.ts',
       // Playwright visual spec — no env vars in unit mode, file-level FAIL without this guard.
       'tests/visual/R11B_brand_preservation.spec.ts',
       // Integration tests requiring uvicorn (Python sidecar) — not available in CI.
