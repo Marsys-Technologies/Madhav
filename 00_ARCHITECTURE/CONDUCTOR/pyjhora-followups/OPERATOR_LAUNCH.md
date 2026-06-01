@@ -129,10 +129,19 @@ S1 MERGED, S2 MERGED, S3 MERGED. If any is missing, STOP and report — do not p
 Work on main:
   cd /Users/Dev/Vibe-Coding/Apps/Madhav && git checkout main && git pull --ff-only
 
+DO NOT make amjis-web private. Do NOT remove allUsers run.invoker from amjis-web — it is the
+public end-user portal; removing it is a site-wide outage. The S1 fix was an env-baking
+correction and works on the public service. Only amjis-mcp is private.
+
 Execute Phase B per 00_ARCHITECTURE/CONDUCTOR/pyjhora-followups/RUN_PLAN_v1_0.md §5:
-1. Deploy from main: gh workflow run deploy.yml --ref main; wait deploy-web + deploy-sidecar green.
-2. Verify S1: trigger native chart 362f9f17-95a5-490b-a5a7-027d3e0efda0 via /api/build/start
-   (Cloud Tasks path, NOT job-direct); confirm build_complete. (Confirm BUILD_TRIGGER flag on.)
+1. Verify/set amjis-web runtime env vars (the real S1 enabler): BUILD_TASK_QUEUE,
+   BUILD_TASK_QUEUE_LOCATION, BUILD_TASK_AUDIENCE. None are in deploy.yml. If absent:
+   gcloud run services update amjis-web --region asia-south1 --project madhav-astrology
+   --update-env-vars BUILD_TASK_QUEUE=marsys-build-queue,BUILD_TASK_QUEUE_LOCATION=asia-south1,BUILD_TASK_AUDIENCE=<amjis-web run URL>
+2. Deploy from main: gh workflow run deploy.yml --ref main; wait deploy-web + deploy-sidecar
+   green. (Rebuild required — the dot→bracket fix only lands on a fresh standalone build.)
+3. Verify S1: trigger native chart 362f9f17-95a5-490b-a5a7-027d3e0efda0 via /api/build/start
+   (Cloud Tasks path, NOT job-direct); confirm build_complete. Keep amjis-web public.
 3. Verify S3: chart_documents has 1 forensic_render doc/ayanamsha, content_md non-empty,
    linter clean; rag_chunks(source_type=forensic_render) present.
 4. Apply migrations 121/122/124 (query_trace_steps partitions) — verify chart_id non-NULL first.

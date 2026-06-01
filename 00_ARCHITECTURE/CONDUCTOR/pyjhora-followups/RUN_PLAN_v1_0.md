@@ -81,14 +81,32 @@ Gate to enter Phase B: all three of `S1_MERGED`, `S2_MERGED`, `S3_MERGED` true i
 
 Runs once after S1+S2+S3 are merged. One session.
 
-1. **Deploy from main.** `gh workflow run deploy.yml --ref main` (or the direct gcloud
-   builds in the operator brief). Wait for `deploy-web` AND `deploy-sidecar` green.
-   - S1 needs `amjis-web` (auth route change). S3 needs `amjis-sidecar` (renderer).
-   - S2 is code-only but rides the web deploy.
-2. **Verify the build trigger is fixed (S1).** Confirm the BUILD_TRIGGER flag is on, mint
+> ⛔ **DO NOT make `amjis-web` private.** The S1 executor's report suggested
+> `gcloud run services remove-iam-policy-binding amjis-web --member=allUsers
+> --role=roles/run.invoker`. **DO NOT RUN IT.** `amjis-web` is the public end-user portal
+> (`/consume`, `/clients/new`, cockpit, super-admin dashboards). Removing `allUsers` makes
+> the entire website require IAM tokens — a portal-wide outage. The actual S1 fix was an
+> env-baking correction (dot→bracket `process.env['BUILD_TASK_QUEUE']`); it works on the
+> public service. The service stays public. `amjis-mcp` is the only private service.
+
+1. **Verify/set the build-task env vars on `amjis-web` runtime (the real enabler).** The
+   handler reads `BUILD_TASK_QUEUE` and `trigger.ts` reads `BUILD_TASK_QUEUE`,
+   `BUILD_TASK_QUEUE_LOCATION`, `BUILD_TASK_AUDIENCE` — none are in `deploy.yml`, so they
+   must exist as Cloud Run runtime env vars. Confirm present; if missing, set them:
+   ```bash
+   gcloud run services describe amjis-web --region asia-south1 --project madhav-astrology \
+     --format='value(spec.template.spec.containers[0].env)' | tr ',' '\n' | grep BUILD_TASK
+   # if absent:
+   gcloud run services update amjis-web --region asia-south1 --project madhav-astrology \
+     --update-env-vars BUILD_TASK_QUEUE=marsys-build-queue,BUILD_TASK_QUEUE_LOCATION=asia-south1,BUILD_TASK_AUDIENCE=<amjis-web run URL>
+   ```
+2. **Deploy from main.** `gh workflow run deploy.yml --ref main`. Wait for `deploy-web` AND
+   `deploy-sidecar` green. The rebuild is required — the dot→bracket fix only lands on a
+   fresh standalone build. S3 needs `amjis-sidecar` (renderer); S1/S2 ride `amjis-web`.
+3. **Verify the build trigger is fixed (S1).** Confirm the BUILD_TRIGGER flag is on, mint
    a `__session`, POST `/api/build/start` for the native chart
    `362f9f17-95a5-490b-a5a7-027d3e0efda0` — it must dispatch via Cloud Tasks (NOT job-direct)
-   and reach `build_complete`. This is the S1 acceptance in production.
+   and reach `build_complete`. This is the S1 acceptance in production. Keep `amjis-web` public.
 3. **Verify forensic render (S3).** Query `chart_documents` for the native build:
    1 `forensic_render` doc per ayanamsha, non-empty `content_md`, linter-clean; `rag_chunks`
    with `source_type='forensic_render'` present.
