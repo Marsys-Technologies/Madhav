@@ -17,6 +17,7 @@ import type { QueryPlan, ToolBundle, ToolBundleResult, RetrievalTool } from './t
 
 const TOOL_NAME = 'timeline_query'
 const TOOL_VERSION = '1.0.0'
+const NATIVE_CHART_ID = process.env.NATIVE_CHART_ID ?? '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 export interface TimelineQueryInput {
   dasha_name?: string  // e.g. 'Mercury MD', 'Ketu MD', 'Saturn MD'
@@ -50,10 +51,12 @@ function buildQuery(p: TimelineQueryInput): { sql: string; args: unknown[] } {
   }
 
   const limit = Math.min(p.limit ?? 8, 15)
+  const chartCondition = `(chart_id = $${idx}::uuid OR chart_id IS NULL)`
+  args.push(NATIVE_CHART_ID)
   const sql = `
     SELECT content, doc_type, chunk_id, canonical_id, source_version
     FROM rag_chunks
-    WHERE ${conditions.join(' AND ')}
+    WHERE ${conditions.join(' AND ')} AND ${chartCondition}
     ORDER BY chunk_id
     LIMIT ${limit}
   `.trim()

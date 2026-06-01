@@ -86,9 +86,10 @@ def _chunk_to_row(c: Chunk) -> dict[str, Any]:
     }
 
 
-def write_chunks_to_db(chunks: list[Chunk]) -> int:
+def write_chunks_to_db(chunks: list[Chunk], chart_id: str) -> int:
     """
     Upsert chunks to rag_chunks via psycopg (Cloud SQL Auth Proxy).
+    chart_id is required: the build's chart UUID (per-chart corpus rows).
     ON CONFLICT (chunk_id) DO UPDATE — idempotent. Batches 100 rows per call.
     Returns total chunks written.
     """
@@ -108,21 +109,23 @@ def write_chunks_to_db(chunks: list[Chunk]) -> int:
                         """
                         INSERT INTO rag_chunks
                           (chunk_id, doc_type, layer, source_file, source_version,
-                           content, token_count, is_stale, stale_reason, stale_since, metadata)
+                           content, token_count, is_stale, stale_reason, stale_since,
+                           metadata, chart_id)
                         VALUES
                           (%(chunk_id)s, %(doc_type)s, %(layer)s, %(source_file)s,
                            %(source_version)s, %(content)s, %(token_count)s,
                            %(is_stale)s, %(stale_reason)s, %(stale_since)s,
-                           %(metadata)s)
+                           %(metadata)s, %(chart_id)s)
                         ON CONFLICT (chunk_id) DO UPDATE SET
                           content       = EXCLUDED.content,
                           token_count   = EXCLUDED.token_count,
                           is_stale      = EXCLUDED.is_stale,
                           stale_reason  = EXCLUDED.stale_reason,
                           stale_since   = EXCLUDED.stale_since,
-                          metadata      = EXCLUDED.metadata
+                          metadata      = EXCLUDED.metadata,
+                          chart_id      = EXCLUDED.chart_id
                         """,
-                        {**row, "metadata": json.dumps(row["metadata"])},
+                        {**row, "metadata": json.dumps(row["metadata"]), "chart_id": chart_id},
                     )
                 conn.commit()
                 written += len(batch)

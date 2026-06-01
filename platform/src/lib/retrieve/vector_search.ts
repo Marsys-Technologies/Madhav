@@ -44,6 +44,8 @@ const VERTEX_EMBED_DIM = 768
 // SQL
 // ---------------------------------------------------------------------------
 
+const NATIVE_CHART_ID = process.env.NATIVE_CHART_ID ?? '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+
 const SQL_VECTOR_SEARCH = `
   SELECT e.chunk_id, c.content, c.source_file, c.layer, c.doc_type,
          c.source_version, e.embedding <=> $1::vector AS distance
@@ -54,6 +56,7 @@ const SQL_VECTOR_SEARCH = `
     AND ($4::text IS NULL OR c.layer = $4)
     AND ($5::text IS NULL OR c.metadata->>'varga' = $5)
     AND ($6::text IS NULL OR c.metadata->>'section_id' LIKE $6 || '%')
+    AND (c.chart_id = $7::uuid OR c.chart_id IS NULL)
   ORDER BY e.embedding <=> $1::vector
   LIMIT $2
 `.trim()
@@ -319,6 +322,7 @@ async function retrieveImpl(
       layerFilter,
       vargaFilter,
       sectionIdPrefixFilter,
+      NATIVE_CHART_ID,
     ])
     rows = result.rows
   } catch (err) {

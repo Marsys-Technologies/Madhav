@@ -399,8 +399,9 @@ def run_build(
         log.info("embeddings_complete", count=len(embeddings))
 
         # 7. Write to staging
+        native_chart_id = os.environ.get("NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0")
         writer = RAGChunksWriter()
-        write_result = writer.write_chunks(all_chunks, embeddings, build_id)
+        write_result = writer.write_chunks(all_chunks, embeddings, build_id, chart_id=native_chart_id)
         log.info("staging_written", chunk_count=write_result.chunk_count, embedding_count=write_result.embedding_count)
 
         # 8. Validate staging

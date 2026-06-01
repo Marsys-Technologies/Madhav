@@ -45,10 +45,11 @@ class RAGChunksWriter(IBuildWriter):
     def __init__(self) -> None:
         self._db_url = _db_url()
 
-    def write_to_staging(self, rows: list[Any], build_id: str) -> WriteResult:
+    def write_to_staging(self, rows: list[Any], build_id: str, chart_id: str) -> WriteResult:
         """
         Write chunk+embedding pairs to rag_chunks_staging / rag_embeddings_staging.
         rows is list[tuple[chunk, list[float]]] — (chunk, embedding) pairs.
+        chart_id is required: the build's chart UUID (per-chart corpus rows).
         Each 100-row batch commits independently. On OperationalError, the connection
         is reopened with TCP keepalives and the failed batch is retried up to 3 times.
         """
@@ -85,13 +86,15 @@ class RAGChunksWriter(IBuildWriter):
                         """
                         INSERT INTO rag_chunks_staging
                           (chunk_id, doc_type, layer, source_file, source_version,
-                           content, token_count, is_stale, stale_reason, stale_since, metadata)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                           content, token_count, is_stale, stale_reason, stale_since,
+                           metadata, chart_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (chunk_id) DO UPDATE SET
                           content       = EXCLUDED.content,
                           token_count   = EXCLUDED.token_count,
                           is_stale      = EXCLUDED.is_stale,
-                          metadata      = EXCLUDED.metadata
+                          metadata      = EXCLUDED.metadata,
+                          chart_id      = EXCLUDED.chart_id
                         """,
                         (
                             chunk.chunk_id,
@@ -105,6 +108,7 @@ class RAGChunksWriter(IBuildWriter):
                             chunk.stale_reason,
                             chunk.stale_since,
                             json.dumps(meta),
+                            chart_id,
                         ),
                     )
                     vec = np.array(emb, dtype=np.float32)
@@ -168,13 +172,14 @@ class RAGChunksWriter(IBuildWriter):
         chunks: list[Any],
         embeddings: list[list[float]],
         build_id: str,
+        chart_id: str,
     ) -> WriteResult:
         """Convenience wrapper for main.py: zips chunks+embeddings into pairs and calls write_to_staging."""
         if len(chunks) != len(embeddings):
             raise ValueError(
                 f"chunks ({len(chunks)}) and embeddings ({len(embeddings)}) count mismatch"
             )
-        return self.write_to_staging(list(zip(chunks, embeddings)), build_id)
+        return self.write_to_staging(list(zip(chunks, embeddings)), build_id, chart_id)
 
     def validate_staging(self, build_id: str) -> ValidationResult:
         issues: list[str] = []

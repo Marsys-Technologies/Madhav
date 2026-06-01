@@ -6,6 +6,7 @@ Boundary: ^CDLM.D[1-9].D[1-9]:$ — one chunk per cell. Target: 81 chunks.
 """
 from __future__ import annotations
 
+import os
 import logging
 import re
 import sys
@@ -184,7 +185,8 @@ def chunk_cdlm_cells(repo_root: str) -> list[Chunk]:
 def run(repo_root: str) -> int:
     """Parse CDLM cells, write to rag_chunks via Cloud SQL (psycopg), return written count."""
     chunks = chunk_cdlm_cells(repo_root)
-    written = write_chunks_to_db(chunks)
+    chart_id = os.environ.get("NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0")
+    written = write_chunks_to_db(chunks, chart_id)
     logger.info("cdlm_cell: wrote %d / %d chunks to rag_chunks", written, len(chunks))
     return written
 

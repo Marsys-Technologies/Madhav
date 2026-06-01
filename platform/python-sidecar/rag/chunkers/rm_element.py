@@ -6,6 +6,7 @@ One chunk per RM element (RM.01–RM.32, ~28 active).
 """
 from __future__ import annotations
 
+import os
 import logging
 import re
 import sys
@@ -186,7 +187,8 @@ def run(repo_root: str) -> int:
     from rag.chunkers import write_chunks_to_db
 
     chunks = chunk_rm_elements(repo_root)
-    written = write_chunks_to_db(chunks)
+    chart_id = os.environ.get("NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0")
+    written = write_chunks_to_db(chunks, chart_id)
     logger.info("rm_element: wrote %d / %d chunks to rag_chunks", written, len(chunks))
     return written
 
