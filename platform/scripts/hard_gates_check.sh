@@ -30,12 +30,14 @@ else
   check "G1_naming_ci" "GREEN" "No BUILD-ORCH commits in last 20 (acceptable)"
 fi
 
-# G2: jh_oracle.json pinned
-JH=$(find "$REPO_ROOT" -name "jh_oracle.json" -not -path "*/node_modules/*" 2>/dev/null | head -1)
-if [ -n "$JH" ]; then
-  check "G2_jh_oracle_pinned" "GREEN" "jh_oracle.json found"
+# G2: No jh_oracle/test_jh_parity artifacts — enforce [[no-jh-parity-anywhere]]
+# GREEN = absent (correct), RED = present (violation)
+JH_ORACLE=$(find "$REPO_ROOT" -name "jh_oracle.json" -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -1)
+JH_PARITY=$(find "$REPO_ROOT" -name "test_jh_parity*" -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -1)
+if [ -n "$JH_ORACLE" ] || [ -n "$JH_PARITY" ]; then
+  check "G2_no_jh_parity_artifacts" "RED" "Banned artifact found: jh_oracle=${JH_ORACLE:-absent} jh_parity=${JH_PARITY:-absent}"
 else
-  check "G2_jh_oracle_pinned" "GREEN" "jh_oracle.json not required at this stage"
+  check "G2_no_jh_parity_artifacts" "GREEN" "No jh_oracle.json or test_jh_parity artifacts present"
 fi
 
 # G3: E-08 test suite (chart_facts integrity)

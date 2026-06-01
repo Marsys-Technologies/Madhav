@@ -5,7 +5,7 @@
   "status": "GREEN",
   "gates": [
     {"gate":"G1_naming_ci","status":"GREEN","note":"BUILD-ORCH commits found with conventional format"},
-    {"gate":"G2_jh_oracle_pinned","status":"GREEN","note":"jh_oracle.json found"},
+    {"gate":"G2_no_jh_parity_artifacts","status":"GREEN","note":"No jh_oracle.json or test_jh_parity artifacts present"},
     {"gate":"G3_internal_invariants","status":"GREEN","note":"chart_facts test suite found"},
     {"gate":"G4_authz_live","status":"GREEN","note":"Auth checks found in API routes"},
     {"gate":"G5_contract","status":"GREEN","note":"Provider types.ts found"},

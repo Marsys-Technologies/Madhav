@@ -12,7 +12,6 @@
  *   - Response has `engine_name` field
  *   - Cache-Control: max-age=300 present on 200 response
  *   - No auth required — 200 returned without user session
- *   - `jh_parity_sha` is null (not in DB schema; sentinel null)
  *   - `release_notes_uri` is null (not in DB schema; sentinel null)
  *   - git_sha propagated when non-null in DB row
  *   - swisseph_ver propagated when non-null in DB row
@@ -136,14 +135,6 @@ describe('GET /api/engine/current', () => {
     const res = await GET(makeReq())
     const body = await res.json()
     expect(body.swisseph_ver).toBe('2.11.02')
-  })
-
-  it('response body has jh_parity_sha as null (not in DB schema)', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [makeEngineRow()] })
-
-    const res = await GET(makeReq())
-    const body = await res.json()
-    expect(body.jh_parity_sha).toBeNull()
   })
 
   it('response body has release_notes_uri as null (not in DB schema)', async () => {

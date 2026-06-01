@@ -28,7 +28,6 @@ interface EngineVersionResponse {
   promoted_at: string
   git_sha: string | null
   swisseph_ver: string | null
-  jh_parity_sha: string | null
   release_notes_uri: string | null
 }
 
@@ -71,7 +70,6 @@ export async function GET(_request: Request): Promise<Response> {
     promoted_at: row.created_at,
     git_sha: row.git_sha ?? null,
     swisseph_ver: row.swisseph_ver ?? null,
-    jh_parity_sha: null,
     release_notes_uri: null,
   }
 
