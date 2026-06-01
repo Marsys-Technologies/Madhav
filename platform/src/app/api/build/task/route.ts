@@ -41,34 +41,37 @@ interface TaskBody {
 }
 
 /**
- * Cloud Tasks sets `X-CloudTasks-QueueName` + `X-CloudTasks-TaskName`.
- * We additionally validate the OIDC bearer (audience match) via the Auth
- * header. Cloud Run verifies the JWT signature; we check the audience claim.
+ * Design A — Cloud Run IAM owns the cryptographic OIDC check.
+ *
+ * amjis-web must be deployed --no-allow-unauthenticated with the Cloud Tasks
+ * SA (amjis-build-invoker) holding roles/run.invoker. Cloud Run validates the
+ * OIDC bearer and rejects unauthenticated requests before they reach this
+ * handler. The stripped bearer never arrives at the container.
+ *
+ * The app therefore authorises on the platform-forwarded Cloud Tasks headers
+ * alone. Bearer-parse was removed because:
+ *   (1) Cloud Run IAM strips the bearer for private services; and
+ *   (2) process.env.BUILD_TASK_AUDIENCE (dot-notation) may be statically
+ *       replaced with undefined by Next.js during the standalone Docker build
+ *       when the var is absent from the build context — causing persistent 401s
+ *       even when the var is set on the running Cloud Run revision.
+ *
+ * Operator prerequisite: remove allUsers from amjis-web invoker binding:
+ *   gcloud run services remove-iam-policy-binding amjis-web \
+ *     --region asia-south1 --project madhav-astrology \
+ *     --member=allUsers --role=roles/run.invoker
  */
 function isAuthorized(request: Request): boolean {
   const queueName = request.headers.get('x-cloudtasks-queuename')
   if (!queueName) return false
 
-  // Defence-in-depth: confirm the OIDC bearer matches the expected audience.
-  // Cloud Run already verifies the JWT signature; we additionally check the
-  // audience claim is present (parsing only — no crypto here).
-  const authz = request.headers.get('authorization') ?? ''
-  if (!authz.toLowerCase().startsWith('bearer ')) return false
+  // Bracket notation avoids Next.js static env replacement at build time.
+  // Dot-notation references (process.env.BUILD_TASK_QUEUE) may be baked to
+  // undefined by the standalone compiler when absent from the build context.
+  const expectedQueue = process.env['BUILD_TASK_QUEUE'] ?? ''
+  if (!expectedQueue) return false
 
-  const expectedAud = process.env.BUILD_TASK_AUDIENCE ?? ''
-  if (!expectedAud) return false
-
-  try {
-    const token = authz.slice('bearer '.length).trim()
-    const parts = token.split('.')
-    if (parts.length !== 3) return false
-    const payload = JSON.parse(
-      Buffer.from(parts[1]!.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
-    ) as { aud?: string }
-    return typeof payload.aud === 'string' && payload.aud === expectedAud
-  } catch {
-    return false
-  }
+  return queueName === expectedQueue
 }
 
 export async function POST(request: Request): Promise<Response> {
