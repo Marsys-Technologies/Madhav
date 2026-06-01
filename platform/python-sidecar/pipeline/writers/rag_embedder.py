@@ -250,18 +250,23 @@ def embed_chart_document(
         texts = [c.body for c in valid_chunks]
         embeddings = _embed_texts(texts)
 
-        # 5. Delete existing chunks for this (chart_id, ayanamsha_id, source_type)
+        # 5. Delete existing chunks (and cascade-delete their embeddings) for this
+        #    (chart_id, ayanamsha_id, source_type) triple — idempotent re-embed.
         with conn.cursor() as cur:
             cur.execute(
                 "DELETE FROM rag_chunks WHERE chart_id = %s AND ayanamsha_id = %s AND source_type = %s",
                 (chart_id, ayanamsha_id, SOURCE_TYPE),
             )
 
-        # 6. Insert new chunks
+        # 6. Insert new chunks into rag_chunks + embeddings into rag_embeddings.
+        #    Use the actual rag_chunks schema (content, doc_type, layer, source_file,
+        #    source_version, token_count) plus the new chart_id/ayanamsha_id/source_type
+        #    columns added in migration 163.
+        import json
         written = 0
         with conn.cursor() as cur:
             for chunk, emb in zip(valid_chunks, embeddings):
-                chunk_uuid = str(uuid.uuid4())
+                cid = _chunk_id(chart_id, ayanamsha_id, chunk.source_section, chunk.chunk_index)
                 meta = {
                     'heading': chunk.heading,
                     'chunk_index': chunk.chunk_index,
@@ -270,25 +275,46 @@ def embed_chart_document(
                     'build_id': build_id,
                     'source_section': chunk.source_section,
                 }
+                token_count = len(chunk.body.split())
                 cur.execute(
                     """
                     INSERT INTO rag_chunks
-                      (id, source_type, chart_id, ayanamsha_id, build_id,
-                       source_section, text, embedding, metadata, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s::vector, %s, NOW())
-                    ON CONFLICT DO NOTHING
+                      (chunk_id, doc_type, layer, source_file, source_version,
+                       content, token_count, is_stale,
+                       chart_id, ayanamsha_id, source_type, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, false,
+                            %s, %s, %s, %s)
+                    ON CONFLICT (chunk_id) DO UPDATE SET
+                      content       = EXCLUDED.content,
+                      token_count   = EXCLUDED.token_count,
+                      chart_id      = EXCLUDED.chart_id,
+                      ayanamsha_id  = EXCLUDED.ayanamsha_id,
+                      source_type   = EXCLUDED.source_type,
+                      metadata      = EXCLUDED.metadata
                     """,
                     (
-                        chunk_uuid,
+                        cid,
                         SOURCE_TYPE,
+                        'L1',
+                        f"forensic_{chart_id}_{ayanamsha_id}",
+                        build_id,
+                        chunk.body[:4000],
+                        token_count,
                         chart_id,
                         ayanamsha_id,
-                        build_id,
-                        chunk.source_section,
-                        chunk.body[:4000],  # cap at 4k chars for storage
-                        emb,
-                        meta,
+                        SOURCE_TYPE,
+                        json.dumps(meta),
                     ),
+                )
+                # Insert embedding into rag_embeddings (separate table, pgvector)
+                cur.execute(
+                    """
+                    INSERT INTO rag_embeddings (chunk_id, model, embedding)
+                    VALUES (%s, %s, %s::vector)
+                    ON CONFLICT (chunk_id, model) DO UPDATE SET
+                      embedding = EXCLUDED.embedding
+                    """,
+                    (cid, EMBEDDING_MODEL, emb),
                 )
                 written += 1
 

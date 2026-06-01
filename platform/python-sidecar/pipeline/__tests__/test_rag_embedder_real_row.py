@@ -92,15 +92,18 @@ class TestRagEmbedderSchemaContract:
 
             def execute(self, sql: str, params: Any = None):
                 if params and "INSERT INTO rag_chunks" in sql:
-                    # params positional order:
-                    # (id, source_type, chart_id, ayanamsha_id, build_id,
-                    #  source_section, text, embedding, metadata, NOW())
+                    # params positional order after migration-163 rewrite:
+                    # (chunk_id, doc_type, layer, source_file, source_version,
+                    #  content, token_count,
+                    #  chart_id, ayanamsha_id, source_type, metadata)
+                    # Note: is_stale=false is a literal (not a param) in the SQL
                     rows_inserted.append({
-                        "id": params[0],
-                        "source_type": params[1],
-                        "chart_id": params[2],
-                        "ayanamsha_id": params[3],
-                        "build_id": params[4],
+                        "chunk_id": params[0],
+                        "doc_type": params[1],
+                        "layer": params[2],
+                        "chart_id": params[7],
+                        "ayanamsha_id": params[8],
+                        "source_type": params[9],
                     })
 
             def fetchone(self):
@@ -141,13 +144,13 @@ class TestRagEmbedderSchemaContract:
         assert result["chunks_written"] >= 1, "No chunks written — check the markdown fixture"
         for row in rows_inserted:
             assert row["chart_id"] == NATIVE_CHART_ID, (
-                f"chart_id mismatch: expected {NATIVE_CHART_ID!r}, got {row['chart_id']!r}"
+                f"chart_id mismatch: expected {NATIVE_CHART_ID!r}, got {row.get('chart_id')!r}"
             )
             assert row["source_type"] == "forensic_render", (
-                f"source_type mismatch: {row['source_type']!r}"
+                f"source_type mismatch: {row.get('source_type')!r}"
             )
             assert row["ayanamsha_id"] == "lahiri", (
-                f"ayanamsha_id mismatch: {row['ayanamsha_id']!r}"
+                f"ayanamsha_id mismatch: {row.get('ayanamsha_id')!r}"
             )
 
 
