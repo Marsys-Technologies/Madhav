@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import statistics
 import sys
 from pathlib import Path
@@ -92,7 +93,8 @@ def run_all_chunkers(repo_root: str, doc_types: list[str] | None = None) -> dict
             continue
         logger.info("chunk.py: running chunker for doc_type=%s", doc_type)
         chunks = chunker_map[doc_type]()
-        written = write_chunks_to_db(chunks)
+        chart_id = os.environ.get("NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0")
+        written = write_chunks_to_db(chunks, chart_id)
         logger.info("chunk.py: doc_type=%s — %d chunks parsed, %d written to DB", doc_type, len(chunks), written)
         result[doc_type] = chunks
 
