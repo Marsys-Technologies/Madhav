@@ -1,0 +1,102 @@
+run_id: PYJHORA_FOLLOWUPS
+version: 1.0
+status: READY
+authored_at: 2026-06-01
+target_branch: main
+autonomy: full   # code, commit, merge, deploy, migrate, verify — no human gate
+
+# ── Phase A — three parallel coding streams (disjoint file scope) ──────────────
+phase_A:
+  parallel: true
+  enter_when: always
+  exit_when: [S1.status == merged, S2.status == merged, S3.status == merged]
+  sessions:
+
+    - id: S1
+      title: Build-task OIDC 401 fix
+      brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BUILD_TASK_OIDC_401_FIX_v1_0.md
+      branch: fix/build-task-oidc-401
+      worktree: /Users/Dev/Vibe-Coding/Apps/MadhavS1-BuildAuth
+      may_touch:
+        - platform/src/app/api/build/task/route.ts
+        - platform/src/lib/build/trigger.ts
+        - platform/src/lib/build/jobInvoker.ts
+        - platform/src/app/api/build/__tests__/task_route.test.ts
+        - platform/scripts/governance/edge_security_smoke.sh
+      gate_check:
+        - "tsc --noEmit clean"
+        - "vitest run platform/src/app/api/build/__tests__/task_route.test.ts green"
+        - "BUILD_TASK_AUTH_BYPASS zero-effect regression test still green"
+      deploy: false   # batched into Phase B
+      on_done: [merge_to_main, append_run_log, retire_worktree]
+
+    - id: S2
+      title: jh-parity residue cleanup (platform/ code paths)
+      brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_JH_PARITY_RESIDUE_CLEANUP_v1_0.md
+      branch: chore/jh-parity-residue-cleanup
+      worktree: /Users/Dev/Vibe-Coding/Apps/MadhavS2-JHParity
+      may_touch:
+        - platform/scripts/hard_gates_check.sh
+        - platform/evals/acc2_hard_gates.json
+        - platform/src/app/api/engine/current/route.ts
+        - platform/src/app/api/engine/__tests__/current_route.test.ts
+        - platform/src/app/api/build/__tests__/build.integration.test.ts
+        - platform/python-sidecar/tests/test_pyjhora_adapter/_scratch/   # DELETE + gitignore
+        - .gitignore
+      gate_check:
+        - "grep -rn 'jh_parity|jh_oracle' platform/ src/ → 0 hits in executable code paths"
+        - "hard_gates_check.sh no longer rewards jh_oracle.json presence"
+        - "_scratch untracked + gitignored"
+        - "tsc --noEmit clean; vitest + pytest green"
+      deploy: false
+      on_done: [merge_to_main, append_run_log, retire_worktree]
+
+    - id: S3
+      title: Forensic renderer wiring (un-stub forensic_writer)
+      brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_STREAM_F_FORENSIC_RENDER_v1_0.md
+      branch: feature/stream-f-forensic-render
+      worktree: /Users/Dev/Vibe-Coding/Apps/MadhavS3-Forensic
+      sub_sessions: [S4a_wire_shape_persist, S4b_integration_rag_verify]
+      may_touch:
+        - platform/python-sidecar/pipeline/writers/forensic_writer.py
+        - platform/python-sidecar/pipeline/writers/__init__.py
+        - platform/python-sidecar/pipeline/render/_chart_output_adapter.py   # CREATE
+        - platform/python-sidecar/pipeline/render/*.py                       # only real bugs
+        - platform/python-sidecar/pipeline/__tests__/test_forensic_writer.py
+        - platform/python-sidecar/pipeline/render/__tests__/
+        - 00_ARCHITECTURE/PARIKSHA/EXPECTED_ROW_COUNTS.yaml
+      gate_check:
+        - "forensic_writer writes 1 chart_documents(forensic_render) row per ayanamsha, content_md non-empty"
+        - "no_narration_linter clean on rendered doc; 13 section anchors present"
+        - "rag_embedder consumes doc → rag_chunks(source_type=forensic_render)"
+        - "section renderers unmodified except genuine bugs"
+        - "pytest platform/python-sidecar/ green"
+      deploy: false
+      on_done: [merge_to_main, append_run_log, retire_worktree]
+
+# ── Phase B — convergence: deploy + migrate + native e2e + ledger ──────────────
+phase_B:
+  parallel: false
+  enter_when: [S1.status == merged, S2.status == merged, S3.status == merged]
+  sessions:
+    - id: B
+      title: Deploy, migrate, native e2e, ledger close
+      runs_on: main
+      steps:
+        - deploy: "gh workflow run deploy.yml --ref main; wait deploy-web + deploy-sidecar green"
+        - verify_S1: "POST /api/build/start (native chart) via Cloud Tasks path → build_complete (NOT job-direct)"
+        - verify_S3: "chart_documents has 1 forensic_render doc/ayanamsha, content_md non-empty, linter clean; rag_chunks present"
+        - migrate: "apply 121/122/124 (query_trace_steps partitions) — now unblocked; verify chart_id non-NULL first"
+        - hygiene: "gcloud run services update amjis-web --remove-env-vars BUILD_TASK_AUTH_BYPASS"
+        - eval: "run answer:eval ONCE (consolidated)"
+        - ledger: "apply OPERATOR_LEDGER_PATCH_PYJHORA_POSTMERGE_v1_0.md; CURRENT_STATE bump (verify next free version on origin/main); OPERATOR_ACTIONS_PENDING; single SESSION_LOG entry for S1+S2+S3+B"
+        - redteam: "IS.8(b) if cadence due"
+      on_done: [run_log: RUN_COMPLETE]
+
+guardrails:
+  - no_anthropic_models
+  - no_jh_parity_or_forensic_v8_value_oracle
+  - no_cross_stream_file_edits
+  - governance_docs_written_in_phase_B_only   # avoid SESSION_LOG/CURRENT_STATE merge conflicts
+  - tsc_noemit_plus_tests_after_any_merge_resolution
+  - answer_eval_once_in_phase_B_not_per_stream
