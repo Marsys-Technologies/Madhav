@@ -164,13 +164,20 @@ class TestDispatchAsset(unittest.TestCase):
         result = dispatch_asset("A1_engine", "build-001", "chart-001", ["lahiri"])
         self.assertEqual(result, 0)  # assertion 27
 
-    def test_dispatch_asset_any_asset_id_returns_zero(self):
-        """Stub returns 0 for every asset_id in DAG_ORDER."""
+    def test_dispatch_asset_any_asset_id_returns_int(self):
+        """dispatch_asset returns an int for every asset_id in DAG_ORDER.
+        Unregistered assets (A1_engine) return 0; registered writers may return non-zero.
+        """
         for asset_id in DAG_ORDER:
-            self.assertEqual(
-                dispatch_asset(asset_id, "build-001", "chart-001", CANONICAL_AYANAMSHAS),
-                0,
-            )  # assertion 28
+            result = dispatch_asset(
+                asset_id, "build-001", "chart-001", CANONICAL_AYANAMSHAS
+            )
+            self.assertIsInstance(result, int, f"dispatch_asset({asset_id!r}) returned non-int")  # assertion 28
+
+    def test_dispatch_asset_unregistered_returns_zero(self):
+        """Unregistered asset_id (A1_engine has no WRITER_REGISTRY entry) returns 0."""
+        result = dispatch_asset("A1_engine", "build-001", "chart-001", CANONICAL_AYANAMSHAS)
+        self.assertEqual(result, 0)  # assertion 28b
 
 
 class TestCheckCancellation(unittest.TestCase):

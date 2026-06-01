@@ -125,6 +125,15 @@ _DEFAULT_DSN = (
 )
 
 
+# ── Expected minimum rows per asset (registered writers only) ────────────────
+# An asset listed here must write ≥ this many rows or the build step is failed.
+# Assets NOT listed (or with value 0) are allowed to return 0 rows (stub writers).
+# The distinction is registered-real vs stub, NOT 0 vs non-0 — stub writers
+# (e.g. A3_chart_facts, A9_sade_sati) legitimately return 0 and are not listed.
+EXPECTED_ROW_COUNTS: dict[str, int] = {
+    "A2_forensic_render": 1,  # ≥1 chart_documents row required (one per ayanamsha)
+}
+
 # ── Polling interval between asset steps (seconds) ────────────────────────────
 # Used by run_build() to yield control between asset dispatches.  Set to 5 for
 # production; test environments call asyncio.sleep(0) (POLL_INTERVAL ignored in
@@ -463,13 +472,26 @@ def dispatch_asset(
     conn=None triggers dry-run mode in all writers (row counting, no DB write).
     chart_output: engine output dict for this ayanamsha; empty dict if not available.
     ayanamsha_id: specific ayanamsha for this writer call; 'all' for stub/no-data.
+
+    ImportError swallow discipline: only the WRITER_REGISTRY import itself is wrapped
+    in except ImportError. Writer function calls are NOT inside that try/except so that
+    ImportError/ModuleNotFoundError raised by lazy imports INSIDE a writer (e.g. jinja2
+    missing in the pipeline Docker image) propagates to the retry wrapper and surfaces
+    as a build failure rather than a silent stub-return-0.
     """
+    writer_fn = None
     try:
         from pipeline.writers import WRITER_REGISTRY
-        if asset_id in WRITER_REGISTRY:
-            return WRITER_REGISTRY[asset_id](build_id, chart_id, ayanamsha_id, chart_output or {}, conn)
+        writer_fn = WRITER_REGISTRY.get(asset_id)
     except ImportError:
         pass
+
+    if writer_fn is not None:
+        # Registered writer — any exception (including ImportError from lazy imports
+        # inside the writer) must propagate to dispatch_asset_with_retry for retry
+        # and eventual hard-failure. Never swallow here.
+        return writer_fn(build_id, chart_id, ayanamsha_id, chart_output or {}, conn)
+
     label = ASSET_LABELS.get(asset_id, asset_id)
     log.info("[STUB] %s — no writer registered (asset_id=%s)", label, asset_id)
     return 0
@@ -782,6 +804,37 @@ async def run_build(build_id: str, chart_id: str, conn) -> bool:
                     emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=retry_err)
                     update_build_status(conn, build_id, "failed", error_summary=retry_err)
                     emit_event(conn, build_id, "build_failed", error=retry_err)
+                    return False
+
+                # Hard-fail: registered writer returned 0 rows but ≥1 was expected.
+                # This catches the silent-stub scenario where dispatch_asset() previously
+                # swallowed ImportError and returned 0 without raising.
+                if rows_written == 0 and EXPECTED_ROW_COUNTS.get(asset_id, 0) > 0:
+                    zero_err = (
+                        f"{asset_id}: registered writer returned 0 rows "
+                        f"(expected ≥{EXPECTED_ROW_COUNTS[asset_id]})"
+                    )
+                    log.error(
+                        "run_build_zero_rows",
+                        extra={"build_id": build_id, "asset_id": asset_id, "error": zero_err},
+                    )
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            UPDATE build_steps
+                            SET status = 'failed', error_msg = %s
+                            WHERE build_id = %s AND category = %s AND status = 'running'
+                            """,
+                            (zero_err, build_id, asset_id),
+                        )
+                    conn.commit()
+                    emit_step_event(conn, build_id, asset_id, "all", "compute", "failed", error=zero_err)
+                    update_build_status(conn, build_id, "failed", error_summary=zero_err)
+                    emit_event(conn, build_id, "build_failed", error=zero_err)
                     return False
 
         except Exception as exc:

@@ -414,7 +414,7 @@ class TestCancellationCheckFrequency:
     @patch(_EMIT_PATCH)
     @patch(_STEP_PATCH)
     @patch(_UPDATE_PATCH)
-    @patch(_DISPATCH_PATCH, return_value=0)
+    @patch(_DISPATCH_PATCH, return_value=1)  # 1 row: satisfies EXPECTED_ROW_COUNTS for A2
     @patch(_LOAD_PATCH, return_value=_BIRTH)
     @patch(_ENGINE_PATCH, new_callable=AsyncMock)
     def test_check_cancellation_called_once_per_asset(
@@ -435,7 +435,7 @@ class TestCancellationCheckFrequency:
     @patch(_EMIT_PATCH)
     @patch(_STEP_PATCH)
     @patch(_UPDATE_PATCH)
-    @patch(_DISPATCH_PATCH, return_value=0)
+    @patch(_DISPATCH_PATCH, return_value=1)  # 1 row: satisfies EXPECTED_ROW_COUNTS for A2
     @patch(_LOAD_PATCH, return_value=_BIRTH)
     @patch(_ENGINE_PATCH, new_callable=AsyncMock)
     def test_asyncio_sleep_called_between_assets(
