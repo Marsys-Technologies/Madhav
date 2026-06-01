@@ -28442,3 +28442,74 @@ next_session_objective: "M6-A-S1 per PHASE_M6_PLAN_v1_0.md"
 _[Conductor autonomous session — no forward objective; workstream complete.]_
 
 
+
+---
+
+```yaml
+session_open:
+  session_id: PYJHORA-POSTMERGE-DEPLOY-B
+  date: 2026-06-01
+  cowork_thread_name: "PYJHORA-POSTMERGE-DEPLOY-B — Ledger + governance finalization"
+  session_type: governance_close
+  branch: main
+  active_phase: M6 INCOMING
+  predecessor_session: PYJHORA-ENGINE-REPLACE
+  scope_declaration:
+    may_touch:
+      - "00_ARCHITECTURE/OPERATOR_ACTIONS_PENDING.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/CONDUCTOR/pyjhora-followups/RUN_LOG.md"
+    must_not_touch:
+      - "platform/python-sidecar/**"
+      - "platform/src/**"
+      - "platform/migrations/**"
+
+session_body:
+  summary: >
+    Post-merge governance finalization for the PyJHora arc. S1 (OIDC build-trigger fix,
+    Design A queue-header auth) deployed to amjis-web-00494-jjd. S2 (jh-parity residue
+    cleanup in platform/) deployed. S3 (ForensicRenderer un-stubbed) merged. AUTH_BYPASS
+    env-var residue noted for operator removal (SECURITY alert, zero code effect).
+    Migration 123 context: already present per operator observation 2026-06-01.
+    OPERATOR_ACTIONS_PENDING patched per OPERATOR_LEDGER_PATCH_PYJHORA_POSTMERGE_v1_0.md:
+    §2 chart build marked DONE (build_id a494ec15, all 65 cells non-zero, panchanga FORENSIC
+    5/5); migrations 121/122/124 UNBLOCKED; new HIGH items for build-trigger 401 + forensic
+    stub; new MEDIUM item for jh-parity residue. CURRENT_STATE bumped to v5.67.
+  accomplishments:
+    - "S1 OIDC fix (Design A) deployed — amjis-web-00494-jjd"
+    - "S2 jh-parity residue cleanup deployed — platform/scripts + acc2_hard_gates.json"
+    - "S3 ForensicRenderer un-stubbed — A2_forensic_render writer wired"
+    - "Native chart 362f9f17 built job-direct (build_id a494ec15); 65 chart_facts cells non-zero"
+    - "Panchanga FORENSIC spot-check 5/5"
+    - "OPERATOR_ACTIONS_PENDING.md patched to v1.2 (A.1–A.5)"
+    - "CURRENT_STATE bumped v5.66 → v5.67"
+    - "RUN_LOG.md RUN_COMPLETE row appended"
+  open_residuals:
+    - "forensic_writer still 0-row stub in production — Stream F primary target not delivered"
+    - "BUILD_TASK_AUTH_BYPASS env var on amjis-web — operator must remove (gcloud run services update)"
+    - "Build-trigger 401 e2e smoke not yet verified (S1 deployed but Cloud Tasks → /api/build/task path not re-exercised)"
+    - "jh-parity residue cleanup (S2) deployed but not smoke-verified"
+
+session_close:
+  session_id: PYJHORA-POSTMERGE-DEPLOY-B
+  date: 2026-06-01
+  production_revisions:
+    amjis_web: amjis-web-00494-jjd
+    amjis_sidecar: amjis-sidecar-00511-pz7
+  artifacts_produced:
+    - "00_ARCHITECTURE/OPERATOR_ACTIONS_PENDING.md (v1.2)"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.67)"
+    - "00_ARCHITECTURE/CONDUCTOR/pyjhora-followups/RUN_LOG.md (RUN_COMPLETE row)"
+  current_state_updated: true
+  current_state_version: 5.67
+  mirror_updates_propagated: false
+  worktrees_retired: []
+  branches_deleted: []
+  next_session_objective: "Native decides Stream F Q1/Q3 → execute forensic render scoping brief; verify build-task 401 e2e smoke; apply migrations 121/122/124 (now unblocked)."
+```
+
+### Next session objective
+
+Native decides Stream F Q1/Q3 (scoping brief: `STREAM_F_FORENSIC_RENDER_SCOPING_v1_0.md`). Verify build-task 401 end-to-end smoke. Apply migrations 121/122/124 (now unblocked).
+

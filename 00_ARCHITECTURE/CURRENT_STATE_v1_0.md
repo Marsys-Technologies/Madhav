@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.66
+version: 5.67
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,24 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.67 (2026-06-01, PYJHORA-POSTMERGE-DEPLOY):
+    **PyJHora engine LIVE in production. PR #184 (engine swap) + #186 (Dockerfile hotfix:
+    libgl1-mesa-glx→libgl1 for Bookworm) merged. amjis-sidecar-00511-pz7 — clean headless
+    boot (QT_QPA_PLATFORM=offscreen + lazy jhora.panchanga.drik). Native chart
+    362f9f17-95a5-490b-a5a7-027d3e0efda0 built (build_id a494ec15) job-direct; all 65
+    (category × ayanamsha_id) chart_facts cells non-zero; panchanga FORENSIC spot-check
+    5/5. v1.3 partitions 121/122/124 UNBLOCKED (real per-chart_id rows now exist).**
+    open_residuals:
+      - "forensic_writer still a 0-row stub — Stream F primary target NOT delivered (STREAM_F_FORENSIC_RENDER_SCOPING_v1_0.md)"
+      - "Cloud Tasks → /api/build/task 401 — build trigger path broken; S1 Design A fix deployed (amjis-web-00494-jjd) but end-to-end smoke not yet verified (CLAUDECODE_BRIEF_BUILD_TASK_OIDC_401_FIX_v1_0.md)"
+      - "BUILD_TASK_AUTH_BYPASS env var still set on amjis-web — remove (zero effect, trips SECURITY alert)"
+      - "jh-parity residue in platform/ code paths — AC4/AC5 greps were python-sidecar-scoped (CLAUDECODE_BRIEF_JH_PARITY_RESIDUE_CLEANUP_v1_0.md)"
+    files_touched: ["platform/python-sidecar/Dockerfile", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/OPERATOR_ACTIONS_PENDING.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (post-merge deploy session; no macro-phase change).
+    last_session_id: PYJHORA-POSTMERGE-DEPLOY-B. predecessor_session: PYJHORA-ENGINE-REPLACE.
+    carry_forwards: ["Stream F forensic render (4 follow-on briefs authored 2026-06-01)", "build-task 401 fix (S1 deployed; e2e smoke pending)", "121/122/124 partition apply (now unblocked, separate gate)"]
+    next_session_objective: "Native decides Stream F Q1/Q3; verify build-task 401 e2e smoke; apply 121/122/124."
+    file_updated_at: 2026-06-01. file_updated_by_session: PYJHORA-POSTMERGE-DEPLOY-B.
   - v5.66 (2026-06-01, PYJHORA-ENGINE-REPLACE):
     **PyJHora direct engine replacement COMPLETE: natal_engine/ deleted; pyjhora_adapter/ package created (PyJHora==4.8.6); build_chart.py + bootstrap_l25.py rewired; ENGINE_VERSION "pyjhora/1.0.0" across all writers; 22 adapter tests pass; panchanga FORENSIC spot-check PASS 5/5; branch feature/pyjhora-direct-engine opened for review.**
     files_touched: ["platform/python-sidecar/pyjhora_adapter/", "platform/python-sidecar/requirements.txt", "platform/python-sidecar/Dockerfile", "platform/python-sidecar/pipeline/build_chart.py", "platform/python-sidecar/pipeline/bootstrap_l25.py"]

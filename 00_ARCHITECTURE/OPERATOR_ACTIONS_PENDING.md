@@ -1,17 +1,18 @@
 ---
 artifact: OPERATOR_ACTIONS_PENDING.md
-version: "1.1"
+version: "1.2"
 status: LIVING
 produced_during: DOC_CLEANUP_2026-05-31
 role: Single source of truth for all operator actions requiring human execution (GCP console, production DB, GitHub settings).
 changelog:
   - v1.0 (2026-05-31, CI-cleanup): Initial file — smoke gate secrets provisioning only.
   - v1.1 (2026-05-31, DOC_CLEANUP): Consolidated all pending operator actions from MULTI_AYANAMSHA_BUILD_CLOSE §6, MCPT_CLOSE, PLATFORM_MODERNIZATION_CLOSE, and CI-cleanup session.
+  - v1.2 (2026-06-01, PYJHORA-POSTMERGE-DEPLOY-B): A.1 chart build marked DONE; A.2 migrations 121/122/124 UNBLOCKED; A.3 build-trigger 401 HIGH item added; A.4 forensic render HIGH item added; A.5 jh-parity residue MEDIUM item added.
 ---
 
 # Operator Actions Pending
 
-Last updated: 2026-05-31
+Last updated: 2026-06-01
 Single source of truth for all operator actions that require human execution
 (GCP console, production DB, GitHub settings). Updated at each session close.
 
@@ -49,18 +50,13 @@ psql $DB_URL -f platform/migrations/140_sarvatobhadra_chakra.sql
 # ... repeat for 141 through 153 in order
 ```
 
-### 2. Trigger native chart build (Cloud Run Job build_chart.py)
+### 2. Trigger native chart build — ✅ DONE 2026-06-01
 
-Chart ID: `362f9f17-95a5-490b-a5a7-027d3e0efda0`
-
-```bash
-# Via API endpoint (post-deploy):
-curl -X POST https://<amjis-web-url>/api/build/start \
-  -H "Authorization: Bearer $OPERATOR_TOKEN" \
-  -d '{"chart_id": "362f9f17-95a5-490b-a5a7-027d3e0efda0"}'
-```
-
-This populates `chart_facts` for all ayanamshas. Must complete before ACC1.
+Native chart `362f9f17-95a5-490b-a5a7-027d3e0efda0` built via `marsys-build-pipeline-job`
+(build_id `a494ec15`) on the PyJHora engine (`amjis-sidecar-00511-pz7`). All 65
+`(category × ayanamsha_id)` cells non-zero in `chart_facts`. Panchanga FORENSIC
+spot-check 5/5. **NOTE:** triggered job-direct because the Cloud Tasks → `/api/build/task`
+path 401'd (see new HIGH item below). `forensic` asset is still a 0-row stub (Stream F).
 
 ### 3. ACC1 — Run answer:eval after build job completes
 
@@ -84,6 +80,37 @@ pytest platform/tests/integration/test_multi_tenant_smoke.py --db-url=$DB_URL
 
 **ACC5** (concurrent smoke — Cloud environment only):
 Run concurrent smoke test manually in Cloud environment per the artifact's §4.
+
+---
+
+## HIGH — Build trigger path broken (Cloud Tasks → /api/build/task 401)
+
+The autonomous build trigger 401s in production; native build was run job-direct as a
+workaround. S1 OIDC fix (Design A queue-header auth) has been deployed to `amjis-web`
+(`amjis-web-00494-jjd`). **STATUS: DEPLOYED — end-to-end smoke (Cloud Tasks → /api/build/task
+→ job enqueue) not yet verified in production.** Fix brief:
+`00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BUILD_TASK_OIDC_401_FIX_v1_0.md`.
+Likely cause: `amjis-web` is private, so Cloud Run strips the OIDC `Authorization` header
+before the app's bearer parse — app should authorise on `X-CloudTasks-*` headers under
+IAM (Design A). Operator IAM/env actions listed in the brief.
+
+### Hygiene — remove BUILD_TASK_AUTH_BYPASS from amjis-web
+
+The var grants nothing (code-neutralised + regression-tested) but trips a SECURITY log
+alert. Remove it:
+```bash
+gcloud run services update amjis-web --region asia-south1 --project madhav-astrology \
+  --remove-env-vars BUILD_TASK_AUTH_BYPASS
+```
+
+---
+
+## HIGH — Forensic render still a stub (Stream F)
+
+`forensic_writer.py` returns 0 rows. The PyJHora arc swapped the engine but did NOT
+deliver the forensic (A2 Pratyaksha) render — its named primary target. Scoping brief:
+`00_ARCHITECTURE/BRIEFS/STREAM_F_FORENSIC_RENDER_SCOPING_v1_0.md` (needs native decisions
+Q1/Q3 before it becomes an executor brief).
 
 ---
 
@@ -125,12 +152,11 @@ Source: `CLAUDE.md §E Platform Modernization` + `00_ARCHITECTURE/PLATFORM_MODER
 
 ### Migrations 121/122/124 — partition scaffolding
 
-**BLOCKED on `chart_id` 100% NULL in partition key column.**
-Do NOT attempt until the Multi-Ayanamsha chart build (CRITICAL §2 above) has
-written per-chart rows to `chart_facts`. The chart_id column must be non-null
-before partition migration can succeed.
+**UNBLOCKED 2026-06-01.** The native build wrote real per-`chart_id` rows to
+`chart_facts`. The `chart_id`-100%-NULL precondition is cleared. Migrations 121/122/124
+(`query_trace_steps` partitions) may now apply. Still a separate gated operator step —
+verify `chart_id` non-NULL coverage on the target tables before applying.
 
-After chart build:
 ```
 platform/migrations/121_*.sql
 platform/migrations/122_*.sql
@@ -148,6 +174,15 @@ gcloud monitoring dashboards create \
 ```
 
 Apply per `00_ARCHITECTURE/PLATFORM_MODERNIZATION_CLOSE_v1_0.md §8` IaC apply.sh.
+
+---
+
+## MEDIUM — jh-parity residue in platform/ code paths
+
+PR #184 AC4/AC5 greps were scoped to python-sidecar/ only; residue remains in
+`platform/scripts/hard_gates_check.sh` (G2 gate rewards jh_oracle.json), `acc2_hard_gates.json`,
+`engine/current/route.ts` (`jh_parity_sha`), and a committed `_scratch/` file. Cleanup brief:
+`00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_JH_PARITY_RESIDUE_CLEANUP_v1_0.md`.
 
 ---
 
