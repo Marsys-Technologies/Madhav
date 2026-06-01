@@ -1,10 +1,16 @@
 /**
  * Route tests for POST /api/build/task — Platform Modernization 4.build_trigger.
  *
+ * Auth model: Design A — Cloud Run IAM owns the OIDC check (service must be
+ * deployed --no-allow-unauthenticated). The app authorises on the platform-
+ * forwarded X-CloudTasks-QueueName header + BUILD_TASK_QUEUE env var alone.
+ * Bearer-parse was removed (see isAuthorized JSDoc for root-cause notes).
+ *
  * Acceptance criteria:
  *   - Feature-flag default OFF → 503
- *   - Proper OIDC headers (queue name + matching audience JWT) → authorized
- *   - Missing headers or wrong audience → 401
+ *   - Correct queue-name header + BUILD_TASK_QUEUE set → authorized
+ *   - Missing queue header or mismatched queue name → 401
+ *   - BUILD_TASK_QUEUE env unset → 401 (fail-safe)
  *   - BUILD_TASK_AUTH_BYPASS env var has zero effect (security regression test)
  *   - Happy path invokes Cloud Run Job + records dispatch event
  *   - Job-dispatch failure records a `failed` build_event row (auto-rollback)
@@ -24,23 +30,15 @@ vi.mock('@/lib/config', () => ({ getFlag: mockGetFlag }))
 
 import { POST } from '../task/route'
 
-const TEST_AUDIENCE = 'https://amjis-web-test.run.app/api/build/task'
-
-/** Build a minimal fake JWT whose payload contains the given audience. */
-function makeFakeJwt(aud: string): string {
-  const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
-  const payload = Buffer.from(JSON.stringify({ aud, iss: 'test', sub: 'cloud-tasks' })).toString('base64url')
-  return `${header}.${payload}.fakesig`
-}
+const TEST_QUEUE = 'amjis-build-queue'
 
 function makeReq(body: unknown, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/build/task', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      // Default: proper Cloud Tasks OIDC headers
-      'x-cloudtasks-queuename': 'mars-build-queue',
-      authorization: `Bearer ${makeFakeJwt(TEST_AUDIENCE)}`,
+      // Design A: only Cloud Tasks queue header is checked; no bearer needed.
+      'x-cloudtasks-queuename': TEST_QUEUE,
       ...headers,
     },
     body: JSON.stringify(body),
@@ -52,11 +50,11 @@ beforeEach(() => {
   mockRecordBuildEvent.mockReset()
   mockGetFlag.mockReset()
   mockGetFlag.mockImplementation((name: string) => name === 'BUILD_TRIGGER_ENABLED')
-  process.env.BUILD_TASK_AUDIENCE = TEST_AUDIENCE
+  process.env['BUILD_TASK_QUEUE'] = TEST_QUEUE
 })
 
 afterEach(() => {
-  delete process.env.BUILD_TASK_AUDIENCE
+  delete process.env['BUILD_TASK_QUEUE']
   delete process.env.BUILD_TASK_AUTH_BYPASS
 })
 
@@ -76,18 +74,8 @@ describe('POST /api/build/task — kill-switch', () => {
   })
 })
 
-describe('POST /api/build/task — OIDC gate', () => {
-  it('returns 401 when no Cloud Tasks headers and no bearer', async () => {
-    const res = await POST(
-      makeReq(
-        { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
-        { authorization: '', 'x-cloudtasks-queuename': '' },
-      ),
-    )
-    expect(res.status).toBe(401)
-  })
-
-  it('returns 401 when queue header is missing even with valid bearer', async () => {
+describe('POST /api/build/task — auth gate (Design A: queue-header + BUILD_TASK_QUEUE)', () => {
+  it('returns 401 when X-CloudTasks-QueueName header is absent', async () => {
     const res = await POST(
       makeReq(
         { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
@@ -97,23 +85,36 @@ describe('POST /api/build/task — OIDC gate', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 401 when JWT audience does not match BUILD_TASK_AUDIENCE', async () => {
+  it('returns 401 when queue name does not match BUILD_TASK_QUEUE', async () => {
     const res = await POST(
       makeReq(
         { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
-        { authorization: `Bearer ${makeFakeJwt('https://wrong-audience.run.app')}` },
+        { 'x-cloudtasks-queuename': 'wrong-queue' },
       ),
     )
     expect(res.status).toBe(401)
   })
 
-  it('returns 401 when BUILD_TASK_AUTH_BYPASS is set but no proper OIDC headers (security regression)', async () => {
-    // This env var must have zero effect on auth — setting it cannot bypass OIDC.
+  it('returns 401 when BUILD_TASK_QUEUE env is unset (fail-safe)', async () => {
+    delete process.env['BUILD_TASK_QUEUE']
+    const res = await POST(
+      makeReq({
+        build_id: 'b1',
+        chart_id: 'c1',
+        ayanamsha_role: 'jh_true_chitra',
+        triggered_by: 'manual:u1',
+      }),
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 when BUILD_TASK_AUTH_BYPASS is set but queue header is absent (security regression)', async () => {
+    // This env var must have zero effect on auth — setting it cannot bypass the queue check.
     process.env.BUILD_TASK_AUTH_BYPASS = 'test'
     const res = await POST(
       makeReq(
         { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
-        { authorization: '', 'x-cloudtasks-queuename': '' },
+        { 'x-cloudtasks-queuename': '' },
       ),
     )
     expect(res.status).toBe(401)
