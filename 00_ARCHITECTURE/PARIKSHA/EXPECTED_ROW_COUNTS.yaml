@@ -1,0 +1,45 @@
+---
+artifact: EXPECTED_ROW_COUNTS.yaml
+version: 1.0
+status: LIVING
+authored_at: 2026-06-01
+authored_by: stream-f-forensic-render
+purpose: >
+  Defines expected row-count ranges for chart_documents and related tables
+  so the Pariksha row-count battery can gate build completeness.
+  One entry per document type; Pariksha queries chart_documents filtered
+  by document_type and asserts count BETWEEN min and max per
+  (chart_id, ayanamsha_id, build_id) tuple.
+---
+
+# Expected Row Counts — chart_documents
+
+## forensic_render
+# A2 FORENSIC.md render: one document per (chart_id × ayanamsha_id × build_id).
+# For a 5-ayanamsha build: 5 rows total in chart_documents for this doc type.
+
+forensic_render:
+  table: chart_documents
+  filter_column: document_type
+  filter_value: forensic_render
+  granularity: per_chart_ayanamsha_build
+  expected_per_tuple:
+    min: 1
+    max: 1
+  note: >
+    One row per (chart_id, ayanamsha_id, build_id). The UNIQUE constraint
+    (chart_id, ayanamsha_id, document_type, build_id) enforces idempotency.
+    For a standard 5-ayanamsha build, expect 5 rows in chart_documents
+    of this type per build_id.
+  acceptance_query: |
+    SELECT
+      chart_id,
+      ayanamsha_id,
+      COUNT(*) AS doc_count
+    FROM chart_documents
+    WHERE document_type = 'forensic_render'
+      AND build_id = :build_id
+    GROUP BY chart_id, ayanamsha_id
+    HAVING COUNT(*) = 1;
+  pariksha_green_when: all_rows_have_count_eq_1
+  pariksha_red_when: any_row_has_count_ne_1_or_null_content_md
