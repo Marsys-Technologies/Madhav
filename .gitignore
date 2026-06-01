@@ -79,3 +79,6 @@ tools/program-tracker/
 00_ARCHITECTURE/CONDUCTOR/**/data_build_status.json
 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/tracker/state.json
 00_ARCHITECTURE/CONDUCTOR/build_orchestrator/tracker/serve.log
+
+# JH parity scratch — [[no-jh-parity-anywhere]]
+platform/python-sidecar/tests/test_pyjhora_adapter/_scratch/

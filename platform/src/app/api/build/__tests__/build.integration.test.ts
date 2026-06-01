@@ -783,7 +783,6 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
         expect(body).toHaveProperty('promoted_at')
         expect(body).toHaveProperty('version_id')
         expect(body).toHaveProperty('engine_name')
-        expect(body.jh_parity_sha).toBeNull()
         expect(body.release_notes_uri).toBeNull()
       }
     })
