@@ -54,6 +54,10 @@ EXPECTED_ASSET_IDS = [
     'A14_ucn_digest',
 ]
 
+# A2 is no longer a stub — Stream F implemented forensic_writer.write().
+# Exclude it from "returns zero" assertions; it returns 1 (dry-run) with conn=None.
+STUB_ASSET_IDS = [aid for aid in EXPECTED_ASSET_IDS if aid != 'A2_forensic_render']
+
 
 @pytest.mark.parametrize("asset_id", EXPECTED_ASSET_IDS)
 def test_registry_contains_asset_id(asset_id):
@@ -64,9 +68,9 @@ def test_registry_contains_asset_id(asset_id):
 
 # ── All write() callables return 0 ────────────────────────────────────────────
 
-@pytest.mark.parametrize("asset_id", EXPECTED_ASSET_IDS)
+@pytest.mark.parametrize("asset_id", STUB_ASSET_IDS)
 def test_write_returns_zero(asset_id):
-    """Each stub write() returns 0 (no data written)."""
+    """Each stub write() returns 0 (no data written). A2 excluded — now real."""
     from pipeline.writers import WRITER_REGISTRY
     fn = WRITER_REGISTRY[asset_id]
     result = fn(
@@ -77,6 +81,20 @@ def test_write_returns_zero(asset_id):
         conn=None,
     )
     assert result == 0, f"{asset_id}.write() returned {result!r}, expected 0"
+
+
+def test_a2_forensic_write_returns_one_dry_run():
+    """A2_forensic_render.write(conn=None) is a real writer and returns 1 (dry-run)."""
+    from pipeline.writers import WRITER_REGISTRY
+    fn = WRITER_REGISTRY['A2_forensic_render']
+    result = fn(
+        build_id='test-build-123',
+        chart_id='test-chart-456',
+        ayanamsha_id='lahiri',
+        chart_output={},
+        conn=None,
+    )
+    assert result == 1, f"A2 write() returned {result!r}, expected 1"
 
 
 # ── All registry values are callable ──────────────────────────────────────────
@@ -188,11 +206,11 @@ def test_heavy_dep_stubs_accept_canonical_signature():
 # ── dispatch_asset() uses WRITER_REGISTRY ─────────────────────────────────────
 
 def test_dispatch_asset_uses_writer_registry():
-    """dispatch_asset() for a known asset_id delegates to WRITER_REGISTRY."""
+    """dispatch_asset() for a known stub asset_id delegates to WRITER_REGISTRY."""
     from pipeline.build_chart import dispatch_asset
-    # A2_forensic_render stub should return 0
+    # A4_panchanga is still a stub — must return 0
     result = dispatch_asset(
-        asset_id='A2_forensic_render',
+        asset_id='A4_panchanga',
         build_id='test-build-dispatch',
         chart_id='test-chart-dispatch',
         ayanamshas=['lahiri'],
@@ -200,10 +218,10 @@ def test_dispatch_asset_uses_writer_registry():
     assert result == 0
 
 
-def test_dispatch_asset_returns_zero_for_all_13():
-    """dispatch_asset() returns 0 for all 13 stub asset_ids."""
+def test_dispatch_asset_returns_zero_for_stub_assets():
+    """dispatch_asset() returns 0 for all stub asset_ids (excludes A2 — real writer)."""
     from pipeline.build_chart import dispatch_asset
-    for asset_id in EXPECTED_ASSET_IDS:
+    for asset_id in STUB_ASSET_IDS:
         result = dispatch_asset(
             asset_id=asset_id,
             build_id='test-build',
@@ -211,6 +229,18 @@ def test_dispatch_asset_returns_zero_for_all_13():
             ayanamshas=['lahiri'],
         )
         assert result == 0, f"dispatch_asset({asset_id!r}) returned {result!r}, expected 0"
+
+
+def test_dispatch_asset_a2_returns_one():
+    """dispatch_asset() for A2_forensic_render returns 1 (real writer, dry-run)."""
+    from pipeline.build_chart import dispatch_asset
+    result = dispatch_asset(
+        asset_id='A2_forensic_render',
+        build_id='test-build',
+        chart_id='test-chart',
+        ayanamshas=['lahiri'],
+    )
+    assert result == 1, f"dispatch_asset(A2) returned {result!r}, expected 1"
 
 
 def test_dispatch_asset_unknown_asset_id_returns_zero():
@@ -227,9 +257,9 @@ def test_dispatch_asset_unknown_asset_id_returns_zero():
 
 # ── Extra parameter is accepted (optional) ────────────────────────────────────
 
-@pytest.mark.parametrize("asset_id", EXPECTED_ASSET_IDS)
+@pytest.mark.parametrize("asset_id", STUB_ASSET_IDS)
 def test_write_accepts_extra_kwarg(asset_id):
-    """write() accepts optional extra={} kwarg without raising."""
+    """write() accepts optional extra={} kwarg without raising (stubs only — A2 excluded)."""
     from pipeline.writers import WRITER_REGISTRY
     fn = WRITER_REGISTRY[asset_id]
     result = fn(
@@ -241,6 +271,21 @@ def test_write_accepts_extra_kwarg(asset_id):
         extra={'context': 'smoke'},
     )
     assert result == 0
+
+
+def test_a2_accepts_extra_kwarg():
+    """A2 write() accepts optional extra={} kwarg and returns 1 (dry-run)."""
+    from pipeline.writers import WRITER_REGISTRY
+    fn = WRITER_REGISTRY['A2_forensic_render']
+    result = fn(
+        build_id='test-build',
+        chart_id='test-chart',
+        ayanamsha_id='lahiri',
+        chart_output={},
+        conn=None,
+        extra={'context': 'smoke'},
+    )
+    assert result == 1
 
 
 # ── Total: 96 parametrized + standalone assertions ────────────────────────────
