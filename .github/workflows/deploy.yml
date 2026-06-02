@@ -63,19 +63,6 @@ jobs:
             NEXT_PUBLIC_FIREBASE_APP_ID=ci-placeholder
             NEXT_PUBLIC_APP_URL=https://amjis-web.run.app
             NEXT_PUBLIC_NIM_STACK_DEGRADED=false
-            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
-            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
-            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
-            NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 
   deploy-web:
@@ -179,21 +166,8 @@ jobs:
             NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
             NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
             NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
-            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R9_PERSONAS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
-            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
             NEXT_PUBLIC_APP_URL=https://amjis-web.run.app
             NEXT_PUBLIC_NIM_STACK_DEGRADED=false
-            NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
-            NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
-            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY || 'true' }}
-            NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
-            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=${{ vars.NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL || 'true' }}
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
@@ -208,16 +182,9 @@ jobs:
           flags: >-
             --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
             --no-traffic
+            --min-instances=0
           env_vars: |
             NODE_ENV=production
-            MARSYS_FLAG_R11V2_USE_ADAPTERS=true
-            MARSYS_FLAG_R11D_PROMPT_LAYOUT=true
-            MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true
-            MARSYS_FLAG_R11E_ANTHROPIC_LOOP=true
-            MARSYS_FLAG_R11E_GEMINI_LOOP=true
-            MARSYS_FLAG_R11E_OPENAI_LOOP=true
-            MARSYS_FLAG_R11E_DEEPSEEK_LOOP=true
-            MARSYS_FLAG_R11E_NVIDIA_LOOP=true
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
             DB_NAME=amjis
@@ -226,25 +193,22 @@ jobs:
             GCS_BUCKET_CHART_DOCUMENTS=madhav-astrology-chart-documents
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
-            BUILD_STATE_GCS_BASE=https://storage.googleapis.com/madhav-marsys-build-artifacts
             APP_URL=https://amjis-web-938361928218.asia-south1.run.app
             BUILD_REAPER_SA_EMAIL=build-reaper@madhav-astrology.iam.gserviceaccount.com
             VERTEX_AI_LOCATION=asia-south1
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
+            BOOTSTRAP_JOB_NAME=brahma-foundation-bootstrap
+            BQ_DATASET=brahma_l5_olap
+            GCS_OLAP_PREFIX=gs://madhav-brahma-olap/parquet/
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
             # build-args above). Cloud Run env_vars are never read by Next.js at
             # runtime — setting them here has zero effect and misleadingly implies
             # that rotating them without a full rebuild would take effect.
-          # Issue 11: these are pinned to :latest which auto-follows any rotation.
-          # After each secret rotation, run:
-          #   gcloud secrets versions list <name> --project=madhav-astrology
-          # and pin to the explicit version number here.
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
-            DB_PASSWORD=amjis-db-password:2
+            DB_PASSWORD=amjis-db-password:3
             OPENAI_API_KEY=openai-api-key:2
-            ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:2
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
             DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:1
             NVIDIA_NIM_API_KEY=NVIDIA_NIM_API_KEY:1
@@ -312,11 +276,10 @@ jobs:
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
           # ── 4.edge_and_infra_hygiene ──
           # Per-service least-priv runtime SA (see infra/iam/main.tf).
-          flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=1 --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
+          flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=0 --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
           # ── /4.edge_and_infra_hygiene ──
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
-            ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:2
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
 
   # ── 4.edge_and_infra_hygiene ──
@@ -369,7 +332,7 @@ jobs:
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
           # IAM-gated (no --allow-unauthenticated); per-service runtime SA.
-          flags: --no-allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi
+          flags: --no-allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=0 --concurrency=80 --memory=512Mi
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
           secrets: |
