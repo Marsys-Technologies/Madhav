@@ -11,7 +11,7 @@
  *   3. Accepts optional ayanamshas[] array; defaults to all 5 canonical.
  *      Validates against VALID_AYANAMSHAS whitelist; returns 422 for invalid entries.
  *   4. Inserts a builds row + 14 build_steps rows (one per DAG asset).
- *   5. Also enqueues Cloud Task → /api/build/task (legacy path preserved).
+ *   5. Invokes Cloud Run Job directly (replaces Cloud Tasks dispatch).
  *   6. Returns { build_id, chart_id, ayanamshas, step_count: 14, status: 'queued' }.
  *
  * [BUILD-ORCH-D-01] Extended to support 5-ayanamsha build system.
@@ -22,7 +22,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { authorizeChartAccess, type DbLike } from '@/lib/auth/authorizeChartAccess'
 import { getFlag } from '@/lib/config'
-import { enqueueBuild } from '@/lib/build/trigger'
+import { invokeBuildJob } from '@/lib/build/jobInvoker'
 
 export const dynamic = 'force-dynamic'
 
@@ -247,19 +247,17 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 
-  // ── Optionally enqueue Cloud Task (best-effort; non-blocking for the response) ──
-  // The legacy Cloud Task path is preserved for background execution.
-  // If the task queue env vars are not set (dev mode), we skip without error.
+  // ── Direct Cloud Run Job trigger (replaced Cloud Tasks dispatch) ──
   try {
-    await enqueueBuild({
+    await invokeBuildJob({
+      buildId,
       chartId: resolvedChartId,
-      ayanamshaRole: 'jh_true_chitra', // legacy single-role for task executor
+      ayanamshaRole: 'jh_true_chitra',
       triggeredBy: `manual:${user.uid}`,
     })
   } catch (err) {
-    // Non-fatal: if the task queue is not configured (e.g. local dev), log and continue.
-    // The builds row is already persisted and will be picked up by the job runner.
-    console.warn('[api/build/start] enqueueBuild skipped (non-fatal):', (err as Error).message)
+    // Non-fatal: build row is persisted; job can be re-triggered manually.
+    console.warn('[api/build/start] invokeBuildJob skipped (non-fatal):', (err as Error).message)
   }
 
   return NextResponse.json({
