@@ -75,6 +75,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
 
   deploy-web:
     name: Build & Deploy Web
@@ -191,6 +192,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
@@ -224,7 +226,7 @@ jobs:
             GCS_OLAP_PREFIX=gs://madhav-brahma-olap/parquet/
             MARSYS_REPO_ROOT=/app
             CONSUME_UI_V2_ENABLED=true
-            VECTOR_SEARCH_ENABLED=true
+            MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_R11V2_USE_ADAPTERS=true
             MARSYS_FLAG_R11D_PROMPT_LAYOUT=true

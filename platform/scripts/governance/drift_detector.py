@@ -189,7 +189,7 @@ class Finding:
 def _is_whitelisted(path_rel: str) -> Optional[str]:
     """Return the WARN ticket ID if path is whitelisted; else None."""
     for ticket, data in WHITELIST_TICKETS.items():
-        if path_rel in data["files"]:
+        if path_rel in data.get("files", []):
             return ticket
     return None
 

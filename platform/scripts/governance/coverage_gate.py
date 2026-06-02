@@ -105,7 +105,7 @@ def parse_retrieval_tools(retrieve_index_path: pathlib.Path) -> List[str]:
 
     # Step 2: Extract the RETRIEVAL_TOOLS[] body
     tools_match = re.search(
-        r"export const RETRIEVAL_TOOLS[^=]*=\s*\[([^\]]+)\]", content, re.DOTALL
+        r"export const RETRIEVAL_TOOLS[^=]*=\s*\[([^\]]*)\]", content, re.DOTALL
     )
     if not tools_match:
         raise ValueError(

@@ -1,13 +1,7 @@
 {
   "baseline_keys": [
     "cloudrun_service_prefix|.github/workflows/deploy.yml|marsys-build-pipeline-job@.github/workflows/deploy.yml:144",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-build-pipeline-job@cloudbuild.yaml:31",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:11",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:21",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:32",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:39",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:40",
-    "cloudrun_service_prefix|cloudbuild.yaml|marsys-pipeline@cloudbuild.yaml:9",
+    "cloudrun_service_prefix|cloudbuild.yaml|marsys-build-pipeline-job@cloudbuild.yaml:4",
     "google_env_prefix|.github/workflows/deploy.yml|GCP_PROJECT",
     "google_env_prefix|.github/workflows/deploy.yml|GCP_REGION",
     "google_env_prefix|platform/scripts/backfill_conversation_embeddings.ts|GCP_PROJECT",
@@ -44,8 +38,6 @@
     "google_env_prefix|platform/src/lib/providers/google/adapter.ts|GOOGLE_MANIFEST",
     "google_env_prefix|platform/src/lib/providers/google/index.ts|GOOGLE_MANIFEST",
     "google_env_prefix|platform/src/lib/providers/google/manifest.ts|GOOGLE_MANIFEST",
-    "google_env_prefix|platform/src/lib/retrieve/__tests__/vector_search.test.ts|GCP_PROJECT",
-    "google_env_prefix|platform/src/lib/retrieve/vector_search.ts|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/storage/client.ts|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/storage/gcs.ts|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/synthesis/agentic_loop.ts|GOOGLE_LOOP_CONFIG",
@@ -67,22 +59,12 @@
     "marsys_flags|platform/src/lib/pipelines/shared/run_adapter_dispatch.ts|CITATION_GATE_OVERRIDE",
     "marsys_flags|platform/src/lib/predictions/__tests__/calibration_producer.test.ts|LEL_CONTEXT_ENABLED",
     "marsys_flags|platform/src/lib/providers/nvidia/adapter.ts|NVIDIA_PLANNER_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_CLUSTER_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_CONTRADICTION_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_PATTERN_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts|DISCOVERY_RESONANCE_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/cluster_atlas.ts|DISCOVERY_CLUSTER_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/contradiction_register.ts|DISCOVERY_CONTRADICTION_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/manifest_query.ts|MANIFEST_QUERY_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/pattern_register.ts|DISCOVERY_PATTERN_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/resonance_register.ts|DISCOVERY_RESONANCE_ENABLED",
-    "marsys_flags|platform/src/lib/retrieve/vector_search.ts|VECTOR_SEARCH_ENABLED",
     "marsys_flags|platform/src/lib/synthesis/history_compression.ts|HISTORY_COMPRESSION_ENABLED",
     "marsys_flags|platform/src/lib/synthesis/types.ts|PANEL_MODE_ENABLED"
   ],
   "generated_by": "naming_lint.py --first-run",
   "schema_version": "1.0",
-  "violation_count": 79,
+  "violation_count": 61,
   "violations": [
     {
       "file": ".github/workflows/deploy.yml",
@@ -94,7 +76,7 @@
     },
     {
       "file": ".github/workflows/deploy.yml",
-      "line": 211,
+      "line": 215,
       "match": "GCP_PROJECT",
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",
@@ -373,22 +355,6 @@
       "severity": "error"
     },
     {
-      "file": "platform/src/lib/retrieve/__tests__/vector_search.test.ts",
-      "line": 105,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/vector_search.ts",
-      "line": 80,
-      "match": "GCP_PROJECT",
-      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
-      "rule_id": "google_env_prefix",
-      "severity": "error"
-    },
-    {
       "file": "platform/src/lib/storage/client.ts",
       "line": 6,
       "match": "GCP_PROJECT",
@@ -557,86 +523,6 @@
       "severity": "error"
     },
     {
-      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
-      "line": 34,
-      "match": "DISCOVERY_PATTERN_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_PATTERN_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_PATTERN_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
-      "line": 35,
-      "match": "DISCOVERY_CONTRADICTION_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_CONTRADICTION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CONTRADICTION_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
-      "line": 36,
-      "match": "DISCOVERY_RESONANCE_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_RESONANCE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_RESONANCE_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/__smoke__/m3a2_discovery_flags.ts",
-      "line": 37,
-      "match": "DISCOVERY_CLUSTER_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_CLUSTER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CLUSTER_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/cluster_atlas.ts",
-      "line": 57,
-      "match": "DISCOVERY_CLUSTER_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_CLUSTER_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CLUSTER_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/contradiction_register.ts",
-      "line": 62,
-      "match": "DISCOVERY_CONTRADICTION_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_CONTRADICTION_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_CONTRADICTION_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/manifest_query.ts",
-      "line": 8,
-      "match": "MANIFEST_QUERY_ENABLED",
-      "message": "feature-flag-shaped identifier 'MANIFEST_QUERY_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_MANIFEST_QUERY_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/pattern_register.ts",
-      "line": 67,
-      "match": "DISCOVERY_PATTERN_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_PATTERN_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_PATTERN_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/resonance_register.ts",
-      "line": 67,
-      "match": "DISCOVERY_RESONANCE_ENABLED",
-      "message": "feature-flag-shaped identifier 'DISCOVERY_RESONANCE_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_DISCOVERY_RESONANCE_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
-      "file": "platform/src/lib/retrieve/vector_search.ts",
-      "line": 13,
-      "match": "VECTOR_SEARCH_ENABLED",
-      "message": "feature-flag-shaped identifier 'VECTOR_SEARCH_ENABLED' lacks the MARSYS_FLAG_ prefix (boolean \u2014 should be 'MARSYS_FLAG_VECTOR_SEARCH_ENABLED')",
-      "rule_id": "marsys_flags",
-      "severity": "error"
-    },
-    {
       "file": "platform/src/lib/synthesis/history_compression.ts",
       "line": 98,
       "match": "HISTORY_COMPRESSION_ENABLED",
@@ -654,65 +540,17 @@
     },
     {
       "file": ".github/workflows/deploy.yml",
-      "line": 133,
-      "match": "marsys-build-pipeline-job@.github/workflows/deploy.yml:133",
+      "line": 144,
+      "match": "marsys-build-pipeline-job@.github/workflows/deploy.yml:144",
       "message": "Cloud Run service/image name 'marsys-build-pipeline-job' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
       "rule_id": "cloudrun_service_prefix",
       "severity": "error"
     },
     {
       "file": "cloudbuild.yaml",
-      "line": 9,
-      "match": "marsys-pipeline@cloudbuild.yaml:9",
-      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
-      "rule_id": "cloudrun_service_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "cloudbuild.yaml",
-      "line": 11,
-      "match": "marsys-pipeline@cloudbuild.yaml:11",
-      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
-      "rule_id": "cloudrun_service_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "cloudbuild.yaml",
-      "line": 21,
-      "match": "marsys-pipeline@cloudbuild.yaml:21",
-      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
-      "rule_id": "cloudrun_service_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "cloudbuild.yaml",
-      "line": 31,
-      "match": "marsys-build-pipeline-job@cloudbuild.yaml:31",
+      "line": 4,
+      "match": "marsys-build-pipeline-job@cloudbuild.yaml:4",
       "message": "Cloud Run service/image name 'marsys-build-pipeline-job' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
-      "rule_id": "cloudrun_service_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "cloudbuild.yaml",
-      "line": 32,
-      "match": "marsys-pipeline@cloudbuild.yaml:32",
-      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
-      "rule_id": "cloudrun_service_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "cloudbuild.yaml",
-      "line": 39,
-      "match": "marsys-pipeline@cloudbuild.yaml:39",
-      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
-      "rule_id": "cloudrun_service_prefix",
-      "severity": "error"
-    },
-    {
-      "file": "cloudbuild.yaml",
-      "line": 40,
-      "match": "marsys-pipeline@cloudbuild.yaml:40",
-      "message": "Cloud Run service/image name 'marsys-pipeline' does not match canonical 'amjis-*' prefix (allowlisted legacy \u2014 report-mode)",
       "rule_id": "cloudrun_service_prefix",
       "severity": "error"
     }

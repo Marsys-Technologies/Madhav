@@ -1,5 +1,26 @@
 # Known Pre-Existing Test Failures
 
+**v1.7 — 9 excluded (2026-06-03)**
+Branch: main (HEAD: post-PR#188 CI-remediation commit)
+Excluded from vitest via `vitest.config.ts`: 9 files
+Root cause: PR #187 `feat: Legacy teardown — clean slate for Layer-0 rebuild` (`30640c96`, 2026-06-02) cleared `RETRIEVAL_TOOLS=[]` and `CONTRACT_CATALOG=[]` as a deliberate precondition for the Layer-0→3 Build-Guarantor arc.
+
+| File | Failures | Re-enable trigger |
+|---|---|---|
+| `src/lib/gateway/__tests__/gateway.test.ts` | 13 | CONTRACT_CATALOG repopulated (L0 Gate-1) |
+| `src/lib/contract/__tests__/unified_contract.test.ts` | 4 | CONTRACT_CATALOG repopulated (L0 Gate-1) |
+| `tests/governance/sla_probe_new_tools.test.ts` | 7 | RETRIEVAL_TOOLS≥33 tools re-registered (L1–L3, per-layer) |
+| `src/__tests__/integration/mcp_stub_engines.integration.test.ts` | 5 | RETRIEVAL_TOOLS aliases re-registered (L1–L2) |
+| `tests/synthesis/tool_catalogue_schema_normalization.test.ts` | 3 | RETRIEVAL_TOOLS non-empty (any layer) |
+| `tests/retrieval/tool_catalogue.test.ts` | 1 | RETRIEVAL_TOOLS non-empty (any layer) |
+| `src/lib/db/__tests__/observatory_schema.test.ts` | 2 | Rewrite to assert against `001_baseline.sql`; remove refs to archived migrations 008+038 |
+| `src/app/api/build/__tests__/e2e.test.ts` | 2 | New build job wired in Build-Guarantor Gate-2 |
+| `src/app/api/build/__tests__/start_route.test.ts` | 1 | New build job wired in Build-Guarantor Gate-2 |
+
+The Build-Guarantor swarm charter (`00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`) governs re-enablement: each exclusion is lifted as the layer/asset it guards is re-authored and its contract verified.
+
+---
+
 **v1.6 — 0 pre-existing failures (2026-05-31)**
 Branch: main (HEAD: 206d6370)
 Total pre-existing failures: **0** (platform: 0, platform-mcp: 0)
