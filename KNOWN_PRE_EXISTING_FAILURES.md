@@ -7,15 +7,53 @@ Root cause: PR #187 `feat: Legacy teardown — clean slate for Layer-0 rebuild` 
 
 | File | Failures | Re-enable trigger |
 |---|---|---|
+**Group A — CONTRACT_CATALOG=[]** (re-enable: L0 Gate-1 contract repopulation)
+
+| File | Failures | Re-enable trigger |
+|---|---|---|
 | `src/lib/gateway/__tests__/gateway.test.ts` | 13 | CONTRACT_CATALOG repopulated (L0 Gate-1) |
 | `src/lib/contract/__tests__/unified_contract.test.ts` | 4 | CONTRACT_CATALOG repopulated (L0 Gate-1) |
-| `tests/governance/sla_probe_new_tools.test.ts` | 7 | RETRIEVAL_TOOLS≥33 tools re-registered (L1–L3, per-layer) |
+| `src/lib/contract/__tests__/tool_asset_coverage.test.ts` | — | CONTRACT_CATALOG repopulated (L0 Gate-1) |
+
+**Group B — RETRIEVAL_TOOLS=[]** (re-enable: per-layer tool registration)
+
+| File | Failures | Re-enable trigger |
+|---|---|---|
+| `tests/governance/sla_probe_new_tools.test.ts` | 7 | RETRIEVAL_TOOLS≥33 tools re-registered (L1–L3) |
 | `src/__tests__/integration/mcp_stub_engines.integration.test.ts` | 5 | RETRIEVAL_TOOLS aliases re-registered (L1–L2) |
 | `tests/synthesis/tool_catalogue_schema_normalization.test.ts` | 3 | RETRIEVAL_TOOLS non-empty (any layer) |
 | `tests/retrieval/tool_catalogue.test.ts` | 1 | RETRIEVAL_TOOLS non-empty (any layer) |
-| `src/lib/db/__tests__/observatory_schema.test.ts` | 2 | Rewrite to assert against `001_baseline.sql`; remove refs to archived migrations 008+038 |
-| `src/app/api/build/__tests__/e2e.test.ts` | 2 | New build job wired in Build-Guarantor Gate-2 |
-| `src/app/api/build/__tests__/start_route.test.ts` | 1 | New build job wired in Build-Guarantor Gate-2 |
+| `src/lib/router/__tests__/retrieval_capability_spec.test.ts` | 2 | RETRIEVAL_TOOLS matches RETRIEVAL_CAPABILITY_SPEC |
+| `tests/retrieve/ucn_cdlm_rm.test.ts` | — | RETRIEVAL_TOOLS non-empty (L2) |
+
+**Group C — L0 FORENSIC file absent** (re-enable: FORENSIC_ASTROLOGICAL_DATA_v8_0.md recreated)
+
+| File | Re-enable trigger |
+|---|---|
+| `src/scripts/manifest/__tests__/auto_deriver.test.ts` | FORENSIC file present in 01_FACTS_LAYER/ |
+| `src/scripts/manifest/__tests__/frontmatter_check.test.ts` | FORENSIC file present in 01_FACTS_LAYER/ |
+
+**Group D — DB/migration infra** (re-enable: L0 migration bootstrap complete)
+
+| File | Re-enable trigger |
+|---|---|
+| `src/lib/db/__tests__/observatory_schema.test.ts` | Rewrite to use 001_baseline.sql (archived migrations 008+038 deleted) |
+| `src/lib/db/__tests__/migrations.test.ts` | L0 migration bootstrap complete |
+| `src/lib/observatory/__tests__/queries.test.ts` | L0 migration bootstrap + DB available |
+
+**Group E — Integration tests requiring live tools** (re-enable: L1–L2 tools live)
+
+| File | Re-enable trigger |
+|---|---|
+| `tests/classical/classical_pipeline_integration.test.ts` | L1–L2 classical tools registered |
+| `tests/integration/test_query_panchanga_e2e.test.ts` | panchanga tool registered |
+
+**Group F — Build trigger infra** (re-enable: new build job wired, Gate-2)
+
+| File | Re-enable trigger |
+|---|---|
+| `src/app/api/build/__tests__/e2e.test.ts` | Build-Guarantor Gate-2 |
+| `src/app/api/build/__tests__/start_route.test.ts` | Build-Guarantor Gate-2 |
 
 The Build-Guarantor swarm charter (`00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`) governs re-enablement: each exclusion is lifted as the layer/asset it guards is re-authored and its contract verified.
 
