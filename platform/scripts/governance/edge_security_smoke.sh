@@ -57,14 +57,14 @@ echo "── 4.edge_and_infra_hygiene smoke ──"
 cd "$REPO_ROOT"
 
 echo
-echo "[1] infra/edge — LB + CDN + Armor"
-check "infra/edge/main.tf exists" test -f infra/edge/main.tf
-check "infra/edge/cloud_armor.tf exists" test -f infra/edge/cloud_armor.tf
-check "infra/edge/cloud_armor_rules.json exists" test -f infra/edge/cloud_armor_rules.json
-check "main.tf wires Cloud CDN (enable_cdn = true)" grep -q "enable_cdn *= *true" infra/edge/main.tf
-check "main.tf attaches security_policy to backend" grep -q "security_policy *= *google_compute_security_policy" infra/edge/main.tf
-check "cloud_armor_rules.json has WAF rule" grep -q '"kind": "waf"' infra/edge/cloud_armor_rules.json
-check "cloud_armor_rules.json has rate_limit rule" grep -q '"kind": "rate_limit"' infra/edge/cloud_armor_rules.json
+echo "[1] Firebase hosting — edge module deleted (Brahma arc, 2026-06-02); traffic via Firebase + Cloud Run rewrite"
+check "infra/edge/main.tf absent (LB/CDN destroyed)" test ! -f infra/edge/main.tf
+check "infra/edge/cloud_armor.tf absent" test ! -f infra/edge/cloud_armor.tf
+check "firebase.json exists" test -f firebase.json
+check ".firebaserc exists" test -f .firebaserc
+check "firebase.json has Cloud Run rewrite to amjis-web" grep -q '"serviceId": "amjis-web"' firebase.json
+check "firebase.json targets asia-south1" grep -q '"region": "asia-south1"' firebase.json
+check ".firebaserc points to madhav-astrology project" grep -q '"madhav-astrology"' .firebaserc
 
 echo
 echo "[2] infra/iam — 4 distinct least-priv SAs"
